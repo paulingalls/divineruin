@@ -2,6 +2,14 @@
 
 A voice-driven MMORPG for mobile. Players wear headphones, talk to an AI Dungeon Master, and experience a living fantasy world through audio. Think D&D meets Audible meets a persistent online world — no screens required beyond a glanceable HUD.
 
+## What Playing Feels Like
+
+You put on headphones. You hear a world — wind, market sounds, distant bells. The DM's voice sets the scene. You speak naturally: *"I want to find the blacksmith."* The DM narrates your walk through the market, describes the forge, voices the smith who remembers you from last session. You negotiate a price, pick up the sword you commissioned three days ago (it was crafting while you were offline), and head to the guild hall to meet your party.
+
+Two friends join the room. The DM recaps last session and sets the hook: something is wrong in the Greyvale. You ride out. The forest sounds shift. Combat erupts — the DM's voice goes sharp and urgent. Everyone shouts their intent at once. Dice roll. The DM narrates a cinematic sequence of the entire round. Your companion shouts a warning from your left. You hear something behind you that doesn't sound like anything that should exist.
+
+After the session, your patron deity whispers a cryptic message. You set your character to train overnight. Tomorrow, you'll check in for five minutes, hear the results, and make your next decision.
+
 ## What It Is
 
 Set in the world of **Aethos**, a fantasy realm under existential threat from creatures pouring through a tear in the Veil (the barrier between reality and what lies beyond). Players collectively unravel the mystery across seasons of play, guided by an AI Dungeon Master that narrates, improvises, manages rules, and voices every character in real time.
