@@ -2,7 +2,7 @@
 
 ## About This Document
 
-This document defines the technical architecture for building the MVP of Divine Ruin: The Sundered Veil. It covers the voice pipeline, infrastructure, AI systems, autonomous agents, multiplayer architecture, and development priorities. It is informed by the *MVP Specification* and *Game Design* documents.
+This document defines the technical architecture for building the MVP of Divine Ruin: The Sundered Veil. It covers the client application, voice pipeline, DM agent architecture, orchestration, infrastructure, AI systems, autonomous agents, multiplayer architecture, and development priorities. It is informed by the *MVP Specification* and *Game Design* documents.
 
 **Last research update:** February 25, 2026
 
@@ -10,14 +10,194 @@ This document defines the technical architecture for building the MVP of Divine 
 
 ## Architecture Overview
 
-The system has six major layers:
+The system has seven major layers:
 
-1. **Client Layer** — Mobile app (mic, speaker, HUD, audio mixing)
-2. **Transport Layer** — Real-time communication between client and server
-3. **Voice Pipeline** — STT → Orchestrator → LLM → TTS
-4. **Game Engine** — Rules, world state, session management
-5. **Agent Layer** — Autonomous NPCs, god-agents, background world simulation
-6. **Multiplayer Layer** — Player discovery, rooms, interaction, shared DM
+1. **Client Layer** — Expo React Native app: voice connection, HUD, audio mixing, session management
+2. **Transport Layer** — LiveKit for real-time voice; LiveKit data channels for server-pushed UI events
+3. **Voice Pipeline** — Deepgram STT → Claude LLM → Inworld TTS, managed by the DM agent
+4. **Game Engine** — Rules engine, world state (PostgreSQL + Redis), session management
+5. **Agent Layer** — DM agent, background process, god-agents, world simulation
+6. **Multiplayer Layer** — Multi-player rooms, input arbitration, shared DM
+7. **Data Layer** — Content DB (JSON entity schemas), state DB, Redis hot cache
+
+---
+
+## Client Architecture — Expo React Native
+
+### Design Philosophy
+
+The client is thin by design. All game intelligence — narration, rules, world simulation, NPC behavior — lives server-side. The client's job is to be a reliable voice connection with a glanceable HUD bolted on. This keeps the app lightweight, fast to load, and cheap to maintain. The interaction model is closer to a podcast app with an overlay than a traditional game client.
+
+The player's primary interface is their voice and their ears. The screen is secondary — a smartwatch-pattern glance surface for moments when visual context enriches the audio experience.
+
+### Platform and Framework
+
+**Expo (React Native)** — Single codebase targeting iOS and Android. Expo's managed workflow handles builds, OTA updates, and native module linking. Key dependencies:
+
+- **@livekit/react-native** — LiveKit's React Native SDK for WebRTC voice transport. Handles room connection, audio track management, data channel messaging, and RPC.
+- **expo-av** or **react-native-audio-api** — Audio playback for ambient soundscapes, sound effects, and UI audio. Needs multi-track simultaneous playback with independent volume control. `expo-av` supports this but has limitations on simultaneous streams; `react-native-audio-api` (Web Audio API polyfill) may be needed for proper mixing. Evaluate both during prototyping.
+- **react-native-reanimated** — Smooth 60fps animations for dice rolls, combat UI transitions, item card popups, HP bar changes. Runs animations on the native UI thread.
+- **react-native-mmkv** — Fast local key-value storage for cached game state, character data, map progress. Synchronous reads, faster than AsyncStorage.
+- **zustand** — Lightweight state management. The state shape is simple and mostly server-driven. Zustand stores for: session state, player state, combat state, UI overlay state, audio state.
+- **expo-router** — File-based navigation.
+- **expo-haptics** — Tactile feedback for dice rolls, critical hits, level-ups.
+
+### Screen Map
+
+The app has a small screen count. Most gameplay happens on the Active Session screen with contextual overlays.
+
+**Pre-Session Screens:**
+
+- **Auth** — Sign in / sign up. Minimal — get the player into the game fast.
+- **Home** — Session resume button (prominent), async activity cards, character summary bar, session history. If no character exists, flows into character creation.
+- **Character Creation** — A voice conversation with visual assists. The DM speaks through the LiveKit connection; the client shows contextual cards (race options, class options, patron options) when the server pushes them. The player speaks their choices. Not a form — a conversation with illustrations.
+
+**Active Session (the core experience):**
+
+- **Session Screen** — Full-screen with layered HUD overlays. This is where the player spends 95% of their time. The background is atmospheric (dark, ambient-lit, matching the current environment's mood — not a literal scene render). The foreground is the HUD system described below.
+- **Map (pull-up)** — Player-initiated. 2D top-down map that fills in as you explore. Current location marker, breadcrumb trail, points of interest, quest objective indicators. Canvas-rendered or SVG. Swipe down to dismiss, back to session.
+- **Character Sheet (pull-up)** — Stats, abilities, equipment, divine favor. Read from local cache, updated by server pushes.
+- **Inventory (pull-up)** — Items with rarity indicators. Tap for detail card. Managed locally, synced by server.
+- **Quest Log (pull-up)** — Active quests, stages, hints. Updated by `update_quest` server pushes.
+
+**Utility Screens:**
+
+- **Settings** — Audio levels (voice, ambience, effects, music), mic mode (VAD vs. tap-to-speak), notification preferences, account.
+- **Async Hub** — Between-session activities: crafting timers, training progress, god whisper inbox, party messages. Lighter UI — text + short audio clips, not a full LiveKit session.
+
+### HUD System — Layered Overlays
+
+The HUD is not a traditional game UI. It's a system of overlays that appear contextually and auto-dismiss, designed for glance-and-return interaction. Three layers, from always-visible to player-initiated:
+
+**Layer 1 — Persistent Bar (always visible during session)**
+
+A thin strip at the top or bottom of the session screen. Contains:
+- HP bar (compact, color-coded: green → yellow → red)
+- Active status effect icons (poisoned, blessed, etc.)
+- Mic state indicator (listening / processing / idle)
+- Subtle DM-is-speaking indicator (a soft glow or waveform)
+
+Footprint: <10% of screen height. The player should be able to ignore it entirely during normal play and glance at it when they hear a health-low audio cue.
+
+**Layer 2 — Contextual Overlays (server-pushed, auto-dismiss)**
+
+These appear when the server pushes relevant events and disappear after a timeout or player dismissal. They're the "glance down, absorb, go back to listening" moments.
+
+- **Dice roll animation** — Appears when mechanics tools resolve. Shows the die, the roll, the modifier, and the result (hit/miss, success/fail). Distinct audio cue accompanies it. Auto-dismisses after 3-4 seconds. Driven by the `narrative_hint` field from tool results.
+- **Combat tracker** — Appears when combat starts (pushed by combat state tools). Shows turn order, enemy HP bars, active status effects. Stays visible during combat, auto-dismisses on combat end. Updated in real-time by `update_combat_ui` pushes.
+- **Item card** — Pops when the player receives an item (pushed by `add_to_inventory`). Shows item name, rarity border, brief description, key stats. Auto-dismisses after 5 seconds or on tap.
+- **Quest update toast** — Brief notification when a quest advances (pushed by `update_quest`). "Quest Updated: The Greyvale Anomaly — Stage 3." Auto-dismisses after 3 seconds.
+- **XP / Level-up notification** — Pushed by `award_xp`. XP gains are subtle toasts. Level-ups get a larger, more celebratory overlay with haptic feedback.
+- **Character creation cards** — During character creation, the server pushes visual option cards (race illustrations, class descriptions, patron sigils) that appear as a horizontally scrollable row. The player speaks their choice; the selected card highlights and the rest dismiss.
+
+**Layer 3 — Pull-Up Screens (player-initiated)**
+
+The Map, Character Sheet, Inventory, and Quest Log. Accessed by a gesture (swipe up from bottom, or tap a persistent bar icon). These slide over the session screen as a modal. The voice connection stays active — the player can keep talking to the DM while browsing their inventory. Swiping down or tapping a close button returns to the session screen.
+
+### Data Flow
+
+The client is **reactive, not requesting.** It doesn't poll for game state. All updates flow from server to client via LiveKit data channels.
+
+```
+Server → Client (push):
+  LiveKit audio track     → DM voice playback
+  LiveKit data channel    → Game state events (JSON payloads)
+    ├── combat_ui_update  → Combat tracker overlay
+    ├── item_acquired     → Item card popup
+    ├── dice_result       → Dice animation overlay
+    ├── quest_update      → Quest toast + quest log cache
+    ├── xp_awarded        → XP toast (+ level-up overlay)
+    ├── location_changed  → Map update + ambience crossfade
+    ├── status_effect     → Persistent bar icon update
+    ├── sound_effect      → Sound effect playback
+    ├── creation_cards    → Character creation option cards
+    └── session_event     → Session start/end/reconnect UI
+
+Client → Server (voice + explicit actions):
+  LiveKit audio track     → Player voice (VAD-gated)
+  LiveKit RPC             → start_turn (tap-to-speak mode)
+  LiveKit RPC             → session_start / session_end
+  HTTPS (REST)            → Auth, async activity actions, settings
+```
+
+**Local state cache:** The client maintains a local copy of character data, inventory, quest log, and map progress in MMKV. This cache is populated on session start (server pushes full state) and kept current by incremental server pushes during the session. Pull-up screens read from cache, so they open instantly — no loading spinners.
+
+**Async activities** don't use LiveKit. They're standard HTTPS requests to a REST API. The async hub screen fetches current activity states, displays timers and results, and lets the player make decisions. If an async activity includes a short voiced scene (e.g., a god whisper), the server returns a pre-rendered audio URL that the client plays back — not a real-time voice session.
+
+### Audio Mixing Architecture
+
+The client manages four independent audio channels, mixed locally:
+
+| Channel | Source | Volume Control | Notes |
+|---|---|---|---|
+| **Voice** | LiveKit audio track | Master + voice slider | DM narration, NPC dialogue, all character voices. Always highest priority. |
+| **Ambience** | Local audio files | Master + ambience slider | Environmental soundscapes: tavern bustle, forest wind, rain, combat tension layer. Triggered by `location_changed` and `sound_effect` events. Crossfades on transitions (1-2 second linear fade). |
+| **Effects** | Local audio files | Master + effects slider | One-shot sounds: sword clash, spell cast, door creak, divine presence. Triggered by `play_sound` server events. Fire-and-forget, can overlap. |
+| **UI Audio** | Local audio files | Master + UI slider | Dice roll sounds, notification chimes, level-up fanfare, menu interactions. Triggered by client-side events (overlay appearance, user actions). |
+
+**Ducking:** When the Voice channel is active (DM is speaking), Ambience ducks to ~40% volume automatically. Effects play at full volume over both (they're brief and add to the scene). UI Audio plays at full volume (it's informational).
+
+**The critical constraint:** Voice is a WebRTC audio track from LiveKit. Ambience, Effects, and UI Audio are local playback. These are separate audio systems on the device. The audio session category on iOS must be configured for `.playAndRecord` with `.mixWithOthers` and `.duckOthers` options. On Android, the AudioManager focus strategy must allow concurrent streams. This is well-trodden territory for podcast and music apps, but it needs to be configured correctly from the start or it creates hard-to-debug audio issues.
+
+**Ambient sound library:** A set of loopable audio files bundled with the app (or downloaded on first launch). Organized by environment tag matching the location schema's `ambient_sounds` field. Examples: `tavern_busy.mp3`, `forest_calm.mp3`, `rain_heavy.mp3`, `combat_tension.mp3`, `hollow_wrongness.mp3`. The server's `location_changed` event includes the ambient sound tag; the client crossfades to the matching file.
+
+**Sound effect library:** One-shot audio files, also bundled or downloaded. Named to match the `play_sound` tool's `effect_name` parameter: `sword_clash.mp3`, `critical_hit_sting.mp3`, `spell_cast_fire.mp3`, `divine_presence.mp3`, `door_creak.mp3`, etc. The server sends the effect name and intensity; the client looks up the file and plays it at the scaled volume.
+
+### Session Flow on the Client
+
+**Session Start:**
+1. Player taps "Continue Adventure" or "New Session" on the Home screen
+2. Client sends `session_start` RPC to the backend
+3. Backend creates a LiveKit room, dispatches the DM agent, returns the room token
+4. Client connects to the LiveKit room with the token
+5. Audio tracks connect — the player can now speak and hear
+6. Client receives the initial state push: character data, current location, quest states, map progress → populates local cache
+7. Ambience starts playing (matching current location)
+8. The DM agent's opening narration arrives on the voice track
+9. Client transitions from the Home screen to the Active Session screen
+
+**Mid-Session:**
+- Voice flows continuously on the LiveKit audio track
+- Server pushes game events on the data channel → client renders overlays, updates cache
+- Player can open pull-up screens at any time without interrupting voice
+- State is persisted server-side by the background process; the client doesn't write game state
+
+**Session End:**
+1. Player says "let's stop here" or taps the end-session button, or the DM initiates wrap-up
+2. The DM narrates a brief closing (2-3 sentences to a natural stopping point)
+3. Server sends `session_end` event with session summary
+4. Client transitions to a Session Summary screen: recap, XP earned, items found, quest progress
+5. "Return Home" button → Home screen, where async activities are now available
+6. LiveKit room disconnects
+
+**Reconnection (within 5-minute grace period):**
+1. Client detects connection drop → shows "Reconnecting..." overlay with ambient audio continuing
+2. Client attempts reconnection to the same LiveKit room (room and agent are still alive)
+3. On reconnect: server pushes current state snapshot → client resyncs cache
+4. DM acknowledges the interruption naturally ("Where were we...") and continues
+5. If grace period expires before reconnection: server runs end-of-session flow without the player. Next time the player opens the app, the Home screen shows the session summary.
+
+### Client-Side Performance Targets
+
+| Metric | Target | Rationale |
+|---|---|---|
+| App launch to Home screen | <2 seconds | Fast entry, no splash screen lectures |
+| Home to Active Session (voice connected) | <4 seconds | Room creation + WebRTC negotiation + first audio |
+| Overlay render (dice roll, item card) | <100ms from event receipt | Overlays must feel instant and synchronous with narration |
+| Audio crossfade (ambience change) | 1-2 seconds | Smooth, not jarring |
+| Pull-up screen open | <200ms | Reads from local cache, no network |
+| Memory footprint | <150MB active session | Reasonable for a non-game-engine app |
+| Battery impact | <10% per 30-min session | Comparable to a voice call + music playback |
+
+### Prototyping Priorities
+
+Two things to validate early because they carry the most client-side risk:
+
+1. **LiveKit React Native + simultaneous audio playback.** Connect to a LiveKit room, receive audio, and simultaneously play local ambient audio files — with correct iOS audio session configuration and Android AudioManager setup. If this doesn't work cleanly out of the box, it needs to be solved before anything else on the client.
+
+2. **Server-pushed overlay rendering.** Receive JSON events on the LiveKit data channel and render animated overlays (dice roll, item card) within 100ms. Validate that Reanimated can drive the animations smoothly while WebRTC audio is streaming. If there are frame drops or audio glitches during overlay animations, the timing or rendering approach needs adjustment.
+
+Everything else on the client (screens, navigation, caching, async hub) is standard React Native work with low risk.
 
 ---
 
@@ -1118,12 +1298,12 @@ God whispers, guild chat, and async voice messages don't require real-time room 
 - [ ] **VAD tuning and endpointing** — Optimal silence threshold (starting point: 500-700ms), semantic turn detector sensitivity, echo cancellation effectiveness with various headphone types, false trigger rate in noisy environments, and the overall feel of hands-free voice input. Needs extensive playtesting.
 - [ ] **Interruption UX** — When a player interrupts the DM, how quickly does the TTS stop? Does it feel natural or jarring? Should there be a brief overlap or an immediate cut? How does the DM handle being interrupted mid-narration gracefully in the LLM prompt?
 - [ ] **LLM response quality at speed** — Can we get narrative quality AND low latency simultaneously? May need tiered model strategy.
-- [ ] **Client-side audio mixing** — How to layer ambient sound, combat audio, and spatial effects on top of LiveKit audio streams. LiveKit delivers voice tracks; ambient audio and SFX are client-side concerns.
+- [x] **Client-side audio mixing** — Resolved in Client Architecture section. Four independent channels (Voice, Ambience, Effects, UI Audio) with ducking behavior. iOS `.playAndRecord` with `.mixWithOthers` and `.duckOthers`. Ambient sounds triggered by `location_changed` events, effects by `play_sound` events. Prototyping priority to validate LiveKit + simultaneous local playback.
 - [x] **DM context portability** — Resolved by the three-layer prompt architecture. Static + warm layers in the system prompt (managed by background process), hot layer injected per-turn via `on_user_turn_completed`. Multiplayer context merging handled by the warm layer including party member state.
 - [x] **Ventriloquism output parsing** — Fully specified in Orchestration Design. Strict `[CHARACTER, emotion]: "dialogue"` tags parsed by `tts_node` override. Emotion hints mapped to TTS temperature/speed settings. Streaming parse begins synthesis within tokens. Untagged text falls back to narrator voice gracefully.
 - [ ] **Companion extraction trigger** — At what point does ventriloquism become insufficient and an NPC needs its own agent? Metrics: response latency when the DM handles too many characters, player perception of companion "realness."
 - [x] **Cost modeling** — Detailed per-session cost estimate completed. See *Cost Model* document. Solo 30-min session = ~$0.40 (Haiku + Inworld Max + self-hosted LiveKit). All player profiles are margin-positive at $17.50/month. The ventriloquism pattern is significantly cheaper than multiple agents per room.
-- [ ] **Offline/poor connectivity** — How does the experience degrade on a bad mobile connection? LiveKit handles reconnection automatically with ICE restart, but what does the player hear during a dropout?
+- [x] **Offline/poor connectivity** — Partially resolved in Client Architecture. Reconnection uses LiveKit's ICE restart within the 5-minute grace period. Client shows "Reconnecting..." overlay with ambient audio continuing. Remaining question: what audio does the player hear during a brief dropout (silence, ambient loop, or "connection unstable" notification)?
 - [ ] **God-agent coordination** — How do 10 autonomous god-agents avoid contradictory world state changes? The background process event bus is the integration point, but the god-agent arbitration logic is unspecified.
 - [x] **Content generation pipeline** — Resolved in *World Data & Simulation* document. Two-tier system: tier 1 authored (human-reviewed, ~35-40 entities for MVP), tier 2 AI-generated from templates and tags (~55-75 entities). On-demand generation fills gaps as players explore. JSON schemas for all entity types. Content loaded into PostgreSQL JSONB.
 - [x] **Multi-player combat declarations** — Resolved in Orchestration Design. The 500ms collection buffer extends to the full declaration timer (10-15s) during combat. All declarations are collected and processed as a batch in initiative order. The DM narrates the round as a cinematic sequence.
@@ -1137,10 +1317,12 @@ God whispers, guild chat, and async voice messages don't require real-time room 
 
 | Document | Purpose | Status |
 |---|---|---|
+| **Product Overview** | Executive summary, elevator pitch, document map | Living |
 | **Game Design** | Full player experience, all game systems | Living |
 | **Aethos Lore** | World, gods, peoples, narrative | Living |
 | **MVP Specification** | Minimum testable slice | Living |
-| **Technical Architecture** *(this document)* | Voice pipeline, infrastructure, multiplayer | Living |
+| **Technical Architecture** *(this document)* | Client app, voice pipeline, DM agent, orchestration, infrastructure, multiplayer | Living |
+| **World Data & Simulation** | Content authoring format (JSON schemas), world simulation rules, data model | Living |
 | **Cost Model** | Per-session and subscriber unit economics | Living |
 
 ---
