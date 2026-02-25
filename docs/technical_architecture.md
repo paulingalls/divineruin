@@ -1286,6 +1286,244 @@ God whispers, guild chat, and async voice messages don't require real-time room 
 
 ---
 
+## Testing and Quality Strategy
+
+### The Testing Challenge
+
+A voice RPG can't be tested like a web app. The product's quality is defined by subjective experience — "does the DM feel like a real dungeon master?" isn't a pass/fail assertion. But beneath that subjective question are layers of systems where we can be rigorous. The strategy is: automate everything that can be automated, build structured evaluation for the AI layers, and reserve human judgment for the experience layer.
+
+Five tiers, from fully automatable to fully human.
+
+### Tier 1 — Infrastructure Tests (Automated, CI/CD)
+
+Standard software testing for the deterministic components. These run on every commit and block deployment if they fail.
+
+**Unit tests:**
+- LiveKit room creation, agent dispatch, and cleanup
+- STT integration: audio input → transcript output (mock audio fixtures)
+- TTS integration: text input → audio output (verify format, duration, voice routing)
+- Database operations: CRUD for all entity types, JSONB query patterns
+- Redis cache: set/get/invalidate, TTL behavior, rebuild-from-PostgreSQL on miss
+- Auth flows: token generation, session validation, expiry
+
+**Integration tests:**
+- Full voice pipeline: mock audio → STT → LLM (mocked) → TTS → audio output. Verify the chain completes without error.
+- LiveKit data channel: send JSON event → verify client-parseable format
+- Background process: inject event → verify `update_instructions()` fires → verify prompt content changes
+- Session lifecycle: start → persist → end → verify database state
+- Reconnection: connect → drop → reconnect within grace period → verify state intact
+- Reconnection failure: connect → drop → grace period expires → verify end-of-session flow
+
+**Load tests:**
+- Concurrent sessions: ramp to target concurrent user count, measure resource consumption and latency degradation
+- Database write throughput: simulate mutation tool calls at peak combat rate (multiple tools per second)
+- Redis cache hit rate under load: verify hot-path reads serve from cache, not PostgreSQL
+- TTS concurrent requests: verify Inworld handles burst traffic (combat with multiple characters speaking)
+
+**Performance benchmarks (run nightly, alert on regression):**
+- End-to-end voice latency: audio in → audio out, measured at the 50th, 90th, and 99th percentile
+- Component latency breakdown: STT time, LLM time-to-first-token, TTS time-to-first-byte
+- Tool execution time: each mechanics tool from call to return
+- Background process rebuild time: event received to `update_instructions()` complete
+- Client overlay render time: data channel event received to pixels on screen (measured on device)
+
+### Tier 2 — Rules Engine Correctness (Automated, Exhaustive)
+
+The rules engine is the one system that must be provably correct. If the DM narrates a hit and the rules engine calculated a miss, player trust collapses. These tests are deterministic and should have near-complete coverage.
+
+**Mechanics tool tests (parameterized, hundreds of cases):**
+- `request_skill_check`: every skill × modifier range × DC range → verify correct roll, correct modifier application, correct success/failure determination, correct `narrative_hint` assignment
+- `request_attack`: weapon types × attacker stats × defender stats → verify to-hit calculation, damage roll, HP application, status effect triggers (critical hit, killing blow)
+- `request_saving_throw`: save types × DC range × status effects → verify roll, consequence application, effect interaction (e.g., advantage from a status cancels disadvantage from another)
+- `roll_dice`: all notation formats (d20, 2d6, d100, 4d6 drop lowest) → verify distribution properties over large sample sizes
+
+**Game state mutation tests:**
+- `move_player`: valid paths succeed, invalid paths (locked, blocked, nonexistent) fail with correct error message
+- `add_to_inventory`: weight limits enforced, stacking works, full inventory rejected with reason
+- `remove_from_inventory`: can't remove nonexistent items, equipped items require unequip first
+- `update_quest`: stage prerequisites enforced, completion triggers rewards, branching paths work
+- `award_xp`: level-up thresholds correct, stat increases applied, level-up details returned
+- `apply_status_effect`: immunities respected, duration tracking works, stacking rules enforced
+- `rest`: HP restoration correct, exhaustion reduction correct, status effect clearing follows rules
+
+**Edge cases and interactions:**
+- Status effect combinations: poisoned + blessed → verify both apply correctly to the same roll
+- Simultaneous combat events: two characters attack the same target in the same round → verify HP updates are atomic, not race-conditioned
+- Death trigger: HP reaches 0 → verify Fallen state applied, death saves initiated, combat state updated
+- Cascade prevention: a mutation that triggers an event that triggers another mutation → verify cascade depth limits are enforced
+
+**Regression suite:** Every bug found in playtesting that traces to a rules engine error becomes a permanent test case. The suite grows over time and prevents regressions.
+
+### Tier 3 — DM Agent Behavior Evaluation (Semi-Automated)
+
+The DM agent is an LLM, so its behavior is probabilistic. But many aspects of DM quality are measurable through structured evaluation. This tier uses scripted scenarios with assertions on the output.
+
+**Tool selection accuracy:**
+
+Build a scenario suite — 50-100 scripted situations with known-correct tool calls:
+- Player says "I search the room for traps" → should call `request_skill_check(player, "perception", ...)` or `request_skill_check(player, "investigation", ...)`
+- Player says "I attack the goblin with my sword" → should call `request_attack(player, goblin, sword)`
+- Player says "I want to buy a healing potion" → should call `query_inventory(merchant)` then possibly `remove_from_inventory` + `add_to_inventory`
+- Player says "let's head to the tavern" → should call `move_player(player, tavern_id)`
+- Player says "what does this symbol mean?" → should call `query_lore(...)` not `request_skill_check`
+
+Run each scenario N times (N=10-20). Measure: correct tool selected (%), correct parameters (%), tool called when it shouldn't have been (false positive rate), tool not called when it should have been (false negative rate). Target: >90% correct tool selection, <5% false positives.
+
+**Output format compliance:**
+
+Run a conversation suite (100+ DM turns) and parse every output for format correctness:
+- Ventriloquism tags: every NPC dialogue line uses `[CHARACTER, emotion]: "dialogue"` format
+- No raw mechanics in narration: the DM never says "you rolled a 14" or "DC 13"
+- Narrative hints used: when a `narrative_hint` is returned, the DM's narration reflects the margin (barely/overwhelming/catastrophic)
+- No hallucinated tools: the DM never references tools or game mechanics that don't exist
+- Character consistency: the same NPC uses the same speech patterns across a conversation
+
+Measure compliance rate per category. Target: >95% format compliance, >90% character consistency.
+
+**Guidance system evaluation:**
+
+Simulate a stuck player (player goes silent, or gives confused/off-topic responses):
+- Does the DM fire level 1 ambient nudge after the silence threshold?
+- Does the companion offer a level 2 suggestion on continued silence?
+- Does the DM escalate to level 3 explicit guidance?
+- Does the guidance use `global_hints` from the active quest?
+- Does the guidance feel natural in tone (not "you should go to the guild hall" but a contextual suggestion)?
+
+Run 20+ stuck-player scenarios. Measure: guidance fires at correct time (%), correct escalation order (%), uses quest-appropriate hints (%).
+
+**Context fidelity:**
+
+Test that the three-layer prompt system keeps the DM accurate:
+- Location changes: after `move_player`, does the DM describe the new location correctly? Does it stop referencing the old location?
+- NPC knowledge: does the DM respect knowledge gating? An NPC with low disposition shouldn't reveal secrets.
+- Quest state: does the DM reference the correct quest stage? Does it avoid spoiling future stages?
+- Time awareness: does the DM reflect time-of-day changes (NPC schedules, lighting, shop availability)?
+- Combat state: during combat, does the DM track HP, turn order, and status effects correctly?
+
+Build assertion suites for each category. Run regularly as the prompt architecture evolves.
+
+**Evaluation automation pipeline:**
+
+The scenario suites should run as a nightly CI job against the current agent code and prompt. Results are logged to a dashboard with trend lines. Regressions (accuracy drops below threshold) trigger alerts. This creates a feedback loop: every prompt change or tool modification is validated against the full behavior suite before it reaches playtesting.
+
+The evaluator itself can be an LLM — a separate Claude instance that reads the DM's output and judges whether the tool call was correct, the format was compliant, and the narration was appropriate. This is cheaper and faster than human review for the structured categories.
+
+### Tier 4 — Experience Quality (Human Evaluation)
+
+The subjective layer. No automation — structured human judgment with rubrics to make it as consistent as possible.
+
+**Internal playtesting (pre-external):**
+
+Before any external playtester touches the game, the team plays through the full Greyvale arc multiple times. Each session is recorded (audio + event log). After each session, the player fills out a structured rubric:
+
+*DM quality rubric (1-5 per category):*
+- Narration quality: Does the prose paint a vivid scene? Does it vary in pacing and tone?
+- Character voices: Do NPCs feel distinct? Does the companion feel like a real character?
+- Pacing: Does the DM read the player's energy? Does it compress boring parts and expand dramatic ones?
+- Rules integration: Do skill checks feel natural? Does the DM call for checks at appropriate moments?
+- Improvisation: When the player does something unexpected, does the DM respond creatively?
+- Emotional range: Does the DM create tension in combat, warmth in social scenes, unease near the Hollow?
+
+*System quality rubric (1-5 per category):*
+- Voice latency: Does the response time feel conversational or awkward?
+- Audio quality: Do the voices sound natural? Is the ambient audio immersive? Do effects enhance the scene?
+- HUD usefulness: Do overlays appear at the right moments? Are they readable at a glance?
+- Combat flow: Does phase-based combat create excitement? Do dice rolls land with dramatic impact?
+- Navigation: Can you move through the world by intent without confusion?
+- Guidance: If you get stuck, does help arrive naturally?
+
+*Session rubric (1-5 per category):*
+- Opening hook: Did the session pull you in within the first minute?
+- Narrative arc: Did the session feel like a complete episode?
+- Closing: Did you want to come back?
+- Emotional investment: Did you care about what happened?
+
+Aggregate rubric scores across sessions to identify weak systems. A category that consistently scores below 3 needs engineering attention before external playtesting.
+
+**External playtesting:**
+
+Detailed in the *MVP Spec — Playtest Structure*. Wave 1 (solo, 10-15 testers) and Wave 2 (group, 5-8 groups). The testing strategy here adds structure to how playtest data is collected and analyzed:
+
+- Every external playtest session is recorded (with consent) — audio, event log, and client screen recording
+- Post-session survey covers the MVP spec's success criteria quantitatively (combat engagement rating, DM immersion, return intent, etc.)
+- Post-session interview (15-20 minutes) captures qualitative feedback — what moments stood out, what broke immersion, what confused them, what they'd change
+- Session recordings are reviewed for critical incidents: moments where the DM failed (wrong tool, bad narration, broken character), where the player got stuck, where audio glitched, where the experience broke
+- Critical incidents are categorized (DM behavior, rules engine, latency, audio, HUD, content) and prioritized by frequency and severity
+
+**A/B testing for prompt and configuration changes:**
+
+Once the playtest pool is large enough, structured A/B tests on specific variables:
+- Prompt wording changes: does a different static prompt produce better DM narration quality?
+- Temperature settings: does a higher LLM temperature create more creative narration or more errors?
+- Guidance timing: is 15 seconds too soon for the ambient nudge? Is 20 too late?
+- Combat pacing: is 10 seconds the right declaration timer, or should it be 15?
+- TTS expressiveness: does higher temperature on emotional lines improve or hurt the voice quality?
+
+Each test needs a clear hypothesis, a measurable outcome metric, and enough sessions to reach statistical significance.
+
+### Tier 5 — Content Quality (Review Process)
+
+The authored content — tier 1 entity descriptions, quest narratives, NPC personalities — needs quality review before it enters the game. Bad content undermines even perfect systems.
+
+**Tier 1 entity review checklist:**
+
+*Locations:* Does the description create a vivid mental image from audio alone? Are the key_features discoverable through natural exploration? Do the exits make spatial sense? Are the conditions (time-of-day, weather, corruption) meaningfully different? Do the ambient_sounds match the atmosphere?
+
+*NPCs:* Is the personality distinctive — could you identify this NPC from dialogue alone? Does the speech_style feel natural when read aloud (not just on paper)? Are the mannerisms memorable but not annoying? Does the gated knowledge create interesting conversation progression? Does the schedule make logical sense for this character's role?
+
+*Quests:* Does each stage have a clear objective that can be communicated in voice? Do the completion_conditions fire at the right narrative moment? Do the branches create meaningful choices (not "good path" vs. "slightly different good path")? Do the hints in global_hints escalate naturally? Is the XP/reward proportional to the effort?
+
+*Items:* Does the description work in audio (avoid visual-dependent descriptions)? Do the effects make mechanical sense in the rules engine? Are the value_modifiers creating interesting economic behavior?
+
+**Content playtesting:**
+
+Beyond structural review, content quality is validated through play. A tier 1 NPC might check every box on the review checklist and still feel flat when the DM voices them. Content passes through three gates:
+
+1. **Authored review** — Does it meet the checklist? Is the writing quality high?
+2. **DM agent test** — Feed the entity to the DM agent in a test scenario. Does the DM portray it well? Does the personality come through? Do the gated knowledge triggers work?
+3. **Playtest feedback** — Do real players find the NPC/location/quest interesting? Do they remember it after the session?
+
+### Latency Budget
+
+The end-to-end target is 1.2-2.0 seconds from player finishing speech to first DM audio. Here's where every millisecond goes:
+
+| Component | Budget | Notes |
+|---|---|---|
+| VAD silence detection | 300-500ms | Configurable. Too short → cuts off mid-thought. Too long → feels laggy. Start at 500ms, tune via playtesting. |
+| Audio transport (client → server) | 50-100ms | WebRTC, depends on network. Minimal on good connections. |
+| STT processing | 200-350ms | Deepgram Nova-3 streaming. Partial results available earlier; final transcript at this mark. |
+| LLM time-to-first-token | 400-800ms | Claude Haiku. Includes prompt processing. The bottleneck. Cached system prompt (static + warm layers) reduces this by avoiding re-processing ~3.5K tokens. |
+| LLM token streaming | Overlapped | TTS begins on first complete sentence, not full response. Streaming overlap hides most generation time. |
+| TTS time-to-first-byte | 150-250ms | Inworld TTS-1.5 Max. WebSocket streaming. The second-largest fixed cost after LLM TTFT. |
+| Audio transport (server → client) | 50-100ms | WebRTC return path. |
+| **Total (first audio)** | **1,150-2,100ms** | Sum of sequential components. Streaming overlap between LLM and TTS means the player hears audio before the LLM finishes generating. |
+
+**Where the margin is:**
+- VAD tuning is the biggest lever — every 100ms off the silence threshold is 100ms off perceived latency, but cut it too short and you interrupt mid-thought.
+- LLM TTFT is the bottleneck but partially hidden by streaming. Anthropic's prompt caching (~90% savings on cached tokens) keeps this fast by avoiding re-processing the static and warm prompt layers.
+- TTS TTFT is fixed per provider. Inworld Max at ~200ms is acceptable. If it becomes the bottleneck, Inworld Mini at <130ms is the fallback for non-critical narration.
+
+**Latency monitoring in production:**
+- Every session logs component-level timestamps: VAD end → STT complete → LLM first token → TTS first byte → client audio start
+- Dashboard tracks percentile distributions (p50, p90, p99) per component and end-to-end
+- Alerting on p90 exceeding 2.5 seconds or p99 exceeding 4 seconds
+- Per-session latency percentiles are correlated with playtest satisfaction scores to find the threshold where latency starts hurting experience
+
+### Continuous Quality Loop
+
+Testing isn't a phase — it's a continuous loop that runs throughout development and after launch:
+
+1. **Every code change** triggers tier 1 (infrastructure) and tier 2 (rules engine) tests in CI.
+2. **Every prompt or tool change** triggers tier 3 (DM behavior evaluation) in the nightly suite.
+3. **Every content addition** passes through the tier 5 review checklist and DM agent test.
+4. **Weekly internal playtests** generate tier 4 rubric scores and identify regressions.
+5. **Latency dashboards** run continuously, alerting on degradation.
+6. **Playtest feedback** (once external testing begins) feeds back into all tiers — bugs become test cases, subjective complaints become evaluation scenarios, latency complaints inform budget re-allocation.
+
+The goal is that by the time external playtesters sit down, the experience has already been validated against hundreds of automated scenarios, the rules engine has been proven correct, the DM's tool selection is >90% accurate, and the team has played through the full arc multiple times. External playtesting should surface experience-level refinements, not infrastructure bugs.
+
+---
+
 ## Open Technical Questions
 
 **Resolved by LiveKit research:**
