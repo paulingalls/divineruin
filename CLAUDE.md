@@ -56,7 +56,7 @@ divine-ruin/
 
 ## Language Rules
 
-### TypeScript / Bun (server/api/, client/, shared/)
+### TypeScript / Bun (apps/server/, apps/mobile/, packages/shared/)
 
 Use Bun exclusively — not Node.js.
 
@@ -70,7 +70,7 @@ Use Bun exclusively — not Node.js.
 - `Bun.file` — not node:fs readFile/writeFile
 - Built-in `WebSocket` — not ws
 
-### Python (server/agent/)
+### Python (apps/agent/)
 
 - Python 3.11+, `pyproject.toml`
 - **uv** for all package management — not pip/poetry/conda
@@ -83,7 +83,19 @@ Use Bun exclusively — not Node.js.
 
 ### Shared Data
 
-No shared code between Python and TS. Shared data via PostgreSQL JSONB + Redis. Entity schemas in `shared/schemas/` generate TS interfaces into `server/api/src/generated/`. See `world_data_simulation.md` → Data Model.
+No shared code between Python and TS. Shared data via PostgreSQL JSONB + Redis. Entity schemas in `packages/shared/` generate TS interfaces into `apps/server/src/generated/`. See `world_data_simulation.md` → Data Model.
+
+## XP Values
+
+All development follows the four values of Extreme Programming:
+
+1. **Simplicity.** Do the simplest thing that works. Less code, fewer abstractions, shorter functions. If something feels complex, it probably needs to be broken down or rethought, not wrapped in more layers.
+
+2. **Communication.** Code should read clearly without comments. Names, structure, and types convey intent. When something isn't obvious from the code itself, that's a design problem to fix — not a comment to write.
+
+3. **Feedback.** Tests, logging, and error messages are first-class outputs. Write tests that confirm behavior and catch regressions. Log meaningfully. Surface errors with enough context to act on. Ship early and learn from real usage.
+
+4. **Courage.** Do the right thing even when it's harder. Refactor code that works but reads poorly. Delete code that's no longer needed. Write the extra test. Challenge assumptions — including these docs — when something doesn't hold up.
 
 ## Golden Rules
 
