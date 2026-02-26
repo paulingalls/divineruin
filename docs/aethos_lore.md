@@ -46,6 +46,122 @@ The entities that emerge from the Sundered Veil are not creatures in any meaning
 
 **Narrative implication:** They cannot be joined, allied with, sympathized with, or understood through any framework mortals or gods possess. This is by design — both narratively and as a game design decision to prevent "dark side" faction play.
 
+### Hollow Creature Taxonomy
+
+The peoples of Aethos have spent thirty years fighting the Hollow's creatures. In that time, soldiers, scholars, and survivors have developed a rough classification system — not because anyone understands what these things truly are, but because naming them makes them slightly less terrifying, and categorizing their behavior helps people survive encounters.
+
+The taxonomy is imperfect. Hollow expressions don't fit neatly into categories. They blur, they change, they sometimes behave in ways that defy their classification. But the system has saved enough lives that every Ashmark soldier learns it.
+
+#### Tier 1 — Drift (Common, Low Threat)
+
+The most frequently encountered expressions. Soldiers at the Ashmark call them Drift because they move without apparent purpose, like leaves blown across pavement. Drift expressions wander in from corrupted areas individually or in loose clusters. They're the first sign that the Hollow's influence is spreading.
+
+**Shadelings**
+
+The smallest and most common Hollow expression. Roughly the size of a large dog, but with no fixed shape — they're more like a smear of wrongness than a body. Shadelings drift along the ground, moving through spaces the way smoke moves through a room. They dissolve organic matter on contact — grass withers beneath them, wood rots, flesh burns. But they're slow, they're fragile, and a sharp blow disperses them back into ambient corruption. A single shadeling is barely a threat to an armed and aware person. A dozen of them drifting through a village at night is a different story.
+
+*What they sound like:* A faint static hiss, like a radio between stations but organic — wet and crackling at the edges. As they move, the natural ambient sounds around them thin out. Birdsong stops. Insect hum drops. In their wake, there's a moment of absolute silence before the world fills back in. A cluster of shadelings sounds like reality being slowly erased — patches of nothing moving across the soundscape.
+
+*What soldiers say:* "You hear them before you see them, but only because you hear everything else stop."
+
+**Hollowmoths**
+
+Airborne drift expressions. They look like no moth anyone's ever seen — they're patches of visual and auditory distortion that move through the air in fluttering, erratic patterns. Harmless individually — they can't corrode flesh like shadelings. But they're drawn to concentrated life energy, which means they swarm around living things. Their real danger is as a warning signal: where hollowmoths gather, something larger follows. Ashmark scouts watch for hollowmoths the way sailors watch for certain cloud formations.
+
+*What they sound like:* A soft, papery flutter — like moth wings but slightly too slow, too rhythmic, as if each wingbeat is a fraction of a second behind where it should be. In a swarm, the combined sound becomes a pulsing, breathing texture. And they produce a barely perceptible high-frequency whine — not painful, but persistent, the kind of sound that makes you clench your jaw without knowing why. People who've spent time near hollowmoth swarms report hearing faint, melodic patterns in the whine — as if it's almost music, almost language, but never quite resolving into either.
+
+*What soldiers say:* "If the moths find you, walk. Don't run — they feed on panic. But walk fast, and get indoors."
+
+#### Tier 2 — Rend (Uncommon, Moderate Threat)
+
+Expressions with enough coherence to be actively dangerous. They don't just drift and corrode — they move with something that looks like intent. Scholars argue fiercely about whether Rend expressions are actually pursuing prey or simply following environmental gradients (moving toward concentrations of life energy the way water flows downhill). Soldiers don't care about the distinction. What matters is that Rend expressions attack.
+
+**Mawlings**
+
+The standard combat threat of the Hollow. Roughly humanoid in size, but wrong in every proportion — limbs too long, joints bending backwards, a torso that seems to shift between solid and liquid. Mawlings don't have faces. They have an opening where a face would be — not a mouth exactly, more like a tear in their surface that radiates a localized field of dissolution. Getting too close to that opening means losing whatever's closest: a hand, a shield, a weapon. They corrode what they touch, but unlike shadelings, they reach for things. They grab. They pull.
+
+Mawlings are fast in short bursts and unsettlingly quiet when they want to be. They fight alone or in small groups of two or three. A trained soldier can handle one mawling. A group of three requires a squad.
+
+*What they sound like:* Wrong footsteps — the sound of something heavy moving across ground, but the rhythm doesn't match any gait that makes anatomical sense. Three steps where there should be two. A pause where there shouldn't be one. And then, close range, the sound of the maw itself: a low, wet pulling sound, like air being sucked through a membrane. It's the sound of space being unmade at a very small, very local scale. Mawlings don't roar, don't scream, don't vocalize at all. The silence where a battle cry should be is part of what makes them terrifying.
+
+*What soldiers say:* "The quiet ones are worse than the loud ones. If it's making noise, at least you know where it is."
+
+**Hollow Weavers**
+
+The most unsettling tier 2 expression because they don't attack directly — they corrupt the environment around them. A weaver anchors itself to a location and begins... changing things. The air thickens. Sounds distort. Distances become unreliable — a doorway that was ten feet away is suddenly thirty. Walls that were solid develop gaps, and the gaps lead somewhere that doesn't match the architecture. Weavers don't fight. They rearrange. Left undisturbed for hours, a weaver can make a building into a labyrinth, or turn a forest clearing into a spatial paradox.
+
+In combat, weavers are fragile — easier to destroy than a mawling. But reaching them is the problem, because the space between you and the weaver is no longer trustworthy.
+
+*What they sound like:* This is where audio design can do something extraordinary. A weaver's presence distorts the soundscape itself. Reverb characteristics change — a small room suddenly echoes like a cathedral, or a large space goes acoustically dead. Sounds arrive from wrong directions. The player's own footsteps sound different — closer, further, as if the floor keeps changing. The weaver itself produces a continuous low hum, almost pleasant, like a finger tracing the rim of a glass — and that hum is the sound of local reality being rewritten. Destroying a weaver produces a sharp, satisfying snap — like a taut wire breaking — and the spatial distortion collapses, sounds snapping back to normal.
+
+*What soldiers say:* "When the room doesn't sound right, stop walking. You've walked into a weaver's work. Finding the weaver before it finishes is the only thing that matters."
+
+#### Tier 3 — Wrack (Rare, High Threat)
+
+Expressions of significant power and coherence. Wrack-tier creatures are rare enough that encountering one is an event — Ashmark companies report them individually, and each sighting triggers a tactical response. These are the expressions that have given rise to the uncomfortable question: is the Hollow truly mindless, or do these things represent something more?
+
+**Hollowed Knights**
+
+The most disturbing Hollow expression because they wear the shapes of the people they've consumed. A Hollowed Knight was once a person — a soldier, a scholar, a farmer — who was overwhelmed by Hollow corruption and transformed. The body is recognizably human (or elvish, or dwarven), but it moves wrong: too smooth, too precise, as if the body is being operated by something that studied human movement and replicated it with 90% accuracy. The remaining 10% is where the horror lives. A head that tracks too far. An arm that bends at an angle that makes your stomach turn. Footsteps that are perfectly rhythmic — no human walks with that regularity.
+
+Hollowed Knights retain fragments of the skills and knowledge their host possessed. A Hollowed Knight made from a swordsman fights with recognizable technique — corrupted, distorted, but identifiable. This makes them dangerous in a way that other expressions aren't: they use weapons, they employ tactics, they anticipate defensive responses. Whether this represents genuine intelligence or merely a parasitic echo of consumed memory is the subject of bitter scholarly debate.
+
+They appear at the edges of the Ashmark, rarely venturing deep into settled territory. When they do appear further south, it's a sign that the Hollow's influence is advancing faster than the front lines suggest.
+
+*What they sound like:* The sound of a person, almost. Armor creaking, boots on stone, the weight of a body moving through space. But the breathing is wrong — too regular, too mechanical, like bellows rather than lungs. And occasionally, a sound slips through that doesn't belong: a syllable of speech from the person they used to be, distorted and disconnected from meaning. Veterans who've fought Hollowed Knights say the worst moment is when one speaks a recognizable word — a name, a plea, a fragment of a sentence from a life that no longer exists. It's not communication. It's residue. But it sounds enough like a person to make you hesitate, and that hesitation can kill you.
+
+*What soldiers say:* "Don't listen to them. Whatever they were, they're not anymore. If you hear a word you recognize, that's the Hollow wearing their voice. Hit harder."
+
+**Veilrender**
+
+A massive expression, the size of a small building, that appears to be the Hollow's tool for territorial expansion. Veilrenders are slow-moving, almost geological in their pace, and they don't attack directly. Instead, they project an expanding field of Hollow corruption that permanently transforms the land around them. Grass dies. Stone becomes brittle and powdery. Water turns dark and still. The air itself takes on a weight, a resistance, as if you're walking through something thicker than atmosphere.
+
+A veilrender advances at perhaps a hundred yards per day. Unstoppable by conventional force — weapons damage its surface, but it regenerates faster than mortals can wound it. The only effective response is divine intervention (a coordinated effort by a god's mortal champions channeling divine energy) or the deployment of Veil-ward artifacts that can stabilize reality in the veilrender's path. Killing a veilrender — if "killing" is even the right word — causes its corruption field to collapse, but the land it touched doesn't recover. The Ashmark's dead zones are littered with the remains of defeated veilrenders: depressions in the landscape where nothing grows, nothing moves, and the air still tastes of absence.
+
+*What they sound like:* You hear a veilrender before you see it, and you feel it before you hear it. A subsonic pressure that builds over hours — not a sudden arrival but a gradual, creeping oppression. The ground itself begins to hum. Then the ambient sounds change: natural sounds fade, replaced by a continuous, layered drone that shifts in pitch like something breathing on a cosmic scale. Near a veilrender, conversations become difficult — not because it's loud, but because the acoustic space itself has changed. Sound doesn't travel correctly. Your companion's voice sounds distant even though they're standing next to you. Your own voice sounds muffled and dead. The veilrender is rewriting the rules of how sound behaves in its presence, and standing inside that rewritten space is one of the most profoundly unsettling experiences the game can offer.
+
+*What soldiers say:* "When your own voice stops sounding like you, fall back. You're inside its reach."
+
+#### Tier 4 — The Named (Unique, Extreme Threat)
+
+Most Hollow expressions are interchangeable — destroy one mawling and the next is functionally identical. The Named are different. They are singular expressions of such power and coherence that they've earned individual designations from the defenders of Aethos. Each Named has been encountered, survived (barely), and documented. They appear to occupy specific territories within or near the Ashmark, and some scholars believe they serve functions within the Hollow — though what those functions are is unknown.
+
+The existence of the Named is the strongest evidence in the debate over Hollow intelligence. Their behavior is too consistent, too purposeful, too *specific* to be explained by mindless expansion. But they still don't communicate, still don't negotiate, still don't respond to any attempt at contact as anything other than stimulus to be consumed.
+
+**The Choir** — An expression that manifests as sound itself. The Choir has no visible form — it's a moving zone of auditory hallucination roughly two hundred yards in diameter. Anyone inside the zone hears voices: whispers, songs, conversations, pleas. The voices use the languages of Aethos. They say things that are almost meaningful. Soldiers who've entered and returned report hearing the voices of dead friends, family members, people they've lost. Some heard their own voices, speaking words they'd never said. The Choir doesn't damage flesh, but extended exposure causes confusion, disorientation, and, eventually, a compulsion to walk deeper in. People lost to the Choir are never found. The zone itself drifts slowly across the northern Ashmark, and Ashmark commanders track its position and post warnings when it approaches.
+
+*What it sounds like:* The most terrifying audio experience in the game. Layered human voices — dozens, maybe hundreds — speaking, singing, whispering simultaneously. No single voice is clear enough to fully understand, but fragments of meaning surface and submerge. A name. A laugh. A lullaby. A warning. The voices are in the player's language, using words they know, but assembled wrong — like a nightmare's version of a crowd. The truly disturbing element: occasionally, with perfect clarity, a single voice emerges from the layers and says something directly to the listener. Something personal. Something the Hollow shouldn't know.
+
+**The Still** — An expression that manifests as the complete absence of the Hollow. A circle of land within the deep Ashmark — roughly a mile in diameter — where nothing is corrupted. Grass grows. Birds sing. Water runs clear. It looks and sounds like a pristine meadow untouched by thirty years of invasion. Scholars who've studied it (from a safe distance) say it's the most frightening thing they've ever encountered, because its existence implies that the Hollow can *choose* not to corrupt. That it's selective. That it's making decisions. The Still has been stable for as long as anyone has observed it. No one who has entered has returned, but there are no signs of violence — no remains, no corruption, no evidence of struggle. People who enter simply don't come out.
+
+*What it sounds like:* Perfect. Unnervingly, achingly perfect. Birdsong that's too beautiful. A brook that sounds too clear. Wind that carries a warmth that doesn't match the climate. It sounds like the most beautiful place you've ever been — and that beauty is what makes it terrifying, because the player knows where they are, and this shouldn't exist here. The audio design challenge: make paradise sound like a trap. Subtle enough that a player on first listen thinks "this is lovely" and only on reflection realizes "this is wrong."
+
+**The Architect** — The most alarming Named, because it builds. Deep within the Ashmark, near the Voidmaw's edge, scouts have reported structures. Not ruins — new construction. Geometries that don't exist in any mortal or divine architectural tradition. Bridges connecting nothing to nothing. Towers that spiral in directions that shouldn't be possible. Walls with no interior and no exterior. The Architect is never seen, only its work — and that work continues, day after day, expanding in scope and complexity. Veythar has privately expressed more concern about the Architect than about any other Hollow expression, because the Architect implies *intention*. An aesthetic sensibility. A project. The Hollow isn't supposed to create. It consumes. If it's building something, the paradigm is broken.
+
+*What it sounds like:* Construction sounds — but from no tool and no worker. The scrape of stone on stone, the grind of material being shaped, the rhythmic percussion of building. All produced by nothing visible. The sounds follow architectural logic: they come from where walls are going up, where foundations are being laid, where arches are being formed. And the sounds are... patient. There's no urgency, no effort. Whatever is building sounds like it has all the time in the world. In the spaces between construction sounds, a silence so profound it feels designed — as if the Architect is listening to its own work and deciding what comes next.
+
+### The Uncomfortable Questions
+
+The taxonomy raises questions that the people of Aethos aren't comfortable answering:
+
+**Is the Hollow truly mindless?** Drift expressions behave like natural phenomena — they drift, corrode, and dissipate. But the Named behave with purpose, consistency, and what looks like preference. The Choir targets memory and emotion. The Still exhibits restraint. The Architect creates. These aren't the behaviors of a mindless force. If the Hollow is intelligent, everything about the war changes.
+
+**Are the Hollowed Knights still people?** When a Hollowed Knight speaks a fragment of its former life, is that a person trapped inside, or is it the Hollow mimicking a signal it consumed? The answer matters — to the soldiers who have to fight things that look and sometimes sound like their lost friends, and to the theologians who need to know whether those souls passed through Mortaen's domain or were stolen from the cycle entirely. Mortaen's silence on this question is troubling. The god of death won't say whether the Hollowed are dead. That suggests even the gods don't know.
+
+**Does the Hollow adapt?** Early in the invasion, only Drift expressions appeared. Rend came later. Wrack later still. The Named have only been observed in the last decade. Either the Hollow is escalating — producing more complex and dangerous expressions over time — or these forms always existed and the expansion is simply revealing them. If the Hollow is adapting to Aethos's defenses, it means the war can be lost not through a single catastrophic event but through a slow, permanent outpacing. This is the scenario that keeps Kaelen awake at night.
+
+**Is there something inside the Voidmaw that the expressions are protecting?** The Named cluster near the Voidmaw's edges. They don't venture deep into settled territory. They hold positions. This behavior pattern is consistent with defense — but defense of what? If the Hollow is protecting the consumed Wellspring, or protecting the breach itself, or protecting something else entirely, then the Voidmaw isn't just the source of the invasion. It's the heart of something that has interests.
+
+### What Players Will Encounter (MVP)
+
+In the Greyvale arc, players encounter Hollow expressions at the lower end of the taxonomy:
+
+- **Shadelings** drift through the northern Greyvale — the first sign that corruption is spreading south. They're encountered during travel and in the outer ruins. Low-threat individually, but atmospheric. Their arrival should be the first time the player thinks "this is real."
+- **A small group of mawlings** in the Greyvale Ruins provides the MVP's core combat encounter. They're dangerous enough to require real tactics but not overwhelming for a first-time player with a companion.
+- **A hollow weaver** has been active in the deeper ruins, which is why the interior layout doesn't match the original Aelindran floor plans. The spatial distortion it created is a puzzle as much as a threat. Destroying the weaver snaps the space back to normal — a satisfying moment of mastery.
+- **Hollowmoths** swarm near the Hollow Breach at the deepest point of the ruins — a warning signal that something much worse is close to breaking through. The player doesn't fight what's on the other side. Not yet. But they hear it. And what they hear should make them understand why the rest of the world is afraid.
+- **The Hollowed Knight** is the arc's most emotionally significant encounter — optional, discoverable. In the ruins, the player finds evidence of a missing Ashmark scout (referenced by Guildmaster Torin). If they explore deeply enough, they find what's left of the scout: a Hollowed Knight that still wears the scout's armor and, once, in combat, speaks the scout's name. Not its own name — the name of someone the scout loved. The player can fight it, or retreat. Either way, the encounter reframes the Hollow from "distant threat" to "this happened to a person."
+
 ---
 
 ## Veythar, the Lorekeeper
@@ -924,7 +1040,7 @@ Scholarly, grieving, defined by loss and knowledge. Aelindra welcomed everyone, 
 - [ ] **Veythar's Artifacts** — The tools and rituals used to weaken the Veil. What are they, where are they now, and what do they do? These are endgame content — some are scattered across the world, some are in the Greyvale Ruins, some may be in the Voidmaw itself.
 - [ ] **Deeper Cultural Detail** — Languages, customs, ceremonies, inter-cultural relationships, trade, and conflict. The cultural summaries provide frameworks; the lived texture is unwritten.
 - [ ] **The Ashmark's History** — How has the front line moved over 30 years? What was lost? Which communities fell, and what are their stories?
-- [ ] **Creature Taxonomy** — The Hollow's expressions vary in form and behavior. What types exist? How do they differ? Is there a hierarchy, or is the Hollow truly mindless? Players will encounter many varieties — they need to feel distinct while remaining fundamentally alien.
+- [x] **Creature Taxonomy** — Four-tier classification (Drift, Rend, Wrack, Named) with specific creature types, audio signatures, soldier lore, and the uncomfortable questions about Hollow intelligence. MVP encounter plan mapped. See *The Hollow — Hollow Creature Taxonomy* above.
 - [ ] **The Wellspring's Nature** — If the Hollow consumed the Wellspring, is any creative energy recoverable? This is the deep endgame question that drives the "seal vs. reclaim" debate among the gods.
 
 ---

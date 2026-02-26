@@ -12,13 +12,132 @@ This document defines the technical architecture for building the MVP of Divine 
 
 The system has seven major layers:
 
-1. **Client Layer** — Expo React Native app: voice connection, HUD, audio mixing, session management
+1. **Client Layer** — Expo React Native app (TypeScript): voice connection, HUD, audio mixing, session management
 2. **Transport Layer** — LiveKit for real-time voice; LiveKit data channels for server-pushed UI events
-3. **Voice Pipeline** — Deepgram STT → Claude LLM → Inworld TTS, managed by the DM agent
+3. **Voice Pipeline** — Deepgram STT → Claude LLM → Inworld TTS, managed by the DM agent (Python)
 4. **Game Engine** — Rules engine, world state (PostgreSQL + Redis), session management
-5. **Agent Layer** — DM agent, background process, god-agents, world simulation
+5. **Agent Layer** — DM agent (Python via LiveKit Agents SDK), background process, god-agents, world simulation
 6. **Multiplayer Layer** — Multi-player rooms, input arbitration, shared DM
-7. **Data Layer** — Content DB (JSON entity schemas), state DB, Redis hot cache
+7. **Data Layer** — Content DB (JSON entity schemas in PostgreSQL JSONB), state DB, Redis hot cache
+8. **REST API Layer** — Async activities, auth, push notifications (TypeScript/Bun)
+
+---
+
+## Language Architecture — Python + TypeScript Hybrid
+
+### The Decision
+
+The server-side uses **two languages**: Python for the DM agent and voice pipeline, TypeScript (Bun) for everything else. This is a deliberate architectural choice driven by plugin availability, not preference.
+
+### Why Python for the DM Agent
+
+The DM agent is a LiveKit `Agent` subclass that uses the `livekit-agents` Python SDK. Python is required here because:
+
+**The Anthropic/Claude plugin only exists for Python.** The `livekit-plugins-anthropic` package (first-party, maintained by LiveKit) provides Claude LLM integration with tool calling, streaming, token management, and prompt caching. The Node.js SDK (`@livekit/agents` v1.0.x) has no Anthropic plugin — confirmed in the [agents-js repository](https://github.com/livekit/agents-js). Using Claude via the OpenAI-compatible plugin with a custom base URL is possible but fragile for the core component of the game.
+
+**The Python SDK is more mature.** The Python agents SDK is at v1.4.x with 2,800+ commits and extensive battle-testing. It has MCP server support, the full `AgentTask` system, and broader plugin coverage. The Node.js SDK is at v1.0.x — functional and rapidly improving, but the Python SDK leads on the features we need most.
+
+**Our full DM agent plugin stack is first-party Python:**
+- `livekit-plugins-anthropic` — Claude LLM (tool calling, streaming, prompt caching)
+- `livekit-plugins-deepgram` — Deepgram Nova-3 STT
+- `livekit-plugins-inworld` — Inworld TTS-1.5 Max (multi-voice)
+- `livekit-plugins-silero` — Silero VAD
+- `livekit-plugins-turn-detector` — Turn detection model
+
+### Why TypeScript/Bun for Everything Else
+
+**The Expo client is TypeScript.** React Native / Expo is inherently a TypeScript/JavaScript ecosystem.
+
+**The REST API for async activities is TypeScript/Bun.** The async system (Catch-Up layer, activity management, push notifications, auth) is standard HTTP request/response — no LiveKit voice pipeline involved. TypeScript/Bun is fast, lightweight, and shares types with the client.
+
+**Future autonomous agents can use either language.** As the Node.js agents SDK matures (and Anthropic plugin support arrives), some lighter agents (god whisper dispatch, ambient NPC background processes) could be written in TypeScript. The architecture doesn't lock us in — LiveKit rooms accept agents from either SDK.
+
+### The Shared Data Layer — How They Talk
+
+Python and TypeScript never share code directly. They communicate through the **shared database**:
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  Expo Client    │     │  Bun/TS REST API │     │  Python DM      │
+│  (TypeScript)   │◄───►│  (async, auth,   │     │  Agent          │
+│                 │     │   notifications)  │     │  (LiveKit)      │
+└────────┬────────┘     └────────┬─────────┘     └────────┬────────┘
+         │                       │                         │
+         │  LiveKit voice +      │                         │
+         │  data channels        │                         │
+         │◄────────────────────────────────────────────────┤
+         │                       │                         │
+         │              ┌────────┴─────────┐               │
+         │              │   PostgreSQL     │               │
+         │              │   (JSONB)       │               │
+         │              │   + Redis       │               │
+         │              └────────┬─────────┘               │
+         │                       │                         │
+         │              ┌────────┴─────────┐               │
+         │              │  JSON Entity    │               │
+         │              │  Schemas        │               │
+         │              │  (shared        │               │
+         │              │   contract)     │               │
+         │              └──────────────────┘               │
+```
+
+**PostgreSQL + Redis is the shared state layer.** Both languages query the same JSONB data using the same entity schemas defined in *World Data & Simulation*. The DM agent reads and writes game state through its tool functions. The REST API reads game state for the Catch-Up layer and writes async activity decisions.
+
+**The shared contract is JSON, not code.** Entity schemas (locations, NPCs, quests, items) are defined as JSON structures in the World Data doc and stored as PostgreSQL JSONB. Both sides speak JSON natively. There's no need for a shared ORM or duplicated data models.
+
+**TypeScript type safety from schemas.** A build-time script generates TypeScript interfaces from the JSON entity schemas, giving the Bun REST API and Expo client full type safety for all game data without maintaining a parallel model.
+
+### What Lives Where
+
+| Component | Language | Runtime | Reason |
+|---|---|---|---|
+| **DM Agent** | Python | LiveKit Agents SDK | Anthropic plugin, mature pipeline, tool system |
+| **Background Process** | Python | Async coroutine in DM agent process | Shares memory with DM agent, event bus access |
+| **Rules Engine** | Python | Pure functions called by DM agent tools | Co-located with the agent that calls it |
+| **World Simulation** | Python or TypeScript | Cron/timer service | Database-driven, language-agnostic |
+| **REST API (async)** | TypeScript | Bun | Shares types with client, standard HTTP |
+| **Auth Service** | TypeScript | Bun | Standard web auth, JWT generation |
+| **Push Notifications** | TypeScript | Bun | Firebase/APNs integration |
+| **Expo Client** | TypeScript | React Native | Expo ecosystem |
+| **Content Seeder** | TypeScript or Python | CLI script | One-time DB loading |
+| **God Whisper Dispatch** | Python (MVP) | Lightweight LiveKit agent | Needs TTS pipeline for voiced whispers |
+| **Type Generator** | TypeScript | Build script | Reads JSON schemas, generates .ts interfaces |
+
+### Monorepo Structure
+
+```
+divine-ruin/
+├── server/
+│   ├── agent/              # Python — DM agent, background process, rules engine
+│   │   ├── dm_agent.py
+│   │   ├── tools/          # @function_tool implementations
+│   │   ├── rules/          # Pure rules engine functions
+│   │   ├── background.py   # Background process coroutine
+│   │   └── pyproject.toml
+│   └── api/                # TypeScript/Bun — REST API, auth, async, notifications
+│       ├── src/
+│       │   ├── routes/     # async activities, auth, player data
+│       │   ├── services/   # push notifications, activity resolution
+│       │   └── generated/  # auto-generated types from JSON schemas
+│       ├── package.json
+│       └── tsconfig.json
+├── client/                 # TypeScript/Expo — mobile app
+│   ├── app/                # expo-router screens
+│   ├── components/
+│   ├── hooks/
+│   ├── stores/             # zustand stores
+│   └── package.json
+├── shared/                 # Shared assets and schemas
+│   ├── schemas/            # JSON entity schema definitions
+│   └── scripts/            # type generator, content tools
+├── content/                # JSON entity files for DB seeding
+│   ├── locations/
+│   ├── npcs/
+│   ├── quests/
+│   └── items/
+├── docker-compose.yml
+└── README.md
+```
 
 ---
 
@@ -925,7 +1044,7 @@ Deterministic game logic — no LLM needed. Fast (millisecond responses).
 - Inventory management, leveling, XP
 - Divine favor tracking and milestone triggers
 
-**Implementation:** Python or Rust service. Called by the orchestrator, results passed to the narrative engine.
+**Implementation:** Python pure functions, co-located with the DM agent that calls them. Called by the orchestrator, results passed to the narrative engine.
 
 ### World State Manager
 Persistent state for the game world.
@@ -934,7 +1053,7 @@ Persistent state for the game world.
 - World state: Ashmark boundary, faction standings, world events
 - Regional state: NPC positions, resource availability, local conditions
 
-**Implementation:** PostgreSQL for persistent storage. Redis for session cache (fast access to current session state during gameplay).
+**Implementation:** PostgreSQL for persistent storage. Redis for session cache (fast access to current session state during gameplay). Both Python (DM agent) and TypeScript (REST API) access the same database — see *Language Architecture* above.
 
 ### The Orchestrator
 The central nervous system. Receives transcribed player input, routes to appropriate systems, assembles responses.
@@ -945,7 +1064,7 @@ The central nervous system. Receives transcribed player input, routes to appropr
 4. **Response assembly:** Combines outputs into a coherent response for TTS
 5. **State update:** Updates world state based on outcomes
 
-**Implementation:** Python service running within or alongside the LiveKit agent. Stateful per session.
+**Implementation:** Python service running within the LiveKit agent process. Stateful per session.
 
 ---
 
@@ -1177,25 +1296,28 @@ God whispers, guild chat, and async voice messages don't require real-time room 
 ```
 ┌─────────────────────────────────────────────────┐
 │              Mobile Clients (1-4 players)         │
-│  (iOS/Android - React Native/Flutter)             │
+│  (iOS/Android - Expo React Native, TypeScript)    │
 │  Silero VAD → LiveKit SDK → Speaker               │
 │  HUD rendering, client-side ambient audio mix     │
 │  Tap-to-speak fallback, noise adaptation          │
-└──────────────────┬────────────────────────────────┘
-                   │ WebRTC (LiveKit) — separate audio
-                   │ track per player, no mixing
-                   ▼
+└──────────────┬───────────────────┬───────────────┘
+               │ WebRTC (LiveKit)  │ HTTPS (REST)
+               │ voice + data     │ async activities,
+               │ channels         │ auth, settings
+               ▼                  ▼
+┌──────────────────────────┐ ┌──────────────────────┐
+│  LiveKit Server          │ │  Bun/TS REST API     │
+│  (Cloud / Self-hosted)   │ │  (TypeScript)        │
+│  SFU: routes individual  │ │  ├── Auth + JWT      │
+│  tracks without mixing   │ │  ├── Async activities│
+│  Room mgmt, agent        │ │  ├── Push notifs     │
+│  dispatch (<150ms)       │ │  ├── Catch-Up data   │
+│  Per-track subscription  │ │  └── Player settings │
+└──────────────┬───────────┘ └──────────┬───────────┘
+               │                        │
+               ▼                        │
 ┌─────────────────────────────────────────────────┐
-│            LiveKit Server (Cloud / Self-hosted)   │
-│  SFU: routes individual tracks without mixing     │
-│  Room management, agent dispatch (<150ms)          │
-│  Per-track subscription control                   │
-│  ActiveSpeakersChanged events                     │
-└──────────────────┬────────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────┐
-│     DM Agent (LiveKit Agent — one per room)       │
+│     DM Agent (Python — LiveKit Agents SDK)       │
 │  Custom RoomIO: subscribes to ALL player tracks   │
 │  ┌───────────────────────────────────────────┐   │
 │  │  Deepgram STT (streaming, per-player)      │   │
@@ -1208,7 +1330,9 @@ God whispers, guild chat, and async voice messages don't require real-time room 
 │  │    └── Response Router                     │   │
 │  │         ↓                  ↓               │   │
 │  │  Rules Engine        Narrative LLM         │   │
-│  │  (deterministic)      (Claude API)         │   │
+│  │  (deterministic)      (Claude API via      │   │
+│  │                       livekit-plugins-     │   │
+│  │                       anthropic)           │   │
 │  │         ↓                  ↓               │   │
 │  │  Response Assembler                        │   │
 │  │    ├── Parse narrator vs character segments│   │
@@ -1220,28 +1344,31 @@ God whispers, guild chat, and async voice messages don't require real-time room 
 │  Publishes: single audio track (all voices)       │
 │  All players subscribe to this track              │
 └──────────────────┬────────────────────────────────┘
-                   │ HTTP / WebSocket
+                   │ Both read/write to shared DB
                    ▼
 ┌─────────────────────────────────────────────────┐
-│            Backend Services                       │
+│            Shared Data Layer                      │
 │  ┌──────────┐  ┌──────────────────┐              │
 │  │PostgreSQL │  │     Redis        │              │
-│  │(persistent│  │ (session cache,  │              │
-│  │  state)   │  │  voice registry) │              │
+│  │(JSONB —   │  │ (session cache,  │              │
+│  │ entities, │  │  voice registry, │              │
+│  │ state)    │  │  activity timers)│              │
 │  └──────────┘  └──────────────────┘              │
 │  ┌──────────────────────────────────────────┐    │
-│  │  Async Worker                             │    │
-│  │  ├── Crafting/training timers             │    │
-│  │  ├── World simulation ticks               │    │
-│  │  ├── God-agent heartbeat loops            │    │
-│  │  └── Companion between-session messages   │    │
+│  │  Background Workers                      │    │
+│  │  ├── Python: DM background process       │    │
+│  │  │   (co-located with DM agent)          │    │
+│  │  ├── TS/Bun: Crafting/training timers    │    │
+│  │  ├── TS/Bun: World simulation ticks      │    │
+│  │  ├── Python: God-agent heartbeat loops   │    │
+│  │  └── TS/Bun: Push notification dispatch  │    │
 │  └──────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────┘
 ```
 
 ### Cloud Platform
 
-**Recommendation: AWS or GCP.** LiveKit Cloud is available for managed hosting during MVP, with the option to self-host later. Backend services deploy via containers (Docker/Kubernetes).
+**Recommendation: AWS or GCP.** LiveKit Cloud is available for managed hosting during MVP, with the option to self-host later. The Python DM agent and TypeScript/Bun REST API deploy as separate containers (Docker/Kubernetes), sharing the PostgreSQL and Redis instances. Both containers are lightweight — the DM agent's memory footprint is dominated by the LiveKit session, and the REST API is a standard Bun HTTP server.
 
 ### Cost Considerations for MVP
 
