@@ -252,3 +252,82 @@ What makes this worth building:
 ---
 
 *If this sounds like something you want to build, let's talk.*
+
+---
+
+## Local Development Setup
+
+### Prerequisites
+
+- [Bun](https://bun.sh) (v1.0+)
+- [Python 3.11+](https://www.python.org/) with [uv](https://docs.astral.sh/uv/)
+- [Docker](https://www.docker.com/) & Docker Compose
+- API keys: LiveKit, Anthropic, Deepgram, Inworld
+
+### 1. Start infrastructure
+
+```bash
+docker-compose up -d
+```
+
+PostgreSQL on `localhost:5433`, Redis on `localhost:6379`.
+
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+# Fill in: LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET,
+#          ANTHROPIC_API_KEY, DEEPGRAM_API_KEY,
+#          INWORLD_API_KEY, INWORLD_WORKSPACE_ID
+```
+
+The agent also reads from `apps/agent/.env.local` for LiveKit credentials.
+
+### 3. Install dependencies
+
+```bash
+bun install                            # TS workspace (root)
+cd apps/agent && uv sync && cd ../..   # Python agent
+```
+
+### 4. Run migrations and seed content
+
+```bash
+bun run migrate   # Create database schema (19 tables)
+bun run seed      # Load locations, NPCs, quests, items, factions
+```
+
+### 5. Start services
+
+**REST API server:**
+```bash
+bun run dev:server    # http://localhost:3000
+```
+
+**DM Agent (voice pipeline):**
+```bash
+cd apps/agent
+uv run python agent.py dev
+```
+
+The `dev` subcommand creates a LiveKit room and waits for a participant to join.
+
+**Mobile client (optional):**
+```bash
+bun run dev:mobile    # Expo dev server
+```
+
+### 6. Join a voice session
+
+Connect to the room the agent created using any of:
+
+- **`lk` CLI:** `lk room join --room <room-name>`
+- **LiveKit Playground:** [playground.livekit.io](https://playground.livekit.io)
+- **Expo app:** scan the QR code from `dev:mobile`
+
+### Running tests
+
+```bash
+bun test                        # TS tests (server, shared)
+cd apps/agent && uv run pytest  # Python tests (agent)
+```
