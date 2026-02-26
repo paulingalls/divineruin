@@ -1,0 +1,141 @@
+[
+  {
+    "id": "greyvale_anomaly",
+    "name": "The Greyvale Anomaly",
+    "tier": 1,
+    "type": "main",
+    "description": "Reports of Hollow creatures far south of the Ashmark. A farming town frightened. An ancient ruin that's started glowing at night. Something is wrong in the Greyvale — and it's not a random incursion.",
+    "giver": "guildmaster_torin",
+    "stages": [
+      {
+        "id": "stage_1_investigate",
+        "name": "The Road North",
+        "objective": "Travel to Millhaven and investigate the Hollow reports.",
+        "hints": [
+          "Your companion mentions hearing that Millhaven is a day's travel north of the Accord.",
+          "Your companion suggests talking to Guildmaster Torin before leaving — he might have more details about what the scouts found.",
+          "Your companion says directly: 'Torin said the town's called Millhaven. Let's head north along the trade road.'"
+        ],
+        "completion_conditions": {
+          "type": "location_reached",
+          "location": "millhaven"
+        },
+        "on_complete": {
+          "xp": 50,
+          "world_effects": ["torin_disposition +1"],
+          "narrative_beat": "You arrive in Millhaven. It's quieter than a farming town should be."
+        }
+      },
+      {
+        "id": "stage_2_gather_intel",
+        "name": "Something Wrong",
+        "objective": "Talk to Millhaven's residents and learn what they've seen.",
+        "hints": [
+          "Your companion notices a woman watching you from near the mill — she looks like she's in charge.",
+          "Your companion suggests asking at the inn — 'Barkeeps always know what's going on.'",
+          "Your companion says: 'That's Elder Yanna. She runs this town. We should talk to her.'"
+        ],
+        "completion_conditions": {
+          "type": "knowledge_acquired",
+          "required_info": ["hollow_sighting_details", "ruins_light_reports"],
+          "sources": ["elder_yanna", "millhaven_inn_npcs"]
+        },
+        "on_complete": {
+          "xp": 75,
+          "world_effects": [],
+          "narrative_beat": "The pieces are forming a picture. The creatures aren't random. The ruins are connected. You need to go there."
+        }
+      },
+      {
+        "id": "stage_3_first_contact",
+        "name": "First Blood",
+        "objective": "Engage the Hollow creatures near Millhaven and survive.",
+        "hints": [
+          "Your companion's attention snaps north. 'Do you hear that? That... silence?'",
+          "Your companion draws their weapon. 'Something's moving out there. This is it.'",
+          "Your companion says: 'The tracks lead toward the northern fields. Ready up.'"
+        ],
+        "completion_conditions": {
+          "type": "combat_completed",
+          "encounter": "hollow_patrol_greyvale",
+          "outcome": "survived"
+        },
+        "on_complete": {
+          "xp": 150,
+          "rewards": [{ "item": "hollow_bone_fragment", "quantity": 1 }],
+          "world_effects": ["millhaven_morale +2", "yanna_disposition +2"],
+          "narrative_beat": "The creatures are dead — or gone, or dispersed, you're not sure anything that wrong can really die. At the incursion site, you notice something. The residual energy doesn't match normal Hollow signatures. It's structured. Almost deliberate."
+        }
+      },
+      {
+        "id": "stage_4_the_ruins",
+        "name": "What Lies Beneath",
+        "objective": "Explore the Greyvale Ruins and discover what's causing the disturbance.",
+        "hints": [
+          "Your companion keeps glancing at the hills to the northeast. 'The elder mentioned the old ruins. And the lights.'",
+          "Your companion says: 'Whatever's happening with the Hollow, those ruins are connected. I'd bet on it.'",
+          "Your companion says directly: 'We need to go to the Greyvale Ruins. The answer's there.'"
+        ],
+        "completion_conditions": {
+          "type": "item_discovered",
+          "items": ["ruins_journal_fragment"],
+          "location": "greyvale_ruins_entrance"
+        },
+        "on_complete": {
+          "xp": 200,
+          "rewards": [{ "item": "veythar_sealed_artifact", "quantity": 1 }],
+          "world_effects": ["greyvale_corruption +1", "event:ruins_discovery_ripple"],
+          "narrative_beat": "You hold the journal page. The notation is academic, precise. You can't read all of it, but some phrases are clear: 'resonance thinning,' 'controlled aperture,' 'acceptable threshold.' Someone was doing this on purpose. Your companion is very quiet."
+        },
+        "branches": {
+          "keep_artifact": {
+            "description": "Keep the artifact. Don't show it to anyone yet.",
+            "effects": ["player_has_veythar_artifact: true"],
+            "next_stage": "stage_5_return"
+          },
+          "show_companion": {
+            "description": "Show the artifact to your companion immediately.",
+            "effects": ["companion_knows_artifact: true", "companion_disposition +3"],
+            "next_stage": "stage_5_return"
+          }
+        }
+      },
+      {
+        "id": "stage_5_return",
+        "name": "The Weight of Discovery",
+        "objective": "Return to the Accord of Tides and report what you found.",
+        "hints": [
+          "Your companion says: 'We need to get this to someone who can read it. Back to the Accord.'",
+          "Your companion mentions the Aelindran scholars in the Dockside Quarter. 'If anyone can read old academic notation, it's them.'",
+          "Your companion says: 'Emris — the Aelindran archivist in the Dockside Quarter. They'd know what this means.'"
+        ],
+        "completion_conditions": {
+          "type": "npc_interaction",
+          "npc": "scholar_emris",
+          "topic": "greyvale_artifact"
+        },
+        "on_complete": {
+          "xp": 200,
+          "world_effects": [
+            "emris_disposition +4",
+            "event:faction_interest_triggered",
+            "event:god_whisper:player_patron"
+          ],
+          "narrative_beat": "Emris takes the journal page with trembling hands. They read it once. Then again. Their face goes through recognition, confusion, and something that looks a lot like fear. 'Where did you find this?' they ask, very quietly. 'Where exactly?'"
+        }
+      }
+    ],
+    "failure_conditions": {
+      "player_death_in_ruins": {
+        "consequence": "respawn at Millhaven, ruins remain accessible, Hollow corruption +1"
+      }
+    },
+    "global_hints": {
+      "stuck_stage_1": "Your companion might suggest checking with Torin at the guild hall, or simply heading north.",
+      "stuck_stage_2": "Your companion suggests talking to Elder Yanna or visiting the inn.",
+      "stuck_stage_3": "Your companion notices disturbing signs to the north and suggests investigating.",
+      "stuck_stage_4": "Your companion reminds you about the ruins. 'The lights. The connection to the Hollow. It's all there.'",
+      "stuck_stage_5": "Your companion suggests finding someone in the Accord who understands old Aelindran scholarship."
+    }
+  }
+]

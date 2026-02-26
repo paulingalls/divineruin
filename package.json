@@ -3,7 +3,15 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
-  "workspaces": ["apps/*","packages/*"],
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:server": "bun run --cwd apps/server dev",
+    "dev:mobile": "bun run --cwd apps/mobile start",
+    "migrate": "bun run scripts/migrate.ts",
+    "seed": "cd scripts && uv run python seed_content.py",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },

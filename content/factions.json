@@ -1,0 +1,134 @@
+[
+  {
+    "id": "accord_guild",
+    "name": "The Accord Guild",
+    "type": "adventuring_guild",
+    "description": "The primary adventuring and mercenary guild of the Accord of Tides. Handles contracts, bounties, and threat response across the Sunward Coast.",
+    "values": ["competence", "reliability", "pragmatism", "community defense"],
+    "territory": ["sunward_coast", "accord_central"],
+    "leader": "guildmaster_torin",
+    "reputation_tiers": {
+      "hostile": {
+        "threshold": -10,
+        "effects": ["banned from guild hall", "bounty placed"]
+      },
+      "unfriendly": {
+        "threshold": -5,
+        "effects": ["refused contracts", "cold reception"]
+      },
+      "neutral": {
+        "threshold": 0,
+        "effects": ["basic contracts available", "standard services"]
+      },
+      "friendly": {
+        "threshold": 5,
+        "effects": ["priority contracts", "guild discounts", "insider information"]
+      },
+      "trusted": {
+        "threshold": 15,
+        "effects": ["restricted contracts", "guild gear access", "strategic briefings"]
+      },
+      "honored": {
+        "threshold": 25,
+        "effects": ["guild council voice", "field authority", "classified intelligence"]
+      }
+    },
+    "relationships": {
+      "aelindran_diaspora": "respectful_distance",
+      "independent": "neutral"
+    },
+    "world_state": {
+      "current_strength": "strained",
+      "active_concerns": ["greyvale hollow reports", "missing scout", "temple downplaying threats"],
+      "recent_events": []
+    }
+  },
+  {
+    "id": "aelindran_diaspora",
+    "name": "The Aelindran Diaspora",
+    "type": "scholarly_community",
+    "description": "Survivors and descendants of the fallen city of Aelindra. Scholars, archivists, and artifact specialists scattered across the Sunward Coast, united by shared loss and a desperate need to understand what destroyed their home.",
+    "values": ["knowledge preservation", "truth", "remembrance", "caution with power"],
+    "territory": ["accord_dockside"],
+    "leader": null,
+    "reputation_tiers": {
+      "hostile": {
+        "threshold": -10,
+        "effects": ["knowledge access denied", "treated as threat to artifacts"]
+      },
+      "unfriendly": {
+        "threshold": -5,
+        "effects": ["surface-level answers only", "watched carefully"]
+      },
+      "neutral": {
+        "threshold": 0,
+        "effects": ["general Aelindran history available", "basic identification services"]
+      },
+      "friendly": {
+        "threshold": 5,
+        "effects": ["scholarly resources shared", "artifact analysis", "historical context"]
+      },
+      "trusted": {
+        "threshold": 15,
+        "effects": ["restricted archives", "private research shared", "mentor relationships"]
+      },
+      "honored": {
+        "threshold": 25,
+        "effects": ["inner circle access", "classified discoveries", "Aelindran safe houses"]
+      }
+    },
+    "relationships": {
+      "accord_guild": "respectful_distance",
+      "independent": "sympathetic"
+    },
+    "world_state": {
+      "current_strength": "fragile",
+      "active_concerns": ["artifact recovery", "Greyvale ruins connection to Aelindra", "preserving remaining knowledge"],
+      "recent_events": []
+    }
+  },
+  {
+    "id": "independent",
+    "name": "Independent",
+    "type": "unaffiliated",
+    "description": "Townsfolk, farmers, traders, and others with no formal faction allegiance. The common people of the Sunward Coast and Greyvale.",
+    "values": ["survival", "community", "self-reliance"],
+    "territory": ["greyvale", "sunward_coast"],
+    "leader": null,
+    "reputation_tiers": {
+      "hostile": {
+        "threshold": -10,
+        "effects": ["doors closed", "refused service", "reported to authorities"]
+      },
+      "unfriendly": {
+        "threshold": -5,
+        "effects": ["wary interactions", "inflated prices"]
+      },
+      "neutral": {
+        "threshold": 0,
+        "effects": ["normal interactions", "standard prices"]
+      },
+      "friendly": {
+        "threshold": 5,
+        "effects": ["discounted prices", "local tips", "hospitality"]
+      },
+      "trusted": {
+        "threshold": 15,
+        "effects": ["community support", "safe harbor", "local secrets shared"]
+      },
+      "honored": {
+        "threshold": 25,
+        "effects": ["legendary status", "community rallies to aid", "stories told about you"]
+      }
+    },
+    "relationships": {
+      "accord_guild": "neutral",
+      "aelindran_diaspora": "curious"
+    },
+    "world_state": {
+      "current_strength": "vulnerable",
+      "active_concerns": ["Hollow incursions near Millhaven", "farm abandonment", "dwindling trade"],
+      "recent_events": []
+    }
+  }
+]

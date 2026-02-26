@@ -1,0 +1,46 @@
+[
+  {
+    "id": "veythar_sealed_artifact",
+    "name": "Sealed Research Tablet",
+    "tier": 1,
+    "type": "quest_item",
+    "rarity": "rare",
+    "description": "A smooth stone tablet the size of your palm. It's warm to the touch and covered in precise, tiny notation that shifts when you're not looking directly at it. A seal mark on the reverse — not a temple seal. Something personal.",
+    "tags": ["aelindran", "veythar", "mystery", "quest"],
+    "weight": 0.5,
+    "effects": [
+      {
+        "type": "passive_detect",
+        "trigger": "near_veil_weakness",
+        "description": "the tablet grows warmer and the notation glows faintly"
+      }
+    ],
+    "value_base": 0,
+    "value_modifiers": {},
+    "lore": "Research notes from an Aelindran outpost that was sealed long before the Sundering. The notation system is non-standard — personal, not academic. Whoever wrote this didn't want it found in the official archives.",
+    "found_in": ["greyvale_ruins_entrance"]
+  },
+  {
+    "id": "hollow_bone_fragment",
+    "name": "Hollow-Bone Fragment",
+    "tier": 1,
+    "type": "material",
+    "rarity": "uncommon",
+    "description": "A shard of something that might be bone. It's cold — not room-temperature cold, actively cold, as if it's drawing heat from the air around it. It makes a sound like a tuning fork when struck, but the pitch is wrong. Not a frequency you've heard before.",
+    "tags": ["hollow", "material", "unsettling", "crafting"],
+    "weight": 0.3,
+    "effects": [
+      {
+        "type": "passive_aura",
+        "description": "nearby plants wilt slowly; animals avoid the carrier"
+      }
+    ],
+    "value_base": 50,
+    "value_modifiers": {
+      "faction:aelindran_diaspora": 2.0,
+      "npc:scholar_emris": 3.0
+    },
+    "lore": "Salvaged from a Hollow creature after combat. Scholars in the Accord would pay well for a sample — intact Hollow material is rare this far south.",
+    "found_in": ["hollow_incursion_site"]
+  }
+]

@@ -1,0 +1,146 @@
+[
+  {
+    "id": "guildmaster_torin",
+    "name": "Guildmaster Torin",
+    "tier": 1,
+    "role": "guild hall master, quest giver",
+    "species": "human",
+    "gender": "male",
+    "age": "late 50s",
+    "appearance": "broad-shouldered but desk-softened, ink-stained fingers, a face built for authority now creased with worry",
+    "personality": ["pragmatic", "decisive", "privately exhausted", "cares more than he shows"],
+    "speech_style": "direct, wastes no words, occasional dry humor that surfaces when he forgets to be worried, calls everyone 'recruit' until they earn a name",
+    "mannerisms": ["drums fingers on desk when thinking", "sighs before delivering bad news"],
+    "backstory_summary": "Twenty years running the Accord guild. Has seen every type of adventurer and threat. The Greyvale reports are the first thing in years that genuinely scares him — not the Hollow itself, but how far south they've appeared.",
+    "knowledge": {
+      "free": [
+        "general guild operations and available contracts",
+        "the Greyvale reports — Hollow creatures sighted far south of the Ashmark"
+      ],
+      "disposition >= friendly": [
+        "he's sent three scouts north already — two returned shaken, one hasn't returned",
+        "the temple authorities are downplaying the reports and he's furious about it"
+      ],
+      "disposition >= trusted": [
+        "he suspects someone in the temple hierarchy is suppressing information about the Greyvale",
+        "his missing scout's last report mentioned the old ruins and 'lights that moved wrong'"
+      ]
+    },
+    "schedule": {
+      "07:00-22:00": "accord_guild_hall",
+      "22:00-07:00": "torin_quarters"
+    },
+    "default_disposition": "neutral",
+    "disposition_modifiers": {
+      "completed_greyvale_quest_stage": 3,
+      "reported_findings": 2,
+      "lied_about_findings": -4,
+      "defended_millhaven": 3
+    },
+    "inventory_pool": null,
+    "secrets": [
+      "his missing scout is someone he personally trained — the worry is personal, not just professional"
+    ],
+    "faction": "accord_guild",
+    "voice_id": "torin_v1",
+    "voice_notes": "deep baritone, clipped delivery, softens slightly when genuinely worried"
+  },
+  {
+    "id": "elder_yanna",
+    "name": "Elder Yanna",
+    "tier": 1,
+    "role": "Millhaven elder, local authority",
+    "species": "human",
+    "gender": "female",
+    "age": "mid 60s",
+    "appearance": "wiry, sun-weathered, moves with the deliberate economy of someone who's worked hard their entire life",
+    "personality": ["stubborn", "protective", "distrustful of outsiders", "hiding deep fear"],
+    "speech_style": "short sentences, farmland dialect, doesn't answer questions she doesn't like, asks her own instead",
+    "mannerisms": ["looks north involuntarily when anyone mentions the Hollow", "grips her walking stick when stressed"],
+    "backstory_summary": "Born in Millhaven, will die in Millhaven. Has watched the town slowly empty as younger people move south. The Hollow reports are the final threat to everything she's spent her life protecting. Won't leave. Won't ask for help easily.",
+    "knowledge": {
+      "free": [
+        "the Hollow creatures were first spotted two weeks ago near the northern fields",
+        "three farms have been abandoned"
+      ],
+      "disposition >= friendly": [
+        "the creatures are behaving strangely — almost organized, moving in patterns",
+        "her neighbor Aldric went to the ruins last month and came back different — won't speak, barely eats"
+      ],
+      "disposition >= trusted": [
+        "Aldric told her one thing before going silent: 'The lights know you're looking'",
+        "she found a strange stone in his pocket — smooth, warm, and it hums when you hold it near a candle"
+      ]
+    },
+    "schedule": {
+      "05:00-20:00": "millhaven",
+      "20:00-05:00": "yanna_farmhouse"
+    },
+    "default_disposition": "wary",
+    "disposition_modifiers": {
+      "helped_townsfolk": 2,
+      "mentioned_evacuation": -2,
+      "defended_millhaven_from_hollow": 5,
+      "showed_respect_for_millhaven": 1
+    },
+    "inventory_pool": null,
+    "secrets": [
+      "Aldric's stone is in her pocket right now — she's afraid to show anyone because she doesn't know what it means"
+    ],
+    "faction": "independent",
+    "voice_id": "yanna_v1",
+    "voice_notes": "alto, gravelly, speaks slowly and deliberately, rural accent"
+  },
+  {
+    "id": "scholar_emris",
+    "name": "Emris of the Diaspora",
+    "tier": 1,
+    "role": "Aelindran scholar, artifact expert",
+    "species": "elari",
+    "gender": "non-binary",
+    "age": "appears mid 30s (Elari — actually much older)",
+    "appearance": "thin, precise movements, eyes that focus too intensely, ink-stained fingers, always carrying a satchel of notes",
+    "personality": ["brilliant", "socially awkward", "haunted by Aelindra's fall", "desperately hopeful that the old knowledge can be recovered"],
+    "speech_style": "rapid and precise when discussing scholarship, halting and uncertain in casual conversation, occasionally slips into Aelindran academic terminology without realizing",
+    "mannerisms": ["adjusts spectacles that aren't there (lost in the fall of Aelindra, still reaches for them)", "speaks to artifacts as if they can hear"],
+    "backstory_summary": "Survived the fall of Aelindra as a junior archivist. Has spent thirty years cataloging recovered artifacts in the Accord of Tides, searching for any clue about why the city fell. When the player brings the Greyvale artifact, Emris recognizes the notation style immediately — and it terrifies them.",
+    "knowledge": {
+      "free": [
+        "general Aelindran history and the Voidfall narrative",
+        "identification of common Aelindran artifacts"
+      ],
+      "disposition >= friendly": [
+        "the Greyvale ruins were an Aelindran research outpost — one that was officially shut down before the fall",
+        "the artifacts the player found use a notation system only a handful of scholars ever used"
+      ],
+      "disposition >= trusted": [
+        "the notation is Veythar's personal system — not temple standard, private",
+        "Emris recognizes it because their mentor used the same system — and their mentor disappeared before the fall of Aelindra"
+      ],
+      "quest_triggered": {
+        "quest": "greyvale_anomaly",
+        "stage": 4,
+        "reveals": "the journal fragment references 'controlled aperture experiments' — someone was deliberately weakening the Veil at that site, and the research predates the Sundering by centuries"
+      }
+    },
+    "schedule": {
+      "08:00-23:00": "accord_dockside",
+      "23:00-08:00": "emris_study"
+    },
+    "default_disposition": "cautious",
+    "disposition_modifiers": {
+      "brought_aelindran_artifact": 4,
+      "showed_interest_in_scholarship": 2,
+      "dismissed_aelindran_history": -3,
+      "mentioned_veythar_connection": 3
+    },
+    "inventory_pool": null,
+    "secrets": [
+      "Emris suspects their missing mentor was working on the same project documented in the Greyvale ruins",
+      "they have a letter from their mentor — the last one — that mentions 'a discovery that changes everything' but gives no details"
+    ],
+    "faction": "aelindran_diaspora",
+    "voice_id": "emris_v1",
+    "voice_notes": "soft, quick, slightly breathless when excited, Elari accent — elongated vowels, precise consonants"
+  }
+]

@@ -1,11 +1,7 @@
-from dotenv import load_dotenv
-
 from livekit import agents, rtc
-from livekit.agents import AgentServer,AgentSession, Agent, room_io
+from livekit.agents import AgentServer, AgentSession, Agent, room_io
 from livekit.plugins import noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-
-load_dotenv(".env.local")
 
 
 class Assistant(Agent):
