@@ -2,7 +2,17 @@
 
 ## About This Document
 
-This is the living lore bible for **Divine Ruin: The Sundered Veil**. It contains the deep narrative, history, and world-building of Aethos — the material that drives the story but lives beneath the surface of the game design. The companion *Game Design Document* covers mechanics and systems; the *Technical Architecture Document* covers infrastructure; this document covers the *why* behind the world.
+This is the living lore bible for **Divine Ruin: The Sundered Veil**. It contains the deep narrative, history, and world-building of Aethos — the material that drives the story but lives beneath the surface of the game design.
+
+**Related documents:**
+- *Product Overview* — What we're building and why (start here if you're new)
+- *Game Design Document* — Mechanics and player-facing systems, including the companion system, economy, and death mechanics
+- *MVP Specification* — The Greyvale Anomaly story arc, playtest structure, scoped first build
+- *Technical Architecture* — DM agent, voice pipeline, orchestration, client app, testing strategy
+- *World Data & Simulation* — JSON entity schemas, world simulation rules, god-agent heartbeat, content style guide
+- *Cost Model* — Unit economics and subscriber margin analysis
+
+**Implementation note:** The gods described in this document are not just narrative — they are autonomous AI agents in the game. Each god runs on a heartbeat loop (every 15-30 minutes), evaluating world state within their domain and making decisions. Simple cases use rules; complex cases use LLM with the god's personality. The personality, values, and relationships described here directly inform how the god-agents behave in the simulation. See *World Data & Simulation — God-Agent Heartbeat* and *Technical Architecture — Agent Layer*.
 
 ---
 
@@ -549,6 +559,8 @@ South and east. The most prosperous and populated region of Aethos. Warm climate
 
 **Game function:** Primary new player starting area. Crafting and commerce hub. Low-level quests that introduce the world's normalcy before the threat becomes real. The async economic loop is richest here. Players build attachment to what's at stake by experiencing what life should be like.
 
+**The Greyvale** — Rolling countryside north of the Accord of Tides, transitioning from pastoral farmland into something wilder and darker as you head north toward the Ashmark's edge. The Greyvale is where the Sunward Coast's safety begins to fray — the first place where southern-dwellers encounter signs that the invasion is closer than they thought. Farming towns like **Millhaven** dot the southern Greyvale, increasingly anxious about reports from the north. The **Greyvale Ruins** — an ancient scholarly outpost predating the Sundering, once connected to Aelindran research — sit deeper in, sealed for decades until recently. Strange lights have been reported. The ruins are significant: they contain artifacts bearing Veythar's seal and research notes referencing "resonance thinning" — evidence of the Lorekeeper's secret project to weaken the Veil. A recent Hollow incursion site in the northern Greyvale marks where the corruption is creeping south faster than anyone expected. The Greyvale is the setting for the MVP story arc (*The Greyvale Anomaly* — see *MVP Specification*).
+
 ---
 
 ### The Keldara Mountains
@@ -743,6 +755,18 @@ Fluid, adaptable, with a unique biological trait: their bodies slowly attune to 
 
 ---
 
+### Notable Creatures of Aethos
+
+Beyond the mortal races, Aethos hosts semi-sentient creatures bonded to the world's ambient arcane energy. These aren't beasts in the common sense — they're expressions of the world's living magic, occupying a space between animal and something more.
+
+**Shadow-foxes** are the most well-known. Small, dark-furred canids with eyes that reflect light they shouldn't be able to catch. They are drawn to concentrations of arcane energy and to individuals who are, for reasons no scholar has fully explained, about to become important. Most cultures consider a shadow-fox encounter an omen — some say good, some say ominous, most agree it means *something is about to change.* Shadow-foxes don't speak, but those bonded to one describe an uncanny sense of mutual understanding — the fox seems to know what you're feeling and responds with body language so precise it borders on communication. They are exceptionally sensitive to Hollow corruption, reacting with visible distress long before mortal senses can detect it. Aelindran scholars studied shadow-foxes extensively before the fall; some of their research notes survive in diaspora archives. A shadow-fox that bonds with a mortal is rare and significant — it happens perhaps once a generation in most communities.
+
+*Gameplay note:* Shadow-foxes serve as companion NPCs for certain player types. Sable, one of the MVP companion archetypes, is a shadow-fox. Her non-verbal communication is narrated by the DM rather than voiced, creating a distinct companion experience. See *Game Design Document — The Companion* for the full companion design.
+
+Other semi-sentient creatures include the stone-singers of the Keldara Mountains (deep-dwelling creatures whose vibrations communicate through rock), the tide-wraiths of the Shattered Isles (luminescent sea creatures that guide ships through dangerous waters), and the thorn-speakers of the Thornveld (insects whose collective behavior carries warnings from the forest itself). Each is bonded to a region's arcane character and could serve as companion NPCs or environmental gameplay elements in future content.
+
+---
+
 ### The Cultures of Aethos
 
 Cultures emerge from geography, divine influence, and history. They determine starting location, initial worldview, and social context — but characters can leave their culture behind or carry it into new places. Most cultures are multi-racial.
@@ -886,14 +910,22 @@ Scholarly, grieving, defined by loss and knowledge. Aelindra welcomed everyone, 
 
 ## Open Lore Questions
 
+*Resolved by recent design work:*
+
+- [x] **The Factions** — Faction schemas designed with reputation tiers, relationships, and world_state tracking. See *World Data & Simulation — Faction Schema*. Four factions scoped for MVP.
+- [x] **Character Classes & Progression** — 16 archetypes across 6 categories, each modifiable by 10 divine patrons. Progression via XP, divine favor, and world reputation. See *Game Design Document — Class System* and *Progression System*.
+- [x] **The Greyvale and MVP locations** — The Greyvale, Millhaven, and the Greyvale Ruins are now documented in the Sunward Coast geography section above and detailed in the *MVP Specification*.
+- [x] **Companion characters** — Four companion archetypes designed with backstories that connect to the central mystery. Shadow-foxes established as a creature type. See *Game Design Document — The Companion*.
+
 *To be developed as the world-building continues:*
 
-- [ ] **The History Before the Sundering** — What was Aethos like before the invasion? What was normal life?
-- [ ] **The Original Creators** — Who or what made Aethos and the gods? Where did they go? Do they still exist?
-- [ ] **Veythar's Artifacts** — The tools and rituals used to weaken the Veil — what are they, where are they, and what do they do now?
-- [ ] **The Factions** — How have mortals organized in response to the invasion? What political structures exist?
-- [ ] **Character Classes & Progression** — How do classes map to divine patronage, races, regions, and the world's systems?
-- [ ] **Deeper Cultural Detail** — Languages, customs, ceremonies, inter-cultural relationships, trade, and conflict
+- [ ] **The History Before the Sundering** — What was Aethos like before the invasion? What was normal life? What did the gods' slow fading feel like to mortals who lived through it?
+- [ ] **The Original Creators** — Who or what made Aethos and the gods? Where did they go? Do they still exist? The Umbral Deep contains ruins from their era — what do those ruins tell us?
+- [ ] **Veythar's Artifacts** — The tools and rituals used to weaken the Veil. What are they, where are they now, and what do they do? These are endgame content — some are scattered across the world, some are in the Greyvale Ruins, some may be in the Voidmaw itself.
+- [ ] **Deeper Cultural Detail** — Languages, customs, ceremonies, inter-cultural relationships, trade, and conflict. The cultural summaries provide frameworks; the lived texture is unwritten.
+- [ ] **The Ashmark's History** — How has the front line moved over 30 years? What was lost? Which communities fell, and what are their stories?
+- [ ] **Creature Taxonomy** — The Hollow's expressions vary in form and behavior. What types exist? How do they differ? Is there a hierarchy, or is the Hollow truly mindless? Players will encounter many varieties — they need to feel distinct while remaining fundamentally alien.
+- [ ] **The Wellspring's Nature** — If the Hollow consumed the Wellspring, is any creative energy recoverable? This is the deep endgame question that drives the "seal vs. reclaim" debate among the gods.
 
 ---
 

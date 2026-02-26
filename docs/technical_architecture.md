@@ -2,7 +2,7 @@
 
 ## About This Document
 
-This document defines the technical architecture for building the MVP of Divine Ruin: The Sundered Veil. It covers the client application, voice pipeline, DM agent architecture, orchestration, infrastructure, AI systems, autonomous agents, multiplayer architecture, and development priorities. It is informed by the *MVP Specification* and *Game Design* documents.
+This document defines the technical architecture for building the MVP of Divine Ruin: The Sundered Veil. It covers the client application, voice pipeline, DM agent architecture, orchestration, infrastructure, AI systems, autonomous agents, multiplayer architecture, and development priorities. It is informed by the *MVP Specification*, *Game Design*, and *Audio Design* documents.
 
 **Last research update:** February 25, 2026
 
@@ -49,7 +49,7 @@ The app has a small screen count. Most gameplay happens on the Active Session sc
 **Pre-Session Screens:**
 
 - **Auth** — Sign in / sign up. Minimal — get the player into the game fast.
-- **Home** — Session resume button (prominent), async activity cards, character summary bar, session history. If no character exists, flows into character creation.
+- **Home** — Two-layer design. **Top: Catch-Up** — glanceable summary of what happened since last visit: resolved activity cards (pre-rendered audio + decision buttons), pending decisions, world news, in-flight activity progress, companion idle chatter if nothing pending. All tap-based, no voice connection, always available. **Bottom: "Enter the World" button** — one prominent button that opens a LiveKit voice connection and places the player in-world. No mode selection, no session type picker, no expected duration. The DM adapts to the player's behavior and available time. Character summary bar and session history below. If no character exists, flows into character creation. See *Game Design — Session Types — No Mode Selection* for the full fluid entry model.
 - **Character Creation** — A voice conversation with visual assists. The DM speaks through the LiveKit connection; the client shows contextual cards (race options, class options, patron options) when the server pushes them. The player speaks their choices. Not a form — a conversation with illustrations.
 
 **Active Session (the core experience):**
@@ -63,7 +63,7 @@ The app has a small screen count. Most gameplay happens on the Active Session sc
 **Utility Screens:**
 
 - **Settings** — Audio levels (voice, ambience, effects, music), mic mode (VAD vs. tap-to-speak), notification preferences, account.
-- **Async Hub** — Between-session activities: crafting timers, training progress, god whisper inbox, party messages. Lighter UI — text + short audio clips, not a full LiveKit session.
+- **Async Hub (integrated into Home)** — The Catch-Up layer on the home screen. Not a separate screen — the top section of Home. Organized by priority: world news audio summary (auto-plays if significant changes), resolved activity cards (each with narrated audio + decision buttons), pending decisions (faction messages, god whispers, NPC requests), and new activity launcher (crafting, training, companion errands). All audio is pre-rendered — no LiveKit sessions, no real-time voice pipeline. Decisions are REST calls. Background shows stylized current location with time-of-day and weather. If nothing actionable is pending, shows companion idle chatter and world micro-observations. See *Game Design — Asynchronous Play* for full design.
 
 ### HUD System — Layered Overlays
 

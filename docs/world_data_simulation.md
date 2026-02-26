@@ -457,6 +457,166 @@ Factions structure reputation, NPC allegiances, and political dynamics.
 
 ---
 
+## Content Style Guide
+
+### The Fundamental Constraint
+
+Every word of authored content will be spoken aloud by the AI DM and heard through headphones. The player never reads a description — they listen to it mid-conversation, often while deciding what to do next. This changes everything about how content should be written.
+
+**Write for the ear, not the eye.** Sentences that read beautifully on paper can sound awkward, confusing, or monotonous when spoken. Read every description aloud before committing it. If you stumble, the TTS will stumble harder. If you lose the thread, the player will too.
+
+**Write for performance, not consumption.** The DM isn't a narrator reading from a book — the DM is a character performing the world for the player. Descriptions should give the DM material to *perform*: sensory hooks to emphasize, emotional beats to land, moments to pause for effect. Think stage directions, not prose paragraphs.
+
+### Writing Location Descriptions
+
+Location descriptions go in the `description` field for tier 1 entities. They're the raw material the DM uses when a player enters a location for the first time or asks "what do I see here?"
+
+**Lead with what you hear, then what you feel, then what you see.** This is a voice game. Sound comes first.
+
+Good: *"The forge hits you before you see it — a rhythmic clang of hammer on steel, a low roar of bellows, and the hiss of quenched metal. The heat rolls out through the open doorway. Inside, the space is cramped and soot-darkened, lit by the orange glow of the furnace."*
+
+Weak: *"The blacksmith's forge is a small stone building with a chimney that emits dark smoke. Inside, there are several anvils and a large furnace. Tools hang on the walls."*
+
+The first version gives the DM sensory hooks to perform — sounds, temperature, light quality. The second is a visual inventory that sounds like a real estate listing when spoken aloud.
+
+**Keep descriptions to 2-4 sentences.** The DM delivers these mid-conversation. Too short and the location feels empty. Too long and the player's attention drifts before they can act. If a location has more to reveal, put the deeper details in `key_features` and `hidden_elements` — the DM reveals them when the player investigates.
+
+**Include atmosphere, not just geometry.** Don't describe the layout of a room. Describe how it makes you feel to walk into it. A tavern isn't "a large room with tables and a bar." It's warm, noisy, smells of woodsmoke and ale, and there's a feeling of relief when you step in from the cold. The player's brain builds the geometry from the atmosphere.
+
+**Write conditions as overlays, not replacements.** The `conditions` field in the location schema defines how the description changes based on time, weather, corruption, or quest state. Write these as modifications to the base atmosphere, not full rewrites.
+
+Base: *"The market square is alive with sound — vendors calling prices, cart wheels on cobblestone, fragments of a dozen conversations in as many languages."*
+
+Night condition: *"The market square is quiet now. A few lanterns sway in the harbor breeze. The vendors are gone, but you can still smell the day's spices. A lone guard's footsteps echo off the buildings."*
+
+Corrupted condition: *"The market square is... wrong. The vendors are here, but their calls sound hollow, rehearsed. The colors feel muted even in description. A faint hum sits beneath everything, just below the threshold of hearing."*
+
+### Writing NPC Content
+
+NPC content spans several schema fields: `personality`, `speech_style`, `mannerisms`, `backstory_summary`, `knowledge`, and `secrets`. Together, they give the DM everything needed to portray a believable character through voice alone.
+
+**Personality: 3-5 traits, with tension.** Flat personalities ("kind, brave, honest") produce flat characters. Include at least one trait that creates internal tension or contradiction — a brave warrior who's terrified of the dark, a generous merchant who's stingy about one specific thing, a cheerful innkeeper who goes quiet whenever someone mentions the Ashmark. The contradiction gives the DM material for interesting moments.
+
+Good: *"Warm, gregarious, fiercely protective of her regulars — but noticeably evasive about her past before arriving in the Accord. Changes the subject with a joke whenever her history comes up."*
+
+Weak: *"Friendly and helpful. Likes to talk. Runs a good tavern."*
+
+**Speech style: write it so the DM can hear it.** Don't just say "formal" — describe the texture. Does the character use long sentences or short ones? Do they pause frequently? Do they ask rhetorical questions? Do they repeat themselves for emphasis? Do they trail off? The DM will use these cues to shape the TTS performance.
+
+Good: *"Speaks in short, declarative sentences. Rarely uses more than five words where three will do. Pauses before answering questions, as if weighing each word. Never raises her voice — drops it instead when she's angry."*
+
+Weak: *"Speaks formally."*
+
+**Mannerisms: one or two memorable verbal tics.** These are the details players remember and that make an NPC recognizable across sessions. Keep them subtle enough that they don't become annoying when heard repeatedly. A character who *always* starts sentences with "Well, now..." or who clears their throat before giving bad news, or who uses a specific oath ("by Kaelen's hammer") when surprised. The DM weaves these into performance naturally.
+
+**Backstory summary: motivation, not history.** The DM doesn't need to know where an NPC was born and raised. The DM needs to know what the NPC *wants*, what they're *afraid of*, and what they *won't talk about*. Write backstories as emotional context, not chronological biography.
+
+Good: *"Lost her daughter to a Hollow incursion three years ago. Channels her grief into protecting Millhaven with ferocious determination. Refuses to discuss the loss — deflects with brusque practicality. Secretly terrified it could happen again."*
+
+Weak: *"Born in the northern reaches 45 years ago. Moved to Millhaven as a young woman. Married a farmer named Aldric. Had a daughter named Senna who was killed during a Hollow raid."*
+
+The first version tells the DM how to play the character in every conversation. The second is a wiki entry.
+
+**Knowledge gating: structure by disposition and context.** The `knowledge` field defines what an NPC knows and under what conditions they'll share it. Write knowledge entries with clear gates:
+
+```json
+"knowledge": [
+  {
+    "topic": "the greyvale ruins",
+    "disposition_required": "neutral",
+    "info": "Mentions that lights have been seen at the ruins recently. Dismisses it as swamp gas or kids."
+  },
+  {
+    "topic": "the greyvale ruins",
+    "disposition_required": "friendly",
+    "info": "Admits she's worried about the lights. Her cousin went to investigate and came back shaken, refusing to talk about what he saw."
+  },
+  {
+    "topic": "the greyvale ruins",
+    "disposition_required": "trusted",
+    "info": "Reveals that her cousin described hearing voices in a language he didn't recognize — but somehow understood. He left Millhaven the next day and hasn't been heard from since."
+  }
+]
+```
+
+Each tier reveals more, creating a natural conversational progression that rewards relationship-building. The DM uses these gates automatically — it checks the player's disposition score against the requirement.
+
+### Writing Quest Content
+
+Quest content spans `description`, `stages`, `hints`, `completion_conditions`, and `branches`. The DM delivers all of this in conversation, never as text on a screen.
+
+**Quest descriptions: the hook, not the briefing.** The `description` is what the quest-giver says (or what the DM narrates) to draw the player in. Write it as dialogue or narration, not as a quest log entry.
+
+Good: *"She lowers her voice. 'The lights started again last month. At the old ruins north of town. Everyone pretends not to notice, but I've seen the look on the night watch's faces. Something is up there, and it's not scholars anymore.'"*
+
+Weak: *"Investigate the Greyvale Ruins. Strange lights have been reported. Speak to the night watch for more information."*
+
+The first gives the DM a scene to perform. The second is a UI tooltip.
+
+**Stage objectives: action-oriented, spoken naturally.** Each quest stage has an `objective` that the DM may paraphrase or the companion may reference when giving guidance. Write them as things a person would actually say, not as bullet points.
+
+Good: *"Find out what the night watch saw at the ruins."*
+Weak: *"Gather information from 3 NPCs about the ruins (0/3)."*
+
+**Hints: escalating, in-character.** The `hints` array in each stage feeds the guidance system. Write them as things the companion or DM would naturally say, in escalating specificity:
+
+```json
+"hints": [
+  "Your companion mentions they overheard someone at the inn talking about the ruins.",
+  "Your companion suggests asking the innkeeper — she seems to know everyone's business.",
+  "Your companion says directly: 'The innkeeper's cousin was at those ruins. We should talk to her.'"
+]
+```
+
+Level 1 is a nudge. Level 2 is a suggestion. Level 3 is explicit direction. All three sound like natural conversation, not system prompts.
+
+**Branches: meaningful divergence.** If a quest branches, the branches should create genuinely different experiences — different NPCs, different locations, different information revealed. Don't branch into "you did the same quest but the DM described it slightly differently." A branch should change what the player knows, who trusts them, and what happens next.
+
+### Writing Item Descriptions
+
+Item descriptions appear when the DM narrates loot discovery and when the `show_item_card` tool fires on the client. They must work in both contexts: spoken aloud by the DM and displayed as brief text on an item card.
+
+**One sentence of flavor, one sentence of function.** That's the target length.
+
+Good: *"A dagger carved from Hollow-bone — the blade seems to drink the light around it. Deals additional void damage to corrupted creatures."*
+
+Weak: *"This is a dagger made from the bone of a Hollow creature. It has been shaped into a blade approximately 8 inches long with a wrapped leather handle. When used against corrupted enemies, it deals bonus damage of the void type."*
+
+**Audio-first sensory details.** How does the item *sound* when drawn? How does it *feel* in the hand? What *happens* in the air around it? These matter more than what it looks like.
+
+Good: *"The blade hums when drawn — a low, unsettling tone that makes your teeth ache."*
+Weak: *"The blade is dark gray with a slightly iridescent sheen."*
+
+### Writing Event Content
+
+Events drive the world simulation — they're the moments when something changes and the DM needs to react. The `dm_instructions` field is the most important part of an event schema: it tells the DM how to introduce the event to the player.
+
+**Write instructions as direction, not script.** The DM is an improvisor. Give it a brief, a mood, and key details to include — not a paragraph to read verbatim.
+
+Good:
+```json
+"dm_instructions": "A tremor runs through the ground — brief but unmistakable. NPCs react with alarm. If the player is indoors, dust falls from the ceiling. If outdoors, birds scatter. The tremor came from the north. This is the first sign of the Hollow incursion intensifying. Mood: sudden unease breaking through normality."
+```
+
+Weak:
+```json
+"dm_instructions": "Tell the player: 'You feel a sudden tremor beneath your feet. The ground shakes for a moment, then stops. People around you look worried. You notice that the tremor seemed to come from the north.'"
+```
+
+The first version gives the DM freedom to adapt to the player's situation while hitting the key beats. The second is a script that sounds stilted when the DM tries to deliver it naturally.
+
+### General Principles
+
+**The Hollow sounds wrong, never generic.** Any content describing the Hollow or its effects should emphasize audio wrongness — sounds that shouldn't exist, silences where there should be noise, familiar sounds distorted into something alien. The Hollow is not "evil" in a familiar fantasy way. It's incomprehensible. Content should make the player uneasy, not just threatened. Avoid clichés like "dark energy" or "sinister glow." Instead: "a sound like glass being sung backward" or "the birdsong stopped, and in the silence you hear something almost like breathing, but with the wrong rhythm."
+
+**Gods have distinct voices, literally and figuratively.** Each god's content — whispers, quests, faction dialogue — should have a recognizable tone. Kaelen is direct, blunt, speaks of honor and courage. Syrath is indirect, speaks in questions and implications, never says anything straight. Veythar is scholarly, precise, fascinated by detail. When writing content associated with a god, inhabit their voice. The DM will pick up on the tonal cues and perform accordingly.
+
+**Avoid visual-dependent descriptions.** Never describe something that can only be understood visually. "A complex series of runes carved in concentric circles" means nothing in audio. Instead: "The wall is covered in carvings — you can feel the grooves under your fingers, spiraling inward. Your companion says they're runes, old ones, and they hum faintly when you touch them." Engage touch, sound, smell, spatial awareness. Make the player's imagination do the rendering.
+
+**Write for the DM, not the player.** Content is consumed by the AI DM, which then performs it for the player. The DM will paraphrase, adapt, and improvise around your content. Write material that gives the DM strong raw ingredients — vivid sensory hooks, clear emotional beats, concrete details — rather than polished final prose. The DM will make it its own.
+
+---
+
 ## World Simulation Rules
 
 The world changes over time through four simulation layers, each operating at a different frequency. The simulation runs on a real-time clock — one game-minute equals one real minute, 24/7, even when no players are online.

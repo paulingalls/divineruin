@@ -116,7 +116,7 @@ The DM's system prompt (world state, scene, character sheets, rules, voice tags)
 | **Moderate** | 6 (1.5/week) | 40 min | 15 |
 | **Light** | 3 (0.75/week) | 35 min | 8 |
 
-Async check-in cost: ~$0.04 each (short LLM call + brief TTS narration).
+Async check-in cost: ~$0.04 each. Breakdown: world news narration is pre-rendered during simulation ticks (amortized, ~$0.005/player/tick). Resolved activity narrations are batch-generated when activities complete (one LLM call for outcome text + one TTS synthesis per activity, ~$0.002 each). God whispers are pre-rendered (~$0.003 each). Decision inputs are REST calls (negligible). Total per check-in with 2-3 resolved activities + world news: ~$0.01-0.02 in pre-rendered content + ~$0.02 in serving/infrastructure = ~$0.04. Mini-quests (optional, 5-10 min live voice) cost ~$0.10-0.15 each — these are rare and optional, excluded from base async costing.
 
 ### Monthly Cost Per Subscriber
 
