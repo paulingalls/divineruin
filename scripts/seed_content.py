@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -18,6 +19,18 @@ TABLE_MAP = {
     "factions.json": "factions",
 }
 
+UPSERT_SQL = """
+    INSERT INTO {table} (id, data)
+    VALUES ($1, $2::jsonb)
+    ON CONFLICT (id) DO UPDATE SET data = $2::jsonb
+"""
+
+
+def upsert_query(table: str) -> str:
+    if not re.match(r"^[a-z_]+$", table):
+        raise ValueError(f"Invalid table name: {table}")
+    return UPSERT_SQL.format(table=table)
+
 
 async def seed(conn: asyncpg.Connection) -> dict[str, int]:
     counts: dict[str, int] = {}
@@ -27,19 +40,10 @@ async def seed(conn: asyncpg.Connection) -> dict[str, int]:
             print(f"  skip: {filename} (not found)")
             continue
 
+        query = upsert_query(table)
         entities = json.loads(filepath.read_text())
         for entity in entities:
-            entity_id = entity["id"]
-            data = json.dumps(entity)
-            await conn.execute(
-                f"""
-                INSERT INTO {table} (id, data)
-                VALUES ($1, $2::jsonb)
-                ON CONFLICT (id) DO UPDATE SET data = $2::jsonb, updated_at = NOW()
-                """,
-                entity_id,
-                data,
-            )
+            await conn.execute(query, entity["id"], json.dumps(entity))
         counts[table] = len(entities)
         print(f"  {table}: {len(entities)} entities")
 
@@ -49,7 +53,6 @@ async def seed(conn: asyncpg.Connection) -> dict[str, int]:
 async def validate(conn: asyncpg.Connection) -> list[str]:
     errors: list[str] = []
 
-    # Validate all location exit destinations reference existing location IDs
     rows = await conn.fetch("SELECT id, data FROM locations")
     location_ids = {row["id"] for row in rows}
 
@@ -64,7 +67,6 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
                     f"unknown destination '{dest}'"
                 )
 
-    # Validate NPCs have at least 2 knowledge tiers
     npc_rows = await conn.fetch("SELECT id, data FROM npcs")
     for row in npc_rows:
         data = json.loads(row["data"])

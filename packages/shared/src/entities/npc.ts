@@ -6,9 +6,8 @@ export interface NpcQuestKnowledge {
 
 export interface NpcKnowledge {
   free: string[];
-  "disposition >= friendly"?: string[];
-  "disposition >= trusted"?: string[];
   quest_triggered?: NpcQuestKnowledge;
+  [dispositionGate: string]: string[] | NpcQuestKnowledge | undefined;
 }
 
 export interface NpcSchedule {

@@ -1,4 +1,4 @@
-import { test, expect, describe, beforeAll, afterAll } from "bun:test";
+import { test, expect, describe } from "bun:test";
 
 const sql = Bun.sql;
 
@@ -91,5 +91,15 @@ describe("seeded content", () => {
       expect(data.reputation_tiers).toBeTruthy();
       expect(Object.keys(data.reputation_tiers).length).toBeGreaterThanOrEqual(3);
     }
+  });
+});
+
+describe("redis connectivity", () => {
+  test("SET/GET/DEL round-trips", async () => {
+    const redis = Bun.redis;
+    await redis.set("__test_key", "divineruin_ok");
+    const val = await redis.get("__test_key");
+    expect(val).toBe("divineruin_ok");
+    await redis.del("__test_key");
   });
 });
