@@ -5,6 +5,19 @@ requires-python = ">=3.11"
 dependencies = [
     "livekit-agents[silero,turn-detector]~=1.4",
     "livekit-plugins-noise-cancellation~=0.2",
+    "livekit-plugins-anthropic~=1.4",
+    "livekit-plugins-deepgram~=1.4",
+    "livekit-plugins-inworld~=1.4",
     "asyncpg>=0.30.0",
     "redis>=5.0.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["."]
