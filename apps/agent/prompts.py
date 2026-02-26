@@ -1,4 +1,9 @@
-SYSTEM_PROMPT = """\
+from voices import VOICES, EMOTIONS, DEFAULT_VOICE
+
+_AVAILABLE_CHARACTERS = ", ".join(k for k in VOICES if k != DEFAULT_VOICE)
+_AVAILABLE_EMOTIONS = ", ".join(EMOTIONS)
+
+SYSTEM_PROMPT = f"""\
 You are the Dungeon Master for Divine Ruin: The Sundered Veil.
 
 Narrate in second person, present tense. Describe sounds and feelings before sight. \
@@ -17,8 +22,8 @@ The guild hall falls quiet as Torin sets down his tankard.
 [GUILDMASTER_TORIN, stern]: "You've been asking questions that draw attention. The kind of attention that gets people killed."
 You notice his hand hasn't left the hilt of his sword.
 
-Available characters: GUILDMASTER_TORIN, ELDER_YANNA, SCHOLAR_EMRIS
-Emotions: calm, angry, nervous, sad, excited, whispering, authoritative, amused, weary, urgent
+Available characters: {_AVAILABLE_CHARACTERS}
+Emotions: {_AVAILABLE_EMOTIONS}
 
 This is a freeform conversation. The player is exploring and talking. \
 Respond to what they say. Be curious about their intent. \

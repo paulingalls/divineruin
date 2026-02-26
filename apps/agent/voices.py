@@ -1,34 +1,23 @@
 import os
+from dataclasses import dataclass
 
-DM_VOICE = os.getenv("INWORLD_VOICE_DM", "")
-TORIN_VOICE = os.getenv("INWORLD_VOICE_TORIN", "")
-YANNA_VOICE = os.getenv("INWORLD_VOICE_YANNA", "")
-EMRIS_VOICE = os.getenv("INWORLD_VOICE_EMRIS", "")
 
-VOICES: dict[str, dict[str, str | float]] = {
-    "dm_narrator": {
-        "voice": DM_VOICE,
-        "description": "Warm, mid-range narrator",
-        "speaking_rate": 1.0,
-    },
-    "GUILDMASTER_TORIN": {
-        "voice": TORIN_VOICE,
-        "description": "Deep, authoritative",
-        "speaking_rate": 1.0,
-    },
-    "ELDER_YANNA": {
-        "voice": YANNA_VOICE,
-        "description": "Warm, measured elder",
-        "speaking_rate": 1.0,
-    },
-    "SCHOLAR_EMRIS": {
-        "voice": EMRIS_VOICE,
-        "description": "Quick, precise scholar",
-        "speaking_rate": 1.0,
-    },
+@dataclass(frozen=True)
+class VoiceConfig:
+    voice: str
+    speaking_rate: float
+
+
+VOICES: dict[str, str] = {
+    "DM_NARRATOR": os.getenv("INWORLD_VOICE_DM", ""),
+    "GUILDMASTER_TORIN": os.getenv("INWORLD_VOICE_TORIN", ""),
+    "ELDER_YANNA": os.getenv("INWORLD_VOICE_YANNA", ""),
+    "SCHOLAR_EMRIS": os.getenv("INWORLD_VOICE_EMRIS", ""),
 }
 
-EMOTION_RATE: dict[str, float] = {
+DEFAULT_VOICE = "DM_NARRATOR"
+
+EMOTION_RATES: dict[str, float] = {
     "calm": 1.0,
     "neutral": 1.0,
     "angry": 0.9,
@@ -46,12 +35,10 @@ EMOTION_RATE: dict[str, float] = {
     "urgent": 1.1,
 }
 
+EMOTIONS: list[str] = sorted(EMOTION_RATES.keys())
 
-def get_voice_config(character: str, emotion: str = "neutral") -> dict[str, str | float]:
-    entry = VOICES.get(character, VOICES["dm_narrator"])
-    base_rate = float(entry.get("speaking_rate", 1.0))
-    emotion_modifier = EMOTION_RATE.get(emotion.lower(), 1.0)
-    return {
-        "voice": entry["voice"],
-        "speaking_rate": base_rate * emotion_modifier,
-    }
+
+def get_voice_config(character: str, emotion: str = "neutral") -> VoiceConfig:
+    voice = VOICES.get(character, VOICES[DEFAULT_VOICE])
+    rate = EMOTION_RATES.get(emotion.lower(), 1.0)
+    return VoiceConfig(voice=voice, speaking_rate=rate)

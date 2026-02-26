@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 
-export type SessionState = "idle" | "connecting" | "connected" | "error";
+export type TokenState = "idle" | "fetching" | "ready" | "error";
 
 interface TokenResponse {
   token: string;
@@ -10,15 +10,15 @@ interface TokenResponse {
   room_name: string;
 }
 
-export function useVoiceSession(playerId: string) {
-  const [state, setState] = useState<SessionState>("idle");
+export function useSessionToken(playerId: string) {
+  const [state, setState] = useState<TokenState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | undefined>(undefined);
   const [serverUrl, setServerUrl] = useState<string | undefined>(undefined);
 
-  const connect = useCallback(
+  const fetchToken = useCallback(
     async (roomName: string) => {
-      setState("connecting");
+      setState("fetching");
       setError(null);
 
       try {
@@ -36,7 +36,7 @@ export function useVoiceSession(playerId: string) {
         const data: TokenResponse = await res.json();
         setToken(data.token);
         setServerUrl(data.url);
-        setState("connected");
+        setState("ready");
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Connection failed";
         setError(msg);
@@ -46,11 +46,11 @@ export function useVoiceSession(playerId: string) {
     [playerId],
   );
 
-  const disconnect = useCallback(() => {
+  const reset = useCallback(() => {
     setToken(undefined);
     setServerUrl(undefined);
     setState("idle");
   }, []);
 
-  return { state, error, token, serverUrl, connect, disconnect };
+  return { state, error, token, serverUrl, fetchToken, reset };
 }

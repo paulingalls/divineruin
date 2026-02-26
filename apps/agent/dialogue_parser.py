@@ -7,6 +7,11 @@ TAG_PATTERN = re.compile(
     re.DOTALL,
 )
 
+DEFAULT_CHARACTER = "DM_NARRATOR"
+DEFAULT_EMOTION = "neutral"
+
+MAX_TAG_LENGTH = 50
+
 
 @dataclass
 class Segment:
@@ -19,8 +24,8 @@ async def parse_dialogue_stream(
     text_stream: AsyncIterable[str],
 ) -> AsyncGenerator[Segment, None]:
     buffer = ""
-    current_character = "dm_narrator"
-    current_emotion = "neutral"
+    current_character = DEFAULT_CHARACTER
+    current_emotion = DEFAULT_EMOTION
     in_dialogue = False
 
     async for chunk in text_stream:
@@ -30,10 +35,9 @@ async def parse_dialogue_stream(
             if in_dialogue:
                 end_quote = buffer.find('"')
                 if end_quote == -1:
-                    if buffer:
-                        text = buffer
-                        buffer = ""
-                        yield Segment(current_character, current_emotion, text)
+                    text = buffer
+                    buffer = ""
+                    yield Segment(current_character, current_emotion, text)
                     break
 
                 text = buffer[:end_quote]
@@ -41,15 +45,15 @@ async def parse_dialogue_stream(
                 in_dialogue = False
                 if text:
                     yield Segment(current_character, current_emotion, text)
-                current_character = "dm_narrator"
-                current_emotion = "neutral"
+                current_character = DEFAULT_CHARACTER
+                current_emotion = DEFAULT_EMOTION
                 continue
 
             match = TAG_PATTERN.search(buffer)
             if match:
                 before = buffer[:match.start()]
                 if before.strip():
-                    yield Segment("dm_narrator", "neutral", before)
+                    yield Segment(DEFAULT_CHARACTER, DEFAULT_EMOTION, before)
 
                 current_character = match.group(1)
                 current_emotion = match.group(2)
@@ -57,24 +61,24 @@ async def parse_dialogue_stream(
                 in_dialogue = True
                 continue
 
-            if "[" in buffer:
-                bracket_pos = buffer.index("[")
-                before = buffer[:bracket_pos]
+            bracket_pos = buffer.find("[")
+            if bracket_pos != -1:
                 remaining = buffer[bracket_pos:]
 
-                if len(remaining) < 30:
+                if len(remaining) < MAX_TAG_LENGTH:
+                    before = buffer[:bracket_pos]
                     if before.strip():
-                        yield Segment("dm_narrator", "neutral", before)
+                        yield Segment(DEFAULT_CHARACTER, DEFAULT_EMOTION, before)
                     buffer = remaining
                     break
 
+                before = buffer[:bracket_pos + 1]
                 if before.strip():
-                    yield Segment("dm_narrator", "neutral", before)
-                yield Segment("dm_narrator", "neutral", remaining[0])
-                buffer = remaining[1:]
+                    yield Segment(DEFAULT_CHARACTER, DEFAULT_EMOTION, before)
+                buffer = buffer[bracket_pos + 1:]
                 continue
 
-            yield Segment("dm_narrator", "neutral", buffer)
+            yield Segment(DEFAULT_CHARACTER, DEFAULT_EMOTION, buffer)
             buffer = ""
             break
 

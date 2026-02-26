@@ -3,7 +3,6 @@ import { Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
-  registerGlobals,
   LiveKitRoom,
   useConnectionState,
   useVoiceAssistant,
@@ -11,27 +10,24 @@ import {
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { useVoiceSession } from "@/hooks/useVoiceSession";
+import { useSessionToken } from "@/hooks/useSessionToken";
 import { Spacing } from "@/constants/theme";
-
-registerGlobals();
 
 const ROOM_NAME = "divineruin-session";
 const PLAYER_ID = "player-1";
 
+const STATUS_LABELS: Record<string, string> = {
+  connecting: "Entering the world...",
+  connected: "Connected",
+  disconnected: "Disconnected",
+  reconnecting: "Reconnecting...",
+  signalReconnecting: "Reconnecting...",
+};
+
 function SessionContent({ onLeave }: { onLeave: () => void }) {
   const connectionState = useConnectionState();
   const voiceAssistant = useVoiceAssistant();
-
   const agentState = voiceAssistant.state;
-
-  const STATUS_LABELS: Record<string, string> = {
-    connecting: "Entering the world...",
-    connected: "Connected",
-    disconnected: "Disconnected",
-    reconnecting: "Reconnecting...",
-    signalReconnecting: "Reconnecting...",
-  };
   const statusLabel = STATUS_LABELS[connectionState] ?? connectionState;
 
   return (
@@ -56,15 +52,15 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
 
 export default function SessionScreen() {
   const router = useRouter();
-  const { state, error, token, serverUrl, connect, disconnect } =
-    useVoiceSession(PLAYER_ID);
+  const { state, error, token, serverUrl, fetchToken, reset } =
+    useSessionToken(PLAYER_ID);
 
   useEffect(() => {
-    connect(ROOM_NAME);
-  }, [connect]);
+    fetchToken(ROOM_NAME);
+  }, [fetchToken]);
 
   const handleLeave = () => {
-    disconnect();
+    reset();
     router.back();
   };
 
@@ -86,7 +82,7 @@ export default function SessionScreen() {
     );
   }
 
-  if (state !== "connected" || !token || !serverUrl) {
+  if (state !== "ready" || !token || !serverUrl) {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>

@@ -1,9 +1,12 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { registerGlobals } from '@livekit/react-native';
 import React from 'react';
 import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
+
+registerGlobals();
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();

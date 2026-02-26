@@ -1,9 +1,9 @@
 import time
+import logging
 from latency import TurnTimer
 
 
 def test_turn_timer_logs(caplog):
-    import logging
     caplog.set_level(logging.INFO, logger="divineruin.latency")
 
     timer = TurnTimer()

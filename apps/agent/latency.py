@@ -7,24 +7,15 @@ logger = logging.getLogger("divineruin.latency")
 class TurnTimer:
     def __init__(self) -> None:
         self._stages: list[tuple[str, float]] = []
-        self._start: float = 0.0
 
     def start(self) -> None:
-        self._stages = []
-        self._start = time.perf_counter()
-        self._mark("turn_start")
+        self._stages = [("turn_start", time.perf_counter())]
 
     def mark(self, stage: str) -> None:
-        self._mark(stage)
-
-    def _mark(self, stage: str) -> None:
         self._stages.append((stage, time.perf_counter()))
 
     def finish(self) -> None:
-        self._mark("turn_end")
-        self._log()
-
-    def _log(self) -> None:
+        self.mark("turn_end")
         if len(self._stages) < 2:
             return
 

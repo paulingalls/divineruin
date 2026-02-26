@@ -1,17 +1,16 @@
-import asyncio
 import logging
 from collections.abc import AsyncIterable, AsyncGenerator
-from typing import Any, Coroutine
+from typing import Any
 
 from livekit import rtc, agents
-from livekit.agents import AgentServer, AgentSession, Agent, room_io, ModelSettings
+from livekit.agents import AgentServer, AgentSession, Agent, ModelSettings
 from livekit.plugins import silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from livekit.plugins import anthropic, deepgram, inworld
 
 from prompts import SYSTEM_PROMPT
 from voices import get_voice_config
-from dialogue_parser import parse_dialogue_stream, Segment
+from dialogue_parser import parse_dialogue_stream
 from latency import TurnTimer
 
 logging.basicConfig(level=logging.INFO)
@@ -37,11 +36,8 @@ class DungeonMasterAgent(Agent):
         first_frame = True
 
         async for segment in parse_dialogue_stream(text):
-            voice_cfg = get_voice_config(segment.character, segment.emotion)
-            voice_id = str(voice_cfg["voice"])
-            speaking_rate = float(voice_cfg["speaking_rate"])
-
-            segment_tts = _make_tts(voice=voice_id, speaking_rate=speaking_rate)
+            cfg = get_voice_config(segment.character, segment.emotion)
+            segment_tts = _make_tts(voice=cfg.voice, speaking_rate=cfg.speaking_rate)
 
             async with segment_tts.synthesize(segment.text) as stream:
                 async for ev in stream:

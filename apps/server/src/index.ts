@@ -6,14 +6,24 @@ const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
 
-const roomService = new RoomServiceClient(
-  LIVEKIT_URL.replace("wss://", "https://"),
-  LIVEKIT_API_KEY,
-  LIVEKIT_API_SECRET,
-);
+function createRoomService(): RoomServiceClient | null {
+  if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
+    return null;
+  }
+  return new RoomServiceClient(
+    LIVEKIT_URL.replace("wss://", "https://"),
+    LIVEKIT_API_KEY,
+    LIVEKIT_API_SECRET,
+  );
+}
 
-async function handleLivekitToken(req: Request): Promise<Response> {
-  const body = await req.json() as { player_id?: string; room_name?: string };
+const roomService = createRoomService();
+
+export async function handleLivekitToken(req: Request): Promise<Response> {
+  const body = (await req.json()) as {
+    player_id?: string;
+    room_name?: string;
+  };
   const { player_id, room_name } = body;
 
   if (!player_id || !room_name) {
@@ -23,7 +33,7 @@ async function handleLivekitToken(req: Request): Promise<Response> {
     );
   }
 
-  if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
+  if (!roomService) {
     return Response.json(
       { error: "LiveKit credentials not configured" },
       { status: 500 },
@@ -32,8 +42,11 @@ async function handleLivekitToken(req: Request): Promise<Response> {
 
   try {
     await roomService.createRoom({ name: room_name });
-  } catch {
-    // Room may already exist — that's fine
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes("already exists") && !msg.includes("already being created")) {
+      console.error(`Failed to create LiveKit room "${room_name}":`, msg);
+    }
   }
 
   const token = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
@@ -75,7 +88,7 @@ const server = serve({
       },
     },
 
-    "/api/hello/:name": async req => {
+    "/api/hello/:name": async (req) => {
       const name = req.params.name;
       return Response.json({
         message: `Hello, ${name}!`,
