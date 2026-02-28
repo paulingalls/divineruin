@@ -38,6 +38,139 @@ Over eons — timescales that dwarf even the gods' long memory — something gre
 
 The Wellspring didn't disappear — it was consumed. The raw creative power was absorbed and repurposed into something entirely alien. The Hollow is what remains: a vast, mindless, ever-expanding anti-reality that fills any available space the way water fills a crack.
 
+#### The Wellspring's Nature — Can Creation Be Reclaimed?
+
+*The deep endgame question that divides the gods.*
+
+When Veythar pierced the Veil, the Lorekeeper glimpsed something that has haunted the god ever since: **the Wellspring is still there**. Buried within the Hollow, entangled with it, consumed by it — but not gone. Not entirely.
+
+For one brief, incandescent moment before the Hollow poured through, Veythar felt the Wellspring's presence: infinite creative potential, the raw energy from which Aethos and its gods were forged. It was exactly what the ancient texts promised — pure, formless power capable of reshaping reality itself.
+
+And then the connection broke, and the Hollow followed.
+
+**The central question:** If the Wellspring still exists within the Hollow, is it recoverable? Can the original creative energy be separated from the alien corruption that has grown around it? And if it can be reclaimed, what would that make possible?
+
+This question is the fault line that could split the pantheon.
+
+**The Factions Within the Gods**
+
+The gods have not openly debated this — not yet. But privately, in the conversations they have away from mortal eyes, factions are forming.
+
+**The Sealers** — Led by Mortaen, Valdris, and Thyra
+
+Believe the only solution is to seal the Veil permanently, even if it means abandoning any hope of reaching the Wellspring. Their reasoning:
+
+- The Hollow is too dangerous. Any attempt to reach the Wellspring requires going *through* the Hollow, and there's no guarantee that mortal or divine forces could survive the journey.
+- The Wellspring may be irrecoverably corrupted. If the creative energy has been fundamentally altered by eons of entanglement with the Hollow, reclaiming it might not be possible — or worse, what returns might not be the Wellspring at all.
+- Even if it could be reclaimed, the risk isn't worth it. The gods are fading, yes, but mortals are thriving. The original design was for the gods to step back and let mortal civilization inherit the world. Trying to reverse that process — extending divine existence indefinitely — violates the Architects' intent.
+
+Mortaen speaks for this faction: *"The Wellspring was sealed for a reason. The Architects finished their work and closed the door. Veythar opened it, and look what followed. We should close it again and accept what we were always meant to accept."*
+
+**The Reclaimers** — Privately championed by Veythar, with quiet support from Aelora and Zhael
+
+Believe that reaching the Wellspring is not only possible but necessary. Their reasoning:
+
+- The gods' knowledge is irreplaceable. If the gods fade completely, mortals will inherit a world they don't fully understand, vulnerable to threats they can't perceive. The Wellspring could restore divine power and preserve that knowledge indefinitely.
+- The Wellspring represents the answer to the Hollow itself. If the original creative energy could be separated and purified, it might provide the key to not just sealing the Veil but *reversing* the corruption — reclaiming the lost lands, restoring what was consumed.
+- Mortals deserve a future without existential dread. Thirty years of slow retreat, constant loss, and fear of annihilation is no way to live. If there's even a chance the Wellspring could end the invasion permanently, it's worth the risk.
+
+Veythar won't speak for this faction openly (the Lorekeeper's credibility is too damaged), but Aelora has begun to hint at it: *"We owe it to the mortals to explore every option. If there's a way to end this war — truly end it, not just delay the inevitable — we have a responsibility to try."*
+
+**The Pragmatists** — Kaelen, Orenthel, Syrath
+
+Don't take a firm position yet. Their reasoning:
+
+- The immediate crisis is the Hollow's advance. Theological debates about the Wellspring are a distraction from the urgent work of holding the line, saving lives, and buying time.
+- The question is premature. No one currently has the capability to reach the Voidmaw's center, let alone pierce the Hollow to access the Wellspring. Debating what to do with something you can't reach is pointless.
+- More information is needed. Syrath, in particular, is investigating independently — not to advocate for either side, but to understand what's actually possible before committing to a position.
+
+Kaelen's stance: *"Win the war first. Survive. Then we can argue about what comes next."*
+
+**The Implications**
+
+If this debate becomes public — if mortals learn that the gods are divided on whether to seal the Veil or attempt to reclaim the Wellspring — it could fracture the already fragile unity against the Hollow.
+
+Some factions would side with the Sealers: close the wound, accept the gods' fading, build a future on mortal terms.
+
+Others would side with the Reclaimers: reach for the Wellspring, restore the gods, reclaim what was lost.
+
+And the choice wouldn't just be philosophical — it would be practical. Resources, military focus, research priorities, even individual player goals would shift depending on which path the community pursued.
+
+**What the Wellspring Might Actually Be**
+
+No one knows for certain. Veythar's glimpse was brief and filtered through the moment of the Sundering. The Lorekeeper's memories of it are colored by desperation, hope, and the immediate horror that followed.
+
+**Theory One: The Wellspring is dormant but intact.**
+
+The creative energy is still there, suspended within the Hollow like a pearl in an oyster. It hasn't been destroyed or fundamentally altered — it's simply *trapped*. If someone could reach it and extract it, the original power would be recoverable.
+
+This is Veythar's hope. The Lorekeeper believes that with the right tools, the right ritual, and enough preparation, a divine or mortal champion could pierce the Hollow, reach the Wellspring's core, and draw on its power to either restore the gods or seal the Veil permanently from within.
+
+**Theory Two: The Wellspring has been consumed and repurposed.**
+
+The Hollow didn't grow *around* the Wellspring — it grew *from* it. The creative energy was metabolized, broken down, and rebuilt into the alien anti-reality that now exists beyond the Veil. The Wellspring no longer exists as a discrete entity; it's been fully integrated into the Hollow's structure.
+
+If this is true, there's nothing to reclaim. The Wellspring is gone, and what Veythar sensed was simply the Hollow's vast, incomprehensible presence.
+
+Mortaen suspects this is the truth, though the god has no proof.
+
+**Theory Three: The Wellspring is conscious and chose this.**
+
+The most disturbing theory, whispered only by Zhael and a few scholars who study the oldest texts: What if the Wellspring isn't a passive source of energy? What if it's an entity with will, purpose, and agency?
+
+The original Architects drew on the Wellspring to create Aethos, but the texts never describe the Wellspring as a thing — they describe it as a state, a presence, a potential. What if the Wellspring *let* itself be used, and what if the Hollow is its response to that use?
+
+In this interpretation, the Hollow isn't a corruption or a parasite. It's the Wellspring's answer to the Architects: *You took from me to build your world. Now I will take from your world to build mine.*
+
+If true, the Hollow isn't mindless. It's intentional. And reaching the Wellspring wouldn't mean reclaiming lost power — it would mean confronting an intelligence vast enough to reshape reality and asking it to stop.
+
+Zhael has mentioned this theory exactly once, in a private conversation with Veythar. The Lorekeeper's response was immediate and visceral: *"No. That's not what I felt. It was creation, not will. Don't spread that idea."*
+
+Zhael hasn't mentioned it again. But the Fatespinner wonders.
+
+**What Reaching the Wellspring Would Require**
+
+If the gods or mortals chose to pursue the Wellspring, the undertaking would be an endgame campaign of staggering difficulty:
+
+1. **Reach the Voidmaw's center.** No one has ever done this. The Voidmaw is the most corrupted, dangerous, reality-warped location in Aethos. The journey would require navigating Hollowed territory, surviving encounters with the Named, and resisting the psychological and physical toll of extended exposure to the Hollow.
+
+2. **Pierce the boundary between Aethos and the Hollow.** The Veil is sundered, but it's not gone. There's still a boundary, thinner and more permeable than before, but real. Crossing it fully — moving from Aethos into the Hollow's native space — is a threshold no mortal or god has crossed and returned from.
+
+3. **Survive the Hollow's interior.** What exists on the other side of the Veil is unknown. Veythar caught a glimpse during the Sundering, but only a glimpse. The Hollow's internal structure, its rules (if it has rules), its inhabitants (if "inhabitants" is the right word) are a complete mystery.
+
+4. **Locate the Wellspring's core.** Assuming it exists and can be found. The Hollow is vast — possibly infinite. Searching it for a specific thing is like searching the ocean for a single stone.
+
+5. **Extract or interact with the Wellspring.** This would require knowledge, tools, and power on a scale that currently doesn't exist. Veythar's original ritual was designed to *open* a connection, not to *extract* energy from an active, entangled source.
+
+The undertaking would require cooperation between the gods, coordination across every mortal faction, the recovery of Veythar's lost artifacts, the combined knowledge of every mage and scholar in Aethos, and a level of divine intervention unseen since the world's creation.
+
+It might not be possible at all.
+
+**The Choice the Players Will Face**
+
+At some point — likely deep into the game's seasonal narrative — the truth about the Wellspring will become common knowledge. The community will learn that it might be reachable, that it might offer a solution, and that the gods are divided on whether to try.
+
+The choice won't be a simple vote. It will emerge from player behavior:
+
+- Do players pursue questlines that focus on **sealing the Veil** (gathering Veil-ward artifacts, strengthening reality's boundaries, preparing for a final ritual to close the wound permanently)?
+- Or do they pursue questlines that focus on **reaching the Wellspring** (recovering Veythar's research, mapping the Hollow's interior, preparing for an expedition into the Voidmaw)?
+
+Both paths would be available. Both would require massive coordination. And the path the majority of players commit to would determine the endgame's direction.
+
+**The Payoff**
+
+If the community chooses to **seal the Veil:**
+- The gods fade as intended, but mortal civilization endures, stronger and more self-sufficient. The war ends not with victory but with closure — the wound is sealed, the Hollow is contained, and Aethos moves into a post-divine age.
+- Veythar faces judgment for the Sundering. The community decides the Lorekeeper's fate.
+- The world is permanently changed, but it survives.
+
+If the community chooses to **reach the Wellspring:**
+- The endgame becomes a campaign into the Voidmaw, through the Hollow, to the Wellspring's core. The difficulty is extreme, the stakes existential.
+- If successful, the Wellspring is reclaimed (or at least accessed). What happens next depends on what it actually is: dormant power to be harnessed, corrupted energy that can't be saved, or something conscious that must be negotiated with.
+- The gods could be restored. The Hollow could be purged. Aethos could be fundamentally transformed. Or the attempt could fail catastrophically, shattering the world a second time.
+
+Either way, the Wellspring isn't just a lore detail. It's the question at the heart of the entire game: Do you accept loss and move forward, or do you fight to reclaim what was taken, no matter the cost?
+
 ### The Creatures of the Hollow
 
 The entities that emerge from the Sundered Veil are not creatures in any meaningful sense. They are **expressions** of the Hollow — extensions, tendrils, antibodies of something incomprehensibly vast. They do not have individual consciousness, goals, or motivations. They do not communicate. They do not negotiate. They do not even appear to perceive mortals or gods as distinct from the landscape they consume.
@@ -314,6 +447,102 @@ Veythar's decision to hide the truth is not purely self-preservation. It is driv
 **The reveal:** The truth becomes undeniable. How it emerges could vary — a discovered artifact, a confession forced by circumstances, another god piecing it together. This is a season-defining moment.
 
 **Post-reveal:** Veythar's response defines the next narrative arc. Repentance? Doubling down? Attempting to finish what was started? Begging for help? The player community's reaction to Veythar — forgiveness, rage, pragmatic alliance, condemnation — drives emergent factional storytelling.
+
+### Veythar's Artifacts — The Tools of the Sundering
+
+*The instruments used to pierce the Veil.*
+
+Veythar didn't shatter the Veil with a single spell or a moment of divine will. The work took millennia. The Lorekeeper created a sequence of artifacts and rituals, each designed to weaken the Veil incrementally at a specific location where it was already thin. Some artifacts were used and discarded. Others remain active, their purpose partially fulfilled but not complete. A few were never deployed — backup plans that Veythar prepared but didn't need.
+
+These artifacts are now scattered across Aethos, hidden in the places Veythar stashed them or lost in the chaos of the Sundering. They are some of the most dangerous objects in the world — not because they're weapons in the traditional sense, but because they interact with the fundamental structure of reality. In the wrong hands (or the right hands with the wrong intent), they could finish what Veythar started.
+
+**Design principle for these artifacts:** They should feel *old* and *wrong*. Not corrupted by the Hollow, but operating on principles that predate modern magic. When players encounter them, the DM should describe them in ways that emphasize their alienness — materials that don't match anything else in the world, scripts in Veythar's personal notation (not standard arcane language), and a sense that these objects were never meant to be used by anyone except their creator.
+
+#### The Resonance Lattice
+
+**What it is:** A network of crystalline nodes, each about the size of a fist, designed to be placed in a geometric pattern across a large area. When activated in sequence, the nodes create a resonance field that makes the Veil "visible" to mortal senses — a way to study the boundary between Aethos and what lies beyond.
+
+**What Veythar used it for:** Mapping the Veil's structure. The Lorekeeper deployed the Lattice across the region around Aelindra over the course of centuries, gradually building a complete map of where the Veil was thinnest, where it was strongest, and where it could most easily be pierced.
+
+**Where it is now:** Most of the nodes were in or around Aelindra and are now lost in the Voidmaw or scattered across the Ashmark. A few were placed further afield as reference points and may still be active, buried in remote locations. If players find one and activate it (accidentally or intentionally), they'll see the Veil — a shimmer in the air, like heat haze, but wrong. Disturbing. The sight of it is unsettling even to those who don't understand what they're looking at.
+
+**Game function:** Mid-to-late game discovery. Finding a Lattice node and learning what it does is a major clue in the mystery questline. Multiple nodes could be recovered and assembled to recreate part of Veythar's map, showing players exactly where the Veil is weakest — information that could be used to seal breaches or, horrifyingly, to create new ones.
+
+**Audio signature:** The nodes hum when active — a sound just barely below the threshold of hearing, more felt than heard. Spending time near an active node causes headaches, a sense of pressure behind the eyes, and vivid, intrusive dreams.
+
+#### The Lexicon Unmade
+
+**What it is:** A book, but not in any traditional sense. The Lexicon is a compilation of words and symbols that *don't exist in any known language*. Veythar created this vocabulary specifically to describe concepts related to the Veil and the Wellspring — ideas so alien to mortal and divine experience that no existing language had terms for them.
+
+**What Veythar used it for:** Research notes. The Lexicon is both an artifact and a cipher — the key to understanding Veythar's other work. The Lorekeeper's journals, ritual instructions, and technical schematics are all written using Lexicon terms. Without it, even a brilliant mage would struggle to parse what Veythar's notes are describing.
+
+**Where it is now:** The original Lexicon was kept in Veythar's personal study in Aelindra and is now presumed lost in the Voidmaw. But Veythar created copies — partial versions, early drafts — and distributed them to trusted followers (who didn't know what they were really studying). Some of these copies survived the fall and are now scattered:
+- One is in the personal collection of an elderly Aelindran refugee, who treasures it as a relic of the lost city but has never been able to read it.
+- Another was sold to a merchant in the Accord of Tides, who displays it as a curiosity in his shop — "a book in a language no one recognizes."
+- A third is held by the Thornwardens, who found it in a ruin and assumed it was a druidic text. They've been unsuccessfully trying to translate it for twenty years.
+
+**Game function:** The Lexicon is the Rosetta Stone of the mystery. Players who acquire it (or fragments of it) can begin deciphering Veythar's other artifacts and writings. It's not a weapon or a tool — it's *knowledge*, and in a game about discovering hidden truth, that makes it one of the most valuable items in the world.
+
+**A sample entry from the Lexicon:**
+- **Veilwright (vāl-rīt):** *(archaic, divine)* The act of intentionally thinning or weakening a boundary between discrete realities. See also: *threshold work, boundary erosion, the second sin*.
+
+#### The Attenuation Spheres
+
+**What they are:** A set of seven fist-sized orbs made from a dark, non-reflective material that seems to absorb light. Each sphere is inscribed with layered glyphs that shift and rearrange when observed, as if the surface is rewriting itself in real time.
+
+**What Veythar used them for:** Weakening the Veil directly. The spheres were placed in a specific pattern around the site where Veythar intended to pierce the Veil. When activated in sequence, they created a localized field that thinned the boundary, making the final breach possible. Think of them as the drill bits; the ritual that followed was the drill press.
+
+**Where they are now:**
+- **Four spheres** were at the site of the breach (beneath Aelindra) and are now in the Voidmaw — likely destroyed or consumed by the Hollow. If they survived, retrieving them would require an expedition into the most dangerous location in Aethos.
+- **Two spheres** were held in reserve in different locations (Veythar's contingency planning). One is hidden in the Umbral Deep, in a chamber Veythar sealed with protections that only the Lorekeeper or someone with equivalent knowledge could bypass. The other is in the Greyvale Ruins — this is why Hollow corruption has been spreading there recently. The sphere is active (or partially active), thinning the Veil locally, and the Hollow is leaking through.
+- **One sphere** was never deployed. Veythar kept it as a prototype and later hid it in a location even the Lorekeeper's most trusted followers don't know. This sphere could be anywhere — and if found, it would represent a terrifying temptation. In the hands of someone knowledgeable and desperate, it could be used to attempt another breach.
+
+**Game function:**
+- **The Greyvale sphere** is mid-game content. The MVP story arc could involve discovering that an Attenuation Sphere is causing the Hollow corruption in the Greyvale. Destroying it stops the corruption spread — a significant victory that also introduces players to the fact that Veythar's artifacts are still out there, still active, still dangerous.
+- **The Umbral Deep sphere** is late-game content. Recovering it requires solving the mystery of Veythar's sealed vault, surviving the Deep's psychological weight, and deciding what to do with an object that could reopen the Veil if misused.
+- **The lost prototype** is endgame content. A legendary hunt for an artifact whose location is hinted at in scattered clues, riddles, and contradictory accounts.
+
+**Audio signature:** The spheres emit no sound when inert. When active, they produce a low, almost subsonic pulse — like a heartbeat, but slower. Once per minute. Perfectly regular. Spending time near an active sphere makes people's own heartbeats synchronize with its rhythm, a deeply unsettling sensation.
+
+#### The Invocation of Aper ture
+
+**What it is:** Not a physical object but a ritual — a sequence of spoken words, gestures, and channeled energy that Veythar designed to be the final step in piercing the Veil. The Invocation had to be performed at the exact moment when all other conditions were met: the Resonance Lattice mapping the target point, the Attenuation Spheres weakening the boundary, the celestial alignments creating favorable resonance.
+
+**What Veythar used it for:** The Sundering itself. Veythar performed the Invocation in a hidden chamber deep beneath Aelindra, at the moment when thirty centuries of preparation converged. The ritual worked exactly as designed — for one brief, terrible moment, Veythar touched the Wellspring. And then the Hollow followed.
+
+**Where it is now:** The Invocation exists in two places:
+- **In Veythar's memory.** The Lorekeeper knows the words, the gestures, the principles. Veythar could perform it again if the circumstances were right — and that fact terrifies the god. The knowledge is a weight, a temptation, a responsibility. If the truth comes out, other gods may demand that Veythar share the Invocation so it can be studied, understood, and guarded against. Veythar has refused, claiming the knowledge is too dangerous to spread. In truth, the Lorekeeper is afraid that if others understand it, they'll realize how close Veythar came to succeeding — and how possible it might be to try again.
+- **In Veythar's written notes**, hidden in the Sealed Vaults beneath the ruins of Aelindra. The complete ritual is documented in excruciating detail: the theory, the steps, the contingencies, the materials required, the expected outcomes. If players reach the Vaults and recover these notes, they'll possess the knowledge to attempt a second Sundering — or to understand the first one well enough to find a way to reverse it.
+
+**Game function:** The Invocation is the ultimate secret. Discovering that it was a ritual, not a natural disaster, is a mid-game revelation. Learning the ritual's details is late-game content. Deciding what to do with that knowledge — destroy it, share it, use it, weaponize it, attempt to reverse-engineer a way to *seal* the Veil using the same principles — is an endgame choice with massive implications.
+
+**Narrative weight:** The Invocation should never be described casually. When players encounter fragments of it (a line from Veythar's notes, a gesture depicted in ancient Aelindran art, a whispered rumor from a god), the DM should treat it with gravity. This is the spell that broke the world. Even incomplete knowledge of it is dangerous.
+
+#### The Sightstone
+
+**What it is:** A small, polished gem that allows the bearer to see beyond the Veil — not into the Hollow itself, but to perceive the *thinness* of the Veil at any given location. To someone holding the Sightstone, the Veil appears as a faint shimmer in the air, and areas where it's thin glow with a sickly, pulsing light.
+
+**What Veythar used it for:** Field verification. After the Resonance Lattice provided a map, Veythar used the Sightstone to personally inspect sites and confirm the readings. The Lorekeeper carried it for centuries, using it to identify the optimal location for the breach.
+
+**Where it is now:** Veythar still has it. The god carries the Sightstone in secret, using it to monitor the Veil's condition across Aethos and to search for places where it might be weakening further. Veythar's public explanation for these travels is "investigating Hollow incursions" — which isn't entirely a lie, but it's not the full truth either.
+
+**Game function:** The Sightstone introduces a moral dilemma. If players learn that Veythar possesses an artifact that can see where the Veil is weak, they can demand the god share it — it would be invaluable for predicting where the Hollow might breach next. But Veythar will resist, because the Sightstone also reveals evidence of the Lorekeeper's work. Thin spots in the Veil don't occur naturally in the patterns Veythar created. An expert studying the Sightstone's readings could identify artificial thinning and trace it back to deliberate action.
+
+If Veythar is forced to give up the Sightstone (through player pressure, divine intervention, or political maneuvering), it becomes one of the key pieces of evidence in the mystery's resolution.
+
+**Audio signature:** The Sightstone makes no sound, but people who use it report auditory hallucinations: whispers in languages they don't recognize, the distant sound of something vast breathing, a faint musical tone that rises and falls like a warning siren. These effects fade when the stone is set aside, but heavy users report hearing the whispers even when the Sightstone isn't present — a sign that prolonged exposure to Veil-sight damages the mind.
+
+#### The Echoes — Unintentional Artifacts
+
+Not every artifact Veythar created was intentional. The process of weakening the Veil left **residue** — objects, locations, and even people that were touched by the Lorekeeper's work and changed in subtle, irreversible ways.
+
+**Veil-Touched Crystals:** In the regions where Veythar placed Resonance Lattice nodes, natural crystal formations absorbed trace amounts of the resonance energy. These crystals now hum faintly, glow in the dark, and cause minor reality distortions when handled. Merchants sell them as curiosities, unaware of what they are. Mages study them, confused by their properties. Players who collect enough of them may begin to notice patterns in where they were found — a breadcrumb trail leading back to Veythar's activities.
+
+**The Marked:** A handful of people — perhaps a dozen across all of Aethos — were present at key moments in Veythar's work. They stood too close to an active Attenuation Sphere, or walked through a space where the Veil had been thinned, or handled one of Veythar's prototype artifacts. They don't know what happened to them. But they've changed. They dream of places that don't exist. They sometimes hear whispers in the static between thoughts. They can sense, without knowing why, when the Veil is thin nearby.
+
+Veythar knows about some of them and has quietly arranged for them to be monitored, relocated, or (in a few cases) "disappeared" when they started asking too many questions. Others remain undiscovered — time bombs of potential revelation. If a player character were to be Veil-touched (perhaps through contact with one of Veythar's artifacts), it would create a permanent, personal connection to the mystery.
+
+**The Threshold Sites:** Locations where Veythar performed preparatory rituals are subtly wrong. The air feels thicker. Sounds echo strangely. Compasses spin. Animals avoid the area. Locals tell stories about these places — "bad luck ground," "the hollow acre," "the place where things get lost" — but no one knows *why* the sites feel wrong. Scholars investigating these locations (including Valdris's agents and Syrath's spies) are slowly, independently mapping them — and if anyone assembles the full map, they'll see a pattern: a network of sites converging on Aelindra.
 
 ---
 
@@ -618,6 +847,139 @@ A ring of territory surrounding the Voidmaw that has been touched by the Hollow 
 **Audio landscape:** The sounds of a war zone layered with wrongness. Clashing weapons, shouted orders, the crackle of defensive magic — but underneath it all, the alien sounds of the Hollow bleeding through. Nature is dying here: trees are grey, water is still, animals have fled.
 
 **Game function:** High-level frontline content. Defensive missions, expeditions into Hollow-touched territory, the most intense combat encounters. The shifting boundary of the Ashmark drives seasonal narrative — territory lost and reclaimed.
+
+#### The Ashmark's History — Thirty Years of Slow Retreat
+
+*How the front line moved, and what was lost along the way.*
+
+The Ashmark is not a static line. It's a wound that has grown, slowly and relentlessly, since the moment Aelindra fell. The first months were chaos — no one understood what they were facing, no one knew how to fight it, no one knew where to draw the line. The first organized defensive positions weren't established until six months after the Sundering, and by then, the Hollow had already spread beyond anyone's ability to contain it.
+
+What followed was thirty years of slow, grinding retreat punctuated by desperate stands, miraculous holds, and inevitable losses.
+
+**Years 0-5: The Panic**
+
+The immediate aftermath of the Sundering. Aelindra fell in a single day, but the Hollow didn't stop there. Corruption spread outward from the Voidmaw like spilled ink, consuming the immediate surroundings — first the mountain valleys, then the lowlands, then the scattered farming communities that had supplied the city.
+
+Refugees fled south with stories no one believed. Military commanders tried to organize a response, but there was no precedent, no strategy, no understanding of what they were fighting. Early attempts to "retake Aelindra" ended in catastrophe — entire companies lost, sometimes without survivors to report what happened.
+
+The gods intervened directly during this period, more actively than they had in centuries. Kaelen personally led forces to hold key chokepoints. Orenthel's healers established field hospitals. Aelora coordinated the refugee crisis. But even divine intervention couldn't stop the spread — only slow it.
+
+**What was lost:** Aelindra itself. The Crown of Aethos. The northern valleys (the **Silverflow Basin**, known for its rivers and fertile soil). At least fifteen small towns and villages in the immediate surroundings. Estimated casualties: 40,000-50,000 in the first year alone.
+
+**Years 5-10: The First Line**
+
+After five years of chaotic retreat, the surviving civilizations finally managed to establish a defensive perimeter — the **First Line**, a network of fortifications roughly 50 miles south of the Voidmaw's center. This line held for three years, long enough for people to start believing it might be permanent.
+
+It wasn't.
+
+The Hollow adapted (or perhaps it simply accumulated enough mass to overwhelm static defenses). Veilrenders appeared for the first time during this period, and the massive corruption fields they projected made sections of the First Line uninhabitable. The line collapsed in segments — not overrun in a single battle, but slowly eroded until it could no longer be held.
+
+**What was lost:** The **Greystone Keeps**, a chain of fortified towns that formed the backbone of the First Line. The **Road of Founders**, a historic trade route. The **Memorial Forest**, a sacred grove where Thornwardens had buried their honored dead for a thousand years — now corrupted, its trees twisted and silent.
+
+**Casualties:** Estimates vary, but roughly 20,000 soldiers and civilians over the five-year period.
+
+**What this period taught:** Static defense doesn't work. The Hollow doesn't attack in ways that walls and trenches can stop. The strategy shifted from "hold the line" to "slow the advance and evacuate what can be saved."
+
+**Years 10-15: The Doctrine of Controlled Retreat**
+
+Military doctrine changed. The new strategy: establish fallback positions in depth, fight delaying actions, buy time for evacuations, and accept that territory will be lost. The goal wasn't to stop the Hollow — it was to make every mile it gained cost it time, and use that time to save lives.
+
+It worked, after a fashion. The rate of civilian casualties dropped. The rate of military casualties rose — soldiers volunteered for rearguard actions, knowing they were buying days or weeks for others to escape. The Ashmark's history from this period is full of last stands: companies that held a bridge for three days, garrisons that defended a town until the last civilian convoy cleared, scouts who stayed behind to map corruption spread and never returned.
+
+**What was lost:** The **Northern Reach settlements** — a string of mining towns, logging camps, and frontier villages. By year 15, everything north of what is now the modern Ashmark was either consumed or abandoned. The people who lived there became the **Northern Diaspora**, a refugee population that resettled across the southern regions and still carries the grief of displacement.
+
+**Casualties:** Roughly 30,000 over five years, but the ratio shifted — more soldiers, fewer civilians, as the doctrine prioritized evacuation.
+
+**Years 15-20: The Hold**
+
+For five years, the Ashmark barely moved. This is the period historians call **the Hold** — when it seemed, for a brief, precious window, that the advance had stopped.
+
+It hadn't. The Hollow was consolidating. Veilrenders were terraforming the consumed territories, converting them fully. The creatures were learning (or evolving, or being deployed strategically — no one knows which). The Named began to appear during this period: the Choir, the Still, the Architect. These weren't the mindless expressions of the early years. These were something else.
+
+The Hold gave the southern regions time to rebuild, to fortify, to prepare. Cities that had been overwhelmed by refugees began to integrate them. Farms adjusted to higher demand. The Keldaran Holds ramped up weapons production. The Dawnsworn expanded their healing network. It felt, almost, like normalcy might be possible.
+
+And then the advance resumed.
+
+**What was lost:** Psychologically, the Hold was devastating. People had started to hope. When the Ashmark began moving again, that hope collapsed. Trust in military leadership wavered. Theological debates intensified — if the gods couldn't stop this, what was the point of faith?
+
+**Years 20-25: The Second Push**
+
+The Hollow's advance resumed with increased intensity. Hollowed Knights appeared in significant numbers for the first time, and their tactical behavior made combat vastly more dangerous. The creatures started coordinating — not like an army, but like a system, each expression playing a role in a larger pattern.
+
+This period also saw the first **Ashmark rebellions** — communities on the frontier, exhausted and terrified, who refused evacuation orders, fortified their towns, and tried to hold against impossible odds. Some became martyrs, their stories told as examples of courage. Others became cautionary tales, their refusal to retreat costing not just their own lives but the lives of soldiers sent to rescue them.
+
+**What was lost:** The **Thornveld Outer Reaches** — the eastern edge of the forest, where corruption finally breached the natural barrier. The **Watchfire Peaks**, a mountain range that had served as an observation post. Several Drathian clan territories in the northern Steppe.
+
+**Casualties:** Approximately 25,000, with a spike in Hollowed Knight transformations — soldiers who fell in battle and rose as expressions. This was psychologically devastating, and it led to new battlefield doctrines: *never leave the dead behind, never leave the wounded if there's any chance of corruption*.
+
+**Years 25-30: The Modern Ashmark**
+
+The current state of the war. The Ashmark's boundary has stabilized somewhat — not because the Hollow has stopped, but because the defenders have learned how to manage a slow, ongoing retreat with maximum efficiency. The front line is now a network of mobile camps, rotating garrisons, and rapid-response units rather than static fortifications.
+
+Soldiers serve tours at the Ashmark (typically 6-12 months) and then rotate out. The turnover is necessary — extended exposure to the front causes psychological breakdown, even in the most hardened veterans. The Ashmark has its own culture now: dark humor, fatalistic camaraderie, rituals to mark survival, and a shared understanding that no one else truly understands what it's like unless they've been there.
+
+**What's being lost now:** The advance continues, but slowly. A few miles per year. Enough that you can measure it, not enough that you can see it happening day to day. The real losses now aren't territorial — they're people. The war has been grinding on for a generation. Veterans are aging. The next generation is stepping up, but they're doing so with less hope and more resignation.
+
+**The Ashmark in the present day:**
+
+- Population: Approximately 15,000-20,000 active soldiers, support staff, and camp followers at any given time (rotating).
+- Leadership: Joint command structure between Kaelen's martial orders, Aelora's logistics network, and independent military coalitions from the major regions.
+- Supply lines: Stretched thin. The Ashmark consumes resources at an unsustainable rate — food, weapons, medicine, morale.
+- Morale: Holding, barely. Soldiers believe in the mission (protect the south), but they no longer believe in victory. The goal now is survival and delay.
+
+#### The Lost Communities
+
+The Ashmark's thirty-year expansion consumed entire communities — not just buildings, but cultures, histories, and ways of life that no longer exist except in memory.
+
+**The Silverflow Basin Peoples**
+
+The basin was a breadbasket — grain, fruit orchards, livestock. The people there were farmers, millers, weavers. They had festivals for the planting and the harvest, marriage traditions involving river blessings, songs that are now only remembered by the diaspora.
+
+When the basin fell (years 0-3), the survivors scattered. Some went to the Accord of Tides, some to the Sunward Coast. They still identify as Basin folk, teach their children the old songs, keep the traditions alive. But the land itself is gone, and with it, the context that made those traditions make sense.
+
+A Silverflow wedding blessing references "the river's turn" — a specific bend in the Silverflow River where couples would exchange vows. The river is now corrupted, the bend consumed. The blessing is still spoken, but it's an echo of something that no longer exists.
+
+**The Greystone Keeps**
+
+A network of fortified towns built by Korath stonemasons three centuries ago. Known for their distinctive architecture: dark grey stone quarried from the local mountains, carved with defensive runes that were both functional magic and artistic expression.
+
+When the Keeps fell (years 7-10), the inhabitants — primarily Korath families with multi-generational ties to the region — became refugees with nowhere to go. Korath culture is rooted in place, in craftsmanship tied to specific stone and specific traditions. The Greystone refugees struggle in the south, where the stone is different, the architecture unfamiliar, the sense of displacement absolute.
+
+Some have tried to recreate Greystone techniques in new cities. It's not the same. The runes don't feel right carved into southern limestone. The buildings look like imitations. The older generation mourns; the younger generation doesn't fully understand what was lost, only that their parents are sad.
+
+**The Northern Clans**
+
+Not a single community but a collection of Drathian clans whose territories were in the far northern Steppe. These clans had their own dialects, their own hero-songs, their own genealogies stretching back a thousand years.
+
+When their territories fell (years 20-25), the clans had a choice: integrate with southern Drathian clans or maintain independence as landless nomads. Most chose integration, which meant subordinating their identities to larger, more established clans. Their histories are now footnotes in others' genealogies. Their songs are sung as "variants" of more common versions. They still exist, but their distinctiveness is being slowly erased by cultural absorption.
+
+A few clans chose independence, maintaining their identities as nomadic groups without territory. They're respected for their pride, but they're also pitied — a people without a place, defined entirely by what they've lost.
+
+#### The Stories the Ashmark Tells
+
+Thirty years of slow retreat has created a mythology. Songs, stories, and legends born from the war.
+
+**The Vigil of Greyhaven**
+
+A garrison town on the First Line that held for 40 days against impossible odds while evacuating civilians from surrounding farms. When the town finally fell, the last seven defenders barricaded themselves in the watchtower and kept fighting until the structure collapsed.
+
+No one survived to report what happened, but scouts found evidence: the tower had been defended to the last stone, and the bodies of dozens of Hollow expressions littered the ground around it. The defenders' names are unknown — they're honored collectively as **the Seven of Greyhaven**, and their story is sung in every tavern near the Ashmark.
+
+**The Song of Mara Threshold**
+
+A Dawnsworn healer who stayed behind at a field hospital when the evacuation order came, refusing to leave critically wounded soldiers. She held the hospital alone for three days, keeping patients alive and stable while rearguard forces bought time for a rescue.
+
+When the rescue arrived, they found Mara still working — exhausted, covered in blood (not all of it her patients'), having fought off two Hollow incursions with nothing but a scalpel and divine blessings. Every patient survived. Mara's response when thanked: *"It's the job."*
+
+She's still alive, still serving at the Ashmark, and deeply uncomfortable with being a legend. But the song is sung anyway, and young healers cite her as the reason they volunteered.
+
+**The Ones Who Walked Away**
+
+Not all Ashmark stories are heroic. There's a darker mythology: the deserters, the cowards, the ones who broke under the weight.
+
+Some walked away from their posts and were never seen again — lost to the Hollow, to the wilderness, or to self-imposed exile. Some abandoned their units mid-battle. A few betrayed their comrades (there are at least three documented cases of soldiers leading others into ambushes, though the motives are unclear — madness, corruption, or simple terror).
+
+These stories are told quietly, in whispers, because the Ashmark needs to believe in heroism to function. But the dark stories exist, and they're getting more common as the war drags on and the psychological toll mounts.
 
 ---
 
@@ -1024,6 +1386,346 @@ Scholarly, grieving, defined by loss and knowledge. Aelindra welcomed everyone, 
 
 ---
 
+## Deeper Cultural Detail
+
+*Languages, customs, ceremonies, trade, and the lived texture of mortal life.*
+
+### Languages of Aethos
+
+There is no single "Common" tongue in Aethos. Instead, a web of related and unrelated languages reflects the continent's diverse peoples, complicated by millennia of trade, migration, and cultural exchange.
+
+#### The Three Language Families
+
+**The Southern Coastal Languages** — *Tidespeak* (Accord of Tides, Sunward Coast) and *Islander dialects* (Shattered Isles)
+
+Grammatically related, melodic, designed for projection over distance and wind. Tidespeak is the closest thing to a lingua franca in Aethos — it's the language of trade, diplomacy, and inter-regional communication, learned by merchants and travelers regardless of origin.
+
+- **Sounds like:** Vowel-rich, flowing, with tonal inflections borrowed from Islander song-languages. Words for water, ships, and weather are ancient and specific; words for mountains and forests are borrowed from other languages.
+- **Writing system:** A cursive script optimized for quick notation on ship manifests and trade ledgers. Elegant when formal, nearly illegible when rushed.
+- **Cultural weight:** Speaking Tidespeak marks you as worldly, connected, someone who's traveled beyond their home region. It's not a prestige language (it's too practical for that), but it's indispensable for anyone who wants to operate beyond local boundaries.
+
+**The Northern Continental Languages** — *Old Drathic* (Drathian Steppe, Northern Reaches), *Keldaran* (mountain holds), *Thornveld dialects*
+
+Harsher consonants, compound words, languages built for oral history and precision. Old Drathic is the root tongue from which many others descended; modern speakers still use it for formal oaths, genealogies, and battle declarations.
+
+- **Sounds like:** Germanic/Slavic-inspired, with long compound nouns and strict grammatical structures. Drathian warriors can recite their lineage in Old Drathic for ten generations without pausing.
+- **Writing system:** Runic — short, angular characters designed to be carved into wood, stone, or metal. Elegant when inscribed, utilitarian when marked in haste.
+- **Cultural weight:** Old Drathic carries authority. Legal contracts in the Keldaran Holds are written in it. Military oaths are sworn in it. Speaking Old Drathic poorly is worse than not speaking it at all — better to use Tidespeak than to mangle the tongue of your ancestors.
+
+**The Marsh Cant and Pale Speech** — *Not a family, but a linguistic anomaly*
+
+The Marsh Kindred speak a language isolate — unrelated to any other tongue in Aethos, with roots so old that even Veythar's linguists can't trace its origin. It's a tonal, whispering language designed to carry through fog and over water without projecting far. Non-natives find it nearly impossible to learn.
+
+- **Sounds like:** Whispered Vietnamese or Thai, with tonal shifts that change meaning entirely. A single syllable can mean five different things depending on pitch, duration, and whether it's exhaled or inhaled.
+- **Writing system:** The Marsh Kindred traditionally don't write — knowledge is oral, passed through song and recitation. In recent generations, some have adopted a pictographic system borrowed from Thornveld druids, but it's considered a concession to outsiders.
+- **Cultural weight:** The language itself is a form of secrecy. Marsh Kindred can have full conversations in the presence of outsiders who don't even realize language is being spoken. This has made them invaluable as spies and deeply mistrusted as neighbors.
+
+#### The Scholar's Tongue — *Aelindran Formal*
+
+Before the fall, Aelindra developed a constructed language specifically for academic work: precise, unambiguous, designed for philosophy, magic theory, and technical documentation. Aelindran Formal was never a spoken language — it was written and read, used in texts and lectures, but daily conversation in Aelindra used Tidespeak or the scholars' native tongues.
+
+After the fall, Aelindran Formal became a cultural touchstone for the diaspora. To read it is to connect with the lost city. Refugee communities teach it to their children not because it's useful (it isn't) but because it's *theirs*. The language of the place that no longer exists.
+
+- **Writing system:** Logographic, each symbol representing a complete concept rather than a sound. Beautiful, complex, takes years to master.
+- **Cultural weight:** Aelindran Formal is grief made linguistic. To write it is to remember.
+
+### Customs and Ceremonies
+
+#### Rites of Passage
+
+**The Drathian Clans — The Long Walk**
+
+When a Drathian reaches adulthood (usually 16-18 years), they leave their clan and walk alone into the Steppe for ten days. No weapons, no food, minimal water. They survive on skill, endurance, and whatever the land provides. On the tenth day, they return — or they don't.
+
+Those who return are welcomed as adults with a feast and the right to speak in clan councils. Those who don't return are mourned, their names added to the clan's genealogy with the honorific *the-walker-who-did-not-return*. It's not considered a failure — the Steppe chooses who comes back.
+
+Since the invasion, the Long Walk has become even more dangerous (Hollow corruption is spreading into the northern Steppe), and some clans have debated modifying the tradition. The debate is bitter — tradition versus survival. So far, tradition is winning, but the cost is rising.
+
+**The Accord of Tides — The Naming Feast**
+
+In coastal cultures, children aren't formally named until their first birthday. Until then, they're called *little one*, *new voice*, or simple endearments. At one year, the family holds a Naming Feast where the child's name is announced publicly, often chosen to reflect something that happened in their first year or a quality the parents hope they'll embody.
+
+The feast is an open invitation — anyone in the community can attend, and the family is expected to provide food and drink for all comers. Wealthy families host elaborate celebrations; poorer families offer simple fare, and no one judges the difference. What matters is the openness.
+
+**Audio note:** The Naming Feast is *loud*. Music, toasts, children playing, overlapping conversations. The soundscape is chaotic, joyful, full of life. For players attending one (as part of a quest or social encounter), the DM should layer voices, laughter, and ambient celebration to make it feel overwhelming in the best way.
+
+**The Thornwardens — The Root Binding**
+
+When a Thornwarden reaches maturity, they choose a tree and bind themselves to it in a druidic ritual. The tree becomes their ward — they're responsible for its health, and in return, they can draw on its strength in times of need. The bond is spiritual, not magical, but it's real: Thornwardens report feeling their tree's moods, sensing when it's threatened, knowing when it thrives.
+
+If the tree dies, the Thornwarden doesn't die with it, but they feel the loss like grief. Many choose to plant a new tree from the old one's seeds and begin the bond again. Some never do, carrying the absence for the rest of their lives.
+
+Since the invasion, some Thornwardens have bonded with trees on the edges of Hollow-corrupted zones, deliberately choosing to act as early-warning systems. They know that if the corruption spreads, they'll feel their tree dying. They do it anyway.
+
+#### Seasonal Festivals
+
+**The Remembrance of the Crown** — *Aelindran Diaspora*
+
+On the anniversary of Aelindra's fall, Aelindran communities gather to remember. It's not a celebration — it's a vigil. Attendees bring objects that represent what was lost: a book, a piece of jewelry, a tool from a family trade. They place these objects in a central space and sit in silence for an hour as the sun sets.
+
+Then, one by one, people speak. A memory. A name. A piece of lost knowledge. The telling can last hours — sometimes all night. No one is required to speak, but most do. The ritual ends at dawn, when the objects are collected and returned, and the community shares a simple meal.
+
+**Audio note:** Long stretches of silence, broken by individual voices. The sound of grief — not loud, but heavy. The meal at the end should sound subdued, intimate, quietly warm.
+
+**The Feast of Tested Blades** — *Drathian Clans*
+
+Held every spring, this is the Clans' celebration of martial skill and the bonds between warriors. Competitions in weapon forms, archery, wrestling, and mounted combat. Winners receive honor, not prizes — their names are recited in the evening's song, and they're given first choice of seating at the feast.
+
+The Feast has taken on new significance since the invasion. It's no longer practice for hypothetical conflicts — it's training for the real war. Performances are sharper, more serious. There's less boasting, more quiet focus. And at the end of the night, there's a new tradition: the Clans honor the names of those who died at the Ashmark that year. The list grows longer every spring.
+
+**The Turning Tide Festival** — *Accord of Tides and Shattered Isles*
+
+Celebrates the ocean's spring tide — the moment when the sea's rhythm shifts and the sailing season begins in earnest. The festival is raucous: boat races, swimming competitions, storytelling contests where sailors try to out-lie each other with tales of sea monsters and storms.
+
+It culminates in the *Release* — hundreds of small paper boats, each carrying a candle, set adrift at sunset. The boats represent hopes, dreams, and losses released to the sea. Some carry written wishes; others carry names of the dead. Watching the flotilla drift into the darkness is considered one of the most beautiful sights in Aethos.
+
+Since the invasion, many paper boats now carry the names of those lost to the Hollow. The sight is still beautiful, but it's tinged with a sorrow that wasn't there before.
+
+### Trade and Economy
+
+#### The Great Trade Routes
+
+**The Southern Coastal Road** — The safest and most profitable route, running along the Sunward Coast to the Accord of Tides. Merchant caravans travel it year-round, carrying goods between the continent's two largest trade hubs. The road is well-maintained, patrolled, and lined with inns and supply stations. Travel time: 12-15 days by cart, 6-7 days by horse.
+
+**The Keldar Run** — A mountain pass connecting the Keldara Holds to the Sunward Coast, used primarily for metal trade. Dangerous in winter (avalanches, ice), lucrative in summer (Keldaran steel, rare ores, gemstones). Caravans hire mountain guides and guards. Travel time: 8 days, weather permitting.
+
+**The Northern Circuit (defunct)** — Before the Sundering, this route connected the Northern Reaches, the Drathian Steppe, and Aelindra in a triangular trade network. It's now completely severed. The northern half is lost to Hollow corruption; the southern half ends at the Ashmark. Merchants who ran the Northern Circuit before the fall are now either dead, refugees, or working other routes. Some still talk about the old days when you could cross the continent in 20 days and profit from goods no southern merchant had access to.
+
+**The Islander Network** — Not a single route but a web of sea lanes connecting the Shattered Isles to each other and to the mainland. Thessyn navigators have memorized routes through reefs, around volcanic zones, and across open ocean. Mainlanders who try to sail these routes without Islander guides tend to wreck, get lost, or give up. The network is the Isles' strategic and economic advantage — they control the shipping.
+
+#### Trade Goods and Specializations
+
+| Region | Exports | Imports | Economic Role |
+|---|---|---|---|
+| **Sunward Coast / Accord of Tides** | Finished goods, luxury items, textiles, preserved foods, books | Raw materials, metals, exotic goods | Economic hub, refinement and distribution |
+| **Keldaran Holds** | Steel, iron, gemstones, tools, weapons, armor | Food, timber, luxury goods | Industrial backbone, military supply |
+| **Drathian Steppe** | Horses, livestock, leather, soldiers-for-hire | Metalwork, grain, medical supplies | Martial export, cavalry culture |
+| **Thornveld** | Herbs, alchemical components, rare woods, poisons, antidotes | Manufactured goods, metal tools | Specialist knowledge economy |
+| **Shattered Isles** | Tropical fruits, exotic woods, spices, seafood, navigation services | Everything else | Luxury goods, shipping control |
+| **Pale Marshes** | *Officially*: medicinal herbs, preserved fish. *Unofficially*: information, secrets, smuggled goods | Whatever they need, acquired quietly | Shadow economy, intelligence |
+| **Dawnspire Highlands** | Healing services, medicinal knowledge, sanctuary | Food, donations, goodwill | Service-based, nonprofit |
+
+#### Currency
+
+Aethos uses a mix of coinage and barter, with three primary currencies in circulation:
+
+- **Suns** (gold coins) — Minted in the Accord of Tides, accepted everywhere, the standard for large transactions. One Sun = roughly a week's wages for a skilled laborer.
+- **Marks** (silver coins) — The everyday currency. Ten Marks = one Sun. Used for most purchases.
+- **Shells** (copper coins) — Small change. Ten Shells = one Mark. Also: actual shells in coastal regions, which merchants accept at fixed rates.
+
+Keldaran Holds also mint **Iron Chits** — metal tokens that represent credit with the Holds' trade guilds. Not widely accepted outside mountain regions, but within the Holds, they're as good as Suns and easier to carry in bulk.
+
+#### The Post-Sundering Economy
+
+The invasion broke trade patterns that had been stable for centuries. Key changes:
+
+**Food prices spiked.** The Northern Reaches were a breadbasket — now lost. Southern regions struggle to compensate. Grain is expensive, rationed in some cities. Famine is a real possibility if the Ashmark advances further south.
+
+**Weapon and armor demand skyrocketed.** The Keldaran Holds are running their forges at capacity and still can't meet demand. Prices for quality steel have tripled. Black market weapons trade is booming.
+
+**Refugee labor flooded the market.** Displaced people from the north work for less, driving down wages and creating resentment in communities that took them in. It's an ugly side effect of mass migration, and it's breeding tension.
+
+**Military contracts dominate the economy.** Governments and factions are buying weapons, hiring mercenaries, commissioning fortifications. Merchants who pivoted to military supply are thriving. Those who didn't are struggling.
+
+**The Ashmark has its own economy.** Soldiers need food, equipment, entertainment, healers. A network of camp followers, merchants, and opportunists has formed around the front lines. It's dangerous, brutal, and profitable. Some people have made fortunes supplying the war. Others have died trying.
+
+### Inter-Cultural Relationships
+
+#### Alliances and Tensions
+
+**The Accord of Tides and the Shattered Isles** — Natural trade partners with a history of cooperation and occasional friction. The Isles control the shipping; the Accord controls the ports. They need each other, but negotiations over tariffs, docking rights, and trade agreements are constant. Since the invasion, this relationship has strengthened — mutual survival trumps old grievances.
+
+**The Keldaran Holds and the Drathian Clans** — Respectful but wary. Both are martial cultures, but the Keldara value stability and craftsmanship while the Drathians value mobility and adaptability. They trade extensively (the Clans need Keldaran steel; the Holds need Drathian horses), but they don't particularly *like* each other. Too much pride on both sides.
+
+**The Thornwardens and the Pale Marshes** — Minimal interaction. The Thornwardens are communal, open, proud of their connection to nature. The Marsh Kindred are secretive, insular, and private. When they do interact, it's transactional and brief. Neither trusts the other's motives.
+
+**The Aelindran Diaspora and Everyone Else** — Complicated. The diaspora is mourned, respected, and resented in equal measure. Mourned because Aelindra was a shared treasure and its loss is everyone's loss. Respected because Aelindran refugees are often highly skilled scholars, mages, and crafters. Resented because they're refugees — they need resources, jobs, housing, and they carry trauma that makes them difficult neighbors.
+
+Some cities have welcomed the diaspora with open arms (the Accord of Tides built an entire district for them). Others have been less generous. The tension is real, and it's getting worse as the war drags on and resources thin.
+
+---
+
+## The History Before the Sundering
+
+*What was Aethos like before the invasion?*
+
+### The Age of Settled Prosperity
+
+The thousand years before the Sundering were, by most accounts, the most peaceful and prosperous age Aethos had ever known. Scholars later called it the **Age of Settled Prosperity** — settled because the great migrations had ended, the borders between cultures had stabilized, and most peoples had found their place in the world; prosperity because that stability allowed civilization to flourish in ways it never had before.
+
+This wasn't paradise. There were still border disputes, bandit raids, droughts, plagues, the occasional war between city-states. But these were *normal* problems — the kind mortals knew how to handle. The existential crises were behind them. The great cataclysms of the deep past (the Sundering of the First Ocean, the Dra ethar Migration Wars, the Plague of Endless Winter) were legends that grandparents told, not lived experiences.
+
+**What normal life looked like:**
+
+Trade routes crisscrossed the continent, stable enough that merchant families could plan voyages a generation in advance. The Keldaran Holds supplied metalwork to the Sunward Coast; the Thornveld exported rare herbs and alchemical components; the Shattered Isles sent tropical fruits, exotic woods, and sailing expertise. Aelindra was the hub — knowledge flowed through the Crown of Aethos the way goods flowed through the Accord of Tides.
+
+Festivals honored the gods not out of desperate need but out of gratitude and tradition. Harvest celebrations. Remembrance days. The Feast of First Light, when Orenthel's followers gathered at dawn to welcome the longest day of the year. The Forging, when Aelora's crafters competed in friendly rivalry to create the year's finest work.
+
+Young people grew up expecting to live longer than their parents, to see their children grow, to die in their beds surrounded by family. Soldiers trained for border skirmishes and anti-bandit operations, not for an existential war. Mages studied magic as an art and a science, not as a weapon of survival.
+
+**The gods were present but distant.** They spoke to their high priests, blessed their most devoted followers, intervened when disasters struck. But they didn't need to be constantly active — the world was running smoothly. Temples were places of learning, contemplation, community. Not fortresses. Not field hospitals.
+
+**Aelindra in its prime** was the jewel of this age. A city where anyone could study, regardless of birth or wealth. The great library was open to all who could read — and if you couldn't, the scribes would teach you. Scholars from the Drathian Steppe debated philosophy with Thornwarden druids. Korath artificers collaborated with Elari enchanters. It wasn't perfect — academic politics were vicious, funding was always contentious, there were factions and rivalries — but it *worked*. Knowledge grew. Understanding deepened.
+
+People alive during this time remember it with aching clarity: a world where the future felt open, where problems had solutions, where you could plan for next year and the year after that. Where the dark was just the absence of light, not a manifestation of existential dread.
+
+### The Slow Fading of the Gods
+
+But beneath this surface prosperity, something was changing — something most mortals didn't notice and the gods didn't speak about.
+
+**The gods were fading.** Slowly, almost imperceptibly, over the course of millennia.
+
+It wasn't dramatic. No god collapsed mid-blessing or vanished from their temple. The fading was so gradual that each generation of mortals experienced the gods at roughly the same strength their parents had — the change only became obvious when you compared records separated by centuries.
+
+**What the fading looked like to mortals:**
+
+In the early days of Aethos (the Age of Foundations, thousands of years before the Sundering), the gods walked among mortals regularly. They shaped mountains with their hands, redirected rivers, personally taught the first mages, the first smiths, the first healers. Miracles were common. The gods' presence was direct and undeniable.
+
+By the Age of Settled Prosperity, the gods appeared in visions, spoke through high priests, manifested as signs and omens. Still powerful, still present, but more… mediated. Mortals prayed and received answers, but not always immediately. Divine intervention still happened, but it required great need or great devotion.
+
+Theologians debated this. Some called it the gods' gift — stepping back to let mortals stand on their own. Others called it the natural order — the gods' purpose was to guide, not to rule, and guidance meant allowing mortals to make their own choices. A few worried that it signaled something wrong, but they were the minority. After all, the world was thriving. What was there to worry about?
+
+**What the gods knew:**
+
+The fading was real, and it was accelerating.
+
+The gods had been created by the original architects of Aethos — forged from the Wellspring's power to steward the world through its formative ages. They were never meant to be eternal. The original design was elegant: the gods would nurture mortal civilization until it could sustain itself, then gradually release their hold, fading back into the world's fabric. A graceful retirement.
+
+Most gods accepted this. Some with melancholy, some with pride, some with quiet resignation. They had done their work. Mortals were thriving. It was time to let go.
+
+**But Veythar couldn't accept it.**
+
+Not out of ego, not out of a desire to rule — out of terror. Veythar saw what the other gods didn't: the knowledge the gods carried was irreplaceable. The deep structure of the Veil. The architecture of magic itself. The principles that governed reality's stability. Mortals had learned *how* to use magic, but they didn't understand *why* it worked. If the gods faded completely, that foundational knowledge would be lost.
+
+And if a crisis came — something mortals had never faced, something that required that deep knowledge to solve — the world would be helpless.
+
+So Veythar began searching for a solution in secret. The other gods assumed Veythar was simply doing what Veythar always did: researching, cataloging, preserving knowledge for future generations. They didn't know the Lorekeeper was searching for a way to stop the fading itself.
+
+### What Was Lost When the Sundering Came
+
+When Veythar pierced the Veil and the Hollow poured through, the Age of Settled Prosperity ended in a single catastrophic moment.
+
+**Aelindra fell first** — the city that symbolized everything the age had achieved. Thirty thousand people lived there. Scholars, students, crafters, families. Most died in the initial collapse when the Crown of Aethos shattered. Those who survived the collapse fled south, carrying what they could.
+
+The Hollow spread from the wound. Slowly at first — a creeping corruption that moved like fog through the northern valleys. Then faster as more expressions emerged.
+
+**The Northern Reaches** — a string of farming communities, mining towns, and small cities in the foothills north of Aelindra — were abandoned over the course of a decade. Not destroyed in a single battle but slowly consumed as the corruption spread. Families packed what they could carry and walked south. Some settlements tried to hold. None succeeded.
+
+**The trade routes broke.** The northern road through the mountains — the fastest route between the eastern and western coasts — became impassable. Merchants who'd planned routes a generation in advance saw their entire livelihood erased. Prices spiked. Famines followed in regions dependent on northern grain.
+
+**The sense of the future collapsed.** Parents stopped being certain their children would outlive them. Soldiers trained for an enemy they didn't understand. Young people grew up in a world where "thirty years from now" was an optimistic fantasy, not a reasonable assumption.
+
+**The gods stopped fading.** This is something most mortals haven't noticed, but the gods have: the moment the Hollow entered Aethos, the fading stopped. Their power stabilized. They're not growing stronger, but they're not weakening either. Some gods see this as a grim irony — Veythar wanted to save them from fading, and in breaking the world, accidentally did exactly that. The crisis requires their intervention, and that need has locked them in place.
+
+**What people alive during the transition remember:**
+
+- **The day the sky went wrong.** The Sundering itself was visible across half the continent — a distortion in the northern sky, a wound in the air, a sound that shouldn't exist. People hundreds of miles away saw it and knew, without being told, that something fundamental had broken.
+- **The refugees.** The roads south filled with people. Not panicked mobs — organized evacuations at first, then desperate flights as the corruption accelerated. Cities that had never seen more than a few dozen travelers a month suddenly hosted thousands. The Accord of Tides' population doubled in five years.
+- **The rumors that made no sense.** Survivors described things that violated basic reality. Creatures that shouldn't exist. Spaces that didn't obey geometry. Sounds with no source. For the first year, people didn't believe them. Then the creatures reached the next wave of settlements, and the survivors of *those* places told the same impossible stories.
+- **The realization that this wasn't going to stop.** There was no peace treaty to negotiate, no dragon to slay, no curse to break. This was permanent. The world had changed, and it was never changing back.
+
+For those who lived through it, the Sundering is a scar across their biography. There's "before" and "after," and they're different people on each side of that line.
+
+For those born after, the Sundering is history — but it's the history that defines everything. They've never known a world without the Ashmark, without the Hollow, without the constant weight of existential threat. They can't miss what they never had, but they hear the grief in their parents' voices when the old days come up, and they understand: we lost something we'll never get back.
+
+---
+
+## The Original Creators
+
+*Who or what made Aethos and the gods?*
+
+### The Architects of the First Silence
+
+The gods do not know who created them.
+
+This is one of the most closely guarded secrets of the pantheon — not hidden out of deception, but out of a deep, uncomfortable humility. The gods remember being *made*. They remember the moment of their awakening, the purpose encoded into their essence, the world they were tasked to steward. But they do not remember — or never knew — who or what performed the act of creation.
+
+The gods refer to them simply as **the Architects**. Not out of reverence (though there is some of that) but because no other term fits. The Architects designed Aethos, wove the Veil, carved the boundaries of reality, and forged the ten gods from raw Wellspring energy to tend the world once it was complete.
+
+And then the Architects left. Or vanished. Or transcended. Or died. The gods do not know which.
+
+**What the gods remember:**
+
+Each god's awakening is their first memory — emerging into consciousness fully formed, with knowledge and purpose but no history. They knew their names. They knew their domains. They knew the structure of the world they were meant to tend. But they had no memory of *being created*, only of *having been created*.
+
+The world itself was already built when the gods awoke — the continents shaped, the oceans filled, the sky in place. But it was empty. No mortals, no animals, no plants. Just raw, perfect geography waiting to be inhabited.
+
+The gods' first task was to **give the world life**. They shaped ecosystems, set the cycles of seasons, wove the flows of magic into the world's fabric. Thyra made the first forests. Nythera filled the oceans. Aelora laid the first roads (long before mortals walked them). This age lasted millennia — the gods learning to work together, learning the scope and limits of their power, preparing the world for the beings who would inherit it.
+
+**Then the mortals came.** Not born — arrived. The first generation of mortals appeared in Aethos fully formed, just as the gods had. Adults with language, skills, and knowledge but no childhood, no parents, no memories before their first moment of waking. The gods guided them, taught them, helped them build the first cities.
+
+After that first generation, mortals reproduced naturally — children born, raised, taught by their parents. The age of miraculous arrivals ended, and the age of natural life began. The gods' role shifted from creators to stewards.
+
+**The question no god can answer:** Where did the mortals come from? The gods didn't make them — the gods know how to create landscapes, weather, ecosystems, but not *sapient life*. That required something the gods don't possess. The Architects made mortals the same way they made the gods, then sent them into the world without explanation.
+
+Some gods find this comforting — they're part of a larger design, a plan beyond their understanding. Others find it unsettling. Veythar, in particular, has spent millennia trying to understand the Architects' nature and purpose, searching for clues in the oldest, deepest parts of the world.
+
+### The Umbral Deep — What the Architects Left Behind
+
+There is one place in Aethos where evidence of the Architects survives: the **Umbral Deep**, a vast network of subterranean voids and ancient ruins that exist far beneath the surface world, deeper than any natural cave system.
+
+The Umbral Deep isn't a single location — it's a scattered, disconnected web of chambers, tunnels, and structures that seem to exist *under* the normal rules of space. Entrances are rare and hidden. Some connect to deep caverns in the Keldara Mountains. Others open in forgotten places beneath the ocean floor. A few have been found in the Pale Marshes, where the boundary between solid ground and water is already unreliable.
+
+**What's down there:**
+
+**Structures that predate the gods.** Halls carved from stone that doesn't exist anywhere on Aethos's surface. Archways with geometries that make trained architects uncomfortable. Chambers where gravity doesn't quite work correctly — not absent, just... angled wrong. Everything is ancient beyond reckoning, untouched by time in ways that shouldn't be possible.
+
+The structures aren't ruins in the traditional sense — they're not decayed or collapsed. They're **empty**. As if whoever built them finished their work, cleaned up, and left. No furniture, no tools, no art, no debris. Just the architecture itself, waiting.
+
+**Inscriptions in a language no one can read.** The walls bear carvings — not decorative, but dense, systematic, like technical schematics or philosophical texts. Veythar has spent millennia trying to decipher them and has managed only fragments. The grammar doesn't match any mortal or divine language. Some symbols seem to shift when observed from different angles, as if the writing exists in more dimensions than the mortal eye can process.
+
+A few phrases have been partially translated, enough to be tantalizing and deeply unsettling:
+
+- *"The boundary is woven, the interior sustained, the exterior held at distance."* (Interpreted as a description of the Veil's creation.)
+- *"They will tend what we have sown until the tending is no longer needed."* (The gods' purpose, and the implication that their fading was always intended.)
+- *"What lies beyond must remain beyond, unless the structure fails."* (A warning? A statement of fact? Veythar read this inscription three thousand years before the Sundering and dismissed it as theoretical. The Lorekeeper thinks about it every day now.)
+
+**Machinery that no longer functions** — or perhaps never did. Vast mechanisms built into the deepest chambers, constructed from materials that don't corrode, don't rust, don't degrade. Korath engineers have studied them for centuries and can describe *what* they are (gears, conduits, junction points, something like a control interface) but not *what they do*. There's no power source, no obvious input or output, no clear purpose.
+
+One theory: the machinery was used during the act of creation itself — tools to shape the Veil, to stabilize reality's boundaries, to channel Wellspring energy into the framework of the world. If true, the machinery is inert now because the work is done.
+
+Another theory: the machinery still functions, but on a scale mortals and gods can't perceive — maintaining systems so fundamental that observing their operation is like trying to see the framework of reality itself.
+
+**Echoes.** This is the most disturbing feature of the Umbral Deep, reported by every expedition that's ventured far enough in: the sense of being watched, not by a presence but by an absence. Explorers describe hearing their own footsteps seconds after they've stopped walking. Voices that sound like their own, speaking words they didn't say. Shadows that move independently of any light source.
+
+The gods have investigated these phenomena and concluded they're not hauntings, not spirits, not Hollow corruption. They're more like... *recordings*. As if the Architects left something of themselves behind, not intentionally but as a side effect of having been there. Residual presence in the deepest parts of creation.
+
+Expeditions into the Umbral Deep are rare and dangerous — not because of monsters (the deep is eerily, oppressively empty) but because of the psychological weight. People who spend too long down there come back changed. Not corrupted, not broken, just... different. Quieter. More prone to staring at the horizon. When asked what they saw, they struggle to answer, as if the experience resists language.
+
+### What the Ruins Tell Us (And What They Don't)
+
+The Umbral Deep offers fragments, not answers. After millennia of study, the gods and mortal scholars have pieced together this much:
+
+**The Architects were vastly more powerful than the current gods.** The scale of their work — creating an entire world, forging the Veil, designing sapient beings — is beyond what the gods can replicate. The gods can shape what exists, but they can't create new forms of existence from nothing. That required something the Architects possessed and the gods do not.
+
+**The Architects are gone, and they meant to be gone.** There are no signs of disaster, no evidence of sudden departure. The Umbral Deep feels *finished*. The work was completed, and the Architects moved on. Whether "moved on" means they left Aethos, transcended to another state of being, or ceased to exist is unknown.
+
+**The Architects designed the gods to fade.** The inscriptions make this clear. The gods were stewards, not eternal rulers. Their role was to nurture mortal civilization through its infancy and then step back. The fading wasn't a flaw or a tragedy — it was the plan. The Architects built obsolescence into the gods' design.
+
+Veythar struggles with this more than any other god. To accept it means accepting that the search for a way to stop the fading was always a fight against the Architects' intent. That the Sundering happened because Veythar refused to let the design unfold as it was meant to.
+
+**The Wellspring was the Architects' power source.** The inscriptions reference it directly, though the term they use translates more accurately as "the unformed potential." The Architects drew on the Wellspring to build Aethos, then sealed it away beyond the Veil. Whether they expected something to grow in the Wellspring's absence — whether they knew the Hollow would emerge — is one of the most important unanswered questions.
+
+Some gods believe the Architects foresaw the Hollow and built the Veil to contain it. Others believe the Hollow is a consequence the Architects didn't predict — an unforeseen evolution in the space beyond creation. The inscriptions are maddeningly ambiguous on this point, as if the Architects either didn't know or chose not to record it.
+
+### Do the Architects Still Exist?
+
+No one knows.
+
+**Veythar believes they might.** Somewhere beyond Aethos, beyond the Veil, in a space the gods can't perceive or reach. The Lorekeeper has searched for evidence of ongoing Architect presence and found none — but absence of evidence isn't evidence of absence. If the Architects exist on a scale beyond the gods' perception, they could be anywhere, watching, waiting, or simply indifferent.
+
+**Thyra believes they returned to the Wellspring.** That they dissolved back into the raw creative potential from which they'd shaped themselves, completing the cycle. If true, the Hollow may have consumed not just the Wellspring's energy but the remnants of the Architects themselves — a disturbing possibility that would mean the creatures of the Hollow are built, in some distant way, from the repurposed essence of Aethos's creators.
+
+**Mortaen believes they passed beyond even death's reach.** That the Architects transcended mortality, divinity, and existence itself — stepping outside the cycle entirely. Mortaen describes it as "the ultimate threshold" and speaks of it with something close to envy.
+
+**Most gods don't think about it.** The Architects are gone. Their work remains. The gods' task is to tend that work, not to seek their absent creators. Obsessing over beings who left no way to contact them is a distraction from the responsibilities at hand.
+
+But Veythar obsesses. The Lorekeeper always has. And that obsession — the refusal to accept what the Architects intended, the need to understand and control what lies beyond mortal and divine knowledge — is what led directly to the Sundering.
+
+If the Architects are watching, they've given no sign. And if they have opinions about what Veythar did, they're keeping them to themselves.
+
+---
+
 ## Open Lore Questions
 
 *Resolved by recent design work:*
@@ -1035,13 +1737,13 @@ Scholarly, grieving, defined by loss and knowledge. Aelindra welcomed everyone, 
 
 *To be developed as the world-building continues:*
 
-- [ ] **The History Before the Sundering** — What was Aethos like before the invasion? What was normal life? What did the gods' slow fading feel like to mortals who lived through it?
-- [ ] **The Original Creators** — Who or what made Aethos and the gods? Where did they go? Do they still exist? The Umbral Deep contains ruins from their era — what do those ruins tell us?
-- [ ] **Veythar's Artifacts** — The tools and rituals used to weaken the Veil. What are they, where are they now, and what do they do? These are endgame content — some are scattered across the world, some are in the Greyvale Ruins, some may be in the Voidmaw itself.
-- [ ] **Deeper Cultural Detail** — Languages, customs, ceremonies, inter-cultural relationships, trade, and conflict. The cultural summaries provide frameworks; the lived texture is unwritten.
-- [ ] **The Ashmark's History** — How has the front line moved over 30 years? What was lost? Which communities fell, and what are their stories?
+- [x] **The History Before the Sundering** — What was Aethos like before the invasion? What was normal life? What did the gods' slow fading feel like to mortals who lived through it? See *The History Before the Sundering* section above.
+- [x] **The Original Creators** — Who or what made Aethos and the gods? Where did they go? Do they still exist? The Umbral Deep contains ruins from their era — what do those ruins tell us? See *The Original Creators* section above.
+- [x] **Veythar's Artifacts** — The tools and rituals used to weaken the Veil. What are they, where are they now, and what do they do? These are endgame content — some are scattered across the world, some are in the Greyvale Ruins, some may be in the Voidmaw itself. See *Veythar's Artifacts — The Tools of the Sundering* section above.
+- [x] **Deeper Cultural Detail** — Languages, customs, ceremonies, inter-cultural relationships, trade, and conflict. The cultural summaries provide frameworks; the lived texture is unwritten. See *Deeper Cultural Detail* section above.
+- [x] **The Ashmark's History** — How has the front line moved over 30 years? What was lost? Which communities fell, and what are their stories? See *The Ashmark's History — Thirty Years of Slow Retreat* section above.
 - [x] **Creature Taxonomy** — Four-tier classification (Drift, Rend, Wrack, Named) with specific creature types, audio signatures, soldier lore, and the uncomfortable questions about Hollow intelligence. MVP encounter plan mapped. See *The Hollow — Hollow Creature Taxonomy* above.
-- [ ] **The Wellspring's Nature** — If the Hollow consumed the Wellspring, is any creative energy recoverable? This is the deep endgame question that drives the "seal vs. reclaim" debate among the gods.
+- [x] **The Wellspring's Nature** — If the Hollow consumed the Wellspring, is any creative energy recoverable? This is the deep endgame question that drives the "seal vs. reclaim" debate among the gods. See *The Wellspring's Nature — Can Creation Be Reclaimed?* section above.
 
 ---
 
