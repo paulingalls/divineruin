@@ -12,6 +12,9 @@ The game is set in **Aethos**, a fantasy world tended by ten gods — each gover
 
 Players enter this world, choose a patron deity, and begin unraveling the mystery across seasons of play — while fighting the Hollow, navigating faction politics, and building a life in a world that's running out of time.
 
+![Map of Aethos](assets/map.jpeg)
+*The world of Aethos, showing the Voidmaw corruption in the north, the Ashmark defensive line, and the surviving civilizations of the south.*
+
 ### What Makes This an MMO, Not Just an RPG
 
 **Shared persistent world.** When you walk into the Accord of Tides, you're in the same city as hundreds of other players. Some of those voices in the tavern are real people. The merchant you trade with might be another player's Artificer running a shop. The guild that controls the northern trade route is a player guild that fought for it last week.
