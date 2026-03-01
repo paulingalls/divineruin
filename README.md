@@ -13,6 +13,7 @@ The game is set in **Aethos**, a fantasy world tended by ten gods — each gover
 Players enter this world, choose a patron deity, and begin unraveling the mystery across seasons of play — while fighting the Hollow, navigating faction politics, and building a life in a world that's running out of time.
 
 ![Map of Aethos](assets/map.jpeg)
+
 *The world of Aethos, showing the Voidmaw corruption in the north, the Ashmark defensive line, and the surviving civilizations of the south.*
 
 ### What Makes This an MMO, Not Just an RPG
