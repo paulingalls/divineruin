@@ -1,6 +1,23 @@
 import { useCallback, useState } from "react";
+import Constants from "expo-constants";
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001";
+const SERVER_PORT = 3001;
+
+function getApiBase(): string {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  if (__DEV__) {
+    const hostUri = Constants.expoConfig?.hostUri;
+    if (hostUri) {
+      const host = hostUri.split(":")[0];
+      return `http://${host}:${SERVER_PORT}`;
+    }
+  }
+  return `http://localhost:${SERVER_PORT}`;
+}
+
+const API_BASE = getApiBase();
 
 export type TokenState = "idle" | "fetching" | "ready" | "error";
 

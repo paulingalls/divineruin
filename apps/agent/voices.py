@@ -18,21 +18,21 @@ VOICES: dict[str, str] = {
 DEFAULT_VOICE = "DM_NARRATOR"
 
 EMOTION_RATES: dict[str, float] = {
-    "calm": 1.0,
-    "neutral": 1.0,
-    "angry": 0.9,
-    "threatening": 0.9,
-    "nervous": 1.15,
-    "excited": 1.2,
-    "whispering": 0.8,
-    "secretive": 0.8,
-    "sad": 0.8,
-    "grieving": 0.8,
-    "authoritative": 0.9,
-    "stern": 0.9,
-    "amused": 1.05,
-    "weary": 0.85,
-    "urgent": 1.1,
+    "calm": 0.8,
+    "neutral": 0.8,
+    "angry": 0.75,
+    "threatening": 0.7,
+    "nervous": 0.95,
+    "excited": 1.0,
+    "whispering": 0.65,
+    "secretive": 0.65,
+    "sad": 0.65,
+    "grieving": 0.65,
+    "authoritative": 0.75,
+    "stern": 0.75,
+    "amused": 0.85,
+    "weary": 0.7,
+    "urgent": 0.9,
 }
 
 EMOTIONS: list[str] = sorted(EMOTION_RATES.keys())
