@@ -1,4 +1,4 @@
-import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
+import { AccessToken, AgentDispatchClient, RoomServiceClient } from "livekit-server-sdk";
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
@@ -16,6 +16,15 @@ function createRoomService(): RoomServiceClient | null {
 }
 
 const roomService = createRoomService();
+
+function createDispatchClient(): AgentDispatchClient | null {
+  if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
+    return null;
+  }
+  return new AgentDispatchClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
+}
+
+const dispatchClient = createDispatchClient();
 
 export async function handleLivekitToken(req: Request): Promise<Response> {
   const body = (await req.json()) as {
@@ -59,6 +68,17 @@ export async function handleLivekitToken(req: Request): Promise<Response> {
   });
 
   const jwt = await token.toJwt();
+
+  if (dispatchClient) {
+    try {
+      await dispatchClient.createDispatch(room_name, "divineruin-dm", {
+        metadata: JSON.stringify({ player_id }),
+      });
+      console.log(`Dispatched DM agent to room "${room_name}"`);
+    } catch (e: unknown) {
+      console.error("Failed to dispatch DM agent:", e);
+    }
+  }
 
   return Response.json({
     token: jwt,

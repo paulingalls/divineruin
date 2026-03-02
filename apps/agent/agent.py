@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from collections.abc import AsyncIterable, AsyncGenerator
 from typing import Any
 
@@ -43,7 +44,7 @@ class DungeonMasterAgent(Agent):
         super().__init__(instructions=SYSTEM_PROMPT)
         self._turn_timer = TurnTimer()
 
-    def on_enter(self) -> None:
+    async def on_enter(self) -> None:
         logger.info("DM agent entered session")
 
     def on_user_turn_completed(self, turn_ctx: Any) -> None:
@@ -57,6 +58,8 @@ class DungeonMasterAgent(Agent):
         first_frame = True
 
         async for segment in parse_dialogue_stream(text):
+            if not re.sub(r'[^\w]', '', segment.text):
+                continue
             cfg = get_voice_config(segment.character, segment.emotion)
             segment_tts = _make_tts(voice=cfg.voice, speaking_rate=cfg.speaking_rate)
 
@@ -89,7 +92,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
             temperature=0.8,
         ),
         tts=_make_tts(),
-        vad=silero.VAD.load(silence_duration_ms=500),
+        vad=silero.VAD.load(min_silence_duration=0.5),
         turn_detection=MultilingualModel(),
         allow_interruptions=True,
         min_endpointing_delay=0.5,
