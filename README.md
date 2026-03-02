@@ -285,7 +285,7 @@ cp .env.example .env
 #          INWORLD_API_KEY, INWORLD_WORKSPACE_ID
 ```
 
-The agent also reads from `apps/agent/.env.local` for LiveKit credentials.
+All services read from this single root `.env` file.
 
 ### 3. Install dependencies
 
@@ -311,7 +311,7 @@ bun run dev:server    # http://localhost:3000
 **DM Agent (voice pipeline):**
 ```bash
 cd apps/agent
-uv run python agent.py dev
+uv run python agent.py dev --env-file ../../.env
 ```
 
 The `dev` subcommand creates a LiveKit room and waits for a participant to join.
