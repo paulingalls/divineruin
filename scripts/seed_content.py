@@ -17,6 +17,7 @@ TABLE_MAP = {
     "items.json": "items",
     "quests.json": "quests",
     "factions.json": "factions",
+    "lore_entries.json": "lore_entries",
 }
 
 UPSERT_SQL = """

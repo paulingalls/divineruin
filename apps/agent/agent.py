@@ -10,10 +10,13 @@ from livekit.plugins import silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from livekit.plugins import anthropic, deepgram, inworld
 
-from prompts import SYSTEM_PROMPT
+from prompts import build_system_prompt
 from voices import get_voice_config, VOICES
 from dialogue_parser import parse_dialogue_stream
 from latency import TurnTimer
+from session_data import SessionData
+from tools import query_location, query_npc, query_lore, query_inventory
+import db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("divineruin.dm")
@@ -25,7 +28,11 @@ REQUIRED_ENV_VARS = [
     "ANTHROPIC_API_KEY",
     "DEEPGRAM_API_KEY",
     "INWORLD_API_KEY",
+    "DATABASE_URL",
+    "REDIS_URL",
 ]
+
+WORLD_TOOLS = [query_location, query_npc, query_lore, query_inventory]
 
 
 def validate_env() -> None:
@@ -39,9 +46,15 @@ def validate_env() -> None:
         )
 
 
+START_LOCATION = "accord_guild_hall"
+
+
 class DungeonMasterAgent(Agent):
     def __init__(self) -> None:
-        super().__init__(instructions=SYSTEM_PROMPT)
+        super().__init__(
+            instructions=build_system_prompt(START_LOCATION),
+            tools=WORLD_TOOLS,
+        )
         self._turn_timer = TurnTimer()
 
     async def on_enter(self) -> None:
@@ -145,6 +158,11 @@ server = AgentServer()
 
 @server.rtc_session(agent_name="divineruin-dm")
 async def dm_session(ctx: agents.JobContext) -> None:
+    userdata = SessionData(
+        player_id="player_1",
+        location_id=START_LOCATION,
+    )
+
     session = AgentSession(
         stt=deepgram.STT(model="nova-3", language="en"),
         llm=anthropic.LLM(
@@ -156,6 +174,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
         turn_detection=MultilingualModel(),
         allow_interruptions=True,
         min_endpointing_delay=0.5,
+        userdata=userdata,
     )
 
     await session.start(
@@ -165,13 +184,13 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
     await session.generate_reply(
         instructions=(
-            "Set the opening scene. The player pushes open the heavy door of "
-            "Torin's guild hall in the border town of Ashwick. It's evening. "
-            "Describe the atmosphere briefly — firelight, the smell of smoke and old wood, "
-            "a few scattered patrons. Then Guildmaster Torin notices them from behind the bar "
-            "and speaks, gruff and direct, welcoming them but making clear this is no place "
-            "for the faint-hearted. Use the [GUILDMASTER_TORIN, stern] tag for his dialogue. "
-            "End with something that invites the player to respond."
+            "Set the opening scene. First, call query_location with 'accord_guild_hall' "
+            "to get the location details, and query_npc with 'guildmaster_torin' to get "
+            "Torin's details. Use those results to narrate the scene. "
+            "The player pushes open the heavy door of the guild hall. It's evening. "
+            "Describe the atmosphere using the location data. Then Guildmaster Torin "
+            "notices them and speaks, gruff and direct. Use the [GUILDMASTER_TORIN, stern] "
+            "tag for his dialogue. End with something that invites the player to respond."
         ),
     )
 

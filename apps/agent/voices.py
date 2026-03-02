@@ -18,6 +18,13 @@ VOICES: dict[str, str] = {
 
 DEFAULT_VOICE = "DM_NARRATOR"
 
+# Per-voice rate offset added to the emotion rate.
+# Compensates for inherent speed differences between Inworld voices.
+# Positive = faster, negative = slower. DM is the baseline.
+VOICE_RATE_OFFSETS: dict[str, float] = {
+    "GUILDMASTER_TORIN": 0.15,
+}
+
 EMOTION_RATES: dict[str, float] = {
     "calm": 0.8,
     "neutral": 0.8,
@@ -42,4 +49,5 @@ EMOTIONS: list[str] = sorted(EMOTION_RATES.keys())
 def get_voice_config(character: str, emotion: str = "neutral") -> VoiceConfig:
     voice = VOICES.get(character, VOICES[DEFAULT_VOICE])
     rate = EMOTION_RATES.get(emotion.lower(), 1.0)
+    rate += VOICE_RATE_OFFSETS.get(character, 0.0)
     return VoiceConfig(voice=voice, speaking_rate=rate)

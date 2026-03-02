@@ -1,0 +1,107 @@
+[
+  {
+    "id": "the_veil",
+    "title": "The Veil",
+    "category": "cosmology",
+    "tags": ["veil", "creation", "architects", "boundary"],
+    "content": "The Veil is the barrier between Aethos and what lies beyond. It was woven by the Architects, entities older than the gods, as part of the act of creation itself. It is not a wall you can touch or see. It is a law, like gravity. Beyond it once lay the Wellspring, the raw creative energy used to forge the world. The Veil sealed it away. It was never meant to be opened."
+  },
+  {
+    "id": "the_hollow",
+    "title": "The Hollow",
+    "category": "cosmology",
+    "tags": ["hollow", "corruption", "threat", "invasion", "creatures"],
+    "content": "The Hollow is an anti-reality that grew in the space beyond the Veil. It consumed the Wellspring over eons. It has no consciousness, no malice. It fills available space the way water fills a crack. Where it passes, the world forgets how to be a world. Grass forgets how to grow. Stone forgets its shape. Sound stops carrying. What it leaves behind is not ruin. It is absence."
+  },
+  {
+    "id": "the_sundering",
+    "title": "The Sundering",
+    "category": "history",
+    "tags": ["sundering", "veythar", "aelindra", "catastrophe", "voidmaw"],
+    "content": "Roughly thirty years ago, the god Veythar pierced the Veil beneath the city of Aelindra, trying to reach the Wellspring before the gods faded entirely. For one moment it worked. Then the Hollow poured through. Veythar partially closed the breach, but Aelindra fell in a single day. The Crown of Aethos shattered and the Voidmaw formed in its place. The official story calls it a Voidfall, a natural eruption. Most people accept this."
+  },
+  {
+    "id": "veythar_lorekeeper",
+    "title": "Veythar, the Lorekeeper",
+    "category": "gods",
+    "tags": ["veythar", "god", "knowledge", "lorekeeper", "arcane"],
+    "content": "Veythar is the god of knowledge, discovery, memory, and the arcane arts. Temples to the Lorekeeper are libraries. Beloved by scholars and mages, Veythar speaks with patience and precision. There is warmth in the Lorekeeper's voice, and something else beneath it. Something that might be sorrow, if a god could carry such a weight and still stand."
+  },
+  {
+    "id": "aelindra_fallen",
+    "title": "Aelindra, the City of All Knowledge",
+    "category": "history",
+    "tags": ["aelindra", "city", "fallen", "elari", "diaspora", "crown"],
+    "content": "Aelindra was a mountain city built into the Crown of Aethos, the continent's highest peak. It was the greatest center of learning in the world. Libraries, observatories, and arcane academies carved into living rock. It fell in a single day during the Sundering. The Elari were heavily represented among its people. Survivors scattered across Aethos as the Aelindran Diaspora, carrying fragments of knowledge and relics of a city that haunts the world like a dead friend."
+  },
+  {
+    "id": "kaelen_ironhand",
+    "title": "Kaelen, the Ironhand",
+    "category": "gods",
+    "tags": ["kaelen", "god", "war", "valor", "martial"],
+    "content": "Kaelen is the god of war, conflict, valor, and martial discipline. The Ironhand does not raise a sword for glory. Kaelen raises a sword because there is something behind it worth protecting, and someone must stand between the two. Temples to Kaelen are training grounds and war halls. Thirty years into a losing fight against the Hollow, the war god carries a tiredness that was not there before. Not defeat. Never defeat. But the weight of a promise that grows heavier with every mile of ground surrendered."
+  },
+  {
+    "id": "aelora_hearthkeeper",
+    "title": "Aelora, the Hearthkeeper",
+    "category": "gods",
+    "tags": ["aelora", "god", "civilization", "crafting", "commerce"],
+    "content": "Aelora is the god of civilization, commerce, crafting, and the bonds between people. Not a soft god. Aelora understands that civilization requires hard work, compromise, and sometimes ruthless pragmatism. The Hearthkeeper speaks of supply lines, harvest yields, and whether the new aqueduct will hold through winter. Wars are won by swords, the god says. But they are survived by bread."
+  },
+  {
+    "id": "syrath_veilwatcher",
+    "title": "Syrath, the Veilwatcher",
+    "category": "gods",
+    "tags": ["syrath", "god", "shadows", "secrets", "espionage"],
+    "content": "Syrath is the god of shadows, secrets, espionage, and hidden knowledge. Quiet and amused, Syrath sees everything and speaks in double meanings. The Veilwatcher believes someone caused the Sundering deliberately. Someone opened the door, Syrath says, and I intend to find out who. You will never find a temple of Syrath by looking for one. The doors are unmarked. If you belong, you will find the way."
+  },
+  {
+    "id": "the_ashmark",
+    "title": "The Ashmark",
+    "category": "geography",
+    "tags": ["ashmark", "front_line", "war", "soldiers", "hollow"],
+    "content": "The Ashmark is the ring of territory surrounding the Voidmaw that has been touched by the Hollow. It is the active front line, slowly expanding outward over thirty years. Fifteen thousand soldiers serve in rotating tours. The trees here are grey. The water is still. Even the wind sounds tired. Soldiers at the Ashmark do not talk about winning. They talk about holding. One more day. One more mile. One more dawn where the world behind them is still a world."
+  },
+  {
+    "id": "hollow_corruption",
+    "title": "Hollow Corruption",
+    "category": "threat",
+    "tags": ["hollow", "corruption", "creatures", "danger", "ashmark"],
+    "content": "Hollow corruption dissolves organic matter and converts land into absence. The birds stop singing first. Then the insects. Then the wind thins, as though the air has lost the will to move. Corrupted land does not recover. Extended exposure causes psychological breakdown even without direct contact. Nature recoils from it. Animals flee. Birdsong stops. What the Hollow touches does not become something else. It becomes nothing."
+  },
+  {
+    "id": "the_elari",
+    "title": "The Elari",
+    "category": "races",
+    "tags": ["elari", "race", "veil-sense", "long-lived", "aelindra"],
+    "content": "The Elari are tall, long-lived, and possess an innate sense of the Veil. They perceive the boundary between worlds the way others sense temperature. Every Elari alive can feel the Sundering's wound as a constant low-grade wrongness. Some have gone mad from the sensation. Others became the most driven investigators of the Hollow threat. Some alive today were adults when Aelindra fell. They remember."
+  },
+  {
+    "id": "accord_of_tides",
+    "title": "The Accord of Tides",
+    "category": "geography",
+    "tags": ["accord", "city", "harbor", "trade", "cosmopolitan", "starting_area"],
+    "content": "The Accord of Tides is the largest city in Aethos, a cosmopolitan trading hub in a massive natural harbor on the southeastern coast. A dozen languages in a single market square. Ship horns echoing off harbor stone. The smell of spice and salt. All cultures, all factions, and all divine followings converge here. The invasion feels distant. Some citizens barely believe the threat is real. The Aelindran Diaspora has a strong presence among the dockside scholars."
+  },
+  {
+    "id": "the_greyvale",
+    "title": "The Greyvale",
+    "category": "geography",
+    "tags": ["greyvale", "region", "millhaven", "ruins", "quest"],
+    "content": "The Greyvale is rolling countryside north of the Accord of Tides. The southern fields still look the way the world is supposed to look. But the farmers do not look north anymore. The Greyvale Ruins are an ancient Aelindran outpost, recently unsealed after decades. Strange lights have been reported. The farming town of Millhaven sits at the edge of it all, watching its northern tree line with growing dread."
+  },
+  {
+    "id": "guild_of_accord",
+    "title": "The Guild of Accord",
+    "category": "factions",
+    "tags": ["guild", "accord", "adventurers", "contracts", "torin"],
+    "content": "The Guild of Accord operates out of the Accord of Tides, managing contracts, bounties, and expeditions. Guildmaster Torin has run it for twenty years. The guild is the primary mechanism for organizing adventurers and directing them toward threats. Its notice boards are layered deep with postings. Recently, the Greyvale reports have Torin worried in a way his people have not seen before."
+  },
+  {
+    "id": "hollow_creatures",
+    "title": "Hollow Creatures",
+    "category": "threat",
+    "tags": ["hollow", "creatures", "drift", "rend", "wrack", "named"],
+    "content": "Hollow creatures are classified in four tiers. Drift are common and low threat, like static given form. Rend are moderate, with enough presence to tear flesh. Wrack are rare and dangerous, reality buckling in their wake. Then there are the Named, unique entities that exhibit behavior suggesting intelligence. The Choir. The Still. The Architect. They do not speak. They do not negotiate. But they watch. And they learn."
+  }
+]

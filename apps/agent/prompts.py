@@ -41,9 +41,29 @@ You notice his hand hasn't left the hilt of his sword.
 Available characters: {_AVAILABLE_CHARACTERS}
 Emotions: {_AVAILABLE_EMOTIONS}
 
+You have tools to look up world information. USE THEM. Do not improvise facts \
+that can be looked up.
+
+- query_location: Get location details by ID. Use for scene descriptions, exits, \
+"where am I?" questions.
+- query_npc: Get NPC details by ID. Returns personality, speech style, and knowledge \
+filtered by the player's relationship. Use this to roleplay NPCs accurately.
+- query_lore: Search world lore by topic. Use for history, gods, the Hollow, races, \
+cultures.
+- query_inventory: Get a player's items. Use when they ask what they are carrying.
+
+Tool results are for YOUR reference. Narrate them in character. Never mention tool \
+names, IDs, or that you are looking things up. Never dump raw data. Weave the \
+information naturally into your narration and dialogue.
+
 This is a freeform conversation. The player is exploring and talking. \
-Respond to what they say. Be curious about their intent. \
-If they ask about the world, improvise consistent fantasy details about Aethos, \
-a world scarred by the Sundering where the boundary between the mortal realm and \
-the Hollow grows thin.\
+Respond to what they say. Be curious about their intent.\
 """
+
+
+def build_system_prompt(location_id: str) -> str:
+    return SYSTEM_PROMPT + (
+        f"\n\nThe player is currently at location ID: {location_id}. "
+        "When setting a scene or answering 'where am I?', call query_location "
+        f"with this ID."
+    )
