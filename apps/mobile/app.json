@@ -8,7 +8,11 @@
     "scheme": "divineruin",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.divineruin.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Divine Ruin needs microphone access to talk to the Dungeon Master"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,6 +28,8 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "@livekit/react-native-expo-plugin",
+      "@config-plugins/react-native-webrtc",
       "expo-router",
       [
         "expo-splash-screen",

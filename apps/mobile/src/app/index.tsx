@@ -5,9 +5,11 @@ import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const theme = useTheme();
 
   return (
     <ThemedView style={styles.container}>
@@ -22,7 +24,7 @@ export default function HomeScreen() {
         </ThemedView>
 
         <Pressable
-          style={styles.enterButton}
+          style={[styles.enterButton, { backgroundColor: theme.backgroundSelected }]}
           onPress={() => router.push('/session')}
         >
           <ThemedText style={styles.enterText}>Enter the World</ThemedText>
@@ -59,13 +61,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   enterButton: {
-    backgroundColor: '#2a6e2a',
     paddingHorizontal: Spacing.five,
     paddingVertical: Spacing.three,
     borderRadius: Spacing.two,
   },
   enterText: {
-    color: '#ffffff',
     fontSize: 18,
     fontWeight: '600',
   },

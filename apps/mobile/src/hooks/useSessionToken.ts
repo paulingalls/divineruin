@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
+const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001";
 
 export type TokenState = "idle" | "fetching" | "ready" | "error";
 

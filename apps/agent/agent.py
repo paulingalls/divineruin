@@ -1,4 +1,5 @@
 import logging
+import os
 from collections.abc import AsyncIterable, AsyncGenerator
 from typing import Any
 
@@ -9,12 +10,32 @@ from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from livekit.plugins import anthropic, deepgram, inworld
 
 from prompts import SYSTEM_PROMPT
-from voices import get_voice_config
+from voices import get_voice_config, VOICES
 from dialogue_parser import parse_dialogue_stream
 from latency import TurnTimer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("divineruin.dm")
+
+REQUIRED_ENV_VARS = [
+    "LIVEKIT_URL",
+    "LIVEKIT_API_KEY",
+    "LIVEKIT_API_SECRET",
+    "ANTHROPIC_API_KEY",
+    "DEEPGRAM_API_KEY",
+    "INWORLD_API_KEY",
+]
+
+
+def validate_env() -> None:
+    missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
+    empty_voices = [k for k, v in VOICES.items() if not v]
+    if empty_voices:
+        logger.warning("Voice IDs not set for: %s", ", ".join(empty_voices))
+    if missing:
+        raise EnvironmentError(
+            f"Missing required environment variables: {', '.join(missing)}"
+        )
 
 
 class DungeonMasterAgent(Agent):
@@ -85,4 +106,5 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
 
 if __name__ == "__main__":
+    validate_env()
     agents.cli.run_app(server)
