@@ -1,0 +1,13 @@
+[
+  {
+    "npc_id": "guild_training_dummy",
+    "name": "Training Dummy",
+    "location": "accord_guild_hall",
+    "ac": 10,
+    "hp": {
+      "current": 50,
+      "max": 50
+    },
+    "description": "A battered wooden post wrapped in old leather and rope, vaguely shaped like a torso. Scars from countless practice blades cover its surface."
+  }
+]

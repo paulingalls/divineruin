@@ -8,6 +8,7 @@ import pytest
 from tools import (
     filter_knowledge,
     apply_time_conditions,
+    enter_location,
     query_location,
     query_npc,
     query_lore,
@@ -324,3 +325,93 @@ class TestQueryInventory:
         ctx = _make_context()
         result = json.loads(await query_inventory._func(ctx, player_id="player_1"))
         assert "note" in result
+
+
+# --- enter_location tests ---
+
+SAMPLE_NPC_RAW = {
+    "id": "guildmaster_torin",
+    "name": "Guildmaster Torin",
+    "role": "guild hall master",
+    "default_disposition": "neutral",
+    "voice_notes": "deep baritone",
+    "schedule": {"07:00-22:00": "accord_guild_hall"},
+}
+
+SAMPLE_TARGET = {
+    "npc_id": "guild_training_dummy",
+    "name": "Training Dummy",
+    "location": "accord_guild_hall",
+    "ac": 10,
+    "hp": {"current": 50, "max": 50},
+    "description": "A battered wooden post.",
+}
+
+SAMPLE_PLAYER = {
+    "player_id": "player_1",
+    "name": "Kael",
+    "class": "warrior",
+    "level": 1,
+    "hp": {"current": 25, "max": 25},
+    "ac": 14,
+    "equipment": {
+        "main_hand": {
+            "name": "Longsword",
+            "damage": "1d8",
+            "damage_type": "slashing",
+            "properties": [],
+        }
+    },
+}
+
+
+class TestEnterLocation:
+    @pytest.mark.asyncio
+    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
+    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
+    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_returns_full_context(self, mock_loc, mock_npcs, mock_disp, mock_targets, mock_player):
+        mock_loc.return_value = SAMPLE_LOCATION
+        mock_npcs.return_value = [SAMPLE_NPC_RAW]
+        mock_disp.return_value = None
+        mock_targets.return_value = [SAMPLE_TARGET]
+        mock_player.return_value = SAMPLE_PLAYER
+        ctx = _make_context()
+        result = json.loads(await enter_location._func(ctx, location_id="accord_guild_hall"))
+
+        assert result["location"]["name"] == "Guild Hall"
+        assert len(result["npcs"]) == 1
+        assert result["npcs"][0]["id"] == "guildmaster_torin"
+        assert result["npcs"][0]["disposition"] == "neutral"
+        assert len(result["targets"]) == 1
+        assert result["targets"][0]["id"] == "guild_training_dummy"
+        assert result["targets"][0]["ac"] == 10
+        assert result["player"]["name"] == "Kael"
+        assert result["player"]["weapon"] == "Longsword"
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_missing_location(self, mock_loc):
+        mock_loc.return_value = None
+        ctx = _make_context()
+        result = json.loads(await enter_location._func(ctx, location_id="nowhere"))
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
+    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_empty_npcs_and_targets(self, mock_loc, mock_npcs, mock_targets, mock_player):
+        mock_loc.return_value = SAMPLE_LOCATION
+        mock_npcs.return_value = []
+        mock_targets.return_value = []
+        mock_player.return_value = SAMPLE_PLAYER
+        ctx = _make_context()
+        result = json.loads(await enter_location._func(ctx, location_id="accord_guild_hall"))
+
+        assert result["npcs"] == []
+        assert result["targets"] == []
+        assert result["location"]["name"] == "Guild Hall"

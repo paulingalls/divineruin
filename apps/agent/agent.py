@@ -15,7 +15,12 @@ from voices import get_voice_config, VOICES
 from dialogue_parser import parse_dialogue_stream
 from latency import TurnTimer
 from session_data import SessionData
-from tools import query_location, query_npc, query_lore, query_inventory
+from tools import (
+    enter_location,
+    query_location, query_npc, query_lore, query_inventory,
+    request_skill_check, request_attack, request_saving_throw,
+    roll_dice, play_sound,
+)
 import db
 
 logging.basicConfig(level=logging.INFO)
@@ -32,7 +37,9 @@ REQUIRED_ENV_VARS = [
     "REDIS_URL",
 ]
 
-WORLD_TOOLS = [query_location, query_npc, query_lore, query_inventory]
+WORLD_TOOLS = [enter_location, query_location, query_npc, query_lore, query_inventory]
+MECHANICS_TOOLS = [request_skill_check, request_attack, request_saving_throw, roll_dice, play_sound]
+ALL_TOOLS = WORLD_TOOLS + MECHANICS_TOOLS
 
 
 def validate_env() -> None:
@@ -53,7 +60,7 @@ class DungeonMasterAgent(Agent):
     def __init__(self) -> None:
         super().__init__(
             instructions=build_system_prompt(START_LOCATION),
-            tools=WORLD_TOOLS,
+            tools=ALL_TOOLS,
         )
         self._turn_timer = TurnTimer()
 
@@ -161,6 +168,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
     userdata = SessionData(
         player_id="player_1",
         location_id=START_LOCATION,
+        room=ctx.room,
     )
 
     session = AgentSession(
@@ -184,13 +192,14 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
     await session.generate_reply(
         instructions=(
-            "Set the opening scene. First, call query_location with 'accord_guild_hall' "
-            "to get the location details, and query_npc with 'guildmaster_torin' to get "
-            "Torin's details. Use those results to narrate the scene. "
+            "Call enter_location with 'accord_guild_hall' to get the full scene context. "
+            "Do NOT tell the player you are looking anything up or setting a scene. "
+            "Do NOT use meta-language like 'setting the scene' or 'let me describe'. "
+            "Just BE the narrator — start directly with what the player experiences. "
             "The player pushes open the heavy door of the guild hall. It's evening. "
-            "Describe the atmosphere using the location data. Then Guildmaster Torin "
-            "notices them and speaks, gruff and direct. Use the [GUILDMASTER_TORIN, stern] "
-            "tag for his dialogue. End with something that invites the player to respond."
+            "Describe the atmosphere. Then Guildmaster Torin notices them and speaks, "
+            "gruff and direct. Use the [GUILDMASTER_TORIN, stern] tag for his dialogue. "
+            "End with something that invites the player to respond."
         ),
     )
 

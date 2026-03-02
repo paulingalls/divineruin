@@ -136,6 +136,76 @@ async def get_npc_disposition(npc_id: str, player_id: str) -> str | None:
     return data.get("disposition")
 
 
+async def get_player(player_id: str) -> dict | None:
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        "SELECT data FROM players WHERE player_id = $1", player_id
+    )
+    if row is None:
+        return None
+    return json.loads(row["data"])
+
+
+async def update_player_hp(player_id: str, current_hp: int) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        """
+        UPDATE players
+        SET data = jsonb_set(data, '{hp,current}', $2::jsonb)
+        WHERE player_id = $1
+        """,
+        player_id,
+        json.dumps(current_hp),
+    )
+
+
+async def get_npc_combat_stats(npc_id: str) -> dict | None:
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        "SELECT data FROM npc_state WHERE npc_id = $1", npc_id
+    )
+    if row is None:
+        return None
+    return json.loads(row["data"])
+
+
+async def update_npc_hp(npc_id: str, current_hp: int) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        """
+        UPDATE npc_state
+        SET data = jsonb_set(data, '{hp,current}', $2::jsonb)
+        WHERE npc_id = $1
+        """,
+        npc_id,
+        json.dumps(current_hp),
+    )
+
+
+async def get_npcs_at_location(location_id: str) -> list[dict]:
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT id, data FROM npcs
+        WHERE EXISTS (
+            SELECT 1 FROM jsonb_each_text(data->'schedule') AS s(k, v)
+            WHERE v = $1
+        )
+        """,
+        location_id,
+    )
+    return [{"id": row["id"], **json.loads(row["data"])} for row in rows]
+
+
+async def get_targets_at_location(location_id: str) -> list[dict]:
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT npc_id, data FROM npc_state WHERE data->>'location' = $1",
+        location_id,
+    )
+    return [{"npc_id": row["npc_id"], **json.loads(row["data"])} for row in rows]
+
+
 async def get_player_inventory(player_id: str) -> list[dict]:
     pool = await get_pool()
     rows = await pool.fetch(

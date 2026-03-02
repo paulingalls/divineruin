@@ -18,19 +18,27 @@ TABLE_MAP = {
     "quests.json": "quests",
     "factions.json": "factions",
     "lore_entries.json": "lore_entries",
+    "players.json": "players",
+    "npc_state.json": "npc_state",
+}
+
+PK_COLUMN = {
+    "players": "player_id",
+    "npc_state": "npc_id",
 }
 
 UPSERT_SQL = """
-    INSERT INTO {table} (id, data)
+    INSERT INTO {table} ({pk_col}, data)
     VALUES ($1, $2::jsonb)
-    ON CONFLICT (id) DO UPDATE SET data = $2::jsonb
+    ON CONFLICT ({pk_col}) DO UPDATE SET data = $2::jsonb
 """
 
 
 def upsert_query(table: str) -> str:
     if not re.match(r"^[a-z_]+$", table):
         raise ValueError(f"Invalid table name: {table}")
-    return UPSERT_SQL.format(table=table)
+    pk_col = PK_COLUMN.get(table, "id")
+    return UPSERT_SQL.format(table=table, pk_col=pk_col)
 
 
 async def seed(conn: asyncpg.Connection) -> dict[str, int]:
@@ -41,10 +49,11 @@ async def seed(conn: asyncpg.Connection) -> dict[str, int]:
             print(f"  skip: {filename} (not found)")
             continue
 
+        pk_field = PK_COLUMN.get(table, "id")
         query = upsert_query(table)
         entities = json.loads(filepath.read_text())
         for entity in entities:
-            await conn.execute(query, entity["id"], json.dumps(entity))
+            await conn.execute(query, entity[pk_field], json.dumps(entity))
         counts[table] = len(entities)
         print(f"  {table}: {len(entities)} entities")
 

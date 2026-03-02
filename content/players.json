@@ -1,0 +1,49 @@
+[
+  {
+    "player_id": "player_1",
+    "name": "Kael",
+    "class": "warrior",
+    "level": 1,
+    "attributes": {
+      "strength": 14,
+      "dexterity": 12,
+      "constitution": 13,
+      "intelligence": 10,
+      "wisdom": 11,
+      "charisma": 8
+    },
+    "hp": {
+      "current": 25,
+      "max": 25
+    },
+    "ac": 14,
+    "proficiencies": [
+      "athletics",
+      "stealth",
+      "perception"
+    ],
+    "saving_throw_proficiencies": [
+      "strength",
+      "constitution"
+    ],
+    "equipment": {
+      "main_hand": {
+        "name": "Longsword",
+        "damage": "1d8",
+        "damage_type": "slashing",
+        "properties": []
+      },
+      "armor": {
+        "name": "Chain Shirt",
+        "ac_bonus": 13
+      },
+      "shield": {
+        "name": "Wooden Shield",
+        "ac_bonus": 1
+      }
+    },
+    "inventory": [],
+    "gold": 15,
+    "backstory": "A wandering sellsword drawn to the guild by rumors of work and coin."
+  }
+]
