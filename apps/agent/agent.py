@@ -164,7 +164,15 @@ async def dm_session(ctx: agents.JobContext) -> None:
     )
 
     await session.generate_reply(
-        instructions="Greet the player as they enter the world. Set the scene briefly: they stand at the edge of a ruined village at dusk, wind carrying the scent of ash. Two to three sentences, atmospheric, inviting them to explore.",
+        instructions=(
+            "Set the opening scene. The player pushes open the heavy door of "
+            "Torin's guild hall in the border town of Ashwick. It's evening. "
+            "Describe the atmosphere briefly — firelight, the smell of smoke and old wood, "
+            "a few scattered patrons. Then Guildmaster Torin notices them from behind the bar "
+            "and speaks, gruff and direct, welcoming them but making clear this is no place "
+            "for the faint-hearted. Use the [GUILDMASTER_TORIN, stern] tag for his dialogue. "
+            "End with something that invites the player to respond."
+        ),
     )
 
 

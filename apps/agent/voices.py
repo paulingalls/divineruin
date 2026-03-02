@@ -11,6 +11,7 @@ class VoiceConfig:
 VOICES: dict[str, str] = {
     "DM_NARRATOR": os.getenv("INWORLD_VOICE_DM", ""),
     "GUILDMASTER_TORIN": os.getenv("INWORLD_VOICE_TORIN", ""),
+    "COMPANION_KAEL": os.getenv("INWORLD_VOICE_KAEL", ""),
     "ELDER_YANNA": os.getenv("INWORLD_VOICE_YANNA", ""),
     "SCHOLAR_EMRIS": os.getenv("INWORLD_VOICE_EMRIS", ""),
 }
