@@ -11,6 +11,9 @@ import {
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useSessionToken } from "@/hooks/useSessionToken";
+import { useGameEvents } from "@/hooks/use-game-events";
+import { configureAudioSession } from "@/audio/audio-config";
+import { releaseAllPlayers } from "@/audio/sfx-player";
 import { Spacing } from "@/constants/theme";
 
 const ROOM_NAME = "divineruin-session";
@@ -28,6 +31,11 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
   const connectionState = useConnectionState();
   const voiceAssistant = useVoiceAssistant();
   const agentState = voiceAssistant.state;
+
+  useGameEvents();
+  useEffect(() => {
+    return () => releaseAllPlayers();
+  }, []);
   const statusLabel = STATUS_LABELS[connectionState] ?? connectionState;
 
   return (
@@ -56,6 +64,9 @@ export default function SessionScreen() {
     useSessionToken(PLAYER_ID);
 
   useEffect(() => {
+    configureAudioSession().catch((err) =>
+      console.error("[session] Audio config failed:", err),
+    );
     fetchToken(ROOM_NAME);
   }, [fetchToken]);
 

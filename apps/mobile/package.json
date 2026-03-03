@@ -8,7 +8,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios --port 8082",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "prebuild:clean": "expo prebuild --clean"
   },
   "dependencies": {
     "@config-plugins/react-native-webrtc": "^13.0.0",
@@ -16,10 +17,12 @@
     "@livekit/react-native": "^2.9.6",
     "@livekit/react-native-expo-plugin": "^1.0.1",
     "@livekit/react-native-webrtc": "^137.0.2",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.7.3",
     "@react-navigation/elements": "^2.8.1",
     "@react-navigation/native": "^7.1.28",
     "expo": "~55.0.4",
+    "expo-audio": "~55.0.8",
     "expo-constants": "~55.0.7",
     "expo-dev-client": "~55.0.10",
     "expo-device": "~55.0.9",
