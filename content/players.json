@@ -4,6 +4,8 @@
     "name": "Kael",
     "class": "warrior",
     "level": 1,
+    "xp": 0,
+    "location_id": "accord_guild_hall",
     "attributes": {
       "strength": 14,
       "dexterity": 12,

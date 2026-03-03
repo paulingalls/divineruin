@@ -100,7 +100,7 @@ SAMPLE_QUEST = {
         {
             "id": 1,
             "objective": "Find the source of the anomaly.",
-            "on_complete": {"xp": 100, "items": [{"item_id": "research_tablet", "quantity": 1}]},
+            "on_complete": {"xp": 100, "rewards": [{"item": "research_tablet", "quantity": 1}]},
         },
         {
             "id": 2,

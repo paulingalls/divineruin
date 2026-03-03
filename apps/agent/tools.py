@@ -796,8 +796,8 @@ async def update_quest(
                     "leveled_up": level_result.leveled_up,
                 })
 
-        for item_reward in on_complete.get("items", []):
-            item_id = item_reward.get("item_id")
+        for item_reward in on_complete.get("rewards", []):
+            item_id = item_reward.get("item") or item_reward.get("item_id")
             qty = item_reward.get("quantity", 1)
             if item_id:
                 await db.add_inventory_item(session.player_id, item_id, qty)
