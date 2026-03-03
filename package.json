@@ -15,7 +15,7 @@
     "seed": "cd scripts && uv run python seed_content.py",
     "dev:agent": "cd apps/agent && uv run --env-file ../../.env.local python agent.py dev",
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test --cwd apps/server && bun test --cwd apps/mobile"
   },
   "devDependencies": {
     "@types/bun": "latest"

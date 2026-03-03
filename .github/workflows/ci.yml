@@ -50,7 +50,8 @@ jobs:
       - run: bun install
       - run: bun run scripts/migrate.ts
       - run: cd scripts && uv sync && uv run python seed_content.py
-      - run: bun test
+      - run: bun test --cwd apps/server
+      - run: bun test --cwd apps/mobile
 
   lint-python:
     runs-on: ubuntu-latest
