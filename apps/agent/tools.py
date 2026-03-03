@@ -10,6 +10,7 @@ from livekit.agents.voice import RunContext
 import db
 import dice
 import rules_engine
+from db_errors import DatabaseError, with_db_error_handling, db_tool
 from game_events import publish_game_event
 from session_data import SessionData
 
@@ -528,6 +529,7 @@ def _clamp_disposition_shift(current: str, delta: int) -> str:
 
 
 @function_tool()
+@db_tool
 async def award_xp(
     context: RunContext[SessionData],
     amount: int,
@@ -584,6 +586,7 @@ async def award_xp(
 
 
 @function_tool()
+@db_tool
 async def update_npc_disposition(
     context: RunContext[SessionData],
     npc_id: str,
@@ -640,6 +643,7 @@ async def update_npc_disposition(
 
 
 @function_tool()
+@db_tool
 async def add_to_inventory(
     context: RunContext[SessionData],
     item_id: str,
@@ -687,6 +691,7 @@ async def add_to_inventory(
 
 
 @function_tool()
+@db_tool
 async def remove_from_inventory(
     context: RunContext[SessionData],
     item_id: str,
@@ -734,6 +739,7 @@ async def remove_from_inventory(
 
 
 @function_tool()
+@db_tool
 async def move_player(
     context: RunContext[SessionData],
     destination_id: str,
@@ -807,6 +813,7 @@ async def move_player(
 
 
 @function_tool()
+@db_tool
 async def update_quest(
     context: RunContext[SessionData],
     quest_id: str,
