@@ -369,13 +369,13 @@ class TestEnterLocation:
     @pytest.mark.asyncio
     @patch("tools.db.get_player", new_callable=AsyncMock)
     @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
+    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
     @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
     @patch("tools.db.get_location", new_callable=AsyncMock)
     async def test_returns_full_context(self, mock_loc, mock_npcs, mock_disp, mock_targets, mock_player):
         mock_loc.return_value = SAMPLE_LOCATION
         mock_npcs.return_value = [SAMPLE_NPC_RAW]
-        mock_disp.return_value = None
+        mock_disp.return_value = {}
         mock_targets.return_value = [SAMPLE_TARGET]
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()

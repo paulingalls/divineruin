@@ -48,7 +48,7 @@ SAMPLE_QUEST = {
 
 class TestBuildWarmLayer:
     @patch("db.get_active_player_quests", new_callable=AsyncMock)
-    @patch("db.get_npc_disposition", new_callable=AsyncMock)
+    @patch("db.get_npc_dispositions", new_callable=AsyncMock)
     @patch("db.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db.get_location", new_callable=AsyncMock)
     async def test_includes_location(self, mock_loc, mock_npcs, mock_disp, mock_quests):
@@ -60,20 +60,20 @@ class TestBuildWarmLayer:
         assert "evening" in result
 
     @patch("db.get_active_player_quests", new_callable=AsyncMock)
-    @patch("db.get_npc_disposition", new_callable=AsyncMock)
+    @patch("db.get_npc_dispositions", new_callable=AsyncMock)
     @patch("db.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db.get_location", new_callable=AsyncMock)
     async def test_includes_npcs(self, mock_loc, mock_npcs, mock_disp, mock_quests):
         mock_loc.return_value = SAMPLE_LOCATION
         mock_npcs.return_value = [SAMPLE_NPC_RAW]
-        mock_disp.return_value = None
+        mock_disp.return_value = {}
         mock_quests.return_value = []
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
         assert "Guildmaster Torin" in result
         assert "neutral" in result
 
     @patch("db.get_active_player_quests", new_callable=AsyncMock)
-    @patch("db.get_npc_disposition", new_callable=AsyncMock)
+    @patch("db.get_npc_dispositions", new_callable=AsyncMock)
     @patch("db.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db.get_location", new_callable=AsyncMock)
     async def test_includes_quests(self, mock_loc, mock_npcs, mock_disp, mock_quests):
@@ -85,7 +85,7 @@ class TestBuildWarmLayer:
         assert "Find the source" in result
 
     @patch("db.get_active_player_quests", new_callable=AsyncMock)
-    @patch("db.get_npc_disposition", new_callable=AsyncMock)
+    @patch("db.get_npc_dispositions", new_callable=AsyncMock)
     @patch("db.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db.get_location", new_callable=AsyncMock)
     async def test_night_applies_time_conditions(self, mock_loc, mock_npcs, mock_disp, mock_quests):

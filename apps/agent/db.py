@@ -136,6 +136,22 @@ async def get_npc_disposition(npc_id: str, player_id: str) -> str | None:
     return data.get("disposition")
 
 
+async def get_npc_dispositions(npc_ids: list[str], player_id: str) -> dict[str, str]:
+    """Batch-fetch dispositions for multiple NPCs. Returns {npc_id: disposition}."""
+    if not npc_ids:
+        return {}
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT npc_id, data FROM npc_dispositions WHERE npc_id = ANY($1) AND player_id = $2",
+        npc_ids,
+        player_id,
+    )
+    return {
+        row["npc_id"]: json.loads(row["data"]).get("disposition", "neutral")
+        for row in rows
+    }
+
+
 async def get_player(player_id: str) -> dict | None:
     pool = await get_pool()
     row = await pool.fetchrow(

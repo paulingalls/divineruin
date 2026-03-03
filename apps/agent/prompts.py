@@ -109,7 +109,7 @@ async def build_warm_layer(
 ) -> str:
     import asyncio
     import db
-    from tools import apply_time_conditions, _location_for_narration, _npc_summary, _resolve_disposition
+    from tools import apply_time_conditions, _location_for_narration, _npc_summary
 
     sections: list[str] = []
 
@@ -131,9 +131,11 @@ async def build_warm_layer(
 
     # Active NPCs at location
     if npcs_raw:
+        npc_ids = [npc["id"] for npc in npcs_raw]
+        dispositions = await db.get_npc_dispositions(npc_ids, player_id)
         npc_lines = []
         for npc in npcs_raw:
-            disposition = await _resolve_disposition(npc["id"], player_id, npc)
+            disposition = dispositions.get(npc["id"], npc.get("default_disposition", "neutral"))
             summary = _npc_summary(npc, disposition)
             npc_lines.append(
                 f"- {summary['name']} ({summary['role']}) — disposition: {summary['disposition']}"

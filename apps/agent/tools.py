@@ -1,5 +1,6 @@
 """World query and mechanics tools for the DM agent."""
 
+import asyncio
 import json
 import logging
 
@@ -168,15 +169,20 @@ async def _build_scene_context(location_id: str, session: SessionData) -> dict:
     location = apply_time_conditions(location)
     location = _strip_hidden_dcs(location)
 
-    npcs_raw = await db.get_npcs_at_location(location_id)
+    npcs_raw, targets_raw, player = await asyncio.gather(
+        db.get_npcs_at_location(location_id),
+        db.get_targets_at_location(location_id),
+        db.get_player(session.player_id),
+    )
+
+    npc_ids = [npc["id"] for npc in npcs_raw]
+    dispositions = await db.get_npc_dispositions(npc_ids, session.player_id) if npc_ids else {}
     npcs = []
     for npc in npcs_raw:
-        disposition = await _resolve_disposition(npc["id"], session.player_id, npc)
+        disposition = dispositions.get(npc["id"], npc.get("default_disposition", "neutral"))
         npcs.append(_npc_summary(npc, disposition))
 
-    targets = [_target_summary(t) for t in await db.get_targets_at_location(location_id)]
-
-    player = await db.get_player(session.player_id)
+    targets = [_target_summary(t) for t in targets_raw]
     player_info = _player_summary(player) if player else None
 
     return {
