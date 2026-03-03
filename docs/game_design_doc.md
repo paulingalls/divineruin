@@ -371,12 +371,14 @@ There's no "start session" vs. "quick session" vs. "async check-in." There's jus
 
 **Open-ended hang:** The player enters with no time limit and no goal. They want to exist in the world. The DM keeps the world alive around them — NPCs go about their business, the environment shifts with time of day, other players pass through. If something interesting happens (a world event, an NPC approaching them, another player nearby), the DM surfaces it naturally. If nothing happens, the companion fills the space. This is the "MMO tavern" experience — being present in a living world, not necessarily doing anything.
 
-**How the DM knows what the player wants:** It doesn't need to ask. The DM reads behavioral signals:
+**How the DM knows what the player wants:** It doesn't need to ask. The DM reads behavioral signals from two sources — what the player *says* (transcript content) and *how* they say it (voice affect analysis from the Player Resonance System):
 - Player enters and immediately says "I want to go to the Greyvale" → quest mode, structure the session
 - Player enters and says "hey, what's going on?" → casual mode, describe the surroundings, let them lead
 - Player enters and says nothing for 10 seconds → the companion speaks first: "Hey. Quiet day so far. Want to do something or just take it easy?"
 - Player enters and says "I only have a few minutes" → the DM acknowledges and keeps things light. No session wrapper, no narrative arc, just a moment in the world
 - Player has been in-world for 5 minutes with no direction → the DM or companion gently offers a hook: "Heard there's something interesting at the docks today, if you're curious"
+- Player's speech rate is climbing, utterances getting longer, using NPC names unprompted → engagement is high, lean into whatever is working
+- Player's responses are getting shorter, latency increasing, energy dropping → they're fading; steer toward a satisfying beat or natural stopping point
 
 **The key insight: every voice connection is the same technical pipeline.** A 2-minute check-in and a 90-minute quest session use the same LiveKit room, the same DM agent, the same tools. The difference is entirely in the DM's behavior — pacing, narrative structure, and how actively it drives toward objectives. Short visits get a relaxed, ambient DM. Long sessions get a structured, story-driven DM. The player's behavior signals which mode is appropriate, and the DM adapts fluidly.
 

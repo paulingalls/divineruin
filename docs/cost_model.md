@@ -89,6 +89,8 @@ The DM's system prompt (world state, scene, character sheets, rules, voice tags)
 
 *For comparison, using Cartesia instead of Inworld adds ~$0.42 to TTS per session.*
 
+*The Player Resonance System (affect analysis from voice — see `player_resonance_system.md`) adds ~$0.006 per session (~60 extra tokens/turn in hot layer context at cached rates). All signal extraction (word timestamps, audio RMS, transcript patterns) runs on data already in the pipeline at zero additional API cost.*
+
 ### Party Session (4 players + DM agent, 30 minutes)
 
 | Component | Haiku 4.5 | Sonnet 4.5 | Calculation |

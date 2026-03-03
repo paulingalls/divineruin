@@ -26,6 +26,7 @@ The following design documents are available for detailed implementation guidanc
 | **MVP Specification** | `mvp_spec.md` | Scoped feature set, session-by-session content arc, success criteria, playtest structure. **Appendix contains buildable JSON entities** for all tier 1 MVP content. |
 | **Aethos Lore Bible** | `aethos_lore.md` | World history, cosmology, 10 gods (personalities and domains), 6 races, 8 cultures, geography, the Hollow, the central mystery. Use for narrative consistency and NPC/quest content. |
 | **Cost Model** | `cost_model.md` | Per-minute and per-session cost breakdowns, subscriber economics, async cost modeling. Reference when making technology choices that affect cost (LLM model selection, TTS provider, caching strategy). |
+| **Player Resonance System** | `player_resonance_system.md` | Voice affect analysis: speech rate, energy, engagement detection from Deepgram word timestamps and raw audio. stt_node override pattern, affect vector schema, DM behavioral adaptation. **Phased implementation plan (A-D) that hooks into milestones 2.3, 5.3, 6.2, and 9.1.** |
 
 **When a milestone says "Key references: Technical Architecture — Tool System"**, open `technical_architecture.md` and search for the "Tool System" section. The design decisions, data formats, and implementation patterns are already specified there.
 
@@ -171,6 +172,7 @@ The following design documents are available for detailed implementation guidanc
 - *Game Design — Session Structure* (DM persona and behavior)
 - *World Data & Simulation — Content Style Guide* (audio-first writing principles)
 - *Audio Design — Voice Design — The DM Voice* (voice characteristics and TTS direction)
+- *Player Resonance System — Phase A* (transcript-only affect baseline: add stt_node override, engagement detection, affect injection into hot layer. This milestone is the hook point.)
 
 ---
 

@@ -734,6 +734,7 @@ Hot layer content (~300-500 tokens per turn):
 - Combat state: turn order, HP values, status effects, tactical positions
 - Pending events: "the merchant is waiting for your answer," "you hear footsteps approaching"
 - Contextual details: if the player says "I look at the sky," inject current weather/celestial details; if they say "I check the door," inject the door's properties
+- **Player affect:** engagement level, speech rate vs. baseline, energy/volume, interaction style mode — see *Player Resonance System* document for the full affect vector and DM behavioral guidance
 
 This is fresh every turn (not cached), but it's small — the cost is negligible compared to the system prompt.
 
@@ -1689,6 +1690,9 @@ The goal is that by the time external playtesters sit down, the experience has a
 | **Technical Architecture** *(this document)* | Client app, voice pipeline, DM agent, orchestration, infrastructure, multiplayer | Living |
 | **World Data & Simulation** | Content authoring format (JSON schemas), world simulation rules, data model | Living |
 | **Cost Model** | Per-session and subscriber unit economics | Living |
+| **Audio Design** | Sound design philosophy, asset specifications, AI generation prompts | Living |
+| **Player Resonance System** | Affect analysis from voice, DM behavioral adaptation, stt_node override pattern | Living |
+| **Dev Milestones** | Phased build plan, acceptance criteria, dependency chain | Living |
 
 ---
 

@@ -200,6 +200,8 @@ The Hollow is Divine Ruin's signature audio design challenge and its most import
 
 **4. The Hollow is personal.** In the full MMO, different players in the same corrupted area might hear different Hollow manifestations based on their divine patronage, psychological profile (play history), and corruption exposure. One player hears their dead companion's voice. Another hears a lullaby from their starting culture. The Hollow uses the player's own audio history against them. (MVP: standardized Hollow audio. Post-MVP: personalized manifestations.)
 
+**5. The Hollow reads the player.** The Player Resonance System (see `player_resonance_system.md`) provides real-time affect data — engagement, energy, speech rate. The DM uses this to modulate Hollow intensity: if the player's voice shows genuine unease (quieter, slower, longer pauses), the Hollow holds steady rather than pushing too far. If the player is calm and clinical, intensity increases. The Hollow should ride the edge of discomfort without breaking immersion.
+
 ### Hollow Sound Asset Categories
 
 **Subsonic drones.** Low-frequency pressure beds (30-60 Hz) that create physical unease. Slowly oscillating, sometimes pulsing at irregular intervals. Not melodic — tonal but unstable, drifting in pitch like a detuned instrument.
