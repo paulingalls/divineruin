@@ -1,6 +1,8 @@
+import json
 import logging
 import os
 import re
+import time
 from collections.abc import AsyncIterable, AsyncGenerator
 from typing import Any
 
@@ -10,6 +12,7 @@ from livekit.plugins import silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from livekit.plugins import anthropic, deepgram, inworld
 
+from background_process import BackgroundProcess
 from prompts import build_system_prompt
 from voices import get_voice_config, VOICES
 from dialogue_parser import parse_dialogue_stream
@@ -66,15 +69,63 @@ class DungeonMasterAgent(Agent):
             tools=ALL_TOOLS,
         )
         self._turn_timer = TurnTimer()
+        self._background: BackgroundProcess | None = None
 
     async def on_enter(self) -> None:
         logger.info("DM agent entered session")
+        sd: SessionData = self.session.userdata
+        self._background = BackgroundProcess(
+            agent=self,
+            session=self.session,
+            session_data=sd,
+        )
+        self._background.start()
 
     async def on_user_turn_completed(
         self, turn_ctx: agents.llm.ChatContext, new_message: agents.llm.ChatMessage
     ) -> None:
         self._turn_timer.start()
         self._turn_timer.mark("user_turn_end")
+
+        sd: SessionData = self.session.userdata
+        sd.last_player_speech_time = time.time()
+
+        hot = await self._build_hot_context(sd)
+        if hot:
+            turn_ctx.add_message(role="assistant", content=hot)
+
+    async def _build_hot_context(self, sd: SessionData) -> str:
+        parts: list[str] = []
+
+        # Current location + time
+        location = await db.get_location(sd.location_id)
+        loc_name = location.get("name", sd.location_id) if location else sd.location_id
+        parts.append(f"[Context: {loc_name}, {sd.world_time}]")
+
+        # Active quest objectives
+        quests = await db.get_active_player_quests(sd.player_id)
+        if quests:
+            objectives = []
+            for q in quests:
+                stages = q.get("stages", [])
+                idx = q.get("current_stage", 0)
+                if 0 <= idx < len(stages):
+                    objectives.append(f"{q['quest_name']}: {stages[idx].get('objective', '')}")
+            if objectives:
+                parts.append("[Quests: " + "; ".join(objectives) + "]")
+
+        # Recent events
+        if sd.recent_events:
+            recent = sd.recent_events[-3:]
+            parts.append("[Recent: " + "; ".join(recent) + "]")
+
+        # NPCs nearby
+        npcs = await db.get_npcs_at_location(sd.location_id)
+        if npcs:
+            names = [n.get("name", n.get("id", "?")) for n in npcs]
+            parts.append("[NPCs nearby: " + ", ".join(names) + "]")
+
+        return " ".join(parts)
 
     async def tts_node(
         self, text: AsyncIterable[str], model_settings: ModelSettings

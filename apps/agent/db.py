@@ -365,6 +365,33 @@ async def set_npc_disposition(
     )
 
 
+async def get_active_player_quests(player_id: str) -> list[dict]:
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT pq.quest_id, pq.data AS pq_data, q.data AS q_data
+        FROM player_quests pq
+        JOIN quests q ON q.id = pq.quest_id
+        WHERE pq.player_id = $1
+        """,
+        player_id,
+    )
+    results = []
+    for row in rows:
+        pq = json.loads(row["pq_data"])
+        quest = json.loads(row["q_data"])
+        current_stage = pq.get("current_stage", 0)
+        stages = quest.get("stages", [])
+        results.append({
+            "quest_id": row["quest_id"],
+            "quest_name": quest.get("name", row["quest_id"]),
+            "current_stage": current_stage,
+            "stages": stages,
+            "global_hints": quest.get("global_hints", []),
+        })
+    return results
+
+
 async def log_world_event(event_type: str, data: dict) -> None:
     pool = await get_pool()
     await pool.execute(

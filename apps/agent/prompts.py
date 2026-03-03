@@ -93,3 +93,56 @@ def build_system_prompt(location_id: str) -> str:
         "When setting a scene or answering 'where am I?', call query_location "
         f"with this ID."
     )
+
+
+async def build_warm_layer(
+    location_id: str, player_id: str, world_time: str
+) -> str:
+    import db
+    from tools import apply_time_conditions, _location_for_narration, _npc_summary, _resolve_disposition
+
+    sections: list[str] = []
+
+    # Current scene
+    location = await db.get_location(location_id)
+    if location:
+        location = apply_time_conditions(location, "night" if world_time == "night" else "day")
+        narr = _location_for_narration(location)
+        sections.append(
+            f"CURRENT SCENE — {narr.get('name', location_id)} ({world_time})\n"
+            f"{narr.get('description', '')}\n"
+            f"Atmosphere: {narr.get('atmosphere', '')}"
+        )
+
+    # Active NPCs at location
+    npcs_raw = await db.get_npcs_at_location(location_id)
+    if npcs_raw:
+        npc_lines = []
+        for npc in npcs_raw:
+            disposition = await _resolve_disposition(npc["id"], player_id, npc)
+            summary = _npc_summary(npc, disposition)
+            npc_lines.append(
+                f"- {summary['name']} ({summary['role']}) — disposition: {summary['disposition']}"
+            )
+        sections.append("NPCS PRESENT\n" + "\n".join(npc_lines))
+
+    # Active quests
+    quests = await db.get_active_player_quests(player_id)
+    if quests:
+        quest_lines = []
+        for q in quests:
+            stages = q.get("stages", [])
+            stage_idx = q.get("current_stage", 0)
+            objective = ""
+            if 0 <= stage_idx < len(stages):
+                objective = stages[stage_idx].get("objective", "")
+            quest_lines.append(f"- {q['quest_name']}: {objective}")
+        sections.append("ACTIVE QUESTS\n" + "\n".join(quest_lines))
+
+    return "\n\n".join(sections)
+
+
+def build_full_prompt(static_layer: str, warm_layer: str) -> str:
+    if not warm_layer:
+        return static_layer
+    return static_layer + "\n\n---\n\n" + warm_layer
