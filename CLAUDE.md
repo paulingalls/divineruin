@@ -19,6 +19,7 @@ Audio-first AI tabletop RPG. Players speak to an AI Dungeon Master via voice —
 | Lore Bible | `aethos_lore.md` | World history, gods, races, cultures, the Hollow, creature taxonomy. |
 | Cost Model | `cost_model.md` | Per-session cost breakdowns, subscriber economics. |
 | Dev Milestones | `dev_milestones.md` | Phased build plan with acceptance criteria. Feed to planning mode. |
+| Player Resonance | `player_resonance_system.md` | Affect analysis from voice: speech rate, energy, engagement detection. stt_node override pattern for tapping audio + transcript data. DM behavioral adaptation. |
 
 ## Architecture
 
@@ -34,29 +35,29 @@ Two languages, one database. Python for DM agent (Anthropic plugin only exists f
 ```
 divine-ruin/
 ├── docs/                   # Design docs (read-only reference)
-├── apps/
+├── server/
 │   ├── agent/              # Python — DM agent, background process, rules engine
-│   │   ├── agent.py
+│   │   ├── tools/          # @function_tool implementations
+│   │   ├── rules/          # Pure rules engine functions
 │   │   └── pyproject.toml
-│   ├── server/             # Bun/TS — REST API, auth, async, notifications
-│   │   └── src/
-│   │       ├── components/
-│   │       └── lib/
-│   └── mobile/             # Expo (TS) — mobile app
+│   └── api/                # Bun/TS — REST API, auth, async, notifications
 │       └── src/
-│           ├── app/        # expo-router screens
-│           ├── components/
-│           ├── constants/
-│           └── hooks/
-├── packages/
-│   └── shared/             # Shared TS package
-├── package.json            # Workspace root
-└── tsconfig.json
+│           ├── routes/
+│           ├── services/
+│           └── generated/  # Auto-generated types from JSON schemas
+├── client/                 # Expo (TS) — mobile app
+│   ├── app/                # expo-router screens
+│   ├── components/
+│   ├── hooks/
+│   └── stores/             # zustand
+├── shared/schemas/         # JSON entity schema definitions
+├── content/                # JSON entity files for DB seeding
+└── docker-compose.yml
 ```
 
 ## Language Rules
 
-### TypeScript / Bun (apps/server/, apps/mobile/, packages/shared/)
+### TypeScript / Bun (server/api/, client/, shared/)
 
 Use Bun exclusively — not Node.js.
 
@@ -70,12 +71,12 @@ Use Bun exclusively — not Node.js.
 - `Bun.file` — not node:fs readFile/writeFile
 - Built-in `WebSocket` — not ws
 
-### Python (apps/agent/)
+### Python (server/agent/)
 
 - Python 3.11+, `pyproject.toml`
 - **uv** for all package management — not pip/poetry/conda
-    - `uv sync`, `uv add <pkg>`, `uv run <cmd>`, `uv lock`
-    - Docs: https://docs.astral.sh/uv/
+  - `uv sync`, `uv add <pkg>`, `uv run <cmd>`, `uv lock`
+  - Docs: https://docs.astral.sh/uv/
 - LiveKit plugins: `livekit-plugins-anthropic` (Claude), `livekit-plugins-deepgram` (STT), `livekit-plugins-inworld` (TTS), `livekit-plugins-silero` (VAD), `livekit-plugins-turn-detector`
 - All async — use `asyncio`
 - Type hints on all functions
@@ -83,19 +84,7 @@ Use Bun exclusively — not Node.js.
 
 ### Shared Data
 
-No shared code between Python and TS. Shared data via PostgreSQL JSONB + Redis. Entity schemas in `packages/shared/` generate TS interfaces into `apps/server/src/generated/`. See `world_data_simulation.md` → Data Model.
-
-## XP Values
-
-All development follows the four values of Extreme Programming:
-
-1. **Simplicity.** Do the simplest thing that works. Less code, fewer abstractions, shorter functions. If something feels complex, it probably needs to be broken down or rethought, not wrapped in more layers.
-
-2. **Communication.** Code should read clearly without comments. Names, structure, and types convey intent. When something isn't obvious from the code itself, that's a design problem to fix — not a comment to write.
-
-3. **Feedback.** Tests, logging, and error messages are first-class outputs. Write tests that confirm behavior and catch regressions. Log meaningfully. Surface errors with enough context to act on. Ship early and learn from real usage.
-
-4. **Courage.** Do the right thing even when it's harder. Refactor code that works but reads poorly. Delete code that's no longer needed. Write the extra test. Challenge assumptions — including these docs — when something doesn't hold up.
+No shared code between Python and TS. Shared data via PostgreSQL JSONB + Redis. Entity schemas in `shared/schemas/` generate TS interfaces into `server/api/src/generated/`. See `world_data_simulation.md` → Data Model.
 
 ## Golden Rules
 
