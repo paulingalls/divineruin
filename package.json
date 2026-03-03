@@ -12,8 +12,8 @@
     "dev:mobile:ios": "bun run --cwd apps/mobile ios",
     "dev:mobile:android": "bun run --cwd apps/mobile android",
     "migrate": "bun run scripts/migrate.ts",
-    "seed": "cd scripts && uv run python seed_content.py",
-    "dev:agent": "cd apps/agent && uv run --env-file ../../.env.local python agent.py dev",
+    "seed": "cd scripts && uv run --project ../apps/agent python seed_content.py",
+    "dev:agent": "cd apps/agent && uv run --env-file ../../.env python agent.py dev",
     "typecheck": "tsc --noEmit",
     "test": "bun test --cwd apps/server && bun test --cwd apps/mobile"
   },
