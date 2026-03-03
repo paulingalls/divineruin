@@ -20,6 +20,8 @@ from tools import (
     query_location, query_npc, query_lore, query_inventory,
     request_skill_check, request_attack, request_saving_throw,
     roll_dice, play_sound,
+    move_player, add_to_inventory, remove_from_inventory,
+    update_quest, award_xp, update_npc_disposition,
 )
 import db
 
@@ -39,7 +41,8 @@ REQUIRED_ENV_VARS = [
 
 WORLD_TOOLS = [enter_location, query_location, query_npc, query_lore, query_inventory]
 MECHANICS_TOOLS = [request_skill_check, request_attack, request_saving_throw, roll_dice, play_sound]
-ALL_TOOLS = WORLD_TOOLS + MECHANICS_TOOLS
+MUTATION_TOOLS = [move_player, add_to_inventory, remove_from_inventory, update_quest, award_xp, update_npc_disposition]
+ALL_TOOLS = WORLD_TOOLS + MECHANICS_TOOLS + MUTATION_TOOLS
 
 
 def validate_env() -> None:

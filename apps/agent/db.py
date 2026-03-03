@@ -224,3 +224,151 @@ async def get_player_inventory(player_id: str) -> list[dict]:
         item["slot_info"] = slot
         results.append(item)
     return results
+
+
+# --- State mutations ---
+
+
+async def update_player_location(player_id: str, location_id: str) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        """
+        UPDATE players
+        SET data = jsonb_set(data, '{location_id}', $2::jsonb)
+        WHERE player_id = $1
+        """,
+        player_id,
+        json.dumps(location_id),
+    )
+
+
+async def update_player_xp(player_id: str, new_xp: int, new_level: int) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        """
+        UPDATE players
+        SET data = jsonb_set(jsonb_set(data, '{xp}', $2::jsonb), '{level}', $3::jsonb)
+        WHERE player_id = $1
+        """,
+        player_id,
+        json.dumps(new_xp),
+        json.dumps(new_level),
+    )
+
+
+async def add_inventory_item(player_id: str, item_id: str, quantity: int) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        """
+        INSERT INTO player_inventory (player_id, item_id, data)
+        VALUES ($1, $2, $3::jsonb)
+        ON CONFLICT (player_id, item_id)
+        DO UPDATE SET data = jsonb_set(
+            player_inventory.data,
+            '{quantity}',
+            (COALESCE((player_inventory.data->>'quantity')::int, 0) + $4)::text::jsonb
+        )
+        """,
+        player_id,
+        item_id,
+        json.dumps({"quantity": quantity, "equipped": False}),
+        quantity,
+    )
+
+
+async def remove_inventory_item(player_id: str, item_id: str) -> bool:
+    pool = await get_pool()
+    result = await pool.execute(
+        "DELETE FROM player_inventory WHERE player_id = $1 AND item_id = $2",
+        player_id,
+        item_id,
+    )
+    return result == "DELETE 1"
+
+
+async def get_inventory_item(player_id: str, item_id: str) -> dict | None:
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        "SELECT data FROM player_inventory WHERE player_id = $1 AND item_id = $2",
+        player_id,
+        item_id,
+    )
+    if row is None:
+        return None
+    return json.loads(row["data"])
+
+
+# --- Content queries (cached) ---
+
+
+async def get_quest(quest_id: str) -> dict | None:
+    cache_key = f"quest:{quest_id}"
+    cached = await _cache_get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
+    pool = await get_pool()
+    row = await pool.fetchrow("SELECT data FROM quests WHERE id = $1", quest_id)
+    if row is None:
+        return None
+
+    data = json.loads(row["data"])
+    await _cache_set(cache_key, json.dumps(data))
+    return data
+
+
+# --- Quest state ---
+
+
+async def get_player_quest(player_id: str, quest_id: str) -> dict | None:
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        "SELECT data FROM player_quests WHERE player_id = $1 AND quest_id = $2",
+        player_id,
+        quest_id,
+    )
+    if row is None:
+        return None
+    return json.loads(row["data"])
+
+
+async def set_player_quest(player_id: str, quest_id: str, data: dict) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        """
+        INSERT INTO player_quests (player_id, quest_id, data)
+        VALUES ($1, $2, $3::jsonb)
+        ON CONFLICT (player_id, quest_id)
+        DO UPDATE SET data = $3::jsonb
+        """,
+        player_id,
+        quest_id,
+        json.dumps(data),
+    )
+
+
+async def set_npc_disposition(
+    npc_id: str, player_id: str, disposition: str, reason: str
+) -> None:
+    pool = await get_pool()
+    data = json.dumps({"disposition": disposition, "reason": reason})
+    await pool.execute(
+        """
+        INSERT INTO npc_dispositions (npc_id, player_id, data)
+        VALUES ($1, $2, $3::jsonb)
+        ON CONFLICT (npc_id, player_id)
+        DO UPDATE SET data = $3::jsonb
+        """,
+        npc_id,
+        player_id,
+        data,
+    )
+
+
+async def log_world_event(event_type: str, data: dict) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        "INSERT INTO world_events_log (event_type, data) VALUES ($1, $2::jsonb)",
+        event_type,
+        json.dumps(data),
+    )

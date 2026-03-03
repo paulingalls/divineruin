@@ -43,6 +43,41 @@ PROFICIENCY_BY_LEVEL: dict[int, int] = {
     17: 6, 18: 6, 19: 6, 20: 6,
 }
 
+XP_FOR_LEVEL: dict[int, int] = {
+    1: 0, 2: 300, 3: 900, 4: 2700, 5: 6500,
+    6: 14000, 7: 23000, 8: 34000, 9: 48000, 10: 64000,
+    11: 85000, 12: 100000, 13: 120000, 14: 140000, 15: 165000,
+    16: 195000, 17: 225000, 18: 265000, 19: 305000, 20: 355000,
+}
+
+MAX_LEVEL = 20
+
+
+@dataclass(frozen=True)
+class LevelUpResult:
+    new_xp: int
+    new_level: int
+    leveled_up: bool
+    levels_gained: int
+
+
+def check_level_up(current_xp: int, xp_gained: int, current_level: int) -> LevelUpResult:
+    new_xp = current_xp + xp_gained
+    new_level = current_level
+
+    for lvl in range(current_level + 1, MAX_LEVEL + 1):
+        if new_xp >= XP_FOR_LEVEL[lvl]:
+            new_level = lvl
+        else:
+            break
+
+    return LevelUpResult(
+        new_xp=new_xp,
+        new_level=new_level,
+        leveled_up=new_level > current_level,
+        levels_gained=new_level - current_level,
+    )
+
 
 # --- Result dataclasses ---
 

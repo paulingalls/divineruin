@@ -14,14 +14,10 @@ from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
 
-DISPOSITION_TIERS = {
-    "hostile": 0,
-    "wary": 1,
-    "neutral": 2,
-    "cautious": 2,
-    "friendly": 3,
-    "trusted": 4,
-}
+DISPOSITION_ORDER = ["hostile", "wary", "neutral", "friendly", "trusted"]
+
+DISPOSITION_TIERS = {name: i for i, name in enumerate(DISPOSITION_ORDER)}
+DISPOSITION_TIERS["cautious"] = DISPOSITION_TIERS["neutral"]  # alias
 
 
 def _disposition_rank(tier: str) -> int:
@@ -157,6 +153,40 @@ def _target_summary(target: dict) -> dict:
     }
 
 
+async def _resolve_disposition(npc_id: str, player_id: str, npc: dict) -> str:
+    disposition = await db.get_npc_disposition(npc_id, player_id)
+    if disposition is None:
+        disposition = npc.get("default_disposition", "neutral")
+    return disposition
+
+
+async def _build_scene_context(location_id: str, session: SessionData) -> dict:
+    location = await db.get_location(location_id)
+    if location is None:
+        return {"error": f"Location '{location_id}' not found."}
+
+    location = apply_time_conditions(location)
+    location = _strip_hidden_dcs(location)
+
+    npcs_raw = await db.get_npcs_at_location(location_id)
+    npcs = []
+    for npc in npcs_raw:
+        disposition = await _resolve_disposition(npc["id"], session.player_id, npc)
+        npcs.append(_npc_summary(npc, disposition))
+
+    targets = [_target_summary(t) for t in await db.get_targets_at_location(location_id)]
+
+    player = await db.get_player(session.player_id)
+    player_info = _player_summary(player) if player else None
+
+    return {
+        "location": _location_for_narration(location),
+        "npcs": npcs,
+        "targets": targets,
+        "player": player_info,
+    }
+
+
 @function_tool()
 async def enter_location(context: RunContext[SessionData], location_id: str) -> str:
     """Get everything about a location in one call: scene details, NPCs present,
@@ -166,34 +196,9 @@ async def enter_location(context: RunContext[SessionData], location_id: str) -> 
     logger.info("enter_location called: location_id=%s", location_id)
     session: SessionData = context.userdata
 
-    location = await db.get_location(location_id)
-    if location is None:
-        return json.dumps({"error": f"Location '{location_id}' not found."})
-
-    location = apply_time_conditions(location)
-    location = _strip_hidden_dcs(location)
-
-    npcs_raw = await db.get_npcs_at_location(location_id)
-    npcs = []
-    for npc in npcs_raw:
-        disposition = await db.get_npc_disposition(npc["id"], session.player_id)
-        if disposition is None:
-            disposition = npc.get("default_disposition", "neutral")
-        npcs.append(_npc_summary(npc, disposition))
-
-    targets = [_target_summary(t) for t in await db.get_targets_at_location(location_id)]
-
-    player = await db.get_player(session.player_id)
-    player_info = _player_summary(player) if player else None
-
-    result = {
-        "location": _location_for_narration(location),
-        "npcs": npcs,
-        "targets": targets,
-        "player": player_info,
-    }
+    result = await _build_scene_context(location_id, session)
     logger.info("enter_location result: %d NPCs, %d targets at %s",
-                len(npcs), len(targets), location_id)
+                len(result.get("npcs", [])), len(result.get("targets", [])), location_id)
     return json.dumps(result)
 
 
@@ -222,9 +227,7 @@ async def query_npc(context: RunContext[SessionData], npc_id: str) -> str:
     if npc is None:
         return json.dumps({"error": f"NPC '{npc_id}' not found."})
 
-    disposition = await db.get_npc_disposition(npc_id, session.player_id)
-    if disposition is None:
-        disposition = npc.get("default_disposition", "neutral")
+    disposition = await _resolve_disposition(npc_id, session.player_id, npc)
 
     knowledge = filter_knowledge(npc.get("knowledge", {}), disposition)
     narration = _npc_for_narration(npc, disposition, knowledge)
@@ -491,3 +494,344 @@ async def play_sound(
     })
 
     return json.dumps({"status": "playing", "sound_name": sound_name})
+
+
+# --- Mutation helpers ---
+
+
+def _clamp_disposition_shift(current: str, delta: int) -> str:
+    idx = _disposition_rank(current)
+    new_idx = max(0, min(len(DISPOSITION_ORDER) - 1, idx + delta))
+    return DISPOSITION_ORDER[new_idx]
+
+
+# --- Mutation tools ---
+
+
+@function_tool()
+async def award_xp(
+    context: RunContext[SessionData],
+    amount: int,
+    reason: str,
+) -> str:
+    """Award XP to the current player. Provide the amount and a brief reason
+    (e.g. 'defeated goblin scouts', 'completed delivery quest'). Narrate
+    level-ups dramatically."""
+    logger.info("award_xp called: amount=%d, reason=%s", amount, reason)
+    session: SessionData = context.userdata
+
+    if amount <= 0:
+        return json.dumps({"error": "XP amount must be positive."})
+
+    player = await db.get_player(session.player_id)
+    if player is None:
+        return json.dumps({"error": f"Player '{session.player_id}' not found."})
+
+    current_xp = player.get("xp", 0)
+    current_level = player.get("level", 1)
+
+    result = rules_engine.check_level_up(current_xp, amount, current_level)
+
+    await db.update_player_xp(session.player_id, result.new_xp, result.new_level)
+
+    await publish_game_event(session.room, "xp_awarded", {
+        "amount": amount,
+        "reason": reason,
+        "new_xp": result.new_xp,
+        "new_level": result.new_level,
+        "leveled_up": result.leveled_up,
+    })
+
+    response = {
+        "amount": amount,
+        "reason": reason,
+        "new_xp": result.new_xp,
+        "new_level": result.new_level,
+        "leveled_up": result.leveled_up,
+        "levels_gained": result.levels_gained,
+    }
+    logger.info("award_xp result: +%d XP → %d total, level %d (leveled_up=%s)",
+                amount, result.new_xp, result.new_level, result.leveled_up)
+    return json.dumps(response)
+
+
+@function_tool()
+async def update_npc_disposition(
+    context: RunContext[SessionData],
+    npc_id: str,
+    delta: int,
+    reason: str,
+) -> str:
+    """Shift an NPC's disposition toward or away from the player.
+    Delta range: -2 to +2. Positive = warmer, negative = colder.
+    Scale: hostile → wary → neutral → friendly → trusted."""
+    logger.info("update_npc_disposition called: npc_id=%s, delta=%d, reason=%s", npc_id, delta, reason)
+    session: SessionData = context.userdata
+
+    delta = max(-2, min(2, delta))
+
+    npc = await db.get_npc(npc_id)
+    if npc is None:
+        return json.dumps({"error": f"NPC '{npc_id}' not found."})
+
+    current = await _resolve_disposition(npc_id, session.player_id, npc)
+
+    new_disposition = _clamp_disposition_shift(current, delta)
+
+    await db.set_npc_disposition(npc_id, session.player_id, new_disposition, reason)
+
+    await publish_game_event(session.room, "disposition_changed", {
+        "npc_id": npc_id,
+        "npc_name": npc.get("name", npc_id),
+        "previous": current,
+        "new": new_disposition,
+        "reason": reason,
+    })
+
+    response = {
+        "npc_id": npc_id,
+        "npc_name": npc.get("name", npc_id),
+        "previous": current,
+        "new": new_disposition,
+        "reason": reason,
+    }
+    logger.info("update_npc_disposition result: %s → %s for %s", current, new_disposition, npc_id)
+    return json.dumps(response)
+
+
+@function_tool()
+async def add_to_inventory(
+    context: RunContext[SessionData],
+    item_id: str,
+    quantity: int,
+    source: str,
+) -> str:
+    """Add an item to the player's inventory. Provide the item ID, quantity,
+    and source (e.g. 'looted from goblin', 'purchased from merchant',
+    'quest reward')."""
+    logger.info("add_to_inventory called: item_id=%s, quantity=%d, source=%s", item_id, quantity, source)
+    session: SessionData = context.userdata
+
+    item = await db.get_item(item_id)
+    if item is None:
+        return json.dumps({"error": f"Item '{item_id}' not found."})
+
+    await db.add_inventory_item(session.player_id, item_id, quantity)
+
+    await publish_game_event(session.room, "inventory_updated", {
+        "action": "added",
+        "item_id": item_id,
+        "item_name": item.get("name", item_id),
+        "quantity": quantity,
+    })
+
+    response = {
+        "action": "added",
+        "item_id": item_id,
+        "item_name": item.get("name", item_id),
+        "quantity": quantity,
+        "source": source,
+    }
+    logger.info("add_to_inventory result: +%d %s from %s", quantity, item_id, source)
+    return json.dumps(response)
+
+
+@function_tool()
+async def remove_from_inventory(
+    context: RunContext[SessionData],
+    item_id: str,
+) -> str:
+    """Remove an item from the player's inventory. Use when an item is
+    consumed, sold, or destroyed."""
+    logger.info("remove_from_inventory called: item_id=%s", item_id)
+    session: SessionData = context.userdata
+
+    slot = await db.get_inventory_item(session.player_id, item_id)
+    if slot is None:
+        return json.dumps({"error": f"Item '{item_id}' not in inventory."})
+
+    if slot.get("equipped", False):
+        return json.dumps({"error": f"Item '{item_id}' is equipped. Unequip it first."})
+
+    item = await db.get_item(item_id)
+    item_name = item.get("name", item_id) if item else item_id
+
+    await db.remove_inventory_item(session.player_id, item_id)
+
+    await publish_game_event(session.room, "inventory_updated", {
+        "action": "removed",
+        "item_id": item_id,
+        "item_name": item_name,
+        "quantity": 0,
+    })
+
+    response = {
+        "action": "removed",
+        "item_id": item_id,
+        "item_name": item_name,
+    }
+    logger.info("remove_from_inventory result: removed %s", item_id)
+    return json.dumps(response)
+
+
+@function_tool()
+async def move_player(
+    context: RunContext[SessionData],
+    destination_id: str,
+) -> str:
+    """Move the player to a connected location. Provide the destination
+    location ID from the current location's exits. Returns the full scene
+    context for the new location."""
+    logger.info("move_player called: destination_id=%s", destination_id)
+    session: SessionData = context.userdata
+
+    current_location = await db.get_location(session.location_id)
+    if current_location is None:
+        return json.dumps({"error": f"Current location '{session.location_id}' not found."})
+
+    exits = current_location.get("exits", {})
+    exit_entry = None
+    for _direction, exit_data in exits.items():
+        if isinstance(exit_data, dict) and exit_data.get("destination") == destination_id:
+            exit_entry = exit_data
+            break
+        elif exit_data == destination_id:
+            exit_entry = {"destination": destination_id}
+            break
+
+    if exit_entry is None:
+        valid = [
+            e.get("destination") if isinstance(e, dict) else e
+            for e in exits.values()
+        ]
+        return json.dumps({
+            "error": f"No exit to '{destination_id}' from current location.",
+            "valid_destinations": valid,
+        })
+
+    if isinstance(exit_entry, dict) and exit_entry.get("requires"):
+        return json.dumps({
+            "blocked": True,
+            "destination": destination_id,
+            "requires": exit_entry["requires"],
+            "message": "This exit is blocked. A condition must be met first.",
+        })
+
+    previous_location_id = session.location_id
+
+    await db.update_player_location(session.player_id, destination_id)
+    session.location_id = destination_id
+
+    await publish_game_event(session.room, "location_changed", {
+        "previous_location": previous_location_id,
+        "new_location": destination_id,
+    })
+
+    scene = await _build_scene_context(destination_id, session)
+    if "error" in scene:
+        return json.dumps(scene)
+
+    result = {"moved": True, "previous_location": previous_location_id, **scene}
+    logger.info("move_player result: %s → %s, %d NPCs, %d targets",
+                previous_location_id, destination_id,
+                len(result.get("npcs", [])), len(result.get("targets", [])))
+    return json.dumps(result)
+
+
+@function_tool()
+async def update_quest(
+    context: RunContext[SessionData],
+    quest_id: str,
+    new_stage_id: int,
+) -> str:
+    """Advance a quest to a new stage. For starting a quest, use stage 0.
+    Stages must advance forward — no skipping or going backward.
+    Rewards from the completing stage are automatically applied."""
+    logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
+    session: SessionData = context.userdata
+
+    quest = await db.get_quest(quest_id)
+    if quest is None:
+        return json.dumps({"error": f"Quest '{quest_id}' not found."})
+
+    stages = quest.get("stages", [])
+    if new_stage_id < 0 or new_stage_id >= len(stages):
+        return json.dumps({"error": f"Invalid stage {new_stage_id} for quest '{quest_id}'. Valid: 0-{len(stages) - 1}."})
+
+    player_quest = await db.get_player_quest(session.player_id, quest_id)
+
+    if player_quest is None:
+        if new_stage_id != 0:
+            return json.dumps({"error": "Must start quest at stage 0."})
+        current_stage = -1
+    else:
+        current_stage = player_quest.get("current_stage", -1)
+
+    if new_stage_id <= current_stage:
+        return json.dumps({"error": f"Cannot go backward. Current stage: {current_stage}, requested: {new_stage_id}."})
+
+    if new_stage_id > current_stage + 1:
+        return json.dumps({"error": f"Cannot skip stages. Current: {current_stage}, requested: {new_stage_id}, next valid: {current_stage + 1}."})
+
+    rewards_applied = []
+
+    if current_stage >= 0:
+        completing_stage = stages[current_stage]
+        on_complete = completing_stage.get("on_complete", {})
+
+        xp_reward = on_complete.get("xp", 0)
+        if xp_reward > 0:
+            player = await db.get_player(session.player_id)
+            if player:
+                current_xp = player.get("xp", 0)
+                current_level = player.get("level", 1)
+                level_result = rules_engine.check_level_up(current_xp, xp_reward, current_level)
+                await db.update_player_xp(session.player_id, level_result.new_xp, level_result.new_level)
+                rewards_applied.append({"type": "xp", "amount": xp_reward, "leveled_up": level_result.leveled_up})
+                await publish_game_event(session.room, "xp_awarded", {
+                    "amount": xp_reward,
+                    "reason": f"Quest '{quest.get('name', quest_id)}' stage completed",
+                    "new_xp": level_result.new_xp,
+                    "new_level": level_result.new_level,
+                    "leveled_up": level_result.leveled_up,
+                })
+
+        for item_reward in on_complete.get("items", []):
+            item_id = item_reward.get("item_id")
+            qty = item_reward.get("quantity", 1)
+            if item_id:
+                await db.add_inventory_item(session.player_id, item_id, qty)
+                rewards_applied.append({"type": "item", "item_id": item_id, "quantity": qty})
+                item = await db.get_item(item_id)
+                item_name = item.get("name", item_id) if item else item_id
+                await publish_game_event(session.room, "inventory_updated", {
+                    "action": "added",
+                    "item_id": item_id,
+                    "item_name": item_name,
+                    "quantity": qty,
+                })
+
+    new_stage = stages[new_stage_id]
+    quest_data = {
+        "current_stage": new_stage_id,
+        "quest_name": quest.get("name", quest_id),
+    }
+    await db.set_player_quest(session.player_id, quest_id, quest_data)
+
+    await publish_game_event(session.room, "quest_updated", {
+        "quest_id": quest_id,
+        "quest_name": quest.get("name", quest_id),
+        "new_stage": new_stage_id,
+        "objective": new_stage.get("objective", ""),
+    })
+
+    response = {
+        "quest_id": quest_id,
+        "quest_name": quest.get("name", quest_id),
+        "new_stage": new_stage_id,
+        "objective": new_stage.get("objective", ""),
+        "rewards_applied": rewards_applied,
+    }
+    logger.info("update_quest result: %s → stage %d, %d rewards",
+                quest_id, new_stage_id, len(rewards_applied))
+    return json.dumps(response)

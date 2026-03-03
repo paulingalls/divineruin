@@ -13,8 +13,10 @@ from rules_engine import (
     resolve_skill_check,
     resolve_attack,
     resolve_saving_throw,
+    check_level_up,
     SKILLS,
     DC_TIERS,
+    XP_FOR_LEVEL,
 )
 
 
@@ -375,3 +377,43 @@ class TestResolveSavingThrow:
         result = resolve_saving_throw(SAMPLE_PLAYER, "charisma", 10, "effect", rng=rng)
         # CHA -1, no prof
         assert result.modifier == -1
+
+
+# --- check_level_up ---
+
+class TestCheckLevelUp:
+    def test_no_level_up(self):
+        result = check_level_up(current_xp=0, xp_gained=100, current_level=1)
+        assert result.new_xp == 100
+        assert result.new_level == 1
+        assert result.leveled_up is False
+        assert result.levels_gained == 0
+
+    def test_level_up_to_2(self):
+        result = check_level_up(current_xp=200, xp_gained=100, current_level=1)
+        assert result.new_xp == 300
+        assert result.new_level == 2
+        assert result.leveled_up is True
+        assert result.levels_gained == 1
+
+    def test_exact_threshold(self):
+        result = check_level_up(current_xp=0, xp_gained=300, current_level=1)
+        assert result.new_level == 2
+
+    def test_multi_level_up(self):
+        result = check_level_up(current_xp=0, xp_gained=6500, current_level=1)
+        assert result.new_level == 5
+        assert result.levels_gained == 4
+
+    def test_max_level_cap(self):
+        result = check_level_up(current_xp=355000, xp_gained=50000, current_level=20)
+        assert result.new_xp == 405000
+        assert result.new_level == 20
+        assert result.leveled_up is False
+
+    def test_xp_table_is_monotonic(self):
+        for lvl in range(2, 21):
+            assert XP_FOR_LEVEL[lvl] > XP_FOR_LEVEL[lvl - 1]
+
+    def test_level_1_starts_at_zero(self):
+        assert XP_FOR_LEVEL[1] == 0
