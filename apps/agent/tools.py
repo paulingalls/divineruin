@@ -1,5 +1,6 @@
 """World query and mechanics tools for the DM agent."""
 
+import asyncio
 import json
 import logging
 
@@ -168,15 +169,20 @@ async def _build_scene_context(location_id: str, session: SessionData) -> dict:
     location = apply_time_conditions(location)
     location = _strip_hidden_dcs(location)
 
-    npcs_raw = await db.get_npcs_at_location(location_id)
+    npcs_raw, targets_raw, player = await asyncio.gather(
+        db.get_npcs_at_location(location_id),
+        db.get_targets_at_location(location_id),
+        db.get_player(session.player_id),
+    )
+
+    npc_ids = [npc["id"] for npc in npcs_raw]
+    dispositions = await db.get_npc_dispositions(npc_ids, session.player_id) if npc_ids else {}
     npcs = []
     for npc in npcs_raw:
-        disposition = await _resolve_disposition(npc["id"], session.player_id, npc)
+        disposition = dispositions.get(npc["id"], npc.get("default_disposition", "neutral"))
         npcs.append(_npc_summary(npc, disposition))
 
-    targets = [_target_summary(t) for t in await db.get_targets_at_location(location_id)]
-
-    player = await db.get_player(session.player_id)
+    targets = [_target_summary(t) for t in targets_raw]
     player_info = _player_summary(player) if player else None
 
     return {
@@ -316,10 +322,13 @@ async def request_skill_check(
         "total": result.total,
         "dc": result.dc,
         "success": result.success,
-    })
+    }, event_bus=session.event_bus)
+
+    outcome = "success" if result.success else "failure"
+    session.record_event(f"Skill check ({skill}, {difficulty}): {outcome}")
 
     response = {
-        "outcome": "success" if result.success else "failure",
+        "outcome": outcome,
         "skill": result.skill,
         "roll": result.roll,
         "modifier": result.modifier,
@@ -331,7 +340,7 @@ async def request_skill_check(
     }
     logger.info("request_skill_check result: d20=%d+%d=%d vs DC %d → %s (%s)",
                 result.roll, result.modifier, result.total, result.dc,
-                response["outcome"], result.narrative_hint)
+                outcome, result.narrative_hint)
     return json.dumps(response)
 
 
@@ -380,7 +389,10 @@ async def request_attack(
         "damage": result.damage,
         "critical": result.critical,
         "target_hp_remaining": result.target_hp_remaining,
-    })
+    }, event_bus=session.event_bus)
+
+    hit_miss = "hit" if result.hit else "miss"
+    session.record_event(f"Attack on {target_id} with {weapon_or_spell}: {hit_miss}, {result.damage} damage")
 
     response = {
         "hit": result.hit,
@@ -430,10 +442,13 @@ async def request_saving_throw(
         "total": result.total,
         "dc": result.dc,
         "success": result.success,
-    })
+    }, event_bus=session.event_bus)
+
+    outcome = "success" if result.success else "failure"
+    session.record_event(f"Saving throw ({save_type} DC {dc}): {outcome}")
 
     response = {
-        "outcome": "success" if result.success else "failure",
+        "outcome": outcome,
         "save_type": result.save_type,
         "roll": result.roll,
         "modifier": result.modifier,
@@ -445,7 +460,7 @@ async def request_saving_throw(
     }
     logger.info("request_saving_throw result: d20=%d+%d=%d vs DC %d → %s (%s)",
                 result.roll, result.modifier, result.total, result.dc,
-                response["outcome"], result.narrative_hint)
+                outcome, result.narrative_hint)
     return json.dumps(response)
 
 
@@ -469,7 +484,9 @@ async def roll_dice(
         "roll_type": "narrative",
         "notation": result.notation,
         "total": result.total,
-    })
+    }, event_bus=session.event_bus)
+
+    session.record_event(f"Rolled {notation}: {result.total}")
 
     return json.dumps({
         "notation": result.notation,
@@ -491,7 +508,9 @@ async def play_sound(
 
     await publish_game_event(session.room, "play_sound", {
         "sound_name": sound_name,
-    })
+    }, event_bus=session.event_bus)
+
+    session.record_event(f"Sound: {sound_name}")
 
     return json.dumps({"status": "playing", "sound_name": sound_name})
 
@@ -540,7 +559,10 @@ async def award_xp(
         "new_xp": result.new_xp,
         "new_level": result.new_level,
         "leveled_up": result.leveled_up,
-    })
+    }, event_bus=session.event_bus)
+
+    level_note = f" (leveled up to {result.new_level}!)" if result.leveled_up else ""
+    session.record_event(f"Awarded {amount} XP: {reason}{level_note}")
 
     response = {
         "amount": amount,
@@ -586,11 +608,14 @@ async def update_npc_disposition(
         "previous": current,
         "new": new_disposition,
         "reason": reason,
-    })
+    }, event_bus=session.event_bus)
+
+    npc_name = npc.get("name", npc_id)
+    session.record_event(f"{npc_name} disposition: {current} -> {new_disposition} ({reason})")
 
     response = {
         "npc_id": npc_id,
-        "npc_name": npc.get("name", npc_id),
+        "npc_name": npc_name,
         "previous": current,
         "new": new_disposition,
         "reason": reason,
@@ -618,17 +643,21 @@ async def add_to_inventory(
 
     await db.add_inventory_item(session.player_id, item_id, quantity)
 
+    item_name = item.get("name", item_id)
+
     await publish_game_event(session.room, "inventory_updated", {
         "action": "added",
         "item_id": item_id,
-        "item_name": item.get("name", item_id),
+        "item_name": item_name,
         "quantity": quantity,
-    })
+    }, event_bus=session.event_bus)
+
+    session.record_event(f"Added {quantity}x {item_name} ({source})")
 
     response = {
         "action": "added",
         "item_id": item_id,
-        "item_name": item.get("name", item_id),
+        "item_name": item_name,
         "quantity": quantity,
         "source": source,
     }
@@ -663,7 +692,9 @@ async def remove_from_inventory(
         "item_id": item_id,
         "item_name": item_name,
         "quantity": 0,
-    })
+    }, event_bus=session.event_bus)
+
+    session.record_event(f"Removed {item_name}")
 
     response = {
         "action": "removed",
@@ -725,7 +756,9 @@ async def move_player(
     await publish_game_event(session.room, "location_changed", {
         "previous_location": previous_location_id,
         "new_location": destination_id,
-    })
+    }, event_bus=session.event_bus)
+
+    session.record_event(f"Moved to {destination_id}")
 
     scene = await _build_scene_context(destination_id, session)
     if "error" in scene:
@@ -794,7 +827,7 @@ async def update_quest(
                     "new_xp": level_result.new_xp,
                     "new_level": level_result.new_level,
                     "leveled_up": level_result.leveled_up,
-                })
+                }, event_bus=session.event_bus)
 
         for item_reward in on_complete.get("rewards", []):
             item_id = item_reward.get("item") or item_reward.get("item_id")
@@ -809,7 +842,7 @@ async def update_quest(
                     "item_id": item_id,
                     "item_name": item_name,
                     "quantity": qty,
-                })
+                }, event_bus=session.event_bus)
 
     new_stage = stages[new_stage_id]
     quest_data = {
@@ -823,11 +856,14 @@ async def update_quest(
         "quest_name": quest.get("name", quest_id),
         "new_stage": new_stage_id,
         "objective": new_stage.get("objective", ""),
-    })
+    }, event_bus=session.event_bus)
+
+    quest_name = quest.get("name", quest_id)
+    session.record_event(f"Quest '{quest_name}' advanced to stage {new_stage_id}")
 
     response = {
         "quest_id": quest_id,
-        "quest_name": quest.get("name", quest_id),
+        "quest_name": quest_name,
         "new_stage": new_stage_id,
         "objective": new_stage.get("objective", ""),
         "rewards_applied": rewards_applied,

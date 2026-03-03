@@ -446,14 +446,14 @@ class TestMovePlayer:
     @pytest.mark.asyncio
     @patch("tools.db.get_player", new_callable=AsyncMock)
     @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
+    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
     @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
     @patch("tools.db.update_player_location", new_callable=AsyncMock)
     @patch("tools.db.get_location", new_callable=AsyncMock)
     async def test_valid_move(self, mock_loc, mock_update, mock_npcs, mock_disp, mock_targets, mock_player):
         mock_loc.side_effect = [SAMPLE_LOCATION, SAMPLE_DESTINATION]
         mock_npcs.return_value = []
-        mock_disp.return_value = None
+        mock_disp.return_value = {}
         mock_targets.return_value = []
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
@@ -484,14 +484,14 @@ class TestMovePlayer:
     @pytest.mark.asyncio
     @patch("tools.db.get_player", new_callable=AsyncMock)
     @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
+    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
     @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
     @patch("tools.db.update_player_location", new_callable=AsyncMock)
     @patch("tools.db.get_location", new_callable=AsyncMock)
     async def test_publishes_event(self, mock_loc, mock_update, mock_npcs, mock_disp, mock_targets, mock_player):
         mock_loc.side_effect = [SAMPLE_LOCATION, SAMPLE_DESTINATION]
         mock_npcs.return_value = []
-        mock_disp.return_value = None
+        mock_disp.return_value = {}
         mock_targets.return_value = []
         mock_player.return_value = SAMPLE_PLAYER
         room = _make_mock_room()
@@ -505,14 +505,14 @@ class TestMovePlayer:
     @pytest.mark.asyncio
     @patch("tools.db.get_player", new_callable=AsyncMock)
     @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
+    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
     @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
     @patch("tools.db.update_player_location", new_callable=AsyncMock)
     @patch("tools.db.get_location", new_callable=AsyncMock)
     async def test_session_state_updated(self, mock_loc, mock_update, mock_npcs, mock_disp, mock_targets, mock_player):
         mock_loc.side_effect = [SAMPLE_LOCATION, SAMPLE_DESTINATION]
         mock_npcs.return_value = []
-        mock_disp.return_value = None
+        mock_disp.return_value = {}
         mock_targets.return_value = []
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()

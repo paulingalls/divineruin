@@ -93,3 +93,67 @@ def build_system_prompt(location_id: str) -> str:
         "When setting a scene or answering 'where am I?', call query_location "
         f"with this ID."
     )
+
+
+def quest_objective(quest: dict) -> str:
+    """Extract the current objective string from a quest dict."""
+    stages = quest.get("stages", [])
+    idx = quest.get("current_stage", 0)
+    if 0 <= idx < len(stages):
+        return stages[idx].get("objective", "")
+    return ""
+
+
+async def build_warm_layer(
+    location_id: str, player_id: str, world_time: str
+) -> str:
+    import asyncio
+    import db
+    from tools import apply_time_conditions, _location_for_narration, _npc_summary
+
+    sections: list[str] = []
+
+    location, npcs_raw, quests = await asyncio.gather(
+        db.get_location(location_id),
+        db.get_npcs_at_location(location_id),
+        db.get_active_player_quests(player_id),
+    )
+
+    # Current scene
+    if location:
+        location = apply_time_conditions(location, "night" if world_time == "night" else "day")
+        narr = _location_for_narration(location)
+        sections.append(
+            f"CURRENT SCENE — {narr.get('name', location_id)} ({world_time})\n"
+            f"{narr.get('description', '')}\n"
+            f"Atmosphere: {narr.get('atmosphere', '')}"
+        )
+
+    # Active NPCs at location
+    if npcs_raw:
+        npc_ids = [npc["id"] for npc in npcs_raw]
+        dispositions = await db.get_npc_dispositions(npc_ids, player_id)
+        npc_lines = []
+        for npc in npcs_raw:
+            disposition = dispositions.get(npc["id"], npc.get("default_disposition", "neutral"))
+            summary = _npc_summary(npc, disposition)
+            npc_lines.append(
+                f"- {summary['name']} ({summary['role']}) — disposition: {summary['disposition']}"
+            )
+        sections.append("NPCS PRESENT\n" + "\n".join(npc_lines))
+
+    # Active quests
+    if quests:
+        quest_lines = []
+        for q in quests:
+            objective = quest_objective(q)
+            quest_lines.append(f"- {q['quest_name']}: {objective}")
+        sections.append("ACTIVE QUESTS\n" + "\n".join(quest_lines))
+
+    return "\n\n".join(sections)
+
+
+def build_full_prompt(static_layer: str, warm_layer: str) -> str:
+    if not warm_layer:
+        return static_layer
+    return static_layer + "\n\n---\n\n" + warm_layer
