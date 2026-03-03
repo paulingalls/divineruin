@@ -159,49 +159,130 @@ The analyzer produces a compact JSON object on every player turn. This is the on
 
 ## Architecture — Where It Lives
 
+**Critical constraint: the analyzer must NEVER add latency to the STT→LLM→TTS pipeline.** The voice pipeline's 1500ms budget is sacred. The affect analyzer runs fully parallel — it observes copies of data flowing through the pipeline but never blocks it.
+
 ```
-Player Audio (LiveKit AudioFrame)
+Player Audio (LiveKit AudioFrame stream)
     │
-    ├──► Silero VAD (existing) ──► Deepgram STT (existing)
-    │                                      │
-    │                                      ▼
-    │                              Transcript + word timestamps
-    │                                      │
-    ▼                                      ▼
-┌──────────────────────────────────────────────┐
-│         Player Affect Analyzer               │
-│                                              │
-│  Audio Features    Transcript     Behavioral │
-│  ─────────────     Metadata       Patterns   │
-│  RMS energy        Speech rate    Questions   │
-│  Energy variance   Latency        Names       │
-│  Silence ratio     Utt. length    Commands    │
-│                    Confidence     Planning    │
-│                                              │
-│  ──────────► Affect Vector ◄──────────       │
-│              (JSON, ~200 bytes)               │
-└──────────────────┬───────────────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────────────┐
-│  DM Agent — on_user_turn_completed           │
-│                                              │
-│  Existing hot layer:                         │
-│    - Location, NPCs, quests, HP, combat      │
-│                                              │
-│  + NEW: Player affect context                │
-│    "Player affect: high engagement (rising),  │
-│     speech rate +15% above baseline,          │
-│     exploratory mode — asking questions,      │
-│     used companion name unprompted.           │
-│     Response latency 20% faster than usual." │
-│                                              │
-└──────────────────────────────────────────────┘
+    ├──► STT-LLM-TTS Pipeline (untouched, no added latency)
+    │    │
+    │    ├── Silero VAD ──► Deepgram STT ──► Claude LLM ──► Inworld TTS
+    │    │                       │
+    │    │                       │ SpeechEvent (with word timestamps)
+    │    │                       ▼
+    │    │              on_user_turn_completed
+    │    │                       │
+    │    │                       ├── Existing hot layer (game state)
+    │    │                       └── Reads affect vector (already computed)
+    │
+    └──► Parallel Affect Branch (async, non-blocking)
+         │
+         ├── Audio frames copied to asyncio.Queue ──► AudioFeatureExtractor
+         │                                            (RMS, variance, silence)
+         │
+         └── SpeechEvents forwarded to analyzer ──► TranscriptAnalyzer
+                                                    (speech rate, latency,
+                                                     patterns, engagement)
+                           │
+                           ▼
+                    PlayerAffectAnalyzer
+                    (merges signals, computes vector)
+                           │
+                           ▼
+                    self._current_affect_vector
+                    (ready for hot layer to read)
 ```
 
-The analyzer is a Python class instantiated per session, running inside the DM agent process. It maintains a rolling window of per-turn metrics to compute baselines and trends. It receives audio frames from the same stream that feeds VAD/STT, and transcript results from the STT callback.
+### How Parallelism Works
 
-**Latency impact: near-zero.** Audio feature extraction (RMS, variance) runs on frames that have already been buffered for STT. Transcript analysis runs after STT completes. Neither is on the critical path — the affect vector is computed in parallel and ready by the time `on_user_turn_completed` fires.
+The `stt_node` override does two things with zero blocking:
+
+1. **Copies audio frames** into an `asyncio.Queue` for the affect analyzer (non-blocking `put_nowait`)
+2. **Yields audio frames immediately** to the default STT pipeline (no waiting)
+
+The analyzer consumes from its queue on its own async task. Even if the analyzer falls behind (slow numpy computation, GC pause, whatever), the pipeline doesn't notice — the queue buffers frames and the analyzer catches up. If the queue fills, frames are dropped from the analyzer (not the pipeline).
+
+```python
+async def stt_node(self, audio, model_settings):
+    """Override stt_node to fork audio to the affect analyzer without blocking."""
+    
+    async def forked_audio():
+        async for frame in audio:
+            # Non-blocking copy to analyzer — if queue full, frame is dropped
+            # from analyzer only. Pipeline never waits.
+            try:
+                self._affect_analyzer.audio_queue.put_nowait(frame)
+            except asyncio.QueueFull:
+                pass  # Analyzer falls behind, pipeline doesn't care
+            yield frame  # Immediately yield to STT — zero delay
+    
+    # Forward to default stt_node, tap SpeechEvents on the way out
+    async for event in Agent.default.stt_node(self, forked_audio(), model_settings):
+        # Non-blocking forward to analyzer
+        if event.type in (SpeechEventType.FINAL_TRANSCRIPT,):
+            try:
+                self._affect_analyzer.stt_event_queue.put_nowait(event)
+            except asyncio.QueueFull:
+                pass
+        yield event  # Immediately yield to LLM — zero delay
+```
+
+The `on_user_turn_completed` hook simply reads the latest computed affect vector — no computation at this point, just a dictionary read:
+
+```python
+async def on_user_turn_completed(self, turn_ctx, new_message):
+    # ... existing hot layer injections (game state, combat, etc.) ...
+    
+    # Read pre-computed affect vector (non-blocking dict read)
+    affect = self._affect_analyzer.get_current_vector()
+    if affect:
+        turn_ctx.add_message(
+            role="assistant",
+            content=format_affect_context(affect)
+        )
+```
+
+### The Analyzer's Own Async Task
+
+The `PlayerAffectAnalyzer` runs its own background task that consumes from the queues independently of the pipeline:
+
+```python
+class PlayerAffectAnalyzer:
+    def __init__(self):
+        self.audio_queue = asyncio.Queue(maxsize=500)  # ~5s of buffered frames
+        self.stt_event_queue = asyncio.Queue(maxsize=10)
+        self._current_vector: dict | None = None
+        self._task = asyncio.create_task(self._run())
+    
+    async def _run(self):
+        """Background task — processes audio and STT events independently."""
+        while True:
+            # Process any available audio frames (batch for efficiency)
+            frames_batch = []
+            while not self.audio_queue.empty() and len(frames_batch) < 50:
+                frames_batch.append(self.audio_queue.get_nowait())
+            for frame in frames_batch:
+                self._audio_extractor.push_frame(frame)
+            
+            # Process any available STT events
+            while not self.stt_event_queue.empty():
+                event = self.stt_event_queue.get_nowait()
+                self._process_stt_event(event)
+            
+            # Brief yield to event loop
+            await asyncio.sleep(0.01)  # 10ms polling — fast enough, never busy-waits
+    
+    def get_current_vector(self) -> dict | None:
+        """Called by on_user_turn_completed. Non-blocking read."""
+        return self._current_vector
+```
+
+**Why this architecture is safe:**
+- `put_nowait` on the queue never blocks. If the queue is full, the frame is silently dropped from the analyzer — the pipeline doesn't know or care.
+- `yield frame` in the forked audio generator adds zero computation before yielding to STT.
+- The analyzer runs on its own `asyncio.create_task` — it shares the event loop but never holds it. The 10ms sleep ensures it yields back promptly.
+- `get_current_vector()` is a simple attribute read — no computation, no I/O, no blocking.
+- Worst case: the analyzer crashes. The pipeline continues working. The hot layer gets `None` for affect and operates without it. Graceful degradation.
 
 **Token impact: ~50-80 tokens per turn** for the affect context injection. At Claude's prompt caching rates, this is negligible.
 
@@ -444,44 +525,11 @@ words=[
 
 These appear on `SpeechData.words` (a `list[TimedString] | None`) on every `SpeechEvent` of type `FINAL_TRANSCRIPT`, `INTERIM_TRANSCRIPT`, and `PREFLIGHT_TRANSCRIPT`. Each `TimedString` has `.start_time`, `.end_time`, and `.confidence` attributes.
 
-**How to access in the agent:** The `on_user_turn_completed` hook receives a `ChatMessage` (the `new_message` parameter). The transcript text is available via `new_message.text_content()`. To get word-level timing, we need to capture `SpeechEvent` data from the STT stream. Two approaches:
-
-**Approach A — Override `stt_node` to tap events.** The `stt_node` yields `SpeechEvent` objects. We override it, pass events through to the default pipeline, and simultaneously extract word timing data into our `PlayerAffectAnalyzer`:
-
-```python
-async def stt_node(self, audio, model_settings):
-    async for event in Agent.default.stt_node(self, audio, model_settings):
-        # Tap word-level data for affect analysis
-        if event.type in (SpeechEventType.FINAL_TRANSCRIPT, SpeechEventType.INTERIM_TRANSCRIPT):
-            for alt in event.alternatives:
-                if alt.words:
-                    self._affect_analyzer.push_stt_event(alt)
-        yield event
-```
-
-**Approach B — Override `stt_node` to tap audio AND events.** For Phase B (audio features), we extend the override to also capture raw audio frames:
-
-```python
-async def stt_node(self, audio, model_settings):
-    async def tapped_audio():
-        async for frame in audio:
-            # Tap raw audio for energy analysis
-            self._affect_analyzer.push_audio_frame(frame)
-            yield frame
-    
-    async for event in Agent.default.stt_node(self, tapped_audio(), model_settings):
-        if event.type in (SpeechEventType.FINAL_TRANSCRIPT, SpeechEventType.INTERIM_TRANSCRIPT):
-            for alt in event.alternatives:
-                if alt.words:
-                    self._affect_analyzer.push_stt_event(alt)
-        yield event
-```
-
-This is clean — both audio and transcript tapping happen in a single `stt_node` override, data flows to the analyzer in parallel, and the default pipeline is unmodified.
+**How to access in the agent:** The `stt_node` override forks both audio frames and `SpeechEvent` objects to the `PlayerAffectAnalyzer` via non-blocking `asyncio.Queue.put_nowait()`. The analyzer extracts word timing data from the queued events on its own background task. See the **Architecture — Where It Lives** section for the full parallel implementation pattern. The pipeline never blocks — if the analyzer's queue is full, data is dropped from the analyzer, not the pipeline.
 
 ### 2. Audio frame access point — CONFIRMED VIA stt_node OVERRIDE
 
-The `stt_node` receives `audio: AsyncIterable[rtc.AudioFrame]` as its first parameter — the raw audio stream from the player's track. This is the same stream that feeds into Deepgram. By wrapping this iterable (as shown above), we can extract audio features from every frame before it reaches STT, with zero latency impact on the pipeline.
+The `stt_node` receives `audio: AsyncIterable[rtc.AudioFrame]` as its first parameter — the raw audio stream from the player's track. The override wraps this iterable with a non-blocking `put_nowait` to copy frames to the analyzer's `asyncio.Queue`, then immediately yields each frame to the default STT pipeline. See the **Architecture — Where It Lives** section for the implementation.
 
 The `AudioFrame` object provides:
 - `frame.data` — raw PCM bytes (int16), readable as `np.frombuffer(frame.data, dtype=np.int16)`
