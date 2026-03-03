@@ -36,5 +36,5 @@ async def publish_game_event(
     if event_bus is not None:
         from event_bus import GameEvent
 
-        await event_bus.publish(GameEvent(event_type=event_type, payload=payload))
+        event_bus.publish(GameEvent(event_type=event_type, payload=payload))
         logger.debug("Published %s event to event bus", event_type)

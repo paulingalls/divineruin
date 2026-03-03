@@ -20,7 +20,6 @@ logger = logging.getLogger("divineruin.background")
 
 REBUILD_EVENT_TYPES = {"location_changed", "quest_updated", "disposition_changed"}
 
-GUIDANCE_LEVEL_1_SECS = 15.0
 GUIDANCE_LEVEL_2_SECS = 35.0
 
 TIMER_FALLBACK_SECS = 30.0
@@ -53,6 +52,7 @@ class BackgroundProcess:
         self._last_warm_layer: str = ""
         self._speech_queue: list[PendingSpeech] = []
         self._stop = False
+        self._last_guidance_time: float = 0.0
 
     def start(self) -> None:
         self._task = asyncio.create_task(self._run())
@@ -122,9 +122,14 @@ class BackgroundProcess:
         if self._sd.last_player_speech_time <= 0:
             return
 
+        # Don't nudge again if player hasn't spoken since last nudge
+        if self._last_guidance_time >= self._sd.last_player_speech_time:
+            return
+
         silence = time.time() - self._sd.last_player_speech_time
 
         if silence >= GUIDANCE_LEVEL_2_SECS:
+            self._last_guidance_time = time.time()
             hints = self._get_quest_hints()
             hint_text = f" Consider using this hint: {hints[0]}" if hints else ""
             self._queue_speech(
@@ -146,8 +151,7 @@ class BackgroundProcess:
         if not self._speech_queue:
             return
 
-        self._speech_queue.sort(reverse=True)
-        top = self._speech_queue.pop(0)
+        top = max(self._speech_queue)
         self._speech_queue.clear()
 
         try:

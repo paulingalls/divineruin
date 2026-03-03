@@ -21,7 +21,7 @@ class EventBus:
     def __init__(self, maxsize: int = 256) -> None:
         self._queue: asyncio.Queue[GameEvent] = asyncio.Queue(maxsize=maxsize)
 
-    async def publish(self, event: GameEvent) -> None:
+    def publish(self, event: GameEvent) -> None:
         if self._queue.full():
             try:
                 self._queue.get_nowait()

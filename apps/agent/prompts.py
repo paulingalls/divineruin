@@ -95,16 +95,31 @@ def build_system_prompt(location_id: str) -> str:
     )
 
 
+def quest_objective(quest: dict) -> str:
+    """Extract the current objective string from a quest dict."""
+    stages = quest.get("stages", [])
+    idx = quest.get("current_stage", 0)
+    if 0 <= idx < len(stages):
+        return stages[idx].get("objective", "")
+    return ""
+
+
 async def build_warm_layer(
     location_id: str, player_id: str, world_time: str
 ) -> str:
+    import asyncio
     import db
     from tools import apply_time_conditions, _location_for_narration, _npc_summary, _resolve_disposition
 
     sections: list[str] = []
 
+    location, npcs_raw, quests = await asyncio.gather(
+        db.get_location(location_id),
+        db.get_npcs_at_location(location_id),
+        db.get_active_player_quests(player_id),
+    )
+
     # Current scene
-    location = await db.get_location(location_id)
     if location:
         location = apply_time_conditions(location, "night" if world_time == "night" else "day")
         narr = _location_for_narration(location)
@@ -115,7 +130,6 @@ async def build_warm_layer(
         )
 
     # Active NPCs at location
-    npcs_raw = await db.get_npcs_at_location(location_id)
     if npcs_raw:
         npc_lines = []
         for npc in npcs_raw:
@@ -127,15 +141,10 @@ async def build_warm_layer(
         sections.append("NPCS PRESENT\n" + "\n".join(npc_lines))
 
     # Active quests
-    quests = await db.get_active_player_quests(player_id)
     if quests:
         quest_lines = []
         for q in quests:
-            stages = q.get("stages", [])
-            stage_idx = q.get("current_stage", 0)
-            objective = ""
-            if 0 <= stage_idx < len(stages):
-                objective = stages[stage_idx].get("objective", "")
+            objective = quest_objective(q)
             quest_lines.append(f"- {q['quest_name']}: {objective}")
         sections.append("ACTIVE QUESTS\n" + "\n".join(quest_lines))
 

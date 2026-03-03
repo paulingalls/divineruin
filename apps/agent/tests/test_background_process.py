@@ -104,6 +104,16 @@ class TestCheckGuidance:
         bg._check_guidance()
         assert len(bg._speech_queue) == 0
 
+    def test_no_repeated_nudge_without_new_speech(self):
+        sd = _make_session_data(last_player_speech_time=time.time() - 40)
+        bg, _, _ = _make_bg(session_data=sd)
+        bg._check_guidance()
+        assert len(bg._speech_queue) == 1
+        bg._speech_queue.clear()
+        # Second check without new player speech should not nudge again
+        bg._check_guidance()
+        assert len(bg._speech_queue) == 0
+
 
 class TestDeliverSpeech:
     async def test_delivers_highest_priority(self):

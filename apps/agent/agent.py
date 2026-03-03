@@ -1,4 +1,4 @@
-import json
+import asyncio
 import logging
 import os
 import re
@@ -13,7 +13,7 @@ from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from livekit.plugins import anthropic, deepgram, inworld
 
 from background_process import BackgroundProcess
-from prompts import build_system_prompt
+from prompts import build_system_prompt, quest_objective
 from voices import get_voice_config, VOICES
 from dialogue_parser import parse_dialogue_stream
 from latency import TurnTimer
@@ -97,30 +97,31 @@ class DungeonMasterAgent(Agent):
     async def _build_hot_context(self, sd: SessionData) -> str:
         parts: list[str] = []
 
+        location, quests, npcs = await asyncio.gather(
+            db.get_location(sd.location_id),
+            db.get_active_player_quests(sd.player_id),
+            db.get_npcs_at_location(sd.location_id),
+        )
+
         # Current location + time
-        location = await db.get_location(sd.location_id)
         loc_name = location.get("name", sd.location_id) if location else sd.location_id
         parts.append(f"[Context: {loc_name}, {sd.world_time}]")
 
         # Active quest objectives
-        quests = await db.get_active_player_quests(sd.player_id)
         if quests:
-            objectives = []
-            for q in quests:
-                stages = q.get("stages", [])
-                idx = q.get("current_stage", 0)
-                if 0 <= idx < len(stages):
-                    objectives.append(f"{q['quest_name']}: {stages[idx].get('objective', '')}")
+            objectives = [
+                f"{q['quest_name']}: {quest_objective(q)}"
+                for q in quests if quest_objective(q)
+            ]
             if objectives:
                 parts.append("[Quests: " + "; ".join(objectives) + "]")
 
         # Recent events
         if sd.recent_events:
-            recent = sd.recent_events[-3:]
+            recent = list(sd.recent_events)[-3:]
             parts.append("[Recent: " + "; ".join(recent) + "]")
 
         # NPCs nearby
-        npcs = await db.get_npcs_at_location(sd.location_id)
         if npcs:
             names = [n.get("name", n.get("id", "?")) for n in npcs]
             parts.append("[NPCs nearby: " + ", ".join(names) + "]")
