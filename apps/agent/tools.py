@@ -542,24 +542,30 @@ async def award_xp(
     if amount <= 0:
         return json.dumps({"error": "XP amount must be positive."})
 
-    player = await db.get_player(session.player_id)
-    if player is None:
-        return json.dumps({"error": f"Player '{session.player_id}' not found."})
+    pending_events: list[tuple[str, dict]] = []
 
-    current_xp = player.get("xp", 0)
-    current_level = player.get("level", 1)
+    async with db.transaction() as conn:
+        player = await db.get_player(session.player_id, conn=conn, for_update=True)
+        if player is None:
+            return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
-    result = rules_engine.check_level_up(current_xp, amount, current_level)
+        current_xp = player.get("xp", 0)
+        current_level = player.get("level", 1)
 
-    await db.update_player_xp(session.player_id, result.new_xp, result.new_level)
+        result = rules_engine.check_level_up(current_xp, amount, current_level)
 
-    await publish_game_event(session.room, "xp_awarded", {
-        "amount": amount,
-        "reason": reason,
-        "new_xp": result.new_xp,
-        "new_level": result.new_level,
-        "leveled_up": result.leveled_up,
-    }, event_bus=session.event_bus)
+        await db.update_player_xp(session.player_id, result.new_xp, result.new_level, conn=conn)
+
+        pending_events.append(("xp_awarded", {
+            "amount": amount,
+            "reason": reason,
+            "new_xp": result.new_xp,
+            "new_level": result.new_level,
+            "leveled_up": result.leveled_up,
+        }))
+
+    for event_type, payload in pending_events:
+        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
 
     level_note = f" (leveled up to {result.new_level}!)" if result.leveled_up else ""
     session.record_event(f"Awarded {amount} XP: {reason}{level_note}")
@@ -592,23 +598,32 @@ async def update_npc_disposition(
 
     delta = max(-2, min(2, delta))
 
+    # Cached content read — outside transaction
     npc = await db.get_npc(npc_id)
     if npc is None:
         return json.dumps({"error": f"NPC '{npc_id}' not found."})
 
-    current = await _resolve_disposition(npc_id, session.player_id, npc)
+    pending_events: list[tuple[str, dict]] = []
 
-    new_disposition = _clamp_disposition_shift(current, delta)
+    async with db.transaction() as conn:
+        current = await db.get_npc_disposition(npc_id, session.player_id, conn=conn, for_update=True)
+        if current is None:
+            current = npc.get("default_disposition", "neutral")
 
-    await db.set_npc_disposition(npc_id, session.player_id, new_disposition, reason)
+        new_disposition = _clamp_disposition_shift(current, delta)
 
-    await publish_game_event(session.room, "disposition_changed", {
-        "npc_id": npc_id,
-        "npc_name": npc.get("name", npc_id),
-        "previous": current,
-        "new": new_disposition,
-        "reason": reason,
-    }, event_bus=session.event_bus)
+        await db.set_npc_disposition(npc_id, session.player_id, new_disposition, reason, conn=conn)
+
+        pending_events.append(("disposition_changed", {
+            "npc_id": npc_id,
+            "npc_name": npc.get("name", npc_id),
+            "previous": current,
+            "new": new_disposition,
+            "reason": reason,
+        }))
+
+    for event_type, payload in pending_events:
+        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
 
     npc_name = npc.get("name", npc_id)
     session.record_event(f"{npc_name} disposition: {current} -> {new_disposition} ({reason})")
@@ -637,20 +652,26 @@ async def add_to_inventory(
     logger.info("add_to_inventory called: item_id=%s, quantity=%d, source=%s", item_id, quantity, source)
     session: SessionData = context.userdata
 
+    # Cached content read — outside transaction
     item = await db.get_item(item_id)
     if item is None:
         return json.dumps({"error": f"Item '{item_id}' not found."})
 
-    await db.add_inventory_item(session.player_id, item_id, quantity)
-
     item_name = item.get("name", item_id)
+    pending_events: list[tuple[str, dict]] = []
 
-    await publish_game_event(session.room, "inventory_updated", {
-        "action": "added",
-        "item_id": item_id,
-        "item_name": item_name,
-        "quantity": quantity,
-    }, event_bus=session.event_bus)
+    async with db.transaction() as conn:
+        await db.add_inventory_item(session.player_id, item_id, quantity, conn=conn)
+
+        pending_events.append(("inventory_updated", {
+            "action": "added",
+            "item_id": item_id,
+            "item_name": item_name,
+            "quantity": quantity,
+        }))
+
+    for event_type, payload in pending_events:
+        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
 
     session.record_event(f"Added {quantity}x {item_name} ({source})")
 
@@ -675,24 +696,31 @@ async def remove_from_inventory(
     logger.info("remove_from_inventory called: item_id=%s", item_id)
     session: SessionData = context.userdata
 
-    slot = await db.get_inventory_item(session.player_id, item_id)
-    if slot is None:
-        return json.dumps({"error": f"Item '{item_id}' not in inventory."})
-
-    if slot.get("equipped", False):
-        return json.dumps({"error": f"Item '{item_id}' is equipped. Unequip it first."})
-
+    # Cached content read — outside transaction
     item = await db.get_item(item_id)
     item_name = item.get("name", item_id) if item else item_id
 
-    await db.remove_inventory_item(session.player_id, item_id)
+    pending_events: list[tuple[str, dict]] = []
 
-    await publish_game_event(session.room, "inventory_updated", {
-        "action": "removed",
-        "item_id": item_id,
-        "item_name": item_name,
-        "quantity": 0,
-    }, event_bus=session.event_bus)
+    async with db.transaction() as conn:
+        slot = await db.get_inventory_item(session.player_id, item_id, conn=conn, for_update=True)
+        if slot is None:
+            return json.dumps({"error": f"Item '{item_id}' not in inventory."})
+
+        if slot.get("equipped", False):
+            return json.dumps({"error": f"Item '{item_id}' is equipped. Unequip it first."})
+
+        await db.remove_inventory_item(session.player_id, item_id, conn=conn)
+
+        pending_events.append(("inventory_updated", {
+            "action": "removed",
+            "item_id": item_id,
+            "item_name": item_name,
+            "quantity": 0,
+        }))
+
+    for event_type, payload in pending_events:
+        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
 
     session.record_event(f"Removed {item_name}")
 
@@ -749,14 +777,21 @@ async def move_player(
         })
 
     previous_location_id = session.location_id
+    pending_events: list[tuple[str, dict]] = []
 
-    await db.update_player_location(session.player_id, destination_id)
+    async with db.transaction() as conn:
+        await db.update_player_location(session.player_id, destination_id, conn=conn)
+
+        pending_events.append(("location_changed", {
+            "previous_location": previous_location_id,
+            "new_location": destination_id,
+        }))
+
+    # Session state updated ONLY after successful commit
     session.location_id = destination_id
 
-    await publish_game_event(session.room, "location_changed", {
-        "previous_location": previous_location_id,
-        "new_location": destination_id,
-    }, event_bus=session.event_bus)
+    for event_type, payload in pending_events:
+        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
 
     session.record_event(f"Moved to {destination_id}")
 
@@ -783,6 +818,7 @@ async def update_quest(
     logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
     session: SessionData = context.userdata
 
+    # Cached content read — outside transaction
     quest = await db.get_quest(quest_id)
     if quest is None:
         return json.dumps({"error": f"Quest '{quest_id}' not found."})
@@ -791,72 +827,81 @@ async def update_quest(
     if new_stage_id < 0 or new_stage_id >= len(stages):
         return json.dumps({"error": f"Invalid stage {new_stage_id} for quest '{quest_id}'. Valid: 0-{len(stages) - 1}."})
 
-    player_quest = await db.get_player_quest(session.player_id, quest_id)
-
-    if player_quest is None:
-        if new_stage_id != 0:
-            return json.dumps({"error": "Must start quest at stage 0."})
-        current_stage = -1
-    else:
-        current_stage = player_quest.get("current_stage", -1)
-
-    if new_stage_id <= current_stage:
-        return json.dumps({"error": f"Cannot go backward. Current stage: {current_stage}, requested: {new_stage_id}."})
-
-    if new_stage_id > current_stage + 1:
-        return json.dumps({"error": f"Cannot skip stages. Current: {current_stage}, requested: {new_stage_id}, next valid: {current_stage + 1}."})
-
     rewards_applied = []
+    pending_events: list[tuple[str, dict]] = []
 
-    if current_stage >= 0:
-        completing_stage = stages[current_stage]
-        on_complete = completing_stage.get("on_complete", {})
+    async with db.transaction() as conn:
+        player_quest = await db.get_player_quest(session.player_id, quest_id, conn=conn, for_update=True)
 
-        xp_reward = on_complete.get("xp", 0)
-        if xp_reward > 0:
-            player = await db.get_player(session.player_id)
-            if player:
-                current_xp = player.get("xp", 0)
-                current_level = player.get("level", 1)
-                level_result = rules_engine.check_level_up(current_xp, xp_reward, current_level)
-                await db.update_player_xp(session.player_id, level_result.new_xp, level_result.new_level)
-                rewards_applied.append({"type": "xp", "amount": xp_reward, "leveled_up": level_result.leveled_up})
-                await publish_game_event(session.room, "xp_awarded", {
-                    "amount": xp_reward,
-                    "reason": f"Quest '{quest.get('name', quest_id)}' stage completed",
-                    "new_xp": level_result.new_xp,
-                    "new_level": level_result.new_level,
-                    "leveled_up": level_result.leveled_up,
-                }, event_bus=session.event_bus)
+        if player_quest is None:
+            if new_stage_id != 0:
+                return json.dumps({"error": "Must start quest at stage 0."})
+            current_stage = -1
+        else:
+            current_stage = player_quest.get("current_stage", -1)
 
-        for item_reward in on_complete.get("rewards", []):
-            item_id = item_reward.get("item") or item_reward.get("item_id")
-            qty = item_reward.get("quantity", 1)
-            if item_id:
-                await db.add_inventory_item(session.player_id, item_id, qty)
-                rewards_applied.append({"type": "item", "item_id": item_id, "quantity": qty})
-                item = await db.get_item(item_id)
-                item_name = item.get("name", item_id) if item else item_id
-                await publish_game_event(session.room, "inventory_updated", {
-                    "action": "added",
-                    "item_id": item_id,
-                    "item_name": item_name,
-                    "quantity": qty,
-                }, event_bus=session.event_bus)
+        if new_stage_id <= current_stage:
+            return json.dumps({"error": f"Cannot go backward. Current stage: {current_stage}, requested: {new_stage_id}."})
 
-    new_stage = stages[new_stage_id]
-    quest_data = {
-        "current_stage": new_stage_id,
-        "quest_name": quest.get("name", quest_id),
-    }
-    await db.set_player_quest(session.player_id, quest_id, quest_data)
+        if new_stage_id > current_stage + 1:
+            return json.dumps({"error": f"Cannot skip stages. Current: {current_stage}, requested: {new_stage_id}, next valid: {current_stage + 1}."})
 
-    await publish_game_event(session.room, "quest_updated", {
-        "quest_id": quest_id,
-        "quest_name": quest.get("name", quest_id),
-        "new_stage": new_stage_id,
-        "objective": new_stage.get("objective", ""),
-    }, event_bus=session.event_bus)
+        if current_stage >= 0:
+            completing_stage = stages[current_stage]
+            on_complete = completing_stage.get("on_complete", {})
+
+            xp_reward = on_complete.get("xp", 0)
+            if xp_reward > 0:
+                player = await db.get_player(session.player_id, conn=conn, for_update=True)
+                if player:
+                    current_xp = player.get("xp", 0)
+                    current_level = player.get("level", 1)
+                    level_result = rules_engine.check_level_up(current_xp, xp_reward, current_level)
+                    await db.update_player_xp(session.player_id, level_result.new_xp, level_result.new_level, conn=conn)
+                    rewards_applied.append({"type": "xp", "amount": xp_reward, "leveled_up": level_result.leveled_up})
+                    pending_events.append(("xp_awarded", {
+                        "amount": xp_reward,
+                        "reason": f"Quest '{quest.get('name', quest_id)}' stage completed",
+                        "new_xp": level_result.new_xp,
+                        "new_level": level_result.new_level,
+                        "leveled_up": level_result.leveled_up,
+                    }))
+
+            for item_reward in on_complete.get("rewards", []):
+                item_id = item_reward.get("item") or item_reward.get("item_id")
+                qty = item_reward.get("quantity", 1)
+                if item_id:
+                    await db.add_inventory_item(session.player_id, item_id, qty, conn=conn)
+                    rewards_applied.append({"type": "item", "item_id": item_id, "quantity": qty})
+
+        new_stage = stages[new_stage_id]
+        quest_data = {
+            "current_stage": new_stage_id,
+            "quest_name": quest.get("name", quest_id),
+        }
+        await db.set_player_quest(session.player_id, quest_id, quest_data, conn=conn)
+
+        pending_events.append(("quest_updated", {
+            "quest_id": quest_id,
+            "quest_name": quest.get("name", quest_id),
+            "new_stage": new_stage_id,
+            "objective": new_stage.get("objective", ""),
+        }))
+
+    # Resolve item names for inventory events (cached reads, outside transaction)
+    for reward in rewards_applied:
+        if reward["type"] == "item":
+            item = await db.get_item(reward["item_id"])
+            item_name = item.get("name", reward["item_id"]) if item else reward["item_id"]
+            pending_events.append(("inventory_updated", {
+                "action": "added",
+                "item_id": reward["item_id"],
+                "item_name": item_name,
+                "quantity": reward["quantity"],
+            }))
+
+    for event_type, payload in pending_events:
+        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
 
     quest_name = quest.get("name", quest_id)
     session.record_event(f"Quest '{quest_name}' advanced to stage {new_stage_id}")

@@ -1,6 +1,7 @@
 """Tests for game state mutation tools (mocked DB + room)."""
 
 import json
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -111,6 +112,17 @@ SAMPLE_QUEST = {
 }
 
 
+# --- Test helpers ---
+
+
+_mock_conn = MagicMock(name="mock_txn_conn")
+
+
+@asynccontextmanager
+async def _mock_transaction():
+    yield _mock_conn
+
+
 def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None):
     ctx = MagicMock()
     ctx.userdata = SessionData(
@@ -156,6 +168,7 @@ class TestClampDispositionShift:
 # --- award_xp ---
 
 
+@patch("tools.db.transaction", _mock_transaction)
 class TestAwardXp:
     @pytest.mark.asyncio
     @patch("tools.db.update_player_xp", new_callable=AsyncMock)
@@ -167,7 +180,7 @@ class TestAwardXp:
         assert result["amount"] == 50
         assert result["new_xp"] == 50
         assert result["leveled_up"] is False
-        mock_update.assert_called_once_with("player_1", 50, 1)
+        mock_update.assert_called_once_with("player_1", 50, 1, conn=_mock_conn)
 
     @pytest.mark.asyncio
     @patch("tools.db.update_player_xp", new_callable=AsyncMock)
@@ -180,7 +193,7 @@ class TestAwardXp:
         assert result["new_xp"] == 350
         assert result["new_level"] == 2
         assert result["leveled_up"] is True
-        mock_update.assert_called_once_with("player_1", 350, 2)
+        mock_update.assert_called_once_with("player_1", 350, 2, conn=_mock_conn)
 
     @pytest.mark.asyncio
     async def test_negative_amount(self):
@@ -231,6 +244,7 @@ class TestAwardXp:
 # --- update_npc_disposition ---
 
 
+@patch("tools.db.transaction", _mock_transaction)
 class TestUpdateNpcDisposition:
     @pytest.mark.asyncio
     @patch("tools.db.set_npc_disposition", new_callable=AsyncMock)
@@ -346,6 +360,7 @@ class TestUpdateNpcDisposition:
 # --- add_to_inventory ---
 
 
+@patch("tools.db.transaction", _mock_transaction)
 class TestAddToInventory:
     @pytest.mark.asyncio
     @patch("tools.db.add_inventory_item", new_callable=AsyncMock)
@@ -359,7 +374,7 @@ class TestAddToInventory:
         assert result["action"] == "added"
         assert result["item_name"] == "Health Potion"
         assert result["quantity"] == 2
-        mock_add.assert_called_once_with("player_1", "health_potion", 2)
+        mock_add.assert_called_once_with("player_1", "health_potion", 2, conn=_mock_conn)
 
     @pytest.mark.asyncio
     @patch("tools.db.get_item", new_callable=AsyncMock)
@@ -390,6 +405,7 @@ class TestAddToInventory:
 # --- remove_from_inventory ---
 
 
+@patch("tools.db.transaction", _mock_transaction)
 class TestRemoveFromInventory:
     @pytest.mark.asyncio
     @patch("tools.db.get_item", new_callable=AsyncMock)
@@ -406,17 +422,21 @@ class TestRemoveFromInventory:
         mock_remove.assert_called_once()
 
     @pytest.mark.asyncio
+    @patch("tools.db.get_item", new_callable=AsyncMock)
     @patch("tools.db.get_inventory_item", new_callable=AsyncMock)
-    async def test_missing_item(self, mock_slot):
+    async def test_missing_item(self, mock_slot, mock_item):
         mock_slot.return_value = None
+        mock_item.return_value = SAMPLE_ITEM
         ctx = _make_context()
         result = json.loads(await remove_from_inventory._func(ctx, item_id="nothing"))
         assert "error" in result
 
     @pytest.mark.asyncio
+    @patch("tools.db.get_item", new_callable=AsyncMock)
     @patch("tools.db.get_inventory_item", new_callable=AsyncMock)
-    async def test_equipped_item_blocked(self, mock_slot):
+    async def test_equipped_item_blocked(self, mock_slot, mock_item):
         mock_slot.return_value = {"quantity": 1, "equipped": True}
+        mock_item.return_value = SAMPLE_ITEM
         ctx = _make_context()
         result = json.loads(await remove_from_inventory._func(ctx, item_id="longsword"))
         assert "error" in result
@@ -442,6 +462,7 @@ class TestRemoveFromInventory:
 # --- move_player ---
 
 
+@patch("tools.db.transaction", _mock_transaction)
 class TestMovePlayer:
     @pytest.mark.asyncio
     @patch("tools.db.get_player", new_callable=AsyncMock)
@@ -461,7 +482,7 @@ class TestMovePlayer:
         assert result["moved"] is True
         assert result["previous_location"] == "accord_guild_hall"
         assert result["location"]["name"] == "Market Square"
-        mock_update.assert_called_once_with("player_1", "accord_market_square")
+        mock_update.assert_called_once_with("player_1", "accord_market_square", conn=_mock_conn)
 
     @pytest.mark.asyncio
     @patch("tools.db.get_location", new_callable=AsyncMock)
@@ -531,6 +552,7 @@ class TestMovePlayer:
 # --- update_quest ---
 
 
+@patch("tools.db.transaction", _mock_transaction)
 class TestUpdateQuest:
     @pytest.mark.asyncio
     @patch("tools.db.set_player_quest", new_callable=AsyncMock)
@@ -581,7 +603,7 @@ class TestUpdateQuest:
         assert item_reward["type"] == "item"
         assert item_reward["item_id"] == "research_tablet"
         mock_xp.assert_called_once()
-        mock_inv.assert_called_once_with("player_1", "research_tablet", 1)
+        mock_inv.assert_called_once_with("player_1", "research_tablet", 1, conn=_mock_conn)
 
     @pytest.mark.asyncio
     @patch("tools.db.get_player_quest", new_callable=AsyncMock)
