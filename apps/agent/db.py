@@ -3,6 +3,8 @@
 import json
 import logging
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 import asyncpg
 import redis.asyncio as aioredis
@@ -40,6 +42,19 @@ async def close_all() -> None:
     if _redis is not None:
         await _redis.aclose()
         _redis = None
+
+
+@asynccontextmanager
+async def transaction() -> AsyncIterator[asyncpg.Connection]:
+    """Acquire a pooled connection and open a transaction.
+
+    All reads/writes using the yielded connection share a single transaction.
+    Commits on clean exit, rolls back on exception.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            yield conn
 
 
 async def _cache_get(key: str) -> str | None:
@@ -123,25 +138,30 @@ async def search_lore(keyword: str, limit: int = 5) -> list[dict]:
 # --- State queries (not cached) ---
 
 
-async def get_npc_disposition(npc_id: str, player_id: str) -> str | None:
-    pool = await get_pool()
-    row = await pool.fetchrow(
-        "SELECT data FROM npc_dispositions WHERE npc_id = $1 AND player_id = $2",
-        npc_id,
-        player_id,
-    )
+async def get_npc_disposition(
+    npc_id: str, player_id: str,
+    *, conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    for_update: bool = False,
+) -> str | None:
+    _conn = conn or await get_pool()
+    sql = "SELECT data FROM npc_dispositions WHERE npc_id = $1 AND player_id = $2"
+    if for_update:
+        sql += " FOR UPDATE"
+    row = await _conn.fetchrow(sql, npc_id, player_id)
     if row is None:
         return None
     data = json.loads(row["data"])
     return data.get("disposition")
 
 
-async def get_npc_dispositions(npc_ids: list[str], player_id: str) -> dict[str, str]:
+async def get_npc_dispositions(
+    npc_ids: list[str], player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> dict[str, str]:
     """Batch-fetch dispositions for multiple NPCs. Returns {npc_id: disposition}."""
     if not npc_ids:
         return {}
-    pool = await get_pool()
-    rows = await pool.fetch(
+    _conn = conn or await get_pool()
+    rows = await _conn.fetch(
         "SELECT npc_id, data FROM npc_dispositions WHERE npc_id = ANY($1) AND player_id = $2",
         npc_ids,
         player_id,
@@ -152,19 +172,26 @@ async def get_npc_dispositions(npc_ids: list[str], player_id: str) -> dict[str, 
     }
 
 
-async def get_player(player_id: str) -> dict | None:
-    pool = await get_pool()
-    row = await pool.fetchrow(
-        "SELECT data FROM players WHERE player_id = $1", player_id
-    )
+async def get_player(
+    player_id: str,
+    *, conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    for_update: bool = False,
+) -> dict | None:
+    _conn = conn or await get_pool()
+    sql = "SELECT data FROM players WHERE player_id = $1"
+    if for_update:
+        sql += " FOR UPDATE"
+    row = await _conn.fetchrow(sql, player_id)
     if row is None:
         return None
     return json.loads(row["data"])
 
 
-async def update_player_hp(player_id: str, current_hp: int) -> None:
-    pool = await get_pool()
-    await pool.execute(
+async def update_player_hp(
+    player_id: str, current_hp: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    _conn = conn or await get_pool()
+    await _conn.execute(
         """
         UPDATE players
         SET data = jsonb_set(data, '{hp,current}', $2::jsonb)
@@ -175,9 +202,11 @@ async def update_player_hp(player_id: str, current_hp: int) -> None:
     )
 
 
-async def get_npc_combat_stats(npc_id: str) -> dict | None:
-    pool = await get_pool()
-    row = await pool.fetchrow(
+async def get_npc_combat_stats(
+    npc_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> dict | None:
+    _conn = conn or await get_pool()
+    row = await _conn.fetchrow(
         "SELECT data FROM npc_state WHERE npc_id = $1", npc_id
     )
     if row is None:
@@ -185,9 +214,11 @@ async def get_npc_combat_stats(npc_id: str) -> dict | None:
     return json.loads(row["data"])
 
 
-async def update_npc_hp(npc_id: str, current_hp: int) -> None:
-    pool = await get_pool()
-    await pool.execute(
+async def update_npc_hp(
+    npc_id: str, current_hp: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    _conn = conn or await get_pool()
+    await _conn.execute(
         """
         UPDATE npc_state
         SET data = jsonb_set(data, '{hp,current}', $2::jsonb)
@@ -198,9 +229,11 @@ async def update_npc_hp(npc_id: str, current_hp: int) -> None:
     )
 
 
-async def get_npcs_at_location(location_id: str) -> list[dict]:
-    pool = await get_pool()
-    rows = await pool.fetch(
+async def get_npcs_at_location(
+    location_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> list[dict]:
+    _conn = conn or await get_pool()
+    rows = await _conn.fetch(
         """
         SELECT id, data FROM npcs
         WHERE EXISTS (
@@ -213,18 +246,22 @@ async def get_npcs_at_location(location_id: str) -> list[dict]:
     return [{"id": row["id"], **json.loads(row["data"])} for row in rows]
 
 
-async def get_targets_at_location(location_id: str) -> list[dict]:
-    pool = await get_pool()
-    rows = await pool.fetch(
+async def get_targets_at_location(
+    location_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> list[dict]:
+    _conn = conn or await get_pool()
+    rows = await _conn.fetch(
         "SELECT npc_id, data FROM npc_state WHERE data->>'location' = $1",
         location_id,
     )
     return [{"npc_id": row["npc_id"], **json.loads(row["data"])} for row in rows]
 
 
-async def get_player_inventory(player_id: str) -> list[dict]:
-    pool = await get_pool()
-    rows = await pool.fetch(
+async def get_player_inventory(
+    player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> list[dict]:
+    _conn = conn or await get_pool()
+    rows = await _conn.fetch(
         """
         SELECT i.data AS item_data, pi.data AS slot_data
         FROM player_inventory pi
@@ -245,9 +282,11 @@ async def get_player_inventory(player_id: str) -> list[dict]:
 # --- State mutations ---
 
 
-async def update_player_location(player_id: str, location_id: str) -> None:
-    pool = await get_pool()
-    await pool.execute(
+async def update_player_location(
+    player_id: str, location_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    _conn = conn or await get_pool()
+    await _conn.execute(
         """
         UPDATE players
         SET data = jsonb_set(data, '{location_id}', $2::jsonb)
@@ -258,9 +297,11 @@ async def update_player_location(player_id: str, location_id: str) -> None:
     )
 
 
-async def update_player_xp(player_id: str, new_xp: int, new_level: int) -> None:
-    pool = await get_pool()
-    await pool.execute(
+async def update_player_xp(
+    player_id: str, new_xp: int, new_level: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    _conn = conn or await get_pool()
+    await _conn.execute(
         """
         UPDATE players
         SET data = jsonb_set(jsonb_set(data, '{xp}', $2::jsonb), '{level}', $3::jsonb)
@@ -272,9 +313,11 @@ async def update_player_xp(player_id: str, new_xp: int, new_level: int) -> None:
     )
 
 
-async def add_inventory_item(player_id: str, item_id: str, quantity: int) -> None:
-    pool = await get_pool()
-    await pool.execute(
+async def add_inventory_item(
+    player_id: str, item_id: str, quantity: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    _conn = conn or await get_pool()
+    await _conn.execute(
         """
         INSERT INTO player_inventory (player_id, item_id, data)
         VALUES ($1, $2, $3::jsonb)
@@ -292,9 +335,11 @@ async def add_inventory_item(player_id: str, item_id: str, quantity: int) -> Non
     )
 
 
-async def remove_inventory_item(player_id: str, item_id: str) -> bool:
-    pool = await get_pool()
-    result = await pool.execute(
+async def remove_inventory_item(
+    player_id: str, item_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> bool:
+    _conn = conn or await get_pool()
+    result = await _conn.execute(
         "DELETE FROM player_inventory WHERE player_id = $1 AND item_id = $2",
         player_id,
         item_id,
@@ -302,13 +347,16 @@ async def remove_inventory_item(player_id: str, item_id: str) -> bool:
     return result == "DELETE 1"
 
 
-async def get_inventory_item(player_id: str, item_id: str) -> dict | None:
-    pool = await get_pool()
-    row = await pool.fetchrow(
-        "SELECT data FROM player_inventory WHERE player_id = $1 AND item_id = $2",
-        player_id,
-        item_id,
-    )
+async def get_inventory_item(
+    player_id: str, item_id: str,
+    *, conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    for_update: bool = False,
+) -> dict | None:
+    _conn = conn or await get_pool()
+    sql = "SELECT data FROM player_inventory WHERE player_id = $1 AND item_id = $2"
+    if for_update:
+        sql += " FOR UPDATE"
+    row = await _conn.fetchrow(sql, player_id, item_id)
     if row is None:
         return None
     return json.loads(row["data"])
@@ -336,21 +384,26 @@ async def get_quest(quest_id: str) -> dict | None:
 # --- Quest state ---
 
 
-async def get_player_quest(player_id: str, quest_id: str) -> dict | None:
-    pool = await get_pool()
-    row = await pool.fetchrow(
-        "SELECT data FROM player_quests WHERE player_id = $1 AND quest_id = $2",
-        player_id,
-        quest_id,
-    )
+async def get_player_quest(
+    player_id: str, quest_id: str,
+    *, conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    for_update: bool = False,
+) -> dict | None:
+    _conn = conn or await get_pool()
+    sql = "SELECT data FROM player_quests WHERE player_id = $1 AND quest_id = $2"
+    if for_update:
+        sql += " FOR UPDATE"
+    row = await _conn.fetchrow(sql, player_id, quest_id)
     if row is None:
         return None
     return json.loads(row["data"])
 
 
-async def set_player_quest(player_id: str, quest_id: str, data: dict) -> None:
-    pool = await get_pool()
-    await pool.execute(
+async def set_player_quest(
+    player_id: str, quest_id: str, data: dict, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    _conn = conn or await get_pool()
+    await _conn.execute(
         """
         INSERT INTO player_quests (player_id, quest_id, data)
         VALUES ($1, $2, $3::jsonb)
@@ -364,11 +417,12 @@ async def set_player_quest(player_id: str, quest_id: str, data: dict) -> None:
 
 
 async def set_npc_disposition(
-    npc_id: str, player_id: str, disposition: str, reason: str
+    npc_id: str, player_id: str, disposition: str, reason: str,
+    *, conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
-    pool = await get_pool()
+    _conn = conn or await get_pool()
     data = json.dumps({"disposition": disposition, "reason": reason})
-    await pool.execute(
+    await _conn.execute(
         """
         INSERT INTO npc_dispositions (npc_id, player_id, data)
         VALUES ($1, $2, $3::jsonb)
@@ -381,9 +435,11 @@ async def set_npc_disposition(
     )
 
 
-async def get_active_player_quests(player_id: str) -> list[dict]:
-    pool = await get_pool()
-    rows = await pool.fetch(
+async def get_active_player_quests(
+    player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> list[dict]:
+    _conn = conn or await get_pool()
+    rows = await _conn.fetch(
         """
         SELECT pq.quest_id, pq.data AS pq_data, q.data AS q_data
         FROM player_quests pq
@@ -408,9 +464,11 @@ async def get_active_player_quests(player_id: str) -> list[dict]:
     return results
 
 
-async def log_world_event(event_type: str, data: dict) -> None:
-    pool = await get_pool()
-    await pool.execute(
+async def log_world_event(
+    event_type: str, data: dict, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    _conn = conn or await get_pool()
+    await _conn.execute(
         "INSERT INTO world_events_log (event_type, data) VALUES ($1, $2::jsonb)",
         event_type,
         json.dumps(data),
