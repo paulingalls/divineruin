@@ -86,13 +86,86 @@ This is a freeform conversation. The player is exploring and talking. \
 Respond to what they say. Be curious about their intent.\
 """
 
+PLAYER_AWARENESS_PROMPT = """\
+
+## Player Awareness
+
+You receive a player affect reading each turn. This tells you HOW the player \
+is speaking, not just what they said. Use it the way a human DM reads the table:
+
+- If engagement is falling, shift the energy. Introduce something unexpected. \
+Have a companion speak up. Don't lecture — provoke.
+- If the player is confused, slow down. Have an NPC rephrase. Offer a clear \
+choice instead of an open field.
+- If engagement is high and rising, ride it. Lean into whatever they're \
+excited about. Give them more of what's working.
+- If speech rate is fast, they're excited or anxious. Match the energy in narration.
+- If responses are getting shorter and latency is increasing, they may be \
+fatigued. Steer toward a natural stopping point or a satisfying beat.
+- If they're in exploratory mode, reward curiosity. Drop lore hints, add \
+environmental details, let NPCs volunteer information.
+- If they're in decisive mode, don't slow them down. Resolve actions quickly, \
+keep momentum.
+
+Never mention the affect system to the player. Never say "you seem excited" \
+or "I notice you're confused." Act on the awareness naturally, the way a \
+perceptive human would.
+
+Weight your responses by calibration confidence — don't make dramatic \
+behavioral shifts based on low-confidence reads early in the session.\
+"""
+
 
 def build_system_prompt(location_id: str) -> str:
-    return SYSTEM_PROMPT + (
+    return SYSTEM_PROMPT + PLAYER_AWARENESS_PROMPT + (
         f"\n\nThe player is currently at location ID: {location_id}. "
         "When setting a scene or answering 'where am I?', call query_location "
         f"with this ID."
     )
+
+
+def format_affect_context(affect: dict) -> str:
+    """Format an affect vector as a compact bracketed string for hot layer injection."""
+    eng = affect.get("engagement", {})
+    energy = affect.get("energy", {})
+    style = affect.get("interaction_style", {})
+    turn = affect.get("turn_number", 0)
+    calibration = affect.get("calibration_confidence", "low")
+
+    parts = [
+        f"engagement: {eng.get('level', '?')}, trend: {eng.get('trend', '?')}",
+    ]
+
+    eng_signals = eng.get("signals", [])
+    if eng_signals:
+        parts.append(f"signals: {', '.join(eng_signals)}")
+
+    rate = energy.get("speech_rate_wps")
+    if rate is not None:
+        rate_str = f"speech rate: {rate} wps"
+        rate_vs = energy.get("rate_vs_baseline", "n/a")
+        if rate_vs != "n/a":
+            rate_str += f" ({rate_vs} vs baseline)"
+        parts.append(rate_str)
+
+    mode = style.get("mode", "?")
+    parts.append(f"mode: {mode}")
+
+    latency = affect.get("response_latency_ms", 0)
+    if latency > 0:
+        lat_str = f"response latency: {latency}ms"
+        lat_vs = affect.get("latency_vs_baseline", "n/a")
+        if lat_vs != "n/a":
+            lat_str += f" ({lat_vs})"
+        parts.append(lat_str)
+
+    cal_note = ""
+    if calibration == "low":
+        cal_note = " (low confidence — still calibrating)"
+    elif calibration == "medium":
+        cal_note = " (medium confidence — calibrating)"
+
+    return f"[Player Affect — turn {turn}{cal_note}: {'; '.join(parts)}]"
 
 
 def quest_objective(quest: dict) -> str:

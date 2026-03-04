@@ -7,13 +7,15 @@ from collections.abc import AsyncIterable, AsyncGenerator
 from typing import Any
 
 from livekit import rtc, agents
-from livekit.agents import AgentServer, AgentSession, Agent, ModelSettings
+from livekit.agents import AgentServer, AgentSession, Agent, ModelSettings, stt
+from livekit.agents.stt import SpeechEventType
 from livekit.plugins import silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from livekit.plugins import anthropic, deepgram, inworld
 
+from affect_analyzer import PlayerAffectAnalyzer
 from background_process import BackgroundProcess
-from prompts import build_system_prompt, quest_objective
+from prompts import build_system_prompt, quest_objective, format_affect_context
 from voices import get_voice_config, VOICES
 from dialogue_parser import parse_dialogue_stream
 from latency import TurnTimer
@@ -70,9 +72,11 @@ class DungeonMasterAgent(Agent):
         )
         self._turn_timer = TurnTimer()
         self._background: BackgroundProcess | None = None
+        self._affect_analyzer = PlayerAffectAnalyzer()
 
     async def on_enter(self) -> None:
         logger.info("DM agent entered session")
+        self._affect_analyzer.start()
         sd: SessionData = self.session.userdata
         self._background = BackgroundProcess(
             agent=self,
@@ -80,6 +84,24 @@ class DungeonMasterAgent(Agent):
             session_data=sd,
         )
         self._background.start()
+
+    async def on_exit(self) -> None:
+        logger.info("DM agent exiting session")
+        await self._affect_analyzer.stop()
+        if self._background:
+            await self._background.stop()
+
+    async def stt_node(
+        self,
+        audio: AsyncIterable[rtc.AudioFrame],
+        model_settings: ModelSettings,
+    ) -> AsyncGenerator[stt.SpeechEvent | str, None]:
+        """Override stt_node to fork STT events to the affect analyzer."""
+        # Phase A: pass audio through unchanged (Phase B adds audio forking)
+        async for event in Agent.default.stt_node(self, audio, model_settings):
+            if isinstance(event, stt.SpeechEvent) and event.type == SpeechEventType.FINAL_TRANSCRIPT:
+                self._affect_analyzer.enqueue_event(event)
+            yield event
 
     async def on_user_turn_completed(
         self, turn_ctx: agents.llm.ChatContext, new_message: agents.llm.ChatMessage
@@ -93,6 +115,10 @@ class DungeonMasterAgent(Agent):
         hot = await self._build_hot_context(sd)
         if hot:
             turn_ctx.add_message(role="assistant", content=hot)
+
+        affect = self._affect_analyzer.get_current_vector()
+        if affect:
+            turn_ctx.add_message(role="assistant", content=format_affect_context(affect))
 
     async def _build_hot_context(self, sd: SessionData) -> str:
         parts: list[str] = []
@@ -183,6 +209,7 @@ class DungeonMasterAgent(Agent):
             yield frame
 
         self._turn_timer.finish()
+        self._affect_analyzer.record_tts_end()
 
 
 _PAUSE_PATTERN = re.compile(r'(\.{2,}|…|—|–)')
