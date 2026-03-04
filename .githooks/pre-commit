@@ -4,8 +4,10 @@ set -e
 echo "Running pre-commit lint checks..."
 
 # TypeScript type checking
-echo "  TypeScript typecheck..."
+echo "  TypeScript typecheck (root)..."
 bun run typecheck
+echo "  TypeScript typecheck (mobile)..."
+cd apps/mobile && bunx tsc --noEmit && cd ../..
 
 # ESLint
 echo "  ESLint..."
