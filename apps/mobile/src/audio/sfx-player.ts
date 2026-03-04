@@ -28,7 +28,7 @@ export function playSfx(soundName: string): void {
   };
 
   const subscription = player.addListener("playbackStatusUpdate", (status) => {
-    if (status.didJustFinish || status.error) {
+    if (status.didJustFinish) {
       cleanup();
     }
   });
