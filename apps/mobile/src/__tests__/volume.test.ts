@@ -11,7 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 beforeEach(() => {
   _resetForTesting();
-  (AsyncStorage as any)._clear?.();
+  (AsyncStorage as unknown as { _clear?: () => void })._clear?.();
 });
 
 test("default volumes match spec", () => {
@@ -64,7 +64,7 @@ test("loadVolumes restores persisted values", async () => {
 });
 
 test("loadVolumes handles missing storage gracefully", async () => {
-  (AsyncStorage as any)._clear();
+  (AsyncStorage as unknown as { _clear: () => void })._clear();
   await loadVolumes();
   expect(getVolume("master")).toBe(1.0);
   expect(getVolume("music")).toBe(0.7);
