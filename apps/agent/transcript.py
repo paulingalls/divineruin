@@ -15,7 +15,14 @@ if TYPE_CHECKING:
 
     from event_bus import EventBus
 
-DEFAULT_LOG_PATH = os.path.join(os.path.dirname(__file__), "transcript.log")
+TRANSCRIPTS_DIR = os.path.join(os.path.dirname(__file__), "transcripts")
+
+
+def _default_log_path() -> str:
+    os.makedirs(TRANSCRIPTS_DIR, exist_ok=True)
+    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+    return os.path.join(TRANSCRIPTS_DIR, f"session_{timestamp}.log")
+
 
 _instance_counter = 0
 
@@ -31,11 +38,13 @@ class TranscriptLogger:
         self,
         room: rtc.Room | None,
         event_bus: EventBus | None = None,
-        log_path: str = DEFAULT_LOG_PATH,
+        log_path: str | None = None,
     ) -> None:
         global _instance_counter
         self._room = room
         self._event_bus = event_bus
+        if log_path is None:
+            log_path = _default_log_path()
 
         _instance_counter += 1
         self._logger = logging.getLogger(f"divineruin.transcript.{_instance_counter}")
