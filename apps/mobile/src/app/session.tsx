@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -41,9 +41,9 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
 
   useGameEvents();
 
-  const toggleMute = useCallback(() => {
+  const toggleMute = () => {
     localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
-  }, [localParticipant, isMicrophoneEnabled]);
+  };
 
   useEffect(() => {
     return () => releaseAllPlayers();
@@ -92,16 +92,26 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
 
       <View style={styles.buttonRow}>
         <Pressable
-          style={[styles.muteButton, !isMicrophoneEnabled && styles.muteButtonActive]}
+          style={[
+            styles.buttonBase,
+            styles.muteButton,
+            !isMicrophoneEnabled && styles.muteButtonActive,
+          ]}
           onPress={toggleMute}
         >
-          <ThemedText style={[styles.muteText, !isMicrophoneEnabled && styles.muteTextActive]}>
+          <ThemedText
+            style={[
+              styles.buttonText,
+              styles.muteText,
+              !isMicrophoneEnabled && styles.muteTextActive,
+            ]}
+          >
             {isMicrophoneEnabled ? "Mute" : "Muted"}
           </ThemedText>
         </Pressable>
 
-        <Pressable style={styles.leaveButton} onPress={onLeave}>
-          <ThemedText style={styles.leaveText}>Leave</ThemedText>
+        <Pressable style={[styles.buttonBase, styles.leaveButton]} onPress={onLeave}>
+          <ThemedText style={[styles.buttonText, styles.leaveText]}>Leave</ThemedText>
         </Pressable>
       </View>
     </View>
@@ -202,12 +212,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: Spacing.three,
   },
-  muteButton: {
+  buttonBase: {
     minWidth: 120,
     alignItems: "center",
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
     borderRadius: Radius.md,
+  },
+  buttonText: {
+    fontSize: 24,
+    fontWeight: "600" as const,
+  },
+  muteButton: {
     borderWidth: 2,
     borderColor: BrandColors.ash,
     backgroundColor: "transparent",
@@ -217,25 +233,16 @@ const styles = StyleSheet.create({
     backgroundColor: BrandColors.emberFaint,
   },
   muteText: {
-    fontSize: 24,
-    fontWeight: "600",
     color: BrandColors.bone,
   },
   muteTextActive: {
     color: BrandColors.ember,
   },
   leaveButton: {
-    minWidth: 120,
-    alignItems: "center",
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
     backgroundColor: BrandColors.hollow,
-    borderRadius: Radius.md,
     ...Shadows.glowHollow,
   },
   leaveText: {
-    fontSize: 24,
-    fontWeight: "600",
     color: BrandColors.void,
   },
 });
