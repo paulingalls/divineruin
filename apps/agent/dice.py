@@ -42,9 +42,7 @@ def roll(notation: str, rng: random.Random | None = None) -> DiceResult:
     bonus = int(m.group(5)) if m.group(5) else 0
 
     if keep_count is not None and keep_count > count:
-        raise ValueError(
-            f"Cannot keep {keep_count} dice when only rolling {count}"
-        )
+        raise ValueError(f"Cannot keep {keep_count} dice when only rolling {count}")
 
     r = rng or random.SystemRandom()
     all_rolls = [r.randint(1, sides) for _ in range(count)]

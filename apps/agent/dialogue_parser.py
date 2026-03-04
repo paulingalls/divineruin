@@ -1,6 +1,6 @@
 import re
+from collections.abc import AsyncGenerator, AsyncIterable
 from dataclasses import dataclass
-from collections.abc import AsyncIterable, AsyncGenerator
 
 TAG_PATTERN = re.compile(
     r'\[([A-Z_]+),\s*([a-z]+)\]:\s*"',
@@ -41,7 +41,7 @@ async def parse_dialogue_stream(
                     break
 
                 text = buffer[:end_quote]
-                buffer = buffer[end_quote + 1:]
+                buffer = buffer[end_quote + 1 :]
                 in_dialogue = False
                 if text:
                     yield Segment(current_character, current_emotion, text)
@@ -51,13 +51,13 @@ async def parse_dialogue_stream(
 
             match = TAG_PATTERN.search(buffer)
             if match:
-                before = buffer[:match.start()]
+                before = buffer[: match.start()]
                 if before.strip():
                     yield Segment(DEFAULT_CHARACTER, DEFAULT_EMOTION, before)
 
                 current_character = match.group(1)
                 current_emotion = match.group(2)
-                buffer = buffer[match.end():]
+                buffer = buffer[match.end() :]
                 in_dialogue = True
                 continue
 
@@ -72,10 +72,10 @@ async def parse_dialogue_stream(
                     buffer = remaining
                     break
 
-                before = buffer[:bracket_pos + 1]
+                before = buffer[: bracket_pos + 1]
                 if before.strip():
                     yield Segment(DEFAULT_CHARACTER, DEFAULT_EMOTION, before)
-                buffer = buffer[bracket_pos + 1:]
+                buffer = buffer[bracket_pos + 1 :]
                 continue
 
             yield Segment(DEFAULT_CHARACTER, DEFAULT_EMOTION, buffer)

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
-from typing import TypeVar, Callable, Any, Optional
+from collections.abc import Callable
 from functools import wraps
+from typing import Any, TypeVar
 
 logger = logging.getLogger("divineruin.db_errors")
 
@@ -74,8 +75,8 @@ async def with_db_error_handling(
     db_call: Callable[[], Any],
     *,
     allow_none: bool = False,
-    entity_type: Optional[str] = None,
-    entity_id: Optional[str] = None,
+    entity_type: str | None = None,
+    entity_id: str | None = None,
 ) -> Any:
     """
     Execute a database call with comprehensive error handling.
@@ -149,6 +150,14 @@ def db_tool(func: Callable[..., Any]) -> Callable[..., Any]:
                 e.user_message,
             )
             return _error_response(e.user_message, e.operation)
+        except TimeoutError as e:
+            logger.error("Database timeout in %s: %s", func.__name__, e, exc_info=True)
+            err = DatabaseTimeoutError(func.__name__, e)
+            return _error_response(err.user_message, err.operation)
+        except ConnectionError as e:
+            logger.error("Database connection error in %s: %s", func.__name__, e, exc_info=True)
+            err = DatabaseConnectionError(func.__name__, e)
+            return _error_response(err.user_message, err.operation)
 
     return wrapper
 

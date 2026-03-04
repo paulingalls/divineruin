@@ -139,8 +139,10 @@ async def search_lore(keyword: str, limit: int = 5) -> list[dict]:
 
 
 async def get_npc_disposition(
-    npc_id: str, player_id: str,
-    *, conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    npc_id: str,
+    player_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
     for_update: bool = False,
 ) -> str | None:
     _conn = conn or await get_pool()
@@ -166,15 +168,13 @@ async def get_npc_dispositions(
         npc_ids,
         player_id,
     )
-    return {
-        row["npc_id"]: json.loads(row["data"]).get("disposition", "neutral")
-        for row in rows
-    }
+    return {row["npc_id"]: json.loads(row["data"]).get("disposition", "neutral") for row in rows}
 
 
 async def get_player(
     player_id: str,
-    *, conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
     for_update: bool = False,
 ) -> dict | None:
     _conn = conn or await get_pool()
@@ -202,21 +202,15 @@ async def update_player_hp(
     )
 
 
-async def get_npc_combat_stats(
-    npc_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
-) -> dict | None:
+async def get_npc_combat_stats(npc_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> dict | None:
     _conn = conn or await get_pool()
-    row = await _conn.fetchrow(
-        "SELECT data FROM npc_state WHERE npc_id = $1", npc_id
-    )
+    row = await _conn.fetchrow("SELECT data FROM npc_state WHERE npc_id = $1", npc_id)
     if row is None:
         return None
     return json.loads(row["data"])
 
 
-async def update_npc_hp(
-    npc_id: str, current_hp: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
-) -> None:
+async def update_npc_hp(npc_id: str, current_hp: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> None:
     _conn = conn or await get_pool()
     await _conn.execute(
         """
@@ -257,9 +251,7 @@ async def get_targets_at_location(
     return [{"npc_id": row["npc_id"], **json.loads(row["data"])} for row in rows]
 
 
-async def get_player_inventory(
-    player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
-) -> list[dict]:
+async def get_player_inventory(player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> list[dict]:
     _conn = conn or await get_pool()
     rows = await _conn.fetch(
         """
@@ -348,8 +340,10 @@ async def remove_inventory_item(
 
 
 async def get_inventory_item(
-    player_id: str, item_id: str,
-    *, conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    player_id: str,
+    item_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
     for_update: bool = False,
 ) -> dict | None:
     _conn = conn or await get_pool()
@@ -385,8 +379,10 @@ async def get_quest(quest_id: str) -> dict | None:
 
 
 async def get_player_quest(
-    player_id: str, quest_id: str,
-    *, conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    player_id: str,
+    quest_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
     for_update: bool = False,
 ) -> dict | None:
     _conn = conn or await get_pool()
@@ -417,8 +413,12 @@ async def set_player_quest(
 
 
 async def set_npc_disposition(
-    npc_id: str, player_id: str, disposition: str, reason: str,
-    *, conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    npc_id: str,
+    player_id: str,
+    disposition: str,
+    reason: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
     _conn = conn or await get_pool()
     data = json.dumps({"disposition": disposition, "reason": reason})
@@ -454,13 +454,15 @@ async def get_active_player_quests(
         quest = json.loads(row["q_data"])
         current_stage = pq.get("current_stage", 0)
         stages = quest.get("stages", [])
-        results.append({
-            "quest_id": row["quest_id"],
-            "quest_name": quest.get("name", row["quest_id"]),
-            "current_stage": current_stage,
-            "stages": stages,
-            "global_hints": quest.get("global_hints", []),
-        })
+        results.append(
+            {
+                "quest_id": row["quest_id"],
+                "quest_name": quest.get("name", row["quest_id"]),
+                "current_stage": current_stage,
+                "stages": stages,
+                "global_hints": quest.get("global_hints", []),
+            }
+        )
     return results
 
 

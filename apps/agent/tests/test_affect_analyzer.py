@@ -3,28 +3,26 @@
 import asyncio
 import time
 
-import pytest
+from livekit.agents.stt import SpeechData, SpeechEvent, SpeechEventType
+from livekit.agents.types import TimedString
 
 from affect_analyzer import (
     PlayerAffectAnalyzer,
-    TurnData,
+    classify_interaction_mode,
     compute_engagement_score,
     compute_engagement_trend,
     compute_speech_rate,
-    classify_interaction_mode,
     detect_interaction_signals,
     detect_question,
     engagement_level,
     format_vs_baseline,
 )
 from prompts import format_affect_context
-from livekit.agents.stt import SpeechEvent, SpeechEventType, SpeechData
-from livekit.agents.types import TimedString, NOT_GIVEN
-
 
 # ---------------------------------------------------------------------------
 # Question detection
 # ---------------------------------------------------------------------------
+
 
 class TestDetectQuestion:
     def test_question_mark(self):
@@ -52,6 +50,7 @@ class TestDetectQuestion:
 # ---------------------------------------------------------------------------
 # Interaction signal detection
 # ---------------------------------------------------------------------------
+
 
 class TestDetectInteractionSignals:
     def test_exploratory(self):
@@ -103,6 +102,7 @@ class TestDetectInteractionSignals:
 # ---------------------------------------------------------------------------
 # Speech rate computation
 # ---------------------------------------------------------------------------
+
 
 class TestComputeSpeechRate:
     def test_normal_speech(self):
@@ -159,6 +159,7 @@ class TestComputeSpeechRate:
 # ---------------------------------------------------------------------------
 # Engagement score computation
 # ---------------------------------------------------------------------------
+
 
 class TestComputeEngagementScore:
     def test_high_engagement(self):
@@ -217,6 +218,7 @@ class TestComputeEngagementScore:
 # Engagement level from score
 # ---------------------------------------------------------------------------
 
+
 class TestEngagementLevel:
     def test_high(self):
         assert engagement_level(0.8) == "high"
@@ -247,6 +249,7 @@ class TestEngagementLevel:
 # Interaction mode classification
 # ---------------------------------------------------------------------------
 
+
 class TestClassifyInteractionMode:
     def test_exploratory(self):
         assert classify_interaction_mode(["exploratory", "question"]) == "exploratory"
@@ -273,6 +276,7 @@ class TestClassifyInteractionMode:
 # ---------------------------------------------------------------------------
 # Engagement trend
 # ---------------------------------------------------------------------------
+
 
 class TestComputeEngagementTrend:
     def test_rising(self):
@@ -301,6 +305,7 @@ class TestComputeEngagementTrend:
 # ---------------------------------------------------------------------------
 # Metric vs baseline formatting
 # ---------------------------------------------------------------------------
+
 
 class TestFormatVsBaseline:
     def test_positive(self):
@@ -343,6 +348,7 @@ class TestFormatVsBaseline:
 # ---------------------------------------------------------------------------
 # Response latency edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestResponseLatency:
     def test_no_tts_end_recorded(self):
@@ -389,6 +395,7 @@ class TestResponseLatency:
 # ---------------------------------------------------------------------------
 # Affect vector structure
 # ---------------------------------------------------------------------------
+
 
 class TestAffectVector:
     def test_all_keys_present(self):
@@ -450,6 +457,7 @@ class TestAffectVector:
 # ---------------------------------------------------------------------------
 # Integration: async _process_stt_event with mock SpeechEvent
 # ---------------------------------------------------------------------------
+
 
 class TestProcessSttEvent:
     def test_final_transcript_updates_vector(self):
@@ -518,6 +526,7 @@ class TestAsyncRun:
 # ---------------------------------------------------------------------------
 # format_affect_context
 # ---------------------------------------------------------------------------
+
 
 class TestFormatAffectContext:
     def test_full_vector(self):
@@ -601,6 +610,7 @@ class TestFormatAffectContext:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_speech_event(
     text: str,

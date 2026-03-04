@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import json
+
 import pytest
 
 from db_errors import (
-    DatabaseError,
     DatabaseConnectionError,
-    DatabaseTimeoutError,
-    DatabaseNotFoundError,
     DatabaseIntegrityError,
-    with_db_error_handling,
+    DatabaseNotFoundError,
+    DatabaseTimeoutError,
     db_tool,
+    with_db_error_handling,
 )
 
 
@@ -142,9 +142,7 @@ class TestDbToolDecorator:
     async def test_database_error_caught_and_formatted(self):
         @db_tool
         async def failing_tool():
-            raise DatabaseConnectionError(
-                "get_player", ConnectionError("Connection refused")
-            )
+            raise DatabaseConnectionError("get_player", ConnectionError("Connection refused"))
 
         result = await failing_tool()
         data = json.loads(result)

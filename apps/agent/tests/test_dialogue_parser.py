@@ -1,5 +1,6 @@
 import pytest
-from dialogue_parser import parse_dialogue_stream, Segment, DEFAULT_CHARACTER
+
+from dialogue_parser import DEFAULT_CHARACTER, Segment, parse_dialogue_stream
 
 
 async def _collect(text: str) -> list[Segment]:
@@ -46,10 +47,7 @@ async def test_single_character_line():
 
 @pytest.mark.asyncio
 async def test_narration_then_dialogue():
-    text = (
-        'The guild hall falls quiet.\n'
-        '[GUILDMASTER_TORIN, angry]: "Get out."'
-    )
+    text = 'The guild hall falls quiet.\n[GUILDMASTER_TORIN, angry]: "Get out."'
     segments = await _collect(text)
     narration = _by_character(segments, DEFAULT_CHARACTER)
     dialogue = _by_character(segments, "GUILDMASTER_TORIN")
@@ -61,10 +59,7 @@ async def test_narration_then_dialogue():
 
 @pytest.mark.asyncio
 async def test_multiple_characters():
-    text = (
-        '[ELDER_YANNA, calm]: "Peace, child."\n'
-        '[SCHOLAR_EMRIS, nervous]: "We should hurry."'
-    )
+    text = '[ELDER_YANNA, calm]: "Peace, child."\n[SCHOLAR_EMRIS, nervous]: "We should hurry."'
     segments = await _collect(text)
     yanna = _by_character(segments, "ELDER_YANNA")
     emris = _by_character(segments, "SCHOLAR_EMRIS")
@@ -78,7 +73,7 @@ async def test_multiple_characters():
 async def test_chunked_tag_across_boundary():
     chunks = [
         "The room darkens. [GUILDMASTER",
-        "_TORIN, whispering]: \"They're listening.\"",
+        '_TORIN, whispering]: "They\'re listening."',
     ]
     segments = await _collect_chunked(chunks)
     dialogue = _by_character(segments, "GUILDMASTER_TORIN")

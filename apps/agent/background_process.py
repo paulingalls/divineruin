@@ -10,10 +10,11 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from event_bus import GameEvent
-from prompts import build_warm_layer, build_full_prompt, SYSTEM_PROMPT
+from prompts import SYSTEM_PROMPT, build_full_prompt, build_warm_layer
 
 if TYPE_CHECKING:
     from livekit.agents import Agent, AgentSession
+
     from session_data import SessionData
 
 logger = logging.getLogger("divineruin.background")

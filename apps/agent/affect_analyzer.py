@@ -15,7 +15,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 
-from livekit.agents.stt import SpeechEvent, SpeechEventType, SpeechData
+from livekit.agents.stt import SpeechData, SpeechEvent, SpeechEventType
 from livekit.agents.types import NOT_GIVEN, TimedString
 
 logger = logging.getLogger("divineruin.affect")
@@ -70,9 +70,7 @@ def detect_question(text: str) -> bool:
     stripped = text.strip()
     if stripped.endswith("?"):
         return True
-    if _INTERROGATIVE_STARTERS.search(stripped):
-        return True
-    return False
+    return bool(_INTERROGATIVE_STARTERS.search(stripped))
 
 
 def detect_interaction_signals(text: str) -> list[str]:
@@ -134,6 +132,7 @@ def compute_speech_rate(words: list[TimedString]) -> float | None:
 # ---------------------------------------------------------------------------
 # Engagement scoring
 # ---------------------------------------------------------------------------
+
 
 def compute_engagement_score(
     word_count: int,
@@ -250,9 +249,11 @@ def format_vs_baseline(current: float | None, baseline: float | None) -> str:
 # Turn data
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TurnData:
     """Metrics collected for a single player turn."""
+
     word_count: int = 0
     speech_rate: float | None = None
     has_question: bool = False
@@ -324,11 +325,9 @@ class PlayerAffectAnalyzer:
         try:
             while True:
                 try:
-                    event = await asyncio.wait_for(
-                        self._stt_event_queue.get(), timeout=0.5
-                    )
+                    event = await asyncio.wait_for(self._stt_event_queue.get(), timeout=0.5)
                     self._process_stt_event(event)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     pass
         except asyncio.CancelledError:
             pass

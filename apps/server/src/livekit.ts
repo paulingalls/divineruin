@@ -34,17 +34,11 @@ export async function handleLivekitToken(req: Request): Promise<Response> {
   const { player_id, room_name } = body;
 
   if (!player_id || !room_name) {
-    return Response.json(
-      { error: "player_id and room_name are required" },
-      { status: 400 },
-    );
+    return Response.json({ error: "player_id and room_name are required" }, { status: 400 });
   }
 
   if (!roomService) {
-    return Response.json(
-      { error: "LiveKit credentials not configured" },
-      { status: 500 },
-    );
+    return Response.json({ error: "LiveKit credentials not configured" }, { status: 500 });
   }
 
   try {

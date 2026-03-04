@@ -6,9 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from background_process import BackgroundProcess, SpeechPriority, PendingSpeech, GUIDANCE_LEVEL_2_SECS
+from background_process import GUIDANCE_LEVEL_2_SECS, BackgroundProcess, PendingSpeech, SpeechPriority
 from event_bus import GameEvent
-from session_data import SessionData
 
 
 class TestBackgroundProcessLifecycle:
@@ -25,7 +24,7 @@ class TestBackgroundProcessLifecycle:
 
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
 
-        with patch.object(bp, '_rebuild_warm_layer', new_callable=AsyncMock):
+        with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock):
             bp.start()
 
             assert bp._task is not None
@@ -81,8 +80,8 @@ class TestBackgroundProcessLifecycle:
 
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
 
-        with patch.object(bp, '_rebuild_warm_layer', new_callable=AsyncMock) as mock_rebuild:
-            with patch.object(bp, '_deliver_speech', new_callable=AsyncMock):
+        with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock) as mock_rebuild:
+            with patch.object(bp, "_deliver_speech", new_callable=AsyncMock):
                 try:
                     await bp._run()
                 except asyncio.CancelledError:
@@ -105,10 +104,9 @@ class TestEventHandling:
         mock_sd.last_player_speech_time = 0
 
         event1 = GameEvent(event_type="location_changed", payload={"new_location": "forest"})
-        event2 = GameEvent(event_type="quest_updated", payload={
-            "quest_name": "Test Quest",
-            "objective": "Find the thing"
-        })
+        event2 = GameEvent(
+            event_type="quest_updated", payload={"quest_name": "Test Quest", "objective": "Find the thing"}
+        )
 
         mock_sd.event_bus = MagicMock()
         mock_sd.event_bus.get = AsyncMock(return_value=event1)
@@ -117,9 +115,9 @@ class TestEventHandling:
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
         bp._stop = True  # Stop after one iteration
 
-        with patch.object(bp, '_rebuild_warm_layer', new_callable=AsyncMock):
-            with patch.object(bp, '_deliver_speech', new_callable=AsyncMock):
-                with patch.object(bp, '_handle_events', return_value=True) as mock_handle:
+        with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock):
+            with patch.object(bp, "_deliver_speech", new_callable=AsyncMock):
+                with patch.object(bp, "_handle_events", return_value=True) as mock_handle:
                     try:
                         await bp._run()
                     except (asyncio.CancelledError, StopIteration):
@@ -143,6 +141,7 @@ class TestEventHandling:
 
         # Return None on first call (timeout), then let it exit
         call_count = [0]
+
         async def mock_get(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
@@ -155,9 +154,9 @@ class TestEventHandling:
 
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
 
-        with patch.object(bp, '_rebuild_warm_layer', new_callable=AsyncMock) as mock_rebuild:
-            with patch.object(bp, '_deliver_speech', new_callable=AsyncMock):
-                with patch.object(bp, '_check_guidance'):
+        with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock) as mock_rebuild:
+            with patch.object(bp, "_deliver_speech", new_callable=AsyncMock):
+                with patch.object(bp, "_check_guidance"):
                     try:
                         await bp._run()
                     except asyncio.CancelledError:
@@ -180,7 +179,7 @@ class TestGuidanceSystem:
 
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
 
-        with patch.object(bp, '_queue_speech') as mock_queue:
+        with patch.object(bp, "_queue_speech") as mock_queue:
             bp._check_guidance()
 
             mock_queue.assert_not_called()
@@ -195,7 +194,7 @@ class TestGuidanceSystem:
 
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
 
-        with patch.object(bp, '_queue_speech') as mock_queue:
+        with patch.object(bp, "_queue_speech") as mock_queue:
             bp._check_guidance()
 
             mock_queue.assert_not_called()
@@ -212,7 +211,7 @@ class TestGuidanceSystem:
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
         bp._last_guidance_time = player_speech_time + 1  # Nudged after player spoke
 
-        with patch.object(bp, '_queue_speech') as mock_queue:
+        with patch.object(bp, "_queue_speech") as mock_queue:
             bp._check_guidance()
 
             mock_queue.assert_not_called()
@@ -228,8 +227,8 @@ class TestGuidanceSystem:
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
         bp._last_guidance_time = 0
 
-        with patch.object(bp, '_queue_speech') as mock_queue:
-            with patch.object(bp, '_get_quest_hints', return_value=[]):
+        with patch.object(bp, "_queue_speech") as mock_queue:
+            with patch.object(bp, "_get_quest_hints", return_value=[]):
                 bp._check_guidance()
 
                 mock_queue.assert_called_once()
@@ -249,8 +248,8 @@ class TestGuidanceSystem:
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
         bp._last_guidance_time = 0
 
-        with patch.object(bp, '_queue_speech') as mock_queue:
-            with patch.object(bp, '_get_quest_hints', return_value=["Check the library"]):
+        with patch.object(bp, "_queue_speech") as mock_queue:
+            with patch.object(bp, "_get_quest_hints", return_value=["Check the library"]):
                 bp._check_guidance()
 
                 call_args = mock_queue.call_args[0]

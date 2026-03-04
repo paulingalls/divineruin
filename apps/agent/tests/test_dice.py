@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from dice import roll, DiceResult
+from dice import DiceResult, roll
 
 
 class TestDiceParser:

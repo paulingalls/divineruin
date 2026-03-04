@@ -33,7 +33,7 @@ class EventBus:
     async def get(self, timeout: float = 30.0) -> GameEvent | None:
         try:
             return await asyncio.wait_for(self._queue.get(), timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return None
 
     def drain(self) -> list[GameEvent]:

@@ -1,12 +1,8 @@
 """Tests for prompt building (warm layer)."""
 
-import json
 from unittest.mock import AsyncMock, patch
 
-import pytest
-
-from prompts import build_warm_layer, build_full_prompt, SYSTEM_PROMPT
-
+from prompts import build_full_prompt, build_warm_layer
 
 SAMPLE_LOCATION = {
     "id": "accord_guild_hall",

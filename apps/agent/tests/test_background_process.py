@@ -1,18 +1,14 @@
 """Tests for BackgroundProcess."""
 
-import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from background_process import (
     BackgroundProcess,
-    SpeechPriority,
     PendingSpeech,
-    REBUILD_EVENT_TYPES,
+    SpeechPriority,
 )
-from event_bus import EventBus, GameEvent
+from event_bus import GameEvent
 from session_data import SessionData
 
 

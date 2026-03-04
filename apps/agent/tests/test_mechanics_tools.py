@@ -7,13 +7,12 @@ import pytest
 
 from session_data import SessionData
 from tools import (
-    request_skill_check,
+    play_sound,
     request_attack,
     request_saving_throw,
+    request_skill_check,
     roll_dice,
-    play_sound,
 )
-
 
 SAMPLE_PLAYER = {
     "player_id": "player_1",
@@ -52,9 +51,7 @@ SAMPLE_NPC_COMBAT = {
 
 def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None):
     ctx = MagicMock()
-    ctx.userdata = SessionData(
-        player_id=player_id, location_id=location_id, room=room
-    )
+    ctx.userdata = SessionData(player_id=player_id, location_id=location_id, room=room)
     return ctx
 
 
@@ -67,16 +64,18 @@ def _make_mock_room():
 
 # --- request_skill_check ---
 
+
 class TestRequestSkillCheck:
     @pytest.mark.asyncio
     @patch("tools.db.get_player", new_callable=AsyncMock)
     async def test_returns_result(self, mock_get_player):
         mock_get_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
-        result = json.loads(await request_skill_check._func(
-            ctx, skill="athletics", difficulty="moderate",
-            context_description="climbing a wall"
-        ))
+        result = json.loads(
+            await request_skill_check._func(
+                ctx, skill="athletics", difficulty="moderate", context_description="climbing a wall"
+            )
+        )
         assert result["skill"] == "athletics"
         assert result["dc"] == 13
         assert result["outcome"] in ("success", "failure")
@@ -87,10 +86,11 @@ class TestRequestSkillCheck:
     async def test_unknown_skill(self, mock_get_player):
         mock_get_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
-        result = json.loads(await request_skill_check._func(
-            ctx, skill="flying", difficulty="moderate",
-            context_description="trying to fly"
-        ))
+        result = json.loads(
+            await request_skill_check._func(
+                ctx, skill="flying", difficulty="moderate", context_description="trying to fly"
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
@@ -98,10 +98,11 @@ class TestRequestSkillCheck:
     async def test_missing_player(self, mock_get_player):
         mock_get_player.return_value = None
         ctx = _make_context()
-        result = json.loads(await request_skill_check._func(
-            ctx, skill="athletics", difficulty="moderate",
-            context_description="climbing"
-        ))
+        result = json.loads(
+            await request_skill_check._func(
+                ctx, skill="athletics", difficulty="moderate", context_description="climbing"
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
@@ -111,8 +112,7 @@ class TestRequestSkillCheck:
         room = _make_mock_room()
         ctx = _make_context(room=room)
         await request_skill_check._func(
-            ctx, skill="stealth", difficulty="hard",
-            context_description="sneaking past guard"
+            ctx, skill="stealth", difficulty="hard", context_description="sneaking past guard"
         )
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
@@ -121,6 +121,7 @@ class TestRequestSkillCheck:
 
 
 # --- request_attack ---
+
 
 class TestRequestAttack:
     @pytest.mark.asyncio
@@ -131,9 +132,7 @@ class TestRequestAttack:
         mock_player.return_value = SAMPLE_PLAYER
         mock_npc.return_value = SAMPLE_NPC_COMBAT
         ctx = _make_context()
-        result = json.loads(await request_attack._func(
-            ctx, target_id="goblin_1", weapon_or_spell="Longsword"
-        ))
+        result = json.loads(await request_attack._func(ctx, target_id="goblin_1", weapon_or_spell="Longsword"))
         assert "hit" in result
         assert "damage" in result
         assert "narrative_hint" in result
@@ -143,9 +142,7 @@ class TestRequestAttack:
     async def test_missing_player(self, mock_player):
         mock_player.return_value = None
         ctx = _make_context()
-        result = json.loads(await request_attack._func(
-            ctx, target_id="goblin_1", weapon_or_spell="Longsword"
-        ))
+        result = json.loads(await request_attack._func(ctx, target_id="goblin_1", weapon_or_spell="Longsword"))
         assert "error" in result
 
     @pytest.mark.asyncio
@@ -153,9 +150,7 @@ class TestRequestAttack:
     async def test_missing_weapon(self, mock_player):
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
-        result = json.loads(await request_attack._func(
-            ctx, target_id="goblin_1", weapon_or_spell="Warhammer"
-        ))
+        result = json.loads(await request_attack._func(ctx, target_id="goblin_1", weapon_or_spell="Warhammer"))
         assert "error" in result
         assert "Warhammer" in result["error"]
 
@@ -166,9 +161,7 @@ class TestRequestAttack:
         mock_player.return_value = SAMPLE_PLAYER
         mock_npc.return_value = None
         ctx = _make_context()
-        result = json.loads(await request_attack._func(
-            ctx, target_id="ghost", weapon_or_spell="Longsword"
-        ))
+        result = json.loads(await request_attack._func(ctx, target_id="ghost", weapon_or_spell="Longsword"))
         assert "error" in result
 
     @pytest.mark.asyncio
@@ -179,9 +172,7 @@ class TestRequestAttack:
         mock_player.return_value = SAMPLE_PLAYER
         mock_npc.return_value = SAMPLE_NPC_COMBAT
         ctx = _make_context()
-        result = json.loads(await request_attack._func(
-            ctx, target_id="goblin_1", weapon_or_spell="Longsword"
-        ))
+        result = json.loads(await request_attack._func(ctx, target_id="goblin_1", weapon_or_spell="Longsword"))
         if result["hit"]:
             mock_update.assert_called_once_with("goblin_1", result["target_hp_remaining"])
         else:
@@ -196,9 +187,7 @@ class TestRequestAttack:
         mock_npc.return_value = SAMPLE_NPC_COMBAT
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await request_attack._func(
-            ctx, target_id="goblin_1", weapon_or_spell="Longsword"
-        )
+        await request_attack._func(ctx, target_id="goblin_1", weapon_or_spell="Longsword")
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == "dice_roll"
@@ -207,15 +196,16 @@ class TestRequestAttack:
 
 # --- request_saving_throw ---
 
+
 class TestRequestSavingThrow:
     @pytest.mark.asyncio
     @patch("tools.db.get_player", new_callable=AsyncMock)
     async def test_returns_result(self, mock_player):
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
-        result = json.loads(await request_saving_throw._func(
-            ctx, save_type="dexterity", dc=15, effect_on_fail="knocked prone"
-        ))
+        result = json.loads(
+            await request_saving_throw._func(ctx, save_type="dexterity", dc=15, effect_on_fail="knocked prone")
+        )
         assert result["save_type"] == "dexterity"
         assert result["dc"] == 15
         assert result["outcome"] in ("success", "failure")
@@ -225,9 +215,7 @@ class TestRequestSavingThrow:
     async def test_missing_player(self, mock_player):
         mock_player.return_value = None
         ctx = _make_context()
-        result = json.loads(await request_saving_throw._func(
-            ctx, save_type="dexterity", dc=15, effect_on_fail="prone"
-        ))
+        result = json.loads(await request_saving_throw._func(ctx, save_type="dexterity", dc=15, effect_on_fail="prone"))
         assert "error" in result
 
     @pytest.mark.asyncio
@@ -235,9 +223,7 @@ class TestRequestSavingThrow:
     async def test_invalid_save_type(self, mock_player):
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
-        result = json.loads(await request_saving_throw._func(
-            ctx, save_type="luck", dc=15, effect_on_fail="cursed"
-        ))
+        result = json.loads(await request_saving_throw._func(ctx, save_type="luck", dc=15, effect_on_fail="cursed"))
         assert "error" in result
 
     @pytest.mark.asyncio
@@ -246,9 +232,7 @@ class TestRequestSavingThrow:
         mock_player.return_value = SAMPLE_PLAYER
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await request_saving_throw._func(
-            ctx, save_type="wisdom", dc=12, effect_on_fail="frightened"
-        )
+        await request_saving_throw._func(ctx, save_type="wisdom", dc=12, effect_on_fail="frightened")
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == "dice_roll"
@@ -256,6 +240,7 @@ class TestRequestSavingThrow:
 
 
 # --- roll_dice ---
+
 
 class TestRollDice:
     @pytest.mark.asyncio
@@ -283,6 +268,7 @@ class TestRollDice:
 
 
 # --- play_sound ---
+
 
 class TestPlaySound:
     @pytest.mark.asyncio

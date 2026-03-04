@@ -5,22 +5,21 @@ import random
 import pytest
 
 from rules_engine import (
+    SKILLS,
+    XP_FOR_LEVEL,
+    attack_modifier,
     attribute_modifier,
-    skill_modifier,
+    check_level_up,
     dc_for_tier,
     narrative_hint,
-    attack_modifier,
-    resolve_skill_check,
     resolve_attack,
     resolve_saving_throw,
-    check_level_up,
-    SKILLS,
-    DC_TIERS,
-    XP_FOR_LEVEL,
+    resolve_skill_check,
+    skill_modifier,
 )
 
-
 # --- attribute_modifier ---
+
 
 class TestAttributeModifier:
     def test_standard_table(self):
@@ -100,6 +99,7 @@ class TestSkillModifier:
 
 # --- dc_for_tier ---
 
+
 class TestDcForTier:
     def test_all_tiers(self):
         assert dc_for_tier("easy") == 9
@@ -116,6 +116,7 @@ class TestDcForTier:
 
 
 # --- narrative_hint ---
+
 
 class TestNarrativeHint:
     def test_nat_1(self):
@@ -142,6 +143,7 @@ class TestNarrativeHint:
 
 # --- attack_modifier ---
 
+
 class TestAttackModifier:
     def test_melee_weapon(self):
         weapon = {"damage": "1d8", "damage_type": "slashing", "properties": []}
@@ -163,6 +165,7 @@ class TestAttackModifier:
 
 
 # --- resolve_skill_check ---
+
 
 class TestResolveSkillCheck:
     def test_success(self):
@@ -215,6 +218,7 @@ class TestResolveSkillCheck:
 
 
 # --- resolve_attack ---
+
 
 class TestResolveAttack:
     WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
@@ -298,6 +302,7 @@ class TestResolveAttack:
 
 # --- resolve_saving_throw ---
 
+
 class TestResolveSavingThrow:
     def test_success(self):
         for seed in range(1000):
@@ -306,9 +311,7 @@ class TestResolveSavingThrow:
             # STR save: attr mod +2, prof +2 = +4
             if d20 != 1 and d20 + 4 >= 13:
                 rng = random.Random(seed)
-                result = resolve_saving_throw(
-                    SAMPLE_PLAYER, "strength", 13, "knocked prone", rng=rng
-                )
+                result = resolve_saving_throw(SAMPLE_PLAYER, "strength", 13, "knocked prone", rng=rng)
                 assert result.success is True
                 assert result.effect_applied is None
                 return
@@ -321,9 +324,7 @@ class TestResolveSavingThrow:
             # CHA save: attr mod -1, no prof = -1
             if d20 != 20 and d20 - 1 < 13:
                 rng = random.Random(seed)
-                result = resolve_saving_throw(
-                    SAMPLE_PLAYER, "charisma", 13, "charmed", rng=rng
-                )
+                result = resolve_saving_throw(SAMPLE_PLAYER, "charisma", 13, "charmed", rng=rng)
                 assert result.success is False
                 assert result.effect_applied == "charmed"
                 return
@@ -334,9 +335,7 @@ class TestResolveSavingThrow:
             rng = random.Random(seed)
             if rng.randint(1, 20) == 20:
                 rng = random.Random(seed)
-                result = resolve_saving_throw(
-                    SAMPLE_PLAYER, "charisma", 25, "stunned", rng=rng
-                )
+                result = resolve_saving_throw(SAMPLE_PLAYER, "charisma", 25, "stunned", rng=rng)
                 assert result.success is True
                 assert result.effect_applied is None
                 return
@@ -347,9 +346,7 @@ class TestResolveSavingThrow:
             rng = random.Random(seed)
             if rng.randint(1, 20) == 1:
                 rng = random.Random(seed)
-                result = resolve_saving_throw(
-                    SAMPLE_PLAYER, "strength", 1, "frightened", rng=rng
-                )
+                result = resolve_saving_throw(SAMPLE_PLAYER, "strength", 1, "frightened", rng=rng)
                 assert result.success is False
                 assert result.effect_applied == "frightened"
                 return
@@ -380,6 +377,7 @@ class TestResolveSavingThrow:
 
 
 # --- check_level_up ---
+
 
 class TestCheckLevelUp:
     def test_no_level_up(self):

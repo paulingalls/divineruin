@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -e
+
+echo "Running pre-push test suite..."
+
+# TypeScript tests
+echo "  Bun tests (server)..."
+bun test --cwd apps/server
+
+echo "  Bun tests (mobile)..."
+bun test --cwd apps/mobile
+
+# Python tests
+echo "  Python tests (agent)..."
+cd apps/agent
+uv run pytest tests/ -q
+cd ../..
+
+echo "All tests passed."

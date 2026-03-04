@@ -1,24 +1,21 @@
 """Tests for world query tools and helpers."""
 
 import json
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from session_data import SessionData
 from tools import (
-    filter_knowledge,
+    _strip_hidden_dcs,
     apply_time_conditions,
     enter_location,
-    query_location,
-    query_npc,
-    query_lore,
+    filter_knowledge,
     query_inventory,
-    _strip_hidden_dcs,
-    _location_for_narration,
-    _npc_for_narration,
+    query_location,
+    query_lore,
+    query_npc,
 )
-from session_data import SessionData
-
 
 # --- filter_knowledge tests ---
 
@@ -185,9 +182,7 @@ SAMPLE_LOCATION = {
     "description": "Heavy oak doors open onto a hall.",
     "atmosphere": "busy, purposeful",
     "key_features": ["the main counter"],
-    "hidden_elements": [
-        {"id": "notice", "discover_skill": "perception", "dc": 10, "description": "a notice"}
-    ],
+    "hidden_elements": [{"id": "notice", "discover_skill": "perception", "dc": 10, "description": "a notice"}],
     "exits": {"south": {"destination": "accord_market_square"}},
     "tags": ["guild"],
     "conditions": {},

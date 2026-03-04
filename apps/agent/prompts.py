@@ -1,4 +1,4 @@
-from voices import VOICES, EMOTIONS, DEFAULT_VOICE
+from voices import DEFAULT_VOICE, EMOTIONS, VOICES
 
 _AVAILABLE_CHARACTERS = ", ".join(k for k in VOICES if k != DEFAULT_VOICE)
 _AVAILABLE_EMOTIONS = ", ".join(EMOTIONS)
@@ -117,10 +117,14 @@ behavioral shifts based on low-confidence reads early in the session.\
 
 
 def build_system_prompt(location_id: str) -> str:
-    return SYSTEM_PROMPT + PLAYER_AWARENESS_PROMPT + (
-        f"\n\nThe player is currently at location ID: {location_id}. "
-        "When setting a scene or answering 'where am I?', call query_location "
-        f"with this ID."
+    return (
+        SYSTEM_PROMPT
+        + PLAYER_AWARENESS_PROMPT
+        + (
+            f"\n\nThe player is currently at location ID: {location_id}. "
+            "When setting a scene or answering 'where am I?', call query_location "
+            f"with this ID."
+        )
     )
 
 
@@ -177,12 +181,11 @@ def quest_objective(quest: dict) -> str:
     return ""
 
 
-async def build_warm_layer(
-    location_id: str, player_id: str, world_time: str
-) -> str:
+async def build_warm_layer(location_id: str, player_id: str, world_time: str) -> str:
     import asyncio
+
     import db
-    from tools import apply_time_conditions, _location_for_narration, _npc_summary
+    from tools import _location_for_narration, _npc_summary, apply_time_conditions
 
     sections: list[str] = []
 
@@ -210,9 +213,7 @@ async def build_warm_layer(
         for npc in npcs_raw:
             disposition = dispositions.get(npc["id"], npc.get("default_disposition", "neutral"))
             summary = _npc_summary(npc, disposition)
-            npc_lines.append(
-                f"- {summary['name']} ({summary['role']}) — disposition: {summary['disposition']}"
-            )
+            npc_lines.append(f"- {summary['name']} ({summary['role']}) — disposition: {summary['disposition']}")
         sections.append("NPCS PRESENT\n" + "\n".join(npc_lines))
 
     # Active quests

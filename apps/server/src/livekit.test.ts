@@ -28,9 +28,7 @@ describe("handleLivekitToken", () => {
   });
 
   test("returns 500 when LiveKit credentials are not configured", async () => {
-    const res = await handleLivekitToken(
-      tokenRequest({ player_id: "p1", room_name: "test-room" }),
-    );
+    const res = await handleLivekitToken(tokenRequest({ player_id: "p1", room_name: "test-room" }));
     expect(res.status).toBe(500);
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain("not configured");

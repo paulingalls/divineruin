@@ -1,11 +1,11 @@
-import { Pressable, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { Pressable, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { BottomTabInset, MaxContentWidth, Spacing } from "@/constants/theme";
+import { useTheme } from "@/hooks/use-theme";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -25,7 +25,7 @@ export default function HomeScreen() {
 
         <Pressable
           style={[styles.enterButton, { backgroundColor: theme.backgroundSelected }]}
-          onPress={() => router.push('/session')}
+          onPress={() => router.push("/session")}
         >
           <ThemedText style={styles.enterText}>Enter the World</ThemedText>
         </Pressable>
@@ -37,28 +37,28 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    justifyContent: "center",
+    flexDirection: "row",
   },
   safeArea: {
     flex: 1,
     paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.five,
     paddingBottom: BottomTabInset + Spacing.three,
     maxWidth: MaxContentWidth,
   },
   heroSection: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: Spacing.two,
   },
   title: {
-    textAlign: 'center',
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 18,
-    textAlign: 'center',
+    textAlign: "center",
   },
   enterButton: {
     paddingHorizontal: Spacing.five,
@@ -67,6 +67,6 @@ const styles = StyleSheet.create({
   },
   enterText: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

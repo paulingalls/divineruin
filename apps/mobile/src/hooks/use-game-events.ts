@@ -1,8 +1,5 @@
 import { useCallback } from "react";
-import {
-  useDataChannel,
-  type ReceivedDataMessage,
-} from "@livekit/react-native";
+import { useDataChannel, type ReceivedDataMessage } from "@livekit/react-native";
 import { parseGameEvent, handleGameEvent } from "@/audio/game-event-handler";
 
 export function useGameEvents(): void {

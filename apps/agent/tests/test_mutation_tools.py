@@ -8,15 +8,14 @@ import pytest
 
 from session_data import SessionData
 from tools import (
-    award_xp,
-    update_npc_disposition,
-    add_to_inventory,
-    remove_from_inventory,
-    move_player,
-    update_quest,
     _clamp_disposition_shift,
+    add_to_inventory,
+    award_xp,
+    move_player,
+    remove_from_inventory,
+    update_npc_disposition,
+    update_quest,
 )
-
 
 SAMPLE_PLAYER = {
     "player_id": "player_1",
@@ -125,9 +124,7 @@ async def _mock_transaction():
 
 def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None):
     ctx = MagicMock()
-    ctx.userdata = SessionData(
-        player_id=player_id, location_id=location_id, room=room
-    )
+    ctx.userdata = SessionData(player_id=player_id, location_id=location_id, room=room)
     return ctx
 
 
@@ -254,9 +251,9 @@ class TestUpdateNpcDisposition:
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = "neutral"
         ctx = _make_context()
-        result = json.loads(await update_npc_disposition._func(
-            ctx, npc_id="guildmaster_torin", delta=1, reason="helped with task"
-        ))
+        result = json.loads(
+            await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=1, reason="helped with task")
+        )
         assert result["previous"] == "neutral"
         assert result["new"] == "friendly"
         mock_set.assert_called_once()
@@ -269,9 +266,9 @@ class TestUpdateNpcDisposition:
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = "friendly"
         ctx = _make_context()
-        result = json.loads(await update_npc_disposition._func(
-            ctx, npc_id="guildmaster_torin", delta=-2, reason="insulted them"
-        ))
+        result = json.loads(
+            await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=-2, reason="insulted them")
+        )
         assert result["previous"] == "friendly"
         assert result["new"] == "wary"
 
@@ -283,9 +280,9 @@ class TestUpdateNpcDisposition:
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = "trusted"
         ctx = _make_context()
-        result = json.loads(await update_npc_disposition._func(
-            ctx, npc_id="guildmaster_torin", delta=2, reason="saved their life"
-        ))
+        result = json.loads(
+            await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=2, reason="saved their life")
+        )
         assert result["new"] == "trusted"
 
     @pytest.mark.asyncio
@@ -296,9 +293,9 @@ class TestUpdateNpcDisposition:
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = "hostile"
         ctx = _make_context()
-        result = json.loads(await update_npc_disposition._func(
-            ctx, npc_id="guildmaster_torin", delta=-1, reason="attacked them"
-        ))
+        result = json.loads(
+            await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=-1, reason="attacked them")
+        )
         assert result["new"] == "hostile"
 
     @pytest.mark.asyncio
@@ -306,9 +303,7 @@ class TestUpdateNpcDisposition:
     async def test_unknown_npc(self, mock_npc):
         mock_npc.return_value = None
         ctx = _make_context()
-        result = json.loads(await update_npc_disposition._func(
-            ctx, npc_id="nobody", delta=1, reason="test"
-        ))
+        result = json.loads(await update_npc_disposition._func(ctx, npc_id="nobody", delta=1, reason="test"))
         assert "error" in result
 
     @pytest.mark.asyncio
@@ -319,9 +314,9 @@ class TestUpdateNpcDisposition:
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = None  # no existing disposition
         ctx = _make_context()
-        result = json.loads(await update_npc_disposition._func(
-            ctx, npc_id="guildmaster_torin", delta=1, reason="first meeting"
-        ))
+        result = json.loads(
+            await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=1, reason="first meeting")
+        )
         assert result["previous"] == "neutral"
         assert result["new"] == "friendly"
 
@@ -334,9 +329,7 @@ class TestUpdateNpcDisposition:
         mock_disp.return_value = "neutral"
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await update_npc_disposition._func(
-            ctx, npc_id="guildmaster_torin", delta=1, reason="helped"
-        )
+        await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=1, reason="helped")
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == "disposition_changed"
@@ -350,9 +343,9 @@ class TestUpdateNpcDisposition:
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = "neutral"
         ctx = _make_context()
-        result = json.loads(await update_npc_disposition._func(
-            ctx, npc_id="guildmaster_torin", delta=5, reason="extreme favor"
-        ))
+        result = json.loads(
+            await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=5, reason="extreme favor")
+        )
         # delta clamped to +2, neutral+2 = trusted
         assert result["new"] == "trusted"
 
@@ -368,9 +361,7 @@ class TestAddToInventory:
     async def test_adds_item(self, mock_item, mock_add):
         mock_item.return_value = SAMPLE_ITEM
         ctx = _make_context()
-        result = json.loads(await add_to_inventory._func(
-            ctx, item_id="health_potion", quantity=2, source="looted"
-        ))
+        result = json.loads(await add_to_inventory._func(ctx, item_id="health_potion", quantity=2, source="looted"))
         assert result["action"] == "added"
         assert result["item_name"] == "Health Potion"
         assert result["quantity"] == 2
@@ -381,9 +372,7 @@ class TestAddToInventory:
     async def test_unknown_item(self, mock_item):
         mock_item.return_value = None
         ctx = _make_context()
-        result = json.loads(await add_to_inventory._func(
-            ctx, item_id="nonexistent", quantity=1, source="found"
-        ))
+        result = json.loads(await add_to_inventory._func(ctx, item_id="nonexistent", quantity=1, source="found"))
         assert "error" in result
 
     @pytest.mark.asyncio
@@ -393,9 +382,7 @@ class TestAddToInventory:
         mock_item.return_value = SAMPLE_ITEM
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await add_to_inventory._func(
-            ctx, item_id="health_potion", quantity=1, source="bought"
-        )
+        await add_to_inventory._func(ctx, item_id="health_potion", quantity=1, source="bought")
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == "inventory_updated"

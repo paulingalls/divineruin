@@ -28,9 +28,7 @@ async def publish_game_event(
     """
     if room is not None:
         data = json.dumps({"type": event_type, **payload}).encode("utf-8")
-        await room.local_participant.publish_data(
-            data, reliable=True, topic="game_events"
-        )
+        await room.local_participant.publish_data(data, reliable=True, topic="game_events")
         logger.debug("Published %s event to data channel", event_type)
 
     if event_bus is not None:

@@ -1,0 +1,51 @@
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
+import reactHooks from "eslint-plugin-react-hooks";
+import eslintConfigPrettier from "eslint-config-prettier";
+
+export default tseslint.config(
+  {
+    ignores: [
+      "**/node_modules/",
+      "**/dist/",
+      "**/.expo/",
+      "**/android/",
+      "**/ios/",
+      "apps/agent/",
+      "scripts/",
+      "apps/mobile/test-preload.ts",
+    ],
+  },
+
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+
+  // React hooks for mobile app
+  {
+    files: ["apps/mobile/**/*.{ts,tsx}"],
+    plugins: { "react-hooks": reactHooks },
+    rules: reactHooks.configs.recommended.rules,
+  },
+
+  // React Native requires require() for static assets
+  {
+    files: ["apps/mobile/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+
+  // Turn off rules that conflict with prettier
+  eslintConfigPrettier,
+
+  // Project-wide rule overrides
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+      "@typescript-eslint/no-explicit-any": "warn",
+    },
+  },
+);

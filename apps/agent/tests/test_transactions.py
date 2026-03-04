@@ -1,7 +1,6 @@
 """Tests for transaction atomicity — events not published on rollback,
 session state unchanged on DB failure, partial rewards not applied."""
 
-import json
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -15,7 +14,6 @@ from tools import (
     update_quest,
 )
 
-
 SAMPLE_PLAYER = {
     "player_id": "player_1",
     "name": "Kael",
@@ -25,8 +23,12 @@ SAMPLE_PLAYER = {
     "hp": {"current": 25, "max": 25},
     "ac": 14,
     "attributes": {
-        "strength": 14, "dexterity": 12, "constitution": 13,
-        "intelligence": 10, "wisdom": 11, "charisma": 8,
+        "strength": 14,
+        "dexterity": 12,
+        "constitution": 13,
+        "intelligence": 10,
+        "wisdom": 11,
+        "charisma": 8,
     },
     "proficiencies": ["athletics", "stealth", "perception"],
     "saving_throw_proficiencies": ["strength", "constitution"],
@@ -50,7 +52,11 @@ SAMPLE_QUEST = {
     "name": "The Greyvale Anomaly",
     "stages": [
         {"id": 0, "objective": "Investigate.", "on_complete": {"xp": 50}},
-        {"id": 1, "objective": "Find source.", "on_complete": {"xp": 100, "rewards": [{"item": "research_tablet", "quantity": 1}]}},
+        {
+            "id": 1,
+            "objective": "Find source.",
+            "on_complete": {"xp": 100, "rewards": [{"item": "research_tablet", "quantity": 1}]},
+        },
         {"id": 2, "objective": "Report.", "on_complete": {"xp": 150}},
     ],
 }
@@ -58,9 +64,7 @@ SAMPLE_QUEST = {
 
 def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None):
     ctx = MagicMock()
-    ctx.userdata = SessionData(
-        player_id=player_id, location_id=location_id, room=room
-    )
+    ctx.userdata = SessionData(player_id=player_id, location_id=location_id, room=room)
     return ctx
 
 

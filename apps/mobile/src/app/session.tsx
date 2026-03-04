@@ -2,11 +2,7 @@ import { useEffect } from "react";
 import { Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import {
-  LiveKitRoom,
-  useConnectionState,
-  useVoiceAssistant,
-} from "@livekit/react-native";
+import { LiveKitRoom, useConnectionState, useVoiceAssistant } from "@livekit/react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -60,13 +56,10 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
 
 export default function SessionScreen() {
   const router = useRouter();
-  const { state, error, token, serverUrl, fetchToken, reset } =
-    useSessionToken(PLAYER_ID);
+  const { state, error, token, serverUrl, fetchToken, reset } = useSessionToken(PLAYER_ID);
 
   useEffect(() => {
-    configureAudioSession().catch((err) =>
-      console.error("[session] Audio config failed:", err),
-    );
+    configureAudioSession().catch((err) => console.error("[session] Audio config failed:", err));
     fetchToken(ROOM_NAME);
   }, [fetchToken]);
 
@@ -108,13 +101,7 @@ export default function SessionScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <LiveKitRoom
-          serverUrl={serverUrl}
-          token={token}
-          connect={true}
-          audio={true}
-          video={false}
-        >
+        <LiveKitRoom serverUrl={serverUrl} token={token} connect={true} audio={true} video={false}>
           <SessionContent onLeave={handleLeave} />
         </LiveKitRoom>
       </SafeAreaView>

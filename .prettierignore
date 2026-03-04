@@ -1,0 +1,8 @@
+node_modules
+dist
+.expo
+android
+ios
+apps/agent
+bun.lock
+*.md

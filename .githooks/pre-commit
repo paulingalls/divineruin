@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -e
+
+echo "Running pre-commit lint checks..."
+
+# TypeScript type checking
+echo "  TypeScript typecheck..."
+bun run typecheck
+
+# ESLint
+echo "  ESLint..."
+bunx eslint .
+
+# Prettier
+echo "  Prettier..."
+bunx prettier --check 'apps/**/*.{ts,tsx}' 'packages/**/*.ts'
+
+# Python linting
+echo "  Python ruff check..."
+cd apps/agent
+uv run ruff check .
+uv run ruff format --check .
+cd ../..
+
+echo "All lint checks passed."

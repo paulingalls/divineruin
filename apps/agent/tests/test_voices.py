@@ -1,4 +1,4 @@
-from voices import get_voice_config, EMOTION_RATES, EMOTIONS, VOICE_RATE_OFFSETS, VoiceConfig
+from voices import EMOTION_RATES, EMOTIONS, VOICE_RATE_OFFSETS, VoiceConfig, get_voice_config
 
 
 def test_default_narrator():

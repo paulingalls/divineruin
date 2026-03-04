@@ -52,9 +52,7 @@ export async function loadVolumes(): Promise<void> {
 function persistVolumes(): void {
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(busVolumes)).catch(
-      () => {},
-    );
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(busVolumes)).catch(() => {});
     persistTimer = null;
   }, 500);
 }
@@ -75,8 +73,6 @@ export function _flushPersistForTesting(): void {
   if (persistTimer) {
     clearTimeout(persistTimer);
     persistTimer = null;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(busVolumes)).catch(
-      () => {},
-    );
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(busVolumes)).catch(() => {});
   }
 }

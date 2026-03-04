@@ -1,8 +1,5 @@
 import { test, expect } from "bun:test";
-import {
-  parseGameEvent,
-  handleGameEvent,
-} from "@/audio/game-event-handler";
+import { parseGameEvent, handleGameEvent } from "@/audio/game-event-handler";
 import { activePlayerCount } from "@/audio/sfx-player";
 
 function encode(data: object): Uint8Array {
@@ -58,7 +55,5 @@ test("play_sound with non-string sound_name does not crash", () => {
 });
 
 test("play_sound with unknown sound does not crash", () => {
-  expect(() =>
-    handleGameEvent({ type: "play_sound", sound_name: "nonexistent" })
-  ).not.toThrow();
+  expect(() => handleGameEvent({ type: "play_sound", sound_name: "nonexistent" })).not.toThrow();
 });

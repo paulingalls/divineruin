@@ -3,32 +3,41 @@ import logging
 import os
 import re
 import time
-from collections.abc import AsyncIterable, AsyncGenerator
+from collections.abc import AsyncGenerator, AsyncIterable
 from typing import Any
 
-from livekit import rtc, agents
-from livekit.agents import AgentServer, AgentSession, Agent, ModelSettings, stt
+from livekit import agents, rtc
+from livekit.agents import Agent, AgentServer, AgentSession, ModelSettings, stt
 from livekit.agents.stt import SpeechEventType
-from livekit.plugins import silero
+from livekit.plugins import anthropic, deepgram, inworld, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-from livekit.plugins import anthropic, deepgram, inworld
 
+import db
 from affect_analyzer import PlayerAffectAnalyzer
 from background_process import BackgroundProcess
-from prompts import build_system_prompt, quest_objective, format_affect_context
-from voices import get_voice_config, VOICES
 from dialogue_parser import parse_dialogue_stream
 from latency import TurnTimer
+from prompts import build_system_prompt, format_affect_context, quest_objective
 from session_data import SessionData
 from tools import (
+    add_to_inventory,
+    award_xp,
     enter_location,
-    query_location, query_npc, query_lore, query_inventory,
-    request_skill_check, request_attack, request_saving_throw,
-    roll_dice, play_sound,
-    move_player, add_to_inventory, remove_from_inventory,
-    update_quest, award_xp, update_npc_disposition,
+    move_player,
+    play_sound,
+    query_inventory,
+    query_location,
+    query_lore,
+    query_npc,
+    remove_from_inventory,
+    request_attack,
+    request_saving_throw,
+    request_skill_check,
+    roll_dice,
+    update_npc_disposition,
+    update_quest,
 )
-import db
+from voices import VOICES, get_voice_config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("divineruin.dm")
@@ -56,9 +65,7 @@ def validate_env() -> None:
     if empty_voices:
         logger.warning("Voice IDs not set for: %s", ", ".join(empty_voices))
     if missing:
-        raise EnvironmentError(
-            f"Missing required environment variables: {', '.join(missing)}"
-        )
+        raise OSError(f"Missing required environment variables: {', '.join(missing)}")
 
 
 START_LOCATION = "accord_guild_hall"
@@ -135,10 +142,7 @@ class DungeonMasterAgent(Agent):
 
         # Active quest objectives
         if quests:
-            objectives = [
-                f"{q['quest_name']}: {quest_objective(q)}"
-                for q in quests if quest_objective(q)
-            ]
+            objectives = [f"{q['quest_name']}: {quest_objective(q)}" for q in quests if quest_objective(q)]
             if objectives:
                 parts.append("[Quests: " + "; ".join(objectives) + "]")
 
@@ -179,7 +183,7 @@ class DungeonMasterAgent(Agent):
             nonlocal buffered_text
             clean = buffered_text.strip()
             buffered_text = ""
-            if not clean or not re.sub(r'[^\w]', '', clean):
+            if not clean or not re.sub(r"[^\w]", "", clean):
                 return
 
             parts = _PAUSE_PATTERN.split(clean)
@@ -187,7 +191,7 @@ class DungeonMasterAgent(Agent):
                 pause = _PAUSE_DURATIONS.get(part)
                 if pause is not None:
                     yield _silence(pause)
-                elif part.strip() and re.sub(r'[^\w]', '', part):
+                elif part.strip() and re.sub(r"[^\w]", "", part):
                     async for frame in synthesize_chunk(part.strip()):
                         yield frame
 
@@ -212,7 +216,7 @@ class DungeonMasterAgent(Agent):
         self._affect_analyzer.record_tts_end()
 
 
-_PAUSE_PATTERN = re.compile(r'(\.{2,}|…|—|–)')
+_PAUSE_PATTERN = re.compile(r"(\.{2,}|…|—|–)")
 
 _PAUSE_DURATIONS: dict[str, float] = {
     "...": 0.6,

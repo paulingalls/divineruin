@@ -16,8 +16,27 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
+    "ruff>=0.8",
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+    "E501",    # line length handled by formatter
+    "UP007",   # X | Y union syntax (keep Optional for clarity)
+    "SIM117",  # multiple-with statements — common in test mocking
+    "SIM105",  # contextlib.suppress — style preference
+    "RUF001",  # ambiguous unicode — intentional punctuation matching
+    "RUF012",  # mutable class defaults — fine for test fixtures
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["db", "tools", "prompts", "voices", "session_data", "affect_analyzer", "game_events", "rules_engine", "dialogue_parser", "latency", "background_process", "db_errors"]

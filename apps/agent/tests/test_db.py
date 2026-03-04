@@ -157,9 +157,7 @@ class TestCacheOperations:
         with patch("db.get_redis", return_value=mock_redis):
             await db._cache_set("test_key", '{"value": 123}')
 
-        mock_redis.set.assert_awaited_once_with(
-            "test_key", '{"value": 123}', ex=db.CACHE_TTL
-        )
+        mock_redis.set.assert_awaited_once_with("test_key", '{"value": 123}', ex=db.CACHE_TTL)
 
     @pytest.mark.asyncio
     async def test_cache_set_ignores_redis_errors(self):
@@ -200,12 +198,8 @@ class TestCachedContentQueries:
                     result = await db.get_location("tavern")
 
         assert result == location_data
-        mock_pool.fetchrow.assert_awaited_once_with(
-            "SELECT data FROM locations WHERE id = $1", "tavern"
-        )
-        mock_cache_set.assert_awaited_once_with(
-            "location:tavern", json.dumps(location_data)
-        )
+        mock_pool.fetchrow.assert_awaited_once_with("SELECT data FROM locations WHERE id = $1", "tavern")
+        mock_cache_set.assert_awaited_once_with("location:tavern", json.dumps(location_data))
 
     @pytest.mark.asyncio
     async def test_get_location_returns_none_if_not_found(self):
@@ -267,9 +261,7 @@ class TestCachedContentQueries:
             {"title": "Hollow Origins", "content": "..."},
         ]
         mock_pool = AsyncMock()
-        mock_pool.fetch = AsyncMock(return_value=[
-            {"data": json.dumps(entry)} for entry in lore_entries
-        ])
+        mock_pool.fetch = AsyncMock(return_value=[{"data": json.dumps(entry)} for entry in lore_entries])
 
         with patch("db.get_pool", return_value=mock_pool):
             result = await db.search_lore("Hollow", limit=5)
@@ -323,9 +315,7 @@ class TestStateQueries:
             result = await db.get_player("p1")
 
         assert result == player_data
-        mock_pool.fetchrow.assert_awaited_once_with(
-            "SELECT data FROM players WHERE player_id = $1", "p1"
-        )
+        mock_pool.fetchrow.assert_awaited_once_with("SELECT data FROM players WHERE player_id = $1", "p1")
 
     @pytest.mark.asyncio
     async def test_get_player_with_for_update_adds_lock(self):
@@ -343,9 +333,9 @@ class TestStateQueries:
     async def test_get_npc_disposition_returns_disposition(self):
         """get_npc_disposition should return disposition string."""
         mock_pool = AsyncMock()
-        mock_pool.fetchrow = AsyncMock(return_value={
-            "data": json.dumps({"disposition": "friendly", "reason": "helped"})
-        })
+        mock_pool.fetchrow = AsyncMock(
+            return_value={"data": json.dumps({"disposition": "friendly", "reason": "helped"})}
+        )
 
         with patch("db.get_pool", return_value=mock_pool):
             result = await db.get_npc_disposition("torin", "p1")
@@ -356,10 +346,12 @@ class TestStateQueries:
     async def test_get_npc_dispositions_batch_fetches(self):
         """get_npc_dispositions should batch-fetch multiple NPCs."""
         mock_pool = AsyncMock()
-        mock_pool.fetch = AsyncMock(return_value=[
-            {"npc_id": "npc1", "data": json.dumps({"disposition": "friendly"})},
-            {"npc_id": "npc2", "data": json.dumps({"disposition": "hostile"})},
-        ])
+        mock_pool.fetch = AsyncMock(
+            return_value=[
+                {"npc_id": "npc1", "data": json.dumps({"disposition": "friendly"})},
+                {"npc_id": "npc2", "data": json.dumps({"disposition": "hostile"})},
+            ]
+        )
 
         with patch("db.get_pool", return_value=mock_pool):
             result = await db.get_npc_dispositions(["npc1", "npc2"], "p1")
@@ -376,12 +368,14 @@ class TestStateQueries:
     async def test_get_player_inventory_joins_items(self):
         """get_player_inventory should join items and inventory slots."""
         mock_pool = AsyncMock()
-        mock_pool.fetch = AsyncMock(return_value=[
-            {
-                "item_data": json.dumps({"id": "sword", "name": "Steel Sword"}),
-                "slot_data": json.dumps({"quantity": 1, "equipped": True}),
-            }
-        ])
+        mock_pool.fetch = AsyncMock(
+            return_value=[
+                {
+                    "item_data": json.dumps({"id": "sword", "name": "Steel Sword"}),
+                    "slot_data": json.dumps({"quantity": 1, "equipped": True}),
+                }
+            ]
+        )
 
         with patch("db.get_pool", return_value=mock_pool):
             result = await db.get_player_inventory("p1")
@@ -395,9 +389,7 @@ class TestStateQueries:
         """get_npcs_at_location should query NPCs by schedule."""
         npc_data = {"id": "torin", "name": "Torin", "schedule": {"evening": "tavern"}}
         mock_pool = AsyncMock()
-        mock_pool.fetch = AsyncMock(return_value=[
-            {"id": "torin", "data": json.dumps(npc_data)}
-        ])
+        mock_pool.fetch = AsyncMock(return_value=[{"id": "torin", "data": json.dumps(npc_data)}])
 
         with patch("db.get_pool", return_value=mock_pool):
             result = await db.get_npcs_at_location("tavern")
@@ -410,17 +402,21 @@ class TestStateQueries:
     async def test_get_active_player_quests_joins_quest_data(self):
         """get_active_player_quests should join player quest state with quest data."""
         mock_pool = AsyncMock()
-        mock_pool.fetch = AsyncMock(return_value=[
-            {
-                "quest_id": "q1",
-                "pq_data": json.dumps({"current_stage": 2}),
-                "q_data": json.dumps({
-                    "name": "The Quest",
-                    "stages": ["stage1", "stage2", "stage3"],
-                    "global_hints": ["hint1"],
-                }),
-            }
-        ])
+        mock_pool.fetch = AsyncMock(
+            return_value=[
+                {
+                    "quest_id": "q1",
+                    "pq_data": json.dumps({"current_stage": 2}),
+                    "q_data": json.dumps(
+                        {
+                            "name": "The Quest",
+                            "stages": ["stage1", "stage2", "stage3"],
+                            "global_hints": ["hint1"],
+                        }
+                    ),
+                }
+            ]
+        )
 
         with patch("db.get_pool", return_value=mock_pool):
             result = await db.get_active_player_quests("p1")

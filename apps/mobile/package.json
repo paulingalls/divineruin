@@ -4,11 +4,9 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start --port 8082",
-    "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios --port 8082",
     "web": "expo start --web",
-    "lint": "expo lint",
     "prebuild:clean": "expo prebuild --clean"
   },
   "dependencies": {

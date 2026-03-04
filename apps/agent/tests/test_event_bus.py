@@ -1,9 +1,5 @@
 """Tests for the in-process event bus."""
 
-import asyncio
-
-import pytest
-
 from event_bus import EventBus, GameEvent
 
 

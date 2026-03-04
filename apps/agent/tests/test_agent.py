@@ -6,16 +6,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent import (
-    validate_env,
-    DungeonMasterAgent,
-    _silence,
-    _make_tts,
-    TTS_SAMPLE_RATE,
-    TTS_NUM_CHANNELS,
     REQUIRED_ENV_VARS,
     START_LOCATION,
+    TTS_NUM_CHANNELS,
+    TTS_SAMPLE_RATE,
+    DungeonMasterAgent,
+    _make_tts,
+    _silence,
+    validate_env,
 )
-from session_data import SessionData
 
 
 class TestEnvironmentValidation:
@@ -89,7 +88,7 @@ class TestDungeonMasterAgent:
         mock_session_data = MagicMock()
         mock_session.userdata = mock_session_data
 
-        with patch.object(type(agent), 'session', new_callable=lambda: property(lambda self: mock_session)):
+        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
             with patch("agent.BackgroundProcess") as MockBP:
                 mock_bp_instance = MagicMock()
                 MockBP.return_value = mock_bp_instance
@@ -118,10 +117,10 @@ class TestDungeonMasterAgent:
         mock_session = MagicMock()
         mock_session.userdata = mock_session_data
 
-        with patch.object(type(agent), 'session', new_callable=lambda: property(lambda self: mock_session)):
-            with patch.object(agent._turn_timer, 'start') as mock_start:
-                with patch.object(agent._turn_timer, 'mark') as mock_mark:
-                    with patch.object(agent, '_build_hot_context', new_callable=AsyncMock, return_value=""):
+        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
+            with patch.object(agent._turn_timer, "start") as mock_start:
+                with patch.object(agent._turn_timer, "mark") as mock_mark:
+                    with patch.object(agent, "_build_hot_context", new_callable=AsyncMock, return_value=""):
                         await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
 
                         mock_start.assert_called_once()
@@ -141,8 +140,8 @@ class TestDungeonMasterAgent:
         mock_session = MagicMock()
         mock_session.userdata = mock_session_data
 
-        with patch.object(type(agent), 'session', new_callable=lambda: property(lambda self: mock_session)):
-            with patch.object(agent, '_build_hot_context', new_callable=AsyncMock, return_value=""):
+        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
+            with patch.object(agent, "_build_hot_context", new_callable=AsyncMock, return_value=""):
                 before = mock_session_data.last_player_speech_time
                 await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
 
@@ -161,14 +160,11 @@ class TestDungeonMasterAgent:
         mock_session = MagicMock()
         mock_session.userdata = mock_session_data
 
-        with patch.object(type(agent), 'session', new_callable=lambda: property(lambda self: mock_session)):
-            with patch.object(agent, '_build_hot_context', new_callable=AsyncMock, return_value="[Context: Tavern]"):
+        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
+            with patch.object(agent, "_build_hot_context", new_callable=AsyncMock, return_value="[Context: Tavern]"):
                 await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
 
-                mock_turn_ctx.add_message.assert_called_once_with(
-                    role="assistant",
-                    content="[Context: Tavern]"
-                )
+                mock_turn_ctx.add_message.assert_called_once_with(role="assistant", content="[Context: Tavern]")
 
     @pytest.mark.asyncio
     async def test_on_user_turn_completed_skips_empty_hot_context(self):
@@ -183,8 +179,8 @@ class TestDungeonMasterAgent:
         mock_session = MagicMock()
         mock_session.userdata = mock_session_data
 
-        with patch.object(type(agent), 'session', new_callable=lambda: property(lambda self: mock_session)):
-            with patch.object(agent, '_build_hot_context', new_callable=AsyncMock, return_value=""):
+        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
+            with patch.object(agent, "_build_hot_context", new_callable=AsyncMock, return_value=""):
                 await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
 
                 mock_turn_ctx.add_message.assert_not_called()
@@ -361,8 +357,8 @@ class TestTTSNode:
                 mock_tts.synthesize.return_value = mock_stream
                 mock_make_tts.return_value = mock_tts
 
-                with patch.object(agent._turn_timer, 'mark') as mock_mark:
-                    with patch.object(agent._turn_timer, 'finish') as mock_finish:
+                with patch.object(agent._turn_timer, "mark") as mock_mark:
+                    with patch.object(agent._turn_timer, "finish") as mock_finish:
                         frames = []
                         async for frame in agent.tts_node(mock_text_stream(), mock_model_settings):
                             frames.append(frame)
@@ -399,10 +395,7 @@ class TestAudioHelpers:
         with patch("agent.inworld.TTS") as MockTTS:
             _make_tts(voice="test_voice", speaking_rate=1.2)
 
-            MockTTS.assert_called_once_with(
-                voice="test_voice",
-                speaking_rate=1.2
-            )
+            MockTTS.assert_called_once_with(voice="test_voice", speaking_rate=1.2)
 
     def test_make_tts_omits_voice_if_empty(self):
         """_make_tts should not include voice parameter if empty."""
@@ -436,6 +429,7 @@ class TestDMSession:
                             with patch("agent.silero.VAD.load"):
                                 with patch("agent.MultilingualModel"):
                                     from agent import dm_session
+
                                     await dm_session(mock_ctx)
 
                 MockSD.assert_called_once_with(
@@ -463,6 +457,7 @@ class TestDMSession:
                             with patch("agent.silero.VAD.load"):
                                 with patch("agent.MultilingualModel"):
                                     from agent import dm_session
+
                                     await dm_session(mock_ctx)
 
                 mock_session_instance.start.assert_awaited_once()
@@ -489,6 +484,7 @@ class TestDMSession:
                             with patch("agent.silero.VAD.load"):
                                 with patch("agent.MultilingualModel"):
                                     from agent import dm_session
+
                                     await dm_session(mock_ctx)
 
                 mock_session_instance.generate_reply.assert_awaited_once()
