@@ -1,4 +1,6 @@
 import { playSfx } from "./sfx-player";
+import { sessionStore } from "@/stores/session-store";
+import { characterStore } from "@/stores/character-store";
 
 export interface DataChannelEvent {
   type: string;
@@ -29,9 +31,60 @@ export function handleGameEvent(event: DataChannelEvent): void {
         playSfx(event.sound_name);
       }
       break;
+
     case "dice_roll":
       playSfx("dice_roll");
       break;
+
+    case "location_changed":
+      if (typeof event.new_location === "string") {
+        const locationName =
+          typeof event.location_name === "string" ? event.location_name : event.new_location;
+        const atmosphere = typeof event.atmosphere === "string" ? event.atmosphere : "";
+        const region = typeof event.region === "string" ? event.region : "";
+        sessionStore.getState().setLocationContext({
+          locationId: event.new_location,
+          locationName,
+          atmosphere,
+          region,
+          tags: [],
+        });
+        characterStore.getState().updateLocation(event.new_location, locationName);
+      }
+      break;
+
+    case "combat_started":
+      sessionStore.getState().setCombat(true);
+      playSfx("sword_clash");
+      break;
+
+    case "combat_ended":
+      sessionStore.getState().setCombat(false);
+      break;
+
+    case "xp_awarded":
+      if (typeof event.new_xp === "number" && typeof event.new_level === "number") {
+        characterStore.getState().updateXp(event.new_xp, event.new_level);
+      }
+      break;
+
+    case "hp_changed":
+      if (typeof event.current === "number") {
+        characterStore
+          .getState()
+          .updateHp(event.current, typeof event.max === "number" ? event.max : undefined);
+      }
+      break;
+
+    case "session_end":
+      sessionStore.getState().setPhase("ended");
+      break;
+
+    case "quest_updated":
+    case "inventory_updated":
+      console.log("[game-events] Logged for future:", event.type);
+      break;
+
     default:
       console.log("[game-events] Unhandled event type:", event.type);
   }

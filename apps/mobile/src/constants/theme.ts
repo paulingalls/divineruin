@@ -14,6 +14,12 @@ export const Colors = {
     backgroundElement: "#F0F0F3",
     backgroundSelected: "#E0E1E6",
     textSecondary: "#60646C",
+    cardBackground: "#F5F5F8",
+    cardBorder: "#D8D9DE",
+    hpGreen: "#4CAF50",
+    hpYellow: "#FFC107",
+    hpRed: "#E53935",
+    accent: "#7C4DFF",
   },
   dark: {
     text: "#ffffff",
@@ -21,6 +27,12 @@ export const Colors = {
     backgroundElement: "#212225",
     backgroundSelected: "#2E3135",
     textSecondary: "#B0B4BA",
+    cardBackground: "#1A1B1E",
+    cardBorder: "#333538",
+    hpGreen: "#66BB6A",
+    hpYellow: "#FFCA28",
+    hpRed: "#EF5350",
+    accent: "#B388FF",
   },
 } as const;
 

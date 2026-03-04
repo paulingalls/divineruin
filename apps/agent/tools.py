@@ -164,8 +164,9 @@ async def _resolve_disposition(npc_id: str, player_id: str, npc: dict) -> str:
     return disposition
 
 
-async def _build_scene_context(location_id: str, session: SessionData) -> dict:
-    location = await db.get_location(location_id)
+async def _build_scene_context(location_id: str, session: SessionData, location: dict | None = None) -> dict:
+    if location is None:
+        location = await db.get_location(location_id)
     if location is None:
         return {"error": f"Location '{location_id}' not found."}
 
@@ -865,6 +866,8 @@ async def move_player(
     previous_location_id = session.location_id
     pending_events: list[tuple[str, dict]] = []
 
+    destination_location = await db.get_location(destination_id)
+
     async with db.transaction() as conn:
         await db.update_player_location(session.player_id, destination_id, conn=conn)
 
@@ -874,6 +877,11 @@ async def move_player(
                 {
                     "previous_location": previous_location_id,
                     "new_location": destination_id,
+                    "location_name": destination_location.get("name", destination_id)
+                    if destination_location
+                    else destination_id,
+                    "atmosphere": destination_location.get("atmosphere", "") if destination_location else "",
+                    "region": destination_location.get("region", "") if destination_location else "",
                 },
             )
         )
@@ -886,7 +894,7 @@ async def move_player(
 
     session.record_event(f"Moved to {destination_id}")
 
-    scene = await _build_scene_context(destination_id, session)
+    scene = await _build_scene_context(destination_id, session, location=destination_location)
     if "error" in scene:
         return json.dumps(scene)
 

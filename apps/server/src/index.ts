@@ -1,5 +1,6 @@
 import { serve } from "bun";
 import { handleLivekitToken } from "./livekit.ts";
+import { handleGetCharacter } from "./character.ts";
 
 const server = serve({
   port: Number(process.env.PORT ?? 3001),
@@ -7,6 +8,11 @@ const server = serve({
     "/api/livekit/token": {
       async POST(req) {
         return handleLivekitToken(req);
+      },
+    },
+    "/api/character/:playerId": {
+      async GET(req, params) {
+        return handleGetCharacter(req, params.playerId);
       },
     },
   },

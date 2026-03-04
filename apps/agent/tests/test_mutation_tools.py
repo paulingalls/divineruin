@@ -509,6 +509,9 @@ class TestMovePlayer:
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == "location_changed"
         assert call_data["new_location"] == "accord_market_square"
+        assert call_data["location_name"] == "Market Square"
+        assert call_data["atmosphere"] == "noisy, chaotic"
+        assert call_data["region"] == ""
 
     @pytest.mark.asyncio
     @patch("tools.db.get_player", new_callable=AsyncMock)
