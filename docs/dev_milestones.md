@@ -26,7 +26,7 @@ The following design documents are available for detailed implementation guidanc
 | **MVP Specification** | `mvp_spec.md` | Scoped feature set, session-by-session content arc, success criteria, playtest structure. **Appendix contains buildable JSON entities** for all tier 1 MVP content. |
 | **Aethos Lore Bible** | `aethos_lore.md` | World history, cosmology, 10 gods (personalities and domains), 6 races, 8 cultures, geography, the Hollow, the central mystery. Use for narrative consistency and NPC/quest content. |
 | **Cost Model** | `cost_model.md` | Per-minute and per-session cost breakdowns, subscriber economics, async cost modeling. Reference when making technology choices that affect cost (LLM model selection, TTS provider, caching strategy). |
-| **Player Resonance System** | `player_resonance_system.md` | Voice affect analysis: speech rate, energy, engagement detection from Deepgram word timestamps and raw audio. stt_node override pattern, affect vector schema, DM behavioral adaptation. **Phased implementation plan (A-D) that hooks into milestones 2.3, 5.3, 6.2, and 9.1.** |
+| **Player Resonance System** | `player_resonance_system.md` | Voice affect analysis: speech rate, energy, engagement detection from Deepgram word timestamps and raw audio. stt_node override pattern, affect vector schema, DM behavioral adaptation. **Phased implementation plan (A-D) that hooks into milestones 2.3, 5.4, 6.2, and 9.1.** |
 
 **When a milestone says "Key references: Technical Architecture — Tool System"**, open `technical_architecture.md` and search for the "Tool System" section. The design decisions, data formats, and implementation patterns are already specified there.
 
@@ -362,19 +362,83 @@ The following design documents are available for detailed implementation guidanc
 
 ## Phase 5: Client Application
 
-### Milestone 5.1 — Home Screen and Session Flow
+### Milestone 5.1 — Home Screen, Session Flow, and Client Foundation
 
-**Goal:** The app has a real home screen with the Catch-Up layer and Enter the World flow.
+**Goal:** The app has a brand-compliant home screen with the Catch-Up layer, Enter the World flow, complete session lifecycle (start → play → end → summary), and reconnection handling. This milestone establishes the full screen map and navigation skeleton that all subsequent client milestones build on.
 
 **Inputs:** Milestone 2.1 (LiveKit connection works), Milestone 3.3 (state mutations push to client).
 
 **Deliverables:**
-- Home screen with two-layer design: Catch-Up section (top) and "Enter the World" button (bottom)
-- Catch-Up layer: displays placeholder cards for resolved activities, pending decisions, and world news (real async data comes in Phase 6)
-- "Enter the World" button: taps opens LiveKit connection and transitions to session screen
-- Session screen: full-screen atmospheric background with HUD overlay areas
-- Session end flow: DM narrative wrap-up → session summary → return to Home
-- Character summary bar on Home: name, level, location, HP
+
+*Home Screen — Two-Layer Design*
+- **Character Summary Bar** (top of home): character name (Crimson Pro 400, `bone`), level + class (IBM Plex Mono 400, `ash`), current location (IBM Plex Mono 400, `ash`), compact HP bar (3px height, `ember → parchment` gradient fill on `charcoal` track). Background: `ink` surface with `charcoal` bottom border. Tapping opens Character Sheet pull-up.
+- **Catch-Up Section** (scrollable, upper area): vertical feed of placeholder cards on `ink` surface with `charcoal` borders. Card types for MVP placeholders (real async data comes in Phase 7):
+  - *Resolved activity card*: icon + title (Crimson Pro 400, `bone`) + summary text (`ash`) + play button for narrated audio + decision buttons (teal border, `hollow` text)
+  - *Pending decision card*: NPC portrait placeholder + message preview + response options
+  - *World news card*: timestamp (`caption` style) + summary + optional play button
+  - *In-flight activity card*: title + progress indicator (teal bar on `charcoal` track) + time remaining (`ash`)
+  - *Empty state*: companion idle chatter text (Crimson Pro 300 italic, `bone` at 0.7 opacity): "Kael is sharpening his blade and humming something off-key."
+  - All cards are tap-based, completely silent by default — audio play buttons are opt-in, never auto-play
+- **"Enter the World" Button** (bottom, always visible): prominent full-width button. Background: `hollow-faint` with 1px `hollow-muted` border. Text: "ENTER THE WORLD" in IBM Plex Mono 400, `hollow`, uppercase, `letter-spacing: 2px`. On press: subtle `hollow-glow` pulse animation. When no character exists, button text changes to "BEGIN YOUR JOURNEY" and flows into character creation.
+- **Session History** (below Enter button, scrollable): compact list of recent sessions — date (`caption` style), duration, location, key events. Tapping opens session summary.
+
+*Session Screen*
+- Full-screen atmospheric background: dark, ambient-lit, color-tinted to match current location mood. Not a literal scene render — abstract/atmospheric. Uses `void` base with subtle radial gradient reflecting environment (warm amber tones for tavern, cool blue for night, muted green for forest, teal undertone for Hollow-corrupted areas).
+- Grain overlay applied at 3% opacity (the SVG fractalNoise pattern from brand spec)
+- HUD overlay areas reserved (implemented in 5.2): safe zones at top and bottom for persistent bar, clear center for contextual overlays
+- Voice connection status indicator: 6px circle (`hollow` when connected + `glow-hollow` shadow, `ember` when disconnected, `slate` when connecting) with label (IBM Plex Mono 10px)
+- Transcript view (optional, toggled): scrolling DM narration text in Crimson Pro 300, `bone` at 0.6 opacity, fading older lines. Hidden by default — available for accessibility or noisy environments.
+
+*Session Start Flow*
+1. Player taps "Enter the World"
+2. Button shows loading state (pulsing `hollow` glow, text changes to "CONNECTING...")
+3. Client sends `session_start` RPC to backend API
+4. Backend creates LiveKit room, dispatches DM agent, returns room token
+5. Client connects to LiveKit room with token — audio tracks bind
+6. Client receives initial state push on data channel: `{ type: "session_init", character, location, quests, inventory, map_progress, world_state }`
+7. Local cache (zustand stores) populated from state push — character-store, session-store
+8. Atmospheric background transitions to match current location
+9. Ambient soundscape begins (location's `ambient_sounds` tag → local audio file)
+10. DM opening narration arrives on voice track
+11. Screen transitions from Home → Session (cross-dissolve, 400ms)
+12. Target: tapping button to hearing DM voice < 4 seconds
+
+*Session End Flow*
+1. Player says "let's stop" / "I need to go" OR taps end-session button (small, top-right, `ash` icon) OR DM initiates wrap-up (low engagement detected)
+2. DM narrates brief closing (2-3 sentences, natural stopping point)
+3. Server sends `session_end` event: `{ type: "session_end", summary, xp_earned, items_found, quest_progress, duration, next_hooks }`
+4. Session screen transitions to **Session Summary Screen**:
+   - Title: "Session Complete" (Cormorant Garamond 300, `parchment`)
+   - Duration and date (`caption` style)
+   - Recap text: key events in Crimson Pro 400, `bone` (generated by DM, 3-5 sentences)
+   - Stats row: XP earned, items found, quest stages advanced (IBM Plex Mono, `hollow` for values)
+   - Next hooks: 1-2 teaser sentences about what's ahead (Crimson Pro 300 italic, `ash`)
+   - "Return Home" button: same style as Enter the World but text reads "RETURN HOME"
+5. Tapping Return Home → Home screen. LiveKit room disconnects. Catch-Up layer may now show new async activity options.
+
+*Reconnection Handling*
+- On connection drop: "Reconnecting..." overlay with translucent `void` background, pulsing `hollow` indicator, ambient audio continues playing
+- Client attempts automatic reconnection to the same LiveKit room (room stays alive for 5 minutes)
+- On reconnect: server pushes current state snapshot → client resyncs all stores → DM acknowledges naturally ("Where were we...")
+- If 5-minute grace period expires: server runs end-of-session flow. Next app open shows session summary on Home screen.
+- If player force-quits mid-session: same 5-minute grace → auto-end. State is preserved to last DB write.
+
+*Navigation Skeleton*
+- expo-router file-based routing: `(tabs)/index.tsx` (Home), `session.tsx` (Active Session), session summary as a modal
+- Settings screen: audio levels (5 sliders — Voice, Music, Ambience, Effects, UI), mic mode toggle (VAD vs tap-to-speak), notification preferences, account/logout
+- All screens use `void` background, grain overlay, brand typography
+
+*Zustand Stores*
+- `session-store`: room connection state, session ID, session phase (idle/connecting/active/ending/summary), reconnection state
+- `character-store`: name, level, class, race, patron, HP (current/max), location, divine favor, status effects — populated from server push, read by HUD and pull-ups
+- `catchup-store`: array of catch-up cards (type, title, summary, audio URL, decisions, status) — populated from REST API
+- `transcript-store`: rolling array of DM utterances for optional transcript view
+
+*Data Channel Event Router*
+- Single listener on the LiveKit data channel that receives JSON payloads
+- Routes events by `type` field to the appropriate zustand store action
+- Event types handled in this milestone: `session_init`, `session_end`, `location_changed`, `character_update`
+- Extensible for Phase 5.2 events: `combat_ui_update`, `dice_result`, `item_acquired`, `quest_update`, `xp_awarded`, `status_effect`, `sound_effect`, `creation_cards`
 
 **Acceptance criteria:**
 - [x] App opens to Home screen with character summary and Catch-Up area
@@ -383,74 +447,340 @@ The following design documents are available for detailed implementation guidanc
 - [x] Disconnecting (or DM ending session) returns to Home screen gracefully
 - [x] Character summary bar shows accurate current data (name, level, location)
 - [ ] Home screen works in both portrait and landscape orientations
+- [ ] Catch-Up section displays placeholder cards in correct brand styling (ink surface, charcoal borders, correct typography per text role)
+- [ ] Empty Catch-Up state shows companion idle chatter placeholder
+- [ ] Session Summary screen displays after session end with recap, XP, items, and next hooks
+- [ ] Reconnection overlay appears on connection drop and auto-reconnects within 5-minute window
+- [ ] Data channel event router correctly dispatches `session_init` and `location_changed` events to stores
+- [ ] Settings screen has 5 audio volume sliders that persist values to MMKV
+- [ ] All screens use brand tokens: `void` background, `parchment`/`bone`/`ash` text hierarchy, `hollow` accent, grain overlay
+- [ ] Session start flow completes (tap to DM voice) in under 4 seconds on device
+- [ ] Character-store, session-store, and catchup-store have unit tests covering server push → state update
 
 **Key references:**
-- *Game Design — Session Types — No Mode Selection* (the two-layer home screen design)
-- *Game Design — Silent Layer, Voiced Layer* (Catch-Up is silent-first, tap-based)
-- *Technical Architecture — Client Application — Screen Architecture*
+- *Technical Architecture — Client Architecture* (full section: screen map, data flow, session flow, performance targets, audio mixing)
+- *Game Design — Session Types — No Mode Selection* (two-layer home screen, fluid entry, DM behavioral modes)
+- *Game Design — Silent Layer, Voiced Layer* (Catch-Up is silent-first, tap-based; seamless handoff to voiced)
+- *Brand Spec — Design Tokens* (colors, typography, spacing) and *UI Patterns* (surface hierarchy, text roles, HUD elements)
 
 ---
 
-### Milestone 5.2 — HUD System
+### Milestone 5.2 — HUD: Persistent Bar and Contextual Overlays
 
-**Goal:** The contextual HUD displays game state information during active sessions.
+**Goal:** The server-pushed, reactive HUD — a persistent glance bar (Layer 1) and contextual overlays that appear and auto-dismiss (Layer 2). These are the elements the server pushes at the player during gameplay: combat state, dice rolls, item pickups, quest updates, XP gains, and character creation cards. The HUD is smartwatch-level: minimal, informational, never competing with audio. Every element uses brand tokens and feels like part of the world, not a game UI bolted on top.
 
-**Inputs:** Milestone 5.1 (session screen exists), Milestone 3.3 (state changes push to client).
+**Inputs:** Milestone 5.1 (session screen, data channel router, stores), Milestone 3.3 (state mutations push to client).
 
 **Deliverables:**
-- Layer 1 (Always visible): location name bar (top), active quest objective (bottom), companion status indicator
-- Layer 2 (Contextual): combat HUD (HP bars, status effects, phase indicator), dice roll display (animated d20 with result), notification toasts (quest updates, XP awards, item pickups)
-- Layer 3 (Player-initiated): pull-up panels for Map, Character Sheet, Inventory, Quest Log
-- Data channel listener: receives server pushes and updates HUD elements in real-time
-- Auto-dismiss logic: contextual HUD elements appear on trigger and fade after 5 seconds of no updates
-- UI sound effects for HUD interactions (confirm, cancel, notification, menu open/close)
+
+*Layer 1 — Persistent Bar (always visible during session)*
+
+A thin strip (<10% screen height) at the top of the session screen. `ink` background at 85% opacity with `charcoal` bottom border. Contains:
+
+- **Location name** (left): current location in IBM Plex Mono 400, 10px, uppercase, `ash`, `letter-spacing: 2px`. Updates on `location_changed` event. Example: `GREYVALE · MARKET DISTRICT`
+- **Voice state indicator** (right of location): 6px circle — `hollow` + `glow-hollow` shadow when DM is speaking, `hollow-muted` when listening/idle, pulsing when processing. "LIVE" label in IBM Plex Mono 10px, `hollow` when voice connection active.
+- **HP bar** (right side): compact horizontal bar, 3px height, 60px wide. Track: `charcoal`. Fill: gradient from `ember` (low) through `parchment` (full). Updates on `character_update` event. No number label — color tells the story. When HP < 30%, bar pulses subtly.
+- **Status effect icons** (right, next to HP): small icons (16px) for active effects (poisoned, blessed, burning, etc.). `hollow` tint for buffs, `ember` tint for debuffs. Appear/disappear on `status_effect` events with 200ms fade.
+- **Active quest objective** (bottom strip, optional): single-line quest hint in Crimson Pro 300, 13px, `bone` at 0.7 opacity, with `hollow` arrow prefix. Example: `▸ Find the cartographer`. Updates on `quest_update` event. Auto-hides after 10 seconds of no quest change, reappears on new update. Can be dismissed by tap.
+
+*Layer 2 — Contextual Overlays (server-pushed, auto-dismiss)*
+
+These overlays appear over the session screen center when triggered by data channel events. They use `react-native-reanimated` for 60fps entrance/exit animations. Each overlay type has specific behavior:
+
+- **Dice Roll Overlay** — Triggered by `dice_result` event: `{ type: "dice_result", roll, modifier, total, dc, success, narrative_hint }`
+  - Centered card, `ink` background with `charcoal` border, `radius-md`
+  - Animated d20 icon that "tumbles" (rotate + scale spring animation, 600ms) then lands on the result
+  - Roll value: IBM Plex Mono 400, 32px, `parchment`. Modifier shown smaller: "+3" in `ash`
+  - Result label: "SUCCESS" in `hollow` or "FAILURE" in `ember`, IBM Plex Mono 400, 11px, uppercase
+  - `narrative_hint` text below: Crimson Pro 300 italic, 13px, `ash` (e.g., "barely succeeded", "critical failure")
+  - Entrance: scale from 0.8 → 1.0 + fade in (200ms spring). Exit: fade out (300ms) after 3.5 seconds
+  - Haptic feedback: light impact on roll, medium impact on success, heavy on critical
+  - Audio: dice roll sound (DICE-001) on appearance, success/fail sting on result
+
+- **Combat Tracker** — Triggered by `combat_ui_update` event: `{ type: "combat_ui_update", phase, combatants[], active_turn, round }`
+  - Appears at bottom of screen, slides up (300ms spring). Stays visible for entire combat. Slides down on `combat_end`.
+  - `ink` background at 90% opacity, `charcoal` top border, `radius-lg` top corners
+  - Phase indicator: current phase name in IBM Plex Mono 400, 10px, uppercase, `hollow`. "DECLARATION" / "RESOLUTION" / "OUTCOME"
+  - Round counter: "ROUND 3" in IBM Plex Mono 300, 10px, `ash`
+  - Combatant rows: each shows name (Crimson Pro 400, 14px, `bone` for allies, `ember` for enemies), HP bar (same 3px style as persistent bar), and status effect icons
+  - Active turn highlight: combatant whose turn it is gets `hollow-faint` background highlight
+  - Player's combatant row is always visible; enemy details collapse to name + HP bar to save space
+  - Height: max 30% of screen. If more combatants than fit, scrollable within the panel.
+  - Updates in-place on each `combat_ui_update` push — HP bars animate smoothly (300ms ease-out)
+
+- **Item Card Popup** — Triggered by `item_acquired` event: `{ type: "item_acquired", item_id, name, rarity, description, type, stats }`
+  - Centered card, `ink` background, border color by rarity: `charcoal` (common), `hollow-muted` (uncommon), `hollow` (rare), `divine` (legendary)
+  - Item name: Cormorant Garamond 400, 18px, `parchment`
+  - Rarity label: IBM Plex Mono 300, 9px, uppercase, rarity color, `letter-spacing: 3px`
+  - Description: Crimson Pro 300, 14px, `bone`, max 3 lines
+  - Key stats (if any): IBM Plex Mono 400, 11px, `ash`
+  - Entrance: slide up from bottom + fade (250ms spring). Exit: fade out after 5 seconds or on tap.
+  - Haptic: light impact on appearance
+
+- **Quest Update Toast** — Triggered by `quest_update` event: `{ type: "quest_update", quest_name, stage_name, objective }`
+  - Top notification bar, full width, `ink` background at 90% opacity
+  - "QUEST UPDATED" label: IBM Plex Mono 400, 9px, `hollow`, uppercase, `letter-spacing: 2px`
+  - Quest + stage name: Crimson Pro 400, 14px, `bone`. New objective below in 13px, `ash`
+  - Entrance: slide down from top (200ms spring). Exit: slide up after 3 seconds.
+  - Audio: quest update sting (STG-001)
+
+- **XP / Level-Up Notification** — Triggered by `xp_awarded` event: `{ type: "xp_awarded", amount, total, level_up, new_level }`
+  - *XP gain (no level-up)*: subtle bottom toast. "+75 XP" in IBM Plex Mono 400, 12px, `hollow`. Fade in/out, 2.5 seconds. No haptic.
+  - *Level-up*: larger centered overlay. "LEVEL UP" in Cormorant Garamond 300, 28px, `parchment` with `text-glow-hollow`. New level number below in IBM Plex Mono 400, 48px, `hollow`. Class title in IBM Plex Mono 300, 11px, `ash`, uppercase. Entrance: scale 0.5 → 1.0 + fade (400ms spring). Stays 5 seconds. Heavy haptic pulse. Audio: level-up stinger (STG-002).
+
+- **Character Creation Cards** — Triggered by `creation_cards` event: `{ type: "creation_cards", category, options[] }`
+  - Horizontally scrollable row at bottom third of screen
+  - Each card: `ink` background, `charcoal` border, `radius-md`, 140px wide
+  - Card illustration area (top): placeholder for race/class/patron art (dark `slate` rectangle for now)
+  - Card title: Cormorant Garamond 400, 16px, `parchment`, centered
+  - Card description: Crimson Pro 300, 12px, `ash`, 3-4 lines max
+  - Selected card: border transitions to `hollow`, subtle `glow-hollow` shadow. Unselected cards fade to 50% opacity.
+  - Player speaks their choice; server sends `creation_card_selected` event to highlight the chosen card
+  - Dismissed when server advances to next creation step
+
+*Data Channel Event Handling (extending 5.1 router)*
+- New event types routed to HUD: `combat_ui_update`, `combat_end`, `dice_result`, `item_acquired`, `quest_update`, `xp_awarded`, `status_effect`, `sound_effect`, `creation_cards`, `creation_card_selected`
+- Overlay manager: zustand store (`hud-store`) that tracks active overlays, manages stacking (max 2 simultaneous overlays — newer replaces older except combat tracker which persists), and handles auto-dismiss timers
+- Events that update persistent bar (location, HP, status effects) go directly to `character-store` and `session-store`
+- Events that trigger overlays create entries in `hud-store` with type, payload, and TTL
+
+*UI Sound Effects*
+- Triggered client-side by overlay lifecycle events (not server-pushed)
+- Sounds: dice roll (DICE-001), quest sting (STG-001), level-up sting (STG-002), item pickup chime (UI-001), menu open/close (UI-006/UI-007), notification arrival (UI-003), confirm tap (UI-001), cancel (UI-002), error (UI-003)
+- Played through the UI Audio channel at full volume (not ducked)
+- Sound file lookup via `sound-registry.ts`, playback via `sfx-player.ts`
+
+*Haptic Feedback*
+- `expo-haptics` integration at key moments:
+  - Dice roll landing: `Haptics.impactAsync(ImpactFeedbackStyle.Light)`
+  - Dice success: `Haptics.impactAsync(ImpactFeedbackStyle.Medium)`
+  - Critical hit: `Haptics.impactAsync(ImpactFeedbackStyle.Heavy)`
+  - Level-up: `Haptics.notificationAsync(NotificationFeedbackType.Success)`
+  - Item acquired: `Haptics.impactAsync(ImpactFeedbackStyle.Light)`
+  - HP below 30%: subtle periodic pulse `Haptics.impactAsync(ImpactFeedbackStyle.Light)` every 5 seconds
 
 **Acceptance criteria:**
 - [x] Location name updates when `location_changed` event is received
-- [ ] Combat HUD appears when combat starts, showing HP bars for player and enemies
-- [ ] Dice roll animation plays when a roll occurs, showing the result briefly
-- [ ] Notification toasts appear for quest progression, XP awards, and item pickups
-- [ ] Pull-up panels (Map, Character Sheet, Inventory, Quest Log) open and close smoothly
-- [ ] UI sounds play for interactions (confirm tap, menu open/close, notification arrival)
-- [ ] HUD never obscures the session experience — elements are minimal and auto-dismiss
 - [x] All HUD updates occur within 200ms of the server push
+- [ ] Persistent bar displays location, HP bar, voice state, and status effects — always visible during session, <10% screen height
+- [ ] Active quest objective appears on persistent bar and auto-hides after 10 seconds of inactivity
+- [ ] Combat tracker slides up when combat starts, shows combatant HP bars and phase indicator, stays for duration, slides away on combat end
+- [ ] Combat tracker HP bars animate smoothly when damage is dealt (no jumps)
+- [ ] Dice roll overlay shows animated die, result, modifier, and narrative hint — auto-dismisses after 3.5 seconds
+- [ ] Dice roll triggers correct haptic feedback (light on roll, medium on success, heavy on crit)
+- [ ] Item card popup appears with correct rarity border color and auto-dismisses after 5 seconds or on tap
+- [ ] Quest update toast slides down from top with quest name and new objective, auto-dismisses after 3 seconds
+- [ ] XP toast appears subtly for normal gains; level-up gets full centered overlay with stinger audio and heavy haptic
+- [ ] Character creation cards display as horizontally scrollable row; selected card highlights with `hollow` border
+- [ ] Overlay stacking works correctly: max 2 simultaneous (combat tracker + one other), newer non-persistent overlays replace older ones
+- [ ] UI sounds play for: dice roll, quest update, level-up, item pickup, notification arrival
+- [ ] All HUD elements use brand tokens: IBM Plex Mono for data/labels, Crimson Pro for narrative text, correct color roles per brand spec
+- [ ] HUD never obscures >30% of screen during normal play (combat tracker is the maximum overlay)
+- [ ] `hud-store` has unit tests covering overlay lifecycle (create, stack, auto-dismiss, manual dismiss)
 
 **Key references:**
-- *Technical Architecture — HUD System — Layered Overlays* (three-layer design)
-- *Audio Design — UI and Feedback Audio* (UI-001 through UI-010)
-- *Game Design — Combat Design — HUD in Combat*
+- *Technical Architecture — HUD System — Layered Overlays* (three-layer design, specific overlay types, auto-dismiss behavior)
+- *Technical Architecture — Client Architecture — Data Flow* (data channel event types and payload shapes)
+- *Technical Architecture — Client Architecture — Performance Targets* (overlay render <100ms)
+- *Game Design — Combat Design — HUD in Combat* (simplified tactical view, dice roll animations, boss fight HUD)
+- *Audio Design — UI and Feedback Audio* (UI-001 through UI-010, dice sounds DICE-001 through DICE-004, stingers STG-001, STG-002)
+- *Brand Spec — UI Patterns* (surface hierarchy, text roles, HUD element styling, special treatments for combat/divine/Hollow)
 
 ---
 
-### Milestone 5.3 — Audio Engine and Environmental Soundscapes
+### Milestone 5.3 — Pull-Up Panels (Player-Initiated HUD)
 
-**Goal:** The client plays layered ambient audio that changes with location, time, and game state.
+**Goal:** The four player-initiated information panels — Character Sheet, Inventory, Quest Log, and Map — slide over the session screen on demand. These are the "glance down and check something" surfaces: reading stats, browsing inventory, reviewing quest objectives, or checking the map. They read from local zustand stores (populated by server pushes in 5.1) so they open instantly with no loading state. The voice connection stays active while panels are open — the player can talk to the DM while browsing.
 
-**Inputs:** Milestone 5.1 (session screen exists), Milestone 3.3 (location changes push to client), audio assets generated.
+**Inputs:** Milestone 5.1 (session screen, zustand stores populated by server pushes), Milestone 5.2 (persistent bar with panel access icons).
 
 **Deliverables:**
-- Client audio engine: 8-channel mixer with volume buses (Voice, Music, Ambience, Effects, UI)
-- Environmental soundscape player: loads and loops location-appropriate ambient audio, crossfades on location change (2-3 second linear crossfade)
-- Voice ducking: ambience and music duck by 40-60% when TTS audio is playing (50ms attack, 200ms release)
-- Sound effect player: triggered by `play_sound` data channel messages, plays from local asset library
-- Randomized texture layer: intermittent ambient sounds (bird calls, footsteps, creaks) fire at randomized intervals on top of the base soundscape
-- Audio settings: 5 volume sliders (Voice, Music, Ambience, Effects, UI) persisted locally
-- Audio asset bundle: at least 5 environmental soundscapes (Market Square day, Millhaven, Forest road, Ruins entrance, Tavern) and core combat/UI sound effects
+
+*Panel Shell (shared by all four panels)*
+- Accessed by swipe-up gesture from bottom edge, or by tapping panel icons on the persistent bar (4 small icons: sword/shield for character, sack for inventory, scroll for quests, compass for map — all in `ash`, `hollow` when panel is open)
+- Slides over session screen as a bottom sheet modal (bottom → up, 300ms spring via `react-native-reanimated`)
+- `ink` background, `charcoal` top border, `radius-lg` top corners
+- Drag handle: 40px wide, 4px tall, `slate`, centered at top. Dragging down dismisses.
+- Max 75% screen height — session audio and atmospheric background remain visible/audible above
+- Close button: small "×" in `ash` at top-right
+- Tab bar at top of panel shell: four tabs to switch between panels without closing. Active tab label in `hollow`, inactive in `ash`. IBM Plex Mono 400, 10px, uppercase.
+- Haptic: light impact on open (`Haptics.impactAsync(ImpactFeedbackStyle.Light)`)
+- UI audio: menu open sound (UI-006) on open, menu close (UI-007) on dismiss
+
+*Character Sheet Panel*
+- **Header section**: character name in Cormorant Garamond 300, 22px, `parchment`. Race + class + level below in IBM Plex Mono 400, 10px, `ash`, uppercase. Example: `LEVEL 4 · ELARI · VEILWARDEN`
+- **HP section**: current/max in large type. Current HP: IBM Plex Mono 400, 32px, `parchment`. Slash + max: 18px, `slate`. Full-width HP bar below (4px height, `charcoal` track, `ember → parchment` gradient fill). If status effects active, small icons displayed next to HP with tooltip on tap.
+- **Stats grid**: 6 core stats (STR, DEX, CON, INT, WIS, CHA) in a 3×2 grid. Each cell: stat abbreviation in IBM Plex Mono 300, 9px, `ash`, uppercase. Value in IBM Plex Mono 400, 24px, `parchment`. Modifier below in 11px — `hollow` if positive ("+2"), `ember` if negative ("-1"), `ash` if zero ("+0"). Cells separated by `charcoal` borders.
+- **Skills section** (scrollable): grouped by category (Physical, Mental, Social). Category header in IBM Plex Mono 300, 9px, `ash`, uppercase. Each skill: name in Crimson Pro 400, 14px, `bone`, modifier value in IBM Plex Mono 400, `ash`, right-aligned. Proficient skills marked with small `hollow` dot.
+- **Divine Favor section**: patron deity name in Cormorant Garamond 300 italic, 16px, `divine`. Favor bar below: `divine-faint` track, `divine` fill. Favor level label in IBM Plex Mono 300, 9px, `ash`.
+- **Equipment summary** (bottom): currently equipped weapon and armor names in Crimson Pro 400, 13px, `bone`. Tap to see item detail card (same as inventory item detail).
+- Data source: `character-store` — all fields populated from `session_init` and kept current by `character_update` events
+
+*Inventory Panel*
+- **Grid layout**: 3 columns of item tiles on `ink` backgrounds with `radius-sm` corners
+- **Item tile**: square aspect ratio. Placeholder icon area (dark `slate` with item type icon in `ash` — sword, potion, scroll, gem, etc.). Rarity border: `charcoal` (common), `hollow-muted` (uncommon), `hollow` (rare), `divine` (legendary). Item name below in IBM Plex Mono 300, 10px, `bone`, centered, max 1 line with ellipsis truncation. Quantity badge (top-right corner) if stackable: IBM Plex Mono 400, 9px, `parchment` on `charcoal` circle.
+- **Item detail card** (on tap): slides in from right (250ms spring), covering the grid. Full item card matching the `item_acquired` popup design but persistent: name (Cormorant Garamond 400, 18px, `parchment`), rarity label, full description (Crimson Pro 300, 14px, `bone`), all stats (IBM Plex Mono 400, 11px, `ash`), lore text if available (Crimson Pro 300 italic, 13px, `ash`). "Back" button (top-left, `ash`) returns to grid.
+- **Empty slots**: `charcoal` background with 1px dashed `slate` border. Fill from top-left.
+- **Weight/capacity** (bottom bar): "12/30" in IBM Plex Mono 400, 11px, `ash`. Bar visualization matching HP bar style.
+- **Sort options** (top-right): small dropdown — "Type" / "Rarity" / "Recent". IBM Plex Mono 300, 9px, `ash`.
+- Data source: `character-store.inventory`
+
+*Quest Log Panel*
+- **Active quests section** (top, expanded by default):
+  - Section header: "ACTIVE" in IBM Plex Mono 400, 9px, `hollow`, uppercase, `letter-spacing: 2px`
+  - Each quest as a collapsible row. Collapsed: quest name in Crimson Pro 400, 15px, `bone`. Current stage name in 13px, `ash`. `hollow` dot indicator for active stage. Chevron icon (right, `ash`) to expand.
+  - Expanded: current objective in Crimson Pro 300 italic, 14px, `bone`, indented. Stage history below: completed stages with `hollow` checkmarks and stage names in `ash`. Current stage highlighted with `hollow-faint` background. If hints are available (from `global_hints`), a subtle "Hint" button in `ash` reveals the level 1 hint text.
+  - Main quest pinned to top with a subtle `hollow-faint` left border accent
+- **Completed quests section** (bottom, collapsed by default):
+  - Section header: "COMPLETED" in IBM Plex Mono 400, 9px, `ash`, uppercase
+  - Tap to expand. Completed quests listed with names in `slate`, completion date in `caption` style
+- Data source: `character-store.quests` (active) and a `completed_quests` array
+
+*Map Panel*
+- **Node-based map** rendered with `react-native-svg` or `@shopify/react-native-skia`:
+  - Each location is a node. Connections between locations drawn as lines.
+  - **Current location**: `hollow` filled circle (12px radius) with `glow-hollow` shadow, pulsing subtly
+  - **Visited locations**: `bone` stroke circle (10px radius) with `charcoal` fill. Location name label in IBM Plex Mono 300, 9px, `ash`
+  - **Known but unvisited**: `slate` dashed-stroke circle (8px radius). No label until visited.
+  - **Undiscovered**: not rendered — fog of war by omission. Map grows as the player explores.
+  - **Connections**: `charcoal` lines between connected locations. The most recently traveled path highlighted in `hollow-muted`.
+  - **Quest objective marker**: small `hollow` diamond icon on the location where the current quest objective is located
+  - **Region labels**: larger text in Cormorant Garamond 300, 14px, `ash` at 0.5 opacity, positioned near clusters of locations. "THE GREYVALE", "ACCORD OF TIDES"
+- **Interactions**: pinch to zoom (0.5x to 3x), drag to pan. Double-tap to re-center on current location. Tap a visited location node to see its name and a one-line description in a tooltip (Crimson Pro 300, 12px, `bone` on `ink` surface).
+- **Legend** (small, bottom-left): minimal — current location dot, visited dot, quest marker. IBM Plex Mono 300, 8px, `ash`.
+- **Map state**: stored in `character-store.map_progress` — array of `{ location_id, visited: bool, connections: [] }`. Updated by `location_changed` events (newly visited locations added).
+- **Performance**: map is pre-laid-out (node positions defined in location entity data or a separate map layout config). Rendering is static SVG/Skia with only the pulse animation on current location. Should render in <100ms even with 30+ nodes.
 
 **Acceptance criteria:**
-- [ ] Entering the world plays the ambient soundscape for the player's current location
-- [ ] Moving to a new location crossfades to the new soundscape over 2-3 seconds (no hard cut)
-- [ ] When the DM speaks, ambient audio audibly ducks and returns smoothly when speech ends
-- [x] `play_sound` data messages trigger the correct sound effect on the client with < 100ms latency
-- [ ] Randomized texture sounds (bird calls, etc.) play at varied intervals without noticeable pattern
-- [x] Volume sliders work and persist between sessions
-- [ ] All 5 environmental soundscapes sound distinct and match their location identity
-- [ ] The audio mix is clear at all times — voice is always understandable over ambience
+- [ ] Panel shell opens via swipe-up gesture or persistent bar icon tap with spring animation
+- [ ] Panels open in <200ms with no loading spinner (reads from local stores)
+- [ ] Tab bar allows switching between all four panels without closing the sheet
+- [ ] Voice connection remains active while any panel is open — player can talk to DM while browsing
+- [ ] Swipe-down gesture and close button both dismiss panels smoothly
+- [ ] Character Sheet displays all stats, HP, skills, divine favor, and equipment correctly from store data
+- [ ] Character Sheet stat modifiers show correct color: `hollow` for positive, `ember` for negative
+- [ ] Inventory grid displays items with correct rarity borders; tapping opens detail card
+- [ ] Inventory item detail card shows full description, stats, and lore text
+- [ ] Quest Log shows active quests with expandable stages; completed stages have checkmarks
+- [ ] Quest Log hint button reveals level 1 hint text from `global_hints`
+- [ ] Map renders visited locations as nodes with connections; current location pulses in `hollow`
+- [ ] Map supports pinch-to-zoom and drag-to-pan; double-tap re-centers on current location
+- [ ] Map fills in as player explores — newly visited locations appear on `location_changed` events
+- [ ] Quest objective marker appears on the correct map node
+- [ ] All panel text uses brand typography: Cormorant Garamond for headers, Crimson Pro for body, IBM Plex Mono for data
+- [ ] Panel open/close triggers UI sounds (UI-006/UI-007) and light haptic
+- [ ] Panel components have unit or interaction tests covering data display and tab switching
 
 **Key references:**
-- *Audio Design — The Audio Stack* (7-layer hierarchy, mixing rules)
-- *Audio Design — Environmental Soundscapes* (structure, specifications, AI generation prompts)
-- *Audio Design — Audio Technical Requirements* (file formats, channel requirements, ducking specs)
+- *Technical Architecture — Client Architecture — Screen Map* (pull-up screens: Map, Character Sheet, Inventory, Quest Log)
+- *Technical Architecture — Client Architecture — Performance Targets* (pull-up open <200ms, reads from local cache)
+- *Game Design — Game Mechanics* (skill list, stat structure for Character Sheet content)
+- *Game Design — Navigation* (map design, breadcrumb trail, points of interest)
+- *Brand Spec — UI Patterns* (surface hierarchy, text roles) and *Design Tokens* (all typography and color specs)
+
+---
+
+### Milestone 5.4 — Audio Engine and Environmental Soundscapes
+
+**Goal:** The client plays layered ambient audio that changes with location, time, and game state. Four independent audio channels (Voice, Ambience, Effects, UI) mix cleanly with automatic voice ducking. The audio engine is the foundation for immersion — when the player enters the world, they hear where they are before the DM says a word.
+
+**Inputs:** Milestone 5.1 (session screen, data channel router), Milestone 3.3 (location changes push to client), audio assets generated.
+
+**Deliverables:**
+
+*Audio Session Configuration*
+- iOS: `AVAudioSession` configured for `.playAndRecord` category with `.mixWithOthers` and `.duckOthers` options. This allows LiveKit WebRTC audio (Voice channel) to coexist with local playback (Ambience, Effects, UI). Must be set before LiveKit room connection.
+- Android: `AudioManager` focus strategy configured to allow concurrent streams. `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` for voice, standard playback for local channels.
+- This is the highest-risk client-side integration point — if WebRTC + local playback don't coexist cleanly, nothing else in the audio stack works. Validate early.
+
+*Four-Channel Mixer Architecture*
+- **Voice channel**: LiveKit WebRTC audio track. Not controlled by the mixer — controlled by LiveKit SDK. The mixer monitors it (detects when DM is speaking) to trigger ducking on other channels.
+- **Ambience channel**: looping environmental soundscapes. Managed by `soundscape-player` module. Supports two simultaneous streams for crossfading (outgoing + incoming during transitions).
+- **Effects channel**: one-shot sound effects triggered by `sound_effect` data channel events. Managed by `sfx-player`. Supports overlapping playback (multiple effects at once). Fire-and-forget.
+- **UI Audio channel**: one-shot sounds triggered by client-side events (overlay appearance, user actions). Same `sfx-player` module, different volume bus.
+- Each channel has an independent volume level (0.0–1.0) controlled by the corresponding slider in Settings. Master volume multiplier applies to all channels.
+- Volume levels persisted to MMKV via `volume.ts`, loaded on app start.
+
+*Voice Ducking*
+- When LiveKit audio track is active (DM speaking, NPC dialogue, companion speech): Ambience ducks to 40% of its set volume. Music (future, Milestone 8.1) will duck to 30%.
+- Ducking envelope: 50ms attack (fade down quickly when voice starts), 200ms release (fade back up smoothly when voice stops).
+- Detection method: monitor LiveKit audio track activity via the SDK's `TrackEvent` or audio level callbacks. When voice audio level exceeds a threshold → duck. When it drops below for >150ms → release.
+- Effects and UI Audio do NOT duck — they're brief and informational, designed to layer with voice.
+
+*Environmental Soundscape Player*
+- Subscribes to `location_changed` events from `session-store`
+- Each location entity's `ambient_sounds` field maps to a local audio file: `market_bustle.mp3`, `rural_town_uneasy.mp3`, `dungeon_ancient_hum.mp3`, `hollow_wrongness.mp3`, etc.
+- On location change: start new soundscape at 0% volume, linear crossfade over 2-3 seconds (incoming fades up, outgoing fades down), then release the old audio resource.
+- Soundscapes are loopable audio files (seamless loop points authored into the asset). File format: MP3 or AAC, 44.1kHz, stereo, 128-192kbps.
+- Time-of-day variants: some locations have alternate soundscapes (e.g., `market_bustle.mp3` for day, `harbor_quiet.mp3` for night). The `location_changed` event includes the active `ambient_sounds` tag based on current world time. The client plays whatever tag the server sends.
+- On session start: load and play the soundscape for the player's current location immediately after LiveKit connection establishes.
+- On session end: fade out soundscape over 1 second.
+
+*Randomized Texture Layer*
+- On top of the base soundscape, intermittent one-shot sounds fire at randomized intervals to add organic life.
+- Each location can define a `texture_sounds` array: `[ { sound: "bird_call_01", min_interval: 15, max_interval: 45 }, { sound: "cart_wheel", min_interval: 30, max_interval: 90 } ]`
+- A lightweight scheduler picks random intervals within the range and plays the texture sound through the Effects channel at 60-80% volume (softer than explicit sound effects).
+- Texture sounds change with location (forest gets bird calls, market gets cart wheels, ruins get dripping water).
+- The scheduler pauses during combat (combat has its own audio layer) and resumes after.
+
+*Sound Effect Player*
+- Handles `sound_effect` data channel events: `{ type: "sound_effect", effect_name, intensity? }`
+- Looks up `effect_name` in `sound-registry.ts` to find the local file path
+- Plays immediately through the Effects channel. Multiple effects can overlap (e.g., sword clash + enemy grunt).
+- Optional `intensity` parameter (0.0–1.0) scales the playback volume relative to the Effects channel level. Default: 1.0.
+- File format: MP3 or AAC, 44.1kHz, mono or stereo, short duration (<5 seconds).
+
+*Audio Asset Bundle*
+- Bundled with the app (or downloaded on first launch to reduce app binary size):
+  - **Environmental soundscapes** (minimum 7 for MVP locations):
+    - `market_bustle.mp3` — Market Square day: crowd chatter, cart wheels, harbor bells, gulls
+    - `harbor_quiet.mp3` — Market Square night: distant waves, wind, lantern creak
+    - `rural_town_uneasy.mp3` — Millhaven: wind through barley, mill wheel, distant dogs, underlying tension
+    - `forest_road.mp3` — Greyvale wilderness: birdsong, stream, wind in trees, footsteps on dirt
+    - `dungeon_ancient_hum.mp3` — Greyvale Ruins: dripping water, stone echoes, subliminal hum, metallic taste in the air
+    - `hollow_wrongness.mp3` — Hollow Breach: absence of natural sound, alien frequencies, pressure, sensory inversion
+    - `tavern_warm.mp3` — Hearthstone Tavern: fireplace, clinking mugs, low music, laughter, warmth
+  - **Texture sounds** (minimum 10): bird calls (2-3 variants), cart wheel, water drip, footstep on stone, wind gust, dog bark (distant), insect buzz, branch crack, fire crackle
+  - **Core sound effects** (from existing `sound-registry.ts` + gaps): sword clash (CMB-001), spell cast, arrow loose, hit taken, critical hit sting, shield block, potion use, door open/creak, ambient discovery chime
+  - **UI sounds**: already handled in Milestone 5.2's `sfx-player` — dice rolls, stingers, and menu sounds. This milestone ensures the Effects and UI channels are properly separated in the mixer.
+- Total estimated asset size: 15-25 MB for MVP (soundscapes ~2-3 MB each, effects <500KB each)
+
+*Audio Settings UI (in Settings screen from 5.1)*
+- 5 labeled sliders: Voice, Music, Ambience, Effects, UI
+- Each slider: `charcoal` track, `hollow` fill, `parchment` thumb. Label in IBM Plex Mono 400, 10px, `ash`, uppercase.
+- "Music" slider exists but has no effect until Milestone 8.1 (adaptive music). Shows as present but `slate` colored with "(Coming Soon)" label.
+- Master volume: system-level, not in-app. Noted in settings with text: "Use device volume for master level."
+- Preview: tapping a slider label plays a 1-second sample of that channel type so the player can hear the effect of their adjustment.
+- Values persist to MMKV. Loaded into the mixer on app start.
+
+**Acceptance criteria:**
+- [ ] iOS audio session configured for `.playAndRecord` + `.mixWithOthers` — LiveKit voice and local playback coexist without cutting each other off
+- [ ] Android AudioManager allows concurrent WebRTC + local audio streams
+- [ ] Entering the world plays the ambient soundscape for the player's current location within 1 second of voice connection
+- [ ] Moving to a new location crossfades to the new soundscape over 2-3 seconds (no hard cut, no silence gap)
+- [ ] When the DM speaks, ambient audio audibly ducks to ~40% and returns smoothly when speech ends (50ms attack, 200ms release)
+- [ ] Ducking does not affect Effects or UI audio channels
+- [x] `play_sound` data messages trigger the correct sound effect on the client with < 100ms latency
+- [ ] Multiple sound effects can play simultaneously without cutting each other off
+- [ ] Randomized texture sounds (bird calls, drips, etc.) play at varied intervals without noticeable pattern
+- [ ] Texture sounds pause during combat and resume after
+- [x] Volume sliders work and persist between sessions
+- [ ] Each volume slider independently controls its channel (moving Ambience doesn't affect Effects)
+- [ ] Tapping a slider label plays a preview sample of that channel
+- [ ] All 7 environmental soundscapes are present, loop seamlessly, and sound distinct
+- [ ] Hollow Breach soundscape feels fundamentally different from natural environments — wrong, alien, unsettling
+- [ ] The audio mix is clear at all times — DM voice is always understandable over ambience and effects
+- [ ] Session end fades out soundscape over 1 second (no hard cut)
+- [ ] Audio engine memory footprint stays reasonable — only the active soundscape + crossfade target loaded simultaneously, not all 7
+- [ ] Audio integration tests verify: channel independence, ducking trigger/release, crossfade timing, volume persistence
+
+**Key references:**
+- *Technical Architecture — Client Architecture — Audio Mixing Architecture* (four channels, ducking rules, iOS/Android audio session config, ambient sound library, sound effect library)
+- *Audio Design — The Audio Stack* (7-layer hierarchy, mixing rules, ducking specs)
+- *Audio Design — Environmental Soundscapes* (layered structure: foundation + detail + motion + seasonal, corruption audio behavior)
+- *Audio Design — Sound of the Hollow* (Hollow breaks audio rules: reversed sounds, impossible frequencies, absence as presence)
+- *Audio Design — AI Generation Prompts* (prompts for generating each soundscape and effect category)
+- *Audio Design — MVP Asset Inventory* (ENV-001 through ENV-008, CMB-001 through CMB-022, UI-001 through UI-010)
 
 ---
 
@@ -460,7 +790,7 @@ The following design documents are available for detailed implementation guidanc
 
 **Goal:** Players can move through the world by speaking, with the DM narrating transitions and scene-setting.
 
-**Inputs:** Milestone 3.3 (move_player tool works), Milestone 5.3 (audio engine and soundscapes).
+**Inputs:** Milestone 3.3 (move_player tool works), Milestone 5.4 (audio engine and soundscapes).
 
 **Deliverables:**
 - Voice-driven navigation: player says "I go to the market" or "let's head to Millhaven" → DM interprets intent → calls `move_player` → narrates the transition → client receives location_changed → soundscape crossfades → HUD updates
@@ -625,7 +955,7 @@ The following design documents are available for detailed implementation guidanc
 
 **Goal:** Music responds to game state — exploration, tension, combat, wonder, the Hollow — fading in and out appropriately.
 
-**Inputs:** Milestone 5.3 (audio engine), audio assets generated (music stems).
+**Inputs:** Milestone 5.4 (audio engine), audio assets generated (music stems).
 
 **Deliverables:**
 - Music state machine: silence → exploration → tension → combat → wonder → sorrow → hollow (transitions triggered by game state events)
@@ -716,7 +1046,7 @@ The following design documents are available for detailed implementation guidanc
 
 **Goal:** The patron deity reaches out to the player through atmospheric voiced messages.
 
-**Inputs:** Milestone 7.1 (async narration pipeline), Milestone 5.3 (audio engine).
+**Inputs:** Milestone 7.1 (async narration pipeline), Milestone 5.4 (audio engine).
 
 **Deliverables:**
 - Divine favor tracking: accumulates based on player actions aligned with patron deity's domain
@@ -907,11 +1237,11 @@ The LLM sees the speaker pattern and the transcript content together. If the las
 | **2: Voice Pipeline** | 2.1, 2.2, 2.3, 2.4 | LiveKit, STT/TTS, DM conversation, ventriloquism |
 | **3: Game Mechanics** | 3.1, 3.2, 3.3, 3.4 | World queries, dice/mechanics, state mutation, background process |
 | **4: Combat** | 4.1 | Phase-based voice combat |
-| **5: Client App** | 5.1, 5.2, 5.3 | Home screen, HUD, audio engine |
+| **5: Client App** | 5.1, 5.2, 5.3, 5.4 | Home screen, reactive HUD, pull-up panels, audio engine |
 | **6: World Experience** | 6.1, 6.2, 6.3 | Navigation, companion, Greyvale arc content |
 | **7: Async** | 7.1, 7.2 | Activity engine, Catch-Up layer |
 | **8: Polish** | 8.1, 8.2, 8.3, 8.4 | Music, character creation, session lifecycle, god whispers |
 | **9: Validation** | 9.1 | Internal playtest — solo Wave 1 with quality rubrics |
 | **10: Multiplayer** | 10.1, 10.2 | Wave 2 prep — multi-player rooms, conversation awareness |
 
-**Total: 10 phases, 20 milestones.** Phases 1–9 (18 milestones) deliver the complete solo MVP through Wave 1 playtesting. Phase 10 extends to multiplayer only after solo validation succeeds. Dependencies flow strictly downward — no milestone requires work from a later phase.
+**Total: 10 phases, 21 milestones.** Phases 1–9 (19 milestones) deliver the complete solo MVP through Wave 1 playtesting. Phase 10 extends to multiplayer only after solo validation succeeds. Dependencies flow strictly downward — no milestone requires work from a later phase.

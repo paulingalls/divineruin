@@ -173,7 +173,7 @@ Phased build plan. Check acceptance criteria boxes when work lands.
 | Milestone 2: Voice Pipeline | 120-250 | LiveKit + STT + Claude + TTS, latency validation |
 | Milestone 3: DM Agent Core | 250-400 | DungeonMasterAgent, tools (4 categories), background process, hot layer |
 | Milestone 4: Rules Engine | 400-480 | Skill checks, attacks, saving throws, combat state machine, status effects |
-| Milestone 5: Client App | 480-620 | Session screen, HUD, data channel, audio mixing, pull-ups |
+| Milestone 5: Client App | 480-840 | 5.1 Home/session lifecycle, 5.2 reactive HUD (persistent bar + overlays), 5.3 pull-up panels, 5.4 audio engine |
 | Milestone 6: Game Content | 620-720 | Greyvale content, Kael companion, guidance, narrative tuning |
 | Milestone 7: Multiplayer | 720-780 | 2-player rooms, input handling, declarations, party flow |
 | Milestone 8: Async System | 780-840 | REST API, timers, catch-up screen, notifications |
