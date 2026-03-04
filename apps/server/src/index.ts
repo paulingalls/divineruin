@@ -11,8 +11,8 @@ const server = serve({
       },
     },
     "/api/character/:playerId": {
-      async GET(req, params) {
-        return handleGetCharacter(req, params.playerId);
+      async GET(req) {
+        return handleGetCharacter(req, req.params.playerId);
       },
     },
   },

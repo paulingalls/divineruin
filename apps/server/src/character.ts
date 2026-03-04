@@ -6,9 +6,9 @@ interface CharacterRow {
     name?: string;
     level?: number;
     xp?: number;
+    location_id?: string;
     hp?: { current?: number; max?: number };
   };
-  location_id: string;
   location_name: string | null;
 }
 
@@ -18,10 +18,9 @@ export async function handleGetCharacter(_req: Request, playerId: string): Promi
       SELECT
         p.player_id,
         p.data,
-        p.location_id,
         l.data->>'name' AS location_name
       FROM players p
-      LEFT JOIN locations l ON l.location_id = p.location_id
+      LEFT JOIN locations l ON l.id = p.data->>'location_id'
       WHERE p.player_id = ${playerId}
       LIMIT 1
     `;
@@ -33,14 +32,15 @@ export async function handleGetCharacter(_req: Request, playerId: string): Promi
     const row = rows[0] as CharacterRow;
     const data = typeof row.data === "string" ? JSON.parse(row.data) : row.data;
     const hp = data.hp ?? {};
+    const locationId = data.location_id ?? "unknown";
 
     return Response.json({
       player_id: row.player_id,
       name: data.name ?? "Unknown",
       level: data.level ?? 1,
       xp: data.xp ?? 0,
-      location_id: row.location_id,
-      location_name: row.location_name ?? row.location_id,
+      location_id: locationId,
+      location_name: row.location_name ?? locationId,
       hp_current: hp.current ?? 0,
       hp_max: hp.max ?? 0,
     });

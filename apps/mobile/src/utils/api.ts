@@ -19,4 +19,4 @@ export function getApiBase(): string {
 export const API_BASE = getApiBase();
 
 /** Hardcoded until auth/player selection is implemented. */
-export const PLAYER_ID = "player-1";
+export const PLAYER_ID = "player_1";
