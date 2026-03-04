@@ -1,8 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { LiveKitRoom, useConnectionState, useVoiceAssistant } from "@livekit/react-native";
+import {
+  LiveKitRoom,
+  useConnectionState,
+  useLocalParticipant,
+  useVoiceAssistant,
+} from "@livekit/react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { TranscriptView } from "@/components/transcript-view";
@@ -30,10 +35,15 @@ const STATUS_LABELS: Record<string, string> = {
 function SessionContent({ onLeave }: { onLeave: () => void }) {
   const connectionState = useConnectionState();
   const voiceAssistant = useVoiceAssistant();
+  const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
   const agentState = voiceAssistant.state;
   const wasActive = useRef(false);
 
   useGameEvents();
+
+  const toggleMute = useCallback(() => {
+    localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
+  }, [localParticipant, isMicrophoneEnabled]);
 
   useEffect(() => {
     return () => releaseAllPlayers();
@@ -80,9 +90,20 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
 
       <TranscriptView />
 
-      <Pressable style={styles.leaveButton} onPress={onLeave}>
-        <ThemedText style={styles.leaveText}>Leave Session</ThemedText>
-      </Pressable>
+      <View style={styles.buttonRow}>
+        <Pressable
+          style={[styles.muteButton, !isMicrophoneEnabled && styles.muteButtonActive]}
+          onPress={toggleMute}
+        >
+          <ThemedText style={[styles.muteText, !isMicrophoneEnabled && styles.muteTextActive]}>
+            {isMicrophoneEnabled ? "Mute" : "Muted"}
+          </ThemedText>
+        </Pressable>
+
+        <Pressable style={styles.leaveButton} onPress={onLeave}>
+          <ThemedText style={styles.leaveText}>Leave</ThemedText>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -176,8 +197,36 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: BrandColors.parchment,
   },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: Spacing.three,
+  },
+  muteButton: {
+    minWidth: 120,
+    alignItems: "center",
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+    borderRadius: Radius.md,
+    borderWidth: 2,
+    borderColor: BrandColors.ash,
+    backgroundColor: "transparent",
+  },
+  muteButtonActive: {
+    borderColor: BrandColors.ember,
+    backgroundColor: BrandColors.emberFaint,
+  },
+  muteText: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: BrandColors.bone,
+  },
+  muteTextActive: {
+    color: BrandColors.ember,
+  },
   leaveButton: {
-    alignSelf: "center",
+    minWidth: 120,
+    alignItems: "center",
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
     backgroundColor: BrandColors.hollow,
