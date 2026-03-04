@@ -13,7 +13,7 @@ bunx eslint .
 
 # Prettier
 echo "  Prettier..."
-bunx prettier --check 'apps/**/*.{ts,tsx}' 'packages/**/*.ts' '!**/*-env.d.ts'
+bunx prettier --check 'apps/**/*.{ts,tsx}' 'packages/**/*.ts'
 
 # Python linting
 echo "  Python ruff check..."
