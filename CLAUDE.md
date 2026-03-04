@@ -4,24 +4,69 @@
 
 Audio-first AI tabletop RPG. Players speak to an AI Dungeon Master via voice — no text chat, no visual map. The screen is a glanceable HUD (smartwatch-level). Full RPG: character creation, combat, companions, gods, crafting, multiplayer. DM narrates, voices NPCs, enforces rules, runs a persistent world.
 
-## Design Docs (docs/)
+## Knowledge System
 
-**Read the relevant sections before writing code. These are specifications, not guidelines.**
+**Three tiers of progressive disclosure. Start with memory digests, drill into docs only when needed.**
+
+### Tier 1 — Memory Digests (read these first)
+
+Pre-extracted specs in `memory/` — compact, implementation-ready. Read the relevant digest before touching docs.
+
+| Digest | Covers |
+|---|---|
+| `memory/game-mechanics.md` | d20 resolution, skills, combat phases, classes, status effects, death, economy, PvP |
+| `memory/dm-agent-spec.md` | Three layers, tools, prompt architecture, ventriloquism, behavioral modes, affect system, content rules |
+| `memory/world-simulation.md` | World clock, 4 sim layers, corruption formula, disposition decay, data layer (tables + Redis) |
+| `memory/entity-schemas.md` | Location, NPC, item, quest, event, faction JSON schemas. Content tiers. |
+| `memory/audio-pipeline.md` | Voice pipeline, 4 audio channels, ducking, ventriloquism, Hollow audio, music stems, asset IDs |
+| `memory/client-ui-spec.md` | Expo screens, HUD 3 layers, performance targets, brand tokens (colors, typography, spacing), art style |
+| `memory/mvp-scope.md` | Six questions, scope boundaries, Greyvale arc, success criteria, milestone order |
+| `memory/cost-constraints.md` | Session costs, cost distribution, margins, token estimates, optimization paths |
+| `memory/lore-quick-ref.md` | Core mystery, 10 gods, races, cultures, Hollow taxonomy, geography |
+
+### Tier 2 — Doc Section Index
+
+`docs/INDEX.md` has line-range indexes for every doc. Use it to jump to specific sections: `Read file_path offset=X limit=Y`
+
+### Tier 3 — Full Docs (docs/)
+
+**Read specific sections via INDEX.md, not whole files. These are specifications, not guidelines.**
 
 | Document | File | Covers |
 |---|---|---|
 | Product Overview | `product_overview.md` | Vision, what and why. Read first. |
-| Game Design | `game_design_doc.md` | All player-facing systems: combat, navigation, companions, classes, async, sessions, character creation. 21K words. |
-| Tech Architecture | `technical_architecture.md` | Implementation blueprint: DM agent (3-layer), voice pipeline, tools, session lifecycle, multiplayer, testing, latency. |
-| Audio Design | `audio_design.md` | Soundscapes, SFX, music, voice design, Hollow audio, UI sounds. AI generation prompts for all assets. |
-| World Data | `world_data_simulation.md` | DB schemas, JSON entity formats, world sim rules, content style guide. |
-| MVP Spec | `mvp_spec.md` | Scope, session-by-session arc, success criteria. Appendix has buildable JSON entities. |
-| Lore Bible | `aethos_lore.md` | World history, gods, races, cultures, the Hollow, creature taxonomy. |
-| Cost Model | `cost_model.md` | Per-session cost breakdowns, subscriber economics. |
-| Dev Milestones | `dev_milestones.md` | Phased build plan with acceptance criteria. Feed to planning mode. |
-| Player Resonance | `player_resonance_system.md` | Affect analysis from voice: speech rate, energy, engagement detection. stt_node override pattern for tapping audio + transcript data. DM behavioral adaptation. |
-| Brand & Art Spec | `brand_spec.md` | **Read before any UI work.** Design tokens (colors, typography, spacing), UI patterns (HUD, notifications, treatments), art direction (dissolving ink style), logo, brand principles. |
-| Image Prompts | `image_prompt_library.md` | Nano Banana 2 prompts for all art asset categories. Style foundation, accent color rules, per-category templates, consistency tips. |
+| Game Design | `game_design_doc.md` | All player-facing systems (1499 lines — always use INDEX.md to target sections) |
+| Tech Architecture | `technical_architecture.md` | Implementation blueprint (1499+ lines — always use INDEX.md) |
+| Audio Design | `audio_design.md` | Soundscapes, SFX, music, voice design, Hollow audio, AI gen prompts |
+| World Data | `world_data_simulation.md` | DB schemas, JSON entities, world sim rules, content style guide |
+| MVP Spec | `mvp_spec.md` | Scope, story arc, success criteria. Appendix has buildable JSON entities |
+| Lore Bible | `aethos_lore.md` | World history, gods, races, cultures, the Hollow, creature taxonomy |
+| Cost Model | `cost_model.md` | Per-session costs, subscriber economics |
+| Dev Milestones | `dev_milestones.md` | Phased build plan with acceptance criteria |
+| Player Resonance | `player_resonance_system.md` | Voice affect analysis, stt_node override, DM adaptation |
+| Brand & Art Spec | `brand_spec.md` | **Read before UI work.** Design tokens, UI patterns, art direction |
+| Image Prompts | `image_prompt_library.md` | Art generation prompts, style foundation, aspect ratios |
+
+### Doc Navigator — What to Read for Each Task
+
+| Working On | Read First (Digest) | Deep Dive (Doc Section via INDEX.md) |
+|---|---|---|
+| DM agent / tools | `dm-agent-spec.md` | `technical_architecture.md:452-754` (agent), `:774-958` (orchestration) |
+| Rules engine | `game-mechanics.md` | `game_design_doc.md:241-321` (mechanics), `:435-484` (combat) |
+| Combat system | `game-mechanics.md` | `game_design_doc.md:435-484`, `technical_architecture.md:1038-1068` |
+| Client UI / HUD | `client-ui-spec.md` | `brand_spec.md` (full), `technical_architecture.md:144-319` |
+| Voice pipeline | `audio-pipeline.md` | `technical_architecture.md:323-448`, `audio_design.md:380-500` |
+| Audio / SFX | `audio-pipeline.md` | `audio_design.md` (full), `divine_ruin_missing_prompts.md` |
+| World simulation | `world-simulation.md` | `world_data_simulation.md:620-806` |
+| Entity schemas / DB | `entity-schemas.md` | `world_data_simulation.md:23-457` (schemas), `:810-904` (data model) |
+| Content authoring | `entity-schemas.md` | `world_data_simulation.md:460-617` (style guide) |
+| Game content / NPCs | `lore-quick-ref.md` | `mvp_spec.md:60-450` (Greyvale), `aethos_lore.md` (as needed) |
+| Character creation | `game-mechanics.md` | `game_design_doc.md:18-73` |
+| Async / economy | `game-mechanics.md` | `game_design_doc.md:700-1081` |
+| Multiplayer | `dm-agent-spec.md` | `technical_architecture.md:1122-1289` |
+| Cost / pricing | `cost-constraints.md` | `cost_model.md` (full, only 277 lines) |
+| MVP scope / milestones | `mvp-scope.md` | `dev_milestones.md` (check current phase) |
+| Art / images | `client-ui-spec.md` | `image_prompt_library.md`, `brand_spec.md:189-221` |
 
 ## Architecture
 

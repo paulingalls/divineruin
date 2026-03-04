@@ -1,0 +1,274 @@
+# Documentation Index
+
+Quick-reference index for all design docs. Use line ranges for targeted reads.
+
+---
+
+## product_overview.md (255 lines)
+
+Vision, pitch, and high-level systems overview. Read first for context.
+
+| Section | Lines | What's There |
+|---|---|---|
+| What This Is | 3-13 | Voice-first MMORPG pitch, Aethos setting |
+| What Makes This an MMO | 15-27 | Shared persistent world, player economy, faction politics |
+| Why Voice-First | 35-47 | Gameplay advantages of voice, target audience |
+| What It Feels Like | 51-63 | Walkthrough of a typical session |
+| The World | 67-91 | Aethos overview, Pantheon as game systems (10 gods) |
+| How It Works | 96-144 | Three-layer DM architecture, voice pipeline, tech stack |
+| Game Systems | 148-172 | 16 archetypes x 10 gods, combat, multiplayer scales |
+| Monetization | 176-190 | Subscription model, unit economics, red lines |
+| Where We Are | 194-217 | Current state, MVP to MMO path (7 steps) |
+| The Hard Problems | 220-237 | Six key technical challenges |
+
+---
+
+## game_design_doc.md (1499 lines)
+
+All player-facing systems. The largest doc — always read specific sections, not the whole thing.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Character Creation | 18-73 | Voice-conversation flow: Awakening → Origins → Calling → Devotion → Identity (10-15 min) |
+| Class System | 76-193 | 16 archetypes across 6 categories x 10 gods = 160 combos |
+| Progression System | 197-238 | Archetype Mastery (XP), Divine Favor (alignment), World Reputation |
+| Game Mechanics | 241-321 | d20+mod vs DC, 15 skills in 3 groups, status effects, difficulty tiers |
+| Session Structure | 325-416 | 30-90 min sessions, 5 phases, fluid entry, DM behavioral modes |
+| Silent/Voiced Layers | 417-432 | Catch-Up (tap-based) vs Enter the World (voice) |
+| Combat Design | 435-484 | Phase-based rounds, declarations, interrupts, sound as tactics, boss fights |
+| Navigation | 488-542 | Intent-based movement, macro/micro, audio compass |
+| NPC Design | 543-700 | Companion system (5 functions), 4 NPC tiers, relationships |
+| Asynchronous Play | 700-1035 | Crafting, training, scouting, factions, god whispers, companion errands |
+| The Economy | 1038-1081 | Silver-based currency (cp/sp/gc), earning channels |
+| Death and Resurrection | 1084-1123 | Fallen → death saves → Mortaen's domain → return with escalating cost |
+| PvP Design | 1126-1183 | Opt-in, structured, story-driven. Arena, territory, heists |
+| Seasonal Arc Structure | 1187-1211 | Multi-season narrative with Veythar reveal |
+| Content Moderation | 1214-1263 | 5 layers: DM, AI guardrails, voice analysis, reputation, party controls |
+| Monetization | 1266-1348 | Subscription, battle pass, voice cosmetics, property system |
+| Opening Experience | 1351-1483 | First 30 min flow: prologue → creation → normalcy → disruption → call to action |
+| Open Design Questions | 1486-1499 | All marked resolved |
+
+---
+
+## technical_architecture.md (1499+ lines)
+
+Implementation blueprint. The second largest doc.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Architecture Overview | 11-22 | Eight major layers |
+| Language Architecture | 26-140 | Python (agent) + Bun/TS (everything else), monorepo structure |
+| Client Architecture | 144-319 | Expo screens, HUD layers, data flow, audio mixing, performance targets |
+| Voice Pipeline | 323-448 | STT (Deepgram), VAD (Silero + semantic), TTS (Inworld), LLM (Claude) |
+| DM Agent Architecture | 452-754 | Layer 1: Voice Agent, Layer 2: Background Process, Layer 3: Toolset. Prompt architecture (static/warm/hot) |
+| Orchestration Design | 774-958 | tts_node voice router, tag format, multi-player input arbitration, error recovery, session lifecycle |
+| Transport (LiveKit) | 960-1035 | SFU model, room capacity, multiple agents per room |
+| Game Engine Layer | 1038-1068 | Rules engine (pure functions), world state manager |
+| Agent Layer | 1072-1118 | NPC tiers, background world simulation |
+| Multiplayer Architecture | 1122-1289 | Ventriloquism, multi-player input, room structure, DM merge/fork |
+| Infrastructure | 1293-1391 | MVP infrastructure, cloud platform, cost |
+| Development Priorities | 1394-1413 | 18 ordered priorities |
+| Testing Strategy | 1417-1499 | Five tiers: Infrastructure, Rules Engine, DM Behavior, Experience, Content |
+
+---
+
+## audio_design.md (~800 lines)
+
+Soundscapes, SFX, music, voice design.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Audio Philosophy | 18-50 | "Sound Is Sight", four channels, ducking rules |
+| Environmental Soundscapes | 50-200 | Layered ambient (foundation + detail + motion + seasonal), corruption audio |
+| Sound of the Hollow | 200-280 | Hollow breaks rules: reversed sounds, impossible frequencies |
+| Combat Audio | 280-380 | Spatial positioning, intensity layers, boss fights, critical hits |
+| Voice Design | 380-500 | DM narrator, companion voices (Kael, Sable), god voices, NPC pools |
+| Music System | 500-600 | Adaptive stems (8 types), crossfade rules, layering |
+| UI Sounds | 600-680 | Physical-feeling (wood, leather, parchment), dice rolls |
+| AI Generation Prompts | 680-750 | Prompts for generating every audio asset category |
+| MVP Asset Inventory | 750-end | Complete asset list with IDs and generation prompts |
+
+---
+
+## world_data_simulation.md (948 lines)
+
+DB schemas, JSON entity formats, world sim rules, content style guide.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Content Authoring Format | 10-21 | JSON schemas, Tier 1 (authored) vs Tier 2 (generated) |
+| Location Schema | 23-102 | Full JSON: conditions, hidden elements, exits, ambient sounds |
+| NPC Schema | 104-189 | Personality, speech style, knowledge gating, schedules, voice mapping |
+| Item Schema | 191-239 | Mechanical effects, economic properties |
+| Quest Schema | 241-349 | State machine: stages, branches, completion conditions, world effects |
+| Event/Trigger Schema | 350-399 | Trigger conditions, probability, cooldown, priority |
+| Faction Schema | 400-457 | Reputation tiers with gameplay effects, relationships |
+| Content Style Guide | 460-617 | Write for the ear, description limits, NPC content, Hollow wrongness |
+| World Simulation Rules | 620-806 | World clock (1:1), 4 simulation layers (per-minute through event-driven) |
+| Data Model | 810-904 | PostgreSQL + Redis: 10 content tables, 12 state tables, 7 Redis patterns |
+| MVP Content Scope | 908-934 | ~20 locations, ~25 NPCs, ~40 items, ~5 quests, ~18 events |
+
+---
+
+## mvp_spec.md (~800 lines)
+
+Scope, session arc, success criteria, buildable entities.
+
+| Section | Lines | What's There |
+|---|---|---|
+| What the MVP Must Prove | 10-23 | Six core questions |
+| MVP Scope Summary | 25-60 | One culture, one city, one wilderness, one story arc |
+| The Greyvale Story Arc | 60-300 | Session-by-session (5 sessions): arrival → investigation → journey → ruins → revelation |
+| MVP Entities | 300-450 | Lists of locations, NPCs, items, quests, events |
+| Success Criteria | 450-550 | Quantitative (latency, accuracy, completion rate) and qualitative |
+| Playtest Structure | 550-650 | Internal → Alpha → Beta rounds |
+| What We're NOT Building | 650-700 | Explicit scope cuts |
+| Appendix: Buildable Entities | 700-end | Full JSON for every MVP entity |
+
+---
+
+## aethos_lore.md (~1000 lines)
+
+World history, gods, races, cultures, the Hollow, creature taxonomy.
+
+| Section | Lines | What's There |
+|---|---|---|
+| The Core Mystery | 19-22 | A god broke the world trying to save it |
+| Cosmology | 24-80 | The Veil, the Wellspring, the Sundering, the Hollow |
+| Veythar's Secret | 80-200 | The guilty god: Resonance Lattice, Attenuation Spheres, Invocation |
+| The Ten Gods | 200-500 | Full profiles: domains, personalities, game governance |
+| Veythar's Artifacts | 500-560 | Three artifacts and their locations |
+| Races of Aethos | 560-650 | 6 races: Draethar, Elari, Korath, Vaelti, Thessyn, Human |
+| Cultures & Regions | 650-800 | 8 cultures with regions and customs |
+| The Hollow | 800-900 | Creature taxonomy: Drift, Rend, Breach, Apex tiers |
+| Geography | 900-end | Voidmaw, Ashmark, major regions, Greyvale |
+
+---
+
+## cost_model.md (277 lines)
+
+Per-session cost breakdowns, subscriber economics.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Pricing Inputs | 10-35 | Current prices (Feb 2026): Deepgram, Inworld, Claude, LiveKit |
+| Session Model | 38-68 | Solo vs party: speaking time, exchanges, output chars |
+| Per-Session Cost | 71-108 | Solo $0.40, Party per-player $0.14 |
+| Monthly Economics | 111-138 | Heavy/moderate/light x solo/party margins |
+| Cost Distribution | 144-161 | TTS 53%, STT 16%, LLM 16%, Transport 15% |
+| Optimization Paths | 164-195 | TTS Mini, caching, model tiering, self-host |
+| Scale Projections | 199-224 | 10K subs: 84% margin. 100K: 89% |
+| TTS Evaluation | 265-273 | Provider comparison: Inworld, Cartesia, Chatterbox, Dia2 |
+
+---
+
+## dev_milestones.md (~900 lines)
+
+Phased build plan. Check acceptance criteria boxes when work lands.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Design Doc Reference Guide | 16-40 | Table of all docs with usage guidance |
+| Milestone 1: Infrastructure | 42-120 | Monorepo, Docker, PostgreSQL/Redis, Bun API, Expo shell, LiveKit test room |
+| Milestone 2: Voice Pipeline | 120-250 | LiveKit + STT + Claude + TTS, latency validation |
+| Milestone 3: DM Agent Core | 250-400 | DungeonMasterAgent, tools (4 categories), background process, hot layer |
+| Milestone 4: Rules Engine | 400-480 | Skill checks, attacks, saving throws, combat state machine, status effects |
+| Milestone 5: Client App | 480-620 | Session screen, HUD, data channel, audio mixing, pull-ups |
+| Milestone 6: Game Content | 620-720 | Greyvale content, Kael companion, guidance, narrative tuning |
+| Milestone 7: Multiplayer | 720-780 | 2-player rooms, input handling, declarations, party flow |
+| Milestone 8: Async System | 780-840 | REST API, timers, catch-up screen, notifications |
+| Milestone 9: Playtest & Polish | 840-end | Playtests, bugs, performance, external prep |
+
+---
+
+## brand_spec.md (250 lines)
+
+Design tokens, UI patterns, art direction. Read before any UI work.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Colors | 9-34 | Foundation, text, accent tokens (12 colors with hex) |
+| Typography | 39-57 | Cormorant Garamond, Crimson Pro, IBM Plex Mono |
+| Type Scale | 66-75 | 7 sizes: display (48px) to caption (10px) |
+| Spacing & Radius | 78-90 | Radius 6-27px, Space 4-48px |
+| Shadows & Glows | 94-105 | Hollow glow, text glow, elevation shadows |
+| Grain Overlay | 109-120 | SVG fractalNoise at 3% opacity |
+| UI Patterns | 124-186 | Surface hierarchy, text roles, HUD, special treatments |
+| Art Direction | 189-221 | Dissolving ink style, near-monochrome + 3 accent washes |
+| Logo | 224-238 | Cormorant Garamond 300, all-caps, parchment |
+| Brand Principles | 242-250 | 6 principles |
+
+---
+
+## player_resonance_system.md (570 lines)
+
+Voice affect analysis for DM adaptation.
+
+| Section | Lines | What's There |
+|---|---|---|
+| The Problem | 14-18 | Claude is deaf to how the player speaks |
+| The Solution | 19-28 | Affect Analyzer: transcript metadata + raw audio + behavior |
+| Signal Sources | 30-84 | Deepgram timestamps/confidence, AudioFrame RMS, transcript patterns |
+| The Affect Vector | 88-157 | JSON schema: engagement, energy, interaction_style, latency |
+| Architecture | 160-287 | Parallel branch via asyncio.Queue, stt_node override, never adds latency |
+| DM Behavioral Shifts | 291-342 | Affect→DM response mapping, Hollow intensity modulation |
+| Implementation Plan | 346-480 | 4 phases: transcript-only → audio → behavioral → tuning |
+| Cost Impact | 482-493 | ~$0.006 per session |
+| Resolved Questions | 507-570 | Deepgram capabilities, calibration, privacy |
+
+---
+
+## story_vigil_of_greyhaven.md (365 lines)
+
+Narrative fiction piece. Demonstrates Hollow creature taxonomy in action and the world's tone.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Day 1-40 | 9-324 | Kael Thornridge's squad holds Greyhaven: shadelings → mawlings → hollowed knight → veilrender |
+| Epilogue | 326-365 | Bardic song memorializing the seven defenders |
+
+---
+
+## image_prompt_library.md (380 lines)
+
+Nano Banana 2 prompts for all art categories.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Style Foundation | 6-26 | Core keywords, always-include, avoid-list |
+| Accent Color Rules | 28-39 | Three colors: Teal, Ember, Gold with hex and prompt language |
+| Character Portraits | 43-108 | Companion, NPC, player character prompts |
+| Location Illustrations | 111-174 | Town, wilderness, corrupted, interior prompts |
+| Item & Object Art | 178-221 | Weapon, artifact, quest item prompts |
+| Story Moments | 224-272 | Combat, god contact, hollow encounter prompts |
+| UI & Marketing | 278-315 | App store, social media, loading screen prompts |
+| Consistency Tips | 319-350 | 6 tips, aspect ratio table |
+| Production Pipeline | 354-380 | Batch consistency, post-processing, priorities |
+
+---
+
+## map_generation_prompt.md (99 lines)
+
+Single prompt for generating the Aethos world map.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Prompt | 7-54 | Full map generation prompt: regions, corruption gradient, style |
+| Usage Instructions | 58-68 | How to use with AI generators |
+| Variations | 70-83 | Artistic, cartographic, darker, lighter |
+
+---
+
+## divine_ruin_missing_prompts.md (363 lines)
+
+Audio asset generation prompts not covered in audio_design.md.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Combat SFX (CMB-002–022) | 8-134 | Sword, blunt, arrows, spells, hits, crits, status effects, enemy signatures |
+| Dice Sounds | 137-151 | Standard roll, skill check |
+| Music Stems | 153-180 | Tension, combat boss, sorrow, title themes |
+| Stingers (STG-001–009) | 183-249 | Quest, level up, faction, god whisper variants, death, session |
+| UI Sounds (UI-002–010) | 253-301 | Cancel, error, async complete, menu, scroll, confirm |
+| Sable's Sounds | 304-322 | 5 emotional states as animal sounds |
+| Environment (ENV-004–008) | 326-352 | Millhaven variants, wilderness night |
