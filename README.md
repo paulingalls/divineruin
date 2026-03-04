@@ -261,17 +261,52 @@ What makes this worth building:
 
 ## Local Development Setup
 
+> **Using Claude Code?** This setup guide is structured so Claude can handle the entire process. Add your API keys to `.env`, then run:
+>
+> ```
+> Follow the Local Development Setup in the README. Install any missing
+> prerequisites, start infrastructure, install deps, download models,
+> run migrations, seed content, start the server and agent, generate a
+> token, and dispatch the agent to a test room. Ask me for any API keys
+> you need.
+> ```
+
 ### Prerequisites
 
-- [Bun](https://bun.sh) (v1.0+)
-- [Python 3.11+](https://www.python.org/) with [uv](https://docs.astral.sh/uv/)
-- [Docker](https://www.docker.com/) & Docker Compose
-- API keys: LiveKit, Anthropic, Deepgram, Inworld
+Install the following tools if not already present:
+
+| Tool | Install | Verify |
+|------|---------|--------|
+| [Bun](https://bun.sh) v1.0+ | `curl -fsSL https://bun.sh/install \| bash` | `bun --version` |
+| [Python 3.11+](https://www.python.org/) | System package manager or [pyenv](https://github.com/pyenv/pyenv) | `python3 --version` |
+| [uv](https://docs.astral.sh/uv/) | `curl -LsSf https://astral.sh/uv/install.sh \| sh` | `uv --version` |
+| [Docker](https://www.docker.com/) & Docker Compose | [Docker Desktop](https://www.docker.com/products/docker-desktop/) | `docker --version` |
+| [LiveKit CLI](https://docs.livekit.io/home/cli/cli-setup/) | `brew install livekit-cli` | `lk --version` |
+
+### API keys
+
+Sign up and generate keys for the following services:
+
+| Service | Console | Key for `.env` | Notes |
+|---------|---------|----------------|-------|
+| [LiveKit Cloud](https://cloud.livekit.io) | Project → Settings → Keys | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Free tier available |
+| [Anthropic](https://console.anthropic.com) | API Keys | `ANTHROPIC_API_KEY` | Pay-per-use |
+| [Deepgram](https://console.deepgram.com) | API Keys | `DEEPGRAM_API_KEY` | $200 free credit on signup |
+| [Inworld](https://studio.inworld.ai) | Integrations → API Keys | `INWORLD_API_KEY`, `INWORLD_WORKSPACE_ID` | Use the **Basic (Base64)** value, not the JWT Key |
+
+The `INWORLD_VOICE_*` variables are optional — stock voices are used if unset.
 
 ### 1. Start infrastructure
 
+Ensure Docker Desktop is running, then:
+
 ```bash
-docker-compose up -d
+docker compose up -d
+```
+
+Wait for healthy status:
+```bash
+docker compose ps
 ```
 
 PostgreSQL on `localhost:5433`, Redis on `localhost:6379`.
@@ -280,12 +315,9 @@ PostgreSQL on `localhost:5433`, Redis on `localhost:6379`.
 
 ```bash
 cp .env.example .env
-# Fill in: LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET,
-#          ANTHROPIC_API_KEY, DEEPGRAM_API_KEY,
-#          INWORLD_API_KEY, INWORLD_WORKSPACE_ID
 ```
 
-All services read from this single root `.env` file.
+Fill in all API keys. `DATABASE_URL` and `REDIS_URL` are pre-configured for the docker-compose setup. All services read from this single root `.env` file.
 
 ### 3. Install dependencies
 
@@ -294,40 +326,73 @@ bun install                            # TS workspace (root)
 cd apps/agent && uv sync && cd ../..   # Python agent
 ```
 
-### 4. Run migrations and seed content
+### 4. Download model files
+
+The turn detector and VAD plugins require model files on first run:
+
+```bash
+cd apps/agent
+uv run --env-file ../../.env python agent.py download-files
+cd ../..
+```
+
+### 5. Run migrations and seed content
 
 ```bash
 bun run migrate   # Create database schema (19 tables)
-bun run seed      # Load locations, NPCs, quests, items, factions
+bun run seed      # Load locations, NPCs, quests, items, factions, lore
 ```
 
-### 5. Start services
+### 6. Start services
 
-**REST API server:**
+Open two terminal tabs:
+
+**Terminal 1 — REST API server:**
 ```bash
-bun run dev:server    # http://localhost:3000
+bun run dev:server    # http://localhost:3001
 ```
 
-**DM Agent (voice pipeline):**
+**Terminal 2 — DM Agent:**
 ```bash
-cd apps/agent
-uv run python agent.py dev --env-file ../../.env
+bun run dev:agent
 ```
 
-The `dev` subcommand creates a LiveKit room and waits for a participant to join.
+The agent registers with LiveKit Cloud and waits for a dispatch.
 
 **Mobile client (optional):**
 ```bash
 bun run dev:mobile    # Expo dev server
 ```
 
-### 6. Join a voice session
+### 7. Join a voice session
 
-Connect to the room the agent created using any of:
+**Generate a room token:**
 
-- **`lk` CLI:** `lk room join --room <room-name>`
-- **LiveKit Playground:** [playground.livekit.io](https://playground.livekit.io)
-- **Expo app:** scan the QR code from `dev:mobile`
+```bash
+source .env
+lk token create \
+  --api-key "$LIVEKIT_API_KEY" --api-secret "$LIVEKIT_API_SECRET" \
+  --join --room test-room --identity player_1 --valid-for 24h
+```
+
+**Connect via the Agents Playground:**
+
+1. Go to [agents-playground.livekit.io](https://agents-playground.livekit.io)
+2. Select **Manual** tab
+3. Enter your `LIVEKIT_URL` and the token from above
+4. Click **Connect**
+
+**Dispatch the agent into the room:**
+
+```bash
+source .env
+lk dispatch create \
+  --url "$LIVEKIT_URL" \
+  --api-key "$LIVEKIT_API_KEY" --api-secret "$LIVEKIT_API_SECRET" \
+  --room test-room --agent-name divineruin-dm
+```
+
+The DM agent joins, calls `enter_location` for the starting scene, and begins narrating. Speak into your microphone to interact.
 
 ### Running tests
 
