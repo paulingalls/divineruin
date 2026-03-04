@@ -161,6 +161,7 @@ Don't revisit: LiveKit (voice transport), Python (DM agent), Bun (TS runtime), E
 4. Tests for every change (bun test / pytest)
 5. DB changes need migrations
 6. New tools need docstrings (LLM reads them to decide when to call)
+7. **Update `docs/dev_milestones.md` checkboxes** — when work is committed, check off (`- [x]`) any acceptance criteria that are now satisfied. This keeps milestone progress visible across sessions.
 
 ## Environment Variables
 

@@ -42,6 +42,7 @@ from tools import (
     update_npc_disposition,
     update_quest,
 )
+from transcript import TranscriptLogger
 from voices import VOICES, get_voice_config
 
 logging.basicConfig(level=logging.INFO)
@@ -86,11 +87,19 @@ class DungeonMasterAgent(Agent):
         self._turn_timer = TurnTimer()
         self._background: BackgroundProcess | None = None
         self._affect_analyzer = PlayerAffectAnalyzer()
+        self._transcript: TranscriptLogger | None = None
+        self._bg_tasks: set[asyncio.Task[None]] = set()
+
+    def _fire_and_forget(self, coro: Any) -> None:
+        task = asyncio.create_task(coro)
+        self._bg_tasks.add(task)
+        task.add_done_callback(self._bg_tasks.discard)
 
     async def on_enter(self) -> None:
         logger.info("DM agent entered session")
         self._affect_analyzer.start()
         sd: SessionData = self.session.userdata
+        self._transcript = TranscriptLogger(sd.room, sd.event_bus)
         self._background = BackgroundProcess(
             agent=self,
             session=self.session,
@@ -103,6 +112,8 @@ class DungeonMasterAgent(Agent):
         await self._affect_analyzer.stop()
         if self._background:
             await self._background.stop()
+        if self._transcript:
+            self._transcript.close()
 
     async def stt_node(
         self,
@@ -114,6 +125,8 @@ class DungeonMasterAgent(Agent):
         async for event in Agent.default.stt_node(self, audio, model_settings):
             if isinstance(event, stt.SpeechEvent) and event.type == SpeechEventType.FINAL_TRANSCRIPT:
                 self._affect_analyzer.enqueue_event(event)
+                if self._transcript and event.alternatives:
+                    self._fire_and_forget(self._transcript.log_player(event.alternatives[0].text))
             yield event
 
     async def on_user_turn_completed(
@@ -196,6 +209,16 @@ class DungeonMasterAgent(Agent):
                         first_frame = False
                     yield ev.frame
 
+        # Transcript accumulation — collect full text per character before logging
+        transcript_text = ""
+
+        def flush_transcript() -> None:
+            nonlocal transcript_text
+            clean = transcript_text.strip()
+            if clean and self._transcript:
+                self._fire_and_forget(self._transcript.log_dm(buffered_character, buffered_emotion, clean))
+            transcript_text = ""
+
         async def flush_buffer() -> AsyncGenerator[rtc.AudioFrame, None]:
             nonlocal buffered_text
             clean = buffered_text.strip()
@@ -216,9 +239,11 @@ class DungeonMasterAgent(Agent):
             if segment.character != buffered_character or segment.emotion != buffered_emotion:
                 async for frame in flush_buffer():
                     yield frame
+                flush_transcript()
                 buffered_character = segment.character
                 buffered_emotion = segment.emotion
 
+            transcript_text += segment.text
             buffered_text += segment.text
 
             if re.search(r'[.!?][""\u201d]?\s*$', buffered_text):
@@ -228,6 +253,7 @@ class DungeonMasterAgent(Agent):
 
         async for frame in flush_buffer():
             yield frame
+        flush_transcript()
 
         self._turn_timer.finish()
         self._affect_analyzer.record_tts_end()

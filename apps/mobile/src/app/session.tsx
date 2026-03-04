@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { LiveKitRoom, useConnectionState, useVoiceAssistant } from "@livekit/react-native";
 
 import { ThemedText } from "@/components/themed-text";
+import { TranscriptView } from "@/components/transcript-view";
 import { AtmosphericBackground } from "@/components/atmospheric-background";
 import { useSessionToken } from "@/hooks/useSessionToken";
 import { useGameEvents } from "@/hooks/use-game-events";
@@ -12,6 +13,7 @@ import { configureAudioSession } from "@/audio/audio-config";
 import { releaseAllPlayers } from "@/audio/sfx-player";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
+import { transcriptStore } from "@/stores/transcript-store";
 import { BrandColors, Spacing, Radius, Shadows } from "@/constants/theme";
 import { PLAYER_ID } from "@/utils/api";
 
@@ -76,7 +78,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
         )}
       </View>
 
-      <View style={styles.spacer} />
+      <TranscriptView />
 
       <Pressable style={styles.leaveButton} onPress={onLeave}>
         <ThemedText style={styles.leaveText}>Leave Session</ThemedText>
@@ -99,6 +101,7 @@ export default function SessionScreen() {
     reset();
     sessionStore.getState().reset();
     characterStore.getState().clear();
+    transcriptStore.getState().clear();
     router.back();
   };
 
@@ -168,9 +171,6 @@ const styles = StyleSheet.create({
   },
   statusText: {
     color: BrandColors.bone,
-  },
-  spacer: {
-    flex: 1,
   },
   centered: {
     textAlign: "center",

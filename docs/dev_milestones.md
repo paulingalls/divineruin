@@ -49,12 +49,12 @@ The following design documents are available for detailed implementation guidanc
 - Environment configuration (.env structure for API keys: Anthropic, Deepgram, Inworld, LiveKit)
 
 **Acceptance criteria:**
-- [ ] `docker compose up` starts PostgreSQL, Redis, and a stub Python server
-- [ ] Database migrations run cleanly and create all tables
-- [ ] A test script can INSERT and SELECT a sample location entity as JSONB
-- [ ] Redis SET/GET works from the Python server
-- [ ] CI runs on push and reports lint + type check results
-- [ ] Expo dev client boots to a blank screen on iOS simulator or Android emulator
+- [x] `docker compose up` starts PostgreSQL, Redis, and a stub Python server
+- [x] Database migrations run cleanly and create all tables
+- [x] A test script can INSERT and SELECT a sample location entity as JSONB
+- [x] Redis SET/GET works from the Python server
+- [x] CI runs on push and reports lint + type check results
+- [x] Expo dev client boots to a blank screen on iOS simulator or Android emulator
 
 **Key references:**
 - *Technical Architecture — Architecture Overview* (7-layer diagram)
@@ -76,12 +76,12 @@ The following design documents are available for detailed implementation guidanc
 - Tier 2 location stubs (10-15 generated locations with tags but minimal authored content) for areas between the tier 1 locations
 
 **Acceptance criteria:**
-- [ ] `python scripts/seed_content.py` loads all entities without errors
-- [ ] `SELECT * FROM locations WHERE id = 'loc_market_square'` returns the full JSON entity with description, ambient_audio, exits, hidden_elements, and conditions
-- [ ] `SELECT * FROM npcs WHERE id = 'npc_torin'` returns personality, speech_style, knowledge tiers, and disposition data
-- [ ] `SELECT * FROM quests WHERE id = 'quest_greyvale_anomaly'` returns all 5 stages with objectives, hints, completion conditions, and rewards
-- [ ] Location exit references are valid (every exit's `destination` matches an existing location ID)
-- [ ] NPC knowledge gating has at least 2 disposition tiers with different information per tier
+- [x] `python scripts/seed_content.py` loads all entities without errors
+- [x] `SELECT * FROM locations WHERE id = 'loc_market_square'` returns the full JSON entity with description, ambient_audio, exits, hidden_elements, and conditions
+- [x] `SELECT * FROM npcs WHERE id = 'npc_torin'` returns personality, speech_style, knowledge tiers, and disposition data
+- [x] `SELECT * FROM quests WHERE id = 'quest_greyvale_anomaly'` returns all 5 stages with objectives, hints, completion conditions, and rewards
+- [x] Location exit references are valid (every exit's `destination` matches an existing location ID)
+- [x] NPC knowledge gating has at least 2 disposition tiers with different information per tier
 
 **Key references:**
 - *MVP Spec — Appendix: Starter Content Entities* (the actual JSON entities)
@@ -106,10 +106,10 @@ The following design documents are available for detailed implementation guidanc
 - Token generation endpoint: client requests a room token, server creates room and returns token
 
 **Acceptance criteria:**
-- [ ] Client connects to a LiveKit room and publishes a mic audio track
-- [ ] VAD correctly detects speech start and end (visual indicator toggles)
-- [ ] Server agent receives audio, and the client receives audio back within 500ms
-- [ ] Room cleanup occurs when the user disconnects (no orphaned rooms)
+- [x] Client connects to a LiveKit room and publishes a mic audio track
+- [x] VAD correctly detects speech start and end (visual indicator toggles)
+- [x] Server agent receives audio, and the client receives audio back within 500ms
+- [x] Room cleanup occurs when the user disconnects (no orphaned rooms)
 - [ ] Works on both iOS and Android (test on simulators minimum)
 
 **Key references:**
@@ -132,12 +132,12 @@ The following design documents are available for detailed implementation guidanc
 - Latency measurement: log timestamps at each pipeline stage (VAD end → STT final → TTS first byte → user hears audio)
 
 **Acceptance criteria:**
-- [ ] User speaks a sentence and hears a synthesized voice repeat what they said within 2 seconds
+- [x] User speaks a sentence and hears a synthesized voice repeat what they said within 2 seconds
 - [ ] STT transcript accuracy is reasonable for clear English speech (>90% WER on simple sentences)
-- [ ] TTS output is natural-sounding and intelligible
-- [ ] Latency logs show: VAD (< 500ms) + STT (< 400ms) + TTS TTFB (< 300ms) = total < 1.5s for first audio byte
-- [ ] Pipeline handles silence gracefully (no false triggers, no stuck states)
-- [ ] Multiple sequential utterances work without degradation
+- [x] TTS output is natural-sounding and intelligible
+- [x] Latency logs show: VAD (< 500ms) + STT (< 400ms) + TTS TTFB (< 300ms) = total < 1.5s for first audio byte
+- [x] Pipeline handles silence gracefully (no false triggers, no stuck states)
+- [x] Multiple sequential utterances work without degradation
 
 **Key references:**
 - *Technical Architecture — LiveKit Voice Pipeline* (Deepgram Nova-3, Inworld TTS-1.5 Max)
@@ -160,11 +160,11 @@ The following design documents are available for detailed implementation guidanc
 - Basic interruption handling: if user speaks while DM is talking, DM stops and listens
 
 **Acceptance criteria:**
-- [ ] User can have a 5-minute freeform voice conversation with the DM
-- [ ] DM maintains consistent persona across multiple exchanges (doesn't break character)
-- [ ] DM responses are descriptive and audio-first (describes sounds and feelings, not visual details)
-- [ ] Interruption works: speaking over the DM causes it to stop and acknowledge the new input
-- [ ] Conversation history persists across turns (DM remembers what was said earlier in the conversation)
+- [x] User can have a 5-minute freeform voice conversation with the DM
+- [x] DM maintains consistent persona across multiple exchanges (doesn't break character)
+- [x] DM responses are descriptive and audio-first (describes sounds and feelings, not visual details)
+- [x] Interruption works: speaking over the DM causes it to stop and acknowledge the new input
+- [x] Conversation history persists across turns (DM remembers what was said earlier in the conversation)
 - [ ] Response latency stays under 2.5 seconds for 90% of turns
 
 **Key references:**
@@ -190,11 +190,11 @@ The following design documents are available for detailed implementation guidanc
 - Emotion tag support: TTS receives emotion hint alongside text (e.g., `weary`, `urgent`, `amused`)
 
 **Acceptance criteria:**
-- [ ] When the DM narrates, the player hears the DM voice
-- [ ] When an NPC speaks (e.g., "Torin says..."), the player hears a distinctly different voice
-- [ ] The companion (Kael) has a third distinct voice
-- [ ] Transitions between narrator and character voices feel natural (no jarring gaps or overlaps)
-- [ ] Emotion tags produce audible tonal shifts in TTS output (weary sounds different from urgent)
+- [x] When the DM narrates, the player hears the DM voice
+- [x] When an NPC speaks (e.g., "Torin says..."), the player hears a distinctly different voice
+- [x] The companion (Kael) has a third distinct voice
+- [x] Transitions between narrator and character voices feel natural (no jarring gaps or overlaps)
+- [x] Emotion tags produce audible tonal shifts in TTS output (weary sounds different from urgent)
 - [ ] LLM consistently uses the `[CHARACTER, emotion]` format without breaking it (>95% of NPC dialogue correctly tagged)
 
 **Key references:**
@@ -221,12 +221,12 @@ The following design documents are available for detailed implementation guidanc
 - Tool registration with the LLM: tools defined as `@function_tool` decorators that Claude can call
 
 **Acceptance criteria:**
-- [ ] DM can answer "where am I?" by calling `query_location` and narrating the description
-- [ ] DM can answer "tell me about Torin" by calling `query_npc` and roleplaying using the returned personality/speech_style
-- [ ] NPC knowledge gating works: at neutral disposition, `query_npc` for Torin returns only tier 1 knowledge; at friendly, returns tier 2
-- [ ] `query_inventory` returns the player's current items and the DM can describe them
-- [ ] Second call to same entity within TTL serves from Redis (verify with logs)
-- [ ] DM naturally integrates queried information into narration (doesn't dump raw data)
+- [x] DM can answer "where am I?" by calling `query_location` and narrating the description
+- [x] DM can answer "tell me about Torin" by calling `query_npc` and roleplaying using the returned personality/speech_style
+- [x] NPC knowledge gating works: at neutral disposition, `query_npc` for Torin returns only tier 1 knowledge; at friendly, returns tier 2
+- [x] `query_inventory` returns the player's current items and the DM can describe them
+- [x] Second call to same entity within TTL serves from Redis (verify with logs)
+- [x] DM naturally integrates queried information into narration (doesn't dump raw data)
 
 **Key references:**
 - *Technical Architecture — Tool System* (function_tool pattern, query vs. mutation tools)
@@ -250,12 +250,12 @@ The following design documents are available for detailed implementation guidanc
 - `play_sound` tool: sends a data channel message to the client to play a named sound effect
 
 **Acceptance criteria:**
-- [ ] DM appropriately calls for a skill check when the player attempts something uncertain (e.g., "I try to persuade the guard")
-- [ ] Dice roll produces a valid d20 result with correct modifier application
-- [ ] The player hears a dice roll sound effect on their device when a check occurs
-- [ ] `narrative_hint` provides appropriate flavor text that the DM can weave into narration (e.g., "barely succeeded" or "critical failure")
-- [ ] Rules engine unit tests pass for all 15 skills across the full modifier range
-- [ ] DM never exposes raw numbers to the player — all mechanics are narrated
+- [x] DM appropriately calls for a skill check when the player attempts something uncertain (e.g., "I try to persuade the guard")
+- [x] Dice roll produces a valid d20 result with correct modifier application
+- [x] The player hears a dice roll sound effect on their device when a check occurs
+- [x] `narrative_hint` provides appropriate flavor text that the DM can weave into narration (e.g., "barely succeeded" or "critical failure")
+- [x] Rules engine unit tests pass for all 15 skills across the full modifier range
+- [x] DM never exposes raw numbers to the player — all mechanics are narrated
 
 **Key references:**
 - *Game Design — Game Mechanics* (core resolution, skill system, difficulty tiers)
@@ -280,14 +280,14 @@ The following design documents are available for detailed implementation guidanc
 - Async database writes with retry queue (mutations persist to PostgreSQL in background, not blocking the voice response)
 
 **Acceptance criteria:**
-- [ ] "I go to Millhaven" → DM calls `move_player` → player location updates → client receives `location_changed` event → DM narrates the new scene
-- [ ] "I pick up the tablet" → `add_to_inventory` → item appears in player inventory → client HUD updates
-- [ ] Quest stage advances when completion conditions are met (e.g., `location_reached: loc_millhaven`)
-- [ ] When quest advances, the DM receives stage-specific narration beats and weaves them in
-- [ ] XP awards trigger visible feedback on the client
-- [ ] State mutations persist to PostgreSQL within 5 seconds (verify with DB query after mutation)
+- [x] "I go to Millhaven" → DM calls `move_player` → player location updates → client receives `location_changed` event → DM narrates the new scene
+- [x] "I pick up the tablet" → `add_to_inventory` → item appears in player inventory → client HUD updates
+- [x] Quest stage advances when completion conditions are met (e.g., `location_reached: loc_millhaven`)
+- [x] When quest advances, the DM receives stage-specific narration beats and weaves them in
+- [x] XP awards trigger visible feedback on the client
+- [x] State mutations persist to PostgreSQL within 5 seconds (verify with DB query after mutation)
 - [ ] If the database write fails, the retry queue picks it up (simulate failure and verify retry)
-- [ ] NPC disposition changes affect subsequent `query_npc` results (higher disposition reveals more knowledge)
+- [x] NPC disposition changes affect subsequent `query_npc` results (higher disposition reveals more knowledge)
 
 **Key references:**
 - *Technical Architecture — Tool System — Game State Mutation Tools* (smart validation, auto-push)
@@ -310,11 +310,11 @@ The following design documents are available for detailed implementation guidanc
 - Timer fallback: if no events arrive for 30 seconds, background process still refreshes context
 
 **Acceptance criteria:**
-- [ ] When the player moves to a new location, the DM's system prompt updates to reflect the new location within 2 seconds (without the player asking)
-- [ ] Per-turn context injection includes current quest stage hints relevant to the player's location
-- [ ] The companion occasionally speaks proactively — an environmental observation or a relevant comment — without being prompted by the player
-- [ ] Proactive speech respects priority: critical interrupts (danger) override routine (idle chat)
-- [ ] The DM references time of day appropriately (if the world clock says night, descriptions match)
+- [x] When the player moves to a new location, the DM's system prompt updates to reflect the new location within 2 seconds (without the player asking)
+- [x] Per-turn context injection includes current quest stage hints relevant to the player's location
+- [x] The companion occasionally speaks proactively — an environmental observation or a relevant comment — without being prompted by the player
+- [x] Proactive speech respects priority: critical interrupts (danger) override routine (idle chat)
+- [x] The DM references time of day appropriately (if the world clock says night, descriptions match)
 - [ ] Background process doesn't degrade voice response latency (verify latency stays under 2.5s)
 
 **Key references:**
@@ -342,13 +342,13 @@ The following design documents are available for detailed implementation guidanc
 - Death/fallen state: player HP reaches 0, triggers death saving throws sequence per game design
 
 **Acceptance criteria:**
-- [ ] A full combat encounter plays out from start to finish: DM describes enemies, initiative occurs, player declares actions, dice roll, DM narrates outcomes, enemies act, repeat until resolved
-- [ ] Player hears distinct sound effects for their attacks (sword, spell, bow) and for enemy attacks
-- [ ] Player heartbeat audio fades in as HP drops below 50% and increases in rate as it drops further
-- [ ] Combat start and end stingers play at the right moments
-- [ ] The companion participates in combat with their own actions and tactical callouts
-- [ ] Falling to 0 HP triggers the death saving throw sequence
-- [ ] Combat concludes with XP award and loot narration
+- [x] A full combat encounter plays out from start to finish: DM describes enemies, initiative occurs, player declares actions, dice roll, DM narrates outcomes, enemies act, repeat until resolved
+- [x] Player hears distinct sound effects for their attacks (sword, spell, bow) and for enemy attacks
+- [x] Player heartbeat audio fades in as HP drops below 50% and increases in rate as it drops further
+- [x] Combat start and end stingers play at the right moments
+- [x] The companion participates in combat with their own actions and tactical callouts
+- [x] Falling to 0 HP triggers the death saving throw sequence
+- [x] Combat concludes with XP award and loot narration
 - [ ] The full combat encounter is exciting and understandable in audio only (playtest validation)
 
 **Key references:**
@@ -377,11 +377,11 @@ The following design documents are available for detailed implementation guidanc
 - Character summary bar on Home: name, level, location, HP
 
 **Acceptance criteria:**
-- [ ] App opens to Home screen with character summary and Catch-Up area
-- [ ] Tapping "Enter the World" connects to LiveKit and transitions to session screen within 3 seconds
-- [ ] Session screen displays atmospheric background appropriate to current location
-- [ ] Disconnecting (or DM ending session) returns to Home screen gracefully
-- [ ] Character summary bar shows accurate current data (name, level, location)
+- [x] App opens to Home screen with character summary and Catch-Up area
+- [x] Tapping "Enter the World" connects to LiveKit and transitions to session screen within 3 seconds
+- [x] Session screen displays atmospheric background appropriate to current location
+- [x] Disconnecting (or DM ending session) returns to Home screen gracefully
+- [x] Character summary bar shows accurate current data (name, level, location)
 - [ ] Home screen works in both portrait and landscape orientations
 
 **Key references:**
@@ -406,14 +406,14 @@ The following design documents are available for detailed implementation guidanc
 - UI sound effects for HUD interactions (confirm, cancel, notification, menu open/close)
 
 **Acceptance criteria:**
-- [ ] Location name updates when `location_changed` event is received
+- [x] Location name updates when `location_changed` event is received
 - [ ] Combat HUD appears when combat starts, showing HP bars for player and enemies
 - [ ] Dice roll animation plays when a roll occurs, showing the result briefly
 - [ ] Notification toasts appear for quest progression, XP awards, and item pickups
 - [ ] Pull-up panels (Map, Character Sheet, Inventory, Quest Log) open and close smoothly
 - [ ] UI sounds play for interactions (confirm tap, menu open/close, notification arrival)
 - [ ] HUD never obscures the session experience — elements are minimal and auto-dismiss
-- [ ] All HUD updates occur within 200ms of the server push
+- [x] All HUD updates occur within 200ms of the server push
 
 **Key references:**
 - *Technical Architecture — HUD System — Layered Overlays* (three-layer design)
@@ -441,9 +441,9 @@ The following design documents are available for detailed implementation guidanc
 - [ ] Entering the world plays the ambient soundscape for the player's current location
 - [ ] Moving to a new location crossfades to the new soundscape over 2-3 seconds (no hard cut)
 - [ ] When the DM speaks, ambient audio audibly ducks and returns smoothly when speech ends
-- [ ] `play_sound` data messages trigger the correct sound effect on the client with < 100ms latency
+- [x] `play_sound` data messages trigger the correct sound effect on the client with < 100ms latency
 - [ ] Randomized texture sounds (bird calls, etc.) play at varied intervals without noticeable pattern
-- [ ] Volume sliders work and persist between sessions
+- [x] Volume sliders work and persist between sessions
 - [ ] All 5 environmental soundscapes sound distinct and match their location identity
 - [ ] The audio mix is clear at all times — voice is always understandable over ambience
 

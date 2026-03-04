@@ -1,6 +1,7 @@
 import { playSfx } from "./sfx-player";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
+import { transcriptStore } from "@/stores/transcript-store";
 
 export interface DataChannelEvent {
   type: string;
@@ -78,6 +79,16 @@ export function handleGameEvent(event: DataChannelEvent): void {
 
     case "session_end":
       sessionStore.getState().setPhase("ended");
+      break;
+
+    case "transcript_entry":
+      transcriptStore.getState().addEntry({
+        speaker: (event.speaker as "player" | "dm" | "npc" | "tool") ?? "dm",
+        character: (event.character as string) ?? null,
+        emotion: (event.emotion as string) ?? null,
+        text: typeof event.text === "string" ? event.text : "",
+        timestamp: typeof event.timestamp === "number" ? event.timestamp : Date.now() / 1000,
+      });
       break;
 
     case "quest_updated":
