@@ -12,7 +12,7 @@ import { configureAudioSession } from "@/audio/audio-config";
 import { releaseAllPlayers } from "@/audio/sfx-player";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
-import { Spacing } from "@/constants/theme";
+import { BrandColors, Spacing, Radius, Shadows } from "@/constants/theme";
 import { PLAYER_ID } from "@/utils/api";
 
 const ROOM_NAME = "divineruin-session";
@@ -66,11 +66,11 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
   return (
     <View style={styles.content}>
       <View style={styles.statusIndicator}>
-        <ThemedText type="small" style={styles.statusText}>
+        <ThemedText variant="system" style={styles.statusText}>
           {statusLabel}
         </ThemedText>
         {agentState && (
-          <ThemedText type="small" style={styles.statusText}>
+          <ThemedText variant="system" style={styles.statusText}>
             DM: {agentState}
           </ThemedText>
         )}
@@ -107,12 +107,10 @@ export default function SessionScreen() {
       <View style={styles.container}>
         <AtmosphericBackground />
         <SafeAreaView style={styles.safeArea}>
-          <ThemedText type="subtitle" style={styles.centered}>
+          <ThemedText variant="h1" style={styles.centered}>
             Connection failed
           </ThemedText>
-          <ThemedText style={[styles.centered, { color: "rgba(255,255,255,0.6)" }]}>
-            {error}
-          </ThemedText>
+          <ThemedText style={[styles.centered, { color: BrandColors.ash }]}>{error}</ThemedText>
           <Pressable style={styles.leaveButton} onPress={handleLeave}>
             <ThemedText style={styles.leaveText}>Go back</ThemedText>
           </Pressable>
@@ -126,7 +124,7 @@ export default function SessionScreen() {
       <View style={styles.container}>
         <AtmosphericBackground />
         <SafeAreaView style={styles.safeArea}>
-          <ThemedText type="subtitle" style={styles.centered}>
+          <ThemedText variant="h1" style={styles.centered}>
             Entering the world...
           </ThemedText>
         </SafeAreaView>
@@ -149,7 +147,7 @@ export default function SessionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: BrandColors.void,
   },
   safeArea: {
     flex: 1,
@@ -169,21 +167,26 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   statusText: {
-    color: "rgba(255, 255, 255, 0.8)",
+    color: BrandColors.bone,
   },
   spacer: {
     flex: 1,
   },
   centered: {
     textAlign: "center",
-    color: "#ffffff",
+    color: BrandColors.parchment,
   },
   leaveButton: {
     alignSelf: "center",
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
+    backgroundColor: BrandColors.hollow,
+    borderRadius: Radius.md,
+    ...Shadows.glowHollow,
   },
   leaveText: {
-    color: "rgba(255, 255, 255, 0.4)",
+    fontSize: 24,
+    fontWeight: "600",
+    color: BrandColors.void,
   },
 });

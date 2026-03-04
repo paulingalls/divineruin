@@ -21,7 +21,7 @@ def _make_session_data(**kwargs) -> SessionData:
 def _make_bg(session_data=None) -> tuple[BackgroundProcess, MagicMock, MagicMock]:
     sd = session_data or _make_session_data()
     agent = MagicMock()
-    agent.instructions = ""
+    agent.update_instructions = AsyncMock()
     session = MagicMock()
     session.generate_reply = AsyncMock()
     bg = BackgroundProcess(agent=agent, session=session, session_data=sd)
@@ -144,7 +144,9 @@ class TestRebuildWarmLayer:
         mock_build.return_value = "WARM CONTENT"
         bg, agent, _ = _make_bg()
         await bg._rebuild_warm_layer()
-        assert "WARM CONTENT" in agent.instructions
+        agent.update_instructions.assert_awaited_once()
+        call_arg = agent.update_instructions.call_args[0][0]
+        assert "WARM CONTENT" in call_arg
         assert bg._last_warm_layer == "WARM CONTENT"
 
     @patch("background_process.build_warm_layer", new_callable=AsyncMock)
@@ -152,16 +154,15 @@ class TestRebuildWarmLayer:
         mock_build.return_value = "SAME"
         bg, agent, _ = _make_bg()
         await bg._rebuild_warm_layer()
-        agent.instructions = "original"
+        agent.update_instructions.reset_mock()
         bg._last_warm_layer = "SAME"
         await bg._rebuild_warm_layer()
-        # Should not have changed since warm layer is the same
-        assert agent.instructions == "original"
+        # Should not have called update_instructions since warm layer is the same
+        agent.update_instructions.assert_not_awaited()
 
     @patch("background_process.build_warm_layer", new_callable=AsyncMock)
     async def test_handles_build_failure(self, mock_build):
         mock_build.side_effect = Exception("DB down")
         bg, agent, _ = _make_bg()
-        agent.instructions = "original"
         await bg._rebuild_warm_layer()
-        assert agent.instructions == "original"
+        agent.update_instructions.assert_not_awaited()

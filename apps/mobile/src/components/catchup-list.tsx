@@ -13,7 +13,7 @@ export function CatchUpList() {
 
   return (
     <View style={styles.container}>
-      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.header}>
+      <ThemedText variant="label" themeColor="textSecondary">
         Since You Were Away
       </ThemedText>
       <ScrollView
@@ -33,11 +33,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     gap: Spacing.two,
-  },
-  header: {
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    fontSize: 11,
   },
   scroll: {
     flex: 1,

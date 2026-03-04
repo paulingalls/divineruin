@@ -10,7 +10,14 @@ import { CatchUpList } from "@/components/catchup-list";
 import { useCharacter } from "@/hooks/use-character";
 import { catchupStore } from "@/stores/catchup-store";
 import { MOCK_CATCHUP_CARDS } from "@/data/mock-catchup";
-import { BottomTabInset, MaxContentWidth, Spacing } from "@/constants/theme";
+import {
+  BrandColors,
+  BottomTabInset,
+  MaxContentWidth,
+  Spacing,
+  Radius,
+  Shadows,
+} from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { PLAYER_ID } from "@/utils/api";
 
@@ -30,10 +37,10 @@ export default function HomeScreen() {
           <CharacterSummaryBar />
           <CatchUpList />
           <Pressable
-            style={[styles.enterButton, { backgroundColor: theme.accent }]}
+            style={[styles.enterButton, { backgroundColor: theme.accent }, Shadows.glowHollow]}
             onPress={() => router.push("/session")}
           >
-            <ThemedText style={styles.enterText}>Enter the World</ThemedText>
+            <ThemedText style={styles.enterText}>Enter Aethos</ThemedText>
           </Pressable>
         </ThemedView>
       </SafeAreaView>
@@ -60,12 +67,12 @@ const styles = StyleSheet.create({
   },
   enterButton: {
     paddingVertical: Spacing.three,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.md,
     alignItems: "center",
   },
   enterText: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: "600",
-    color: "#ffffff",
+    color: BrandColors.void,
   },
 });

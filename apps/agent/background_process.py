@@ -193,5 +193,5 @@ class BackgroundProcess:
 
         self._last_warm_layer = warm
         full_prompt = build_full_prompt(SYSTEM_PROMPT, warm, in_combat=self._sd.in_combat)
-        self._agent.instructions = full_prompt
+        await self._agent.update_instructions(full_prompt)
         logger.info("Warm layer updated (%d chars)", len(warm))

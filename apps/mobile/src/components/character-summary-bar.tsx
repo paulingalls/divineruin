@@ -3,7 +3,7 @@ import { useStore } from "zustand";
 
 import { ThemedText } from "@/components/themed-text";
 import { characterStore } from "@/stores/character-store";
-import { Spacing } from "@/constants/theme";
+import { BrandColors, Spacing, Radius } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
 function hpColor(ratio: number, theme: ReturnType<typeof useTheme>): string {
@@ -19,7 +19,7 @@ export function CharacterSummaryBar() {
   if (!character) {
     return (
       <View style={[styles.bar, { backgroundColor: theme.backgroundElement }]}>
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText variant="system" themeColor="textSecondary">
           Loading character...
         </ThemedText>
       </View>
@@ -30,17 +30,22 @@ export function CharacterSummaryBar() {
 
   return (
     <View style={[styles.bar, { backgroundColor: theme.backgroundElement }]}>
-      <ThemedText type="smallBold" numberOfLines={1} style={styles.nameLevel}>
+      <ThemedText variant="system" numberOfLines={1} style={styles.nameLevel}>
         {character.name} Lv.{character.level}
       </ThemedText>
 
-      <View style={styles.separator} />
+      <View style={[styles.separator, { backgroundColor: BrandColors.charcoal }]} />
 
-      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.location}>
+      <ThemedText
+        variant="system"
+        themeColor="textSecondary"
+        numberOfLines={1}
+        style={styles.location}
+      >
         {character.locationName}
       </ThemedText>
 
-      <View style={styles.separator} />
+      <View style={[styles.separator, { backgroundColor: BrandColors.charcoal }]} />
 
       <View style={styles.hpContainer}>
         <View style={[styles.hpTrack, { backgroundColor: theme.cardBorder }]}>
@@ -54,7 +59,7 @@ export function CharacterSummaryBar() {
             ]}
           />
         </View>
-        <ThemedText type="small" style={styles.hpText}>
+        <ThemedText variant="caption" style={styles.hpText}>
           {character.hpCurrent}/{character.hpMax}
         </ThemedText>
       </View>
@@ -68,7 +73,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     height: 48,
     paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.md,
     gap: Spacing.two,
   },
   nameLevel: {
@@ -77,7 +82,6 @@ const styles = StyleSheet.create({
   separator: {
     width: 1,
     height: 20,
-    backgroundColor: "rgba(128, 128, 128, 0.3)",
   },
   location: {
     flex: 1,
@@ -99,7 +103,6 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   hpText: {
-    fontSize: 12,
     minWidth: 36,
   },
 });

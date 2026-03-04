@@ -11,17 +11,17 @@ const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 type ColorPair = [string, string];
 
 const ATMOSPHERE_COLORS: Record<string, ColorPair> = {
-  tavern: ["#3E2723", "#1A0F0A"],
-  inn: ["#3E2723", "#1A0F0A"],
-  forest: ["#1B3A1B", "#0A1A0A"],
-  wilderness: ["#1B3A1B", "#0A1A0A"],
-  ruins: ["#2A1A3A", "#0E0A1A"],
-  hollow: ["#1A0A2A", "#05001A"],
-  combat: ["#3A0A0A", "#1A0505"],
-  market: ["#2A2210", "#0F0E06"],
-  guild: ["#1A2030", "#0A1018"],
-  temple: ["#20203A", "#0A0A1A"],
-  default: ["#0D1117", "#060A10"],
+  tavern: ["#3E2723", "#0A0A0B"],
+  inn: ["#3E2723", "#0A0A0B"],
+  forest: ["#1B3A1B", "#0A0A0B"],
+  wilderness: ["#1B3A1B", "#0A0A0B"],
+  ruins: ["#2A1A3A", "#0A0A0B"],
+  hollow: ["#1A0A2A", "#0A0A0B"],
+  combat: ["#3A0A0A", "#0A0A0B"],
+  market: ["#2A2210", "#0A0A0B"],
+  guild: ["#1A2030", "#0A0A0B"],
+  temple: ["#20203A", "#0A0A0B"],
+  default: ["#0D1117", "#0A0A0B"],
 };
 
 function resolveColors(atmosphere: string, tags: string[], inCombat: boolean): ColorPair {

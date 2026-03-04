@@ -20,6 +20,8 @@ Audio-first AI tabletop RPG. Players speak to an AI Dungeon Master via voice —
 | Cost Model | `cost_model.md` | Per-session cost breakdowns, subscriber economics. |
 | Dev Milestones | `dev_milestones.md` | Phased build plan with acceptance criteria. Feed to planning mode. |
 | Player Resonance | `player_resonance_system.md` | Affect analysis from voice: speech rate, energy, engagement detection. stt_node override pattern for tapping audio + transcript data. DM behavioral adaptation. |
+| Brand & Art Spec | `brand_spec.md` | **Read before any UI work.** Design tokens (colors, typography, spacing), UI patterns (HUD, notifications, treatments), art direction (dissolving ink style), logo, brand principles. |
+| Image Prompts | `image_prompt_library.md` | Nano Banana 2 prompts for all art asset categories. Style foundation, accent color rules, per-category templates, consistency tips. |
 
 ## Architecture
 

@@ -23,6 +23,9 @@
       "version": "1.0.0",
       "dependencies": {
         "@config-plugins/react-native-webrtc": "^13.0.0",
+        "@expo-google-fonts/cormorant-garamond": "^0.4.1",
+        "@expo-google-fonts/crimson-pro": "^0.4.2",
+        "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
         "@expo/vector-icons": "^15.0.2",
         "@livekit/react-native": "^2.9.6",
         "@livekit/react-native-expo-plugin": "^1.0.1",
@@ -297,6 +300,12 @@
     "@eslint/object-schema": ["@eslint/object-schema@3.0.2", "", {}, "sha512-HOy56KJt48Bx8KmJ+XGQNSUMT/6dZee/M54XyUyuvTvPXJmsERRvBchsUVx1UMe1WwIH49XLAczNC7V2INsuUw=="],
 
     "@eslint/plugin-kit": ["@eslint/plugin-kit@0.6.0", "", { "dependencies": { "@eslint/core": "^1.1.0", "levn": "^0.4.1" } }, "sha512-bIZEUzOI1jkhviX2cp5vNyXQc6olzb2ohewQubuYlMXZ2Q/XjBO0x0XhGPvc9fjSIiUN0vw+0hq53BJ4eQSJKQ=="],
+
+    "@expo-google-fonts/cormorant-garamond": ["@expo-google-fonts/cormorant-garamond@0.4.1", "", {}, "sha512-e8J4Cn13K1txygamg50n3odLUsYP7Ck28XOGobMi7uDsWvFmp/jgK0qcALqJTlmi9NczSWUNdERxcLauHCBa/Q=="],
+
+    "@expo-google-fonts/crimson-pro": ["@expo-google-fonts/crimson-pro@0.4.2", "", {}, "sha512-X5pfxna/aQBhxB6CowczCL2mOsObwlxhI2EJ84fE6OMrxie1bd2ro9xBywCfeVg588eQYvzYBBdkHkPWmFTXug=="],
+
+    "@expo-google-fonts/ibm-plex-mono": ["@expo-google-fonts/ibm-plex-mono@0.4.1", "", {}, "sha512-/yYz1mPZq8Nd4tSiH0SBDPEdJUqiOGBwVgSrQvLuw7SPh6C7ezBzmi6eFyHY4QaQwjHDmOLSBKsxzq8ZDFXVAg=="],
 
     "@expo-google-fonts/material-symbols": ["@expo-google-fonts/material-symbols@0.4.24", "", {}, "sha512-1bJ63Yv2Bn8SN2MjrlbwLwUhnC8COOeejd15H88WjCtw5iNErqEPaBnpvmYyqciVYwudGo5drUIdY9C/5yPGbg=="],
 

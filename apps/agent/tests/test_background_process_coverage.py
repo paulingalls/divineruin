@@ -363,6 +363,7 @@ class TestWarmLayerRebuild:
     async def test_rebuild_warm_layer_updates_agent_instructions(self):
         """_rebuild_warm_layer should update agent instructions with new warm layer."""
         mock_agent = MagicMock()
+        mock_agent.update_instructions = AsyncMock()
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.location_id = "tavern"
@@ -379,7 +380,7 @@ class TestWarmLayerRebuild:
                 await bp._rebuild_warm_layer()
 
                 mock_build.assert_awaited_once_with("tavern", "p1", "evening", combat_state=mock_sd.combat_state)
-                mock_agent.instructions = "full prompt"
+                mock_agent.update_instructions.assert_awaited_once_with("full prompt")
                 assert bp._last_warm_layer == "warm layer content"
 
     @pytest.mark.asyncio

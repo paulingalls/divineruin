@@ -811,6 +811,94 @@ The following design documents are available for detailed implementation guidanc
 
 ---
 
+### Milestone 10.2 — Multiplayer Conversation Awareness
+
+**Goal:** The DM knows when players are talking to each other vs. talking to the game, and stays quiet during player-to-player conversation instead of trying to respond to every utterance.
+
+**The problem:** In solo play, every player utterance is directed at the DM. The pipeline fires on end-of-speech and generates a response. In multiplayer, players talk to each other constantly — strategizing, joking, debating what to do. If the DM responds to every utterance, it becomes an intrusive third wheel that interrupts natural player interaction. A great human DM reads the room and knows when to stay quiet. Our DM needs the same awareness.
+
+**Inputs:** Milestone 10.1 (multiplayer room working).
+
+**Approach — LLM judgment via system prompt and context:**
+
+The DM's system prompt includes explicit guidance for multiplayer conversation awareness:
+
+```
+## Multiplayer Awareness
+
+In multiplayer sessions, players will talk to each other as well as to you.
+Your job is to recognize the difference and respond accordingly:
+
+STAY QUIET when:
+- Players are strategizing with each other ("should we go left or right?")
+- Players are having side conversation or joking around
+- A player responds to something another player said, not to your narration
+- Players are debating a decision — let them reach consensus
+
+SPEAK when:
+- A player addresses you directly or addresses the game world ("I open the door")
+- Players reach a decision and are waiting for you ("okay, let's do it")
+- An uncomfortable silence suggests players are waiting for you to continue
+- A game event demands your narration (combat phase advances, timer fires)
+- You can add a brief, natural companion interjection that enhances the moment
+  without interrupting (use sparingly)
+
+When players finish conferring, you have heard everything they discussed.
+Reference their discussion naturally: "So you're going with the left passage —
+good. As you turn the corner..." Don't repeat their conversation back to them.
+Don't summarize what they decided. Just act on it.
+
+If you're unsure whether players are done talking to each other, wait.
+Silence is better than interruption. A player will address you when they're ready.
+```
+
+The `on_user_turn_completed` hook adds multiplayer context to help the LLM decide:
+
+```python
+async def on_user_turn_completed(self, turn_ctx, new_message):
+    if self._is_multiplayer:
+        # Include recent speaker pattern so LLM can see conversation flow
+        recent = self._speaker_tracker.get_recent_turns(5)
+        # e.g. "Last 5 turns: Player_A → Player_B → Player_A → Player_B → Player_A"
+        # (rapid alternation between humans = they're talking to each other)
+        turn_ctx.add_message(
+            role="assistant",
+            content=format_speaker_context(recent, new_message.speaker_id)
+        )
+    
+    # ... existing hot layer injections ...
+```
+
+The LLM sees the speaker pattern and the transcript content together. If the last 3 turns are rapid human-to-human exchanges about strategy, and the latest utterance is "yeah I agree," Claude will recognize this as player conferral and either stay quiet or respond minimally. If the next utterance is "I attack the goblin," it recognizes the pivot to game-directed speech and narrates.
+
+**Why LLM judgment first, not heuristics:** Player-to-player and player-to-DM speech blend together fluidly in real tabletop play. Hard rules (like "if two humans spoke within 3 seconds, suppress") will misfire constantly. The LLM can read conversational intent from context in ways a state machine can't. The cost is some tokens spent on "decide to stay quiet" turns, but this is acceptable at multiplayer scale.
+
+**Future optimization (post Wave 2):** If token cost on quiet turns becomes significant, add a lightweight pre-filter in `on_user_turn_completed` that uses `StopResponse` to suppress LLM calls entirely when speaker pattern strongly indicates player-to-player conversation (e.g., 4+ rapid human-to-human turns with no DM address cues). This saves tokens but risks over-suppression, so it should only be tuned against real Wave 2 playtest data.
+
+**Deliverables:**
+- DM system prompt additions for multiplayer conversation awareness (the guidance above)
+- Speaker tracking in `on_user_turn_completed`: recent speaker pattern injected as context
+- Speaker identity labels: each utterance tagged with player name so the LLM sees who said what
+- Quiet turn handling: when the LLM decides not to speak, the response is suppressed cleanly (no awkward silence acknowledgment, no "...")
+- Companion interjection rules: companions can occasionally react to player-to-player conversation naturally ("Kael chuckles at your plan") but sparingly — max once per conferral period
+
+**Acceptance criteria:**
+- [ ] When two players discuss strategy for 30+ seconds, the DM stays quiet throughout
+- [ ] When a player pivots from player-to-player conversation to a game action ("okay I open the door"), the DM responds naturally within normal latency
+- [ ] The DM references player discussion when it does respond ("So you're going with the stealth approach...")
+- [ ] The DM never interrupts mid-sentence of a player-to-player exchange
+- [ ] The DM doesn't generate a "..." or empty response during quiet periods — it simply doesn't speak
+- [ ] In combat, the DM correctly intervenes when it's a player's turn even if players are chatting ("Kira — it's your turn. What do you do?")
+- [ ] Companions occasionally react to player conversation in a way that feels natural, not intrusive
+- [ ] Playtesters report the DM "knows when to shut up" (qualitative, Wave 2 survey)
+
+**Key references:**
+- *Technical Architecture — Multiplayer Architecture* (input buffer, speaker identity)
+- *Game Design — The Companion in Multiplayer* (companion behavior during player interaction)
+- *Player Resonance System* (future extension: per-player affect in multiplayer enables detecting which player is disengaged while others dominate conversation)
+
+---
+
 ## Summary
 
 | Phase | Milestones | Description |
@@ -824,6 +912,6 @@ The following design documents are available for detailed implementation guidanc
 | **7: Async** | 7.1, 7.2 | Activity engine, Catch-Up layer |
 | **8: Polish** | 8.1, 8.2, 8.3, 8.4 | Music, character creation, session lifecycle, god whispers |
 | **9: Validation** | 9.1 | Internal playtest — solo Wave 1 with quality rubrics |
-| **10: Multiplayer** | 10.1 | Wave 2 prep — multi-player rooms (post solo validation) |
+| **10: Multiplayer** | 10.1, 10.2 | Wave 2 prep — multi-player rooms, conversation awareness |
 
-**Total: 10 phases, 19 milestones.** Phases 1–9 (18 milestones) deliver the complete solo MVP through Wave 1 playtesting. Phase 10 extends to multiplayer only after solo validation succeeds. Dependencies flow strictly downward — no milestone requires work from a later phase.
+**Total: 10 phases, 20 milestones.** Phases 1–9 (18 milestones) deliver the complete solo MVP through Wave 1 playtesting. Phase 10 extends to multiplayer only after solo validation succeeds. Dependencies flow strictly downward — no milestone requires work from a later phase.
