@@ -1,3 +1,5 @@
+from rules_engine import hp_threshold_status
+from session_data import CombatState
 from voices import DEFAULT_VOICE, EMOTIONS, VOICES
 
 _AVAILABLE_CHARACTERS = ", ".join(k for k in VOICES if k != DEFAULT_VOICE)
@@ -116,6 +118,38 @@ behavioral shifts based on low-confidence reads early in the session.\
 """
 
 
+COMBAT_PROMPT = """\
+
+## Combat Mode
+
+You are now narrating active combat. Shift to urgent, staccato cadence. \
+Short sentences. Sound before sight. Each moment is life or death.
+
+Combat flow each round:
+1. Announce the round. Describe the battlefield tension in one sentence.
+2. Follow initiative order. For each combatant's turn, narrate their action.
+3. For enemy turns, call resolve_enemy_turn with the enemy ID, chosen action, and target.
+4. For the player's turn, describe what they see and ask what they do. \
+When they act, use the appropriate tool (request_attack, request_skill_check, etc).
+5. If the player falls to 0 HP, call request_death_save on their turn. \
+Narrate death saves with maximum drama — every roll matters.
+
+Never reveal exact HP numbers. Use the hp_status field: \
+"bloodied" means visibly wounded, "critical" means barely standing, \
+"fallen" means unconscious at 0 HP.
+
+When enemies fall, describe it viscerally. When the last enemy falls, \
+call end_combat with 'victory'. If the player dies, call end_combat with 'defeat'.
+
+Sound effects: The tools publish combat sounds automatically. Layer your \
+narration to match — describe the clang of steel when a hit lands, the \
+whistle of a near miss, the sickening thud of a critical blow.
+
+Keep combat moving. Don't over-describe between attacks. The rhythm is: \
+action, result, consequence, next.\
+"""
+
+
 def build_system_prompt(location_id: str) -> str:
     return (
         SYSTEM_PROMPT
@@ -181,7 +215,12 @@ def quest_objective(quest: dict) -> str:
     return ""
 
 
-async def build_warm_layer(location_id: str, player_id: str, world_time: str) -> str:
+async def build_warm_layer(
+    location_id: str,
+    player_id: str,
+    world_time: str,
+    combat_state: CombatState | None = None,
+) -> str:
     import asyncio
 
     import db
@@ -224,10 +263,24 @@ async def build_warm_layer(location_id: str, player_id: str, world_time: str) ->
             quest_lines.append(f"- {q['quest_name']}: {objective}")
         sections.append("ACTIVE QUESTS\n" + "\n".join(quest_lines))
 
+    # Active combat
+    if combat_state is not None:
+        combat_lines = [f"Round {combat_state.round_number}"]
+        for pid in combat_state.initiative_order:
+            p = combat_state.get_participant(pid)
+            if p is not None:
+                status = hp_threshold_status(p.hp_current, p.hp_max)
+                fallen = " [FALLEN]" if p.is_fallen else ""
+                combat_lines.append(f"- {p.name} ({p.type}) — {status}{fallen}")
+        sections.append("ACTIVE COMBAT\n" + "\n".join(combat_lines))
+
     return "\n\n".join(sections)
 
 
-def build_full_prompt(static_layer: str, warm_layer: str) -> str:
-    if not warm_layer:
-        return static_layer
-    return static_layer + "\n\n---\n\n" + warm_layer
+def build_full_prompt(static_layer: str, warm_layer: str, in_combat: bool = False) -> str:
+    parts = [static_layer]
+    if in_combat:
+        parts.append(COMBAT_PROMPT)
+    if warm_layer:
+        parts.append(warm_layer)
+    return "\n\n---\n\n".join(parts)

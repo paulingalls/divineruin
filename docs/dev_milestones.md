@@ -324,7 +324,7 @@ The following design documents are available for detailed implementation guidanc
 
 ---
 
-## Phase 4: Combat and Multiplayer
+## Phase 4: Combat
 
 ### Milestone 4.1 — Combat System
 
@@ -357,34 +357,6 @@ The following design documents are available for detailed implementation guidanc
 - *Game Design — Death and Resurrection* (fallen state, death saving throws)
 
 ---
-
-### Milestone 4.2 — Multiplayer Room
-
-**Goal:** Two human players and the DM agent share a voice room and play together.
-
-**Inputs:** Milestone 4.1 (combat works for solo), Milestone 2.4 (ventriloquism working).
-
-**Deliverables:**
-- Multi-participant LiveKit room: 2 human audio tracks + 1 DM agent
-- Player identity tracking: DM associates each audio track with a character name and addresses them individually
-- 500ms input buffer: when multiple players speak in quick succession, DM processes both before responding
-- Turn management in combat: DM prompts each player by name for their declaration
-- Companion behavior in multiplayer: both companions present (ventriloquized), interacting with each other
-- Session joining: second player can join an existing room mid-session
-
-**Acceptance criteria:**
-- [ ] Two players connect to the same room and both hear the DM
-- [ ] DM correctly identifies which player is speaking and addresses them by character name
-- [ ] In combat, DM prompts each player individually for their turn
-- [ ] Both players hear all NPC/companion voices (shared audio output)
-- [ ] If both players speak within 500ms, DM acknowledges both inputs
-- [ ] Second player joining mid-session receives a brief recap from the DM
-- [ ] Session remains stable for 15+ minutes with two players (no audio dropouts or state desync)
-
-**Key references:**
-- *Technical Architecture — Multiplayer Architecture* (SFU model, player identity, input buffer)
-- *Game Design — Session Structure* (party size variants)
-- *Game Design — The Companion in Multiplayer* (companion behavior with multiple players)
 
 ---
 
@@ -804,6 +776,41 @@ The following design documents are available for detailed implementation guidanc
 
 ---
 
+## Phase 10: Multiplayer (Wave 2 Prep)
+
+*This phase is post-MVP solo validation. It should only begin after Wave 1 solo playtests (Milestone 9.1) confirm the core experience works. Multiplayer adds complexity that is not worth building until the single-player DM, combat, companion, and session lifecycle are proven.*
+
+### Milestone 10.1 — Multiplayer Room
+
+**Goal:** Two human players and the DM agent share a voice room and play together.
+
+**Inputs:** Milestone 9.1 (solo experience validated), Milestone 4.1 (combat works for solo), Milestone 2.4 (ventriloquism working).
+
+**Deliverables:**
+- Multi-participant LiveKit room: 2 human audio tracks + 1 DM agent
+- Player identity tracking: DM associates each audio track with a character name and addresses them individually
+- 500ms input buffer: when multiple players speak in quick succession, DM processes both before responding
+- Turn management in combat: DM prompts each player by name for their declaration
+- Companion behavior in multiplayer: both companions present (ventriloquized), interacting with each other
+- Session joining: second player can join an existing room mid-session
+
+**Acceptance criteria:**
+- [ ] Two players connect to the same room and both hear the DM
+- [ ] DM correctly identifies which player is speaking and addresses them by character name
+- [ ] In combat, DM prompts each player individually for their turn
+- [ ] Both players hear all NPC/companion voices (shared audio output)
+- [ ] If both players speak within 500ms, DM acknowledges both inputs
+- [ ] Second player joining mid-session receives a brief recap from the DM
+- [ ] Session remains stable for 15+ minutes with two players (no audio dropouts or state desync)
+
+**Key references:**
+- *Technical Architecture — Multiplayer Architecture* (SFU model, player identity, input buffer)
+- *Game Design — Session Structure* (party size variants)
+- *Game Design — The Companion in Multiplayer* (companion behavior with multiple players)
+- *MVP Spec — Wave 2 Group Playtests* (multiplayer test protocol)
+
+---
+
 ## Summary
 
 | Phase | Milestones | Description |
@@ -811,11 +818,12 @@ The following design documents are available for detailed implementation guidanc
 | **1: Foundation** | 1.1, 1.2 | Project setup, database, content seeding |
 | **2: Voice Pipeline** | 2.1, 2.2, 2.3, 2.4 | LiveKit, STT/TTS, DM conversation, ventriloquism |
 | **3: Game Mechanics** | 3.1, 3.2, 3.3, 3.4 | World queries, dice/mechanics, state mutation, background process |
-| **4: Combat & Multiplayer** | 4.1, 4.2 | Phase-based combat, multi-player rooms |
+| **4: Combat** | 4.1 | Phase-based voice combat |
 | **5: Client App** | 5.1, 5.2, 5.3 | Home screen, HUD, audio engine |
 | **6: World Experience** | 6.1, 6.2, 6.3 | Navigation, companion, Greyvale arc content |
 | **7: Async** | 7.1, 7.2 | Activity engine, Catch-Up layer |
 | **8: Polish** | 8.1, 8.2, 8.3, 8.4 | Music, character creation, session lifecycle, god whispers |
-| **9: Validation** | 9.1 | Internal playtest with quality rubrics |
+| **9: Validation** | 9.1 | Internal playtest — solo Wave 1 with quality rubrics |
+| **10: Multiplayer** | 10.1 | Wave 2 prep — multi-player rooms (post solo validation) |
 
-**Total: 9 phases, 19 milestones.** Each milestone is scoped for focused Claude Code execution with clear acceptance criteria. Dependencies flow strictly downward — no milestone requires work from a later phase.
+**Total: 10 phases, 19 milestones.** Phases 1–9 (18 milestones) deliver the complete solo MVP through Wave 1 playtesting. Phase 10 extends to multiplayer only after solo validation succeeds. Dependencies flow strictly downward — no milestone requires work from a later phase.

@@ -378,7 +378,7 @@ class TestWarmLayerRebuild:
 
                 await bp._rebuild_warm_layer()
 
-                mock_build.assert_awaited_once_with("tavern", "p1", "evening")
+                mock_build.assert_awaited_once_with("tavern", "p1", "evening", combat_state=mock_sd.combat_state)
                 mock_agent.instructions = "full prompt"
                 assert bp._last_warm_layer == "warm layer content"
 

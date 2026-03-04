@@ -466,6 +466,45 @@ async def get_active_player_quests(
     return results
 
 
+# --- Combat state ---
+
+
+async def save_combat_state(
+    combat_id: str, data: dict, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    _conn = conn or await get_pool()
+    await _conn.execute(
+        """
+        INSERT INTO combat_instances (id, data)
+        VALUES ($1, $2::jsonb)
+        ON CONFLICT (id) DO UPDATE SET data = $2::jsonb
+        """,
+        combat_id,
+        json.dumps(data),
+    )
+
+
+async def delete_combat_state(combat_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> None:
+    _conn = conn or await get_pool()
+    await _conn.execute("DELETE FROM combat_instances WHERE id = $1", combat_id)
+
+
+async def get_encounter_template(encounter_id: str) -> dict | None:
+    cache_key = f"encounter:{encounter_id}"
+    cached = await _cache_get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
+    pool = await get_pool()
+    row = await pool.fetchrow("SELECT data FROM encounter_templates WHERE id = $1", encounter_id)
+    if row is None:
+        return None
+
+    data = json.loads(row["data"])
+    await _cache_set(cache_key, json.dumps(data))
+    return data
+
+
 async def log_world_event(
     event_type: str, data: dict, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> None:

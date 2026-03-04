@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("divineruin.background")
 
-REBUILD_EVENT_TYPES = {"location_changed", "quest_updated", "disposition_changed"}
+REBUILD_EVENT_TYPES = {"location_changed", "quest_updated", "disposition_changed", "combat_started", "combat_ended"}
 
 GUIDANCE_LEVEL_2_SECS = 35.0
 
@@ -114,6 +114,21 @@ class BackgroundProcess:
                     "quest progression — one sentence, in character.",
                 )
 
+            elif ev.event_type == "combat_ended":
+                outcome = ev.payload.get("outcome", "victory")
+                if outcome == "victory":
+                    self._queue_speech(
+                        SpeechPriority.IMPORTANT,
+                        "Combat has ended in victory. Catch your breath. "
+                        "Describe the aftermath — the quiet after violence. "
+                        "If a companion is present, have them react to the fight.",
+                    )
+                elif outcome == "defeat":
+                    self._queue_speech(
+                        SpeechPriority.CRITICAL,
+                        "The player has fallen in combat. This is a dramatic moment. Narrate the darkness closing in.",
+                    )
+
         return needs_rebuild
 
     def _check_guidance(self) -> None:
@@ -167,6 +182,7 @@ class BackgroundProcess:
                 self._sd.location_id,
                 self._sd.player_id,
                 self._sd.world_time,
+                combat_state=self._sd.combat_state,
             )
         except Exception:
             logger.warning("Warm layer build failed", exc_info=True)
@@ -176,6 +192,6 @@ class BackgroundProcess:
             return
 
         self._last_warm_layer = warm
-        full_prompt = build_full_prompt(SYSTEM_PROMPT, warm)
+        full_prompt = build_full_prompt(SYSTEM_PROMPT, warm, in_combat=self._sd.in_combat)
         self._agent.instructions = full_prompt
         logger.info("Warm layer updated (%d chars)", len(warm))

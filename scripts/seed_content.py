@@ -20,6 +20,7 @@ TABLE_MAP = {
     "lore_entries.json": "lore_entries",
     "players.json": "players",
     "npc_state.json": "npc_state",
+    "encounter_templates.json": "encounter_templates",
 }
 
 PK_COLUMN = {

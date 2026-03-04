@@ -18,10 +18,12 @@ from background_process import BackgroundProcess
 from dialogue_parser import parse_dialogue_stream
 from latency import TurnTimer
 from prompts import build_system_prompt, format_affect_context, quest_objective
+from rules_engine import hp_threshold_status
 from session_data import SessionData
 from tools import (
     add_to_inventory,
     award_xp,
+    end_combat,
     enter_location,
     move_player,
     play_sound,
@@ -31,9 +33,12 @@ from tools import (
     query_npc,
     remove_from_inventory,
     request_attack,
+    request_death_save,
     request_saving_throw,
     request_skill_check,
+    resolve_enemy_turn,
     roll_dice,
+    start_combat,
     update_npc_disposition,
     update_quest,
 )
@@ -56,7 +61,8 @@ REQUIRED_ENV_VARS = [
 WORLD_TOOLS = [enter_location, query_location, query_npc, query_lore, query_inventory]
 MECHANICS_TOOLS = [request_skill_check, request_attack, request_saving_throw, roll_dice, play_sound]
 MUTATION_TOOLS = [move_player, add_to_inventory, remove_from_inventory, update_quest, award_xp, update_npc_disposition]
-ALL_TOOLS = WORLD_TOOLS + MECHANICS_TOOLS + MUTATION_TOOLS
+COMBAT_TOOLS = [start_combat, resolve_enemy_turn, request_death_save, end_combat]
+ALL_TOOLS = WORLD_TOOLS + MECHANICS_TOOLS + MUTATION_TOOLS + COMBAT_TOOLS
 
 
 def validate_env() -> None:
@@ -139,6 +145,17 @@ class DungeonMasterAgent(Agent):
         # Current location + time
         loc_name = location.get("name", sd.location_id) if location else sd.location_id
         parts.append(f"[Context: {loc_name}, {sd.world_time}]")
+
+        # Combat state
+        if sd.combat_state is not None:
+            cs = sd.combat_state
+            combatants = []
+            for pid in cs.initiative_order:
+                p = cs.get_participant(pid)
+                if p is not None:
+                    status = hp_threshold_status(p.hp_current, p.hp_max)
+                    combatants.append(f"{p.name}({status})")
+            parts.append(f"[COMBAT Round {cs.round_number}: {', '.join(combatants)}]")
 
         # Active quest objectives
         if quests:

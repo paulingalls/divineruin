@@ -9,7 +9,7 @@ from background_process import (
     SpeechPriority,
 )
 from event_bus import GameEvent
-from session_data import SessionData
+from session_data import CombatParticipant, CombatState, SessionData
 
 
 def _make_session_data(**kwargs) -> SessionData:
@@ -76,7 +76,14 @@ class TestHandleEvents:
 
 class TestCheckGuidance:
     def test_no_nudge_during_combat(self):
-        sd = _make_session_data(in_combat=True, last_player_speech_time=time.time() - 60)
+        cs = CombatState(
+            combat_id="test",
+            participants=[
+                CombatParticipant(id="p1", name="P", type="player", initiative=10, hp_current=10, hp_max=10, ac=10)
+            ],
+            initiative_order=["p1"],
+        )
+        sd = _make_session_data(combat_state=cs, last_player_speech_time=time.time() - 60)
         bg, _, _ = _make_bg(session_data=sd)
         bg._check_guidance()
         assert len(bg._speech_queue) == 0
