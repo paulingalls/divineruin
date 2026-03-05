@@ -23,6 +23,13 @@ mock.module("@react-native-async-storage/async-storage", () => {
   };
 });
 
+mock.module("expo-haptics", () => ({
+  impactAsync: async () => {},
+  notificationAsync: async () => {},
+  ImpactFeedbackStyle: { Light: "light", Medium: "medium", Heavy: "heavy" },
+  NotificationFeedbackType: { Success: "success", Warning: "warning", Error: "error" },
+}));
+
 mock.module("expo-audio", () => ({
   createAudioPlayer: (source: any) => ({
     volume: 1,

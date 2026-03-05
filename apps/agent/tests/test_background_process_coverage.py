@@ -222,7 +222,9 @@ class TestGuidanceSystem:
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.in_combat = False
-        mock_sd.last_player_speech_time = time.time() - (GUIDANCE_LEVEL_2_SECS + 1)
+        past = time.time() - (GUIDANCE_LEVEL_2_SECS + 1)
+        mock_sd.last_player_speech_time = past
+        mock_sd.last_agent_speech_end = past
 
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
         bp._last_guidance_time = 0
@@ -237,13 +239,58 @@ class TestGuidanceSystem:
                 assert "quiet for a while" in call_args[1]
                 assert bp._last_guidance_time > 0
 
+    def test_check_guidance_skips_while_agent_recently_spoke(self):
+        """_check_guidance should not nudge if agent finished speaking recently."""
+        mock_agent = MagicMock()
+        mock_session = MagicMock()
+        mock_sd = MagicMock()
+        mock_sd.in_combat = False
+        mock_sd.last_player_speech_time = time.time() - (GUIDANCE_LEVEL_2_SECS + 30)
+        mock_sd.last_agent_speech_end = time.time() - 5  # Agent spoke 5s ago
+
+        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp._last_guidance_time = 0
+
+        with patch.object(bp, "_queue_speech") as mock_queue:
+            bp._check_guidance()
+            mock_queue.assert_not_called()
+
+    def test_check_guidance_uses_later_of_player_and_agent_time(self):
+        """_check_guidance should use max(player_speech, agent_speech_end) as baseline."""
+        mock_agent = MagicMock()
+        mock_session = MagicMock()
+        mock_sd = MagicMock()
+        mock_sd.in_combat = False
+
+        now = time.time()
+        # Player spoke long ago, but agent finished speaking recently
+        mock_sd.last_player_speech_time = now - (GUIDANCE_LEVEL_2_SECS + 50)
+        mock_sd.last_agent_speech_end = now - 10  # 10s ago — under threshold
+
+        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
+        bp._last_guidance_time = 0
+
+        with patch.object(bp, "_queue_speech") as mock_queue:
+            bp._check_guidance()
+            mock_queue.assert_not_called()
+
+        # Now set agent speech end to also be past threshold
+        mock_sd.last_agent_speech_end = now - (GUIDANCE_LEVEL_2_SECS + 5)
+
+        with patch.object(bp, "_queue_speech") as mock_queue:
+            with patch.object(bp, "_get_quest_hints", return_value=[]):
+                bp._check_guidance()
+                mock_queue.assert_called_once()
+
     def test_check_guidance_includes_quest_hint_if_available(self):
         """_check_guidance should include quest hint in guidance prompt."""
         mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.in_combat = False
-        mock_sd.last_player_speech_time = time.time() - (GUIDANCE_LEVEL_2_SECS + 1)
+        past = time.time() - (GUIDANCE_LEVEL_2_SECS + 1)
+        mock_sd.last_player_speech_time = past
+        mock_sd.last_agent_speech_end = past
 
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
         bp._last_guidance_time = 0

@@ -14,6 +14,8 @@ import { ThemedText } from "@/components/themed-text";
 import { TranscriptView } from "@/components/transcript-view";
 import { AtmosphericBackground } from "@/components/atmospheric-background";
 import { ReconnectionOverlay } from "@/components/reconnection-overlay";
+import { PersistentBar } from "@/components/hud/persistent-bar";
+import { OverlayManager } from "@/components/hud/overlay-manager";
 import { useSessionToken } from "@/hooks/useSessionToken";
 import { useGameEvents } from "@/hooks/use-game-events";
 import { configureAudioSession } from "@/audio/audio-config";
@@ -21,45 +23,12 @@ import { releaseAllPlayers } from "@/audio/sfx-player";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
+import { hudStore } from "@/stores/hud-store";
 import { BrandColors, Spacing, Radius, Shadows } from "@/constants/theme";
 import { PLAYER_ID } from "@/utils/api";
 
 const ROOM_NAME = "divineruin-session";
 const RECONNECT_TIMEOUT_MS = 5 * 60 * 1000;
-
-const STATUS_LABELS: Record<string, string> = {
-  connecting: "Entering the world...",
-  connected: "Connected",
-  disconnected: "Disconnected",
-  reconnecting: "Reconnecting...",
-  signalReconnecting: "Reconnecting...",
-};
-
-const VOICE_DOT_GLOW = {
-  shadowColor: BrandColors.hollow,
-  shadowOffset: { width: 0, height: 0 },
-  shadowOpacity: 0.8,
-  shadowRadius: 4,
-} as const;
-
-function VoiceIndicator({ connectionState }: { connectionState: string }) {
-  const color =
-    connectionState === "connected"
-      ? BrandColors.hollow
-      : connectionState === "disconnected"
-        ? BrandColors.ember
-        : BrandColors.slate;
-
-  return (
-    <View
-      style={[
-        styles.voiceDot,
-        { backgroundColor: color },
-        connectionState === "connected" ? VOICE_DOT_GLOW : undefined,
-      ]}
-    />
-  );
-}
 
 function SessionContent({ onLeave }: { onLeave: () => void }) {
   const connectionState = useConnectionState();
@@ -138,23 +107,13 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
     }
   }, [connectionState, onLeave, reconnecting, phase]);
 
-  const statusLabel = STATUS_LABELS[connectionState] ?? connectionState;
-
   return (
     <View style={styles.content}>
-      <View style={styles.statusIndicator}>
-        <VoiceIndicator connectionState={connectionState} />
-        <ThemedText variant="system" style={styles.statusText}>
-          {statusLabel}
-        </ThemedText>
-        {agentState && (
-          <ThemedText variant="system" style={styles.statusText}>
-            DM: {agentState}
-          </ThemedText>
-        )}
-      </View>
+      <PersistentBar connectionState={connectionState} agentState={agentState} />
 
       <TranscriptView />
+
+      <OverlayManager />
 
       <View style={styles.buttonRow}>
         <Pressable
@@ -206,6 +165,7 @@ export default function SessionScreen() {
     sessionStore.getState().reset();
     characterStore.getState().clear();
     transcriptStore.getState().clear();
+    hudStore.getState().reset();
     router.back();
   }, [reset, router]);
 
@@ -267,20 +227,6 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingTop: Spacing.four,
     paddingBottom: Spacing.four,
-  },
-  statusIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.two,
-    opacity: 0.6,
-  },
-  voiceDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    color: BrandColors.bone,
   },
   centered: {
     textAlign: "center",

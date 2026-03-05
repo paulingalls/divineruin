@@ -3,6 +3,7 @@ import { parseGameEvent, handleGameEvent } from "@/audio/game-event-handler";
 import { activePlayerCount } from "@/audio/sfx-player";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore, type CharacterSummary } from "@/stores/character-store";
+import { hudStore } from "@/stores/hud-store";
 
 function encode(data: object): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(data));
@@ -22,6 +23,7 @@ const SAMPLE_CHARACTER: CharacterSummary = {
 beforeEach(() => {
   sessionStore.getState().reset();
   characterStore.getState().clear();
+  hudStore.getState().reset();
 });
 
 // --- parseGameEvent ---
@@ -263,11 +265,167 @@ test("session_end without summary sets phase to ended", () => {
   expect(sessionStore.getState().sessionSummary).toBeNull();
 });
 
-// --- handleGameEvent: future events ---
+// --- handleGameEvent: dice_result ---
 
-test("quest_updated does not crash", () => {
-  expect(() => handleGameEvent({ type: "quest_updated" })).not.toThrow();
+test("dice_result pushes overlay to hudStore", () => {
+  handleGameEvent({ type: "dice_result", roll: 14, modifier: 2, total: 16, success: true });
+  const overlays = hudStore.getState().overlays;
+  expect(overlays).toHaveLength(1);
+  expect(overlays[0].type).toBe("dice_result");
+  expect(overlays[0].payload.roll).toBe(14);
+  expect(overlays[0].payload.success).toBe(true);
 });
+
+// --- handleGameEvent: combat_ui_update ---
+
+test("combat_ui_update sets combat state in hudStore", () => {
+  handleGameEvent({
+    type: "combat_ui_update",
+    phase: "player_turn",
+    round: 2,
+    combatants: [
+      {
+        id: "c1",
+        name: "Kael",
+        isAlly: true,
+        hpCurrent: 20,
+        hpMax: 30,
+        statusEffects: [],
+        isActive: true,
+      },
+    ],
+  });
+  const combat = hudStore.getState().combatState;
+  expect(combat).not.toBeNull();
+  expect(combat!.phase).toBe("player_turn");
+  expect(combat!.round).toBe(2);
+  expect(combat!.combatants).toHaveLength(1);
+});
+
+// --- handleGameEvent: combat_ended clears hudStore ---
+
+test("combat_ended clears hudStore combat state", () => {
+  hudStore.getState().setCombatState({ phase: "init", round: 1, combatants: [] });
+  handleGameEvent({ type: "combat_ended" });
+  expect(hudStore.getState().combatState).toBeNull();
+});
+
+// --- handleGameEvent: item_acquired ---
+
+test("item_acquired pushes overlay to hudStore", () => {
+  handleGameEvent({
+    type: "item_acquired",
+    name: "Rusty Sword",
+    description: "A worn blade",
+    rarity: "common",
+  });
+  const overlays = hudStore.getState().overlays;
+  expect(overlays).toHaveLength(1);
+  expect(overlays[0].type).toBe("item_acquired");
+  expect(overlays[0].payload.name).toBe("Rusty Sword");
+  expect(overlays[0].payload.rarity).toBe("common");
+});
+
+// --- handleGameEvent: quest_update ---
+
+test("quest_update pushes overlay and sets active objective", () => {
+  handleGameEvent({
+    type: "quest_update",
+    quest_name: "Guild Initiation",
+    objective: "Find the cartographer",
+    status: "active",
+  });
+  const overlays = hudStore.getState().overlays;
+  expect(overlays).toHaveLength(1);
+  expect(overlays[0].type).toBe("quest_update");
+  const obj = hudStore.getState().activeObjective;
+  expect(obj).not.toBeNull();
+  expect(obj!.questName).toBe("Guild Initiation");
+  expect(obj!.objective).toBe("Find the cartographer");
+});
+
+test("quest_updated also pushes overlay (backward compat)", () => {
+  handleGameEvent({
+    type: "quest_updated",
+    quest_name: "Old Quest",
+    objective: "Do something",
+  });
+  expect(hudStore.getState().overlays).toHaveLength(1);
+  expect(hudStore.getState().overlays[0].type).toBe("quest_update");
+});
+
+// --- handleGameEvent: xp_awarded with overlay ---
+
+test("xp_awarded without level_up pushes xp_toast overlay", () => {
+  characterStore.getState().setCharacter(SAMPLE_CHARACTER);
+  handleGameEvent({ type: "xp_awarded", new_xp: 525, new_level: 3, xp_gained: 75 });
+  const overlays = hudStore.getState().overlays;
+  expect(overlays).toHaveLength(1);
+  expect(overlays[0].type).toBe("xp_toast");
+  expect(overlays[0].payload.xpGained).toBe(75);
+});
+
+test("xp_awarded with level_up pushes level_up overlay", () => {
+  characterStore.getState().setCharacter(SAMPLE_CHARACTER);
+  handleGameEvent({
+    type: "xp_awarded",
+    new_xp: 600,
+    new_level: 4,
+    xp_gained: 150,
+    level_up: true,
+  });
+  const overlays = hudStore.getState().overlays;
+  expect(overlays).toHaveLength(1);
+  expect(overlays[0].type).toBe("level_up");
+  expect(overlays[0].payload.newLevel).toBe(4);
+});
+
+// --- handleGameEvent: status_effect ---
+
+test("status_effect add creates status effect in hudStore", () => {
+  handleGameEvent({
+    type: "status_effect",
+    action: "add",
+    effect_id: "blessed-1",
+    name: "Blessed",
+    category: "buff",
+  });
+  expect(hudStore.getState().statusEffects).toHaveLength(1);
+  expect(hudStore.getState().statusEffects[0].name).toBe("Blessed");
+  expect(hudStore.getState().statusEffects[0].category).toBe("buff");
+});
+
+test("status_effect remove removes from hudStore", () => {
+  hudStore.getState().addStatusEffect({ id: "curse-1", name: "Cursed", category: "debuff" });
+  handleGameEvent({ type: "status_effect", action: "remove", effect_id: "curse-1" });
+  expect(hudStore.getState().statusEffects).toHaveLength(0);
+});
+
+// --- handleGameEvent: creation_cards ---
+
+test("creation_cards sets cards in hudStore", () => {
+  handleGameEvent({
+    type: "creation_cards",
+    cards: [
+      { id: "c1", title: "Warrior", description: "Strong fighter", category: "class" },
+      { id: "c2", title: "Mage", description: "Arcane power", category: "class" },
+    ],
+  });
+  expect(hudStore.getState().creationCards).toHaveLength(2);
+  expect(hudStore.getState().creationCards[0].title).toBe("Warrior");
+});
+
+// --- handleGameEvent: creation_card_selected ---
+
+test("creation_card_selected sets selection in hudStore", () => {
+  hudStore
+    .getState()
+    .setCreationCards([{ id: "c1", title: "Warrior", description: "Strong", category: "class" }]);
+  handleGameEvent({ type: "creation_card_selected", card_id: "c1" });
+  expect(hudStore.getState().selectedCreationCard).toBe("c1");
+});
+
+// --- handleGameEvent: inventory_updated ---
 
 test("inventory_updated does not crash", () => {
   expect(() => handleGameEvent({ type: "inventory_updated" })).not.toThrow();

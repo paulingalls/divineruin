@@ -1,7 +1,10 @@
 import { playSfx } from "./sfx-player";
+import { hapticDiceRoll, hapticItemAcquired, hapticLevelUp } from "./haptics";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
+import { hudStore } from "@/stores/hud-store";
+import type { Combatant, CombatTrackerState, CreationCard } from "@/stores/hud-store";
 
 export interface DataChannelEvent {
   type: string;
@@ -34,7 +37,17 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
 
     case "dice_roll":
+    case "dice_result":
       playSfx("dice_roll");
+      hapticDiceRoll();
+      hudStore.getState().pushOverlay("dice_result", {
+        roll: event.roll,
+        modifier: event.modifier,
+        total: event.total,
+        success: event.success,
+        rollType: event.roll_type,
+        narrative: event.narrative,
+      });
       break;
 
     case "session_init": {
@@ -100,11 +113,44 @@ export function handleGameEvent(event: DataChannelEvent): void {
 
     case "combat_ended":
       sessionStore.getState().setCombat(false);
+      hudStore.getState().clearCombatState();
       break;
+
+    case "combat_ui_update": {
+      const combatants = Array.isArray(event.combatants) ? (event.combatants as Combatant[]) : [];
+      const combatState: CombatTrackerState = {
+        phase: typeof event.phase === "string" ? event.phase : "unknown",
+        round: typeof event.round === "number" ? event.round : 1,
+        combatants,
+      };
+      hudStore.getState().setCombatState(combatState);
+      sessionStore.getState().setCombat(true);
+      break;
+    }
 
     case "xp_awarded":
       if (typeof event.new_xp === "number" && typeof event.new_level === "number") {
         characterStore.getState().updateXp(event.new_xp, event.new_level);
+        if (event.level_up) {
+          hudStore.getState().pushOverlay(
+            "level_up",
+            {
+              newLevel: event.new_level,
+              xpGained: event.xp_gained,
+            },
+            5000,
+          );
+          playSfx("level_up_sting");
+          hapticLevelUp();
+        } else {
+          hudStore.getState().pushOverlay(
+            "xp_toast",
+            {
+              xpGained: typeof event.xp_gained === "number" ? event.xp_gained : 0,
+            },
+            2500,
+          );
+        }
       }
       break;
 
@@ -146,7 +192,61 @@ export function handleGameEvent(event: DataChannelEvent): void {
       });
       break;
 
-    case "quest_updated":
+    case "item_acquired":
+      hudStore.getState().pushOverlay("item_acquired", {
+        name: event.name,
+        description: event.description,
+        rarity: event.rarity,
+      });
+      playSfx("item_pickup");
+      hapticItemAcquired();
+      break;
+
+    case "quest_update":
+    case "quest_updated": {
+      const questHud = hudStore.getState();
+      questHud.pushOverlay("quest_update", {
+        questName: event.quest_name,
+        objective: event.objective,
+        status: event.status,
+      });
+      if (typeof event.quest_name === "string" && typeof event.objective === "string") {
+        questHud.setActiveObjective({
+          questName: event.quest_name,
+          objective: event.objective,
+          updatedAt: Date.now(),
+        });
+      }
+      playSfx("quest_sting");
+      break;
+    }
+
+    case "status_effect": {
+      const hud = hudStore.getState();
+      if (event.action === "remove" && typeof event.effect_id === "string") {
+        hud.removeStatusEffect(event.effect_id);
+      } else if (typeof event.effect_id === "string" && typeof event.name === "string") {
+        hud.addStatusEffect({
+          id: event.effect_id,
+          name: event.name,
+          category: event.category === "debuff" ? "debuff" : "buff",
+        });
+      }
+      break;
+    }
+
+    case "creation_cards": {
+      const cards = Array.isArray(event.cards) ? (event.cards as CreationCard[]) : [];
+      hudStore.getState().setCreationCards(cards);
+      break;
+    }
+
+    case "creation_card_selected":
+      if (typeof event.card_id === "string") {
+        hudStore.getState().setSelectedCreationCard(event.card_id);
+      }
+      break;
+
     case "inventory_updated":
       console.log("[game-events] Logged for future:", event.type);
       break;

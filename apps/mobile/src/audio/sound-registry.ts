@@ -1,8 +1,17 @@
 type SoundAsset = ReturnType<typeof require>;
 
-export type SoundName = "dice_roll" | "sword_clash" | "tavern";
+export type SoundName =
+  | "dice_roll"
+  | "sword_clash"
+  | "tavern"
+  | "quest_sting"
+  | "level_up_sting"
+  | "item_pickup"
+  | "notification"
+  | "success_sting"
+  | "fail_sting";
 
-const SOUNDS: Record<SoundName, SoundAsset> = {
+const SOUNDS: Partial<Record<SoundName, SoundAsset>> = {
   dice_roll: require("@/assets/sounds/dice_roll.mp3"),
   sword_clash: require("@/assets/sounds/sword_clash.mp3"),
   tavern: require("@/assets/sounds/tavern.mp3"),

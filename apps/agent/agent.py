@@ -351,6 +351,11 @@ async def dm_session(ctx: agents.JobContext) -> None:
         userdata=userdata,
     )
 
+    @session.on("agent_state_changed")
+    def _on_agent_state(ev):
+        if ev.old_state == "speaking" and ev.new_state == "listening":
+            userdata.last_agent_speech_end = time.time()
+
     await session.start(
         room=ctx.room,
         agent=DungeonMasterAgent(),

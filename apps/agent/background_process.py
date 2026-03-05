@@ -142,7 +142,8 @@ class BackgroundProcess:
         if self._last_guidance_time >= self._sd.last_player_speech_time:
             return
 
-        silence = time.time() - self._sd.last_player_speech_time
+        baseline = max(self._sd.last_player_speech_time, self._sd.last_agent_speech_end)
+        silence = time.time() - baseline
 
         if silence >= GUIDANCE_LEVEL_2_SECS:
             self._last_guidance_time = time.time()

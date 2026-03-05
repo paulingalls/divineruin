@@ -56,6 +56,7 @@ class SessionData:
     world_time: str = "evening"
     combat_state: CombatState | None = None
     last_player_speech_time: float = 0.0
+    last_agent_speech_end: float = 0.0
     recent_events: deque[str] = field(default_factory=lambda: deque(maxlen=MAX_RECENT_EVENTS))
 
     @property

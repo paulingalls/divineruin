@@ -36,7 +36,7 @@ export default function HomeScreen() {
   }, []);
 
   const hasCharacter = character !== null;
-  const buttonLabel = hasCharacter ? "ENTER THE WORLD" : "BEGIN YOUR JOURNEY";
+  const buttonLabel = hasCharacter ? "ENTER AETHOS" : "BEGIN YOUR JOURNEY";
 
   const enterButton = (
     <Pressable style={styles.enterButton} onPress={() => router.push("/session")}>

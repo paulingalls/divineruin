@@ -220,6 +220,12 @@ export const Shadows = {
   })!,
 };
 
+// --- Animation Presets ---
+
+export const AnimationPresets = {
+  overlaySpring: { damping: 18, stiffness: 200 },
+} as const;
+
 // --- Backward-compat aliases ---
 
 export const Fonts = FontFamilies;
