@@ -653,24 +653,24 @@ These overlays appear over the session screen center when triggered by data chan
 - **Performance**: map is pre-laid-out (node positions defined in location entity data or a separate map layout config). Rendering is static SVG/Skia with only the pulse animation on current location. Should render in <100ms even with 30+ nodes.
 
 **Acceptance criteria:**
-- [ ] Panel shell opens via swipe-up gesture or persistent bar icon tap with spring animation
-- [ ] Panels open in <200ms with no loading spinner (reads from local stores)
-- [ ] Tab bar allows switching between all four panels without closing the sheet
-- [ ] Voice connection remains active while any panel is open — player can talk to DM while browsing
-- [ ] Swipe-down gesture and close button both dismiss panels smoothly
-- [ ] Character Sheet displays all stats, HP, skills, divine favor, and equipment correctly from store data
-- [ ] Character Sheet stat modifiers show correct color: `hollow` for positive, `ember` for negative
-- [ ] Inventory grid displays items with correct rarity borders; tapping opens detail card
-- [ ] Inventory item detail card shows full description, stats, and lore text
-- [ ] Quest Log shows active quests with expandable stages; completed stages have checkmarks
-- [ ] Quest Log hint button reveals level 1 hint text from `global_hints`
-- [ ] Map renders visited locations as nodes with connections; current location pulses in `hollow`
-- [ ] Map supports pinch-to-zoom and drag-to-pan; double-tap re-centers on current location
-- [ ] Map fills in as player explores — newly visited locations appear on `location_changed` events
+- [x] Panel shell opens via swipe-up gesture or persistent bar icon tap with spring animation
+- [x] Panels open in <200ms with no loading spinner (reads from local stores)
+- [x] Tab bar allows switching between all four panels without closing the sheet
+- [x] Voice connection remains active while any panel is open — player can talk to DM while browsing
+- [x] Swipe-down gesture and close button both dismiss panels smoothly
+- [x] Character Sheet displays all stats, HP, skills, divine favor, and equipment correctly from store data
+- [x] Character Sheet stat modifiers show correct color: `hollow` for positive, `ember` for negative
+- [x] Inventory grid displays items with correct rarity borders; tapping opens detail card
+- [x] Inventory item detail card shows full description, stats, and lore text
+- [x] Quest Log shows active quests with expandable stages; completed stages have checkmarks
+- [x] Quest Log hint button reveals level 1 hint text from `global_hints`
+- [x] Map renders visited locations as nodes with connections; current location pulses in `hollow`
+- [x] Map supports pinch-to-zoom and drag-to-pan; double-tap re-centers on current location
+- [x] Map fills in as player explores — newly visited locations appear on `location_changed` events
 - [ ] Quest objective marker appears on the correct map node
-- [ ] All panel text uses brand typography: Cormorant Garamond for headers, Crimson Pro for body, IBM Plex Mono for data
-- [ ] Panel open/close triggers UI sounds (UI-006/UI-007) and light haptic
-- [ ] Panel components have unit or interaction tests covering data display and tab switching
+- [x] All panel text uses brand typography: Cormorant Garamond for headers, Crimson Pro for body, IBM Plex Mono for data
+- [x] Panel open/close triggers UI sounds (UI-006/UI-007) and light haptic
+- [x] Panel components have unit or interaction tests covering data display and tab switching
 
 **Key references:**
 - *Technical Architecture — Client Architecture — Screen Map* (pull-up screens: Map, Character Sheet, Inventory, Quest Log)
