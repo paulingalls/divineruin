@@ -274,6 +274,7 @@ function logEntry(type, room, msg, ok) {
     '<span class="log-room">' + room + '</span>' +
     '<span class="' + (ok ? 'log-ok' : 'log-err') + '">' + msg + '</span>';
   logEl.prepend(div);
+  while (logEl.children.length > 100) logEl.removeChild(logEl.lastChild);
 }
 
 refreshRooms();

@@ -1,7 +1,6 @@
 import { serve } from "bun";
 import { handleLivekitToken } from "./livekit.ts";
 import { handleGetCharacter } from "./character.ts";
-import { handleDebugPage, handleDebugRooms, handleDebugSendEvent } from "./debug.ts";
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -20,6 +19,7 @@ const routes: Record<string, any> = {
 };
 
 if (isDev) {
+  const { handleDebugPage, handleDebugRooms, handleDebugSendEvent } = await import("./debug.ts");
   routes["/debug"] = {
     GET() {
       return handleDebugPage();

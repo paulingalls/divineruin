@@ -16,7 +16,7 @@ import { hapticSuccess, hapticCritical } from "@/audio/haptics";
 /** Duration of the dice tumble spin in ms. */
 const TUMBLE_DURATION_MS = 1500;
 /** Interval between random number flickers during tumble. */
-const FLICKER_INTERVAL_MS = 60;
+const FLICKER_INTERVAL_MS = 120;
 
 interface DiceRollOverlayProps {
   payload: Record<string, unknown>;
@@ -32,8 +32,8 @@ export function DiceRollOverlay({ payload }: DiceRollOverlayProps) {
 
   const scale = useSharedValue(0.8);
   const rotation = useSharedValue(0);
-  const [revealed, setRevealed] = useState(false);
   const [displayNumber, setDisplayNumber] = useState(() => Math.floor(Math.random() * 20) + 1);
+  const revealed = displayNumber === total;
   const flickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopFlicker = useCallback(() => {
@@ -60,7 +60,6 @@ export function DiceRollOverlay({ payload }: DiceRollOverlayProps) {
     const timer = setTimeout(() => {
       stopFlicker();
       setDisplayNumber(total);
-      setRevealed(true);
       if (roll === 20) {
         hapticCritical();
       } else if (success !== false) {
