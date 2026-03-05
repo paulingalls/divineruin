@@ -3,6 +3,7 @@ import { createStore } from "zustand/vanilla";
 export interface CharacterSummary {
   playerId: string;
   name: string;
+  className: string;
   level: number;
   xp: number;
   locationId: string;

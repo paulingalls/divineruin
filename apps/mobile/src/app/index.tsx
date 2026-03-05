@@ -37,22 +37,33 @@ export default function HomeScreen() {
     </Pressable>
   );
 
+  const titleBar = (
+    <>
+      <View style={styles.titleBar}>
+        <ThemedText style={styles.titleText}>DIVINE</ThemedText>
+        <View style={styles.titleDivider} />
+        <ThemedText style={styles.titleText}>RUIN</ThemedText>
+      </View>
+      <View style={styles.titleRule} />
+    </>
+  );
+
   const settingsButton = (
     <Pressable style={styles.settingsButton} onPress={() => router.push("/settings")}>
       <ThemedText style={styles.settingsIcon}>{"\u2699"}</ThemedText>
     </Pressable>
   );
 
+  const playerSection = <CharacterSummaryBar trailing={settingsButton} />;
+
   if (isLandscape) {
     return (
       <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.landscapeHeader}>
-            <CharacterSummaryBar />
-            {settingsButton}
-          </View>
+        <SafeAreaView style={[styles.safeArea, styles.landscapeSafeArea]}>
+          {titleBar}
           <View style={styles.landscapeBody}>
             <View style={styles.landscapeLeft}>
+              {playerSection}
               <CatchUpList />
             </View>
             <View style={styles.landscapeRight}>{enterButton}</View>
@@ -66,12 +77,8 @@ export default function HomeScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedView style={styles.content}>
-          <View style={styles.topRow}>
-            <View style={{ flex: 1 }}>
-              <CharacterSummaryBar />
-            </View>
-            {settingsButton}
-          </View>
+          {titleBar}
+          {playerSection}
           <CatchUpList />
           {enterButton}
         </ThemedView>
@@ -94,13 +101,30 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
+    paddingTop: Spacing.two,
     gap: Spacing.three,
   },
-  topRow: {
+  titleBar: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.two,
+    justifyContent: "center",
+    gap: Spacing.three,
+    paddingBottom: Spacing.one,
+  },
+  titleRule: {
+    height: 1,
+    backgroundColor: BrandColors.charcoal,
+  },
+  titleText: {
+    fontSize: 22,
+    fontFamily: FontFamilies.display,
+    color: BrandColors.ash,
+    letterSpacing: 8,
+  },
+  titleDivider: {
+    width: 1.5,
+    height: 20,
+    backgroundColor: BrandColors.hollowMuted,
   },
   enterButton: {
     paddingVertical: Spacing.three,
@@ -118,27 +142,22 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   settingsButton: {
-    width: 40,
-    height: 40,
+    paddingLeft: Spacing.two,
     alignItems: "center",
     justifyContent: "center",
   },
   settingsIcon: {
-    fontSize: 22,
+    fontSize: 18,
     color: BrandColors.ash,
   },
-  landscapeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+  landscapeSafeArea: {
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-    gap: Spacing.two,
+    paddingTop: Spacing.two,
+    gap: Spacing.three,
   },
   landscapeBody: {
     flex: 1,
     flexDirection: "row",
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
     gap: Spacing.four,
   },
   landscapeLeft: {

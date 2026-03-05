@@ -20,6 +20,7 @@ export function useCharacter(playerId: string) {
         characterStore.getState().setCharacter({
           playerId: data.player_id,
           name: data.name,
+          className: data.class,
           level: data.level,
           xp: data.xp,
           locationId: data.location_id,

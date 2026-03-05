@@ -56,6 +56,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
         characterStore.getState().setCharacter({
           playerId: typeof character.player_id === "string" ? character.player_id : "",
           name: typeof character.name === "string" ? character.name : "",
+          className: typeof character.class === "string" ? character.class : "Adventurer",
           level: typeof character.level === "number" ? character.level : 1,
           xp: typeof character.xp === "number" ? character.xp : 0,
           locationId: typeof character.location_id === "string" ? character.location_id : "",

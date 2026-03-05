@@ -4,6 +4,7 @@ interface CharacterRow {
   player_id: string;
   data: {
     name?: string;
+    class?: string;
     level?: number;
     xp?: number;
     location_id?: string;
@@ -37,6 +38,7 @@ export async function handleGetCharacter(_req: Request, playerId: string): Promi
     return Response.json({
       player_id: row.player_id,
       name: data.name ?? "Unknown",
+      class: data.class ?? "Adventurer",
       level: data.level ?? 1,
       xp: data.xp ?? 0,
       location_id: locationId,

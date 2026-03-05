@@ -12,6 +12,7 @@ function encode(data: object): Uint8Array {
 const SAMPLE_CHARACTER: CharacterSummary = {
   playerId: "player-1",
   name: "Kael",
+  className: "warrior",
   level: 3,
   xp: 450,
   locationId: "accord_guild_hall",

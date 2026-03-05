@@ -4,6 +4,7 @@ import { characterStore, type CharacterSummary } from "@/stores/character-store"
 const SAMPLE: CharacterSummary = {
   playerId: "player-1",
   name: "Kael",
+  className: "warrior",
   level: 3,
   xp: 450,
   locationId: "accord_guild_hall",
