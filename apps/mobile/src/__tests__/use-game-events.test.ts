@@ -161,12 +161,106 @@ test("hp_changed with non-number current is no-op", () => {
   expect(characterStore.getState().character!.hpCurrent).toBe(25);
 });
 
-// --- handleGameEvent: session_end ---
+// --- handleGameEvent: session_init ---
 
-test("session_end sets phase to ended", () => {
+test("session_init populates character and session stores", () => {
+  handleGameEvent({
+    type: "session_init",
+    character: {
+      player_id: "player-1",
+      name: "Kael",
+      level: 3,
+      xp: 450,
+      location_id: "accord_guild_hall",
+      location_name: "Guild Hall",
+      hp: { current: 25, max: 30 },
+    },
+    location: {
+      id: "accord_guild_hall",
+      name: "Guild Hall",
+      atmosphere: "busy, purposeful",
+      region: "Accord",
+      tags: ["guild"],
+    },
+    quests: [],
+    inventory: [],
+  });
+
+  const char = characterStore.getState().character;
+  expect(char).not.toBeNull();
+  expect(char!.playerId).toBe("player-1");
+  expect(char!.name).toBe("Kael");
+  expect(char!.level).toBe(3);
+  expect(char!.hpCurrent).toBe(25);
+  expect(char!.hpMax).toBe(30);
+
+  const loc = sessionStore.getState().locationContext;
+  expect(loc).not.toBeNull();
+  expect(loc!.locationId).toBe("accord_guild_hall");
+  expect(loc!.locationName).toBe("Guild Hall");
+  expect(loc!.atmosphere).toBe("busy, purposeful");
+});
+
+test("session_init with partial payload handles missing fields gracefully", () => {
+  handleGameEvent({
+    type: "session_init",
+    character: { player_id: "p1", name: "Test" },
+    location: null,
+    quests: [],
+    inventory: [],
+  });
+
+  const char = characterStore.getState().character;
+  expect(char).not.toBeNull();
+  expect(char!.name).toBe("Test");
+  expect(char!.level).toBe(1);
+  expect(char!.hpCurrent).toBe(0);
+
+  expect(sessionStore.getState().locationContext).toBeNull();
+});
+
+test("session_init with null character does not crash", () => {
+  expect(() =>
+    handleGameEvent({
+      type: "session_init",
+      character: null,
+      location: null,
+      quests: [],
+      inventory: [],
+    }),
+  ).not.toThrow();
+  expect(characterStore.getState().character).toBeNull();
+});
+
+// --- handleGameEvent: session_end with summary ---
+
+test("session_end with summary populates sessionSummary and sets phase to summary", () => {
+  sessionStore.getState().setPhase("active");
+  handleGameEvent({
+    type: "session_end",
+    summary: "You explored the guild hall.",
+    xp_earned: 50,
+    items_found: ["rusty_sword"],
+    quest_progress: ["guild_initiation"],
+    duration: 300,
+    next_hooks: ["Return to Torin."],
+  });
+
+  expect(sessionStore.getState().phase).toBe("summary");
+  const s = sessionStore.getState().sessionSummary;
+  expect(s).not.toBeNull();
+  expect(s!.summary).toBe("You explored the guild hall.");
+  expect(s!.xpEarned).toBe(50);
+  expect(s!.itemsFound).toEqual(["rusty_sword"]);
+  expect(s!.duration).toBe(300);
+  expect(s!.nextHooks).toEqual(["Return to Torin."]);
+});
+
+test("session_end without summary sets phase to ended", () => {
   sessionStore.getState().setPhase("active");
   handleGameEvent({ type: "session_end" });
   expect(sessionStore.getState().phase).toBe("ended");
+  expect(sessionStore.getState().sessionSummary).toBeNull();
 });
 
 // --- handleGameEvent: future events ---

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -8,10 +8,12 @@ import {
   useLocalParticipant,
   useVoiceAssistant,
 } from "@livekit/react-native";
+import { useStore } from "zustand";
 
 import { ThemedText } from "@/components/themed-text";
 import { TranscriptView } from "@/components/transcript-view";
 import { AtmosphericBackground } from "@/components/atmospheric-background";
+import { ReconnectionOverlay } from "@/components/reconnection-overlay";
 import { useSessionToken } from "@/hooks/useSessionToken";
 import { useGameEvents } from "@/hooks/use-game-events";
 import { configureAudioSession } from "@/audio/audio-config";
@@ -23,6 +25,7 @@ import { BrandColors, Spacing, Radius, Shadows } from "@/constants/theme";
 import { PLAYER_ID } from "@/utils/api";
 
 const ROOM_NAME = "divineruin-session";
+const RECONNECT_TIMEOUT_MS = 5 * 60 * 1000;
 
 const STATUS_LABELS: Record<string, string> = {
   connecting: "Entering the world...",
@@ -32,12 +35,42 @@ const STATUS_LABELS: Record<string, string> = {
   signalReconnecting: "Reconnecting...",
 };
 
+const VOICE_DOT_GLOW = {
+  shadowColor: BrandColors.hollow,
+  shadowOffset: { width: 0, height: 0 },
+  shadowOpacity: 0.8,
+  shadowRadius: 4,
+} as const;
+
+function VoiceIndicator({ connectionState }: { connectionState: string }) {
+  const color =
+    connectionState === "connected"
+      ? BrandColors.hollow
+      : connectionState === "disconnected"
+        ? BrandColors.ember
+        : BrandColors.slate;
+
+  return (
+    <View
+      style={[
+        styles.voiceDot,
+        { backgroundColor: color },
+        connectionState === "connected" ? VOICE_DOT_GLOW : undefined,
+      ]}
+    />
+  );
+}
+
 function SessionContent({ onLeave }: { onLeave: () => void }) {
   const connectionState = useConnectionState();
   const voiceAssistant = useVoiceAssistant();
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
   const agentState = voiceAssistant.state;
   const wasActive = useRef(false);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const router = useRouter();
+  const phase = useStore(sessionStore, (s) => s.phase);
+  const reconnecting = useStore(sessionStore, (s) => s.reconnecting);
 
   useGameEvents();
 
@@ -46,13 +79,30 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
   };
 
   useEffect(() => {
-    return () => releaseAllPlayers();
+    return () => {
+      releaseAllPlayers();
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+    };
   }, []);
+
+  useEffect(() => {
+    if (phase === "summary") {
+      router.replace("/session-summary");
+    }
+  }, [phase, router]);
 
   useEffect(() => {
     if (connectionState === "connected") {
       sessionStore.getState().setPhase("active");
       wasActive.current = true;
+
+      if (reconnecting) {
+        sessionStore.getState().setReconnecting(false);
+        if (reconnectTimer.current) {
+          clearTimeout(reconnectTimer.current);
+          reconnectTimer.current = null;
+        }
+      }
 
       const char = characterStore.getState().character;
       if (char && !sessionStore.getState().locationContext) {
@@ -66,18 +116,34 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
       }
     }
 
-    if (connectionState === "disconnected" && wasActive.current) {
-      sessionStore.getState().setPhase("ended");
-      const timer = setTimeout(() => onLeave(), 2000);
-      return () => clearTimeout(timer);
+    const isReconnecting =
+      connectionState === "reconnecting" || connectionState === "signalReconnecting";
+    if (isReconnecting && wasActive.current) {
+      sessionStore.getState().setReconnecting(true);
+      if (!reconnectTimer.current) {
+        reconnectTimer.current = setTimeout(() => {
+          sessionStore.getState().setReconnecting(false);
+          sessionStore.getState().setPhase("ended");
+          onLeave();
+        }, RECONNECT_TIMEOUT_MS);
+      }
     }
-  }, [connectionState, onLeave]);
+
+    if (connectionState === "disconnected" && wasActive.current && !reconnecting) {
+      if (phase !== "summary") {
+        sessionStore.getState().setPhase("ended");
+        const timer = setTimeout(() => onLeave(), 2000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [connectionState, onLeave, reconnecting, phase]);
 
   const statusLabel = STATUS_LABELS[connectionState] ?? connectionState;
 
   return (
     <View style={styles.content}>
       <View style={styles.statusIndicator}>
+        <VoiceIndicator connectionState={connectionState} />
         <ThemedText variant="system" style={styles.statusText}>
           {statusLabel}
         </ThemedText>
@@ -114,6 +180,8 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
           <ThemedText style={[styles.buttonText, styles.leaveText]}>Leave</ThemedText>
         </Pressable>
       </View>
+
+      {reconnecting && <ReconnectionOverlay />}
     </View>
   );
 }
@@ -128,13 +196,18 @@ export default function SessionScreen() {
     fetchToken(ROOM_NAME);
   }, [fetchToken]);
 
-  const handleLeave = () => {
+  const handleLeave = useCallback(() => {
+    const currentPhase = sessionStore.getState().phase;
+    if (currentPhase === "summary") {
+      router.replace("/session-summary");
+      return;
+    }
     reset();
     sessionStore.getState().reset();
     characterStore.getState().clear();
     transcriptStore.getState().clear();
     router.back();
-  };
+  }, [reset, router]);
 
   if (state === "error") {
     return (
@@ -197,8 +270,14 @@ const styles = StyleSheet.create({
   },
   statusIndicator: {
     flexDirection: "row",
-    gap: Spacing.three,
+    alignItems: "center",
+    gap: Spacing.two,
     opacity: 0.6,
+  },
+  voiceDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   statusText: {
     color: BrandColors.bone,

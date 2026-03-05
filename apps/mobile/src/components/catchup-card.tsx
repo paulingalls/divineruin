@@ -1,15 +1,15 @@
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import type { CatchUpCard } from "@/stores/catchup-store";
-import { Spacing, Radius, Shadows } from "@/constants/theme";
+import { BrandColors, Spacing, Radius, Shadows, FontFamilies } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
-const TYPE_ICONS: Record<CatchUpCard["type"], string> = {
-  world_news: "\u{1F310}",
-  resolved: "\u2705",
-  pending_decision: "\u2753",
-  quest_update: "\u2694\uFE0F",
+const TYPE_DOT_COLORS: Record<CatchUpCard["type"], string> = {
+  resolved: BrandColors.hollow,
+  pending_decision: BrandColors.ember,
+  world_news: BrandColors.ash,
+  quest_update: BrandColors.hollow,
 };
 
 export function CatchUpCardView({ card }: { card: CatchUpCard }) {
@@ -24,7 +24,7 @@ export function CatchUpCardView({ card }: { card: CatchUpCard }) {
       ]}
     >
       <View style={styles.iconColumn}>
-        <ThemedText style={styles.icon}>{TYPE_ICONS[card.type] ?? "\u2022"}</ThemedText>
+        <View style={[styles.dot, { backgroundColor: TYPE_DOT_COLORS[card.type] }]} />
       </View>
       <View style={styles.content}>
         <View style={styles.header}>
@@ -38,6 +38,18 @@ export function CatchUpCardView({ card }: { card: CatchUpCard }) {
         <ThemedText variant="system" themeColor="textSecondary" numberOfLines={2}>
           {card.summary}
         </ThemedText>
+        <View style={styles.actions}>
+          {card.hasAudio && (
+            <Pressable style={styles.playButton}>
+              <ThemedText style={styles.playIcon}>{"\u25B6"}</ThemedText>
+            </Pressable>
+          )}
+          {card.type === "pending_decision" && (
+            <Pressable style={styles.decisionButton}>
+              <ThemedText style={styles.decisionText}>Decide</ThemedText>
+            </Pressable>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -56,10 +68,12 @@ const styles = StyleSheet.create({
     width: 28,
     alignItems: "center",
     justifyContent: "flex-start",
-    paddingTop: 2,
+    paddingTop: 8,
   },
-  icon: {
-    fontSize: 18,
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   content: {
     flex: 1,
@@ -73,5 +87,36 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: Spacing.two,
+    marginTop: Spacing.one,
+  },
+  playButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: BrandColors.hollowMuted,
+  },
+  playIcon: {
+    fontSize: 12,
+    color: BrandColors.hollow,
+    marginLeft: 2,
+  },
+  decisionButton: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: BrandColors.hollowMuted,
+  },
+  decisionText: {
+    fontSize: 12,
+    fontFamily: FontFamilies.system,
+    color: BrandColors.hollow,
   },
 });

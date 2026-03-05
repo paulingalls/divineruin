@@ -1,5 +1,6 @@
 """Database and Redis connection layer with cached entity queries."""
 
+import asyncio
 import json
 import logging
 import os
@@ -513,4 +514,43 @@ async def log_world_event(
         "INSERT INTO world_events_log (event_type, data) VALUES ($1, $2::jsonb)",
         event_type,
         json.dumps(data),
+    )
+
+
+# --- Session lifecycle ---
+
+
+async def get_session_init_payload(player_id: str) -> dict:
+    """Build the full session_init payload for a player."""
+    # Fetch player first (need location_id), then parallelize the rest
+    player = await get_player(player_id)
+    location_id = player.get("location_id", "") if player else ""
+
+    location, inventory, quests = await asyncio.gather(
+        get_location(location_id) if location_id else asyncio.sleep(0),
+        get_player_inventory(player_id),
+        get_active_player_quests(player_id),
+    )
+    return {
+        "character": player,
+        "location": location if location_id else None,
+        "quests": quests,
+        "inventory": inventory,
+        "map_progress": [],
+        "world_state": {"time": "evening"},
+    }
+
+
+async def save_session_summary(
+    player_id: str, summary_data: dict, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    """Persist a session summary to the session_summaries table."""
+    _conn = conn or await get_pool()
+    await _conn.execute(
+        """
+        INSERT INTO session_summaries (player_id, data)
+        VALUES ($1, $2::jsonb)
+        """,
+        player_id,
+        json.dumps(summary_data),
     )

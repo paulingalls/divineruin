@@ -16,6 +16,7 @@ import db
 from affect_analyzer import PlayerAffectAnalyzer
 from background_process import BackgroundProcess
 from dialogue_parser import parse_dialogue_stream
+from game_events import publish_game_event
 from latency import TurnTimer
 from prompts import build_system_prompt, format_affect_context, quest_objective
 from rules_engine import hp_threshold_status
@@ -89,14 +90,23 @@ class DungeonMasterAgent(Agent):
         self._affect_analyzer = PlayerAffectAnalyzer()
         self._transcript: TranscriptLogger | None = None
         self._bg_tasks: set[asyncio.Task[None]] = set()
+        self._session_start_time: float = time.time()
 
     def _fire_and_forget(self, coro: Any) -> None:
         task = asyncio.create_task(coro)
         self._bg_tasks.add(task)
         task.add_done_callback(self._bg_tasks.discard)
 
+    async def _publish_session_init(self, sd: SessionData) -> None:
+        try:
+            payload = await db.get_session_init_payload(sd.player_id)
+            await publish_game_event(sd.room, "session_init", payload, sd.event_bus)
+        except Exception:
+            logger.exception("Failed to publish session_init")
+
     async def on_enter(self) -> None:
         logger.info("DM agent entered session")
+        self._session_start_time = time.time()
         self._affect_analyzer.start()
         sd: SessionData = self.session.userdata
         self._transcript = TranscriptLogger(sd.room, sd.event_bus)
@@ -107,8 +117,35 @@ class DungeonMasterAgent(Agent):
         )
         self._background.start()
 
+        self._fire_and_forget(self._publish_session_init(sd))
+
     async def on_exit(self) -> None:
         logger.info("DM agent exiting session")
+        sd: SessionData = self.session.userdata
+
+        elapsed = time.time() - self._session_start_time
+        recent = list(sd.recent_events)[-5:] if sd.recent_events else []
+        summary_text = " ".join(recent) if recent else "A brief venture into the world."
+
+        summary_payload = {
+            "summary": summary_text,
+            "xp_earned": 0,
+            "items_found": [],
+            "quest_progress": [],
+            "duration": round(elapsed),
+            "next_hooks": [],
+        }
+
+        results = await asyncio.gather(
+            publish_game_event(sd.room, "session_end", summary_payload, sd.event_bus),
+            db.save_session_summary(sd.player_id, summary_payload),
+            return_exceptions=True,
+        )
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                labels = ("publish session_end", "save session summary")
+                logger.exception("Failed to %s", labels[i], exc_info=result)
+
         await self._affect_analyzer.stop()
         if self._background:
             await self._background.stop()

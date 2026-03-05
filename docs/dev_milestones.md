@@ -446,16 +446,16 @@ The following design documents are available for detailed implementation guidanc
 - [x] Session screen displays atmospheric background appropriate to current location
 - [x] Disconnecting (or DM ending session) returns to Home screen gracefully
 - [x] Character summary bar shows accurate current data (name, level, location)
-- [ ] Home screen works in both portrait and landscape orientations
-- [ ] Catch-Up section displays placeholder cards in correct brand styling (ink surface, charcoal borders, correct typography per text role)
-- [ ] Empty Catch-Up state shows companion idle chatter placeholder
-- [ ] Session Summary screen displays after session end with recap, XP, items, and next hooks
-- [ ] Reconnection overlay appears on connection drop and auto-reconnects within 5-minute window
-- [ ] Data channel event router correctly dispatches `session_init` and `location_changed` events to stores
-- [ ] Settings screen has 5 audio volume sliders that persist values to MMKV
-- [ ] All screens use brand tokens: `void` background, `parchment`/`bone`/`ash` text hierarchy, `hollow` accent, grain overlay
+- [x] Home screen works in both portrait and landscape orientations
+- [x] Catch-Up section displays placeholder cards in correct brand styling (ink surface, charcoal borders, correct typography per text role)
+- [x] Empty Catch-Up state shows companion idle chatter placeholder
+- [x] Session Summary screen displays after session end with recap, XP, items, and next hooks
+- [x] Reconnection overlay appears on connection drop and auto-reconnects within 5-minute window
+- [x] Data channel event router correctly dispatches `session_init` and `location_changed` events to stores
+- [x] Settings screen has 5 audio volume sliders that persist values to AsyncStorage (MMKV deferred — requires native prebuild)
+- [x] All screens use brand tokens: `void` background, `parchment`/`bone`/`ash` text hierarchy, `hollow` accent, grain overlay
 - [ ] Session start flow completes (tap to DM voice) in under 4 seconds on device
-- [ ] Character-store, session-store, and catchup-store have unit tests covering server push → state update
+- [x] Character-store, session-store, and catchup-store have unit tests covering server push → state update
 
 **Key references:**
 - *Technical Architecture — Client Architecture* (full section: screen map, data flow, session flow, performance targets, audio mixing)

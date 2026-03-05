@@ -4,8 +4,10 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
 import React, { useEffect } from "react";
+import { View } from "react-native";
 
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
+import { GrainOverlay } from "@/components/grain-overlay";
 import { BrandColors } from "@/constants/theme";
 
 import {
@@ -76,10 +78,15 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={DivineRuinTheme}>
       <AnimatedSplashOverlay />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="session" />
-      </Stack>
+      <View style={{ flex: 1 }}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="session" />
+          <Stack.Screen name="session-summary" options={{ presentation: "modal" }} />
+          <Stack.Screen name="settings" options={{ presentation: "modal" }} />
+        </Stack>
+        <GrainOverlay />
+      </View>
     </ThemeProvider>
   );
 }
