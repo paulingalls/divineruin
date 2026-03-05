@@ -15,7 +15,7 @@
     "seed": "cd scripts && uv run --project ../apps/agent python seed_content.py",
     "dev:agent": "cd apps/agent && uv run --env-file ../../.env python agent.py dev",
     "typecheck": "tsc --noEmit",
-    "lint": "bun run typecheck && bunx eslint . && bunx prettier --check 'apps/**/*.{ts,tsx}' 'packages/**/*.ts' && cd apps/agent && uv run ruff check . && uv run ruff format --check .",
+    "lint": "bun run typecheck && bunx eslint --max-warnings 0 . && bunx prettier --check 'apps/**/*.{ts,tsx}' 'packages/**/*.ts' && cd apps/agent && uv run ruff check . && uv run ruff format --check .",
     "lint:fix": "bunx eslint --fix . && bunx prettier --write 'apps/**/*.{ts,tsx}' 'packages/**/*.ts' && cd apps/agent && uv run ruff check --fix . && uv run ruff format .",
     "test": "bun test --cwd apps/server && bun test --cwd apps/mobile",
     "test:all": "bun test --cwd apps/server && bun test --cwd apps/mobile && cd apps/agent && uv run pytest tests/ -q",

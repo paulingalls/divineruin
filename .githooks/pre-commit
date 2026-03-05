@@ -11,7 +11,7 @@ cd apps/mobile && bunx tsc --noEmit && cd ../..
 
 # ESLint
 echo "  ESLint..."
-bunx eslint .
+bunx eslint --max-warnings 0 .
 
 # Prettier
 echo "  Prettier..."
