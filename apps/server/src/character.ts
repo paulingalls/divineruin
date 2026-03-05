@@ -30,7 +30,7 @@ export async function handleGetCharacter(_req: Request, playerId: string): Promi
       return Response.json({ error: "Player not found" }, { status: 404 });
     }
 
-    const row = rows[0];
+    const row = rows[0]!;
     const data =
       typeof row.data === "string" ? (JSON.parse(row.data) as CharacterRow["data"]) : row.data;
     const hp = data.hp ?? {};

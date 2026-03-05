@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
   useSharedValue,
@@ -6,11 +6,17 @@ import Animated, {
   withSpring,
   withSequence,
   withTiming,
+  FadeIn,
 } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors, FontFamilies, Radius } from "@/constants/theme";
 import { hapticSuccess, hapticCritical } from "@/audio/haptics";
+
+/** Duration of the dice tumble spin in ms. */
+const TUMBLE_DURATION_MS = 1500;
+/** Interval between random number flickers during tumble. */
+const FLICKER_INTERVAL_MS = 60;
 
 interface DiceRollOverlayProps {
   payload: Record<string, unknown>;
@@ -22,28 +28,50 @@ export function DiceRollOverlay({ payload }: DiceRollOverlayProps) {
   const total = typeof payload.total === "number" ? payload.total : roll + modifier;
   const success = payload.success as boolean | undefined;
   const narrative = typeof payload.narrative === "string" ? payload.narrative : null;
+  const rollType = typeof payload.rollType === "string" ? payload.rollType : null;
 
   const scale = useSharedValue(0.8);
   const rotation = useSharedValue(0);
+  const [revealed, setRevealed] = useState(false);
+  const [displayNumber, setDisplayNumber] = useState(() => Math.floor(Math.random() * 20) + 1);
+  const flickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopFlicker = useCallback(() => {
+    if (flickerRef.current) {
+      clearInterval(flickerRef.current);
+      flickerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
+    // Flicker random numbers during tumble
+    flickerRef.current = setInterval(() => {
+      setDisplayNumber(Math.floor(Math.random() * 20) + 1);
+    }, FLICKER_INTERVAL_MS);
+
     // Tumble animation: spin + scale spring
     rotation.value = withSequence(
-      withTiming(360, { duration: 600 }),
-      withTiming(360, { duration: 0 }),
+      withTiming(720, { duration: TUMBLE_DURATION_MS }),
+      withTiming(720, { duration: 0 }),
     );
     scale.value = withSpring(1, { damping: 12, stiffness: 200 });
 
-    // Post-tumble haptic
+    // Reveal real result + haptic after tumble completes
     const timer = setTimeout(() => {
+      stopFlicker();
+      setDisplayNumber(total);
+      setRevealed(true);
       if (roll === 20) {
         hapticCritical();
       } else if (success !== false) {
         hapticSuccess();
       }
-    }, 600);
+    }, TUMBLE_DURATION_MS);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      stopFlicker();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only animation, deps are stable refs/primitives from initial render
   }, []);
 
@@ -55,22 +83,35 @@ export function DiceRollOverlay({ payload }: DiceRollOverlayProps) {
 
   return (
     <View style={styles.card}>
-      <Animated.View style={animStyle}>
-        <ThemedText style={styles.rollNumber}>{total}</ThemedText>
-      </Animated.View>
-      {modifier !== 0 && (
-        <ThemedText style={styles.modifier}>
-          {roll} {modifier >= 0 ? "+" : ""}
-          {modifier}
-        </ThemedText>
+      {rollType && (
+        <ThemedText style={styles.rollType}>{rollType.replace(/_/g, " ").toUpperCase()}</ThemedText>
       )}
-      <ThemedText style={[styles.result, { color: resultColor }]}>
-        {success === true ? "SUCCESS" : success === false ? "FAILURE" : ""}
-      </ThemedText>
-      {narrative && (
-        <ThemedText style={styles.narrative} numberOfLines={2}>
-          {narrative}
-        </ThemedText>
+      <Animated.View style={animStyle}>
+        <ThemedText style={styles.rollNumber}>{displayNumber}</ThemedText>
+      </Animated.View>
+      {revealed && (
+        <>
+          {modifier !== 0 && (
+            <Animated.View entering={FadeIn.duration(250)}>
+              <ThemedText style={styles.modifier}>
+                {roll} {modifier >= 0 ? "+" : ""}
+                {modifier}
+              </ThemedText>
+            </Animated.View>
+          )}
+          <Animated.View entering={FadeIn.duration(250)}>
+            <ThemedText style={[styles.result, { color: resultColor }]}>
+              {success === true ? "SUCCESS" : success === false ? "FAILURE" : ""}
+            </ThemedText>
+          </Animated.View>
+          {narrative && (
+            <Animated.View entering={FadeIn.duration(300).delay(150)}>
+              <ThemedText style={styles.narrative} numberOfLines={2}>
+                {narrative}
+              </ThemedText>
+            </Animated.View>
+          )}
+        </>
       )}
     </View>
   );
@@ -87,9 +128,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     minWidth: 140,
   },
+  rollType: {
+    fontFamily: FontFamilies.system,
+    fontSize: 10,
+    letterSpacing: 2,
+    color: BrandColors.ash,
+    marginBottom: 4,
+  },
   rollNumber: {
     fontFamily: FontFamilies.system,
     fontSize: 32,
+    lineHeight: 40,
     color: BrandColors.parchment,
   },
   modifier: {

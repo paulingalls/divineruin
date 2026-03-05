@@ -1,4 +1,10 @@
-import { AccessToken, AgentDispatchClient, RoomServiceClient } from "livekit-server-sdk";
+import {
+  AccessToken,
+  AgentDispatchClient,
+  RoomServiceClient,
+  DataPacket_Kind,
+} from "livekit-server-sdk";
+export { DataPacket_Kind };
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
@@ -15,7 +21,7 @@ function createRoomService(): RoomServiceClient | null {
   );
 }
 
-const roomService = createRoomService();
+export const roomService = createRoomService();
 
 function createDispatchClient(): AgentDispatchClient | null {
   if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {

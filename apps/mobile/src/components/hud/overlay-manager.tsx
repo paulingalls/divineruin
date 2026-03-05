@@ -1,5 +1,5 @@
-import { useEffect, useRef, useCallback } from "react";
-import { StyleSheet, View } from "react-native";
+import { useCallback } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useStore } from "zustand";
 
@@ -29,19 +29,8 @@ function OverlayContent({ overlay }: { overlay: OverlayEntry }) {
   }
 }
 
-function AutoDismissOverlay({ overlay }: { overlay: OverlayEntry }) {
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    timerRef.current = setTimeout(() => {
-      hudStore.getState().dismissOverlay(overlay.id);
-    }, overlay.ttl);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [overlay.id, overlay.ttl]);
-
-  const _dismiss = useCallback(() => {
+function TapToDismissOverlay({ overlay }: { overlay: OverlayEntry }) {
+  const dismiss = useCallback(() => {
     hudStore.getState().dismissOverlay(overlay.id);
   }, [overlay.id]);
 
@@ -52,7 +41,9 @@ function AutoDismissOverlay({ overlay }: { overlay: OverlayEntry }) {
       style={styles.overlayWrapper}
       pointerEvents="box-none"
     >
-      <OverlayContent overlay={overlay} />
+      <Pressable onPress={dismiss}>
+        <OverlayContent overlay={overlay} />
+      </Pressable>
     </Animated.View>
   );
 }
@@ -66,7 +57,7 @@ export function OverlayManager() {
     <View style={styles.container} pointerEvents="box-none">
       {/* Centered overlays */}
       {overlays.map((overlay) => (
-        <AutoDismissOverlay key={overlay.id} overlay={overlay} />
+        <TapToDismissOverlay key={overlay.id} overlay={overlay} />
       ))}
 
       {/* Bottom-anchored combat tracker */}
