@@ -1,4 +1,4 @@
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import Animated, { SlideInUp } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
@@ -10,6 +10,7 @@ interface QuestUpdateToastProps {
 
 export function QuestUpdateToast({ payload }: QuestUpdateToastProps) {
   const questName = typeof payload.questName === "string" ? payload.questName : "";
+  const stageName = typeof payload.stageName === "string" ? payload.stageName : null;
   const objective = typeof payload.objective === "string" ? payload.objective : "";
 
   return (
@@ -23,6 +24,7 @@ export function QuestUpdateToast({ payload }: QuestUpdateToastProps) {
       {questName ? (
         <ThemedText style={styles.questName} numberOfLines={1}>
           {questName}
+          {stageName ? ` — ${stageName}` : ""}
         </ThemedText>
       ) : null}
       {objective ? (

@@ -41,7 +41,7 @@ function AutoDismissOverlay({ overlay }: { overlay: OverlayEntry }) {
     };
   }, [overlay.id, overlay.ttl]);
 
-  const dismiss = useCallback(() => {
+  const _dismiss = useCallback(() => {
     hudStore.getState().dismissOverlay(overlay.id);
   }, [overlay.id]);
 

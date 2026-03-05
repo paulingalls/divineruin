@@ -563,21 +563,21 @@ These overlays appear over the session screen center when triggered by data chan
 **Acceptance criteria:**
 - [x] Location name updates when `location_changed` event is received
 - [x] All HUD updates occur within 200ms of the server push
-- [ ] Persistent bar displays location, HP bar, voice state, and status effects — always visible during session, <10% screen height
-- [ ] Active quest objective appears on persistent bar and auto-hides after 10 seconds of inactivity
-- [ ] Combat tracker slides up when combat starts, shows combatant HP bars and phase indicator, stays for duration, slides away on combat end
-- [ ] Combat tracker HP bars animate smoothly when damage is dealt (no jumps)
-- [ ] Dice roll overlay shows animated die, result, modifier, and narrative hint — auto-dismisses after 3.5 seconds
-- [ ] Dice roll triggers correct haptic feedback (light on roll, medium on success, heavy on crit)
-- [ ] Item card popup appears with correct rarity border color and auto-dismisses after 5 seconds or on tap
-- [ ] Quest update toast slides down from top with quest name and new objective, auto-dismisses after 3 seconds
-- [ ] XP toast appears subtly for normal gains; level-up gets full centered overlay with stinger audio and heavy haptic
-- [ ] Character creation cards display as horizontally scrollable row; selected card highlights with `hollow` border
-- [ ] Overlay stacking works correctly: max 2 simultaneous (combat tracker + one other), newer non-persistent overlays replace older ones
-- [ ] UI sounds play for: dice roll, quest update, level-up, item pickup, notification arrival
-- [ ] All HUD elements use brand tokens: IBM Plex Mono for data/labels, Crimson Pro for narrative text, correct color roles per brand spec
-- [ ] HUD never obscures >30% of screen during normal play (combat tracker is the maximum overlay)
-- [ ] `hud-store` has unit tests covering overlay lifecycle (create, stack, auto-dismiss, manual dismiss)
+- [x] Persistent bar displays location, HP bar, voice state, and status effects — always visible during session, <10% screen height
+- [x] Active quest objective appears on persistent bar and auto-hides after 10 seconds of inactivity
+- [x] Combat tracker slides up when combat starts, shows combatant HP bars and phase indicator, stays for duration, slides away on combat end
+- [x] Combat tracker HP bars animate smoothly when damage is dealt (no jumps)
+- [x] Dice roll overlay shows animated die, result, modifier, and narrative hint — auto-dismisses after 3.5 seconds
+- [x] Dice roll triggers correct haptic feedback (light on roll, medium on success, heavy on crit)
+- [x] Item card popup appears with correct rarity border color and auto-dismisses after 5 seconds or on tap
+- [x] Quest update toast slides down from top with quest name and new objective, auto-dismisses after 3 seconds
+- [x] XP toast appears subtly for normal gains; level-up gets full centered overlay with stinger audio and heavy haptic
+- [x] Character creation cards display as horizontally scrollable row; selected card highlights with `hollow` border
+- [x] Overlay stacking works correctly: max 2 simultaneous (combat tracker + one other), newer non-persistent overlays replace older ones
+- [x] UI sounds play for: dice roll, quest update, level-up, item pickup, notification arrival
+- [x] All HUD elements use brand tokens: IBM Plex Mono for data/labels, Crimson Pro for narrative text, correct color roles per brand spec
+- [x] HUD never obscures >30% of screen during normal play (combat tracker is the maximum overlay)
+- [x] `hud-store` has unit tests covering overlay lifecycle (create, stack, auto-dismiss, manual dismiss)
 
 **Key references:**
 - *Technical Architecture — HUD System — Layered Overlays* (three-layer design, specific overlay types, auto-dismiss behavior)

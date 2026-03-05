@@ -6,6 +6,7 @@ import Animated, {
   withTiming,
   withRepeat,
   withSequence,
+  interpolateColor,
   FadeIn,
   FadeOut,
 } from "react-native-reanimated";
@@ -21,6 +22,14 @@ interface PersistentBarProps {
   connectionState: string;
   agentState?: string;
 }
+
+const HP_COLOR_INPUT = [0, 0.3, 0.31, 1];
+const HP_COLOR_OUTPUT = [
+  BrandColors.ember,
+  BrandColors.ember,
+  BrandColors.parchment,
+  BrandColors.parchment,
+];
 
 const VOICE_DOT_GLOW = {
   shadowColor: BrandColors.hollow,
@@ -63,7 +72,7 @@ function HpBar() {
 
   useEffect(() => {
     widthAnim.value = withTiming(ratio, { duration: 300 });
-  }, [ratio]);
+  }, [ratio, widthAnim]);
 
   useEffect(() => {
     if (isLow) {
@@ -75,20 +84,22 @@ function HpBar() {
     } else {
       pulseOpacity.value = withTiming(1, { duration: 200 });
     }
-  }, [isLow]);
+  }, [isLow, pulseOpacity]);
 
-  const barStyle = useAnimatedStyle(() => ({
-    width: `${widthAnim.value * 100}%` as any,
-    opacity: pulseOpacity.value,
-  }));
-
-  const barColor = isLow ? BrandColors.ember : BrandColors.parchment;
+  const barStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(widthAnim.value, HP_COLOR_INPUT, HP_COLOR_OUTPUT);
+    return {
+      width: `${widthAnim.value * 100}%` as unknown as number,
+      opacity: pulseOpacity.value,
+      backgroundColor,
+    };
+  });
 
   if (!character) return null;
 
   return (
     <View style={styles.hpTrack}>
-      <Animated.View style={[styles.hpFill, { backgroundColor: barColor }, barStyle]} />
+      <Animated.View style={[styles.hpFill, barStyle]} />
     </View>
   );
 }
@@ -132,7 +143,7 @@ function QuestObjectiveStrip() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [activeObjective]);
+  }, [activeObjective, visible]);
 
   const dismiss = useCallback(() => {
     hudStore.getState().setQuestObjectiveVisible(false);
@@ -149,7 +160,7 @@ function QuestObjectiveStrip() {
   );
 }
 
-export function PersistentBar({ connectionState, agentState }: PersistentBarProps) {
+export function PersistentBar({ connectionState, agentState: _agentState }: PersistentBarProps) {
   const locationContext = useStore(sessionStore, (s) => s.locationContext);
 
   const locationLabel = useMemo(

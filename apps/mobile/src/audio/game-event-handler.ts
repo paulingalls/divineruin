@@ -13,6 +13,10 @@ export interface DataChannelEvent {
 
 const decoder = new TextDecoder();
 
+/** Delay before playing dice result stinger (matches tumble animation duration). */
+export const DICE_STINGER_DELAY_MS = 600;
+let _diceStingerTimer: ReturnType<typeof setTimeout> | null = null;
+
 export function parseGameEvent(payload: Uint8Array): DataChannelEvent | null {
   try {
     const text = decoder.decode(payload);
@@ -48,6 +52,11 @@ export function handleGameEvent(event: DataChannelEvent): void {
         rollType: event.roll_type,
         narrative: event.narrative,
       });
+      if (_diceStingerTimer) clearTimeout(_diceStingerTimer);
+      _diceStingerTimer = setTimeout(() => {
+        _diceStingerTimer = null;
+        playSfx(event.success ? "success_sting" : "fail_sting");
+      }, DICE_STINGER_DELAY_MS);
       break;
 
     case "session_init": {
@@ -138,6 +147,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
             {
               newLevel: event.new_level,
               xpGained: event.xp_gained,
+              className: characterStore.getState().character?.className,
             },
             5000,
           );
@@ -198,6 +208,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
         name: event.name,
         description: event.description,
         rarity: event.rarity,
+        stats: event.stats,
       });
       playSfx("item_pickup");
       hapticItemAcquired();
@@ -210,6 +221,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
         questName: event.quest_name,
         objective: event.objective,
         status: event.status,
+        stageName: event.stage_name,
       });
       if (typeof event.quest_name === "string" && typeof event.objective === "string") {
         questHud.setActiveObjective({

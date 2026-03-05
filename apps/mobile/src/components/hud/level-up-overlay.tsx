@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
@@ -11,11 +11,12 @@ interface LevelUpOverlayProps {
 
 export function LevelUpOverlay({ payload }: LevelUpOverlayProps) {
   const newLevel = typeof payload.newLevel === "number" ? payload.newLevel : 0;
+  const className = typeof payload.className === "string" ? payload.className : null;
   const scale = useSharedValue(0.5);
 
   useEffect(() => {
     scale.value = withSpring(1, { damping: 10, stiffness: 180 });
-  }, []);
+  }, [scale]);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -25,6 +26,7 @@ export function LevelUpOverlay({ payload }: LevelUpOverlayProps) {
     <Animated.View style={[styles.container, animStyle]}>
       <ThemedText style={styles.label}>LEVEL UP</ThemedText>
       <ThemedText style={styles.level}>{newLevel}</ThemedText>
+      {className && <ThemedText style={styles.className}>{className.toUpperCase()}</ThemedText>}
     </Animated.View>
   );
 }
@@ -45,5 +47,12 @@ const styles = StyleSheet.create({
     fontSize: 48,
     color: BrandColors.hollow,
     marginTop: 8,
+  },
+  className: {
+    fontFamily: FontFamilies.systemLight,
+    fontSize: 11,
+    color: BrandColors.ash,
+    letterSpacing: 2,
+    marginTop: 4,
   },
 });

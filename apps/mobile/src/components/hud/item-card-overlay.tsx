@@ -19,6 +19,10 @@ export function ItemCardOverlay({ payload }: ItemCardOverlayProps) {
   const name = typeof payload.name === "string" ? payload.name : "Unknown Item";
   const description = typeof payload.description === "string" ? payload.description : "";
   const rarity = typeof payload.rarity === "string" ? payload.rarity : "common";
+  const stats =
+    payload.stats && typeof payload.stats === "object" && !Array.isArray(payload.stats)
+      ? (payload.stats as Record<string, unknown>)
+      : null;
   const borderColor = RARITY_COLORS[rarity] ?? BrandColors.charcoal;
   const rarityColor = RARITY_COLORS[rarity] ?? BrandColors.ash;
 
@@ -38,6 +42,16 @@ export function ItemCardOverlay({ payload }: ItemCardOverlayProps) {
             {description}
           </ThemedText>
         ) : null}
+        {stats && (
+          <View style={styles.statsSection}>
+            {Object.entries(stats).map(([key, value]) => (
+              <View key={key} style={styles.statRow}>
+                <ThemedText style={styles.statCell}>{key}</ThemedText>
+                <ThemedText style={styles.statCell}>{String(value)}</ThemedText>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
     </Animated.View>
   );
@@ -63,7 +77,7 @@ const styles = StyleSheet.create({
   rarity: {
     fontFamily: FontFamilies.systemLight,
     fontSize: 9,
-    letterSpacing: 2,
+    letterSpacing: 3,
     marginTop: 4,
   },
   description: {
@@ -72,5 +86,22 @@ const styles = StyleSheet.create({
     color: BrandColors.bone,
     marginTop: 8,
     textAlign: "center",
+  },
+  statsSection: {
+    marginTop: 10,
+    width: "100%",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: BrandColors.charcoal,
+    paddingTop: 8,
+  },
+  statRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 2,
+  },
+  statCell: {
+    fontFamily: FontFamilies.system,
+    fontSize: 11,
+    color: BrandColors.ash,
   },
 });

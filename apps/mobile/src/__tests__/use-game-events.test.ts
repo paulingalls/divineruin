@@ -1,5 +1,5 @@
 import { test, expect, beforeEach } from "bun:test";
-import { parseGameEvent, handleGameEvent } from "@/audio/game-event-handler";
+import { parseGameEvent, handleGameEvent, DICE_STINGER_DELAY_MS } from "@/audio/game-event-handler";
 import { activePlayerCount } from "@/audio/sfx-player";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore, type CharacterSummary } from "@/stores/character-store";
@@ -7,6 +7,18 @@ import { hudStore } from "@/stores/hud-store";
 
 function encode(data: object): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(data));
+}
+
+function captureTimers(fn: () => void): { fn: () => void; delay: number }[] {
+  const timers: { fn: () => void; delay: number }[] = [];
+  const orig = globalThis.setTimeout;
+  globalThis.setTimeout = ((cb: () => void, delay: number) => {
+    timers.push({ fn: cb, delay });
+    return 0 as unknown as ReturnType<typeof setTimeout>;
+  }) as typeof setTimeout;
+  fn();
+  globalThis.setTimeout = orig;
+  return timers;
 }
 
 const SAMPLE_CHARACTER: CharacterSummary = {
@@ -379,6 +391,67 @@ test("xp_awarded with level_up pushes level_up overlay", () => {
   expect(overlays).toHaveLength(1);
   expect(overlays[0].type).toBe("level_up");
   expect(overlays[0].payload.newLevel).toBe(4);
+});
+
+// --- handleGameEvent: item_acquired passes stats ---
+
+test("item_acquired passes stats through to overlay payload", () => {
+  handleGameEvent({
+    type: "item_acquired",
+    name: "Iron Shield",
+    description: "Sturdy defense",
+    rarity: "uncommon",
+    stats: { defense: 5, weight: 3 },
+  });
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.payload.stats).toEqual({ defense: 5, weight: 3 });
+});
+
+// --- handleGameEvent: quest_update passes stageName ---
+
+test("quest_update passes stageName through to overlay payload", () => {
+  handleGameEvent({
+    type: "quest_update",
+    quest_name: "Guild Initiation",
+    objective: "Find the cartographer",
+    status: "active",
+    stage_name: "Discovery",
+  });
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.payload.stageName).toBe("Discovery");
+});
+
+// --- handleGameEvent: xp_awarded level_up passes className ---
+
+test("xp_awarded with level_up passes className from character store", () => {
+  characterStore.getState().setCharacter(SAMPLE_CHARACTER);
+  handleGameEvent({
+    type: "xp_awarded",
+    new_xp: 600,
+    new_level: 4,
+    xp_gained: 150,
+    level_up: true,
+  });
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.payload.className).toBe("warrior");
+});
+
+// --- handleGameEvent: dice_result stinger ---
+
+test("dice_result schedules success stinger after delay", () => {
+  const timers = captureTimers(() =>
+    handleGameEvent({ type: "dice_result", roll: 14, total: 16, success: true }),
+  );
+  const stingerTimer = timers.find((t) => t.delay === DICE_STINGER_DELAY_MS);
+  expect(stingerTimer).toBeDefined();
+});
+
+test("dice_result schedules fail stinger for failure", () => {
+  const timers = captureTimers(() =>
+    handleGameEvent({ type: "dice_result", roll: 3, total: 5, success: false }),
+  );
+  const stingerTimer = timers.find((t) => t.delay === DICE_STINGER_DELAY_MS);
+  expect(stingerTimer).toBeDefined();
 });
 
 // --- handleGameEvent: status_effect ---

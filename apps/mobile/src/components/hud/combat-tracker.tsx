@@ -3,7 +3,6 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withTiming,
   SlideInDown,
   SlideOutDown,
@@ -23,10 +22,10 @@ function CombatantHpBar({ current, max }: { current: number; max: number }) {
       widthAnim.value = withTiming(ratio, { duration: 300 });
       prevRatio.current = ratio;
     }
-  }, [ratio]);
+  }, [ratio, widthAnim]);
 
   const barStyle = useAnimatedStyle(() => ({
-    width: `${widthAnim.value * 100}%` as any,
+    width: `${widthAnim.value * 100}%` as unknown as number,
   }));
 
   return (
@@ -36,8 +35,19 @@ function CombatantHpBar({ current, max }: { current: number; max: number }) {
   );
 }
 
-function CombatantRow({ combatant }: { combatant: Combatant }) {
+function CombatantRow({ combatant, compact = false }: { combatant: Combatant; compact?: boolean }) {
   const nameColor = combatant.isAlly ? BrandColors.bone : BrandColors.ember;
+
+  if (compact) {
+    return (
+      <View style={[styles.compactRow, combatant.isActive && styles.activeTurn]}>
+        <ThemedText style={[styles.compactName, { color: nameColor }]} numberOfLines={1}>
+          {combatant.name}
+        </ThemedText>
+        <CombatantHpBar current={combatant.hpCurrent} max={combatant.hpMax} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.combatantRow, combatant.isActive && styles.activeTurn]}>
@@ -47,7 +57,7 @@ function CombatantRow({ combatant }: { combatant: Combatant }) {
         </ThemedText>
         {combatant.statusEffects.length > 0 && (
           <View style={styles.combatantStatuses}>
-            {combatant.statusEffects.map((effect, i) => (
+            {combatant.statusEffects.map((_, i) => (
               <View key={i} style={styles.miniStatusDot} />
             ))}
           </View>
@@ -63,6 +73,9 @@ interface CombatTrackerProps {
 }
 
 export function CombatTracker({ state }: CombatTrackerProps) {
+  const player = state.combatants.find((c) => c.isAlly);
+  const others = state.combatants.filter((c) => c !== player);
+
   return (
     <Animated.View
       entering={SlideInDown.springify()
@@ -75,9 +88,10 @@ export function CombatTracker({ state }: CombatTrackerProps) {
         <ThemedText style={styles.phaseLabel}>{state.phase.toUpperCase()}</ThemedText>
         <ThemedText style={styles.roundLabel}>ROUND {state.round}</ThemedText>
       </View>
+      {player && <CombatantRow key={player.id} combatant={player} />}
       <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-        {state.combatants.map((c) => (
-          <CombatantRow key={c.id} combatant={c} />
+        {others.map((c) => (
+          <CombatantRow key={c.id} combatant={c} compact={!c.isAlly} />
         ))}
       </ScrollView>
     </Animated.View>
@@ -151,8 +165,23 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: BrandColors.ash,
   },
+  compactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: Radius.sm,
+    marginBottom: 1,
+    gap: 8,
+  },
+  compactName: {
+    fontFamily: FontFamilies.body,
+    fontSize: 12,
+    flexShrink: 1,
+    minWidth: 60,
+  },
   hpTrack: {
-    width: "100%",
+    flex: 1,
     height: 3,
     backgroundColor: BrandColors.charcoal,
     borderRadius: 1.5,

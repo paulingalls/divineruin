@@ -11,10 +11,16 @@ export type SoundName =
   | "success_sting"
   | "fail_sting";
 
-const SOUNDS: Partial<Record<SoundName, SoundAsset>> = {
+const SOUNDS: Record<SoundName, SoundAsset> = {
   dice_roll: require("@/assets/sounds/dice_roll.mp3"),
   sword_clash: require("@/assets/sounds/sword_clash.mp3"),
   tavern: require("@/assets/sounds/tavern.mp3"),
+  quest_sting: require("@/assets/sounds/quest_sting.mp3"),
+  level_up_sting: require("@/assets/sounds/level_up_sting.mp3"),
+  item_pickup: require("@/assets/sounds/item_pickup.mp3"),
+  notification: require("@/assets/sounds/notification.mp3"),
+  success_sting: require("@/assets/sounds/success_sting.mp3"),
+  fail_sting: require("@/assets/sounds/fail_sting.mp3"),
 };
 
 const SOUND_NAMES = Object.keys(SOUNDS) as SoundName[];

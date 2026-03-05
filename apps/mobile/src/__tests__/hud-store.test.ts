@@ -35,6 +35,25 @@ test("pushOverlay enforces max 1 overlay — newer replaces older", () => {
   expect(overlays[0].type).toBe("item_acquired");
 });
 
+test("pushOverlay records createdAt timestamp", () => {
+  const before = Date.now();
+  hudStore.getState().pushOverlay("dice_result", { roll: 10 });
+  const after = Date.now();
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.createdAt).toBeGreaterThanOrEqual(before);
+  expect(overlay.createdAt).toBeLessThanOrEqual(after);
+});
+
+test("pushOverlay defaults TTL to 3500ms", () => {
+  hudStore.getState().pushOverlay("dice_result", { roll: 10 });
+  expect(hudStore.getState().overlays[0].ttl).toBe(3500);
+});
+
+test("pushOverlay accepts custom TTL", () => {
+  hudStore.getState().pushOverlay("level_up", { newLevel: 5 }, 5000);
+  expect(hudStore.getState().overlays[0].ttl).toBe(5000);
+});
+
 // --- dismissOverlay ---
 
 test("dismissOverlay removes by id", () => {

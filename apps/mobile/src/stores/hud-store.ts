@@ -120,7 +120,7 @@ export const hudStore = createStore<HudState>((set) => ({
       createdAt: Date.now(),
       ttl,
     };
-    set((s) => ({
+    set(() => ({
       // Max 1 non-persistent overlay: newer replaces older
       overlays: [entry],
     }));

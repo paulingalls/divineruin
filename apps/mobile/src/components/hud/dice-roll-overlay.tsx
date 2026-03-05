@@ -29,7 +29,7 @@ export function DiceRollOverlay({ payload }: DiceRollOverlayProps) {
   useEffect(() => {
     // Tumble animation: spin + scale spring
     rotation.value = withSequence(
-      withTiming(360, { duration: 400 }),
+      withTiming(360, { duration: 600 }),
       withTiming(360, { duration: 0 }),
     );
     scale.value = withSpring(1, { damping: 12, stiffness: 200 });
@@ -44,6 +44,7 @@ export function DiceRollOverlay({ payload }: DiceRollOverlayProps) {
     }, 600);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only animation, deps are stable refs/primitives from initial render
   }, []);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -64,7 +65,7 @@ export function DiceRollOverlay({ payload }: DiceRollOverlayProps) {
         </ThemedText>
       )}
       <ThemedText style={[styles.result, { color: resultColor }]}>
-        {success === true ? "Success" : success === false ? "Failure" : ""}
+        {success === true ? "SUCCESS" : success === false ? "FAILURE" : ""}
       </ThemedText>
       {narrative && (
         <ThemedText style={styles.narrative} numberOfLines={2}>
