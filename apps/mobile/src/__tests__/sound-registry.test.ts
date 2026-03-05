@@ -30,5 +30,7 @@ test("knownSoundNames returns all registered names", () => {
   expect(names).toContain("notification");
   expect(names).toContain("success_sting");
   expect(names).toContain("fail_sting");
-  expect(names.length).toBe(9);
+  expect(names).toContain("menu_open");
+  expect(names).toContain("menu_close");
+  expect(names.length).toBe(11);
 });

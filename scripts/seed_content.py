@@ -91,6 +91,43 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
     return errors
 
 
+async def seed_map_progress(conn: asyncpg.Connection) -> None:
+    """Seed the starting location into player_map_progress for player_1."""
+    # Read player_1's starting location and its exits
+    players = json.loads((CONTENT_DIR / "players.json").read_text())
+    locations = json.loads((CONTENT_DIR / "locations.json").read_text())
+    location_map = {loc["id"]: loc for loc in locations}
+
+    for player in players:
+        player_id = player.get("player_id", "")
+        location_id = player.get("location_id", "")
+        if not player_id or not location_id:
+            continue
+
+        loc = location_map.get(location_id, {})
+        exits = loc.get("exits", {})
+        connections = []
+        for exit_data in exits.values():
+            if isinstance(exit_data, dict):
+                dest = exit_data.get("destination", "")
+            else:
+                dest = str(exit_data)
+            if dest:
+                connections.append(dest)
+
+        await conn.execute(
+            """
+            INSERT INTO player_map_progress (player_id, location_id, data)
+            VALUES ($1, $2, $3::jsonb)
+            ON CONFLICT (player_id, location_id) DO NOTHING
+            """,
+            player_id,
+            location_id,
+            json.dumps({"connections": connections}),
+        )
+        print(f"  map_progress: {player_id} @ {location_id} (connections: {connections})")
+
+
 async def main() -> None:
     database_url = os.environ.get("DATABASE_URL", "postgresql://divineruin:divineruin@localhost:5432/divineruin")
     conn = await asyncpg.connect(database_url)
@@ -98,6 +135,9 @@ async def main() -> None:
     try:
         print("Seeding content...")
         counts = await seed(conn)
+
+        print("\nSeeding map progress...")
+        await seed_map_progress(conn)
 
         print("\nValidating...")
         errors = await validate(conn)

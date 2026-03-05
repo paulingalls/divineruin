@@ -2,18 +2,17 @@ import { StyleSheet, View } from "react-native";
 import Animated, { SlideInDown } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
-import { AnimationPresets, BrandColors, FontFamilies, Radius } from "@/constants/theme";
+import {
+  AnimationPresets,
+  BrandColors,
+  FontFamilies,
+  Radius,
+  RARITY_COLORS,
+} from "@/constants/theme";
 
 interface ItemCardOverlayProps {
   payload: Record<string, unknown>;
 }
-
-const RARITY_COLORS: Record<string, string> = {
-  common: BrandColors.charcoal,
-  uncommon: BrandColors.hollowMuted,
-  rare: BrandColors.hollow,
-  legendary: BrandColors.divine,
-};
 
 export function ItemCardOverlay({ payload }: ItemCardOverlayProps) {
   const name = typeof payload.name === "string" ? payload.name : "Unknown Item";

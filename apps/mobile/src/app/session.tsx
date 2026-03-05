@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -10,6 +10,7 @@ import {
 } from "@livekit/react-native";
 import { ConnectionState } from "livekit-client";
 import { useStore } from "zustand";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 import { ThemedText } from "@/components/themed-text";
 import { TranscriptView } from "@/components/transcript-view";
@@ -17,6 +18,7 @@ import { AtmosphericBackground } from "@/components/atmospheric-background";
 import { ReconnectionOverlay } from "@/components/reconnection-overlay";
 import { PersistentBar } from "@/components/hud/persistent-bar";
 import { OverlayManager } from "@/components/hud/overlay-manager";
+import { PanelShell } from "@/components/hud/panel-shell";
 import { useSessionToken } from "@/hooks/useSessionToken";
 import { useGameEvents } from "@/hooks/use-game-events";
 import { configureAudioSession } from "@/audio/audio-config";
@@ -25,11 +27,31 @@ import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
 import { hudStore } from "@/stores/hud-store";
+import { panelStore } from "@/stores/panel-store";
 import { BrandColors, Spacing, Radius, Shadows } from "@/constants/theme";
 import { PLAYER_ID } from "@/utils/api";
 
 const ROOM_NAME = "divineruin-session";
 const RECONNECT_TIMEOUT_MS = 5 * 60 * 1000;
+const SWIPE_UP_THRESHOLD = -50;
+
+function SwipeUpTrigger() {
+  const swipeGesture = useMemo(
+    () =>
+      Gesture.Pan().onEnd((e) => {
+        if (e.translationY < SWIPE_UP_THRESHOLD) {
+          panelStore.getState().openPanel();
+        }
+      }),
+    [],
+  );
+
+  return (
+    <GestureDetector gesture={swipeGesture}>
+      <View style={styles.swipeZone} />
+    </GestureDetector>
+  );
+}
 
 function SessionContent({ onLeave }: { onLeave: () => void }) {
   const connectionState = useConnectionState();
@@ -142,6 +164,10 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
         </Pressable>
       </View>
 
+      <SwipeUpTrigger />
+
+      <PanelShell />
+
       {reconnecting && <ReconnectionOverlay />}
     </View>
   );
@@ -167,6 +193,7 @@ export default function SessionScreen() {
     sessionStore.getState().reset();
     transcriptStore.getState().clear();
     hudStore.getState().reset();
+    panelStore.getState().reset();
     router.back();
   }, [reset, router]);
 
@@ -270,5 +297,9 @@ const styles = StyleSheet.create({
   },
   leaveText: {
     color: BrandColors.void,
+  },
+  swipeZone: {
+    height: 24,
+    width: "100%",
   },
 });

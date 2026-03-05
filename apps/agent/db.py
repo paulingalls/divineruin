@@ -526,6 +526,56 @@ async def log_world_event(
     )
 
 
+# --- Map progress ---
+
+
+def extract_exit_connections(exits: dict) -> list[str]:
+    """Extract destination IDs from a location's exits dict."""
+    connections = []
+    for exit_data in exits.values():
+        dest = exit_data.get("destination", "") if isinstance(exit_data, dict) else str(exit_data)
+        if dest:
+            connections.append(dest)
+    return connections
+
+
+async def get_player_map_progress(player_id: str) -> list[dict]:
+    """Return all visited locations for a player."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT location_id, data FROM player_map_progress WHERE player_id = $1",
+        player_id,
+    )
+    return [
+        {
+            "location_id": row["location_id"],
+            "connections": json.loads(row["data"]).get("connections", []),
+        }
+        for row in rows
+    ]
+
+
+async def upsert_map_progress(
+    player_id: str,
+    location_id: str,
+    connections: list[str],
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> None:
+    """Record a visited location. Idempotent — INSERT ON CONFLICT DO NOTHING."""
+    _conn = conn or await get_pool()
+    await _conn.execute(
+        """
+        INSERT INTO player_map_progress (player_id, location_id, data)
+        VALUES ($1, $2, $3::jsonb)
+        ON CONFLICT (player_id, location_id) DO NOTHING
+        """,
+        player_id,
+        location_id,
+        json.dumps({"connections": connections}),
+    )
+
+
 # --- Session lifecycle ---
 
 
@@ -535,17 +585,18 @@ async def get_session_init_payload(player_id: str) -> dict:
     player = await get_player(player_id)
     location_id = player.get("location_id", "") if player else ""
 
-    location, inventory, quests = await asyncio.gather(
+    location, inventory, quests, map_progress = await asyncio.gather(
         get_location(location_id) if location_id else asyncio.sleep(0),
         get_player_inventory(player_id),
         get_active_player_quests(player_id),
+        get_player_map_progress(player_id),
     )
     return {
         "character": player,
         "location": location if location_id else None,
         "quests": quests,
         "inventory": inventory,
-        "map_progress": [],
+        "map_progress": map_progress,
         "world_state": {"time": "evening"},
     }
 

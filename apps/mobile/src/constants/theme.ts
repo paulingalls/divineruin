@@ -26,6 +26,15 @@ export const BrandColors = {
   divine: "#C9A84C",
 } as const;
 
+// --- Item Rarity Colors ---
+
+export const RARITY_COLORS: Record<string, string> = {
+  common: BrandColors.charcoal,
+  uncommon: BrandColors.hollowMuted,
+  rare: BrandColors.hollow,
+  legendary: BrandColors.divine,
+};
+
 // --- Flat Colors (dark-only, semantic keys) ---
 
 export const Colors = {

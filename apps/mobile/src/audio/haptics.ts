@@ -23,3 +23,7 @@ export function hapticItemAcquired(): void {
 export function hapticLowHpPulse(): void {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 }
+
+export function hapticPanelOpen(): void {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+}

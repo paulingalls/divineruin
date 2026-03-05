@@ -4,7 +4,7 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
 import React, { useEffect } from "react";
-import { View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { GrainOverlay } from "@/components/grain-overlay";
@@ -78,7 +78,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={DivineRuinTheme}>
       <AnimatedSplashOverlay />
-      <View style={{ flex: 1 }}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="session" />
@@ -86,7 +86,7 @@ export default function RootLayout() {
           <Stack.Screen name="settings" options={{ presentation: "modal" }} />
         </Stack>
         <GrainOverlay />
-      </View>
+      </GestureHandlerRootView>
     </ThemeProvider>
   );
 }

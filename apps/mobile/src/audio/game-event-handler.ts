@@ -4,7 +4,15 @@ import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
 import { hudStore } from "@/stores/hud-store";
+import { panelStore } from "@/stores/panel-store";
 import type { Combatant, CombatTrackerState, CreationCard } from "@/stores/hud-store";
+import type {
+  InventoryItem,
+  QuestView,
+  QuestStage,
+  CharacterDetail,
+  ItemRarity,
+} from "@/stores/panel-store";
 
 export interface DataChannelEvent {
   type: string;
@@ -12,6 +20,46 @@ export interface DataChannelEvent {
 }
 
 const decoder = new TextDecoder();
+
+const VALID_RARITIES = new Set<ItemRarity>(["common", "uncommon", "rare", "legendary"]);
+
+function parseRarity(value: unknown): ItemRarity {
+  return typeof value === "string" && VALID_RARITIES.has(value as ItemRarity)
+    ? (value as ItemRarity)
+    : "common";
+}
+
+function parseInventoryItems(rawItems: Record<string, unknown>[]): InventoryItem[] {
+  return rawItems.map((raw) => {
+    const slotInfo = raw.slot_info as Record<string, unknown> | undefined;
+    return {
+      id: typeof raw.id === "string" ? raw.id : "",
+      name: typeof raw.name === "string" ? raw.name : "",
+      type: typeof raw.type === "string" ? raw.type : "",
+      rarity: parseRarity(raw.rarity),
+      description: typeof raw.description === "string" ? raw.description : "",
+      weight: typeof raw.weight === "number" ? raw.weight : 0,
+      effects: Array.isArray(raw.effects) ? (raw.effects as Record<string, unknown>[]) : [],
+      lore: typeof raw.lore === "string" ? raw.lore : "",
+      value_base: typeof raw.value_base === "number" ? raw.value_base : 0,
+      quantity: typeof slotInfo?.quantity === "number" ? slotInfo.quantity : 1,
+      equipped: slotInfo?.equipped === true,
+    };
+  });
+}
+
+function extractExitConnections(exits: Record<string, unknown>): string[] {
+  const connections: string[] = [];
+  for (const exitData of Object.values(exits)) {
+    if (typeof exitData === "string") {
+      if (exitData) connections.push(exitData);
+    } else if (exitData && typeof exitData === "object") {
+      const dest = (exitData as Record<string, unknown>).destination;
+      if (typeof dest === "string" && dest) connections.push(dest);
+    }
+  }
+  return connections;
+}
 
 /** Delay before playing dice result stinger (matches tumble animation duration). */
 export const DICE_STINGER_DELAY_MS = 600;
@@ -92,6 +140,109 @@ export function handleGameEvent(event: DataChannelEvent): void {
         });
       }
 
+      // --- Populate panel-store ---
+      if (character && typeof character === "object") {
+        const attrs = character.attributes as Record<string, number> | undefined;
+        const equip = character.equipment as Record<string, unknown> | undefined;
+        const favor = character.divine_favor as Record<string, unknown> | undefined;
+        const detail: CharacterDetail = {
+          race: typeof character.race === "string" ? character.race : "",
+          attributes: {
+            strength: attrs?.strength ?? 10,
+            dexterity: attrs?.dexterity ?? 10,
+            constitution: attrs?.constitution ?? 10,
+            intelligence: attrs?.intelligence ?? 10,
+            wisdom: attrs?.wisdom ?? 10,
+            charisma: attrs?.charisma ?? 10,
+          },
+          ac: typeof character.ac === "number" ? character.ac : 10,
+          proficiencies: Array.isArray(character.proficiencies)
+            ? (character.proficiencies as string[])
+            : [],
+          savingThrowProficiencies: Array.isArray(character.saving_throw_proficiencies)
+            ? (character.saving_throw_proficiencies as string[])
+            : [],
+          equipment: {
+            main_hand: (equip?.main_hand as Record<string, unknown> | null) ?? null,
+            armor: (equip?.armor as Record<string, unknown> | null) ?? null,
+            shield: (equip?.shield as Record<string, unknown> | null) ?? null,
+          },
+          gold: typeof character.gold === "number" ? character.gold : 0,
+          divineFavor: favor
+            ? {
+                patron: typeof favor.patron === "string" ? favor.patron : "",
+                level: typeof favor.level === "number" ? favor.level : 0,
+                max: typeof favor.max === "number" ? favor.max : 0,
+              }
+            : null,
+        };
+        panelStore.getState().setCharacterDetail(detail);
+      }
+
+      if (Array.isArray(event.inventory)) {
+        panelStore
+          .getState()
+          .setInventory(parseInventoryItems(event.inventory as Record<string, unknown>[]));
+      }
+
+      if (Array.isArray(event.quests)) {
+        const quests: QuestView[] = (event.quests as Record<string, unknown>[]).map((raw) => {
+          const currentStage = typeof raw.current_stage === "number" ? raw.current_stage : 0;
+          const rawStages = Array.isArray(raw.stages)
+            ? (raw.stages as Record<string, unknown>[])
+            : [];
+          const stages: QuestStage[] = rawStages.map((s, i) => ({
+            id: typeof s.id === "string" ? s.id : `stage_${i}`,
+            name: typeof s.name === "string" ? s.name : "",
+            objective: typeof s.objective === "string" ? s.objective : "",
+            completed: i < currentStage,
+          }));
+          return {
+            questId: typeof raw.quest_id === "string" ? raw.quest_id : "",
+            questName: typeof raw.quest_name === "string" ? raw.quest_name : "",
+            type: typeof raw.type === "string" ? raw.type : "",
+            currentStage,
+            stages,
+            globalHints:
+              raw.global_hints &&
+              typeof raw.global_hints === "object" &&
+              !Array.isArray(raw.global_hints)
+                ? (raw.global_hints as Record<string, string>)
+                : {},
+            status: "active" as const,
+          };
+        });
+        panelStore.getState().setQuests(quests);
+      }
+
+      // Seed map from map_progress — batch into a single setMapProgress to avoid O(n^2)
+      if (Array.isArray(event.map_progress) && (event.map_progress as unknown[]).length > 0) {
+        const nodes: import("@/stores/panel-store").MapNode[] = [];
+        const seen = new Set<string>();
+        for (const entry of event.map_progress as Record<string, unknown>[]) {
+          const locId = typeof entry.location_id === "string" ? entry.location_id : "";
+          const conns = Array.isArray(entry.connections) ? (entry.connections as string[]) : [];
+          if (locId && !seen.has(locId)) {
+            seen.add(locId);
+            nodes.push({ locationId: locId, visited: true, connections: conns });
+            for (const connId of conns) {
+              if (!seen.has(connId)) {
+                seen.add(connId);
+                nodes.push({ locationId: connId, visited: false, connections: [] });
+              }
+            }
+          }
+        }
+        panelStore.getState().setMapProgress(nodes);
+      }
+      // Also ensure current location from session_init location data is visited
+      if (location && typeof location === "object" && typeof location.id === "string") {
+        const locExits = location.exits as Record<string, unknown> | undefined;
+        const exitConns =
+          locExits && typeof locExits === "object" ? extractExitConnections(locExits) : [];
+        panelStore.getState().addVisitedLocation(location.id, exitConns);
+      }
+
       console.log("[game-events] session_init processed", {
         quests: Array.isArray(event.quests) ? (event.quests as unknown[]).length : 0,
         inventory: Array.isArray(event.inventory) ? (event.inventory as unknown[]).length : 0,
@@ -113,6 +264,8 @@ export function handleGameEvent(event: DataChannelEvent): void {
           tags: [],
         });
         characterStore.getState().updateLocation(event.new_location, locationName);
+        const connections = Array.isArray(event.connections) ? (event.connections as string[]) : [];
+        panelStore.getState().addVisitedLocation(event.new_location, connections);
       }
       break;
 
@@ -261,7 +414,11 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
 
     case "inventory_updated":
-      console.log("[game-events] Logged for future:", event.type);
+      if (Array.isArray(event.inventory)) {
+        panelStore
+          .getState()
+          .setInventory(parseInventoryItems(event.inventory as Record<string, unknown>[]));
+      }
       break;
 
     default:

@@ -876,8 +876,12 @@ async def move_player(
 
     destination_location = await db.get_location(destination_id)
 
+    destination_exits = destination_location.get("exits", {}) if destination_location else {}
+    exit_connections = db.extract_exit_connections(destination_exits)
+
     async with db.transaction() as conn:
         await db.update_player_location(session.player_id, destination_id, conn=conn)
+        await db.upsert_map_progress(session.player_id, destination_id, exit_connections, conn=conn)
 
         pending_events.append(
             (
@@ -890,6 +894,7 @@ async def move_player(
                     else destination_id,
                     "atmosphere": destination_location.get("atmosphere", "") if destination_location else "",
                     "region": destination_location.get("region", "") if destination_location else "",
+                    "connections": exit_connections,
                 },
             )
         )

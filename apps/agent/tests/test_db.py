@@ -543,3 +543,62 @@ class TestStateMutations:
         assert "INSERT INTO world_events_log" in call_args[0]
         assert call_args[1] == "quest_complete"
         assert json.loads(call_args[2]) == event_data
+
+    @pytest.mark.asyncio
+    async def test_upsert_map_progress_inserts_record(self):
+        """upsert_map_progress should insert a map progress record."""
+        mock_pool = AsyncMock()
+        mock_pool.execute = AsyncMock()
+
+        with patch("db.get_pool", return_value=mock_pool):
+            await db.upsert_map_progress("p1", "tavern", ["market", "docks"])
+
+        call_args = mock_pool.execute.call_args[0]
+        assert "INSERT INTO player_map_progress" in call_args[0]
+        assert "ON CONFLICT" in call_args[0]
+        assert "DO NOTHING" in call_args[0]
+        assert call_args[1] == "p1"
+        assert call_args[2] == "tavern"
+        data = json.loads(call_args[3])
+        assert data["connections"] == ["market", "docks"]
+
+    @pytest.mark.asyncio
+    async def test_upsert_map_progress_uses_provided_conn(self):
+        """upsert_map_progress should use the provided connection."""
+        mock_conn = AsyncMock()
+        mock_conn.execute = AsyncMock()
+
+        await db.upsert_map_progress("p1", "tavern", [], conn=mock_conn)
+
+        mock_conn.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_get_player_map_progress_returns_visited(self):
+        """get_player_map_progress should return visited locations."""
+        mock_pool = AsyncMock()
+        mock_pool.fetch = AsyncMock(
+            return_value=[
+                {"location_id": "tavern", "data": json.dumps({"connections": ["market"]})},
+                {"location_id": "market", "data": json.dumps({"connections": ["tavern", "docks"]})},
+            ]
+        )
+
+        with patch("db.get_pool", return_value=mock_pool):
+            result = await db.get_player_map_progress("p1")
+
+        assert len(result) == 2
+        assert result[0]["location_id"] == "tavern"
+        assert result[0]["connections"] == ["market"]
+        assert result[1]["location_id"] == "market"
+        assert result[1]["connections"] == ["tavern", "docks"]
+
+    @pytest.mark.asyncio
+    async def test_get_player_map_progress_empty(self):
+        """get_player_map_progress should return empty list for new player."""
+        mock_pool = AsyncMock()
+        mock_pool.fetch = AsyncMock(return_value=[])
+
+        with patch("db.get_pool", return_value=mock_pool):
+            result = await db.get_player_map_progress("new_player")
+
+        assert result == []

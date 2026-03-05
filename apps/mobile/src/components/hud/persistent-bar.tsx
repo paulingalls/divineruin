@@ -12,11 +12,14 @@ import Animated, {
 } from "react-native-reanimated";
 import { useStore } from "zustand";
 
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors, FontFamilies, Spacing } from "@/constants/theme";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { hudStore } from "@/stores/hud-store";
+import { panelStore, type PanelTab } from "@/stores/panel-store";
 
 interface PersistentBarProps {
   connectionState: string;
@@ -160,6 +163,37 @@ function QuestObjectiveStrip() {
   );
 }
 
+const PANEL_ICONS: {
+  tab: PanelTab;
+  icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
+}[] = [
+  { tab: "character", icon: "shield-sword-outline" },
+  { tab: "inventory", icon: "bag-personal-outline" },
+  { tab: "quests", icon: "script-text-outline" },
+  { tab: "map", icon: "compass-outline" },
+];
+
+function PanelAccessIcons() {
+  const { activeTab, isOpen } = useStore(panelStore, (s) => ({
+    activeTab: s.activeTab,
+    isOpen: s.isOpen,
+  }));
+
+  return (
+    <View style={styles.panelIcons}>
+      {PANEL_ICONS.map(({ tab, icon }) => (
+        <Pressable key={tab} hitSlop={8} onPress={() => panelStore.getState().openPanel(tab)}>
+          <MaterialCommunityIcons
+            name={icon}
+            size={14}
+            color={isOpen && activeTab === tab ? BrandColors.hollow : BrandColors.ash}
+          />
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 export function PersistentBar({ connectionState, agentState: _agentState }: PersistentBarProps) {
   const locationContext = useStore(sessionStore, (s) => s.locationContext);
 
@@ -179,6 +213,7 @@ export function PersistentBar({ connectionState, agentState: _agentState }: Pers
             {locationLabel}
           </ThemedText>
         ) : null}
+        <PanelAccessIcons />
         <View style={styles.rightGroup}>
           <VoiceStateIndicator connectionState={connectionState} />
           <HpBar />
@@ -210,6 +245,11 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     textTransform: "uppercase",
     flexShrink: 1,
+  },
+  panelIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
   },
   rightGroup: {
     flexDirection: "row",

@@ -10,7 +10,9 @@ export type SoundName =
   | "item_pickup"
   | "notification"
   | "success_sting"
-  | "fail_sting";
+  | "fail_sting"
+  | "menu_open"
+  | "menu_close";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- RN require() returns any */
 const SOUNDS: Record<SoundName, SoundAsset> = {
@@ -23,6 +25,8 @@ const SOUNDS: Record<SoundName, SoundAsset> = {
   notification: require("@/assets/sounds/notification.mp3"),
   success_sting: require("@/assets/sounds/success_sting.mp3"),
   fail_sting: require("@/assets/sounds/fail_sting.mp3"),
+  menu_open: require("@/assets/sounds/menu_open.mp3"),
+  menu_close: require("@/assets/sounds/menu_close.mp3"),
 };
 /* eslint-enable @typescript-eslint/no-unsafe-assignment */
 

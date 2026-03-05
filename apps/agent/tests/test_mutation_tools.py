@@ -457,8 +457,11 @@ class TestMovePlayer:
     @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
     @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
     @patch("tools.db.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
     @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_valid_move(self, mock_loc, mock_update, mock_npcs, mock_disp, mock_targets, mock_player):
+    async def test_valid_move(
+        self, mock_loc, mock_upsert_map, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
+    ):
         mock_loc.side_effect = [SAMPLE_LOCATION, SAMPLE_DESTINATION]
         mock_npcs.return_value = []
         mock_disp.return_value = {}
@@ -470,6 +473,9 @@ class TestMovePlayer:
         assert result["previous_location"] == "accord_guild_hall"
         assert result["location"]["name"] == "Market Square"
         mock_update.assert_called_once_with("player_1", "accord_market_square", conn=_mock_conn)
+        mock_upsert_map.assert_called_once_with(
+            "player_1", "accord_market_square", ["accord_guild_hall"], conn=_mock_conn
+        )
 
     @pytest.mark.asyncio
     @patch("tools.db.get_location", new_callable=AsyncMock)
@@ -495,8 +501,11 @@ class TestMovePlayer:
     @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
     @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
     @patch("tools.db.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
     @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_publishes_event(self, mock_loc, mock_update, mock_npcs, mock_disp, mock_targets, mock_player):
+    async def test_publishes_event(
+        self, mock_loc, mock_upsert_map, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
+    ):
         mock_loc.side_effect = [SAMPLE_LOCATION, SAMPLE_DESTINATION]
         mock_npcs.return_value = []
         mock_disp.return_value = {}
@@ -512,6 +521,7 @@ class TestMovePlayer:
         assert call_data["location_name"] == "Market Square"
         assert call_data["atmosphere"] == "noisy, chaotic"
         assert call_data["region"] == ""
+        assert call_data["connections"] == ["accord_guild_hall"]
 
     @pytest.mark.asyncio
     @patch("tools.db.get_player", new_callable=AsyncMock)
@@ -519,8 +529,11 @@ class TestMovePlayer:
     @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
     @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
     @patch("tools.db.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
     @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_session_state_updated(self, mock_loc, mock_update, mock_npcs, mock_disp, mock_targets, mock_player):
+    async def test_session_state_updated(
+        self, mock_loc, mock_upsert_map, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
+    ):
         mock_loc.side_effect = [SAMPLE_LOCATION, SAMPLE_DESTINATION]
         mock_npcs.return_value = []
         mock_disp.return_value = {}
