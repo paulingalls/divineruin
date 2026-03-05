@@ -10,7 +10,7 @@ export function useVolume(bus: Bus) {
     if (!loadPromise) {
       loadPromise = loadVolumes();
     }
-    loadPromise.then(() => setValue(getVolume(bus)));
+    void loadPromise.then(() => setValue(getVolume(bus)));
   }, [bus]);
 
   const update = useCallback(

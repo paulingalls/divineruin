@@ -1,4 +1,5 @@
-type SoundAsset = ReturnType<typeof require>;
+/** React Native asset IDs returned by require() are numbers. */
+type SoundAsset = number;
 
 export type SoundName =
   | "dice_roll"
@@ -11,6 +12,7 @@ export type SoundName =
   | "success_sting"
   | "fail_sting";
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- RN require() returns any */
 const SOUNDS: Record<SoundName, SoundAsset> = {
   dice_roll: require("@/assets/sounds/dice_roll.mp3"),
   sword_clash: require("@/assets/sounds/sword_clash.mp3"),
@@ -22,11 +24,12 @@ const SOUNDS: Record<SoundName, SoundAsset> = {
   success_sting: require("@/assets/sounds/success_sting.mp3"),
   fail_sting: require("@/assets/sounds/fail_sting.mp3"),
 };
+/* eslint-enable @typescript-eslint/no-unsafe-assignment */
 
 const SOUND_NAMES = Object.keys(SOUNDS) as SoundName[];
 
 export function lookupSound(name: string): SoundAsset | null {
-  return (SOUNDS as Record<string, SoundAsset>)[name] ?? null;
+  return (SOUNDS as Record<string, SoundAsset | undefined>)[name] ?? null;
 }
 
 export function knownSoundNames(): SoundName[] {

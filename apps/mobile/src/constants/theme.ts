@@ -61,39 +61,39 @@ export const FontFamilies = {
   display: Platform.select({
     web: "'Cormorant Garamond', serif",
     default: "CormorantGaramond_300Light",
-  })!,
+  }),
   displayRegular: Platform.select({
     web: "'Cormorant Garamond', serif",
     default: "CormorantGaramond_400Regular",
-  })!,
+  }),
   displaySemiBold: Platform.select({
     web: "'Cormorant Garamond', serif",
     default: "CormorantGaramond_600SemiBold",
-  })!,
+  }),
   displayItalic: Platform.select({
     web: "'Cormorant Garamond', serif",
     default: "CormorantGaramond_300Light_Italic",
-  })!,
+  }),
   body: Platform.select({
     web: "'Crimson Pro', serif",
     default: "CrimsonPro_400Regular",
-  })!,
+  }),
   bodyLight: Platform.select({
     web: "'Crimson Pro', serif",
     default: "CrimsonPro_300Light",
-  })!,
+  }),
   bodySemiBold: Platform.select({
     web: "'Crimson Pro', serif",
     default: "CrimsonPro_600SemiBold",
-  })!,
+  }),
   system: Platform.select({
     web: "'IBM Plex Mono', monospace",
     default: "IBMPlexMono_400Regular",
-  })!,
+  }),
   systemLight: Platform.select({
     web: "'IBM Plex Mono', monospace",
     default: "IBMPlexMono_300Light",
-  })!,
+  }),
 };
 
 // --- Type Scale ---
@@ -193,7 +193,7 @@ export const Shadows = {
       elevation: 4,
     },
     default: {},
-  })!,
+  }),
   modal: Platform.select({
     ios: {
       shadowColor: BrandColors.void,
@@ -205,7 +205,7 @@ export const Shadows = {
       elevation: 16,
     },
     default: {},
-  })!,
+  }),
   glowHollow: Platform.select({
     ios: {
       shadowColor: BrandColors.hollowFaint,
@@ -217,7 +217,7 @@ export const Shadows = {
       elevation: 8,
     },
     default: {},
-  })!,
+  }),
 };
 
 // --- Animation Presets ---

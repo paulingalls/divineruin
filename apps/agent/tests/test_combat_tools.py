@@ -353,8 +353,9 @@ class TestResolveEnemyTurn:
 
 class TestRequestDeathSave:
     @pytest.mark.asyncio
+    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
     @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_success(self, mock_save):
+    async def test_success(self, mock_save, mock_update_hp):
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state(player_hp=0, player_fallen=True)
 

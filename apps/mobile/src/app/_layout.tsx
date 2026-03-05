@@ -29,7 +29,7 @@ import {
 import { IBMPlexMono_300Light, IBMPlexMono_400Regular } from "@expo-google-fonts/ibm-plex-mono";
 
 registerGlobals();
-SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync();
 
 const DivineRuinTheme: Theme = {
   dark: true,
@@ -67,7 +67,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
+      void SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
 

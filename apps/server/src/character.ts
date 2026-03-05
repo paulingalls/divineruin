@@ -15,7 +15,7 @@ interface CharacterRow {
 
 export async function handleGetCharacter(_req: Request, playerId: string): Promise<Response> {
   try {
-    const rows = await sql`
+    const rows: CharacterRow[] = await sql`
       SELECT
         p.player_id,
         p.data,
@@ -30,8 +30,9 @@ export async function handleGetCharacter(_req: Request, playerId: string): Promi
       return Response.json({ error: "Player not found" }, { status: 404 });
     }
 
-    const row = rows[0] as CharacterRow;
-    const data = typeof row.data === "string" ? JSON.parse(row.data) : row.data;
+    const row = rows[0];
+    const data =
+      typeof row.data === "string" ? (JSON.parse(row.data) as CharacterRow["data"]) : row.data;
     const hp = data.hp ?? {};
     const locationId = data.location_id ?? "unknown";
 

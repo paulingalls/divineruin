@@ -1,5 +1,23 @@
 import { test, expect, describe } from "bun:test";
-import { handleLivekitToken } from "./livekit.ts";
+
+// Save and clear LiveKit env vars so the module sees them as unconfigured,
+// ensuring roomService is null regardless of the dev environment.
+const savedEnv: Record<string, string | undefined> = {};
+const livekitVars = ["LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"];
+
+for (const key of livekitVars) {
+  savedEnv[key] = process.env[key];
+  delete process.env[key];
+}
+
+// Import after clearing env so roomService = null
+const { handleLivekitToken } = await import("./livekit.ts");
+
+// Restore env vars so other tests/processes aren't affected
+for (const key of livekitVars) {
+  if (savedEnv[key] === undefined) delete process.env[key];
+  else process.env[key] = savedEnv[key];
+}
 
 function tokenRequest(body: Record<string, unknown>): Request {
   return new Request("http://localhost/api/livekit/token", {

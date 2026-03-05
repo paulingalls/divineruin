@@ -1,6 +1,6 @@
 import { Image, StyleSheet, View } from "react-native";
 
-const grain = require("@/../assets/images/grain.png");
+const grain = require("@/../assets/images/grain.png") as number;
 
 export function GrainOverlay() {
   return (

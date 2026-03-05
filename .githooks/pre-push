@@ -1,19 +1,34 @@
 #!/usr/bin/env bash
 set -e
 
+# Env vars to strip from unit tests so missing mocks are caught locally.
+# CI's test-bun job has DATABASE_URL + REDIS_URL (real services) but NOT
+# these external API vars — so we match that here.
+EXTERNAL_API_VARS=(
+  LIVEKIT_URL LIVEKIT_API_KEY LIVEKIT_API_SECRET
+  ANTHROPIC_API_KEY DEEPGRAM_API_KEY
+  INWORLD_API_KEY INWORLD_WORKSPACE_ID
+)
+
 echo "Running pre-push test suite..."
 
-# TypeScript tests
-echo "  Bun tests (server)..."
-bun test --cwd apps/server
+# TypeScript tests — clean env for external services
+echo "  Bun tests (server, clean env)..."
+(
+  for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done
+  bun test --cwd apps/server
+)
 
 echo "  Bun tests (mobile)..."
 bun test --cwd apps/mobile
 
-# Python tests
-echo "  Python tests (agent)..."
-cd apps/agent
-uv run pytest tests/ -q
-cd ../..
+# Python tests — also strip DATABASE_URL/REDIS_URL since agent tests
+# are pure unit tests with no service containers.
+echo "  Python tests (agent, clean env)..."
+(
+  for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done
+  unset DATABASE_URL REDIS_URL
+  cd apps/agent && uv run pytest tests/ -q
+)
 
 echo "All tests passed."

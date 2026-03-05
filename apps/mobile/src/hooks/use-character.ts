@@ -2,6 +2,18 @@ import { useEffect, useState } from "react";
 import { API_BASE } from "@/utils/api";
 import { characterStore } from "@/stores/character-store";
 
+interface CharacterResponse {
+  player_id: string;
+  name: string;
+  class: string;
+  level: number;
+  xp: number;
+  location_id: string;
+  location_name: string;
+  hp_current: number;
+  hp_max: number;
+}
+
 export function useCharacter(playerId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +27,7 @@ export function useCharacter(playerId: string) {
         if (!res.ok) {
           throw new Error(`Failed to fetch character (${res.status})`);
         }
-        const data = await res.json();
+        const data = (await res.json()) as CharacterResponse;
         if (cancelled) return;
         characterStore.getState().setCharacter({
           playerId: data.player_id,
@@ -37,7 +49,7 @@ export function useCharacter(playerId: string) {
       }
     }
 
-    fetchCharacter();
+    void fetchCharacter();
     return () => {
       cancelled = true;
     };

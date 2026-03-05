@@ -1,0 +1,5 @@
+[test]
+preload = ["./apps/mobile/test-preload.ts"]
+
+[loader]
+".mp3" = "file"

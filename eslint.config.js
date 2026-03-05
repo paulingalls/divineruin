@@ -18,7 +18,19 @@ export default tseslint.config(
   },
 
   js.configs.recommended,
-  ...tseslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
+
+  // Enable typed linting (required by no-unnecessary-condition)
+  {
+    languageOptions: {
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: ["eslint.config.js"],
+        },
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
 
   // React hooks for mobile app
   {
@@ -42,10 +54,11 @@ export default tseslint.config(
   {
     rules: {
       "@typescript-eslint/no-unused-vars": [
-        "warn",
+        "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unnecessary-condition": "error",
     },
   },
 );

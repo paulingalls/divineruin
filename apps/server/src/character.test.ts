@@ -3,12 +3,12 @@ import { test, expect, describe, mock } from "bun:test";
 // Default mock returns empty (player not found)
 let mockRows: unknown[] = [];
 
-mock.module("./db.ts", () => {
+void mock.module("./db.ts", () => {
   const mockSql = Object.assign(
-    async (_strings: TemplateStringsArray, ..._values: unknown[]) => {
-      return mockRows;
+    (_strings: TemplateStringsArray, ..._values: unknown[]) => {
+      return Promise.resolve(mockRows);
     },
-    { close: async () => {} },
+    { close: () => Promise.resolve() },
   );
   return { sql: mockSql };
 });

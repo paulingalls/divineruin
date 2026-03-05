@@ -8,6 +8,7 @@ import {
   useLocalParticipant,
   useVoiceAssistant,
 } from "@livekit/react-native";
+import { ConnectionState } from "livekit-client";
 import { useStore } from "zustand";
 
 import { ThemedText } from "@/components/themed-text";
@@ -44,7 +45,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
   useGameEvents();
 
   const toggleMute = () => {
-    localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
+    void localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
   };
 
   useEffect(() => {
@@ -61,7 +62,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
   }, [phase, router]);
 
   useEffect(() => {
-    if (connectionState === "connected") {
+    if (connectionState === ConnectionState.Connected) {
       sessionStore.getState().setPhase("active");
       wasActive.current = true;
 
@@ -86,7 +87,8 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
     }
 
     const isReconnecting =
-      connectionState === "reconnecting" || connectionState === "signalReconnecting";
+      connectionState === ConnectionState.Reconnecting ||
+      connectionState === ConnectionState.SignalReconnecting;
     if (isReconnecting && wasActive.current) {
       sessionStore.getState().setReconnecting(true);
       if (!reconnectTimer.current) {
@@ -98,7 +100,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
       }
     }
 
-    if (connectionState === "disconnected" && wasActive.current && !reconnecting) {
+    if (connectionState === ConnectionState.Disconnected && wasActive.current && !reconnecting) {
       if (phase !== "summary") {
         sessionStore.getState().setPhase("ended");
         const timer = setTimeout(() => onLeave(), 2000);
@@ -152,7 +154,7 @@ export default function SessionScreen() {
   useEffect(() => {
     sessionStore.getState().setPhase("connecting");
     configureAudioSession().catch((err) => console.error("[session] Audio config failed:", err));
-    fetchToken(ROOM_NAME);
+    void fetchToken(ROOM_NAME);
   }, [fetchToken]);
 
   const handleLeave = useCallback(() => {

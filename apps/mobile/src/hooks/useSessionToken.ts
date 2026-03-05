@@ -28,11 +28,11 @@ export function useSessionToken(playerId: string) {
         });
 
         if (!res.ok) {
-          const err = await res.json();
+          const err = (await res.json()) as { error?: string };
           throw new Error(err.error ?? "Failed to get token");
         }
 
-        const data: TokenResponse = await res.json();
+        const data = (await res.json()) as TokenResponse;
         setToken(data.token);
         setServerUrl(data.url);
         setState("ready");

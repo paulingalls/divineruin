@@ -38,7 +38,7 @@ export async function loadVolumes(): Promise<void> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return;
-    const saved: Partial<Record<Bus, number>> = JSON.parse(raw);
+    const saved = JSON.parse(raw) as Partial<Record<Bus, number>>;
     for (const key of Object.keys(DEFAULTS) as Bus[]) {
       if (typeof saved[key] === "number") {
         busVolumes[key] = clamp01(saved[key]);

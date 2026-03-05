@@ -195,9 +195,9 @@ export function handleGameEvent(event: DataChannelEvent): void {
 
     case "transcript_entry":
       transcriptStore.getState().addEntry({
-        speaker: (event.speaker as "player" | "dm" | "npc" | "tool") ?? "dm",
-        character: (event.character as string) ?? null,
-        emotion: (event.emotion as string) ?? null,
+        speaker: (event.speaker as "player" | "dm" | "npc" | "tool" | undefined) ?? "dm",
+        character: (event.character as string | undefined) ?? null,
+        emotion: (event.emotion as string | undefined) ?? null,
         text: typeof event.text === "string" ? event.text : "",
         timestamp: typeof event.timestamp === "number" ? event.timestamp : Date.now() / 1000,
       });

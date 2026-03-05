@@ -1,8 +1,11 @@
 import { test, expect, describe } from "bun:test";
 
-const sql = Bun.sql;
+const hasDatabase = !!process.env.DATABASE_URL;
+const hasRedis = !!process.env.REDIS_URL;
 
-describe("seeded content", () => {
+describe.skipIf(!hasDatabase)("seeded content", () => {
+  const sql = Bun.sql;
+
   test("accord_market_square has required fields", async () => {
     const rows = await sql`SELECT data FROM locations WHERE id = 'accord_market_square'`;
     expect(rows.length).toBe(1);
@@ -94,7 +97,7 @@ describe("seeded content", () => {
   });
 });
 
-describe("redis connectivity", () => {
+describe.skipIf(!hasRedis)("redis connectivity", () => {
   test("SET/GET/DEL round-trips", async () => {
     const redis = Bun.redis;
     await redis.set("__test_key", "divineruin_ok");
