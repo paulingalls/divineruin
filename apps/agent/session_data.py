@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from collections import deque
 from dataclasses import asdict, dataclass, field
 
@@ -51,6 +52,7 @@ class CombatState:
 class SessionData:
     player_id: str
     location_id: str
+    session_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     room: rtc.Room | None = field(default=None, repr=False)
     event_bus: EventBus = field(default_factory=EventBus)
     world_time: str = "evening"

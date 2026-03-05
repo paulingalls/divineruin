@@ -198,6 +198,7 @@ async def _build_scene_context(location_id: str, session: SessionData, location:
 
 
 @function_tool()
+@db_tool
 async def enter_location(context: RunContext[SessionData], location_id: str) -> str:
     """Get everything about a location in one call: scene details, NPCs present,
     combat targets, and player status. Call this when entering a new area or
@@ -217,6 +218,7 @@ async def enter_location(context: RunContext[SessionData], location_id: str) -> 
 
 
 @function_tool()
+@db_tool
 async def query_location(context: RunContext[SessionData], location_id: str) -> str:
     """Get location details by ID: description, atmosphere, features, exits.
     Use for scene descriptions and navigation."""
@@ -232,6 +234,7 @@ async def query_location(context: RunContext[SessionData], location_id: str) -> 
 
 
 @function_tool()
+@db_tool
 async def query_npc(context: RunContext[SessionData], npc_id: str) -> str:
     """Get NPC details by ID: personality, speech style, knowledge filtered by
     the player's relationship. Use to roleplay NPCs accurately."""
@@ -249,6 +252,7 @@ async def query_npc(context: RunContext[SessionData], npc_id: str) -> str:
 
 
 @function_tool()
+@db_tool
 async def query_lore(context: RunContext[SessionData], topic: str) -> str:
     """Search world lore by topic keyword. Use for history, gods, the Hollow,
     races, cultures, and world events."""
@@ -273,6 +277,7 @@ async def query_lore(context: RunContext[SessionData], topic: str) -> str:
 
 
 @function_tool()
+@db_tool
 async def query_inventory(context: RunContext[SessionData], player_id: str) -> str:
     """Get a player's inventory items. Use when they ask what they are carrying."""
     logger.info("query_inventory called: player_id=%s", player_id)
@@ -301,6 +306,7 @@ VALID_SKILLS = set(rules_engine.SKILLS.keys())
 
 
 @function_tool()
+@db_tool
 async def request_skill_check(
     context: RunContext[SessionData],
     skill: str,
@@ -366,6 +372,7 @@ async def request_skill_check(
 
 
 @function_tool()
+@db_tool
 async def request_attack(
     context: RunContext[SessionData],
     target_id: str,
@@ -447,6 +454,7 @@ async def request_attack(
 
 
 @function_tool()
+@db_tool
 async def request_saving_throw(
     context: RunContext[SessionData],
     save_type: str,

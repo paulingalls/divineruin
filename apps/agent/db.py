@@ -15,24 +15,32 @@ logger = logging.getLogger("divineruin.db")
 CACHE_TTL = 300  # 5 minutes
 
 _pool: asyncpg.Pool | None = None
+_pool_lock = asyncio.Lock()
 _redis: aioredis.Redis | None = None
+_redis_lock = asyncio.Lock()
 
 
 async def get_pool() -> asyncpg.Pool:
     global _pool
-    if _pool is None:
-        _pool = await asyncpg.create_pool(os.environ["DATABASE_URL"])
-    return _pool
+    if _pool is not None:
+        return _pool
+    async with _pool_lock:
+        if _pool is None:
+            _pool = await asyncpg.create_pool(os.environ["DATABASE_URL"])
+        return _pool
 
 
 async def get_redis() -> aioredis.Redis:
     global _redis
-    if _redis is None:
-        _redis = aioredis.from_url(
-            os.environ.get("REDIS_URL", "redis://localhost:6379"),
-            decode_responses=True,
-        )
-    return _redis
+    if _redis is not None:
+        return _redis
+    async with _redis_lock:
+        if _redis is None:
+            _redis = aioredis.from_url(
+                os.environ.get("REDIS_URL", "redis://localhost:6379"),
+                decode_responses=True,
+            )
+        return _redis
 
 
 async def close_all() -> None:
@@ -446,6 +454,7 @@ async def get_active_player_quests(
         FROM player_quests pq
         JOIN quests q ON q.id = pq.quest_id
         WHERE pq.player_id = $1
+          AND COALESCE(pq.data->>'status', 'active') = 'active'
         """,
         player_id,
     )
@@ -476,9 +485,9 @@ async def save_combat_state(
     _conn = conn or await get_pool()
     await _conn.execute(
         """
-        INSERT INTO combat_instances (id, data)
+        INSERT INTO combat_instances (combat_id, data)
         VALUES ($1, $2::jsonb)
-        ON CONFLICT (id) DO UPDATE SET data = $2::jsonb
+        ON CONFLICT (combat_id) DO UPDATE SET data = $2::jsonb
         """,
         combat_id,
         json.dumps(data),
@@ -487,7 +496,7 @@ async def save_combat_state(
 
 async def delete_combat_state(combat_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> None:
     _conn = conn or await get_pool()
-    await _conn.execute("DELETE FROM combat_instances WHERE id = $1", combat_id)
+    await _conn.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)
 
 
 async def get_encounter_template(encounter_id: str) -> dict | None:
@@ -511,7 +520,7 @@ async def log_world_event(
 ) -> None:
     _conn = conn or await get_pool()
     await _conn.execute(
-        "INSERT INTO world_events_log (event_type, data) VALUES ($1, $2::jsonb)",
+        "INSERT INTO world_events_log (event_id, data) VALUES ($1, $2::jsonb)",
         event_type,
         json.dumps(data),
     )
@@ -542,15 +551,20 @@ async def get_session_init_payload(player_id: str) -> dict:
 
 
 async def save_session_summary(
-    player_id: str, summary_data: dict, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+    player_id: str,
+    session_id: str,
+    summary_data: dict,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
     """Persist a session summary to the session_summaries table."""
     _conn = conn or await get_pool()
     await _conn.execute(
         """
-        INSERT INTO session_summaries (player_id, data)
-        VALUES ($1, $2::jsonb)
+        INSERT INTO session_summaries (player_id, session_id, data)
+        VALUES ($1, $2, $3::jsonb)
         """,
         player_id,
+        session_id,
         json.dumps(summary_data),
     )

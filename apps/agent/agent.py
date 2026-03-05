@@ -95,7 +95,12 @@ class DungeonMasterAgent(Agent):
     def _fire_and_forget(self, coro: Any) -> None:
         task = asyncio.create_task(coro)
         self._bg_tasks.add(task)
-        task.add_done_callback(self._bg_tasks.discard)
+        task.add_done_callback(self._on_bg_task_done)
+
+    def _on_bg_task_done(self, task: asyncio.Task[None]) -> None:
+        self._bg_tasks.discard(task)
+        if not task.cancelled() and task.exception():
+            logger.error("Background task failed", exc_info=task.exception())
 
     async def _publish_session_init(self, sd: SessionData) -> None:
         try:
@@ -123,6 +128,13 @@ class DungeonMasterAgent(Agent):
         logger.info("DM agent exiting session")
         sd: SessionData = self.session.userdata
 
+        # Cancel in-flight background tasks (transcript writes, etc.)
+        # before closing resources they depend on.
+        for task in list(self._bg_tasks):
+            task.cancel()
+        if self._bg_tasks:
+            await asyncio.gather(*self._bg_tasks, return_exceptions=True)
+
         elapsed = time.time() - self._session_start_time
         recent = list(sd.recent_events)[-5:] if sd.recent_events else []
         summary_text = " ".join(recent) if recent else "A brief venture into the world."
@@ -138,7 +150,7 @@ class DungeonMasterAgent(Agent):
 
         results = await asyncio.gather(
             publish_game_event(sd.room, "session_end", summary_payload, sd.event_bus),
-            db.save_session_summary(sd.player_id, summary_payload),
+            db.save_session_summary(sd.player_id, sd.session_id, summary_payload),
             return_exceptions=True,
         )
         for i, result in enumerate(results):
@@ -146,9 +158,15 @@ class DungeonMasterAgent(Agent):
                 labels = ("publish session_end", "save session summary")
                 logger.exception("Failed to %s", labels[i], exc_info=result)
 
-        await self._affect_analyzer.stop()
-        if self._background:
-            await self._background.stop()
+        try:
+            await self._affect_analyzer.stop()
+        except Exception:
+            logger.exception("Failed to stop affect analyzer")
+        try:
+            if self._background:
+                await self._background.stop()
+        except Exception:
+            logger.exception("Failed to stop background process")
         if self._transcript:
             self._transcript.close()
 
@@ -175,7 +193,11 @@ class DungeonMasterAgent(Agent):
         sd: SessionData = self.session.userdata
         sd.last_player_speech_time = time.time()
 
-        hot = await self._build_hot_context(sd)
+        try:
+            hot = await self._build_hot_context(sd)
+        except Exception:
+            logger.exception("Failed to build hot context")
+            hot = ""
         if hot:
             turn_ctx.add_message(role="assistant", content=hot)
 

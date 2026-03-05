@@ -402,8 +402,9 @@ class TestRequestDeathSave:
             assert player.hp_current == 1
 
     @pytest.mark.asyncio
+    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
     @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_nat_1_double_fail(self, mock_save):
+    async def test_nat_1_double_fail(self, mock_save, mock_update_hp):
         with patch("rules_engine.dice_roll") as mock_dice:
             from dice import DiceResult
 
@@ -418,8 +419,9 @@ class TestRequestDeathSave:
             assert result["total_failures"] == 2
 
     @pytest.mark.asyncio
+    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
     @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_stabilize(self, mock_save):
+    async def test_stabilize(self, mock_save, mock_update_hp):
         with patch("rules_engine.dice_roll") as mock_dice:
             from dice import DiceResult
 
@@ -437,8 +439,9 @@ class TestRequestDeathSave:
             assert result["total_successes"] == 3
 
     @pytest.mark.asyncio
+    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
     @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_death(self, mock_save):
+    async def test_death(self, mock_save, mock_update_hp):
         with patch("rules_engine.dice_roll") as mock_dice:
             from dice import DiceResult
 
