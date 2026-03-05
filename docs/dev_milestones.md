@@ -371,7 +371,8 @@ The following design documents are available for detailed implementation guidanc
 **Deliverables:**
 
 *Home Screen — Two-Layer Design*
-- **Character Summary Bar** (top of home): character name (Crimson Pro 400, `bone`), level + class (IBM Plex Mono 400, `ash`), current location (IBM Plex Mono 400, `ash`), compact HP bar (3px height, `ember → parchment` gradient fill on `charcoal` track). Background: `ink` surface with `charcoal` bottom border. Tapping opens Character Sheet pull-up.
+- **Title Bar** (top of home): "DIVINE | RUIN" centered in Cormorant Garamond 400, `ash`, letter-spacing 8px, with 1.5px teal (`hollow-muted`) vertical divider. Thin `charcoal` hairline rule underneath for separation.
+- **Character Summary Bar** (below title): character name as uppercase label above the bar (Crimson Pro 400, `textSecondary`), settings gear icon right-aligned on name row. Bar shows level (IBM Plex Mono 400), class (capitalized, flex-fill), and compact HP bar with "HP" label right-aligned. Background: `backgroundElement` surface, `md` border radius.
 - **Catch-Up Section** (scrollable, upper area): vertical feed of placeholder cards on `ink` surface with `charcoal` borders. Card types for MVP placeholders (real async data comes in Phase 7):
   - *Resolved activity card*: icon + title (Crimson Pro 400, `bone`) + summary text (`ash`) + play button for narrated audio + decision buttons (teal border, `hollow` text)
   - *Pending decision card*: NPC portrait placeholder + message preview + response options
@@ -424,7 +425,7 @@ The following design documents are available for detailed implementation guidanc
 - If player force-quits mid-session: same 5-minute grace → auto-end. State is preserved to last DB write.
 
 *Navigation Skeleton*
-- expo-router file-based routing: `(tabs)/index.tsx` (Home), `session.tsx` (Active Session), session summary as a modal
+- expo-router file-based routing: `index.tsx` (Home), `session.tsx` (Active Session), session summary as a modal — no bottom tab navigation
 - Settings screen: audio levels (5 sliders — Voice, Music, Ambience, Effects, UI), mic mode toggle (VAD vs tap-to-speak), notification preferences, account/logout
 - All screens use `void` background, grain overlay, brand typography
 
@@ -445,7 +446,7 @@ The following design documents are available for detailed implementation guidanc
 - [x] Tapping "Enter the World" connects to LiveKit and transitions to session screen within 3 seconds
 - [x] Session screen displays atmospheric background appropriate to current location
 - [x] Disconnecting (or DM ending session) returns to Home screen gracefully
-- [x] Character summary bar shows accurate current data (name, level, location)
+- [x] Character summary bar shows accurate current data (name, level, class, HP)
 - [x] Home screen works in both portrait and landscape orientations
 - [x] Catch-Up section displays placeholder cards in correct brand styling (ink surface, charcoal borders, correct typography per text role)
 - [x] Empty Catch-Up state shows companion idle chatter placeholder
@@ -454,7 +455,7 @@ The following design documents are available for detailed implementation guidanc
 - [x] Data channel event router correctly dispatches `session_init` and `location_changed` events to stores
 - [x] Settings screen has 5 audio volume sliders that persist values to AsyncStorage (MMKV deferred — requires native prebuild)
 - [x] All screens use brand tokens: `void` background, `parchment`/`bone`/`ash` text hierarchy, `hollow` accent, grain overlay
-- [ ] Session start flow completes (tap to DM voice) in under 4 seconds on device
+- [x] Session start flow completes (tap to DM voice) in under 4 seconds on device
 - [x] Character-store, session-store, and catchup-store have unit tests covering server push → state update
 
 **Key references:**
