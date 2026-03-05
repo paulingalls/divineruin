@@ -6,7 +6,6 @@ import { useStore } from "zustand";
 
 import { ThemedText } from "@/components/themed-text";
 import { sessionStore } from "@/stores/session-store";
-import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
 import { BrandColors, FontFamilies, Spacing, Radius } from "@/constants/theme";
 
@@ -33,7 +32,6 @@ export default function SessionSummaryScreen() {
 
   const handleReturn = () => {
     sessionStore.getState().reset();
-    characterStore.getState().clear();
     transcriptStore.getState().clear();
     router.replace("/");
   };

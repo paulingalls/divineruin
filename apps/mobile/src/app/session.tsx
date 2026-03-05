@@ -163,7 +163,6 @@ export default function SessionScreen() {
     }
     reset();
     sessionStore.getState().reset();
-    characterStore.getState().clear();
     transcriptStore.getState().clear();
     hudStore.getState().reset();
     router.back();
