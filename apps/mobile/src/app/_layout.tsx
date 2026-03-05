@@ -80,7 +80,7 @@ export default function RootLayout() {
       <AnimatedSplashOverlay />
       <View style={{ flex: 1 }}>
         <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="index" />
           <Stack.Screen name="session" />
           <Stack.Screen name="session-summary" options={{ presentation: "modal" }} />
           <Stack.Screen name="settings" options={{ presentation: "modal" }} />

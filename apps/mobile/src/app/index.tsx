@@ -12,14 +12,7 @@ import { useCharacter } from "@/hooks/use-character";
 import { catchupStore } from "@/stores/catchup-store";
 import { characterStore } from "@/stores/character-store";
 import { MOCK_CATCHUP_CARDS } from "@/data/mock-catchup";
-import {
-  BrandColors,
-  BottomTabInset,
-  MaxContentWidth,
-  Spacing,
-  Radius,
-  FontFamilies,
-} from "@/constants/theme";
+import { BrandColors, MaxContentWidth, Spacing, Radius, FontFamilies } from "@/constants/theme";
 import { PLAYER_ID } from "@/utils/api";
 
 const LANDSCAPE_THRESHOLD = 1.2;
@@ -96,7 +89,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     maxWidth: MaxContentWidth,
-    paddingBottom: BottomTabInset + Spacing.three,
+    paddingBottom: Spacing.three,
   },
   content: {
     flex: 1,
