@@ -3,8 +3,9 @@ import Constants from "expo-constants";
 const SERVER_PORT = 3001;
 
 export function getApiBase(): string {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+  const envUrl: string | undefined = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) {
+    return envUrl;
   }
   if (__DEV__) {
     const hostUri = Constants.expoConfig?.hostUri;
