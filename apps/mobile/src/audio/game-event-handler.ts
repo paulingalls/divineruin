@@ -48,6 +48,21 @@ function parseInventoryItems(rawItems: Record<string, unknown>[]): InventoryItem
   });
 }
 
+export function parseCombatant(raw: unknown): Combatant | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const c = raw as Record<string, unknown>;
+  if (typeof c.id !== "string" || typeof c.name !== "string") return null;
+  return {
+    id: c.id,
+    name: c.name,
+    isAlly: typeof c.isAlly === "boolean" ? c.isAlly : false,
+    hpCurrent: typeof c.hpCurrent === "number" ? c.hpCurrent : 0,
+    hpMax: typeof c.hpMax === "number" ? c.hpMax : 1,
+    statusEffects: Array.isArray(c.statusEffects) ? (c.statusEffects as string[]) : [],
+    isActive: typeof c.isActive === "boolean" ? c.isActive : false,
+  };
+}
+
 function extractExitConnections(exits: Record<string, unknown>): string[] {
   const connections: string[] = [];
   for (const exitData of Object.values(exits)) {
@@ -286,7 +301,10 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
 
     case "combat_ui_update": {
-      const combatants = Array.isArray(event.combatants) ? (event.combatants as Combatant[]) : [];
+      const rawCombatants = Array.isArray(event.combatants) ? (event.combatants as unknown[]) : [];
+      const combatants = rawCombatants
+        .map(parseCombatant)
+        .filter((c): c is Combatant => c !== null);
       const combatState: CombatTrackerState = {
         phase: typeof event.phase === "string" ? event.phase : "unknown",
         round: typeof event.round === "number" ? event.round : 1,

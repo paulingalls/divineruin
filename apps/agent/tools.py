@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import re
 import uuid
 
 from livekit.agents.llm import function_tool
@@ -16,6 +17,16 @@ from game_events import publish_game_event
 from session_data import CombatParticipant, CombatState, SessionData
 
 logger = logging.getLogger("divineruin.tools")
+
+_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def _validate_id(value: str, label: str) -> str | None:
+    """Return an error JSON string if the ID is invalid, else None."""
+    if not value or len(value) > 128 or not _ID_RE.match(value):
+        return json.dumps({"error": f"Invalid {label}: '{value[:64]}'"})
+    return None
+
 
 DISPOSITION_ORDER = ["hostile", "wary", "neutral", "friendly", "trusted"]
 
@@ -215,6 +226,8 @@ async def enter_location(context: RunContext[SessionData], location_id: str) -> 
     starting a session. Use the returned IDs for follow-up tools like
     query_npc (for deeper NPC interaction) or request_attack (for combat)."""
     logger.info("enter_location called: location_id=%s", location_id)
+    if err := _validate_id(location_id, "location_id"):
+        return err
     session: SessionData = context.userdata
 
     result = await _build_scene_context(location_id, session)
@@ -233,6 +246,8 @@ async def query_location(context: RunContext[SessionData], location_id: str) -> 
     """Get location details by ID: description, atmosphere, features, exits.
     Use for scene descriptions and navigation."""
     logger.info("query_location called: location_id=%s", location_id)
+    if err := _validate_id(location_id, "location_id"):
+        return err
     location = await db.get_location(location_id)
     if location is None:
         return json.dumps({"error": f"Location '{location_id}' not found."})
@@ -250,6 +265,8 @@ async def query_npc(context: RunContext[SessionData], npc_id: str) -> str:
     """Get NPC details by ID: personality, speech style, knowledge filtered by
     the player's relationship. Use to roleplay NPCs accurately."""
     logger.info("query_npc called: npc_id=%s", npc_id)
+    if err := _validate_id(npc_id, "npc_id"):
+        return err
     session: SessionData = context.userdata
     npc = await db.get_npc(npc_id)
     if npc is None:
@@ -289,10 +306,11 @@ async def query_lore(context: RunContext[SessionData], topic: str) -> str:
 
 @function_tool()
 @db_tool
-async def query_inventory(context: RunContext[SessionData], player_id: str) -> str:
-    """Get a player's inventory items. Use when they ask what they are carrying."""
-    logger.info("query_inventory called: player_id=%s", player_id)
-    items = await db.get_player_inventory(player_id)
+async def query_inventory(context: RunContext[SessionData]) -> str:
+    """Get the current player's inventory items. Use when they ask what they are carrying."""
+    session: SessionData = context.userdata
+    logger.info("query_inventory called: player_id=%s", session.player_id)
+    items = await db.get_player_inventory(session.player_id)
     if not items:
         return json.dumps({"note": "This player's inventory is empty. They carry nothing of note."})
 
@@ -322,7 +340,12 @@ async def discover_hidden_element(
     Provide the element_id from the location's hidden_elements list.
     A skill check is rolled against the element's stored DC."""
     logger.info("discover_hidden_element called: element_id=%s", element_id)
+    if err := _validate_id(element_id, "element_id"):
+        return err
     session: SessionData = context.userdata
+
+    if element_id in session.attempted_discoveries:
+        return json.dumps({"error": f"Already searched for '{element_id}' this session."})
 
     location = await db.get_location(session.location_id)
     if location is None:
@@ -337,6 +360,8 @@ async def discover_hidden_element(
 
     if element is None:
         return json.dumps({"error": f"No hidden element '{element_id}' at current location."})
+
+    session.attempted_discoveries.add(element_id)
 
     discover_skill = element.get("discover_skill", "perception")
     dc = element.get("dc", 13)
@@ -355,7 +380,6 @@ async def discover_hidden_element(
             "skill": result.skill,
             "roll": result.roll,
             "total": result.total,
-            "dc": result.dc,
             "success": result.success,
         },
         event_bus=session.event_bus,
@@ -430,7 +454,6 @@ async def request_skill_check(
             "skill": result.skill,
             "roll": result.roll,
             "total": result.total,
-            "dc": result.dc,
             "success": result.success,
         },
         event_bus=session.event_bus,
@@ -575,7 +598,6 @@ async def request_saving_throw(
             "save_type": result.save_type,
             "roll": result.roll,
             "total": result.total,
-            "dc": result.dc,
             "success": result.success,
         },
         event_bus=session.event_bus,
@@ -927,6 +949,8 @@ async def move_player(
     location ID from the current location's exits. Returns the full scene
     context for the new location."""
     logger.info("move_player called: destination_id=%s", destination_id)
+    if err := _validate_id(destination_id, "destination_id"):
+        return err
     session: SessionData = context.userdata
 
     current_location = await db.get_location(session.location_id)

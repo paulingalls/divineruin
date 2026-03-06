@@ -8,6 +8,7 @@ import pytest
 from session_data import SessionData
 from tools import (
     _strip_hidden_dcs,
+    _validate_id,
     apply_time_conditions,
     discover_hidden_element,
     enter_location,
@@ -310,16 +311,17 @@ class TestQueryInventory:
             }
         ]
         ctx = _make_context()
-        result = json.loads(await query_inventory._func(ctx, player_id="player_1"))
+        result = json.loads(await query_inventory._func(ctx))
         assert len(result["items"]) == 1
         assert result["items"][0]["name"] == "Sealed Research Tablet"
+        mock_inv.assert_awaited_once_with("player_1")
 
     @pytest.mark.asyncio
     @patch("tools.db.get_player_inventory", new_callable=AsyncMock)
     async def test_empty_inventory(self, mock_inv):
         mock_inv.return_value = []
         ctx = _make_context()
-        result = json.loads(await query_inventory._func(ctx, player_id="player_1"))
+        result = json.loads(await query_inventory._func(ctx))
         assert "note" in result
 
 
@@ -581,4 +583,69 @@ class TestDiscoverHiddenElement:
         mock_loc.return_value = None
         ctx = _make_context(location_id="nowhere")
         result = json.loads(await discover_hidden_element._func(ctx, element_id="secret_door"))
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    @patch("tools.publish_game_event", new_callable=AsyncMock)
+    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_blocks_repeated_attempt(self, mock_loc, mock_player, mock_event):
+        mock_loc.return_value = LOCATION_WITH_HIDDEN
+        mock_player.return_value = DISCOVER_PLAYER
+        ctx = _make_context(location_id="test_location")
+
+        with patch("rules_engine.dice_roll") as mock_dice:
+            from dice import DiceResult
+
+            mock_dice.return_value = DiceResult(notation="d20", rolls=[3], dropped=[], total=3)
+            await discover_hidden_element._func(ctx, element_id="secret_door")
+
+        result = json.loads(await discover_hidden_element._func(ctx, element_id="secret_door"))
+        assert "error" in result
+        assert "Already searched" in result["error"]
+
+    @pytest.mark.asyncio
+    @patch("tools.publish_game_event", new_callable=AsyncMock)
+    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_dice_roll_event_has_no_dc(self, mock_loc, mock_player, mock_event):
+        """DC should not be included in the client-facing dice_roll event."""
+        mock_loc.return_value = LOCATION_WITH_HIDDEN
+        mock_player.return_value = DISCOVER_PLAYER
+        ctx = _make_context(location_id="test_location")
+
+        with patch("rules_engine.dice_roll") as mock_dice:
+            from dice import DiceResult
+
+            mock_dice.return_value = DiceResult(notation="d20", rolls=[15], dropped=[], total=15)
+            await discover_hidden_element._func(ctx, element_id="secret_door")
+
+        event_payload = mock_event.call_args[0][2]
+        assert "dc" not in event_payload
+
+
+# --- _validate_id tests ---
+
+
+class TestValidateId:
+    def test_valid_id(self):
+        assert _validate_id("accord_guild_hall", "location_id") is None
+
+    def test_valid_id_with_hyphens(self):
+        assert _validate_id("npc-123", "npc_id") is None
+
+    def test_empty_id(self):
+        result = json.loads(_validate_id("", "location_id"))
+        assert "error" in result
+
+    def test_too_long_id(self):
+        result = json.loads(_validate_id("a" * 129, "location_id"))
+        assert "error" in result
+
+    def test_special_characters_rejected(self):
+        result = json.loads(_validate_id("id; DROP TABLE", "location_id"))
+        assert "error" in result
+
+    def test_path_traversal_rejected(self):
+        result = json.loads(_validate_id("../etc/passwd", "location_id"))
         assert "error" in result

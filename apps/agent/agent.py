@@ -364,6 +364,7 @@ def _extract_player_id(ctx: agents.JobContext) -> str:
                 return pid
         except (json.JSONDecodeError, TypeError):
             pass
+    logger.warning("No player_id in dispatch metadata — falling back to 'player_1'")
     return "player_1"
 
 

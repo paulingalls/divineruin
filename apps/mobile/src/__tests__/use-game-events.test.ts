@@ -1,5 +1,10 @@
 import { test, expect, beforeEach } from "bun:test";
-import { parseGameEvent, handleGameEvent, DICE_STINGER_DELAY_MS } from "@/audio/game-event-handler";
+import {
+  parseGameEvent,
+  handleGameEvent,
+  parseCombatant,
+  DICE_STINGER_DELAY_MS,
+} from "@/audio/game-event-handler";
 import { activePlayerCount } from "@/audio/sfx-player";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore, type CharacterSummary } from "@/stores/character-store";
@@ -730,4 +735,77 @@ test("location_changed adds visited location to panelStore map", () => {
   expect(market).toBeDefined();
   expect(market!.visited).toBe(true);
   expect(market!.connections).toEqual(["guild", "docks"]);
+});
+
+// --- parseCombatant ---
+
+test("parseCombatant returns valid combatant from well-formed data", () => {
+  const result = parseCombatant({
+    id: "c1",
+    name: "Kael",
+    isAlly: true,
+    hpCurrent: 20,
+    hpMax: 30,
+    statusEffects: ["blessed"],
+    isActive: true,
+  });
+  expect(result).not.toBeNull();
+  expect(result!.id).toBe("c1");
+  expect(result!.name).toBe("Kael");
+  expect(result!.isAlly).toBe(true);
+  expect(result!.hpCurrent).toBe(20);
+  expect(result!.statusEffects).toEqual(["blessed"]);
+});
+
+test("parseCombatant returns null for null input", () => {
+  expect(parseCombatant(null)).toBeNull();
+});
+
+test("parseCombatant returns null for non-object input", () => {
+  expect(parseCombatant("string")).toBeNull();
+  expect(parseCombatant(42)).toBeNull();
+});
+
+test("parseCombatant returns null for missing id", () => {
+  expect(parseCombatant({ name: "Kael" })).toBeNull();
+});
+
+test("parseCombatant returns null for missing name", () => {
+  expect(parseCombatant({ id: "c1" })).toBeNull();
+});
+
+test("parseCombatant defaults missing optional fields", () => {
+  const result = parseCombatant({ id: "c1", name: "Kael" });
+  expect(result).not.toBeNull();
+  expect(result!.isAlly).toBe(false);
+  expect(result!.hpCurrent).toBe(0);
+  expect(result!.hpMax).toBe(1);
+  expect(result!.statusEffects).toEqual([]);
+  expect(result!.isActive).toBe(false);
+});
+
+test("combat_ui_update filters out malformed combatants", () => {
+  handleGameEvent({
+    type: "combat_ui_update",
+    phase: "player_turn",
+    round: 1,
+    combatants: [
+      {
+        id: "c1",
+        name: "Kael",
+        isAlly: true,
+        hpCurrent: 20,
+        hpMax: 30,
+        statusEffects: [],
+        isActive: true,
+      },
+      null,
+      { notAnId: true },
+      "string",
+    ],
+  });
+  const combat = hudStore.getState().combatState;
+  expect(combat).not.toBeNull();
+  expect(combat!.combatants).toHaveLength(1);
+  expect(combat!.combatants[0].id).toBe("c1");
 });

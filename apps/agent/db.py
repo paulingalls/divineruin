@@ -140,11 +140,13 @@ async def get_item(item_id: str) -> dict | None:
 
 async def search_lore(keyword: str, limit: int = 5) -> list[dict]:
     keyword = keyword[:256]
+    # Escape ILIKE metacharacters
+    escaped = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     limit = max(1, min(limit, 100))
     pool = await get_pool()
     rows = await pool.fetch(
         "SELECT data FROM lore_entries WHERE data::text ILIKE $1 LIMIT $2",
-        f"%{keyword}%",
+        f"%{escaped}%",
         limit,
     )
     return [json.loads(row["data"]) for row in rows]

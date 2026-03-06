@@ -273,6 +273,18 @@ class TestCachedContentQueries:
             5,
         )
 
+    @pytest.mark.asyncio
+    async def test_search_lore_escapes_ilike_metacharacters(self):
+        """search_lore should escape %, _, and \\ in keywords."""
+        mock_pool = AsyncMock()
+        mock_pool.fetch = AsyncMock(return_value=[])
+
+        with patch("db.get_pool", return_value=mock_pool):
+            await db.search_lore("100%_done", limit=5)
+
+        call_args = mock_pool.fetch.call_args[0]
+        assert call_args[1] == "%100\\%\\_done%"
+
 
 class TestTransactionContext:
     """Test transaction context manager."""
