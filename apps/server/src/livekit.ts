@@ -4,11 +4,35 @@ import {
   RoomServiceClient,
   DataPacket_Kind,
 } from "livekit-server-sdk";
+import { TrackSource } from "@livekit/protocol";
 export { DataPacket_Kind };
 
-const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "";
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
+function requireEnv(name: string): string {
+  const value = Bun.env[name];
+  if (!value) {
+    throw new Error(`${name} is not set`);
+  }
+  return value;
+}
+
+const LIVEKIT_URL = requireEnv("LIVEKIT_URL");
+const LIVEKIT_API_KEY = requireEnv("LIVEKIT_API_KEY");
+const LIVEKIT_API_SECRET = requireEnv("LIVEKIT_API_SECRET");
+
+const isDev = process.env.NODE_ENV !== "production";
+
+const VALID_ID = /^[a-zA-Z0-9_-]+$/;
+const MAX_ID_LENGTH = 128;
+
+function validateId(value: string, field: string): string | null {
+  if (value.length > MAX_ID_LENGTH) {
+    return `${field} exceeds maximum length of ${MAX_ID_LENGTH} characters`;
+  }
+  if (!VALID_ID.test(value)) {
+    return `${field} contains invalid characters (allowed: a-z, A-Z, 0-9, _, -)`;
+  }
+  return null;
+}
 
 function createRoomService(): RoomServiceClient | null {
   if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
@@ -43,6 +67,16 @@ export async function handleLivekitToken(req: Request): Promise<Response> {
     return Response.json({ error: "player_id and room_name are required" }, { status: 400 });
   }
 
+  const playerIdError = validateId(player_id, "player_id");
+  if (playerIdError) {
+    return Response.json({ error: playerIdError }, { status: 400 });
+  }
+
+  const roomNameError = validateId(room_name, "room_name");
+  if (roomNameError) {
+    return Response.json({ error: roomNameError }, { status: 400 });
+  }
+
   if (!roomService) {
     return Response.json({ error: "LiveKit credentials not configured" }, { status: 500 });
   }
@@ -52,7 +86,11 @@ export async function handleLivekitToken(req: Request): Promise<Response> {
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     if (!msg.includes("already exists") && !msg.includes("already being created")) {
-      console.error(`Failed to create LiveKit room "${room_name}":`, msg);
+      if (isDev) {
+        console.error(`Failed to create LiveKit room "${room_name}":`, e);
+      } else {
+        console.error(`Failed to create LiveKit room "${room_name}":`, msg);
+      }
     }
   }
 
@@ -65,6 +103,8 @@ export async function handleLivekitToken(req: Request): Promise<Response> {
     room: room_name,
     canPublish: true,
     canSubscribe: true,
+    canPublishData: false,
+    canPublishSources: [TrackSource.MICROPHONE],
   });
 
   const jwt = await token.toJwt();
@@ -76,7 +116,11 @@ export async function handleLivekitToken(req: Request): Promise<Response> {
       });
       console.log(`Dispatched DM agent to room "${room_name}"`);
     } catch (e: unknown) {
-      console.error("Failed to dispatch DM agent:", e);
+      if (isDev) {
+        console.error("Failed to dispatch DM agent:", e);
+      } else {
+        console.error("Failed to dispatch DM agent:", e instanceof Error ? e.message : "unknown");
+      }
     }
   }
 
