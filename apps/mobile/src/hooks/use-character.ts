@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { API_BASE } from "@/utils/api";
+import { API_BASE, authHeaders } from "@/utils/api";
 import { characterStore } from "@/stores/character-store";
 
 interface CharacterResponse {
@@ -23,7 +23,9 @@ export function useCharacter(playerId: string) {
 
     async function fetchCharacter() {
       try {
-        const res = await fetch(`${API_BASE}/api/character/${playerId}`);
+        const res = await fetch(`${API_BASE}/api/character/${playerId}`, {
+          headers: authHeaders(),
+        });
         if (!res.ok) {
           throw new Error(`Failed to fetch character (${res.status})`);
         }

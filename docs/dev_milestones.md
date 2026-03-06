@@ -1246,3 +1246,7 @@ The LLM sees the speaker pattern and the transcript content together. If the las
 | **10: Multiplayer** | 10.1, 10.2 | Wave 2 prep — multi-player rooms, conversation awareness |
 
 **Total: 10 phases, 21 milestones.** Phases 1–9 (19 milestones) deliver the complete solo MVP through Wave 1 playtesting. Phase 10 extends to multiplayer only after solo validation succeeds. Dependencies flow strictly downward — no milestone requires work from a later phase.
+
+## Cross-Cutting: Accounts & Authentication
+
+Added as a prerequisite for multiplayer and persistent player identity. Email + 6-digit verification code flow (no passwords). JWT-based session tokens (30-day expiry). New `accounts` and `auth_codes` DB tables; `players` table linked via `account_id`. Server routes gated with `requireAuth` middleware. Mobile auth screen with SecureStore token persistence. See `apps/server/src/auth.ts` and `apps/mobile/src/stores/auth-store.ts`.

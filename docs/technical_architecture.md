@@ -1290,6 +1290,39 @@ God whispers, guild chat, and async voice messages don't require real-time room 
 
 ---
 
+## Authentication
+
+### Magic Code Flow
+
+Email + 6-digit verification code. No passwords, no OAuth.
+
+1. **Request code:** Client POSTs email to `/api/auth/request-code`. Server find-or-creates an `accounts` row, generates a 6-digit code (10-minute expiry), stores it in `auth_codes`, sends via Resend transactional email.
+2. **Verify code:** Client POSTs email + code to `/api/auth/verify-code`. Server validates the code, marks it used, find-or-creates a `players` row linked to the account, returns a signed JWT.
+3. **Authenticated requests:** Client sends `Authorization: Bearer <jwt>` on all API calls. Server middleware (`requireAuth`) extracts `accountId` and `playerId` from the JWT.
+
+### JWT Structure
+
+- Algorithm: HS256
+- Claims: `sub` (account UUID), `pid` (player_id string)
+- Expiry: 30 days
+- Library: `jose` (zero-dep, spec-compliant)
+- Secret: `JWT_SECRET` env var
+
+### Database Tables
+
+- `accounts` — `id` (UUID PK), `email` (UNIQUE), `created_at`, `last_login_at`, `updated_at`
+- `auth_codes` — `id` (UUID PK), `account_id` (FK → accounts), `code`, `expires_at`, `used`
+- `players.account_id` — FK → accounts (nullable for backward compat)
+
+### Client Token Storage
+
+`expo-secure-store` persists JWT, account_id, and player_id. On app launch, the layout checks SecureStore — if a valid token exists, skip straight to home screen. On 401 responses, auto-logout.
+
+### Rate Limits
+
+- `/api/auth/request-code`: 3 per minute per IP
+- `/api/auth/verify-code`: 5 per minute per IP
+
 ## Infrastructure
 
 ### MVP Infrastructure
