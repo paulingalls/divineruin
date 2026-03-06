@@ -801,13 +801,13 @@ These overlays appear over the session screen center when triggered by data chan
 - Hidden element discovery: DM can reveal hidden elements in locations when player investigates (skill check required for some)
 
 **Acceptance criteria:**
-- [ ] Player can navigate the full MVP map by voice: Market Square ↔ Road ↔ Millhaven ↔ Greyvale Ruins Entrance ↔ Ruins Interior ↔ Hollow Breach
-- [ ] Each location has a unique scene narration that matches the audio design (leads with sound, then feeling)
+- [x] Player can navigate the full MVP map by voice: Market Square ↔ Road ↔ Millhaven ↔ Greyvale Ruins Entrance ↔ Ruins Interior ↔ Hollow Breach
+- [x] Each location has a unique scene narration that matches the audio design (leads with sound, then feeling)
 - [ ] Moving between locations triggers soundscape crossfade and HUD location update
-- [ ] DM describes available exits when the player asks "where can I go?"
-- [ ] Travel between distant locations (Market Square → Millhaven) includes a brief journey narration
-- [ ] Hidden elements can be discovered through investigation ("I examine the wall" → skill check → hidden passage revealed)
-- [ ] Condition overlays work: visiting Market Square at night produces a different description than during the day
+- [x] DM describes available exits when the player asks "where can I go?"
+- [x] Travel between distant locations (Market Square → Millhaven) includes a brief journey narration
+- [x] Hidden elements can be discovered through investigation ("I examine the wall" → skill check → hidden passage revealed)
+- [x] Condition overlays work: visiting Market Square at night produces a different description than during the day
 
 **Key references:**
 - *Game Design — Navigation* (voice-first movement, scene narration, exit awareness)

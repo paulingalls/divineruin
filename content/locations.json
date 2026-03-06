@@ -69,6 +69,10 @@
       "east": { "destination": "millhaven_inn" }
     },
     "conditions": {
+      "time_night": {
+        "description_override": "Millhaven after dark is a town holding its breath. Shutters are closed tight, bolted from inside. A dog barks somewhere and others answer, a chain of anxiety running house to house. The mill wheel turns alone. The northern tree line is a black wall, and no one looks at it.",
+        "atmosphere": "shuttered, fearful, dogs barking at nothing"
+      },
       "quest:greyvale_anomaly:stage >= 3": {
         "atmosphere": "openly frightened, people preparing to evacuate",
         "key_features_add": ["townsfolk packing carts and arguing about whether to flee south"]
@@ -161,6 +165,12 @@
     "exits": {
       "south": { "destination": "accord_market_square" }
     },
+    "conditions": {
+      "time_night": {
+        "description_override": "The guild hall is quieter after dark. Most clerks have gone, leaving half the lamps lit. A few night-shift contractors murmur over paperwork. Torin's office door is closed, a line of light beneath it.",
+        "atmosphere": "subdued, late-working, quieter but not empty"
+      }
+    },
     "ambient_sounds": "guild_hall_bustle"
   },
   {
@@ -179,6 +189,12 @@
     ],
     "exits": {
       "west": { "destination": "accord_market_square" }
+    },
+    "conditions": {
+      "time_night": {
+        "description_override": "Candlelight spills from temple doorways onto empty steps. The avenue is contemplative at night — distant chanting carries from Aelora's temple, and the incense is stronger in the stillness. A lone acolyte tends a shrine by lantern.",
+        "atmosphere": "contemplative, candlelit, distant chanting"
+      }
     },
     "ambient_sounds": "temple_row_chanting"
   },
@@ -199,7 +215,14 @@
     "exits": {
       "north": { "destination": "accord_market_square" }
     },
-    "ambient_sounds": "harbor_activity"
+    "conditions": {
+      "time_night": {
+        "description_override": "The docks are different at night. Watchmen replace dockworkers, lanterns sway on moored masts. The water is black and still, reflecting orange light. Somewhere a cargo hatch creaks in the wind. The scholars' workshops are dark, but one window still glows.",
+        "atmosphere": "quiet, watchful, lantern-lit water"
+      }
+    },
+    "ambient_sounds": "harbor_activity",
+    "ambient_sounds_night": "harbor_quiet"
   },
   {
     "id": "accord_hearthstone_tavern",
@@ -217,6 +240,12 @@
     ],
     "exits": {
       "east": { "destination": "accord_market_square" }
+    },
+    "conditions": {
+      "time_night": {
+        "description_override": "The Hearthstone comes alive after dark. Every table is taken. Voices compete with each other and the bard, who's found her groove now. The hearth throws long shadows and the room smells of roasted meat and too many people. This is where the city comes to forget the day.",
+        "atmosphere": "loud, crowded, peak evening energy"
+      }
     },
     "ambient_sounds": "tavern_busy"
   },
@@ -266,12 +295,21 @@
     "district": "greyvale_wilds",
     "region": "greyvale",
     "tags": ["wilderness", "forest", "dangerous", "hollow_adjacent"],
+    "description": "The forest goes wrong here. You notice it in the silence first — no birdsong, no insect hum. The wind moves the branches but stops at a boundary you can feel in your chest. Everything past the tree line has a stillness that doesn't belong to nature.",
     "atmosphere": "tense, unnaturally quiet, watchful",
     "exits": {
       "south": { "destination": "millhaven" },
       "north": { "destination": "hollow_incursion_site" },
       "northeast": { "destination": "greyvale_ruins_exterior" }
     },
+    "conditions": {
+      "time_night": {
+        "description_override": "Darkness thickens the wrongness here. Every sound you make comes back louder than it should — your footsteps, your breathing. The tree line is a wall of black, and something in the distance reflects light that has no source.",
+        "atmosphere": "threatening, sounds magnified, deeply wrong"
+      }
+    },
+    "ambient_sounds": "wind_ruins",
+    "ambient_sounds_night": "hollow_wrongness",
     "danger_level": 2
   },
   {
@@ -281,11 +319,13 @@
     "district": "greyvale_road",
     "region": "greyvale",
     "tags": ["road", "travel", "connecting"],
+    "description": "Birdsong follows you out of the city, fading as the road narrows between barley fields. Cart ruts deepen in the mud. The pastoral quiet should be comforting, but the farms thin out too quickly heading north, and the last farmhouse you pass has its shutters closed in broad daylight.",
     "atmosphere": "open, pastoral, increasingly uneasy heading north",
     "exits": {
       "north": { "destination": "millhaven" },
       "south": { "destination": "accord_market_square" }
     },
+    "ambient_sounds": "rural_town_uneasy",
     "danger_level": 0
   },
   {
@@ -295,10 +335,12 @@
     "district": "millhaven_town",
     "region": "greyvale",
     "tags": ["inn", "rest", "social", "information"],
+    "description": "The door scrapes against a warped floor. Inside, lamplight catches dust motes and the smell of old ale soaks into everything. A handful of locals nurse drinks at separate tables, conversations held low. The innkeeper watches the door like she's been counting who comes and who doesn't come back.",
     "atmosphere": "dim, worried, half-empty",
     "exits": {
       "west": { "destination": "millhaven" }
     },
+    "ambient_sounds": "tavern_busy",
     "danger_level": 0
   },
   {
@@ -308,10 +350,12 @@
     "district": "accord_central",
     "region": "sunward_coast",
     "tags": ["residential", "private", "guild"],
+    "description": "Papers cover every surface — reports, maps, requisition forms stacked in towers that lean dangerously. The smell of ink and lamp oil hangs thick. Through the floorboards, you can hear the muffled business of the guild hall below. Torin's desk faces the door. Old habit.",
     "atmosphere": "spare, functional, papers everywhere",
     "exits": {
       "out": { "destination": "accord_guild_hall" }
-    }
+    },
+    "ambient_sounds": "guild_hall_bustle"
   },
   {
     "id": "yanna_farmhouse",
@@ -320,10 +364,12 @@
     "district": "millhaven_town",
     "region": "greyvale",
     "tags": ["residential", "private", "farming"],
+    "description": "Floorboards creak under your weight. A low fire crackles in the hearth, throwing warmth across a room that smells of dried herbs and bread cooling on a shelf. Everything here is worn but cared for — mended curtains, a swept floor, a chair with one leg shorter than the others.",
     "atmosphere": "worn, warm, stubbornly maintained",
     "exits": {
       "out": { "destination": "millhaven" }
-    }
+    },
+    "ambient_sounds": "rural_town_uneasy"
   },
   {
     "id": "emris_study",
@@ -332,9 +378,11 @@
     "district": "accord_dockside",
     "region": "sunward_coast",
     "tags": ["residential", "private", "academic", "aelindran"],
+    "description": "Parchment and books compete for every inch of space. The smell of old paper and salt air mixes where a window faces the harbor. Diagrams cover the walls — Aelindran notation, star charts, something that might be a map of places that don't exist anymore. A half-eaten meal sits forgotten on a stack of journals.",
     "atmosphere": "cluttered, ink-stained, obsessive",
     "exits": {
       "out": { "destination": "accord_dockside" }
-    }
+    },
+    "ambient_sounds": "harbor_activity"
   }
 ]

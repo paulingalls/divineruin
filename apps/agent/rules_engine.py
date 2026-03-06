@@ -222,14 +222,13 @@ def attack_modifier(player_data: dict, weapon: dict) -> int:
 # --- Resolution functions ---
 
 
-def resolve_skill_check(
+def _resolve_skill_check_impl(
     player_data: dict,
     skill: str,
-    difficulty: str,
+    dc: int,
     rng: random.Random | None = None,
 ) -> SkillCheckResult:
     mod = skill_modifier(player_data, skill)
-    dc = dc_for_tier(difficulty)
     result = dice_roll("d20", rng=rng)
     d20 = result.total
     total = d20 + mod
@@ -251,6 +250,29 @@ def resolve_skill_check(
         margin=total - dc,
         narrative_hint=narrative_hint(d20, total, dc),
     )
+
+
+def resolve_skill_check(
+    player_data: dict,
+    skill: str,
+    difficulty: str,
+    rng: random.Random | None = None,
+) -> SkillCheckResult:
+    return _resolve_skill_check_impl(player_data, skill, dc_for_tier(difficulty), rng)
+
+
+def resolve_skill_check_dc(
+    player_data: dict,
+    skill: str,
+    dc: int,
+    rng: random.Random | None = None,
+) -> SkillCheckResult:
+    """Like resolve_skill_check but accepts a numeric DC directly.
+
+    Use when the DC is stored as a number (e.g. hidden element DCs)
+    rather than a difficulty tier string.
+    """
+    return _resolve_skill_check_impl(player_data, skill, dc, rng)
 
 
 def resolve_attack(

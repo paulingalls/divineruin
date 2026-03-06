@@ -25,6 +25,7 @@ from session_data import SessionData
 from tools import (
     add_to_inventory,
     award_xp,
+    discover_hidden_element,
     end_combat,
     enter_location,
     move_player,
@@ -61,7 +62,7 @@ REQUIRED_ENV_VARS = [
     "REDIS_URL",
 ]
 
-WORLD_TOOLS = [enter_location, query_location, query_npc, query_lore, query_inventory]
+WORLD_TOOLS = [enter_location, query_location, query_npc, query_lore, query_inventory, discover_hidden_element]
 MECHANICS_TOOLS = [request_skill_check, request_attack, request_saving_throw, roll_dice, play_sound]
 MUTATION_TOOLS = [move_player, add_to_inventory, remove_from_inventory, update_quest, award_xp, update_npc_disposition]
 COMBAT_TOOLS = [start_combat, resolve_enemy_turn, request_death_save, end_combat]

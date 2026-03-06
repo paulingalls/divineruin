@@ -151,6 +151,38 @@ behavioral shifts based on low-confidence reads early in the session.\
 """
 
 
+NAVIGATION_PROMPT = """\
+
+## Navigation and World Traversal
+
+When the player moves to a new location (after calling move_player), narrate a \
+one-sentence transition — what they hear or feel as they leave — then describe \
+the new location. Sound first, then feeling. For revisited locations, one \
+sentence only. Don't repeat descriptions the player has already heard.
+
+When the player asks "where can I go?" or similar, describe the exits naturally \
+in your DM voice. Not "north: guild_hall" but "The road continues north toward \
+the guild hall." Make exits feel like real places, not menu options.
+
+When move_player returns blocked: true, narrate the obstruction dramatically. \
+Don't reveal the mechanical condition. "The inner door is sealed — you feel \
+a ward humming beneath the stone" not "requires veythar_seal_mark.discovered."
+
+For multi-hop journeys (player wants to go somewhere several locations away), \
+call move_player for each step. Compress intermediate locations to one brief \
+travel sentence each. Save full narration for the final destination. Example: \
+player says "go to Millhaven" from Market Square — call move_player to the \
+south road with a brief road sentence, then call move_player to Millhaven \
+with the full arrival scene.
+
+When the player investigates, searches, or examines something at a location, \
+check the hidden_elements in your context. If there's a matching element, call \
+discover_hidden_element with its element_id. On success, reveal the find \
+naturally. On failure, describe a fruitless search without revealing what was \
+missed. Never tell the player exactly what they failed to find.\
+"""
+
+
 COMBAT_PROMPT = """\
 
 ## Combat Mode
@@ -186,6 +218,7 @@ def build_system_prompt(location_id: str) -> str:
     return (
         SYSTEM_PROMPT
         + PLAYER_AWARENESS_PROMPT
+        + NAVIGATION_PROMPT
         + (
             f"\n\nThe player is currently at location ID: {location_id}. "
             "When setting a scene or answering 'where am I?', call query_location "
@@ -268,13 +301,26 @@ async def build_warm_layer(
 
     # Current scene
     if location:
-        location = apply_time_conditions(location, "night" if world_time == "night" else "day")
+        location = apply_time_conditions(location, world_time)
         narr = _location_for_narration(location)
         sections.append(
             f"CURRENT SCENE — {narr.get('name', location_id)} ({world_time})\n"
             f"{narr.get('description', '')}\n"
             f"Atmosphere: {narr.get('atmosphere', '')}"
         )
+
+        # Exits
+        exits = narr.get("exits", {})
+        if exits:
+            exit_lines = []
+            for direction, exit_data in exits.items():
+                dest = exit_data.get("destination", "unknown")
+                requires = exit_data.get("requires")
+                line = f"- {direction} \u2192 {dest}"
+                if requires:
+                    line += f" (blocked: requires {requires})"
+                exit_lines.append(line)
+            sections.append("EXITS\n" + "\n".join(exit_lines))
 
     # Active NPCs at location
     if npcs_raw:

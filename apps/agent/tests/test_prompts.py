@@ -2,7 +2,7 @@
 
 from unittest.mock import AsyncMock, patch
 
-from prompts import build_full_prompt, build_warm_layer
+from prompts import build_full_prompt, build_system_prompt, build_warm_layer
 
 SAMPLE_LOCATION = {
     "id": "accord_guild_hall",
@@ -91,6 +91,59 @@ class TestBuildWarmLayer:
         result = await build_warm_layer("accord_guild_hall", "player_1", "night")
         assert "dim and quiet" in result
         assert "hushed" in result
+
+
+class TestBuildWarmLayerExits:
+    @patch("db.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db.get_location", new_callable=AsyncMock)
+    async def test_exits_appear_in_warm_layer(self, mock_loc, mock_npcs, mock_disp, mock_quests):
+        mock_loc.return_value = SAMPLE_LOCATION
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "EXITS" in result
+        assert "south" in result
+        assert "accord_market_square" in result
+
+    @patch("db.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db.get_location", new_callable=AsyncMock)
+    async def test_blocked_exit_shows_requires(self, mock_loc, mock_npcs, mock_disp, mock_quests):
+        location_with_blocked = {
+            **SAMPLE_LOCATION,
+            "exits": {
+                "south": {"destination": "accord_market_square"},
+                "east": {"destination": "accord_temple_row", "requires": "temple_key"},
+            },
+        }
+        mock_loc.return_value = location_with_blocked
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "blocked" in result
+        assert "temple_key" in result
+
+    @patch("db.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db.get_location", new_callable=AsyncMock)
+    async def test_no_exits_no_section(self, mock_loc, mock_npcs, mock_disp, mock_quests):
+        location_no_exits = {**SAMPLE_LOCATION, "exits": {}}
+        mock_loc.return_value = location_no_exits
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "EXITS" not in result
+
+
+class TestNavigationPromptIncluded:
+    def test_system_prompt_includes_navigation(self):
+        prompt = build_system_prompt("accord_guild_hall")
+        assert "discover_hidden_element" in prompt
+        assert "Navigation" in prompt
 
 
 class TestBuildFullPrompt:

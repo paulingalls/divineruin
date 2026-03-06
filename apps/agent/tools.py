@@ -180,7 +180,7 @@ async def _build_scene_context(location_id: str, session: SessionData, location:
     if location is None:
         return {"error": f"Location '{location_id}' not found."}
 
-    location = apply_time_conditions(location)
+    location = apply_time_conditions(location, session.world_time)
     location = _strip_hidden_dcs(location)
 
     npcs_raw, targets_raw, player = await asyncio.gather(
@@ -237,7 +237,8 @@ async def query_location(context: RunContext[SessionData], location_id: str) -> 
     if location is None:
         return json.dumps({"error": f"Location '{location_id}' not found."})
 
-    location = apply_time_conditions(location)
+    session: SessionData = context.userdata
+    location = apply_time_conditions(location, session.world_time)
     location = _strip_hidden_dcs(location)
     narration = _location_for_narration(location)
     return json.dumps(narration)
@@ -308,6 +309,86 @@ async def query_inventory(context: RunContext[SessionData], player_id: str) -> s
             }
         )
     return json.dumps({"items": results})
+
+
+@function_tool()
+@db_tool
+async def discover_hidden_element(
+    context: RunContext[SessionData],
+    element_id: str,
+) -> str:
+    """Attempt to discover a hidden element at the current location.
+    Call when the player investigates, searches, or examines something.
+    Provide the element_id from the location's hidden_elements list.
+    A skill check is rolled against the element's stored DC."""
+    logger.info("discover_hidden_element called: element_id=%s", element_id)
+    session: SessionData = context.userdata
+
+    location = await db.get_location(session.location_id)
+    if location is None:
+        return json.dumps({"error": f"Current location '{session.location_id}' not found."})
+
+    hidden = location.get("hidden_elements", [])
+    element = None
+    for elem in hidden:
+        if elem.get("id") == element_id:
+            element = elem
+            break
+
+    if element is None:
+        return json.dumps({"error": f"No hidden element '{element_id}' at current location."})
+
+    discover_skill = element.get("discover_skill", "perception")
+    dc = element.get("dc", 13)
+
+    player = await db.get_player(session.player_id)
+    if player is None:
+        return json.dumps({"error": f"Player '{session.player_id}' not found."})
+
+    result = rules_engine.resolve_skill_check_dc(player, discover_skill, dc)
+
+    await publish_game_event(
+        session.room,
+        "dice_roll",
+        {
+            "roll_type": "skill_check",
+            "skill": result.skill,
+            "roll": result.roll,
+            "total": result.total,
+            "dc": result.dc,
+            "success": result.success,
+        },
+        event_bus=session.event_bus,
+    )
+
+    outcome = "success" if result.success else "failure"
+    session.record_event(f"Hidden element search ({element_id}, {discover_skill}): {outcome}")
+
+    response = {
+        "element_id": element_id,
+        "skill": result.skill,
+        "roll": result.roll,
+        "modifier": result.modifier,
+        "total": result.total,
+        "dc": result.dc,
+        "narrative_hint": result.narrative_hint,
+    }
+    if result.success:
+        response["outcome"] = "discovered"
+        response["description"] = element.get("description", "")
+    else:
+        response["outcome"] = "not_found"
+
+    logger.info(
+        "discover_hidden_element result: %s d20=%d+%d=%d vs DC %d → %s",
+        element_id,
+        result.roll,
+        result.modifier,
+        result.total,
+        result.dc,
+        outcome,
+    )
+    return json.dumps(response)
 
 
 # --- Mechanics tools ---

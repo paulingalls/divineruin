@@ -9,6 +9,7 @@ from session_data import SessionData
 from tools import (
     _strip_hidden_dcs,
     apply_time_conditions,
+    discover_hidden_element,
     enter_location,
     filter_knowledge,
     query_inventory,
@@ -410,3 +411,174 @@ class TestEnterLocation:
         assert result["npcs"] == []
         assert result["targets"] == []
         assert result["location"]["name"] == "Guild Hall"
+
+
+# --- Night time condition tests for tools ---
+
+
+NIGHT_LOCATION = {
+    "id": "accord_market_square",
+    "name": "Market Square",
+    "description": "Sunny market",
+    "atmosphere": "busy",
+    "key_features": ["a fountain"],
+    "hidden_elements": [],
+    "exits": {"north": {"destination": "accord_guild_hall"}},
+    "tags": ["market"],
+    "conditions": {
+        "time_night": {
+            "description_override": "Dark empty market",
+            "atmosphere": "quiet, reflective",
+        }
+    },
+}
+
+
+class TestNightConditionsInTools:
+    @pytest.mark.asyncio
+    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
+    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_build_scene_applies_night(self, mock_loc, mock_npcs, mock_disp, mock_targets, mock_player):
+        mock_loc.return_value = NIGHT_LOCATION
+        mock_npcs.return_value = []
+        mock_targets.return_value = []
+        mock_player.return_value = SAMPLE_PLAYER
+        ctx = _make_context()
+        ctx.userdata.world_time = "night"
+        result = json.loads(await enter_location._func(ctx, location_id="accord_market_square"))
+        assert result["location"]["description"] == "Dark empty market"
+        assert result["location"]["atmosphere"] == "quiet, reflective"
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
+    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_build_scene_day_no_override(self, mock_loc, mock_npcs, mock_disp, mock_targets, mock_player):
+        mock_loc.return_value = NIGHT_LOCATION
+        mock_npcs.return_value = []
+        mock_targets.return_value = []
+        mock_player.return_value = SAMPLE_PLAYER
+        ctx = _make_context()
+        ctx.userdata.world_time = "day"
+        result = json.loads(await enter_location._func(ctx, location_id="accord_market_square"))
+        assert result["location"]["description"] == "Sunny market"
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_query_location_applies_night(self, mock_loc):
+        mock_loc.return_value = NIGHT_LOCATION
+        ctx = _make_context()
+        ctx.userdata.world_time = "night"
+        result = json.loads(await query_location._func(ctx, location_id="accord_market_square"))
+        assert result["description"] == "Dark empty market"
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_query_location_day_no_override(self, mock_loc):
+        mock_loc.return_value = NIGHT_LOCATION
+        ctx = _make_context()
+        ctx.userdata.world_time = "day"
+        result = json.loads(await query_location._func(ctx, location_id="accord_market_square"))
+        assert result["description"] == "Sunny market"
+
+
+# --- discover_hidden_element tests ---
+
+
+LOCATION_WITH_HIDDEN = {
+    "id": "test_location",
+    "name": "Test Location",
+    "description": "A room.",
+    "atmosphere": "plain",
+    "key_features": [],
+    "hidden_elements": [
+        {
+            "id": "secret_door",
+            "discover_skill": "perception",
+            "dc": 12,
+            "description": "A hidden passage behind the bookshelf",
+        }
+    ],
+    "exits": {},
+    "tags": [],
+    "conditions": {},
+}
+
+DISCOVER_PLAYER = {
+    "player_id": "player_1",
+    "name": "Kael",
+    "class": "warrior",
+    "level": 1,
+    "attributes": {
+        "strength": 14,
+        "dexterity": 12,
+        "constitution": 13,
+        "intelligence": 10,
+        "wisdom": 16,
+        "charisma": 8,
+    },
+    "proficiencies": ["perception", "athletics"],
+    "hp": {"current": 25, "max": 25},
+    "ac": 14,
+    "equipment": {},
+}
+
+
+class TestDiscoverHiddenElement:
+    @pytest.mark.asyncio
+    @patch("tools.publish_game_event", new_callable=AsyncMock)
+    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_successful_discovery(self, mock_loc, mock_player, mock_event):
+        mock_loc.return_value = LOCATION_WITH_HIDDEN
+        mock_player.return_value = DISCOVER_PLAYER
+        ctx = _make_context(location_id="test_location")
+
+        with patch("rules_engine.dice_roll") as mock_dice:
+            from dice import DiceResult
+
+            mock_dice.return_value = DiceResult(notation="d20", rolls=[15], dropped=[], total=15)
+            result = json.loads(await discover_hidden_element._func(ctx, element_id="secret_door"))
+
+        assert result["outcome"] == "discovered"
+        assert "hidden passage" in result["description"]
+        assert result["element_id"] == "secret_door"
+
+    @pytest.mark.asyncio
+    @patch("tools.publish_game_event", new_callable=AsyncMock)
+    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_failed_discovery(self, mock_loc, mock_player, mock_event):
+        mock_loc.return_value = LOCATION_WITH_HIDDEN
+        mock_player.return_value = DISCOVER_PLAYER
+        ctx = _make_context(location_id="test_location")
+
+        with patch("rules_engine.dice_roll") as mock_dice:
+            from dice import DiceResult
+
+            mock_dice.return_value = DiceResult(notation="d20", rolls=[3], dropped=[], total=3)
+            result = json.loads(await discover_hidden_element._func(ctx, element_id="secret_door"))
+
+        assert result["outcome"] == "not_found"
+        assert "description" not in result
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_invalid_element_id(self, mock_loc):
+        mock_loc.return_value = LOCATION_WITH_HIDDEN
+        ctx = _make_context(location_id="test_location")
+        result = json.loads(await discover_hidden_element._func(ctx, element_id="nonexistent"))
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_location_not_found(self, mock_loc):
+        mock_loc.return_value = None
+        ctx = _make_context(location_id="nowhere")
+        result = json.loads(await discover_hidden_element._func(ctx, element_id="secret_door"))
+        assert "error" in result
