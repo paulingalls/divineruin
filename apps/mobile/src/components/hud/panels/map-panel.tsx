@@ -59,13 +59,16 @@ function ConnectionLine({
   );
 }
 
-function PulsingNode({ x, y }: { x: number; y: number }) {
+function usePulsingOpacity(minOpacity = 0.4, duration = 1000) {
   const opacity = useSharedValue(1);
   useEffect(() => {
-    opacity.value = withRepeat(withTiming(0.4, { duration: 1000 }), -1, true);
-  }, [opacity]);
-  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+    opacity.value = withRepeat(withTiming(minOpacity, { duration }), -1, true);
+  }, [opacity, minOpacity, duration]);
+  return useAnimatedStyle(() => ({ opacity: opacity.value }));
+}
 
+function PulsingNode({ x, y }: { x: number; y: number }) {
+  const animStyle = usePulsingOpacity(0.4, 1000);
   return (
     <Animated.View
       style={[styles.nodeBase, styles.currentNode, { left: x - 12, top: y - 12 }, animStyle]}
@@ -73,8 +76,22 @@ function PulsingNode({ x, y }: { x: number; y: number }) {
   );
 }
 
+function QuestDiamond({ x, y }: { x: number; y: number }) {
+  const animStyle = usePulsingOpacity(0.3, 1200);
+  return (
+    <Animated.View
+      style={[
+        styles.questDiamond,
+        { left: x - 5, top: y - 18, transform: [{ rotate: "45deg" }] },
+        animStyle,
+      ]}
+    />
+  );
+}
+
 export function MapPanel() {
   const mapProgress = useStore(panelStore, (s) => s.mapProgress);
+  const quests = useStore(panelStore, (s) => s.quests);
   const currentLocationId = useStore(characterStore, (s) => s.character?.locationId);
 
   const scale = useSharedValue(1);
@@ -83,6 +100,24 @@ export function MapPanel() {
   const translateY = useSharedValue(0);
   const savedTranslateX = useRef(0);
   const savedTranslateY = useRef(0);
+
+  // Derive the quest target location from the current stage of the first active quest
+  const questTargetLocationId = useMemo(() => {
+    for (const q of quests) {
+      if (q.status !== "active") continue;
+      if (q.currentStage < 0 || q.currentStage >= q.stages.length) continue;
+      const stage = q.stages[q.currentStage];
+      if (stage.targetLocationId) return stage.targetLocationId;
+    }
+    return null;
+  }, [quests]);
+
+  const questDiamondCoords = useMemo(() => {
+    if (!questTargetLocationId) return null;
+    const layout = MAP_LAYOUT_BY_ID.get(questTargetLocationId);
+    if (!layout) return null;
+    return { x: scaleCoord(layout.x), y: scaleCoord(layout.y) };
+  }, [questTargetLocationId]);
 
   const visitedSet = useMemo(
     () => new Set(mapProgress.filter((n) => n.visited).map((n) => n.locationId)),
@@ -249,6 +284,9 @@ export function MapPanel() {
               </View>
             );
           })}
+
+          {/* Quest objective diamond marker */}
+          {questDiamondCoords && <QuestDiamond x={questDiamondCoords.x} y={questDiamondCoords.y} />}
         </Animated.View>
       </GestureDetector>
     </View>
@@ -311,5 +349,11 @@ const styles = StyleSheet.create({
     fontFamily: FontFamilies.display,
     fontSize: 14,
     color: `${BrandColors.ash}80`, // 50% opacity
+  },
+  questDiamond: {
+    position: "absolute",
+    width: 10,
+    height: 10,
+    backgroundColor: BrandColors.hollow,
   },
 });

@@ -11,6 +11,7 @@
         "id": "stage_1_investigate",
         "name": "The Road North",
         "objective": "Travel to Millhaven and investigate the Hollow reports.",
+        "target_location_id": "millhaven",
         "hints": [
           "Your companion mentions hearing that Millhaven is a day's travel north of the Accord.",
           "Your companion suggests talking to Guildmaster Torin before leaving — he might have more details about what the scouts found.",
@@ -30,6 +31,7 @@
         "id": "stage_2_gather_intel",
         "name": "Something Wrong",
         "objective": "Talk to Millhaven's residents and learn what they've seen.",
+        "target_location_id": "millhaven",
         "hints": [
           "Your companion notices a woman watching you from near the mill — she looks like she's in charge.",
           "Your companion suggests asking at the inn — 'Barkeeps always know what's going on.'",
@@ -50,6 +52,7 @@
         "id": "stage_3_first_contact",
         "name": "First Blood",
         "objective": "Engage the Hollow creatures near Millhaven and survive.",
+        "target_location_id": "greyvale_wilderness_north",
         "hints": [
           "Your companion's attention snaps north. 'Do you hear that? That... silence?'",
           "Your companion draws their weapon. 'Something's moving out there. This is it.'",
@@ -71,6 +74,7 @@
         "id": "stage_4_the_ruins",
         "name": "What Lies Beneath",
         "objective": "Explore the Greyvale Ruins and discover what's causing the disturbance.",
+        "target_location_id": "greyvale_ruins_entrance",
         "hints": [
           "Your companion keeps glancing at the hills to the northeast. 'The elder mentioned the old ruins. And the lights.'",
           "Your companion says: 'Whatever's happening with the Hollow, those ruins are connected. I'd bet on it.'",
@@ -104,6 +108,7 @@
         "id": "stage_5_return",
         "name": "The Weight of Discovery",
         "objective": "Return to the Accord of Tides and report what you found.",
+        "target_location_id": "emris_study",
         "hints": [
           "Your companion says: 'We need to get this to someone who can read it. Back to the Accord.'",
           "Your companion mentions the Aelindran scholars in the Dockside Quarter. 'If anyone can read old academic notation, it's them.'",

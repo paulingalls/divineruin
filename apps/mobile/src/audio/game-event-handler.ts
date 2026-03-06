@@ -196,6 +196,9 @@ export function handleGameEvent(event: DataChannelEvent): void {
             name: typeof s.name === "string" ? s.name : "",
             objective: typeof s.objective === "string" ? s.objective : "",
             completed: i < currentStage,
+            ...(typeof s.target_location_id === "string"
+              ? { targetLocationId: s.target_location_id }
+              : {}),
           }));
           return {
             questId: typeof raw.quest_id === "string" ? raw.quest_id : "",
@@ -382,6 +385,10 @@ export function handleGameEvent(event: DataChannelEvent): void {
           objective: event.objective,
           updatedAt: Date.now(),
         });
+      }
+      // Advance the quest in the panel store so the map target updates
+      if (typeof event.quest_id === "string" && typeof event.new_stage === "number") {
+        panelStore.getState().advanceQuest(event.quest_id, event.new_stage);
       }
       playSfx("quest_sting");
       break;

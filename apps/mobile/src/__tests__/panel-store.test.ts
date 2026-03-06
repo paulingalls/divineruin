@@ -150,6 +150,50 @@ test("addVisitedLocation is no-op if already visited", () => {
   expect(before).toBe(after); // same reference
 });
 
+// --- advanceQuest ---
+
+test("advanceQuest updates currentStage and marks prior stages completed", () => {
+  const quest: QuestView = {
+    questId: "main_quest",
+    questName: "The Anomaly",
+    type: "main",
+    currentStage: 0,
+    stages: [
+      {
+        id: "s0",
+        name: "Stage 0",
+        objective: "Go to town",
+        completed: false,
+        targetLocationId: "millhaven",
+      },
+      {
+        id: "s1",
+        name: "Stage 1",
+        objective: "Talk to elder",
+        completed: false,
+        targetLocationId: "yanna_farmhouse",
+      },
+      { id: "s2", name: "Stage 2", objective: "Fight", completed: false },
+    ],
+    globalHints: {},
+    status: "active",
+  };
+  panelStore.getState().setQuests([quest]);
+  panelStore.getState().advanceQuest("main_quest", 2);
+
+  const updated = panelStore.getState().quests[0];
+  expect(updated.currentStage).toBe(2);
+  expect(updated.stages[0].completed).toBe(true);
+  expect(updated.stages[1].completed).toBe(true);
+  expect(updated.stages[2].completed).toBe(false);
+});
+
+test("advanceQuest ignores non-matching questId", () => {
+  panelStore.getState().setQuests([SAMPLE_QUEST]);
+  panelStore.getState().advanceQuest("nonexistent", 5);
+  expect(panelStore.getState().quests[0].currentStage).toBe(1);
+});
+
 // --- Reset ---
 
 test("reset clears all state", () => {

@@ -1011,17 +1011,16 @@ async def update_quest(
         }
         await db.set_player_quest(session.player_id, quest_id, quest_data, conn=conn)
 
-        pending_events.append(
-            (
-                "quest_updated",
-                {
-                    "quest_id": quest_id,
-                    "quest_name": quest.get("name", quest_id),
-                    "new_stage": new_stage_id,
-                    "objective": new_stage.get("objective", ""),
-                },
-            )
-        )
+        quest_updated_payload: dict = {
+            "quest_id": quest_id,
+            "quest_name": quest.get("name", quest_id),
+            "new_stage": new_stage_id,
+            "objective": new_stage.get("objective", ""),
+        }
+        target_loc = new_stage.get("target_location_id")
+        if target_loc:
+            quest_updated_payload["target_location_id"] = target_loc
+        pending_events.append(("quest_updated", quest_updated_payload))
 
     # Resolve item names for inventory events (cached reads, outside transaction)
     for reward in rewards_applied:

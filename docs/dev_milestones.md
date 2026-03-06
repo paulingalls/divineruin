@@ -667,7 +667,7 @@ These overlays appear over the session screen center when triggered by data chan
 - [x] Map renders visited locations as nodes with connections; current location pulses in `hollow`
 - [x] Map supports pinch-to-zoom and drag-to-pan; double-tap re-centers on current location
 - [x] Map fills in as player explores — newly visited locations appear on `location_changed` events
-- [ ] Quest objective marker appears on the correct map node
+- [x] Quest objective marker appears on the correct map node
 - [x] All panel text uses brand typography: Cormorant Garamond for headers, Crimson Pro for body, IBM Plex Mono for data
 - [x] Panel open/close triggers UI sounds (UI-006/UI-007) and light haptic
 - [x] Panel components have unit or interaction tests covering data display and tab switching

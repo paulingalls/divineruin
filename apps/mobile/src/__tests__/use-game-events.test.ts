@@ -369,6 +369,48 @@ test("quest_updated also pushes overlay (backward compat)", () => {
   expect(hudStore.getState().overlays[0].type).toBe("quest_update");
 });
 
+test("quest_updated advances quest in panelStore", () => {
+  panelStore.getState().setQuests([
+    {
+      questId: "greyvale_anomaly",
+      questName: "The Greyvale Anomaly",
+      type: "main",
+      currentStage: 0,
+      stages: [
+        {
+          id: "s0",
+          name: "The Road North",
+          objective: "Travel to Millhaven",
+          completed: false,
+          targetLocationId: "millhaven",
+        },
+        {
+          id: "s1",
+          name: "Something Wrong",
+          objective: "Talk to residents",
+          completed: false,
+          targetLocationId: "millhaven",
+        },
+      ],
+      globalHints: {},
+      status: "active",
+    },
+  ]);
+
+  handleGameEvent({
+    type: "quest_updated",
+    quest_id: "greyvale_anomaly",
+    quest_name: "The Greyvale Anomaly",
+    new_stage: 1,
+    objective: "Talk to residents",
+  });
+
+  const quest = panelStore.getState().quests[0];
+  expect(quest.currentStage).toBe(1);
+  expect(quest.stages[0].completed).toBe(true);
+  expect(quest.stages[1].completed).toBe(false);
+});
+
 // --- handleGameEvent: xp_awarded with overlay ---
 
 test("xp_awarded without level_up pushes xp_toast overlay", () => {

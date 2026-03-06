@@ -45,6 +45,7 @@ export interface QuestStage {
   name: string;
   objective: string;
   completed: boolean;
+  targetLocationId?: string;
 }
 
 export interface QuestView {
@@ -79,6 +80,7 @@ interface PanelState {
   setCharacterDetail: (detail: CharacterDetail) => void;
   setInventory: (items: InventoryItem[]) => void;
   setQuests: (quests: QuestView[]) => void;
+  advanceQuest: (questId: string, newStage: number) => void;
   setMapProgress: (nodes: MapNode[]) => void;
   addVisitedLocation: (locationId: string, connections: string[]) => void;
 
@@ -108,6 +110,19 @@ export const panelStore = createStore<PanelState>((set) => ({
   setInventory: (items) => set({ inventory: items }),
 
   setQuests: (quests) => set({ quests }),
+
+  advanceQuest: (questId, newStage) =>
+    set((s) => ({
+      quests: s.quests.map((q) =>
+        q.questId === questId
+          ? {
+              ...q,
+              currentStage: newStage,
+              stages: q.stages.map((st, i) => (i < newStage ? { ...st, completed: true } : st)),
+            }
+          : q,
+      ),
+    })),
 
   setMapProgress: (nodes) => set({ mapProgress: nodes }),
 
