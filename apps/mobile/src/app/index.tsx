@@ -6,6 +6,7 @@ import { useStore } from "zustand";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { TitleBar } from "@/components/title-bar";
 import { CharacterSummaryBar } from "@/components/character-summary-bar";
 import { CatchUpList } from "@/components/catchup-list";
 import { useCharacter } from "@/hooks/use-character";
@@ -13,7 +14,7 @@ import { catchupStore } from "@/stores/catchup-store";
 import { characterStore } from "@/stores/character-store";
 import { MOCK_CATCHUP_CARDS } from "@/data/mock-catchup";
 import { BrandColors, MaxContentWidth, Spacing, Radius, FontFamilies } from "@/constants/theme";
-import { PLAYER_ID } from "@/utils/api";
+import { getPlayerId } from "@/utils/api";
 
 const LANDSCAPE_THRESHOLD = 1.2;
 
@@ -22,7 +23,7 @@ export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
   const isLandscape = width / height > LANDSCAPE_THRESHOLD;
   const character = useStore(characterStore, (s) => s.character);
-  useCharacter(PLAYER_ID);
+  useCharacter(getPlayerId());
 
   useEffect(() => {
     catchupStore.getState().setCards(MOCK_CATCHUP_CARDS);
@@ -37,17 +38,6 @@ export default function HomeScreen() {
     </Pressable>
   );
 
-  const titleBar = (
-    <>
-      <View style={styles.titleBar}>
-        <ThemedText style={styles.titleText}>DIVINE</ThemedText>
-        <View style={styles.titleDivider} />
-        <ThemedText style={styles.titleText}>RUIN</ThemedText>
-      </View>
-      <View style={styles.titleRule} />
-    </>
-  );
-
   const settingsButton = (
     <Pressable style={styles.settingsButton} onPress={() => router.push("/settings")}>
       <ThemedText style={styles.settingsIcon}>{"\u2699"}</ThemedText>
@@ -60,7 +50,7 @@ export default function HomeScreen() {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={[styles.safeArea, styles.landscapeSafeArea]}>
-          {titleBar}
+          <TitleBar />
           <View style={styles.landscapeBody}>
             <View style={styles.landscapeLeft}>
               {playerSection}
@@ -77,7 +67,7 @@ export default function HomeScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedView style={styles.content}>
-          {titleBar}
+          <TitleBar />
           {playerSection}
           <CatchUpList />
           {enterButton}
@@ -103,28 +93,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.two,
     gap: Spacing.three,
-  },
-  titleBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.three,
-    paddingBottom: Spacing.one,
-  },
-  titleRule: {
-    height: 1,
-    backgroundColor: BrandColors.charcoal,
-  },
-  titleText: {
-    fontSize: 22,
-    fontFamily: FontFamilies.display,
-    color: BrandColors.ash,
-    letterSpacing: 8,
-  },
-  titleDivider: {
-    width: 1.5,
-    height: 20,
-    backgroundColor: BrandColors.hollowMuted,
   },
   enterButton: {
     paddingVertical: Spacing.three,

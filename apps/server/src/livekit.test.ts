@@ -1,23 +1,7 @@
 import { test, expect, describe } from "bun:test";
+import "./test-env.ts";
 
-// Save and clear LiveKit env vars so the module sees them as unconfigured,
-// ensuring roomService is null regardless of the dev environment.
-const savedEnv: Record<string, string | undefined> = {};
-const livekitVars = ["LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"];
-
-for (const key of livekitVars) {
-  savedEnv[key] = process.env[key];
-  delete process.env[key];
-}
-
-// Import after clearing env so roomService = null
 const { handleLivekitToken } = await import("./livekit.ts");
-
-// Restore env vars so other tests/processes aren't affected
-for (const key of livekitVars) {
-  if (savedEnv[key] === undefined) delete process.env[key];
-  else process.env[key] = savedEnv[key];
-}
 
 function tokenRequest(body: Record<string, unknown>): Request {
   return new Request("http://localhost/api/livekit/token", {
@@ -28,27 +12,47 @@ function tokenRequest(body: Record<string, unknown>): Request {
 }
 
 describe("handleLivekitToken", () => {
-  test("rejects empty body", async () => {
-    const res = await handleLivekitToken(tokenRequest({}));
+  test("rejects empty body (no room_name)", async () => {
+    const res = await handleLivekitToken(tokenRequest({}), "player_1");
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain("required");
   });
 
   test("rejects missing room_name", async () => {
-    const res = await handleLivekitToken(tokenRequest({ player_id: "p1" }));
+    const res = await handleLivekitToken(tokenRequest({}), "p1");
     expect(res.status).toBe(400);
   });
 
-  test("rejects missing player_id", async () => {
-    const res = await handleLivekitToken(tokenRequest({ room_name: "room" }));
+  test("rejects player_id with special characters", async () => {
+    const res = await handleLivekitToken(tokenRequest({ room_name: "test-room" }), "a<b>c");
     expect(res.status).toBe(400);
-  });
-
-  test("returns 500 when LiveKit credentials are not configured", async () => {
-    const res = await handleLivekitToken(tokenRequest({ player_id: "p1", room_name: "test-room" }));
-    expect(res.status).toBe(500);
     const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("not configured");
+    expect(body.error).toContain("invalid characters");
+  });
+
+  test("rejects room_name with special characters", async () => {
+    const res = await handleLivekitToken(tokenRequest({ room_name: "room name!" }), "valid_id");
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain("invalid characters");
+  });
+
+  test("rejects player_id exceeding max length", async () => {
+    const longId = "a".repeat(129);
+    const res = await handleLivekitToken(tokenRequest({ room_name: "test-room" }), longId);
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain("maximum length");
+  });
+
+  test("accepts valid IDs with underscores and hyphens", async () => {
+    const res = await handleLivekitToken(
+      tokenRequest({ room_name: "room-42_test" }),
+      "player_1-abc",
+    );
+    // Should not be a 400 — will be 500 since roomService connects to dummy URL,
+    // or succeed if room creation is swallowed. Either way, not a validation error.
+    expect(res.status).not.toBe(400);
   });
 });

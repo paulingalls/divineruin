@@ -29,7 +29,6 @@ import { transcriptStore } from "@/stores/transcript-store";
 import { hudStore } from "@/stores/hud-store";
 import { panelStore } from "@/stores/panel-store";
 import { BrandColors, Spacing, Radius, Shadows } from "@/constants/theme";
-import { PLAYER_ID } from "@/utils/api";
 
 const ROOM_NAME = "divineruin-session";
 const RECONNECT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -175,7 +174,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
 
 export default function SessionScreen() {
   const router = useRouter();
-  const { state, error, token, serverUrl, fetchToken, reset } = useSessionToken(PLAYER_ID);
+  const { state, error, token, serverUrl, fetchToken, reset } = useSessionToken();
 
   useEffect(() => {
     sessionStore.getState().setPhase("connecting");

@@ -5,10 +5,12 @@ import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useStore } from "zustand";
 
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { GrainOverlay } from "@/components/grain-overlay";
 import { BrandColors } from "@/constants/theme";
+import { authStore } from "@/stores/auth-store";
 
 import {
   CormorantGaramond_300Light,
@@ -50,6 +52,8 @@ const DivineRuinTheme: Theme = {
 };
 
 export default function RootLayout() {
+  const authPhase = useStore(authStore, (s) => s.phase);
+
   const [fontsLoaded, fontError] = useFonts({
     CormorantGaramond_300Light,
     CormorantGaramond_400Regular,
@@ -66,13 +70,35 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    void authStore.getState().loadStoredToken();
+  }, []);
+
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && authPhase !== "loading") {
       void SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, authPhase]);
 
   if (!fontsLoaded && !fontError) {
     return null;
+  }
+
+  if (authPhase === "loading") {
+    return null;
+  }
+
+  if (authPhase !== "authenticated") {
+    return (
+      <ThemeProvider value={DivineRuinTheme}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="auth" />
+            <Stack.Screen name="index" redirect />
+          </Stack>
+          <GrainOverlay />
+        </GestureHandlerRootView>
+      </ThemeProvider>
+    );
   }
 
   return (
@@ -81,6 +107,7 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
+          <Stack.Screen name="auth" redirect />
           <Stack.Screen name="session" />
           <Stack.Screen name="session-summary" options={{ presentation: "modal" }} />
           <Stack.Screen name="settings" options={{ presentation: "modal" }} />

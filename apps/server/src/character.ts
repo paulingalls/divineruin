@@ -1,4 +1,5 @@
 import { sql } from "./db.ts";
+import { logError } from "./env.ts";
 
 interface CharacterRow {
   player_id: string;
@@ -48,7 +49,7 @@ export async function handleGetCharacter(_req: Request, playerId: string): Promi
       hp_max: hp.max ?? 0,
     });
   } catch (err) {
-    console.error("[character] DB query failed:", err);
+    logError("[character] DB query failed:", err);
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

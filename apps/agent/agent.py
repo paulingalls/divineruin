@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import re
@@ -351,10 +352,25 @@ def _make_tts(voice: str = "", speaking_rate: float = 1.0) -> inworld.TTS:
 server = AgentServer()
 
 
+def _extract_player_id(ctx: agents.JobContext) -> str:
+    """Extract player_id from dispatch metadata, falling back to 'player_1' for dev."""
+    metadata = ctx.job.metadata if ctx.job else None
+    if metadata:
+        try:
+            data = json.loads(metadata)
+            pid = data.get("player_id")
+            if isinstance(pid, str) and pid:
+                return pid
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return "player_1"
+
+
 @server.rtc_session(agent_name="divineruin-dm")
 async def dm_session(ctx: agents.JobContext) -> None:
+    player_id = _extract_player_id(ctx)
     userdata = SessionData(
-        player_id="player_1",
+        player_id=player_id,
         location_id=START_LOCATION,
         room=ctx.room,
     )

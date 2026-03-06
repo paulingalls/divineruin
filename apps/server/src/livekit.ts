@@ -4,47 +4,54 @@ import {
   RoomServiceClient,
   DataPacket_Kind,
 } from "livekit-server-sdk";
+import { TrackSource } from "@livekit/protocol";
+import { requireEnv, logError } from "./env.ts";
 export { DataPacket_Kind };
 
-const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "";
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
+const LIVEKIT_URL = requireEnv("LIVEKIT_URL");
+const LIVEKIT_API_KEY = requireEnv("LIVEKIT_API_KEY");
+const LIVEKIT_API_SECRET = requireEnv("LIVEKIT_API_SECRET");
 
-function createRoomService(): RoomServiceClient | null {
-  if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
-    return null;
+const VALID_ID = /^[a-zA-Z0-9_-]+$/;
+const MAX_ID_LENGTH = 128;
+
+function validateId(value: string, field: string): string | null {
+  if (value.length > MAX_ID_LENGTH) {
+    return `${field} exceeds maximum length of ${MAX_ID_LENGTH} characters`;
   }
-  return new RoomServiceClient(
-    LIVEKIT_URL.replace("wss://", "https://"),
-    LIVEKIT_API_KEY,
-    LIVEKIT_API_SECRET,
-  );
+  if (!VALID_ID.test(value)) {
+    return `${field} contains invalid characters (allowed: a-z, A-Z, 0-9, _, -)`;
+  }
+  return null;
 }
 
-export const roomService = createRoomService();
+export const roomService = new RoomServiceClient(
+  LIVEKIT_URL.replace("wss://", "https://"),
+  LIVEKIT_API_KEY,
+  LIVEKIT_API_SECRET,
+);
 
-function createDispatchClient(): AgentDispatchClient | null {
-  if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
-    return null;
-  }
-  return new AgentDispatchClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
-}
+const dispatchClient = new AgentDispatchClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
 
-const dispatchClient = createDispatchClient();
-
-export async function handleLivekitToken(req: Request): Promise<Response> {
+export async function handleLivekitToken(req: Request, playerId: string): Promise<Response> {
   const body = (await req.json()) as {
-    player_id?: string;
     room_name?: string;
   };
-  const { player_id, room_name } = body;
+  const { room_name } = body;
+  const player_id = playerId;
 
-  if (!player_id || !room_name) {
-    return Response.json({ error: "player_id and room_name are required" }, { status: 400 });
+  if (!room_name) {
+    return Response.json({ error: "room_name is required" }, { status: 400 });
   }
 
-  if (!roomService) {
-    return Response.json({ error: "LiveKit credentials not configured" }, { status: 500 });
+  const playerIdError = validateId(player_id, "player_id");
+  if (playerIdError) {
+    return Response.json({ error: playerIdError }, { status: 400 });
+  }
+
+  const roomNameError = validateId(room_name, "room_name");
+  if (roomNameError) {
+    return Response.json({ error: roomNameError }, { status: 400 });
   }
 
   try {
@@ -52,7 +59,7 @@ export async function handleLivekitToken(req: Request): Promise<Response> {
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     if (!msg.includes("already exists") && !msg.includes("already being created")) {
-      console.error(`Failed to create LiveKit room "${room_name}":`, msg);
+      logError(`Failed to create LiveKit room "${room_name}":`, e);
     }
   }
 
@@ -65,19 +72,19 @@ export async function handleLivekitToken(req: Request): Promise<Response> {
     room: room_name,
     canPublish: true,
     canSubscribe: true,
+    canPublishData: false,
+    canPublishSources: [TrackSource.MICROPHONE],
   });
 
   const jwt = await token.toJwt();
 
-  if (dispatchClient) {
-    try {
-      await dispatchClient.createDispatch(room_name, "divineruin-dm", {
-        metadata: JSON.stringify({ player_id }),
-      });
-      console.log(`Dispatched DM agent to room "${room_name}"`);
-    } catch (e: unknown) {
-      console.error("Failed to dispatch DM agent:", e);
-    }
+  try {
+    await dispatchClient.createDispatch(room_name, "divineruin-dm", {
+      metadata: JSON.stringify({ player_id }),
+    });
+    console.log(`Dispatched DM agent to room "${room_name}"`);
+  } catch (e: unknown) {
+    logError("Failed to dispatch DM agent:", e);
   }
 
   return Response.json({

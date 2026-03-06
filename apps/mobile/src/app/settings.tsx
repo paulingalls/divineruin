@@ -2,10 +2,12 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Slider from "@react-native-community/slider";
+import { useStore } from "zustand";
 
 import { ThemedText } from "@/components/themed-text";
 import { useVolume } from "@/hooks/use-volume";
 import type { Bus } from "@/audio/volume";
+import { authStore } from "@/stores/auth-store";
 import { BrandColors, FontFamilies, Spacing } from "@/constants/theme";
 
 interface SliderRowProps {
@@ -41,6 +43,12 @@ function VolumeSlider({ label, bus, disabled }: SliderRowProps) {
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const email = useStore(authStore, (s) => s.email);
+
+  const handleSignOut = () => {
+    void authStore.getState().logout();
+    router.dismiss();
+  };
 
   return (
     <View style={styles.container}>
@@ -60,6 +68,14 @@ export default function SettingsScreen() {
           <VolumeSlider label="AMBIENCE" bus="ambience" />
           <VolumeSlider label="EFFECTS" bus="effects" />
           <VolumeSlider label="UI" bus="ui" />
+        </View>
+
+        <View style={[styles.section, { marginTop: Spacing.five }]}>
+          <ThemedText style={styles.sectionTitle}>ACCOUNT</ThemedText>
+          {email && <ThemedText style={styles.emailText}>{email}</ThemedText>}
+          <Pressable onPress={handleSignOut} style={styles.signOutButton}>
+            <ThemedText style={styles.signOutText}>SIGN OUT</ThemedText>
+          </Pressable>
         </View>
       </SafeAreaView>
     </View>
@@ -134,5 +150,19 @@ const styles = StyleSheet.create({
   },
   disabledText: {
     color: BrandColors.slate,
+  },
+  emailText: {
+    fontFamily: FontFamilies.systemLight,
+    fontSize: 14,
+    color: BrandColors.bone,
+  },
+  signOutButton: {
+    paddingVertical: Spacing.two,
+  },
+  signOutText: {
+    fontFamily: FontFamilies.system,
+    fontSize: 14,
+    color: BrandColors.ember,
+    letterSpacing: 1,
   },
 });
