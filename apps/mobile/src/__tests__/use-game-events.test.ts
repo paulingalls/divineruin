@@ -99,12 +99,14 @@ test("location_changed updates session and character stores", () => {
     location_name: "Market Square",
     atmosphere: "noisy, chaotic",
     region: "Accord",
+    ambient_sounds: "market_bustle",
   });
   const loc = sessionStore.getState().locationContext;
   expect(loc).not.toBeNull();
   expect(loc!.locationId).toBe("accord_market_square");
   expect(loc!.locationName).toBe("Market Square");
   expect(loc!.atmosphere).toBe("noisy, chaotic");
+  expect(loc!.ambientSounds).toBe("market_bustle");
   const char = characterStore.getState().character!;
   expect(char.locationId).toBe("accord_market_square");
   expect(char.locationName).toBe("Market Square");
@@ -198,6 +200,7 @@ test("session_init populates character and session stores", () => {
       atmosphere: "busy, purposeful",
       region: "Accord",
       tags: ["guild"],
+      ambient_sounds: "guild_hall_bustle",
     },
     quests: [],
     inventory: [],
@@ -216,6 +219,7 @@ test("session_init populates character and session stores", () => {
   expect(loc!.locationId).toBe("accord_guild_hall");
   expect(loc!.locationName).toBe("Guild Hall");
   expect(loc!.atmosphere).toBe("busy, purposeful");
+  expect(loc!.ambientSounds).toBe("guild_hall_bustle");
 });
 
 test("session_init with partial payload handles missing fields gracefully", () => {

@@ -21,8 +21,10 @@ import { OverlayManager } from "@/components/hud/overlay-manager";
 import { PanelShell } from "@/components/hud/panel-shell";
 import { useSessionToken } from "@/hooks/useSessionToken";
 import { useGameEvents } from "@/hooks/use-game-events";
+import { useDuckingBridge } from "@/hooks/use-ducking-bridge";
 import { configureAudioSession } from "@/audio/audio-config";
 import { releaseAllPlayers } from "@/audio/sfx-player";
+import { startSoundscapeEngine, stopSoundscapeEngine } from "@/audio/soundscape-player";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
@@ -64,6 +66,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
   const reconnecting = useStore(sessionStore, (s) => s.reconnecting);
 
   useGameEvents();
+  useDuckingBridge();
 
   const toggleMute = () => {
     void localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
@@ -71,6 +74,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
 
   useEffect(() => {
     return () => {
+      stopSoundscapeEngine();
       releaseAllPlayers();
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
     };
@@ -86,6 +90,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
     if (connectionState === ConnectionState.Connected) {
       sessionStore.getState().setPhase("active");
       wasActive.current = true;
+      startSoundscapeEngine();
 
       if (reconnecting) {
         sessionStore.getState().setReconnecting(false);
@@ -103,6 +108,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
           atmosphere: "",
           region: "",
           tags: [],
+          ambientSounds: "",
         });
       }
     }
@@ -188,6 +194,7 @@ export default function SessionScreen() {
       router.replace("/session-summary");
       return;
     }
+    stopSoundscapeEngine();
     reset();
     sessionStore.getState().reset();
     transcriptStore.getState().clear();

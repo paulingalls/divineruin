@@ -12,7 +12,15 @@ export type SoundName =
   | "success_sting"
   | "fail_sting"
   | "menu_open"
-  | "menu_close";
+  | "menu_close"
+  | "spell_cast"
+  | "arrow_loose"
+  | "hit_taken"
+  | "critical_hit_sting"
+  | "shield_block"
+  | "potion_use"
+  | "door_creak"
+  | "discovery_chime";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- RN require() returns any */
 const SOUNDS: Record<SoundName, SoundAsset> = {
@@ -27,6 +35,14 @@ const SOUNDS: Record<SoundName, SoundAsset> = {
   fail_sting: require("@/assets/sounds/fail_sting.mp3"),
   menu_open: require("@/assets/sounds/menu_open.mp3"),
   menu_close: require("@/assets/sounds/menu_close.mp3"),
+  spell_cast: require("@/assets/sounds/spell_cast.mp3"),
+  arrow_loose: require("@/assets/sounds/arrow_loose.mp3"),
+  hit_taken: require("@/assets/sounds/hit_taken.mp3"),
+  critical_hit_sting: require("@/assets/sounds/critical_hit_sting.mp3"),
+  shield_block: require("@/assets/sounds/shield_block.mp3"),
+  potion_use: require("@/assets/sounds/potion_use.mp3"),
+  door_creak: require("@/assets/sounds/door_creak.mp3"),
+  discovery_chime: require("@/assets/sounds/discovery_chime.mp3"),
 };
 /* eslint-enable @typescript-eslint/no-unsafe-assignment */
 

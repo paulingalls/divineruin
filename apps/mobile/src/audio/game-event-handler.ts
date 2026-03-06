@@ -137,6 +137,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
           atmosphere: typeof location.atmosphere === "string" ? location.atmosphere : "",
           region: typeof location.region === "string" ? location.region : "",
           tags: Array.isArray(location.tags) ? (location.tags as string[]) : [],
+          ambientSounds: typeof location.ambient_sounds === "string" ? location.ambient_sounds : "",
         });
       }
 
@@ -259,12 +260,14 @@ export function handleGameEvent(event: DataChannelEvent): void {
           typeof event.location_name === "string" ? event.location_name : event.new_location;
         const atmosphere = typeof event.atmosphere === "string" ? event.atmosphere : "";
         const region = typeof event.region === "string" ? event.region : "";
+        const ambientSounds = typeof event.ambient_sounds === "string" ? event.ambient_sounds : "";
         sessionStore.getState().setLocationContext({
           locationId: event.new_location,
           locationName,
           atmosphere,
           region,
           tags: [],
+          ambientSounds,
         });
         characterStore.getState().updateLocation(event.new_location, locationName);
         const connections = Array.isArray(event.connections) ? (event.connections as string[]) : [];

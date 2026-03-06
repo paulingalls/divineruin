@@ -755,25 +755,25 @@ These overlays appear over the session screen center when triggered by data chan
 - Values persist to MMKV. Loaded into the mixer on app start.
 
 **Acceptance criteria:**
-- [ ] iOS audio session configured for `.playAndRecord` + `.mixWithOthers` — LiveKit voice and local playback coexist without cutting each other off
+- [x] iOS audio session configured for `.playAndRecord` + `.mixWithOthers` — LiveKit voice and local playback coexist without cutting each other off
 - [ ] Android AudioManager allows concurrent WebRTC + local audio streams
-- [ ] Entering the world plays the ambient soundscape for the player's current location within 1 second of voice connection
-- [ ] Moving to a new location crossfades to the new soundscape over 2-3 seconds (no hard cut, no silence gap)
-- [ ] When the DM speaks, ambient audio audibly ducks to ~40% and returns smoothly when speech ends (50ms attack, 200ms release)
-- [ ] Ducking does not affect Effects or UI audio channels
+- [x] Entering the world plays the ambient soundscape for the player's current location within 1 second of voice connection
+- [x] Moving to a new location crossfades to the new soundscape over 2-3 seconds (no hard cut, no silence gap)
+- [x] When the DM speaks, ambient audio audibly ducks to ~40% and returns smoothly when speech ends (50ms attack, 200ms release)
+- [x] Ducking does not affect Effects or UI audio channels
 - [x] `play_sound` data messages trigger the correct sound effect on the client with < 100ms latency
-- [ ] Multiple sound effects can play simultaneously without cutting each other off
-- [ ] Randomized texture sounds (bird calls, drips, etc.) play at varied intervals without noticeable pattern
-- [ ] Texture sounds pause during combat and resume after
+- [x] Multiple sound effects can play simultaneously without cutting each other off
+- [x] Randomized texture sounds (bird calls, drips, etc.) play at varied intervals without noticeable pattern
+- [x] Texture sounds pause during combat and resume after
 - [x] Volume sliders work and persist between sessions
-- [ ] Each volume slider independently controls its channel (moving Ambience doesn't affect Effects)
-- [ ] Tapping a slider label plays a preview sample of that channel
-- [ ] All 7 environmental soundscapes are present, loop seamlessly, and sound distinct
+- [x] Each volume slider independently controls its channel (moving Ambience doesn't affect Effects)
+- [x] Tapping a slider label plays a preview sample of that channel
+- [x] All 7 environmental soundscapes are present, loop seamlessly, and sound distinct
 - [ ] Hollow Breach soundscape feels fundamentally different from natural environments — wrong, alien, unsettling
 - [ ] The audio mix is clear at all times — DM voice is always understandable over ambience and effects
-- [ ] Session end fades out soundscape over 1 second (no hard cut)
-- [ ] Audio engine memory footprint stays reasonable — only the active soundscape + crossfade target loaded simultaneously, not all 7
-- [ ] Audio integration tests verify: channel independence, ducking trigger/release, crossfade timing, volume persistence
+- [x] Session end fades out soundscape over 1 second (no hard cut)
+- [x] Audio engine memory footprint stays reasonable — only the active soundscape + crossfade target loaded simultaneously, not all 7
+- [x] Audio integration tests verify: channel independence, ducking trigger/release, crossfade timing, volume persistence
 
 **Key references:**
 - *Technical Architecture — Client Architecture — Audio Mixing Architecture* (four channels, ducking rules, iOS/Android audio session config, ambient sound library, sound effect library)

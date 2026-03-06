@@ -23,7 +23,7 @@ class TestConnectionPoolManagement:
 
                 result = await db.get_pool()
 
-                mock_create.assert_called_once_with("postgres://test")
+                mock_create.assert_called_once_with("postgres://test", min_size=2, max_size=5)
                 assert result is mock_pool
                 assert db._pool is mock_pool
 

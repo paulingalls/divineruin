@@ -8,6 +8,7 @@ export interface LocationContext {
   atmosphere: string;
   region: string;
   tags: string[];
+  ambientSounds: string;
 }
 
 export interface SessionSummary {

@@ -11,6 +11,14 @@ test("lookupSound returns asset for known sounds", () => {
   expect(lookupSound("notification")).not.toBeNull();
   expect(lookupSound("success_sting")).not.toBeNull();
   expect(lookupSound("fail_sting")).not.toBeNull();
+  expect(lookupSound("spell_cast")).not.toBeNull();
+  expect(lookupSound("arrow_loose")).not.toBeNull();
+  expect(lookupSound("hit_taken")).not.toBeNull();
+  expect(lookupSound("critical_hit_sting")).not.toBeNull();
+  expect(lookupSound("shield_block")).not.toBeNull();
+  expect(lookupSound("potion_use")).not.toBeNull();
+  expect(lookupSound("door_creak")).not.toBeNull();
+  expect(lookupSound("discovery_chime")).not.toBeNull();
 });
 
 test("lookupSound returns null for unknown sounds", () => {
@@ -32,5 +40,13 @@ test("knownSoundNames returns all registered names", () => {
   expect(names).toContain("fail_sting");
   expect(names).toContain("menu_open");
   expect(names).toContain("menu_close");
-  expect(names.length).toBe(11);
+  expect(names).toContain("spell_cast");
+  expect(names).toContain("arrow_loose");
+  expect(names).toContain("hit_taken");
+  expect(names).toContain("critical_hit_sting");
+  expect(names).toContain("shield_block");
+  expect(names).toContain("potion_use");
+  expect(names).toContain("door_creak");
+  expect(names).toContain("discovery_chime");
+  expect(names.length).toBe(19);
 });

@@ -29,8 +29,19 @@ export function getEffectiveVolume(bus: Bus): number {
   return busVolumes.master * busVolumes[bus];
 }
 
+type VolumeChangeListener = (bus: Bus) => void;
+const listeners = new Set<VolumeChangeListener>();
+
+export function addVolumeListener(fn: VolumeChangeListener): () => void {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
 export function setVolume(bus: Bus, value: number): void {
   busVolumes[bus] = clamp01(value);
+  for (const fn of listeners) fn(bus);
   persistVolumes();
 }
 

@@ -157,6 +157,16 @@ def _target_summary(target: dict) -> dict:
     }
 
 
+def _resolve_ambient_sounds(location: dict | None, world_time: str) -> str:
+    """Pick ambient_sounds_night when world_time is night and the field exists,
+    else fall back to ambient_sounds, else empty string."""
+    if not location:
+        return ""
+    if world_time == "night" and location.get("ambient_sounds_night"):
+        return location["ambient_sounds_night"]
+    return location.get("ambient_sounds", "")
+
+
 async def _resolve_disposition(npc_id: str, player_id: str, npc: dict) -> str:
     disposition = await db.get_npc_disposition(npc_id, player_id)
     if disposition is None:
@@ -895,6 +905,7 @@ async def move_player(
                     "atmosphere": destination_location.get("atmosphere", "") if destination_location else "",
                     "region": destination_location.get("region", "") if destination_location else "",
                     "connections": exit_connections,
+                    "ambient_sounds": _resolve_ambient_sounds(destination_location, session.world_time),
                 },
             )
         )

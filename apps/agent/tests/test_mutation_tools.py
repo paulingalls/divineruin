@@ -9,6 +9,7 @@ import pytest
 from session_data import SessionData
 from tools import (
     _clamp_disposition_shift,
+    _resolve_ambient_sounds,
     add_to_inventory,
     award_xp,
     move_player,
@@ -81,6 +82,8 @@ SAMPLE_DESTINATION = {
     "name": "Market Square",
     "description": "A bustling open-air market.",
     "atmosphere": "noisy, chaotic",
+    "ambient_sounds": "market_bustle",
+    "ambient_sounds_night": "harbor_quiet",
     "key_features": ["merchant stalls"],
     "hidden_elements": [],
     "exits": {"north": {"destination": "accord_guild_hall"}},
@@ -160,6 +163,34 @@ class TestClampDispositionShift:
 
     def test_unknown_defaults_neutral(self):
         assert _clamp_disposition_shift("unknown", 1) == "friendly"
+
+
+# --- _resolve_ambient_sounds ---
+
+
+class TestResolveAmbientSounds:
+    def test_daytime_returns_ambient_sounds(self):
+        loc = {"ambient_sounds": "market_bustle", "ambient_sounds_night": "harbor_quiet"}
+        assert _resolve_ambient_sounds(loc, "evening") == "market_bustle"
+
+    def test_night_returns_night_variant(self):
+        loc = {"ambient_sounds": "market_bustle", "ambient_sounds_night": "harbor_quiet"}
+        assert _resolve_ambient_sounds(loc, "night") == "harbor_quiet"
+
+    def test_night_without_night_field_falls_back(self):
+        loc = {"ambient_sounds": "market_bustle"}
+        assert _resolve_ambient_sounds(loc, "night") == "market_bustle"
+
+    def test_missing_ambient_sounds_returns_empty(self):
+        loc = {"name": "Some Place"}
+        assert _resolve_ambient_sounds(loc, "evening") == ""
+
+    def test_none_location_returns_empty(self):
+        assert _resolve_ambient_sounds(None, "evening") == ""
+
+    def test_empty_night_variant_falls_back(self):
+        loc = {"ambient_sounds": "market_bustle", "ambient_sounds_night": ""}
+        assert _resolve_ambient_sounds(loc, "night") == "market_bustle"
 
 
 # --- award_xp ---
@@ -522,6 +553,7 @@ class TestMovePlayer:
         assert call_data["atmosphere"] == "noisy, chaotic"
         assert call_data["region"] == ""
         assert call_data["connections"] == ["accord_guild_hall"]
+        assert call_data["ambient_sounds"] == "market_bustle"
 
     @pytest.mark.asyncio
     @patch("tools.db.get_player", new_callable=AsyncMock)

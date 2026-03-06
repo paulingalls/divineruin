@@ -415,4 +415,17 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
 if __name__ == "__main__":
     validate_env()
+    import atexit
+
+    def _cleanup_db() -> None:
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(db.close_all())  # noqa: RUF006
+            else:
+                loop.run_until_complete(db.close_all())
+        except Exception:
+            pass
+
+    atexit.register(_cleanup_db)
     agents.cli.run_app(server)

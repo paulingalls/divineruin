@@ -7,8 +7,43 @@ import { useStore } from "zustand";
 import { ThemedText } from "@/components/themed-text";
 import { useVolume } from "@/hooks/use-volume";
 import type { Bus } from "@/audio/volume";
+import { getEffectiveVolume } from "@/audio/volume";
+import { playSfx } from "@/audio/sfx-player";
+import { createAudioPlayer, type AudioPlayer } from "expo-audio";
+import { lookupSoundscape } from "@/audio/soundscape-registry";
 import { authStore } from "@/stores/auth-store";
 import { BrandColors, FontFamilies, Spacing } from "@/constants/theme";
+
+let previewPlayer: AudioPlayer | null = null;
+let previewTimer: ReturnType<typeof setTimeout> | null = null;
+
+function previewBus(bus: Bus): void {
+  if (previewPlayer) {
+    previewPlayer.remove();
+    previewPlayer = null;
+  }
+  if (previewTimer) {
+    clearTimeout(previewTimer);
+    previewTimer = null;
+  }
+
+  if (bus === "ambience") {
+    const entry = lookupSoundscape("tavern_busy");
+    if (!entry) return;
+    previewPlayer = createAudioPlayer(entry.asset);
+    previewPlayer.volume = getEffectiveVolume("ambience");
+    previewPlayer.play();
+    previewTimer = setTimeout(() => {
+      previewPlayer?.remove();
+      previewPlayer = null;
+      previewTimer = null;
+    }, 1000);
+  } else if (bus === "effects") {
+    playSfx("sword_clash");
+  } else if (bus === "ui") {
+    playSfx("notification");
+  }
+}
 
 interface SliderRowProps {
   label: string;
@@ -22,7 +57,11 @@ function VolumeSlider({ label, bus, disabled }: SliderRowProps) {
 
   return (
     <View style={styles.sliderRow}>
-      <ThemedText style={[styles.sliderLabel, disabled && styles.disabledText]}>{label}</ThemedText>
+      <Pressable onPress={disabled ? undefined : () => previewBus(bus)}>
+        <ThemedText style={[styles.sliderLabel, disabled && styles.disabledText]}>
+          {label}
+        </ThemedText>
+      </Pressable>
       <Slider
         style={styles.slider}
         minimumValue={0}

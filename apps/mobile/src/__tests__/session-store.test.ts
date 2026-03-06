@@ -7,6 +7,7 @@ const SAMPLE_LOCATION: LocationContext = {
   atmosphere: "busy, purposeful",
   region: "Accord",
   tags: ["guild"],
+  ambientSounds: "guild_hall_bustle",
 };
 
 const SAMPLE_SUMMARY: SessionSummary = {

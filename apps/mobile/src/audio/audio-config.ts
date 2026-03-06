@@ -7,6 +7,10 @@ export function configureAudioSession(): Promise<void> {
     configPromise = setAudioModeAsync({
       playsInSilentMode: true,
       interruptionMode: "mixWithOthers",
+      // allowsRecording enables iOS .playAndRecord category — required for
+      // LiveKit WebRTC voice + local audio playback to coexist.
+      allowsRecording: true,
+      shouldRouteThroughEarpiece: false,
     });
   }
   return configPromise;
