@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@livekit/protocol": "^1.44.1",
+    "jose": "^6.2.0",
     "livekit-server-sdk": "^2.15.0"
   },
   "devDependencies": {

@@ -1,9 +1,5 @@
 import { test, expect, describe } from "bun:test";
-
-// Set dummy LiveKit env vars so requireEnv() doesn't throw on import.
-process.env.LIVEKIT_URL = "wss://test.livekit.cloud";
-process.env.LIVEKIT_API_KEY = "devkey123";
-process.env.LIVEKIT_API_SECRET = "devsecret456";
+import "./test-env.ts";
 
 const { handleDebugRooms, handleDebugSendEvent, handleDebugPage } = await import("./debug.ts");
 
@@ -19,20 +15,19 @@ describe("handleDebugRooms", () => {
   test("returns response (rooms or error depending on connectivity)", async () => {
     const res = await handleDebugRooms();
     // With dummy credentials, this will likely fail to connect — but should not crash
-    expect([200, 500, 503]).toContain(res.status);
+    expect([200, 500]).toContain(res.status);
   });
 });
 
 describe("handleDebugSendEvent", () => {
-  test("returns 400 or error for missing room", async () => {
+  test("returns 400 for missing room", async () => {
     const res = await handleDebugSendEvent(eventRequest({ event: { type: "test" } }));
-    // Validation should fire (400) or connectivity error
-    expect(res.status).toBeOneOf([400, 500, 503]);
+    expect(res.status).toBe(400);
   });
 
-  test("returns 400 or error for missing event type", async () => {
+  test("returns 400 for missing event type", async () => {
     const res = await handleDebugSendEvent(eventRequest({ room: "test", event: {} }));
-    expect(res.status).toBeOneOf([400, 500, 503]);
+    expect(res.status).toBe(400);
   });
 });
 

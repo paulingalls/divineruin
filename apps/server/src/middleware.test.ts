@@ -1,19 +1,7 @@
 import { test, expect, describe, beforeEach } from "bun:test";
-import {
-  corsHeaders,
-  handlePreflight,
-  withCors,
-  checkRateLimit,
-  _resetRateLimits,
-} from "./middleware.ts";
+import { handlePreflight, withCors, checkRateLimit, _resetRateLimits } from "./middleware.ts";
 
 describe("CORS", () => {
-  test("corsHeaders returns Access-Control-Allow-Origin", () => {
-    const headers = corsHeaders();
-    expect(headers["Access-Control-Allow-Origin"]).toBeDefined();
-    expect(headers["Access-Control-Allow-Methods"]).toContain("POST");
-  });
-
   test("handlePreflight returns 204 with CORS headers", () => {
     const res = handlePreflight();
     expect(res.status).toBe(204);

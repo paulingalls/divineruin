@@ -1,9 +1,6 @@
 import { SQL } from "bun";
-
-if (!Bun.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is not set");
-}
+import { requireEnv } from "./env.ts";
 
 export const sql = new SQL({
-  url: Bun.env.DATABASE_URL,
+  url: requireEnv("DATABASE_URL"),
 });

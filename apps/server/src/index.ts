@@ -1,9 +1,10 @@
 import { serve } from "bun";
 import { handleLivekitToken } from "./livekit.ts";
 import { handleGetCharacter } from "./character.ts";
+import { handleRequestCode, handleVerifyCode, handleGetMe, requireAuth } from "./auth.ts";
 import { handlePreflight, withCors, checkRateLimit } from "./middleware.ts";
+import { isDev } from "./env.ts";
 
-const isDev = process.env.NODE_ENV !== "production";
 const enableDebug = isDev && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
 
 const CHARACTER_RE = /^\/api\/character\/([^/]+)$/;
@@ -22,14 +23,37 @@ const server = serve({
     const rateLimited = checkRateLimit(ip, path);
     if (rateLimited) return rateLimited;
 
-    if (path === "/api/livekit/token" && req.method === "POST") {
-      return withCors(await handleLivekitToken(req));
+    // --- Unauthenticated routes ---
+
+    if (path === "/api/auth/request-code" && req.method === "POST") {
+      return withCors(await handleRequestCode(req));
+    }
+    if (path === "/api/auth/verify-code" && req.method === "POST") {
+      return withCors(await handleVerifyCode(req));
     }
 
-    const charMatch = path.match(CHARACTER_RE);
-    if (charMatch && req.method === "GET") {
-      return withCors(await handleGetCharacter(req, charMatch[1]!));
+    // --- Authenticated routes ---
+
+    if (path === "/api/me" && req.method === "GET") {
+      return withCors(await handleGetMe(req));
     }
+
+    if (path === "/api/livekit/token" && req.method === "POST") {
+      const auth = await requireAuth(req);
+      if (auth instanceof Response) return withCors(auth);
+      return withCors(await handleLivekitToken(req, auth.playerId));
+    }
+
+    if (path.startsWith("/api/character/") && req.method === "GET") {
+      const charMatch = path.match(CHARACTER_RE);
+      if (charMatch) {
+        const auth = await requireAuth(req);
+        if (auth instanceof Response) return withCors(auth);
+        return withCors(await handleGetCharacter(req, auth.playerId));
+      }
+    }
+
+    // --- Debug routes (dev-only, no auth) ---
 
     if (enableDebug) {
       const { handleDebugPage, handleDebugRooms, handleDebugSendEvent } =
