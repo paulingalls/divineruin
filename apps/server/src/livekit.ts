@@ -34,10 +34,10 @@ export const roomService = new RoomServiceClient(
 const dispatchClient = new AgentDispatchClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
 
 export async function handleLivekitToken(req: Request, playerId: string): Promise<Response> {
-  const body = (await req.json()) as {
+  const body = (await req.json().catch(() => null)) as {
     room_name?: string;
-  };
-  const { room_name } = body;
+  } | null;
+  const room_name = body?.room_name;
   const player_id = playerId;
 
   if (!room_name) {

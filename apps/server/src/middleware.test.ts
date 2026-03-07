@@ -21,14 +21,14 @@ describe("Rate Limiting", () => {
   });
 
   test("allows requests under the limit", () => {
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 30; i++) {
       const result = checkRateLimit("127.0.0.1", "/api/some-route");
       expect(result).toBeNull();
     }
   });
 
-  test("blocks requests over the default limit (60/min)", () => {
-    for (let i = 0; i < 60; i++) {
+  test("blocks requests over the default limit (30/min)", () => {
+    for (let i = 0; i < 30; i++) {
       checkRateLimit("127.0.0.1", "/api/some-route");
     }
     const blocked = checkRateLimit("127.0.0.1", "/api/some-route");

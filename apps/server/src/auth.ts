@@ -10,7 +10,7 @@ const CODE_EXPIRY_MINUTES = 10;
 
 function getJwtSecret(): Uint8Array {
   if (!JWT_SECRET_HEX) throw new Error("JWT_SECRET is not set");
-  return new TextEncoder().encode(JWT_SECRET_HEX);
+  return Buffer.from(JWT_SECRET_HEX, "hex");
 }
 
 export async function signJwt(payload: { accountId: string; playerId: string }): Promise<string> {
@@ -200,10 +200,15 @@ export async function handleGetMe(req: Request): Promise<Response> {
     return Response.json({ error: "Account not found" }, { status: 404 });
   }
 
-  return Response.json({
-    account_id: auth.accountId,
-    player_id: auth.playerId,
-    email: account.email,
-    created_at: account.created_at,
-  });
+  return Response.json(
+    {
+      account_id: auth.accountId,
+      player_id: auth.playerId,
+      email: account.email,
+      created_at: account.created_at,
+    },
+    {
+      headers: { "Cache-Control": "private, no-store" },
+    },
+  );
 }

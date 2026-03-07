@@ -1,7 +1,7 @@
 import { test, expect, describe, mock, beforeEach } from "bun:test";
 
 // Set JWT_SECRET before importing auth module
-process.env.JWT_SECRET = "test-secret-for-jwt-signing-at-least-32chars";
+process.env.JWT_SECRET = "48d10d0851017d6e6d6f40ae66e6e15071a7caa782cb343c5c8dad7d4ffb310c";
 
 // Mock the database with a call-sequence approach
 let mockCallHandler: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown[]>;

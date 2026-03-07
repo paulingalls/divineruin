@@ -25,7 +25,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
     }
 
     if (!VALID_ACTIVITY_TYPES.has(body.type)) {
-      return Response.json({ error: `Invalid activity type: ${body.type}` }, { status: 400 });
+      return Response.json({ error: "Invalid activity type" }, { status: 400 });
     }
 
     const params = body.parameters ?? {};
@@ -43,7 +43,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       }
       const recipe = CRAFTING_RECIPES[recipeId];
       if (!recipe) {
-        return Response.json({ error: `Unknown recipe: ${recipeId}` }, { status: 400 });
+        return Response.json({ error: "Unknown recipe" }, { status: 400 });
       }
 
       durationMin = recipe.duration_min_seconds;
@@ -65,7 +65,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       }
       const program = TRAINING_PROGRAMS[programId];
       if (!program) {
-        return Response.json({ error: `Unknown training program: ${programId}` }, { status: 400 });
+        return Response.json({ error: "Unknown training program" }, { status: 400 });
       }
 
       durationMin = program.duration_min_seconds;
@@ -86,16 +86,13 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       }
       const template = ERRAND_TEMPLATES[errandType];
       if (!template) {
-        return Response.json({ error: `Unknown errand type: ${errandType}` }, { status: 400 });
+        return Response.json({ error: "Unknown errand type" }, { status: 400 });
       }
       if (!destination) {
         return Response.json({ error: "destination is required" }, { status: 400 });
       }
       if (!template.valid_destinations.includes(destination)) {
-        return Response.json(
-          { error: `Invalid destination for ${errandType}: ${destination}` },
-          { status: 400 },
-        );
+        return Response.json({ error: "Invalid destination for errand type" }, { status: 400 });
       }
 
       durationMin = template.duration_min_seconds;
@@ -286,7 +283,7 @@ export async function handleActivityDecision(
     const options = (data.decision_options as { id: string }[] | null) ?? [];
     const chosen = options.find((opt) => opt.id === body.decision_id);
     if (!chosen) {
-      return Response.json({ error: `Invalid decision: ${body.decision_id}` }, { status: 400 });
+      return Response.json({ error: "Invalid decision" }, { status: 400 });
     }
 
     // Apply effects based on outcome

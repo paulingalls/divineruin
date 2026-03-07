@@ -1,9 +1,21 @@
 const CORS_ORIGIN = Bun.env.CORS_ORIGIN ?? "*";
 
+if (!Bun.env.CORS_ORIGIN && process.env.NODE_ENV === "production") {
+  console.warn(
+    "[security] CORS_ORIGIN not set — defaulting to '*'. Set CORS_ORIGIN in production.",
+  );
+}
+
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": CORS_ORIGIN,
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
 };
 
 export function handlePreflight(): Response {
@@ -12,6 +24,9 @@ export function handlePreflight(): Response {
 
 export function withCors(response: Response): Response {
   for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    response.headers.set(key, value);
+  }
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
   }
   return response;
@@ -31,8 +46,10 @@ const RATE_LIMITS: Record<string, number> = {
   "/api/auth/request-code": 3,
   "/api/auth/verify-code": 5,
   "/api/push-token": 5,
+  "/api/activities": 10,
+  "/api/internal/push": 30,
 };
-const DEFAULT_RATE_LIMIT = 60;
+const DEFAULT_RATE_LIMIT = 30;
 const WINDOW_MS = 60_000;
 
 // Purge stale entries every 5 minutes
