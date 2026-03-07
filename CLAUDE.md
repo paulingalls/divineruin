@@ -10,63 +10,29 @@ Audio-first AI tabletop RPG. Players speak to an AI Dungeon Master via voice —
 
 ### Tier 1 — Memory Digests (read these first)
 
-Pre-extracted specs in `memory/` — compact, implementation-ready. Read the relevant digest before touching docs.
+Pre-extracted specs in `memory/` — compact, implementation-ready.
 
 | Digest | Covers |
 |---|---|
 | `memory/game-mechanics.md` | d20 resolution, skills, combat phases, classes, status effects, death, economy, PvP |
-| `memory/dm-agent-spec.md` | Three layers, tools, prompt architecture, ventriloquism, behavioral modes, affect system, content rules |
-| `memory/world-simulation.md` | World clock, 4 sim layers, corruption formula, disposition decay, data layer (tables + Redis) |
+| `memory/dm-agent-spec.md` | Three layers, tools, prompt architecture, ventriloquism, behavioral modes, affect system |
+| `memory/world-simulation.md` | World clock, 4 sim layers, corruption formula, disposition decay, data layer |
 | `memory/entity-schemas.md` | Location, NPC, item, quest, event, faction JSON schemas. Content tiers. |
-| `memory/audio-pipeline.md` | Voice pipeline, 4 audio channels, ducking, ventriloquism, Hollow audio, music stems, asset IDs |
-| `memory/client-ui-spec.md` | Expo screens, HUD 3 layers, performance targets, brand tokens (colors, typography, spacing), art style |
-| `memory/mvp-scope.md` | Six questions, scope boundaries, Greyvale arc, success criteria, milestone order |
-| `memory/cost-constraints.md` | Session costs, cost distribution, margins, token estimates, optimization paths |
+| `memory/audio-pipeline.md` | Voice pipeline, 4 audio channels, ducking, ventriloquism, Hollow audio, music |
+| `memory/client-ui-spec.md` | Expo screens, HUD layers, performance targets, brand tokens, art style |
+| `memory/mvp-scope.md` | Scope boundaries, Greyvale arc, success criteria, milestone order |
+| `memory/cost-constraints.md` | Session costs, margins, token estimates, optimization paths |
 | `memory/lore-quick-ref.md` | Core mystery, 10 gods, races, cultures, Hollow taxonomy, geography |
 
 ### Tier 2 — Doc Section Index
 
-`docs/INDEX.md` has line-range indexes for every doc. Use it to jump to specific sections: `Read file_path offset=X limit=Y`
+`docs/INDEX.md` has line-range indexes for every doc. Use it to jump to specific sections.
 
 ### Tier 3 — Full Docs (docs/)
 
-**Read specific sections via INDEX.md, not whole files. These are specifications, not guidelines.**
+Read specific sections via INDEX.md, not whole files. For task-to-doc mapping, see `memory/doc-navigator.md`.
 
-| Document | File | Covers |
-|---|---|---|
-| Product Overview | `product_overview.md` | Vision, what and why. Read first. |
-| Game Design | `game_design_doc.md` | All player-facing systems (1499 lines — always use INDEX.md to target sections) |
-| Tech Architecture | `technical_architecture.md` | Implementation blueprint (1499+ lines — always use INDEX.md) |
-| Audio Design | `audio_design.md` | Soundscapes, SFX, music, voice design, Hollow audio, AI gen prompts |
-| World Data | `world_data_simulation.md` | DB schemas, JSON entities, world sim rules, content style guide |
-| MVP Spec | `mvp_spec.md` | Scope, story arc, success criteria. Appendix has buildable JSON entities |
-| Lore Bible | `aethos_lore.md` | World history, gods, races, cultures, the Hollow, creature taxonomy |
-| Cost Model | `cost_model.md` | Per-session costs, subscriber economics |
-| Dev Milestones | `dev_milestones.md` | Phased build plan with acceptance criteria |
-| Player Resonance | `player_resonance_system.md` | Voice affect analysis, stt_node override, DM adaptation |
-| Brand & Art Spec | `brand_spec.md` | **Read before UI work.** Design tokens, UI patterns, art direction |
-| Image Prompts | `image_prompt_library.md` | Art generation prompts, style foundation, aspect ratios |
-
-### Doc Navigator — What to Read for Each Task
-
-| Working On | Read First (Digest) | Deep Dive (Doc Section via INDEX.md) |
-|---|---|---|
-| DM agent / tools | `dm-agent-spec.md` | `technical_architecture.md:452-754` (agent), `:774-958` (orchestration) |
-| Rules engine | `game-mechanics.md` | `game_design_doc.md:241-321` (mechanics), `:435-484` (combat) |
-| Combat system | `game-mechanics.md` | `game_design_doc.md:435-484`, `technical_architecture.md:1038-1068` |
-| Client UI / HUD | `client-ui-spec.md` | `brand_spec.md` (full), `technical_architecture.md:144-319` |
-| Voice pipeline | `audio-pipeline.md` | `technical_architecture.md:323-448`, `audio_design.md:380-500` |
-| Audio / SFX | `audio-pipeline.md` | `audio_design.md` (full), `divine_ruin_missing_prompts.md` |
-| World simulation | `world-simulation.md` | `world_data_simulation.md:620-806` |
-| Entity schemas / DB | `entity-schemas.md` | `world_data_simulation.md:23-457` (schemas), `:810-904` (data model) |
-| Content authoring | `entity-schemas.md` | `world_data_simulation.md:460-617` (style guide) |
-| Game content / NPCs | `lore-quick-ref.md` | `mvp_spec.md:60-450` (Greyvale), `aethos_lore.md` (as needed) |
-| Character creation | `game-mechanics.md` | `game_design_doc.md:18-73` |
-| Async / economy | `game-mechanics.md` | `game_design_doc.md:700-1081` |
-| Multiplayer | `dm-agent-spec.md` | `technical_architecture.md:1122-1289` |
-| Cost / pricing | `cost-constraints.md` | `cost_model.md` (full, only 277 lines) |
-| MVP scope / milestones | `mvp-scope.md` | `dev_milestones.md` (check current phase) |
-| Art / images | `client-ui-spec.md` | `image_prompt_library.md`, `brand_spec.md:189-221` |
+Key docs: `product_overview.md`, `game_design_doc.md` (1499 lines), `technical_architecture.md` (1499+ lines), `audio_design.md`, `world_data_simulation.md`, `mvp_spec.md`, `aethos_lore.md`, `cost_model.md`, `dev_milestones.md`, `player_resonance_system.md`, `brand_spec.md`, `image_prompt_library.md`
 
 ## Architecture
 
@@ -75,120 +41,82 @@ Expo Client (TS) ◄──► Bun/TS REST API ◄──► PostgreSQL + Redis �
                   ◄──────── LiveKit voice + data channels ────────►
 ```
 
-Two languages, one database. Python for DM agent (Anthropic plugin only exists for Python SDK). TypeScript/Bun for REST API and Expo client. PostgreSQL JSONB + Redis is the shared state layer. See `technical_architecture.md` → Language Architecture.
+Two languages, one database. Python for DM agent (Anthropic plugin only exists for Python SDK). TypeScript/Bun for REST API and Expo client. PostgreSQL JSONB + Redis is the shared state layer.
 
 ## Monorepo
 
 ```
 divine-ruin/
-├── docs/                   # Design docs (read-only reference)
-├── server/
-│   ├── agent/              # Python — DM agent, background process, rules engine
-│   │   ├── tools/          # @function_tool implementations
-│   │   ├── rules/          # Pure rules engine functions
+├── docs/                    # Design docs (read-only reference)
+├── apps/
+│   ├── agent/               # Python — DM agent, background process, rules engine
+│   │   ├── tests/
 │   │   └── pyproject.toml
-│   └── api/                # Bun/TS — REST API, auth, async, notifications
-│       └── src/
-│           ├── routes/
-│           ├── services/
-│           └── generated/  # Auto-generated types from JSON schemas
-├── client/                 # Expo (TS) — mobile app
-│   ├── app/                # expo-router screens
-│   ├── components/
-│   ├── hooks/
-│   └── stores/             # zustand
-├── shared/schemas/         # JSON entity schema definitions
-├── content/                # JSON entity files for DB seeding
+│   ├── server/              # Bun/TS — REST API, auth, async, notifications
+│   │   └── src/
+│   ├── mobile/              # Expo (TS) — mobile app
+│   │   └── src/
+│   │       ├── app/         # expo-router screens
+│   │       ├── components/
+│   │       ├── hooks/
+│   │       └── stores/      # zustand
+│   └── audio/               # Audio assets (empty, future use)
+├── packages/
+│   └── shared/              # Shared TS types/schemas
+│       └── src/entities/
+├── content/                 # JSON entity files for DB seeding
 └── docker-compose.yml
 ```
 
 ## Language Rules
 
-### TypeScript / Bun (server/api/, client/, shared/)
+### TypeScript / Bun (apps/server/, apps/mobile/, packages/shared/)
 
-Use Bun exclusively — not Node.js.
+Use Bun exclusively — not Node.js. `bun <file>`, `bun test`, `bun install`, `bun run <script>`, `bunx <pkg>`. Bun auto-loads `.env`.
 
-- `bun <file>`, `bun test`, `bun install`, `bun run <script>`, `bunx <pkg>`
-- Bun auto-loads `.env` — no dotenv
+**Bun-native APIs only:** `Bun.serve()` (not express), `Bun.sql` (not pg), `Bun.redis` (not ioredis), `Bun.file` (not node:fs), built-in `WebSocket` (not ws).
 
-**Use Bun-native APIs:**
-- `Bun.serve()` — not express
-- `Bun.sql` — not pg/postgres.js
-- `Bun.redis` — not ioredis
-- `Bun.file` — not node:fs readFile/writeFile
-- Built-in `WebSocket` — not ws
+### Python (apps/agent/)
 
-### Python (server/agent/)
+Python 3.11+, `pyproject.toml`. **uv** for all package management (not pip/poetry/conda): `uv sync`, `uv add`, `uv run`, `uv lock`. All async with `asyncio`. Type hints on all functions. `asyncpg` for PostgreSQL, `redis.asyncio` for Redis.
 
-- Python 3.11+, `pyproject.toml`
-- **uv** for all package management — not pip/poetry/conda
-  - `uv sync`, `uv add <pkg>`, `uv run <cmd>`, `uv lock`
-  - Docs: https://docs.astral.sh/uv/
-- LiveKit plugins: `livekit-plugins-anthropic` (Claude), `livekit-plugins-deepgram` (STT), `livekit-plugins-inworld` (TTS), `livekit-plugins-silero` (VAD), `livekit-plugins-turn-detector`
-- All async — use `asyncio`
-- Type hints on all functions
-- `asyncpg` for PostgreSQL, `redis.asyncio` for Redis
+LiveKit plugins: `livekit-plugins-anthropic`, `livekit-plugins-deepgram`, `livekit-plugins-inworld`, `livekit-plugins-silero`, `livekit-plugins-turn-detector`
 
 ### Shared Data
 
-No shared code between Python and TS. Shared data via PostgreSQL JSONB + Redis. Entity schemas in `shared/schemas/` generate TS interfaces into `server/api/src/generated/`. See `world_data_simulation.md` → Data Model.
+No shared code between Python and TS. Shared data via PostgreSQL JSONB + Redis.
 
 ## Golden Rules
 
-1. **Audio first.** Every feature must work eyes-closed. Screen is supplementary. If it requires reading/tapping during a live session, redesign it.
-
-2. **DM is the game.** Everything reaches the player through the DM's voice. Visual HUD elements supplement narration, never replace it.
-
-3. **Deterministic mechanics.** Rules engine = pure functions, no LLM. Dice, damage, skill checks — always deterministic. LLM decides *when* to invoke and *how to narrate* results.
-
-4. **State in the database.** DB is source of truth, not the prompt. DM agent queries DB every turn. If DB says NPC is dead, they're dead.
-
-5. **Cost conscious.** Cache system prompts (90% savings). Haiku for routine, Sonnet for complex. Pre-generate async content in simulation ticks. Batch DB queries. See `cost_model.md`.
-
-6. **Latency budget: 1500ms** end-of-speech to first audio. Stream everything. Don't wait for complete responses.
-
-7. **Hollow breaks rules.** The Hollow intentionally violates audio mixing, spatial audio, and DM voice. This is by design — see `audio_design.md` → Sound of the Hollow.
+1. **Audio first.** Every feature must work eyes-closed. If it requires reading/tapping during a live session, redesign it.
+2. **DM is the game.** Everything reaches the player through the DM's voice. Visual HUD supplements, never replaces.
+3. **Deterministic mechanics.** Rules engine = pure functions, no LLM. LLM decides *when* to invoke and *how to narrate*.
+4. **State in the database.** DB is source of truth, not the prompt. DM agent queries DB every turn.
+5. **Cost conscious.** Cache system prompts (90% savings). Haiku for routine, Sonnet for complex. See `cost_model.md`.
+6. **Latency budget: 1500ms** end-of-speech to first audio. Stream everything.
+7. **Hollow breaks rules.** Intentionally violates audio mixing, spatial audio, DM voice. By design.
 
 ## DM Agent — Three Layers
 
-1. **Voice Agent:** LiveKit `Agent` subclass. Deepgram STT → Claude LLM → Inworld TTS. Real-time conversation.
-2. **Background Process:** Async coroutine alongside voice agent. Monitors world events, updates warm prompt layer, injects proactive events.
-3. **Toolset:** `@function_tool` functions in four categories: world queries (read), dice/mechanics (deterministic), state mutation (enforced rules), client effects (UI events).
+1. **Voice Agent:** LiveKit `AgentSession`. Deepgram STT → Claude LLM → Inworld TTS.
+2. **Background Process:** Async coroutine. Monitors world events, updates warm prompt layer, injects proactive events.
+3. **Toolset:** `@function_tool` functions — world queries (read), dice/mechanics (deterministic), state mutation (enforced rules), client effects (UI events).
 
-**Ventriloquism:** One agent voices all characters. `tts_node` parses dialogue tags from LLM output, routes each segment to Inworld with the correct `voice_id`. See `technical_architecture.md` → Output Parsing.
-
-## Tool Pattern
-
-```python
-@function_tool
-async def query_location(context: RunContext, location_id: str) -> str:
-    """Get location details: description, connections, NPCs, conditions."""
-    session = context.userdata
-    location = await db.get_location(location_id)
-    location = apply_world_conditions(location, session.world_state)
-    return json.dumps(location.to_narration_context())
-```
-
-- Return **data for LLM to narrate**, not pre-written narration
-- Enforce game rules — LLM cannot bypass
-- State mutations must write DB AND push data channel events to client
-- One purpose per tool, compose for complex actions
-- All DB access async
+**Ventriloquism:** One agent voices all characters. Tag format: `[CHARACTER_NAME, emotion_hint]: "dialogue"`. Untagged = narrator. See `memory/dm-agent-spec.md` for tool pattern and details.
 
 ## Content Rules
 
-Write for the ear: short sentences, concrete sensory details, sound/smell before sight. Descriptions ≤3-4 sentences. NPC speech ≤1-3 sentences. Sound cues explicit ("tankards clink against rough wood" not "the tavern is busy"). See `world_data_simulation.md` → Content Style Guide.
+Write for the ear: short sentences, concrete sensory details, sound/smell before sight. Descriptions ≤3-4 sentences. NPC speech ≤1-3 sentences. See `world_data_simulation.md` → Content Style Guide.
 
 ## Testing
 
 **Bun:** `bun test` with `import { test, expect } from "bun:test"`
 **Python:** `pytest` with `pytest-asyncio` for async tests
-
-Rules engine must be exhaustively tested (pure functions, deterministic). DM behavior evaluated via semi-automated scenarios. See `technical_architecture.md` → Testing and Quality Strategy.
+Rules engine must be exhaustively tested (pure functions, deterministic).
 
 ## Settled Decisions
 
-Don't revisit: LiveKit (voice transport), Python (DM agent), Bun (TS runtime), Expo (mobile), PostgreSQL+JSONB (state), Redis (cache), Deepgram Nova-3 (STT), Inworld TTS (voices), Claude (narrative LLM), zustand (client state), expo-router (navigation), uv (Python packages).
+Don't revisit: LiveKit, Python (agent), Bun (TS), Expo, PostgreSQL+JSONB, Redis, Deepgram Nova-3, Inworld TTS, Claude (LLM), zustand, expo-router, uv.
 
 ## Don't
 
@@ -196,7 +124,6 @@ Don't revisit: LiveKit (voice transport), Python (DM agent), Bun (TS runtime), E
 - Let the LLM make mechanical decisions — LLM narrates, rules engine calculates
 - Build visual-first features — no maps, no portraits, no text dialogue trees
 - Ignore the cost model — flag anything that significantly increases token usage
-- Skip the docs — if you're guessing, you haven't read the right section
 
 ## Dev Flow
 
@@ -206,18 +133,8 @@ Don't revisit: LiveKit (voice transport), Python (DM agent), Bun (TS runtime), E
 4. Tests for every change (bun test / pytest)
 5. DB changes need migrations
 6. New tools need docstrings (LLM reads them to decide when to call)
-7. **Update `docs/dev_milestones.md` checkboxes** — when work is committed, check off (`- [x]`) any acceptance criteria that are now satisfied. This keeps milestone progress visible across sessions.
+7. **Update `docs/dev_milestones.md` checkboxes** when work is committed
 
 ## Environment Variables
 
-```
-LIVEKIT_URL=
-LIVEKIT_API_KEY=
-LIVEKIT_API_SECRET=
-ANTHROPIC_API_KEY=
-DEEPGRAM_API_KEY=
-INWORLD_API_KEY=
-INWORLD_WORKSPACE_ID=
-DATABASE_URL=postgresql://...
-REDIS_URL=redis://...
-```
+See `.env.example`. Key vars: `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY`, `INWORLD_API_KEY`, `DATABASE_URL`, `REDIS_URL`
