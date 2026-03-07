@@ -489,7 +489,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
 
     case "play_narration":
-      if (typeof event.url === "string") {
+      if (typeof event.url === "string" && event.url.startsWith("/api/audio/")) {
         playNarration(event.url);
       }
       break;

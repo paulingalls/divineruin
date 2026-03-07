@@ -787,10 +787,11 @@ async def count_active_activities(player_id: str, *, conn: asyncpg.Connection | 
 
 
 async def create_player(player_id: str, account_id: str | None, data: dict) -> None:
-    """INSERT new player. Raises on duplicate player_id."""
+    """INSERT new player. No-op if player already exists (race-condition safe)."""
     pool = await get_pool()
     await pool.execute(
-        "INSERT INTO players (player_id, account_id, data) VALUES ($1, $2, $3::jsonb)",
+        "INSERT INTO players (player_id, account_id, data) VALUES ($1, $2, $3::jsonb) "
+        "ON CONFLICT (player_id) DO NOTHING",
         player_id,
         account_id,
         json.dumps(data),

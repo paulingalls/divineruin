@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 
 from livekit.agents.llm import function_tool
 from livekit.agents.voice import RunContext
@@ -21,6 +22,28 @@ logger = logging.getLogger("divineruin.creation")
 
 VALID_CARD_CATEGORIES = {"race", "class", "deity"}
 VALID_CHOICE_CATEGORIES = {"race", "class", "deity", "name", "backstory"}
+
+# --- Input sanitization ---
+_SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9 '\-]")
+MAX_NAME_LENGTH = 50
+MAX_BACKSTORY_LENGTH = 500
+
+
+def _sanitize_name(value: str) -> str:
+    """Strip unsafe characters and cap length for character names."""
+    return _SAFE_NAME_RE.sub("", value)[:MAX_NAME_LENGTH].strip()
+
+
+def _sanitize_backstory(value: str) -> str:
+    """Strip control characters and cap length for backstory text."""
+    # Allow letters, digits, common punctuation, spaces
+    cleaned = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", value)
+    return cleaned[:MAX_BACKSTORY_LENGTH].strip()
+
+
+def _safe_id_snippet(value: str) -> str:
+    """Truncate and sanitize an ID for inclusion in error messages."""
+    return re.sub(r"[^a-zA-Z0-9_\-]", "", value[:32])
 
 
 @function_tool
@@ -92,31 +115,36 @@ async def set_creation_choice(
 
     sd: SessionData = context.userdata
     cs = sd.creation_state
-    if cs is None:
+    if cs is None or cs.phase == "complete":
         return json.dumps({"error": "Not in creation mode."})
 
     # Validate ID-based choices
     if category == "race":
         if value not in RACES:
-            return json.dumps({"error": f"Unknown race: {value}. Valid: {', '.join(RACES.keys())}"})
+            return json.dumps({"error": f"Unknown race: {_safe_id_snippet(value)}. Valid: {', '.join(RACES.keys())}"})
         cs.race = value
         cs.phase = "calling"
     elif category == "class":
         if value not in CLASSES:
-            return json.dumps({"error": f"Unknown class: {value}. Valid: {', '.join(CLASSES.keys())}"})
+            return json.dumps(
+                {"error": f"Unknown class: {_safe_id_snippet(value)}. Valid: {', '.join(CLASSES.keys())}"}
+            )
         cs.class_choice = value
         cs.phase = "devotion"
     elif category == "deity":
         if value not in DEITIES:
-            return json.dumps({"error": f"Unknown deity: {value}. Valid: {', '.join(DEITIES.keys())}"})
+            return json.dumps(
+                {"error": f"Unknown deity: {_safe_id_snippet(value)}. Valid: {', '.join(DEITIES.keys())}"}
+            )
         cs.deity = value
         cs.phase = "identity"
     elif category == "name":
-        if not value or not value.strip():
+        sanitized = _sanitize_name(value)
+        if not sanitized:
             return json.dumps({"error": "Name cannot be empty."})
-        cs.name = value.strip()
+        cs.name = sanitized
     elif category == "backstory":
-        cs.backstory = value.strip() if value else ""
+        cs.backstory = _sanitize_backstory(value) if value else ""
 
     # Publish visual feedback
     await publish_game_event(
@@ -154,7 +182,14 @@ async def set_creation_choice(
 
     guidance = f"Remaining: {', '.join(remaining)}." if remaining else "All choices made. Call finalize_character."
 
-    return json.dumps({"confirmed": category, "value": value, "progress": progress, "guidance": guidance})
+    # Return the stored value (sanitized for name/backstory) rather than raw input
+    stored_value = value
+    if category == "name":
+        stored_value = cs.name or ""
+    elif category == "backstory":
+        stored_value = cs.backstory or ""
+
+    return json.dumps({"confirmed": category, "value": stored_value, "progress": progress, "guidance": guidance})
 
 
 @function_tool
@@ -165,7 +200,7 @@ async def finalize_character(context: RunContext) -> str:
     """
     sd: SessionData = context.userdata
     cs = sd.creation_state
-    if cs is None:
+    if cs is None or cs.phase == "complete":
         return json.dumps({"error": "Not in creation mode."})
 
     # Validate all required fields
@@ -190,8 +225,9 @@ async def finalize_character(context: RunContext) -> str:
             deity_id=deity_id,
             backstory=cs.backstory or "",
         )
-    except ValueError as e:
-        return json.dumps({"error": str(e)})
+    except ValueError:
+        logger.exception("Invalid character data for %s", sd.player_id)
+        return json.dumps({"error": "Invalid character data. Please check your choices."})
 
     # Persist to DB
     try:
