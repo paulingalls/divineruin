@@ -20,6 +20,20 @@ logger = logging.getLogger("divineruin.tools")
 
 _ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 
+LOCATION_CORRUPTION: dict[str, int] = {
+    "greyvale_wilderness_north": 1,
+    "hollow_incursion_site": 2,
+    "greyvale_ruins_entrance": 2,
+    "greyvale_ruins_inner": 3,
+}
+
+EFFECT_NPC_MAP: dict[str, str] = {
+    "torin": "guildmaster_torin",
+    "yanna": "elder_yanna",
+    "emris": "scholar_emris",
+    "companion": "companion_kael",
+}
+
 
 def _validate_id(value: str, label: str) -> str | None:
     """Return an error JSON string if the ID is invalid, else None."""
@@ -402,6 +416,7 @@ async def discover_hidden_element(
         response["description"] = element.get("description", "")
         loc_name = location.get("name", session.location_id)
         session.record_companion_memory(f"Discovered {element.get('description', element_id)} at {loc_name}")
+        await db.set_player_flag(session.player_id, f"{element_id}.discovered", True)
     else:
         response["outcome"] = "not_found"
 
@@ -943,6 +958,82 @@ async def remove_from_inventory(
     return json.dumps(response)
 
 
+async def _check_exit_requirement(requires: str, player_id: str) -> bool:
+    """Evaluate an exit requirement string. Supports || (OR) branches.
+
+    Patterns:
+    - ``some_id.discovered`` — checks player flag
+    - ``skill_check:*`` — always False (LLM should handle via tools first)
+    """
+    branches = [b.strip() for b in requires.split("||")]
+    for branch in branches:
+        if branch.startswith("skill_check:"):
+            continue  # LLM must resolve via request_skill_check first
+        if await db.get_player_flag(player_id, branch):
+            return True
+    return False
+
+
+_EFFECT_DISPOSITION_RE = re.compile(r"^(\w+)_disposition\s*([+-]\d+)$")
+_EFFECT_CORRUPTION_RE = re.compile(r"^greyvale_corruption\s*([+-]\d+)$")
+_EFFECT_EVENT_RE = re.compile(r"^event:(.+)$")
+_EFFECT_MORALE_RE = re.compile(r"^(\w+)_morale\s*([+-]\d+)$")
+
+
+async def _apply_world_effects(
+    effects: list[str],
+    session: SessionData,
+    pending_events: list[tuple[str, dict]],
+    conn: object | None = None,
+) -> None:
+    """Parse and apply deterministic world_effects from quest on_complete."""
+    for effect_str in effects:
+        m = _EFFECT_DISPOSITION_RE.match(effect_str)
+        if m:
+            shorthand, delta_str = m.group(1), int(m.group(2))
+            npc_id = EFFECT_NPC_MAP.get(shorthand, shorthand)
+            current = await db.get_npc_disposition(npc_id, session.player_id, conn=conn)
+            if current is None:
+                npc = await db.get_npc(npc_id)
+                current = npc.get("default_disposition", "neutral") if npc else "neutral"
+            new_disp = _clamp_disposition_shift(current, delta_str)
+            await db.set_npc_disposition(npc_id, session.player_id, new_disp, f"world_effect: {effect_str}", conn=conn)
+            pending_events.append(("disposition_changed", {"npc_id": npc_id, "previous": current, "new": new_disp}))
+            logger.info("World effect: %s disposition %s → %s", npc_id, current, new_disp)
+            continue
+
+        m = _EFFECT_CORRUPTION_RE.match(effect_str)
+        if m:
+            delta = int(m.group(1))
+            previous = session.corruption_level
+            session.corruption_level = max(0, session.corruption_level + delta)
+            pending_events.append(
+                (
+                    "hollow_corruption_changed",
+                    {"level": session.corruption_level, "previous": previous, "location_id": session.location_id},
+                )
+            )
+            logger.info("World effect: corruption %d → %d", previous, session.corruption_level)
+            continue
+
+        m = _EFFECT_EVENT_RE.match(effect_str)
+        if m:
+            event_id = m.group(1)
+            pending_events.append(("world_event", {"event_id": event_id}))
+            logger.info("World effect: event %s", event_id)
+            continue
+
+        m = _EFFECT_MORALE_RE.match(effect_str)
+        if m:
+            group_name, delta_str = m.group(1), int(m.group(2))
+            pending_events.append(("world_event", {"event_id": f"{group_name}_morale_change", "delta": delta_str}))
+            session.record_event(f"{group_name} morale shifted by {delta_str}")
+            logger.info("World effect: %s morale %+d (logged, no morale system yet)", group_name, delta_str)
+            continue
+
+        logger.warning("Unknown world effect: %s", effect_str)
+
+
 @function_tool()
 @db_tool
 async def move_player(
@@ -981,14 +1072,17 @@ async def move_player(
         )
 
     if isinstance(exit_entry, dict) and exit_entry.get("requires"):
-        return json.dumps(
-            {
-                "blocked": True,
-                "destination": destination_id,
-                "requires": exit_entry["requires"],
-                "message": "This exit is blocked. A condition must be met first.",
-            }
-        )
+        requirement = exit_entry["requires"]
+        allowed = await _check_exit_requirement(requirement, session.player_id)
+        if not allowed:
+            return json.dumps(
+                {
+                    "blocked": True,
+                    "destination": destination_id,
+                    "requires": requirement,
+                    "message": "This exit is blocked. A condition must be met first.",
+                }
+            )
 
     previous_location_id = session.location_id
     pending_events: list[tuple[str, dict]] = []
@@ -1021,6 +1115,22 @@ async def move_player(
 
     # Session state updated ONLY after successful commit
     session.location_id = destination_id
+
+    # Corruption tracking — location-based, resets on safe areas
+    new_corruption = LOCATION_CORRUPTION.get(destination_id, 0)
+    if new_corruption != session.corruption_level:
+        previous_corruption = session.corruption_level
+        session.corruption_level = new_corruption
+        pending_events.append(
+            (
+                "hollow_corruption_changed",
+                {
+                    "level": new_corruption,
+                    "previous": previous_corruption,
+                    "location_id": destination_id,
+                },
+            )
+        )
 
     for event_type, payload in pending_events:
         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
@@ -1125,6 +1235,10 @@ async def update_quest(
                 if item_id:
                     await db.add_inventory_item(session.player_id, item_id, qty, conn=conn)
                     rewards_applied.append({"type": "item", "item_id": item_id, "quantity": qty})
+
+            world_effects = on_complete.get("world_effects", [])
+            if world_effects:
+                await _apply_world_effects(world_effects, session, pending_events, conn=conn)
 
         new_stage = stages[new_stage_id]
         quest_data = {

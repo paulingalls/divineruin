@@ -518,8 +518,9 @@ class TestMovePlayer:
         assert "valid_destinations" in result
 
     @pytest.mark.asyncio
+    @patch("tools._check_exit_requirement", new_callable=AsyncMock, return_value=False)
     @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_blocked_exit(self, mock_loc):
+    async def test_blocked_exit(self, mock_loc, mock_check):
         mock_loc.return_value = SAMPLE_LOCATION
         ctx = _make_context()
         result = json.loads(await move_player._func(ctx, destination_id="accord_temple"))

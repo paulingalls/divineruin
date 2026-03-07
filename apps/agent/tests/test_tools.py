@@ -533,10 +533,11 @@ DISCOVER_PLAYER = {
 
 class TestDiscoverHiddenElement:
     @pytest.mark.asyncio
+    @patch("tools.db.set_player_flag", new_callable=AsyncMock)
     @patch("tools.publish_game_event", new_callable=AsyncMock)
     @patch("tools.db.get_player", new_callable=AsyncMock)
     @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_successful_discovery(self, mock_loc, mock_player, mock_event):
+    async def test_successful_discovery(self, mock_loc, mock_player, mock_event, mock_set_flag):
         mock_loc.return_value = LOCATION_WITH_HIDDEN
         mock_player.return_value = DISCOVER_PLAYER
         ctx = _make_context(location_id="test_location")
@@ -550,6 +551,7 @@ class TestDiscoverHiddenElement:
         assert result["outcome"] == "discovered"
         assert "hidden passage" in result["description"]
         assert result["element_id"] == "secret_door"
+        mock_set_flag.assert_called_once_with("player_1", "secret_door.discovered", True)
 
     @pytest.mark.asyncio
     @patch("tools.publish_game_event", new_callable=AsyncMock)
@@ -605,10 +607,11 @@ class TestDiscoverHiddenElement:
         assert "Already searched" in result["error"]
 
     @pytest.mark.asyncio
+    @patch("tools.db.set_player_flag", new_callable=AsyncMock)
     @patch("tools.publish_game_event", new_callable=AsyncMock)
     @patch("tools.db.get_player", new_callable=AsyncMock)
     @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_dice_roll_event_has_no_dc(self, mock_loc, mock_player, mock_event):
+    async def test_dice_roll_event_has_no_dc(self, mock_loc, mock_player, mock_event, mock_set_flag):
         """DC should not be included in the client-facing dice_roll event."""
         mock_loc.return_value = LOCATION_WITH_HIDDEN
         mock_player.return_value = DISCOVER_PLAYER

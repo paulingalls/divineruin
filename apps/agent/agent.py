@@ -82,9 +82,9 @@ START_LOCATION = "accord_guild_hall"
 
 
 class DungeonMasterAgent(Agent):
-    def __init__(self) -> None:
+    def __init__(self, initial_location: str = START_LOCATION) -> None:
         super().__init__(
-            instructions=build_system_prompt(START_LOCATION),
+            instructions=build_system_prompt(initial_location),
             tools=ALL_TOOLS,
         )
         self._turn_timer = TurnTimer()
@@ -371,24 +371,41 @@ def _extract_player_id(ctx: agents.JobContext) -> str:
 @server.rtc_session(agent_name="divineruin-dm")
 async def dm_session(ctx: agents.JobContext) -> None:
     player_id = _extract_player_id(ctx)
+
+    # Determine session type: first session vs returning
+    player = None
+    last_summary = None
+    try:
+        player, last_summary = await asyncio.gather(
+            db.get_player(player_id),
+            db.get_last_session_summary(player_id),
+        )
+    except Exception:
+        logger.warning("Failed to load player/session data", exc_info=True)
+
+    if last_summary is not None and player:
+        # Returning session — resume at last location
+        location_id = player.get("location_id", START_LOCATION)
+        is_first_session = False
+    else:
+        # First session — start at market square
+        location_id = "accord_market_square"
+        is_first_session = True
+
     userdata = SessionData(
         player_id=player_id,
-        location_id=START_LOCATION,
+        location_id=location_id,
         room=ctx.room,
     )
 
-    # Load companion if player has met Kael
-    try:
-        companion_met = await db.get_player_flag(player_id, "companion_met")
-        if companion_met:
-            userdata.companion = CompanionState(
-                id="companion_kael",
-                name="Kael",
-                last_speech_time=time.time(),
-            )
-            logger.info("Companion Kael loaded for returning player")
-    except Exception:
-        logger.warning("Failed to check companion_met flag", exc_info=True)
+    # Load companion if player has met Kael (reuse already-loaded player data)
+    if player and player.get("flags", {}).get("companion_met") == "true":
+        userdata.companion = CompanionState(
+            id="companion_kael",
+            name="Kael",
+            last_speech_time=time.time(),
+        )
+        logger.info("Companion Kael loaded for returning player")
 
     session = AgentSession(
         stt=deepgram.STT(model="nova-3", language="en"),
@@ -411,21 +428,36 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
     await session.start(
         room=ctx.room,
-        agent=DungeonMasterAgent(),
+        agent=DungeonMasterAgent(initial_location=location_id),
     )
 
-    await session.generate_reply(
-        instructions=(
-            "Call enter_location with 'accord_guild_hall' to get the full scene context. "
-            "Do NOT tell the player you are looking anything up or setting a scene. "
-            "Do NOT use meta-language like 'setting the scene' or 'let me describe'. "
-            "Just BE the narrator — start directly with what the player experiences. "
-            "The player pushes open the heavy door of the guild hall. It's evening. "
-            "Describe the atmosphere. Then Guildmaster Torin notices them and speaks, "
-            "gruff and direct. Use the [GUILDMASTER_TORIN, stern] tag for his dialogue. "
-            "End with something that invites the player to respond."
-        ),
-    )
+    if is_first_session:
+        await session.generate_reply(
+            instructions=(
+                f"Call enter_location with '{location_id}' to get the full scene context. "
+                "Do NOT tell the player you are looking anything up or setting a scene. "
+                "Do NOT use meta-language like 'setting the scene' or 'let me describe'. "
+                "Just BE the narrator — start directly with what the player experiences. "
+                "The player steps into the market square of the Accord of Tides. It's evening. "
+                "The market is winding down — vendors packing stalls, the smell of salt and fried fish. "
+                "Describe the atmosphere with one vivid sensory detail. "
+                "End with something that invites the player to look around or explore."
+            ),
+        )
+    else:
+        summary_text = last_summary.get("summary", "") if last_summary else ""
+        recap = f" Last session: {summary_text}" if summary_text else ""
+        await session.generate_reply(
+            instructions=(
+                f"Call enter_location with '{location_id}' to get the full scene context. "
+                "Do NOT tell the player you are looking anything up or setting a scene. "
+                "Just BE the narrator — start directly with what the player experiences. "
+                f"The player returns to the world.{recap} "
+                "Describe where they are now with one atmospheric sentence. "
+                "Remind them of their current situation through narration, not summary. "
+                "End with something that invites action."
+            ),
+        )
 
 
 if __name__ == "__main__":

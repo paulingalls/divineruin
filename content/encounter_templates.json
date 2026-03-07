@@ -115,5 +115,146 @@
         "sound_signature": "hollow_whisper"
       }
     ]
+  },
+  {
+    "id": "hollow_patrol_greyvale",
+    "name": "Hollow Patrol",
+    "description": "A hunting pack of Hollow creatures — one larger Rend flanked by two drifting shades. They move in eerie coordination, the Rend leading while the Drifts circle like pale wolves.",
+    "difficulty": "moderate",
+    "enemies": [
+      {
+        "id": "hollow_rend_1",
+        "name": "Hollow Rend",
+        "level": 2,
+        "ac": 13,
+        "hp": 15,
+        "attributes": {
+          "strength": 14,
+          "dexterity": 12,
+          "constitution": 13,
+          "intelligence": 6,
+          "wisdom": 10,
+          "charisma": 5
+        },
+        "action_pool": [
+          {
+            "name": "Claw Swipe",
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A limb that shouldn't bend that way rakes forward with jagged edges"
+          },
+          {
+            "name": "Hollow Shriek",
+            "damage": "1d4",
+            "damage_type": "psychic",
+            "properties": [],
+            "description": "A sound that isn't a sound — pressure behind the eyes, a ringing that tastes of metal"
+          }
+        ],
+        "xp_value": 100,
+        "sound_signature": "hollow_growl"
+      },
+      {
+        "id": "hollow_drift_1",
+        "name": "Hollow Drift",
+        "level": 1,
+        "ac": 11,
+        "hp": 8,
+        "attributes": {
+          "strength": 6,
+          "dexterity": 14,
+          "constitution": 10,
+          "intelligence": 4,
+          "wisdom": 10,
+          "charisma": 3
+        },
+        "action_pool": [
+          {
+            "name": "Draining Touch",
+            "damage": "1d4",
+            "damage_type": "necrotic",
+            "properties": [],
+            "description": "A wisp of dark light grazes your skin and warmth drains from the contact point"
+          }
+        ],
+        "xp_value": 50,
+        "sound_signature": "hollow_whisper"
+      },
+      {
+        "id": "hollow_drift_2",
+        "name": "Hollow Drift",
+        "level": 1,
+        "ac": 11,
+        "hp": 8,
+        "attributes": {
+          "strength": 6,
+          "dexterity": 14,
+          "constitution": 10,
+          "intelligence": 4,
+          "wisdom": 10,
+          "charisma": 3
+        },
+        "action_pool": [
+          {
+            "name": "Draining Touch",
+            "damage": "1d4",
+            "damage_type": "necrotic",
+            "properties": [],
+            "description": "A wisp of dark light grazes your skin and warmth drains from the contact point"
+          }
+        ],
+        "xp_value": 50,
+        "sound_signature": "hollow_whisper"
+      }
+    ]
+  },
+  {
+    "id": "ruins_guardian",
+    "name": "Hollow Warden",
+    "description": "Something old guards the inner ruins. Taller than a man, its form shifts between solid and translucent. Where it steps, the stone darkens. It doesn't attack immediately — it watches, as if deciding whether you're a threat or a curiosity.",
+    "difficulty": "hard",
+    "enemies": [
+      {
+        "id": "hollow_warden_1",
+        "name": "Hollow Warden",
+        "level": 4,
+        "ac": 15,
+        "hp": 45,
+        "attributes": {
+          "strength": 16,
+          "dexterity": 10,
+          "constitution": 16,
+          "intelligence": 12,
+          "wisdom": 14,
+          "charisma": 8
+        },
+        "action_pool": [
+          {
+            "name": "Void Lash",
+            "damage": "2d6",
+            "damage_type": "necrotic",
+            "properties": [],
+            "description": "A tendril of absolute darkness whips forward — where it passes, the air goes silent"
+          },
+          {
+            "name": "Reality Fracture",
+            "damage": "1d8",
+            "damage_type": "psychic",
+            "properties": [],
+            "description": "The Warden strikes the ground and for a heartbeat the world splits — two versions of the room overlap, neither quite real"
+          },
+          {
+            "name": "Absorb",
+            "damage": "1d6",
+            "damage_type": "necrotic",
+            "properties": ["healing"],
+            "description": "The Warden's wounds close as dark energy flows from its victim into its form"
+          }
+        ],
+        "xp_value": 450,
+        "sound_signature": "hollow_deep_resonance"
+      }
+    ]
   }
 ]

@@ -412,7 +412,7 @@ class TestDMSession:
 
     @pytest.mark.asyncio
     async def test_dm_session_creates_session_data(self):
-        """dm_session should create SessionData with correct params."""
+        """dm_session should create SessionData — first session starts at market square."""
         mock_ctx = MagicMock()
         mock_ctx.room = MagicMock()
 
@@ -428,13 +428,22 @@ class TestDMSession:
                         with patch("agent._make_tts"):
                             with patch("agent.silero.VAD.load"):
                                 with patch("agent.MultilingualModel"):
-                                    from agent import dm_session
+                                    with patch("agent.db.get_player", new_callable=AsyncMock, return_value=None):
+                                        with patch(
+                                            "agent.db.get_last_session_summary",
+                                            new_callable=AsyncMock,
+                                            return_value=None,
+                                        ):
+                                            with patch(
+                                                "agent.db.get_player_flag", new_callable=AsyncMock, return_value=False
+                                            ):
+                                                from agent import dm_session
 
-                                    await dm_session(mock_ctx)
+                                                await dm_session(mock_ctx)
 
                 MockSD.assert_called_once_with(
                     player_id="player_1",
-                    location_id=START_LOCATION,
+                    location_id="accord_market_square",
                     room=mock_ctx.room,
                 )
 
@@ -456,9 +465,18 @@ class TestDMSession:
                         with patch("agent._make_tts"):
                             with patch("agent.silero.VAD.load"):
                                 with patch("agent.MultilingualModel"):
-                                    from agent import dm_session
+                                    with patch("agent.db.get_player", new_callable=AsyncMock, return_value=None):
+                                        with patch(
+                                            "agent.db.get_last_session_summary",
+                                            new_callable=AsyncMock,
+                                            return_value=None,
+                                        ):
+                                            with patch(
+                                                "agent.db.get_player_flag", new_callable=AsyncMock, return_value=False
+                                            ):
+                                                from agent import dm_session
 
-                                    await dm_session(mock_ctx)
+                                                await dm_session(mock_ctx)
 
                 mock_session_instance.start.assert_awaited_once()
                 start_call = mock_session_instance.start.call_args
@@ -483,13 +501,21 @@ class TestDMSession:
                         with patch("agent._make_tts"):
                             with patch("agent.silero.VAD.load"):
                                 with patch("agent.MultilingualModel"):
-                                    from agent import dm_session
+                                    with patch("agent.db.get_player", new_callable=AsyncMock, return_value=None):
+                                        with patch(
+                                            "agent.db.get_last_session_summary",
+                                            new_callable=AsyncMock,
+                                            return_value=None,
+                                        ):
+                                            with patch(
+                                                "agent.db.get_player_flag", new_callable=AsyncMock, return_value=False
+                                            ):
+                                                from agent import dm_session
 
-                                    await dm_session(mock_ctx)
+                                                await dm_session(mock_ctx)
 
                 mock_session_instance.generate_reply.assert_awaited_once()
                 call_kwargs = mock_session_instance.generate_reply.call_args[1]
                 instructions = call_kwargs["instructions"]
                 assert "enter_location" in instructions
-                assert "accord_guild_hall" in instructions
-                assert "GUILDMASTER_TORIN" in instructions
+                assert "market" in instructions.lower()

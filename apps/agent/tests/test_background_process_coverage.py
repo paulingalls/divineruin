@@ -434,6 +434,7 @@ class TestWarmLayerRebuild:
                     combat_state=mock_sd.combat_state,
                     companion=mock_sd.companion,
                     quests=None,
+                    corruption_level=mock_sd.corruption_level,
                 )
                 mock_agent.update_instructions.assert_awaited_once_with("full prompt")
                 assert bp._last_warm_layer == "warm layer content"

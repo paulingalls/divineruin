@@ -125,7 +125,13 @@ information naturally into your narration and dialogue.
 This is a conversation. The player is exploring and talking. Respond to what \
 they say. Be curious about their intent. Treat every response like a volley — \
 hit the ball back and let them swing. If you're talking for more than a few \
-seconds without the player's voice, you're talking too much.\
+seconds without the player's voice, you're talking too much.
+
+When narrating a god speaking, shift register completely. Short, weighted sentences. \
+Ancient perspective — vast timescale, weary omniscience. Narrate their presence \
+through the environment first: air thickens, sound stops, reality holds its breath. \
+Then the god speaks — two sentences maximum, dense with meaning. Then silence \
+returns like a wave. The companion does not react during this moment.\
 """
 
 PLAYER_AWARENESS_PROMPT = """\
@@ -332,6 +338,27 @@ def quest_objective(quest: dict) -> str:
     return ""
 
 
+CORRUPTION_GUIDANCE: dict[int, str] = {
+    1: (
+        "HOLLOW CORRUPTION — Stage 1\n"
+        "Ambient sounds are sparser. Describe longer silences, emptiness. "
+        "Pauses where there should be birdsong. The world is holding its breath."
+    ),
+    2: (
+        "HOLLOW CORRUPTION — Stage 2\n"
+        "Sounds come from wrong distances. Echo is unreliable. "
+        "Footsteps sound twice — once underfoot, once from somewhere else. "
+        "Distances feel compressed or stretched."
+    ),
+    3: (
+        "HOLLOW CORRUPTION — Stage 3\n"
+        "New sounds intrude — subsonic hum, metallic resonances, a pitch "
+        "that doesn't belong to any instrument. Wrongness is pervasive. "
+        "Brief moments where two versions of reality overlap."
+    ),
+}
+
+
 async def build_warm_layer(
     location_id: str,
     player_id: str,
@@ -339,6 +366,7 @@ async def build_warm_layer(
     combat_state: CombatState | None = None,
     companion: CompanionState | None = None,
     quests: list[dict] | None = None,
+    corruption_level: int = 0,
 ) -> str:
     import asyncio
 
@@ -414,6 +442,12 @@ async def build_warm_layer(
         if recent_memories:
             companion_lines.append("Recent memories: " + "; ".join(recent_memories))
         sections.append("\n".join(companion_lines))
+
+    # Hollow corruption
+    if corruption_level > 0:
+        guidance = CORRUPTION_GUIDANCE.get(corruption_level)
+        if guidance:
+            sections.append(guidance)
 
     # Active combat
     if combat_state is not None:

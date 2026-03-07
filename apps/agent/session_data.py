@@ -75,6 +75,7 @@ class SessionData:
     recent_events: deque[str] = field(default_factory=lambda: deque(maxlen=MAX_RECENT_EVENTS))
     attempted_discoveries: set[str] = field(default_factory=set)
     companion: CompanionState | None = None
+    corruption_level: int = 0
 
     @property
     def in_combat(self) -> bool:

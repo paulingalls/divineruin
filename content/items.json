@@ -42,5 +42,99 @@
     },
     "lore": "Salvaged from a Hollow creature after combat. Scholars in the Accord would pay well for a sample — intact Hollow material is rare this far south.",
     "found_in": ["hollow_incursion_site"]
+  },
+  {
+    "id": "ruins_journal_fragment",
+    "name": "Torn Journal Page",
+    "tier": 1,
+    "type": "quest_item",
+    "rarity": "rare",
+    "description": "A torn page of densely written notation on thin, age-darkened vellum. The handwriting is precise but hurried. Some phrases are legible: 'resonance thinning,' 'controlled aperture,' 'acceptable threshold.' The notation system isn't standard academic — it's personal, idiosyncratic.",
+    "tags": ["aelindran", "veythar", "quest", "journal"],
+    "weight": 0.1,
+    "effects": [],
+    "value_base": 0,
+    "value_modifiers": {
+      "npc:scholar_emris": 100.0
+    },
+    "lore": "A fragment from a research journal found in the Greyvale Ruins. The notation matches no known academic standard — whoever wrote this used a personal system, suggesting secrecy or extreme specialization.",
+    "found_in": ["greyvale_ruins_entrance"]
+  },
+  {
+    "id": "guild_contract_greyvale",
+    "name": "Guild Investigation Contract",
+    "tier": 1,
+    "type": "quest_item",
+    "rarity": "common",
+    "description": "A formal contract bearing the Accord Guild's seal. It authorizes the bearer to investigate reports of Hollow activity in the Greyvale region. Torin's signature is at the bottom — heavy-handed, impatient.",
+    "tags": ["guild", "quest", "document"],
+    "weight": 0.1,
+    "effects": [],
+    "value_base": 0,
+    "value_modifiers": {},
+    "lore": "An official guild contract. Having one opens doors that a stranger's word alone wouldn't.",
+    "found_in": ["accord_guild_hall"]
+  },
+  {
+    "id": "healing_potion",
+    "name": "Healing Potion",
+    "tier": 1,
+    "type": "consumable",
+    "rarity": "common",
+    "description": "A small clay vial sealed with wax. The liquid inside is faintly warm and smells of copper and something sweet you can't name.",
+    "tags": ["healing", "consumable", "potion"],
+    "weight": 0.3,
+    "effects": [
+      {
+        "type": "heal",
+        "amount": "2d4+2",
+        "description": "Restores health when consumed"
+      }
+    ],
+    "value_base": 50,
+    "value_modifiers": {},
+    "lore": "Standard healing draught, brewed by temple herbalists. The recipe hasn't changed in centuries.",
+    "found_in": ["accord_market_square", "millhaven_inn"]
+  },
+  {
+    "id": "hollow_ward_charm",
+    "name": "Hollow Ward Charm",
+    "tier": 1,
+    "type": "accessory",
+    "rarity": "uncommon",
+    "description": "A small carved bone pendant on a leather cord. It's warm to the touch, always, regardless of temperature. When Hollow creatures are near, it vibrates faintly against your chest.",
+    "tags": ["hollow", "protection", "accessory"],
+    "weight": 0.1,
+    "effects": [
+      {
+        "type": "passive_detect",
+        "trigger": "near_hollow",
+        "description": "Vibrates faintly when Hollow creatures are within earshot"
+      }
+    ],
+    "value_base": 75,
+    "value_modifiers": {},
+    "lore": "Carved from the rib bone of a creature that survived exposure to the Hollow. Elder Yanna's grandmother made these — most people thought she was superstitious. Most people were wrong.",
+    "found_in": ["millhaven"]
+  },
+  {
+    "id": "millhaven_provisions",
+    "name": "Millhaven Provisions",
+    "tier": 1,
+    "type": "consumable",
+    "rarity": "common",
+    "description": "A cloth bundle of dried meat, hard bread, and a small flask of clear spirits. Simple food, given with gratitude.",
+    "tags": ["food", "consumable", "gift"],
+    "weight": 1.0,
+    "effects": [
+      {
+        "type": "rest_bonus",
+        "description": "Provides comfort during a short rest"
+      }
+    ],
+    "value_base": 5,
+    "value_modifiers": {},
+    "lore": "Provisions from Millhaven's stores. Not fancy, but given freely — which in a town this scared means something.",
+    "found_in": ["millhaven"]
   }
 ]

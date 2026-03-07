@@ -14,6 +14,9 @@ VOICES: dict[str, str] = {
     "COMPANION_KAEL": os.getenv("INWORLD_VOICE_KAEL", ""),
     "ELDER_YANNA": os.getenv("INWORLD_VOICE_YANNA", ""),
     "SCHOLAR_EMRIS": os.getenv("INWORLD_VOICE_EMRIS", ""),
+    "WOUNDED_RIDER": os.getenv("INWORLD_VOICE_RIDER", ""),
+    "INNKEEPER_MAREN": os.getenv("INWORLD_VOICE_MAREN", ""),
+    "FACTION_VALDRIS": os.getenv("INWORLD_VOICE_VALDRIS", ""),
 }
 
 DEFAULT_VOICE = "DM_NARRATOR"
@@ -24,6 +27,9 @@ DEFAULT_VOICE = "DM_NARRATOR"
 VOICE_RATE_OFFSETS: dict[str, float] = {
     "GUILDMASTER_TORIN": 0.15,
     "COMPANION_KAEL": -0.05,
+    "WOUNDED_RIDER": 0.20,
+    "INNKEEPER_MAREN": 0.05,
+    "FACTION_VALDRIS": -0.10,
 }
 
 EMOTION_RATES: dict[str, float] = {

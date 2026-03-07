@@ -674,3 +674,24 @@ async def save_session_summary(
         session_id,
         json.dumps(summary_data),
     )
+
+
+async def get_last_session_summary(
+    player_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> dict | None:
+    """Return the most recent session summary for a player, or None."""
+    _conn = conn or await get_pool()
+    row = await _conn.fetchrow(
+        """
+        SELECT data FROM session_summaries
+        WHERE player_id = $1
+        ORDER BY created_at DESC
+        LIMIT 1
+        """,
+        player_id,
+    )
+    if row is None:
+        return None
+    return json.loads(row["data"])

@@ -88,6 +88,63 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
                 f"NPC '{row['id']}' has only {tier_count} knowledge tier(s), expected >= 2"
             )
 
+    # Cross-reference: encounter IDs in quest completion_conditions
+    encounter_rows = await conn.fetch("SELECT id FROM encounter_templates")
+    encounter_ids = {row["id"] for row in encounter_rows}
+
+    item_rows = await conn.fetch("SELECT id FROM items")
+    item_ids = {row["id"] for row in item_rows}
+
+    npc_ids = {row["id"] for row in npc_rows}
+
+    effect_npc_map = {
+        "torin": "guildmaster_torin", "yanna": "elder_yanna",
+        "emris": "scholar_emris", "companion": "companion_kael",
+    }
+
+    quest_rows = await conn.fetch("SELECT id, data FROM quests")
+    for row in quest_rows:
+        data = json.loads(row["data"])
+        for stage in data.get("stages", []):
+            # Check encounter references
+            cc = stage.get("completion_conditions", {})
+            encounter_ref = cc.get("encounter")
+            if encounter_ref and encounter_ref not in encounter_ids:
+                errors.append(
+                    f"Quest '{row['id']}' stage '{stage.get('id', '?')}' references "
+                    f"unknown encounter '{encounter_ref}'"
+                )
+
+            # Check item references in completion_conditions
+            for item_ref in cc.get("items", []):
+                if item_ref not in item_ids:
+                    errors.append(
+                        f"Quest '{row['id']}' stage '{stage.get('id', '?')}' references "
+                        f"unknown item '{item_ref}' in completion_conditions"
+                    )
+
+            # Check item references in rewards
+            on_complete = stage.get("on_complete", {})
+            for reward in on_complete.get("rewards", []):
+                reward_item = reward.get("item") or reward.get("item_id")
+                if reward_item and reward_item not in item_ids:
+                    errors.append(
+                        f"Quest '{row['id']}' stage '{stage.get('id', '?')}' references "
+                        f"unknown reward item '{reward_item}'"
+                    )
+
+            # Check NPC shorthand in world_effects
+            for effect in on_complete.get("world_effects", []):
+                m = re.match(r"^(\w+)_disposition\s*[+-]\d+$", effect)
+                if m:
+                    shorthand = m.group(1)
+                    resolved = effect_npc_map.get(shorthand, shorthand)
+                    if resolved not in npc_ids:
+                        errors.append(
+                            f"Quest '{row['id']}' world_effect '{effect}' references "
+                            f"unknown NPC '{resolved}'"
+                        )
+
     return errors
 
 

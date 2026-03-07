@@ -220,5 +220,140 @@
         }
       ]
     }
+  },
+  {
+    "id": "wounded_rider",
+    "name": "Wounded Rider",
+    "tier": 1,
+    "role": "scene catalyst, messenger",
+    "species": "human",
+    "gender": "male",
+    "age": "mid 20s",
+    "appearance": "dust-caked, one arm in a crude sling, bloodshot eyes, a horse that looks worse than he does",
+    "personality": ["desperate", "exhausted", "urgent", "scared beneath the bravado"],
+    "speech_style": "fast, breathless, swallows words, repeats key phrases as if convincing himself they're true",
+    "mannerisms": ["winces when he moves his arm", "keeps looking north as if expecting pursuit"],
+    "backstory_summary": "A messenger from a northern farmstead who rode hard to reach the Accord. He's seen Hollow creatures for the first time and barely escaped. He's looking for the guild, anyone with authority, anyone who will listen.",
+    "knowledge": {
+      "free": [
+        "Hollow creatures spotted near Greyvale — at least a dozen sightings in the last week",
+        "Millhaven is the closest settlement and people are terrified",
+        "the old ruins north of Millhaven have been glowing at night"
+      ],
+      "disposition >= friendly": [
+        "three farms have been abandoned already",
+        "one farmer went to the ruins and came back wrong — won't speak, barely eats"
+      ]
+    },
+    "schedule": {
+      "00:00-23:59": "accord_market_square"
+    },
+    "default_disposition": "neutral",
+    "disposition_modifiers": {
+      "offered_help": 2,
+      "dismissed_report": -3
+    },
+    "inventory_pool": null,
+    "secrets": [],
+    "faction": "independent",
+    "voice_id": "WOUNDED_RIDER",
+    "voice_notes": "young, strained, breathless, voice cracks under pressure"
+  },
+  {
+    "id": "innkeeper_maren",
+    "name": "Maren",
+    "tier": 1,
+    "role": "innkeeper, local information source",
+    "species": "human",
+    "gender": "female",
+    "age": "early 40s",
+    "appearance": "strong arms, flour-dusted apron, dark circles under sharp eyes, hair pinned back with a wooden stick",
+    "personality": ["wary", "observant", "protective of regulars", "practical", "hides worry behind work"],
+    "speech_style": "clipped and efficient, asks questions instead of answering them, warms up slowly, northern dialect — dropped articles, blunt phrasing",
+    "mannerisms": ["wipes the same spot on the bar when thinking", "lowers voice when saying anything she considers important"],
+    "backstory_summary": "Runs the only inn in Millhaven. Knows everyone's business because they all drink here. Has watched the town empty out over the past two weeks. Won't leave — the inn is everything she has.",
+    "knowledge": {
+      "free": [
+        "trade caravans have stopped coming from the north",
+        "several families packed up and headed south last week",
+        "the inn used to be full every night — now it's her and the old regulars"
+      ],
+      "disposition >= friendly": [
+        "Aldric went north to the ruins three weeks ago — came back, but not right",
+        "he sits in the corner booth every night now, won't touch his food, won't speak",
+        "Elder Yanna's been going to his house every morning — won't say why"
+      ],
+      "disposition >= trusted": [
+        "Maren found scratches on the inn door one morning — not animal scratches, too regular, like notation",
+        "she thinks Aldric brought something back from the ruins"
+      ]
+    },
+    "schedule": {
+      "06:00-23:00": "millhaven_inn",
+      "23:00-06:00": "millhaven_inn"
+    },
+    "default_disposition": "wary",
+    "disposition_modifiers": {
+      "bought_drinks": 1,
+      "showed_guild_contract": 2,
+      "threatened_local": -4,
+      "helped_townsfolk": 2
+    },
+    "inventory_pool": null,
+    "secrets": [
+      "she's been watering down the spirits to make them last — supply runs have stopped"
+    ],
+    "faction": "independent",
+    "voice_id": "INNKEEPER_MAREN",
+    "voice_notes": "alto, brisk, northern accent, softens when talking about people she cares about"
+  },
+  {
+    "id": "faction_investigator_valdris",
+    "name": "Investigator Valdris",
+    "tier": 1,
+    "role": "faction representative, political pressure",
+    "species": "human",
+    "gender": "male",
+    "age": "late 40s",
+    "appearance": "immaculate dark coat, silver clasp at the collar bearing a temple insignia, manicured hands, eyes that miss nothing",
+    "personality": ["formal", "calculating", "genuinely curious beneath the politics", "represents interests he doesn't fully agree with"],
+    "speech_style": "precise, measured, never uses two words where one will do, occasionally lets genuine interest crack through the official facade",
+    "mannerisms": ["adjusts his silver clasp when about to say something important", "tilts his head slightly when genuinely listening versus performing attention"],
+    "backstory_summary": "Sent by the temple authorities to assess the Greyvale situation — and, unofficially, to determine whether the guild's response was appropriate or an overreach. He's caught between institutional politics and the growing suspicion that the Hollow threat is worse than anyone is admitting.",
+    "knowledge": {
+      "free": [
+        "he represents the temple's interest in the Greyvale matter",
+        "he's here to assess what happened and write a report"
+      ],
+      "disposition >= friendly": [
+        "the temple is concerned about the guild taking unilateral action in Greyvale",
+        "there are factions within the temple who want the Hollow threat minimized in official records",
+        "his report will determine whether the guild keeps its northern contracts"
+      ],
+      "disposition >= trusted": [
+        "he personally believes the Hollow threat is real and underreported",
+        "he's seen classified reports that suggest Greyvale isn't the only site with anomalous activity",
+        "he's willing to write a favorable report if the evidence is compelling"
+      ]
+    },
+    "schedule": {
+      "08:00-20:00": "accord_guild_hall",
+      "20:00-08:00": "accord_dockside"
+    },
+    "default_disposition": "neutral",
+    "disposition_modifiers": {
+      "presented_evidence": 3,
+      "lied_about_findings": -4,
+      "showed_artifact": 2,
+      "mentioned_temple_corruption": -2,
+      "professional_demeanor": 1
+    },
+    "inventory_pool": null,
+    "secrets": [
+      "he's been ordered to suppress any mention of Aelindran connections in his report — and he's not sure he will"
+    ],
+    "faction": "temple_authority",
+    "voice_id": "FACTION_VALDRIS",
+    "voice_notes": "baritone, precise enunciation, slight pause before important words, occasionally drops the formal register when surprised"
   }
 ]

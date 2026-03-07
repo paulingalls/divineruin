@@ -20,7 +20,14 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("divineruin.background")
 
-REBUILD_EVENT_TYPES = {"location_changed", "quest_updated", "disposition_changed", "combat_started", "combat_ended"}
+REBUILD_EVENT_TYPES = {
+    "location_changed",
+    "quest_updated",
+    "disposition_changed",
+    "combat_started",
+    "combat_ended",
+    "hollow_corruption_changed",
+}
 
 MEETING_LOCATIONS = {"accord_market_square", "accord_dockside"}
 
@@ -42,6 +49,57 @@ I should have... I used to not hesitate."
 He doesn't explain further unless asked. If the player asks, he says he used to be \
 a caravan guard. Doesn't elaborate on what happened.\
 """
+
+RIDER_SCENE_INSTRUCTIONS = """\
+A commotion at the edge of the market. A rider — young, dust-caked, one arm in a crude \
+sling — stumbles from a horse that looks half-dead. He's desperate, scanning the crowd \
+for anyone who looks like they could help. He grabs the nearest person: "The guild — \
+where's the guild hall? I need to report — Hollow creatures, north of here, near \
+Greyvale. Millhaven's in danger."
+
+Narrate this scene. The rider is panicked, exhausted. Use [WOUNDED_RIDER, urgent] for \
+his dialogue. He doesn't know the player — he's talking to anyone who'll listen. If \
+the player approaches or responds, the rider latches onto them as someone who might \
+actually do something. He gives his report: Hollow sightings, Millhaven scared, the \
+old ruins glowing at night. Then he needs to sit down — he's been riding for hours.
+
+End with the rider's information hanging in the air. Don't push the player toward the \
+guild hall. Let them decide what to do with this.\
+"""
+
+GOD_WHISPER_INSTRUCTIONS = """\
+Something shifts. The air thickens. Sound stops — not fades, stops, as if the world \
+has held its breath. For a heartbeat, everything is impossibly still.
+
+Then a presence. Not a voice yet, but a weight — ancient, immense, weary. It notices \
+you the way a mountain notices an ant: not with contempt, but with the vast indifference \
+of scale.
+
+Two sentences from the god. Short. Weighted. Ancient perspective. Something about what \
+you've found, what it means, what's coming. Then silence returns like a wave breaking, \
+and the world resumes as if nothing happened.
+
+Use your DM narrator voice — no character tags. This is environmental narration of \
+something beyond mortal. The companion does NOT react during this moment. After the \
+silence breaks, Kael looks shaken but says nothing unless the player speaks first.\
+"""
+
+CORRUPTION_COMPANION_SPEECH: dict[int, str] = {
+    1: (
+        "Kael tenses and looks around slowly. Have him make one quiet observation: "
+        "something about the silence, the wrongness, how the air feels different. "
+        "One sentence. Use [COMPANION_KAEL, uneasy] tag."
+    ),
+    2: (
+        "Kael is visibly on edge. Have him react to the corruption — something about sounds "
+        "coming from wrong directions, distances feeling off. Shorter sentence. More tense. "
+        "Use [COMPANION_KAEL, nervous] tag."
+    ),
+    3: (
+        "Kael is deeply unsettled. One short, urgent sentence. He doesn't elaborate — "
+        "just names what he's feeling. Use [COMPANION_KAEL, urgent] tag."
+    ),
+}
 
 GUIDANCE_LEVEL_2_SECS = 35.0
 COMPANION_IDLE_SECS = 45.0
@@ -80,6 +138,7 @@ class BackgroundProcess:
         self._quest_cache: list[dict] = []
         self._meeting_triggered: bool = False
         self._meeting_pending: bool = False
+        self._rider_triggered: bool = False
         self._last_static_key: tuple[str, bool] | None = None
         self._cached_static: str = ""
 
@@ -136,6 +195,22 @@ class BackgroundProcess:
                     self._queue_speech(
                         SpeechPriority.CRITICAL,
                         MEETING_SCENE_INSTRUCTIONS,
+                    )
+                    continue
+
+                # Check for rider scene trigger (first session, no active quest, at market)
+                # Skip if meeting scene fires or companion already present
+                if (
+                    not self._rider_triggered
+                    and not self._meeting_triggered
+                    and not self._sd.has_companion
+                    and new_loc == "accord_market_square"
+                    and not self._quest_cache
+                ):
+                    self._rider_triggered = True
+                    self._queue_speech(
+                        SpeechPriority.CRITICAL,
+                        RIDER_SCENE_INSTRUCTIONS,
                     )
                     continue
 
@@ -219,6 +294,21 @@ class BackgroundProcess:
                         SpeechPriority.ROUTINE,
                         f"Kael {reaction} of the player's interaction with {npc_name}. "
                         f"One sentence. Use [COMPANION_KAEL, {companion.emotional_state}] tag.",
+                    )
+
+            elif ev.event_type == "hollow_corruption_changed":
+                level = ev.payload.get("level", 0)
+                if level > 0 and can_act and companion:
+                    speech = CORRUPTION_COMPANION_SPEECH.get(level)
+                    if speech:
+                        self._queue_speech(SpeechPriority.IMPORTANT, speech)
+
+            elif ev.event_type == "world_event":
+                event_id = ev.payload.get("event_id", "")
+                if event_id.startswith("god_whisper"):
+                    self._queue_speech(
+                        SpeechPriority.CRITICAL,
+                        GOD_WHISPER_INSTRUCTIONS,
                     )
 
         return needs_rebuild
@@ -348,6 +438,7 @@ class BackgroundProcess:
                 combat_state=self._sd.combat_state,
                 companion=self._sd.companion,
                 quests=self._quest_cache or None,
+                corruption_level=self._sd.corruption_level,
             )
         except Exception:
             logger.warning("Warm layer build failed", exc_info=True)
