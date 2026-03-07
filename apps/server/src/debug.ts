@@ -89,6 +89,19 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
   .status.ok { color: var(--hollow); background: rgba(45,212,191,0.1); }
   .status.err { color: var(--ember); background: rgba(194,65,12,0.1); }
 
+  .nav {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; flex-wrap: wrap; gap: 4px;
+    padding: 8px 10px; margin-bottom: 12px;
+    background: var(--ink); border: 1px solid var(--slate); border-radius: 6px;
+  }
+  .nav a {
+    color: var(--ash); font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+    text-decoration: none; padding: 3px 6px; border-radius: 3px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .nav a:hover { color: var(--hollow); background: var(--charcoal); }
+
   .btn {
     background: var(--charcoal); color: var(--bone); border: 1px solid var(--slate);
     padding: 6px 12px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 12px;
@@ -135,19 +148,55 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
   <span id="status" class="status"></span>
 </div>
 
-<div class="section">
+<nav class="nav">
+  <a href="#sec-session">Session</a>
+  <a href="#sec-creation">Creation</a>
+  <a href="#sec-combat">Combat</a>
+  <a href="#sec-items">Items</a>
+  <a href="#sec-inventory">Inventory</a>
+  <a href="#sec-quest">Quest</a>
+  <a href="#sec-status">Status</a>
+  <a href="#sec-divine">Divine</a>
+  <a href="#sec-music">Music</a>
+  <a href="#sec-sound">Sound</a>
+  <a href="#sec-transcript">Transcript</a>
+  <a href="#sec-narration">Narration</a>
+  <a href="#sec-custom">Custom</a>
+</nav>
+
+<div class="section" id="sec-session">
+  <h2>Session Lifecycle</h2>
+  <div class="grid">
+    <button class="btn" onclick="send({type:'session_init',character:{name:'Kael',race:'Human',class:'Warden',level:3,xp:450,hp:{current:24,max:30},attributes:{strength:14,dexterity:12,constitution:13,intelligence:10,wisdom:15,charisma:8},ac:16,proficiencies:['athletics','perception','survival'],equipment:{main_hand:{name:'Iron Longsword',damage:'1d8+2'},armor:{name:'Chain Mail',ac:16},shield:null},gold:47,divine_favor:{patron:'Solwyn',level:12,max:100}},location:{id:'greyvale_market',name:'Market Square',atmosphere:'Busy stalls and the smell of roasting chestnuts.',region:'Greyvale',exits:{north:{destination:'greyvale_gate'},south:{destination:'greyvale_docks'},east:{destination:'greyvale_tavern'}}},inventory:[{id:'item_1',name:'Iron Longsword',type:'weapon',rarity:'common',description:'A sturdy blade.',weight:3,effects:[],lore:'',value_base:15,slot_info:{quantity:1,equipped:true}},{id:'item_2',name:'Healing Potion',type:'consumable',rarity:'uncommon',description:'Restores 2d4+2 HP.',weight:0.5,effects:[{heal:'2d4+2'}],lore:'',value_base:50,slot_info:{quantity:2,equipped:false}},{id:'item_3',name:'Hollow-Touched Compass',type:'trinket',rarity:'rare',description:'The needle drifts toward corruption.',weight:0.1,effects:[],lore:'Found in the old mill ruins.',value_base:120,slot_info:{quantity:1,equipped:false}}],quests:[{quest_id:'q_greyvale_anomaly',quest_name:'The Greyvale Anomaly',type:'main',current_stage:1,stages:[{id:'s0',name:'Discovery',objective:'Investigate the strange lights near the old mill.'},{id:'s1',name:'The Source',objective:'Find the source of corruption in the mill basement.'},{id:'s2',name:'Confrontation',objective:'Defeat or seal the Hollow rift.'}]}],map_progress:[{location_id:'greyvale_market',connections:['greyvale_gate','greyvale_docks','greyvale_tavern']},{location_id:'greyvale_tavern',connections:['greyvale_market']}]})">Session Init (Full)</button>
+    <button class="btn" onclick="send({type:'session_end',summary:'You defended the market from a goblin raid and discovered a lead on the Hollow rift beneath the old mill. Maren the Innkeeper offered shelter and information.',xp_earned:175,items_found:['Hollow-Touched Compass','Healing Potion'],quest_progress:['The Greyvale Anomaly: advanced to The Source'],duration:2700,next_hooks:['The mill basement awaits','Maren mentioned a missing merchant']})">Session End (Summary)</button>
+    <button class="btn" onclick="send({type:'session_end'})">Session End (No Summary)</button>
+  </div>
+</div>
+
+<div class="section" id="sec-creation">
+  <h2>Character Creation</h2>
+  <div class="grid">
+    <button class="btn" onclick="send({type:'creation_cards',cards:[{id:'race_human',title:'Human',subtitle:'Versatile and ambitious',description:'Humans adapt to any situation. +1 to all attributes.',image_hint:'human_portrait'},{id:'race_elf',title:'Elf',subtitle:'Ancient and perceptive',description:'Elves possess keen senses and a deep connection to nature. +2 Dexterity, +1 Wisdom.',image_hint:'elf_portrait'},{id:'race_dwarf',title:'Dwarf',subtitle:'Stout and resilient',description:'Dwarves are tough and steadfast. +2 Constitution, +1 Strength.',image_hint:'dwarf_portrait'},{id:'race_halfling',title:'Halfling',subtitle:'Lucky and nimble',description:'Halflings are quick on their feet and hard to hit. +2 Dexterity, +1 Charisma.',image_hint:'halfling_portrait'}]})">Race Cards</button>
+    <button class="btn" onclick="send({type:'creation_cards',cards:[{id:'class_warden',title:'Warden',subtitle:'Guardian of the wild',description:'Wardens blend martial skill with nature magic. Heavy armor, melee focus, healing prayers.'},{id:'class_shadowbind',title:'Shadowbind',subtitle:'Master of stealth',description:'Shadowbinds strike from darkness. Light armor, dual wield, evasion, critical hits.'},{id:'class_faithsworn',title:'Faithsworn',subtitle:'Divine champion',description:'Faithsworn channel their deity. Medium armor, divine spells, turn undead, smite.'}]})">Class Cards</button>
+    <button class="btn" onclick="send({type:'creation_card_selected',value:'race_human'})">Select Card (Human)</button>
+    <button class="btn" onclick="send({type:'creation_card_selected',value:'class_warden'})">Select Card (Warden)</button>
+  </div>
+</div>
+
+<div class="section" id="sec-combat">
   <h2>Dice &amp; Combat</h2>
   <div class="grid">
     <button class="btn" onclick="send({type:'dice_result',roll:14,modifier:2,total:16,success:true,roll_type:'skill_check',narrative:'The lock clicks open beneath your nimble fingers.'})">Skill Check Success</button>
     <button class="btn" onclick="send({type:'dice_result',roll:3,modifier:2,total:5,success:false,roll_type:'skill_check',narrative:'The mechanism jams — your pick snaps inside the lock.'})">Skill Check Failure</button>
     <button class="btn" onclick="send({type:'dice_result',roll:20,modifier:4,total:24,success:true,roll_type:'attack',narrative:'A devastating blow! The blade finds the gap in its armor.'})">Critical Hit (Nat 20)</button>
-    <button class="btn" onclick="send({type:'combat_started'})">Combat Start</button>
+    <button class="btn" onclick="send({type:'combat_started',difficulty:'moderate'})">Combat Start (Moderate)</button>
+    <button class="btn" onclick="send({type:'combat_started',difficulty:'hard'})">Combat Start (Hard)</button>
     <button class="btn" onclick="send({type:'combat_ui_update',phase:'player_turn',round:2,combatants:[{id:'c1',name:'Kael',isAlly:true,hpCurrent:24,hpMax:30,statusEffects:[],isActive:true},{id:'c2',name:'Goblin Scout',isAlly:false,hpCurrent:8,hpMax:12,statusEffects:[],isActive:false},{id:'c3',name:'Goblin Shaman',isAlly:false,hpCurrent:15,hpMax:18,statusEffects:['shield'],isActive:false}]})">Combat UI Update</button>
     <button class="btn" onclick="send({type:'combat_ended'})">Combat End (Victory)</button>
   </div>
 </div>
 
-<div class="section">
+<div class="section" id="sec-items">
   <h2>Items &amp; Rewards</h2>
   <div class="grid">
     <button class="btn" onclick="send({type:'item_acquired',name:'Rusty Dagger',description:'A pitted blade, barely holding its edge.',rarity:'common',stats:{damage:'1d4'}})">Common Item</button>
@@ -159,7 +208,15 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
   </div>
 </div>
 
-<div class="section">
+<div class="section" id="sec-inventory">
+  <h2>Inventory Sync</h2>
+  <div class="grid">
+    <button class="btn" onclick="send({type:'inventory_updated',inventory:[{id:'item_1',name:'Iron Longsword',type:'weapon',rarity:'common',description:'A sturdy blade.',weight:3,effects:[],lore:'',value_base:15,slot_info:{quantity:1,equipped:true}},{id:'item_2',name:'Healing Potion',type:'consumable',rarity:'uncommon',description:'Restores 2d4+2 HP.',weight:0.5,effects:[{heal:'2d4+2'}],lore:'',value_base:50,slot_info:{quantity:2,equipped:false}},{id:'item_3',name:'Hollow-Touched Compass',type:'trinket',rarity:'rare',description:'The needle drifts toward corruption.',weight:0.1,effects:[],lore:'Found in the old mill ruins.',value_base:120,slot_info:{quantity:1,equipped:false}}]})">Full Inventory Update</button>
+    <button class="btn" onclick="send({type:'inventory_updated',inventory:[]})">Empty Inventory</button>
+  </div>
+</div>
+
+<div class="section" id="sec-quest">
   <h2>Quest &amp; Location</h2>
   <div class="grid">
     <button class="btn" onclick="send({type:'quest_update',quest_name:'The Greyvale Anomaly',objective:'Investigate the strange lights near the old mill.',status:'active',stage_name:'Discovery'})">Quest Update</button>
@@ -169,7 +226,7 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
   </div>
 </div>
 
-<div class="section">
+<div class="section" id="sec-status">
   <h2>Status &amp; HP</h2>
   <div class="grid">
     <button class="btn" onclick="send({type:'status_effect',action:'add',effect_id:'blessed_1',name:'Blessed',category:'buff'})">Add Buff (Blessed)</button>
@@ -181,7 +238,35 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
   </div>
 </div>
 
-<div class="section">
+<div class="section" id="sec-divine">
+  <h2>Divine &amp; Corruption</h2>
+  <div class="grid">
+    <button class="btn" onclick="send({type:'divine_favor_changed',amount:10,patron_id:'solwyn',new_level:22,max:100})">Divine Favor +10 (Solwyn)</button>
+    <button class="btn" onclick="send({type:'divine_favor_changed',amount:25,patron_id:'kaelthos',new_level:50,max:100})">Divine Favor +25 (Kaelthos)</button>
+    <button class="btn" onclick="send({type:'divine_favor_changed',amount:0,patron_id:'solwyn',new_level:5,max:100})">Divine Favor Lost</button>
+    <button class="btn small" onclick="send({type:'hollow_corruption_changed',level:0})">Corruption 0 (Clean)</button>
+    <button class="btn small" onclick="send({type:'hollow_corruption_changed',level:1})">Corruption 1 (Touched)</button>
+    <button class="btn small" onclick="send({type:'hollow_corruption_changed',level:2})">Corruption 2 (Tainted)</button>
+    <button class="btn small" onclick="send({type:'hollow_corruption_changed',level:3})">Corruption 3 (Consumed)</button>
+  </div>
+</div>
+
+<div class="section" id="sec-music">
+  <h2>Music</h2>
+  <div class="grid">
+    <button class="btn small" onclick="send({type:'set_music_state',music_state:'exploration'})">exploration</button>
+    <button class="btn small" onclick="send({type:'set_music_state',music_state:'tension'})">tension</button>
+    <button class="btn small" onclick="send({type:'set_music_state',music_state:'combat_standard'})">combat_standard</button>
+    <button class="btn small" onclick="send({type:'set_music_state',music_state:'combat_boss'})">combat_boss</button>
+    <button class="btn small" onclick="send({type:'set_music_state',music_state:'wonder'})">wonder</button>
+    <button class="btn small" onclick="send({type:'set_music_state',music_state:'sorrow'})">sorrow</button>
+    <button class="btn small" onclick="send({type:'set_music_state',music_state:'hollow_dissolution'})">hollow_dissolution</button>
+    <button class="btn small" onclick="send({type:'set_music_state',music_state:'silence'})">silence</button>
+    <button class="btn small" onclick="send({type:'set_music_state',music_state:'title'})">title</button>
+  </div>
+</div>
+
+<div class="section" id="sec-sound">
   <h2>Sound Effects</h2>
   <div class="grid">
     <button class="btn small" onclick="send({type:'play_sound',sound_name:'dice_roll'})">dice_roll</button>
@@ -196,7 +281,25 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
   </div>
 </div>
 
-<div class="section">
+<div class="section" id="sec-transcript">
+  <h2>Transcript</h2>
+  <div class="grid">
+    <button class="btn" onclick="send({type:'transcript_entry',speaker:'dm',text:'The cobblestones glisten with rain as you step into the market square. The scent of wet wool and roasting meat hangs in the air.',timestamp:Date.now()/1000})">DM Narration</button>
+    <button class="btn" onclick="send({type:'transcript_entry',speaker:'npc',character:'Maren the Innkeeper',emotion:'warm',text:'Welcome back, traveler. Your usual table is free — and I have news about that merchant you were asking after.',timestamp:Date.now()/1000})">NPC Dialogue</button>
+    <button class="btn" onclick="send({type:'transcript_entry',speaker:'player',character:'Kael',text:'I want to check the old mill before nightfall.',timestamp:Date.now()/1000})">Player Speech</button>
+    <button class="btn" onclick="send({type:'transcript_entry',speaker:'tool',text:'Perception check: rolled 14 + 3 (modifier) = 17. Success — you notice faint scratch marks on the cellar door.',timestamp:Date.now()/1000})">Tool Result</button>
+  </div>
+</div>
+
+<div class="section" id="sec-narration">
+  <h2>Narration</h2>
+  <div class="grid">
+    <button class="btn" onclick="send({type:'play_narration',url:'/api/audio/narration/sample_001.mp3'})">Play Narration (sample)</button>
+    <button class="btn" onclick="send({type:'play_narration',url:'/api/audio/narration/intro.mp3'})">Play Narration (intro)</button>
+  </div>
+</div>
+
+<div class="section" id="sec-custom">
   <h2>Custom Event</h2>
   <div class="custom-area">
     <textarea id="custom">{ "type": "dice_result", "roll": 17, "modifier": 3, "total": 20, "success": true, "roll_type": "attack", "narrative": "Your arrow finds its mark." }</textarea>

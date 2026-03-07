@@ -12,10 +12,11 @@ function eventRequest(body: Record<string, unknown>): Request {
 }
 
 describe("handleDebugRooms", () => {
-  test("returns response (rooms or error depending on connectivity)", async () => {
+  test("returns empty room list from mock", async () => {
     const res = await handleDebugRooms();
-    // With dummy credentials, this will likely fail to connect — but should not crash
-    expect([200, 500]).toContain(res.status);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as unknown[];
+    expect(body).toEqual([]);
   });
 });
 
@@ -48,6 +49,56 @@ describe("handleDebugPage", () => {
     expect(html).toContain("item_acquired");
     expect(html).toContain("/api/debug/rooms");
     expect(html).toContain("/api/debug/event");
+  });
+
+  test("HTML contains all new event types", async () => {
+    const res = handleDebugPage();
+    const html = await res.text();
+    const requiredEventTypes = [
+      "session_init",
+      "session_end",
+      "set_music_state",
+      "transcript_entry",
+      "creation_cards",
+      "creation_card_selected",
+      "divine_favor_changed",
+      "hollow_corruption_changed",
+      "play_narration",
+      "inventory_updated",
+    ];
+    for (const eventType of requiredEventTypes) {
+      expect(html).toContain(eventType);
+    }
+  });
+
+  test("combat_started payloads include difficulty", async () => {
+    const res = handleDebugPage();
+    const html = await res.text();
+    expect(html).toContain("difficulty:'moderate'");
+    expect(html).toContain("difficulty:'hard'");
+  });
+
+  test("HTML contains navigation anchor IDs", async () => {
+    const res = handleDebugPage();
+    const html = await res.text();
+    const sectionIds = [
+      "sec-session",
+      "sec-creation",
+      "sec-combat",
+      "sec-items",
+      "sec-inventory",
+      "sec-quest",
+      "sec-status",
+      "sec-divine",
+      "sec-music",
+      "sec-sound",
+      "sec-transcript",
+      "sec-narration",
+      "sec-custom",
+    ];
+    for (const id of sectionIds) {
+      expect(html).toContain(`id="${id}"`);
+    }
   });
 
   test("includes security headers", () => {

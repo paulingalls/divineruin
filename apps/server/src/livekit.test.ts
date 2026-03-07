@@ -51,8 +51,10 @@ describe("handleLivekitToken", () => {
       tokenRequest({ room_name: "room-42_test" }),
       "player_1-abc",
     );
-    // Should not be a 400 — will be 500 since roomService connects to dummy URL,
-    // or succeed if room creation is swallowed. Either way, not a validation error.
-    expect(res.status).not.toBe(400);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { token: string; room_name: string; url: string };
+    expect(body.token).toBe("mock-jwt-token");
+    expect(body.room_name).toBe("room-42_test");
+    expect(body.url).toBe("wss://test.livekit.cloud");
   });
 });
