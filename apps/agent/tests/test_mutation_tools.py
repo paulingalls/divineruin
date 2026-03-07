@@ -525,7 +525,8 @@ class TestMovePlayer:
         ctx = _make_context()
         result = json.loads(await move_player._func(ctx, destination_id="accord_temple"))
         assert result["blocked"] is True
-        assert "requires" in result
+        assert "message" in result
+        assert "requires" not in result  # raw requirement strings must not be exposed
 
     @pytest.mark.asyncio
     @patch("tools.db.get_player", new_callable=AsyncMock)

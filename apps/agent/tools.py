@@ -1006,7 +1006,7 @@ async def _apply_world_effects(
         if m:
             delta = int(m.group(1))
             previous = session.corruption_level
-            session.corruption_level = max(0, session.corruption_level + delta)
+            session.corruption_level = max(0, min(3, session.corruption_level + delta))
             pending_events.append(
                 (
                     "hollow_corruption_changed",
@@ -1075,12 +1075,16 @@ async def move_player(
         requirement = exit_entry["requires"]
         allowed = await _check_exit_requirement(requirement, session.player_id)
         if not allowed:
+            # Return a narrative hint — do NOT expose raw flag names or DCs to the LLM
+            hint = exit_entry.get(
+                "blocked_hint",
+                "Something prevents passage. The player needs to discover or overcome an obstacle first.",
+            )
             return json.dumps(
                 {
                     "blocked": True,
                     "destination": destination_id,
-                    "requires": requirement,
-                    "message": "This exit is blocked. A condition must be met first.",
+                    "message": hint,
                 }
             )
 
@@ -1116,11 +1120,12 @@ async def move_player(
     # Session state updated ONLY after successful commit
     session.location_id = destination_id
 
-    # Corruption tracking — location-based, resets on safe areas
+    # Corruption tracking — location-based, resets on safe areas.
+    # Updated after commit alongside location_id so both are consistent.
     new_corruption = LOCATION_CORRUPTION.get(destination_id, 0)
-    if new_corruption != session.corruption_level:
-        previous_corruption = session.corruption_level
-        session.corruption_level = new_corruption
+    previous_corruption = session.corruption_level
+    session.corruption_level = new_corruption
+    if new_corruption != previous_corruption:
         pending_events.append(
             (
                 "hollow_corruption_changed",
@@ -1165,6 +1170,8 @@ async def update_quest(
     Stages must advance forward — no skipping or going backward.
     Rewards from the completing stage are automatically applied."""
     logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
+    if err := _validate_id(quest_id, "quest_id"):
+        return err
     session: SessionData = context.userdata
 
     # Cached content read — outside transaction

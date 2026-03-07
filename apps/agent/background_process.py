@@ -138,6 +138,7 @@ class BackgroundProcess:
         self._quest_cache: list[dict] = []
         self._meeting_triggered: bool = False
         self._meeting_pending: bool = False
+        self._meeting_init_task: asyncio.Task | None = None
         self._rider_triggered: bool = False
         self._last_static_key: tuple[str, bool] | None = None
         self._cached_static: str = ""
@@ -147,6 +148,12 @@ class BackgroundProcess:
 
     async def stop(self) -> None:
         self._stop = True
+        if self._meeting_init_task is not None:
+            self._meeting_init_task.cancel()
+            try:
+                await self._meeting_init_task
+            except asyncio.CancelledError:
+                pass
         if self._task is not None:
             self._task.cancel()
             try:
