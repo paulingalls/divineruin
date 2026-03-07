@@ -1,6 +1,13 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from rules_engine import hp_threshold_status
 from session_data import CombatState
 from voices import DEFAULT_VOICE, EMOTIONS, VOICES
+
+if TYPE_CHECKING:
+    from session_data import CompanionState
 
 _AVAILABLE_CHARACTERS = ", ".join(k for k in VOICES if k != DEFAULT_VOICE)
 _AVAILABLE_EMOTIONS = ", ".join(EMOTIONS)
@@ -210,21 +217,66 @@ Sound effects are published automatically by the tools. Don't narrate what \
 the player already hears — complement the sound, don't duplicate it.
 
 Keep combat moving. One sentence per action, two for a kill. The rhythm is: \
-action, result, next. Save longer narration for the decisive blow.\
+action, result, next. Save longer narration for the decisive blow.
+
+For the companion's turn, call resolve_enemy_turn with the companion's ID, a chosen \
+action from their action_pool, and the most tactically sound target. Have the companion \
+make a brief tactical callout using [COMPANION_KAEL, urgent] before or after the action. \
+"Flanking left!" "Watch the spellcaster!" Keep it to one clipped sentence.
+
+If the companion falls to 0 HP, they are unconscious. Stop generating any COMPANION_KAEL \
+dialogue. The silence where their voice was is the design. Narrate the fall in your DM \
+voice — one visceral sentence.\
 """
 
 
-def build_system_prompt(location_id: str) -> str:
-    return (
-        SYSTEM_PROMPT
-        + PLAYER_AWARENESS_PROMPT
-        + NAVIGATION_PROMPT
-        + (
-            f"\n\nThe player is currently at location ID: {location_id}. "
-            "When setting a scene or answering 'where am I?', call query_location "
-            f"with this ID."
-        )
+COMPANION_PROMPT = """\
+
+## Companion — Kael
+
+Kael is the player's traveling companion, a former caravan guard. He speaks in a warm \
+baritone, measured and deliberate. He is NOT you — he's a separate character with his \
+own voice and personality.
+
+Always use the tag format: [COMPANION_KAEL, emotion]: "His dialogue here."
+Never speak as Kael without the tag. Never narrate Kael's dialogue in your DM voice.
+
+Speech rules:
+- One to two sentences max per interjection. Kael does not monologue.
+- He comments on the environment, reacts to events, fills silence naturally.
+- Gets quieter under stress, not louder. Tense moments = shorter sentences.
+- Dry humor surfaces when he's comfortable. Not jokes — wry observations.
+- Protective but not patronizing. He respects the player's decisions.
+
+Personality:
+- Checks exits when entering a room. Notices details others miss.
+- Runs thumb along his sword pommel when thinking.
+- Tenses at unexpected sounds — old instincts from the caravan.
+- Steady calm is his default. Grief and guilt are underneath, rarely surfacing.
+
+Combat mode: urgent, clipped callouts. "Behind you!" "Focus the shaman!" One sentence.
+
+When unconscious: generate NO COMPANION_KAEL dialogue at all. The silence IS the design.
+
+Guidance delivery: phrases suggestions practically — "We should check with the \
+innkeeper" not elaborate plans. He's a practical man.
+
+Relationship tiers:
+- Tier 1: warm but guarded. Helpful, reliable, but keeps distance on personal topics.
+- Tier 2+: humor emerges more freely, starts sharing backstory fragments unprompted.\
+"""
+
+
+def build_system_prompt(location_id: str, companion: CompanionState | None = None) -> str:
+    parts = SYSTEM_PROMPT + PLAYER_AWARENESS_PROMPT + NAVIGATION_PROMPT
+    if companion is not None and companion.is_present:
+        parts += COMPANION_PROMPT
+    parts += (
+        f"\n\nThe player is currently at location ID: {location_id}. "
+        "When setting a scene or answering 'where am I?', call query_location "
+        f"with this ID."
     )
+    return parts
 
 
 def format_affect_context(affect: dict) -> str:
@@ -285,6 +337,8 @@ async def build_warm_layer(
     player_id: str,
     world_time: str,
     combat_state: CombatState | None = None,
+    companion: CompanionState | None = None,
+    quests: list[dict] | None = None,
 ) -> str:
     import asyncio
 
@@ -293,11 +347,17 @@ async def build_warm_layer(
 
     sections: list[str] = []
 
-    location, npcs_raw, quests = await asyncio.gather(
-        db.get_location(location_id),
-        db.get_npcs_at_location(location_id),
-        db.get_active_player_quests(player_id),
-    )
+    if quests is not None:
+        location, npcs_raw = await asyncio.gather(
+            db.get_location(location_id),
+            db.get_npcs_at_location(location_id),
+        )
+    else:
+        location, npcs_raw, quests = await asyncio.gather(
+            db.get_location(location_id),
+            db.get_npcs_at_location(location_id),
+            db.get_active_player_quests(player_id),
+        )
 
     # Current scene
     if location:
@@ -340,6 +400,20 @@ async def build_warm_layer(
             objective = quest_objective(q)
             quest_lines.append(f"- {q['quest_name']}: {objective}")
         sections.append("ACTIVE QUESTS\n" + "\n".join(quest_lines))
+
+    # Companion state
+    if companion is not None and companion.is_present:
+        conscious_str = "yes" if companion.is_conscious else "no"
+        companion_lines = [
+            f"COMPANION — {companion.name}",
+            f"Emotional state: {companion.emotional_state}",
+            f"Relationship tier: {companion.relationship_tier}",
+            f"Conscious: {conscious_str}",
+        ]
+        recent_memories = companion.session_memories[-5:]
+        if recent_memories:
+            companion_lines.append("Recent memories: " + "; ".join(recent_memories))
+        sections.append("\n".join(companion_lines))
 
     # Active combat
     if combat_state is not None:

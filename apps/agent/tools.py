@@ -400,6 +400,8 @@ async def discover_hidden_element(
     if result.success:
         response["outcome"] = "discovered"
         response["description"] = element.get("description", "")
+        loc_name = location.get("name", session.location_id)
+        session.record_companion_memory(f"Discovered {element.get('description', element_id)} at {loc_name}")
     else:
         response["outcome"] = "not_found"
 
@@ -821,6 +823,7 @@ async def update_npc_disposition(
 
     npc_name = npc.get("name", npc_id)
     session.record_event(f"{npc_name} disposition: {current} -> {new_disposition} ({reason})")
+    session.record_companion_memory(f"Player {reason} with {npc_name}")
 
     response = {
         "npc_id": npc_id,
@@ -874,6 +877,7 @@ async def add_to_inventory(
         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
 
     session.record_event(f"Added {quantity}x {item_name} ({source})")
+    session.record_companion_memory(f"Found {item_name}")
 
     response = {
         "action": "added",
@@ -1022,6 +1026,8 @@ async def move_player(
         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
 
     session.record_event(f"Moved to {destination_id}")
+    loc_name = destination_location.get("name", destination_id) if destination_location else destination_id
+    session.record_companion_memory(f"Traveled to {loc_name}")
 
     scene = await _build_scene_context(destination_id, session, location=destination_location)
     if "error" in scene:
@@ -1160,6 +1166,7 @@ async def update_quest(
 
     quest_name = quest.get("name", quest_id)
     session.record_event(f"Quest '{quest_name}' advanced to stage {new_stage_id}")
+    session.record_companion_memory(f"Quest '{quest_name}' progressed to: {new_stage.get('objective', '')}")
 
     response = {
         "quest_id": quest_id,
@@ -1270,6 +1277,23 @@ async def start_combat(
             }
         )
 
+    # Add companion if present and conscious
+    companion_npc = None
+    comp_stats: dict = {}
+    comp_attrs: dict = {}
+    if session.companion_can_act and session.companion:
+        companion_npc = await db.get_npc(session.companion.id)
+        if companion_npc:
+            comp_stats = companion_npc.get("combat_stats", {})
+            comp_attrs = comp_stats.get("attributes", {"strength": 12, "dexterity": 12})
+            initiative_inputs.append(
+                {
+                    "id": session.companion.id,
+                    "name": session.companion.name,
+                    "attributes": comp_attrs,
+                }
+            )
+
     # Roll initiative and build lookup
     initiative_entries = rules_engine.roll_initiative(initiative_inputs)
     initiative_order = [e.participant_id for e in initiative_entries]
@@ -1303,6 +1327,23 @@ async def start_combat(
                 level=enemy.get("level", 1),
                 action_pool=enemy.get("action_pool", []),
                 xp_value=enemy.get("xp_value", 0),
+            )
+        )
+
+    # Add companion participant
+    if companion_npc is not None and session.companion:
+        participants.append(
+            CombatParticipant(
+                id=session.companion.id,
+                name=session.companion.name,
+                type="companion",
+                initiative=initiative_by_id[session.companion.id],
+                hp_current=comp_stats.get("hp", 20),
+                hp_max=comp_stats.get("hp", 20),
+                ac=comp_stats.get("ac", 14),
+                attributes=comp_attrs,
+                level=comp_stats.get("level", 2),
+                action_pool=comp_stats.get("action_pool", []),
             )
         )
 
@@ -1419,6 +1460,10 @@ async def resolve_enemy_turn(
     if target.hp_current <= 0:
         target.is_fallen = True
         sounds.append(SOUND_PLAYER_FALLEN)
+        # Handle companion KO
+        if target.type == "companion" and session.companion and target.id == session.companion.id:
+            session.companion.is_conscious = False
+            session.record_companion_memory("Kael was knocked unconscious in combat")
     elif hp_status in ("bloodied", "critical"):
         sounds.append(SOUND_HEARTBEAT)
 
@@ -1622,6 +1667,9 @@ async def end_combat(
     await _publish_sounds(session, [sound_map[outcome]])
 
     session.record_event(f"Combat ended: {outcome}")
+    if defeated_enemies:
+        loc_name = cs.location_id
+        session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {loc_name}: {outcome}")
 
     response = {
         "outcome": outcome,

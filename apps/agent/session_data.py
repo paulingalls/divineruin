@@ -9,6 +9,19 @@ from livekit import rtc
 from event_bus import EventBus
 
 MAX_RECENT_EVENTS = 20
+MAX_COMPANION_MEMORIES = 20
+
+
+@dataclass
+class CompanionState:
+    id: str
+    name: str
+    is_present: bool = True
+    is_conscious: bool = True
+    emotional_state: str = "steady"
+    relationship_tier: int = 1
+    session_memories: list[str] = field(default_factory=list)
+    last_speech_time: float = 0.0
 
 
 @dataclass
@@ -61,10 +74,26 @@ class SessionData:
     last_agent_speech_end: float = 0.0
     recent_events: deque[str] = field(default_factory=lambda: deque(maxlen=MAX_RECENT_EVENTS))
     attempted_discoveries: set[str] = field(default_factory=set)
+    companion: CompanionState | None = None
 
     @property
     def in_combat(self) -> bool:
         return self.combat_state is not None
 
+    @property
+    def has_companion(self) -> bool:
+        return self.companion is not None and self.companion.is_present
+
+    @property
+    def companion_can_act(self) -> bool:
+        return self.companion is not None and self.companion.is_present and self.companion.is_conscious
+
     def record_event(self, description: str) -> None:
         self.recent_events.append(description)
+
+    def record_companion_memory(self, memory: str) -> None:
+        if self.companion is None:
+            return
+        self.companion.session_memories.append(memory)
+        if len(self.companion.session_memories) > MAX_COMPANION_MEMORIES:
+            self.companion.session_memories = self.companion.session_memories[-MAX_COMPANION_MEMORIES:]

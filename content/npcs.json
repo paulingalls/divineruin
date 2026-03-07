@@ -142,5 +142,83 @@
     "faction": "aelindran_diaspora",
     "voice_id": "emris_v1",
     "voice_notes": "soft, quick, slightly breathless when excited, Elari accent — elongated vowels, precise consonants"
+  },
+  {
+    "id": "companion_kael",
+    "name": "Kael",
+    "tier": 1,
+    "role": "companion, former caravan guard",
+    "species": "human",
+    "gender": "male",
+    "age": "early 30s",
+    "appearance": "broad-shouldered, practical gear worn soft from use, old scars on his forearms, watchful eyes that track exits",
+    "personality": ["steady", "practical", "quietly haunted", "protective", "dry humor when relaxed"],
+    "speech_style": "measured and deliberate, short sentences when tense, warmer when relaxed, occasional dry humor",
+    "mannerisms": ["checks exits when entering a room", "tenses at unexpected sounds", "runs thumb along sword pommel when thinking"],
+    "backstory_summary": "Former caravan guard who lost his company to something on the northern roads. Won't say exactly what happened. Carries guilt about surviving when they didn't. Found his way to the Accord of Tides, drifting without purpose until meeting the player.",
+    "knowledge": {
+      "free": [
+        "dockside gossip and merchant news in the Accord",
+        "caravan routes between major settlements",
+        "basic Hollow creature behavior — how they move, how they sound"
+      ],
+      "disposition >= friendly": [
+        "his caravan company was called the Iron Wheel — twelve guards, four merchants",
+        "they were ambushed on the northern road near the Ashmark border",
+        "he was the only one who made it out"
+      ],
+      "disposition >= trusted": [
+        "he has a journal fragment from his company's last job — the merchants had found something",
+        "the company wasn't just guarding cargo — they were transporting a sealed container they were told not to open",
+        "he heard sounds from the container at night, like humming stone"
+      ]
+    },
+    "schedule": {
+      "00:00-23:59": "companion"
+    },
+    "default_disposition": "friendly",
+    "disposition_modifiers": {
+      "showed_trust": 2,
+      "shared_danger": 1,
+      "lied_to_kael": -3,
+      "abandoned_ally": -4,
+      "asked_about_past_gently": 1
+    },
+    "inventory_pool": null,
+    "secrets": [
+      "he kept one item from the sealed container — a smooth warm stone that hums faintly, hidden in his pack",
+      "he dreams about the ambush every night and sometimes wakes reaching for a sword"
+    ],
+    "faction": "independent",
+    "voice_id": "COMPANION_KAEL",
+    "voice_notes": "warm baritone, measured pace, gets quieter under stress not louder, dry humor surfaces when comfortable",
+    "combat_stats": {
+      "hp": 22,
+      "ac": 15,
+      "level": 2,
+      "attributes": {
+        "strength": 15,
+        "dexterity": 13,
+        "constitution": 14,
+        "intelligence": 10,
+        "wisdom": 12,
+        "charisma": 11
+      },
+      "action_pool": [
+        {
+          "name": "Longsword",
+          "damage": "1d8",
+          "damage_type": "slashing",
+          "properties": ["versatile"]
+        },
+        {
+          "name": "Defensive Stance",
+          "damage": "0",
+          "damage_type": "none",
+          "properties": ["defensive"],
+          "effect": "Kael braces and guards, gaining +2 AC until next turn"
+        }
+      ]
+    }
   }
 ]

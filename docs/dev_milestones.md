@@ -831,14 +831,14 @@ These overlays appear over the session screen center when triggered by data chan
 - Companion emotional state: tracks relationship progression, adjusts warmth and openness of dialogue over sessions
 
 **Acceptance criteria:**
-- [ ] Companion speaks proactively during exploration (environmental comments, idle observations) without being prompted
-- [ ] Companion has a distinctly different voice from the DM and all NPCs
-- [ ] When the player is stuck, the companion offers hints after appropriate delay (level 2 guidance)
-- [ ] Companion participates in combat with their own actions and tactical commentary
-- [ ] Companion can be knocked unconscious in combat (the silence where their voice was is noticeable)
-- [ ] The Kael meeting scene plays out naturally in session 1 and feels organic, not scripted
-- [ ] Companion remembers previous interactions within the same session (references earlier events)
-- [ ] Companion reacts emotionally to player decisions (pleased, concerned, annoyed — appropriate to Kael's personality)
+- [x] Companion speaks proactively during exploration (environmental comments, idle observations) without being prompted
+- [x] Companion has a distinctly different voice from the DM and all NPCs
+- [x] When the player is stuck, the companion offers hints after appropriate delay (level 2 guidance)
+- [x] Companion participates in combat with their own actions and tactical commentary
+- [x] Companion can be knocked unconscious in combat (the silence where their voice was is noticeable)
+- [x] The Kael meeting scene plays out naturally in session 1 and feels organic, not scripted
+- [x] Companion remembers previous interactions within the same session (references earlier events)
+- [x] Companion reacts emotionally to player decisions (pleased, concerned, annoyed — appropriate to Kael's personality)
 
 **Key references:**
 - *Game Design — The Companion — Your Other Voice in the Dark* (full companion design, Kael archetype, meeting scenario)

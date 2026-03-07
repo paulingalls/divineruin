@@ -157,13 +157,14 @@ class TestEventHandling:
         with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock) as mock_rebuild:
             with patch.object(bp, "_deliver_speech", new_callable=AsyncMock):
                 with patch.object(bp, "_check_guidance"):
-                    try:
-                        await bp._run()
-                    except asyncio.CancelledError:
-                        pass
+                    with patch.object(bp, "_check_companion_idle"):
+                        try:
+                            await bp._run()
+                        except asyncio.CancelledError:
+                            pass
 
-                    # Should rebuild twice: initial + after timeout
-                    assert mock_rebuild.call_count == 2
+                        # Should rebuild twice: initial + after timeout
+                        assert mock_rebuild.call_count == 2
 
 
 class TestGuidanceSystem:
@@ -426,7 +427,14 @@ class TestWarmLayerRebuild:
 
                 await bp._rebuild_warm_layer()
 
-                mock_build.assert_awaited_once_with("tavern", "p1", "evening", combat_state=mock_sd.combat_state)
+                mock_build.assert_awaited_once_with(
+                    "tavern",
+                    "p1",
+                    "evening",
+                    combat_state=mock_sd.combat_state,
+                    companion=mock_sd.companion,
+                    quests=None,
+                )
                 mock_agent.update_instructions.assert_awaited_once_with("full prompt")
                 assert bp._last_warm_layer == "warm layer content"
 

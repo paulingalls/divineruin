@@ -23,6 +23,7 @@ DEFAULT_VOICE = "DM_NARRATOR"
 # Positive = faster, negative = slower. DM is the baseline.
 VOICE_RATE_OFFSETS: dict[str, float] = {
     "GUILDMASTER_TORIN": 0.15,
+    "COMPANION_KAEL": -0.05,
 }
 
 EMOTION_RATES: dict[str, float] = {

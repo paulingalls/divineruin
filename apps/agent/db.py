@@ -584,6 +584,53 @@ async def upsert_map_progress(
     )
 
 
+# --- Player flags ---
+
+
+async def get_player_flag(
+    player_id: str,
+    flag: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> bool:
+    _conn = conn or await get_pool()
+    row = await _conn.fetchrow(
+        "SELECT data->'flags'->>$2 AS val FROM players WHERE player_id = $1",
+        player_id,
+        flag,
+    )
+    if row is None or row["val"] is None:
+        return False
+    return row["val"] == "true"
+
+
+async def set_player_flag(
+    player_id: str,
+    flag: str,
+    value: bool,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> None:
+    _conn = conn or await get_pool()
+    # Ensure 'flags' key exists, then set the specific flag
+    await _conn.execute(
+        """
+        UPDATE players
+        SET data = jsonb_set(
+            CASE WHEN data ? 'flags' THEN data
+                 ELSE jsonb_set(data, '{flags}', '{}'::jsonb)
+            END,
+            ARRAY['flags', $2],
+            $3::jsonb
+        )
+        WHERE player_id = $1
+        """,
+        player_id,
+        flag,
+        json.dumps(value),
+    )
+
+
 # --- Session lifecycle ---
 
 

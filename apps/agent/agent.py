@@ -21,7 +21,7 @@ from game_events import publish_game_event
 from latency import TurnTimer
 from prompts import build_system_prompt, format_affect_context, quest_objective
 from rules_engine import hp_threshold_status
-from session_data import SessionData
+from session_data import CompanionState, SessionData
 from tools import (
     add_to_inventory,
     award_xp,
@@ -376,6 +376,19 @@ async def dm_session(ctx: agents.JobContext) -> None:
         location_id=START_LOCATION,
         room=ctx.room,
     )
+
+    # Load companion if player has met Kael
+    try:
+        companion_met = await db.get_player_flag(player_id, "companion_met")
+        if companion_met:
+            userdata.companion = CompanionState(
+                id="companion_kael",
+                name="Kael",
+                last_speech_time=time.time(),
+            )
+            logger.info("Companion Kael loaded for returning player")
+    except Exception:
+        logger.warning("Failed to check companion_met flag", exc_info=True)
 
     session = AgentSession(
         stt=deepgram.STT(model="nova-3", language="en"),
