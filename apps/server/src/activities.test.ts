@@ -4,15 +4,19 @@ import { test, expect, describe, mock, beforeEach } from "bun:test";
 let mockQueryResults: unknown[][] = [];
 let queryCallIndex = 0;
 
+function mockTaggedTemplate(_strings: TemplateStringsArray, ..._values: unknown[]) {
+  const result = mockQueryResults[queryCallIndex] ?? [];
+  queryCallIndex++;
+  return Promise.resolve(result);
+}
+
 void mock.module("./db.ts", () => {
-  const mockSql = Object.assign(
-    (_strings: TemplateStringsArray, ..._values: unknown[]) => {
-      const result = mockQueryResults[queryCallIndex] ?? [];
-      queryCallIndex++;
-      return Promise.resolve(result);
+  const mockSql = Object.assign(mockTaggedTemplate, {
+    close: () => Promise.resolve(),
+    begin: async (fn: (tx: typeof mockTaggedTemplate) => Promise<unknown>) => {
+      return fn(mockTaggedTemplate);
     },
-    { close: () => Promise.resolve() },
-  );
+  });
   return { sql: mockSql };
 });
 
@@ -40,11 +44,13 @@ beforeEach(() => {
 
 describe("handleCreateActivity", () => {
   test("creates crafting activity", async () => {
-    // Query 1: count active (0), Query 2: batch material check (found), Query 3: insert
+    // Inside transaction: count, material check, delete mat 1, delete mat 2, insert
     mockQueryResults = [
-      [{ cnt: 0 }], // count
-      [{ item_id: "iron_ingot" }, { item_id: "leather_strip" }], // batch material check
-      [], // insert
+      [{ cnt: 0 }], // count (FOR UPDATE)
+      [{ item_id: "iron_ingot" }, { item_id: "leather_strip" }], // material check (FOR UPDATE)
+      [], // delete iron_ingot
+      [], // delete leather_strip
+      [], // insert activity
     ];
 
     const req = makeRequest("POST", "/api/activities", {
@@ -93,8 +99,6 @@ describe("handleCreateActivity", () => {
   });
 
   test("rejects crafting without recipe_id", async () => {
-    mockQueryResults = [[{ cnt: 0 }]];
-
     const req = makeRequest("POST", "/api/activities", {
       type: "crafting",
       parameters: {},
@@ -106,8 +110,6 @@ describe("handleCreateActivity", () => {
   });
 
   test("rejects unknown recipe", async () => {
-    mockQueryResults = [[{ cnt: 0 }]];
-
     const req = makeRequest("POST", "/api/activities", {
       type: "crafting",
       parameters: { recipe_id: "mithril_armor" },
@@ -135,9 +137,10 @@ describe("handleCreateActivity", () => {
   });
 
   test("creates training activity", async () => {
+    // Inside transaction: count, insert
     mockQueryResults = [
-      [{ cnt: 0 }], // count
-      [], // insert
+      [{ cnt: 0 }], // count (FOR UPDATE)
+      [], // insert activity
     ];
 
     const req = makeRequest("POST", "/api/activities", {
@@ -151,8 +154,6 @@ describe("handleCreateActivity", () => {
   });
 
   test("rejects training without program_id", async () => {
-    mockQueryResults = [[{ cnt: 0 }]];
-
     const req = makeRequest("POST", "/api/activities", {
       type: "training",
       parameters: {},
@@ -164,9 +165,10 @@ describe("handleCreateActivity", () => {
   });
 
   test("creates companion errand", async () => {
+    // Inside transaction: count, insert
     mockQueryResults = [
-      [{ cnt: 0 }], // count
-      [], // insert
+      [{ cnt: 0 }], // count (FOR UPDATE)
+      [], // insert activity
     ];
 
     const req = makeRequest("POST", "/api/activities", {
@@ -180,8 +182,6 @@ describe("handleCreateActivity", () => {
   });
 
   test("rejects errand without errand_type", async () => {
-    mockQueryResults = [[{ cnt: 0 }]];
-
     const req = makeRequest("POST", "/api/activities", {
       type: "companion_errand",
       parameters: { destination: "millhaven" },
@@ -193,8 +193,6 @@ describe("handleCreateActivity", () => {
   });
 
   test("rejects errand with invalid destination", async () => {
-    mockQueryResults = [[{ cnt: 0 }]];
-
     const req = makeRequest("POST", "/api/activities", {
       type: "companion_errand",
       parameters: { errand_type: "scout", destination: "narnia" },

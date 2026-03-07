@@ -30,22 +30,11 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
 
     const params = body.parameters ?? {};
 
-    // Check concurrent count
-    const countRows: { cnt: number }[] = await sql`
-      SELECT COUNT(*)::int AS cnt FROM async_activities
-      WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
-    `;
-    const activeCount = countRows[0]?.cnt ?? 0;
-    if (activeCount >= MAX_CONCURRENT) {
-      return Response.json(
-        { error: `Maximum ${MAX_CONCURRENT} concurrent activities allowed` },
-        { status: 400 },
-      );
-    }
-
+    // Validate type-specific parameters before entering the transaction
     let durationMin: number;
     let durationMax: number;
     let activityParams: Record<string, unknown>;
+    let materialsToConsume: string[] = [];
 
     if (body.type === "crafting") {
       const recipeId = params.recipe_id as string | undefined;
@@ -57,22 +46,9 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         return Response.json({ error: `Unknown recipe: ${recipeId}` }, { status: 400 });
       }
 
-      // Check player has all required materials in one query
-      if (recipe.required_materials.length > 0) {
-        const ownedRows: { item_id: string }[] = await sql`
-          SELECT item_id FROM player_inventory
-          WHERE player_id = ${playerId} AND item_id = ANY(${recipe.required_materials})
-        `;
-        const ownedSet = new Set(ownedRows.map((r) => r.item_id));
-        for (const matId of recipe.required_materials) {
-          if (!ownedSet.has(matId)) {
-            return Response.json({ error: `Missing required material: ${matId}` }, { status: 400 });
-          }
-        }
-      }
-
       durationMin = recipe.duration_min_seconds;
       durationMax = recipe.duration_max_seconds;
+      materialsToConsume = recipe.required_materials;
       activityParams = {
         recipe_id: recipe.id,
         result_item_id: recipe.result_item_id,
@@ -130,35 +106,76 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       };
     }
 
-    const now = new Date();
-    const durationSeconds = randomInt(durationMin, durationMax);
-    const resolveAt = new Date(now.getTime() + durationSeconds * 1000);
+    // Atomic transaction: check concurrent count, verify+consume materials, insert activity
+    const txnResult = await sql.begin(async (tx) => {
+      // Lock player's in-progress activities to prevent race conditions
+      const countRows: { cnt: number }[] = await tx`
+        SELECT COUNT(*)::int AS cnt FROM async_activities
+        WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
+        FOR UPDATE
+      `;
+      const activeCount = countRows[0]?.cnt ?? 0;
+      if (activeCount >= MAX_CONCURRENT) {
+        return { error: `Maximum ${MAX_CONCURRENT} concurrent activities allowed` } as const;
+      }
 
-    const activityId = `activity_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+      // Verify and consume materials atomically for crafting
+      if (materialsToConsume.length > 0) {
+        const ownedRows: { item_id: string }[] = await tx`
+          SELECT item_id FROM player_inventory
+          WHERE player_id = ${playerId} AND item_id = ANY(${materialsToConsume})
+          FOR UPDATE
+        `;
+        const ownedSet = new Set(ownedRows.map((r) => r.item_id));
+        for (const matId of materialsToConsume) {
+          if (!ownedSet.has(matId)) {
+            return { error: `Missing required material: ${matId}` } as const;
+          }
+        }
+        // Consume materials
+        for (const matId of materialsToConsume) {
+          await tx`
+            DELETE FROM player_inventory
+            WHERE player_id = ${playerId} AND item_id = ${matId}
+          `;
+        }
+      }
 
-    const data = {
-      status: "in_progress",
-      activity_type: body.type,
-      start_time: now.toISOString(),
-      duration_min_seconds: durationMin,
-      duration_max_seconds: durationMax,
-      resolve_at: resolveAt.toISOString(),
-      parameters: activityParams,
-      outcome: null,
-      narration_text: null,
-      narration_audio_url: null,
-      decision_options: null,
-    };
+      const now = new Date();
+      const durationSeconds = randomInt(durationMin, durationMax);
+      const resolveAt = new Date(now.getTime() + durationSeconds * 1000);
+      const activityId = `activity_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 
-    await sql`
-      INSERT INTO async_activities (id, player_id, data)
-      VALUES (${activityId}, ${playerId}, ${JSON.stringify(data)})
-    `;
+      const data = {
+        status: "in_progress",
+        activity_type: body.type,
+        start_time: now.toISOString(),
+        duration_min_seconds: durationMin,
+        duration_max_seconds: durationMax,
+        resolve_at: resolveAt.toISOString(),
+        parameters: activityParams,
+        outcome: null,
+        narration_text: null,
+        narration_audio_url: null,
+        decision_options: null,
+      };
+
+      await tx`
+        INSERT INTO async_activities (id, player_id, data)
+        VALUES (${activityId}, ${playerId}, ${JSON.stringify(data)})
+      `;
+
+      return { activityId, resolveAt: resolveAt.toISOString() } as const;
+    });
+
+    if ("error" in txnResult) {
+      return Response.json({ error: txnResult.error }, { status: 400 });
+    }
 
     return Response.json({
-      activity_id: activityId,
+      activity_id: txnResult.activityId,
       status: "in_progress",
-      resolve_at_estimate: resolveAt.toISOString(),
+      resolve_at_estimate: txnResult.resolveAt,
     });
   } catch (err) {
     logError("[activities] create failed:", err);
