@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -9,12 +9,14 @@ import { ThemedView } from "@/components/themed-view";
 import { TitleBar } from "@/components/title-bar";
 import { CharacterSummaryBar } from "@/components/character-summary-bar";
 import { CatchUpList } from "@/components/catchup-list";
+import { ActivityLauncher } from "@/components/activity-launcher";
 import { useCharacter } from "@/hooks/use-character";
-import { catchupStore } from "@/stores/catchup-store";
+import { useCatchUp } from "@/hooks/use-catchup";
+import { useActivityActions } from "@/hooks/use-activity-actions";
 import { characterStore } from "@/stores/character-store";
-import { MOCK_CATCHUP_CARDS } from "@/data/mock-catchup";
+import { playNarration, stopNarration, onNarrationStateChange } from "@/audio/narration-player";
+import { API_BASE, getPlayerId } from "@/utils/api";
 import { BrandColors, MaxContentWidth, Spacing, Radius, FontFamilies } from "@/constants/theme";
-import { getPlayerId } from "@/utils/api";
 
 const LANDSCAPE_THRESHOLD = 1.2;
 
@@ -23,14 +25,37 @@ export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
   const isLandscape = width / height > LANDSCAPE_THRESHOLD;
   const character = useStore(characterStore, (s) => s.character);
-  useCharacter(getPlayerId());
+  const playerId = getPlayerId();
+  useCharacter(playerId);
+  useCatchUp();
+  const { submitDecision, startActivity, decisionLoading } = useActivityActions();
+
+  const [playingUrl, setPlayingUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    catchupStore.getState().setCards(MOCK_CATCHUP_CARDS);
+    return onNarrationStateChange((state) => {
+      setPlayingUrl(state.playing ? state.currentUrl : null);
+    });
+  }, []);
+
+  const handlePlay = useCallback((audioUrl: string) => {
+    playNarration(`${API_BASE}${audioUrl}`);
+  }, []);
+
+  const handleStop = useCallback(() => {
+    stopNarration();
   }, []);
 
   const hasCharacter = character !== null;
   const buttonLabel = hasCharacter ? "ENTER AETHOS" : "BEGIN YOUR JOURNEY";
+
+  const feedProps = {
+    playingAudioUrl: playingUrl,
+    onPlay: handlePlay,
+    onStop: handleStop,
+    onDecision: submitDecision,
+    decisionLoading,
+  };
 
   const enterButton = (
     <Pressable style={styles.enterButton} onPress={() => router.push("/session")}>
@@ -54,7 +79,8 @@ export default function HomeScreen() {
           <View style={styles.landscapeBody}>
             <View style={styles.landscapeLeft}>
               {playerSection}
-              <CatchUpList />
+              <CatchUpList {...feedProps} />
+              <ActivityLauncher onStartActivity={startActivity} />
             </View>
             <View style={styles.landscapeRight}>{enterButton}</View>
           </View>
@@ -69,7 +95,8 @@ export default function HomeScreen() {
         <ThemedView style={styles.content}>
           <TitleBar />
           {playerSection}
-          <CatchUpList />
+          <CatchUpList {...feedProps} />
+          <ActivityLauncher onStartActivity={startActivity} />
           {enterButton}
         </ThemedView>
       </SafeAreaView>

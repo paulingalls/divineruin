@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { useStore } from "zustand";
 
 import { ThemedText } from "@/components/themed-text";
@@ -7,23 +6,52 @@ import { CatchUpCardView } from "@/components/catchup-card";
 import { catchupStore } from "@/stores/catchup-store";
 import { BrandColors, FontFamilies, Spacing } from "@/constants/theme";
 
-const IDLE_CHATTER = [
-  "Kael is sharpening his blade and humming something off-key.",
-  "The guild hall is quiet. Kael leans against the wall, watching the door.",
-  "A faint breeze stirs dust motes in the lamplight. Nothing stirs.",
-  "Somewhere down the hall, someone drops a tankard. Then silence.",
-];
-
-let _chatterIndex = 0;
-function nextChatter(): string {
-  const msg = IDLE_CHATTER[_chatterIndex % IDLE_CHATTER.length];
-  _chatterIndex++;
-  return msg;
+interface CatchUpListProps {
+  onDecision?: (activityId: string, decisionId: string) => void;
+  decisionLoading?: boolean;
+  playingAudioUrl?: string | null;
+  onPlay?: (audioUrl: string) => void;
+  onStop?: () => void;
 }
 
-export function CatchUpList() {
+export function CatchUpList({
+  onDecision,
+  decisionLoading,
+  playingAudioUrl,
+  onPlay,
+  onStop,
+}: CatchUpListProps) {
   const cards = useStore(catchupStore, (s) => s.cards);
-  const [chatter] = useState(nextChatter);
+  const loading = useStore(catchupStore, (s) => s.loading);
+  const error = useStore(catchupStore, (s) => s.error);
+
+  if (loading && cards.length === 0) {
+    return (
+      <View style={styles.container}>
+        <ThemedText variant="label" themeColor="textSecondary">
+          Since You Were Away
+        </ThemedText>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="small" color={BrandColors.ash} />
+        </View>
+      </View>
+    );
+  }
+
+  if (error && cards.length === 0) {
+    return (
+      <View style={styles.container}>
+        <ThemedText variant="label" themeColor="textSecondary">
+          Since You Were Away
+        </ThemedText>
+        <View style={styles.centerContainer}>
+          <ThemedText variant="system" themeColor="textSecondary">
+            Could not load updates
+          </ThemedText>
+        </View>
+      </View>
+    );
+  }
 
   if (cards.length === 0) {
     return (
@@ -31,8 +59,8 @@ export function CatchUpList() {
         <ThemedText variant="label" themeColor="textSecondary">
           Since You Were Away
         </ThemedText>
-        <View style={styles.idleContainer}>
-          <ThemedText style={styles.idleText}>{chatter}</ThemedText>
+        <View style={styles.centerContainer}>
+          <ThemedText style={styles.idleText}>The guild hall is quiet. Nothing stirs.</ThemedText>
         </View>
       </View>
     );
@@ -49,7 +77,15 @@ export function CatchUpList() {
         showsVerticalScrollIndicator={false}
       >
         {cards.map((card) => (
-          <CatchUpCardView key={card.id} card={card} />
+          <CatchUpCardView
+            key={card.id}
+            card={card}
+            isPlaying={!!(playingAudioUrl && card.audioUrl === playingAudioUrl)}
+            onPlay={onPlay}
+            onStop={onStop}
+            onDecision={onDecision}
+            decisionLoading={decisionLoading}
+          />
         ))}
       </ScrollView>
     </View>
@@ -68,9 +104,10 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingBottom: Spacing.three,
   },
-  idleContainer: {
+  centerContainer: {
     flex: 1,
     justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: Spacing.three,
   },
   idleText: {
@@ -80,5 +117,6 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     color: BrandColors.bone,
     opacity: 0.7,
+    textAlign: "center",
   },
 });

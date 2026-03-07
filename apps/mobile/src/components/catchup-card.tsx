@@ -1,19 +1,44 @@
-import { Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import type { CatchUpCard } from "@/stores/catchup-store";
 import { BrandColors, Spacing, Radius, Shadows, FontFamilies } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
-const TYPE_DOT_COLORS: Record<CatchUpCard["type"], string> = {
+const TYPE_DOT_COLORS: Partial<Record<CatchUpCard["type"], string>> = {
   resolved: BrandColors.hollow,
   pending_decision: BrandColors.ember,
   world_news: BrandColors.ash,
-  quest_update: BrandColors.hollow,
+  in_progress: BrandColors.divine,
 };
 
-export function CatchUpCardView({ card }: { card: CatchUpCard }) {
+interface CatchUpCardViewProps {
+  card: CatchUpCard;
+  isPlaying?: boolean;
+  onPlay?: (audioUrl: string) => void;
+  onStop?: () => void;
+  onDecision?: (activityId: string, decisionId: string) => void;
+  decisionLoading?: boolean;
+}
+
+export function CatchUpCardView({
+  card,
+  isPlaying,
+  onPlay,
+  onStop,
+  onDecision,
+  decisionLoading,
+}: CatchUpCardViewProps) {
   const theme = useTheme();
+  const dotColor = TYPE_DOT_COLORS[card.type];
+
+  if (card.type === "companion_idle") {
+    return (
+      <View style={styles.idleContainer}>
+        <ThemedText style={styles.idleText}>{card.summary}</ThemedText>
+      </View>
+    );
+  }
 
   return (
     <View
@@ -24,7 +49,7 @@ export function CatchUpCardView({ card }: { card: CatchUpCard }) {
       ]}
     >
       <View style={styles.iconColumn}>
-        <View style={[styles.dot, { backgroundColor: TYPE_DOT_COLORS[card.type] }]} />
+        {dotColor && <View style={[styles.dot, { backgroundColor: dotColor }]} />}
       </View>
       <View style={styles.content}>
         <View style={styles.header}>
@@ -32,22 +57,56 @@ export function CatchUpCardView({ card }: { card: CatchUpCard }) {
             {card.title}
           </ThemedText>
           <ThemedText variant="caption" themeColor="textSecondary">
-            {card.timestamp}
+            {card.relativeTime}
           </ThemedText>
         </View>
         <ThemedText variant="system" themeColor="textSecondary" numberOfLines={2}>
           {card.summary}
         </ThemedText>
+
+        {card.type === "in_progress" && card.progress && (
+          <View style={styles.progressSection}>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${card.progress.percentEstimate}%` }]} />
+            </View>
+            {card.progress.progressText && (
+              <ThemedText style={styles.progressText}>{card.progress.progressText}</ThemedText>
+            )}
+          </View>
+        )}
+
         <View style={styles.actions}>
-          {card.hasAudio && (
-            <Pressable style={styles.playButton}>
-              <ThemedText style={styles.playIcon}>{"\u25B6"}</ThemedText>
+          {card.hasAudio && card.audioUrl && (
+            <Pressable
+              style={[styles.playButton, isPlaying && styles.playButtonActive]}
+              onPress={() => {
+                if (isPlaying) {
+                  onStop?.();
+                } else {
+                  onPlay?.(card.audioUrl!);
+                }
+              }}
+            >
+              <ThemedText style={styles.playIcon}>{isPlaying ? "\u25A0" : "\u25B6"}</ThemedText>
             </Pressable>
           )}
-          {card.type === "pending_decision" && (
-            <Pressable style={styles.decisionButton}>
-              <ThemedText style={styles.decisionText}>Decide</ThemedText>
-            </Pressable>
+          {card.type === "pending_decision" && card.decisionOptions && (
+            <View style={styles.decisionRow}>
+              {card.decisionOptions.map((opt) => (
+                <Pressable
+                  key={opt.id}
+                  style={[styles.decisionButton, decisionLoading && styles.decisionButtonDisabled]}
+                  disabled={decisionLoading}
+                  onPress={() => onDecision?.(card.id, opt.id)}
+                >
+                  {decisionLoading ? (
+                    <ActivityIndicator size="small" color={BrandColors.ash} />
+                  ) : (
+                    <ThemedText style={styles.decisionText}>{opt.label}</ThemedText>
+                  )}
+                </Pressable>
+              ))}
+            </View>
           )}
         </View>
       </View>
@@ -88,10 +147,33 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
   },
+  progressSection: {
+    gap: Spacing.one,
+  },
+  progressTrack: {
+    height: 3,
+    backgroundColor: BrandColors.charcoal,
+    borderRadius: 1.5,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: 3,
+    backgroundColor: BrandColors.hollow,
+    borderRadius: 1.5,
+  },
+  progressText: {
+    fontFamily: FontFamilies.bodyLight,
+    fontStyle: "italic",
+    fontSize: 14,
+    lineHeight: 20,
+    color: BrandColors.bone,
+    opacity: 0.7,
+  },
   actions: {
     flexDirection: "row",
     gap: Spacing.two,
     marginTop: Spacing.one,
+    alignItems: "center",
   },
   playButton: {
     width: 28,
@@ -102,10 +184,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: BrandColors.hollowMuted,
   },
+  playButtonActive: {
+    backgroundColor: BrandColors.hollowFaint,
+    borderColor: BrandColors.hollow,
+  },
   playIcon: {
     fontSize: 12,
     color: BrandColors.hollow,
     marginLeft: 2,
+  },
+  decisionRow: {
+    flexDirection: "row",
+    gap: Spacing.two,
+    flexWrap: "wrap",
+    flex: 1,
   },
   decisionButton: {
     paddingHorizontal: Spacing.two,
@@ -114,9 +206,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: BrandColors.hollowMuted,
   },
+  decisionButtonDisabled: {
+    borderColor: BrandColors.slate,
+    opacity: 0.5,
+  },
   decisionText: {
     fontSize: 12,
     fontFamily: FontFamilies.system,
     color: BrandColors.hollow,
+  },
+  idleContainer: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  idleText: {
+    fontFamily: FontFamilies.bodyLight,
+    fontStyle: "italic",
+    fontSize: 18,
+    lineHeight: 28,
+    color: BrandColors.bone,
+    opacity: 0.7,
   },
 });

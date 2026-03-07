@@ -42,7 +42,10 @@ SAMPLE_PLAYER = {
 class TestResolveDueActivities:
     @pytest.mark.asyncio
     async def test_returns_zero_when_no_due_activities(self):
-        with patch("async_worker.db.get_due_activities", new_callable=AsyncMock, return_value=[]):
+        with (
+            patch("async_worker.db.get_due_activities", new_callable=AsyncMock, return_value=[]),
+            patch("async_worker._backfill_progress_snippets", new_callable=AsyncMock),
+        ):
             count = await resolve_due_activities()
 
         assert count == 0
@@ -52,6 +55,8 @@ class TestResolveDueActivities:
         with (
             patch("async_worker.db.get_due_activities", new_callable=AsyncMock, return_value=[SAMPLE_ACTIVITY]),
             patch("async_worker._resolve_single_activity", new_callable=AsyncMock) as mock_resolve,
+            patch("async_worker._backfill_progress_snippets", new_callable=AsyncMock),
+            patch("async_worker.generate_world_news", new_callable=AsyncMock),
         ):
             count = await resolve_due_activities()
 
@@ -76,6 +81,8 @@ class TestResolveDueActivities:
         with (
             patch("async_worker.db.get_due_activities", new_callable=AsyncMock, return_value=activities),
             patch("async_worker._resolve_single_activity", side_effect=mock_resolve),
+            patch("async_worker._backfill_progress_snippets", new_callable=AsyncMock),
+            patch("async_worker.generate_world_news", new_callable=AsyncMock),
         ):
             count = await resolve_due_activities()
 
@@ -95,6 +102,8 @@ class TestResolveSingleActivity:
             ),
             patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Blade ready."),
+            patch("async_worker._send_push_notification", new_callable=AsyncMock),
         ):
             await _resolve_single_activity(SAMPLE_ACTIVITY)
 
@@ -128,6 +137,8 @@ class TestResolveSingleActivity:
             ),
             patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Training done."),
+            patch("async_worker._send_push_notification", new_callable=AsyncMock),
         ):
             await _resolve_single_activity(activity)
 
@@ -168,6 +179,8 @@ class TestResolveSingleActivity:
             patch("async_worker.generate_activity_narration", new_callable=AsyncMock, return_value="Kael returns."),
             patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Kael returns."),
+            patch("async_worker._send_push_notification", new_callable=AsyncMock),
         ):
             await _resolve_single_activity(activity)
 
@@ -212,6 +225,8 @@ class TestResolveSingleActivity:
             patch("async_worker.generate_activity_narration", new_callable=AsyncMock, return_value="Narration."),
             patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Update."),
+            patch("async_worker._send_push_notification", new_callable=AsyncMock),
         ):
             await _resolve_single_activity(SAMPLE_ACTIVITY)
 

@@ -932,15 +932,15 @@ These overlays appear over the session screen center when triggered by data chan
 - New activity launcher: UI to start new crafting/training/errand with parameter selection
 
 **Acceptance criteria:**
-- [ ] Opening the app shows resolved activities with playable narrated audio
-- [ ] Tapping a decision button resolves the activity and triggers the appropriate next step
-- [ ] World news summary plays automatically if significant changes occurred (skipped if nothing changed)
-- [ ] When nothing is pending, companion idle chatter or world micro-observations appear
-- [ ] Push notifications arrive for resolved activities with narrative text (not "timer complete")
-- [ ] Player can start new activities from the launcher with parameter choices
-- [ ] In-flight activities show progress text (intermediate narrative state)
-- [ ] The entire check-in flow completes in under 5 minutes
-- [ ] The Catch-Up layer works silently — all functionality accessible via tap without any audio playback
+- [x] Opening the app shows resolved activities with playable narrated audio
+- [x] Tapping a decision button resolves the activity and triggers the appropriate next step
+- [x] World news summary plays automatically if significant changes occurred (skipped if nothing changed)
+- [x] When nothing is pending, companion idle chatter or world micro-observations appear
+- [x] Push notifications arrive for resolved activities with narrative text (not "timer complete")
+- [x] Player can start new activities from the launcher with parameter choices
+- [x] In-flight activities show progress text (intermediate narrative state)
+- [x] The entire check-in flow completes in under 5 minutes
+- [x] The Catch-Up layer works silently — all functionality accessible via tap without any audio playback
 
 **Key references:**
 - *Game Design — The Catch-Up Layer (Home Screen Integration)* (silent-first design, feed organization)

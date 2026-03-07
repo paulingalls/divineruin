@@ -10,6 +10,9 @@ import {
   handleActivityDecision,
   handleAudioFile,
 } from "./activities.ts";
+import { handleGetCatchUpFeed } from "./catchup.ts";
+import { handleGetActivityTemplates } from "./activity-templates-api.ts";
+import { handleStorePushToken, handleInternalPush } from "./push.ts";
 import { isDev } from "./env.ts";
 
 const enableDebug = isDev && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
@@ -61,6 +64,32 @@ const server = serve({
         if (auth instanceof Response) return withCors(auth);
         return withCors(await handleGetCharacter(req, auth.playerId));
       }
+    }
+
+    // --- Catch-up feed ---
+
+    if (path === "/api/catchup" && req.method === "GET") {
+      const auth = await requireAuth(req);
+      if (auth instanceof Response) return withCors(auth);
+      return withCors(await handleGetCatchUpFeed(req, auth.playerId));
+    }
+
+    if (path === "/api/activity-templates" && req.method === "GET") {
+      const auth = await requireAuth(req);
+      if (auth instanceof Response) return withCors(auth);
+      return withCors(handleGetActivityTemplates());
+    }
+
+    // --- Push notifications ---
+
+    if (path === "/api/push-token" && req.method === "POST") {
+      const auth = await requireAuth(req);
+      if (auth instanceof Response) return withCors(auth);
+      return withCors(await handleStorePushToken(req, auth.playerId));
+    }
+
+    if (path === "/api/internal/push" && req.method === "POST") {
+      return withCors(await handleInternalPush(req));
     }
 
     // --- Activity routes (auth required) ---

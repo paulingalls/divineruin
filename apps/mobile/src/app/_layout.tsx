@@ -11,6 +11,7 @@ import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { GrainOverlay } from "@/components/grain-overlay";
 import { BrandColors } from "@/constants/theme";
 import { authStore } from "@/stores/auth-store";
+import { useNotifications } from "@/hooks/use-notifications";
 
 import {
   CormorantGaramond_300Light,
@@ -68,6 +69,8 @@ export default function RootLayout() {
     IBMPlexMono_300Light,
     IBMPlexMono_400Regular,
   });
+
+  useNotifications();
 
   useEffect(() => {
     void authStore.getState().loadStoredToken();

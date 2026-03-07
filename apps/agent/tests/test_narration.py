@@ -4,7 +4,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from narration import MODEL, _sanitize_player_text, generate_activity_narration
+from narration import (
+    MODEL,
+    _sanitize_player_text,
+    generate_activity_narration,
+    generate_notification_hook,
+    generate_progress_snippets,
+)
 
 SAMPLE_PLAYER = {
     "name": "Aldric",
@@ -197,3 +203,92 @@ class TestGenerateActivityNarration:
         assert "level 3" in system_msg
         assert "Aldric" in system_msg
         assert "60-120 words" in system_msg
+
+
+class TestGenerateProgressSnippets:
+    @pytest.mark.asyncio
+    async def test_crafting_progress(self):
+        activity_data = {
+            "activity_type": "crafting",
+            "parameters": {"result_item_name": "Iron Sword"},
+        }
+        mock_response = _mock_anthropic_response(
+            "The forge burns hot, metal glowing orange.\n"
+            "Sparks fly as the hammer shapes the blade.\n"
+            "Steam hisses as the finished blade meets cold water."
+        )
+
+        with _patch_client(mock_response) as mock_create:
+            result = await generate_progress_snippets(activity_data, SAMPLE_PLAYER)
+
+        assert len(result) == 3
+        mock_create.assert_awaited_once()
+        call_kwargs = mock_create.call_args[1]
+        assert "Iron Sword" in call_kwargs["messages"][0]["content"]
+
+    @pytest.mark.asyncio
+    async def test_training_progress(self):
+        activity_data = {
+            "activity_type": "training",
+            "parameters": {"stat": "strength"},
+        }
+        mock_response = _mock_anthropic_response(
+            "Heavy weights strain tired muscles.\nSweat drips, form improves with each rep."
+        )
+
+        with _patch_client(mock_response):
+            result = await generate_progress_snippets(activity_data, SAMPLE_PLAYER)
+
+        assert len(result) == 2
+
+    @pytest.mark.asyncio
+    async def test_companion_errand_progress(self):
+        activity_data = {
+            "activity_type": "companion_errand",
+            "parameters": {"errand_type": "scout", "destination": "millhaven"},
+        }
+        mock_response = _mock_anthropic_response(
+            "Boots crunch on the forest path heading north.\n"
+            "The treeline thins, revealing Millhaven below.\n"
+            "Kael surveys the village from the ridge."
+        )
+
+        with _patch_client(mock_response) as mock_create:
+            result = await generate_progress_snippets(activity_data, SAMPLE_PLAYER)
+
+        assert len(result) == 3
+        call_kwargs = mock_create.call_args[1]
+        assert "scout" in call_kwargs["messages"][0]["content"]
+        assert "millhaven" in call_kwargs["messages"][0]["content"]
+
+    @pytest.mark.asyncio
+    async def test_caps_at_three_lines(self):
+        activity_data = {
+            "activity_type": "crafting",
+            "parameters": {"result_item_name": "Shield"},
+        }
+        mock_response = _mock_anthropic_response("Line one.\nLine two.\nLine three.\nLine four.\nLine five.")
+
+        with _patch_client(mock_response):
+            result = await generate_progress_snippets(activity_data, SAMPLE_PLAYER)
+
+        assert len(result) <= 3
+
+
+class TestGenerateNotificationHook:
+    @pytest.mark.asyncio
+    async def test_short_narration_uses_first_sentence(self):
+        narration = "[NARRATOR] The blade is complete. Take it or leave it."
+        result = await generate_notification_hook(narration, "crafting")
+        assert result == "The blade is complete."
+
+    @pytest.mark.asyncio
+    async def test_long_narration_calls_llm(self):
+        long_narration = " ".join(["word"] * 30) + ". " + " ".join(["more"] * 30) + "."
+        mock_response = _mock_anthropic_response("Something awaits you at the forge.")
+
+        with _patch_client(mock_response) as mock_create:
+            result = await generate_notification_hook(long_narration, "crafting")
+
+        mock_create.assert_awaited_once()
+        assert "forge" in result

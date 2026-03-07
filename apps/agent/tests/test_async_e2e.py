@@ -86,6 +86,12 @@ class TestFullPipeline:
                 patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_e2e_craft.mp3"),
                 patch("async_worker.db.update_activity", side_effect=mock_update),
                 patch("async_worker.AUDIO_DIR", tmpdir),
+                patch(
+                    "async_worker.generate_notification_hook",
+                    new_callable=AsyncMock,
+                    return_value="Your blade is ready.",
+                ),
+                patch("async_worker._send_push_notification", new_callable=AsyncMock),
             ):
                 await _resolve_single_activity(activity)
 
@@ -130,6 +136,8 @@ class TestFullPipeline:
             ),
             patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_e2e_train.mp3"),
             patch("async_worker.db.update_activity", side_effect=mock_update),
+            patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Training complete."),
+            patch("async_worker._send_push_notification", new_callable=AsyncMock),
         ):
             await _resolve_single_activity(activity)
 
@@ -169,6 +177,8 @@ class TestFullPipeline:
             ),
             patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_e2e_errand.mp3"),
             patch("async_worker.db.update_activity", side_effect=mock_update),
+            patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Kael returns."),
+            patch("async_worker._send_push_notification", new_callable=AsyncMock),
         ):
             await _resolve_single_activity(activity)
 
@@ -203,6 +213,8 @@ class TestFullPipeline:
         with (
             patch("async_worker.db.get_due_activities", new_callable=AsyncMock, return_value=activities),
             patch("async_worker._resolve_single_activity", new_callable=AsyncMock) as mock_resolve,
+            patch("async_worker._backfill_progress_snippets", new_callable=AsyncMock),
+            patch("async_worker.generate_world_news", new_callable=AsyncMock),
         ):
             count = await resolve_due_activities()
 
