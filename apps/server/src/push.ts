@@ -71,6 +71,9 @@ export async function sendPushNotification(
 }
 
 const INTERNAL_SECRET = Bun.env.INTERNAL_SECRET ?? "";
+if (!INTERNAL_SECRET) {
+  console.warn("[push] INTERNAL_SECRET not set — internal push endpoint disabled");
+}
 
 export async function handleInternalPush(req: Request): Promise<Response> {
   // Internal endpoint called by the Python agent

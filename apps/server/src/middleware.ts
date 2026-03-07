@@ -30,6 +30,7 @@ const RATE_LIMITS: Record<string, number> = {
   "/api/livekit/token": 10,
   "/api/auth/request-code": 3,
   "/api/auth/verify-code": 5,
+  "/api/push-token": 5,
 };
 const DEFAULT_RATE_LIMIT = 60;
 const WINDOW_MS = 60_000;

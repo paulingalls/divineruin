@@ -274,11 +274,18 @@ function logEntry(type, room, msg, ok) {
   const ts = now.toLocaleTimeString('en-US', { hour12: false });
   const div = document.createElement('div');
   div.className = 'log-entry';
-  div.innerHTML =
-    '<span class="log-time">' + ts + '</span>' +
-    '<span class="log-type">' + type + '</span>' +
-    '<span class="log-room">' + room + '</span>' +
-    '<span class="' + (ok ? 'log-ok' : 'log-err') + '">' + msg + '</span>';
+
+  const span = (cls, text) => {
+    const s = document.createElement('span');
+    s.className = cls;
+    s.textContent = text;
+    return s;
+  };
+
+  div.appendChild(span('log-time', ts));
+  div.appendChild(span('log-type', type));
+  div.appendChild(span('log-room', room));
+  div.appendChild(span(ok ? 'log-ok' : 'log-err', msg));
   logEl.prepend(div);
   while (logEl.children.length > 100) logEl.removeChild(logEl.lastChild);
 }
