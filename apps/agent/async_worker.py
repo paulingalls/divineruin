@@ -70,7 +70,7 @@ async def _resolve_single_activity(activity: dict) -> None:
 
     # Pre-render audio
     voice_id = _get_voice_id(activity_type, parameters, outcome_dict)
-    audio_filename = f"{activity_id}.wav"
+    audio_filename = f"{activity_id}.mp3"
     audio_path = os.path.join(AUDIO_DIR, audio_filename)
     await synthesize_to_file(narration_text, voice_id, audio_path)
     audio_url = f"/api/audio/{audio_filename}"

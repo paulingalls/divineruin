@@ -381,15 +381,31 @@ describe("handleAudioFile", () => {
     expect(res.status).toBe(404);
   });
 
-  test("serves existing file with correct headers", async () => {
-    // Create a temp audio file
+  test("serves existing mp3 file with correct headers", async () => {
+    const audioDir = Bun.env.ASYNC_AUDIO_DIR ?? `${import.meta.dir}/../../audio`;
+    const testFile = `${audioDir}/test_audio_serve.mp3`;
+    await Bun.write(testFile, "fake-mp3-data");
+    try {
+      const res = await handleAudioFile("test_audio_serve.mp3");
+      expect(res.headers.get("Content-Type")).toBe("audio/mpeg");
+      expect(res.headers.get("Cache-Control")).toContain("public");
+    } finally {
+      const fs = await import("node:fs");
+      try {
+        fs.unlinkSync(testFile);
+      } catch {
+        /* cleanup best-effort */
+      }
+    }
+  });
+
+  test("serves existing wav file with wav content type", async () => {
     const audioDir = Bun.env.ASYNC_AUDIO_DIR ?? `${import.meta.dir}/../../audio`;
     const testFile = `${audioDir}/test_audio_serve.wav`;
     await Bun.write(testFile, "fake-wav-data");
     try {
       const res = await handleAudioFile("test_audio_serve.wav");
       expect(res.headers.get("Content-Type")).toBe("audio/wav");
-      expect(res.headers.get("Cache-Control")).toContain("public");
     } finally {
       const fs = await import("node:fs");
       try {

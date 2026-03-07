@@ -23,11 +23,10 @@ def _make_mock_event(frame: MagicMock) -> MagicMock:
 
 class TestSynthesizeToFile:
     @pytest.mark.asyncio
-    async def test_writes_wav_file(self):
-        """Verify a WAV file is written with correct format."""
-        # Create mock PCM data (1 second of silence at 24kHz, 16-bit mono)
-        pcm_data = b"\x00\x00" * 24000
-        mock_frame = _make_mock_frame(pcm_data)
+    async def test_writes_mp3_file(self):
+        """Verify an MP3 file is written."""
+        mp3_data = b"\xff\xfb\x90\x00" * 1000  # fake MP3 frames
+        mock_frame = _make_mock_frame(mp3_data)
         mock_event = _make_mock_event(mock_frame)
 
         mock_stream = MagicMock()
@@ -36,7 +35,7 @@ class TestSynthesizeToFile:
         mock_stream.aclose = AsyncMock()
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_audio.wav")
+            output_path = os.path.join(tmpdir, "test_audio.mp3")
 
             with patch("tts_prerender.TTS") as MockTTS:
                 mock_tts_instance = MockTTS.return_value
@@ -44,24 +43,18 @@ class TestSynthesizeToFile:
 
                 filename = await synthesize_to_file("Hello world", "voice_1", output_path)
 
-            assert filename == "test_audio.wav"
+            assert filename == "test_audio.mp3"
             assert os.path.exists(output_path)
-            assert os.path.getsize(output_path) > 0
+            assert os.path.getsize(output_path) == len(mp3_data)
 
-            # Verify it's a valid WAV file
-            import wave
-
-            with wave.open(output_path, "rb") as wf:
-                assert wf.getnchannels() == 1
-                assert wf.getsampwidth() == 2
-                assert wf.getframerate() == 24000
-                assert wf.getnframes() == 24000
+            # Verify raw bytes match
+            with open(output_path, "rb") as f:
+                assert f.read() == mp3_data
 
     @pytest.mark.asyncio
-    async def test_creates_parent_directory(self):
-        """Verify parent directory is created if it doesn't exist."""
-        pcm_data = b"\x00\x00" * 100
-        mock_frame = _make_mock_frame(pcm_data)
+    async def test_passes_voice_and_encoding_to_tts(self):
+        """Verify TTS is constructed with voice_id and MP3 encoding."""
+        mock_frame = _make_mock_frame(b"\x00" * 10)
         mock_event = _make_mock_event(mock_frame)
 
         mock_stream = MagicMock()
@@ -70,7 +63,29 @@ class TestSynthesizeToFile:
         mock_stream.aclose = AsyncMock()
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            nested_path = os.path.join(tmpdir, "subdir", "deep", "test.wav")
+            output_path = os.path.join(tmpdir, "test.mp3")
+
+            with patch("tts_prerender.TTS") as MockTTS:
+                mock_tts_instance = MockTTS.return_value
+                mock_tts_instance.synthesize.return_value = mock_stream
+
+                await synthesize_to_file("Test", "MY_VOICE_ID", output_path)
+
+            MockTTS.assert_called_once_with(voice="MY_VOICE_ID", encoding="MP3")
+
+    @pytest.mark.asyncio
+    async def test_creates_parent_directory(self):
+        """Verify parent directory is created if it doesn't exist."""
+        mock_frame = _make_mock_frame(b"\x00" * 100)
+        mock_event = _make_mock_event(mock_frame)
+
+        mock_stream = MagicMock()
+        mock_stream.__aiter__ = lambda self: self
+        mock_stream.__anext__ = AsyncMock(side_effect=[mock_event, StopAsyncIteration()])
+        mock_stream.aclose = AsyncMock()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            nested_path = os.path.join(tmpdir, "subdir", "deep", "test.mp3")
 
             with patch("tts_prerender.TTS") as MockTTS:
                 mock_tts_instance = MockTTS.return_value
@@ -82,9 +97,9 @@ class TestSynthesizeToFile:
 
     @pytest.mark.asyncio
     async def test_handles_multiple_frames(self):
-        """Verify multiple PCM frames are concatenated."""
-        frame1 = _make_mock_frame(b"\x01\x00" * 100)
-        frame2 = _make_mock_frame(b"\x02\x00" * 100)
+        """Verify multiple frames are concatenated."""
+        frame1 = _make_mock_frame(b"\x01" * 100)
+        frame2 = _make_mock_frame(b"\x02" * 100)
         event1 = _make_mock_event(frame1)
         event2 = _make_mock_event(frame2)
 
@@ -94,7 +109,7 @@ class TestSynthesizeToFile:
         mock_stream.aclose = AsyncMock()
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "multi.wav")
+            output_path = os.path.join(tmpdir, "multi.mp3")
 
             with patch("tts_prerender.TTS") as MockTTS:
                 mock_tts_instance = MockTTS.return_value
@@ -102,16 +117,12 @@ class TestSynthesizeToFile:
 
                 await synthesize_to_file("Two frames", "voice_1", output_path)
 
-            import wave
-
-            with wave.open(output_path, "rb") as wf:
-                # 200 samples total (100 + 100)
-                assert wf.getnframes() == 200
+            assert os.path.getsize(output_path) == 200
 
     @pytest.mark.asyncio
     async def test_returns_filename_only(self):
         """Verify returned value is just the filename, not full path."""
-        mock_frame = _make_mock_frame(b"\x00\x00" * 10)
+        mock_frame = _make_mock_frame(b"\x00" * 10)
         mock_event = _make_mock_event(mock_frame)
 
         mock_stream = MagicMock()
@@ -120,7 +131,7 @@ class TestSynthesizeToFile:
         mock_stream.aclose = AsyncMock()
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "activity_abc123.wav")
+            output_path = os.path.join(tmpdir, "activity_abc123.mp3")
 
             with patch("tts_prerender.TTS") as MockTTS:
                 mock_tts_instance = MockTTS.return_value
@@ -128,5 +139,5 @@ class TestSynthesizeToFile:
 
                 result = await synthesize_to_file("Test", "voice_1", output_path)
 
-            assert result == "activity_abc123.wav"
+            assert result == "activity_abc123.mp3"
             assert "/" not in result

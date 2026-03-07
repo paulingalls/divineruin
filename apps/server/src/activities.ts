@@ -324,9 +324,10 @@ export async function handleAudioFile(filename: string): Promise<Response> {
     return Response.json({ error: "File not found" }, { status: 404 });
   }
 
+  const contentType = safeName.endsWith(".mp3") ? "audio/mpeg" : "audio/wav";
   return new Response(file, {
     headers: {
-      "Content-Type": "audio/wav",
+      "Content-Type": contentType,
       "Cache-Control": "public, max-age=86400",
     },
   });

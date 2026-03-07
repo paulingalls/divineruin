@@ -93,7 +93,7 @@ class TestResolveSingleActivity:
                 new_callable=AsyncMock,
                 return_value="[NPC:Grimjaw] The blade sings.",
             ),
-            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.wav"),
+            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
         ):
             await _resolve_single_activity(SAMPLE_ACTIVITY)
@@ -104,7 +104,7 @@ class TestResolveSingleActivity:
         updates = call_args[0][1]
         assert updates["status"] == "resolved"
         assert updates["narration_text"] == "[NPC:Grimjaw] The blade sings."
-        assert updates["narration_audio_url"] == "/api/audio/activity_abc123.wav"
+        assert updates["narration_audio_url"] == "/api/audio/activity_abc123.mp3"
         assert "outcome" in updates
         assert "decision_options" in updates
 
@@ -126,7 +126,7 @@ class TestResolveSingleActivity:
             patch(
                 "async_worker.generate_activity_narration", new_callable=AsyncMock, return_value="Training narration."
             ),
-            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.wav"),
+            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
         ):
             await _resolve_single_activity(activity)
@@ -166,7 +166,7 @@ class TestResolveSingleActivity:
         with (
             patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=player_with_companion),
             patch("async_worker.generate_activity_narration", new_callable=AsyncMock, return_value="Kael returns."),
-            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.wav"),
+            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
         ):
             await _resolve_single_activity(activity)
@@ -210,7 +210,7 @@ class TestResolveSingleActivity:
         with (
             patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=None),
             patch("async_worker.generate_activity_narration", new_callable=AsyncMock, return_value="Narration."),
-            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.wav"),
+            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
         ):
             await _resolve_single_activity(SAMPLE_ACTIVITY)

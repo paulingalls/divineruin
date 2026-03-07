@@ -83,7 +83,7 @@ class TestFullPipeline:
                     new_callable=AsyncMock,
                     return_value="[NPC:Grimjaw] The blade holds true. A fine piece of work, recruit. [NARRATOR] The iron sword gleams.",
                 ),
-                patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_e2e_craft.wav"),
+                patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_e2e_craft.mp3"),
                 patch("async_worker.db.update_activity", side_effect=mock_update),
                 patch("async_worker.AUDIO_DIR", tmpdir),
             ):
@@ -95,7 +95,7 @@ class TestFullPipeline:
         assert updates["status"] == "resolved"
         assert updates["narration_text"] is not None
         assert "Grimjaw" in updates["narration_text"]
-        assert updates["narration_audio_url"] == "/api/audio/activity_e2e_craft.wav"
+        assert updates["narration_audio_url"] == "/api/audio/activity_e2e_craft.mp3"
         assert updates["outcome"]["tier"] in ("success", "partial", "unexpected", "failure")
         assert len(updates["decision_options"]) >= 2
 
@@ -128,7 +128,7 @@ class TestFullPipeline:
                 new_callable=AsyncMock,
                 return_value="[NPC:Torin] Again. Better.",
             ),
-            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_e2e_train.wav"),
+            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_e2e_train.mp3"),
             patch("async_worker.db.update_activity", side_effect=mock_update),
         ):
             await _resolve_single_activity(activity)
@@ -167,7 +167,7 @@ class TestFullPipeline:
                 new_callable=AsyncMock,
                 return_value="[NPC:Kael] Found tracks north.",
             ),
-            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_e2e_errand.wav"),
+            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_e2e_errand.mp3"),
             patch("async_worker.db.update_activity", side_effect=mock_update),
         ):
             await _resolve_single_activity(activity)
