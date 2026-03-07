@@ -321,16 +321,19 @@ export function handleGameEvent(event: DataChannelEvent): void {
 
     case "hollow_corruption_changed":
       if (typeof event.level === "number") {
-        sessionStore.getState().setCorruptionLevel(event.level);
+        sessionStore
+          .getState()
+          .setCorruptionLevel(Math.max(0, Math.min(3, Math.floor(event.level))));
       }
       break;
 
     case "set_music_state":
-      if (
-        typeof event.music_state === "string" &&
-        VALID_MUSIC_STATES.has(event.music_state as MusicState)
-      ) {
-        overrideMusicState(event.music_state as MusicState);
+      if (typeof event.music_state === "string") {
+        if (VALID_MUSIC_STATES.has(event.music_state as MusicState)) {
+          overrideMusicState(event.music_state as MusicState);
+        } else {
+          console.warn("[game-events] Invalid music_state:", event.music_state);
+        }
       }
       break;
 

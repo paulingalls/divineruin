@@ -823,6 +823,21 @@ test("hollow_corruption_changed ignores non-number level", () => {
   expect(sessionStore.getState().corruptionLevel).toBe(1);
 });
 
+test("hollow_corruption_changed clamps negative values to 0", () => {
+  handleGameEvent({ type: "hollow_corruption_changed", level: -5 });
+  expect(sessionStore.getState().corruptionLevel).toBe(0);
+});
+
+test("hollow_corruption_changed clamps values above 3", () => {
+  handleGameEvent({ type: "hollow_corruption_changed", level: 99 });
+  expect(sessionStore.getState().corruptionLevel).toBe(3);
+});
+
+test("hollow_corruption_changed floors float values", () => {
+  handleGameEvent({ type: "hollow_corruption_changed", level: 2.7 });
+  expect(sessionStore.getState().corruptionLevel).toBe(2);
+});
+
 test("set_music_state with valid string does not crash", () => {
   handleGameEvent({ type: "set_music_state", music_state: "wonder" });
   // Verifying no error thrown — overrideMusicState is called
