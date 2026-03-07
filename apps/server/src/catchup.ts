@@ -15,7 +15,13 @@ interface FeedItemProgress {
 
 export interface FeedItem {
   id: string;
-  type: "resolved" | "pending_decision" | "in_progress" | "world_news" | "companion_idle";
+  type:
+    | "resolved"
+    | "pending_decision"
+    | "in_progress"
+    | "world_news"
+    | "companion_idle"
+    | "god_whisper";
   title: string;
   summary: string;
   timestamp: string;
@@ -173,8 +179,22 @@ function activityToFeedItem(id: string, data: Record<string, unknown>): FeedItem
   };
 }
 
-// Sort priority: pending_decision (0), resolved (1), in_progress (2), world_news (3), companion_idle (4)
+const DEITY_DISPLAY_NAMES: Record<string, string> = {
+  kaelen: "Kaelen, the Ironhand",
+  syrath: "Syrath, the Veiled",
+  veythar: "Veythar, the Unbound",
+  mortaen: "Mortaen, the Still",
+  thyra: "Thyra, the Thornmother",
+  aelora: "Aelora, the Hearthkeeper",
+  valdris: "Valdris, the Unyielding",
+  nythera: "Nythera, the Drifting Star",
+  orenthel: "Orenthel, the Dawnbearer",
+  zhael: "Zhael, the Weaver",
+};
+
+// Sort priority: god_whisper/pending_decision (0), resolved (1), in_progress (2), world_news (3), companion_idle (4)
 const TYPE_SORT_ORDER: Record<FeedItem["type"], number> = {
+  god_whisper: 0,
   pending_decision: 0,
   resolved: 1,
   in_progress: 2,
@@ -184,7 +204,7 @@ const TYPE_SORT_ORDER: Record<FeedItem["type"], number> = {
 
 export async function handleGetCatchUpFeed(_req: Request, playerId: string): Promise<Response> {
   try {
-    // Run both queries in parallel
+    // Run all queries in parallel
     const activitiesPromise = sql`
       SELECT id, data FROM async_activities
       WHERE player_id = ${playerId}
@@ -202,7 +222,20 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
       { id: string; data: unknown }[]
     >;
 
-    const [rows, newsRows] = await Promise.all([activitiesPromise, newsPromise]);
+    const whispersPromise = sql`
+      SELECT id, data FROM god_whispers
+      WHERE player_id = ${playerId}
+        AND data->>'status' = 'pending'
+      ORDER BY created_at DESC
+    `.catch(() => [] as { id: string; data: unknown }[]) as Promise<
+      { id: string; data: unknown }[]
+    >;
+
+    const [rows, newsRows, whisperRows] = await Promise.all([
+      activitiesPromise,
+      newsPromise,
+      whispersPromise,
+    ]);
 
     const items: FeedItem[] = [];
 
@@ -235,11 +268,37 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
       });
     }
 
+    for (const row of whisperRows) {
+      const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<
+        string,
+        unknown
+      >;
+      const deityId = str(data.deity_id, "unknown");
+      const displayName = DEITY_DISPLAY_NAMES[deityId] ?? deityId;
+      const narration = str(data.narration_text, "");
+      const audioUrl = typeof data.audio_url === "string" ? data.audio_url : null;
+      items.push({
+        id: row.id,
+        type: "god_whisper",
+        title: displayName,
+        summary: narration.slice(0, 200),
+        timestamp: new Date().toISOString(),
+        relativeTime: "now",
+        hasAudio: audioUrl !== null,
+        audioUrl,
+        decisionOptions: null,
+        activityType: null,
+        progress: null,
+      });
+    }
+
     // Sort by type priority
     items.sort((a, b) => TYPE_SORT_ORDER[a.type] - TYPE_SORT_ORDER[b.type]);
 
     // If no resolved/pending items, add companion idle chatter
-    const hasActionable = items.some((i) => i.type === "pending_decision" || i.type === "resolved");
+    const hasActionable = items.some(
+      (i) => i.type === "pending_decision" || i.type === "resolved" || i.type === "god_whisper",
+    );
     if (!hasActionable) {
       items.push({
         id: `idle_${Date.now()}`,

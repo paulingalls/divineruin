@@ -11,6 +11,7 @@ from tools import (
     _clamp_disposition_shift,
     _resolve_ambient_sounds,
     add_to_inventory,
+    award_divine_favor,
     award_xp,
     move_player,
     remove_from_inventory,
@@ -696,3 +697,83 @@ class TestUpdateQuest:
         ctx = _make_context()
         result = json.loads(await update_quest._func(ctx, quest_id="greyvale_anomaly", new_stage_id=99))
         assert "error" in result
+
+
+# --- award_divine_favor ---
+
+
+SAMPLE_FAVOR = {
+    "patron": "kaelen",
+    "level": 10,
+    "max": 100,
+    "last_whisper_level": 0,
+}
+
+
+@patch("tools.db.transaction", _mock_transaction)
+class TestAwardDivineFavor:
+    @pytest.mark.asyncio
+    @patch("tools.db.update_divine_favor", new_callable=AsyncMock)
+    @patch("tools.db.get_divine_favor", new_callable=AsyncMock)
+    async def test_awards_favor(self, mock_get, mock_update):
+        mock_get.return_value = SAMPLE_FAVOR
+        ctx = _make_context()
+        result = json.loads(await award_divine_favor._func(ctx, amount=5, reason="honored Kaelen"))
+        assert result["patron"] == "kaelen"
+        assert result["previous_level"] == 10
+        assert result["new_level"] == 15
+        assert result["amount"] == 5
+        mock_update.assert_called_once_with("player_1", 15, conn=_mock_conn)
+
+    @pytest.mark.asyncio
+    @patch("tools.db.update_divine_favor", new_callable=AsyncMock)
+    @patch("tools.db.get_divine_favor", new_callable=AsyncMock)
+    async def test_clamps_at_max(self, mock_get, mock_update):
+        favor = {**SAMPLE_FAVOR, "level": 95}
+        mock_get.return_value = favor
+        ctx = _make_context()
+        result = json.loads(await award_divine_favor._func(ctx, amount=10, reason="great deed"))
+        assert result["new_level"] == 100
+        mock_update.assert_called_once_with("player_1", 100, conn=_mock_conn)
+
+    @pytest.mark.asyncio
+    async def test_invalid_amount_too_low(self):
+        ctx = _make_context()
+        result = json.loads(await award_divine_favor._func(ctx, amount=0, reason="test"))
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_invalid_amount_too_high(self):
+        ctx = _make_context()
+        result = json.loads(await award_divine_favor._func(ctx, amount=11, reason="test"))
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_divine_favor", new_callable=AsyncMock)
+    async def test_no_patron(self, mock_get):
+        mock_get.return_value = {"patron": "none", "level": 0, "max": 100, "last_whisper_level": 0}
+        ctx = _make_context()
+        result = json.loads(await award_divine_favor._func(ctx, amount=5, reason="test"))
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_divine_favor", new_callable=AsyncMock)
+    async def test_no_favor_data(self, mock_get):
+        mock_get.return_value = None
+        ctx = _make_context()
+        result = json.loads(await award_divine_favor._func(ctx, amount=5, reason="test"))
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    @patch("tools.db.update_divine_favor", new_callable=AsyncMock)
+    @patch("tools.db.get_divine_favor", new_callable=AsyncMock)
+    async def test_publishes_event(self, mock_get, mock_update):
+        mock_get.return_value = SAMPLE_FAVOR
+        room = _make_mock_room()
+        ctx = _make_context(room=room)
+        await award_divine_favor._func(ctx, amount=5, reason="test")
+        room.local_participant.publish_data.assert_called_once()
+        call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
+        assert call_data["type"] == "divine_favor_changed"
+        assert call_data["new_level"] == 15
+        assert call_data["patron_id"] == "kaelen"

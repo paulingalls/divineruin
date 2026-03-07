@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from event_bus import GameEvent
+from god_whisper_data import get_god_profile, should_trigger_whisper
 from prompts import build_full_prompt, build_system_prompt, build_warm_layer
 from tools import _disposition_rank
 
@@ -27,6 +28,7 @@ REBUILD_EVENT_TYPES = {
     "combat_started",
     "combat_ended",
     "hollow_corruption_changed",
+    "divine_favor_changed",
 }
 
 MEETING_LOCATIONS = {"accord_market_square", "accord_dockside"}
@@ -118,6 +120,7 @@ class PendingSpeech:
     priority: SpeechPriority
     instructions: str = field(compare=False)
     created: float = field(default_factory=time.time, compare=False)
+    stinger_sound: str | None = field(default=None, compare=False)
 
 
 class BackgroundProcess:
@@ -323,10 +326,13 @@ class BackgroundProcess:
             elif ev.event_type == "world_event":
                 event_id = ev.payload.get("event_id", "")
                 if event_id.startswith("god_whisper"):
-                    self._queue_speech(
-                        SpeechPriority.CRITICAL,
-                        GOD_WHISPER_INSTRUCTIONS,
-                    )
+                    self._queue_god_whisper(ev.payload)
+
+            elif ev.event_type == "divine_favor_changed":
+                new_level = ev.payload.get("new_level", 0)
+                last_whisper = ev.payload.get("last_whisper_level", 0)
+                if should_trigger_whisper(new_level, last_whisper):
+                    self._queue_god_whisper(ev.payload)
 
         return needs_rebuild
 
@@ -349,6 +355,38 @@ class BackgroundProcess:
             logger.info("Companion Kael initialized after meeting scene")
         except Exception:
             logger.warning("Failed to initialize companion after meeting", exc_info=True)
+
+    def _queue_god_whisper(self, payload: dict) -> None:
+        """Build god-specific whisper instructions and queue as CRITICAL."""
+        patron_id = payload.get("patron_id") or self._sd.patron_id
+        profile = get_god_profile(patron_id)
+        instructions = self._build_god_whisper_instructions(profile, payload)
+        self._speech_queue.append(
+            PendingSpeech(
+                priority=SpeechPriority.CRITICAL,
+                instructions=instructions,
+                stinger_sound=profile.stinger_sound,
+            )
+        )
+
+    @staticmethod
+    def _build_god_whisper_instructions(profile, payload: dict) -> str:
+        """Build full instruction string for god whisper delivery."""
+        context = payload.get("reason", "")
+        return (
+            "Something shifts. The air thickens. Sound stops — not fades, stops, as if the world "
+            "has held its breath. For a heartbeat, everything is impossibly still.\n\n"
+            "Then a presence. Not a voice yet, but a weight — ancient, immense. "
+            "Narrate this atmospheric shift in your DM narrator voice.\n\n"
+            f"Then the god speaks. Use [{profile.voice_character}, {profile.voice_emotion}] tag. "
+            f"Speaking style: {profile.speaking_style}. "
+            f"{profile.personality_prompt}\n\n"
+            "Two sentences from the god. Short. Weighted. Ancient perspective. "
+            f"{f'Context: {context}. ' if context else ''}"
+            "Then silence returns like a wave breaking, and the world resumes. "
+            "The companion does NOT react during this moment. After the silence breaks, "
+            "Kael looks shaken but says nothing unless the player speaks first."
+        )
 
     def _check_companion_idle(self) -> None:
         if not self._sd.companion_can_act:
@@ -428,8 +466,31 @@ class BackgroundProcess:
         self._speech_queue.clear()
 
         try:
+            # Fire stinger SFX before god whisper speech
+            if top.stinger_sound is not None:
+                from game_events import publish_game_event
+
+                await publish_game_event(
+                    self._sd.room,
+                    "play_sound",
+                    {"sound_name": top.stinger_sound},
+                    event_bus=self._sd.event_bus,
+                )
+                await asyncio.sleep(2.0)
+
             await self._session.generate_reply(instructions=top.instructions)
             logger.info("Proactive speech delivered (priority=%s)", top.priority.name)
+
+            # Mark last_whisper_level after delivering (deferred from critical path)
+            if top.stinger_sound is not None:
+                try:
+                    import db as _db
+
+                    favor = await _db.get_divine_favor(self._sd.player_id)
+                    if favor:
+                        await _db.mark_favor_whisper_level(self._sd.player_id, favor.get("level", 0))
+                except Exception:
+                    logger.warning("Failed to mark favor whisper level", exc_info=True)
             if "COMPANION_KAEL" in top.instructions and self._sd.companion:
                 self._sd.companion.last_speech_time = time.time()
             if self._meeting_pending:

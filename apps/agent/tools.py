@@ -822,6 +822,69 @@ async def award_xp(
 
 @function_tool()
 @db_tool
+async def award_divine_favor(
+    context: RunContext[SessionData],
+    amount: int,
+    reason: str,
+) -> str:
+    """Award divine favor to the player from their patron deity.
+    Amount should be 1-10. The patron god notices the player's actions
+    and their favor grows. Narrate this subtly — a warmth, a sense of
+    approval — not as a game mechanic."""
+    logger.info("award_divine_favor called: amount=%d, reason=%s", amount, reason)
+    session: SessionData = context.userdata
+
+    if amount < 1 or amount > 10:
+        return json.dumps({"error": "Divine favor amount must be 1-10."})
+
+    async with db.transaction() as conn:
+        favor = await db.get_divine_favor(session.player_id, conn=conn)
+        if favor is None or favor.get("patron", "none") == "none":
+            return json.dumps({"error": "Player has no patron deity."})
+
+        current_level = favor.get("level", 0)
+        max_level = favor.get("max", 100)
+        new_level = min(current_level + amount, max_level)
+
+        await db.update_divine_favor(session.player_id, new_level, conn=conn)
+
+    patron_id = favor["patron"]
+    last_whisper_level = favor.get("last_whisper_level", 0)
+
+    await publish_game_event(
+        session.room,
+        "divine_favor_changed",
+        {
+            "new_level": new_level,
+            "previous_level": current_level,
+            "patron_id": patron_id,
+            "last_whisper_level": last_whisper_level,
+            "amount": amount,
+            "reason": reason,
+        },
+        event_bus=session.event_bus,
+    )
+
+    session.record_event(f"Divine favor +{amount}: {reason}")
+
+    response = {
+        "patron": patron_id,
+        "previous_level": current_level,
+        "new_level": new_level,
+        "amount": amount,
+        "reason": reason,
+    }
+    logger.info(
+        "award_divine_favor result: +%d → %d (patron=%s)",
+        amount,
+        new_level,
+        patron_id,
+    )
+    return json.dumps(response)
+
+
+@function_tool()
+@db_tool
 async def update_npc_disposition(
     context: RunContext[SessionData],
     npc_id: str,

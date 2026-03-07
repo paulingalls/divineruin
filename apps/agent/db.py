@@ -806,3 +806,93 @@ async def player_exists(player_id: str) -> bool:
         player_id,
     )
     return row is not None
+
+
+# --- Divine favor ---
+
+
+async def get_divine_favor(player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> dict | None:
+    """Read divine_favor from player JSONB data."""
+    _conn = conn or await get_pool()
+    row = await _conn.fetchrow(
+        "SELECT data->'divine_favor' AS favor FROM players WHERE player_id = $1",
+        player_id,
+    )
+    if row is None or row["favor"] is None:
+        return None
+    return json.loads(row["favor"])
+
+
+async def update_divine_favor(
+    player_id: str, new_level: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    """Update divine_favor.level in player JSONB."""
+    _conn = conn or await get_pool()
+    await _conn.execute(
+        """
+        UPDATE players
+        SET data = jsonb_set(data, '{divine_favor,level}', $2::jsonb)
+        WHERE player_id = $1
+        """,
+        player_id,
+        json.dumps(new_level),
+    )
+
+
+async def mark_favor_whisper_level(
+    player_id: str, level: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    """Update divine_favor.last_whisper_level in player JSONB."""
+    _conn = conn or await get_pool()
+    await _conn.execute(
+        """
+        UPDATE players
+        SET data = jsonb_set(data, '{divine_favor,last_whisper_level}', $2::jsonb)
+        WHERE player_id = $1
+        """,
+        player_id,
+        json.dumps(level),
+    )
+
+
+# --- God whispers ---
+
+
+async def create_god_whisper(player_id: str, whisper_data: dict) -> str:
+    """Insert a new god whisper. Returns the whisper ID."""
+    whisper_id = f"whisper_{uuid.uuid4().hex[:12]}"
+    pool = await get_pool()
+    await pool.execute(
+        "INSERT INTO god_whispers (id, player_id, data) VALUES ($1, $2, $3::jsonb)",
+        whisper_id,
+        player_id,
+        json.dumps(whisper_data),
+    )
+    return whisper_id
+
+
+async def get_pending_god_whispers(player_id: str) -> list[dict]:
+    """Return all pending god whispers for a player."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT id, data FROM god_whispers
+        WHERE player_id = $1 AND data->>'status' = 'pending'
+        ORDER BY created_at DESC
+        """,
+        player_id,
+    )
+    return [{"id": row["id"], **json.loads(row["data"])} for row in rows]
+
+
+async def mark_god_whisper_played(whisper_id: str) -> None:
+    """Mark a god whisper as played."""
+    pool = await get_pool()
+    await pool.execute(
+        """
+        UPDATE god_whispers
+        SET data = jsonb_set(data, '{status}', '"played"'::jsonb)
+        WHERE id = $1
+        """,
+        whisper_id,
+    )

@@ -15,6 +15,7 @@ from activity_templates import get_companion_context, get_crafting_npc, get_trai
 from async_rules import resolve_companion_errand, resolve_crafting, resolve_training
 from llm_config import AUDIO_DIR, audio_url_for
 from narration import generate_activity_narration, generate_notification_hook, generate_progress_snippets
+from push import send_push_notification
 from tts_prerender import synthesize_to_file
 from world_news import generate_world_news
 
@@ -111,7 +112,7 @@ async def _resolve_single_activity(activity: dict) -> None:
     # Send push notification
     try:
         narration_hook = await generate_notification_hook(narration_text, activity_type)
-        await _send_push_notification(player_id, activityTitle(activity_type, activity), narration_hook)
+        await send_push_notification(player_id, activityTitle(activity_type, activity), narration_hook)
     except Exception:
         logger.warning("Failed to send push notification for %s", activity_id)
 
@@ -128,24 +129,6 @@ def activityTitle(activity_type: str, activity: dict) -> str:
         errand = params.get("errand_type", "")
         return f"{errand.capitalize()} Errand" if errand else "Companion Errand"
     return "Activity"
-
-
-async def _send_push_notification(player_id: str, title: str, body: str) -> None:
-    """Send push notification via the server's push endpoint."""
-    import aiohttp
-
-    server_url = os.environ.get("SERVER_URL", "http://localhost:3001")
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{server_url}/api/internal/push",
-                json={"player_id": player_id, "title": title, "body": body},
-                headers={"X-Internal-Secret": os.environ.get("INTERNAL_SECRET", "")},
-            ) as resp:
-                if resp.status != 200:
-                    logger.warning("Push notification failed: %s", resp.status)
-    except Exception:
-        logger.warning("Could not reach server for push notification")
 
 
 async def _backfill_progress_snippets(exclude_ids: set[str] | None = None) -> None:
@@ -187,6 +170,56 @@ def _get_voice_id(activity_type: str, parameters: dict, outcome: dict) -> str:
         return companion["voice_id"]
 
 
+async def check_god_whisper_triggers() -> int:
+    """Check for players who should receive async god whispers.
+
+    Criteria: patron != "none", favor >= threshold, no pending whisper,
+    and level - last_whisper_level >= cooldown.
+
+    Returns the number of whispers generated.
+    """
+    from god_whisper_data import FAVOR_WHISPER_THRESHOLD, should_trigger_whisper
+    from god_whisper_generator import generate_god_whisper
+
+    pool = await db.get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT player_id, data->'divine_favor' AS favor FROM players
+        WHERE data->'divine_favor'->>'patron' IS NOT NULL
+          AND data->'divine_favor'->>'patron' != 'none'
+          AND (data->'divine_favor'->>'level')::int >= $1
+        """,
+        FAVOR_WHISPER_THRESHOLD,
+    )
+
+    count = 0
+    for row in rows:
+        player_id = row["player_id"]
+        favor = json.loads(row["favor"])
+        level = favor.get("level", 0)
+        last_whisper = favor.get("last_whisper_level", 0)
+
+        if not should_trigger_whisper(level, last_whisper):
+            continue
+
+        # Check no pending whisper already exists
+        pending = await db.get_pending_god_whispers(player_id)
+        if pending:
+            continue
+
+        patron_id = favor.get("patron", "none")
+        try:
+            await generate_god_whisper(player_id, patron_id)
+            await db.mark_favor_whisper_level(player_id, level)
+            count += 1
+        except Exception:
+            logger.exception("Failed to generate god whisper for %s", player_id)
+
+    if count > 0:
+        logger.info("Generated %d god whispers", count)
+    return count
+
+
 async def main() -> None:
     """Main entry point for the async worker."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -203,6 +236,12 @@ async def main() -> None:
                     logger.info("Cycle complete: %d activities resolved", count)
             except Exception:
                 logger.exception("Error in resolve cycle")
+
+            try:
+                await check_god_whisper_triggers()
+            except Exception:
+                logger.exception("Error in god whisper check")
+
             await asyncio.sleep(POLL_INTERVAL)
     finally:
         await db.close_all()

@@ -256,4 +256,10 @@ def build_character_data(
         "backstory": backstory,
         "deity": deity_id,
         "culture": cultures[0],
+        "divine_favor": {
+            "patron": deity_id or "none",
+            "level": 0,
+            "max": 100,
+            "last_whisper_level": 0,
+        },
     }

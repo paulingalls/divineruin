@@ -488,6 +488,25 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }
       break;
 
+    case "divine_favor_changed":
+      if (typeof event.new_level === "number") {
+        const favorMax = typeof event.max === "number" ? event.max : 100;
+        characterStore.getState().updateDivineFavor(event.new_level, favorMax);
+        const favorAmount = typeof event.amount === "number" ? event.amount : 0;
+        if (favorAmount > 0) {
+          hudStore.getState().pushOverlay(
+            "divine_favor",
+            {
+              amount: favorAmount,
+              patronId: typeof event.patron_id === "string" ? event.patron_id : "",
+              newLevel: event.new_level,
+            },
+            2000,
+          );
+        }
+      }
+      break;
+
     case "play_narration":
       if (typeof event.url === "string" && event.url.startsWith("/api/audio/")) {
         playNarration(event.url);

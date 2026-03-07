@@ -18,6 +18,16 @@ VOICES: dict[str, str] = {
     "WOUNDED_RIDER": os.getenv("INWORLD_VOICE_RIDER", ""),
     "INNKEEPER_MAREN": os.getenv("INWORLD_VOICE_MAREN", ""),
     "FACTION_VALDRIS": os.getenv("INWORLD_VOICE_VALDRIS", ""),
+    "GOD_KAELEN": os.getenv("INWORLD_VOICE_GOD_KAELEN", ""),
+    "GOD_SYRATH": os.getenv("INWORLD_VOICE_GOD_SYRATH", ""),
+    "GOD_VEYTHAR": os.getenv("INWORLD_VOICE_GOD_VEYTHAR", ""),
+    "GOD_MORTAEN": os.getenv("INWORLD_VOICE_GOD_MORTAEN", ""),
+    "GOD_THYRA": os.getenv("INWORLD_VOICE_GOD_THYRA", ""),
+    "GOD_AELORA": os.getenv("INWORLD_VOICE_GOD_AELORA", ""),
+    "GOD_VALDRIS": os.getenv("INWORLD_VOICE_GOD_VALDRIS", ""),
+    "GOD_NYTHERA": os.getenv("INWORLD_VOICE_GOD_NYTHERA", ""),
+    "GOD_ORENTHEL": os.getenv("INWORLD_VOICE_GOD_ORENTHEL", ""),
+    "GOD_ZHAEL": os.getenv("INWORLD_VOICE_GOD_ZHAEL", ""),
 }
 
 DEFAULT_VOICE = "DM_NARRATOR"
@@ -31,6 +41,16 @@ VOICE_RATE_OFFSETS: dict[str, float] = {
     "WOUNDED_RIDER": 0.20,
     "INNKEEPER_MAREN": 0.05,
     "FACTION_VALDRIS": -0.10,
+    "GOD_KAELEN": -0.35,
+    "GOD_SYRATH": -0.40,
+    "GOD_VEYTHAR": -0.30,
+    "GOD_MORTAEN": -0.45,
+    "GOD_THYRA": -0.10,
+    "GOD_AELORA": -0.15,
+    "GOD_VALDRIS": -0.25,
+    "GOD_NYTHERA": -0.05,
+    "GOD_ORENTHEL": -0.20,
+    "GOD_ZHAEL": -0.30,
 }
 
 EMOTION_RATES: dict[str, float] = {
@@ -49,6 +69,7 @@ EMOTION_RATES: dict[str, float] = {
     "amused": 0.85,
     "weary": 0.7,
     "urgent": 0.9,
+    "divine": 1.0,
 }
 
 EMOTIONS: list[str] = sorted(EMOTION_RATES.keys())

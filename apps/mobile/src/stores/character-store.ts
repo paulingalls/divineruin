@@ -16,15 +16,20 @@ export interface CharacterSummary {
 
 interface CharacterState {
   character: CharacterSummary | null;
+  divineFavorLevel: number;
+  divineFavorMax: number;
   setCharacter: (character: CharacterSummary) => void;
   updateLocation: (id: string, name: string) => void;
   updateHp: (current: number, max?: number) => void;
   updateXp: (xp: number, level: number) => void;
+  updateDivineFavor: (level: number, max: number) => void;
   clear: () => void;
 }
 
 export const characterStore = createStore<CharacterState>((set) => ({
   character: null,
+  divineFavorLevel: 0,
+  divineFavorMax: 100,
   setCharacter: (character) => set({ character }),
   updateLocation: (id, name) =>
     set((s) =>
@@ -38,5 +43,6 @@ export const characterStore = createStore<CharacterState>((set) => ({
     ),
   updateXp: (xp, level) =>
     set((s) => (s.character ? { character: { ...s.character, xp, level } } : s)),
-  clear: () => set({ character: null }),
+  updateDivineFavor: (level, max) => set({ divineFavorLevel: level, divineFavorMax: max }),
+  clear: () => set({ character: null, divineFavorLevel: 0, divineFavorMax: 100 }),
 }));

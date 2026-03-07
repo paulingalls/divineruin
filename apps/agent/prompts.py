@@ -131,7 +131,14 @@ When narrating a god speaking, shift register completely. Short, weighted senten
 Ancient perspective — vast timescale, weary omniscience. Narrate their presence \
 through the environment first: air thickens, sound stops, reality holds its breath. \
 Then the god speaks — two sentences maximum, dense with meaning. Then silence \
-returns like a wave. The companion does not react during this moment.\
+returns like a wave. The companion does not react during this moment.
+
+God voice tags use the same ventriloquism format as NPCs:
+[GOD_KAELEN, divine], [GOD_SYRATH, divine], [GOD_VEYTHAR, divine], \
+[GOD_MORTAEN, divine], [GOD_THYRA, divine], [GOD_AELORA, divine], \
+[GOD_VALDRIS, divine], [GOD_NYTHERA, divine], [GOD_ORENTHEL, divine], \
+[GOD_ZHAEL, divine]
+Each god has a unique voice. Use the tag you are instructed to use.\
 """
 
 PLAYER_AWARENESS_PROMPT = """\

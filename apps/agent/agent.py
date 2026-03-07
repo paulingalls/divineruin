@@ -25,6 +25,7 @@ from session_data import CompanionState, CreationState, SessionData
 from session_summary import generate_session_summary
 from tools import (
     add_to_inventory,
+    award_divine_favor,
     award_xp,
     discover_hidden_element,
     end_combat,
@@ -73,6 +74,7 @@ MUTATION_TOOLS = [
     remove_from_inventory,
     update_quest,
     award_xp,
+    award_divine_favor,
     update_npc_disposition,
     end_session,
 ]
@@ -532,10 +534,15 @@ async def dm_session(ctx: agents.JobContext) -> None:
             location_id = "accord_market_square"
             is_first_session = True
 
+        # Extract patron deity from player data
+        divine_favor = player.get("divine_favor", {})
+        patron_id = divine_favor.get("patron", "none") if divine_favor else "none"
+
         userdata = SessionData(
             player_id=player_id,
             location_id=location_id,
             room=ctx.room,
+            patron_id=patron_id,
         )
 
         if player.get("flags", {}).get("companion_met") == "true":

@@ -20,7 +20,8 @@ export type SoundName =
   | "shield_block"
   | "potion_use"
   | "door_creak"
-  | "discovery_chime";
+  | "discovery_chime"
+  | "god_whisper_stinger";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- RN require() returns any */
 const SOUNDS: Record<SoundName, SoundAsset> = {
@@ -43,6 +44,7 @@ const SOUNDS: Record<SoundName, SoundAsset> = {
   potion_use: require("@/assets/sounds/potion_use.mp3"),
   door_creak: require("@/assets/sounds/door_creak.mp3"),
   discovery_chime: require("@/assets/sounds/discovery_chime.mp3"),
+  god_whisper_stinger: require("@/assets/sounds/god_whisper_stinger.mp3"),
 };
 /* eslint-enable @typescript-eslint/no-unsafe-assignment */
 

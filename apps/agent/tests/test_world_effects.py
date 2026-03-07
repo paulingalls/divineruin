@@ -306,12 +306,64 @@ class TestGodWhisper:
         sd = _make_session(
             companion=CompanionState(id="companion_kael", name="Kael"),
         )
+        sd.patron_id = "kaelen"
         bg, _, _ = _make_bg(session_data=sd)
         events = [GameEvent(event_type="world_event", payload={"event_id": "god_whisper:player_patron"})]
         bg._handle_events(events)
         assert len(bg._speech_queue) == 1
         assert bg._speech_queue[0].priority == SpeechPriority.CRITICAL
-        assert "ancient" in bg._speech_queue[0].instructions.lower()
+        assert "GOD_KAELEN" in bg._speech_queue[0].instructions
+
+    def test_god_whisper_uses_patron_voice(self):
+        sd = _make_session()
+        sd.patron_id = "syrath"
+        bg, _, _ = _make_bg(session_data=sd)
+        events = [GameEvent(event_type="world_event", payload={"event_id": "god_whisper:player_patron"})]
+        bg._handle_events(events)
+        assert len(bg._speech_queue) == 1
+        assert "GOD_SYRATH" in bg._speech_queue[0].instructions
+        assert bg._speech_queue[0].stinger_sound == "god_whisper_stinger"
+
+    def test_divine_favor_triggers_whisper_at_threshold(self):
+        sd = _make_session()
+        sd.patron_id = "veythar"
+        bg, _, _ = _make_bg(session_data=sd)
+        events = [
+            GameEvent(
+                event_type="divine_favor_changed",
+                payload={"new_level": 25, "last_whisper_level": 0, "patron_id": "veythar"},
+            )
+        ]
+        bg._handle_events(events)
+        assert len(bg._speech_queue) == 1
+        assert "GOD_VEYTHAR" in bg._speech_queue[0].instructions
+
+    def test_divine_favor_no_whisper_below_threshold(self):
+        sd = _make_session()
+        sd.patron_id = "veythar"
+        bg, _, _ = _make_bg(session_data=sd)
+        events = [
+            GameEvent(
+                event_type="divine_favor_changed",
+                payload={"new_level": 20, "last_whisper_level": 0, "patron_id": "veythar"},
+            )
+        ]
+        bg._handle_events(events)
+        assert len(bg._speech_queue) == 0
+
+    def test_divine_favor_no_whisper_within_cooldown(self):
+        sd = _make_session()
+        sd.patron_id = "veythar"
+        bg, _, _ = _make_bg(session_data=sd)
+        events = [
+            GameEvent(
+                event_type="divine_favor_changed",
+                payload={"new_level": 40, "last_whisper_level": 25, "patron_id": "veythar"},
+            )
+        ]
+        bg._handle_events(events)
+        # 40 - 25 = 15 < 25 cooldown
+        assert len(bg._speech_queue) == 0
 
     def test_non_whisper_world_event_no_speech(self):
         bg, _, _ = _make_bg()

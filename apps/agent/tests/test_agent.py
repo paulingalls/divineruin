@@ -446,6 +446,7 @@ class TestDMSession:
                     player_id="player_1",
                     location_id="accord_market_square",
                     room=mock_ctx.room,
+                    patron_id="none",
                 )
 
     @pytest.mark.asyncio

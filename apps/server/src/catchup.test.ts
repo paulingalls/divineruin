@@ -180,6 +180,7 @@ describe("handleGetCatchUpFeed", () => {
         },
       ],
       [], // world_news query
+      [], // god_whispers query
     ];
 
     const req = makeRequest("GET", "/api/catchup");
@@ -207,6 +208,7 @@ describe("handleGetCatchUpFeed", () => {
         },
       ],
       [], // world_news query
+      [], // god_whispers query
     ];
 
     const req = makeRequest("GET", "/api/catchup");
@@ -234,6 +236,7 @@ describe("handleGetCatchUpFeed", () => {
         },
       ],
       [], // world_news query
+      [], // god_whispers query
     ];
 
     const req = makeRequest("GET", "/api/catchup");
@@ -245,7 +248,7 @@ describe("handleGetCatchUpFeed", () => {
   });
 
   test("returns empty feed with idle when no activities", async () => {
-    mockQueryResults = [[], []];
+    mockQueryResults = [[], [], []];
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
@@ -259,7 +262,7 @@ describe("handleGetCatchUpFeed", () => {
     // The SQL now filters to only resolved/in_progress, so collected rows
     // never arrive. Simulate DB returning nothing (as it would for a player
     // whose only activity is collected).
-    mockQueryResults = [[], []];
+    mockQueryResults = [[], [], []];
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
@@ -268,5 +271,58 @@ describe("handleGetCatchUpFeed", () => {
     // Only companion idle should remain
     expect(body.items).toHaveLength(1);
     expect(body.items[0]!.type).toBe("companion_idle");
+  });
+
+  test("god whispers appear in feed with top priority", async () => {
+    mockQueryResults = [
+      [], // activities
+      [], // world_news
+      [
+        {
+          id: "whisper_abc123",
+          data: {
+            deity_id: "kaelen",
+            narration_text: "Your blade speaks louder than your words.",
+            audio_url: "/api/audio/whisper_test.mp3",
+            status: "pending",
+          },
+        },
+      ], // god_whispers
+    ];
+
+    const req = makeRequest("GET", "/api/catchup");
+    const res = await handleGetCatchUpFeed(req, "player_1");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      items: { id: string; type: string; title: string; hasAudio: boolean }[];
+    };
+    expect(body.items[0]!.type).toBe("god_whisper");
+    expect(body.items[0]!.title).toContain("Kaelen");
+    expect(body.items[0]!.hasAudio).toBe(true);
+  });
+
+  test("god whisper suppresses companion idle", async () => {
+    mockQueryResults = [
+      [], // activities
+      [], // world_news
+      [
+        {
+          id: "whisper_abc",
+          data: {
+            deity_id: "orenthel",
+            narration_text: "Light endures.",
+            status: "pending",
+          },
+        },
+      ], // god_whispers
+    ];
+
+    const req = makeRequest("GET", "/api/catchup");
+    const res = await handleGetCatchUpFeed(req, "player_1");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: { type: string }[] };
+    const types = body.items.map((i) => i.type);
+    expect(types).toContain("god_whisper");
+    expect(types).not.toContain("companion_idle");
   });
 });

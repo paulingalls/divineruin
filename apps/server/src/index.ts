@@ -11,6 +11,7 @@ import {
   handleAudioFile,
 } from "./activities.ts";
 import { handleGetCatchUpFeed } from "./catchup.ts";
+import { sql } from "./db.ts";
 import { handleGetActivityTemplates } from "./activity-templates-api.ts";
 import { handleStorePushToken, handleInternalPush } from "./push.ts";
 import { isDev } from "./env.ts";
@@ -21,6 +22,7 @@ const CHARACTER_RE = /^\/api\/character\/([^/]+)$/;
 const ACTIVITY_ID_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)$/;
 const ACTIVITY_DECIDE_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)\/decide$/;
 const AUDIO_FILE_RE = /^\/api\/audio\/([a-zA-Z0-9_.-]+)$/;
+const GOD_WHISPER_PLAYED_RE = /^\/api\/god-whispers\/([a-zA-Z0-9_]+)\/played$/;
 
 const server = serve({
   port: Number(process.env.PORT ?? 3001),
@@ -72,6 +74,28 @@ const server = serve({
       const auth = await requireAuth(req);
       if (auth instanceof Response) return withCors(auth);
       return withCors(await handleGetCatchUpFeed(req, auth.playerId));
+    }
+
+    if (
+      path.startsWith("/api/god-whispers/") &&
+      path.endsWith("/played") &&
+      req.method === "POST"
+    ) {
+      const whisperMatch = path.match(GOD_WHISPER_PLAYED_RE);
+      if (whisperMatch) {
+        const auth = await requireAuth(req);
+        if (auth instanceof Response) return withCors(auth);
+        try {
+          await sql`
+            UPDATE god_whispers
+            SET data = jsonb_set(data, '{status}', '"played"'::jsonb)
+            WHERE id = ${whisperMatch[1]!} AND player_id = ${auth.playerId}
+          `;
+          return withCors(Response.json({ ok: true }));
+        } catch {
+          return withCors(Response.json({ error: "Internal server error" }, { status: 500 }));
+        }
+      }
     }
 
     if (path === "/api/activity-templates" && req.method === "GET") {

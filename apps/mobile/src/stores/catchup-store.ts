@@ -14,7 +14,13 @@ interface FeedItemProgress {
 
 export interface CatchUpCard {
   id: string;
-  type: "world_news" | "resolved" | "pending_decision" | "in_progress" | "companion_idle";
+  type:
+    | "world_news"
+    | "resolved"
+    | "pending_decision"
+    | "in_progress"
+    | "companion_idle"
+    | "god_whisper";
   title: string;
   summary: string;
   timestamp: string;

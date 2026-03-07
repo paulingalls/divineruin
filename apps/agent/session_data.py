@@ -86,6 +86,7 @@ class SessionData:
     attempted_discoveries: set[str] = field(default_factory=set)
     companion: CompanionState | None = None
     corruption_level: int = 0
+    patron_id: str = "none"
     creation_state: CreationState | None = None
 
     # Session metrics tracking

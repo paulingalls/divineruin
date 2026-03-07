@@ -170,8 +170,27 @@ class TestBuildCharacterData:
             "backstory",
             "deity",
             "culture",
+            "divine_favor",
         }
         assert required_keys.issubset(data.keys())
+
+    def test_divine_favor_with_deity(self):
+        data = build_character_data("Aric", "human", "warrior", "kaelen", "Test.")
+        favor = data["divine_favor"]
+        assert favor["patron"] == "kaelen"
+        assert favor["level"] == 0
+        assert favor["max"] == 100
+        assert favor["last_whisper_level"] == 0
+
+    def test_divine_favor_without_deity(self):
+        data = build_character_data("Aric", "human", "warrior", None, "Test.")
+        favor = data["divine_favor"]
+        assert favor["patron"] == "none"
+
+    def test_divine_favor_explicit_none(self):
+        data = build_character_data("Aric", "human", "warrior", "none", "Test.")
+        favor = data["divine_favor"]
+        assert favor["patron"] == "none"
 
     def test_name_preserved(self):
         data = build_character_data("Aric", "human", "warrior", "kaelen", "Test.")

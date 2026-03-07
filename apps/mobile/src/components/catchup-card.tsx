@@ -10,6 +10,7 @@ const TYPE_DOT_COLORS: Partial<Record<CatchUpCard["type"], string>> = {
   pending_decision: BrandColors.ember,
   world_news: BrandColors.ash,
   in_progress: BrandColors.divine,
+  god_whisper: BrandColors.divine,
 };
 
 interface CatchUpCardViewProps {

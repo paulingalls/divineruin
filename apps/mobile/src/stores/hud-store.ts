@@ -7,7 +7,8 @@ export type OverlayType =
   | "item_acquired"
   | "quest_update"
   | "xp_toast"
-  | "level_up";
+  | "level_up"
+  | "divine_favor";
 
 export interface OverlayEntry {
   id: string;

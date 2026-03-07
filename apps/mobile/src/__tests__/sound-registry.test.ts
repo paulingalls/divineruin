@@ -48,5 +48,6 @@ test("knownSoundNames returns all registered names", () => {
   expect(names).toContain("potion_use");
   expect(names).toContain("door_creak");
   expect(names).toContain("discovery_chime");
-  expect(names.length).toBe(19);
+  expect(names).toContain("god_whisper_stinger");
+  expect(names.length).toBe(20);
 });
