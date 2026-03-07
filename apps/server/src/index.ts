@@ -3,11 +3,21 @@ import { handleLivekitToken } from "./livekit.ts";
 import { handleGetCharacter } from "./character.ts";
 import { handleRequestCode, handleVerifyCode, handleGetMe, requireAuth } from "./auth.ts";
 import { handlePreflight, withCors, checkRateLimit } from "./middleware.ts";
+import {
+  handleCreateActivity,
+  handleListActivities,
+  handleGetActivity,
+  handleActivityDecision,
+  handleAudioFile,
+} from "./activities.ts";
 import { isDev } from "./env.ts";
 
 const enableDebug = isDev && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
 
 const CHARACTER_RE = /^\/api\/character\/([^/]+)$/;
+const ACTIVITY_ID_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)$/;
+const ACTIVITY_DECIDE_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)\/decide$/;
+const AUDIO_FILE_RE = /^\/api\/audio\/([a-zA-Z0-9_.-]+)$/;
 
 const server = serve({
   port: Number(process.env.PORT ?? 3001),
@@ -50,6 +60,47 @@ const server = serve({
         const auth = await requireAuth(req);
         if (auth instanceof Response) return withCors(auth);
         return withCors(await handleGetCharacter(req, auth.playerId));
+      }
+    }
+
+    // --- Activity routes (auth required) ---
+
+    if (path === "/api/activities" && req.method === "POST") {
+      const auth = await requireAuth(req);
+      if (auth instanceof Response) return withCors(auth);
+      return withCors(await handleCreateActivity(req, auth.playerId));
+    }
+
+    if (path === "/api/activities" && req.method === "GET") {
+      const auth = await requireAuth(req);
+      if (auth instanceof Response) return withCors(auth);
+      return withCors(await handleListActivities(req, auth.playerId));
+    }
+
+    if (path.startsWith("/api/activities/") && path.endsWith("/decide") && req.method === "POST") {
+      const decideMatch = path.match(ACTIVITY_DECIDE_RE);
+      if (decideMatch) {
+        const auth = await requireAuth(req);
+        if (auth instanceof Response) return withCors(auth);
+        return withCors(await handleActivityDecision(req, auth.playerId, decideMatch[1]!));
+      }
+    }
+
+    if (path.startsWith("/api/activities/") && req.method === "GET") {
+      const actMatch = path.match(ACTIVITY_ID_RE);
+      if (actMatch) {
+        const auth = await requireAuth(req);
+        if (auth instanceof Response) return withCors(auth);
+        return withCors(await handleGetActivity(req, auth.playerId, actMatch[1]!));
+      }
+    }
+
+    // --- Audio file serving ---
+
+    if (path.startsWith("/api/audio/") && req.method === "GET") {
+      const audioMatch = path.match(AUDIO_FILE_RE);
+      if (audioMatch) {
+        return withCors(await handleAudioFile(audioMatch[1]!));
       }
     }
 

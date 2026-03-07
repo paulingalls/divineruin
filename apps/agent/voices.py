@@ -14,6 +14,7 @@ VOICES: dict[str, str] = {
     "COMPANION_KAEL": os.getenv("INWORLD_VOICE_KAEL", ""),
     "ELDER_YANNA": os.getenv("INWORLD_VOICE_YANNA", ""),
     "SCHOLAR_EMRIS": os.getenv("INWORLD_VOICE_EMRIS", ""),
+    "GRIMJAW_BLACKSMITH": os.getenv("INWORLD_VOICE_GRIMJAW", ""),
     "WOUNDED_RIDER": os.getenv("INWORLD_VOICE_RIDER", ""),
     "INNKEEPER_MAREN": os.getenv("INWORLD_VOICE_MAREN", ""),
     "FACTION_VALDRIS": os.getenv("INWORLD_VOICE_VALDRIS", ""),

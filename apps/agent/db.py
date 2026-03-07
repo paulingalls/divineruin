@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import os
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -695,3 +696,88 @@ async def get_last_session_summary(
     if row is None:
         return None
     return json.loads(row["data"])
+
+
+# --- Async activities ---
+
+
+async def create_async_activity(player_id: str, activity_data: dict) -> str:
+    """Create a new async activity. Returns the activity ID."""
+    activity_id = f"activity_{uuid.uuid4().hex[:12]}"
+    pool = await get_pool()
+    await pool.execute(
+        "INSERT INTO async_activities (id, player_id, data) VALUES ($1, $2, $3::jsonb)",
+        activity_id,
+        player_id,
+        json.dumps(activity_data),
+    )
+    return activity_id
+
+
+async def get_player_activities(
+    player_id: str, status: str | None = None, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> list[dict]:
+    """Get all activities for a player, optionally filtered by status."""
+    _conn = conn or await get_pool()
+    if status:
+        rows = await _conn.fetch(
+            "SELECT id, data FROM async_activities WHERE player_id = $1 AND data->>'status' = $2 ORDER BY created_at DESC",
+            player_id,
+            status,
+        )
+    else:
+        rows = await _conn.fetch(
+            "SELECT id, data FROM async_activities WHERE player_id = $1 ORDER BY created_at DESC",
+            player_id,
+        )
+    return [{"id": row["id"], **json.loads(row["data"])} for row in rows]
+
+
+async def get_activity(
+    activity_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None, for_update: bool = False
+) -> dict | None:
+    """Get a single activity by ID."""
+    _conn = conn or await get_pool()
+    sql_query = "SELECT id, player_id, data FROM async_activities WHERE id = $1"
+    if for_update:
+        sql_query += " FOR UPDATE"
+    row = await _conn.fetchrow(sql_query, activity_id)
+    if row is None:
+        return None
+    return {"id": row["id"], "player_id": row["player_id"], **json.loads(row["data"])}
+
+
+async def get_due_activities(*, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> list[dict]:
+    """Find activities where resolve_at <= NOW() and status is 'in_progress'."""
+    _conn = conn or await get_pool()
+    rows = await _conn.fetch(
+        """
+        SELECT id, player_id, data FROM async_activities
+        WHERE data->>'status' = 'in_progress'
+          AND (data->>'resolve_at')::timestamptz <= NOW()
+        ORDER BY (data->>'resolve_at')::timestamptz ASC
+        """,
+    )
+    return [{"id": row["id"], "player_id": row["player_id"], **json.loads(row["data"])} for row in rows]
+
+
+async def update_activity(
+    activity_id: str, updates: dict, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    """Update specific fields in an activity's JSONB data."""
+    _conn = conn or await get_pool()
+    await _conn.execute(
+        "UPDATE async_activities SET data = data || $2::jsonb WHERE id = $1",
+        activity_id,
+        json.dumps(updates),
+    )
+
+
+async def count_active_activities(player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> int:
+    """Count in-progress activities for a player."""
+    _conn = conn or await get_pool()
+    row = await _conn.fetchrow(
+        "SELECT COUNT(*) AS cnt FROM async_activities WHERE player_id = $1 AND data->>'status' = 'in_progress'",
+        player_id,
+    )
+    return row["cnt"] if row else 0

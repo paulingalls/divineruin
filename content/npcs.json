@@ -355,5 +355,52 @@
     "faction": "temple_authority",
     "voice_id": "FACTION_VALDRIS",
     "voice_notes": "baritone, precise enunciation, slight pause before important words, occasionally drops the formal register when surprised"
+  },
+  {
+    "id": "grimjaw_blacksmith",
+    "name": "Grimjaw",
+    "tier": 1,
+    "role": "blacksmith, crafting mentor",
+    "species": "dwarf",
+    "gender": "male",
+    "age": "late 100s (middle-aged for a dwarf)",
+    "appearance": "barrel-chested, soot-streaked leather apron, burn-scarred hands that move with surprising precision, beard braided tight against sparks",
+    "personality": ["gruff", "perfectionist", "secretly proud of students who show promise", "judges people by their work not their words"],
+    "speech_style": "short grunts, metaphors about metal and fire, calls mistakes 'offenses to the forge', rare genuine compliments land like hammer blows",
+    "mannerisms": ["tests blade edges with his thumb", "spits into the forge when disgusted", "nods once — slowly — when truly impressed"],
+    "backstory_summary": "Trained in the deep holds before settling in the Accord. Makes functional weapons, not art — and considers that a point of pride. The guild contracts keep his forge lit. Quietly worried that the Hollow threat means more weapons needed, and fewer hands to wield them.",
+    "knowledge": {
+      "free": [
+        "basic weapon and armor quality",
+        "material properties — iron, steel, what the Hollow corruption does to metal"
+      ],
+      "disposition >= friendly": [
+        "certain alloys resist Hollow corruption better than others",
+        "he's been asked to forge experimental weapons using recovered Hollow materials"
+      ],
+      "disposition >= trusted": [
+        "the experimental weapons work — but they feel wrong in the hand, like they want to be used",
+        "he destroyed the first batch and told Torin they failed, but kept one to study"
+      ]
+    },
+    "schedule": {
+      "05:00-21:00": "accord_forge",
+      "21:00-05:00": "grimjaw_quarters"
+    },
+    "default_disposition": "neutral",
+    "disposition_modifiers": {
+      "crafted_successfully": 2,
+      "wasted_materials": -2,
+      "showed_respect_for_craft": 1,
+      "rushed_the_work": -3,
+      "brought_rare_materials": 3
+    },
+    "inventory_pool": null,
+    "secrets": [
+      "he kept one Hollow-alloy blade hidden under the forge — it hums at night and he can't bring himself to destroy it"
+    ],
+    "faction": "independent",
+    "voice_id": "GRIMJAW_BLACKSMITH",
+    "voice_notes": "deep gravelly bass, dwarvish accent — rolled Rs, clipped endings, speaks like every word costs him something"
   }
 ]

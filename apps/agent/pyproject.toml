@@ -10,6 +10,7 @@ dependencies = [
     "livekit-plugins-inworld~=1.4",
     "asyncpg>=0.30.0",
     "redis>=5.0.0",
+    "anthropic>=0.40.0",
 ]
 
 [dependency-groups]
@@ -39,4 +40,4 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["db", "tools", "prompts", "voices", "session_data", "affect_analyzer", "game_events", "rules_engine", "dialogue_parser", "latency", "background_process", "db_errors"]
+known-first-party = ["db", "tools", "prompts", "voices", "session_data", "affect_analyzer", "game_events", "rules_engine", "dialogue_parser", "latency", "background_process", "db_errors", "async_rules", "async_worker", "narration", "tts_prerender", "activity_templates"]

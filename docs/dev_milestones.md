@@ -899,14 +899,14 @@ These overlays appear over the session screen center when triggered by data chan
 - Soft timer ranges: actual completion time randomized within a range (e.g., "4-8 hours" completes at a random point within that window)
 
 **Acceptance criteria:**
-- [ ] Player starts a crafting activity via REST → activity appears in database with status "in_progress"
-- [ ] After the timer expires, the background worker resolves the activity and generates a narrated outcome
-- [ ] Narration audio is generated and stored (verify audio file exists at the URL)
-- [ ] Outcome narration is in-character, concise (15-30 seconds), and ends with a decision point
-- [ ] Companion errand returns with narrative information relevant to the errand type
-- [ ] Soft timer ranges work: 10 activities set for "4-8 hours" resolve at varied times within that window
-- [ ] Multiple concurrent activities can run simultaneously for one player (3-4 at once)
-- [ ] Activity resolution cost is < $0.005 per activity (LLM + TTS)
+- [x] Player starts a crafting activity via REST → activity appears in database with status "in_progress"
+- [x] After the timer expires, the background worker resolves the activity and generates a narrated outcome
+- [x] Narration audio is generated and stored (verify audio file exists at the URL)
+- [x] Outcome narration is in-character, concise (15-30 seconds), and ends with a decision point
+- [x] Companion errand returns with narrative information relevant to the errand type
+- [x] Soft timer ranges work: 10 activities set for "4-8 hours" resolve at varied times within that window
+- [x] Multiple concurrent activities can run simultaneously for one player (3-4 at once)
+- [x] Activity resolution cost is < $0.005 per activity (LLM + TTS)
 
 **Key references:**
 - *Game Design — Asynchronous Play — Async Activity Types* (crafting, training, companion errands)
