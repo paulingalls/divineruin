@@ -86,6 +86,14 @@ LiveKit plugins: `livekit-plugins-anthropic`, `livekit-plugins-deepgram`, `livek
 
 No shared code between Python and TS. Shared data via PostgreSQL JSONB + Redis.
 
+## Development Values (Extreme Programming)
+
+Apply XP values in all work:
+- **Simplicity:** Minimum complexity for the current task. No speculative abstractions.
+- **Communication:** Code should be self-evident. Tool docstrings, clear naming, no magic.
+- **Feedback:** All tests must pass. Run the full suite. Fix warnings immediately.
+- **Courage:** Fix problems when you see them — pre-existing or not. Refactor fearlessly.
+
 ## Golden Rules
 
 1. **Audio first.** Every feature must work eyes-closed. If it requires reading/tapping during a live session, redesign it.
