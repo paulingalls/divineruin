@@ -9,7 +9,7 @@ CREATE TABLE async_activities (
 
 CREATE INDEX idx_async_activities_player ON async_activities (player_id);
 CREATE INDEX idx_async_activities_status ON async_activities ((data->>'status'));
-CREATE INDEX idx_async_activities_resolve ON async_activities (((data->>'resolve_at')::timestamptz))
+CREATE INDEX idx_async_activities_resolve ON async_activities ((data->>'resolve_at'))
   WHERE data->>'status' = 'in_progress';
 
 CREATE TRIGGER trg_async_activities_updated_at BEFORE UPDATE ON async_activities
