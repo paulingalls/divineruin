@@ -35,7 +35,7 @@ import { panelStore } from "@/stores/panel-store";
 import { BrandColors, Spacing, Radius, Shadows } from "@/constants/theme";
 
 const ROOM_NAME = "divineruin-session";
-const RECONNECT_TIMEOUT_MS = 5 * 60 * 1000;
+const RECONNECT_TIMEOUT_MS = 2 * 60 * 1000;
 const SWIPE_UP_THRESHOLD = -50;
 
 function SwipeUpTrigger() {

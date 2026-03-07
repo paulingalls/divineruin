@@ -88,6 +88,15 @@ class SessionData:
     corruption_level: int = 0
     creation_state: CreationState | None = None
 
+    # Session metrics tracking
+    session_xp_earned: int = 0
+    session_items_found: list[str] = field(default_factory=list)
+    session_quests_progressed: list[str] = field(default_factory=list)
+    session_locations_visited: list[str] = field(default_factory=list)
+    ending_requested: bool = False
+    player_disconnected: bool = False
+    disconnect_time: float = 0.0
+
     @property
     def in_creation(self) -> bool:
         return self.creation_state is not None and self.creation_state.phase != "complete"

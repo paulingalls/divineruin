@@ -273,8 +273,18 @@ Relationship tiers:
 """
 
 
+SESSION_ENDING_PROMPT = """\
+
+## Session Ending
+If the player says they need to go, want to stop, should wrap up, or similar, \
+call end_session. Then deliver a brief wrap-up: describe the character reaching \
+a moment of rest. Mention what they accomplished. Plant one seed for next time. \
+2-3 sentences max. End with warmth.\
+"""
+
+
 def build_system_prompt(location_id: str, companion: CompanionState | None = None) -> str:
-    parts = SYSTEM_PROMPT + PLAYER_AWARENESS_PROMPT + NAVIGATION_PROMPT
+    parts = SYSTEM_PROMPT + PLAYER_AWARENESS_PROMPT + NAVIGATION_PROMPT + SESSION_ENDING_PROMPT
     if companion is not None and companion.is_present:
         parts += COMPANION_PROMPT
     parts += (

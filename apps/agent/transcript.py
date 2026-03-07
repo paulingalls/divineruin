@@ -51,9 +51,15 @@ class TranscriptLogger:
         self._logger.setLevel(logging.INFO)
         self._logger.propagate = False
 
+        self._log_path = log_path
         handler = logging.FileHandler(log_path, encoding="utf-8")
         handler.setFormatter(logging.Formatter("%(message)s"))
         self._logger.addHandler(handler)
+
+    @property
+    def log_path(self) -> str | None:
+        """Return the file path for the current transcript log."""
+        return self._log_path
 
     def close(self) -> None:
         """Close file handlers to prevent descriptor leaks across sessions."""

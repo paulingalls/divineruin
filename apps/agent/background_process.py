@@ -142,9 +142,16 @@ class BackgroundProcess:
         self._rider_triggered: bool = False
         self._last_static_key: tuple[str, bool] | None = None
         self._cached_static: str = ""
+        self._paused: bool = False
 
     def start(self) -> None:
         self._task = asyncio.create_task(self._run())
+
+    def pause(self) -> None:
+        self._paused = True
+
+    def resume(self) -> None:
+        self._paused = False
 
     async def stop(self) -> None:
         self._stop = True
@@ -178,6 +185,9 @@ class BackgroundProcess:
 
             if needs_rebuild or event is None:
                 await self._rebuild_warm_layer()
+
+            if self._paused:
+                continue
 
             self._check_companion_idle()
             self._check_guidance()

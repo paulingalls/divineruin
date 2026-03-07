@@ -800,6 +800,7 @@ async def award_xp(
 
     level_note = f" (leveled up to {result.new_level}!)" if result.leveled_up else ""
     session.record_event(f"Awarded {amount} XP: {reason}{level_note}")
+    session.session_xp_earned += amount
 
     response = {
         "amount": amount,
@@ -924,6 +925,7 @@ async def add_to_inventory(
 
     session.record_event(f"Added {quantity}x {item_name} ({source})")
     session.record_companion_memory(f"Found {item_name}")
+    session.session_items_found.append(item_name)
 
     response = {
         "action": "added",
@@ -1174,6 +1176,8 @@ async def move_player(
     session.record_event(f"Moved to {destination_id}")
     loc_name = destination_location.get("name", destination_id) if destination_location else destination_id
     session.record_companion_memory(f"Traveled to {loc_name}")
+    if destination_id not in session.session_locations_visited:
+        session.session_locations_visited.append(destination_id)
 
     scene = await _build_scene_context(destination_id, session, location=destination_location)
     if "error" in scene:
@@ -1319,6 +1323,8 @@ async def update_quest(
     quest_name = quest.get("name", quest_id)
     session.record_event(f"Quest '{quest_name}' advanced to stage {new_stage_id}")
     session.record_companion_memory(f"Quest '{quest_name}' progressed to: {new_stage.get('objective', '')}")
+    if quest_id not in session.session_quests_progressed:
+        session.session_quests_progressed.append(quest_id)
 
     response = {
         "quest_id": quest_id,
@@ -1329,6 +1335,28 @@ async def update_quest(
     }
     logger.info("update_quest result: %s → stage %d, %d rewards", quest_id, new_stage_id, len(rewards_applied))
     return json.dumps(response)
+
+
+@function_tool()
+async def end_session(context: RunContext[SessionData], reason: str) -> str:
+    """End the session narratively. Call when the player says they need to go,
+    want to wrap up, should stop, or similar goodbye phrases."""
+    logger.info("end_session called: reason=%s", reason)
+    sd: SessionData = context.userdata
+    sd.ending_requested = True
+    return json.dumps(
+        {
+            "status": "ending",
+            "session_stats": {
+                "xp_earned": sd.session_xp_earned,
+                "items_found": sd.session_items_found,
+                "quests_progressed": sd.session_quests_progressed,
+                "locations_visited": sd.session_locations_visited,
+            },
+            "instruction": "Deliver a 2-3 sentence narrative wrap-up. Find a natural stopping point. "
+            "Mention any XP or progress if meaningful. Plant one hook for next session.",
+        }
+    )
 
 
 # --- Combat sound constants ---

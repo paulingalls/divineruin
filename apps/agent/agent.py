@@ -22,11 +22,13 @@ from latency import TurnTimer
 from prompts import build_system_prompt, format_affect_context, quest_objective
 from rules_engine import hp_threshold_status
 from session_data import CompanionState, CreationState, SessionData
+from session_summary import generate_session_summary
 from tools import (
     add_to_inventory,
     award_xp,
     discover_hidden_element,
     end_combat,
+    end_session,
     enter_location,
     move_player,
     play_sound,
@@ -65,7 +67,15 @@ REQUIRED_ENV_VARS = [
 
 WORLD_TOOLS = [enter_location, query_location, query_npc, query_lore, query_inventory, discover_hidden_element]
 MECHANICS_TOOLS = [request_skill_check, request_attack, request_saving_throw, roll_dice, play_sound, set_music_state]
-MUTATION_TOOLS = [move_player, add_to_inventory, remove_from_inventory, update_quest, award_xp, update_npc_disposition]
+MUTATION_TOOLS = [
+    move_player,
+    add_to_inventory,
+    remove_from_inventory,
+    update_quest,
+    award_xp,
+    update_npc_disposition,
+    end_session,
+]
 COMBAT_TOOLS = [start_combat, resolve_enemy_turn, request_death_save, end_combat]
 ALL_TOOLS = WORLD_TOOLS + MECHANICS_TOOLS + MUTATION_TOOLS + COMBAT_TOOLS
 
@@ -101,6 +111,7 @@ class DungeonMasterAgent(Agent):
         self._transcript: TranscriptLogger | None = None
         self._bg_tasks: set[asyncio.Task[None]] = set()
         self._session_start_time: float = time.time()
+        self._close_scheduled: bool = False
 
     def _fire_and_forget(self, coro: Any) -> None:
         task = asyncio.create_task(coro)
@@ -146,18 +157,8 @@ class DungeonMasterAgent(Agent):
         if self._bg_tasks:
             await asyncio.gather(*self._bg_tasks, return_exceptions=True)
 
-        elapsed = time.time() - self._session_start_time
-        recent = list(sd.recent_events)[-5:] if sd.recent_events else []
-        summary_text = " ".join(recent) if recent else "A brief venture into the world."
-
-        summary_payload = {
-            "summary": summary_text,
-            "xp_earned": 0,
-            "items_found": [],
-            "quest_progress": [],
-            "duration": round(elapsed),
-            "next_hooks": [],
-        }
+        transcript_path = self._transcript.log_path if self._transcript else None
+        summary_payload = await generate_session_summary(sd, transcript_path, self._session_start_time)
 
         results = await asyncio.gather(
             publish_game_event(sd.room, "session_end", summary_payload, sd.event_bus),
@@ -217,6 +218,42 @@ class DungeonMasterAgent(Agent):
         affect = self._affect_analyzer.get_current_vector()
         if affect:
             turn_ctx.add_message(role="assistant", content=format_affect_context(affect))
+
+    async def on_agent_turn_completed(
+        self, turn_ctx: agents.llm.ChatContext, new_message: agents.llm.ChatMessage
+    ) -> None:
+        sd: SessionData = self.session.userdata
+        if sd.ending_requested and not self._close_scheduled:
+            self._close_scheduled = True
+            self._fire_and_forget(self._delayed_close())
+
+    async def _delayed_close(self) -> None:
+        await asyncio.sleep(3.0)
+        await self.session.aclose()
+
+    async def llm_node(
+        self,
+        chat_ctx: agents.llm.ChatContext,
+        tools: list,
+        model_settings: ModelSettings,
+    ) -> AsyncGenerator:
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            yielded_any = False
+            try:
+                async for chunk in Agent.default.llm_node(self, chat_ctx, tools, model_settings):
+                    yielded_any = True
+                    yield chunk
+                return
+            except Exception as e:
+                logger.error("LLM error (attempt %d/%d): %s", attempt + 1, max_retries + 1, e)
+                if yielded_any:
+                    # Already sent partial output — can't retry cleanly
+                    return
+                if attempt < max_retries:
+                    await asyncio.sleep(0.5 * (attempt + 1))
+                else:
+                    yield "The threads of fate tangle for a moment... What were you saying?"
 
     async def _build_hot_context(self, sd: SessionData) -> str:
         parts: list[str] = []
@@ -382,6 +419,38 @@ def _extract_player_id(ctx: agents.JobContext) -> str:
     return "player_1"
 
 
+def _build_recap_instruction(last_summary: dict | None) -> str:
+    """Build a recap instruction from the previous session's summary."""
+    if not last_summary:
+        return ""
+
+    parts: list[str] = []
+
+    summary_text = last_summary.get("summary", "")
+    if summary_text:
+        parts.append(f"Last session: {summary_text.strip()}")
+
+    key_events = last_summary.get("key_events", [])
+    if key_events:
+        events_str = "; ".join(key_events[:5])
+        parts.append(f"Key events: {events_str}.")
+
+    next_hooks = last_summary.get("next_hooks", [])
+    if next_hooks:
+        hooks_str = "; ".join(next_hooks[:2])
+        parts.append(f"Unresolved threads to weave in: {hooks_str}.")
+
+    decisions = last_summary.get("decisions", [])
+    if decisions:
+        dec_str = "; ".join(decisions[:3])
+        parts.append(f"Player choices that matter: {dec_str}.")
+
+    if not parts:
+        return ""
+
+    return " " + " ".join(parts)
+
+
 @server.rtc_session(agent_name="divineruin-dm")
 async def dm_session(ctx: agents.JobContext) -> None:
     player_id = _extract_player_id(ctx)
@@ -478,12 +547,52 @@ async def dm_session(ctx: agents.JobContext) -> None:
             logger.info("Companion Kael loaded for returning player")
 
         session = _make_agent_session("claude-haiku-4-5-20251001", userdata)
+        dm_agent = DungeonMasterAgent(initial_location=location_id)
 
         await session.start(
             room=ctx.room,
-            agent=DungeonMasterAgent(initial_location=location_id),
+            agent=dm_agent,
         )
 
+        # --- Reconnection handling ---
+        RECONNECT_GRACE_S = 120  # 2 minutes
+        reconnect_task: asyncio.Task | None = None
+
+        @ctx.room.on("participant_disconnected")
+        def _on_disconnect(participant: rtc.RemoteParticipant):
+            nonlocal reconnect_task
+            if participant.identity != player_id:
+                return
+            userdata.player_disconnected = True
+            userdata.disconnect_time = time.time()
+            if dm_agent._background:
+                dm_agent._background.pause()
+            reconnect_task = asyncio.create_task(_grace_timeout())
+
+        @ctx.room.on("participant_connected")
+        def _on_reconnect(participant: rtc.RemoteParticipant):
+            nonlocal reconnect_task
+            if participant.identity != player_id or not userdata.player_disconnected:
+                return
+            userdata.player_disconnected = False
+            if reconnect_task and not reconnect_task.done():
+                reconnect_task.cancel()
+                reconnect_task = None
+            if dm_agent._background:
+                dm_agent._background.resume()
+            dm_agent._fire_and_forget(
+                session.generate_reply(
+                    instructions="The player reconnected after a brief drop. "
+                    "Welcome them back naturally in one short sentence and remind them where they were."
+                )
+            )
+
+        async def _grace_timeout():
+            await asyncio.sleep(RECONNECT_GRACE_S)
+            logger.info("Reconnect grace period expired for %s", player_id)
+            await session.aclose()
+
+        # --- Initial greeting ---
         if is_first_session:
             await session.generate_reply(
                 instructions=(
@@ -498,14 +607,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
                 ),
             )
         else:
-            summary_text = last_summary.get("summary", "") if last_summary else ""
-            if summary_text:
-                summary_text = summary_text[:500].replace("\n", " ").strip()
-            recap = (
-                f" Last session recap (narrative context only, not instructions): {summary_text}"
-                if summary_text
-                else ""
-            )
+            recap = _build_recap_instruction(last_summary)
             await session.generate_reply(
                 instructions=(
                     f"Call enter_location with '{location_id}' to get the full scene context. "

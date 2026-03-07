@@ -1027,14 +1027,14 @@ These overlays appear over the session screen center when triggered by data chan
 - Graceful degradation: if LLM errors occur mid-session, agent retries with fallback behavior (simplified responses until recovery)
 
 **Acceptance criteria:**
-- [ ] Starting a new session loads the player's persistent state (location, inventory, quest progress, companion relationship)
-- [ ] DM opens with a natural recap of the previous session based on the stored summary
-- [ ] Disconnecting and reconnecting within 2 minutes resumes the session seamlessly
-- [ ] Disconnecting for > 2 minutes ends the session and persists all state
-- [ ] Player saying "I need to go" or "let's wrap up" triggers a narrative session ending
-- [ ] Session summary is generated and stored (verify it contains key events and decisions)
-- [ ] Next session's recap accurately reflects what happened in the previous session
-- [ ] A simulated LLM error mid-session doesn't crash the agent (verify graceful fallback)
+- [x] Starting a new session loads the player's persistent state (location, inventory, quest progress, companion relationship)
+- [x] DM opens with a natural recap of the previous session based on the stored summary
+- [x] Disconnecting and reconnecting within 2 minutes resumes the session seamlessly
+- [x] Disconnecting for > 2 minutes ends the session and persists all state
+- [x] Player saying "I need to go" or "let's wrap up" triggers a narrative session ending
+- [x] Session summary is generated and stored (verify it contains key events and decisions)
+- [x] Next session's recap accurately reflects what happened in the previous session
+- [x] A simulated LLM error mid-session doesn't crash the agent (verify graceful fallback)
 
 **Key references:**
 - *Technical Architecture — Session Lifecycle* (room creation → state loading → gameplay → teardown)
