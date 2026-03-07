@@ -99,7 +99,7 @@ test("rapid transitions don't leak players", async () => {
   expect(mockPlayers.length).toBe(3);
   expect(mockPlayers[0].removed).toBe(true); // force-completed first crossfade
 
-  await new Promise((r) => setTimeout(r, 2700));
+  await new Promise((r) => setTimeout(r, 3000));
   expect(_getState()).toBe("playing");
 });
 

@@ -41,6 +41,7 @@ from tools import (
     request_skill_check,
     resolve_enemy_turn,
     roll_dice,
+    set_music_state,
     start_combat,
     update_npc_disposition,
     update_quest,
@@ -63,7 +64,7 @@ REQUIRED_ENV_VARS = [
 ]
 
 WORLD_TOOLS = [enter_location, query_location, query_npc, query_lore, query_inventory, discover_hidden_element]
-MECHANICS_TOOLS = [request_skill_check, request_attack, request_saving_throw, roll_dice, play_sound]
+MECHANICS_TOOLS = [request_skill_check, request_attack, request_saving_throw, roll_dice, play_sound, set_music_state]
 MUTATION_TOOLS = [move_player, add_to_inventory, remove_from_inventory, update_quest, award_xp, update_npc_disposition]
 COMBAT_TOOLS = [start_combat, resolve_enemy_turn, request_death_save, end_combat]
 ALL_TOOLS = WORLD_TOOLS + MECHANICS_TOOLS + MUTATION_TOOLS + COMBAT_TOOLS

@@ -1,6 +1,8 @@
 import { playSfx } from "./sfx-player";
 import { hapticDiceRoll, hapticItemAcquired, hapticLevelUp } from "./haptics";
-import { sessionStore } from "@/stores/session-store";
+import { overrideMusicState } from "./music-player";
+import type { MusicState } from "./music-registry";
+import { sessionStore, type CombatDifficulty } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
 import { hudStore } from "@/stores/hud-store";
@@ -22,6 +24,20 @@ export interface DataChannelEvent {
 const decoder = new TextDecoder();
 
 const VALID_RARITIES = new Set<ItemRarity>(["common", "uncommon", "rare", "legendary"]);
+
+const VALID_MUSIC_STATES = new Set<MusicState>([
+  "silence",
+  "exploration",
+  "tension",
+  "combat_standard",
+  "combat_boss",
+  "wonder",
+  "sorrow",
+  "hollow_dissolution",
+  "title",
+]);
+
+const VALID_DIFFICULTIES = new Set<CombatDifficulty>(["moderate", "hard"]);
 
 function parseRarity(value: unknown): ItemRarity {
   return typeof value === "string" && VALID_RARITIES.has(value as ItemRarity)
@@ -290,9 +306,32 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }
       break;
 
-    case "combat_started":
-      sessionStore.getState().setCombat(true);
+    case "combat_started": {
+      const ss = sessionStore.getState();
+      if (
+        typeof event.difficulty === "string" &&
+        VALID_DIFFICULTIES.has(event.difficulty as CombatDifficulty)
+      ) {
+        ss.setCombatDifficulty(event.difficulty as CombatDifficulty);
+      }
+      ss.setCombat(true);
       playSfx("sword_clash");
+      break;
+    }
+
+    case "hollow_corruption_changed":
+      if (typeof event.level === "number") {
+        sessionStore.getState().setCorruptionLevel(event.level);
+      }
+      break;
+
+    case "set_music_state":
+      if (
+        typeof event.music_state === "string" &&
+        VALID_MUSIC_STATES.has(event.music_state as MusicState)
+      ) {
+        overrideMusicState(event.music_state as MusicState);
+      }
       break;
 
     case "combat_ended":

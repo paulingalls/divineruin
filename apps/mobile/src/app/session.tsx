@@ -25,6 +25,7 @@ import { useDuckingBridge } from "@/hooks/use-ducking-bridge";
 import { configureAudioSession } from "@/audio/audio-config";
 import { releaseAllPlayers } from "@/audio/sfx-player";
 import { startSoundscapeEngine, stopSoundscapeEngine } from "@/audio/soundscape-player";
+import { startMusicEngine, stopMusicEngine } from "@/audio/music-player";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
@@ -75,6 +76,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
   useEffect(() => {
     return () => {
       stopSoundscapeEngine();
+      stopMusicEngine();
       releaseAllPlayers();
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
     };
@@ -91,6 +93,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
       sessionStore.getState().setPhase("active");
       wasActive.current = true;
       startSoundscapeEngine();
+      startMusicEngine();
 
       if (reconnecting) {
         sessionStore.getState().setReconnecting(false);
@@ -195,6 +198,7 @@ export default function SessionScreen() {
       return;
     }
     stopSoundscapeEngine();
+    stopMusicEngine();
     reset();
     sessionStore.getState().reset();
     transcriptStore.getState().clear();

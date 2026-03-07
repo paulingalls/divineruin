@@ -967,14 +967,14 @@ These overlays appear over the session screen center when triggered by data chan
 - Combat music intensity scaling: lighter music for minor encounters, full intensity for boss fights
 
 **Acceptance criteria:**
-- [ ] Entering a calm exploration area fades in exploration music after a natural delay
-- [ ] Approaching a Hollow-corrupted area transitions music to tension state
-- [ ] Combat starting triggers combat music with an audible shift in energy
-- [ ] Music ducks appropriately when the DM speaks — dialogue is always clear over music
-- [ ] Hollow corruption degrades music audibly (pitch drift, rhythm instability)
-- [ ] Music transitions are smooth, never jarring — crossfades feel natural
-- [ ] Wonder stinger plays at key narrative revelation moments
-- [ ] Silence is used deliberately — not every moment has music
+- [x] Entering a calm exploration area fades in exploration music after a natural delay
+- [x] Approaching a Hollow-corrupted area transitions music to tension state
+- [x] Combat starting triggers combat music with an audible shift in energy
+- [x] Music ducks appropriately when the DM speaks — dialogue is always clear over music
+- [x] Hollow corruption degrades music audibly (pitch drift, rhythm instability)
+- [x] Music transitions are smooth, never jarring — crossfades feel natural
+- [x] Wonder stinger plays at key narrative revelation moments
+- [x] Silence is used deliberately — not every moment has music
 
 **Key references:**
 - *Audio Design — Music Design* (principles, states, cultural inflection, Hollow dissolution)

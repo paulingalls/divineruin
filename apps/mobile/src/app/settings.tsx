@@ -103,7 +103,7 @@ export default function SettingsScreen() {
           <ThemedText style={styles.sectionTitle}>AUDIO</ThemedText>
 
           <VolumeSlider label="VOICE" bus="voice" />
-          <VolumeSlider label="MUSIC" bus="music" disabled />
+          <VolumeSlider label="MUSIC" bus="music" />
           <VolumeSlider label="AMBIENCE" bus="ambience" />
           <VolumeSlider label="EFFECTS" bus="effects" />
           <VolumeSlider label="UI" bus="ui" />

@@ -709,6 +709,37 @@ async def play_sound(
     return json.dumps({"status": "playing", "sound_name": sound_name})
 
 
+_MUSIC_STATES_AGENT = {"wonder", "sorrow", "tension", "silence"}
+
+
+@function_tool()
+async def set_music_state(
+    context: RunContext[SessionData],
+    music_state: str,
+) -> str:
+    """Set the background music mood. Use sparingly for specific emotional
+    moments the player should feel. Allowed values: 'wonder', 'sorrow',
+    'tension', 'silence'. Combat and exploration music are handled
+    automatically — do not set those here."""
+    logger.info("set_music_state called: music_state=%s", music_state)
+    session: SessionData = context.userdata
+
+    if music_state not in _MUSIC_STATES_AGENT:
+        valid = ", ".join(sorted(_MUSIC_STATES_AGENT))
+        return json.dumps({"error": f"Invalid music_state '{music_state}'. Allowed: {valid}"})
+
+    await publish_game_event(
+        session.room,
+        "set_music_state",
+        {"music_state": music_state},
+        event_bus=session.event_bus,
+    )
+
+    session.record_event(f"Music: {music_state}")
+
+    return json.dumps({"status": "set", "music_state": music_state})
+
+
 # --- Mutation helpers ---
 
 
@@ -1491,7 +1522,12 @@ async def start_combat(
     await publish_game_event(
         session.room,
         "combat_started",
-        {"combat_id": combat_id, "encounter_id": encounter_id, "initiative_order": initiative_summary},
+        {
+            "combat_id": combat_id,
+            "encounter_id": encounter_id,
+            "difficulty": encounter.get("difficulty", "moderate"),
+            "initiative_order": initiative_summary,
+        },
         event_bus=session.event_bus,
     )
     await _publish_sounds(session, [SOUND_COMBAT_START])

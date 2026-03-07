@@ -809,3 +809,38 @@ test("combat_ui_update filters out malformed combatants", () => {
   expect(combat!.combatants).toHaveLength(1);
   expect(combat!.combatants[0].id).toBe("c1");
 });
+
+// --- Milestone 8.1: Music system events ---
+
+test("hollow_corruption_changed updates session store corruptionLevel", () => {
+  handleGameEvent({ type: "hollow_corruption_changed", level: 2 });
+  expect(sessionStore.getState().corruptionLevel).toBe(2);
+});
+
+test("hollow_corruption_changed ignores non-number level", () => {
+  sessionStore.getState().setCorruptionLevel(1);
+  handleGameEvent({ type: "hollow_corruption_changed", level: "high" });
+  expect(sessionStore.getState().corruptionLevel).toBe(1);
+});
+
+test("set_music_state with valid string does not crash", () => {
+  handleGameEvent({ type: "set_music_state", music_state: "wonder" });
+  // Verifying no error thrown — overrideMusicState is called
+});
+
+test("set_music_state ignores non-string", () => {
+  handleGameEvent({ type: "set_music_state", music_state: 42 });
+  // No crash, no-op
+});
+
+test("combat_started with difficulty sets combatDifficulty in store", () => {
+  handleGameEvent({ type: "combat_started", difficulty: "hard" });
+  expect(sessionStore.getState().combatDifficulty).toBe("hard");
+  expect(sessionStore.getState().inCombat).toBe(true);
+});
+
+test("combat_started without difficulty keeps default", () => {
+  handleGameEvent({ type: "combat_started" });
+  expect(sessionStore.getState().combatDifficulty).toBe("moderate");
+  expect(sessionStore.getState().inCombat).toBe(true);
+});
