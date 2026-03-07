@@ -26,6 +26,7 @@ import { configureAudioSession } from "@/audio/audio-config";
 import { releaseAllPlayers } from "@/audio/sfx-player";
 import { startSoundscapeEngine, stopSoundscapeEngine } from "@/audio/soundscape-player";
 import { startMusicEngine, stopMusicEngine } from "@/audio/music-player";
+import { stopNarration } from "@/audio/narration-player";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
@@ -77,6 +78,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
     return () => {
       stopSoundscapeEngine();
       stopMusicEngine();
+      stopNarration();
       releaseAllPlayers();
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
     };

@@ -4,6 +4,7 @@ import { characterStore, type CharacterSummary } from "@/stores/character-store"
 const SAMPLE: CharacterSummary = {
   playerId: "player-1",
   name: "Kael",
+  race: "human",
   className: "warrior",
   level: 3,
   xp: 450,
@@ -11,6 +12,7 @@ const SAMPLE: CharacterSummary = {
   locationName: "Guild Hall",
   hpCurrent: 25,
   hpMax: 30,
+  deity: "",
 };
 
 beforeEach(() => {

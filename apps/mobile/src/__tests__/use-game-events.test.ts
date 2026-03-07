@@ -30,6 +30,7 @@ function captureTimers(fn: () => void): { fn: () => void; delay: number }[] {
 const SAMPLE_CHARACTER: CharacterSummary = {
   playerId: "player-1",
   name: "Kael",
+  race: "human",
   className: "warrior",
   level: 3,
   xp: 450,
@@ -37,6 +38,7 @@ const SAMPLE_CHARACTER: CharacterSummary = {
   locationName: "Guild Hall",
   hpCurrent: 25,
   hpMax: 30,
+  deity: "",
 };
 
 beforeEach(() => {

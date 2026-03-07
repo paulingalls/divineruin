@@ -412,9 +412,10 @@ class TestDMSession:
 
     @pytest.mark.asyncio
     async def test_dm_session_creates_session_data(self):
-        """dm_session should create SessionData — first session starts at market square."""
+        """dm_session should create SessionData — first session (existing player, no summary) starts at market square."""
         mock_ctx = MagicMock()
         mock_ctx.room = MagicMock()
+        mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
 
         with patch("agent.SessionData") as MockSD:
             with patch("agent.AgentSession") as MockSession:
@@ -428,7 +429,7 @@ class TestDMSession:
                         with patch("agent._make_tts"):
                             with patch("agent.silero.VAD.load"):
                                 with patch("agent.MultilingualModel"):
-                                    with patch("agent.db.get_player", new_callable=AsyncMock, return_value=None):
+                                    with patch("agent.db.get_player", new_callable=AsyncMock, return_value=mock_player):
                                         with patch(
                                             "agent.db.get_last_session_summary",
                                             new_callable=AsyncMock,
@@ -452,6 +453,7 @@ class TestDMSession:
         """dm_session should start AgentSession with DM agent."""
         mock_ctx = MagicMock()
         mock_ctx.room = MagicMock()
+        mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
 
         with patch("agent.SessionData"):
             with patch("agent.AgentSession") as MockSession:
@@ -465,7 +467,7 @@ class TestDMSession:
                         with patch("agent._make_tts"):
                             with patch("agent.silero.VAD.load"):
                                 with patch("agent.MultilingualModel"):
-                                    with patch("agent.db.get_player", new_callable=AsyncMock, return_value=None):
+                                    with patch("agent.db.get_player", new_callable=AsyncMock, return_value=mock_player):
                                         with patch(
                                             "agent.db.get_last_session_summary",
                                             new_callable=AsyncMock,
@@ -488,6 +490,7 @@ class TestDMSession:
         """dm_session should generate initial greeting with enter_location call."""
         mock_ctx = MagicMock()
         mock_ctx.room = MagicMock()
+        mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
 
         with patch("agent.SessionData"):
             with patch("agent.AgentSession") as MockSession:
@@ -501,7 +504,7 @@ class TestDMSession:
                         with patch("agent._make_tts"):
                             with patch("agent.silero.VAD.load"):
                                 with patch("agent.MultilingualModel"):
-                                    with patch("agent.db.get_player", new_callable=AsyncMock, return_value=None):
+                                    with patch("agent.db.get_player", new_callable=AsyncMock, return_value=mock_player):
                                         with patch(
                                             "agent.db.get_last_session_summary",
                                             new_callable=AsyncMock,

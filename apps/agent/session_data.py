@@ -62,6 +62,16 @@ class CombatState:
 
 
 @dataclass
+class CreationState:
+    phase: str = "prologue"  # prologue | awakening | calling | devotion | identity | complete
+    race: str | None = None
+    class_choice: str | None = None
+    deity: str | None = None
+    name: str | None = None
+    backstory: str | None = None
+
+
+@dataclass
 class SessionData:
     player_id: str
     location_id: str
@@ -76,6 +86,11 @@ class SessionData:
     attempted_discoveries: set[str] = field(default_factory=set)
     companion: CompanionState | None = None
     corruption_level: int = 0
+    creation_state: CreationState | None = None
+
+    @property
+    def in_creation(self) -> bool:
+        return self.creation_state is not None and self.creation_state.phase != "complete"
 
     @property
     def in_combat(self) -> bool:

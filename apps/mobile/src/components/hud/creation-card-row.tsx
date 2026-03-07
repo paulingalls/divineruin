@@ -1,10 +1,16 @@
-import { useCallback } from "react";
-import { FlatList, Pressable, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useMemo } from "react";
+import { Animated, FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useStore } from "zustand";
 
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors, FontFamilies, Radius, Shadows, Spacing } from "@/constants/theme";
 import { hudStore, type CreationCard } from "@/stores/hud-store";
+
+const CATEGORY_LABELS: Record<string, string> = {
+  race: "Who Are You?",
+  class: "What Is Your Calling?",
+  deity: "Who Do You Follow?",
+};
 
 function Card({ card, isSelected }: { card: CreationCard; isSelected: boolean }) {
   const handlePress = useCallback(() => {
@@ -36,8 +42,39 @@ export function CreationCardRow() {
   const cards = useStore(hudStore, (s) => s.creationCards);
   const selectedId = useStore(hudStore, (s) => s.selectedCreationCard);
 
+  // Entrance animation — useMemo keeps stable Animated.Value instances
+  const fadeAnim = useMemo(() => new Animated.Value(0), []);
+  const slideAnim = useMemo(() => new Animated.Value(20), []);
+
+  useEffect(() => {
+    if (cards.length > 0) {
+      fadeAnim.setValue(0);
+      slideAnim.setValue(20);
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [cards, fadeAnim, slideAnim]);
+
+  if (cards.length === 0) return null;
+
+  const category = cards[0]?.category ?? "";
+  const label = CATEGORY_LABELS[category] ?? "";
+
   return (
-    <View style={styles.container}>
+    <Animated.View
+      style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
+    >
+      {label ? <ThemedText style={styles.categoryLabel}>{label}</ThemedText> : null}
       <FlatList
         horizontal
         data={cards}
@@ -46,7 +83,7 @@ export function CreationCardRow() {
         contentContainerStyle={styles.list}
         showsHorizontalScrollIndicator={false}
       />
-    </View>
+    </Animated.View>
   );
 }
 
@@ -56,6 +93,14 @@ const styles = StyleSheet.create({
     bottom: "33%",
     left: 0,
     right: 0,
+  },
+  categoryLabel: {
+    fontFamily: FontFamilies.displayRegular,
+    fontSize: 14,
+    color: BrandColors.ash,
+    textAlign: "center",
+    marginBottom: Spacing.two,
+    letterSpacing: 1,
   },
   list: {
     paddingHorizontal: Spacing.three,

@@ -1,6 +1,7 @@
 import { playSfx } from "./sfx-player";
 import { hapticDiceRoll, hapticItemAcquired, hapticLevelUp } from "./haptics";
 import { overrideMusicState } from "./music-player";
+import { playNarration } from "./narration-player";
 import type { MusicState } from "./music-registry";
 import { sessionStore, type CombatDifficulty } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
@@ -144,6 +145,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
         characterStore.getState().setCharacter({
           playerId: typeof character.player_id === "string" ? character.player_id : "",
           name: typeof character.name === "string" ? character.name : "",
+          race: typeof character.race === "string" ? character.race : "",
           className: typeof character.class === "string" ? character.class : "Adventurer",
           level: typeof character.level === "number" ? character.level : 1,
           xp: typeof character.xp === "number" ? character.xp : 0,
@@ -157,6 +159,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
             character.hp && typeof (character.hp as Record<string, unknown>).max === "number"
               ? ((character.hp as Record<string, unknown>).max as number)
               : 0,
+          deity: typeof character.deity === "string" ? character.deity : "",
         });
       }
 
@@ -478,8 +481,16 @@ export function handleGameEvent(event: DataChannelEvent): void {
     }
 
     case "creation_card_selected":
-      if (typeof event.card_id === "string") {
+      if (typeof event.value === "string") {
+        hudStore.getState().setSelectedCreationCard(event.value);
+      } else if (typeof event.card_id === "string") {
         hudStore.getState().setSelectedCreationCard(event.card_id);
+      }
+      break;
+
+    case "play_narration":
+      if (typeof event.url === "string") {
+        playNarration(event.url);
       }
       break;
 

@@ -997,13 +997,13 @@ These overlays appear over the session screen center when triggered by data chan
 - Starter culture placement: character placed in the Sunward Accord starting location
 
 **Acceptance criteria:**
-- [ ] Prologue plays and sets the world's tone before creation begins
-- [ ] Player can create a full character through voice conversation (no text input required)
-- [ ] Visual cards appear at appropriate moments showing available choices
-- [ ] DM responds naturally to unusual or creative player inputs during creation
+- [x] Prologue plays and sets the world's tone before creation begins
+- [x] Player can create a full character through voice conversation (no text input required)
+- [x] Visual cards appear at appropriate moments showing available choices
+- [x] DM responds naturally to unusual or creative player inputs during creation
 - [ ] Character creation takes 10-15 minutes (not rushed, not dragging)
-- [ ] Created character has appropriate starting stats, equipment, and skills for their chosen class/patron
-- [ ] Character persists and is loaded correctly on next session
+- [x] Created character has appropriate starting stats, equipment, and skills for their chosen class/patron
+- [x] Character persists and is loaded correctly on next session
 
 **Key references:**
 - *Game Design — Character Creation* (the narrated creation flow)

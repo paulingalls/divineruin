@@ -3,6 +3,7 @@ import { createStore } from "zustand/vanilla";
 export interface CharacterSummary {
   playerId: string;
   name: string;
+  race: string;
   className: string;
   level: number;
   xp: number;
@@ -10,6 +11,7 @@ export interface CharacterSummary {
   locationName: string;
   hpCurrent: number;
   hpMax: number;
+  deity: string;
 }
 
 interface CharacterState {

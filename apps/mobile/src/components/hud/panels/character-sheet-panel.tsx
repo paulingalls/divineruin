@@ -86,7 +86,13 @@ export function CharacterSheetPanel() {
       <ThemedText style={styles.name}>{character.name}</ThemedText>
       <ThemedText style={styles.classLevel}>
         LEVEL {character.level} {"\u00B7"} {character.className.toUpperCase()}
+        {character.race ? ` \u00B7 ${character.race.toUpperCase()}` : ""}
       </ThemedText>
+      {character.deity && character.deity !== "none" ? (
+        <ThemedText style={styles.deityText}>
+          Patron: {character.deity.charAt(0).toUpperCase() + character.deity.slice(1)}
+        </ThemedText>
+      ) : null}
 
       {/* HP */}
       <View style={styles.hpSection}>
@@ -218,6 +224,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: BrandColors.ash,
     letterSpacing: 2,
+    marginTop: 2,
+  },
+  deityText: {
+    fontFamily: FontFamilies.bodyLight,
+    fontSize: 12,
+    color: BrandColors.divine,
     marginTop: 2,
   },
   hpSection: { marginTop: Spacing.three },

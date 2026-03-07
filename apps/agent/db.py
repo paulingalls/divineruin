@@ -781,3 +781,27 @@ async def count_active_activities(player_id: str, *, conn: asyncpg.Connection | 
         player_id,
     )
     return row["cnt"] if row else 0
+
+
+# --- Player creation ---
+
+
+async def create_player(player_id: str, account_id: str | None, data: dict) -> None:
+    """INSERT new player. Raises on duplicate player_id."""
+    pool = await get_pool()
+    await pool.execute(
+        "INSERT INTO players (player_id, account_id, data) VALUES ($1, $2, $3::jsonb)",
+        player_id,
+        account_id,
+        json.dumps(data),
+    )
+
+
+async def player_exists(player_id: str) -> bool:
+    """Check if player row exists without loading full data."""
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        "SELECT 1 FROM players WHERE player_id = $1",
+        player_id,
+    )
+    return row is not None

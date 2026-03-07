@@ -5,6 +5,7 @@ import { characterStore } from "@/stores/character-store";
 interface CharacterResponse {
   player_id: string;
   name: string;
+  race?: string;
   class: string;
   level: number;
   xp: number;
@@ -12,6 +13,7 @@ interface CharacterResponse {
   location_name: string;
   hp_current: number;
   hp_max: number;
+  deity?: string;
 }
 
 export function useCharacter(playerId: string) {
@@ -34,6 +36,7 @@ export function useCharacter(playerId: string) {
         characterStore.getState().setCharacter({
           playerId: data.player_id,
           name: data.name,
+          race: typeof data.race === "string" ? data.race : "",
           className: data.class,
           level: data.level,
           xp: data.xp,
@@ -41,6 +44,7 @@ export function useCharacter(playerId: string) {
           locationName: data.location_name,
           hpCurrent: data.hp_current,
           hpMax: data.hp_max,
+          deity: typeof data.deity === "string" ? data.deity : "",
         });
       } catch (e) {
         if (cancelled) return;
