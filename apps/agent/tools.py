@@ -42,6 +42,13 @@ def _validate_id(value: str, label: str) -> str | None:
     return None
 
 
+def _cap_str(value: str, max_len: int, name: str) -> str | None:
+    """Return an error JSON string if value exceeds max_len, else None."""
+    if len(value) > max_len:
+        return json.dumps({"error": f"{name} exceeds maximum length of {max_len} characters."})
+    return None
+
+
 DISPOSITION_ORDER = ["hostile", "wary", "neutral", "friendly", "trusted"]
 
 DISPOSITION_TIERS = {name: i for i, name in enumerate(DISPOSITION_ORDER)}
@@ -452,6 +459,9 @@ async def request_skill_check(
     logger.info(
         "request_skill_check called: skill=%s, difficulty=%s, context=%s", skill, difficulty, context_description
     )
+    cap_err = _cap_str(context_description, 500, "context_description")
+    if cap_err:
+        return cap_err
     session: SessionData = context.userdata
 
     if skill.lower() not in VALID_SKILLS:
@@ -596,6 +606,11 @@ async def request_saving_throw(
     (strength/dexterity/constitution/intelligence/wisdom/charisma), the DC,
     and what happens on failure."""
     logger.info("request_saving_throw called: save_type=%s, dc=%d, effect_on_fail=%s", save_type, dc, effect_on_fail)
+    cap_err = _cap_str(effect_on_fail, 256, "effect_on_fail")
+    if cap_err:
+        return cap_err
+    if dc < 1 or dc > 30:
+        return json.dumps({"error": "DC must be between 1 and 30."})
     session: SessionData = context.userdata
 
     player = await db.get_player(session.player_id)
@@ -654,6 +669,9 @@ async def roll_dice(
     """Roll dice using standard notation (e.g. 2d6, 1d20+3). Use for
     narrative-only random moments like determining weather or crowd size."""
     logger.info("roll_dice called: notation=%s", notation)
+    cap_err = _cap_str(notation, 50, "notation")
+    if cap_err:
+        return cap_err
     session: SessionData = context.userdata
 
     try:
@@ -763,10 +781,15 @@ async def award_xp(
     (e.g. 'defeated goblin scouts', 'completed delivery quest'). Narrate
     level-ups dramatically."""
     logger.info("award_xp called: amount=%d, reason=%s", amount, reason)
+    cap_err = _cap_str(reason, 256, "reason")
+    if cap_err:
+        return cap_err
     session: SessionData = context.userdata
 
     if amount <= 0:
         return json.dumps({"error": "XP amount must be positive."})
+    if amount > 10000:
+        return json.dumps({"error": "XP amount must not exceed 10000."})
 
     pending_events: list[tuple[str, dict]] = []
 
@@ -832,6 +855,9 @@ async def award_divine_favor(
     and their favor grows. Narrate this subtly — a warmth, a sense of
     approval — not as a game mechanic."""
     logger.info("award_divine_favor called: amount=%d, reason=%s", amount, reason)
+    cap_err = _cap_str(reason, 256, "reason")
+    if cap_err:
+        return cap_err
     session: SessionData = context.userdata
 
     if amount < 1 or amount > 10:
@@ -895,6 +921,9 @@ async def update_npc_disposition(
     Delta range: -2 to +2. Positive = warmer, negative = colder.
     Scale: hostile → wary → neutral → friendly → trusted."""
     logger.info("update_npc_disposition called: npc_id=%s, delta=%d, reason=%s", npc_id, delta, reason)
+    cap_err = _cap_str(reason, 256, "reason")
+    if cap_err:
+        return cap_err
     session: SessionData = context.userdata
 
     delta = max(-2, min(2, delta))
@@ -958,6 +987,11 @@ async def add_to_inventory(
     and source (e.g. 'looted from goblin', 'purchased from merchant',
     'quest reward')."""
     logger.info("add_to_inventory called: item_id=%s, quantity=%d, source=%s", item_id, quantity, source)
+    cap_err = _cap_str(source, 256, "source")
+    if cap_err:
+        return cap_err
+    if quantity < 1 or quantity > 99:
+        return json.dumps({"error": "Quantity must be between 1 and 99."})
     session: SessionData = context.userdata
 
     # Cached content read — outside transaction

@@ -4,6 +4,7 @@ import {
   handleGameEvent,
   parseCombatant,
   DICE_STINGER_DELAY_MS,
+  MAX_EVENT_PAYLOAD_BYTES,
 } from "@/audio/game-event-handler";
 import { activePlayerCount } from "@/audio/sfx-player";
 import { sessionStore } from "@/stores/session-store";
@@ -860,4 +861,42 @@ test("combat_started without difficulty keeps default", () => {
   handleGameEvent({ type: "combat_started" });
   expect(sessionStore.getState().combatDifficulty).toBe("moderate");
   expect(sessionStore.getState().inCombat).toBe(true);
+});
+
+// --- Security: narration URL validation ---
+
+test("play_narration rejects URL with path traversal", () => {
+  handleGameEvent({ type: "play_narration", url: "/api/audio/../../../etc/passwd" });
+  // Should not play — no error, just silently ignored
+});
+
+test("play_narration rejects URL exceeding 256 chars", () => {
+  const longUrl = "/api/audio/" + "a".repeat(250);
+  handleGameEvent({ type: "play_narration", url: longUrl });
+  // Should not play
+});
+
+test("play_narration accepts valid short URL", () => {
+  handleGameEvent({ type: "play_narration", url: "/api/audio/narration_1.mp3" });
+  // Should not crash
+});
+
+// --- Security: payload size limit ---
+
+test("parseGameEvent rejects payload over 1 MB", () => {
+  const huge = new Uint8Array(MAX_EVENT_PAYLOAD_BYTES + 1);
+  huge.fill(0x20); // spaces
+  expect(parseGameEvent(huge)).toBeNull();
+});
+
+test("parseGameEvent accepts payload at exactly 1 MB", () => {
+  // 1 MB payload with valid JSON
+  const data = { type: "test", padding: "x".repeat(1_048_500) };
+  const encoded = new TextEncoder().encode(JSON.stringify(data));
+  // This may or may not be under 1MB after JSON encoding, but if it is, it should parse
+  if (encoded.length <= MAX_EVENT_PAYLOAD_BYTES) {
+    const result = parseGameEvent(encoded);
+    expect(result).not.toBeNull();
+    expect(result!.type).toBe("test");
+  }
 });

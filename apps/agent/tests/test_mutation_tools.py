@@ -8,6 +8,7 @@ import pytest
 
 from session_data import SessionData
 from tools import (
+    _cap_str,
     _clamp_disposition_shift,
     _resolve_ambient_sounds,
     add_to_inventory,
@@ -15,6 +16,8 @@ from tools import (
     award_xp,
     move_player,
     remove_from_inventory,
+    request_saving_throw,
+    roll_dice,
     update_npc_disposition,
     update_quest,
 )
@@ -777,3 +780,107 @@ class TestAwardDivineFavor:
         assert call_data["type"] == "divine_favor_changed"
         assert call_data["new_level"] == 15
         assert call_data["patron_id"] == "kaelen"
+
+
+# --- _cap_str ---
+
+
+class TestCapStr:
+    def test_returns_none_within_limit(self):
+        assert _cap_str("hello", 10, "test") is None
+
+    def test_returns_error_over_limit(self):
+        result = json.loads(_cap_str("x" * 300, 256, "reason"))
+        assert "error" in result
+        assert "256" in result["error"]
+
+    def test_exact_boundary_is_ok(self):
+        assert _cap_str("x" * 256, 256, "reason") is None
+
+
+# --- String and integer bounds ---
+
+
+class TestStringCaps:
+    @pytest.mark.asyncio
+    async def test_award_xp_reason_too_long(self):
+        ctx = _make_context()
+        result = json.loads(await award_xp._func(ctx, amount=50, reason="x" * 300))
+        assert "error" in result
+        assert "reason" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_award_divine_favor_reason_too_long(self):
+        ctx = _make_context()
+        result = json.loads(await award_divine_favor._func(ctx, amount=5, reason="x" * 300))
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_update_npc_disposition_reason_too_long(self):
+        ctx = _make_context()
+        result = json.loads(
+            await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=1, reason="x" * 300)
+        )
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_add_to_inventory_source_too_long(self):
+        ctx = _make_context()
+        result = json.loads(await add_to_inventory._func(ctx, item_id="health_potion", quantity=1, source="x" * 300))
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_roll_dice_notation_too_long(self):
+        ctx = _make_context()
+        result = json.loads(await roll_dice._func(ctx, notation="x" * 60))
+        assert "error" in result
+
+
+@patch("tools.db.transaction", _mock_transaction)
+class TestIntegerBounds:
+    @pytest.mark.asyncio
+    async def test_award_xp_exceeds_max(self):
+        ctx = _make_context()
+        result = json.loads(await award_xp._func(ctx, amount=10001, reason="too much"))
+        assert "error" in result
+        assert "10000" in result["error"]
+
+    @pytest.mark.asyncio
+    @patch("tools.db.update_player_xp", new_callable=AsyncMock)
+    @patch("tools.db.get_player", new_callable=AsyncMock)
+    async def test_award_xp_at_max_is_ok(self, mock_player, mock_update):
+        """10000 should be accepted (boundary value)."""
+        mock_player.return_value = SAMPLE_PLAYER
+        ctx = _make_context()
+        result = json.loads(await award_xp._func(ctx, amount=10000, reason="big reward"))
+        assert "error" not in result
+        assert result["amount"] == 10000
+
+    @pytest.mark.asyncio
+    async def test_add_to_inventory_quantity_zero(self):
+        ctx = _make_context()
+        result = json.loads(await add_to_inventory._func(ctx, item_id="health_potion", quantity=0, source="test"))
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_add_to_inventory_quantity_100(self):
+        ctx = _make_context()
+        result = json.loads(await add_to_inventory._func(ctx, item_id="health_potion", quantity=100, source="test"))
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_saving_throw_dc_zero(self):
+        ctx = _make_context()
+        result = json.loads(
+            await request_saving_throw._func(ctx, save_type="strength", dc=0, effect_on_fail="knocked prone")
+        )
+        assert "error" in result
+        assert "DC" in result["error"] or "dc" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_saving_throw_dc_31(self):
+        ctx = _make_context()
+        result = json.loads(
+            await request_saving_throw._func(ctx, save_type="dexterity", dc=31, effect_on_fail="fireball")
+        )
+        assert "error" in result

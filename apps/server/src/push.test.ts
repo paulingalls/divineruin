@@ -144,4 +144,29 @@ describe("handleInternalPush", () => {
     const res = await handleInternalPush(req);
     expect(res.status).toBe(401);
   });
+
+  test("rejects missing Content-Type", async () => {
+    const req = new Request("http://localhost/api/internal/push", {
+      method: "POST",
+      headers: { "X-Internal-Secret": "test-secret" },
+      body: JSON.stringify({
+        player_id: "player_1",
+        title: "Test",
+        body: "Test body",
+      }),
+    });
+    const res = await handleInternalPush(req);
+    expect(res.status).toBe(415);
+  });
+});
+
+describe("handleStorePushToken Content-Type", () => {
+  test("rejects missing Content-Type", async () => {
+    const req = new Request("http://localhost/api/push-token", {
+      method: "POST",
+      body: JSON.stringify({ token: "ExponentPushToken[abc]" }),
+    });
+    const res = await handleStorePushToken(req, "player_1");
+    expect(res.status).toBe(415);
+  });
 });

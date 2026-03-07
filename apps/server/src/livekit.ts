@@ -6,6 +6,7 @@ import {
 } from "livekit-server-sdk";
 import { TrackSource } from "@livekit/protocol";
 import { requireEnv, logError } from "./env.ts";
+import { parseJsonBody } from "./middleware.ts";
 export { DataPacket_Kind };
 
 const LIVEKIT_URL = requireEnv("LIVEKIT_URL");
@@ -34,10 +35,11 @@ export const roomService = new RoomServiceClient(
 const dispatchClient = new AgentDispatchClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
 
 export async function handleLivekitToken(req: Request, playerId: string): Promise<Response> {
-  const body = (await req.json().catch(() => null)) as {
-    room_name?: string;
-  } | null;
-  const room_name = body?.room_name;
+  const body = await parseJsonBody<{ room_name?: string }>(req);
+  if (!body) {
+    return Response.json({ error: "Invalid Content-Type" }, { status: 415 });
+  }
+  const room_name = body.room_name;
   const player_id = playerId;
 
   if (!room_name) {

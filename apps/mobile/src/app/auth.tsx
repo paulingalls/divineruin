@@ -19,6 +19,9 @@ import { BrandColors, FontFamilies, Spacing, Radius, MaxContentWidth } from "@/c
 
 type Phase = "email" | "code";
 
+const CLIENT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EMAIL_LENGTH = 254;
+
 export default function AuthScreen() {
   const [phase, setPhase] = useState<Phase>("email");
   const [email, setEmail] = useState("");
@@ -29,6 +32,11 @@ export default function AuthScreen() {
   const handleSendCode = async () => {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed) return;
+
+    if (trimmed.length > MAX_EMAIL_LENGTH || !CLIENT_EMAIL_RE.test(trimmed)) {
+      setError("Please enter a valid email address");
+      return;
+    }
 
     setLoading(true);
     setError(null);

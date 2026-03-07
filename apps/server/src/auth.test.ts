@@ -27,6 +27,7 @@ void mock.module("./db.ts", () => {
 
 const { signJwt, verifyJwt, requireAuth, handleRequestCode, handleVerifyCode, handleGetMe } =
   await import("./auth.ts");
+const { parseJsonBody } = await import("./middleware.ts");
 
 function jsonReq(
   path: string,
@@ -226,5 +227,69 @@ describe("handleGetMe", () => {
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.email).toBe("me@example.com");
     expect(body.player_id).toBe("player_me");
+  });
+});
+
+// --- Content-Type validation ---
+
+describe("Content-Type validation", () => {
+  test("handleRequestCode rejects missing Content-Type", async () => {
+    const req = new Request("http://localhost/api/auth/request-code", {
+      method: "POST",
+      body: JSON.stringify({ email: "test@example.com" }),
+    });
+    const res = await handleRequestCode(req);
+    expect(res.status).toBe(415);
+  });
+
+  test("handleVerifyCode rejects wrong Content-Type", async () => {
+    const req = new Request("http://localhost/api/auth/verify-code", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ email: "test@example.com", code: "123456" }),
+    });
+    const res = await handleVerifyCode(req);
+    expect(res.status).toBe(415);
+  });
+
+  test("parseJsonBody returns null for missing Content-Type", async () => {
+    const req = new Request("http://localhost/test", {
+      method: "POST",
+      body: JSON.stringify({ key: "value" }),
+    });
+    const result = await parseJsonBody(req);
+    expect(result).toBeNull();
+  });
+
+  test("parseJsonBody parses valid JSON with correct Content-Type", async () => {
+    const req = new Request("http://localhost/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "value" }),
+    });
+    const result = await parseJsonBody<{ key: string }>(req);
+    expect(result).toEqual({ key: "value" });
+  });
+});
+
+// --- Tightened email regex ---
+
+describe("Email validation", () => {
+  test("rejects email without proper TLD", async () => {
+    const res = await handleRequestCode(jsonReq("/api/auth/request-code", { email: "a@b" }));
+    expect(res.status).toBe(400);
+  });
+
+  test("rejects email with leading dot in domain", async () => {
+    const res = await handleRequestCode(jsonReq("/api/auth/request-code", { email: "user@.com" }));
+    expect(res.status).toBe(400);
+  });
+
+  test("accepts valid email with subdomains", async () => {
+    setMockResults([], [{ id: "acc-1" }], [], []);
+    const res = await handleRequestCode(
+      jsonReq("/api/auth/request-code", { email: "user@mail.example.com" }),
+    );
+    expect(res.status).toBe(200);
   });
 });

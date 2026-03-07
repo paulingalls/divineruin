@@ -3,6 +3,8 @@ import { API_BASE, authHeaders } from "@/utils/api";
 
 export type TokenState = "idle" | "fetching" | "ready" | "error";
 
+const ALLOWED_LK_PROTOCOL = __DEV__ ? /^wss?:\/\// : /^wss:\/\//;
+
 interface TokenResponse {
   token: string;
   url: string;
@@ -32,6 +34,9 @@ export function useSessionToken() {
       }
 
       const data = (await res.json()) as TokenResponse;
+      if (!ALLOWED_LK_PROTOCOL.test(data.url)) {
+        throw new Error("Server returned an invalid URL protocol");
+      }
       setToken(data.token);
       setServerUrl(data.url);
       setState("ready");

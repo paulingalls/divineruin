@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { sql } from "./db.ts";
+import { parseJsonBody } from "./middleware.ts";
 
 const JWT_SECRET_HEX = Bun.env.JWT_SECRET ?? "";
 const RESEND_API_KEY = Bun.env.RESEND_API_KEY ?? "";
@@ -56,15 +57,18 @@ function generateCode(): string {
   return String(arr[0]! % 1_000_000).padStart(6, "0");
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_RE =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+const MAX_EMAIL_LENGTH = 254;
 
 export async function handleRequestCode(req: Request): Promise<Response> {
-  const body = (await req.json().catch(() => null)) as {
-    email?: string;
-  } | null;
+  const body = await parseJsonBody<{ email?: string }>(req);
+  if (!body) {
+    return Response.json({ error: "Invalid Content-Type" }, { status: 415 });
+  }
 
-  const rawEmail = body?.email?.trim().toLowerCase();
-  if (!rawEmail || !EMAIL_RE.test(rawEmail)) {
+  const rawEmail = body.email?.trim().toLowerCase();
+  if (!rawEmail || rawEmail.length > MAX_EMAIL_LENGTH || !EMAIL_RE.test(rawEmail)) {
     return Response.json({ error: "A valid email address is required" }, { status: 400 });
   }
 
@@ -111,6 +115,7 @@ export async function handleRequestCode(req: Request): Promise<Response> {
           subject: "Divine Ruin - Your verification code",
           text: `Your verification code is: ${code}\n\nThis code expires in ${CODE_EXPIRY_MINUTES} minutes.`,
         }),
+        signal: AbortSignal.timeout(5000),
       });
     } catch (e) {
       console.error("[auth] Failed to send email:", e instanceof Error ? e.message : e);
@@ -123,13 +128,13 @@ export async function handleRequestCode(req: Request): Promise<Response> {
 }
 
 export async function handleVerifyCode(req: Request): Promise<Response> {
-  const body = (await req.json().catch(() => null)) as {
-    email?: string;
-    code?: string;
-  } | null;
+  const body = await parseJsonBody<{ email?: string; code?: string }>(req);
+  if (!body) {
+    return Response.json({ error: "Invalid Content-Type" }, { status: 415 });
+  }
 
-  const rawEmail = body?.email?.trim().toLowerCase();
-  const rawCode = body?.code?.trim();
+  const rawEmail = body.email?.trim().toLowerCase();
+  const rawCode = body.code?.trim();
   if (!rawEmail || !rawCode) {
     return Response.json({ error: "Email and code are required" }, { status: 400 });
   }
@@ -200,15 +205,10 @@ export async function handleGetMe(req: Request): Promise<Response> {
     return Response.json({ error: "Account not found" }, { status: 404 });
   }
 
-  return Response.json(
-    {
-      account_id: auth.accountId,
-      player_id: auth.playerId,
-      email: account.email,
-      created_at: account.created_at,
-    },
-    {
-      headers: { "Cache-Control": "private, no-store" },
-    },
-  );
+  return Response.json({
+    account_id: auth.accountId,
+    player_id: auth.playerId,
+    email: account.email,
+    created_at: account.created_at,
+  });
 }

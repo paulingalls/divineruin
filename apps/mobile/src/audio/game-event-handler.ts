@@ -93,11 +93,15 @@ function extractExitConnections(exits: Record<string, unknown>): string[] {
   return connections;
 }
 
+/** Maximum payload size for data channel messages (1 MB). */
+export const MAX_EVENT_PAYLOAD_BYTES = 1_048_576;
+
 /** Delay before playing dice result stinger (matches tumble animation duration). */
 export const DICE_STINGER_DELAY_MS = 600;
 let _diceStingerTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function parseGameEvent(payload: Uint8Array): DataChannelEvent | null {
+  if (payload.length > MAX_EVENT_PAYLOAD_BYTES) return null;
   try {
     const text = decoder.decode(payload);
     const data: unknown = JSON.parse(text);
@@ -508,7 +512,12 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
 
     case "play_narration":
-      if (typeof event.url === "string" && event.url.startsWith("/api/audio/")) {
+      if (
+        typeof event.url === "string" &&
+        event.url.startsWith("/api/audio/") &&
+        !event.url.includes("..") &&
+        event.url.length <= 256
+      ) {
         playNarration(event.url);
       }
       break;

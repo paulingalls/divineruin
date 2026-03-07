@@ -15,6 +15,20 @@ describe("CORS", () => {
   });
 });
 
+describe("Security Headers", () => {
+  test("withCors adds HSTS header", () => {
+    const res = withCors(Response.json({ ok: true }));
+    expect(res.headers.get("Strict-Transport-Security")).toBe(
+      "max-age=63072000; includeSubDomains",
+    );
+  });
+
+  test("withCors adds Cache-Control header", () => {
+    const res = withCors(Response.json({ ok: true }));
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+  });
+});
+
 describe("Rate Limiting", () => {
   beforeEach(() => {
     _resetRateLimits();

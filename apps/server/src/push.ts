@@ -1,16 +1,17 @@
 import { sql } from "./db.ts";
 import { logError } from "./env.ts";
+import { parseJsonBody } from "./middleware.ts";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 export async function handleStorePushToken(req: Request, playerId: string): Promise<Response> {
   try {
-    const body = (await req.json().catch(() => null)) as {
-      token?: string;
-      platform?: string;
-    } | null;
+    const body = await parseJsonBody<{ token?: string; platform?: string }>(req);
+    if (!body) {
+      return Response.json({ error: "Invalid Content-Type" }, { status: 415 });
+    }
 
-    if (!body?.token) {
+    if (!body.token) {
       return Response.json({ error: "token is required" }, { status: 400 });
     }
 
@@ -83,14 +84,17 @@ export async function handleInternalPush(req: Request): Promise<Response> {
   }
 
   try {
-    const body = (await req.json().catch(() => null)) as {
+    const body = await parseJsonBody<{
       player_id?: string;
       title?: string;
       body?: string;
       data?: Record<string, unknown>;
-    } | null;
+    }>(req);
+    if (!body) {
+      return Response.json({ error: "Invalid Content-Type" }, { status: 415 });
+    }
 
-    if (!body?.player_id || !body.title || !body.body) {
+    if (!body.player_id || !body.title || !body.body) {
       return Response.json({ error: "player_id, title, and body are required" }, { status: 400 });
     }
 

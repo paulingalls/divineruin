@@ -1,10 +1,7 @@
-const CORS_ORIGIN = Bun.env.CORS_ORIGIN ?? "*";
-
 if (!Bun.env.CORS_ORIGIN && process.env.NODE_ENV === "production") {
-  console.warn(
-    "[security] CORS_ORIGIN not set — defaulting to '*'. Set CORS_ORIGIN in production.",
-  );
+  throw new Error("[security] CORS_ORIGIN must be set in production.");
 }
+const CORS_ORIGIN = Bun.env.CORS_ORIGIN ?? "*";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": CORS_ORIGIN,
@@ -16,6 +13,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
 };
 
 export function handlePreflight(): Response {
@@ -29,7 +27,14 @@ export function withCors(response: Response): Response {
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
   }
+  response.headers.set("Cache-Control", "private, no-store");
   return response;
+}
+
+export async function parseJsonBody<T>(req: Request): Promise<T | null> {
+  const ct = req.headers.get("Content-Type");
+  if (!ct || !ct.includes("application/json")) return null;
+  return (await req.json().catch(() => null)) as T | null;
 }
 
 // --- Rate Limiter ---
