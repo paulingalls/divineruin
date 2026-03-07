@@ -864,14 +864,14 @@ These overlays appear over the session screen center when triggered by data chan
 - Hollow audio design: corruption escalation stages audible as player goes deeper into ruins
 
 **Acceptance criteria:**
-- [ ] A playtester can complete sessions 1-4 in sequence with a coherent narrative
-- [ ] Each NPC interaction feels like talking to a distinct character (voice, personality, knowledge appropriate to disposition)
-- [ ] The Greyvale Ruins feel progressively more unsettling as the player goes deeper (Hollow audio stages 1→3)
-- [ ] The artifact discovery is a meaningful narrative moment (companion reacts, DM narrates weight of the discovery)
-- [ ] Session 4's faction reactions differ based on which faction the player aligns with
-- [ ] Quest stages advance correctly based on completion conditions
-- [ ] At least one combat encounter and one non-combat challenge (social/puzzle) occur across the 4 sessions
-- [ ] The story ends with clear hooks for continued play (the mystery isn't resolved, the world is larger than the Greyvale)
+- [x] A playtester can complete sessions 1-4 in sequence with a coherent narrative
+- [x] Each NPC interaction feels like talking to a distinct character (voice, personality, knowledge appropriate to disposition)
+- [x] The Greyvale Ruins feel progressively more unsettling as the player goes deeper (Hollow audio stages 1→3)
+- [x] The artifact discovery is a meaningful narrative moment (companion reacts, DM narrates weight of the discovery)
+- [x] Session 4's faction reactions differ based on which faction the player aligns with
+- [x] Quest stages advance correctly based on completion conditions
+- [x] At least one combat encounter and one non-combat challenge (social/puzzle) occur across the 4 sessions
+- [x] The story ends with clear hooks for continued play (the mystery isn't resolved, the world is larger than the Greyvale)
 - [ ] Total play time across 4 sessions: approximately 2-3 hours
 
 **Key references:**
