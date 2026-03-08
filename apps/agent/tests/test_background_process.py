@@ -166,3 +166,124 @@ class TestRebuildWarmLayer:
         bg, agent, _ = _make_bg()
         await bg._rebuild_warm_layer()
         agent.update_instructions.assert_not_awaited()
+
+
+class TestGodWhisperFlow:
+    def test_divine_favor_triggers_whisper_queue(self):
+        """divine_favor_changed event above threshold queues a CRITICAL god whisper."""
+        sd = _make_session_data(patron_id="kaelen")
+        bg, _, _ = _make_bg(session_data=sd)
+        events = [
+            GameEvent(
+                event_type="divine_favor_changed",
+                payload={"new_level": 25, "last_whisper_level": 0, "patron_id": "kaelen", "reason": "valor"},
+            )
+        ]
+        bg._handle_events(events)
+        assert len(bg._speech_queue) == 1
+        speech = bg._speech_queue[0]
+        assert speech.priority == SpeechPriority.CRITICAL
+        assert speech.stinger_sound == "god_whisper_stinger"
+        assert "Kaelen" in speech.instructions
+
+    def test_divine_favor_below_threshold_no_whisper(self):
+        """divine_favor_changed below threshold does not queue a whisper."""
+        sd = _make_session_data(patron_id="kaelen")
+        bg, _, _ = _make_bg(session_data=sd)
+        events = [
+            GameEvent(
+                event_type="divine_favor_changed",
+                payload={"new_level": 20, "last_whisper_level": 0, "patron_id": "kaelen"},
+            )
+        ]
+        bg._handle_events(events)
+        assert len(bg._speech_queue) == 0
+
+    def test_divine_favor_within_cooldown_no_whisper(self):
+        """divine_favor_changed within cooldown of last whisper does not queue."""
+        sd = _make_session_data(patron_id="syrath")
+        bg, _, _ = _make_bg(session_data=sd)
+        events = [
+            GameEvent(
+                event_type="divine_favor_changed",
+                payload={"new_level": 40, "last_whisper_level": 25, "patron_id": "syrath"},
+            )
+        ]
+        bg._handle_events(events)
+        assert len(bg._speech_queue) == 0
+
+    def test_divine_favor_after_cooldown_triggers(self):
+        """divine_favor_changed after cooldown queues a whisper."""
+        sd = _make_session_data(patron_id="veythar")
+        bg, _, _ = _make_bg(session_data=sd)
+        events = [
+            GameEvent(
+                event_type="divine_favor_changed",
+                payload={"new_level": 50, "last_whisper_level": 25, "patron_id": "veythar"},
+            )
+        ]
+        bg._handle_events(events)
+        assert len(bg._speech_queue) == 1
+        assert "Veythar" in bg._speech_queue[0].instructions
+
+    def test_world_event_god_whisper_queues(self):
+        """A world_event with god_whisper prefix queues a CRITICAL whisper."""
+        sd = _make_session_data(patron_id="kaelen")
+        bg, _, _ = _make_bg(session_data=sd)
+        events = [
+            GameEvent(
+                event_type="world_event",
+                payload={"event_id": "god_whisper:player_patron", "patron_id": "kaelen"},
+            )
+        ]
+        bg._handle_events(events)
+        assert len(bg._speech_queue) == 1
+        assert bg._speech_queue[0].priority == SpeechPriority.CRITICAL
+        assert bg._speech_queue[0].stinger_sound == "god_whisper_stinger"
+
+    def test_god_whisper_uses_correct_deity_profile(self):
+        """Each deity gets their own personality in the whisper instructions."""
+        for deity_id in ["kaelen", "syrath", "veythar"]:
+            sd = _make_session_data(patron_id=deity_id)
+            bg, _, _ = _make_bg(session_data=sd)
+            events = [
+                GameEvent(
+                    event_type="divine_favor_changed",
+                    payload={"new_level": 25, "last_whisper_level": 0, "patron_id": deity_id},
+                )
+            ]
+            bg._handle_events(events)
+            assert len(bg._speech_queue) == 1
+            instructions = bg._speech_queue[0].instructions
+            # Each god's instructions should include their voice character tag
+            assert f"GOD_{deity_id.upper()}" in instructions
+
+    async def test_deliver_speech_fires_stinger_before_whisper(self):
+        """When delivering a god whisper, the stinger sound fires before generate_reply."""
+        sd = _make_session_data(patron_id="kaelen")
+        bg, _, session = _make_bg(session_data=sd)
+        bg._speech_queue.append(
+            PendingSpeech(
+                priority=SpeechPriority.CRITICAL,
+                instructions="Speak as Kaelen",
+                stinger_sound="god_whisper_stinger",
+            )
+        )
+        call_order = []
+
+        async def mock_publish(*args, **kwargs):
+            call_order.append("stinger")
+
+        async def mock_reply(**kwargs):
+            call_order.append("reply")
+
+        session.generate_reply = mock_reply
+        with patch("game_events.publish_game_event", side_effect=mock_publish):
+            with patch.dict("sys.modules", {"db": MagicMock()}):
+                import db as _db
+
+                _db.get_divine_favor = AsyncMock(return_value={"level": 25})
+                _db.mark_favor_whisper_level = AsyncMock()
+                await bg._deliver_speech()
+
+        assert call_order == ["stinger", "reply"]

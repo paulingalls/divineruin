@@ -1059,13 +1059,13 @@ These overlays appear over the session screen center when triggered by data chan
 - God whisper stinger: the STG-006 audio cue plays before the god speaks
 
 **Acceptance criteria:**
-- [ ] Accumulating divine favor through aligned actions triggers a god whisper
-- [ ] The god's voice sounds distinctly different from the DM and all NPCs (unique voice_id + audio treatment)
-- [ ] The whisper content is atmospheric and cryptic — guidance without explicit instruction
-- [ ] The god whisper stinger plays before the god speaks, creating an "other-worldly" audio transition
-- [ ] God whispers in async appear in the Catch-Up layer with playable audio
-- [ ] God whispers in sync sessions are triggered at appropriate dramatic moments
-- [ ] At least 3 patron deities are supported for MVP (Kaelen, Syrath, Veythar) with distinct voices
+- [x] Accumulating divine favor through aligned actions triggers a god whisper
+- [x] The god's voice sounds distinctly different from the DM and all NPCs (unique voice_id + audio treatment)
+- [x] The whisper content is atmospheric and cryptic — guidance without explicit instruction
+- [x] The god whisper stinger plays before the god speaks, creating an "other-worldly" audio transition
+- [x] God whispers in async appear in the Catch-Up layer with playable audio
+- [x] God whispers in sync sessions are triggered at appropriate dramatic moments
+- [x] At least 3 patron deities are supported for MVP (Kaelen, Syrath, Veythar) with distinct voices
 
 **Key references:**
 - *Audio Design — Voice Design — God Voices* (Kaelen, Syrath, Veythar, Aelora, Mortaen)
