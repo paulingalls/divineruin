@@ -7,9 +7,8 @@
  *   bun run scripts/generate_art.ts --batch mvp
  */
 
-import { generateImage } from "../apps/server/src/image-gen.ts";
+import { generateImage, computeAssetId, getAssetPath } from "../apps/server/src/image-gen.ts";
 import { PROMPT_TEMPLATES } from "../apps/server/src/image-prompt-templates.ts";
-import { assetExists } from "../apps/server/src/image-gen.ts";
 
 interface BatchEntry {
   templateId: string;
@@ -317,16 +316,15 @@ async function copyLocationAssets() {
   console.log(`\nCopying ${locationEntries.length} location assets to mobile bundle...`);
 
   for (const entry of locationEntries) {
-    try {
-      const result = await generateImage(entry.templateId, entry.vars);
-      const dest = `${mobileDir}/${entry.locationId}.png`;
-      const src = Bun.file(result.path);
-      if (await src.exists()) {
-        await Bun.write(dest, src);
-        copied++;
-      }
-    } catch {
-      console.warn(`  Warning: could not copy asset for ${entry.locationId}`);
+    const assetId = computeAssetId(entry.templateId, entry.vars);
+    const srcPath = getAssetPath(assetId);
+    const dest = `${mobileDir}/${entry.locationId}.png`;
+    const src = Bun.file(srcPath);
+    if (await src.exists()) {
+      await Bun.write(dest, src);
+      copied++;
+    } else {
+      console.warn(`  Warning: source not found for ${entry.locationId} (${srcPath})`);
     }
   }
 

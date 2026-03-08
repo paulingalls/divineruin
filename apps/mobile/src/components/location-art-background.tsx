@@ -6,6 +6,7 @@ import { useStore } from "zustand";
 
 import { sessionStore } from "@/stores/session-store";
 import { resolveLocationArt } from "@/constants/location-art-registry";
+import { BrandColors } from "@/constants/theme";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
@@ -13,7 +14,6 @@ const ART_OPACITY = 0.5;
 const CROSSFADE_DURATION = 2500;
 const FIRST_LOAD_DURATION = 800;
 const NIGHT_TINT_OPACITY = 0.3;
-const NIGHT_COLOR = "#0A0A2A";
 
 interface SlotState {
   sourceA: number | null;
@@ -121,6 +121,6 @@ const styles = StyleSheet.create({
   },
   nightOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: NIGHT_COLOR,
+    backgroundColor: BrandColors.nightTint,
   },
 });

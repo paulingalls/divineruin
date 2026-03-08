@@ -1,11 +1,13 @@
 import { Image, StyleSheet, View } from "react-native";
 
-const grain = require("@/../assets/images/grain.png") as number;
+// Shared grain asset — also imported by corruption-overlay.tsx
+// Uses react-native Image (not expo-image) for resizeMode="repeat" support
+export const GRAIN_SOURCE = require("@/../assets/images/grain.png") as number;
 
 export function GrainOverlay() {
   return (
     <View style={styles.overlay} pointerEvents="none">
-      <Image source={grain} style={styles.image} resizeMode="repeat" />
+      <Image source={GRAIN_SOURCE} style={styles.image} resizeMode="repeat" />
     </View>
   );
 }

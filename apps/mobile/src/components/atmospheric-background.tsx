@@ -1,27 +1,28 @@
 import { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
 import { useStore } from "zustand";
 
 import { sessionStore } from "@/stores/session-store";
+import { BrandColors } from "@/constants/theme";
 
 const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
 type ColorPair = [string, string];
 
 const ATMOSPHERE_COLORS: Record<string, ColorPair> = {
-  tavern: ["#3E2723", "#0A0A0B"],
-  inn: ["#3E2723", "#0A0A0B"],
-  forest: ["#1B3A1B", "#0A0A0B"],
-  wilderness: ["#1B3A1B", "#0A0A0B"],
-  ruins: ["#2A1A3A", "#0A0A0B"],
-  hollow: ["#1A0A2A", "#0A0A0B"],
-  combat: ["#3A0A0A", "#0A0A0B"],
-  market: ["#2A2210", "#0A0A0B"],
-  guild: ["#1A2030", "#0A0A0B"],
-  temple: ["#20203A", "#0A0A0B"],
-  default: ["#0D1117", "#0A0A0B"],
+  tavern: ["#3E2723", BrandColors.void],
+  inn: ["#3E2723", BrandColors.void],
+  forest: ["#1B3A1B", BrandColors.void],
+  wilderness: ["#1B3A1B", BrandColors.void],
+  ruins: ["#2A1A3A", BrandColors.void],
+  hollow: ["#1A0A2A", BrandColors.void],
+  combat: ["#3A0A0A", BrandColors.void],
+  market: ["#2A2210", BrandColors.void],
+  guild: ["#1A2030", BrandColors.void],
+  temple: ["#20203A", BrandColors.void],
+  default: ["#0D1117", BrandColors.void],
 };
 
 function resolveColors(atmosphere: string, tags: string[], inCombat: boolean): ColorPair {
@@ -48,7 +49,7 @@ export function AtmosphericBackground() {
 
   useEffect(() => {
     opacity.value = 0;
-    opacity.value = withTiming(1, { duration: 800 });
+    opacity.value = withTiming(GRADIENT_MAX_OPACITY, { duration: 800 });
   }, [topColor, bottomColor, opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -56,20 +57,17 @@ export function AtmosphericBackground() {
   }));
 
   return (
-    <View style={styles.gradientWrapper} pointerEvents="none">
-      <AnimatedLinearGradient
-        colors={[topColor, bottomColor]}
-        style={[styles.gradient, animatedStyle]}
-      />
-    </View>
+    <AnimatedLinearGradient
+      colors={[topColor, bottomColor]}
+      style={[styles.gradient, animatedStyle]}
+      pointerEvents="none"
+    />
   );
 }
 
+const GRADIENT_MAX_OPACITY = 0.35;
+
 const styles = StyleSheet.create({
-  gradientWrapper: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.35,
-  },
   gradient: {
     ...StyleSheet.absoluteFillObject,
   },

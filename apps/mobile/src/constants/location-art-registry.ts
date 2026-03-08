@@ -105,8 +105,3 @@ export const LOADING_ART = require("@/../assets/images/locations/loading_abstrac
 export function resolveLocationArt(locationId: string): number | null {
   return LOCATION_ART[locationId]?.bundled ?? null;
 }
-
-/** Get the visual category for a location (used for fallback styling). */
-export function getLocationCategory(locationId: string): string | null {
-  return LOCATION_ART[locationId]?.category ?? null;
-}

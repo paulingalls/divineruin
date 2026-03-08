@@ -10,9 +10,8 @@ import Animated, {
 import { useStore } from "zustand";
 
 import { sessionStore } from "@/stores/session-store";
+import { GRAIN_SOURCE } from "@/components/grain-overlay";
 import { BrandColors } from "@/constants/theme";
-
-const grain = require("@/../assets/images/grain.png") as number;
 
 const TRANSITION_DURATION = 1500;
 
@@ -23,13 +22,21 @@ const VIGNETTE_OPACITY = [0, 0.08, 0.18, 0.3] as const;
 
 /**
  * Progressive visual corruption at stages 0-3.
- * Teal tint, extra grain, vignette darkening, and animated noise pulse (stage 3).
+ * Teal tint, extra grain, edge darkening, and animated noise pulse (stage 3).
  * All pointerEvents="none" — purely visual.
+ *
+ * Split into wrapper + inner to avoid running hooks when corruption is off (stage 0).
  */
 export function CorruptionOverlay() {
   const corruptionLevel = useStore(sessionStore, (s) => s.corruptionLevel);
   const stage = Math.max(0, Math.min(3, corruptionLevel));
 
+  if (stage === 0) return null;
+
+  return <CorruptionOverlayInner stage={stage} />;
+}
+
+function CorruptionOverlayInner({ stage }: { stage: number }) {
   const tealOpacity = useSharedValue(0);
   const grainOpacity = useSharedValue(0);
   const vignetteOpacity = useSharedValue(0);
@@ -55,21 +62,19 @@ export function CorruptionOverlay() {
   const vignetteStyle = useAnimatedStyle(() => ({ opacity: vignetteOpacity.value }));
   const noiseStyle = useAnimatedStyle(() => ({ opacity: noiseOpacity.value }));
 
-  // No rendering at all when corruption is 0
-  if (stage === 0) return null;
-
   return (
     <View style={styles.container} pointerEvents="none">
       {/* Teal tint */}
       <Animated.View style={[styles.tealTint, tealStyle]} />
 
       {/* Extra grain with teal tint beneath */}
+      {/* Uses react-native Image (not expo-image) for resizeMode="repeat" support */}
       <Animated.View style={[styles.grainLayer, grainStyle]}>
         <View style={styles.grainTealUnder} />
-        <Image source={grain} style={styles.grainImage} resizeMode="repeat" />
+        <Image source={GRAIN_SOURCE} style={styles.grainImage} resizeMode="repeat" />
       </Animated.View>
 
-      {/* Vignette — 4 edge gradients approximation */}
+      {/* Edge darkening — solid borders that darken screen edges */}
       <Animated.View style={[styles.vignetteTop, vignetteStyle]} />
       <Animated.View style={[styles.vignetteBottom, vignetteStyle]} />
       <Animated.View style={[styles.vignetteLeft, vignetteStyle]} />
@@ -78,7 +83,7 @@ export function CorruptionOverlay() {
       {/* Stage 3: animated noise pulse */}
       {stage >= 3 && (
         <Animated.View style={[styles.grainLayer, noiseStyle]}>
-          <Image source={grain} style={styles.grainImage} resizeMode="repeat" />
+          <Image source={GRAIN_SOURCE} style={styles.grainImage} resizeMode="repeat" />
         </Animated.View>
       )}
     </View>
@@ -104,7 +109,7 @@ const styles = StyleSheet.create({
   grainImage: {
     ...StyleSheet.absoluteFillObject,
   },
-  // Vignette edges — dark borders that darken toward the edges
+  // Edge darkening — solid dark borders over screen edges
   vignetteTop: {
     position: "absolute",
     top: 0,

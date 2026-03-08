@@ -8,7 +8,7 @@ function getImageDir(): string {
   return Bun.env.ASSET_IMAGE_DIR ?? `${import.meta.dir}/../../assets/images`;
 }
 
-function computeAssetId(templateId: string, vars: Record<string, string>): string {
+export function computeAssetId(templateId: string, vars: Record<string, string>): string {
   const sortedEntries = Object.entries(vars).sort(([a], [b]) => a.localeCompare(b));
   const payload = templateId + JSON.stringify(sortedEntries);
   const hash = new Bun.CryptoHasher("sha256").update(payload).digest("hex").slice(0, 16);

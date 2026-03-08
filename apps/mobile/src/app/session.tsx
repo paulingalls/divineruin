@@ -38,6 +38,20 @@ import { hudStore } from "@/stores/hud-store";
 import { panelStore } from "@/stores/panel-store";
 import { BrandColors, Spacing, Radius, Shadows } from "@/constants/theme";
 
+function LoadingShell({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={styles.container}>
+      <Image
+        source={LOADING_ART}
+        style={[StyleSheet.absoluteFill, styles.loadingArt]}
+        contentFit="cover"
+      />
+      <AtmosphericBackground />
+      <SafeAreaView style={styles.safeArea}>{children}</SafeAreaView>
+    </View>
+  );
+}
+
 const ROOM_NAME = "divineruin-session";
 const RECONNECT_TIMEOUT_MS = 2 * 60 * 1000;
 const SWIPE_UP_THRESHOLD = -50;
@@ -216,41 +230,25 @@ export default function SessionScreen() {
 
   if (state === "error") {
     return (
-      <View style={styles.container}>
-        <Image
-          source={LOADING_ART}
-          style={[StyleSheet.absoluteFill, styles.loadingArt]}
-          contentFit="cover"
-        />
-        <AtmosphericBackground />
-        <SafeAreaView style={styles.safeArea}>
-          <ThemedText variant="h1" style={styles.centered}>
-            Connection failed
-          </ThemedText>
-          <ThemedText style={[styles.centered, { color: BrandColors.ash }]}>{error}</ThemedText>
-          <Pressable style={styles.leaveButton} onPress={handleLeave}>
-            <ThemedText style={styles.leaveText}>Go back</ThemedText>
-          </Pressable>
-        </SafeAreaView>
-      </View>
+      <LoadingShell>
+        <ThemedText variant="h1" style={styles.centered}>
+          Connection failed
+        </ThemedText>
+        <ThemedText style={[styles.centered, { color: BrandColors.ash }]}>{error}</ThemedText>
+        <Pressable style={styles.leaveButton} onPress={handleLeave}>
+          <ThemedText style={styles.leaveText}>Go back</ThemedText>
+        </Pressable>
+      </LoadingShell>
     );
   }
 
   if (state !== "ready" || !token || !serverUrl) {
     return (
-      <View style={styles.container}>
-        <Image
-          source={LOADING_ART}
-          style={[StyleSheet.absoluteFill, styles.loadingArt]}
-          contentFit="cover"
-        />
-        <AtmosphericBackground />
-        <SafeAreaView style={styles.safeArea}>
-          <ThemedText variant="h1" style={styles.centered}>
-            Entering the world...
-          </ThemedText>
-        </SafeAreaView>
-      </View>
+      <LoadingShell>
+        <ThemedText variant="h1" style={styles.centered}>
+          Entering the world...
+        </ThemedText>
+      </LoadingShell>
     );
   }
 

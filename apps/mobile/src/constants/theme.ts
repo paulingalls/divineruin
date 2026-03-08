@@ -19,6 +19,8 @@ export const BrandColors = {
   hollowMuted: "#1A8A7A",
   hollow: "#2DD4BF",
   hollowGlow: "#5EEAD4",
+  // Atmospheric
+  nightTint: "#0A0A2A",
   // Semantic
   emberFaint: "#7C2D12",
   ember: "#C2410C",
