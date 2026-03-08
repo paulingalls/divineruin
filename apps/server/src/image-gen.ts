@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { requireEnv, logError } from "./env.ts";
 import { sql } from "./db.ts";
 import { resolvePrompt } from "./image-prompt-templates.ts";
@@ -47,6 +47,9 @@ export async function generateImage(
     contents: prompt,
     config: {
       responseModalities: ["IMAGE"],
+      thinkingConfig: {
+        thinkingLevel: ThinkingLevel.HIGH,
+      },
     },
   });
 

@@ -12,6 +12,7 @@ from livekit.agents.voice import RunContext
 import db
 import dice
 import rules_engine
+from asset_utils import asset_url, compute_asset_id
 from db_errors import db_tool
 from game_events import publish_game_event
 from session_data import CombatParticipant, CombatState, SessionData
@@ -1000,25 +1001,35 @@ async def add_to_inventory(
         return json.dumps({"error": f"Item '{item_id}' not found."})
 
     item_name = item.get("name", item_id)
-    pending_events: list[tuple[str, dict]] = []
 
     async with db.transaction() as conn:
         await db.add_inventory_item(session.player_id, item_id, quantity, conn=conn)
 
-        pending_events.append(
-            (
-                "inventory_updated",
-                {
-                    "action": "added",
-                    "item_id": item_id,
-                    "item_name": item_name,
-                    "quantity": quantity,
-                },
-            )
-        )
+    # Re-fetch full inventory so client gets the complete array
+    full_inventory = await db.get_player_inventory(session.player_id)
 
-    for event_type, payload in pending_events:
-        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
+    await publish_game_event(
+        session.room,
+        "inventory_updated",
+        {"inventory": full_inventory},
+        event_bus=session.event_bus,
+    )
+
+    # Send item_acquired overlay event with image_url
+    image_url = db._compute_item_image_url(item)
+    acquired_payload: dict = {
+        "name": item_name,
+        "description": item.get("description", ""),
+        "rarity": item.get("rarity", "common"),
+    }
+    if image_url:
+        acquired_payload["image_url"] = image_url
+    await publish_game_event(
+        session.room,
+        "item_acquired",
+        acquired_payload,
+        event_bus=session.event_bus,
+    )
 
     session.record_event(f"Added {quantity}x {item_name} ({source})")
     session.record_companion_memory(f"Found {item_name}")
@@ -1453,6 +1464,64 @@ async def end_session(context: RunContext[SessionData], reason: str) -> str:
             },
             "instruction": "Deliver a 2-3 sentence narrative wrap-up. Find a natural stopping point. "
             "Mention any XP or progress if meaningful. Plant one hook for next session.",
+        }
+    )
+
+
+VALID_MOMENT_KEYS = {"combat", "hollow_encounter", "god_contact"}
+MOMENT_KEY_TO_TEMPLATE: dict[str, str] = {
+    "combat": "story_combat",
+    "hollow_encounter": "story_hollow_encounter",
+    "god_contact": "story_god_contact",
+}
+MAX_STORY_MOMENTS_PER_SESSION = 3
+
+
+@function_tool()
+@db_tool
+async def record_story_moment(
+    context: RunContext[SessionData],
+    moment_key: str,
+    description: str,
+) -> str:
+    """Record a significant narrative moment during play. Use sparingly —
+    only for first combat victory, Hollow discovery, or god contact.
+    moment_key must be one of: combat, hollow_encounter, god_contact.
+    description is a brief (1-2 sentence) scene summary."""
+    logger.info("record_story_moment called: moment_key=%s", moment_key)
+    if moment_key not in VALID_MOMENT_KEYS:
+        return json.dumps(
+            {"error": f"Invalid moment_key: '{moment_key}'. Must be one of: {', '.join(sorted(VALID_MOMENT_KEYS))}"}
+        )
+    cap_err = _cap_str(description, 512, "description")
+    if cap_err:
+        return cap_err
+
+    sd: SessionData = context.userdata
+    template_id = MOMENT_KEY_TO_TEMPLATE[moment_key]
+    asset_id = compute_asset_id(template_id, {})
+    image_url = asset_url(template_id, {})
+
+    # Enforce per-session limit
+    count = await db.count_session_story_moments(sd.session_id)
+    if count >= MAX_STORY_MOMENTS_PER_SESSION:
+        return json.dumps({"error": f"Maximum {MAX_STORY_MOMENTS_PER_SESSION} story moments per session."})
+
+    await db.save_story_moment(
+        session_id=sd.session_id,
+        player_id=sd.player_id,
+        moment_key=moment_key,
+        description=description,
+        template_id=template_id,
+        asset_id=asset_id,
+    )
+
+    logger.info("record_story_moment saved: %s for session %s", moment_key, sd.session_id)
+    return json.dumps(
+        {
+            "recorded": True,
+            "moment_key": moment_key,
+            "image_url": image_url,
         }
     )
 

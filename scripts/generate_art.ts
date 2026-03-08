@@ -16,6 +16,8 @@ interface BatchEntry {
   label: string;
   /** When set, the generated image is also copied to the mobile assets dir with this filename. */
   locationId?: string;
+  /** When set, the generated image is also copied to the mobile marketing assets dir with this filename. */
+  marketingId?: string;
 }
 
 const MVP_BATCH: BatchEntry[] = [
@@ -163,6 +165,88 @@ const MVP_BATCH: BatchEntry[] = [
     label: "Scholar Emris",
   },
 
+  // NPC portraits — Secondary characters
+  {
+    templateId: "npc_portrait",
+    vars: {
+      description: "a dust-caked young man, exhausted messenger",
+      features: "bloodshot eyes, one arm in a sling, desperate expression",
+    },
+    label: "Wounded Rider",
+  },
+  {
+    templateId: "npc_portrait",
+    vars: {
+      description: "a sturdy woman in a flour-dusted apron, innkeeper",
+      features: "sharp eyes with dark circles, hair pinned back, strong arms",
+    },
+    label: "Innkeeper Maren",
+  },
+  {
+    templateId: "npc_portrait",
+    vars: {
+      description: "a man in an immaculate dark coat with silver clasp, investigator",
+      features: "calculating eyes that miss nothing, manicured hands, temple insignia",
+    },
+    label: "Investigator Valdris",
+  },
+  {
+    templateId: "npc_portrait",
+    vars: {
+      description: "a barrel-chested dwarf blacksmith in a soot-streaked apron",
+      features: "burn-scarred hands, beard braided tight, fierce focused eyes",
+    },
+    label: "Grimjaw",
+  },
+  {
+    templateId: "npc_portrait",
+    vars: {
+      description: "a broad-hipped woman with dark hair streaked grey, tavern keeper",
+      features: "warm observant eyes, hands that never stop moving, knowing smile",
+    },
+    label: "Tavern Keeper Bryn",
+  },
+  {
+    templateId: "npc_portrait",
+    vars: {
+      description: "a tall Elari woman with silver-white hair in a single braid, temple warden",
+      features: "serene distant gaze, robes that shift with light, eyes focused beyond you",
+    },
+    label: "Warden Selene",
+  },
+  {
+    templateId: "npc_portrait",
+    vars: {
+      description: "a gaunt hollow-eyed man sitting with unnatural stillness",
+      features: "vacant stare, fingers twitching in patterns, something essential missing",
+    },
+    label: "Aldric",
+  },
+  {
+    templateId: "npc_portrait",
+    vars: {
+      description: "a lean sharp-featured woman who moves like smoke, operative",
+      features: "cataloguing eyes, thin scar along jawline, dark clothes blending with shadow",
+    },
+    label: "Nyx",
+  },
+  {
+    templateId: "npc_portrait",
+    vars: {
+      description: "a neat young scholar in immaculate robes, archivist",
+      features: "spectacles, nervous eager expression, leather satchel, fidgeting hands",
+    },
+    label: "Archivist Theron",
+  },
+  {
+    templateId: "npc_portrait",
+    vars: {
+      description: "a sturdy woman with calloused hands, guild master",
+      features: "weathered honest face, guild chain with Aelora's mark, practical clothing",
+    },
+    label: "Guild Master Dara",
+  },
+
   // Item illustrations
   {
     templateId: "item_quest",
@@ -180,6 +264,90 @@ const MVP_BATCH: BatchEntry[] = [
     },
     label: "Hollow-Bone Fragment",
   },
+  {
+    templateId: "item_quest",
+    vars: {
+      item_description: "a torn vellum page with dense handwritten notation",
+      item_features: "the age-darkened edges, precise lettering, and idiosyncratic notation system",
+    },
+    label: "Torn Journal Page",
+  },
+  {
+    templateId: "item_quest",
+    vars: {
+      item_description: "a small clay vial sealed with wax",
+      item_features: "the rough clay texture, wax seal, and faint warmth from the liquid within",
+    },
+    label: "Healing Potion",
+  },
+  {
+    templateId: "item_quest",
+    vars: {
+      item_description: "a carved bone pendant on a leather cord",
+      item_features: "the intricate carved patterns, smooth worn surface, and leather cord wrapping",
+    },
+    label: "Hollow Ward Charm",
+  },
+  {
+    templateId: "item_corrupted_artifact",
+    vars: {
+      item_description: "a smooth palm-sized stone with an iridescent surface",
+      item_features: "the oil-like iridescence on the surface and shapes that seem to move beneath",
+    },
+    label: "Humming Stone",
+  },
+  {
+    templateId: "item_weapon",
+    vars: { weapon_type: "shortsword" },
+    label: "Shortsword",
+  },
+  {
+    templateId: "item_weapon",
+    vars: { weapon_type: "longsword with a small guild mark near the crossguard" },
+    label: "Guild Longsword",
+  },
+  {
+    templateId: "item_weapon",
+    vars: { weapon_type: "balanced throwing dagger" },
+    label: "Balanced Dagger",
+  },
+  {
+    templateId: "item_quest",
+    vars: {
+      item_description: "a suit of cured leather armor",
+      item_features: "the stiffened leather panels, stitching, and oil-darkened surface",
+    },
+    label: "Leather Armor",
+  },
+  {
+    templateId: "item_quest",
+    vars: {
+      item_description: "a shirt of interlocking metal chain rings",
+      item_features: "the tight even links, metal sheen, and compact folded form",
+    },
+    label: "Chain Shirt",
+  },
+  {
+    templateId: "item_quest",
+    vars: {
+      item_description: "a round shield with an iron boss and wooden body",
+      item_features: "the iron boss, dented rim, and grain of the wooden body",
+    },
+    label: "Iron Shield",
+  },
+  {
+    templateId: "item_quest",
+    vars: {
+      item_description: "a small crystal vial of blessed water",
+      item_features: "the crystal facets, stoppered cork, and faint inner luminescence",
+    },
+    label: "Holy Water",
+  },
+
+  // Story moment illustrations
+  { templateId: "story_combat", vars: {}, label: "Story: Combat Victory" },
+  { templateId: "story_god_contact", vars: {}, label: "Story: God Contact" },
+  { templateId: "story_hollow_encounter", vars: {}, label: "Story: Hollow Encounter" },
 
   // Loading screen
   { templateId: "ui_loading_abstract", vars: {}, label: "Loading screen", locationId: "loading_abstract" },
@@ -210,6 +378,15 @@ const MVP_BATCH: BatchEntry[] = [
   { templateId: "class_illustration", vars: { class_name: "Whisper", class_fantasy: "Shadow-magic hybrid. Subtle spells of influence and misdirection." }, label: "Class: Whisper" },
   { templateId: "class_illustration", vars: { class_name: "Bard", class_fantasy: "Performer and storyteller. Inspires allies, demoralizes foes with voice." }, label: "Class: Bard" },
   { templateId: "class_illustration", vars: { class_name: "Diplomat", class_fantasy: "Master negotiator. Solves encounters through persuasion and social leverage." }, label: "Class: Diplomat" },
+
+  // --- Marketing assets ---
+  { templateId: "ui_app_store_bg", vars: { variant: "1" }, label: "App Store BG 1", marketingId: "app_store_bg_1" },
+  { templateId: "ui_app_store_bg", vars: { variant: "2" }, label: "App Store BG 2", marketingId: "app_store_bg_2" },
+  { templateId: "ui_app_store_bg", vars: { variant: "3" }, label: "App Store BG 3", marketingId: "app_store_bg_3" },
+  { templateId: "ui_app_store_bg", vars: { variant: "4" }, label: "App Store BG 4", marketingId: "app_store_bg_4" },
+  { templateId: "ui_app_store_bg", vars: { variant: "5" }, label: "App Store BG 5", marketingId: "app_store_bg_5" },
+  { templateId: "ui_social_teaser", vars: {}, label: "Social Teaser", marketingId: "social_teaser" },
+  { templateId: "ui_app_icon", vars: {}, label: "App Icon", marketingId: "app_icon" },
 
   // --- Deity cards (11) ---
   { templateId: "patron_deity_card", vars: { deity_name: "Veythar", deity_domain: "Knowledge, discovery, memory, the arcane arts" }, label: "Deity: Veythar" },
@@ -304,6 +481,7 @@ async function runBatch(batchName: string) {
 
   // Copy location images to mobile assets for bundling
   await copyLocationAssets();
+  await copyMarketingAssets();
 }
 
 async function copyLocationAssets() {
@@ -329,6 +507,31 @@ async function copyLocationAssets() {
   }
 
   console.log(`Copied ${copied}/${locationEntries.length} location assets.`);
+}
+
+async function copyMarketingAssets() {
+  const mobileDir = `${import.meta.dir}/../apps/mobile/assets/images/marketing`;
+  await Bun.$`mkdir -p ${mobileDir}`;
+
+  const marketingEntries = MVP_BATCH.filter((e) => e.marketingId);
+  let copied = 0;
+
+  console.log(`\nCopying ${marketingEntries.length} marketing assets to mobile bundle...`);
+
+  for (const entry of marketingEntries) {
+    const assetId = computeAssetId(entry.templateId, entry.vars);
+    const srcPath = getAssetPath(assetId);
+    const dest = `${mobileDir}/${entry.marketingId}.png`;
+    const src = Bun.file(srcPath);
+    if (await src.exists()) {
+      await Bun.write(dest, src);
+      copied++;
+    } else {
+      console.warn(`  Warning: source not found for ${entry.marketingId} (${srcPath})`);
+    }
+  }
+
+  console.log(`Copied ${copied}/${marketingEntries.length} marketing assets.`);
 }
 
 // Parse CLI args

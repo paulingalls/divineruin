@@ -43,6 +43,76 @@ _PORTRAITS_CACHE: dict = {
                 "features": "sharp focused eyes, ink-stained fingers, slight frame",
             },
         ),
+        "Wounded Rider": asset_url(
+            "npc_portrait",
+            {
+                "description": "a dust-caked young man, exhausted messenger",
+                "features": "bloodshot eyes, one arm in a sling, desperate expression",
+            },
+        ),
+        "Maren": asset_url(
+            "npc_portrait",
+            {
+                "description": "a sturdy woman in a flour-dusted apron, innkeeper",
+                "features": "sharp eyes with dark circles, hair pinned back, strong arms",
+            },
+        ),
+        "Investigator Valdris": asset_url(
+            "npc_portrait",
+            {
+                "description": "a man in an immaculate dark coat with silver clasp, investigator",
+                "features": "calculating eyes that miss nothing, manicured hands, temple insignia",
+            },
+        ),
+        "Grimjaw": asset_url(
+            "npc_portrait",
+            {
+                "description": "a barrel-chested dwarf blacksmith in a soot-streaked apron",
+                "features": "burn-scarred hands, beard braided tight, fierce focused eyes",
+            },
+        ),
+        "Bryn": asset_url(
+            "npc_portrait",
+            {
+                "description": "a broad-hipped woman with dark hair streaked grey, tavern keeper",
+                "features": "warm observant eyes, hands that never stop moving, knowing smile",
+            },
+        ),
+        "Warden Selene": asset_url(
+            "npc_portrait",
+            {
+                "description": "a tall Elari woman with silver-white hair in a single braid, temple warden",
+                "features": "serene distant gaze, robes that shift with light, eyes focused beyond you",
+            },
+        ),
+        "Aldric": asset_url(
+            "npc_portrait",
+            {
+                "description": "a gaunt hollow-eyed man sitting with unnatural stillness",
+                "features": "vacant stare, fingers twitching in patterns, something essential missing",
+            },
+        ),
+        "Nyx": asset_url(
+            "npc_portrait",
+            {
+                "description": "a lean sharp-featured woman who moves like smoke, operative",
+                "features": "cataloguing eyes, thin scar along jawline, dark clothes blending with shadow",
+            },
+        ),
+        "Archivist Theron": asset_url(
+            "npc_portrait",
+            {
+                "description": "a neat young scholar in immaculate robes, archivist",
+                "features": "spectacles, nervous eager expression, leather satchel, fidgeting hands",
+            },
+        ),
+        "Guild Master Dara": asset_url(
+            "npc_portrait",
+            {
+                "description": "a sturdy woman with calloused hands, guild master",
+                "features": "weathered honest face, guild chain with Aelora's mark, practical clothing",
+            },
+        ),
     },
 }
 
@@ -318,8 +388,23 @@ async def get_player_inventory(player_id: str, *, conn: asyncpg.Connection | asy
         item = json.loads(row["item_data"])
         slot = json.loads(row["slot_data"])
         item["slot_info"] = slot
+        image_url = _compute_item_image_url(item)
+        if image_url:
+            item["image_url"] = image_url
         results.append(item)
     return results
+
+
+def _compute_item_image_url(item_data: dict) -> str | None:
+    """Compute deterministic image URL for an item with art_template."""
+    art = item_data.get("art_template")
+    if not art or not isinstance(art, dict):
+        return None
+    template_id = art.get("template_id")
+    template_vars = art.get("vars", {})
+    if not template_id:
+        return None
+    return asset_url(template_id, template_vars)
 
 
 # --- State mutations ---
@@ -955,3 +1040,67 @@ async def mark_god_whisper_played(whisper_id: str) -> None:
         """,
         whisper_id,
     )
+
+
+# --- Story moments ---
+
+
+async def save_story_moment(
+    session_id: str,
+    player_id: str,
+    moment_key: str,
+    description: str,
+    template_id: str,
+    asset_id: str | None,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> None:
+    """Insert a story moment record."""
+    _conn = conn or await get_pool()
+    await _conn.execute(
+        """
+        INSERT INTO story_moments (session_id, player_id, moment_key, description, template_id, asset_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        """,
+        session_id,
+        player_id,
+        moment_key,
+        description,
+        template_id,
+        asset_id,
+    )
+
+
+async def get_session_story_moments(
+    session_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> list[dict]:
+    """Return all story moments for a session, ordered by creation time."""
+    _conn = conn or await get_pool()
+    rows = await _conn.fetch(
+        """
+        SELECT moment_key, description, template_id, asset_id
+        FROM story_moments
+        WHERE session_id = $1
+        ORDER BY created_at ASC
+        """,
+        session_id,
+    )
+    return [
+        {
+            "moment_key": row["moment_key"],
+            "description": row["description"],
+            "template_id": row["template_id"],
+            "asset_id": row["asset_id"],
+        }
+        for row in rows
+    ]
+
+
+async def count_session_story_moments(session_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> int:
+    """Count story moments in a session."""
+    _conn = conn or await get_pool()
+    row = await _conn.fetchrow(
+        "SELECT COUNT(*) AS cnt FROM story_moments WHERE session_id = $1",
+        session_id,
+    )
+    return row["cnt"] if row else 0

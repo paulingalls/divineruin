@@ -1025,3 +1025,126 @@ test("player_portrait_ready rejects URLs with path traversal", () => {
 
   expect(characterStore.getState().character?.portraitUrl).toBeNull();
 });
+
+// --- Milestone 10.4a: Item art ---
+
+test("parseInventoryItems extracts image_url to imageUrl", () => {
+  handleGameEvent({
+    type: "inventory_updated",
+    inventory: [
+      {
+        id: "sword_1",
+        name: "Shortsword",
+        type: "weapon",
+        rarity: "common",
+        description: "A blade",
+        weight: 2,
+        effects: [],
+        lore: "",
+        value_base: 100,
+        slot_info: { quantity: 1, equipped: false },
+        image_url: "/api/assets/images/img_abc123",
+      },
+    ],
+  });
+  const inv = panelStore.getState().inventory;
+  expect(inv).toHaveLength(1);
+  expect(inv[0].imageUrl).toBe("/api/assets/images/img_abc123");
+});
+
+test("parseInventoryItems omits imageUrl when no image_url", () => {
+  handleGameEvent({
+    type: "inventory_updated",
+    inventory: [
+      {
+        id: "rations",
+        name: "Rations",
+        type: "consumable",
+        rarity: "common",
+        description: "",
+        weight: 1,
+        effects: [],
+        lore: "",
+        value_base: 5,
+        slot_info: { quantity: 3, equipped: false },
+      },
+    ],
+  });
+  const inv = panelStore.getState().inventory;
+  expect(inv).toHaveLength(1);
+  expect(inv[0].imageUrl).toBeUndefined();
+});
+
+test("item_acquired passes image_url through to overlay payload", () => {
+  handleGameEvent({
+    type: "item_acquired",
+    name: "Shortsword",
+    description: "A simple blade",
+    rarity: "common",
+    image_url: "/api/assets/images/img_abc123",
+  });
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.payload.image_url).toBe("/api/assets/images/img_abc123");
+});
+
+test("item_acquired without image_url has undefined image_url in payload", () => {
+  handleGameEvent({
+    type: "item_acquired",
+    name: "Rations",
+    description: "Food",
+    rarity: "common",
+  });
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.payload.image_url).toBeUndefined();
+});
+
+// --- Milestone 10.4b: Story moments in session_end ---
+
+test("session_end with story_moments populates storyMoments in summary", () => {
+  sessionStore.getState().setPhase("active");
+  handleGameEvent({
+    type: "session_end",
+    summary: "You fought bravely.",
+    xp_earned: 100,
+    items_found: [],
+    quest_progress: [],
+    duration: 600,
+    next_hooks: [],
+    story_moments: [
+      {
+        moment_key: "combat",
+        description: "You struck down the hollow spider.",
+        image_url: "/api/assets/images/img_combat",
+      },
+      {
+        moment_key: "god_contact",
+        description: "Veythar whispered.",
+        image_url: "/api/assets/images/img_god",
+      },
+    ],
+  });
+
+  const s = sessionStore.getState().sessionSummary;
+  expect(s).not.toBeNull();
+  expect(s!.storyMoments).toHaveLength(2);
+  expect(s!.storyMoments[0].momentKey).toBe("combat");
+  expect(s!.storyMoments[0].imageUrl).toBe("/api/assets/images/img_combat");
+  expect(s!.storyMoments[1].momentKey).toBe("god_contact");
+});
+
+test("session_end without story_moments has empty storyMoments array", () => {
+  sessionStore.getState().setPhase("active");
+  handleGameEvent({
+    type: "session_end",
+    summary: "A quiet session.",
+    xp_earned: 0,
+    items_found: [],
+    quest_progress: [],
+    duration: 300,
+    next_hooks: [],
+  });
+
+  const s = sessionStore.getState().sessionSummary;
+  expect(s).not.toBeNull();
+  expect(s!.storyMoments).toEqual([]);
+});

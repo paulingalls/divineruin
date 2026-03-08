@@ -3,7 +3,7 @@ import { hapticDiceRoll, hapticItemAcquired, hapticLevelUp } from "./haptics";
 import { overrideMusicState } from "./music-player";
 import { playNarration } from "./narration-player";
 import type { MusicState } from "./music-registry";
-import { sessionStore, type CombatDifficulty } from "@/stores/session-store";
+import { sessionStore, type CombatDifficulty, type StoryMoment } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
 import { hudStore } from "@/stores/hud-store";
@@ -62,6 +62,7 @@ function parseInventoryItems(rawItems: Record<string, unknown>[]): InventoryItem
       value_base: typeof raw.value_base === "number" ? raw.value_base : 0,
       quantity: typeof slotInfo?.quantity === "number" ? slotInfo.quantity : 1,
       equipped: slotInfo?.equipped === true,
+      ...(typeof raw.image_url === "string" ? { imageUrl: raw.image_url } : {}),
     };
   });
 }
@@ -439,6 +440,14 @@ export function handleGameEvent(event: DataChannelEvent): void {
     case "session_end": {
       const store = sessionStore.getState();
       if (typeof event.summary === "string") {
+        const rawMoments = Array.isArray(event.story_moments)
+          ? (event.story_moments as Record<string, unknown>[])
+          : [];
+        const storyMoments: StoryMoment[] = rawMoments.map((m) => ({
+          momentKey: typeof m.moment_key === "string" ? m.moment_key : "",
+          description: typeof m.description === "string" ? m.description : "",
+          imageUrl: typeof m.image_url === "string" ? m.image_url : null,
+        }));
         store.setSessionSummary({
           summary: event.summary,
           xpEarned: typeof event.xp_earned === "number" ? event.xp_earned : 0,
@@ -449,6 +458,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
           duration: typeof event.duration === "number" ? event.duration : 0,
           nextHooks: Array.isArray(event.next_hooks) ? (event.next_hooks as string[]) : [],
           lastLocationId: store.locationContext?.locationId ?? "",
+          storyMoments,
         });
         store.setPhase("summary");
       } else {
@@ -498,6 +508,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
         description: event.description,
         rarity: event.rarity,
         stats: event.stats,
+        image_url: typeof event.image_url === "string" ? event.image_url : undefined,
       });
       playSfx("item_pickup");
       hapticItemAcquired();

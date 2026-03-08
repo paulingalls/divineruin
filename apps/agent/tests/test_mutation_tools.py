@@ -391,10 +391,12 @@ class TestUpdateNpcDisposition:
 @patch("tools.db.transaction", _mock_transaction)
 class TestAddToInventory:
     @pytest.mark.asyncio
+    @patch("tools.db.get_player_inventory", new_callable=AsyncMock)
     @patch("tools.db.add_inventory_item", new_callable=AsyncMock)
     @patch("tools.db.get_item", new_callable=AsyncMock)
-    async def test_adds_item(self, mock_item, mock_add):
+    async def test_adds_item(self, mock_item, mock_add, mock_inv):
         mock_item.return_value = SAMPLE_ITEM
+        mock_inv.return_value = [SAMPLE_ITEM]
         ctx = _make_context()
         result = json.loads(await add_to_inventory._func(ctx, item_id="health_potion", quantity=2, source="looted"))
         assert result["action"] == "added"
@@ -411,17 +413,22 @@ class TestAddToInventory:
         assert "error" in result
 
     @pytest.mark.asyncio
+    @patch("tools.db.get_player_inventory", new_callable=AsyncMock)
     @patch("tools.db.add_inventory_item", new_callable=AsyncMock)
     @patch("tools.db.get_item", new_callable=AsyncMock)
-    async def test_publishes_event(self, mock_item, mock_add):
+    async def test_publishes_event(self, mock_item, mock_add, mock_inv):
         mock_item.return_value = SAMPLE_ITEM
+        mock_inv.return_value = [SAMPLE_ITEM]
         room = _make_mock_room()
         ctx = _make_context(room=room)
         await add_to_inventory._func(ctx, item_id="health_potion", quantity=1, source="bought")
-        room.local_participant.publish_data.assert_called_once()
-        call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == "inventory_updated"
-        assert call_data["action"] == "added"
+        # Two events: inventory_updated + item_acquired
+        assert room.local_participant.publish_data.call_count == 2
+        first_call = json.loads(room.local_participant.publish_data.call_args_list[0][0][0])
+        assert first_call["type"] == "inventory_updated"
+        assert "inventory" in first_call
+        second_call = json.loads(room.local_participant.publish_data.call_args_list[1][0][0])
+        assert second_call["type"] == "item_acquired"
 
 
 # --- remove_from_inventory ---

@@ -1277,16 +1277,16 @@ These overlays appear over the session screen center when triggered by data chan
 - These are generated once via the batch script and stored as static marketing assets — not served through the dynamic pipeline.
 
 **Acceptance criteria:**
-- [ ] MVP items display ink wash specimen-plate illustrations in the inventory grid (no more generic type icons)
-- [ ] Tapping an item shows its illustration in the detail card at a larger size
-- [ ] Item acquisition popup displays the item's illustration
-- [ ] Corrupted items (Hollow-Bone Fragment) visually show teal bleed — communicating corruption through art alone
-- [ ] Session summary screen displays 1-2 story moment illustrations that correspond to actual events from that session
-- [ ] Story moment illustrations match the dramatic ink wash style (2:3, bold brushwork, accent color appropriate to scene)
-- [ ] App store screenshot backgrounds are generated and ready for use (5 variants, 9:16, atmospheric)
-- [ ] Social media teaser image is generated (1:1, the eye composition)
-- [ ] All item art uses the 1:1 specimen-plate style consistently (centered, negative space, naturalist quality)
-- [ ] Art generation for story moments doesn't delay session summary — illustrations are generated during the session and cached
+- [x] MVP items display ink wash specimen-plate illustrations in the inventory grid (no more generic type icons)
+- [x] Tapping an item shows its illustration in the detail card at a larger size
+- [x] Item acquisition popup displays the item's illustration
+- [x] Corrupted items (Hollow-Bone Fragment) visually show teal bleed — communicating corruption through art alone
+- [x] Session summary screen displays 1-2 story moment illustrations that correspond to actual events from that session
+- [x] Story moment illustrations match the dramatic ink wash style (2:3, bold brushwork, accent color appropriate to scene)
+- [x] App store screenshot backgrounds are generated and ready for use (5 variants, 9:16, atmospheric)
+- [x] Social media teaser image is generated (1:1, the eye composition)
+- [x] All item art uses the 1:1 specimen-plate style consistently (centered, negative space, naturalist quality)
+- [x] Art generation for story moments doesn't delay session summary — illustrations are generated during the session and cached
 
 **Key references:**
 - *Image Prompt Library — Category 3: Item & Object Art* (weapon, corrupted artifact, quest item templates)

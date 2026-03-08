@@ -6,6 +6,8 @@ import json
 import logging
 import time
 
+import db
+from asset_utils import asset_url
 from llm_config import MODEL as _MODEL
 from llm_config import client as _client
 from session_data import SessionData
@@ -82,6 +84,22 @@ async def generate_session_summary(
         transcript_tail=transcript_tail,
     )
 
+    # Fetch story moments for this session
+    story_moments_raw = []
+    try:
+        story_moments_raw = await db.get_session_story_moments(session_data.session_id)
+    except Exception:
+        logger.debug("Could not fetch story moments for session %s", session_data.session_id)
+
+    story_moments = [
+        {
+            "moment_key": m["moment_key"],
+            "description": m["description"],
+            "image_url": asset_url(m["template_id"], {}) if m.get("template_id") else None,
+        }
+        for m in story_moments_raw
+    ]
+
     if llm_result is not None:
         # Merge LLM output with hard metrics
         return {
@@ -89,6 +107,7 @@ async def generate_session_summary(
             "key_events": llm_result.get("key_events", []),
             "decisions": llm_result.get("decisions", []),
             "next_hooks": llm_result.get("next_hooks", []),
+            "story_moments": story_moments,
             **metrics,
         }
 
@@ -100,6 +119,7 @@ async def generate_session_summary(
         "key_events": fallback_events,
         "decisions": [],
         "next_hooks": [],
+        "story_moments": story_moments,
         **metrics,
     }
 

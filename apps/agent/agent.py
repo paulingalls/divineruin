@@ -37,6 +37,7 @@ from tools import (
     query_location,
     query_lore,
     query_npc,
+    record_story_moment,
     remove_from_inventory,
     request_attack,
     request_death_save,
@@ -77,6 +78,7 @@ MUTATION_TOOLS = [
     award_xp,
     award_divine_favor,
     update_npc_disposition,
+    record_story_moment,
     end_session,
 ]
 COMBAT_TOOLS = [start_combat, resolve_enemy_turn, request_death_save, end_combat]

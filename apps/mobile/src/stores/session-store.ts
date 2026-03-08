@@ -13,6 +13,12 @@ export interface LocationContext {
   timeOfDay: string;
 }
 
+export interface StoryMoment {
+  momentKey: string;
+  description: string;
+  imageUrl: string | null;
+}
+
 export interface SessionSummary {
   summary: string;
   xpEarned: number;
@@ -21,6 +27,7 @@ export interface SessionSummary {
   duration: number;
   nextHooks: string[];
   lastLocationId: string;
+  storyMoments: StoryMoment[];
 }
 
 interface SessionState {

@@ -143,12 +143,14 @@ class TestMetricsAccumulation:
         assert ctx.userdata.session_xp_earned == 80
 
     @pytest.mark.asyncio
+    @patch("tools.db.get_player_inventory", new_callable=AsyncMock)
     @patch("tools.db.add_inventory_item", new_callable=AsyncMock)
     @patch("tools.db.get_item", new_callable=AsyncMock)
-    async def test_add_to_inventory_tracks_metric(self, mock_item, mock_add):
+    async def test_add_to_inventory_tracks_metric(self, mock_item, mock_add, mock_inv):
         from tools import add_to_inventory
 
         mock_item.return_value = SAMPLE_ITEM
+        mock_inv.return_value = [SAMPLE_ITEM]
         ctx = _make_context()
         await add_to_inventory._func(ctx, item_id="health_potion", quantity=2, source="looted")
         assert ctx.userdata.session_items_found == ["Health Potion"]
@@ -544,14 +546,16 @@ class TestSessionLifecycleIntegration:
     @patch("tools.db.transaction", _mock_transaction)
     @patch("tools.db.update_player_xp", new_callable=AsyncMock)
     @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db.get_player_inventory", new_callable=AsyncMock)
     @patch("tools.db.add_inventory_item", new_callable=AsyncMock)
     @patch("tools.db.get_item", new_callable=AsyncMock)
-    async def test_metrics_accumulate_across_tools(self, mock_item, mock_inv, mock_player, mock_xp):
+    async def test_metrics_accumulate_across_tools(self, mock_item, mock_add, mock_inv, mock_player, mock_xp):
         """Session metrics accumulate across multiple tool calls."""
         from tools import add_to_inventory, award_xp
 
         mock_player.return_value = SAMPLE_PLAYER
         mock_item.return_value = SAMPLE_ITEM
+        mock_inv.return_value = [SAMPLE_ITEM]
         ctx = _make_context()
 
         await award_xp._func(ctx, amount=50, reason="combat")

@@ -19,6 +19,7 @@ const SAMPLE_SUMMARY: SessionSummary = {
   duration: 600,
   nextHooks: ["Return to Torin after finding the artifact."],
   lastLocationId: "accord_guild_hall",
+  storyMoments: [],
 };
 
 beforeEach(() => {

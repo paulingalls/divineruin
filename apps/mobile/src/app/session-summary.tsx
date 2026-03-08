@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useStore } from "zustand";
 
+import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
 import { sessionStore } from "@/stores/session-store";
 import { transcriptStore } from "@/stores/transcript-store";
@@ -71,6 +72,21 @@ export default function SessionSummaryScreen() {
           </View>
 
           {summary.summary ? <ThemedText style={styles.recap}>{summary.summary}</ThemedText> : null}
+
+          {summary.storyMoments.length > 0 && (
+            <View style={styles.storyMomentsSection}>
+              {summary.storyMoments.slice(0, 2).map((moment, i) => (
+                <View key={i} style={styles.storyMomentCard}>
+                  <CachedImage
+                    uri={moment.imageUrl}
+                    style={styles.storyMomentImage}
+                    borderRadius={Radius.sm}
+                  />
+                  <ThemedText style={styles.storyMomentCaption}>{moment.description}</ThemedText>
+                </View>
+              ))}
+            </View>
+          )}
 
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
@@ -152,6 +168,28 @@ const styles = StyleSheet.create({
     color: BrandColors.bone,
     textAlign: "center",
     lineHeight: 30,
+  },
+  storyMomentsSection: {
+    gap: Spacing.three,
+    width: "100%",
+    alignItems: "center",
+  },
+  storyMomentCard: {
+    alignItems: "center",
+    gap: Spacing.two,
+    width: "80%",
+  },
+  storyMomentImage: {
+    width: "100%",
+    aspectRatio: 2 / 3,
+    maxHeight: 240,
+  },
+  storyMomentCaption: {
+    fontSize: 14,
+    fontFamily: FontFamilies.bodyLight,
+    fontStyle: "italic",
+    color: BrandColors.ash,
+    textAlign: "center",
   },
   statsRow: {
     flexDirection: "row",

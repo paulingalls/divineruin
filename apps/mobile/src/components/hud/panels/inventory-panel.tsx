@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useStore } from "zustand";
 
+import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
 import { panelStore, type InventoryItem } from "@/stores/panel-store";
 import { BrandColors, FontFamilies, Spacing, Radius, RARITY_COLORS } from "@/constants/theme";
@@ -14,9 +15,13 @@ function ItemTile({ item, onPress }: { item: InventoryItem; onPress: () => void 
 
   return (
     <Pressable style={[styles.tile, { borderColor }]} onPress={onPress}>
-      <ThemedText style={styles.tileName} numberOfLines={1}>
-        {item.name}
-      </ThemedText>
+      {item.imageUrl ? (
+        <CachedImage uri={item.imageUrl} style={styles.tileImage} borderRadius={6} />
+      ) : (
+        <ThemedText style={styles.tileName} numberOfLines={1}>
+          {item.name}
+        </ThemedText>
+      )}
       {item.quantity > 1 && (
         <View style={styles.quantityBadge}>
           <ThemedText style={styles.quantityText}>{item.quantity}</ThemedText>
@@ -34,6 +39,9 @@ function ItemDetail({ item, onBack }: { item: InventoryItem; onBack: () => void 
       <Pressable onPress={onBack} hitSlop={8}>
         <ThemedText style={styles.backButton}>{"\u2190"} Back</ThemedText>
       </Pressable>
+      {item.imageUrl && (
+        <CachedImage uri={item.imageUrl} style={styles.detailImage} borderRadius={6} />
+      )}
       <ThemedText style={styles.detailName}>{item.name}</ThemedText>
       <ThemedText style={[styles.detailRarity, { color: rarityColor }]}>
         {item.rarity.toUpperCase()}
@@ -129,6 +137,10 @@ const styles = StyleSheet.create({
     minHeight: 60,
     position: "relative",
   },
+  tileImage: {
+    width: "100%",
+    height: 44,
+  },
   tileName: {
     fontFamily: FontFamilies.systemLight,
     fontSize: 10,
@@ -173,6 +185,11 @@ const styles = StyleSheet.create({
   emptyText: { color: BrandColors.ash, fontFamily: FontFamilies.system, fontSize: 12 },
 
   // Detail view
+  detailImage: {
+    width: "100%",
+    height: 120,
+    marginBottom: Spacing.two,
+  },
   detailContainer: { flex: 1 },
   detailContent: { padding: Spacing.three },
   backButton: {

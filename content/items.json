@@ -18,7 +18,14 @@
     "value_base": 0,
     "value_modifiers": {},
     "lore": "Research notes from an Aelindran outpost that was sealed long before the Sundering. The notation system is non-standard — personal, not academic. Whoever wrote this didn't want it found in the official archives.",
-    "found_in": ["greyvale_ruins_entrance"]
+    "found_in": ["greyvale_ruins_entrance"],
+    "art_template": {
+      "template_id": "item_quest",
+      "vars": {
+        "item_description": "a sealed stone tablet covered in ancient runes",
+        "item_features": "the chisel marks, weathered edges, and faintly glowing inscriptions"
+      }
+    }
   },
   {
     "id": "hollow_bone_fragment",
@@ -41,7 +48,14 @@
       "npc:scholar_emris": 3.0
     },
     "lore": "Salvaged from a Hollow creature after combat. Scholars in the Accord would pay well for a sample — intact Hollow material is rare this far south.",
-    "found_in": ["hollow_incursion_site"]
+    "found_in": ["hollow_incursion_site"],
+    "art_template": {
+      "template_id": "item_corrupted_artifact",
+      "vars": {
+        "item_description": "a fragment of bone with an unnatural crystalline growth",
+        "item_features": "the porous bone texture and the faceted crystal emerging from within"
+      }
+    }
   },
   {
     "id": "ruins_journal_fragment",
@@ -58,7 +72,14 @@
       "npc:scholar_emris": 100.0
     },
     "lore": "A fragment from a research journal found in the Greyvale Ruins. The notation matches no known academic standard — whoever wrote this used a personal system, suggesting secrecy or extreme specialization.",
-    "found_in": ["greyvale_ruins_entrance"]
+    "found_in": ["greyvale_ruins_entrance"],
+    "art_template": {
+      "template_id": "item_quest",
+      "vars": {
+        "item_description": "a torn vellum page with dense handwritten notation",
+        "item_features": "the age-darkened edges, precise lettering, and idiosyncratic notation system"
+      }
+    }
   },
   {
     "id": "guild_contract_greyvale",
@@ -94,7 +115,14 @@
     "value_base": 50,
     "value_modifiers": {},
     "lore": "Standard healing draught, brewed by temple herbalists. The recipe hasn't changed in centuries.",
-    "found_in": ["accord_market_square", "millhaven_inn"]
+    "found_in": ["accord_market_square", "millhaven_inn"],
+    "art_template": {
+      "template_id": "item_quest",
+      "vars": {
+        "item_description": "a small clay vial sealed with wax",
+        "item_features": "the rough clay texture, wax seal, and faint warmth from the liquid within"
+      }
+    }
   },
   {
     "id": "hollow_ward_charm",
@@ -115,7 +143,14 @@
     "value_base": 75,
     "value_modifiers": {},
     "lore": "Carved from the rib bone of a creature that survived exposure to the Hollow. Elder Yanna's grandmother made these — most people thought she was superstitious. Most people were wrong.",
-    "found_in": ["millhaven"]
+    "found_in": ["millhaven"],
+    "art_template": {
+      "template_id": "item_quest",
+      "vars": {
+        "item_description": "a carved bone pendant on a leather cord",
+        "item_features": "the intricate carved patterns, smooth worn surface, and leather cord wrapping"
+      }
+    }
   },
   {
     "id": "millhaven_provisions",
@@ -163,7 +198,14 @@
       "faction:aelindran_diaspora": 10.0
     },
     "lore": "A fragment of an Attenuation Sphere — one of Veythar's artifacts for weakening the Veil. Aldric found it in the Greyvale Ruins and it partially opened his mind to the Veil. The stone is still active, which is why the Hollow corruption in the Greyvale is spreading.",
-    "found_in": ["millhaven"]
+    "found_in": ["millhaven"],
+    "art_template": {
+      "template_id": "item_corrupted_artifact",
+      "vars": {
+        "item_description": "a smooth palm-sized stone with an iridescent surface",
+        "item_features": "the oil-like iridescence on the surface and shapes that seem to move beneath"
+      }
+    }
   },
   {
     "id": "shortsword_basic",
@@ -185,7 +227,11 @@
     "value_base": 100,
     "value_modifiers": {},
     "lore": "Standard-issue for guild recruits and city guards.",
-    "found_in": ["accord_market_square", "accord_forge"]
+    "found_in": ["accord_market_square", "accord_forge"],
+    "art_template": {
+      "template_id": "item_weapon",
+      "vars": { "weapon_type": "shortsword" }
+    }
   },
   {
     "id": "longsword_guild",
@@ -207,7 +253,11 @@
     "value_base": 200,
     "value_modifiers": {},
     "lore": "Grimjaw's standard work. Functional, reliable, and as honest as the dwarf who forged it.",
-    "found_in": ["accord_forge"]
+    "found_in": ["accord_forge"],
+    "art_template": {
+      "template_id": "item_weapon",
+      "vars": { "weapon_type": "longsword with a small guild mark near the crossguard" }
+    }
   },
   {
     "id": "dagger_balanced",
@@ -229,7 +279,11 @@
     "value_base": 50,
     "value_modifiers": {},
     "lore": "A simple dagger. Every adventurer carries one.",
-    "found_in": ["accord_market_square", "accord_forge"]
+    "found_in": ["accord_market_square", "accord_forge"],
+    "art_template": {
+      "template_id": "item_weapon",
+      "vars": { "weapon_type": "balanced throwing dagger" }
+    }
   },
   {
     "id": "leather_armor_basic",
@@ -250,7 +304,14 @@
     "value_base": 150,
     "value_modifiers": {},
     "lore": "Standard light armor. Preferred by scouts, rogues, and anyone who values mobility.",
-    "found_in": ["accord_market_square"]
+    "found_in": ["accord_market_square"],
+    "art_template": {
+      "template_id": "item_quest",
+      "vars": {
+        "item_description": "a suit of cured leather armor",
+        "item_features": "the stiffened leather panels, stitching, and oil-darkened surface"
+      }
+    }
   },
   {
     "id": "chain_shirt",
@@ -271,7 +332,14 @@
     "value_base": 350,
     "value_modifiers": {},
     "lore": "Grimjaw's chain work. He considers it beneath him but it pays the bills.",
-    "found_in": ["accord_forge"]
+    "found_in": ["accord_forge"],
+    "art_template": {
+      "template_id": "item_quest",
+      "vars": {
+        "item_description": "a shirt of interlocking metal chain rings",
+        "item_features": "the tight even links, metal sheen, and compact folded form"
+      }
+    }
   },
   {
     "id": "shield_iron",
@@ -292,7 +360,14 @@
     "value_base": 120,
     "value_modifiers": {},
     "lore": "A reliable shield. Not decorative, not special. Just good work.",
-    "found_in": ["accord_forge"]
+    "found_in": ["accord_forge"],
+    "art_template": {
+      "template_id": "item_quest",
+      "vars": {
+        "item_description": "a round shield with an iron boss and wooden body",
+        "item_features": "the iron boss, dented rim, and grain of the wooden body"
+      }
+    }
   },
   {
     "id": "rations_basic",
@@ -401,7 +476,14 @@
     "value_base": 75,
     "value_modifiers": {},
     "lore": "Water blessed through a ritual older than the temples themselves. Effective against Hollow creatures — one of the few things that is.",
-    "found_in": ["accord_temple_row"]
+    "found_in": ["accord_temple_row"],
+    "art_template": {
+      "template_id": "item_quest",
+      "vars": {
+        "item_description": "a small crystal vial of blessed water",
+        "item_features": "the crystal facets, stoppered cork, and faint inner luminescence"
+      }
+    }
   },
   {
     "id": "restoration_salve",

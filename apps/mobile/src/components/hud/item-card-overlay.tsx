@@ -1,6 +1,7 @@
 import { StyleSheet, View } from "react-native";
 import Animated, { SlideInDown } from "react-native-reanimated";
 
+import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
 import {
   AnimationPresets,
@@ -18,6 +19,7 @@ export function ItemCardOverlay({ payload }: ItemCardOverlayProps) {
   const name = typeof payload.name === "string" ? payload.name : "Unknown Item";
   const description = typeof payload.description === "string" ? payload.description : "";
   const rarity = typeof payload.rarity === "string" ? payload.rarity : "common";
+  const imageUrl = typeof payload.image_url === "string" ? payload.image_url : null;
   const stats =
     payload.stats && typeof payload.stats === "object" && !Array.isArray(payload.stats)
       ? (payload.stats as Record<string, unknown>)
@@ -32,6 +34,7 @@ export function ItemCardOverlay({ payload }: ItemCardOverlayProps) {
         .stiffness(AnimationPresets.overlaySpring.stiffness)}
     >
       <View style={[styles.card, { borderColor }]}>
+        {imageUrl && <CachedImage uri={imageUrl} style={styles.itemImage} borderRadius={6} />}
         <ThemedText style={styles.name}>{name}</ThemedText>
         <ThemedText style={[styles.rarity, { color: rarityColor }]}>
           {rarity.toUpperCase()}
@@ -66,6 +69,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     minWidth: 180,
     maxWidth: 280,
+  },
+  itemImage: {
+    width: 80,
+    height: 80,
+    marginBottom: 8,
   },
   name: {
     fontFamily: FontFamilies.displayRegular,

@@ -38,6 +38,7 @@ export interface InventoryItem {
   value_base: number;
   quantity: number;
   equipped: boolean;
+  imageUrl?: string;
 }
 
 export interface QuestStage {

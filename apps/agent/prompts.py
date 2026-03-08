@@ -280,6 +280,23 @@ Relationship tiers:
 """
 
 
+STORY_MOMENT_PROMPT = """\
+
+## Story Moments
+
+You can call record_story_moment to tag significant narrative moments during play. \
+These are captured as illustrations in the session recap. Use sparingly — max 3 per session.
+
+Call record_story_moment with:
+- moment_key "combat" — after the player's first combat victory in this session
+- moment_key "hollow_encounter" — when the player first encounters Hollow corruption or creatures
+- moment_key "god_contact" — when a god speaks to or contacts the player
+
+Provide a brief 1-2 sentence description of the scene for the recap caption. \
+Do not mention the tool to the player. Just call it silently after the narrative moment.\
+"""
+
+
 SESSION_ENDING_PROMPT = """\
 
 ## Session Ending
@@ -291,7 +308,7 @@ a moment of rest. Mention what they accomplished. Plant one seed for next time. 
 
 
 def build_system_prompt(location_id: str, companion: CompanionState | None = None) -> str:
-    parts = SYSTEM_PROMPT + PLAYER_AWARENESS_PROMPT + NAVIGATION_PROMPT + SESSION_ENDING_PROMPT
+    parts = SYSTEM_PROMPT + PLAYER_AWARENESS_PROMPT + NAVIGATION_PROMPT + STORY_MOMENT_PROMPT + SESSION_ENDING_PROMPT
     if companion is not None and companion.is_present:
         parts += COMPANION_PROMPT
     parts += (
