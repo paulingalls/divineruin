@@ -1,6 +1,7 @@
 """Tests for BackgroundProcess."""
 
 import time
+from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from background_process import (
@@ -10,6 +11,15 @@ from background_process import (
 )
 from event_bus import GameEvent
 from session_data import CombatParticipant, CombatState, SessionData
+
+
+@contextmanager
+def _mock_db_for_warm_layer(quests=None, location=None, npcs=None):
+    """Mock the three DB calls used by _rebuild_warm_layer."""
+    with patch("background_process.db.get_active_player_quests", new_callable=AsyncMock, return_value=quests or []):
+        with patch("background_process.db.get_location", new_callable=AsyncMock, return_value=location):
+            with patch("background_process.db.get_npcs_at_location", new_callable=AsyncMock, return_value=npcs or []):
+                yield
 
 
 def _make_session_data(**kwargs) -> SessionData:
@@ -143,10 +153,8 @@ class TestRebuildWarmLayer:
     async def test_updates_instructions(self, mock_build):
         mock_build.return_value = "WARM CONTENT"
         bg, agent, _ = _make_bg()
-        with patch("background_process.db.get_active_player_quests", new_callable=AsyncMock, return_value=[]):
-            with patch("background_process.db.get_location", new_callable=AsyncMock, return_value={"name": "Hall"}):
-                with patch("background_process.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[]):
-                    await bg._rebuild_warm_layer()
+        with _mock_db_for_warm_layer(location={"name": "Hall"}):
+            await bg._rebuild_warm_layer()
         agent.update_instructions.assert_awaited_once()
         call_arg = agent.update_instructions.call_args[0][0]
         assert "WARM CONTENT" in call_arg
@@ -156,13 +164,11 @@ class TestRebuildWarmLayer:
     async def test_skips_if_unchanged(self, mock_build):
         mock_build.return_value = "SAME"
         bg, agent, _ = _make_bg()
-        with patch("background_process.db.get_active_player_quests", new_callable=AsyncMock, return_value=[]):
-            with patch("background_process.db.get_location", new_callable=AsyncMock, return_value={"name": "Hall"}):
-                with patch("background_process.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[]):
-                    await bg._rebuild_warm_layer()
-                    agent.update_instructions.reset_mock()
-                    bg._last_warm_layer = "SAME"
-                    await bg._rebuild_warm_layer()
+        with _mock_db_for_warm_layer(location={"name": "Hall"}):
+            await bg._rebuild_warm_layer()
+            agent.update_instructions.reset_mock()
+            bg._last_warm_layer = "SAME"
+            await bg._rebuild_warm_layer()
         # Should not have called update_instructions since warm layer is the same
         agent.update_instructions.assert_not_awaited()
 
@@ -170,10 +176,8 @@ class TestRebuildWarmLayer:
     async def test_handles_build_failure(self, mock_build):
         mock_build.side_effect = Exception("DB down")
         bg, agent, _ = _make_bg()
-        with patch("background_process.db.get_active_player_quests", new_callable=AsyncMock, return_value=[]):
-            with patch("background_process.db.get_location", new_callable=AsyncMock, return_value=None):
-                with patch("background_process.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[]):
-                    await bg._rebuild_warm_layer()
+        with _mock_db_for_warm_layer():
+            await bg._rebuild_warm_layer()
         agent.update_instructions.assert_not_awaited()
 
 

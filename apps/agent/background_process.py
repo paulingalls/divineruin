@@ -499,17 +499,17 @@ class BackgroundProcess:
 
     async def _rebuild_warm_layer(self) -> None:
         try:
-            quests = await db.get_active_player_quests(self._sd.player_id)
-            self._quest_cache = quests
-        except Exception:
-            logger.debug("Quest cache refresh failed", exc_info=True)
-
-        try:
-            location, npcs_raw = await asyncio.gather(
+            quests, location, npcs_raw = await asyncio.gather(
+                db.get_active_player_quests(self._sd.player_id),
                 db.get_location(self._sd.location_id),
                 db.get_npcs_at_location(self._sd.location_id),
             )
+            self._quest_cache = quests
+        except Exception:
+            logger.debug("Warm layer data fetch failed", exc_info=True)
+            return
 
+        try:
             # Update hot context caches on SessionData (read by voice loop, zero I/O)
             if location:
                 self._sd.cached_location_name = location.get("name", self._sd.location_id)

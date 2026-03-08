@@ -2,12 +2,22 @@
 
 import asyncio
 import time
+from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from background_process import GUIDANCE_LEVEL_2_SECS, BackgroundProcess, PendingSpeech, SpeechPriority
 from event_bus import GameEvent
+
+
+@contextmanager
+def _mock_db_for_warm_layer(quests=None, location=None, npcs=None):
+    """Mock the three DB calls used by _rebuild_warm_layer."""
+    with patch("background_process.db.get_active_player_quests", new_callable=AsyncMock, return_value=quests or []):
+        with patch("background_process.db.get_location", new_callable=AsyncMock, return_value=location):
+            with patch("background_process.db.get_npcs_at_location", new_callable=AsyncMock, return_value=npcs or []):
+                yield
 
 
 class TestBackgroundProcessLifecycle:
@@ -423,34 +433,30 @@ class TestWarmLayerRebuild:
         mock_location = {"name": "Tavern"}
         mock_npcs = [{"id": "npc1", "name": "Barkeep"}]
 
-        with patch("background_process.db.get_active_player_quests", new_callable=AsyncMock, return_value=[]):
-            with patch("background_process.db.get_location", new_callable=AsyncMock, return_value=mock_location):
-                with patch(
-                    "background_process.db.get_npcs_at_location", new_callable=AsyncMock, return_value=mock_npcs
-                ):
-                    with patch("background_process.build_warm_layer", new_callable=AsyncMock) as mock_build:
-                        with patch("background_process.build_full_prompt") as mock_full:
-                            mock_build.return_value = "warm layer content"
-                            mock_full.return_value = "full prompt"
+        with _mock_db_for_warm_layer(location=mock_location, npcs=mock_npcs):
+            with patch("background_process.build_warm_layer", new_callable=AsyncMock) as mock_build:
+                with patch("background_process.build_full_prompt") as mock_full:
+                    mock_build.return_value = "warm layer content"
+                    mock_full.return_value = "full prompt"
 
-                            await bp._rebuild_warm_layer()
+                    await bp._rebuild_warm_layer()
 
-                            mock_build.assert_awaited_once_with(
-                                "tavern",
-                                "p1",
-                                "evening",
-                                combat_state=mock_sd.combat_state,
-                                companion=mock_sd.companion,
-                                quests=None,
-                                corruption_level=mock_sd.corruption_level,
-                                location=mock_location,
-                                npcs_raw=mock_npcs,
-                            )
-                            mock_agent.update_instructions.assert_awaited_once_with("full prompt")
-                            assert bp._last_warm_layer == "warm layer content"
-                            # Verify caches were updated
-                            assert mock_sd.cached_location_name == "Tavern"
-                            assert mock_sd.cached_npc_names == ["Barkeep"]
+                    mock_build.assert_awaited_once_with(
+                        "tavern",
+                        "p1",
+                        "evening",
+                        combat_state=mock_sd.combat_state,
+                        companion=mock_sd.companion,
+                        quests=None,
+                        corruption_level=mock_sd.corruption_level,
+                        location=mock_location,
+                        npcs_raw=mock_npcs,
+                    )
+                    mock_agent.update_instructions.assert_awaited_once_with("full prompt")
+                    assert bp._last_warm_layer == "warm layer content"
+                    # Verify caches were updated
+                    assert mock_sd.cached_location_name == "Tavern"
+                    assert mock_sd.cached_npc_names == ["Barkeep"]
 
     @pytest.mark.asyncio
     async def test_rebuild_warm_layer_skips_if_unchanged(self):
@@ -465,16 +471,14 @@ class TestWarmLayerRebuild:
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
         bp._last_warm_layer = "same content"
 
-        with patch("background_process.db.get_active_player_quests", new_callable=AsyncMock, return_value=[]):
-            with patch("background_process.db.get_location", new_callable=AsyncMock, return_value={"name": "Tavern"}):
-                with patch("background_process.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[]):
-                    with patch("background_process.build_warm_layer", new_callable=AsyncMock) as mock_build:
-                        with patch("background_process.build_full_prompt") as mock_full:
-                            mock_build.return_value = "same content"
+        with _mock_db_for_warm_layer(location={"name": "Tavern"}):
+            with patch("background_process.build_warm_layer", new_callable=AsyncMock) as mock_build:
+                with patch("background_process.build_full_prompt") as mock_full:
+                    mock_build.return_value = "same content"
 
-                            await bp._rebuild_warm_layer()
+                    await bp._rebuild_warm_layer()
 
-                            mock_full.assert_not_called()
+                    mock_full.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_rebuild_warm_layer_handles_exception(self):
@@ -489,13 +493,12 @@ class TestWarmLayerRebuild:
         bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
         bp._last_warm_layer = "old content"
 
-        with patch("background_process.db.get_active_player_quests", new_callable=AsyncMock, return_value=[]):
+        with _mock_db_for_warm_layer():
             with patch("background_process.db.get_location", new_callable=AsyncMock, side_effect=Exception("DB down")):
-                with patch("background_process.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[]):
-                    await bp._rebuild_warm_layer()  # Should not raise
+                await bp._rebuild_warm_layer()  # Should not raise
 
-                    # Warm layer should be unchanged since build failed
-                    assert bp._last_warm_layer == "old content"
+                # Warm layer should be unchanged since build failed
+                assert bp._last_warm_layer == "old content"
 
 
 class TestPendingSpeech:
