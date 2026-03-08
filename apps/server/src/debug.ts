@@ -75,6 +75,7 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
   }
   h1 { font-size: 16px; color: var(--hollow); margin-bottom: 12px; letter-spacing: 1px; }
   h2 { font-size: 12px; color: var(--ash); text-transform: uppercase; letter-spacing: 2px; margin: 16px 0 8px; }
+  h3 { font-size: 11px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; margin: 8px 0 4px; }
 
   .header {
     display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
@@ -110,6 +111,7 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
   .btn:hover { border-color: var(--hollow); background: var(--slate); }
   .btn:active { background: var(--hollow); color: var(--void); }
   .btn.small { padding: 4px 8px; font-size: 11px; }
+  .btn.active { border-color: var(--hollow); background: var(--hollow); color: var(--void); }
 
   .grid {
     display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px;
@@ -155,6 +157,8 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
   <a href="#sec-items">Items</a>
   <a href="#sec-inventory">Inventory</a>
   <a href="#sec-quest">Quest</a>
+  <a href="#sec-location">Location</a>
+  <a href="#sec-portraits">Portraits</a>
   <a href="#sec-status">Status</a>
   <a href="#sec-divine">Divine</a>
   <a href="#sec-music">Music</a>
@@ -167,8 +171,8 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
 <div class="section" id="sec-session">
   <h2>Session Lifecycle</h2>
   <div class="grid">
-    <button class="btn" onclick="send({type:'session_init',character:{name:'Kael',race:'Human',class:'Warden',level:3,xp:450,hp:{current:24,max:30},attributes:{strength:14,dexterity:12,constitution:13,intelligence:10,wisdom:15,charisma:8},ac:16,proficiencies:['athletics','perception','survival'],equipment:{main_hand:{name:'Iron Longsword',damage:'1d8+2'},armor:{name:'Chain Mail',ac:16},shield:null},gold:47,divine_favor:{patron:'Solwyn',level:12,max:100}},location:{id:'greyvale_market',name:'Market Square',atmosphere:'Busy stalls and the smell of roasting chestnuts.',region:'Greyvale',exits:{north:{destination:'greyvale_gate'},south:{destination:'greyvale_docks'},east:{destination:'greyvale_tavern'}}},inventory:[{id:'item_1',name:'Iron Longsword',type:'weapon',rarity:'common',description:'A sturdy blade.',weight:3,effects:[],lore:'',value_base:15,slot_info:{quantity:1,equipped:true}},{id:'item_2',name:'Healing Potion',type:'consumable',rarity:'uncommon',description:'Restores 2d4+2 HP.',weight:0.5,effects:[{heal:'2d4+2'}],lore:'',value_base:50,slot_info:{quantity:2,equipped:false}},{id:'item_3',name:'Hollow-Touched Compass',type:'trinket',rarity:'rare',description:'The needle drifts toward corruption.',weight:0.1,effects:[],lore:'Found in the old mill ruins.',value_base:120,slot_info:{quantity:1,equipped:false}}],quests:[{quest_id:'q_greyvale_anomaly',quest_name:'The Greyvale Anomaly',type:'main',current_stage:1,stages:[{id:'s0',name:'Discovery',objective:'Investigate the strange lights near the old mill.'},{id:'s1',name:'The Source',objective:'Find the source of corruption in the mill basement.'},{id:'s2',name:'Confrontation',objective:'Defeat or seal the Hollow rift.'}]}],map_progress:[{location_id:'greyvale_market',connections:['greyvale_gate','greyvale_docks','greyvale_tavern']},{location_id:'greyvale_tavern',connections:['greyvale_market']}]})">Session Init (Full)</button>
-    <button class="btn" onclick="send({type:'session_end',summary:'You defended the market from a goblin raid and discovered a lead on the Hollow rift beneath the old mill. Maren the Innkeeper offered shelter and information.',xp_earned:175,items_found:['Hollow-Touched Compass','Healing Potion'],quest_progress:['The Greyvale Anomaly: advanced to The Source'],duration:2700,next_hooks:['The mill basement awaits','Maren mentioned a missing merchant']})">Session End (Summary)</button>
+    <button class="btn" onclick="send({type:'session_init',character:{name:'Kael',race:'Human',class:'Warden',level:3,xp:450,hp:{current:24,max:30},attributes:{strength:14,dexterity:12,constitution:13,intelligence:10,wisdom:15,charisma:8},ac:16,proficiencies:['athletics','perception','survival'],equipment:{main_hand:{name:'Iron Longsword',damage:'1d8+2'},armor:{name:'Chain Mail',ac:16},shield:null},gold:47,divine_favor:{patron:'Solwyn',level:12,max:100}},location:{id:'accord_market_square',name:'Market Square',atmosphere:'Bustling stalls and the smell of fresh bread.',region:'Accord of Tides',tags:['urban','market','busy'],ambient_sounds:'market_bustle',exits:{north:{destination:'accord_guild_hall'},south:{destination:'accord_dockside'},east:{destination:'accord_temple_row'}}},world_state:{time:'day',day:14,season:'spring'},portraits:{companion:{primary:'/api/assets/images/placeholder',alert:'/api/assets/images/placeholder'},npcs:{'Maren the Innkeeper':'/api/assets/images/placeholder','Torin':'/api/assets/images/placeholder','Emris':'/api/assets/images/placeholder','Grimjaw':'/api/assets/images/placeholder'}},inventory:[{id:'item_1',name:'Iron Longsword',type:'weapon',rarity:'common',description:'A sturdy blade.',weight:3,effects:[],lore:'',value_base:15,slot_info:{quantity:1,equipped:true}},{id:'item_2',name:'Healing Potion',type:'consumable',rarity:'uncommon',description:'Restores 2d4+2 HP.',weight:0.5,effects:[{heal:'2d4+2'}],lore:'',value_base:50,slot_info:{quantity:2,equipped:false},image_url:'/api/assets/images/placeholder'},{id:'item_3',name:'Hollow-Touched Compass',type:'trinket',rarity:'rare',description:'The needle drifts toward corruption.',weight:0.1,effects:[],lore:'Found in the old mill ruins.',value_base:120,slot_info:{quantity:1,equipped:false},image_url:'/api/assets/images/placeholder'}],quests:[{quest_id:'q_greyvale_anomaly',quest_name:'The Greyvale Anomaly',type:'main',current_stage:1,stages:[{id:'s0',name:'Discovery',objective:'Investigate the strange lights near the old mill.'},{id:'s1',name:'The Source',objective:'Find the source of corruption in the mill basement.'},{id:'s2',name:'Confrontation',objective:'Defeat or seal the Hollow rift.'}]}],map_progress:[{location_id:'accord_market_square',connections:['accord_guild_hall','accord_dockside','accord_temple_row']},{location_id:'accord_hearthstone_tavern',connections:['accord_dockside','accord_market_square']}]})">Session Init (Full)</button>
+    <button class="btn" onclick="send({type:'session_end',summary:'You defended the market from a goblin raid and discovered a lead on the Hollow rift beneath the old mill. Maren the Innkeeper offered shelter and information.',xp_earned:175,items_found:['Hollow-Touched Compass','Healing Potion'],quest_progress:['The Greyvale Anomaly: advanced to The Source'],duration:2700,next_hooks:['The mill basement awaits','Maren mentioned a missing merchant'],story_moments:[{moment_key:'goblin_raid_defense',description:'You held the market square against a goblin raid, rallying the merchants to safety.',image_url:'/api/assets/images/placeholder'},{moment_key:'hollow_compass_discovery',description:'In the wreckage, you found a compass whose needle points toward corruption.',image_url:'/api/assets/images/placeholder'},{moment_key:'maren_alliance',description:'Maren the Innkeeper offered shelter and shared what she knows of the missing merchant.'}]})">Session End (Summary)</button>
     <button class="btn" onclick="send({type:'session_end'})">Session End (No Summary)</button>
   </div>
 </div>
@@ -176,8 +180,8 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
 <div class="section" id="sec-creation">
   <h2>Character Creation</h2>
   <div class="grid">
-    <button class="btn" onclick="send({type:'creation_cards',cards:[{id:'race_human',title:'Human',subtitle:'Versatile and ambitious',description:'Humans adapt to any situation. +1 to all attributes.',image_hint:'human_portrait'},{id:'race_elf',title:'Elf',subtitle:'Ancient and perceptive',description:'Elves possess keen senses and a deep connection to nature. +2 Dexterity, +1 Wisdom.',image_hint:'elf_portrait'},{id:'race_dwarf',title:'Dwarf',subtitle:'Stout and resilient',description:'Dwarves are tough and steadfast. +2 Constitution, +1 Strength.',image_hint:'dwarf_portrait'},{id:'race_halfling',title:'Halfling',subtitle:'Lucky and nimble',description:'Halflings are quick on their feet and hard to hit. +2 Dexterity, +1 Charisma.',image_hint:'halfling_portrait'}]})">Race Cards</button>
-    <button class="btn" onclick="send({type:'creation_cards',cards:[{id:'class_warden',title:'Warden',subtitle:'Guardian of the wild',description:'Wardens blend martial skill with nature magic. Heavy armor, melee focus, healing prayers.'},{id:'class_shadowbind',title:'Shadowbind',subtitle:'Master of stealth',description:'Shadowbinds strike from darkness. Light armor, dual wield, evasion, critical hits.'},{id:'class_faithsworn',title:'Faithsworn',subtitle:'Divine champion',description:'Faithsworn channel their deity. Medium armor, divine spells, turn undead, smite.'}]})">Class Cards</button>
+    <button class="btn" onclick="send({type:'creation_cards',cards:[{id:'race_human',title:'Human',subtitle:'Versatile and ambitious',description:'Humans adapt to any situation. +1 to all attributes.',image_hint:'human_portrait',image_url:'/api/assets/images/placeholder'},{id:'race_elf',title:'Elf',subtitle:'Ancient and perceptive',description:'Elves possess keen senses and a deep connection to nature. +2 Dexterity, +1 Wisdom.',image_hint:'elf_portrait',image_url:'/api/assets/images/placeholder'},{id:'race_dwarf',title:'Dwarf',subtitle:'Stout and resilient',description:'Dwarves are tough and steadfast. +2 Constitution, +1 Strength.',image_hint:'dwarf_portrait',image_url:'/api/assets/images/placeholder'},{id:'race_halfling',title:'Halfling',subtitle:'Lucky and nimble',description:'Halflings are quick on their feet and hard to hit. +2 Dexterity, +1 Charisma.',image_hint:'halfling_portrait',image_url:'/api/assets/images/placeholder'}]})">Race Cards (with art)</button>
+    <button class="btn" onclick="send({type:'creation_cards',cards:[{id:'class_warden',title:'Warden',subtitle:'Guardian of the wild',description:'Wardens blend martial skill with nature magic. Heavy armor, melee focus, healing prayers.',image_url:'/api/assets/images/placeholder'},{id:'class_shadowbind',title:'Shadowbind',subtitle:'Master of stealth',description:'Shadowbinds strike from darkness. Light armor, dual wield, evasion, critical hits.',image_url:'/api/assets/images/placeholder'},{id:'class_faithsworn',title:'Faithsworn',subtitle:'Divine champion',description:'Faithsworn channel their deity. Medium armor, divine spells, turn undead, smite.',image_url:'/api/assets/images/placeholder'}]})">Class Cards (with art)</button>
     <button class="btn" onclick="send({type:'creation_card_selected',value:'race_human'})">Select Card (Human)</button>
     <button class="btn" onclick="send({type:'creation_card_selected',value:'class_warden'})">Select Card (Warden)</button>
   </div>
@@ -199,10 +203,10 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
 <div class="section" id="sec-items">
   <h2>Items &amp; Rewards</h2>
   <div class="grid">
-    <button class="btn" onclick="send({type:'item_acquired',name:'Rusty Dagger',description:'A pitted blade, barely holding its edge.',rarity:'common',stats:{damage:'1d4'}})">Common Item</button>
-    <button class="btn" onclick="send({type:'item_acquired',name:'Hollow-Touched Compass',description:'The needle drifts toward sources of corruption.',rarity:'uncommon',stats:{corruption_sense:true}})">Uncommon Item</button>
-    <button class="btn" onclick="send({type:'item_acquired',name:'Veilglass Amulet',description:'A shard of crystallized boundary between worlds.',rarity:'rare',stats:{resist_hollow:'+2',perception:'+1'}})">Rare Item</button>
-    <button class="btn" onclick="send({type:'item_acquired',name:'Sundered Edge of Kaelthos',description:'A fragment of a god-forged blade, thrumming with divine wrath.',rarity:'legendary',stats:{damage:'2d8+3',divine_smite:true}})">Legendary Item</button>
+    <button class="btn" onclick="send({type:'item_acquired',name:'Rusty Dagger',description:'A pitted blade, barely holding its edge.',rarity:'common',stats:{damage:'1d4'}})">Common Item (no art)</button>
+    <button class="btn" onclick="send({type:'item_acquired',name:'Hollow-Touched Compass',description:'The needle drifts toward sources of corruption.',rarity:'uncommon',stats:{corruption_sense:true},image_url:'/api/assets/images/placeholder'})">Uncommon Item (with art)</button>
+    <button class="btn" onclick="send({type:'item_acquired',name:'Veilglass Amulet',description:'A shard of crystallized boundary between worlds.',rarity:'rare',stats:{resist_hollow:'+2',perception:'+1'},image_url:'/api/assets/images/placeholder'})">Rare Item (with art)</button>
+    <button class="btn" onclick="send({type:'item_acquired',name:'Sundered Edge of Kaelthos',description:'A fragment of a god-forged blade, thrumming with divine wrath.',rarity:'legendary',stats:{damage:'2d8+3',divine_smite:true},image_url:'/api/assets/images/placeholder'})">Legendary Item (with art)</button>
     <button class="btn" onclick="send({type:'xp_awarded',new_xp:325,new_level:4,xp_gained:75,level_up:false})">XP +75 (no level-up)</button>
     <button class="btn" onclick="send({type:'xp_awarded',new_xp:1000,new_level:5,xp_gained:250,level_up:true})">Level Up! (xp +250, level 5)</button>
   </div>
@@ -211,18 +215,82 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
 <div class="section" id="sec-inventory">
   <h2>Inventory Sync</h2>
   <div class="grid">
-    <button class="btn" onclick="send({type:'inventory_updated',inventory:[{id:'item_1',name:'Iron Longsword',type:'weapon',rarity:'common',description:'A sturdy blade.',weight:3,effects:[],lore:'',value_base:15,slot_info:{quantity:1,equipped:true}},{id:'item_2',name:'Healing Potion',type:'consumable',rarity:'uncommon',description:'Restores 2d4+2 HP.',weight:0.5,effects:[{heal:'2d4+2'}],lore:'',value_base:50,slot_info:{quantity:2,equipped:false}},{id:'item_3',name:'Hollow-Touched Compass',type:'trinket',rarity:'rare',description:'The needle drifts toward corruption.',weight:0.1,effects:[],lore:'Found in the old mill ruins.',value_base:120,slot_info:{quantity:1,equipped:false}}]})">Full Inventory Update</button>
+    <button class="btn" onclick="send({type:'inventory_updated',inventory:[{id:'item_1',name:'Iron Longsword',type:'weapon',rarity:'common',description:'A sturdy blade.',weight:3,effects:[],lore:'',value_base:15,slot_info:{quantity:1,equipped:true}},{id:'item_2',name:'Healing Potion',type:'consumable',rarity:'uncommon',description:'Restores 2d4+2 HP.',weight:0.5,effects:[{heal:'2d4+2'}],lore:'',value_base:50,slot_info:{quantity:2,equipped:false},image_url:'/api/assets/images/placeholder'},{id:'item_3',name:'Hollow-Touched Compass',type:'trinket',rarity:'rare',description:'The needle drifts toward corruption.',weight:0.1,effects:[],lore:'Found in the old mill ruins.',value_base:120,slot_info:{quantity:1,equipped:false},image_url:'/api/assets/images/placeholder'}]})">Full Inventory (with art)</button>
     <button class="btn" onclick="send({type:'inventory_updated',inventory:[]})">Empty Inventory</button>
   </div>
 </div>
 
 <div class="section" id="sec-quest">
-  <h2>Quest &amp; Location</h2>
+  <h2>Quest</h2>
   <div class="grid">
     <button class="btn" onclick="send({type:'quest_update',quest_name:'The Greyvale Anomaly',objective:'Investigate the strange lights near the old mill.',status:'active',stage_name:'Discovery'})">Quest Update</button>
-    <button class="btn" onclick="send({type:'location_changed',new_location:'greyvale_market',location_name:'Market Square',atmosphere:'Busy stalls and the smell of roasting chestnuts fill the air.',region:'Greyvale'})">Location: Market Square</button>
-    <button class="btn" onclick="send({type:'location_changed',new_location:'greyvale_docks',location_name:'The Docks',atmosphere:'Salt wind and creaking ropes. Gulls cry overhead.',region:'Greyvale'})">Location: The Docks</button>
-    <button class="btn" onclick="send({type:'location_changed',new_location:'greyvale_tavern',location_name:'The Crowned Hart',atmosphere:'Warm hearth, low murmur of conversation, tankards on oak.',region:'Greyvale'})">Location: The Crowned Hart</button>
+    <button class="btn" onclick="send({type:'quest_update',quest_name:'The Greyvale Anomaly',quest_id:'q_greyvale_anomaly',objective:'Find the source of corruption in the mill basement.',status:'active',stage_name:'The Source',new_stage:1})">Quest Advance (stage 1)</button>
+    <button class="btn" onclick="send({type:'quest_update',quest_name:'The Greyvale Anomaly',quest_id:'q_greyvale_anomaly',objective:'Defeat or seal the Hollow rift.',status:'active',stage_name:'Confrontation',new_stage:2})">Quest Advance (stage 2)</button>
+  </div>
+</div>
+
+<div class="section" id="sec-location">
+  <h2>Location</h2>
+  <h3>Time of Day</h3>
+  <div class="grid">
+    <button class="btn small active" id="tod-day" onclick="setTimeOfDay('day')">day</button>
+    <button class="btn small" id="tod-dusk" onclick="setTimeOfDay('dusk')">dusk</button>
+    <button class="btn small" id="tod-night" onclick="setTimeOfDay('night')">night</button>
+    <button class="btn small" id="tod-dawn" onclick="setTimeOfDay('dawn')">dawn</button>
+  </div>
+  <h3>Town</h3>
+  <div class="grid">
+    <button class="btn small" onclick="sendLocation({id:'accord_market_square',name:'Market Square',atmosphere:'Bustling stalls and the smell of fresh bread.',region:'Accord of Tides',ambient:'market_bustle',connections:['accord_guild_hall','accord_temple_row','accord_dockside']})">accord_market_square</button>
+    <button class="btn small" onclick="sendLocation({id:'accord_guild_hall',name:'Guild Hall',atmosphere:'Polished stone and the murmur of adventurers planning their next expedition.',region:'Accord of Tides',ambient:'guild_hall_bustle',connections:['accord_market_square','accord_temple_row']})">accord_guild_hall</button>
+    <button class="btn small" onclick="sendLocation({id:'accord_temple_row',name:'Temple Row',atmosphere:'Incense smoke drifts between carved pillars as quiet prayers echo.',region:'Accord of Tides',ambient:'temple_row_chanting',connections:['accord_market_square','accord_guild_hall']})">accord_temple_row</button>
+    <button class="btn small" onclick="sendLocation({id:'accord_dockside',name:'Dockside',atmosphere:'Salt wind and creaking ropes. Gulls cry overhead.',region:'Accord of Tides',ambient:'harbor_activity',connections:['accord_market_square','accord_hearthstone_tavern']})">accord_dockside</button>
+    <button class="btn small" onclick="sendLocation({id:'millhaven',name:'Millhaven',atmosphere:'A quiet farming village at the edge of Greyvale.',region:'Greyvale',ambient:'rural_town_uneasy',connections:['greyvale_south_road','millhaven_inn','yanna_farmhouse']})">millhaven</button>
+  </div>
+  <h3>Interior</h3>
+  <div class="grid">
+    <button class="btn small" onclick="sendLocation({id:'accord_hearthstone_tavern',name:'Hearthstone Tavern',atmosphere:'Warm hearth, low murmur of conversation, tankards on oak.',region:'Accord of Tides',ambient:'tavern_busy',connections:['accord_dockside','accord_market_square']})">accord_hearthstone_tavern</button>
+    <button class="btn small" onclick="sendLocation({id:'accord_forge',name:'The Forge',atmosphere:'The clang of hammer on anvil and the heat of the furnace.',region:'Accord of Tides',ambient:'guild_hall_bustle',connections:['accord_market_square']})">accord_forge</button>
+    <button class="btn small" onclick="sendLocation({id:'torin_quarters',name:'Torin Quarters',atmosphere:'A tidy room with maps pinned to every wall.',region:'Accord of Tides',ambient:'tavern_busy',connections:['accord_guild_hall']})">torin_quarters</button>
+    <button class="btn small" onclick="sendLocation({id:'emris_study',name:'Emris Study',atmosphere:'Dusty tomes and the faint hum of arcane wards.',region:'Accord of Tides',ambient:'temple_row_chanting',connections:['accord_temple_row']})">emris_study</button>
+    <button class="btn small" onclick="sendLocation({id:'grimjaw_quarters',name:'Grimjaw Quarters',atmosphere:'A spartan room smelling of weapon oil and old leather.',region:'Accord of Tides',ambient:'dungeon_ancient_hum',connections:['accord_guild_hall']})">grimjaw_quarters</button>
+    <button class="btn small" onclick="sendLocation({id:'millhaven_inn',name:'Millhaven Inn',atmosphere:'Creaking floorboards and the smell of stew simmering.',region:'Greyvale',ambient:'tavern_busy',connections:['millhaven']})">millhaven_inn</button>
+    <button class="btn small" onclick="sendLocation({id:'yanna_farmhouse',name:'Yanna Farmhouse',atmosphere:'Dried herbs hang from the rafters. A cat watches from the hearth.',region:'Greyvale',ambient:'rural_town_uneasy',connections:['millhaven']})">yanna_farmhouse</button>
+  </div>
+  <h3>Wilderness</h3>
+  <div class="grid">
+    <button class="btn small" onclick="sendLocation({id:'greyvale_south_road',name:'South Road',atmosphere:'A rutted dirt road winding through fallow fields.',region:'Greyvale',ambient:'rural_town_uneasy',connections:['millhaven','greyvale_ruins_exterior']})">greyvale_south_road</button>
+    <button class="btn small" onclick="sendLocation({id:'greyvale_wilderness_north',name:'Northern Wilds',atmosphere:'Dense undergrowth and the distant call of wolves.',region:'Greyvale',ambient:'wind_ruins',connections:['greyvale_south_road']})">greyvale_wilderness_north</button>
+    <button class="btn small" onclick="sendLocation({id:'greyvale_ruins_exterior',name:'Ruins Exterior',atmosphere:'Crumbling stone walls choked with ivy. Something feels wrong.',region:'Greyvale',ambient:'wind_ruins',connections:['greyvale_south_road','greyvale_ruins_entrance']})">greyvale_ruins_exterior</button>
+  </div>
+  <h3>Corrupted</h3>
+  <div class="grid">
+    <button class="btn small" onclick="sendLocation({id:'greyvale_ruins_entrance',name:'Ruins Entrance',atmosphere:'A dark archway. The air tastes of copper and ozone.',region:'Greyvale',ambient:'dungeon_ancient_hum',connections:['greyvale_ruins_exterior','greyvale_ruins_inner']})">greyvale_ruins_entrance</button>
+    <button class="btn small" onclick="sendLocation({id:'greyvale_ruins_inner',name:'Ruins Inner Sanctum',atmosphere:'The walls pulse with a faint, sickly light. Reality feels thin.',region:'Greyvale',ambient:'dungeon_resonance_deep',connections:['greyvale_ruins_entrance','hollow_incursion_site']})">greyvale_ruins_inner</button>
+    <button class="btn small" onclick="sendLocation({id:'hollow_incursion_site',name:'Hollow Incursion Site',atmosphere:'The boundary has broken. Twisted geometries and whispering void.',region:'Greyvale',ambient:'hollow_wrongness',connections:['greyvale_ruins_inner']})">hollow_incursion_site</button>
+  </div>
+  <h3>Soundscape Override</h3>
+  <div class="grid">
+    <button class="btn small" onclick="sendSoundscapeOverride('market_bustle')">market_bustle</button>
+    <button class="btn small" onclick="sendSoundscapeOverride('harbor_quiet')">harbor_quiet</button>
+    <button class="btn small" onclick="sendSoundscapeOverride('rural_town_uneasy')">rural_town_uneasy</button>
+    <button class="btn small" onclick="sendSoundscapeOverride('dungeon_ancient_hum')">dungeon_ancient_hum</button>
+    <button class="btn small" onclick="sendSoundscapeOverride('hollow_wrongness')">hollow_wrongness</button>
+    <button class="btn small" onclick="sendSoundscapeOverride('guild_hall_bustle')">guild_hall_bustle</button>
+    <button class="btn small" onclick="sendSoundscapeOverride('temple_row_chanting')">temple_row_chanting</button>
+    <button class="btn small" onclick="sendSoundscapeOverride('harbor_activity')">harbor_activity</button>
+    <button class="btn small" onclick="sendSoundscapeOverride('tavern_busy')">tavern_busy</button>
+    <button class="btn small" onclick="sendSoundscapeOverride('wind_ruins')">wind_ruins</button>
+    <button class="btn small" onclick="sendSoundscapeOverride('dungeon_resonance_deep')">dungeon_resonance_deep</button>
+  </div>
+</div>
+
+<div class="section" id="sec-portraits">
+  <h2>Portraits</h2>
+  <div class="grid">
+    <button class="btn" onclick="send({type:'session_init',portraits:{companion:{primary:'/api/assets/images/placeholder',alert:'/api/assets/images/placeholder'},npcs:{'Maren the Innkeeper':'/api/assets/images/placeholder','Torin':'/api/assets/images/placeholder','Emris':'/api/assets/images/placeholder','Grimjaw':'/api/assets/images/placeholder','Yanna':'/api/assets/images/placeholder'}}})">Setup NPC Portrait Map</button>
+    <button class="btn" onclick="send({type:'player_portrait_ready',url:'/api/assets/images/placeholder'})">Player Portrait Ready</button>
+    <button class="btn" onclick="send({type:'transcript_entry',speaker:'npc',character:'Maren the Innkeeper',emotion:'warm',text:'Your usual table is free, traveler.',timestamp:Date.now()/1000})">NPC Transcript (Maren)</button>
+    <button class="btn" onclick="send({type:'transcript_entry',speaker:'npc',character:'Torin',emotion:'serious',text:'We need to move before nightfall.',timestamp:Date.now()/1000})">NPC Transcript (Torin)</button>
   </div>
 </div>
 
@@ -278,6 +346,17 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
     <button class="btn small" onclick="send({type:'play_sound',sound_name:'notification'})">notification</button>
     <button class="btn small" onclick="send({type:'play_sound',sound_name:'success_sting'})">success_sting</button>
     <button class="btn small" onclick="send({type:'play_sound',sound_name:'fail_sting'})">fail_sting</button>
+    <button class="btn small" onclick="send({type:'play_sound',sound_name:'menu_open'})">menu_open</button>
+    <button class="btn small" onclick="send({type:'play_sound',sound_name:'menu_close'})">menu_close</button>
+    <button class="btn small" onclick="send({type:'play_sound',sound_name:'spell_cast'})">spell_cast</button>
+    <button class="btn small" onclick="send({type:'play_sound',sound_name:'arrow_loose'})">arrow_loose</button>
+    <button class="btn small" onclick="send({type:'play_sound',sound_name:'hit_taken'})">hit_taken</button>
+    <button class="btn small" onclick="send({type:'play_sound',sound_name:'critical_hit_sting'})">critical_hit_sting</button>
+    <button class="btn small" onclick="send({type:'play_sound',sound_name:'shield_block'})">shield_block</button>
+    <button class="btn small" onclick="send({type:'play_sound',sound_name:'potion_use'})">potion_use</button>
+    <button class="btn small" onclick="send({type:'play_sound',sound_name:'door_creak'})">door_creak</button>
+    <button class="btn small" onclick="send({type:'play_sound',sound_name:'discovery_chime'})">discovery_chime</button>
+    <button class="btn small" onclick="send({type:'play_sound',sound_name:'god_whisper_stinger'})">god_whisper_stinger</button>
   </div>
 </div>
 
@@ -315,9 +394,45 @@ const roomSel = document.getElementById('rooms');
 const statusEl = document.getElementById('status');
 const logEl = document.getElementById('log');
 
+let currentTimeOfDay = 'day';
+let lastLocation = {id: 'accord_market_square', name: 'Market Square', atmosphere: '', region: '', connections: []};
+
 function setStatus(text, ok) {
   statusEl.textContent = text;
   statusEl.className = 'status ' + (ok ? 'ok' : 'err');
+}
+
+function setTimeOfDay(tod) {
+  currentTimeOfDay = tod;
+  document.querySelectorAll('#sec-location .grid:first-of-type .btn').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('tod-' + tod).classList.add('active');
+}
+
+function sendLocation(loc) {
+  lastLocation = loc;
+  send({
+    type: 'location_changed',
+    new_location: loc.id,
+    location_name: loc.name,
+    atmosphere: loc.atmosphere,
+    region: loc.region,
+    ambient_sounds: loc.ambient,
+    time_of_day: currentTimeOfDay,
+    connections: loc.connections
+  });
+}
+
+function sendSoundscapeOverride(soundscape) {
+  send({
+    type: 'location_changed',
+    new_location: lastLocation.id,
+    location_name: lastLocation.name,
+    atmosphere: lastLocation.atmosphere,
+    region: lastLocation.region,
+    ambient_sounds: soundscape,
+    time_of_day: currentTimeOfDay,
+    connections: lastLocation.connections
+  });
 }
 
 async function refreshRooms() {
