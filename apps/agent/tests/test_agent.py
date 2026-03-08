@@ -120,7 +120,7 @@ class TestDungeonMasterAgent:
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
             with patch.object(agent._turn_timer, "start") as mock_start:
                 with patch.object(agent._turn_timer, "mark") as mock_mark:
-                    with patch.object(agent, "_build_hot_context", new_callable=AsyncMock, return_value=""):
+                    with patch.object(agent, "_build_hot_context", return_value=""):
                         await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
 
                         mock_start.assert_called_once()
@@ -141,7 +141,7 @@ class TestDungeonMasterAgent:
         mock_session.userdata = mock_session_data
 
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch.object(agent, "_build_hot_context", new_callable=AsyncMock, return_value=""):
+            with patch.object(agent, "_build_hot_context", return_value=""):
                 before = mock_session_data.last_player_speech_time
                 await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
 
@@ -161,7 +161,7 @@ class TestDungeonMasterAgent:
         mock_session.userdata = mock_session_data
 
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch.object(agent, "_build_hot_context", new_callable=AsyncMock, return_value="[Context: Tavern]"):
+            with patch.object(agent, "_build_hot_context", return_value="[Context: Tavern]"):
                 await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
 
                 mock_turn_ctx.add_message.assert_called_once_with(role="assistant", content="[Context: Tavern]")
@@ -180,17 +180,16 @@ class TestDungeonMasterAgent:
         mock_session.userdata = mock_session_data
 
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch.object(agent, "_build_hot_context", new_callable=AsyncMock, return_value=""):
+            with patch.object(agent, "_build_hot_context", return_value=""):
                 await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
 
                 mock_turn_ctx.add_message.assert_not_called()
 
 
 class TestHotContextBuilding:
-    """Test _build_hot_context per-turn context assembly."""
+    """Test _build_hot_context per-turn context assembly (pure in-memory, no DB)."""
 
-    @pytest.mark.asyncio
-    async def test_build_hot_context_includes_location_and_time(self):
+    def test_build_hot_context_includes_location_and_time(self):
         """_build_hot_context should include location name and world time."""
         with patch("agent.build_system_prompt", return_value="prompt"):
             agent = DungeonMasterAgent()
@@ -198,61 +197,55 @@ class TestHotContextBuilding:
         mock_sd = MagicMock()
         mock_sd.location_id = "tavern"
         mock_sd.world_time = "evening"
+        mock_sd.cached_location_name = "The Rusty Sword"
+        mock_sd.cached_quest_summaries = []
+        mock_sd.cached_npc_names = []
+        mock_sd.recent_events = []
+        mock_sd.combat_state = None
 
-        with patch("agent.db.get_location", new_callable=AsyncMock, return_value={"name": "The Rusty Sword"}):
-            with patch("agent.db.get_active_player_quests", new_callable=AsyncMock, return_value=[]):
-                with patch("agent.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[]):
-                    result = await agent._build_hot_context(mock_sd)
+        result = agent._build_hot_context(mock_sd)
 
         assert "[Context: The Rusty Sword, evening]" in result
 
-    @pytest.mark.asyncio
-    async def test_build_hot_context_uses_location_id_if_no_name(self):
-        """_build_hot_context should fall back to location_id if no name."""
+    def test_build_hot_context_uses_location_id_if_no_name(self):
+        """_build_hot_context should fall back to location_id if cached name is empty."""
         with patch("agent.build_system_prompt", return_value="prompt"):
             agent = DungeonMasterAgent()
 
         mock_sd = MagicMock()
         mock_sd.location_id = "unknown_place"
         mock_sd.world_time = "morning"
+        mock_sd.cached_location_name = ""
+        mock_sd.cached_quest_summaries = []
+        mock_sd.cached_npc_names = []
+        mock_sd.recent_events = []
+        mock_sd.combat_state = None
 
-        with patch("agent.db.get_location", new_callable=AsyncMock, return_value=None):
-            with patch("agent.db.get_active_player_quests", new_callable=AsyncMock, return_value=[]):
-                with patch("agent.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[]):
-                    result = await agent._build_hot_context(mock_sd)
+        result = agent._build_hot_context(mock_sd)
 
         assert "[Context: unknown_place, morning]" in result
 
-    @pytest.mark.asyncio
-    async def test_build_hot_context_includes_active_quest_objectives(self):
-        """_build_hot_context should include active quest objectives."""
+    def test_build_hot_context_includes_active_quest_objectives(self):
+        """_build_hot_context should include cached quest summaries."""
         with patch("agent.build_system_prompt", return_value="prompt"):
             agent = DungeonMasterAgent()
 
         mock_sd = MagicMock()
         mock_sd.location_id = "forest"
         mock_sd.world_time = "day"
+        mock_sd.cached_location_name = "Dark Forest"
+        mock_sd.cached_quest_summaries = ["Find the Artifact: Search the ruins"]
+        mock_sd.cached_npc_names = []
+        mock_sd.recent_events = []
+        mock_sd.combat_state = None
 
-        quests = [
-            {
-                "quest_name": "Find the Artifact",
-                "current_stage": 1,
-                "stages": [{"objective": "Search the ruins"}],
-            }
-        ]
-
-        with patch("agent.db.get_location", new_callable=AsyncMock, return_value={"name": "Dark Forest"}):
-            with patch("agent.db.get_active_player_quests", new_callable=AsyncMock, return_value=quests):
-                with patch("agent.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[]):
-                    with patch("agent.quest_objective", return_value="Search the ruins"):
-                        result = await agent._build_hot_context(mock_sd)
+        result = agent._build_hot_context(mock_sd)
 
         assert "[Quests:" in result
         assert "Find the Artifact" in result
         assert "Search the ruins" in result
 
-    @pytest.mark.asyncio
-    async def test_build_hot_context_includes_recent_events(self):
+    def test_build_hot_context_includes_recent_events(self):
         """_build_hot_context should include recent events from session data."""
         with patch("agent.build_system_prompt", return_value="prompt"):
             agent = DungeonMasterAgent()
@@ -260,12 +253,13 @@ class TestHotContextBuilding:
         mock_sd = MagicMock()
         mock_sd.location_id = "town"
         mock_sd.world_time = "night"
+        mock_sd.cached_location_name = "Town Square"
+        mock_sd.cached_quest_summaries = []
+        mock_sd.cached_npc_names = []
         mock_sd.recent_events = ["Found a key", "Defeated goblin", "Talked to merchant", "Entered tavern"]
+        mock_sd.combat_state = None
 
-        with patch("agent.db.get_location", new_callable=AsyncMock, return_value={"name": "Town Square"}):
-            with patch("agent.db.get_active_player_quests", new_callable=AsyncMock, return_value=[]):
-                with patch("agent.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[]):
-                    result = await agent._build_hot_context(mock_sd)
+        result = agent._build_hot_context(mock_sd)
 
         assert "[Recent:" in result
         # Should only include last 3 events
@@ -273,48 +267,41 @@ class TestHotContextBuilding:
         assert "Entered tavern" in result
         assert "Found a key" not in result  # Too old
 
-    @pytest.mark.asyncio
-    async def test_build_hot_context_includes_npcs_nearby(self):
-        """_build_hot_context should include NPCs at current location."""
+    def test_build_hot_context_includes_npcs_nearby(self):
+        """_build_hot_context should include cached NPC names."""
         with patch("agent.build_system_prompt", return_value="prompt"):
             agent = DungeonMasterAgent()
 
         mock_sd = MagicMock()
         mock_sd.location_id = "guild_hall"
         mock_sd.world_time = "evening"
+        mock_sd.cached_location_name = "Guild Hall"
+        mock_sd.cached_quest_summaries = []
+        mock_sd.cached_npc_names = ["Guildmaster Torin", "Elara the Sage"]
         mock_sd.recent_events = []
+        mock_sd.combat_state = None
 
-        npcs = [
-            {"id": "torin", "name": "Guildmaster Torin"},
-            {"id": "elara", "name": "Elara the Sage"},
-        ]
-
-        with patch("agent.db.get_location", new_callable=AsyncMock, return_value={"name": "Guild Hall"}):
-            with patch("agent.db.get_active_player_quests", new_callable=AsyncMock, return_value=[]):
-                with patch("agent.db.get_npcs_at_location", new_callable=AsyncMock, return_value=npcs):
-                    result = await agent._build_hot_context(mock_sd)
+        result = agent._build_hot_context(mock_sd)
 
         assert "[NPCs nearby:" in result
         assert "Guildmaster Torin" in result
         assert "Elara the Sage" in result
 
-    @pytest.mark.asyncio
-    async def test_build_hot_context_handles_npc_without_name(self):
-        """_build_hot_context should fall back to NPC id if no name."""
+    def test_build_hot_context_handles_npc_without_name(self):
+        """_build_hot_context should use whatever name is cached (fallback handled at cache time)."""
         with patch("agent.build_system_prompt", return_value="prompt"):
             agent = DungeonMasterAgent()
 
         mock_sd = MagicMock()
         mock_sd.location_id = "cave"
         mock_sd.world_time = "day"
+        mock_sd.cached_location_name = "Cave"
+        mock_sd.cached_quest_summaries = []
+        mock_sd.cached_npc_names = ["mysterious_figure"]
         mock_sd.recent_events = []
+        mock_sd.combat_state = None
 
-        npcs = [{"id": "mysterious_figure"}]  # No name field
-
-        with patch("agent.db.get_location", new_callable=AsyncMock, return_value={"name": "Cave"}):
-            with patch("agent.db.get_active_player_quests", new_callable=AsyncMock, return_value=[]):
-                with patch("agent.db.get_npcs_at_location", new_callable=AsyncMock, return_value=npcs):
-                    result = await agent._build_hot_context(mock_sd)
+        result = agent._build_hot_context(mock_sd)
 
         assert "mysterious_figure" in result
 

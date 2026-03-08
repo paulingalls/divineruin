@@ -89,6 +89,11 @@ class SessionData:
     patron_id: str = "none"
     creation_state: CreationState | None = None
 
+    # Cached data for hot context (updated by background process, read by voice loop)
+    cached_location_name: str = ""
+    cached_npc_names: list[str] = field(default_factory=list)
+    cached_quest_summaries: list[str] = field(default_factory=list)
+
     # Session metrics tracking
     session_xp_earned: int = 0
     session_items_found: list[str] = field(default_factory=list)

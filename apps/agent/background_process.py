@@ -9,9 +9,10 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+import db
 from event_bus import GameEvent
 from god_whisper_data import get_god_profile, should_trigger_whisper
-from prompts import build_full_prompt, build_system_prompt, build_warm_layer
+from prompts import build_full_prompt, build_system_prompt, build_warm_layer, quest_objective
 from tools import _disposition_rank
 
 if TYPE_CHECKING:
@@ -341,7 +342,6 @@ class BackgroundProcess:
         # Short delay to let the meeting speech play out
         await asyncio.sleep(5.0)
         try:
-            import db
             from session_data import CompanionState
 
             self._sd.companion = CompanionState(
@@ -484,11 +484,9 @@ class BackgroundProcess:
             # Mark last_whisper_level after delivering (deferred from critical path)
             if top.stinger_sound is not None:
                 try:
-                    import db as _db
-
-                    favor = await _db.get_divine_favor(self._sd.player_id)
+                    favor = await db.get_divine_favor(self._sd.player_id)
                     if favor:
-                        await _db.mark_favor_whisper_level(self._sd.player_id, favor.get("level", 0))
+                        await db.mark_favor_whisper_level(self._sd.player_id, favor.get("level", 0))
                 except Exception:
                     logger.warning("Failed to mark favor whisper level", exc_info=True)
             if "COMPANION_KAEL" in top.instructions and self._sd.companion:
@@ -501,14 +499,28 @@ class BackgroundProcess:
 
     async def _rebuild_warm_layer(self) -> None:
         try:
-            import db
-
             quests = await db.get_active_player_quests(self._sd.player_id)
             self._quest_cache = quests
         except Exception:
             logger.debug("Quest cache refresh failed", exc_info=True)
 
         try:
+            location, npcs_raw = await asyncio.gather(
+                db.get_location(self._sd.location_id),
+                db.get_npcs_at_location(self._sd.location_id),
+            )
+
+            # Update hot context caches on SessionData (read by voice loop, zero I/O)
+            if location:
+                self._sd.cached_location_name = location.get("name", self._sd.location_id)
+            else:
+                self._sd.cached_location_name = self._sd.location_id
+            self._sd.cached_npc_names = [n.get("name", n.get("id", "?")) for n in (npcs_raw or [])]
+
+            self._sd.cached_quest_summaries = [
+                f"{q['quest_name']}: {quest_objective(q)}" for q in (self._quest_cache or []) if quest_objective(q)
+            ]
+
             warm = await build_warm_layer(
                 self._sd.location_id,
                 self._sd.player_id,
@@ -517,6 +529,8 @@ class BackgroundProcess:
                 companion=self._sd.companion,
                 quests=self._quest_cache or None,
                 corruption_level=self._sd.corruption_level,
+                location=location,
+                npcs_raw=npcs_raw,
             )
         except Exception:
             logger.warning("Warm layer build failed", exc_info=True)

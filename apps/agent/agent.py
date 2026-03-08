@@ -19,7 +19,7 @@ from background_process import BackgroundProcess
 from dialogue_parser import parse_dialogue_stream
 from game_events import publish_game_event
 from latency import TurnTimer
-from prompts import build_system_prompt, format_affect_context, quest_objective
+from prompts import build_system_prompt, format_affect_context
 from rules_engine import hp_threshold_status
 from session_data import CompanionState, CreationState, SessionData
 from session_summary import generate_session_summary
@@ -212,11 +212,7 @@ class DungeonMasterAgent(Agent):
 
         # Skip hot context injection during creation — no location/quest/NPC data yet
         if not self._creation_mode:
-            try:
-                hot = await self._build_hot_context(sd)
-            except Exception:
-                logger.exception("Failed to build hot context")
-                hot = ""
+            hot = self._build_hot_context(sd)
             if hot:
                 turn_ctx.add_message(role="assistant", content=hot)
 
@@ -260,20 +256,18 @@ class DungeonMasterAgent(Agent):
                 else:
                     yield "The threads of fate tangle for a moment... What were you saying?"
 
-    async def _build_hot_context(self, sd: SessionData) -> str:
+    def _build_hot_context(self, sd: SessionData) -> str:
+        """Build hot context from in-memory SessionData only — zero I/O.
+
+        All data is kept current by the background process warm layer rebuild.
+        """
         parts: list[str] = []
 
-        location, quests, npcs = await asyncio.gather(
-            db.get_location(sd.location_id),
-            db.get_active_player_quests(sd.player_id),
-            db.get_npcs_at_location(sd.location_id),
-        )
-
-        # Current location + time
-        loc_name = location.get("name", sd.location_id) if location else sd.location_id
+        # Current location + time (cached by background process)
+        loc_name = sd.cached_location_name or sd.location_id
         parts.append(f"[Context: {loc_name}, {sd.world_time}]")
 
-        # Combat state
+        # Combat state (in-memory)
         if sd.combat_state is not None:
             cs = sd.combat_state
             combatants = []
@@ -284,21 +278,18 @@ class DungeonMasterAgent(Agent):
                     combatants.append(f"{p.name}({status})")
             parts.append(f"[COMBAT Round {cs.round_number}: {', '.join(combatants)}]")
 
-        # Active quest objectives
-        if quests:
-            objectives = [f"{q['quest_name']}: {quest_objective(q)}" for q in quests if quest_objective(q)]
-            if objectives:
-                parts.append("[Quests: " + "; ".join(objectives) + "]")
+        # Active quest objectives (cached by background process)
+        if sd.cached_quest_summaries:
+            parts.append("[Quests: " + "; ".join(sd.cached_quest_summaries) + "]")
 
-        # Recent events
+        # Recent events (in-memory deque)
         if sd.recent_events:
             recent = list(sd.recent_events)[-3:]
             parts.append("[Recent: " + "; ".join(recent) + "]")
 
-        # NPCs nearby
-        if npcs:
-            names = [n.get("name", n.get("id", "?")) for n in npcs]
-            parts.append("[NPCs nearby: " + ", ".join(names) + "]")
+        # NPCs nearby (cached by background process)
+        if sd.cached_npc_names:
+            parts.append("[NPCs nearby: " + ", ".join(sd.cached_npc_names) + "]")
 
         return " ".join(parts)
 
@@ -312,11 +303,18 @@ class DungeonMasterAgent(Agent):
         buffered_character = ""
         buffered_emotion = ""
 
+        # Cache TTS instance to reuse when voice config hasn't changed
+        cached_tts: inworld.TTS | None = None
+        cached_voice_key: tuple[str, float] = ("", 1.0)
+
         async def synthesize_chunk(chunk: str) -> AsyncGenerator[rtc.AudioFrame, None]:
-            nonlocal first_frame
+            nonlocal first_frame, cached_tts, cached_voice_key
             cfg = get_voice_config(buffered_character, buffered_emotion)
-            segment_tts = _make_tts(voice=cfg.voice, speaking_rate=cfg.speaking_rate)
-            async with segment_tts.synthesize(chunk) as stream:
+            voice_key = (cfg.voice, cfg.speaking_rate)
+            if cached_tts is None or voice_key != cached_voice_key:
+                cached_tts = _make_tts(voice=cfg.voice, speaking_rate=cfg.speaking_rate)
+                cached_voice_key = voice_key
+            async with cached_tts.synthesize(chunk) as stream:
                 async for ev in stream:
                     if first_frame:
                         self._turn_timer.mark("tts_first_byte")
@@ -363,7 +361,7 @@ class DungeonMasterAgent(Agent):
             if re.search(r'[.!?][""\u201d]?\s*$', buffered_text):
                 async for frame in flush_buffer():
                     yield frame
-                yield _silence(1.0)
+                yield _silence(0.8)
 
         async for frame in flush_buffer():
             yield frame

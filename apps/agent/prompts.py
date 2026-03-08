@@ -401,6 +401,8 @@ async def build_warm_layer(
     companion: CompanionState | None = None,
     quests: list[dict] | None = None,
     corruption_level: int = 0,
+    location: dict | None = None,
+    npcs_raw: list[dict] | None = None,
 ) -> str:
     import asyncio
 
@@ -409,17 +411,19 @@ async def build_warm_layer(
 
     sections: list[str] = []
 
-    if quests is not None:
-        location, npcs_raw = await asyncio.gather(
-            db.get_location(location_id),
-            db.get_npcs_at_location(location_id),
-        )
-    else:
-        location, npcs_raw, quests = await asyncio.gather(
-            db.get_location(location_id),
-            db.get_npcs_at_location(location_id),
-            db.get_active_player_quests(player_id),
-        )
+    # Use pre-fetched data when available, otherwise query
+    if location is None or npcs_raw is None:
+        if quests is not None:
+            location, npcs_raw = await asyncio.gather(
+                db.get_location(location_id),
+                db.get_npcs_at_location(location_id),
+            )
+        else:
+            location, npcs_raw, quests = await asyncio.gather(
+                db.get_location(location_id),
+                db.get_npcs_at_location(location_id),
+                db.get_active_player_quests(player_id),
+            )
 
     # Current scene
     if location:
