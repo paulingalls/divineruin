@@ -317,7 +317,17 @@ PostgreSQL on `localhost:5433`, Redis on `localhost:6379`.
 cp .env.example .env
 ```
 
-Fill in all API keys. `DATABASE_URL` and `REDIS_URL` are pre-configured for the docker-compose setup. All services read from this single root `.env` file.
+Fill in all API keys. `DATABASE_URL` and `REDIS_URL` are pre-configured for the docker-compose defaults. All services read from this single root `.env` file.
+
+Generate required secrets (do not skip these):
+
+```bash
+# JWT secret — paste into .env as JWT_SECRET
+openssl rand -hex 32
+
+# Internal API secret — paste into .env as INTERNAL_SECRET
+openssl rand -hex 16
+```
 
 ### 3. Install dependencies
 

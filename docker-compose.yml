@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:16-alpine
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     environment:
-      POSTGRES_USER: divineruin
-      POSTGRES_PASSWORD: divineruin
-      POSTGRES_DB: divineruin
+      POSTGRES_USER: ${POSTGRES_USER:-divineruin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-divineruin_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-divineruin}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U divineruin"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-divineruin}"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -18,7 +18,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

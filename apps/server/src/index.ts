@@ -18,7 +18,8 @@ import { handleGetActivityTemplates } from "./activity-templates-api.ts";
 import { handleStorePushToken, handleInternalPush } from "./push.ts";
 import { isDev } from "./env.ts";
 
-const enableDebug = isDev && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
+const enableDebug =
+  isDev && process.env.NODE_ENV !== "production" && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
 
 const CHARACTER_RE = /^\/api\/character\/([^/]+)$/;
 const REGEN_PORTRAIT_RE = /^\/api\/character\/([^/]+)\/regenerate-portrait$/;

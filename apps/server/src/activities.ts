@@ -328,17 +328,17 @@ export async function handleActivityDecision(
 const AUDIO_DIR = Bun.env.ASYNC_AUDIO_DIR ?? `${import.meta.dir}/../../audio`;
 
 export async function handleAudioFile(filename: string): Promise<Response> {
-  const safeName = filename.replace(/[^a-zA-Z0-9_.-]/g, "");
-  if (safeName !== filename) {
+  // Reject path traversal: only allow alphanumeric, underscores, hyphens, and a single dot for extension
+  if (!/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+$/.test(filename)) {
     return Response.json({ error: "Invalid filename" }, { status: 400 });
   }
 
-  const file = Bun.file(`${AUDIO_DIR}/${safeName}`);
+  const file = Bun.file(`${AUDIO_DIR}/${filename}`);
   if (!(await file.exists())) {
     return Response.json({ error: "File not found" }, { status: 404 });
   }
 
-  const contentType = safeName.endsWith(".mp3") ? "audio/mpeg" : "audio/wav";
+  const contentType = filename.endsWith(".mp3") ? "audio/mpeg" : "audio/wav";
   return new Response(file, {
     headers: {
       "Content-Type": contentType,

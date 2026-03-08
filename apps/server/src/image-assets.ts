@@ -3,12 +3,12 @@ function getImageDir(): string {
 }
 
 export async function handleImageAsset(assetId: string): Promise<Response> {
-  const safeName = assetId.replace(/[^a-zA-Z0-9_]/g, "");
-  if (safeName !== assetId) {
+  // Reject anything that isn't a simple alphanumeric+underscore ID (no dots, no slashes)
+  if (!/^[a-zA-Z0-9_]+$/.test(assetId)) {
     return Response.json({ error: "Invalid asset ID" }, { status: 400 });
   }
 
-  const file = Bun.file(`${getImageDir()}/${safeName}.png`);
+  const file = Bun.file(`${getImageDir()}/${assetId}.png`);
   if (!(await file.exists())) {
     return Response.json({ error: "Not found" }, { status: 404 });
   }
@@ -17,7 +17,7 @@ export async function handleImageAsset(assetId: string): Promise<Response> {
     headers: {
       "Content-Type": "image/png",
       "Cache-Control": "public, max-age=86400",
-      ETag: safeName,
+      ETag: assetId,
     },
   });
 }

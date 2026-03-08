@@ -72,8 +72,11 @@ export async function sendPushNotification(
 }
 
 const INTERNAL_SECRET = Bun.env.INTERNAL_SECRET ?? "";
+if (!INTERNAL_SECRET && process.env.NODE_ENV === "production") {
+  throw new Error("[security] INTERNAL_SECRET must be set in production");
+}
 if (!INTERNAL_SECRET) {
-  console.warn("[push] INTERNAL_SECRET not set — internal push endpoint disabled");
+  console.warn("[push] INTERNAL_SECRET not set — internal push endpoint will reject all requests");
 }
 
 export async function handleInternalPush(req: Request): Promise<Response> {

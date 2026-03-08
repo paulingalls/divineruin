@@ -64,6 +64,7 @@ REQUIRED_ENV_VARS = [
     "INWORLD_API_KEY",
     "DATABASE_URL",
     "REDIS_URL",
+    "INTERNAL_SECRET",
 ]
 
 WORLD_TOOLS = [enter_location, query_location, query_npc, query_lore, query_inventory, discover_hidden_element]

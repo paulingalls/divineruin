@@ -3,6 +3,9 @@ import { logError } from "./env.ts";
 import { parseJsonBody } from "./middleware.ts";
 
 const INTERNAL_SECRET = Bun.env.INTERNAL_SECRET ?? "";
+if (!INTERNAL_SECRET && process.env.NODE_ENV === "production") {
+  throw new Error("[security] INTERNAL_SECRET must be set in production");
+}
 
 /**
  * POST /api/images/generate
