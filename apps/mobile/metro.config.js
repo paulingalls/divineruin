@@ -4,6 +4,17 @@ const { getDefaultConfig } = require('expo/metro-config');
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
+// Exclude .expo/ from file watching — devices.json is rewritten every ~2s
+// by Expo dev tools, causing Metro to trigger continuous reloads.
+config.resolver.blockList = [
+  ...(Array.isArray(config.resolver.blockList)
+    ? config.resolver.blockList
+    : config.resolver.blockList
+      ? [config.resolver.blockList]
+      : []),
+  /\/\.expo\//,
+];
+
 // Fix: @livekit/react-native-webrtc imports "event-target-shim/index" but
 // event-target-shim@6.0.2's "exports" field only declares "." (not "./index").
 // Metro's package-exports resolver warns and falls back to file-based resolution.

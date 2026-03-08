@@ -95,7 +95,7 @@ export default function RootLayout() {
       <ThemeProvider value={DivineRuinTheme}>
         <AnimatedSplashOverlay />
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <Stack screenOptions={{ headerShown: false }}>
+          <Stack screenOptions={{ headerShown: false, animation: "none" }}>
             <Stack.Screen name="auth" />
             <Stack.Screen name="index" redirect />
           </Stack>
@@ -109,7 +109,7 @@ export default function RootLayout() {
     <ThemeProvider value={DivineRuinTheme}>
       <AnimatedSplashOverlay />
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack screenOptions={{ headerShown: false, animation: "none" }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="auth" redirect />
           <Stack.Screen name="session" />

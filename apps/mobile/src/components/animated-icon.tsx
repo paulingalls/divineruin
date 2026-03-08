@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Image, StyleSheet } from "react-native";
-import Animated, { Easing, Keyframe } from "react-native-reanimated";
-import { scheduleOnRN } from "react-native-worklets";
+import Animated, { Easing, Keyframe, runOnJS } from "react-native-reanimated";
 
 import { BrandColors } from "@/constants/theme";
 
@@ -12,6 +11,8 @@ const DURATION = 800;
 
 export function AnimatedSplashOverlay() {
   const [visible, setVisible] = useState(true);
+
+  const hide = useCallback(() => setVisible(false), []);
 
   if (!visible) return null;
 
@@ -26,7 +27,7 @@ export function AnimatedSplashOverlay() {
       entering={fadeOutKeyframe.duration(DURATION).withCallback((finished) => {
         "worklet";
         if (finished) {
-          scheduleOnRN(setVisible, false);
+          runOnJS(hide)();
         }
       })}
       style={styles.container}
