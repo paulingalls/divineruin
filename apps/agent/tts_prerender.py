@@ -17,6 +17,9 @@ async def synthesize_to_file(
 
     Returns the filename (not full path) for URL construction.
     """
+    if ".." in output_path:
+        raise ValueError(f"Path traversal not allowed in output_path: {output_path}")
+
     tts = TTS(voice=voice_id, encoding="MP3")
 
     # Collect MP3 frames from the synthesizer

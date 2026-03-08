@@ -1,5 +1,11 @@
 import { test, expect, describe, beforeEach } from "bun:test";
-import { handlePreflight, withCors, checkRateLimit, _resetRateLimits } from "./middleware.ts";
+import {
+  handlePreflight,
+  withCors,
+  checkRateLimit,
+  _resetRateLimits,
+  verifyInternalSecret,
+} from "./middleware.ts";
 
 describe("CORS", () => {
   test("handlePreflight returns 204 with CORS headers", () => {
@@ -26,6 +32,14 @@ describe("Security Headers", () => {
   test("withCors adds Cache-Control header", () => {
     const res = withCors(Response.json({ ok: true }));
     expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+  });
+
+  test("withCors preserves existing Cache-Control header", () => {
+    const original = new Response(null, {
+      headers: { "Cache-Control": "public, max-age=86400" },
+    });
+    const res = withCors(original);
+    expect(res.headers.get("Cache-Control")).toBe("public, max-age=86400");
   });
 });
 
@@ -89,5 +103,36 @@ describe("Rate Limiting", () => {
     _resetRateLimits();
     const result = checkRateLimit("127.0.0.1", "/api/livekit/token");
     expect(result).toBeNull();
+  });
+});
+
+describe("verifyInternalSecret", () => {
+  function reqWithSecret(secret?: string): Request {
+    const headers: Record<string, string> = {};
+    if (secret !== undefined) {
+      headers["X-Internal-Secret"] = secret;
+    }
+    return new Request("http://localhost/api/internal/push", { headers });
+  }
+
+  test("returns false when INTERNAL_SECRET env is empty", () => {
+    // INTERNAL_SECRET is loaded at module init from env; in test env it's empty
+    const result = verifyInternalSecret(reqWithSecret("anything"));
+    expect(result).toBe(false);
+  });
+
+  test("returns false when header is missing", () => {
+    const result = verifyInternalSecret(reqWithSecret());
+    expect(result).toBe(false);
+  });
+
+  test("returns false for wrong value", () => {
+    const result = verifyInternalSecret(reqWithSecret("wrong-secret"));
+    expect(result).toBe(false);
+  });
+
+  test("returns false for wrong length", () => {
+    const result = verifyInternalSecret(reqWithSecret("short"));
+    expect(result).toBe(false);
   });
 });

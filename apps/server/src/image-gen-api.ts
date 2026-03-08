@@ -1,11 +1,6 @@
 import { generateImage } from "./image-gen.ts";
 import { logError } from "./env.ts";
-import { parseJsonBody } from "./middleware.ts";
-
-const INTERNAL_SECRET = Bun.env.INTERNAL_SECRET ?? "";
-if (!INTERNAL_SECRET && process.env.NODE_ENV === "production") {
-  throw new Error("[security] INTERNAL_SECRET must be set in production");
-}
+import { parseJsonBody, verifyInternalSecret } from "./middleware.ts";
 
 /**
  * POST /api/images/generate
@@ -14,8 +9,7 @@ if (!INTERNAL_SECRET && process.env.NODE_ENV === "production") {
  * Requires X-Internal-Secret header. Returns { assetId, url }.
  */
 export async function handleGenerateImage(req: Request): Promise<Response> {
-  const secret = req.headers.get("X-Internal-Secret");
-  if (!INTERNAL_SECRET || secret !== INTERNAL_SECRET) {
+  if (!verifyInternalSecret(req)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 

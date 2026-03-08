@@ -1,6 +1,6 @@
 import { sql } from "./db.ts";
 import { logError } from "./env.ts";
-import { parseJsonBody } from "./middleware.ts";
+import { parseJsonBody, verifyInternalSecret } from "./middleware.ts";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
@@ -71,18 +71,8 @@ export async function sendPushNotification(
   }
 }
 
-const INTERNAL_SECRET = Bun.env.INTERNAL_SECRET ?? "";
-if (!INTERNAL_SECRET && process.env.NODE_ENV === "production") {
-  throw new Error("[security] INTERNAL_SECRET must be set in production");
-}
-if (!INTERNAL_SECRET) {
-  console.warn("[push] INTERNAL_SECRET not set — internal push endpoint will reject all requests");
-}
-
 export async function handleInternalPush(req: Request): Promise<Response> {
-  // Internal endpoint called by the Python agent
-  const secret = req.headers.get("X-Internal-Secret");
-  if (!INTERNAL_SECRET || secret !== INTERNAL_SECRET) {
+  if (!verifyInternalSecret(req)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 

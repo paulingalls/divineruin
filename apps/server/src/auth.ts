@@ -148,11 +148,10 @@ export async function handleVerifyCode(req: Request): Promise<Response> {
     return Response.json({ error: "Invalid code" }, { status: 401 });
   }
 
-  // Look up valid code
-  const codes: { id: string }[] = await sql`
-    SELECT id FROM auth_codes
+  // Look up active code for account (don't match submitted code in SQL)
+  const codes: { id: string; code: string; failed_attempts: number }[] = await sql`
+    SELECT id, code, failed_attempts FROM auth_codes
     WHERE account_id = ${account.id}
-      AND code = ${rawCode}
       AND used = FALSE
       AND expires_at > NOW()
     ORDER BY created_at DESC
@@ -160,6 +159,23 @@ export async function handleVerifyCode(req: Request): Promise<Response> {
   `;
   const authCode = codes[0];
   if (!authCode) {
+    return Response.json({ error: "Invalid code" }, { status: 401 });
+  }
+
+  // Check if locked out
+  if (authCode.failed_attempts >= 5) {
+    await sql`UPDATE auth_codes SET used = TRUE WHERE id = ${authCode.id}`;
+    return Response.json({ error: "Invalid code" }, { status: 401 });
+  }
+
+  // Check submitted code
+  if (authCode.code !== rawCode) {
+    const newAttempts = authCode.failed_attempts + 1;
+    if (newAttempts >= 5) {
+      await sql`UPDATE auth_codes SET used = TRUE, failed_attempts = ${newAttempts} WHERE id = ${authCode.id}`;
+    } else {
+      await sql`UPDATE auth_codes SET failed_attempts = ${newAttempts} WHERE id = ${authCode.id}`;
+    }
     return Response.json({ error: "Invalid code" }, { status: 401 });
   }
 

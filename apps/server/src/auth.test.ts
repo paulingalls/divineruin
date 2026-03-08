@@ -159,7 +159,7 @@ describe("handleVerifyCode", () => {
     // Calls: find account, find code, mark used, update login, find player
     setMockResults(
       [{ id: "acc-uuid-abc" }], // SELECT account by email
-      [{ id: "code-uuid-1" }], // SELECT valid code
+      [{ id: "code-uuid-1", code: "123456", failed_attempts: 0 }], // SELECT active code
       [], // UPDATE auth_codes SET used
       [], // UPDATE accounts last_login
       [{ player_id: "player_acc-uuid" }], // SELECT player by account_id
@@ -186,7 +186,7 @@ describe("handleVerifyCode", () => {
     // Calls: find account, find code, mark used, update login, find player (empty), insert player
     setMockResults(
       [{ id: "acc-uuid-new" }], // SELECT account
-      [{ id: "code-uuid-2" }], // SELECT valid code
+      [{ id: "code-uuid-2", code: "654321", failed_attempts: 0 }], // SELECT active code
       [], // UPDATE auth_codes
       [], // UPDATE accounts
       [], // SELECT player (none)
@@ -205,6 +205,57 @@ describe("handleVerifyCode", () => {
       player_id: string;
     };
     expect(body.player_id).toBe("player_acc-uuid");
+  });
+
+  test("wrong code increments failed_attempts", async () => {
+    // Calls: find account, find code (attempts=0), update failed_attempts
+    setMockResults(
+      [{ id: "acc-uuid-abc" }],
+      [{ id: "code-uuid-1", code: "123456", failed_attempts: 0 }],
+      [], // UPDATE failed_attempts
+    );
+
+    const res = await handleVerifyCode(
+      jsonReq("/api/auth/verify-code", {
+        email: "test@example.com",
+        code: "999999",
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  test("5th wrong attempt invalidates the code", async () => {
+    // Calls: find account, find code (attempts=4), update used+failed_attempts
+    setMockResults(
+      [{ id: "acc-uuid-abc" }],
+      [{ id: "code-uuid-1", code: "123456", failed_attempts: 4 }],
+      [], // UPDATE auth_codes SET used=TRUE, failed_attempts=5
+    );
+
+    const res = await handleVerifyCode(
+      jsonReq("/api/auth/verify-code", {
+        email: "test@example.com",
+        code: "999999",
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  test("locked-out code rejects even correct input", async () => {
+    // Calls: find account, find code (attempts=5), update used
+    setMockResults(
+      [{ id: "acc-uuid-abc" }],
+      [{ id: "code-uuid-1", code: "123456", failed_attempts: 5 }],
+      [], // UPDATE auth_codes SET used=TRUE
+    );
+
+    const res = await handleVerifyCode(
+      jsonReq("/api/auth/verify-code", {
+        email: "test@example.com",
+        code: "123456",
+      }),
+    );
+    expect(res.status).toBe(401);
   });
 });
 

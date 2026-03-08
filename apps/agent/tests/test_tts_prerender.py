@@ -120,6 +120,18 @@ class TestSynthesizeToFile:
             assert os.path.getsize(output_path) == 200
 
     @pytest.mark.asyncio
+    async def test_rejects_relative_path_traversal(self):
+        """Reject paths containing '..' to prevent directory traversal."""
+        with pytest.raises(ValueError, match="Path traversal"):
+            await synthesize_to_file("Hello", "voice_1", "/tmp/audio/../../../etc/passwd")
+
+    @pytest.mark.asyncio
+    async def test_rejects_absolute_path_traversal(self):
+        """Reject paths with '..' even in nested components."""
+        with pytest.raises(ValueError, match="Path traversal"):
+            await synthesize_to_file("Hello", "voice_1", "output/../../secret.mp3")
+
+    @pytest.mark.asyncio
     async def test_returns_filename_only(self):
         """Verify returned value is just the filename, not full path."""
         mock_frame = _make_mock_frame(b"\x00" * 10)

@@ -191,12 +191,14 @@ export async function handleListActivities(req: Request, playerId: string): Prom
         SELECT id, data FROM async_activities
         WHERE player_id = ${playerId} AND data->>'status' = ${statusFilter}
         ORDER BY created_at DESC
+        LIMIT 100
       `;
     } else {
       rows = await sql`
         SELECT id, data FROM async_activities
         WHERE player_id = ${playerId}
         ORDER BY created_at DESC
+        LIMIT 100
       `;
     }
 

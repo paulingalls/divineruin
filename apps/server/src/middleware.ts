@@ -1,3 +1,17 @@
+import { timingSafeEqual } from "crypto";
+
+const INTERNAL_SECRET = Bun.env.INTERNAL_SECRET ?? "";
+if (!INTERNAL_SECRET && process.env.NODE_ENV === "production") {
+  throw new Error("[security] INTERNAL_SECRET must be set in production.");
+}
+
+export function verifyInternalSecret(req: Request): boolean {
+  if (!INTERNAL_SECRET) return false;
+  const header = req.headers.get("X-Internal-Secret") ?? "";
+  if (header.length !== INTERNAL_SECRET.length) return false;
+  return timingSafeEqual(Buffer.from(header), Buffer.from(INTERNAL_SECRET));
+}
+
 if (!Bun.env.CORS_ORIGIN && process.env.NODE_ENV === "production") {
   throw new Error("[security] CORS_ORIGIN must be set in production.");
 }
@@ -27,7 +41,9 @@ export function withCors(response: Response): Response {
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
   }
-  response.headers.set("Cache-Control", "private, no-store");
+  if (!response.headers.has("Cache-Control")) {
+    response.headers.set("Cache-Control", "private, no-store");
+  }
   return response;
 }
 
