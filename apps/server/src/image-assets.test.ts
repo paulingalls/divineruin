@@ -21,7 +21,7 @@ test("handleImageAsset returns 400 for invalid ID with special chars", async () 
   const mod = await import("./image-assets.ts");
   const res = await mod.handleImageAsset("../etc/passwd");
   expect(res.status).toBe(400);
-  const body = await res.json();
+  const body = (await res.json()) as { error: string };
   expect(body.error).toBe("Invalid asset ID");
 });
 
@@ -29,7 +29,7 @@ test("handleImageAsset returns 404 for missing file", async () => {
   const mod = await import("./image-assets.ts");
   const res = await mod.handleImageAsset("img_nonexistent1234");
   expect(res.status).toBe(404);
-  const body = await res.json();
+  const body = (await res.json()) as { error: string };
   expect(body.error).toBe("Not found");
 });
 

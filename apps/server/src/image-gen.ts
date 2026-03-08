@@ -1,11 +1,11 @@
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI, type ThinkingLevel } from "@google/genai";
 import { requireEnv, logError } from "./env.ts";
 import { sql } from "./db.ts";
 import { resolvePrompt } from "./image-prompt-templates.ts";
 import { postProcessImage } from "./image-post-process.ts";
 
 function getImageDir(): string {
-  return Bun.env.ASSET_IMAGE_DIR ?? `${import.meta.dir}/../../assets/images`;
+  return Bun.env.ASSET_IMAGE_DIR ?? `${import.meta.dir}/../../../assets/images`;
 }
 
 export function computeAssetId(templateId: string, vars: Record<string, string>): string {
@@ -48,7 +48,7 @@ export async function generateImage(
     config: {
       responseModalities: ["IMAGE"],
       thinkingConfig: {
-        thinkingLevel: ThinkingLevel.HIGH,
+        thinkingLevel: "HIGH" as ThinkingLevel,
       },
     },
   });

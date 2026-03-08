@@ -49,7 +49,6 @@ await mock.module("@google/genai", () => ({
         }),
     };
   },
-  ThinkingLevel: { HIGH: "HIGH", MEDIUM: "MEDIUM", LOW: "LOW" },
 }));
 
 // Mock db to avoid real database connection

@@ -11,6 +11,7 @@ export default tseslint.config(
       "**/.expo/",
       "**/android/",
       "**/ios/",
+      "**/metro.config.js",
       "apps/agent/",
       "scripts/",
       "apps/mobile/test-preload.ts",

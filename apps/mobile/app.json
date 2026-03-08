@@ -12,12 +12,7 @@
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Divine Ruin needs microphone access to talk to the Dungeon Master"
       },
-      "bitcode": false,
-      "splash": {
-        "image": "./assets/images/splash.png",
-        "resizeMode": "cover",
-        "backgroundColor": "#0A0A0B"
-      }
+      "bitcode": false
     },
     "android": {
       "adaptiveIcon": {
@@ -54,10 +49,12 @@
         {
           "image": "./assets/images/splash.png",
           "backgroundColor": "#0A0A0B",
-          "imageResizeMode": "cover",
+          "resizeMode": "cover",
+          "enableFullScreenImage_legacy": true,
           "android": {
             "image": "./assets/images/splash.png",
-            "imageResizeMode": "cover"
+            "backgroundColor": "#0A0A0B",
+            "imageWidth": 288
           }
         }
       ],
@@ -69,6 +66,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "132df1ee-041d-4289-a374-f56152c971e0"
+      }
+    },
+    "owner": "paulingalls94"
   }
 }

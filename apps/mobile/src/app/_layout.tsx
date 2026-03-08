@@ -93,6 +93,7 @@ export default function RootLayout() {
   if (authPhase !== "authenticated") {
     return (
       <ThemeProvider value={DivineRuinTheme}>
+        <AnimatedSplashOverlay />
         <GestureHandlerRootView style={{ flex: 1 }}>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="auth" />
