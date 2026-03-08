@@ -505,5 +505,248 @@
     "value_modifiers": {},
     "lore": "Temple-made restorative. Useful for burns, minor corruption exposure, and the general wear of adventuring.",
     "found_in": ["accord_temple_row"]
+  },
+  {
+    "id": "hunting_bow",
+    "name": "Hunting Bow",
+    "tier": 2,
+    "type": "weapon",
+    "rarity": "common",
+    "description": "A short recurve bow of yew and sinew. Light enough for a day's carry, strong enough to drop a deer at forty paces. The grip is worn smooth by someone else's hands.",
+    "tags": ["weapon", "ranged", "basic"],
+    "weight": 2.0,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d6",
+        "damage_type": "piercing",
+        "properties": ["ranged", "two-handed"],
+        "range": "80/320"
+      }
+    ],
+    "value_base": 125,
+    "value_modifiers": {},
+    "lore": "A practical hunting bow. Not a war weapon — but most things you'll fight don't know the difference.",
+    "found_in": ["accord_market_square", "accord_forge"],
+    "art_template": {
+      "template_id": "item_weapon",
+      "vars": { "weapon_type": "short recurve hunting bow with a worn leather grip" }
+    }
+  },
+  {
+    "id": "quarterstaff_oak",
+    "name": "Oak Quarterstaff",
+    "tier": 2,
+    "type": "weapon",
+    "rarity": "common",
+    "description": "A length of seasoned oak, iron-shod at both ends. Simple. Effective. The weapon of someone who learned to fight before they learned to kill.",
+    "tags": ["weapon", "melee", "caster", "basic"],
+    "weight": 4.0,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d6",
+        "damage_type": "bludgeoning",
+        "properties": ["versatile"],
+        "versatile_damage": "1d8"
+      }
+    ],
+    "value_base": 20,
+    "value_modifiers": {},
+    "lore": "The oldest weapon. Druids, wanderers, and anyone too poor for steel. Don't underestimate it.",
+    "found_in": ["accord_market_square"],
+    "art_template": {
+      "template_id": "item_weapon",
+      "vars": { "weapon_type": "iron-shod oak quarterstaff" }
+    }
+  },
+  {
+    "id": "war_mace",
+    "name": "War Mace",
+    "tier": 2,
+    "type": "weapon",
+    "rarity": "common",
+    "description": "A flanged steel mace with a leather-wrapped handle. Heavy in the hand, heavier on impact. The flanges are sharp enough to catch in armor and pull.",
+    "tags": ["weapon", "melee", "blunt", "holy"],
+    "weight": 4.0,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d6",
+        "damage_type": "bludgeoning",
+        "properties": []
+      }
+    ],
+    "value_base": 150,
+    "value_modifiers": {},
+    "lore": "Standard for temple wardens and paladins. Grimjaw forges them without complaint — 'Steel doesn't care about your god. It cares about your wrist.'",
+    "found_in": ["accord_forge", "accord_temple_row"],
+    "art_template": {
+      "template_id": "item_weapon",
+      "vars": { "weapon_type": "flanged steel war mace with leather-wrapped handle" }
+    }
+  },
+  {
+    "id": "scale_mail",
+    "name": "Scale Mail",
+    "tier": 2,
+    "type": "armor",
+    "rarity": "common",
+    "description": "Overlapping steel scales riveted to a leather backing. Noisy, heavy, and reassuring. You feel the weight settle on your shoulders like a promise.",
+    "tags": ["armor", "heavy", "metal"],
+    "weight": 45.0,
+    "effects": [
+      {
+        "type": "armor",
+        "ac_bonus": 14,
+        "properties": ["heavy", "stealth_disadvantage"]
+      }
+    ],
+    "value_base": 500,
+    "value_modifiers": {},
+    "lore": "Grimjaw's heavy work. He takes visible pride in scale — 'Every plate has to sit right, or the whole thing fails. Like people.'",
+    "found_in": ["accord_forge"],
+    "art_template": {
+      "template_id": "item_quest",
+      "vars": {
+        "item_description": "a coat of overlapping steel scales riveted to leather backing",
+        "item_features": "the layered steel scales, leather straps, and rivet heads catching light"
+      }
+    }
+  },
+  {
+    "id": "travelers_cloak",
+    "name": "Traveler's Cloak",
+    "tier": 2,
+    "type": "armor",
+    "rarity": "uncommon",
+    "description": "A heavy wool cloak, dark grey, with a deep hood and an inner pocket sewn shut with precise stitches. It's warmer than it should be and seems to drink shadow.",
+    "tags": ["armor", "cloak", "stealth"],
+    "weight": 2.0,
+    "effects": [
+      {
+        "type": "armor",
+        "ac_bonus": 0,
+        "properties": ["stealth_advantage_dim_light", "cold_resistance"]
+      }
+    ],
+    "value_base": 200,
+    "value_modifiers": {},
+    "lore": "Bryn sold it from under the bar without explanation. It smells faintly of foreign smoke and old secrets. She didn't say where she got it. You didn't ask.",
+    "found_in": ["accord_hearthstone_tavern"],
+    "art_template": {
+      "template_id": "item_quest",
+      "vars": {
+        "item_description": "a heavy dark wool cloak with a deep hood",
+        "item_features": "the dense weave, deep hood shadow, and folds that seem to absorb light"
+      }
+    }
+  },
+  {
+    "id": "hollow_edge_blade",
+    "name": "Hollow-Edge Blade",
+    "tier": 1,
+    "type": "weapon",
+    "rarity": "rare",
+    "description": "A short blade forged from an alloy of steel and processed Hollow-bone. The edge has a faint teal sheen that shifts when you move it. It's lighter than it should be and hums — not audibly, but in your wrist, in your teeth. It wants to cut.",
+    "tags": ["weapon", "melee", "hollow", "experimental", "grimjaw"],
+    "weight": 2.0,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d8",
+        "damage_type": "slashing",
+        "properties": ["light", "finesse"],
+        "bonus_damage": "1d4",
+        "bonus_damage_type": "necrotic",
+        "bonus_condition": "vs_hollow"
+      },
+      {
+        "type": "passive_aura",
+        "description": "The blade hums faintly at night. Dreams are sharper when it's nearby."
+      }
+    ],
+    "value_base": 0,
+    "value_modifiers": {},
+    "lore": "Grimjaw told Torin the first batch failed. He kept this one. It works — too well. The Hollow material makes it effective against the creatures it came from, but something about the alloy feels alive. He'll only give it to someone he trusts to use it right.",
+    "found_in": ["accord_forge"],
+    "art_template": {
+      "template_id": "item_corrupted_artifact",
+      "vars": {
+        "item_description": "a short blade with a faint teal sheen along the edge",
+        "item_features": "the dark steel-and-bone alloy, the shifting teal edge, and runes etched into the fuller"
+      }
+    }
+  },
+  {
+    "id": "aelindran_focus_crystal",
+    "name": "Aelindran Focus Crystal",
+    "tier": 1,
+    "type": "accessory",
+    "rarity": "rare",
+    "description": "A faceted crystal the size of a walnut, mounted in a tarnished silver cage on a fine chain. It's old — centuries old. When you hold it, you feel a faint pressure behind your eyes, like the beginning of a memory that isn't yours.",
+    "tags": ["aelindran", "caster", "focus", "accessory", "veil-touched"],
+    "weight": 0.2,
+    "effects": [
+      {
+        "type": "spell_focus",
+        "description": "Can be used as an arcane or divine focus for spellcasting"
+      },
+      {
+        "type": "passive_detect",
+        "trigger": "near_veil_weakness",
+        "description": "The crystal pulses with faint light near Veil disturbances"
+      }
+    ],
+    "value_base": 0,
+    "value_modifiers": {
+      "npc:scholar_emris": 50.0,
+      "faction:aelindran_diaspora": 5.0
+    },
+    "lore": "Found on the remains of an Aelindran researcher in the inner ruins. The silver cage is engraved with Veythar's personal notation — the same system as the journal pages. Whoever carried this was part of the secret project.",
+    "found_in": ["greyvale_ruins_inner"],
+    "art_template": {
+      "template_id": "item_quest",
+      "vars": {
+        "item_description": "a faceted crystal in a tarnished silver cage on a fine chain",
+        "item_features": "the multifaceted crystal surface, intricate silver cage work, and faint inner luminescence"
+      }
+    }
+  },
+  {
+    "id": "veil_touched_ring",
+    "name": "Veil-Touched Ring",
+    "tier": 1,
+    "type": "accessory",
+    "rarity": "uncommon",
+    "description": "A plain iron band, cold to the touch. The inside is engraved with tiny script you can't read. When you put it on, the world looks slightly different — edges sharper, shadows deeper. Something about it makes you notice things you'd normally miss.",
+    "tags": ["accessory", "ring", "veil-touched", "perception"],
+    "weight": 0.1,
+    "effects": [
+      {
+        "type": "passive_bonus",
+        "skill": "perception",
+        "bonus": 1,
+        "description": "+1 to perception checks"
+      },
+      {
+        "type": "passive_resistance",
+        "damage_type": "necrotic",
+        "description": "Minor resistance to Hollow corruption effects"
+      }
+    ],
+    "value_base": 100,
+    "value_modifiers": {
+      "faction:aelindran_diaspora": 3.0
+    },
+    "lore": "Recovered from a skeleton in the Greyvale Ruins. The researcher died at their desk — quill still in hand, notes scattered. The ring was the only thing of value left. It's been near the Veil for a long time, and it shows.",
+    "found_in": ["greyvale_ruins_entrance"],
+    "art_template": {
+      "template_id": "item_quest",
+      "vars": {
+        "item_description": "a plain iron ring with tiny engraved script on the inside",
+        "item_features": "the dark iron surface, microscopic interior engraving, and faint cold aura"
+      }
+    }
   }
 ]

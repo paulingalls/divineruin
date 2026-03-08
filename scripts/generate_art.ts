@@ -344,6 +344,65 @@ const MVP_BATCH: BatchEntry[] = [
     label: "Holy Water",
   },
 
+  // New weapon types
+  {
+    templateId: "item_weapon",
+    vars: { weapon_type: "short recurve hunting bow with a worn leather grip" },
+    label: "Hunting Bow",
+  },
+  {
+    templateId: "item_weapon",
+    vars: { weapon_type: "iron-shod oak quarterstaff" },
+    label: "Oak Quarterstaff",
+  },
+  {
+    templateId: "item_weapon",
+    vars: { weapon_type: "flanged steel war mace with leather-wrapped handle" },
+    label: "War Mace",
+  },
+  // Earned / discovered gear
+  {
+    templateId: "item_corrupted_artifact",
+    vars: {
+      item_description: "a short blade with a faint teal sheen along the edge",
+      item_features: "the dark steel-and-bone alloy, the shifting teal edge, and runes etched into the fuller",
+    },
+    label: "Hollow-Edge Blade",
+  },
+  {
+    templateId: "item_quest",
+    vars: {
+      item_description: "a faceted crystal in a tarnished silver cage on a fine chain",
+      item_features: "the multifaceted crystal surface, intricate silver cage work, and faint inner luminescence",
+    },
+    label: "Aelindran Focus Crystal",
+  },
+  {
+    templateId: "item_quest",
+    vars: {
+      item_description: "a plain iron ring with tiny engraved script on the inside",
+      item_features: "the dark iron surface, microscopic interior engraving, and faint cold aura",
+    },
+    label: "Veil-Touched Ring",
+  },
+  // Armor additions
+  {
+    templateId: "item_quest",
+    vars: {
+      item_description: "a coat of overlapping steel scales riveted to leather backing",
+      item_features: "the layered steel scales, leather straps, and rivet heads catching light",
+    },
+    label: "Scale Mail",
+  },
+  {
+    templateId: "item_quest",
+    vars: {
+      item_description: "a heavy dark wool cloak with a deep hood",
+      item_features: "the dense weave, deep hood shadow, and folds that seem to absorb light",
+    },
+    label: "Traveler's Cloak",
+  },
+
   // Story moment illustrations
   { templateId: "story_combat", vars: {}, label: "Story: Combat Victory" },
   { templateId: "story_god_contact", vars: {}, label: "Story: God Contact" },
