@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
 import { useStore } from "zustand";
@@ -56,14 +56,20 @@ export function AtmosphericBackground() {
   }));
 
   return (
-    <AnimatedLinearGradient
-      colors={[topColor, bottomColor]}
-      style={[styles.gradient, animatedStyle]}
-    />
+    <View style={styles.gradientWrapper} pointerEvents="none">
+      <AnimatedLinearGradient
+        colors={[topColor, bottomColor]}
+        style={[styles.gradient, animatedStyle]}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.35,
+  },
   gradient: {
     ...StyleSheet.absoluteFillObject,
   },

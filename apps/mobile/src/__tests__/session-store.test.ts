@@ -8,6 +8,7 @@ const SAMPLE_LOCATION: LocationContext = {
   region: "Accord",
   tags: ["guild"],
   ambientSounds: "guild_hall_bustle",
+  timeOfDay: "evening",
 };
 
 const SAMPLE_SUMMARY: SessionSummary = {
@@ -17,6 +18,7 @@ const SAMPLE_SUMMARY: SessionSummary = {
   questProgress: ["guild_initiation"],
   duration: 600,
   nextHooks: ["Return to Torin after finding the artifact."],
+  lastLocationId: "accord_guild_hall",
 };
 
 beforeEach(() => {

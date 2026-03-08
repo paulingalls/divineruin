@@ -1173,15 +1173,15 @@ These overlays appear over the session screen center when triggered by data chan
 - Regeneration option: settings screen includes "Regenerate Portrait" button that generates a new portrait with the same parameters (variation in output).
 
 **Acceptance criteria:**
-- [ ] Character creation cards display ink wash art instead of slate rectangles for all MVP races, classes, and patrons
-- [ ] Art style is visually consistent across all creation cards (same ink wash treatment, same dark background, same dissolving edges)
-- [ ] Kael's portrait appears as a small avatar when the companion speaks during sessions
-- [ ] NPC portraits appear during NPC dialogue and fade away when the NPC stops speaking
-- [ ] Player character portrait generates after creation and appears on the home screen within 30 seconds
-- [ ] Portrait regeneration produces a visibly different (but stylistically consistent) result
-- [ ] All portraits use the correct aspect ratios from the prompt library (3:4 for companions/player, 1:1 for NPCs)
-- [ ] Images load gracefully — slate placeholder shown during load, cross-fade to image on ready
-- [ ] No image display blocks or delays the voice pipeline or DM narration
+- [x] Character creation cards display ink wash art instead of slate rectangles for all MVP races, classes, and patrons
+- [x] Art style is visually consistent across all creation cards (same ink wash treatment, same dark background, same dissolving edges)
+- [x] Kael's portrait appears as a small avatar when the companion speaks during sessions
+- [x] NPC portraits appear during NPC dialogue and fade away when the NPC stops speaking
+- [x] Player character portrait generates after creation and appears on the home screen within 30 seconds
+- [x] Portrait regeneration produces a visibly different (but stylistically consistent) result
+- [x] All portraits use the correct aspect ratios from the prompt library (3:4 for companions/player, 1:1 for NPCs)
+- [x] Images load gracefully — slate placeholder shown during load, cross-fade to image on ready
+- [x] No image display blocks or delays the voice pipeline or DM narration
 
 **Key references:**
 - *Image Prompt Library — Category 1: Character Portraits* (all portrait templates)
@@ -1226,20 +1226,20 @@ These overlays appear over the session screen center when triggered by data chan
 - Session history entries: small thumbnail of the session's primary location art (48px square, rounded corners) next to each session in the history list.
 
 **Acceptance criteria:**
-- [ ] Each MVP location displays its ink wash illustration as the session background (visible through semi-transparent gradient)
-- [ ] Location art is atmospheric and non-distracting — HUD text and overlays remain clearly readable over the art
-- [ ] Location transitions cross-fade art and audio simultaneously — the visual and audio shifts feel unified
-- [ ] Night variants display for locations when the world clock indicates nighttime
-- [ ] Hollow corruption stages 1-3 produce progressively more unsettling visual effects (teal bleed, distortion, noise)
-- [ ] Corruption visual effects transition smoothly as the player moves between corruption stages (no hard cuts)
-- [ ] App launch shows an ink wash loading screen that fades into the home screen
-- [ ] Session connecting state shows atmospheric art that transitions to location art on session init
-- [ ] Session summary screen displays final location art as a dimmed background
-- [ ] Session history entries on home screen show location art thumbnails
-- [ ] All location art matches the ink wash style (dark background, dissolving edges, correct accent colors per location)
-- [ ] Static MVP art assets are bundled in the app binary — loading screen, locations, portraits, and items display without network requests
+- [x] Each MVP location displays its ink wash illustration as the session background (visible through semi-transparent gradient)
+- [x] Location art is atmospheric and non-distracting — HUD text and overlays remain clearly readable over the art
+- [x] Location transitions cross-fade art and audio simultaneously — the visual and audio shifts feel unified
+- [x] Night variants display for locations when the world clock indicates nighttime
+- [x] Hollow corruption stages 1-3 produce progressively more unsettling visual effects (teal bleed, distortion, noise)
+- [x] Corruption visual effects transition smoothly as the player moves between corruption stages (no hard cuts)
+- [x] App launch shows an ink wash loading screen that fades into the home screen
+- [x] Session connecting state shows atmospheric art that transitions to location art on session init
+- [x] Session summary screen displays final location art as a dimmed background
+- [x] Session history entries on home screen show location art thumbnails
+- [x] All location art matches the ink wash style (dark background, dissolving edges, correct accent colors per location)
+- [x] Static MVP art assets are bundled in the app binary — loading screen, locations, portraits, and items display without network requests
 - [ ] Dynamically generated art (player portraits) loads from the server endpoint and caches locally after first fetch
-- [ ] Art display does not impact session performance — images are pre-cached, transitions run at 60fps
+- [x] Art display does not impact session performance — images are pre-cached, transitions run at 60fps
 
 **Key references:**
 - *Image Prompt Library — Category 2: Location Illustrations* (all location templates)

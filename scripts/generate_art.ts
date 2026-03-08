@@ -15,6 +15,8 @@ interface BatchEntry {
   templateId: string;
   vars: Record<string, string>;
   label: string;
+  /** When set, the generated image is also copied to the mobile assets dir with this filename. */
+  locationId?: string;
 }
 
 const MVP_BATCH: BatchEntry[] = [
@@ -22,41 +24,118 @@ const MVP_BATCH: BatchEntry[] = [
   { templateId: "companion_portrait_primary", vars: {}, label: "Kael primary" },
   { templateId: "companion_portrait_alert", vars: {}, label: "Kael alert" },
 
-  // Location illustrations
+  // Location illustrations — Accord of Tides
   {
     templateId: "location_town",
-    vars: { location_name: "Market Square of Greyvale" },
+    vars: { location_name: "Market Square of the Accord of Tides" },
     label: "Market Square",
+    locationId: "accord_market_square",
   },
   {
     templateId: "location_interior",
     vars: { location_name: "The Hearthstone Tavern" },
     label: "Tavern",
+    locationId: "accord_hearthstone_tavern",
   },
   {
+    templateId: "location_interior",
+    vars: { location_name: "the Guild Hall of the Accord of Tides" },
+    label: "Guild Hall",
+    locationId: "accord_guild_hall",
+  },
+  {
+    templateId: "location_town",
+    vars: { location_name: "Temple Row, an avenue lined with temples to four gods" },
+    label: "Temple Row",
+    locationId: "accord_temple_row",
+  },
+  {
+    templateId: "location_town",
+    vars: { location_name: "the Dockside Quarter of the Accord of Tides" },
+    label: "Dockside",
+    locationId: "accord_dockside",
+  },
+  {
+    templateId: "location_interior",
+    vars: { location_name: "Grimjaw's Forge, a roaring stone hearth with walls of weapons" },
+    label: "Forge",
+    locationId: "accord_forge",
+  },
+
+  // Location illustrations — Greyvale
+  {
     templateId: "location_wilderness",
-    vars: { location_name: "the Forest Road outside Greyvale" },
-    label: "Forest Road",
+    vars: { location_name: "the South Road through barley fields outside the city" },
+    label: "South Road",
+    locationId: "greyvale_south_road",
   },
   {
     templateId: "location_town",
     vars: { location_name: "Millhaven, a quiet hamlet on the river" },
     label: "Millhaven",
+    locationId: "millhaven",
+  },
+  {
+    templateId: "location_interior",
+    vars: { location_name: "the Millhaven Inn, dim and half-empty" },
+    label: "Millhaven Inn",
+    locationId: "millhaven_inn",
+  },
+  {
+    templateId: "location_wilderness",
+    vars: { location_name: "the northern Greyvale wilderness, an unnaturally silent forest" },
+    label: "Northern Wilds",
+    locationId: "greyvale_wilderness_north",
+  },
+  {
+    templateId: "location_wilderness",
+    vars: { location_name: "the surface ruins of Greyvale, broken stones on a windswept hilltop" },
+    label: "Ruins Surface",
+    locationId: "greyvale_ruins_exterior",
   },
   {
     templateId: "location_corrupted",
-    vars: { location_name: "the Ruins of the Old Seminary" },
+    vars: { location_name: "the Ruins of the Old Seminary entrance hall" },
     label: "Ruins Entrance",
+    locationId: "greyvale_ruins_entrance",
   },
   {
     templateId: "location_corrupted",
     vars: { location_name: "the inner sanctum of the corrupted ruins" },
     label: "Ruins Interior",
+    locationId: "greyvale_ruins_inner",
   },
   {
     templateId: "location_corrupted",
     vars: { location_name: "a breach in reality where the Hollow seeps through" },
     label: "Hollow Breach",
+    locationId: "hollow_incursion_site",
+  },
+
+  // Location illustrations — NPC quarters
+  {
+    templateId: "location_interior",
+    vars: { location_name: "Torin's Quarters, papers and maps covering every surface" },
+    label: "Torin's Quarters",
+    locationId: "torin_quarters",
+  },
+  {
+    templateId: "location_interior",
+    vars: { location_name: "Yanna's Farmhouse, worn but warm with dried herbs by the hearth" },
+    label: "Yanna's Farmhouse",
+    locationId: "yanna_farmhouse",
+  },
+  {
+    templateId: "location_interior",
+    vars: { location_name: "Emris's Study, a scholar's workspace overlooking the harbor" },
+    label: "Emris's Study",
+    locationId: "emris_study",
+  },
+  {
+    templateId: "location_interior",
+    vars: { location_name: "Grimjaw's Quarters, a spare room above the forge" },
+    label: "Grimjaw's Quarters",
+    locationId: "grimjaw_quarters",
   },
 
   // NPC portraits (Tier 1 — must match vars in db.py _build_portraits)
@@ -104,7 +183,7 @@ const MVP_BATCH: BatchEntry[] = [
   },
 
   // Loading screen
-  { templateId: "ui_loading_abstract", vars: {}, label: "Loading screen" },
+  { templateId: "ui_loading_abstract", vars: {}, label: "Loading screen", locationId: "loading_abstract" },
 
   // --- Race portraits (6) ---
   { templateId: "race_portrait", vars: { race_name: "Draethar", physical_features: "Large and powerful, with inner fire. Skin radiates heat in moments of exertion." }, label: "Race: Draethar" },
@@ -223,6 +302,35 @@ async function runBatch(batchName: string) {
   console.log(`Failed: ${total - generated - skipped}`);
   console.log(`Total time: ${totalElapsed}s`);
   console.log(`Est. cost: ~$${(generated * 0.04).toFixed(2)} (at ~$0.04/image)`);
+
+  // Copy location images to mobile assets for bundling
+  await copyLocationAssets();
+}
+
+async function copyLocationAssets() {
+  const mobileDir = `${import.meta.dir}/../apps/mobile/assets/images/locations`;
+  await Bun.$`mkdir -p ${mobileDir}`;
+
+  const locationEntries = MVP_BATCH.filter((e) => e.locationId);
+  let copied = 0;
+
+  console.log(`\nCopying ${locationEntries.length} location assets to mobile bundle...`);
+
+  for (const entry of locationEntries) {
+    try {
+      const result = await generateImage(entry.templateId, entry.vars);
+      const dest = `${mobileDir}/${entry.locationId}.png`;
+      const src = Bun.file(result.path);
+      if (await src.exists()) {
+        await Bun.write(dest, src);
+        copied++;
+      }
+    } catch {
+      console.warn(`  Warning: could not copy asset for ${entry.locationId}`);
+    }
+  }
+
+  console.log(`Copied ${copied}/${locationEntries.length} location assets.`);
 }
 
 // Parse CLI args

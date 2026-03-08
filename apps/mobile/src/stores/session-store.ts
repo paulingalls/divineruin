@@ -10,6 +10,7 @@ export interface LocationContext {
   region: string;
   tags: string[];
   ambientSounds: string;
+  timeOfDay: string;
 }
 
 export interface SessionSummary {
@@ -19,6 +20,7 @@ export interface SessionSummary {
   questProgress: string[];
   duration: number;
   nextHooks: string[];
+  lastLocationId: string;
 }
 
 interface SessionState {

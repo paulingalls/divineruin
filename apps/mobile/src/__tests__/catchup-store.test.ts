@@ -14,6 +14,7 @@ const SAMPLE_CARDS: CatchUpCard[] = [
     decisionOptions: null,
     activityType: null,
     progress: null,
+    locationId: null,
   },
   {
     id: "2",
@@ -27,6 +28,7 @@ const SAMPLE_CARDS: CatchUpCard[] = [
     decisionOptions: null,
     activityType: "companion_errand",
     progress: null,
+    locationId: null,
   },
 ];
 
@@ -61,6 +63,7 @@ test("setCards replaces existing cards", () => {
       decisionOptions: [{ id: "accept", label: "Accept" }],
       activityType: "companion_errand",
       progress: null,
+      locationId: null,
     },
   ];
   catchupStore.getState().setCards(newCards);
@@ -127,6 +130,7 @@ test("CatchUpCard supports in_progress type with progress data", () => {
       progressText: "The forge burns hot...",
       percentEstimate: 45,
     },
+    locationId: null,
   };
   catchupStore.getState().setCards([inProgressCard]);
   const card = catchupStore.getState().cards[0];
@@ -148,6 +152,7 @@ test("CatchUpCard supports companion_idle type", () => {
     decisionOptions: null,
     activityType: null,
     progress: null,
+    locationId: null,
   };
   catchupStore.getState().setCards([idleCard]);
   expect(catchupStore.getState().cards[0].type).toBe("companion_idle");

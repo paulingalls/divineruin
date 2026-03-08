@@ -173,6 +173,9 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }
 
       const location = event.location as Record<string, unknown> | null | undefined;
+      const worldState = event.world_state as Record<string, unknown> | undefined;
+      const initTimeOfDay =
+        worldState && typeof worldState.time === "string" ? worldState.time : "";
       if (location && typeof location === "object") {
         sessionStore.getState().setLocationContext({
           locationId: typeof location.id === "string" ? location.id : "",
@@ -181,6 +184,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
           region: typeof location.region === "string" ? location.region : "",
           tags: Array.isArray(location.tags) ? (location.tags as string[]) : [],
           ambientSounds: typeof location.ambient_sounds === "string" ? location.ambient_sounds : "",
+          timeOfDay: initTimeOfDay,
         });
       }
 
@@ -330,6 +334,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
         const atmosphere = typeof event.atmosphere === "string" ? event.atmosphere : "";
         const region = typeof event.region === "string" ? event.region : "";
         const ambientSounds = typeof event.ambient_sounds === "string" ? event.ambient_sounds : "";
+        const timeOfDay = typeof event.time_of_day === "string" ? event.time_of_day : "";
         sessionStore.getState().setLocationContext({
           locationId: event.new_location,
           locationName,
@@ -337,6 +342,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
           region,
           tags: [],
           ambientSounds,
+          timeOfDay,
         });
         characterStore.getState().updateLocation(event.new_location, locationName);
         const connections = Array.isArray(event.connections) ? (event.connections as string[]) : [];
@@ -442,6 +448,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
             : [],
           duration: typeof event.duration === "number" ? event.duration : 0,
           nextHooks: Array.isArray(event.next_hooks) ? (event.next_hooks as string[]) : [],
+          lastLocationId: store.locationContext?.locationId ?? "",
         });
         store.setPhase("summary");
       } else {

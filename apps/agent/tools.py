@@ -1243,6 +1243,7 @@ async def move_player(
                     "region": destination_location.get("region", "") if destination_location else "",
                     "connections": exit_connections,
                     "ambient_sounds": _resolve_ambient_sounds(destination_location, session.world_time),
+                    "time_of_day": session.world_time,
                 },
             )
         )

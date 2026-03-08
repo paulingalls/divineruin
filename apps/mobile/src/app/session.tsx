@@ -12,10 +12,14 @@ import { ConnectionState } from "livekit-client";
 import { useStore } from "zustand";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
+import { Image } from "expo-image";
 import { ThemedText } from "@/components/themed-text";
 import { TranscriptView } from "@/components/transcript-view";
 import { AtmosphericBackground } from "@/components/atmospheric-background";
+import { LocationArtBackground } from "@/components/location-art-background";
+import { CorruptionOverlay } from "@/components/corruption-overlay";
 import { ReconnectionOverlay } from "@/components/reconnection-overlay";
+import { LOADING_ART } from "@/constants/location-art-registry";
 import { PersistentBar } from "@/components/hud/persistent-bar";
 import { OverlayManager } from "@/components/hud/overlay-manager";
 import { PanelShell } from "@/components/hud/panel-shell";
@@ -114,6 +118,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
           region: "",
           tags: [],
           ambientSounds: "",
+          timeOfDay: "",
         });
       }
     }
@@ -212,6 +217,11 @@ export default function SessionScreen() {
   if (state === "error") {
     return (
       <View style={styles.container}>
+        <Image
+          source={LOADING_ART}
+          style={[StyleSheet.absoluteFill, styles.loadingArt]}
+          contentFit="cover"
+        />
         <AtmosphericBackground />
         <SafeAreaView style={styles.safeArea}>
           <ThemedText variant="h1" style={styles.centered}>
@@ -229,6 +239,11 @@ export default function SessionScreen() {
   if (state !== "ready" || !token || !serverUrl) {
     return (
       <View style={styles.container}>
+        <Image
+          source={LOADING_ART}
+          style={[StyleSheet.absoluteFill, styles.loadingArt]}
+          contentFit="cover"
+        />
         <AtmosphericBackground />
         <SafeAreaView style={styles.safeArea}>
           <ThemedText variant="h1" style={styles.centered}>
@@ -241,7 +256,9 @@ export default function SessionScreen() {
 
   return (
     <View style={styles.container}>
+      <LocationArtBackground />
       <AtmosphericBackground />
+      <CorruptionOverlay />
       <SafeAreaView style={styles.safeArea}>
         <LiveKitRoom serverUrl={serverUrl} token={token} connect={true} audio={true} video={false}>
           <SessionContent onLeave={handleLeave} />
@@ -309,6 +326,9 @@ const styles = StyleSheet.create({
   },
   leaveText: {
     color: BrandColors.void,
+  },
+  loadingArt: {
+    opacity: 0.4,
   },
   swipeZone: {
     height: 24,

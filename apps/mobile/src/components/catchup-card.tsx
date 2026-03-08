@@ -1,7 +1,9 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { Image } from "expo-image";
 
 import { ThemedText } from "@/components/themed-text";
 import type { CatchUpCard } from "@/stores/catchup-store";
+import { resolveLocationArt } from "@/constants/location-art-registry";
 import { BrandColors, Spacing, Radius, Shadows, FontFamilies } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -32,6 +34,7 @@ export function CatchUpCardView({
 }: CatchUpCardViewProps) {
   const theme = useTheme();
   const dotColor = TYPE_DOT_COLORS[card.type];
+  const locationThumbnail = card.locationId ? resolveLocationArt(card.locationId) : null;
 
   if (card.type === "companion_idle") {
     return (
@@ -50,7 +53,11 @@ export function CatchUpCardView({
       ]}
     >
       <View style={styles.iconColumn}>
-        {dotColor && <View style={[styles.dot, { backgroundColor: dotColor }]} />}
+        {locationThumbnail !== null ? (
+          <Image source={locationThumbnail} style={styles.locationThumb} contentFit="cover" />
+        ) : (
+          dotColor && <View style={[styles.dot, { backgroundColor: dotColor }]} />
+        )}
       </View>
       <View style={styles.content}>
         <View style={styles.header}>
@@ -125,15 +132,21 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   iconColumn: {
-    width: 28,
+    width: 48,
     alignItems: "center",
     justifyContent: "flex-start",
-    paddingTop: 8,
+    paddingTop: 4,
+  },
+  locationThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: Radius.sm,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
+    marginTop: 4,
   },
   content: {
     flex: 1,

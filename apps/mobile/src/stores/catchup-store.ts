@@ -30,6 +30,7 @@ export interface CatchUpCard {
   decisionOptions: DecisionOption[] | null;
   activityType: string | null;
   progress: FeedItemProgress | null;
+  locationId: string | null;
 }
 
 interface CatchUpState {

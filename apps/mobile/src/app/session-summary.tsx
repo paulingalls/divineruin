@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useStore } from "zustand";
@@ -7,6 +8,7 @@ import { useStore } from "zustand";
 import { ThemedText } from "@/components/themed-text";
 import { sessionStore } from "@/stores/session-store";
 import { transcriptStore } from "@/stores/transcript-store";
+import { resolveLocationArt } from "@/constants/location-art-registry";
 import { BrandColors, FontFamilies, Spacing, Radius } from "@/constants/theme";
 
 function formatDuration(seconds: number): string {
@@ -41,8 +43,20 @@ export default function SessionSummaryScreen() {
     return null;
   }
 
+  const locationArt = summary.lastLocationId ? resolveLocationArt(summary.lastLocationId) : null;
+
   return (
     <View style={styles.container}>
+      {locationArt !== null && (
+        <>
+          <Image
+            source={locationArt}
+            style={[StyleSheet.absoluteFill, styles.summaryArt]}
+            contentFit="cover"
+          />
+          <View style={styles.summaryDarkOverlay} />
+        </>
+      )}
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
           style={styles.scroll}
@@ -96,6 +110,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BrandColors.void,
+  },
+  summaryArt: {
+    opacity: 0.2,
+  },
+  summaryDarkOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: BrandColors.void,
+    opacity: 0.5,
   },
   safeArea: {
     flex: 1,
