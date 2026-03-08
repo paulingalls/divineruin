@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { Image, StyleSheet, View, useWindowDimensions } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -37,6 +37,7 @@ export function CorruptionOverlay() {
 }
 
 function CorruptionOverlayInner({ stage }: { stage: number }) {
+  const { width, height } = useWindowDimensions();
   const tealOpacity = useSharedValue(0);
   const grainOpacity = useSharedValue(0);
   const vignetteOpacity = useSharedValue(0);
@@ -71,7 +72,11 @@ function CorruptionOverlayInner({ stage }: { stage: number }) {
       {/* Uses react-native Image (not expo-image) for resizeMode="repeat" support */}
       <Animated.View style={[styles.grainLayer, grainStyle]}>
         <View style={styles.grainTealUnder} />
-        <Image source={GRAIN_SOURCE} style={styles.grainImage} resizeMode="repeat" />
+        <Image
+          source={GRAIN_SOURCE}
+          style={[styles.grainImage, { width, height }]}
+          resizeMode="repeat"
+        />
       </Animated.View>
 
       {/* Edge darkening — solid borders that darken screen edges */}
@@ -83,7 +88,11 @@ function CorruptionOverlayInner({ stage }: { stage: number }) {
       {/* Stage 3: animated noise pulse */}
       {stage >= 3 && (
         <Animated.View style={[styles.grainLayer, noiseStyle]}>
-          <Image source={GRAIN_SOURCE} style={styles.grainImage} resizeMode="repeat" />
+          <Image
+            source={GRAIN_SOURCE}
+            style={[styles.grainImage, { width, height }]}
+            resizeMode="repeat"
+          />
         </Animated.View>
       )}
     </View>
@@ -107,7 +116,9 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   grainImage: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    left: 0,
   },
   // Edge darkening — solid dark borders over screen edges
   vignetteTop: {

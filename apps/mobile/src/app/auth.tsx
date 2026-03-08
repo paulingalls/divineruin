@@ -7,7 +7,9 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
@@ -28,6 +30,7 @@ export default function AuthScreen() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { width, height } = useWindowDimensions();
 
   const handleSendCode = async () => {
     const trimmed = email.trim().toLowerCase();
@@ -95,7 +98,11 @@ export default function AuthScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={styles.root}>
+      <LinearGradient
+        colors={[BrandColors.charcoal, BrandColors.void]}
+        style={{ position: "absolute", top: 0, left: 0, width, height }}
+      />
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
           style={styles.content}
@@ -103,12 +110,13 @@ export default function AuthScreen() {
         >
           <View style={styles.topSpacer} />
           <TitleBar />
+          <ThemedText style={styles.tagline}>Listen to the dark</ThemedText>
           <View style={styles.titleSpacer} />
 
           <View style={styles.form}>
             {phase === "email" ? (
               <>
-                <ThemedText style={styles.label}>ENTER YOUR EMAIL</ThemedText>
+                <ThemedText style={styles.label}>Enter your email</ThemedText>
                 <TextInput
                   style={styles.input}
                   value={email}
@@ -135,7 +143,7 @@ export default function AuthScreen() {
               </>
             ) : (
               <>
-                <ThemedText style={styles.label}>ENTER VERIFICATION CODE</ThemedText>
+                <ThemedText style={styles.label}>Enter verification code</ThemedText>
                 <ThemedText style={styles.sublabel}>
                   Sent to {email.trim().toLowerCase()}
                 </ThemedText>
@@ -177,13 +185,13 @@ export default function AuthScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    flexDirection: "row",
-    justifyContent: "center",
   },
   safeArea: {
     flex: 1,
+    alignSelf: "center",
+    width: "100%",
     maxWidth: MaxContentWidth,
   },
   content: {
@@ -192,6 +200,13 @@ const styles = StyleSheet.create({
   },
   topSpacer: {
     flex: 1,
+  },
+  tagline: {
+    fontFamily: FontFamilies.displayItalic,
+    fontSize: 21,
+    color: BrandColors.ash,
+    textAlign: "center",
+    marginTop: Spacing.two,
   },
   titleSpacer: {
     flex: 2,
@@ -203,10 +218,9 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   label: {
-    fontFamily: FontFamilies.system,
-    fontSize: 15,
+    fontFamily: FontFamilies.displayItalic,
+    fontSize: 27,
     color: BrandColors.bone,
-    letterSpacing: 1,
   },
   sublabel: {
     fontFamily: FontFamilies.systemLight,

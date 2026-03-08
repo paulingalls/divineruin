@@ -29,14 +29,14 @@ const styles = StyleSheet.create({
     backgroundColor: BrandColors.charcoal,
   },
   titleText: {
-    fontSize: 22,
+    fontSize: 33,
     fontFamily: FontFamilies.display,
     color: BrandColors.ash,
     letterSpacing: 8,
   },
   titleDivider: {
     width: 1.5,
-    height: 20,
+    height: 30,
     backgroundColor: BrandColors.hollowMuted,
   },
 });
