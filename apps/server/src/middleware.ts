@@ -1,15 +1,20 @@
 import { timingSafeEqual } from "crypto";
 
-const INTERNAL_SECRET = Bun.env.INTERNAL_SECRET ?? "";
-if (!INTERNAL_SECRET && process.env.NODE_ENV === "production") {
+let _internalSecret = Bun.env.INTERNAL_SECRET ?? "";
+if (!_internalSecret && process.env.NODE_ENV === "production") {
   throw new Error("[security] INTERNAL_SECRET must be set in production.");
 }
 
 export function verifyInternalSecret(req: Request): boolean {
-  if (!INTERNAL_SECRET) return false;
+  if (!_internalSecret) return false;
   const header = req.headers.get("X-Internal-Secret") ?? "";
-  if (header.length !== INTERNAL_SECRET.length) return false;
-  return timingSafeEqual(Buffer.from(header), Buffer.from(INTERNAL_SECRET));
+  if (header.length !== _internalSecret.length) return false;
+  return timingSafeEqual(Buffer.from(header), Buffer.from(_internalSecret));
+}
+
+/** Override the cached internal secret (for testing). */
+export function _setInternalSecretForTesting(secret: string): void {
+  _internalSecret = secret;
 }
 
 if (!Bun.env.CORS_ORIGIN && process.env.NODE_ENV === "production") {

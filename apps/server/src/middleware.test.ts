@@ -5,6 +5,7 @@ import {
   checkRateLimit,
   _resetRateLimits,
   verifyInternalSecret,
+  _setInternalSecretForTesting,
 } from "./middleware.ts";
 
 describe("CORS", () => {
@@ -115,24 +116,33 @@ describe("verifyInternalSecret", () => {
     return new Request("http://localhost/api/internal/push", { headers });
   }
 
-  test("returns false when INTERNAL_SECRET env is empty", () => {
-    // INTERNAL_SECRET is loaded at module init from env; in test env it's empty
+  test("returns false when INTERNAL_SECRET is empty", () => {
+    _setInternalSecretForTesting("");
     const result = verifyInternalSecret(reqWithSecret("anything"));
     expect(result).toBe(false);
   });
 
   test("returns false when header is missing", () => {
+    _setInternalSecretForTesting("real-secret");
     const result = verifyInternalSecret(reqWithSecret());
     expect(result).toBe(false);
   });
 
   test("returns false for wrong value", () => {
+    _setInternalSecretForTesting("real-secret");
     const result = verifyInternalSecret(reqWithSecret("wrong-secret"));
     expect(result).toBe(false);
   });
 
   test("returns false for wrong length", () => {
+    _setInternalSecretForTesting("real-secret");
     const result = verifyInternalSecret(reqWithSecret("short"));
     expect(result).toBe(false);
+  });
+
+  test("returns true for matching secret", () => {
+    _setInternalSecretForTesting("real-secret");
+    const result = verifyInternalSecret(reqWithSecret("real-secret"));
+    expect(result).toBe(true);
   });
 });

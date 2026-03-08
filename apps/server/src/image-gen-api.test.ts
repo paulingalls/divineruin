@@ -4,8 +4,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import sharp from "sharp";
 
-// Set INTERNAL_SECRET before importing the module
-process.env.INTERNAL_SECRET = "test-secret";
+import { _setInternalSecretForTesting } from "./middleware.ts";
+_setInternalSecretForTesting("test-secret");
 
 // Create a small valid PNG for mock responses
 async function makeFakeBase64Png(): Promise<string> {

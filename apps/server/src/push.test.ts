@@ -1,7 +1,7 @@
 import { test, expect, describe, mock, beforeEach } from "bun:test";
 
-// Set INTERNAL_SECRET before importing push.ts so the module picks it up
-process.env.INTERNAL_SECRET = "test-secret";
+import { _setInternalSecretForTesting } from "./middleware.ts";
+_setInternalSecretForTesting("test-secret");
 
 let mockQueryResults: unknown[][] = [];
 let queryCallIndex = 0;
