@@ -99,6 +99,8 @@ export const MAX_EVENT_PAYLOAD_BYTES = 1_048_576;
 
 /** Delay before playing dice result stinger (matches tumble animation duration). */
 export const DICE_STINGER_DELAY_MS = 600;
+/** Name of the companion character for portrait visibility. */
+const COMPANION_NAME = "Kael";
 let _diceStingerTimer: ReturnType<typeof setTimeout> | null = null;
 let _companionHideTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -465,11 +467,11 @@ export function handleGameEvent(event: DataChannelEvent): void {
       if (speaker === "npc" && characterName) {
         const npcUrl = ps.npcPortraitMap[characterName];
         if (npcUrl) {
-          portraitStore.getState().setActiveNpc(characterName, npcUrl);
+          ps.setActiveNpc(characterName, npcUrl);
         }
-        // Show companion avatar for companion speech (e.g. "Kael")
-        if (characterName === "Kael" && ps.companionPrimaryUrl) {
-          portraitStore.getState().setCompanionVisible(true);
+        // Show companion avatar for companion speech
+        if (characterName === COMPANION_NAME && ps.companionPrimaryUrl) {
+          ps.setCompanionVisible(true);
           if (_companionHideTimer) clearTimeout(_companionHideTimer);
           _companionHideTimer = setTimeout(() => {
             _companionHideTimer = null;
@@ -478,7 +480,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
         }
       } else {
         // Different speaker — clear NPC portrait
-        portraitStore.getState().clearActiveNpc();
+        ps.clearActiveNpc();
       }
       break;
     }

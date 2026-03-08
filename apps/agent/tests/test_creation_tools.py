@@ -4,8 +4,11 @@ import hashlib
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from asset_utils import compute_asset_id
 from creation_data import CLASSES, DEITIES, RACES
-from creation_tools import compute_asset_id, finalize_character, push_creation_cards, set_creation_choice
+from creation_tools import finalize_character, push_creation_cards, set_creation_choice
 from session_data import CreationState, SessionData
 
 
@@ -484,36 +487,14 @@ class TestCreationCardsImageUrl:
         ctx = _make_context()
         await push_creation_cards._func(ctx, category="deity")
 
+    @pytest.mark.parametrize("category", ["race", "class", "deity"])
     @patch("creation_tools.publish_game_event", new_callable=AsyncMock)
-    async def test_race_card_payloads_contain_image_url(self, mock_publish):
+    async def test_card_payloads_contain_image_url(self, mock_publish, category):
         ctx = _make_context()
-        await push_creation_cards._func(ctx, category="race")
-        # publish_game_event is called with creation_cards event
-        call_args = mock_publish.call_args_list
-        # Find the creation_cards call
-        cards_call = [c for c in call_args if c[0][1] == "creation_cards"]
+        await push_creation_cards._func(ctx, category=category)
+        cards_call = [c for c in mock_publish.call_args_list if c[0][1] == "creation_cards"]
         assert len(cards_call) > 0
         cards = cards_call[0][0][2]["cards"]
         for card in cards:
             assert "image_url" in card, f"Card {card['id']} missing image_url"
             assert card["image_url"].startswith("/api/assets/images/img_")
-
-    @patch("creation_tools.publish_game_event", new_callable=AsyncMock)
-    async def test_class_card_payloads_contain_image_url(self, mock_publish):
-        ctx = _make_context()
-        await push_creation_cards._func(ctx, category="class")
-        cards_call = [c for c in mock_publish.call_args_list if c[0][1] == "creation_cards"]
-        assert len(cards_call) > 0
-        cards = cards_call[0][0][2]["cards"]
-        for card in cards:
-            assert "image_url" in card
-
-    @patch("creation_tools.publish_game_event", new_callable=AsyncMock)
-    async def test_deity_card_payloads_contain_image_url(self, mock_publish):
-        ctx = _make_context()
-        await push_creation_cards._func(ctx, category="deity")
-        cards_call = [c for c in mock_publish.call_args_list if c[0][1] == "creation_cards"]
-        assert len(cards_call) > 0
-        cards = cards_call[0][0][2]["cards"]
-        for card in cards:
-            assert "image_url" in card

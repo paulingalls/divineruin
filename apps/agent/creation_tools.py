@@ -6,7 +6,6 @@ Three tools for the creation flow: push visual cards, record choices, finalize.
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import logging
 import os
@@ -16,6 +15,7 @@ from livekit.agents.llm import function_tool
 from livekit.agents.voice import RunContext
 
 import db
+from asset_utils import asset_url
 from creation_data import CLASSES, DEITIES, RACES
 from creation_rules import build_character_data, infer_culture
 from game_events import publish_game_event
@@ -27,20 +27,6 @@ VALID_CARD_CATEGORIES = {"race", "class", "deity"}
 VALID_CHOICE_CATEGORIES = {"race", "class", "deity", "name", "backstory"}
 
 SERVER_URL = os.environ.get("SERVER_URL", "http://localhost:3001")
-
-
-def compute_asset_id(template_id: str, vars: dict[str, str]) -> str:
-    """Replicate the server's content-addressable hash for image assets."""
-    sorted_entries = sorted(vars.items())
-    payload = template_id + json.dumps(sorted_entries)
-    h = hashlib.sha256(payload.encode()).hexdigest()[:16]
-    return f"img_{h}"
-
-
-def _asset_url(template_id: str, vars: dict[str, str]) -> str:
-    """Build a full image asset URL for a given template and variables."""
-    asset_id = compute_asset_id(template_id, vars)
-    return f"/api/assets/images/{asset_id}"
 
 
 # --- Input sanitization ---
@@ -89,9 +75,7 @@ async def push_creation_cards(
                 "title": r.name,
                 "description": r.card_description,
                 "category": "race",
-                "image_url": _asset_url(
-                    "race_portrait", {"race_name": r.name, "physical_features": r.card_description}
-                ),
+                "image_url": asset_url("race_portrait", {"race_name": r.name, "physical_features": r.card_description}),
             }
             for r in items.values()
         ]
@@ -104,7 +88,7 @@ async def push_creation_cards(
                 "title": c.name,
                 "description": c.card_description,
                 "category": "class",
-                "image_url": _asset_url(
+                "image_url": asset_url(
                     "class_illustration", {"class_name": c.name, "class_fantasy": c.card_description}
                 ),
             }
@@ -121,7 +105,7 @@ async def push_creation_cards(
                 "title": f"{d.name}, {d.title}" if d.id != "none" else d.name,
                 "description": d.card_description,
                 "category": "deity",
-                "image_url": _asset_url("patron_deity_card", {"deity_name": d.name, "deity_domain": d.domain}),
+                "image_url": asset_url("patron_deity_card", {"deity_name": d.name, "deity_domain": d.domain}),
             }
             for d in items.values()
         ]

@@ -11,7 +11,40 @@ from contextlib import asynccontextmanager
 import asyncpg
 import redis.asyncio as aioredis
 
+from asset_utils import asset_url
+
 logger = logging.getLogger("divineruin.db")
+
+# Pre-computed portrait URLs (deterministic — same inputs every time)
+_PORTRAITS_CACHE: dict = {
+    "companion": {
+        "primary": asset_url("companion_portrait_primary", {}),
+        "alert": asset_url("companion_portrait_alert", {}),
+    },
+    "npcs": {
+        "Guildmaster Torin": asset_url(
+            "npc_portrait",
+            {
+                "description": "a broad-shouldered older man, guild leader",
+                "features": "weathered face, thick beard, shrewd eyes",
+            },
+        ),
+        "Elder Yanna": asset_url(
+            "npc_portrait",
+            {
+                "description": "an elderly woman, village elder",
+                "features": "deep-set wise eyes, silver hair, lined face",
+            },
+        ),
+        "Scholar Emris": asset_url(
+            "npc_portrait",
+            {
+                "description": "a young scholarly figure",
+                "features": "sharp focused eyes, ink-stained fingers, slight frame",
+            },
+        ),
+    },
+}
 
 CACHE_TTL = 300  # 5 minutes
 
@@ -662,49 +695,9 @@ async def get_session_init_payload(player_id: str) -> dict:
     }
 
 
-def _compute_asset_id(template_id: str, vars: dict[str, str]) -> str:
-    """Replicate the server's content-addressable hash for image assets."""
-    import hashlib
-
-    sorted_entries = sorted(vars.items())
-    payload = template_id + json.dumps(sorted_entries)
-    h = hashlib.sha256(payload.encode()).hexdigest()[:16]
-    return f"img_{h}"
-
-
 def _build_portraits(player: dict | None, location_id: str) -> dict:
     """Build the portraits payload for session_init."""
-    companion_primary = _compute_asset_id("companion_portrait_primary", {})
-    companion_alert = _compute_asset_id("companion_portrait_alert", {})
-
-    # Tier 1 NPCs with their pre-generated portrait vars
-    tier1_npcs = {
-        "Guildmaster Torin": {
-            "description": "a broad-shouldered older man, guild leader",
-            "features": "weathered face, thick beard, shrewd eyes",
-        },
-        "Elder Yanna": {
-            "description": "an elderly woman, village elder",
-            "features": "deep-set wise eyes, silver hair, lined face",
-        },
-        "Scholar Emris": {
-            "description": "a young scholarly figure",
-            "features": "sharp focused eyes, ink-stained fingers, slight frame",
-        },
-    }
-
-    npc_map = {}
-    for npc_name, npc_vars in tier1_npcs.items():
-        asset_id = _compute_asset_id("npc_portrait", npc_vars)
-        npc_map[npc_name] = f"/api/assets/images/{asset_id}"
-
-    return {
-        "companion": {
-            "primary": f"/api/assets/images/{companion_primary}",
-            "alert": f"/api/assets/images/{companion_alert}",
-        },
-        "npcs": npc_map,
-    }
+    return dict(_PORTRAITS_CACHE)
 
 
 async def save_session_summary(
