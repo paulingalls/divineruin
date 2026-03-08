@@ -30,6 +30,7 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontSize: 33,
+    lineHeight: 46,
     fontFamily: FontFamilies.display,
     color: BrandColors.ash,
     letterSpacing: 8,
