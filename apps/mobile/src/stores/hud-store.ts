@@ -51,6 +51,7 @@ export interface CreationCard {
   title: string;
   description: string;
   category: string;
+  imageUrl?: string;
 }
 
 // --- Store ---

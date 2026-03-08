@@ -59,30 +59,30 @@ const MVP_BATCH: BatchEntry[] = [
     label: "Hollow Breach",
   },
 
-  // NPC portraits
+  // NPC portraits (Tier 1 — must match vars in db.py _build_portraits)
   {
     templateId: "npc_portrait",
     vars: {
-      description: "a weathered male blacksmith in his fifties",
-      features: "a broad scarred face, thick arms, and a leather apron",
+      description: "a broad-shouldered older man, guild leader",
+      features: "weathered face, thick beard, shrewd eyes",
     },
-    label: "Torin",
+    label: "Guildmaster Torin",
   },
   {
     templateId: "npc_portrait",
     vars: {
-      description: "a young female herbalist with keen eyes",
-      features: "sharp observant eyes, wild curly hair, and herb-stained fingers",
+      description: "an elderly woman, village elder",
+      features: "deep-set wise eyes, silver hair, lined face",
     },
-    label: "Yanna",
+    label: "Elder Yanna",
   },
   {
     templateId: "npc_portrait",
     vars: {
-      description: "an elderly male scholar with a haunted expression",
-      features: "gaunt cheeks, round spectacles, and ink-stained hands clutching a journal",
+      description: "a young scholarly figure",
+      features: "sharp focused eyes, ink-stained fingers, slight frame",
     },
-    label: "Emris",
+    label: "Scholar Emris",
   },
 
   // Item illustrations
@@ -105,6 +105,46 @@ const MVP_BATCH: BatchEntry[] = [
 
   // Loading screen
   { templateId: "ui_loading_abstract", vars: {}, label: "Loading screen" },
+
+  // --- Race portraits (6) ---
+  { templateId: "race_portrait", vars: { race_name: "Draethar", physical_features: "Large and powerful, with inner fire. Skin radiates heat in moments of exertion." }, label: "Race: Draethar" },
+  { templateId: "race_portrait", vars: { race_name: "Elari", physical_features: "Tall and long-lived, with an innate sense of the Veil between worlds." }, label: "Race: Elari" },
+  { templateId: "race_portrait", vars: { race_name: "Korath", physical_features: "Broad and stone-touched. Dense bones, earth-sense, and the patience of mountains." }, label: "Race: Korath" },
+  { templateId: "race_portrait", vars: { race_name: "Vaelti", physical_features: "Slight and quick, with senses sharper than any other race. Impossible to surprise." }, label: "Race: Vaelti" },
+  { templateId: "race_portrait", vars: { race_name: "Thessyn", physical_features: "Fluid and adaptable. Your body attunes to your environment over time." }, label: "Race: Thessyn" },
+  { templateId: "race_portrait", vars: { race_name: "Human", physical_features: "Adaptable and determined. No extremes, but thrives anywhere and learns anything." }, label: "Race: Human" },
+
+  // --- Class illustrations (17) ---
+  { templateId: "class_illustration", vars: { class_name: "Warrior", class_fantasy: "Front-line combatant. Decisive, aggressive, first to strike." }, label: "Class: Warrior" },
+  { templateId: "class_illustration", vars: { class_name: "Guardian", class_fantasy: "Protector of allies. Absorbs punishment, controls the battlefield." }, label: "Class: Guardian" },
+  { templateId: "class_illustration", vars: { class_name: "Skirmisher", class_fantasy: "Mobile fighter. Quick strikes, flanking, exploiting every opening." }, label: "Class: Skirmisher" },
+  { templateId: "class_illustration", vars: { class_name: "Mage", class_fantasy: "Classic spellcaster. Commands arcane energy through spoken incantations." }, label: "Class: Mage" },
+  { templateId: "class_illustration", vars: { class_name: "Artificer", class_fantasy: "Magical inventor. Crafts enchanted items and deploys constructs." }, label: "Class: Artificer" },
+  { templateId: "class_illustration", vars: { class_name: "Seeker", class_fantasy: "Arcane investigator. Uses magic to perceive and uncover hidden truths." }, label: "Class: Seeker" },
+  { templateId: "class_illustration", vars: { class_name: "Druid", class_fantasy: "Channels nature's power. Shapes terrain, commands weather, speaks to the wild." }, label: "Class: Druid" },
+  { templateId: "class_illustration", vars: { class_name: "Beastcaller", class_fantasy: "Bonds with creatures. Commands animal companions and draws on bestial instinct." }, label: "Class: Beastcaller" },
+  { templateId: "class_illustration", vars: { class_name: "Warden", class_fantasy: "Primal guardian bound to the land. Strongest in their home territory." }, label: "Class: Warden" },
+  { templateId: "class_illustration", vars: { class_name: "Cleric", class_fantasy: "Divine channeler. Your patron god shapes your abilities entirely." }, label: "Class: Cleric" },
+  { templateId: "class_illustration", vars: { class_name: "Paladin", class_fantasy: "Sworn champion. Combines martial skill with a divine oath." }, label: "Class: Paladin" },
+  { templateId: "class_illustration", vars: { class_name: "Oracle", class_fantasy: "Fate-touched prophet. Receives visions and manipulates probability." }, label: "Class: Oracle" },
+  { templateId: "class_illustration", vars: { class_name: "Rogue", class_fantasy: "Skill specialist. Stealth, precision, and striking from the shadows." }, label: "Class: Rogue" },
+  { templateId: "class_illustration", vars: { class_name: "Spy", class_fantasy: "Social infiltrator. Deceives, disguises, and extracts secrets through talk." }, label: "Class: Spy" },
+  { templateId: "class_illustration", vars: { class_name: "Whisper", class_fantasy: "Shadow-magic hybrid. Subtle spells of influence and misdirection." }, label: "Class: Whisper" },
+  { templateId: "class_illustration", vars: { class_name: "Bard", class_fantasy: "Performer and storyteller. Inspires allies, demoralizes foes with voice." }, label: "Class: Bard" },
+  { templateId: "class_illustration", vars: { class_name: "Diplomat", class_fantasy: "Master negotiator. Solves encounters through persuasion and social leverage." }, label: "Class: Diplomat" },
+
+  // --- Deity cards (11) ---
+  { templateId: "patron_deity_card", vars: { deity_name: "Veythar", deity_domain: "Knowledge, discovery, memory, the arcane arts" }, label: "Deity: Veythar" },
+  { templateId: "patron_deity_card", vars: { deity_name: "Mortaen", deity_domain: "Death, the afterlife, transition" }, label: "Deity: Mortaen" },
+  { templateId: "patron_deity_card", vars: { deity_name: "Thyra", deity_domain: "Nature, seasons, growth, the physical world" }, label: "Deity: Thyra" },
+  { templateId: "patron_deity_card", vars: { deity_name: "Kaelen", deity_domain: "War, conflict, valor, martial discipline" }, label: "Deity: Kaelen" },
+  { templateId: "patron_deity_card", vars: { deity_name: "Syrath", deity_domain: "Shadows, secrets, espionage, hidden knowledge" }, label: "Deity: Syrath" },
+  { templateId: "patron_deity_card", vars: { deity_name: "Aelora", deity_domain: "Civilization, commerce, crafting, community" }, label: "Deity: Aelora" },
+  { templateId: "patron_deity_card", vars: { deity_name: "Valdris", deity_domain: "Justice, law, order, truth, accountability" }, label: "Deity: Valdris" },
+  { templateId: "patron_deity_card", vars: { deity_name: "Nythera", deity_domain: "Sea, travel, exploration, boundaries, the unknown" }, label: "Deity: Nythera" },
+  { templateId: "patron_deity_card", vars: { deity_name: "Orenthel", deity_domain: "Light, healing, renewal, hope" }, label: "Deity: Orenthel" },
+  { templateId: "patron_deity_card", vars: { deity_name: "Zhael", deity_domain: "Fate, time, prophecy, luck, the pattern of things" }, label: "Deity: Zhael" },
+  { templateId: "patron_deity_card", vars: { deity_name: "No Patron", deity_domain: "Independence" }, label: "Deity: None" },
 ];
 
 async function runSingle(templateId: string, varsJson: string) {

@@ -11,6 +11,7 @@ import { QuestUpdateToast } from "./quest-update-toast";
 import { XpToast } from "./xp-toast";
 import { LevelUpOverlay } from "./level-up-overlay";
 import { CreationCardRow } from "./creation-card-row";
+import { NpcPortraitOverlay } from "./npc-portrait-overlay";
 
 function OverlayContent({ overlay }: { overlay: OverlayEntry }) {
   switch (overlay.type) {
@@ -65,6 +66,9 @@ export function OverlayManager() {
 
       {/* Creation card row */}
       {creationCards.length > 0 && <CreationCardRow />}
+
+      {/* NPC portrait */}
+      <NpcPortraitOverlay />
     </View>
   );
 }

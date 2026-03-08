@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { StyleSheet, View, type DimensionValue } from "react-native";
 import { useStore } from "zustand";
 
+import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
 import { characterStore } from "@/stores/character-store";
 import { BrandColors, Spacing, Radius, FontFamilies } from "@/constants/theme";
@@ -37,6 +38,7 @@ export function CharacterSummaryBar({ trailing }: { trailing?: ReactNode }) {
   return (
     <View style={styles.wrapper}>
       <View style={styles.nameRow}>
+        <CachedImage uri={character.portraitUrl} style={styles.portrait} borderRadius={20} />
         <ThemedText
           variant="label"
           themeColor="textSecondary"
@@ -96,6 +98,11 @@ const styles = StyleSheet.create({
   nameRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: Spacing.two,
+  },
+  portrait: {
+    width: 40,
+    height: 40,
   },
   bar: {
     flexDirection: "row",

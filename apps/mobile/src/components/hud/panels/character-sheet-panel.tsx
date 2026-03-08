@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useStore } from "zustand";
 
+import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
 import { characterStore } from "@/stores/character-store";
 import { panelStore } from "@/stores/panel-store";
@@ -82,6 +83,10 @@ export function CharacterSheetPanel() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Portrait */}
+      <View style={styles.portraitRow}>
+        <CachedImage uri={character.portraitUrl} style={styles.portraitImage} borderRadius={40} />
+      </View>
       {/* Header */}
       <ThemedText style={styles.name}>{character.name}</ThemedText>
       <ThemedText style={styles.classLevel}>
@@ -211,7 +216,9 @@ export function CharacterSheetPanel() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: Spacing.three, paddingBottom: Spacing.five },
+  content: { padding: Spacing.three, paddingBottom: Spacing.five, alignItems: "stretch" },
+  portraitRow: { alignItems: "center", marginBottom: Spacing.two },
+  portraitImage: { width: 80, height: 80 },
   empty: { flex: 1, justifyContent: "center", alignItems: "center" },
   emptyText: { color: BrandColors.ash, fontFamily: FontFamilies.system, fontSize: 12 },
   name: {

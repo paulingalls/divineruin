@@ -13,6 +13,7 @@ const SAMPLE: CharacterSummary = {
   hpCurrent: 25,
   hpMax: 30,
   deity: "",
+  portraitUrl: null,
 };
 
 beforeEach(() => {

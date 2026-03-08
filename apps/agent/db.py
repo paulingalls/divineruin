@@ -647,6 +647,10 @@ async def get_session_init_payload(player_id: str) -> dict:
         get_active_player_quests(player_id),
         get_player_map_progress(player_id),
     )
+
+    # Build portraits dict
+    portraits = _build_portraits(player, location_id)
+
     return {
         "character": player,
         "location": location if location_id else None,
@@ -654,6 +658,52 @@ async def get_session_init_payload(player_id: str) -> dict:
         "inventory": inventory,
         "map_progress": map_progress,
         "world_state": {"time": "evening"},
+        "portraits": portraits,
+    }
+
+
+def _compute_asset_id(template_id: str, vars: dict[str, str]) -> str:
+    """Replicate the server's content-addressable hash for image assets."""
+    import hashlib
+
+    sorted_entries = sorted(vars.items())
+    payload = template_id + json.dumps(sorted_entries)
+    h = hashlib.sha256(payload.encode()).hexdigest()[:16]
+    return f"img_{h}"
+
+
+def _build_portraits(player: dict | None, location_id: str) -> dict:
+    """Build the portraits payload for session_init."""
+    companion_primary = _compute_asset_id("companion_portrait_primary", {})
+    companion_alert = _compute_asset_id("companion_portrait_alert", {})
+
+    # Tier 1 NPCs with their pre-generated portrait vars
+    tier1_npcs = {
+        "Guildmaster Torin": {
+            "description": "a broad-shouldered older man, guild leader",
+            "features": "weathered face, thick beard, shrewd eyes",
+        },
+        "Elder Yanna": {
+            "description": "an elderly woman, village elder",
+            "features": "deep-set wise eyes, silver hair, lined face",
+        },
+        "Scholar Emris": {
+            "description": "a young scholarly figure",
+            "features": "sharp focused eyes, ink-stained fingers, slight frame",
+        },
+    }
+
+    npc_map = {}
+    for npc_name, npc_vars in tier1_npcs.items():
+        asset_id = _compute_asset_id("npc_portrait", npc_vars)
+        npc_map[npc_name] = f"/api/assets/images/{asset_id}"
+
+    return {
+        "companion": {
+            "primary": f"/api/assets/images/{companion_primary}",
+            "alert": f"/api/assets/images/{companion_alert}",
+        },
+        "npcs": npc_map,
     }
 
 
@@ -795,6 +845,22 @@ async def create_player(player_id: str, account_id: str | None, data: dict) -> N
         player_id,
         account_id,
         json.dumps(data),
+    )
+
+
+async def update_player_portrait(
+    player_id: str, portrait_url: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    """Store portrait_url in the player's JSONB data."""
+    _conn = conn or await get_pool()
+    await _conn.execute(
+        """
+        UPDATE players
+        SET data = jsonb_set(data, '{portrait_url}', $2::jsonb)
+        WHERE player_id = $1
+        """,
+        player_id,
+        json.dumps(portrait_url),
     )
 
 

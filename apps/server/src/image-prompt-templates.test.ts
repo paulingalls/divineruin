@@ -39,6 +39,37 @@ test("all templates have consistent structure", () => {
   }
 });
 
-test("PROMPT_TEMPLATES has all 18 templates", () => {
-  expect(Object.keys(PROMPT_TEMPLATES).length).toBe(18);
+test("PROMPT_TEMPLATES has all 21 templates", () => {
+  expect(Object.keys(PROMPT_TEMPLATES).length).toBe(21);
+});
+
+test("race_portrait resolves correctly", () => {
+  const { prompt } = resolvePrompt("race_portrait", {
+    race_name: "Draethar",
+    physical_features: "Large and powerful",
+  });
+  expect(prompt).toContain("Draethar");
+  expect(prompt).toContain("Large and powerful");
+  expect(prompt).not.toContain("{{");
+});
+
+test("class_illustration resolves correctly", () => {
+  const { prompt } = resolvePrompt("class_illustration", {
+    class_name: "Warrior",
+    class_fantasy: "Front-line combatant",
+  });
+  expect(prompt).toContain("Warrior");
+  expect(prompt).toContain("Front-line combatant");
+  expect(prompt).not.toContain("{{");
+});
+
+test("patron_deity_card resolves correctly", () => {
+  const { prompt, template } = resolvePrompt("patron_deity_card", {
+    deity_name: "Veythar",
+    deity_domain: "Knowledge",
+  });
+  expect(prompt).toContain("Veythar");
+  expect(prompt).toContain("Knowledge");
+  expect(template.accentColor).toBe("divine_gold");
+  expect(prompt).not.toContain("{{");
 });

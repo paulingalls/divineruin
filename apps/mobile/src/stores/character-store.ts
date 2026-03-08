@@ -12,6 +12,7 @@ export interface CharacterSummary {
   hpCurrent: number;
   hpMax: number;
   deity: string;
+  portraitUrl: string | null;
 }
 
 interface CharacterState {
@@ -23,6 +24,7 @@ interface CharacterState {
   updateHp: (current: number, max?: number) => void;
   updateXp: (xp: number, level: number) => void;
   updateDivineFavor: (level: number, max: number) => void;
+  updatePortraitUrl: (url: string) => void;
   clear: () => void;
 }
 
@@ -44,5 +46,7 @@ export const characterStore = createStore<CharacterState>((set) => ({
   updateXp: (xp, level) =>
     set((s) => (s.character ? { character: { ...s.character, xp, level } } : s)),
   updateDivineFavor: (level, max) => set({ divineFavorLevel: level, divineFavorMax: max }),
+  updatePortraitUrl: (url) =>
+    set((s) => (s.character ? { character: { ...s.character, portraitUrl: url } } : s)),
   clear: () => set({ character: null, divineFavorLevel: 0, divineFavorMax: 100 }),
 }));

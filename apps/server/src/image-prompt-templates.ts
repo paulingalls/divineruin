@@ -218,6 +218,39 @@ export const PROMPT_TEMPLATES: Record<string, ImagePromptTemplate> = {
     accentHex: null,
   },
 
+  race_portrait: {
+    id: "race_portrait",
+    category: "player_portrait",
+    name: "Race Portrait — Creation Card",
+    promptText: `Ink wash portrait of a {{race_name}} on a dark near-black background. Front-facing bust composition. The face is the focal point — rendered with detailed ink brushwork showing {{physical_features}}. Expression is neutral but present, as if meeting the viewer's gaze for the first time. Below the collarbone, the figure dissolves into loose brushwork, then scattered marks, then bare paper. Monochrome — black ink and graphite on dark cream paper. No color. Partially unfinished. Fine art quality, visible brush strokes. Aspect ratio 3:4.`,
+    variableSlots: ["race_name", "physical_features"],
+    aspectRatio: "3:4",
+    accentColor: "none",
+    accentHex: null,
+  },
+
+  class_illustration: {
+    id: "class_illustration",
+    category: "player_portrait",
+    name: "Class Illustration — Creation Card",
+    promptText: `Ink wash illustration of a figure embodying the archetype of a {{class_name}} on a dark near-black background. The scene evokes {{class_fantasy}}. Rendered in confident ink brushwork — the central figure or action is detailed while the edges dissolve into scattered marks and bare paper. Monochrome — black ink on dark cream paper. No color. Atmospheric, suggestive of story. Fine art quality, visible brush strokes. Aspect ratio 3:4.`,
+    variableSlots: ["class_name", "class_fantasy"],
+    aspectRatio: "3:4",
+    accentColor: "none",
+    accentHex: null,
+  },
+
+  patron_deity_card: {
+    id: "patron_deity_card",
+    category: "story_moment",
+    name: "Patron Deity — Creation Card",
+    promptText: `Ink wash illustration evoking the domain of {{deity_name}} on a dark near-black background. An atmospheric, abstract scene showing {{deity_domain}}. No literal figure of the god — instead, the domain itself is the subject. A faint golden watercolor wash touches select elements — restrained, almost sacred. The rest is monochrome ink on dark paper. Edges dissolve into bare paper. Contemplative, reverent. Fine art quality. Aspect ratio 3:4.`,
+    variableSlots: ["deity_name", "deity_domain"],
+    aspectRatio: "3:4",
+    accentColor: "divine_gold",
+    accentHex: ACCENT_HEX.divine_gold,
+  },
+
   ui_app_icon: {
     id: "ui_app_icon",
     category: "ui",

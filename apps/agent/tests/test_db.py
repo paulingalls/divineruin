@@ -614,3 +614,50 @@ class TestStateMutations:
             result = await db.get_player_map_progress("new_player")
 
         assert result == []
+
+    @pytest.mark.asyncio
+    async def test_update_player_portrait_updates_jsonb(self):
+        """update_player_portrait should set portrait_url in player data."""
+        mock_pool = AsyncMock()
+        mock_pool.execute = AsyncMock()
+
+        with patch("db.get_pool", return_value=mock_pool):
+            await db.update_player_portrait("p1", "/api/assets/images/img_abc123")
+
+        call_args = mock_pool.execute.call_args[0]
+        assert "jsonb_set" in call_args[0]
+        assert "portrait_url" in call_args[0]
+        assert call_args[1] == "p1"
+        assert json.loads(call_args[2]) == "/api/assets/images/img_abc123"
+
+
+class TestSessionInitPortraits:
+    """Test that get_session_init_payload includes portraits."""
+
+    @pytest.mark.asyncio
+    async def test_session_init_includes_portraits(self):
+        """get_session_init_payload should include portraits dict."""
+        mock_pool = AsyncMock()
+        mock_pool.fetchrow = AsyncMock(return_value={"data": json.dumps({"name": "Test", "location_id": "tavern"})})
+        mock_pool.fetch = AsyncMock(return_value=[])
+
+        with patch("db.get_pool", return_value=mock_pool):
+            with patch("db.get_location", return_value={"id": "tavern", "name": "Tavern"}):
+                result = await db.get_session_init_payload("p1")
+
+        assert "portraits" in result
+        assert "companion" in result["portraits"]
+        assert "npcs" in result["portraits"]
+        assert "primary" in result["portraits"]["companion"]
+        assert "alert" in result["portraits"]["companion"]
+        # Verify NPC portrait URLs are present
+        assert "Guildmaster Torin" in result["portraits"]["npcs"]
+        assert result["portraits"]["npcs"]["Guildmaster Torin"].startswith("/api/assets/images/img_")
+
+    def test_build_portraits_produces_valid_urls(self):
+        """_build_portraits should produce /api/assets/images/ URLs."""
+        result = db._build_portraits(None, "tavern")
+        assert result["companion"]["primary"].startswith("/api/assets/images/img_")
+        assert result["companion"]["alert"].startswith("/api/assets/images/img_")
+        for url in result["npcs"].values():
+            assert url.startswith("/api/assets/images/img_")

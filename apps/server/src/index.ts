@@ -1,6 +1,6 @@
 import { serve } from "bun";
 import { handleLivekitToken } from "./livekit.ts";
-import { handleGetCharacter } from "./character.ts";
+import { handleGetCharacter, handleRegeneratePortrait } from "./character.ts";
 import { handleRequestCode, handleVerifyCode, handleGetMe, requireAuth } from "./auth.ts";
 import { handlePreflight, withCors, checkRateLimit } from "./middleware.ts";
 import {
@@ -21,6 +21,7 @@ import { isDev } from "./env.ts";
 const enableDebug = isDev && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
 
 const CHARACTER_RE = /^\/api\/character\/([^/]+)$/;
+const REGEN_PORTRAIT_RE = /^\/api\/character\/([^/]+)\/regenerate-portrait$/;
 const ACTIVITY_ID_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)$/;
 const ACTIVITY_DECIDE_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)\/decide$/;
 const AUDIO_FILE_RE = /^\/api\/audio\/([a-zA-Z0-9_.-]+)$/;
@@ -60,6 +61,19 @@ const server = serve({
       const auth = await requireAuth(req);
       if (auth instanceof Response) return withCors(auth);
       return withCors(await handleLivekitToken(req, auth.playerId));
+    }
+
+    if (
+      path.startsWith("/api/character/") &&
+      path.endsWith("/regenerate-portrait") &&
+      req.method === "POST"
+    ) {
+      const regenMatch = path.match(REGEN_PORTRAIT_RE);
+      if (regenMatch) {
+        const auth = await requireAuth(req);
+        if (auth instanceof Response) return withCors(auth);
+        return withCors(await handleRegeneratePortrait(req, auth.playerId));
+      }
     }
 
     if (path.startsWith("/api/character/") && req.method === "GET") {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { Animated, FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useStore } from "zustand";
 
+import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors, FontFamilies, Radius, Shadows, Spacing } from "@/constants/theme";
 import { hudStore, type CreationCard } from "@/stores/hud-store";
@@ -26,7 +27,11 @@ function Card({ card, isSelected }: { card: CreationCard; isSelected: boolean })
           !isSelected && styles.cardUnselected,
         ]}
       >
-        <View style={styles.artPlaceholder} />
+        <CachedImage
+          uri={card.imageUrl ?? null}
+          style={styles.artPlaceholder}
+          borderRadius={Radius.sm}
+        />
         <ThemedText style={styles.title} numberOfLines={1}>
           {card.title}
         </ThemedText>
@@ -125,8 +130,6 @@ const styles = StyleSheet.create({
   artPlaceholder: {
     width: "100%",
     height: 60,
-    backgroundColor: BrandColors.slate,
-    borderRadius: Radius.sm,
     marginBottom: Spacing.two,
   },
   title: {

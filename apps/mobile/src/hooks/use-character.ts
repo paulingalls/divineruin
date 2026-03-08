@@ -14,6 +14,7 @@ interface CharacterResponse {
   hp_current: number;
   hp_max: number;
   deity?: string;
+  portrait_url?: string;
 }
 
 export function useCharacter(playerId: string) {
@@ -45,6 +46,7 @@ export function useCharacter(playerId: string) {
           hpCurrent: data.hp_current,
           hpMax: data.hp_max,
           deity: typeof data.deity === "string" ? data.deity : "",
+          portraitUrl: typeof data.portrait_url === "string" ? data.portrait_url : null,
         });
       } catch (e) {
         if (cancelled) return;

@@ -5,8 +5,11 @@ Three tools for the creation flow: push visual cards, record choices, finalize.
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import json
 import logging
+import os
 import re
 
 from livekit.agents.llm import function_tool
@@ -22,6 +25,23 @@ logger = logging.getLogger("divineruin.creation")
 
 VALID_CARD_CATEGORIES = {"race", "class", "deity"}
 VALID_CHOICE_CATEGORIES = {"race", "class", "deity", "name", "backstory"}
+
+SERVER_URL = os.environ.get("SERVER_URL", "http://localhost:3001")
+
+
+def compute_asset_id(template_id: str, vars: dict[str, str]) -> str:
+    """Replicate the server's content-addressable hash for image assets."""
+    sorted_entries = sorted(vars.items())
+    payload = template_id + json.dumps(sorted_entries)
+    h = hashlib.sha256(payload.encode()).hexdigest()[:16]
+    return f"img_{h}"
+
+
+def _asset_url(template_id: str, vars: dict[str, str]) -> str:
+    """Build a full image asset URL for a given template and variables."""
+    asset_id = compute_asset_id(template_id, vars)
+    return f"/api/assets/images/{asset_id}"
+
 
 # --- Input sanitization ---
 _SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9 '\-]")
@@ -64,13 +84,30 @@ async def push_creation_cards(
     if category == "race":
         items = RACES
         cards = [
-            {"id": r.id, "title": r.name, "description": r.card_description, "category": "race"} for r in items.values()
+            {
+                "id": r.id,
+                "title": r.name,
+                "description": r.card_description,
+                "category": "race",
+                "image_url": _asset_url(
+                    "race_portrait", {"race_name": r.name, "physical_features": r.card_description}
+                ),
+            }
+            for r in items.values()
         ]
         full_data = [{"id": r.id, "name": r.name, "description": r.description} for r in items.values()]
     elif category == "class":
         items = CLASSES
         cards = [
-            {"id": c.id, "title": c.name, "description": c.card_description, "category": "class"}
+            {
+                "id": c.id,
+                "title": c.name,
+                "description": c.card_description,
+                "category": "class",
+                "image_url": _asset_url(
+                    "class_illustration", {"class_name": c.name, "class_fantasy": c.card_description}
+                ),
+            }
             for c in items.values()
         ]
         full_data = [
@@ -84,6 +121,7 @@ async def push_creation_cards(
                 "title": f"{d.name}, {d.title}" if d.id != "none" else d.name,
                 "description": d.card_description,
                 "category": "deity",
+                "image_url": _asset_url("patron_deity_card", {"deity_name": d.name, "deity_domain": d.domain}),
             }
             for d in items.values()
         ]
@@ -240,6 +278,9 @@ async def finalize_character(context: RunContext) -> str:
     sd.location_id = character_data["location_id"]
     cs.phase = "complete"
 
+    # Fire-and-forget async portrait generation (non-blocking)
+    _portrait_task = asyncio.create_task(_generate_player_portrait(sd, cs))  # noqa: RUF006
+
     # Publish session_init so client gets character data
     try:
         payload = await db.get_session_init_payload(sd.player_id)
@@ -272,3 +313,46 @@ async def finalize_character(context: RunContext) -> str:
         ),
     }
     return json.dumps(summary)
+
+
+async def _generate_player_portrait(sd: SessionData, cs: object) -> None:
+    """Async fire-and-forget: generate player portrait via server API."""
+    try:
+        import httpx
+
+        race_id = getattr(cs, "race", None)
+        class_id = getattr(cs, "class_choice", None)
+        class_name = CLASSES[class_id].name if class_id and class_id in CLASSES else "adventurer"
+        race_desc = RACES[race_id].card_description if race_id and race_id in RACES else ""
+
+        template_vars = {"class": class_name, "key_feature": race_desc}
+
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                f"{SERVER_URL}/api/images/generate",
+                json={"templateId": "player_character_creation", "vars": template_vars},
+            )
+            if resp.status_code != 200:
+                logger.warning("Portrait generation failed: %s", resp.text)
+                return
+
+            result = resp.json()
+            asset_id = result.get("assetId", "")
+            if not asset_id:
+                return
+
+            portrait_url = f"/api/assets/images/{asset_id}"
+
+            # Update player record
+            await db.update_player_portrait(sd.player_id, portrait_url)
+
+            # Notify client
+            await publish_game_event(
+                sd.room,
+                "player_portrait_ready",
+                {"url": portrait_url},
+                sd.event_bus,
+            )
+            logger.info("Player portrait generated: %s", portrait_url)
+    except Exception:
+        logger.exception("Failed to generate player portrait")

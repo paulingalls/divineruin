@@ -8,6 +8,7 @@ import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
 import { hudStore } from "@/stores/hud-store";
 import { panelStore } from "@/stores/panel-store";
+import { portraitStore } from "@/stores/portrait-store";
 import type { Combatant, CombatTrackerState, CreationCard } from "@/stores/hud-store";
 import type {
   InventoryItem,
@@ -99,6 +100,7 @@ export const MAX_EVENT_PAYLOAD_BYTES = 1_048_576;
 /** Delay before playing dice result stinger (matches tumble animation duration). */
 export const DICE_STINGER_DELAY_MS = 600;
 let _diceStingerTimer: ReturnType<typeof setTimeout> | null = null;
+let _companionHideTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function parseGameEvent(payload: Uint8Array): DataChannelEvent | null {
   if (payload.length > MAX_EVENT_PAYLOAD_BYTES) return null;
@@ -164,6 +166,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
               ? ((character.hp as Record<string, unknown>).max as number)
               : 0,
           deity: typeof character.deity === "string" ? character.deity : "",
+          portraitUrl: typeof character.portrait_url === "string" ? character.portrait_url : null,
         });
       }
 
@@ -283,6 +286,32 @@ export function handleGameEvent(event: DataChannelEvent): void {
         const exitConns =
           locExits && typeof locExits === "object" ? extractExitConnections(locExits) : [];
         panelStore.getState().addVisitedLocation(location.id, exitConns);
+      }
+
+      // --- Populate portrait store ---
+      const portraits = event.portraits as Record<string, unknown> | undefined;
+      if (portraits && typeof portraits === "object") {
+        const companion = portraits.companion as Record<string, unknown> | undefined;
+        if (
+          companion &&
+          typeof companion.primary === "string" &&
+          typeof companion.alert === "string"
+        ) {
+          portraitStore.getState().setCompanionPortraits(companion.primary, companion.alert);
+        }
+        const npcs = portraits.npcs as Record<string, string> | undefined;
+        if (npcs && typeof npcs === "object") {
+          portraitStore.getState().setNpcPortraitMap(npcs);
+        }
+      }
+
+      // Extract player portrait_url from character data
+      if (character && typeof character === "object") {
+        const portraitUrl = character.portrait_url;
+        if (typeof portraitUrl === "string") {
+          characterStore.getState().updatePortraitUrl(portraitUrl);
+          portraitStore.getState().setPlayerPortraitUrl(portraitUrl);
+        }
       }
 
       console.log("[game-events] session_init processed", {
@@ -419,15 +448,40 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
     }
 
-    case "transcript_entry":
+    case "transcript_entry": {
+      const speaker = (event.speaker as "player" | "dm" | "npc" | "tool" | undefined) ?? "dm";
+      const characterName = (event.character as string | undefined) ?? null;
+
       transcriptStore.getState().addEntry({
-        speaker: (event.speaker as "player" | "dm" | "npc" | "tool" | undefined) ?? "dm",
-        character: (event.character as string | undefined) ?? null,
+        speaker,
+        character: characterName,
         emotion: (event.emotion as string | undefined) ?? null,
         text: typeof event.text === "string" ? event.text : "",
         timestamp: typeof event.timestamp === "number" ? event.timestamp : Date.now() / 1000,
       });
+
+      // Show NPC portrait when an NPC speaks
+      const ps = portraitStore.getState();
+      if (speaker === "npc" && characterName) {
+        const npcUrl = ps.npcPortraitMap[characterName];
+        if (npcUrl) {
+          portraitStore.getState().setActiveNpc(characterName, npcUrl);
+        }
+        // Show companion avatar for companion speech (e.g. "Kael")
+        if (characterName === "Kael" && ps.companionPrimaryUrl) {
+          portraitStore.getState().setCompanionVisible(true);
+          if (_companionHideTimer) clearTimeout(_companionHideTimer);
+          _companionHideTimer = setTimeout(() => {
+            _companionHideTimer = null;
+            portraitStore.getState().setCompanionVisible(false);
+          }, 5000);
+        }
+      } else {
+        // Different speaker — clear NPC portrait
+        portraitStore.getState().clearActiveNpc();
+      }
       break;
+    }
 
     case "item_acquired":
       hudStore.getState().pushOverlay("item_acquired", {
@@ -479,7 +533,14 @@ export function handleGameEvent(event: DataChannelEvent): void {
     }
 
     case "creation_cards": {
-      const cards = Array.isArray(event.cards) ? (event.cards as CreationCard[]) : [];
+      const rawCards = Array.isArray(event.cards) ? (event.cards as Record<string, unknown>[]) : [];
+      const cards: CreationCard[] = rawCards.map((c) => ({
+        id: typeof c.id === "string" ? c.id : "",
+        title: typeof c.title === "string" ? c.title : "",
+        description: typeof c.description === "string" ? c.description : "",
+        category: typeof c.category === "string" ? c.category : "",
+        imageUrl: typeof c.image_url === "string" ? c.image_url : undefined,
+      }));
       hudStore.getState().setCreationCards(cards);
       break;
     }
@@ -519,6 +580,18 @@ export function handleGameEvent(event: DataChannelEvent): void {
         event.url.length <= 256
       ) {
         playNarration(event.url);
+      }
+      break;
+
+    case "player_portrait_ready":
+      if (
+        typeof event.url === "string" &&
+        event.url.startsWith("/api/assets/") &&
+        !event.url.includes("..") &&
+        event.url.length <= 256
+      ) {
+        characterStore.getState().updatePortraitUrl(event.url);
+        portraitStore.getState().setPlayerPortraitUrl(event.url);
       }
       break;
 
