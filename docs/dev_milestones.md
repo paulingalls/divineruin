@@ -1107,11 +1107,193 @@ These overlays appear over the session screen center when triggered by data chan
 
 ---
 
-## Phase 10: Multiplayer (Wave 2 Prep)
+## Phase 10: Visual Art Integration
+
+*This phase brings the ink wash art direction to life across the app. The image_prompt_library.md defines the visual language — dissolving edges, monochrome ink on dark paper, selective color accents. This phase builds the pipeline to generate art with Gemini, integrates it into existing UI surfaces (replacing placeholders), and adds new visual moments that complement the audio-first experience. Art supplements the DM's voice — it never replaces it. Every image is atmospheric, partially unfinished, and feels like it belongs in the world.*
+
+### Milestone 10.1 — Image Generation Pipeline and Asset Management
+
+**Goal:** Build the server-side infrastructure to generate images from the prompt library using Gemini, store them, and serve them efficiently to the client. This is the foundation that all subsequent art milestones build on.
+
+**Inputs:** Milestone 1.1 (server infrastructure), Milestone 5.1 (client app with data channel).
+
+**Deliverables:**
+- Image generation service (`apps/server/src/services/image-gen.ts`): wrapper around the Gemini API (Nano Banana 2 / Gemini image generation) that accepts a prompt template key + variable substitutions and returns a generated image
+- Prompt template registry: structured version of the prompts from `image_prompt_library.md` — each template has an ID, category, base prompt text, variable slots, aspect ratio, and accent color rule
+- Asset storage: generated images stored in a persistent location (local filesystem for dev, cloud storage bucket for prod) with content-addressable naming (hash of prompt + variables)
+- Asset serving: REST endpoint (`GET /api/assets/images/:id`) serves generated images with cache headers. CDN-friendly URLs.
+- Client-side image caching: `expo-image` integration with disk caching — images download once and persist across sessions. Cache key is the asset ID.
+- Generation queue: image generation requests are queued and processed asynchronously (not blocking voice/gameplay). Results pushed to client via data channel when ready: `{ type: "image_ready", asset_id, url, category, context }`
+- Batch generation script (`scripts/generate_art.ts`): CLI tool that pre-generates a set of images from the prompt library for MVP content (run once to seed the art assets, regenerate as needed)
+- Post-processing pipeline: after generation, images are auto-adjusted — background darkened to near-black (#0A0A0B), color-corrected to brand palette, cropped to target aspect ratio
+
+**Acceptance criteria:**
+- [ ] `bun run scripts/generate_art.ts --template companion_portrait --vars '{"name":"Kael","class":"ranger"}'` generates an image and stores it
+- [ ] Generated images match the ink wash style described in `image_prompt_library.md` (manual review — dissolving edges, dark background, monochrome with selective accent)
+- [ ] Asset serving endpoint returns images with proper cache headers (24h cache, ETag)
+- [ ] `expo-image` on the client loads and caches images from the asset endpoint
+- [ ] Generation queue processes requests without blocking the voice pipeline (verify voice latency unchanged during generation)
+- [ ] Post-processing darkens backgrounds and corrects accent colors to within 10% of brand hex values
+- [ ] Batch generation script can produce all MVP companion + location + item art in a single run
+- [ ] Duplicate requests (same template + variables) return the cached asset instead of regenerating
+
+**Key references:**
+- *Image Prompt Library* (all templates, style foundation, consistency tips, aspect ratios)
+- *Brand Spec — Art Direction* (ink wash style, accent color rules, art categories)
+- *Cost Model* (monitor image generation costs per asset)
+
+---
+
+### Milestone 10.2 — Character Portraits and Creation Cards
+
+**Goal:** Replace placeholder rectangles with real ink wash art. Character creation cards show race, class, and patron illustrations. Companion and NPC portraits appear during encounters and in the character sheet. The player's own character gets a generated portrait.
+
+**Inputs:** Milestone 10.1 (image generation pipeline), Milestone 8.2 (character creation flow), Milestone 5.2 (creation card UI), Milestone 5.3 (character sheet panel).
+
+**Deliverables:**
+
+*Character Creation Art*
+- Race illustration cards: one ink wash portrait per MVP race (Solari, Duskari, Elari, Tideborn, Ashfolk, Verdani) generated from the "Player Character — Creation Screen" template. 3:4 aspect ratio, monochrome, front-facing bust with race-defining features.
+- Class illustration cards: one ink wash illustration per MVP class archetype showing the class in action — not a portrait, but a figure/scene that evokes the class fantasy. 3:4 aspect ratio.
+- Patron deity cards: one illustration per MVP patron (Kaelen, Syrath, Veythar) using the "God Contact" template adapted — atmospheric, abstract, showing the deity's domain rather than a literal face. Divine gold accent for all.
+- Creation card component update: replace `artPlaceholder` View in `creation-card-row.tsx` with `expo-image` loading pre-generated art by card ID. Fallback to slate placeholder if image hasn't loaded yet.
+
+*Companion Portrait*
+- Kael portrait: primary (neutral) and variant (alert/concerned) generated from the "Companion Portrait" templates. 3:4 aspect ratio.
+- Companion portrait display: new `CompanionPortrait` component shown as a small (48px) circular avatar in the persistent bar when the companion speaks, with a brief fade-in/fade-out (matches ventriloquism voice timing).
+- Character sheet integration: companion section shows Kael's portrait alongside relationship status.
+
+*NPC Portraits*
+- Tier 1 NPC portraits: Guildmaster Torin, Elder Yanna, Scholar Emris — generated from the "NPC Portrait — Brief Encounter" template. 1:1 aspect ratio, rough/impressionistic style.
+- NPC portrait display: when the DM voices an NPC (ventriloquism tag detected), a small portrait fades in at the top of the screen for the duration of the NPC's dialogue. Subtle entrance (200ms fade), holds during speech, subtle exit (300ms fade). Non-intrusive — positioned near the voice state indicator.
+
+*Player Character Portrait*
+- Dynamic generation: after character creation completes, the server generates a portrait using the "Player Character — Creation Screen" template with the player's chosen race, class, and key features as variables.
+- The portrait generates asynchronously — player doesn't wait for it. It appears on the home screen character summary and character sheet panel once ready.
+- Regeneration option: settings screen includes "Regenerate Portrait" button that generates a new portrait with the same parameters (variation in output).
+
+**Acceptance criteria:**
+- [ ] Character creation cards display ink wash art instead of slate rectangles for all MVP races, classes, and patrons
+- [ ] Art style is visually consistent across all creation cards (same ink wash treatment, same dark background, same dissolving edges)
+- [ ] Kael's portrait appears as a small avatar when the companion speaks during sessions
+- [ ] NPC portraits appear during NPC dialogue and fade away when the NPC stops speaking
+- [ ] Player character portrait generates after creation and appears on the home screen within 30 seconds
+- [ ] Portrait regeneration produces a visibly different (but stylistically consistent) result
+- [ ] All portraits use the correct aspect ratios from the prompt library (3:4 for companions/player, 1:1 for NPCs)
+- [ ] Images load gracefully — slate placeholder shown during load, cross-fade to image on ready
+- [ ] No image display blocks or delays the voice pipeline or DM narration
+
+**Key references:**
+- *Image Prompt Library — Category 1: Character Portraits* (all portrait templates)
+- *Image Prompt Library — Accent Color Rules* (when to use teal, ember, gold)
+- *Brand Spec — Art Direction — Character Art* (companion: most finished, NPC: impressionistic)
+- *Game Design — Character Creation* (creation flow steps)
+
+---
+
+### Milestone 10.3 — Location Art and Atmospheric Visuals
+
+**Goal:** Location illustrations replace the pure-gradient atmospheric backgrounds during sessions. The session screen gets a layered visual treatment: ink wash location art as a base, grain overlay on top, HUD elements floating above. Loading screens use abstract ink compositions. The Hollow gets special visual corruption treatment.
+
+**Inputs:** Milestone 10.1 (image generation pipeline), Milestone 5.1 (session screen with atmospheric background), Milestone 5.4 (audio engine with location changes).
+
+**Deliverables:**
+
+*Location Illustrations*
+- One 16:9 ink wash illustration per MVP location: Market Square (ember accent from lanterns), Millhaven (no color — monochrome unease), Forest Road (no color — monochrome ancient quiet), Greyvale Ruins Entrance (faint teal wash beginning), Ruins Interior (teal corruption spreading), Hollow Breach (heavy teal — art style itself corrupting), Hearthstone Tavern (warm ember from fireplace).
+- Night variants for locations with time-of-day differences: Market Square at night (no ember, deeper shadows), Millhaven at night.
+- Atmospheric background upgrade: `atmospheric-background.tsx` enhanced to layer the location illustration beneath the existing gradient. The gradient becomes a semi-transparent overlay (30-50% opacity) that tints the art to match game state, rather than being the sole visual. Art is displayed at low brightness (40-60% of full) so it never competes with HUD elements.
+- Location transition: when the player moves, the new location illustration cross-fades in over 2-3 seconds (synced with the audio soundscape crossfade). The old illustration fades out simultaneously.
+
+*Hollow Visual Corruption*
+- Progressive corruption: as the player moves deeper into Hollow-influenced areas, the location art itself degrades visually. This mirrors the audio corruption stages.
+  - Stage 1 (Ruins Entrance): art is normal ink wash with subtle teal stain at edges
+  - Stage 2 (Ruins Interior): teal bleeds more prominently, image has slight distortion (CSS/shader-based — subtle hue shift, noise overlay increase)
+  - Stage 3 (Hollow Breach): heavy teal saturation, grain overlay intensity increases to 8-10%, subtle animated noise/static effect overlaid on the art. The screen itself feels corrupted.
+- Corruption effects are applied as client-side post-processing overlays on top of the base art (not baked into the generated image) — this allows smooth transitions between corruption stages.
+
+*Loading and Transition Screens*
+- App launch: abstract ink composition (from "Loading Screen — Abstract" template) displayed during app initialization, fading into the home screen.
+- Session connecting: while waiting for LiveKit room connection, display an abstract atmospheric ink wash that cross-fades into the location art once the session initializes.
+- Session summary: location illustration from the session's final location displayed as a dimmed background behind the summary text.
+
+*Home Screen Enhancement*
+- Session history entries: small thumbnail of the session's primary location art (48px square, rounded corners) next to each session in the history list.
+
+**Acceptance criteria:**
+- [ ] Each MVP location displays its ink wash illustration as the session background (visible through semi-transparent gradient)
+- [ ] Location art is atmospheric and non-distracting — HUD text and overlays remain clearly readable over the art
+- [ ] Location transitions cross-fade art and audio simultaneously — the visual and audio shifts feel unified
+- [ ] Night variants display for locations when the world clock indicates nighttime
+- [ ] Hollow corruption stages 1-3 produce progressively more unsettling visual effects (teal bleed, distortion, noise)
+- [ ] Corruption visual effects transition smoothly as the player moves between corruption stages (no hard cuts)
+- [ ] App launch shows an ink wash loading screen that fades into the home screen
+- [ ] Session connecting state shows atmospheric art that transitions to location art on session init
+- [ ] Session summary screen displays final location art as a dimmed background
+- [ ] Session history entries on home screen show location art thumbnails
+- [ ] All location art matches the ink wash style (dark background, dissolving edges, correct accent colors per location)
+- [ ] Art display does not impact session performance — images are pre-cached, transitions run at 60fps
+
+**Key references:**
+- *Image Prompt Library — Category 2: Location Illustrations* (all location templates)
+- *Image Prompt Library — Accent Color Rules* (ember for firelight/forge, teal for Hollow, no color for natural spaces)
+- *Audio Design — The Sound of the Hollow* (5-stage escalation — visual corruption mirrors audio corruption)
+- *Brand Spec — Art Direction — Location Art* (wide, atmospheric, center defined, edges fade)
+
+---
+
+### Milestone 10.4 — Item Art, Story Moments, and Marketing Assets
+
+**Goal:** Complete the visual layer. Inventory items get ink wash specimen-plate illustrations. Key narrative moments get dramatic story illustrations shown during session recaps. Marketing assets are generated for app store presence.
+
+**Inputs:** Milestone 10.1 (image generation pipeline), Milestone 5.3 (inventory panel), Milestone 5.1 (session summary screen).
+
+**Deliverables:**
+
+*Item Art*
+- Item illustrations for all MVP items: Sealed Research Tablet (quest item template — monochrome), Hollow-Bone Fragment (corrupted artifact template — teal accent), plus key weapons and armor the player can acquire during the Greyvale arc.
+- Inventory panel upgrade: item tiles in the grid display their ink wash illustration instead of the generic type icon on slate background. 1:1 aspect ratio, centered on dark background with generous negative space.
+- Item detail card: the full item card (shown on tap) displays a larger version of the item illustration above the description text.
+- Item acquisition popup: the `item_acquired` overlay (from Milestone 5.2) displays the item illustration in the card, replacing the rarity-colored placeholder area.
+- Corrupted items: items with Hollow corruption show the teal-bleeding-beyond-lines treatment from the "Corrupted Artifact" template. The illustration itself communicates danger before the DM describes it.
+
+*Story Moment Illustrations*
+- Key narrative beat illustrations for the Greyvale arc's major moments: first combat encounter, Hollow Breach discovery, artifact recovery, god contact moment (if triggered).
+- Story moment display: during session recap (session summary screen), 1-2 story illustrations are shown alongside the recap text. Each illustration corresponds to a key event from that session.
+- The DM agent tags significant narrative moments during play: `{ type: "story_moment", moment_key, description }`. The server uses the moment key to select or generate the appropriate illustration.
+- Story moments use the 2:3 portrait aspect ratio — dramatic, graphic-novel-panel feeling.
+
+*Marketing and App Store Assets*
+- App icon treatment: ink wash version of the app icon generated from the brand's visual language.
+- App store screenshot backgrounds: 4-5 atmospheric ink wash compositions (from "App Store Screenshot Background" template) suitable as backgrounds behind overlaid UI screenshots. 9:16 aspect ratio.
+- Social media teaser: the "eye" composition from the prompt library — a single detailed eye with teal reflection, the rest dissolving into ink marks. 1:1 for social sharing.
+- These are generated once via the batch script and stored as static marketing assets — not served through the dynamic pipeline.
+
+**Acceptance criteria:**
+- [ ] MVP items display ink wash specimen-plate illustrations in the inventory grid (no more generic type icons)
+- [ ] Tapping an item shows its illustration in the detail card at a larger size
+- [ ] Item acquisition popup displays the item's illustration
+- [ ] Corrupted items (Hollow-Bone Fragment) visually show teal bleed — communicating corruption through art alone
+- [ ] Session summary screen displays 1-2 story moment illustrations that correspond to actual events from that session
+- [ ] Story moment illustrations match the dramatic ink wash style (2:3, bold brushwork, accent color appropriate to scene)
+- [ ] App store screenshot backgrounds are generated and ready for use (5 variants, 9:16, atmospheric)
+- [ ] Social media teaser image is generated (1:1, the eye composition)
+- [ ] All item art uses the 1:1 specimen-plate style consistently (centered, negative space, naturalist quality)
+- [ ] Art generation for story moments doesn't delay session summary — illustrations are generated during the session and cached
+
+**Key references:**
+- *Image Prompt Library — Category 3: Item & Object Art* (weapon, corrupted artifact, quest item templates)
+- *Image Prompt Library — Category 4: Story Moment Illustrations* (combat, god contact, Hollow encounter templates)
+- *Image Prompt Library — Category 5: UI & Marketing Assets* (screenshot backgrounds, social teaser, loading screen)
+- *Image Prompt Library — Production Pipeline Notes* (batch consistency, post-processing, asset priority)
+
+---
+
+## Phase 11: Multiplayer (Wave 2 Prep)
 
 *This phase is post-MVP solo validation. It should only begin after Wave 1 solo playtests (Milestone 9.1) confirm the core experience works. Multiplayer adds complexity that is not worth building until the single-player DM, combat, companion, and session lifecycle are proven.*
 
-### Milestone 10.1 — Multiplayer Room
+### Milestone 11.1 — Multiplayer Room
 
 **Goal:** Two human players and the DM agent share a voice room and play together.
 
@@ -1142,13 +1324,13 @@ These overlays appear over the session screen center when triggered by data chan
 
 ---
 
-### Milestone 10.2 — Multiplayer Conversation Awareness
+### Milestone 11.2 — Multiplayer Conversation Awareness
 
 **Goal:** The DM knows when players are talking to each other vs. talking to the game, and stays quiet during player-to-player conversation instead of trying to respond to every utterance.
 
 **The problem:** In solo play, every player utterance is directed at the DM. The pipeline fires on end-of-speech and generates a response. In multiplayer, players talk to each other constantly — strategizing, joking, debating what to do. If the DM responds to every utterance, it becomes an intrusive third wheel that interrupts natural player interaction. A great human DM reads the room and knows when to stay quiet. Our DM needs the same awareness.
 
-**Inputs:** Milestone 10.1 (multiplayer room working).
+**Inputs:** Milestone 11.1 (multiplayer room working).
 
 **Approach — LLM judgment via system prompt and context:**
 
@@ -1243,9 +1425,10 @@ The LLM sees the speaker pattern and the transcript content together. If the las
 | **7: Async** | 7.1, 7.2 | Activity engine, Catch-Up layer |
 | **8: Polish** | 8.1, 8.2, 8.3, 8.4 | Music, character creation, session lifecycle, god whispers |
 | **9: Validation** | 9.1 | Internal playtest — solo Wave 1 with quality rubrics |
-| **10: Multiplayer** | 10.1, 10.2 | Wave 2 prep — multi-player rooms, conversation awareness |
+| **10: Visual Art** | 10.1, 10.2, 10.3, 10.4 | Image pipeline, portraits, location art, items & story moments |
+| **11: Multiplayer** | 11.1, 11.2 | Wave 2 prep — multi-player rooms, conversation awareness |
 
-**Total: 10 phases, 21 milestones.** Phases 1–9 (19 milestones) deliver the complete solo MVP through Wave 1 playtesting. Phase 10 extends to multiplayer only after solo validation succeeds. Dependencies flow strictly downward — no milestone requires work from a later phase.
+**Total: 11 phases, 25 milestones.** Phases 1–9 (19 milestones) deliver the complete solo MVP through Wave 1 playtesting. Phase 10 brings the ink wash visual art direction to life across the app. Phase 11 extends to multiplayer only after solo validation succeeds. Dependencies flow strictly downward — no milestone requires work from a later phase.
 
 ## Cross-Cutting: Accounts & Authentication
 
