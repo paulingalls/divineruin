@@ -101,6 +101,7 @@ export default function AuthScreen() {
           style={styles.content}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
+          <View style={styles.topSpacer} />
           <TitleBar />
           <View style={styles.titleSpacer} />
 
@@ -113,7 +114,7 @@ export default function AuthScreen() {
                   value={email}
                   onChangeText={setEmail}
                   placeholder="adventurer@example.com"
-                  placeholderTextColor={BrandColors.slate}
+                  placeholderTextColor={BrandColors.ash}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -143,7 +144,7 @@ export default function AuthScreen() {
                   value={code}
                   onChangeText={setCode}
                   placeholder="000000"
-                  placeholderTextColor={BrandColors.slate}
+                  placeholderTextColor={BrandColors.ash}
                   keyboardType="number-pad"
                   maxLength={6}
                   autoComplete="one-time-code"
@@ -168,6 +169,7 @@ export default function AuthScreen() {
 
             {error && <ThemedText style={styles.errorText}>{error}</ThemedText>}
           </View>
+          <View style={styles.bottomSpacer} />
         </KeyboardAvoidingView>
       </SafeAreaView>
     </ThemedView>
@@ -187,19 +189,23 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: Spacing.four,
-    justifyContent: "center",
-    gap: Spacing.three,
+  },
+  topSpacer: {
+    flex: 1,
   },
   titleSpacer: {
-    height: Spacing.five,
+    flex: 2,
+  },
+  bottomSpacer: {
+    flex: 3,
   },
   form: {
     gap: Spacing.three,
   },
   label: {
     fontFamily: FontFamilies.system,
-    fontSize: 13,
-    color: BrandColors.ash,
+    fontSize: 15,
+    color: BrandColors.bone,
     letterSpacing: 1,
   },
   sublabel: {
@@ -211,7 +217,7 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: BrandColors.ink,
     borderWidth: 1,
-    borderColor: BrandColors.charcoal,
+    borderColor: BrandColors.hollowFaint,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
@@ -230,7 +236,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontFamily: FontFamilies.system,
-    fontSize: 14,
+    fontSize: 16,
     color: BrandColors.void,
     letterSpacing: 2,
   },
