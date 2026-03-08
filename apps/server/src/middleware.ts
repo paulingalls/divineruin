@@ -53,6 +53,7 @@ const RATE_LIMITS: Record<string, number> = {
   "/api/push-token": 5,
   "/api/activities": 10,
   "/api/internal/push": 30,
+  "/api/images/generate": 10,
 };
 const DEFAULT_RATE_LIMIT = 30;
 const WINDOW_MS = 60_000;

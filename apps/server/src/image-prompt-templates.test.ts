@@ -39,6 +39,6 @@ test("all templates have consistent structure", () => {
   }
 });
 
-test("PROMPT_TEMPLATES has all 17 templates", () => {
-  expect(Object.keys(PROMPT_TEMPLATES).length).toBe(17);
+test("PROMPT_TEMPLATES has all 18 templates", () => {
+  expect(Object.keys(PROMPT_TEMPLATES).length).toBe(18);
 });

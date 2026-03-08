@@ -12,6 +12,7 @@ import {
 } from "./activities.ts";
 import { handleGetCatchUpFeed } from "./catchup.ts";
 import { handleImageAsset } from "./image-assets.ts";
+import { handleGenerateImage } from "./image-gen-api.ts";
 import { sql } from "./db.ts";
 import { handleGetActivityTemplates } from "./activity-templates-api.ts";
 import { handleStorePushToken, handleInternalPush } from "./push.ts";
@@ -116,6 +117,10 @@ const server = serve({
 
     if (path === "/api/internal/push" && req.method === "POST") {
       return withCors(await handleInternalPush(req));
+    }
+
+    if (path === "/api/images/generate" && req.method === "POST") {
+      return withCors(await handleGenerateImage(req));
     }
 
     // --- Activity routes (auth required) ---

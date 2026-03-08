@@ -217,6 +217,17 @@ export const PROMPT_TEMPLATES: Record<string, ImagePromptTemplate> = {
     accentColor: "none",
     accentHex: null,
   },
+
+  ui_app_icon: {
+    id: "ui_app_icon",
+    category: "ui",
+    name: "App Icon — Brand Mark",
+    promptText: `Ink wash illustration on a solid near-black background (#0A0A0B). A single human eye rendered in exquisite ink brushwork, centered in the square composition. The eye is open wide, staring directly at the viewer. The iris contains a faint teal watercolor wash — subtle, like a reflection of something otherworldly. Around the eye, the ink dissolves rapidly into darkness — no face, no surrounding features, just the eye emerging from void. The brushwork is confident and visible. Fine ink detail in the iris and lashes, dissolving to scattered ink marks at the edges. Monochrome except for the subtle teal in the iris. The composition is bold and reads clearly at small sizes — high contrast between the eye and the dark background. Fine art quality, traditional ink on dark paper. Aspect ratio 1:1.`,
+    variableSlots: [],
+    aspectRatio: "1:1",
+    accentColor: "hollow_teal",
+    accentHex: ACCENT_HEX.hollow_teal,
+  },
 };
 
 /**
