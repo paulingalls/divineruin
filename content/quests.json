@@ -142,5 +142,219 @@
       "stuck_stage_4": "Your companion reminds you about the ruins. 'The lights. The connection to the Hollow. It's all there.'",
       "stuck_stage_5": "Your companion suggests finding someone in the Accord who understands old Aelindran scholarship."
     }
+  },
+  {
+    "id": "investigate_aldric",
+    "name": "What Aldric Found",
+    "tier": 1,
+    "type": "side",
+    "description": "Aldric went to the ruins a month ago and came back wrong. He won't speak, barely eats, and traces strange shapes with his fingers. Elder Yanna has his stone but is afraid to show anyone. Something happened to him in those ruins, and finding out what might explain the Hollow's behavior in the Greyvale.",
+    "giver": "elder_yanna",
+    "prerequisite": "quest:greyvale_anomaly:stage >= 2",
+    "stages": [
+      {
+        "id": "stage_1_learn_about_aldric",
+        "name": "The Man Who Came Back Wrong",
+        "objective": "Learn about Aldric from Millhaven's residents.",
+        "target_location_id": "millhaven",
+        "hints": [
+          "Your companion notices the locals avoiding a topic. 'There's something they're not saying.'",
+          "Your companion suggests: 'The innkeeper seems to know everyone. Maybe ask about recent... problems.'",
+          "Your companion says: 'Maren mentioned someone named Aldric. And Elder Yanna keeps visiting someone. Same person?'"
+        ],
+        "completion_conditions": {
+          "type": "knowledge_acquired",
+          "required_info": ["aldric_went_to_ruins", "aldric_came_back_changed"],
+          "sources": ["elder_yanna", "innkeeper_maren"]
+        },
+        "on_complete": {
+          "xp": 50,
+          "world_effects": [],
+          "narrative_beat": "The picture forms: a man went north, came back, and brought something with him. Whatever happened in those ruins is still happening to Aldric."
+        }
+      },
+      {
+        "id": "stage_2_visit_aldric",
+        "name": "The Hollow Stare",
+        "objective": "Find Aldric and try to communicate with him.",
+        "target_location_id": "millhaven_inn",
+        "hints": [
+          "Your companion glances toward the corner booth. 'Is that... is he alright?'",
+          "Your companion says: 'He's not responding. But look at his hands — he's drawing something.'",
+          "Your companion says: 'Those shapes he's tracing. They look like the notation in the ruins.'"
+        ],
+        "completion_conditions": {
+          "type": "npc_interaction",
+          "npc": "aldric_hollowed",
+          "topic": "ruins_experience"
+        },
+        "on_complete": {
+          "xp": 75,
+          "world_effects": ["yanna_disposition +2"],
+          "narrative_beat": "Aldric's eyes focus on you for one terrible second. 'The lights know you're looking,' he says. Then he's gone again, staring at nothing, fingers tracing symbols you've seen before."
+        }
+      },
+      {
+        "id": "stage_3_obtain_stone",
+        "name": "What He Brought Back",
+        "objective": "Convince Elder Yanna to show you Aldric's stone.",
+        "target_location_id": "millhaven",
+        "hints": [
+          "Your companion says: 'Yanna's hiding something. She keeps touching her pocket.'",
+          "Your companion suggests: 'Maybe if she trusts us enough, she'll show us what Aldric brought back.'",
+          "Your companion says: 'Yanna, we've seen the ruins. Whatever Aldric found — we need to see it. To help him.'"
+        ],
+        "completion_conditions": {
+          "type": "item_discovered",
+          "items": ["aldric_strange_stone"],
+          "location": "millhaven"
+        },
+        "on_complete": {
+          "xp": 100,
+          "rewards": [{ "item": "aldric_strange_stone", "quantity": 1 }],
+          "world_effects": ["yanna_disposition +3"],
+          "narrative_beat": "Yanna reaches into her pocket with a shaking hand. The stone is warm. It hums. And when you hold it, for one vertiginous second, the world looks thin — as if you could see through it to something vast and dark beyond."
+        }
+      }
+    ],
+    "failure_conditions": {},
+    "global_hints": {
+      "stuck_stage_1": "Your companion suggests talking to the locals about recent strange events in Millhaven.",
+      "stuck_stage_2": "Your companion points out the man sitting alone in the inn. 'He doesn't look right.'",
+      "stuck_stage_3": "Your companion suggests earning Elder Yanna's trust by helping the town before asking about Aldric."
+    }
+  },
+  {
+    "id": "defend_millhaven",
+    "name": "Millhaven Stands",
+    "tier": 1,
+    "type": "side",
+    "description": "The Hollow creatures are pressing closer to Millhaven. The town needs to prepare — barricades, watchtowers, evacuation routes. How the player allocates resources determines what happens when the attack comes.",
+    "giver": "elder_yanna",
+    "prerequisite": "quest:greyvale_anomaly:stage >= 3",
+    "stages": [
+      {
+        "id": "stage_1_assess_defenses",
+        "name": "Taking Stock",
+        "objective": "Survey Millhaven's defenses and identify vulnerabilities.",
+        "target_location_id": "millhaven",
+        "hints": [
+          "Your companion looks around the town. 'Not much to work with, is there?'",
+          "Your companion suggests walking the perimeter. 'Let's see what we've got to defend.'",
+          "Your companion says: 'The north side is completely open. If they come from the fields, there's nothing stopping them.'"
+        ],
+        "completion_conditions": {
+          "type": "knowledge_acquired",
+          "required_info": ["millhaven_north_vulnerability", "millhaven_resources"],
+          "sources": ["elder_yanna", "exploration"]
+        },
+        "on_complete": {
+          "xp": 50,
+          "world_effects": [],
+          "narrative_beat": "The town is vulnerable from the north. Limited materials, limited hands. You'll have to choose where to focus."
+        }
+      },
+      {
+        "id": "stage_2_fortify",
+        "name": "Hard Choices",
+        "objective": "Choose how to allocate Millhaven's resources: north barricade, watchtower, or evacuation supplies.",
+        "target_location_id": "millhaven",
+        "hints": [
+          "Your companion lays out the options. 'Barricade to the north buys time. Watchtower gives warning. Evacuation supplies save lives if we lose.'",
+          "Your companion says: 'There's not enough for all three. Pick what matters most.'",
+          "Your companion says: 'What would you rather have — walls, eyes, or a way out?'"
+        ],
+        "completion_conditions": {
+          "type": "decision_made",
+          "decision": "fortification_choice",
+          "options": ["north_barricade", "watchtower", "evacuation_supplies"]
+        },
+        "on_complete": {
+          "xp": 100,
+          "world_effects": ["set_flag:millhaven_fortification:player_choice"],
+          "narrative_beat": "The townsfolk work through the night. By dawn, it's done — not much, but something. A line drawn in dirt and hope."
+        },
+        "branches": {
+          "north_barricade": {
+            "description": "Build barricades on the north side to slow any attack.",
+            "effects": ["millhaven_defense:+3", "millhaven_warning:0", "millhaven_evacuation:0"],
+            "next_stage": null
+          },
+          "watchtower": {
+            "description": "Build a watchtower for early warning.",
+            "effects": ["millhaven_defense:0", "millhaven_warning:+3", "millhaven_evacuation:0"],
+            "next_stage": null
+          },
+          "evacuation_supplies": {
+            "description": "Prepare evacuation supplies and escape routes.",
+            "effects": ["millhaven_defense:0", "millhaven_warning:0", "millhaven_evacuation:+3"],
+            "next_stage": null
+          }
+        }
+      }
+    ],
+    "failure_conditions": {},
+    "global_hints": {
+      "stuck_stage_1": "Your companion suggests walking the perimeter of town to assess what needs defending.",
+      "stuck_stage_2": "Your companion reminds you: 'We need to decide. Barricade, watchtower, or evacuation. There's not time for all three.'"
+    }
+  },
+  {
+    "id": "emris_research",
+    "name": "The Scholar's Burden",
+    "tier": 1,
+    "type": "side",
+    "description": "Emris has been studying artifacts from Aelindra for thirty years. The Greyvale discovery changes everything — the notation matches their missing mentor's work. Helping Emris may unlock deeper understanding of what happened at the ruins, and what Veythar was doing.",
+    "giver": "scholar_emris",
+    "prerequisite": "quest:greyvale_anomaly:stage >= 5",
+    "stages": [
+      {
+        "id": "stage_1_assist_research",
+        "name": "Fragments and Echoes",
+        "objective": "Help Emris study the Greyvale artifacts.",
+        "target_location_id": "emris_study",
+        "hints": [
+          "Your companion says: 'Emris looks like they haven't slept. Maybe we should check in.'",
+          "Your companion says: 'The scholar said they needed help comparing the notation to their archives.'",
+          "Your companion says: 'Emris is in their study on the dockside. They asked us to come back.'"
+        ],
+        "completion_conditions": {
+          "type": "npc_interaction",
+          "npc": "scholar_emris",
+          "topic": "artifact_study"
+        },
+        "on_complete": {
+          "xp": 100,
+          "world_effects": ["emris_disposition +2"],
+          "narrative_beat": "Emris spreads their notes across every surface. 'Look — this notation. My mentor used this exact system. No one else did. This is personal scholarship. Private. Someone was working on something they didn't want the academy to know about.'"
+        }
+      },
+      {
+        "id": "stage_2_mentor_letter",
+        "name": "The Last Letter",
+        "objective": "Earn Emris's trust enough for them to share their mentor's final letter.",
+        "target_location_id": "emris_study",
+        "hints": [
+          "Your companion notices Emris holding something — a letter, old and well-handled. 'There's more they're not showing us.'",
+          "Your companion says: 'Be patient. They'll share when they're ready. Some knowledge costs trust.'",
+          "Your companion says: 'Emris, if your mentor's letter is connected to what we found... we need to see it. All of it.'"
+        ],
+        "completion_conditions": {
+          "type": "npc_interaction",
+          "npc": "scholar_emris",
+          "topic": "mentor_letter"
+        },
+        "on_complete": {
+          "xp": 150,
+          "world_effects": ["emris_disposition +3"],
+          "narrative_beat": "Emris unfolds the letter with trembling hands. The last words their mentor ever wrote: 'A discovery that changes everything. The barrier is not what we thought. It was made. And it can be unmade. I will write more when I understand.' They never wrote again."
+        }
+      }
+    ],
+    "failure_conditions": {},
+    "global_hints": {
+      "stuck_stage_1": "Your companion suggests visiting Emris at their study in the Dockside Quarter.",
+      "stuck_stage_2": "Your companion says: 'Emris trusts us with the artifact. Maybe there's more they haven't shared yet.'"
+    }
   }
 ]

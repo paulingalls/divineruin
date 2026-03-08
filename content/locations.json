@@ -25,7 +25,8 @@
       "north": { "destination": "accord_guild_hall" },
       "east": { "destination": "accord_temple_row" },
       "south": { "destination": "accord_dockside" },
-      "west": { "destination": "accord_hearthstone_tavern" }
+      "west": { "destination": "accord_hearthstone_tavern" },
+      "northwest": { "destination": "accord_forge" }
     },
     "conditions": {
       "time_night": {
@@ -384,5 +385,44 @@
       "out": { "destination": "accord_dockside" }
     },
     "ambient_sounds": "harbor_activity"
+  },
+  {
+    "id": "accord_forge",
+    "name": "Grimjaw's Forge",
+    "tier": 2,
+    "district": "accord_central",
+    "region": "sunward_coast",
+    "tags": ["forge", "crafting", "commerce", "fire"],
+    "description": "Heat rolls out the open door in waves. Inside, the air shimmers. The forge takes up the back wall — a massive stone hearth fed by bellows that wheeze like something alive. Hammers hang from pegs, smallest to largest, each worn smooth. The smell is hot metal, coal smoke, and sweat. Every surface is scorched or scarred.",
+    "atmosphere": "intense, industrious, fire-lit",
+    "key_features": [
+      "the great forge, stone-built and roaring",
+      "a wall of weapons in various stages of completion",
+      "a workbench covered in metal scraps and half-finished projects"
+    ],
+    "exits": {
+      "out": { "destination": "accord_market_square" }
+    },
+    "conditions": {
+      "time_night": {
+        "description_override": "The forge is banked for the night. Embers glow in the hearth, casting long red shadows. The metal cools with soft pings and ticks. The smell of coal lingers.",
+        "atmosphere": "quiet, embers, cooling metal"
+      }
+    },
+    "ambient_sounds": "forge_hammering"
+  },
+  {
+    "id": "grimjaw_quarters",
+    "name": "Grimjaw's Quarters",
+    "tier": 2,
+    "district": "accord_central",
+    "region": "sunward_coast",
+    "tags": ["residential", "private", "dwarf"],
+    "description": "A room behind and above the forge, reached by a narrow stone stair. Small, tidy in a way that suggests military habit. A cot bolted to the wall, a chest with three locks, and a shelf of metalworking texts. The heat from the forge below keeps it warm year-round. Through the floorboards, the faint tick of cooling metal.",
+    "atmosphere": "spare, warm, private",
+    "exits": {
+      "out": { "destination": "accord_forge" }
+    },
+    "ambient_sounds": "forge_hammering"
   }
 ]

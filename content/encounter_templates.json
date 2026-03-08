@@ -1,77 +1,209 @@
 [
   {
-    "id": "goblin_patrol",
-    "name": "Goblin Patrol",
-    "description": "A pair of goblin scouts, quick and vicious, armed with scimitars and shortbows.",
+    "id": "shadeling_cluster",
+    "name": "Shadeling Cluster",
+    "description": "Three smears of wrongness drifting low across the ground. They move like smoke — formless, slow, but the grass withers beneath them and the air goes cold where they pass. Individually fragile. Together, a creeping threat that dissolves what it touches.",
     "difficulty": "easy",
     "enemies": [
       {
-        "id": "goblin_scout_1",
-        "name": "Goblin Scout",
+        "id": "shadeling_1",
+        "name": "Shadeling",
         "level": 1,
-        "ac": 13,
-        "hp": 7,
+        "ac": 10,
+        "hp": 6,
         "attributes": {
-          "strength": 8,
-          "dexterity": 14,
+          "strength": 4,
+          "dexterity": 12,
           "constitution": 10,
-          "intelligence": 10,
+          "intelligence": 2,
           "wisdom": 8,
-          "charisma": 8
+          "charisma": 1
         },
         "action_pool": [
           {
-            "name": "Scimitar",
-            "damage": "1d6",
-            "damage_type": "slashing",
-            "properties": ["light"],
-            "description": "A curved blade slashes in a quick arc"
-          },
-          {
-            "name": "Shortbow",
-            "damage": "1d6",
-            "damage_type": "piercing",
+            "name": "Corrosive Touch",
+            "damage": "1d4",
+            "damage_type": "necrotic",
             "properties": [],
-            "ranged": true,
-            "description": "A crude arrow flies with a sharp whistle"
+            "description": "The shadeling drifts across your skin and where it passes, the warmth dies"
           }
         ],
-        "xp_value": 50,
-        "sound_signature": "goblin_snarl"
+        "xp_value": 25,
+        "sound_signature": "hollow_static_hiss"
       },
       {
-        "id": "goblin_scout_2",
-        "name": "Goblin Scout",
+        "id": "shadeling_2",
+        "name": "Shadeling",
         "level": 1,
-        "ac": 13,
-        "hp": 7,
+        "ac": 10,
+        "hp": 6,
         "attributes": {
-          "strength": 8,
-          "dexterity": 14,
+          "strength": 4,
+          "dexterity": 12,
           "constitution": 10,
-          "intelligence": 10,
+          "intelligence": 2,
           "wisdom": 8,
-          "charisma": 8
+          "charisma": 1
         },
         "action_pool": [
           {
-            "name": "Scimitar",
-            "damage": "1d6",
-            "damage_type": "slashing",
-            "properties": ["light"],
-            "description": "A curved blade slashes in a quick arc"
-          },
-          {
-            "name": "Shortbow",
-            "damage": "1d6",
-            "damage_type": "piercing",
+            "name": "Corrosive Touch",
+            "damage": "1d4",
+            "damage_type": "necrotic",
             "properties": [],
-            "ranged": true,
-            "description": "A crude arrow flies with a sharp whistle"
+            "description": "The shadeling drifts across your skin and where it passes, the warmth dies"
           }
         ],
-        "xp_value": 50,
-        "sound_signature": "goblin_snarl"
+        "xp_value": 25,
+        "sound_signature": "hollow_static_hiss"
+      },
+      {
+        "id": "shadeling_3",
+        "name": "Shadeling",
+        "level": 1,
+        "ac": 10,
+        "hp": 6,
+        "attributes": {
+          "strength": 4,
+          "dexterity": 12,
+          "constitution": 10,
+          "intelligence": 2,
+          "wisdom": 8,
+          "charisma": 1
+        },
+        "action_pool": [
+          {
+            "name": "Corrosive Touch",
+            "damage": "1d4",
+            "damage_type": "necrotic",
+            "properties": [],
+            "description": "The shadeling drifts across your skin and where it passes, the warmth dies"
+          }
+        ],
+        "xp_value": 25,
+        "sound_signature": "hollow_static_hiss"
+      }
+    ]
+  },
+  {
+    "id": "ruins_mawling_pair",
+    "name": "Mawling Ambush",
+    "description": "Two humanoid shapes step from the shadows — wrong in every proportion. Limbs too long, joints bending backwards. They have no faces, just an opening that radiates a field of dissolution. They reach for things. They grab. They pull.",
+    "difficulty": "moderate",
+    "enemies": [
+      {
+        "id": "mawling_1",
+        "name": "Mawling",
+        "level": 2,
+        "ac": 13,
+        "hp": 18,
+        "attributes": {
+          "strength": 14,
+          "dexterity": 13,
+          "constitution": 12,
+          "intelligence": 5,
+          "wisdom": 10,
+          "charisma": 3
+        },
+        "action_pool": [
+          {
+            "name": "Grasping Maw",
+            "damage": "1d8+2",
+            "damage_type": "necrotic",
+            "properties": [],
+            "description": "The opening where a face should be lunges forward — what it touches begins to dissolve"
+          },
+          {
+            "name": "Seizing Grab",
+            "damage": "1d4",
+            "damage_type": "bludgeoning",
+            "properties": ["grapple"],
+            "description": "Wrong-jointed arms reach with terrifying speed, pulling you toward the maw"
+          }
+        ],
+        "xp_value": 100,
+        "sound_signature": "hollow_wrong_footsteps"
+      },
+      {
+        "id": "mawling_2",
+        "name": "Mawling",
+        "level": 2,
+        "ac": 13,
+        "hp": 18,
+        "attributes": {
+          "strength": 14,
+          "dexterity": 13,
+          "constitution": 12,
+          "intelligence": 5,
+          "wisdom": 10,
+          "charisma": 3
+        },
+        "action_pool": [
+          {
+            "name": "Grasping Maw",
+            "damage": "1d8+2",
+            "damage_type": "necrotic",
+            "properties": [],
+            "description": "The opening where a face should be lunges forward — what it touches begins to dissolve"
+          },
+          {
+            "name": "Seizing Grab",
+            "damage": "1d4",
+            "damage_type": "bludgeoning",
+            "properties": ["grapple"],
+            "description": "Wrong-jointed arms reach with terrifying speed, pulling you toward the maw"
+          }
+        ],
+        "xp_value": 100,
+        "sound_signature": "hollow_wrong_footsteps"
+      }
+    ]
+  },
+  {
+    "id": "hollowed_scout",
+    "name": "The Lost Scout",
+    "description": "It wears the armor of an Accord guild scout. The armor is scarred but recognizable — the guild insignia still visible on the shoulder plate. The body inside moves with terrible precision: too smooth, too rhythmic, a head that tracks too far. Once, mid-combat, it speaks a name. Not its own. Someone it loved.",
+    "difficulty": "hard",
+    "enemies": [
+      {
+        "id": "hollowed_scout_1",
+        "name": "Hollowed Scout",
+        "level": 3,
+        "ac": 15,
+        "hp": 35,
+        "attributes": {
+          "strength": 15,
+          "dexterity": 14,
+          "constitution": 14,
+          "intelligence": 8,
+          "wisdom": 12,
+          "charisma": 4
+        },
+        "action_pool": [
+          {
+            "name": "Corrupted Blade",
+            "damage": "1d8+2",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "The sword swings with technique you recognize — guild-trained, precise. But the follow-through bends in a way no living swordsman would"
+          },
+          {
+            "name": "Hollow Echo",
+            "damage": "1d6",
+            "damage_type": "psychic",
+            "properties": [],
+            "description": "A fragment of speech slips out — a name, a plea — and the sound of it hits harder than the blade"
+          },
+          {
+            "name": "Relentless Advance",
+            "damage": "1d4",
+            "damage_type": "bludgeoning",
+            "properties": [],
+            "description": "It doesn't stop. It walks through your guard the way water flows around stone"
+          }
+        ],
+        "xp_value": 250,
+        "sound_signature": "hollow_wrong_footsteps"
       }
     ]
   },

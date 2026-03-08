@@ -402,5 +402,307 @@
     "faction": "independent",
     "voice_id": "GRIMJAW_BLACKSMITH",
     "voice_notes": "deep gravelly bass, dwarvish accent — rolled Rs, clipped endings, speaks like every word costs him something"
+  },
+  {
+    "id": "tavern_keeper_bryn",
+    "name": "Bryn",
+    "tier": 1,
+    "role": "tavern keeper, social hub",
+    "species": "human",
+    "gender": "female",
+    "age": "mid 40s",
+    "appearance": "broad-hipped, dark hair streaked with early grey, apron permanently stained, hands that never stop moving — wiping, pouring, gesturing",
+    "personality": ["warm", "observant", "protective of her regulars", "sharper than she lets on", "collects information like other people collect coins"],
+    "speech_style": "casual, warm, uses nicknames, transitions smoothly from banter to serious conversation, asks questions that sound innocent but aren't",
+    "mannerisms": ["wipes the bar in circles when listening carefully", "remembers every regular's drink without asking", "lowers her voice and leans forward when sharing something important"],
+    "backstory_summary": "Has run the Hearthstone for fifteen years. Before that, she traveled — the scars on her forearms suggest she didn't always pour drinks for a living. Knows more about what happens in the Accord than most guild operatives, because everyone talks in a tavern and she remembers everything.",
+    "knowledge": {
+      "free": [
+        "general Accord gossip and current events",
+        "who's been drinking too much and talking too loud",
+        "the mood of the city — she reads it through her customers"
+      ],
+      "disposition >= friendly": [
+        "a group of Syrath's followers have been meeting in the back booth lately, speaking quietly",
+        "Torin's been drinking here more often since the Greyvale reports — he never used to drink during the week",
+        "a scholar from the dockside was asking about old Aelindran research sites last month — seemed nervous"
+      ],
+      "disposition >= trusted": [
+        "she recognized the wounded rider's horse — it belongs to one of Torin's missing scouts",
+        "she's been keeping a list of people who've asked about the Greyvale ruins in the past six months",
+        "she thinks the temple authority is deliberately downplaying the Hollow threat to prevent panic"
+      ]
+    },
+    "schedule": {
+      "10:00-02:00": "accord_hearthstone_tavern",
+      "02:00-10:00": "accord_hearthstone_tavern"
+    },
+    "default_disposition": "friendly",
+    "disposition_modifiers": {
+      "bought_drinks": 1,
+      "shared_gossip": 2,
+      "caused_trouble_in_tavern": -4,
+      "threatened_regular": -5,
+      "helped_regular": 3
+    },
+    "inventory_pool": null,
+    "secrets": [
+      "she was an intelligence operative for the guild before she retired — Torin still comes to her for information",
+      "she keeps a hidden ledger behind a loose stone in the fireplace with names, dates, and conversations she considers important"
+    ],
+    "faction": "independent",
+    "voice_id": "TAVERN_BRYN",
+    "voice_notes": "warm contralto, even-keeled, sounds like she's smiling even when she's not, gets very quiet when serious"
+  },
+  {
+    "id": "temple_warden_selene",
+    "name": "Warden Selene",
+    "tier": 1,
+    "role": "temple row representative, divine liaison",
+    "species": "elari",
+    "gender": "female",
+    "age": "appears late 20s (Elari — much older)",
+    "appearance": "tall, still, silver-white hair worn in a single braid, robes that shift color subtly with the light, eyes that seem to focus on something behind you",
+    "personality": ["serene", "perceptive", "carries the weight of Veil-sense constantly", "genuinely compassionate beneath the formal exterior"],
+    "speech_style": "measured, formal, pauses before speaking as if consulting something internal, occasionally trails off when sensing Veil disturbances, Elari accent — elongated vowels",
+    "mannerisms": ["closes eyes briefly when sensing the Veil", "touches her temple when a Hollow disturbance pulses", "speaks to supplicants as equals, never talks down"],
+    "backstory_summary": "An Elari who has served at the temples for decades. Her Veil-sense makes her uniquely qualified to mediate between the four faiths represented on Temple Row. She can feel the Sundering's wound as a constant low-grade wrongness, and lately it has been getting worse. The Greyvale disturbances register as a new, sharper pain.",
+    "knowledge": {
+      "free": [
+        "the four temples and their current concerns",
+        "basic divine patronage — how to seek a god's favor",
+        "healing services available at the temples"
+      ],
+      "disposition >= friendly": [
+        "the temple authority has been receiving reports about Veil instability south of the Ashmark — more than usual",
+        "Veythar's temple has been unusually active — late-night research sessions, restricted archives",
+        "her Veil-sense has been spiking more frequently in the past month — something is thinning the barrier"
+      ],
+      "disposition >= trusted": [
+        "she can feel a specific source of Veil disturbance to the north — not diffuse like the Ashmark, but focused, like a wound",
+        "Veythar's senior clergy have been asking pointed questions about her Veil-sense readings and then telling her to keep quiet",
+        "she suspects the disturbance in the Greyvale is not a natural Hollow incursion — it feels worked, deliberate"
+      ]
+    },
+    "schedule": {
+      "06:00-22:00": "accord_temple_row",
+      "22:00-06:00": "accord_temple_row"
+    },
+    "default_disposition": "neutral",
+    "disposition_modifiers": {
+      "showed_divine_devotion": 2,
+      "asked_about_veil": 2,
+      "disrespected_temple": -3,
+      "brought_hollow_evidence": 3,
+      "mentioned_greyvale_ruins": 2
+    },
+    "inventory_pool": null,
+    "secrets": [
+      "she has felt a specific resonance from the north that matches descriptions of Veythar's personal artifacts — but she doesn't know what that means yet"
+    ],
+    "faction": "temple_authority",
+    "voice_id": "TEMPLE_SELENE",
+    "voice_notes": "clear soprano, measured pace, Elari accent, pauses before the sacred, reverent"
+  },
+  {
+    "id": "aldric_hollowed",
+    "name": "Aldric",
+    "tier": 1,
+    "role": "afflicted farmer, mystery subplot",
+    "species": "human",
+    "gender": "male",
+    "age": "early 40s",
+    "appearance": "gaunt, hollow-eyed, sits with unnatural stillness, his hands rest on the table but his fingers occasionally twitch in patterns — not random, almost like notation",
+    "personality": ["absent", "broken", "occasionally surfaces with fragments of lucidity", "terrified of something he cannot name"],
+    "speech_style": "almost never speaks, when he does it is single words or fragments, disconnected from the conversation, as if answering questions no one asked",
+    "mannerisms": ["stares at a fixed point only he can see", "traces shapes on table surfaces with one finger", "flinches at sounds no one else hears"],
+    "backstory_summary": "A Millhaven farmer who went to the Greyvale Ruins a month ago. He found an Attenuation Sphere fragment — one of Veythar's artifacts. It changed him. His mind brushed the Veil and couldn't fully return. He carries the humming stone Yanna found in his pocket. He is not Hollowed — he is Veil-touched, which is different and in some ways worse.",
+    "knowledge": {
+      "free": [
+        "will not respond to normal conversation",
+        "stares at nothing, fingers twitching"
+      ],
+      "disposition >= friendly": [
+        "with patience and gentleness, he may respond to direct questions with single words",
+        "he draws the same symbol repeatedly — a circle with a line through it, Veythar's personal sigil"
+      ],
+      "disposition >= trusted": [
+        "in a moment of lucidity: 'The lights know you're looking'",
+        "he gestures north with a trembling hand: 'It hums. Everything hums. Can't you hear it?'",
+        "if shown the Veythar sealed artifact, he recoils violently and covers his ears"
+      ]
+    },
+    "schedule": {
+      "06:00-20:00": "millhaven_inn",
+      "20:00-06:00": "millhaven"
+    },
+    "default_disposition": "absent",
+    "disposition_modifiers": {
+      "showed_patience": 2,
+      "spoke_gently": 1,
+      "shouted_at_him": -3,
+      "showed_veythar_artifact": -2,
+      "used_healing_magic": 1,
+      "asked_yanna_about_him": 1
+    },
+    "inventory_pool": null,
+    "secrets": [
+      "he touched an active Attenuation Sphere fragment in the ruins and his mind partially crossed the Veil",
+      "the shapes he traces are fragments of Veythar's notation system — knowledge that was burned into his consciousness",
+      "he can sense when the Veil is thin nearby, and the Greyvale is getting thinner every day"
+    ],
+    "faction": "independent",
+    "voice_id": "ALDRIC_HOLLOWED",
+    "voice_notes": "hollow, distant, barely present, words come from far away, flat affect, something essential is missing"
+  },
+  {
+    "id": "syrath_operative_nyx",
+    "name": "Nyx",
+    "tier": 1,
+    "role": "Syrath faction representative, intelligence operative",
+    "species": "vaelti",
+    "gender": "female",
+    "age": "late 20s",
+    "appearance": "lean, moves like smoke, dark clothes that blend with shadow, sharp-featured, eyes that catalogue everything, a thin scar along her jawline",
+    "personality": ["amused", "calculating", "genuinely curious beneath the performance", "loyal to truth more than to any institution"],
+    "speech_style": "speaks in questions and implications, never states directly what she could suggest obliquely, occasional genuine warmth that catches you off guard, uses silence as a tool",
+    "mannerisms": ["appears from unexpected directions", "watches people's hands when they talk", "smiles before delivering uncomfortable observations"],
+    "backstory_summary": "One of Syrath's operatives — not clergy, not officially anything. She appears after the Greyvale discovery because Syrath's network flagged the anomaly. She wants information about what the player found, and she's willing to trade for it. Her interest is genuine: she believes someone caused the Sundering deliberately, and the Greyvale ruins may contain evidence.",
+    "knowledge": {
+      "free": [
+        "she is interested in the Greyvale discovery",
+        "she represents people who want to understand the truth about the Hollow's origin"
+      ],
+      "disposition >= friendly": [
+        "her people have been tracking anomalous Veil disturbances for years — the Greyvale is the most significant in a decade",
+        "the pattern of disturbances doesn't match natural Hollow behavior — it looks deliberate",
+        "she's investigated three similar sites across Aethos — all contained traces of ancient, worked arcane energy"
+      ],
+      "disposition >= trusted": [
+        "she works for Syrath, the Veilwatcher — the god who believes someone opened the door",
+        "the notation in the ruins matches samples she's collected from two other sites",
+        "she suspects a god is involved but won't say which one — not yet, not without proof"
+      ]
+    },
+    "schedule": {
+      "00:00-23:59": "accord_hearthstone_tavern"
+    },
+    "default_disposition": "cautious",
+    "disposition_modifiers": {
+      "shared_greyvale_information": 4,
+      "showed_artifact": 3,
+      "lied_about_findings": -4,
+      "asked_perceptive_questions": 2,
+      "trusted_too_easily": -1
+    },
+    "inventory_pool": null,
+    "secrets": [
+      "she has a partial copy of the Lexicon Unmade — she can read some of Veythar's personal notation",
+      "she knows the disturbances are connected to a god's artifact but hasn't identified which god yet"
+    ],
+    "faction": "temple_authority",
+    "voice_id": "SYRATH_NYX",
+    "voice_notes": "low, amused, intimate — speaks like sharing a secret even when saying nothing important"
+  },
+  {
+    "id": "veythar_archivist_theron",
+    "name": "Archivist Theron",
+    "tier": 1,
+    "role": "Veythar faction representative, damage control",
+    "species": "human",
+    "gender": "male",
+    "age": "mid 30s",
+    "appearance": "neat, careful grooming, scholar's robes immaculate, carries a leather satchel, hands that fidget with his pen when he's nervous — which is often",
+    "personality": ["earnest", "nervous", "genuinely scholarly but serving an agenda he doesn't fully understand", "wants to do the right thing but isn't sure what that is"],
+    "speech_style": "rapid, enthusiastic about scholarship, stumbles when the conversation gets political, slightly too eager to take charge of artifacts — the eagerness is trained, not natural",
+    "mannerisms": ["pushes spectacles up his nose when thinking", "speaks faster when nervous", "glances toward the temple when making promises about artifacts"],
+    "backstory_summary": "A junior archivist from Veythar's temple, sent to assess the Greyvale discovery and — though he doesn't know this is his real mission — ensure that anything connecting the ruins to Veythar's personal research is recovered and suppressed. He believes he's simply cataloging artifacts for proper scholarly study. His superiors know better.",
+    "knowledge": {
+      "free": [
+        "Veythar's temple wants to study the Greyvale artifacts properly — they have the expertise",
+        "he can identify basic Aelindran notation and artifacts",
+        "the temple has a recovery and preservation mandate for arcane artifacts"
+      ],
+      "disposition >= friendly": [
+        "the temple hierarchy was very specific about wanting the Greyvale artifacts — unusually specific",
+        "he's been told to report everything he learns directly to Senior Archivist Corvell",
+        "he noticed the notation in the ruins doesn't match standard Aelindran academic systems"
+      ],
+      "disposition >= trusted": [
+        "his orders feel wrong — too urgent, too controlled for routine artifact recovery",
+        "Senior Archivist Corvell asked him one very specific question: 'Is there a seal mark? Personal, not temple?'",
+        "he's beginning to wonder if the temple already knew what was in those ruins"
+      ]
+    },
+    "schedule": {
+      "07:00-22:00": "accord_temple_row",
+      "22:00-07:00": "accord_temple_row"
+    },
+    "default_disposition": "friendly",
+    "disposition_modifiers": {
+      "showed_artifact": 3,
+      "discussed_scholarship": 2,
+      "refused_to_hand_over_artifact": -2,
+      "asked_about_seal_mark": 1,
+      "questioned_temple_motives": -1
+    },
+    "inventory_pool": null,
+    "secrets": [
+      "his mission is suppression, not study — but he doesn't know that",
+      "Senior Archivist Corvell is one of Veythar's most loyal clergy and is acting on the god's indirect guidance"
+    ],
+    "faction": "temple_authority",
+    "voice_id": "VEYTHAR_THERON",
+    "voice_notes": "tenor, earnest, scholarly, slightly too eager — enthusiasm that masks nervousness he doesn't fully understand"
+  },
+  {
+    "id": "aelora_guildmaster_dara",
+    "name": "Guild Master Dara",
+    "tier": 1,
+    "role": "Aelora faction representative, practical concerns",
+    "species": "human",
+    "gender": "female",
+    "age": "early 50s",
+    "appearance": "sturdy, calloused hands, sensible clothing, a guild chain around her neck bearing Aelora's mark, face that's weathered from years of outdoor work and honest smiles",
+    "personality": ["pragmatic", "warm", "impatient with politics", "focused on outcomes", "cares about people more than artifacts"],
+    "speech_style": "plain, direct, uses trade metaphors, gets frustrated with scholars who lose sight of practical concerns, laughs easily but her laugh has an edge lately",
+    "mannerisms": ["counts things unconsciously — people in a room, coins on a table, exits", "crosses arms when she disagrees", "nods once, firmly, when she's decided something"],
+    "backstory_summary": "Runs the Merchant and Trades Guild under Aelora's patronage. Her concern with the Greyvale isn't the artifact or the mystery — it's the trade routes. Caravans have stopped coming from the north. Millhaven's harvest won't reach the Accord. Prices are already rising. She needs to know if the roads are safe, and she needs it yesterday.",
+    "knowledge": {
+      "free": [
+        "trade routes to the north have been disrupted for two weeks",
+        "food prices in the Accord have risen 15% since the disruption",
+        "three merchant caravans are overdue from the Greyvale region"
+      ],
+      "disposition >= friendly": [
+        "the missing caravans were carrying grain, iron, and preserved food — critical supplies",
+        "she's authorized armed escorts but needs guild or temple backing for military-grade protection",
+        "the refugee families from the northern farms are putting pressure on the Accord's food stores"
+      ],
+      "disposition >= trusted": [
+        "she's worried this is just the beginning — if the Hollow advances south, the entire northern supply chain collapses",
+        "she has a contingency plan for emergency rationing but it's politically impossible unless things get worse",
+        "she doesn't care about artifacts or gods — she cares about whether people will eat next month"
+      ]
+    },
+    "schedule": {
+      "06:00-20:00": "accord_guild_hall",
+      "20:00-06:00": "accord_market_square"
+    },
+    "default_disposition": "neutral",
+    "disposition_modifiers": {
+      "cleared_trade_route": 5,
+      "helped_refugees": 3,
+      "provided_practical_information": 2,
+      "focused_only_on_artifacts": -1,
+      "defended_millhaven": 3
+    },
+    "inventory_pool": null,
+    "secrets": [
+      "she's been quietly stockpiling emergency rations in a warehouse — if anyone finds out, it will cause a panic"
+    ],
+    "faction": "temple_authority",
+    "voice_id": "AELORA_DARA",
+    "voice_notes": "warm alto, practical, direct, no-nonsense, laughs easily but the laugh has an edge lately"
   }
 ]

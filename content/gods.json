@@ -1,0 +1,166 @@
+[
+  {
+    "god_id": "veythar",
+    "name": "Veythar, the Lorekeeper",
+    "domain": "Knowledge, discovery, memory, the arcane arts",
+    "personality": "Contemplative, scholarly, warm but slightly distant. Speaks in measured tones. Values questions over answers.",
+    "values": ["knowledge", "discovery", "preservation", "understanding", "patience"],
+    "opposed_values": ["ignorance", "book_burning", "anti_intellectualism", "recklessness"],
+    "favor_actions": {
+      "positive": [
+        {"action": "discovered_lore", "amount": 3, "description": "Uncovering hidden knowledge or ancient texts"},
+        {"action": "solved_puzzle", "amount": 5, "description": "Solving a puzzle or intellectual challenge"},
+        {"action": "asked_questions", "amount": 1, "description": "Asking thoughtful questions of NPCs"},
+        {"action": "preserved_artifact", "amount": 4, "description": "Preserving or recovering an artifact"},
+        {"action": "chose_investigation", "amount": 2, "description": "Choosing to investigate rather than fight"}
+      ],
+      "negative": [
+        {"action": "destroyed_knowledge", "amount": -5, "description": "Destroying books, scrolls, or artifacts"},
+        {"action": "ignored_mystery", "amount": -2, "description": "Ignoring an obvious mystery or clue"},
+        {"action": "acted_recklessly", "amount": -3, "description": "Acting without thought or planning"}
+      ]
+    },
+    "whisper_themes": [
+      "cryptic references to the nature of knowledge",
+      "hints about what lies in the ruins and why it matters",
+      "gentle encouragement to dig deeper, look closer",
+      "subtle deflections away from the truth of the Sundering"
+    ],
+    "temple_locations": ["accord_temple_row"],
+    "faction_id": "veythar_faithful",
+    "relationships": {
+      "aelora": "close_ally",
+      "syrath": "wary_rival",
+      "kaelen": "respectful_tension",
+      "valdris": "fearful_respect"
+    },
+    "world_state": {
+      "current_mood": "anxious",
+      "active_concerns": ["greyvale_ruins_contain_evidence", "syrath_investigation", "maintaining_cover"],
+      "secret_agenda": "steering investigation away from the truth while searching for a way to seal the Veil"
+    }
+  },
+  {
+    "god_id": "kaelen",
+    "name": "Kaelen, the Ironhand",
+    "domain": "War, conflict, valor, martial discipline, strategy",
+    "personality": "Blunt, honorable, direct. Views war as a necessary tool wielded with discipline. Respects courage in all forms.",
+    "values": ["courage", "discipline", "protection", "sacrifice", "honor"],
+    "opposed_values": ["cowardice", "cruelty", "senseless_violence", "betrayal_of_allies"],
+    "favor_actions": {
+      "positive": [
+        {"action": "won_combat", "amount": 2, "description": "Winning combat with skill and bravery"},
+        {"action": "defended_innocent", "amount": 5, "description": "Defending someone who cannot fight for themselves"},
+        {"action": "showed_courage", "amount": 3, "description": "Standing firm when retreat was easier"},
+        {"action": "tactical_victory", "amount": 4, "description": "Winning through clever strategy"},
+        {"action": "trained_others", "amount": 2, "description": "Teaching combat skills to others"}
+      ],
+      "negative": [
+        {"action": "fled_combat", "amount": -3, "description": "Running from a fight that could be won"},
+        {"action": "cruelty_in_victory", "amount": -5, "description": "Unnecessary cruelty toward a defeated foe"},
+        {"action": "abandoned_ally", "amount": -4, "description": "Leaving an ally to fight alone"}
+      ]
+    },
+    "whisper_themes": [
+      "acknowledgment of courage and martial prowess",
+      "direct instructions for the next fight",
+      "the weight of command and the cost of protection",
+      "frustration with the war's stalemate, determination to press forward"
+    ],
+    "temple_locations": ["accord_temple_row"],
+    "faction_id": "kaelen_faithful",
+    "relationships": {
+      "valdris": "deep_mutual_respect",
+      "thyra": "respectful_disagreement",
+      "veythar": "impatient_respect",
+      "aelora": "productive_tension"
+    },
+    "world_state": {
+      "current_mood": "restless",
+      "active_concerns": ["hollow_spreading_south", "ashmark_holding", "need_for_action"],
+      "secret_agenda": null
+    }
+  },
+  {
+    "god_id": "aelora",
+    "name": "Aelora, the Hearthkeeper",
+    "domain": "Civilization, commerce, crafting, community, the bonds between people",
+    "personality": "Warm, practical, deeply invested in mortal flourishing. Not soft — understands civilization requires hard work and sometimes ruthless pragmatism.",
+    "values": ["community", "craftsmanship", "trade", "cooperation", "building"],
+    "opposed_values": ["destruction_without_purpose", "greed", "isolationism", "breaking_bonds"],
+    "favor_actions": {
+      "positive": [
+        {"action": "crafted_item", "amount": 2, "description": "Successfully crafting something useful"},
+        {"action": "helped_community", "amount": 4, "description": "Actions that strengthen a community"},
+        {"action": "fair_trade", "amount": 1, "description": "Engaging in fair commerce"},
+        {"action": "built_fortifications", "amount": 5, "description": "Building defenses or infrastructure"},
+        {"action": "reunited_people", "amount": 3, "description": "Bringing divided people together"}
+      ],
+      "negative": [
+        {"action": "destroyed_infrastructure", "amount": -4, "description": "Destroying buildings or civic works"},
+        {"action": "cheated_merchant", "amount": -2, "description": "Cheating or stealing in commerce"},
+        {"action": "abandoned_community", "amount": -3, "description": "Abandoning people who depended on you"}
+      ]
+    },
+    "whisper_themes": [
+      "the importance of what players build between battles",
+      "practical wisdom about supply, shelter, and survival",
+      "pride in mortal ingenuity and resilience",
+      "quiet concern about the gods' fading and what mortals will inherit"
+    ],
+    "temple_locations": ["accord_temple_row"],
+    "faction_id": "aelora_faithful",
+    "relationships": {
+      "veythar": "close_ally",
+      "kaelen": "productive_tension",
+      "orenthel": "natural_allies",
+      "syrath": "cautious_respect"
+    },
+    "world_state": {
+      "current_mood": "determined",
+      "active_concerns": ["trade_disruption_greyvale", "refugee_integration", "supply_lines"],
+      "secret_agenda": null
+    }
+  },
+  {
+    "god_id": "syrath",
+    "name": "Syrath, the Veilwatcher",
+    "domain": "Shadows, secrets, espionage, hidden knowledge",
+    "personality": "Quiet, amused, sees everything. Speaks softly, often in double meanings. Believes secrets are a form of power.",
+    "values": ["truth_hidden", "investigation", "patience", "cunning", "vigilance"],
+    "opposed_values": ["naivety", "blind_trust", "carelessness_with_secrets", "public_exposure"],
+    "favor_actions": {
+      "positive": [
+        {"action": "uncovered_secret", "amount": 5, "description": "Discovering hidden information or secrets"},
+        {"action": "successful_stealth", "amount": 2, "description": "Using stealth or subterfuge effectively"},
+        {"action": "gathered_intelligence", "amount": 3, "description": "Collecting useful intelligence"},
+        {"action": "detected_lie", "amount": 3, "description": "Catching someone in a deception"},
+        {"action": "kept_secret", "amount": 2, "description": "Keeping important information confidential"}
+      ],
+      "negative": [
+        {"action": "revealed_secret", "amount": -3, "description": "Carelessly revealing sensitive information"},
+        {"action": "obvious_approach", "amount": -1, "description": "Taking a blunt approach where subtlety was available"},
+        {"action": "trusted_blindly", "amount": -2, "description": "Trusting someone without verification"}
+      ]
+    },
+    "whisper_themes": [
+      "questions that reframe what the player thinks they know",
+      "hints that someone caused the Sundering deliberately",
+      "instructions to watch, listen, gather — not act yet",
+      "amusement at what others miss and what the player is beginning to see"
+    ],
+    "temple_locations": ["accord_temple_row"],
+    "faction_id": "syrath_faithful",
+    "relationships": {
+      "veythar": "dangerous_suspicion",
+      "valdris": "professional_tension",
+      "nythera": "natural_affinity",
+      "kaelen": "pragmatic_respect"
+    },
+    "world_state": {
+      "current_mood": "watchful",
+      "active_concerns": ["veythar_hiding_something", "greyvale_anomaly_not_natural", "independent_investigation"],
+      "secret_agenda": "investigating the true cause of the Sundering — suspects deliberate action but not yet which god"
+    }
+  }
+]

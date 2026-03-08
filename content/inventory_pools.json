@@ -1,0 +1,58 @@
+[
+  {
+    "id": "market_general",
+    "name": "Market Square Vendors",
+    "location": "accord_market_square",
+    "type": "merchant",
+    "restock_interval_hours": 24,
+    "items": [
+      {"item_id": "healing_potion", "quantity": 5, "price": 50},
+      {"item_id": "rations_basic", "quantity": 10, "price": 5},
+      {"item_id": "rope_hemp", "quantity": 3, "price": 10},
+      {"item_id": "torch_bundle", "quantity": 5, "price": 3},
+      {"item_id": "waterskin", "quantity": 4, "price": 8},
+      {"item_id": "shortsword_basic", "quantity": 2, "price": 100},
+      {"item_id": "leather_armor_basic", "quantity": 2, "price": 150}
+    ]
+  },
+  {
+    "id": "grimjaw_weapons",
+    "name": "Grimjaw's Forge",
+    "location": "accord_forge",
+    "type": "blacksmith",
+    "restock_interval_hours": 48,
+    "items": [
+      {"item_id": "longsword_guild", "quantity": 1, "price": 200},
+      {"item_id": "shortsword_basic", "quantity": 2, "price": 100},
+      {"item_id": "dagger_balanced", "quantity": 3, "price": 50},
+      {"item_id": "chain_shirt", "quantity": 1, "price": 350},
+      {"item_id": "shield_iron", "quantity": 2, "price": 120}
+    ]
+  },
+  {
+    "id": "temple_supplies",
+    "name": "Temple Row Provisions",
+    "location": "accord_temple_row",
+    "type": "temple",
+    "restock_interval_hours": 12,
+    "items": [
+      {"item_id": "healing_potion", "quantity": 8, "price": 45},
+      {"item_id": "antidote_basic", "quantity": 3, "price": 30},
+      {"item_id": "holy_water", "quantity": 2, "price": 75},
+      {"item_id": "restoration_salve", "quantity": 2, "price": 60}
+    ]
+  },
+  {
+    "id": "millhaven_supplies",
+    "name": "Millhaven General Store",
+    "location": "millhaven",
+    "type": "general",
+    "restock_interval_hours": 72,
+    "items": [
+      {"item_id": "millhaven_provisions", "quantity": 3, "price": 5},
+      {"item_id": "healing_potion", "quantity": 1, "price": 60},
+      {"item_id": "torch_bundle", "quantity": 2, "price": 5},
+      {"item_id": "rope_hemp", "quantity": 1, "price": 15}
+    ]
+  }
+]

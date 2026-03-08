@@ -21,11 +21,17 @@ TABLE_MAP = {
     "players.json": "players",
     "npc_state.json": "npc_state",
     "encounter_templates.json": "encounter_templates",
+    "events.json": "events",
+    "gods.json": "god_agent_state",
+    "voice_registry.json": "voice_registry",
+    "inventory_pools.json": "inventory_pools",
 }
 
 PK_COLUMN = {
     "players": "player_id",
     "npc_state": "npc_id",
+    "god_agent_state": "god_id",
+    "voice_registry": "character_id",
 }
 
 UPSERT_SQL = """

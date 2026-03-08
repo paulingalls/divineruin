@@ -1,0 +1,185 @@
+[
+  {
+    "id": "market_disruption",
+    "name": "The Wounded Rider",
+    "type": "scripted",
+    "trigger": "quest:greyvale_anomaly:stage == 0 AND player_location == accord_market_square AND session_time >= 300",
+    "description": "A rider crashes through the market gates — dust-caked, one arm in a sling, horse half-dead. The market falls silent. He's shouting about creatures in the Greyvale, about Millhaven, about lights in the ruins. He collapses before he finishes.",
+    "dm_instructions": {
+      "mood": "sudden shift from warm normalcy to alarm",
+      "pacing": "the market noise drops to silence in a single beat",
+      "key_beats": [
+        "The sound of hooves on cobblestone, too fast, too desperate",
+        "The market noise cuts off — vendors stop mid-word, children go quiet",
+        "The rider's voice, cracking: Hollow creatures in the Greyvale. Dozens. The Ashmark has moved south.",
+        "He falls from the horse. Someone catches him. Blood on the cobblestones.",
+        "The mood of the market shifts permanently — this is the moment the world stops feeling safe"
+      ],
+      "sound_effects": ["horse_gallop_approaching", "market_silence", "crowd_murmur_worried"]
+    },
+    "world_effects": [
+      "spawn_npc:wounded_rider:accord_market_square",
+      "set_flag:greyvale_threat_known:true",
+      "ambient_mood:accord_market_square:worried"
+    ],
+    "once": true
+  },
+  {
+    "id": "hollow_patrol_encounter",
+    "name": "Hollow in the Fields",
+    "type": "scripted",
+    "trigger": "quest:greyvale_anomaly:stage == 2 AND player_location == greyvale_wilderness_north",
+    "description": "The birdsong stops. Your companion tenses. Something is moving in the tree line — shapes that don't match the landscape, silhouettes that bend where shadows shouldn't.",
+    "dm_instructions": {
+      "mood": "tension building to dread to combat",
+      "pacing": "slow approach, the silence comes first, then the wrongness",
+      "key_beats": [
+        "Natural sounds fade — birds first, then insects, then wind",
+        "The companion goes rigid: 'Do you hear that? That... silence?'",
+        "Movement at the tree line — shapes that hurt to look at directly",
+        "The Hollow creatures emerge: one Rend leading two Drifts",
+        "Combat begins — the creatures make sounds that have no source"
+      ],
+      "sound_effects": ["ambient_silence_hollow", "hollow_growl", "hollow_whisper"],
+      "encounter_id": "hollow_patrol_greyvale"
+    },
+    "world_effects": [
+      "start_combat:hollow_patrol_greyvale"
+    ],
+    "once": true
+  },
+  {
+    "id": "ruins_discovery_ripple",
+    "name": "The Ruins Stir",
+    "type": "world_event",
+    "trigger": "quest:greyvale_anomaly:stage_4_completed",
+    "description": "The discovery in the ruins has consequences. The Hollow corruption in the Greyvale intensifies. Reports reach the Accord. Factions take notice.",
+    "dm_instructions": {
+      "mood": "spreading unease, the sense that something has been set in motion",
+      "key_beats": [
+        "The hum in the ruins grows louder — audible from the surface now",
+        "Hollow creatures increase in the northern Greyvale",
+        "Word reaches the Accord: the situation is escalating",
+        "Faction representatives begin asking questions"
+      ]
+    },
+    "world_effects": [
+      "set_flag:greyvale_corruption:+1",
+      "set_flag:faction_alert:true",
+      "spawn_npc:veythar_archivist_theron:accord_temple_row",
+      "spawn_npc:syrath_operative_nyx:accord_hearthstone_tavern",
+      "spawn_npc:aelora_guildmaster_dara:accord_guild_hall"
+    ],
+    "once": true
+  },
+  {
+    "id": "faction_interest_triggered",
+    "name": "Competing Interests",
+    "type": "world_event",
+    "trigger": "quest:greyvale_anomaly:stage == 5 AND player_location STARTS_WITH accord_",
+    "description": "Word has spread about what the player found in the ruins. Different factions want the artifact, the information, or both. The player must navigate competing interests.",
+    "dm_instructions": {
+      "mood": "political pressure, the sense of being watched and wanted",
+      "pacing": "faction representatives approach separately, each with their own framing",
+      "key_beats": [
+        "A temple investigator (Valdris) wants the artifact entered into evidence",
+        "A Veythar archivist (Theron) wants to 'study it properly' — too eagerly",
+        "A Syrath operative (Nyx) wants to know everything, offers nothing in return",
+        "An Aelora guild master (Dara) wants to know if trade routes are safe",
+        "The player's choices here affect faction reputation permanently"
+      ]
+    },
+    "world_effects": [
+      "set_flag:faction_interest:active"
+    ],
+    "once": true
+  },
+  {
+    "id": "god_whisper_patron",
+    "name": "Divine Recognition",
+    "type": "god_whisper",
+    "trigger": "quest:greyvale_anomaly:stage == 5 AND event:faction_interest_triggered:completed",
+    "description": "The player's patron deity speaks directly to them about the discovery. The god's perspective reframes what the player found — and hints at a larger significance.",
+    "dm_instructions": {
+      "mood": "awe, weight of divine attention, the world holding its breath",
+      "pacing": "atmospheric shift first, then the voice, then silence",
+      "key_beats": [
+        "The air thickens. Sound stops — not fades, stops.",
+        "A presence fills the space. Ancient. Immense. Not hostile, but overwhelming.",
+        "The god speaks — two sentences, weighted with millennia of perspective",
+        "Silence returns like a wave breaking. The world resumes.",
+        "The companion looks shaken but says nothing unless spoken to"
+      ],
+      "sound_effects": ["god_whisper_stinger", "ambient_silence_divine"]
+    },
+    "world_effects": [
+      "award_divine_favor:10",
+      "set_flag:god_whisper_greyvale:delivered"
+    ],
+    "once": true
+  },
+  {
+    "id": "millhaven_under_threat",
+    "name": "The Hollow Advances",
+    "type": "world_event",
+    "trigger": "quest:greyvale_anomaly:completed AND session >= 5",
+    "description": "The Hollow incursion in the Greyvale intensifies. Millhaven is under direct threat. The disturbance at the ruins may have accelerated the corruption. The town needs defenders.",
+    "dm_instructions": {
+      "mood": "urgency, the stakes are now personal — people the player knows are in danger",
+      "key_beats": [
+        "Word reaches the player: Millhaven is under siege",
+        "Elder Yanna has refused to evacuate",
+        "The fortification choices from Session 2 async matter now",
+        "The player must return and participate in a coordinated defense"
+      ],
+      "sound_effects": ["alarm_bell_distant", "crowd_panic"]
+    },
+    "world_effects": [
+      "set_flag:millhaven_siege:active",
+      "set_flag:greyvale_corruption:+2"
+    ],
+    "once": true
+  },
+  {
+    "id": "normalcy_market_task",
+    "name": "A Simple Errand",
+    "type": "scripted",
+    "trigger": "session == 1 AND player_location == accord_market_square AND quest:greyvale_anomaly:not_started",
+    "description": "A merchant asks the player for a small favor — find a missing delivery, settle a dispute with a vendor, help carry crates. Simple. Normal. The kind of thing that happens in a city that doesn't know it's about to be afraid.",
+    "dm_instructions": {
+      "mood": "warm, ordinary, the world working as it should",
+      "pacing": "unhurried, let the player explore and interact naturally",
+      "key_beats": [
+        "A vendor or passerby engages the player casually",
+        "A simple task: find something, talk to someone, help with something",
+        "The player learns basic navigation and interaction",
+        "The companion offers commentary — light, relaxed, showing personality",
+        "The market feels alive, safe, worth protecting"
+      ]
+    },
+    "world_effects": [],
+    "once": true
+  },
+  {
+    "id": "companion_introduction",
+    "name": "Meeting Kael",
+    "type": "scripted",
+    "trigger": "session == 1 AND player_location IN [accord_market_square, accord_guild_hall] AND companion_not_met",
+    "description": "The player meets their starting companion. Class-appropriate framing brings them together naturally.",
+    "dm_instructions": {
+      "mood": "casual meeting that becomes something more",
+      "key_beats": [
+        "The companion is already present — sitting at a table, leaning against a wall, watching the crowd",
+        "Something brings them together: a shared reaction, a practical need, simple proximity",
+        "Brief conversation: the companion is guarded but not hostile",
+        "A moment of connection — humor, shared observation, mutual interest",
+        "The companion falls into step beside the player. It feels natural."
+      ]
+    },
+    "world_effects": [
+      "set_flag:companion_met:true",
+      "companion_join:companion_kael"
+    ],
+    "once": true
+  }
+]

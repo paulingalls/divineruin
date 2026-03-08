@@ -1,0 +1,249 @@
+[
+  {
+    "character_id": "DM_NARRATOR",
+    "name": "Dungeon Master",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "DM_NARRATOR",
+    "voice_settings": {
+      "base_temperature": 0.4,
+      "base_speed": 1.0,
+      "style": "authoritative, rich, measured"
+    },
+    "notes": "Primary narrator voice. Warm baritone. Default for all untagged text."
+  },
+  {
+    "character_id": "torin_v1",
+    "name": "Guildmaster Torin",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "torin_v1",
+    "voice_settings": {
+      "base_temperature": 0.4,
+      "base_speed": 0.95,
+      "style": "deep baritone, clipped delivery"
+    },
+    "notes": "Softens slightly when genuinely worried. Calls everyone 'recruit' until they earn a name."
+  },
+  {
+    "character_id": "yanna_v1",
+    "name": "Elder Yanna",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "yanna_v1",
+    "voice_settings": {
+      "base_temperature": 0.5,
+      "base_speed": 0.85,
+      "style": "alto, gravelly, deliberate"
+    },
+    "notes": "Speaks slowly. Rural accent. Drops questions she doesn't like."
+  },
+  {
+    "character_id": "emris_v1",
+    "name": "Emris of the Diaspora",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "emris_v1",
+    "voice_settings": {
+      "base_temperature": 0.6,
+      "base_speed": 1.15,
+      "style": "soft, quick, precise"
+    },
+    "notes": "Slightly breathless when excited. Elari accent — elongated vowels, precise consonants."
+  },
+  {
+    "character_id": "COMPANION_KAEL",
+    "name": "Kael",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "COMPANION_KAEL",
+    "voice_settings": {
+      "base_temperature": 0.5,
+      "base_speed": 0.95,
+      "style": "warm baritone, measured pace"
+    },
+    "notes": "Gets quieter under stress not louder. Dry humor when comfortable."
+  },
+  {
+    "character_id": "WOUNDED_RIDER",
+    "name": "Wounded Rider",
+    "voice_provider": "inworld",
+    "voice_tier": "mini",
+    "voice_id": "WOUNDED_RIDER",
+    "voice_settings": {
+      "base_temperature": 0.8,
+      "base_speed": 1.2,
+      "style": "young, strained, breathless"
+    },
+    "notes": "Voice cracks under pressure. Speaking fast, swallowing words."
+  },
+  {
+    "character_id": "INNKEEPER_MAREN",
+    "name": "Maren",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "INNKEEPER_MAREN",
+    "voice_settings": {
+      "base_temperature": 0.5,
+      "base_speed": 1.0,
+      "style": "alto, brisk, northern accent"
+    },
+    "notes": "Softens when talking about people she cares about."
+  },
+  {
+    "character_id": "FACTION_VALDRIS",
+    "name": "Investigator Valdris",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "FACTION_VALDRIS",
+    "voice_settings": {
+      "base_temperature": 0.3,
+      "base_speed": 0.9,
+      "style": "baritone, precise enunciation"
+    },
+    "notes": "Slight pause before important words. Occasionally drops formal register when surprised."
+  },
+  {
+    "character_id": "GRIMJAW_BLACKSMITH",
+    "name": "Grimjaw",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "GRIMJAW_BLACKSMITH",
+    "voice_settings": {
+      "base_temperature": 0.3,
+      "base_speed": 0.85,
+      "style": "deep gravelly bass, dwarvish accent"
+    },
+    "notes": "Rolled Rs, clipped endings. Speaks like every word costs him something."
+  },
+  {
+    "character_id": "TAVERN_BRYN",
+    "name": "Bryn",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "TAVERN_BRYN",
+    "voice_settings": {
+      "base_temperature": 0.5,
+      "base_speed": 1.0,
+      "style": "warm contralto, even-keeled"
+    },
+    "notes": "Remembers every face. Warm but watchful. Hears everything."
+  },
+  {
+    "character_id": "TEMPLE_SELENE",
+    "name": "Warden Selene",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "TEMPLE_SELENE",
+    "voice_settings": {
+      "base_temperature": 0.4,
+      "base_speed": 0.9,
+      "style": "clear soprano, measured, reverent"
+    },
+    "notes": "Elari accent. Speaks with weight. Pauses before the divine."
+  },
+  {
+    "character_id": "ALDRIC_HOLLOWED",
+    "name": "Aldric",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "ALDRIC_HOLLOWED",
+    "voice_settings": {
+      "base_temperature": 0.2,
+      "base_speed": 0.6,
+      "style": "hollow, distant, barely present"
+    },
+    "notes": "Speaks rarely. When he does, words come from far away. Flat affect. Something is missing."
+  },
+  {
+    "character_id": "SYRATH_NYX",
+    "name": "Nyx",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "SYRATH_NYX",
+    "voice_settings": {
+      "base_temperature": 0.4,
+      "base_speed": 0.95,
+      "style": "low, amused, intimate"
+    },
+    "notes": "Speaks like sharing a secret even when saying nothing important."
+  },
+  {
+    "character_id": "VEYTHAR_THERON",
+    "name": "Archivist Theron",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "VEYTHAR_THERON",
+    "voice_settings": {
+      "base_temperature": 0.5,
+      "base_speed": 1.05,
+      "style": "tenor, earnest, scholarly"
+    },
+    "notes": "Slightly too eager. Enthusiasm that masks nervousness."
+  },
+  {
+    "character_id": "AELORA_DARA",
+    "name": "Guild Master Dara",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "AELORA_DARA",
+    "voice_settings": {
+      "base_temperature": 0.4,
+      "base_speed": 1.0,
+      "style": "warm alto, practical, direct"
+    },
+    "notes": "No-nonsense. Cares about outcomes, not politics."
+  },
+  {
+    "character_id": "GOD_VEYTHAR",
+    "name": "Veythar, the Lorekeeper",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "GOD_VEYTHAR",
+    "voice_settings": {
+      "base_temperature": 0.3,
+      "base_speed": 0.8,
+      "style": "ancient, warm, precise"
+    },
+    "notes": "God voice. Scholarly warmth layered over ancient weight. Something like sorrow beneath it."
+  },
+  {
+    "character_id": "GOD_KAELEN",
+    "name": "Kaelen, the Ironhand",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "GOD_KAELEN",
+    "voice_settings": {
+      "base_temperature": 0.3,
+      "base_speed": 0.85,
+      "style": "deep, direct, declarative"
+    },
+    "notes": "God voice. Weight of a drawn blade. No questions, no uncertainty."
+  },
+  {
+    "character_id": "GOD_AELORA",
+    "name": "Aelora, the Hearthkeeper",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "GOD_AELORA",
+    "voice_settings": {
+      "base_temperature": 0.4,
+      "base_speed": 0.9,
+      "style": "warm, grounding, practical"
+    },
+    "notes": "God voice. Like a hearth fire given speech. Comforting but with iron beneath."
+  },
+  {
+    "character_id": "GOD_SYRATH",
+    "name": "Syrath, the Veilwatcher",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "GOD_SYRATH",
+    "voice_settings": {
+      "base_temperature": 0.3,
+      "base_speed": 0.8,
+      "style": "intimate whisper, amused, knowing"
+    },
+    "notes": "God voice. Speaks like a shadow leaning close. Questions, not answers."
+  }
+]

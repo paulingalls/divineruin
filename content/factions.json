@@ -130,5 +130,50 @@
       "active_concerns": ["Hollow incursions near Millhaven", "farm abandonment", "dwindling trade"],
       "recent_events": []
     }
+  },
+  {
+    "id": "temple_authority",
+    "name": "The Temple Authority",
+    "type": "religious_governance",
+    "description": "The combined administrative body of the temples in the Accord of Tides. Manages divine affairs, governs religious practice, and maintains the relationship between mortal institutions and the gods. Officially neutral between the faiths, but factions within pursue their own agendas.",
+    "values": ["order", "divine_mandate", "institutional_stability", "public_confidence"],
+    "territory": ["accord_central", "accord_temple_row"],
+    "leader": null,
+    "reputation_tiers": {
+      "hostile": {
+        "threshold": -10,
+        "effects": ["temple services denied", "watched by temple guards", "marked as heretic"]
+      },
+      "unfriendly": {
+        "threshold": -5,
+        "effects": ["cold reception at temples", "healing at full price", "information withheld"]
+      },
+      "neutral": {
+        "threshold": 0,
+        "effects": ["standard temple services", "basic healing available", "public information"]
+      },
+      "friendly": {
+        "threshold": 5,
+        "effects": ["discounted healing", "access to temple libraries", "clergy assistance"]
+      },
+      "trusted": {
+        "threshold": 15,
+        "effects": ["restricted archives", "divine consultation", "temple safe houses"]
+      },
+      "honored": {
+        "threshold": 25,
+        "effects": ["inner council access", "divine favor bonus", "classified theological research"]
+      }
+    },
+    "relationships": {
+      "accord_guild": "cooperative_tension",
+      "aelindran_diaspora": "cautious",
+      "independent": "pastoral"
+    },
+    "world_state": {
+      "current_strength": "institutional",
+      "active_concerns": ["Greyvale threat assessment", "guild overreach concerns", "maintaining public calm"],
+      "recent_events": []
+    }
   }
 ]

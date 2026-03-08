@@ -136,5 +136,292 @@
     "value_modifiers": {},
     "lore": "Provisions from Millhaven's stores. Not fancy, but given freely — which in a town this scared means something.",
     "found_in": ["millhaven"]
+  },
+  {
+    "id": "aldric_strange_stone",
+    "name": "Humming Stone",
+    "tier": 1,
+    "type": "quest_item",
+    "rarity": "rare",
+    "description": "A smooth, palm-sized stone that is always warm. Hold it near a flame and it hums — a low, steady note that you feel in your teeth more than hear. The surface has a faint iridescence, like oil on water, and when you're not looking directly at it, shapes seem to move beneath the surface.",
+    "tags": ["aelindran", "veythar", "mystery", "veil-touched", "quest"],
+    "weight": 0.3,
+    "effects": [
+      {
+        "type": "passive_detect",
+        "trigger": "near_veil_weakness",
+        "description": "the stone grows warmer and the humming intensifies"
+      },
+      {
+        "type": "passive_aura",
+        "description": "prolonged contact causes vivid dreams about places that don't exist"
+      }
+    ],
+    "value_base": 0,
+    "value_modifiers": {
+      "npc:scholar_emris": 50.0,
+      "faction:aelindran_diaspora": 10.0
+    },
+    "lore": "A fragment of an Attenuation Sphere — one of Veythar's artifacts for weakening the Veil. Aldric found it in the Greyvale Ruins and it partially opened his mind to the Veil. The stone is still active, which is why the Hollow corruption in the Greyvale is spreading.",
+    "found_in": ["millhaven"]
+  },
+  {
+    "id": "shortsword_basic",
+    "name": "Shortsword",
+    "tier": 2,
+    "type": "weapon",
+    "rarity": "common",
+    "description": "A simple blade, well-balanced and sharp enough. Nothing fancy — the kind of sword that does its job without complaining about it.",
+    "tags": ["weapon", "melee", "basic"],
+    "weight": 2.0,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d6",
+        "damage_type": "piercing",
+        "properties": ["light", "finesse"]
+      }
+    ],
+    "value_base": 100,
+    "value_modifiers": {},
+    "lore": "Standard-issue for guild recruits and city guards.",
+    "found_in": ["accord_market_square", "accord_forge"]
+  },
+  {
+    "id": "longsword_guild",
+    "name": "Guild Longsword",
+    "tier": 2,
+    "type": "weapon",
+    "rarity": "common",
+    "description": "A well-made longsword bearing a small guild mark near the crossguard. Heavier than it looks, balanced for someone who means business.",
+    "tags": ["weapon", "melee", "guild"],
+    "weight": 3.0,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d8",
+        "damage_type": "slashing",
+        "properties": ["versatile"]
+      }
+    ],
+    "value_base": 200,
+    "value_modifiers": {},
+    "lore": "Grimjaw's standard work. Functional, reliable, and as honest as the dwarf who forged it.",
+    "found_in": ["accord_forge"]
+  },
+  {
+    "id": "dagger_balanced",
+    "name": "Balanced Dagger",
+    "tier": 2,
+    "type": "weapon",
+    "rarity": "common",
+    "description": "Light and well-weighted, suitable for close quarters or throwing. The edge catches lamplight.",
+    "tags": ["weapon", "melee", "ranged", "basic"],
+    "weight": 1.0,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d4",
+        "damage_type": "piercing",
+        "properties": ["light", "finesse", "thrown"]
+      }
+    ],
+    "value_base": 50,
+    "value_modifiers": {},
+    "lore": "A simple dagger. Every adventurer carries one.",
+    "found_in": ["accord_market_square", "accord_forge"]
+  },
+  {
+    "id": "leather_armor_basic",
+    "name": "Leather Armor",
+    "tier": 2,
+    "type": "armor",
+    "rarity": "common",
+    "description": "Cured leather, stiffened and shaped to cover the torso. Smells of tanning oil and honest work. Won't stop a heavy blow, but it's quiet and doesn't slow you down.",
+    "tags": ["armor", "light", "basic"],
+    "weight": 10.0,
+    "effects": [
+      {
+        "type": "armor",
+        "ac_bonus": 11,
+        "properties": ["light"]
+      }
+    ],
+    "value_base": 150,
+    "value_modifiers": {},
+    "lore": "Standard light armor. Preferred by scouts, rogues, and anyone who values mobility.",
+    "found_in": ["accord_market_square"]
+  },
+  {
+    "id": "chain_shirt",
+    "name": "Chain Shirt",
+    "tier": 2,
+    "type": "armor",
+    "rarity": "common",
+    "description": "Interlocking metal rings woven into a shirt. Heavier than leather, quieter than plate. Grimjaw's work — each link is even and tight.",
+    "tags": ["armor", "medium", "metal"],
+    "weight": 20.0,
+    "effects": [
+      {
+        "type": "armor",
+        "ac_bonus": 13,
+        "properties": ["medium"]
+      }
+    ],
+    "value_base": 350,
+    "value_modifiers": {},
+    "lore": "Grimjaw's chain work. He considers it beneath him but it pays the bills.",
+    "found_in": ["accord_forge"]
+  },
+  {
+    "id": "shield_iron",
+    "name": "Iron Shield",
+    "tier": 2,
+    "type": "armor",
+    "rarity": "common",
+    "description": "A round shield with an iron boss and wooden body. Dented from the proving rack. Solid.",
+    "tags": ["shield", "basic"],
+    "weight": 6.0,
+    "effects": [
+      {
+        "type": "shield",
+        "ac_bonus": 2,
+        "properties": []
+      }
+    ],
+    "value_base": 120,
+    "value_modifiers": {},
+    "lore": "A reliable shield. Not decorative, not special. Just good work.",
+    "found_in": ["accord_forge"]
+  },
+  {
+    "id": "rations_basic",
+    "name": "Trail Rations",
+    "tier": 2,
+    "type": "consumable",
+    "rarity": "common",
+    "description": "Dried meat, hard biscuit, a handful of nuts. Tastes like nothing but keeps you walking.",
+    "tags": ["food", "consumable", "basic"],
+    "weight": 0.5,
+    "effects": [],
+    "value_base": 5,
+    "value_modifiers": {},
+    "lore": "Standard travel food. Sold by every merchant on the coast.",
+    "found_in": ["accord_market_square"]
+  },
+  {
+    "id": "rope_hemp",
+    "name": "Hemp Rope",
+    "tier": 2,
+    "type": "equipment",
+    "rarity": "common",
+    "description": "Fifty feet of coiled hemp rope. Smells of tar and the harbor.",
+    "tags": ["equipment", "utility", "basic"],
+    "weight": 5.0,
+    "effects": [],
+    "value_base": 10,
+    "value_modifiers": {},
+    "lore": "Always carry rope. Everyone who forgot wishes they hadn't.",
+    "found_in": ["accord_market_square"]
+  },
+  {
+    "id": "torch_bundle",
+    "name": "Bundle of Torches",
+    "tier": 2,
+    "type": "equipment",
+    "rarity": "common",
+    "description": "Three torches wrapped in oilcloth. Each burns for about an hour.",
+    "tags": ["equipment", "light", "basic"],
+    "weight": 3.0,
+    "effects": [
+      {
+        "type": "light_source",
+        "duration_minutes": 60,
+        "description": "Provides bright light in a 20-foot radius"
+      }
+    ],
+    "value_base": 3,
+    "value_modifiers": {},
+    "lore": "Fire keeps the dark honest.",
+    "found_in": ["accord_market_square", "millhaven"]
+  },
+  {
+    "id": "waterskin",
+    "name": "Waterskin",
+    "tier": 2,
+    "type": "equipment",
+    "rarity": "common",
+    "description": "A leather waterskin, stoppered and full. The water tastes faintly of leather and salt.",
+    "tags": ["equipment", "basic", "water"],
+    "weight": 2.5,
+    "effects": [],
+    "value_base": 8,
+    "value_modifiers": {},
+    "lore": "Fresh water. Underrated until you don't have it.",
+    "found_in": ["accord_market_square"]
+  },
+  {
+    "id": "antidote_basic",
+    "name": "Basic Antidote",
+    "tier": 2,
+    "type": "consumable",
+    "rarity": "common",
+    "description": "A small vial of murky green liquid. Tastes like chewed grass and regret. Works fast.",
+    "tags": ["consumable", "healing", "antidote"],
+    "weight": 0.2,
+    "effects": [
+      {
+        "type": "cure_poison",
+        "description": "Neutralizes common poisons and toxins"
+      }
+    ],
+    "value_base": 30,
+    "value_modifiers": {},
+    "lore": "Temple-brewed. Herbalists stock them, and experienced travelers never travel without one.",
+    "found_in": ["accord_temple_row"]
+  },
+  {
+    "id": "holy_water",
+    "name": "Holy Water",
+    "tier": 2,
+    "type": "consumable",
+    "rarity": "uncommon",
+    "description": "A small crystal vial of water blessed by temple clergy. It catches light in a way plain water doesn't and is faintly warm to the touch.",
+    "tags": ["consumable", "holy", "anti-hollow"],
+    "weight": 0.3,
+    "effects": [
+      {
+        "type": "thrown_weapon",
+        "damage": "2d6",
+        "damage_type": "radiant",
+        "target": "hollow",
+        "description": "Burns Hollow creatures on contact — the water sizzles and the creature recoils"
+      }
+    ],
+    "value_base": 75,
+    "value_modifiers": {},
+    "lore": "Water blessed through a ritual older than the temples themselves. Effective against Hollow creatures — one of the few things that is.",
+    "found_in": ["accord_temple_row"]
+  },
+  {
+    "id": "restoration_salve",
+    "name": "Restoration Salve",
+    "tier": 2,
+    "type": "consumable",
+    "rarity": "uncommon",
+    "description": "A small tin of pale ointment that smells of clean linen and something floral. Applied to skin, it absorbs quickly and leaves warmth behind.",
+    "tags": ["consumable", "healing", "restoration"],
+    "weight": 0.2,
+    "effects": [
+      {
+        "type": "heal",
+        "amount": "1d4+1",
+        "description": "Heals minor wounds and removes one status effect"
+      }
+    ],
+    "value_base": 60,
+    "value_modifiers": {},
+    "lore": "Temple-made restorative. Useful for burns, minor corruption exposure, and the general wear of adventuring.",
+    "found_in": ["accord_temple_row"]
   }
 ]
