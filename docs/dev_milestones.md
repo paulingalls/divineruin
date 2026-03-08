@@ -1128,14 +1128,14 @@ These overlays appear over the session screen center when triggered by data chan
 - Post-processing pipeline: after generation, images are auto-adjusted — background darkened to near-black (#0A0A0B), color-corrected to brand palette, cropped to target aspect ratio
 
 **Acceptance criteria:**
-- [ ] `bun run scripts/generate_art.ts --template companion_portrait --vars '{"name":"Kael","class":"ranger"}'` generates an image and stores it
-- [ ] Generated images match the ink wash style described in `image_prompt_library.md` (manual review — dissolving edges, dark background, monochrome with selective accent)
-- [ ] Asset serving endpoint returns images with proper cache headers (24h cache, ETag)
+- [x] `bun run scripts/generate_art.ts --template companion_portrait --vars '{"name":"Kael","class":"ranger"}'` generates an image and stores it
+- [x] Generated images match the ink wash style described in `image_prompt_library.md` (manual review — dissolving edges, dark background, monochrome with selective accent)
+- [x] Asset serving endpoint returns images with proper cache headers (24h cache, ETag)
 - [ ] `expo-image` on the client loads and caches images from the asset endpoint
 - [ ] Generation queue processes requests without blocking the voice pipeline (verify voice latency unchanged during generation)
-- [ ] Post-processing darkens backgrounds and corrects accent colors to within 10% of brand hex values
-- [ ] Batch generation script can produce all MVP companion + location + item art in a single run
-- [ ] Duplicate requests (same template + variables) return the cached asset instead of regenerating
+- [x] Post-processing darkens backgrounds and corrects accent colors to within 10% of brand hex values
+- [x] Batch generation script can produce all MVP companion + location + item art in a single run
+- [x] Duplicate requests (same template + variables) return the cached asset instead of regenerating
 
 **Key references:**
 - *Image Prompt Library* (all templates, style foundation, consistency tips, aspect ratios)
@@ -1217,6 +1217,11 @@ These overlays appear over the session screen center when triggered by data chan
 - Session connecting: while waiting for LiveKit room connection, display an abstract atmospheric ink wash that cross-fades into the location art once the session initializes.
 - Session summary: location illustration from the session's final location displayed as a dimmed background behind the summary text.
 
+*Static Asset Bundling*
+- Bundle pre-generated MVP art assets directly into the Expo app (via `apps/mobile/assets/images/`) so they load instantly without network round-trips. This includes: loading screen abstract, all MVP location illustrations, companion portraits, NPC portraits, and item art.
+- Server-served images (`/api/assets/images/:id`) remain available for dynamically generated art (player portraits, new content created during gameplay).
+- Use `expo-asset` for bundled images, `expo-image` with URL caching for server-served images. Bundled assets take priority — only fall back to server if the asset isn't in the bundle.
+
 *Home Screen Enhancement*
 - Session history entries: small thumbnail of the session's primary location art (48px square, rounded corners) next to each session in the history list.
 
@@ -1232,6 +1237,8 @@ These overlays appear over the session screen center when triggered by data chan
 - [ ] Session summary screen displays final location art as a dimmed background
 - [ ] Session history entries on home screen show location art thumbnails
 - [ ] All location art matches the ink wash style (dark background, dissolving edges, correct accent colors per location)
+- [ ] Static MVP art assets are bundled in the app binary — loading screen, locations, portraits, and items display without network requests
+- [ ] Dynamically generated art (player portraits) loads from the server endpoint and caches locally after first fetch
 - [ ] Art display does not impact session performance — images are pre-cached, transitions run at 60fps
 
 **Key references:**

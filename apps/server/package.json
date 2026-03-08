@@ -10,9 +10,12 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@google/genai": "^1.44.0",
     "@livekit/protocol": "^1.44.1",
+    "@types/sharp": "^0.32.0",
     "jose": "^6.2.0",
-    "livekit-server-sdk": "^2.15.0"
+    "livekit-server-sdk": "^2.15.0",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0"

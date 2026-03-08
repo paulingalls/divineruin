@@ -11,6 +11,7 @@ import {
   handleAudioFile,
 } from "./activities.ts";
 import { handleGetCatchUpFeed } from "./catchup.ts";
+import { handleImageAsset } from "./image-assets.ts";
 import { sql } from "./db.ts";
 import { handleGetActivityTemplates } from "./activity-templates-api.ts";
 import { handleStorePushToken, handleInternalPush } from "./push.ts";
@@ -22,6 +23,7 @@ const CHARACTER_RE = /^\/api\/character\/([^/]+)$/;
 const ACTIVITY_ID_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)$/;
 const ACTIVITY_DECIDE_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)\/decide$/;
 const AUDIO_FILE_RE = /^\/api\/audio\/([a-zA-Z0-9_.-]+)$/;
+const IMAGE_ASSET_RE = /^\/api\/assets\/images\/([a-zA-Z0-9_]+)$/;
 const GOD_WHISPER_PLAYED_RE = /^\/api\/god-whispers\/([a-zA-Z0-9_]+)\/played$/;
 
 const server = serve({
@@ -148,12 +150,19 @@ const server = serve({
       }
     }
 
-    // --- Audio file serving ---
+    // --- File serving (unauthenticated) ---
 
     if (path.startsWith("/api/audio/") && req.method === "GET") {
       const audioMatch = path.match(AUDIO_FILE_RE);
       if (audioMatch) {
         return withCors(await handleAudioFile(audioMatch[1]!));
+      }
+    }
+
+    if (path.startsWith("/api/assets/images/") && req.method === "GET") {
+      const imgMatch = path.match(IMAGE_ASSET_RE);
+      if (imgMatch) {
+        return withCors(await handleImageAsset(imgMatch[1]!));
       }
     }
 
