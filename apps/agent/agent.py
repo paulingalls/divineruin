@@ -515,8 +515,9 @@ async def dm_session(ctx: agents.JobContext) -> None:
         )
 
         # Play prologue narration, then begin creation
-        PROLOGUE_DURATION_S = 80
-        await publish_game_event(ctx.room, "play_narration", {"url": "/api/audio/prologue"})
+        # Duration must match the generated prologue.mp3 — regenerate via scripts/generate_prologue.py
+        PROLOGUE_DURATION_S = 70
+        await publish_game_event(ctx.room, "play_narration", {"url": "/api/audio/prologue.mp3"})
         await asyncio.sleep(PROLOGUE_DURATION_S)
 
         await session.generate_reply(
