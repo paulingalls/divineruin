@@ -29,6 +29,14 @@ export function useCharacter(playerId: string) {
         const res = await fetch(`${API_BASE}/api/character/${playerId}`, {
           headers: authHeaders(),
         });
+        if (res.status === 404) {
+          // Player exists but character not yet created — not an error
+          if (!cancelled) {
+            characterStore.getState().clear();
+            setError(null);
+          }
+          return;
+        }
         if (!res.ok) {
           throw new Error(`Failed to fetch character (${res.status})`);
         }
