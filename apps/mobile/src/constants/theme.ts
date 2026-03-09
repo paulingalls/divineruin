@@ -93,6 +93,10 @@ export const FontFamilies = {
     web: "'Crimson Pro', serif",
     default: "CrimsonPro_300Light",
   }),
+  bodyLightItalic: Platform.select({
+    web: "'Crimson Pro', serif",
+    default: "CrimsonPro_300Light_Italic",
+  }),
   bodySemiBold: Platform.select({
     web: "'Crimson Pro', serif",
     default: "CrimsonPro_600SemiBold",

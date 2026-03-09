@@ -26,8 +26,9 @@ export default function HomeScreen() {
   const isLandscape = width / height > LANDSCAPE_THRESHOLD;
   const character = useStore(characterStore, (s) => s.character);
   const playerId = getPlayerId();
-  useCharacter(playerId);
-  useCatchUp();
+  const { loading } = useCharacter(playerId);
+  const hasCharacter = character !== null;
+  useCatchUp(hasCharacter);
   const { submitDecision, startActivity, decisionLoading } = useActivityActions();
 
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
@@ -46,8 +47,29 @@ export default function HomeScreen() {
     stopNarration();
   }, []);
 
-  const hasCharacter = character !== null;
-  const buttonLabel = hasCharacter ? "ENTER AETHOS" : "BEGIN YOUR JOURNEY";
+  // Loading state — avoid flash of wrong content
+  if (loading) {
+    return <ThemedView style={styles.container} />;
+  }
+
+  // Pre-creation gate for new players
+  if (!hasCharacter) {
+    return (
+      <ThemedView style={styles.container}>
+        <SafeAreaView style={styles.safeArea}>
+          <ThemedView style={styles.content}>
+            <TitleBar />
+            <View style={styles.gateContainer}>
+              <ThemedText style={styles.gateMessage}>Your story is about to begin.</ThemedText>
+              <Pressable style={styles.enterButton} onPress={() => router.push("/session")}>
+                <ThemedText style={styles.enterText}>BEGIN</ThemedText>
+              </Pressable>
+            </View>
+          </ThemedView>
+        </SafeAreaView>
+      </ThemedView>
+    );
+  }
 
   const feedProps = {
     playingAudioUrl: playingUrl,
@@ -59,7 +81,7 @@ export default function HomeScreen() {
 
   const enterButton = (
     <Pressable style={styles.enterButton} onPress={() => router.push("/session")}>
-      <ThemedText style={styles.enterText}>{buttonLabel}</ThemedText>
+      <ThemedText style={styles.enterText}>ENTER AETHOS</ThemedText>
     </Pressable>
   );
 
@@ -161,5 +183,17 @@ const styles = StyleSheet.create({
   landscapeRight: {
     flex: 1,
     justifyContent: "center",
+  },
+  gateContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: Spacing.five,
+  },
+  gateMessage: {
+    fontSize: 24,
+    fontFamily: FontFamilies.bodyLightItalic,
+    color: BrandColors.bone,
+    textAlign: "center",
   },
 });

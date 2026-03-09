@@ -55,7 +55,7 @@ describe("handleGetCharacter", () => {
     expect(body.hp_max).toBe(25);
   });
 
-  test("handles missing optional fields gracefully", async () => {
+  test("returns 404 for player with empty data (no character created)", async () => {
     mockRows = [
       {
         player_id: "player_2",
@@ -65,9 +65,24 @@ describe("handleGetCharacter", () => {
     ];
 
     const res = await handleGetCharacter(makeRequest("player_2"), "player_2");
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("Character not created");
+  });
+
+  test("handles missing optional fields gracefully when name exists", async () => {
+    mockRows = [
+      {
+        player_id: "player_3",
+        data: { name: "Kael" },
+        location_name: null,
+      },
+    ];
+
+    const res = await handleGetCharacter(makeRequest("player_3"), "player_3");
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(body.name).toBe("Unknown");
+    expect(body.name).toBe("Kael");
     expect(body.level).toBe(1);
     expect(body.hp_current).toBe(0);
     expect(body.hp_max).toBe(0);

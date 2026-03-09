@@ -37,12 +37,17 @@ export async function handleGetCharacter(_req: Request, playerId: string): Promi
     const row = rows[0]!;
     const data =
       typeof row.data === "string" ? (JSON.parse(row.data) as CharacterRow["data"]) : row.data;
+
+    if (!data.name) {
+      return Response.json({ error: "Character not created" }, { status: 404 });
+    }
+
     const hp = data.hp ?? {};
     const locationId = data.location_id ?? "unknown";
 
     return Response.json({
       player_id: row.player_id,
-      name: data.name ?? "Unknown",
+      name: data.name,
       class: data.class ?? "Adventurer",
       level: data.level ?? 1,
       xp: data.xp ?? 0,

@@ -23,10 +23,11 @@ export async function fetchCards(): Promise<void> {
   }
 }
 
-export function useCatchUp() {
+export function useCatchUp(enabled = true) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     void fetchCards();
 
     const startPolling = () => {
@@ -58,5 +59,5 @@ export function useCatchUp() {
       stopPolling();
       subscription.remove();
     };
-  }, []);
+  }, [enabled]);
 }

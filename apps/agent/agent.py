@@ -469,7 +469,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
     except Exception:
         logger.warning("Failed to load player/session data", exc_info=True)
 
-    needs_creation = player is None
+    needs_creation = player is None or not player.get("name")
 
     def _make_agent_session(model: str, userdata: SessionData) -> AgentSession:
         session = AgentSession(
