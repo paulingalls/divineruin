@@ -1,5 +1,6 @@
 """Generate and serve companion idle audio clips from a pre-rendered pool."""
 
+import asyncio
 import json
 import logging
 import os
@@ -9,7 +10,7 @@ import db
 from activity_templates import get_companion_context
 from llm_config import AUDIO_DIR, MODEL, audio_url_for
 from llm_config import client as _client
-from tts_prerender import synthesize_to_file
+from tts_prerender import synthesize_to_file, tts_session
 
 logger = logging.getLogger("divineruin.companion_idle")
 
@@ -51,50 +52,60 @@ async def generate_idle_pool(companion_id: str, count: int = 5) -> list[dict]:
         response.usage.output_tokens,
     )
 
-    results = []
+    voice_id = get_companion_context(companion_id)["voice_id"]
+
+    # Prepare clip metadata upfront
+    clips = []
     for line_text in lines:
         clip_id = f"idle_{uuid.uuid4().hex[:12]}"
-        audio_filename = f"{clip_id}.mp3"
-        audio_path = os.path.join(AUDIO_DIR, audio_filename)
+        clips.append((clip_id, line_text))
 
-        try:
-            voice_id = get_companion_context(companion_id)["voice_id"]
-            await synthesize_to_file(line_text, voice_id, audio_path)
-            audio_url = audio_url_for(audio_filename)
-        except Exception:
-            logger.warning("Failed to synthesize idle clip %s", clip_id)
-            audio_url = None
+    # Synthesize all clips concurrently with a shared HTTP session
+    async with tts_session() as synth:
 
-        results.append(
-            {
-                "id": clip_id,
-                "text": line_text,
-                "audio_url": audio_url,
-                "companion_id": companion_id,
-                "heard": False,
-            }
-        )
+        async def _synth_one(clip_id: str, text: str) -> str | None:
+            audio_path = os.path.join(AUDIO_DIR, f"{clip_id}.mp3")
+            try:
+                await synthesize_to_file(text, voice_id, audio_path, synthesize=synth)
+                return audio_url_for(f"{clip_id}.mp3")
+            except Exception:
+                logger.warning("Failed to synthesize idle clip %s", clip_id)
+                return None
 
-    # Store clips in DB for retrieval
+        audio_urls = await asyncio.gather(*(_synth_one(cid, text) for cid, text in clips))
+
+    results = [
+        {
+            "id": cid,
+            "text": text,
+            "audio_url": url,
+            "companion_id": companion_id,
+            "heard": False,
+        }
+        for (cid, text), url in zip(clips, audio_urls, strict=True)
+    ]
+
+    # Store clips in DB in a single round-trip
     pool = await db.get_pool()
-    for clip in results:
-        await pool.execute(
-            """
-            INSERT INTO async_activities (id, player_id, data)
-            VALUES ($1, $2, $3::jsonb)
-            """,
-            clip["id"],
-            "system",  # system-owned clips
-            json.dumps(
-                {
-                    "type": "idle_clip",
-                    "companion_id": companion_id,
-                    "text": clip["text"],
-                    "audio_url": clip["audio_url"],
-                    "heard": False,
-                }
-            ),
-        )
+    await pool.executemany(
+        "INSERT INTO async_activities (id, player_id, data) VALUES ($1, $2, $3::jsonb)",
+        [
+            (
+                clip["id"],
+                "system",
+                json.dumps(
+                    {
+                        "type": "idle_clip",
+                        "companion_id": companion_id,
+                        "text": clip["text"],
+                        "audio_url": clip["audio_url"],
+                        "heard": False,
+                    }
+                ),
+            )
+            for clip in results
+        ],
+    )
 
     return results
 

@@ -1,20 +1,16 @@
 #!/usr/bin/env python3
-"""Generate the prologue narration audio using the Inworld TTS API directly.
-
-The LiveKit Inworld plugin requires an agent job context, so this script
-calls the Inworld REST API directly for offline audio generation.
+"""Generate the prologue narration audio using Inworld TTS.
 
 Usage:
     cd apps/agent && uv run python ../../scripts/generate_prologue.py
 """
 
 import asyncio
-import base64
-import json
 import os
 import sys
 
-import aiohttp
+# Add agent directory to path so we can import tts_prerender
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "apps", "agent"))
 
 
 def _load_env(path: str) -> None:
@@ -31,10 +27,10 @@ def _load_env(path: str) -> None:
             os.environ.setdefault(key.strip(), value)
 
 
-# Load .env from project root
+# Load .env from project root (must happen before importing agent modules)
 _load_env(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-INWORLD_BASE_URL = "https://api.inworld.ai"
+from tts_prerender import synthesize_to_file  # noqa: E402
 
 AUDIO_DIR = os.environ.get(
     "ASYNC_AUDIO_DIR",
@@ -70,54 +66,6 @@ PROLOGUE_TEXT = (
 )
 
 
-async def synthesize(text: str, voice_id: str) -> bytes:
-    """Call the Inworld TTS API directly and return MP3 bytes."""
-    api_key = os.environ.get("INWORLD_API_KEY")
-    if not api_key:
-        print("ERROR: INWORLD_API_KEY not set")
-        sys.exit(1)
-
-    payload = {
-        "text": text,
-        "voiceId": voice_id,
-        "modelId": "inworld-tts-1",
-        "audioConfig": {
-            "audioEncoding": "MP3",
-            "sampleRateHertz": 44100,
-            "speakingRate": 0.8,
-        },
-    }
-
-    mp3_data = bytearray()
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            f"{INWORLD_BASE_URL}/tts/v1/voice:stream",
-            headers={
-                "Authorization": f"Basic {api_key}",
-                "Content-Type": "application/json",
-            },
-            json=payload,
-            timeout=aiohttp.ClientTimeout(total=120),
-        ) as resp:
-            if resp.status != 200:
-                resp_text = await resp.text()
-                print(f"HTTP {resp.status}: {resp_text}")
-                sys.exit(1)
-            async for raw_line in resp.content:
-                line = raw_line.strip()
-                if not line:
-                    continue
-                data = json.loads(line)
-                if error := data.get("error"):
-                    print(f"API error: {error.get('message', error)}")
-                    sys.exit(1)
-                if result := data.get("result"):
-                    if audio := result.get("audioContent"):
-                        mp3_data.extend(base64.b64decode(audio))
-
-    return bytes(mp3_data)
-
-
 async def main() -> None:
     voice_id = os.environ.get("INWORLD_VOICE_DM")
     if not voice_id:
@@ -129,13 +77,10 @@ async def main() -> None:
     print(f"Output: {output_path}")
     print(f"Text: {len(PROLOGUE_TEXT)} chars, {len(PROLOGUE_TEXT.split())} words")
 
-    mp3_data = await synthesize(PROLOGUE_TEXT, voice_id)
+    await synthesize_to_file(PROLOGUE_TEXT, voice_id, output_path)
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "wb") as f:
-        f.write(mp3_data)
-
-    print(f"Done! {os.path.basename(output_path)} ({len(mp3_data):,} bytes)")
+    file_size = os.path.getsize(output_path)
+    print(f"Done! {os.path.basename(output_path)} ({file_size:,} bytes)")
 
 
 if __name__ == "__main__":
