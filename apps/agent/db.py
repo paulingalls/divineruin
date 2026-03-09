@@ -305,7 +305,15 @@ async def get_player(
     row = await _conn.fetchrow(sql, player_id)
     if row is None:
         return None
-    return json.loads(row["data"])
+    data = json.loads(row["data"])
+    # Guard against double-encoded JSONB (stored as JSON string instead of object)
+    if isinstance(data, str):
+        logger.warning("Double-encoded player data for %s — run data migration", player_id)
+        data = json.loads(data)
+    if not isinstance(data, dict):
+        logger.warning("Player %s has non-dict data: %s", player_id, type(data).__name__)
+        return None
+    return data
 
 
 async def update_player_hp(

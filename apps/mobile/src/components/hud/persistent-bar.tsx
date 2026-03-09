@@ -189,10 +189,8 @@ const PANEL_ICONS: {
 ];
 
 function PanelAccessIcons() {
-  const { activeTab, isOpen } = useStore(panelStore, (s) => ({
-    activeTab: s.activeTab,
-    isOpen: s.isOpen,
-  }));
+  const activeTab = useStore(panelStore, (s) => s.activeTab);
+  const isOpen = useStore(panelStore, (s) => s.isOpen);
 
   return (
     <View style={styles.panelIcons}>

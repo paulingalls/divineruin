@@ -192,7 +192,7 @@ export async function handleVerifyCode(req: Request): Promise<Response> {
   if (existingPlayers.length === 0) {
     await sql`
       INSERT INTO players (player_id, account_id, data)
-      VALUES (${playerId}, ${account.id}, ${JSON.stringify({})})
+      VALUES (${playerId}, ${account.id}, ${{}}::jsonb)
     `;
   }
 
