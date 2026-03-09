@@ -62,7 +62,7 @@ export default function HomeScreen() {
             <View style={styles.gateContainer}>
               <ThemedText style={styles.gateMessage}>Your story is about to begin.</ThemedText>
               <Pressable style={styles.enterButton} onPress={() => router.push("/session")}>
-                <ThemedText style={styles.enterText}>BEGIN</ThemedText>
+                <ThemedText style={styles.enterText}>AWAKEN</ThemedText>
               </Pressable>
             </View>
           </ThemedView>
@@ -145,6 +145,7 @@ const styles = StyleSheet.create({
   },
   enterButton: {
     paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.six,
     borderRadius: Radius.md,
     alignItems: "center",
     backgroundColor: BrandColors.hollowFaint,
