@@ -13,8 +13,8 @@ async function ensureMigrationsTable() {
 }
 
 async function getAppliedMigrations(): Promise<Set<string>> {
-  const rows = await sql`SELECT name FROM _migrations ORDER BY name`;
-  return new Set(rows.map((r: { name: string }) => r.name));
+  const rows: Array<{ name: string }> = await sql`SELECT name FROM _migrations ORDER BY name`;
+  return new Set(rows.map((r) => r.name));
 }
 
 async function run() {

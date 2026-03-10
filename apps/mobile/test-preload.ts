@@ -34,11 +34,11 @@ mock.module("expo-haptics", () => ({
 }));
 
 mock.module("expo-audio", () => ({
-  createAudioPlayer: (source: any) => ({
+  createAudioPlayer: (_source: unknown) => ({
     volume: 1,
     play: () => {},
     remove: () => {},
-    addListener: (_event: string, _cb: Function) => ({ remove: () => {} }),
+    addListener: (_event: string, _cb: () => void) => ({ remove: () => {} }),
   }),
   setAudioModeAsync: async () => {},
 }));

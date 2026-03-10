@@ -13,8 +13,6 @@ export default tseslint.config(
       "**/ios/",
       "**/metro.config.js",
       "apps/agent/",
-      "scripts/",
-      "apps/mobile/test-preload.ts",
       "e2e/",
     ],
   },
@@ -61,6 +59,19 @@ export default tseslint.config(
       ],
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unnecessary-condition": "error",
+    },
+  },
+
+  // Test preload mock file intentionally uses `any` for type stubs
+  {
+    files: ["apps/mobile/test-preload.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-floating-promises": "off",
+      "@typescript-eslint/require-await": "off",
+      "@typescript-eslint/no-unsafe-function-type": "off",
     },
   },
 );

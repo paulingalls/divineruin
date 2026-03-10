@@ -471,7 +471,7 @@ async function runSingle(templateId: string, varsJson: string) {
 
   let vars: Record<string, string>;
   try {
-    vars = JSON.parse(varsJson);
+    vars = JSON.parse(varsJson) as Record<string, string>;
   } catch {
     console.error("Invalid JSON for --vars");
     process.exit(1);
