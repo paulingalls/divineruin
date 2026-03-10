@@ -7,6 +7,7 @@ from livekit import rtc
 from livekit.agents import AgentSession
 from livekit.agents.voice.events import UserStateChangedEvent
 
+import event_types as E
 from game_events import publish_game_event
 
 logger = logging.getLogger("divineruin.prologue")
@@ -20,7 +21,7 @@ async def play_prologue(session: AgentSession, room: rtc.Room) -> bool:
 
     Returns True if the player interrupted (spoke during playback).
     """
-    await publish_game_event(room, "play_narration", {"url": PROLOGUE_URL})
+    await publish_game_event(room, E.PLAY_NARRATION, {"url": PROLOGUE_URL})
 
     player_spoke = asyncio.Event()
 
@@ -47,6 +48,6 @@ async def play_prologue(session: AgentSession, room: rtc.Room) -> bool:
     interrupted = player_spoke.is_set()
     if interrupted:
         logger.info("Player spoke during prologue — skipping remaining narration")
-        await publish_game_event(room, "stop_narration", {})
+        await publish_game_event(room, E.STOP_NARRATION, {})
 
     return interrupted

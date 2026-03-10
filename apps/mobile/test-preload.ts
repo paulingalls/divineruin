@@ -1,5 +1,8 @@
 import { mock } from "bun:test";
 
+// React Native sets __DEV__ at build time; define it for the test environment.
+(globalThis as any).__DEV__ = true;
+
 // React Native's entry point uses Flow syntax that Bun can't parse.
 // Mock it and other native modules before any test files load.
 mock.module("react-native", () => ({

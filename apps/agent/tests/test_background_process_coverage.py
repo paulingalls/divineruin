@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import event_types as E
 from background_process import GUIDANCE_LEVEL_2_SECS, BackgroundProcess, PendingSpeech, SpeechPriority
 from event_bus import GameEvent
 
@@ -113,9 +114,9 @@ class TestEventHandling:
         mock_sd.in_combat = False
         mock_sd.last_player_speech_time = 0
 
-        event1 = GameEvent(event_type="location_changed", payload={"new_location": "forest"})
+        event1 = GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "forest"})
         event2 = GameEvent(
-            event_type="quest_updated", payload={"quest_name": "Test Quest", "objective": "Find the thing"}
+            event_type=E.QUEST_UPDATED, payload={"quest_name": "Test Quest", "objective": "Find the thing"}
         )
 
         mock_sd.event_bus = MagicMock()

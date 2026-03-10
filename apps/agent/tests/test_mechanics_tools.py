@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import event_types as E
 from session_data import SessionData
 from tools import (
     play_sound,
@@ -116,7 +117,7 @@ class TestRequestSkillCheck:
         )
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == "dice_roll"
+        assert call_data["type"] == E.DICE_ROLL
         assert call_data["roll_type"] == "skill_check"
 
 
@@ -190,7 +191,7 @@ class TestRequestAttack:
         await request_attack._func(ctx, target_id="goblin_1", weapon_or_spell="Longsword")
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == "dice_roll"
+        assert call_data["type"] == E.DICE_ROLL
         assert call_data["roll_type"] == "attack"
 
 
@@ -235,7 +236,7 @@ class TestRequestSavingThrow:
         await request_saving_throw._func(ctx, save_type="wisdom", dc=12, effect_on_fail="frightened")
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == "dice_roll"
+        assert call_data["type"] == E.DICE_ROLL
         assert call_data["roll_type"] == "saving_throw"
 
 
@@ -285,5 +286,5 @@ class TestPlaySound:
         await play_sound._func(ctx, sound_name="sword_clash")
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == "play_sound"
+        assert call_data["type"] == E.PLAY_SOUND
         assert call_data["sound_name"] == "sword_clash"

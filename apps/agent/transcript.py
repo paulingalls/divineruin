@@ -7,6 +7,7 @@ import os
 import time
 from typing import TYPE_CHECKING
 
+import event_types as E
 from dialogue_parser import DEFAULT_CHARACTER
 from game_events import publish_game_event
 
@@ -79,7 +80,7 @@ class TranscriptLogger:
     ) -> None:
         await publish_game_event(
             self._room,
-            "transcript_entry",
+            E.TRANSCRIPT_ENTRY,
             {
                 "speaker": speaker,
                 "character": character,

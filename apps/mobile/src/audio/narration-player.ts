@@ -1,13 +1,6 @@
 import { createAudioPlayer, type AudioPlayer } from "expo-audio";
 import { getEffectiveVolume } from "./volume";
 
-/** Resolve a relative API path to a full URL for audio playback. */
-function resolveAudioUrl(url: string): string {
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  const base = String(process.env.EXPO_PUBLIC_API_URL ?? "");
-  return `${base}${url}`;
-}
-
 type NarrationState = {
   playing: boolean;
   currentUrl: string | null;
@@ -50,7 +43,7 @@ export function playNarration(url: string): void {
     _cleanup();
   }
 
-  _player = createAudioPlayer({ uri: resolveAudioUrl(url) });
+  _player = createAudioPlayer({ uri: url });
   _player.volume = getEffectiveVolume("voice");
   _currentUrl = url;
 

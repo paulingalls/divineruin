@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import db
+import event_types as E
 from event_bus import GameEvent
 from god_whisper_data import get_god_profile, should_trigger_whisper
 from prompts import build_full_prompt, build_system_prompt, build_warm_layer, quest_objective
@@ -23,13 +24,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger("divineruin.background")
 
 REBUILD_EVENT_TYPES = {
-    "location_changed",
-    "quest_updated",
-    "disposition_changed",
-    "combat_started",
-    "combat_ended",
-    "hollow_corruption_changed",
-    "divine_favor_changed",
+    E.LOCATION_CHANGED,
+    E.QUEST_UPDATED,
+    E.DISPOSITION_CHANGED,
+    E.COMBAT_STARTED,
+    E.COMBAT_ENDED,
+    E.HOLLOW_CORRUPTION_CHANGED,
+    E.DIVINE_FAVOR_CHANGED,
 }
 
 MEETING_LOCATIONS = {"accord_market_square", "accord_dockside"}
@@ -207,7 +208,7 @@ class BackgroundProcess:
             if ev.event_type in REBUILD_EVENT_TYPES:
                 needs_rebuild = True
 
-            if ev.event_type == "location_changed":
+            if ev.event_type == E.LOCATION_CHANGED:
                 new_loc = ev.payload.get("new_location", "")
                 # Check for companion meeting trigger
                 if not self._sd.has_companion and not self._meeting_triggered and new_loc in MEETING_LOCATIONS:
@@ -249,7 +250,7 @@ class BackgroundProcess:
                         f"The player just arrived at a new location ({new_loc}). Describe the atmosphere briefly.",
                     )
 
-            elif ev.event_type == "quest_updated":
+            elif ev.event_type == E.QUEST_UPDATED:
                 quest_name = ev.payload.get("quest_name", "unknown quest")
                 objective = ev.payload.get("objective", "")
                 if can_act and companion:
@@ -266,7 +267,7 @@ class BackgroundProcess:
                         f"The quest '{quest_name}' just progressed. New objective: {objective}.",
                     )
 
-            elif ev.event_type == "combat_ended":
+            elif ev.event_type == E.COMBAT_ENDED:
                 outcome = ev.payload.get("outcome", "victory")
                 if outcome == "victory":
                     if can_act and companion:
@@ -299,7 +300,7 @@ class BackgroundProcess:
                         "The player has fallen in combat. This is a dramatic moment. Narrate the darkness closing in.",
                     )
 
-            elif ev.event_type == "disposition_changed":
+            elif ev.event_type == E.DISPOSITION_CHANGED:
                 if can_act and companion:
                     npc_name = ev.payload.get("npc_name", "someone")
                     new_disp = ev.payload.get("new", "neutral")
@@ -317,19 +318,19 @@ class BackgroundProcess:
                         f"One sentence. Use [COMPANION_KAEL, {companion.emotional_state}] tag.",
                     )
 
-            elif ev.event_type == "hollow_corruption_changed":
+            elif ev.event_type == E.HOLLOW_CORRUPTION_CHANGED:
                 level = ev.payload.get("level", 0)
                 if level > 0 and can_act and companion:
                     speech = CORRUPTION_COMPANION_SPEECH.get(level)
                     if speech:
                         self._queue_speech(SpeechPriority.IMPORTANT, speech)
 
-            elif ev.event_type == "world_event":
+            elif ev.event_type == E.WORLD_EVENT:
                 event_id = ev.payload.get("event_id", "")
                 if event_id.startswith("god_whisper"):
                     self._queue_god_whisper(ev.payload)
 
-            elif ev.event_type == "divine_favor_changed":
+            elif ev.event_type == E.DIVINE_FAVOR_CHANGED:
                 new_level = ev.payload.get("new_level", 0)
                 last_whisper = ev.payload.get("last_whisper_level", 0)
                 if should_trigger_whisper(new_level, last_whisper):
@@ -472,7 +473,7 @@ class BackgroundProcess:
 
                 await publish_game_event(
                     self._sd.room,
-                    "play_sound",
+                    E.PLAY_SOUND,
                     {"sound_name": top.stinger_sound},
                     event_bus=self._sd.event_bus,
                 )

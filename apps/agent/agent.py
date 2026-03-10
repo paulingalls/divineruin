@@ -14,6 +14,7 @@ from livekit.plugins import anthropic, deepgram, inworld, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 import db
+import event_types as E
 from affect_analyzer import PlayerAffectAnalyzer
 from background_process import BackgroundProcess
 from dialogue_parser import parse_dialogue_stream
@@ -132,7 +133,7 @@ class DungeonMasterAgent(Agent):
     async def _publish_session_init(self, sd: SessionData) -> None:
         try:
             payload = await db.get_session_init_payload(sd.player_id)
-            await publish_game_event(sd.room, "session_init", payload, sd.event_bus)
+            await publish_game_event(sd.room, E.SESSION_INIT, payload, sd.event_bus)
         except Exception:
             logger.exception("Failed to publish session_init")
 
@@ -167,7 +168,7 @@ class DungeonMasterAgent(Agent):
         summary_payload = await generate_session_summary(sd, transcript_path, self._session_start_time)
 
         results = await asyncio.gather(
-            publish_game_event(sd.room, "session_end", summary_payload, sd.event_bus),
+            publish_game_event(sd.room, E.SESSION_END, summary_payload, sd.event_bus),
             db.save_session_summary(sd.player_id, sd.session_id, summary_payload),
             return_exceptions=True,
         )

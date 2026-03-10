@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import event_types as E
 from session_data import SessionData
 from tools import (
     LOCATION_CORRUPTION,
@@ -61,7 +62,7 @@ class TestQuestArcProgression:
             await _apply_world_effects(effects, session, pending)
 
         mock_set.assert_called_once()
-        disp_events = [e for e in pending if e[0] == "disposition_changed"]
+        disp_events = [e for e in pending if e[0] == E.DISPOSITION_CHANGED]
         assert len(disp_events) == 1
         assert disp_events[0][1]["npc_id"] == "guildmaster_torin"
 
@@ -95,7 +96,7 @@ class TestQuestArcProgression:
         # yanna disposition should be set
         mock_set.assert_called_once()
         # morale event should be logged
-        morale_events = [e for e in pending if e[0] == "world_event" and "morale" in e[1].get("event_id", "")]
+        morale_events = [e for e in pending if e[0] == E.WORLD_EVENT and "morale" in e[1].get("event_id", "")]
         assert len(morale_events) == 1
 
     @pytest.mark.asyncio
@@ -114,9 +115,9 @@ class TestQuestArcProgression:
         await _apply_world_effects(effects, session, pending)
 
         assert session.corruption_level == 3
-        corruption_events = [e for e in pending if e[0] == "hollow_corruption_changed"]
+        corruption_events = [e for e in pending if e[0] == E.HOLLOW_CORRUPTION_CHANGED]
         assert len(corruption_events) == 1
-        world_events = [e for e in pending if e[0] == "world_event"]
+        world_events = [e for e in pending if e[0] == E.WORLD_EVENT]
         assert any(e[1]["event_id"] == "ruins_discovery_ripple" for e in world_events)
 
     @pytest.mark.asyncio
@@ -140,7 +141,7 @@ class TestQuestArcProgression:
             await _apply_world_effects(effects, session, pending)
 
         mock_set.assert_called_once()
-        world_events = [e for e in pending if e[0] == "world_event"]
+        world_events = [e for e in pending if e[0] == E.WORLD_EVENT]
         event_ids = {e[1]["event_id"] for e in world_events}
         assert "faction_interest_triggered" in event_ids
         assert "god_whisper:player_patron" in event_ids

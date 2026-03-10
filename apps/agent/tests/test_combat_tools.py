@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import event_types as E
 from session_data import CombatParticipant, CombatState, SessionData
 from tools import (
     end_combat,
@@ -193,8 +194,8 @@ class TestStartCombat:
         assert room.local_participant.publish_data.call_count == 2
         calls = [json.loads(c[0][0]) for c in room.local_participant.publish_data.call_args_list]
         types = [c["type"] for c in calls]
-        assert "combat_started" in types
-        assert "play_sound" in types
+        assert E.COMBAT_STARTED in types
+        assert E.PLAY_SOUND in types
 
     @pytest.mark.asyncio
     async def test_error_if_already_in_combat(self):
@@ -283,7 +284,7 @@ class TestResolveEnemyTurn:
 
         if result["hit"] and result["target_hp_status"] in ("bloodied", "critical"):
             calls = [json.loads(c[0][0]) for c in room.local_participant.publish_data.call_args_list]
-            sounds = [c.get("sound_name") for c in calls if c.get("type") == "play_sound"]
+            sounds = [c.get("sound_name") for c in calls if c.get("type") == E.PLAY_SOUND]
             assert "heartbeat_low_hp" in sounds
 
     @pytest.mark.asyncio
@@ -489,8 +490,8 @@ class TestRequestDeathSave:
         assert room.local_participant.publish_data.call_count >= 2
         calls = [json.loads(c[0][0]) for c in room.local_participant.publish_data.call_args_list]
         types = [c["type"] for c in calls]
-        assert "dice_roll" in types
-        death_save_event = next(c for c in calls if c.get("type") == "dice_roll")
+        assert E.DICE_ROLL in types
+        death_save_event = next(c for c in calls if c.get("type") == E.DICE_ROLL)
         assert death_save_event["roll_type"] == "death_save"
 
 
@@ -554,8 +555,8 @@ class TestEndCombat:
 
         calls = [json.loads(c[0][0]) for c in room.local_participant.publish_data.call_args_list]
         types = [c["type"] for c in calls]
-        assert "combat_ended" in types
-        assert "play_sound" in types
+        assert E.COMBAT_ENDED in types
+        assert E.PLAY_SOUND in types
 
     @pytest.mark.asyncio
     async def test_error_if_not_in_combat(self):

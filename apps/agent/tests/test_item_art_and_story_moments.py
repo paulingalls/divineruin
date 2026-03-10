@@ -4,6 +4,7 @@ import json
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import event_types as E
 from db import _compute_item_image_url
 from session_data import SessionData
 from tools import record_story_moment
@@ -227,13 +228,13 @@ class TestAddToInventorySendsFullInventory:
 
         # First call: inventory_updated with full array
         first_call = json.loads(room.local_participant.publish_data.call_args_list[0][0][0])
-        assert first_call["type"] == "inventory_updated"
+        assert first_call["type"] == E.INVENTORY_UPDATED
         assert "inventory" in first_call
         assert isinstance(first_call["inventory"], list)
 
         # Second call: item_acquired
         second_call = json.loads(room.local_participant.publish_data.call_args_list[1][0][0])
-        assert second_call["type"] == "item_acquired"
+        assert second_call["type"] == E.ITEM_ACQUIRED
         assert second_call["name"] == "Trail Rations"
 
     @patch("tools.db.get_player_inventory", new_callable=AsyncMock)
@@ -249,7 +250,7 @@ class TestAddToInventorySendsFullInventory:
         await add_to_inventory._func(ctx, item_id="shortsword_basic", quantity=1, source="looted")
 
         second_call = json.loads(room.local_participant.publish_data.call_args_list[1][0][0])
-        assert second_call["type"] == "item_acquired"
+        assert second_call["type"] == E.ITEM_ACQUIRED
         assert "image_url" in second_call
         assert second_call["image_url"].startswith("/api/assets/images/img_")
 
@@ -266,5 +267,5 @@ class TestAddToInventorySendsFullInventory:
         await add_to_inventory._func(ctx, item_id="rations_basic", quantity=1, source="bought")
 
         second_call = json.loads(room.local_participant.publish_data.call_args_list[1][0][0])
-        assert second_call["type"] == "item_acquired"
+        assert second_call["type"] == E.ITEM_ACQUIRED
         assert "image_url" not in second_call

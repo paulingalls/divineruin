@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import event_types as E
 from background_process import (
     BackgroundProcess,
     SpeechPriority,
@@ -132,7 +133,7 @@ class TestCorruptionOnMove:
         # Verify corruption event was published
         calls = room.local_participant.publish_data.call_args_list
         corruption_events = [
-            json.loads(c[0][0]) for c in calls if json.loads(c[0][0]).get("type") == "hollow_corruption_changed"
+            json.loads(c[0][0]) for c in calls if json.loads(c[0][0]).get("type") == E.HOLLOW_CORRUPTION_CHANGED
         ]
         assert len(corruption_events) == 1
         assert corruption_events[0]["level"] == 1
@@ -235,7 +236,7 @@ class TestCorruptionBackgroundProcess:
         bg, _, _ = _make_bg(session_data=sd)
         events = [
             GameEvent(
-                event_type="hollow_corruption_changed",
+                event_type=E.HOLLOW_CORRUPTION_CHANGED,
                 payload={"level": 1, "previous": 0, "location_id": "greyvale_wilderness_north"},
             )
         ]
@@ -253,7 +254,7 @@ class TestCorruptionBackgroundProcess:
         bg, _, _ = _make_bg(session_data=sd)
         events = [
             GameEvent(
-                event_type="hollow_corruption_changed", payload={"level": 0, "previous": 1, "location_id": "millhaven"}
+                event_type=E.HOLLOW_CORRUPTION_CHANGED, payload={"level": 0, "previous": 1, "location_id": "millhaven"}
             )
         ]
         bg._handle_events(events)
@@ -263,7 +264,7 @@ class TestCorruptionBackgroundProcess:
         bg, _, _ = _make_bg()
         events = [
             GameEvent(
-                event_type="hollow_corruption_changed", payload={"level": 2, "previous": 1, "location_id": "ruins"}
+                event_type=E.HOLLOW_CORRUPTION_CHANGED, payload={"level": 2, "previous": 1, "location_id": "ruins"}
             )
         ]
         assert bg._handle_events(events) is True

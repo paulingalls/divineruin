@@ -4,6 +4,7 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import event_types as E
 from prologue import play_prologue
 
 
@@ -44,8 +45,8 @@ class TestPlayPrologue:
         assert interrupted is False
         # play_narration sent, stop_narration NOT sent
         calls = [c.args[1] for c in mock_pub.await_args_list]
-        assert "play_narration" in calls
-        assert "stop_narration" not in calls
+        assert E.PLAY_NARRATION in calls
+        assert E.STOP_NARRATION not in calls
 
     async def test_interrupts_on_player_speech(self):
         session = _mock_session()
@@ -64,8 +65,8 @@ class TestPlayPrologue:
 
         assert interrupted is True
         calls = [c.args[1] for c in mock_pub.await_args_list]
-        assert "play_narration" in calls
-        assert "stop_narration" in calls
+        assert E.PLAY_NARRATION in calls
+        assert E.STOP_NARRATION in calls
 
     async def test_cleans_up_listener_on_completion(self):
         session = _mock_session()
@@ -114,4 +115,4 @@ class TestPlayPrologue:
 
         assert interrupted is False
         calls = [c.args[1] for c in mock_pub.await_args_list]
-        assert "stop_narration" not in calls
+        assert E.STOP_NARRATION not in calls

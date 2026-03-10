@@ -11,6 +11,7 @@ from livekit.agents.voice import RunContext
 
 import db
 import dice
+import event_types as E
 import rules_engine
 from asset_utils import asset_url, compute_asset_id
 from db_errors import db_tool
@@ -396,7 +397,7 @@ async def discover_hidden_element(
 
     await publish_game_event(
         session.room,
-        "dice_roll",
+        E.DICE_ROLL,
         {
             "roll_type": "skill_check",
             "skill": result.skill,
@@ -476,7 +477,7 @@ async def request_skill_check(
 
     await publish_game_event(
         session.room,
-        "dice_roll",
+        E.DICE_ROLL,
         {
             "roll_type": "skill_check",
             "skill": result.skill,
@@ -554,7 +555,7 @@ async def request_attack(
 
     await publish_game_event(
         session.room,
-        "dice_roll",
+        E.DICE_ROLL,
         {
             "roll_type": "attack",
             "hit": result.hit,
@@ -625,7 +626,7 @@ async def request_saving_throw(
 
     await publish_game_event(
         session.room,
-        "dice_roll",
+        E.DICE_ROLL,
         {
             "roll_type": "saving_throw",
             "save_type": result.save_type,
@@ -683,7 +684,7 @@ async def roll_dice(
 
     await publish_game_event(
         session.room,
-        "dice_roll",
+        E.DICE_ROLL,
         {
             "roll_type": "narrative",
             "notation": result.notation,
@@ -716,7 +717,7 @@ async def play_sound(
 
     await publish_game_event(
         session.room,
-        "play_sound",
+        E.PLAY_SOUND,
         {
             "sound_name": sound_name,
         },
@@ -749,7 +750,7 @@ async def set_music_state(
 
     await publish_game_event(
         session.room,
-        "set_music_state",
+        E.SET_MUSIC_STATE,
         {"music_state": music_state},
         event_bus=session.event_bus,
     )
@@ -808,7 +809,7 @@ async def award_xp(
 
         pending_events.append(
             (
-                "xp_awarded",
+                E.XP_AWARDED,
                 {
                     "amount": amount,
                     "reason": reason,
@@ -880,7 +881,7 @@ async def award_divine_favor(
 
     await publish_game_event(
         session.room,
-        "divine_favor_changed",
+        E.DIVINE_FAVOR_CHANGED,
         {
             "new_level": new_level,
             "previous_level": current_level,
@@ -947,7 +948,7 @@ async def update_npc_disposition(
 
         pending_events.append(
             (
-                "disposition_changed",
+                E.DISPOSITION_CHANGED,
                 {
                     "npc_id": npc_id,
                     "npc_name": npc.get("name", npc_id),
@@ -1010,7 +1011,7 @@ async def add_to_inventory(
 
     await publish_game_event(
         session.room,
-        "inventory_updated",
+        E.INVENTORY_UPDATED,
         {"inventory": full_inventory},
         event_bus=session.event_bus,
     )
@@ -1026,7 +1027,7 @@ async def add_to_inventory(
         acquired_payload["image_url"] = image_url
     await publish_game_event(
         session.room,
-        "item_acquired",
+        E.ITEM_ACQUIRED,
         acquired_payload,
         event_bus=session.event_bus,
     )
@@ -1075,7 +1076,7 @@ async def remove_from_inventory(
 
         pending_events.append(
             (
-                "inventory_updated",
+                E.INVENTORY_UPDATED,
                 {
                     "action": "removed",
                     "item_id": item_id,
@@ -1139,7 +1140,7 @@ async def _apply_world_effects(
                 current = npc.get("default_disposition", "neutral") if npc else "neutral"
             new_disp = _clamp_disposition_shift(current, delta_str)
             await db.set_npc_disposition(npc_id, session.player_id, new_disp, f"world_effect: {effect_str}", conn=conn)
-            pending_events.append(("disposition_changed", {"npc_id": npc_id, "previous": current, "new": new_disp}))
+            pending_events.append((E.DISPOSITION_CHANGED, {"npc_id": npc_id, "previous": current, "new": new_disp}))
             logger.info("World effect: %s disposition %s → %s", npc_id, current, new_disp)
             continue
 
@@ -1150,7 +1151,7 @@ async def _apply_world_effects(
             session.corruption_level = max(0, min(3, session.corruption_level + delta))
             pending_events.append(
                 (
-                    "hollow_corruption_changed",
+                    E.HOLLOW_CORRUPTION_CHANGED,
                     {"level": session.corruption_level, "previous": previous, "location_id": session.location_id},
                 )
             )
@@ -1160,14 +1161,14 @@ async def _apply_world_effects(
         m = _EFFECT_EVENT_RE.match(effect_str)
         if m:
             event_id = m.group(1)
-            pending_events.append(("world_event", {"event_id": event_id}))
+            pending_events.append((E.WORLD_EVENT, {"event_id": event_id}))
             logger.info("World effect: event %s", event_id)
             continue
 
         m = _EFFECT_MORALE_RE.match(effect_str)
         if m:
             group_name, delta_str = m.group(1), int(m.group(2))
-            pending_events.append(("world_event", {"event_id": f"{group_name}_morale_change", "delta": delta_str}))
+            pending_events.append((E.WORLD_EVENT, {"event_id": f"{group_name}_morale_change", "delta": delta_str}))
             session.record_event(f"{group_name} morale shifted by {delta_str}")
             logger.info("World effect: %s morale %+d (logged, no morale system yet)", group_name, delta_str)
             continue
@@ -1243,7 +1244,7 @@ async def move_player(
 
         pending_events.append(
             (
-                "location_changed",
+                E.LOCATION_CHANGED,
                 {
                     "previous_location": previous_location_id,
                     "new_location": destination_id,
@@ -1270,7 +1271,7 @@ async def move_player(
     if new_corruption != previous_corruption:
         pending_events.append(
             (
-                "hollow_corruption_changed",
+                E.HOLLOW_CORRUPTION_CHANGED,
                 {
                     "level": new_corruption,
                     "previous": previous_corruption,
@@ -1369,7 +1370,7 @@ async def update_quest(
                     rewards_applied.append({"type": "xp", "amount": xp_reward, "leveled_up": level_result.leveled_up})
                     pending_events.append(
                         (
-                            "xp_awarded",
+                            E.XP_AWARDED,
                             {
                                 "amount": xp_reward,
                                 "reason": f"Quest '{quest.get('name', quest_id)}' stage completed",
@@ -1407,7 +1408,7 @@ async def update_quest(
         target_loc = new_stage.get("target_location_id")
         if target_loc:
             quest_updated_payload["target_location_id"] = target_loc
-        pending_events.append(("quest_updated", quest_updated_payload))
+        pending_events.append((E.QUEST_UPDATED, quest_updated_payload))
 
     # Resolve item names for inventory events (cached reads, outside transaction)
     for reward in rewards_applied:
@@ -1416,7 +1417,7 @@ async def update_quest(
             item_name = item.get("name", reward["item_id"]) if item else reward["item_id"]
             pending_events.append(
                 (
-                    "inventory_updated",
+                    E.INVENTORY_UPDATED,
                     {
                         "action": "added",
                         "item_id": reward["item_id"],
@@ -1572,7 +1573,7 @@ async def _publish_sounds(session: SessionData, sounds: list[str]) -> None:
     for sound in sounds:
         await publish_game_event(
             session.room,
-            "play_sound",
+            E.PLAY_SOUND,
             {"sound_name": sound},
             event_bus=session.event_bus,
         )
@@ -1716,7 +1717,7 @@ async def start_combat(
     # Publish events
     await publish_game_event(
         session.room,
-        "combat_started",
+        E.COMBAT_STARTED,
         {
             "combat_id": combat_id,
             "encounter_id": encounter_id,
@@ -1829,7 +1830,7 @@ async def resolve_enemy_turn(
     # Publish events
     await publish_game_event(
         session.room,
-        "dice_roll",
+        E.DICE_ROLL,
         {
             "roll_type": "attack",
             "attacker": enemy.name,
@@ -1926,7 +1927,7 @@ async def request_death_save(
     # Publish events
     await publish_game_event(
         session.room,
-        "dice_roll",
+        E.DICE_ROLL,
         {
             "roll_type": "death_save",
             "roll": result.roll,
@@ -2012,7 +2013,7 @@ async def end_combat(
     # Publish events
     await publish_game_event(
         session.room,
-        "combat_ended",
+        E.COMBAT_ENDED,
         {"combat_id": combat_id, "outcome": outcome, "xp_total": xp_total},
         event_bus=session.event_bus,
     )

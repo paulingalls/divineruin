@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import event_types as E
 from background_process import (
     BackgroundProcess,
     SpeechPriority,
@@ -80,7 +81,7 @@ class TestApplyWorldEffects:
         call_args = mock_set_disp.call_args
         assert call_args[0][0] == "guildmaster_torin"
         assert call_args[0][2] == "friendly"
-        assert any(e[0] == "disposition_changed" for e in pending)
+        assert any(e[0] == E.DISPOSITION_CHANGED for e in pending)
 
     @pytest.mark.asyncio
     async def test_corruption_effect(self):
@@ -91,7 +92,7 @@ class TestApplyWorldEffects:
         await _apply_world_effects(["greyvale_corruption +1"], session, pending)
 
         assert session.corruption_level == 2
-        corruption_events = [e for e in pending if e[0] == "hollow_corruption_changed"]
+        corruption_events = [e for e in pending if e[0] == E.HOLLOW_CORRUPTION_CHANGED]
         assert len(corruption_events) == 1
         assert corruption_events[0][1]["level"] == 2
         assert corruption_events[0][1]["previous"] == 1
@@ -103,7 +104,7 @@ class TestApplyWorldEffects:
 
         await _apply_world_effects(["event:ruins_discovery_ripple"], session, pending)
 
-        world_events = [e for e in pending if e[0] == "world_event"]
+        world_events = [e for e in pending if e[0] == E.WORLD_EVENT]
         assert len(world_events) == 1
         assert world_events[0][1]["event_id"] == "ruins_discovery_ripple"
 
@@ -114,7 +115,7 @@ class TestApplyWorldEffects:
 
         await _apply_world_effects(["millhaven_morale +2"], session, pending)
 
-        world_events = [e for e in pending if e[0] == "world_event"]
+        world_events = [e for e in pending if e[0] == E.WORLD_EVENT]
         assert len(world_events) == 1
         assert "millhaven_morale_change" in world_events[0][1]["event_id"]
 
@@ -136,8 +137,8 @@ class TestApplyWorldEffects:
             )
 
         event_types = [e[0] for e in pending]
-        assert "disposition_changed" in event_types
-        assert event_types.count("world_event") == 2
+        assert E.DISPOSITION_CHANGED in event_types
+        assert event_types.count(E.WORLD_EVENT) == 2
 
     @pytest.mark.asyncio
     async def test_malformed_effect_handled_gracefully(self):
@@ -308,7 +309,7 @@ class TestGodWhisper:
         )
         sd.patron_id = "kaelen"
         bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type="world_event", payload={"event_id": "god_whisper:player_patron"})]
+        events = [GameEvent(event_type=E.WORLD_EVENT, payload={"event_id": "god_whisper:player_patron"})]
         bg._handle_events(events)
         assert len(bg._speech_queue) == 1
         assert bg._speech_queue[0].priority == SpeechPriority.CRITICAL
@@ -318,7 +319,7 @@ class TestGodWhisper:
         sd = _make_session()
         sd.patron_id = "syrath"
         bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type="world_event", payload={"event_id": "god_whisper:player_patron"})]
+        events = [GameEvent(event_type=E.WORLD_EVENT, payload={"event_id": "god_whisper:player_patron"})]
         bg._handle_events(events)
         assert len(bg._speech_queue) == 1
         assert "GOD_SYRATH" in bg._speech_queue[0].instructions
@@ -330,7 +331,7 @@ class TestGodWhisper:
         bg, _, _ = _make_bg(session_data=sd)
         events = [
             GameEvent(
-                event_type="divine_favor_changed",
+                event_type=E.DIVINE_FAVOR_CHANGED,
                 payload={"new_level": 25, "last_whisper_level": 0, "patron_id": "veythar"},
             )
         ]
@@ -344,7 +345,7 @@ class TestGodWhisper:
         bg, _, _ = _make_bg(session_data=sd)
         events = [
             GameEvent(
-                event_type="divine_favor_changed",
+                event_type=E.DIVINE_FAVOR_CHANGED,
                 payload={"new_level": 20, "last_whisper_level": 0, "patron_id": "veythar"},
             )
         ]
@@ -357,7 +358,7 @@ class TestGodWhisper:
         bg, _, _ = _make_bg(session_data=sd)
         events = [
             GameEvent(
-                event_type="divine_favor_changed",
+                event_type=E.DIVINE_FAVOR_CHANGED,
                 payload={"new_level": 40, "last_whisper_level": 25, "patron_id": "veythar"},
             )
         ]
@@ -367,7 +368,7 @@ class TestGodWhisper:
 
     def test_non_whisper_world_event_no_speech(self):
         bg, _, _ = _make_bg()
-        events = [GameEvent(event_type="world_event", payload={"event_id": "ruins_discovery_ripple"})]
+        events = [GameEvent(event_type=E.WORLD_EVENT, payload={"event_id": "ruins_discovery_ripple"})]
         bg._handle_events(events)
         assert len(bg._speech_queue) == 0
 
@@ -384,7 +385,7 @@ class TestRiderScene:
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = []
         bg._meeting_triggered = True  # meeting already happened
-        events = [GameEvent(event_type="location_changed", payload={"new_location": "accord_market_square"})]
+        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "accord_market_square"})]
         bg._handle_events(events)
         # With companion + no quest + meeting already done, rider should NOT trigger
         # because _meeting_triggered is True. Rider requires meeting NOT triggered.
@@ -396,7 +397,7 @@ class TestRiderScene:
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = []
         # No companion, so meeting will trigger first, blocking rider
-        events = [GameEvent(event_type="location_changed", payload={"new_location": "accord_market_square"})]
+        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "accord_market_square"})]
         bg._handle_events(events)
         # Meeting scene should fire, not rider
         assert bg._meeting_triggered is True
@@ -407,7 +408,7 @@ class TestRiderScene:
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = [{"quest_id": "greyvale_anomaly", "current_stage": 0}]
         bg._meeting_triggered = True  # skip meeting check
-        events = [GameEvent(event_type="location_changed", payload={"new_location": "accord_market_square"})]
+        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "accord_market_square"})]
         bg._handle_events(events)
         assert bg._rider_triggered is False
 

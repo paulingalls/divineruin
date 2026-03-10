@@ -3,6 +3,8 @@ import { hapticDiceRoll, hapticItemAcquired, hapticLevelUp } from "./haptics";
 import { overrideMusicState } from "./music-player";
 import { playNarration, stopNarration } from "./narration-player";
 import type { MusicState } from "./music-registry";
+import * as E from "./event-types";
+import { getApiBase, resolveApiUrl } from "@/utils/base-url";
 import { sessionStore, type CombatDifficulty, type StoryMoment } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
@@ -123,14 +125,14 @@ export function parseGameEvent(payload: Uint8Array): DataChannelEvent | null {
 
 export function handleGameEvent(event: DataChannelEvent): void {
   switch (event.type) {
-    case "play_sound":
+    case E.PLAY_SOUND:
       if (typeof event.sound_name === "string") {
         playSfx(event.sound_name);
       }
       break;
 
-    case "dice_roll":
-    case "dice_result":
+    case E.DICE_ROLL:
+    case E.DICE_RESULT:
       playSfx("dice_roll");
       hapticDiceRoll();
       hudStore.getState().pushOverlay("dice_result", {
@@ -148,7 +150,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }, DICE_STINGER_DELAY_MS);
       break;
 
-    case "session_init": {
+    case E.SESSION_INIT: {
       const character = event.character as Record<string, unknown> | null | undefined;
       if (character && typeof character === "object") {
         characterStore.getState().setCharacter({
@@ -328,7 +330,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
     }
 
-    case "location_changed":
+    case E.LOCATION_CHANGED:
       if (typeof event.new_location === "string") {
         const locationName =
           typeof event.location_name === "string" ? event.location_name : event.new_location;
@@ -351,7 +353,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }
       break;
 
-    case "combat_started": {
+    case E.COMBAT_STARTED: {
       const ss = sessionStore.getState();
       if (
         typeof event.difficulty === "string" &&
@@ -364,7 +366,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
     }
 
-    case "hollow_corruption_changed":
+    case E.HOLLOW_CORRUPTION_CHANGED:
       if (typeof event.level === "number") {
         sessionStore
           .getState()
@@ -372,7 +374,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }
       break;
 
-    case "set_music_state":
+    case E.SET_MUSIC_STATE:
       if (typeof event.music_state === "string") {
         if (VALID_MUSIC_STATES.has(event.music_state as MusicState)) {
           overrideMusicState(event.music_state as MusicState);
@@ -382,12 +384,12 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }
       break;
 
-    case "combat_ended":
+    case E.COMBAT_ENDED:
       sessionStore.getState().setCombat(false);
       hudStore.getState().clearCombatState();
       break;
 
-    case "combat_ui_update": {
+    case E.COMBAT_UI_UPDATE: {
       const rawCombatants = Array.isArray(event.combatants) ? (event.combatants as unknown[]) : [];
       const combatants = rawCombatants
         .map(parseCombatant)
@@ -402,7 +404,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
     }
 
-    case "xp_awarded":
+    case E.XP_AWARDED:
       if (typeof event.new_xp === "number" && typeof event.new_level === "number") {
         characterStore.getState().updateXp(event.new_xp, event.new_level);
         if (event.level_up) {
@@ -429,7 +431,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }
       break;
 
-    case "hp_changed":
+    case E.HP_CHANGED:
       if (typeof event.current === "number") {
         characterStore
           .getState()
@@ -437,7 +439,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }
       break;
 
-    case "session_end": {
+    case E.SESSION_END: {
       const store = sessionStore.getState();
       if (typeof event.summary === "string") {
         const rawMoments = Array.isArray(event.story_moments)
@@ -467,7 +469,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
     }
 
-    case "transcript_entry": {
+    case E.TRANSCRIPT_ENTRY: {
       const speaker = (event.speaker as "player" | "dm" | "npc" | "tool" | undefined) ?? "dm";
       const characterName = (event.character as string | undefined) ?? null;
 
@@ -502,7 +504,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
     }
 
-    case "item_acquired":
+    case E.ITEM_ACQUIRED:
       hudStore.getState().pushOverlay("item_acquired", {
         name: event.name,
         description: event.description,
@@ -514,8 +516,8 @@ export function handleGameEvent(event: DataChannelEvent): void {
       hapticItemAcquired();
       break;
 
-    case "quest_update":
-    case "quest_updated": {
+    case E.QUEST_UPDATE:
+    case E.QUEST_UPDATED: {
       const questHud = hudStore.getState();
       questHud.pushOverlay("quest_update", {
         questName: event.quest_name,
@@ -538,7 +540,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
     }
 
-    case "status_effect": {
+    case E.STATUS_EFFECT: {
       const hud = hudStore.getState();
       if (event.action === "remove" && typeof event.effect_id === "string") {
         hud.removeStatusEffect(event.effect_id);
@@ -552,7 +554,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
     }
 
-    case "creation_cards": {
+    case E.CREATION_CARDS: {
       const rawCards = Array.isArray(event.cards) ? (event.cards as Record<string, unknown>[]) : [];
       const cards: CreationCard[] = rawCards.map((c) => ({
         id: typeof c.id === "string" ? c.id : "",
@@ -565,7 +567,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
     }
 
-    case "creation_card_selected":
+    case E.CREATION_CARD_SELECTED:
       if (typeof event.value === "string") {
         hudStore.getState().setSelectedCreationCard(event.value);
       } else if (typeof event.card_id === "string") {
@@ -573,7 +575,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }
       break;
 
-    case "divine_favor_changed":
+    case E.DIVINE_FAVOR_CHANGED:
       if (typeof event.new_level === "number") {
         const favorMax = typeof event.max === "number" ? event.max : 100;
         characterStore.getState().updateDivineFavor(event.new_level, favorMax);
@@ -592,22 +594,22 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }
       break;
 
-    case "play_narration":
+    case E.PLAY_NARRATION:
       if (
         typeof event.url === "string" &&
         event.url.startsWith("/api/audio/") &&
         !event.url.includes("..") &&
         event.url.length <= 256
       ) {
-        playNarration(event.url);
+        playNarration(resolveApiUrl(event.url, getApiBase()));
       }
       break;
 
-    case "stop_narration":
+    case E.STOP_NARRATION:
       stopNarration();
       break;
 
-    case "player_portrait_ready":
+    case E.PLAYER_PORTRAIT_READY:
       if (
         typeof event.url === "string" &&
         event.url.startsWith("/api/assets/") &&
@@ -619,7 +621,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }
       break;
 
-    case "inventory_updated":
+    case E.INVENTORY_UPDATED:
       if (Array.isArray(event.inventory)) {
         panelStore
           .getState()

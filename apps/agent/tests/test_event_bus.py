@@ -1,16 +1,17 @@
 """Tests for the in-process event bus."""
 
+import event_types as E
 from event_bus import EventBus, GameEvent
 
 
 class TestEventBus:
     async def test_publish_and_get(self):
         bus = EventBus()
-        event = GameEvent(event_type="location_changed", payload={"location": "tavern"})
+        event = GameEvent(event_type=E.LOCATION_CHANGED, payload={"location": "tavern"})
         bus.publish(event)
         got = await bus.get(timeout=1.0)
         assert got is not None
-        assert got.event_type == "location_changed"
+        assert got.event_type == E.LOCATION_CHANGED
         assert got.payload == {"location": "tavern"}
 
     async def test_get_timeout_returns_none(self):

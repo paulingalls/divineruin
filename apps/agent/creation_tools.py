@@ -15,6 +15,7 @@ from livekit.agents.llm import function_tool
 from livekit.agents.voice import RunContext
 
 import db
+import event_types as E
 from asset_utils import asset_url
 from creation_data import CLASSES, DEITIES, RACES
 from creation_rules import build_character_data, infer_culture
@@ -115,7 +116,7 @@ async def push_creation_cards(
         ]
 
     # Publish cards to client
-    await publish_game_event(sd.room, "creation_cards", {"cards": cards}, sd.event_bus)
+    await publish_game_event(sd.room, E.CREATION_CARDS, {"cards": cards}, sd.event_bus)
 
     return json.dumps({"category": category, "count": len(full_data), "options": full_data})
 
@@ -171,13 +172,13 @@ async def set_creation_choice(
     # Publish visual feedback
     await publish_game_event(
         sd.room,
-        "creation_card_selected",
+        E.CREATION_CARD_SELECTED,
         {"category": category, "value": value},
         sd.event_bus,
     )
 
     # Clear cards after selection (with brief delay handled client-side)
-    await publish_game_event(sd.room, "creation_cards", {"cards": []}, sd.event_bus)
+    await publish_game_event(sd.room, E.CREATION_CARDS, {"cards": []}, sd.event_bus)
 
     # Build progress summary
     progress = {
@@ -268,7 +269,7 @@ async def finalize_character(context: RunContext) -> str:
     # Publish session_init so client gets character data
     try:
         payload = await db.get_session_init_payload(sd.player_id)
-        await publish_game_event(sd.room, "session_init", payload, sd.event_bus)
+        await publish_game_event(sd.room, E.SESSION_INIT, payload, sd.event_bus)
     except Exception:
         logger.exception("Failed to publish session_init after creation")
 
@@ -333,7 +334,7 @@ async def _generate_player_portrait(sd: SessionData, cs: object) -> None:
             # Notify client
             await publish_game_event(
                 sd.room,
-                "player_portrait_ready",
+                E.PLAYER_PORTRAIT_READY,
                 {"url": portrait_url},
                 sd.event_bus,
             )

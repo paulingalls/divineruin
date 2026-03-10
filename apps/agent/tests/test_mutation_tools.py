@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import event_types as E
 from session_data import SessionData
 from tools import (
     _cap_str,
@@ -257,7 +258,7 @@ class TestAwardXp:
         await award_xp._func(ctx, amount=50, reason="test")
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == "xp_awarded"
+        assert call_data["type"] == E.XP_AWARDED
         assert call_data["amount"] == 50
 
     @pytest.mark.asyncio
@@ -367,7 +368,7 @@ class TestUpdateNpcDisposition:
         await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=1, reason="helped")
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == "disposition_changed"
+        assert call_data["type"] == E.DISPOSITION_CHANGED
         assert call_data["npc_id"] == "guildmaster_torin"
 
     @pytest.mark.asyncio
@@ -425,10 +426,10 @@ class TestAddToInventory:
         # Two events: inventory_updated + item_acquired
         assert room.local_participant.publish_data.call_count == 2
         first_call = json.loads(room.local_participant.publish_data.call_args_list[0][0][0])
-        assert first_call["type"] == "inventory_updated"
+        assert first_call["type"] == E.INVENTORY_UPDATED
         assert "inventory" in first_call
         second_call = json.loads(room.local_participant.publish_data.call_args_list[1][0][0])
-        assert second_call["type"] == "item_acquired"
+        assert second_call["type"] == E.ITEM_ACQUIRED
 
 
 # --- remove_from_inventory ---
@@ -484,7 +485,7 @@ class TestRemoveFromInventory:
         await remove_from_inventory._func(ctx, item_id="health_potion")
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == "inventory_updated"
+        assert call_data["type"] == E.INVENTORY_UPDATED
         assert call_data["action"] == "removed"
 
 
@@ -560,7 +561,7 @@ class TestMovePlayer:
         await move_player._func(ctx, destination_id="accord_market_square")
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == "location_changed"
+        assert call_data["type"] == E.LOCATION_CHANGED
         assert call_data["new_location"] == "accord_market_square"
         assert call_data["location_name"] == "Market Square"
         assert call_data["atmosphere"] == "noisy, chaotic"
@@ -695,7 +696,7 @@ class TestUpdateQuest:
         await update_quest._func(ctx, quest_id="greyvale_anomaly", new_stage_id=0)
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == "quest_updated"
+        assert call_data["type"] == E.QUEST_UPDATED
         assert call_data["quest_id"] == "greyvale_anomaly"
 
     @pytest.mark.asyncio
@@ -784,7 +785,7 @@ class TestAwardDivineFavor:
         await award_divine_favor._func(ctx, amount=5, reason="test")
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == "divine_favor_changed"
+        assert call_data["type"] == E.DIVINE_FAVOR_CHANGED
         assert call_data["new_level"] == 15
         assert call_data["patron_id"] == "kaelen"
 

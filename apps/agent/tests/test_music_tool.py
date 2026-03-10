@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import event_types as E
 from session_data import SessionData
 from tools import set_music_state
 
@@ -25,7 +26,7 @@ class TestSetMusicState:
         assert result["music_state"] == "wonder"
         mock_event.assert_called_once()
         call_args = mock_event.call_args[0]
-        assert call_args[1] == "set_music_state"
+        assert call_args[1] == E.SET_MUSIC_STATE
         assert call_args[2]["music_state"] == "wonder"
 
     @pytest.mark.asyncio
@@ -119,7 +120,7 @@ class TestStartCombatDifficulty:
         assert result["combat_id"]
 
         # Find the combat_started event call
-        combat_started_calls = [c for c in mock_event.call_args_list if c[0][1] == "combat_started"]
+        combat_started_calls = [c for c in mock_event.call_args_list if c[0][1] == E.COMBAT_STARTED]
         assert len(combat_started_calls) == 1
         payload = combat_started_calls[0][0][2]
         assert payload["difficulty"] == "hard"
@@ -162,7 +163,7 @@ class TestStartCombatDifficulty:
 
         await start_combat._func(ctx, encounter_id="bar_fight", encounter_description="A bar fight breaks out")
 
-        combat_started_calls = [c for c in mock_event.call_args_list if c[0][1] == "combat_started"]
+        combat_started_calls = [c for c in mock_event.call_args_list if c[0][1] == E.COMBAT_STARTED]
         assert len(combat_started_calls) == 1
         payload = combat_started_calls[0][0][2]
         assert payload["difficulty"] == "moderate"

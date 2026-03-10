@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import event_types as E
 from asset_utils import compute_asset_id
 from creation_data import CLASSES, DEITIES, RACES
 from creation_tools import finalize_character, push_creation_cards, set_creation_choice
@@ -492,7 +493,7 @@ class TestCreationCardsImageUrl:
     async def test_card_payloads_contain_image_url(self, mock_publish, category):
         ctx = _make_context()
         await push_creation_cards._func(ctx, category=category)
-        cards_call = [c for c in mock_publish.call_args_list if c[0][1] == "creation_cards"]
+        cards_call = [c for c in mock_publish.call_args_list if c[0][1] == E.CREATION_CARDS]
         assert len(cards_call) > 0
         cards = cards_call[0][0][2]["cards"]
         for card in cards:

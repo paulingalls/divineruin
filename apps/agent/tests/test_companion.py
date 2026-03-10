@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import event_types as E
 from background_process import (
     COMPANION_IDLE_SECS,
     BackgroundProcess,
@@ -243,7 +244,7 @@ class TestCompanionSpeechInEvents:
         sd = _make_session_data()
         sd.companion = CompanionState(id="companion_kael", name="Kael", last_speech_time=time.time())
         bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type="location_changed", payload={"new_location": "market"})]
+        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "market"})]
         bg._handle_events(events)
         assert len(bg._speech_queue) == 1
         assert "COMPANION_KAEL" in bg._speech_queue[0].instructions
@@ -251,7 +252,7 @@ class TestCompanionSpeechInEvents:
     def test_location_changed_without_companion_no_kael(self):
         sd = _make_session_data()
         bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type="location_changed", payload={"new_location": "market"})]
+        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "market"})]
         bg._handle_events(events)
         assert len(bg._speech_queue) == 1
         assert "COMPANION_KAEL" not in bg._speech_queue[0].instructions
@@ -260,7 +261,7 @@ class TestCompanionSpeechInEvents:
         sd = _make_session_data()
         sd.companion = CompanionState(id="companion_kael", name="Kael")
         bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type="quest_updated", payload={"quest_name": "Test", "objective": "Do thing"})]
+        events = [GameEvent(event_type=E.QUEST_UPDATED, payload={"quest_name": "Test", "objective": "Do thing"})]
         bg._handle_events(events)
         assert "COMPANION_KAEL" in bg._speech_queue[0].instructions
 
@@ -268,7 +269,7 @@ class TestCompanionSpeechInEvents:
         sd = _make_session_data()
         sd.companion = CompanionState(id="companion_kael", name="Kael")
         bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type="combat_ended", payload={"outcome": "victory"})]
+        events = [GameEvent(event_type=E.COMBAT_ENDED, payload={"outcome": "victory"})]
         bg._handle_events(events)
         assert "COMPANION_KAEL" in bg._speech_queue[0].instructions
         assert sd.companion.emotional_state == "relieved"
@@ -277,7 +278,7 @@ class TestCompanionSpeechInEvents:
         sd = _make_session_data()
         sd.companion = CompanionState(id="companion_kael", name="Kael", is_conscious=False)
         bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type="combat_ended", payload={"outcome": "victory"})]
+        events = [GameEvent(event_type=E.COMBAT_ENDED, payload={"outcome": "victory"})]
         bg._handle_events(events)
         assert sd.companion.is_conscious is True
         assert sd.companion.emotional_state == "weary"
@@ -288,7 +289,7 @@ class TestCompanionSpeechInEvents:
         bg, _, _ = _make_bg(session_data=sd)
         events = [
             GameEvent(
-                event_type="disposition_changed",
+                event_type=E.DISPOSITION_CHANGED,
                 payload={"npc_name": "Torin", "previous": "neutral", "new": "friendly"},
             )
         ]
@@ -587,7 +588,7 @@ class TestMeetingScene:
     def test_meeting_triggers_on_market_visit(self):
         sd = _make_session_data()
         bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type="location_changed", payload={"new_location": "accord_market_square"})]
+        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "accord_market_square"})]
         bg._handle_events(events)
         assert len(bg._speech_queue) == 1
         assert bg._speech_queue[0].priority == SpeechPriority.CRITICAL
@@ -596,7 +597,7 @@ class TestMeetingScene:
     def test_meeting_does_not_retrigger(self):
         sd = _make_session_data()
         bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type="location_changed", payload={"new_location": "accord_market_square"})]
+        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "accord_market_square"})]
         bg._handle_events(events)
         bg._speech_queue.clear()
 
@@ -610,7 +611,7 @@ class TestMeetingScene:
         sd = _make_session_data()
         sd.companion = CompanionState(id="companion_kael", name="Kael")
         bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type="location_changed", payload={"new_location": "accord_market_square"})]
+        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "accord_market_square"})]
         bg._handle_events(events)
         assert "commotion" not in bg._speech_queue[0].instructions.lower()
 
@@ -637,7 +638,7 @@ class TestEmotionalState:
         sd = _make_session_data()
         sd.companion = CompanionState(id="companion_kael", name="Kael")
         bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type="location_changed", payload={"new_location": "market"})]
+        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "market"})]
         bg._handle_events(events)
         assert sd.companion.emotional_state == "curious"
 
@@ -645,7 +646,7 @@ class TestEmotionalState:
         sd = _make_session_data()
         sd.companion = CompanionState(id="companion_kael", name="Kael")
         bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type="quest_updated", payload={"quest_name": "Test", "objective": "Do"})]
+        events = [GameEvent(event_type=E.QUEST_UPDATED, payload={"quest_name": "Test", "objective": "Do"})]
         bg._handle_events(events)
         assert sd.companion.emotional_state == "focused"
 
@@ -653,7 +654,7 @@ class TestEmotionalState:
         sd = _make_session_data()
         sd.companion = CompanionState(id="companion_kael", name="Kael")
         bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type="combat_ended", payload={"outcome": "victory"})]
+        events = [GameEvent(event_type=E.COMBAT_ENDED, payload={"outcome": "victory"})]
         bg._handle_events(events)
         assert sd.companion.emotional_state == "relieved"
 
@@ -663,7 +664,7 @@ class TestEmotionalState:
         bg, _, _ = _make_bg(session_data=sd)
         events = [
             GameEvent(
-                event_type="disposition_changed",
+                event_type=E.DISPOSITION_CHANGED,
                 payload={"npc_name": "Torin", "previous": "friendly", "new": "neutral"},
             )
         ]

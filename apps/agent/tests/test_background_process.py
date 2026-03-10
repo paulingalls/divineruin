@@ -4,6 +4,7 @@ import time
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import event_types as E
 from background_process import (
     BackgroundProcess,
     PendingSpeech,
@@ -41,34 +42,34 @@ def _make_bg(session_data=None) -> tuple[BackgroundProcess, MagicMock, MagicMock
 class TestHandleEvents:
     def test_location_changed_triggers_rebuild(self):
         bg, _, _ = _make_bg()
-        events = [GameEvent(event_type="location_changed", payload={"new_location": "market"})]
+        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "market"})]
         assert bg._handle_events(events) is True
 
     def test_quest_updated_triggers_rebuild(self):
         bg, _, _ = _make_bg()
-        events = [GameEvent(event_type="quest_updated", payload={"quest_name": "Test"})]
+        events = [GameEvent(event_type=E.QUEST_UPDATED, payload={"quest_name": "Test"})]
         assert bg._handle_events(events) is True
 
     def test_disposition_changed_triggers_rebuild(self):
         bg, _, _ = _make_bg()
-        events = [GameEvent(event_type="disposition_changed", payload={})]
+        events = [GameEvent(event_type=E.DISPOSITION_CHANGED, payload={})]
         assert bg._handle_events(events) is True
 
     def test_unrelated_event_no_rebuild(self):
         bg, _, _ = _make_bg()
-        events = [GameEvent(event_type="dice_roll", payload={})]
+        events = [GameEvent(event_type=E.DICE_ROLL, payload={})]
         assert bg._handle_events(events) is False
 
     def test_location_changed_queues_speech(self):
         bg, _, _ = _make_bg()
-        events = [GameEvent(event_type="location_changed", payload={"new_location": "market"})]
+        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "market"})]
         bg._handle_events(events)
         assert len(bg._speech_queue) == 1
         assert bg._speech_queue[0].priority == SpeechPriority.IMPORTANT
 
     def test_quest_updated_queues_speech(self):
         bg, _, _ = _make_bg()
-        events = [GameEvent(event_type="quest_updated", payload={"quest_name": "Anomaly", "objective": "Find source"})]
+        events = [GameEvent(event_type=E.QUEST_UPDATED, payload={"quest_name": "Anomaly", "objective": "Find source"})]
         bg._handle_events(events)
         assert len(bg._speech_queue) == 1
         assert "Anomaly" in bg._speech_queue[0].instructions
@@ -76,9 +77,9 @@ class TestHandleEvents:
     def test_batch_events(self):
         bg, _, _ = _make_bg()
         events = [
-            GameEvent(event_type="location_changed", payload={"new_location": "a"}),
-            GameEvent(event_type="quest_updated", payload={"quest_name": "B", "objective": "C"}),
-            GameEvent(event_type="dice_roll", payload={}),
+            GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "a"}),
+            GameEvent(event_type=E.QUEST_UPDATED, payload={"quest_name": "B", "objective": "C"}),
+            GameEvent(event_type=E.DICE_ROLL, payload={}),
         ]
         assert bg._handle_events(events) is True
         assert len(bg._speech_queue) == 2
@@ -188,7 +189,7 @@ class TestGodWhisperFlow:
         bg, _, _ = _make_bg(session_data=sd)
         events = [
             GameEvent(
-                event_type="divine_favor_changed",
+                event_type=E.DIVINE_FAVOR_CHANGED,
                 payload={"new_level": 25, "last_whisper_level": 0, "patron_id": "kaelen", "reason": "valor"},
             )
         ]
@@ -205,7 +206,7 @@ class TestGodWhisperFlow:
         bg, _, _ = _make_bg(session_data=sd)
         events = [
             GameEvent(
-                event_type="divine_favor_changed",
+                event_type=E.DIVINE_FAVOR_CHANGED,
                 payload={"new_level": 20, "last_whisper_level": 0, "patron_id": "kaelen"},
             )
         ]
@@ -218,7 +219,7 @@ class TestGodWhisperFlow:
         bg, _, _ = _make_bg(session_data=sd)
         events = [
             GameEvent(
-                event_type="divine_favor_changed",
+                event_type=E.DIVINE_FAVOR_CHANGED,
                 payload={"new_level": 40, "last_whisper_level": 25, "patron_id": "syrath"},
             )
         ]
@@ -231,7 +232,7 @@ class TestGodWhisperFlow:
         bg, _, _ = _make_bg(session_data=sd)
         events = [
             GameEvent(
-                event_type="divine_favor_changed",
+                event_type=E.DIVINE_FAVOR_CHANGED,
                 payload={"new_level": 50, "last_whisper_level": 25, "patron_id": "veythar"},
             )
         ]
@@ -245,7 +246,7 @@ class TestGodWhisperFlow:
         bg, _, _ = _make_bg(session_data=sd)
         events = [
             GameEvent(
-                event_type="world_event",
+                event_type=E.WORLD_EVENT,
                 payload={"event_id": "god_whisper:player_patron", "patron_id": "kaelen"},
             )
         ]
@@ -261,7 +262,7 @@ class TestGodWhisperFlow:
             bg, _, _ = _make_bg(session_data=sd)
             events = [
                 GameEvent(
-                    event_type="divine_favor_changed",
+                    event_type=E.DIVINE_FAVOR_CHANGED,
                     payload={"new_level": 25, "last_whisper_level": 0, "patron_id": deity_id},
                 )
             ]
