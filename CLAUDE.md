@@ -72,7 +72,7 @@ divine-ruin/
 
 ### TypeScript / Bun (apps/server/, apps/mobile/, packages/shared/)
 
-Use Bun exclusively — not Node.js. `bun <file>`, `bun test`, `bun install`, `bun run <script>`, `bunx <pkg>`. Bun auto-loads `.env`.
+Use Bun exclusively — not Node.js. `bun <file>`, `bun test`, `bun install`, `bun run <script>`, `bunx <pkg>` (never `npx`). Bun auto-loads `.env`.
 
 **Bun-native APIs only:** `Bun.serve()` (not express), `Bun.sql` (not pg), `Bun.redis` (not ioredis), `Bun.file` (not node:fs), built-in `WebSocket` (not ws).
 

@@ -114,8 +114,8 @@ jobs:
       - run: bun run scripts/migrate.ts
       - run: cd scripts && uv sync && uv run python seed_content.py
       - run: cd e2e && bun install
-      - run: cd e2e && npx playwright install --with-deps chromium
-      - run: cd e2e && npx playwright test
+      - run: cd e2e && bunx playwright install --with-deps chromium
+      - run: cd e2e && bunx playwright test
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
