@@ -15,6 +15,7 @@ export default tseslint.config(
       "apps/agent/",
       "scripts/",
       "apps/mobile/test-preload.ts",
+      "e2e/",
     ],
   },
 
