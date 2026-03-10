@@ -36,7 +36,8 @@ export const test = base.extend<
   { testUser: TestUser }
 >({
   testUser: [
-    async (_, use) => {
+    // eslint-disable-next-line no-empty-pattern
+    async ({}, use) => {
       const email = `e2e-${crypto.randomUUID()}@test.divineruin.com`;
 
       // Request auth code via API

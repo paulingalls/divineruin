@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Slider from "@react-native-community/slider";
@@ -92,7 +92,11 @@ export default function SettingsScreen() {
 
   const handleSignOut = () => {
     void authStore.getState().logout();
-    router.dismiss();
+    if (Platform.OS === "web") {
+      router.replace("/");
+    } else {
+      router.dismiss();
+    }
   };
 
   const handleRegenerate = useCallback(async () => {

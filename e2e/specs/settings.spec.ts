@@ -24,14 +24,9 @@ test.describe("Settings screen", () => {
     });
     await expect(signOutButton).toBeVisible();
 
-    // Click sign out
+    // Click sign out — should redirect to auth screen
     await signOutButton.click();
 
-    // On web, router.dismiss() may fail but logout() clears auth state.
-    // Navigate to root — layout should show auth screen since phase is now unauthenticated.
-    await authenticatedPage.goto("/");
-
-    // Should show auth screen
     await expect(
       authenticatedPage.getByText("Listen to the dark"),
     ).toBeVisible({ timeout: 15_000 });
