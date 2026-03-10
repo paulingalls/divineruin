@@ -11,6 +11,7 @@ from agent import (
     TTS_NUM_CHANNELS,
     TTS_SAMPLE_RATE,
     DungeonMasterAgent,
+    _extract_player_id,
     _make_tts,
     _silence,
     validate_env,
@@ -392,6 +393,64 @@ class TestAudioHelpers:
             call_kwargs = MockTTS.call_args[1]
             assert "voice" not in call_kwargs
             assert call_kwargs["speaking_rate"] == 1.0
+
+
+class TestExtractPlayerId:
+    """Test _extract_player_id metadata parsing and env-based fallback."""
+
+    def _make_ctx(self, metadata: str | None = None) -> MagicMock:
+        ctx = MagicMock()
+        if metadata is not None:
+            ctx.job.metadata = metadata
+        else:
+            ctx.job = None
+        return ctx
+
+    def test_valid_player_id(self):
+        ctx = self._make_ctx('{"player_id": "player_abc123"}')
+        assert _extract_player_id(ctx) == "player_abc123"
+
+    def test_valid_player_id_with_hyphens(self):
+        ctx = self._make_ctx('{"player_id": "player_abc-123"}')
+        assert _extract_player_id(ctx) == "player_abc-123"
+
+    def test_rejects_invalid_characters(self):
+        """player_id with invalid chars falls back (dev) or raises (prod)."""
+        ctx = self._make_ctx('{"player_id": "player/../etc"}')
+        with patch.dict(os.environ, {"AGENT_ENV": "development"}):
+            result = _extract_player_id(ctx)
+            assert result == "player_1"
+
+    def test_rejects_too_long_id(self):
+        long_id = "a" * 65
+        ctx = self._make_ctx(f'{{"player_id": "{long_id}"}}')
+        with patch.dict(os.environ, {"AGENT_ENV": "development"}):
+            result = _extract_player_id(ctx)
+            assert result == "player_1"
+
+    def test_production_raises_on_missing_metadata(self):
+        ctx = self._make_ctx(None)
+        with patch.dict(os.environ, {"AGENT_ENV": "production"}):
+            with pytest.raises(ValueError, match="production"):
+                _extract_player_id(ctx)
+
+    def test_production_raises_on_invalid_player_id(self):
+        ctx = self._make_ctx('{"player_id": "bad/id"}')
+        with patch.dict(os.environ, {"AGENT_ENV": "production"}):
+            with pytest.raises(ValueError, match="production"):
+                _extract_player_id(ctx)
+
+    def test_dev_fallback_with_no_metadata(self):
+        ctx = self._make_ctx(None)
+        with patch.dict(os.environ, {"AGENT_ENV": "development"}):
+            assert _extract_player_id(ctx) == "player_1"
+
+    def test_dev_fallback_is_default(self):
+        """Without AGENT_ENV set, defaults to development (fallback allowed)."""
+        ctx = self._make_ctx("{}")
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("AGENT_ENV", None)
+            assert _extract_player_id(ctx) == "player_1"
 
 
 class TestDMSession:

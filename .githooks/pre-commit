@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -e
 
+# Block .env files from being committed
+if git diff --cached --name-only | grep -qE '(^|/)\.env$'; then
+  echo "ERROR: .env file detected in staging area."
+  exit 1
+fi
+
 echo "Running pre-commit lint checks..."
 
 # TypeScript type checking

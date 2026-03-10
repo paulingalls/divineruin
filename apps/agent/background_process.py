@@ -14,6 +14,7 @@ import event_types as E
 from event_bus import GameEvent
 from god_whisper_data import get_god_profile, should_trigger_whisper
 from prompts import build_full_prompt, build_system_prompt, build_warm_layer, quest_objective
+from sanitize import sanitize_for_prompt
 from tools import _disposition_rank
 
 if TYPE_CHECKING:
@@ -251,8 +252,8 @@ class BackgroundProcess:
                     )
 
             elif ev.event_type == E.QUEST_UPDATED:
-                quest_name = ev.payload.get("quest_name", "unknown quest")
-                objective = ev.payload.get("objective", "")
+                quest_name = sanitize_for_prompt(ev.payload.get("quest_name", "unknown quest"), max_len=100)
+                objective = sanitize_for_prompt(ev.payload.get("objective", ""), max_len=200)
                 if can_act and companion:
                     companion.emotional_state = "focused"
                     self._queue_speech(
@@ -302,7 +303,7 @@ class BackgroundProcess:
 
             elif ev.event_type == E.DISPOSITION_CHANGED:
                 if can_act and companion:
-                    npc_name = ev.payload.get("npc_name", "someone")
+                    npc_name = sanitize_for_prompt(ev.payload.get("npc_name", "someone"), max_len=100)
                     new_disp = ev.payload.get("new", "neutral")
                     prev_disp = ev.payload.get("previous", "neutral")
                     delta_positive = _disposition_rank(new_disp) > _disposition_rank(prev_disp)
@@ -516,10 +517,14 @@ class BackgroundProcess:
                 self._sd.cached_location_name = location.get("name", self._sd.location_id)
             else:
                 self._sd.cached_location_name = self._sd.location_id
-            self._sd.cached_npc_names = [n.get("name", n.get("id", "?")) for n in (npcs_raw or [])]
+            self._sd.cached_npc_names = [
+                sanitize_for_prompt(n.get("name", n.get("id", "?")), max_len=100) for n in (npcs_raw or [])
+            ]
 
             self._sd.cached_quest_summaries = [
-                f"{q['quest_name']}: {quest_objective(q)}" for q in (self._quest_cache or []) if quest_objective(q)
+                f"{sanitize_for_prompt(q['quest_name'], max_len=100)}: {sanitize_for_prompt(quest_objective(q))}"
+                for q in (self._quest_cache or [])
+                if quest_objective(q)
             ]
 
             warm = await build_warm_layer(

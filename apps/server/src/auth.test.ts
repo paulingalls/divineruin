@@ -281,6 +281,27 @@ describe("handleGetMe", () => {
   });
 });
 
+// --- Timing-safe code comparison ---
+
+describe("Timing-safe code comparison", () => {
+  test("rejects code with different length without timing leak", async () => {
+    // Code in DB is 6 digits; submitted code is 3 digits — length mismatch fast path
+    setMockResults(
+      [{ id: "acc-uuid-abc" }],
+      [{ id: "code-uuid-1", code: "123456", failed_attempts: 0 }],
+      [], // UPDATE failed_attempts
+    );
+
+    const res = await handleVerifyCode(
+      jsonReq("/api/auth/verify-code", {
+        email: "test@example.com",
+        code: "123",
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+});
+
 // --- Content-Type validation ---
 
 describe("Content-Type validation", () => {

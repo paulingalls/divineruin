@@ -9,6 +9,10 @@ logger = logging.getLogger("divineruin.push")
 
 _REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=5)
 
+_INTERNAL_SECRET = os.environ.get("INTERNAL_SECRET", "")
+if not _INTERNAL_SECRET:
+    logger.warning("INTERNAL_SECRET is not set — push notifications will send empty auth headers")
+
 
 async def send_push_notification(player_id: str, title: str, body: str) -> None:
     """Send push notification via the server's push endpoint."""
@@ -21,7 +25,7 @@ async def send_push_notification(player_id: str, title: str, body: str) -> None:
             async with session.post(
                 f"{server_url}/api/internal/push",
                 json={"player_id": player_id, "title": title, "body": body},
-                headers={"X-Internal-Secret": os.environ.get("INTERNAL_SECRET", "")},
+                headers={"X-Internal-Secret": _INTERNAL_SECRET},
             ) as resp:
                 if resp.status != 200:
                     logger.warning("Push notification failed: %s", resp.status)

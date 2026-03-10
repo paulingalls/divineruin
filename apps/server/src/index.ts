@@ -21,8 +21,8 @@ import { isDev } from "./env.ts";
 const enableDebug =
   isDev && process.env.NODE_ENV !== "production" && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
 
-const CHARACTER_RE = /^\/api\/character\/([^/]+)$/;
-const REGEN_PORTRAIT_RE = /^\/api\/character\/([^/]+)\/regenerate-portrait$/;
+const CHARACTER_RE = /^\/api\/character\/([a-zA-Z0-9_-]+)$/;
+const REGEN_PORTRAIT_RE = /^\/api\/character\/([a-zA-Z0-9_-]+)\/regenerate-portrait$/;
 const ACTIVITY_ID_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)$/;
 const ACTIVITY_DECIDE_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)\/decide$/;
 const AUDIO_FILE_RE = /^\/api\/audio\/([a-zA-Z0-9_.-]+)$/;

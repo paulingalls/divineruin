@@ -407,7 +407,10 @@ server = AgentServer()
 
 
 def _extract_player_id(ctx: agents.JobContext) -> str:
-    """Extract player_id from dispatch metadata, falling back to 'player_1' for dev."""
+    """Extract player_id from dispatch metadata.
+
+    Falls back to 'player_1' in development; raises ValueError in production.
+    """
     metadata = ctx.job.metadata if ctx.job else None
     if metadata:
         try:
@@ -415,12 +418,15 @@ def _extract_player_id(ctx: agents.JobContext) -> str:
             pid = data.get("player_id")
             if isinstance(pid, str) and pid:
                 if not re.match(r"^[a-zA-Z0-9_-]+$", pid) or len(pid) > 64:
-                    logger.warning("Invalid player_id in metadata: %r — falling back", pid)
+                    logger.warning("Invalid player_id in metadata: %r", pid)
                 else:
                     return pid
         except (json.JSONDecodeError, TypeError):
             pass
-    logger.warning("No player_id in dispatch metadata — falling back to 'player_1'")
+    env = os.getenv("AGENT_ENV", "development")
+    if env == "production":
+        raise ValueError("Missing or invalid player_id in dispatch metadata (production)")
+    logger.warning("No player_id in dispatch metadata — falling back to 'player_1' (env=%s)", env)
     return "player_1"
 
 

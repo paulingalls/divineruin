@@ -41,7 +41,7 @@ export default defineConfig({
     },
     {
       command:
-        "bunx --cwd apps/mobile expo start --web --port 8082 --non-interactive",
+        "cd apps/mobile && bunx expo start --web --port 8082 --non-interactive",
       cwd: "../",
       port: 8082,
       timeout: 120_000,

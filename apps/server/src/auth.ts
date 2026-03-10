@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { sql } from "./db.ts";
 import { parseJsonBody } from "./middleware.ts";
@@ -168,8 +169,11 @@ export async function handleVerifyCode(req: Request): Promise<Response> {
     return Response.json({ error: "Invalid code" }, { status: 401 });
   }
 
-  // Check submitted code
-  if (authCode.code !== rawCode) {
+  // Check submitted code (timing-safe comparison)
+  const codeMatch =
+    rawCode.length === authCode.code.length &&
+    timingSafeEqual(Buffer.from(authCode.code), Buffer.from(rawCode));
+  if (!codeMatch) {
     const newAttempts = authCode.failed_attempts + 1;
     if (newAttempts >= 5) {
       await sql`UPDATE auth_codes SET used = TRUE, failed_attempts = ${newAttempts} WHERE id = ${authCode.id}`;
