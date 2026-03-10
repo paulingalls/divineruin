@@ -1,7 +1,7 @@
 import { playSfx } from "./sfx-player";
 import { hapticDiceRoll, hapticItemAcquired, hapticLevelUp } from "./haptics";
 import { overrideMusicState } from "./music-player";
-import { playNarration } from "./narration-player";
+import { playNarration, stopNarration } from "./narration-player";
 import type { MusicState } from "./music-registry";
 import { sessionStore, type CombatDifficulty, type StoryMoment } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
@@ -601,6 +601,10 @@ export function handleGameEvent(event: DataChannelEvent): void {
       ) {
         playNarration(event.url);
       }
+      break;
+
+    case "stop_narration":
+      stopNarration();
       break;
 
     case "player_portrait_ready":

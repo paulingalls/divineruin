@@ -884,6 +884,10 @@ test("play_narration accepts valid short URL", () => {
   // Should not crash
 });
 
+test("stop_narration does not crash", () => {
+  handleGameEvent({ type: "stop_narration" });
+});
+
 // --- Security: payload size limit ---
 
 test("parseGameEvent rejects payload over 1 MB", () => {

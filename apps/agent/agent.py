@@ -19,6 +19,7 @@ from background_process import BackgroundProcess
 from dialogue_parser import parse_dialogue_stream
 from game_events import publish_game_event
 from latency import TurnTimer
+from prologue import play_prologue
 from prompts import build_system_prompt, format_affect_context
 from rules_engine import hp_threshold_status
 from session_data import CompanionState, CreationState, SessionData
@@ -514,11 +515,8 @@ async def dm_session(ctx: agents.JobContext) -> None:
             ),
         )
 
-        # Play prologue narration, then begin creation
-        # Duration must match the generated prologue.mp3 — regenerate via scripts/generate_prologue.py
-        PROLOGUE_DURATION_S = 70
-        await publish_game_event(ctx.room, "play_narration", {"url": "/api/audio/prologue.mp3"})
-        await asyncio.sleep(PROLOGUE_DURATION_S)
+        # Play prologue narration — skips ahead if the player speaks
+        await play_prologue(session, ctx.room)
 
         await session.generate_reply(
             instructions=(
