@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { DEFAULT_DB_URL } from "./fixtures/auth.js";
 
 const CI = !!process.env.CI;
 
@@ -27,9 +28,7 @@ export default defineConfig({
       port: 3001,
       reuseExistingServer: !CI,
       env: {
-        DATABASE_URL:
-          process.env.DATABASE_URL ??
-          "postgresql://divineruin:divineruin@localhost:5432/divineruin",
+        DATABASE_URL: process.env.DATABASE_URL ?? DEFAULT_DB_URL,
         REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:6379",
         JWT_SECRET:
           process.env.JWT_SECRET ??

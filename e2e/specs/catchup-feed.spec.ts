@@ -55,36 +55,25 @@ test.describe("Catch-up feed", () => {
     testCharacter,
   }) => {
     const activityId = `activity_e2e_prog_${Date.now()}`;
-
     const now = new Date();
-    const startTime = new Date(now.getTime() - 1_800_000); // 30 min ago
-    const resolveAt = new Date(now.getTime() + 1_800_000); // 30 min from now
-    const data = {
+
+    await seedActivity(testCharacter.playerId, {
+      id: activityId,
+      type: "training",
       status: "in_progress",
-      activity_type: "training",
-      start_time: startTime.toISOString(),
-      resolve_at: resolveAt.toISOString(),
-      narration_text: null,
-      narration_audio_url: null,
-      decision_options: null,
+      startTime: new Date(now.getTime() - 1_800_000), // 30 min ago
+      resolveAt: new Date(now.getTime() + 1_800_000), // 30 min from now
       parameters: {
         program_id: "combat_basics",
         stat: "strength",
         dc: 13,
       },
-      progress_stages: [
+      progressStages: [
         "Warming up with basic drills...",
         "Sparring with a training dummy...",
         "Working on advanced techniques...",
       ],
-    };
-
-    await queryDb(
-      `INSERT INTO async_activities (id, player_id, data)
-       VALUES ($1, $2, $3::jsonb)
-       ON CONFLICT (id) DO UPDATE SET data = $3::jsonb`,
-      [activityId, testCharacter.playerId, JSON.stringify(data)],
-    );
+    });
 
     await characterPage.reload();
     await characterPage.waitForLoadState("domcontentloaded");

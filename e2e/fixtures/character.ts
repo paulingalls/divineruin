@@ -38,7 +38,7 @@ async function seedCharacter(playerId: string): Promise<TestCharacter> {
   };
 }
 
-async function seedActivity(
+export async function seedActivity(
   playerId: string,
   opts: {
     id: string;
@@ -47,20 +47,25 @@ async function seedActivity(
     narrationText?: string;
     decisionOptions?: { id: string; label: string }[];
     parameters?: Record<string, unknown>;
+    startTime?: Date;
+    resolveAt?: Date;
+    progressStages?: string[];
   },
 ): Promise<void> {
   const now = new Date();
-  const resolveAt = new Date(now.getTime() - 60_000); // resolved 1 min ago
-  const data = {
+  const data: Record<string, unknown> = {
     status: opts.status,
     activity_type: opts.type,
-    start_time: new Date(now.getTime() - 3_600_000).toISOString(),
-    resolve_at: resolveAt.toISOString(),
+    start_time: (opts.startTime ?? new Date(now.getTime() - 3_600_000)).toISOString(),
+    resolve_at: (opts.resolveAt ?? new Date(now.getTime() - 60_000)).toISOString(),
     narration_text: opts.narrationText ?? null,
     narration_audio_url: null,
     decision_options: opts.decisionOptions ?? null,
     parameters: opts.parameters ?? {},
   };
+  if (opts.progressStages) {
+    data.progress_stages = opts.progressStages;
+  }
   await queryDb(
     `INSERT INTO async_activities (id, player_id, data)
      VALUES ($1, $2, $3::jsonb)
@@ -71,12 +76,10 @@ async function seedActivity(
 
 async function cleanupCharacterData(playerId: string): Promise<void> {
   try {
-    await queryDb(`DELETE FROM async_activities WHERE player_id = $1`, [
-      playerId,
-    ]);
-    await queryDb(`UPDATE players SET data = '{}'::jsonb WHERE player_id = $1`, [
-      playerId,
-    ]);
+    await queryDb(
+      `DELETE FROM async_activities WHERE player_id = $1; UPDATE players SET data = '{}'::jsonb WHERE player_id = $1`,
+      [playerId],
+    );
   } catch {
     // best-effort
   }
@@ -112,4 +115,4 @@ export const test = authTest.extend<
 });
 
 export { expect } from "@playwright/test";
-export { queryDb, seedActivity };
+export { queryDb };

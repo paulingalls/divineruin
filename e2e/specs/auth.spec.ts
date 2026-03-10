@@ -1,4 +1,4 @@
-import { test, expect, queryDb } from "../fixtures/auth.js";
+import { test, expect, queryDb, cleanupAccountByEmail } from "../fixtures/auth.js";
 
 test.describe("Auth flow", () => {
   test("full sign-in via email code", async ({ page }) => {
@@ -46,18 +46,6 @@ test.describe("Auth flow", () => {
     ).toBeVisible({ timeout: 15_000 });
 
     // Cleanup
-    try {
-      await queryDb(
-        `DELETE FROM players WHERE account_id = (SELECT id FROM accounts WHERE email = $1)`,
-        [email],
-      );
-      await queryDb(
-        `DELETE FROM auth_codes WHERE account_id = (SELECT id FROM accounts WHERE email = $1)`,
-        [email],
-      );
-      await queryDb(`DELETE FROM accounts WHERE email = $1`, [email]);
-    } catch {
-      // best-effort cleanup
-    }
+    await cleanupAccountByEmail(email);
   });
 });

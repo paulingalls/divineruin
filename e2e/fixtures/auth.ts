@@ -1,7 +1,10 @@
 import { test as base, type Page } from "@playwright/test";
 import pg from "pg";
 
-const { Client } = pg;
+const { Pool } = pg;
+
+export const DEFAULT_DB_URL =
+  "postgresql://divineruin:divineruin@localhost:5432/divineruin";
 
 export interface TestUser {
   email: string;
@@ -10,24 +13,59 @@ export interface TestUser {
   playerId: string;
 }
 
-function getDbUrl(): string {
-  return (
-    process.env.DATABASE_URL ??
-    "postgresql://divineruin:divineruin@localhost:5432/divineruin"
-  );
-}
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL ?? DEFAULT_DB_URL,
+  max: 5,
+});
 
-async function queryDb<T extends Record<string, unknown>>(
+export async function queryDb<T extends Record<string, unknown>>(
   query: string,
   params: unknown[] = [],
 ): Promise<T[]> {
-  const client = new Client({ connectionString: getDbUrl() });
-  await client.connect();
+  const result = await pool.query(query, params);
+  return result.rows as T[];
+}
+
+/** Run multiple statements in a single connection. */
+async function execBatch(statements: { sql: string; params: unknown[] }[]) {
+  const client = await pool.connect();
   try {
-    const result = await client.query(query, params);
-    return result.rows as T[];
+    for (const stmt of statements) {
+      await client.query(stmt.sql, stmt.params);
+    }
   } finally {
-    await client.end();
+    client.release();
+  }
+}
+
+/** Clean up all data for an account by ID. */
+export async function cleanupAccount(accountId: string): Promise<void> {
+  try {
+    await execBatch([
+      {
+        sql: `DELETE FROM async_activities WHERE player_id IN (SELECT player_id FROM players WHERE account_id = $1)`,
+        params: [accountId],
+      },
+      { sql: `DELETE FROM players WHERE account_id = $1`, params: [accountId] },
+      {
+        sql: `DELETE FROM auth_codes WHERE account_id = $1`,
+        params: [accountId],
+      },
+      { sql: `DELETE FROM accounts WHERE id = $1`, params: [accountId] },
+    ]);
+  } catch (e) {
+    console.warn("Teardown cleanup failed:", e);
+  }
+}
+
+/** Clean up all data for an account by email. */
+export async function cleanupAccountByEmail(email: string): Promise<void> {
+  const rows = await queryDb<{ id: string }>(
+    `SELECT id FROM accounts WHERE email = $1`,
+    [email],
+  );
+  if (rows.length > 0) {
+    await cleanupAccount(rows[0].id);
   }
 }
 
@@ -41,9 +79,8 @@ export const test = base.extend<
       const email = `e2e-${crypto.randomUUID()}@test.divineruin.com`;
 
       // Create account and auth code directly in DB to avoid rate limits
-      await queryDb(`INSERT INTO accounts (email) VALUES ($1)`, [email]);
       const accounts = await queryDb<{ id: string }>(
-        `SELECT id FROM accounts WHERE email = $1`,
+        `INSERT INTO accounts (email) VALUES ($1) RETURNING id`,
         [email],
       );
       if (accounts.length === 0) throw new Error("Failed to create account");
@@ -89,20 +126,7 @@ export const test = base.extend<
 
       await use(testUser);
 
-      // Teardown: clean up test user data
-      try {
-        await queryDb(
-          `DELETE FROM async_activities WHERE player_id IN (SELECT player_id FROM players WHERE account_id = $1)`,
-          [accountId],
-        );
-        await queryDb(`DELETE FROM players WHERE account_id = $1`, [accountId]);
-        await queryDb(`DELETE FROM auth_codes WHERE account_id = $1`, [
-          accountId,
-        ]);
-        await queryDb(`DELETE FROM accounts WHERE id = $1`, [accountId]);
-      } catch (e) {
-        console.warn("Teardown cleanup failed:", e);
-      }
+      await cleanupAccount(accountId);
     },
     { scope: "worker" },
   ],
@@ -137,4 +161,3 @@ export const test = base.extend<
 });
 
 export { expect } from "@playwright/test";
-export { queryDb };
