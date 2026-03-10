@@ -13,7 +13,7 @@ echo "Running pre-commit lint checks..."
 echo "  TypeScript typecheck (root)..."
 bun run typecheck
 echo "  TypeScript typecheck (mobile)..."
-cd apps/mobile && bunx tsc --noEmit && cd ../..
+bun run typecheck:mobile
 
 # ESLint
 echo "  ESLint..."
@@ -25,9 +25,6 @@ bunx prettier --check 'apps/**/*.{ts,tsx}' 'packages/**/*.ts'
 
 # Python linting
 echo "  Python ruff check..."
-cd apps/agent
-uv run ruff check .
-uv run ruff format --check .
-cd ../..
+bun run lint:python
 
 echo "All lint checks passed."

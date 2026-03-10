@@ -28,7 +28,7 @@ echo "  Python tests (agent, clean env)..."
 (
   for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done
   unset DATABASE_URL REDIS_URL
-  cd apps/agent && uv run pytest tests/ -q
+  bun run test:python
 )
 
 echo "All tests passed."
