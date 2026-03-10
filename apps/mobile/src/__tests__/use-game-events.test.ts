@@ -4,6 +4,7 @@ import {
   handleGameEvent,
   parseCombatant,
   DICE_STINGER_DELAY_MS,
+  DICE_ROLL_TTL_MS,
   MAX_EVENT_PAYLOAD_BYTES,
 } from "@/audio/game-event-handler";
 import { activePlayerCount } from "@/audio/sfx-player";
@@ -1151,4 +1152,54 @@ test("session_end without story_moments has empty storyMoments array", () => {
   const s = sessionStore.getState().sessionSummary;
   expect(s).not.toBeNull();
   expect(s!.storyMoments).toEqual([]);
+});
+
+// --- handleGameEvent: divine_favor_changed ---
+
+test("divine_favor_changed pushes divine_favor overlay", () => {
+  handleGameEvent({
+    type: "divine_favor_changed",
+    new_level: 25,
+    max: 100,
+    amount: 10,
+    patron_id: "solwyn",
+  });
+  const overlays = hudStore.getState().overlays;
+  expect(overlays).toHaveLength(1);
+  expect(overlays[0].type).toBe("divine_favor");
+  expect(overlays[0].payload.amount).toBe(10);
+  expect(overlays[0].payload.patronId).toBe("solwyn");
+});
+
+test("divine_favor_changed with zero amount does not push overlay", () => {
+  handleGameEvent({
+    type: "divine_favor_changed",
+    new_level: 25,
+    max: 100,
+    amount: 0,
+  });
+  expect(hudStore.getState().overlays).toHaveLength(0);
+});
+
+test("divine_favor_changed updates character store", () => {
+  handleGameEvent({
+    type: "divine_favor_changed",
+    new_level: 30,
+    max: 100,
+    amount: 5,
+  });
+  expect(characterStore.getState().divineFavorLevel).toBe(30);
+  expect(characterStore.getState().divineFavorMax).toBe(100);
+});
+
+// --- dice roll overlay TTL ---
+
+test("dice roll overlay TTL exceeds stinger delay", () => {
+  expect(DICE_ROLL_TTL_MS).toBeGreaterThan(DICE_STINGER_DELAY_MS);
+});
+
+test("dice_result uses DICE_ROLL_TTL_MS", () => {
+  handleGameEvent({ type: "dice_result", roll: 14, total: 16, success: true });
+  const overlay = hudStore.getState().overlays[0];
+  expect(overlay.ttl).toBe(DICE_ROLL_TTL_MS);
 });

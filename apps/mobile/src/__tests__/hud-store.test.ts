@@ -1,6 +1,7 @@
 import { test, expect, beforeEach } from "bun:test";
 import {
   hudStore,
+  type OverlayType,
   type StatusEffect,
   type CombatTrackerState,
   type CreationCard,
@@ -190,6 +191,29 @@ test("clearCreationCards clears cards and selection", () => {
   hudStore.getState().clearCreationCards();
   expect(hudStore.getState().creationCards).toHaveLength(0);
   expect(hudStore.getState().selectedCreationCard).toBeNull();
+});
+
+// --- overlay type exhaustiveness ---
+
+test("all OverlayType values can be pushed to store", () => {
+  // Keep in sync with OverlayType union in hud-store.ts.
+  // If you add a new type, also add a renderer case in OverlayContent (overlay-manager.tsx).
+  const ALL_OVERLAY_TYPES: OverlayType[] = [
+    "dice_result",
+    "item_acquired",
+    "quest_update",
+    "xp_toast",
+    "level_up",
+    "divine_favor",
+  ];
+
+  for (const type of ALL_OVERLAY_TYPES) {
+    hudStore.getState().reset();
+    hudStore.getState().pushOverlay(type, {});
+    const overlay = hudStore.getState().overlays[0];
+    expect(overlay).toBeDefined();
+    expect(overlay.type).toBe(type);
+  }
 });
 
 // --- reset ---

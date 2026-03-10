@@ -1,6 +1,10 @@
-import { roomService, DataPacket_Kind } from "./livekit.ts";
+import { getRoomService, DataPacket_Kind } from "./livekit.ts";
 
 export async function handleDebugRooms(): Promise<Response> {
+  const roomService = getRoomService();
+  if (!roomService) {
+    return Response.json({ error: "LiveKit is not configured" }, { status: 503 });
+  }
   try {
     const rooms = await roomService.listRooms();
     const list = rooms.map((r) => ({
@@ -15,6 +19,10 @@ export async function handleDebugRooms(): Promise<Response> {
 }
 
 export async function handleDebugSendEvent(req: Request): Promise<Response> {
+  const roomService = getRoomService();
+  if (!roomService) {
+    return Response.json({ error: "LiveKit is not configured" }, { status: 503 });
+  }
   const body = (await req.json()) as { room?: string; event?: { type?: string } };
   if (!body.room) {
     return Response.json({ error: "room is required" }, { status: 400 });

@@ -5,13 +5,43 @@ import {
   DataPacket_Kind,
 } from "livekit-server-sdk";
 import { TrackSource } from "@livekit/protocol";
-import { requireEnv, logError } from "./env.ts";
+import { logError } from "./env.ts";
 import { parseJsonBody } from "./middleware.ts";
 export { DataPacket_Kind };
 
-const LIVEKIT_URL = requireEnv("LIVEKIT_URL");
-const LIVEKIT_API_KEY = requireEnv("LIVEKIT_API_KEY");
-const LIVEKIT_API_SECRET = requireEnv("LIVEKIT_API_SECRET");
+// --- Lazy LiveKit client initialization ---
+// Clients are created on first use so the server can start without LiveKit credentials
+// (e.g. in CI/e2e where only the REST API is needed).
+
+interface LivekitClients {
+  url: string;
+  apiKey: string;
+  apiSecret: string;
+  roomService: RoomServiceClient;
+  dispatchClient: AgentDispatchClient;
+}
+
+let _clients: LivekitClients | null = null;
+
+function getLivekitClients(): LivekitClients | null {
+  if (_clients) return _clients;
+  const url = Bun.env.LIVEKIT_URL;
+  const apiKey = Bun.env.LIVEKIT_API_KEY;
+  const apiSecret = Bun.env.LIVEKIT_API_SECRET;
+  if (!url || !apiKey || !apiSecret) return null;
+  _clients = {
+    url,
+    apiKey,
+    apiSecret,
+    roomService: new RoomServiceClient(url.replace("wss://", "https://"), apiKey, apiSecret),
+    dispatchClient: new AgentDispatchClient(url, apiKey, apiSecret),
+  };
+  return _clients;
+}
+
+export function getRoomService(): RoomServiceClient | null {
+  return getLivekitClients()?.roomService ?? null;
+}
 
 const VALID_ID = /^[a-zA-Z0-9_-]+$/;
 const MAX_ID_LENGTH = 128;
@@ -26,15 +56,15 @@ function validateId(value: string, field: string): string | null {
   return null;
 }
 
-export const roomService = new RoomServiceClient(
-  LIVEKIT_URL.replace("wss://", "https://"),
-  LIVEKIT_API_KEY,
-  LIVEKIT_API_SECRET,
-);
-
-const dispatchClient = new AgentDispatchClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
-
 export async function handleLivekitToken(req: Request, playerId: string): Promise<Response> {
+  const clients = getLivekitClients();
+  if (!clients) {
+    return Response.json(
+      { error: "LiveKit is not configured (LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET)" },
+      { status: 503 },
+    );
+  }
+
   const body = await parseJsonBody<{ room_name?: string }>(req);
   if (!body) {
     return Response.json({ error: "Invalid Content-Type" }, { status: 415 });
@@ -57,7 +87,7 @@ export async function handleLivekitToken(req: Request, playerId: string): Promis
   }
 
   try {
-    await roomService.createRoom({ name: room_name });
+    await clients.roomService.createRoom({ name: room_name });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     if (!msg.includes("already exists") && !msg.includes("already being created")) {
@@ -65,7 +95,7 @@ export async function handleLivekitToken(req: Request, playerId: string): Promis
     }
   }
 
-  const token = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
+  const token = new AccessToken(clients.apiKey, clients.apiSecret, {
     identity: player_id,
     name: player_id,
   });
@@ -81,7 +111,7 @@ export async function handleLivekitToken(req: Request, playerId: string): Promis
   const jwt = await token.toJwt();
 
   try {
-    await dispatchClient.createDispatch(room_name, "divineruin-dm", {
+    await clients.dispatchClient.createDispatch(room_name, "divineruin-dm", {
       metadata: JSON.stringify({ player_id }),
     });
     console.log(`Dispatched DM agent to room "${room_name}"`);
@@ -92,6 +122,6 @@ export async function handleLivekitToken(req: Request, playerId: string): Promis
   return Response.json({
     token: jwt,
     room_name,
-    url: LIVEKIT_URL,
+    url: clients.url,
   });
 }
