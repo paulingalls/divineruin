@@ -100,6 +100,9 @@ function extractExitConnections(exits: Record<string, unknown>): string[] {
 /** Maximum payload size for data channel messages (1 MB). */
 export const MAX_EVENT_PAYLOAD_BYTES = 1_048_576;
 
+/** Allowlist for safe API sub-paths (alphanumeric, hyphens, underscores, dots, slashes). */
+const SAFE_API_PATH_RE = /^\/api\/[a-zA-Z0-9/_.-]+$/;
+
 /** Delay before playing dice result stinger (matches tumble animation duration). */
 export const DICE_STINGER_DELAY_MS = 600;
 /** Name of the companion character for portrait visibility. */
@@ -597,9 +600,10 @@ export function handleGameEvent(event: DataChannelEvent): void {
     case E.PLAY_NARRATION:
       if (
         typeof event.url === "string" &&
-        event.url.startsWith("/api/audio/") &&
+        event.url.length <= 256 &&
         !event.url.includes("..") &&
-        event.url.length <= 256
+        SAFE_API_PATH_RE.test(event.url) &&
+        event.url.startsWith("/api/audio/")
       ) {
         playNarration(resolveApiUrl(event.url, getApiBase()));
       }
@@ -612,9 +616,10 @@ export function handleGameEvent(event: DataChannelEvent): void {
     case E.PLAYER_PORTRAIT_READY:
       if (
         typeof event.url === "string" &&
-        event.url.startsWith("/api/assets/") &&
+        event.url.length <= 256 &&
         !event.url.includes("..") &&
-        event.url.length <= 256
+        SAFE_API_PATH_RE.test(event.url) &&
+        event.url.startsWith("/api/assets/")
       ) {
         characterStore.getState().updatePortraitUrl(event.url);
         portraitStore.getState().setPlayerPortraitUrl(event.url);
