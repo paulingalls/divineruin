@@ -13,7 +13,7 @@ export function DivineFavorToast({ payload }: DivineFavorToastProps) {
   const sign = amount >= 0 ? "+" : "";
 
   return (
-    <View style={styles.container}>
+    <View testID="divine-favor-toast" style={styles.container}>
       <ThemedText style={styles.text}>
         {sign}
         {amount} DIVINE FAVOR

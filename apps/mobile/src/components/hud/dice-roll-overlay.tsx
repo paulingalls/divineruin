@@ -81,7 +81,7 @@ export function DiceRollOverlay({ payload }: DiceRollOverlayProps) {
   const resultColor = success === false ? BrandColors.ember : BrandColors.hollow;
 
   return (
-    <View style={styles.card}>
+    <View testID="dice-roll-overlay" style={styles.card}>
       {rollType && (
         <ThemedText style={styles.rollType}>{rollType.replace(/_/g, " ").toUpperCase()}</ThemedText>
       )}

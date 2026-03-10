@@ -33,7 +33,7 @@ export function ItemCardOverlay({ payload }: ItemCardOverlayProps) {
         .damping(AnimationPresets.overlaySpring.damping)
         .stiffness(AnimationPresets.overlaySpring.stiffness)}
     >
-      <View style={[styles.card, { borderColor }]}>
+      <View testID="item-card-overlay" style={[styles.card, { borderColor }]}>
         {imageUrl && <CachedImage uri={imageUrl} style={styles.itemImage} borderRadius={6} />}
         <ThemedText style={styles.name}>{name}</ThemedText>
         <ThemedText style={[styles.rarity, { color: rarityColor }]}>

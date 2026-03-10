@@ -23,7 +23,7 @@ export function LevelUpOverlay({ payload }: LevelUpOverlayProps) {
   }));
 
   return (
-    <Animated.View style={[styles.container, animStyle]}>
+    <Animated.View testID="level-up-overlay" style={[styles.container, animStyle]}>
       <ThemedText style={styles.label}>LEVEL UP</ThemedText>
       <ThemedText style={styles.level}>{newLevel}</ThemedText>
       {className && <ThemedText style={styles.className}>{className.toUpperCase()}</ThemedText>}

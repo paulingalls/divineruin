@@ -113,6 +113,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="auth" redirect />
           <Stack.Screen name="session" />
+          {__DEV__ && <Stack.Screen name="session-test" />}
           <Stack.Screen name="session-summary" options={{ presentation: "modal" }} />
           <Stack.Screen name="settings" options={{ presentation: "modal" }} />
         </Stack>

@@ -77,6 +77,7 @@ export function CreationCardRow() {
 
   return (
     <Animated.View
+      testID="creation-card-row"
       style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
     >
       {label ? <ThemedText style={styles.categoryLabel}>{label}</ThemedText> : null}

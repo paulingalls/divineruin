@@ -83,6 +83,7 @@ export function CombatTracker({ state }: CombatTrackerProps) {
         .stiffness(AnimationPresets.overlaySpring.stiffness)}
       exiting={SlideOutDown.duration(250)}
       style={styles.container}
+      testID="combat-tracker"
     >
       <View style={styles.header}>
         <ThemedText style={styles.phaseLabel}>{state.phase.toUpperCase()}</ThemedText>

@@ -11,7 +11,7 @@ export interface TestCharacter {
   locationName: string;
 }
 
-const TEST_CHARACTER = {
+export const TEST_CHARACTER = {
   name: "Edrin Ashvale",
   race: "Human",
   class: "Warden",

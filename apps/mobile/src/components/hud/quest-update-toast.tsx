@@ -19,6 +19,7 @@ export function QuestUpdateToast({ payload }: QuestUpdateToastProps) {
         .damping(AnimationPresets.overlaySpring.damping)
         .stiffness(AnimationPresets.overlaySpring.stiffness)}
       style={styles.container}
+      testID="quest-update-toast"
     >
       <ThemedText style={styles.label}>QUEST UPDATED</ThemedText>
       {questName ? (

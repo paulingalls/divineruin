@@ -11,7 +11,7 @@ export function XpToast({ payload }: XpToastProps) {
   const xpGained = typeof payload.xpGained === "number" ? payload.xpGained : 0;
 
   return (
-    <View style={styles.container}>
+    <View testID="xp-toast" style={styles.container}>
       <ThemedText style={styles.text}>+{xpGained} XP</ThemedText>
     </View>
   );

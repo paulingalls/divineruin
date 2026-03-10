@@ -119,6 +119,7 @@ function StatusEffectIcons() {
       {statusEffects.map((effect) => (
         <Animated.View
           key={effect.id}
+          testID={`status-effect-${effect.id}`}
           entering={FadeIn.duration(200)}
           exiting={FadeOut.duration(200)}
           style={[
@@ -219,7 +220,7 @@ export function PersistentBar({ connectionState, agentState: _agentState }: Pers
   );
 
   return (
-    <View style={styles.container}>
+    <View testID="persistent-bar" style={styles.container}>
       <View style={styles.topRow}>
         <CompanionAvatar />
         {locationLabel ? (
