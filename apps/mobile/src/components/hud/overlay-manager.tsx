@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useStore } from "zustand";
@@ -10,6 +10,7 @@ import { ItemCardOverlay } from "./item-card-overlay";
 import { QuestUpdateToast } from "./quest-update-toast";
 import { XpToast } from "./xp-toast";
 import { LevelUpOverlay } from "./level-up-overlay";
+import { DivineFavorToast } from "./divine-favor-toast";
 import { CreationCardRow } from "./creation-card-row";
 import { NpcPortraitOverlay } from "./npc-portrait-overlay";
 
@@ -25,6 +26,8 @@ function OverlayContent({ overlay }: { overlay: OverlayEntry }) {
       return <XpToast payload={overlay.payload} />;
     case "level_up":
       return <LevelUpOverlay payload={overlay.payload} />;
+    case "divine_favor":
+      return <DivineFavorToast payload={overlay.payload} />;
     default:
       return null;
   }
@@ -35,6 +38,13 @@ function TapToDismissOverlay({ overlay }: { overlay: OverlayEntry }) {
     hudStore.getState().dismissOverlay(overlay.id);
   }, [overlay.id]);
 
+  useEffect(() => {
+    const elapsed = Date.now() - overlay.createdAt;
+    const remaining = Math.max(0, overlay.ttl - elapsed);
+    const timer = setTimeout(dismiss, remaining);
+    return () => clearTimeout(timer);
+  }, [overlay.id, overlay.ttl, overlay.createdAt, dismiss]);
+
   return (
     <Animated.View
       entering={FadeIn.duration(250)}
@@ -42,8 +52,10 @@ function TapToDismissOverlay({ overlay }: { overlay: OverlayEntry }) {
       style={styles.overlayWrapper}
       pointerEvents="box-none"
     >
-      <Pressable onPress={dismiss}>
-        <OverlayContent overlay={overlay} />
+      <Pressable style={StyleSheet.absoluteFill} onPress={dismiss}>
+        <View style={styles.overlayContent}>
+          <OverlayContent overlay={overlay} />
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -80,7 +92,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   overlayWrapper: {
-    alignItems: "center",
+    ...StyleSheet.absoluteFillObject,
+  },
+  overlayContent: {
+    flex: 1,
     justifyContent: "center",
+    alignItems: "center",
   },
 });

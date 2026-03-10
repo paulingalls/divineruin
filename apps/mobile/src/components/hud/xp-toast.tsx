@@ -1,5 +1,4 @@
-import { StyleSheet } from "react-native";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors, FontStyles } from "@/constants/theme";
@@ -12,13 +11,9 @@ export function XpToast({ payload }: XpToastProps) {
   const xpGained = typeof payload.xpGained === "number" ? payload.xpGained : 0;
 
   return (
-    <Animated.View
-      entering={FadeIn.duration(300)}
-      exiting={FadeOut.duration(300)}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <ThemedText style={styles.text}>+{xpGained} XP</ThemedText>
-    </Animated.View>
+    </View>
   );
 }
 

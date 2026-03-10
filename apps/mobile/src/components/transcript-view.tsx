@@ -117,6 +117,8 @@ export function TranscriptView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    overflow: "hidden",
+    minHeight: 0,
   },
   listContent: {
     paddingTop: Spacing.six,

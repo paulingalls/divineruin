@@ -105,6 +105,8 @@ const SAFE_API_PATH_RE = /^\/api\/[a-zA-Z0-9/_.-]+$/;
 
 /** Delay before playing dice result stinger (matches tumble animation duration). */
 export const DICE_STINGER_DELAY_MS = 600;
+/** TTL for dice roll overlay — longer than default to account for tumble animation. */
+export const DICE_ROLL_TTL_MS = 5000;
 /** Name of the companion character for portrait visibility. */
 const COMPANION_NAME = "Kael";
 let _diceStingerTimer: ReturnType<typeof setTimeout> | null = null;
@@ -138,14 +140,18 @@ export function handleGameEvent(event: DataChannelEvent): void {
     case E.DICE_RESULT:
       playSfx("dice_roll");
       hapticDiceRoll();
-      hudStore.getState().pushOverlay("dice_result", {
-        roll: event.roll,
-        modifier: event.modifier,
-        total: event.total,
-        success: event.success,
-        rollType: event.roll_type,
-        narrative: event.narrative,
-      });
+      hudStore.getState().pushOverlay(
+        "dice_result",
+        {
+          roll: event.roll,
+          modifier: event.modifier,
+          total: event.total,
+          success: event.success,
+          rollType: event.roll_type,
+          narrative: event.narrative,
+        },
+        DICE_ROLL_TTL_MS,
+      );
       if (_diceStingerTimer) clearTimeout(_diceStingerTimer);
       _diceStingerTimer = setTimeout(() => {
         _diceStingerTimer = null;
