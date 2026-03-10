@@ -2,7 +2,7 @@ import { StyleSheet } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
-import { BrandColors, FontFamilies } from "@/constants/theme";
+import { BrandColors, FontStyles } from "@/constants/theme";
 
 interface XpToastProps {
   payload: Record<string, unknown>;
@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   text: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 12,
     color: BrandColors.hollow,
   },

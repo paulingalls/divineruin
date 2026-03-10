@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import { ThemedText } from "@/components/themed-text";
 import type { CatchUpCard } from "@/stores/catchup-store";
 import { resolveLocationArt } from "@/constants/location-art-registry";
-import { BrandColors, Spacing, Radius, Shadows, FontFamilies } from "@/constants/theme";
+import { BrandColors, Spacing, Radius, Shadows, FontStyles } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
 const TYPE_DOT_COLORS: Partial<Record<CatchUpCard["type"], string>> = {
@@ -176,8 +176,7 @@ const styles = StyleSheet.create({
     borderRadius: 1.5,
   },
   progressText: {
-    fontFamily: FontFamilies.bodyLight,
-    fontStyle: "italic",
+    ...FontStyles.bodyLightItalic,
     fontSize: 14,
     lineHeight: 20,
     color: BrandColors.bone,
@@ -226,7 +225,7 @@ const styles = StyleSheet.create({
   },
   decisionText: {
     fontSize: 12,
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     color: BrandColors.hollow,
   },
   idleContainer: {
@@ -234,8 +233,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   idleText: {
-    fontFamily: FontFamilies.bodyLight,
-    fontStyle: "italic",
+    ...FontStyles.bodyLightItalic,
     fontSize: 18,
     lineHeight: 28,
     color: BrandColors.bone,

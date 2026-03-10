@@ -5,7 +5,7 @@ import { useStore } from "zustand";
 
 import { ThemedText } from "@/components/themed-text";
 import { transcriptStore, type TranscriptEntry } from "@/stores/transcript-store";
-import { BrandColors, FontFamilies, Spacing } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
 function TranscriptRow({ item }: { item: TranscriptEntry }) {
   switch (item.speaker) {
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   },
   npcLabel: {
     color: BrandColors.ash,
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     marginBottom: 2,
     fontSize: 11,
   },

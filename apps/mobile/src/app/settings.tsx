@@ -16,7 +16,7 @@ import { lookupSoundscape } from "@/audio/soundscape-registry";
 import { authStore } from "@/stores/auth-store";
 import { characterStore } from "@/stores/character-store";
 import { API_BASE, authHeaders } from "@/utils/api";
-import { BrandColors, FontFamilies, Spacing } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
 let previewPlayer: AudioPlayer | null = null;
 let previewTimer: ReturnType<typeof setTimeout> | null = null;
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.five,
   },
   title: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 18,
     color: BrandColors.parchment,
     textTransform: "uppercase",
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   sectionTitle: {
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 13,
     color: BrandColors.ash,
     textTransform: "uppercase",
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   },
   sliderLabel: {
     width: 80,
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 14,
     color: BrandColors.bone,
     textTransform: "uppercase",
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   },
   sliderValue: {
     width: 48,
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 13,
     color: BrandColors.ash,
     textAlign: "right",
@@ -259,13 +259,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
   },
   regenText: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 12,
     color: BrandColors.hollow,
     letterSpacing: 1,
   },
   emailText: {
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 14,
     color: BrandColors.bone,
   },
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   signOutText: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 14,
     color: BrandColors.ember,
     letterSpacing: 1,

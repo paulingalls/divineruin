@@ -3,7 +3,7 @@ import { StyleSheet } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
-import { BrandColors, FontFamilies, Shadows } from "@/constants/theme";
+import { BrandColors, FontStyles, Shadows } from "@/constants/theme";
 
 interface LevelUpOverlayProps {
   payload: Record<string, unknown>;
@@ -37,19 +37,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   label: {
-    fontFamily: FontFamilies.display,
+    ...FontStyles.display,
     fontSize: 28,
     color: BrandColors.parchment,
     ...Shadows.glowHollow,
   },
   level: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 48,
     color: BrandColors.hollow,
     marginTop: 8,
   },
   className: {
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 11,
     color: BrandColors.ash,
     letterSpacing: 2,

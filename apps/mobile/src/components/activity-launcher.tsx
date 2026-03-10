@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { BrandColors, FontFamilies, Radius, Spacing } from "@/constants/theme";
+import { BrandColors, FontStyles, Radius, Spacing } from "@/constants/theme";
 import { API_BASE, authHeaders } from "@/utils/api";
 
 interface TemplateItem {
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   durationText: {
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 12,
     color: BrandColors.ash,
     textTransform: "uppercase",
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     backgroundColor: BrandColors.hollowFaint,
   },
   destText: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 11,
     color: BrandColors.ash,
     textTransform: "capitalize",
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   confirmText: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 12,
     color: BrandColors.hollow,
     letterSpacing: 2,

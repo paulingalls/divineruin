@@ -1,7 +1,7 @@
 import { StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { BrandColors, FontFamilies, Spacing } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
 export function TitleBar() {
   return (
@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: 33,
     lineHeight: 46,
-    fontFamily: FontFamilies.display,
+    ...FontStyles.display,
     color: BrandColors.ash,
     letterSpacing: 8,
   },

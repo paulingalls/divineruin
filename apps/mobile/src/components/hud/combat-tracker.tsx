@@ -9,7 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
-import { AnimationPresets, BrandColors, FontFamilies, Radius, Spacing } from "@/constants/theme";
+import { AnimationPresets, BrandColors, FontStyles, Radius, Spacing } from "@/constants/theme";
 import type { Combatant, CombatTrackerState } from "@/stores/hud-store";
 
 function CombatantHpBar({ current, max }: { current: number; max: number }) {
@@ -121,13 +121,13 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.two,
   },
   phaseLabel: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 10,
     color: BrandColors.hollow,
     letterSpacing: 1,
   },
   roundLabel: {
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 10,
     color: BrandColors.ash,
     letterSpacing: 1,
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   combatantName: {
-    fontFamily: FontFamilies.body,
+    ...FontStyles.body,
     fontSize: 14,
     flexShrink: 1,
   },
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   compactName: {
-    fontFamily: FontFamilies.body,
+    ...FontStyles.body,
     fontSize: 12,
     flexShrink: 1,
     minWidth: 60,

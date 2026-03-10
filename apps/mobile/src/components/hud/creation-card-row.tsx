@@ -4,7 +4,7 @@ import { useStore } from "zustand";
 
 import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
-import { BrandColors, FontFamilies, Radius, Shadows, Spacing } from "@/constants/theme";
+import { BrandColors, FontStyles, Radius, Shadows, Spacing } from "@/constants/theme";
 import { hudStore, type CreationCard } from "@/stores/hud-store";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     right: 0,
   },
   categoryLabel: {
-    fontFamily: FontFamilies.displayRegular,
+    ...FontStyles.displayRegular,
     fontSize: 14,
     color: BrandColors.ash,
     textAlign: "center",
@@ -133,12 +133,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.two,
   },
   title: {
-    fontFamily: FontFamilies.displayRegular,
+    ...FontStyles.displayRegular,
     fontSize: 16,
     color: BrandColors.parchment,
   },
   description: {
-    fontFamily: FontFamilies.bodyLight,
+    ...FontStyles.bodyLight,
     fontSize: 12,
     color: BrandColors.ash,
     marginTop: 4,

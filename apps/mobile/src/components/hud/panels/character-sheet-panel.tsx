@@ -5,7 +5,7 @@ import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
 import { characterStore } from "@/stores/character-store";
 import { panelStore } from "@/stores/panel-store";
-import { BrandColors, FontFamilies, Spacing } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
 const ATTR_ABBREV: Record<string, string> = {
   strength: "STR",
@@ -220,29 +220,29 @@ const styles = StyleSheet.create({
   portraitRow: { alignItems: "center", marginBottom: Spacing.two },
   portraitImage: { width: 80, height: 80 },
   empty: { flex: 1, justifyContent: "center", alignItems: "center" },
-  emptyText: { color: BrandColors.ash, fontFamily: FontFamilies.system, fontSize: 12 },
+  emptyText: { color: BrandColors.ash, ...FontStyles.system, fontSize: 12 },
   name: {
-    fontFamily: FontFamilies.display,
+    ...FontStyles.display,
     fontSize: 22,
     color: BrandColors.parchment,
   },
   classLevel: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 10,
     color: BrandColors.ash,
     letterSpacing: 2,
     marginTop: 2,
   },
   deityText: {
-    fontFamily: FontFamilies.bodyLight,
+    ...FontStyles.bodyLight,
     fontSize: 12,
     color: BrandColors.divine,
     marginTop: 2,
   },
   hpSection: { marginTop: Spacing.three },
   hpNumbers: { flexDirection: "row", alignItems: "baseline" },
-  hpCurrent: { fontFamily: FontFamilies.system, fontSize: 32, color: BrandColors.parchment },
-  hpMax: { fontFamily: FontFamilies.system, fontSize: 18, color: BrandColors.ash },
+  hpCurrent: { ...FontStyles.system, fontSize: 32, color: BrandColors.parchment },
+  hpMax: { ...FontStyles.system, fontSize: 18, color: BrandColors.ash },
   hpTrack: {
     height: 4,
     backgroundColor: BrandColors.charcoal,
@@ -258,12 +258,12 @@ const styles = StyleSheet.create({
     marginTop: Spacing.three,
   },
   acLabel: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 10,
     color: BrandColors.ash,
     letterSpacing: 2,
   },
-  acValue: { fontFamily: FontFamilies.system, fontSize: 18, color: BrandColors.parchment },
+  acValue: { ...FontStyles.system, fontSize: 18, color: BrandColors.parchment },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -275,12 +275,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: Spacing.two,
   },
-  statAbbrev: { fontFamily: FontFamilies.systemLight, fontSize: 9, color: BrandColors.ash },
-  statValue: { fontFamily: FontFamilies.system, fontSize: 24, color: BrandColors.parchment },
-  statMod: { fontFamily: FontFamilies.system, fontSize: 11 },
+  statAbbrev: { ...FontStyles.systemLight, fontSize: 9, color: BrandColors.ash },
+  statValue: { ...FontStyles.system, fontSize: 24, color: BrandColors.parchment },
+  statMod: { ...FontStyles.system, fontSize: 11 },
   skillGroup: { marginTop: Spacing.three },
   skillGroupLabel: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 9,
     color: BrandColors.ash,
     letterSpacing: 2,
@@ -299,18 +299,18 @@ const styles = StyleSheet.create({
     borderRadius: 2.5,
     backgroundColor: BrandColors.hollow,
   },
-  skillName: { fontFamily: FontFamilies.body, fontSize: 14, color: BrandColors.bone },
-  skillMod: { fontFamily: FontFamilies.system, fontSize: 12 },
+  skillName: { ...FontStyles.body, fontSize: 14, color: BrandColors.bone },
+  skillMod: { ...FontStyles.system, fontSize: 12 },
   section: { marginTop: Spacing.three },
   sectionLabel: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 9,
     color: BrandColors.ash,
     letterSpacing: 2,
     marginBottom: 4,
   },
   equipItem: {
-    fontFamily: FontFamilies.body,
+    ...FontStyles.body,
     fontSize: 13,
     color: BrandColors.bone,
     marginBottom: 2,
@@ -322,10 +322,10 @@ const styles = StyleSheet.create({
     marginTop: Spacing.three,
   },
   goldLabel: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 10,
     color: BrandColors.ash,
     letterSpacing: 2,
   },
-  goldValue: { fontFamily: FontFamilies.system, fontSize: 18, color: BrandColors.divine },
+  goldValue: { ...FontStyles.system, fontSize: 18, color: BrandColors.divine },
 });

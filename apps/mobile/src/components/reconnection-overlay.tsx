@@ -9,7 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
-import { BrandColors, FontFamilies, Spacing } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
 export function ReconnectionOverlay() {
   const opacity = useSharedValue(0.3);
@@ -65,14 +65,14 @@ const styles = StyleSheet.create({
     backgroundColor: BrandColors.hollow,
   },
   label: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 16,
     color: BrandColors.parchment,
     textTransform: "uppercase",
     letterSpacing: 2,
   },
   timer: {
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 14,
     color: BrandColors.ash,
   },

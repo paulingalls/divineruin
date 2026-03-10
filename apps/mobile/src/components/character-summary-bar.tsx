@@ -5,7 +5,7 @@ import { useStore } from "zustand";
 import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
 import { characterStore } from "@/stores/character-store";
-import { BrandColors, Spacing, Radius, FontFamilies } from "@/constants/theme";
+import { BrandColors, Spacing, Radius, FontStyles } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
 function hpColor(ratio: number, theme: ReturnType<typeof useTheme>): string {
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   },
   hpLabel: {
     color: BrandColors.ash,
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
   },
   hpTrack: {
     width: 48,

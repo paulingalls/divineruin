@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -10,7 +10,7 @@ import { ThemedText } from "@/components/themed-text";
 import { sessionStore } from "@/stores/session-store";
 import { transcriptStore } from "@/stores/transcript-store";
 import { resolveLocationArt } from "@/constants/location-art-registry";
-import { BrandColors, FontFamilies, Spacing, Radius } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing, Radius } from "@/constants/theme";
 
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -33,14 +33,17 @@ export default function SessionSummaryScreen() {
     [],
   );
 
-  const handleReturn = () => {
+  const handleReturn = useCallback(() => {
     sessionStore.getState().reset();
     transcriptStore.getState().clear();
     router.replace("/");
-  };
+  }, [router]);
+
+  useEffect(() => {
+    if (!summary) handleReturn();
+  }, [summary, handleReturn]);
 
   if (!summary) {
-    handleReturn();
     return null;
   }
 
@@ -149,7 +152,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 36,
-    fontFamily: FontFamilies.display,
+    ...FontStyles.display,
     color: BrandColors.parchment,
     textAlign: "center",
   },
@@ -159,12 +162,12 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 13,
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     color: BrandColors.ash,
   },
   recap: {
     fontSize: 20,
-    fontFamily: FontFamilies.body,
+    ...FontStyles.body,
     color: BrandColors.bone,
     textAlign: "center",
     lineHeight: 30,
@@ -186,8 +189,7 @@ const styles = StyleSheet.create({
   },
   storyMomentCaption: {
     fontSize: 14,
-    fontFamily: FontFamilies.bodyLight,
-    fontStyle: "italic",
+    ...FontStyles.bodyLightItalic,
     color: BrandColors.ash,
     textAlign: "center",
   },
@@ -201,12 +203,12 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 24,
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     color: BrandColors.hollow,
   },
   statLabel: {
     fontSize: 12,
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     color: BrandColors.ash,
     textTransform: "uppercase",
     letterSpacing: 1,
@@ -217,8 +219,7 @@ const styles = StyleSheet.create({
   },
   hookText: {
     fontSize: 16,
-    fontFamily: FontFamilies.bodyLight,
-    fontStyle: "italic",
+    ...FontStyles.bodyLightItalic,
     color: BrandColors.ash,
     textAlign: "center",
   },
@@ -233,7 +234,7 @@ const styles = StyleSheet.create({
   },
   returnText: {
     fontSize: 16,
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     color: BrandColors.hollow,
     textTransform: "uppercase",
     letterSpacing: 2,

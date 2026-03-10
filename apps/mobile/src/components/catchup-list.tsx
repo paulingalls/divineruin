@@ -4,7 +4,7 @@ import { useStore } from "zustand";
 import { ThemedText } from "@/components/themed-text";
 import { CatchUpCardView } from "@/components/catchup-card";
 import { catchupStore } from "@/stores/catchup-store";
-import { BrandColors, FontFamilies, Spacing } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
 interface CatchUpListProps {
   onDecision?: (activityId: string, decisionId: string) => void;
@@ -111,8 +111,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
   },
   idleText: {
-    fontFamily: FontFamilies.bodyLight,
-    fontStyle: "italic",
+    ...FontStyles.bodyLightItalic,
     fontSize: 18,
     lineHeight: 28,
     color: BrandColors.bone,

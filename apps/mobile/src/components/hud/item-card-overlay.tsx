@@ -6,7 +6,7 @@ import { ThemedText } from "@/components/themed-text";
 import {
   AnimationPresets,
   BrandColors,
-  FontFamilies,
+  FontStyles,
   Radius,
   RARITY_COLORS,
 } from "@/constants/theme";
@@ -76,19 +76,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   name: {
-    fontFamily: FontFamilies.displayRegular,
+    ...FontStyles.displayRegular,
     fontSize: 18,
     color: BrandColors.parchment,
     textAlign: "center",
   },
   rarity: {
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 9,
     letterSpacing: 3,
     marginTop: 4,
   },
   description: {
-    fontFamily: FontFamilies.bodyLight,
+    ...FontStyles.bodyLight,
     fontSize: 14,
     color: BrandColors.bone,
     marginTop: 8,
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   statCell: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 11,
     color: BrandColors.ash,
   },

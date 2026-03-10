@@ -16,7 +16,7 @@ import { useActivityActions } from "@/hooks/use-activity-actions";
 import { characterStore } from "@/stores/character-store";
 import { playNarration, stopNarration, onNarrationStateChange } from "@/audio/narration-player";
 import { getPlayerId } from "@/utils/api";
-import { BrandColors, MaxContentWidth, Spacing, Radius, FontFamilies } from "@/constants/theme";
+import { BrandColors, MaxContentWidth, Spacing, Radius, FontStyles } from "@/constants/theme";
 
 const LANDSCAPE_THRESHOLD = 1.2;
 
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   },
   enterText: {
     fontSize: 16,
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     color: BrandColors.hollow,
     textTransform: "uppercase",
     letterSpacing: 2,
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   },
   gateMessage: {
     fontSize: 24,
-    fontFamily: FontFamilies.bodyLightItalic,
+    ...FontStyles.bodyLightItalic,
     color: BrandColors.bone,
     textAlign: "center",
   },

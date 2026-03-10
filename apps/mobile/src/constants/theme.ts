@@ -111,57 +111,73 @@ export const FontFamilies = {
   }),
 };
 
+// --- Font Styles (fontFamily + web-only fontWeight/fontStyle) ---
+
+const webWeight = (w: TextStyle["fontWeight"]) =>
+  Platform.OS === "web" ? ({ fontWeight: w } as TextStyle) : {};
+const webItalic = () => (Platform.OS === "web" ? ({ fontStyle: "italic" } as TextStyle) : {});
+
+export const FontStyles = {
+  display: { fontFamily: FontFamilies.display, ...webWeight("300") },
+  displayRegular: { fontFamily: FontFamilies.displayRegular, ...webWeight("400") },
+  displaySemiBold: { fontFamily: FontFamilies.displaySemiBold, ...webWeight("600") },
+  displayItalic: { fontFamily: FontFamilies.displayItalic, ...webWeight("300"), ...webItalic() },
+  body: { fontFamily: FontFamilies.body, ...webWeight("400") },
+  bodyLight: { fontFamily: FontFamilies.bodyLight, ...webWeight("300") },
+  bodyLightItalic: {
+    fontFamily: FontFamilies.bodyLightItalic,
+    ...webWeight("300"),
+    ...webItalic(),
+  },
+  bodySemiBold: { fontFamily: FontFamilies.bodySemiBold, ...webWeight("600") },
+  system: { fontFamily: FontFamilies.system, ...webWeight("400") },
+  systemLight: { fontFamily: FontFamilies.systemLight, ...webWeight("300") },
+} as const;
+
 // --- Type Scale ---
 
 export const TypeScale: Record<string, TextStyle> = {
   display: {
     fontSize: 62,
-    fontFamily: FontFamilies.display,
+    ...FontStyles.display,
     lineHeight: 68,
     color: BrandColors.parchment,
-    fontWeight: Platform.select({ web: "300" }) as TextStyle["fontWeight"],
   },
   h1: {
     fontSize: 36,
-    fontFamily: FontFamilies.display,
+    ...FontStyles.display,
     lineHeight: 46,
     color: BrandColors.parchment,
-    fontWeight: Platform.select({ web: "300" }) as TextStyle["fontWeight"],
   },
   h2: {
     fontSize: 29,
-    fontFamily: FontFamilies.displayRegular,
+    ...FontStyles.displayRegular,
     lineHeight: 39,
     color: BrandColors.parchment,
-    fontWeight: Platform.select({ web: "400" }) as TextStyle["fontWeight"],
   },
   "body-lg": {
     fontSize: 24,
-    fontFamily: FontFamilies.bodyLight,
+    ...FontStyles.bodyLight,
     lineHeight: 36,
     color: BrandColors.bone,
-    fontWeight: Platform.select({ web: "300" }) as TextStyle["fontWeight"],
   },
   body: {
     fontSize: 20,
-    fontFamily: FontFamilies.body,
+    ...FontStyles.body,
     lineHeight: 29,
     color: BrandColors.bone,
-    fontWeight: Platform.select({ web: "400" }) as TextStyle["fontWeight"],
   },
   system: {
     fontSize: 14,
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     lineHeight: 21,
     color: BrandColors.ash,
-    fontWeight: Platform.select({ web: "400" }) as TextStyle["fontWeight"],
   },
   caption: {
     fontSize: 13,
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     lineHeight: 18,
     color: BrandColors.ash,
-    fontWeight: Platform.select({ web: "300" }) as TextStyle["fontWeight"],
   },
 };
 

@@ -5,7 +5,7 @@ import { useStore } from "zustand";
 import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
 import { panelStore, type InventoryItem } from "@/stores/panel-store";
-import { BrandColors, FontFamilies, Spacing, Radius, RARITY_COLORS } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing, Radius, RARITY_COLORS } from "@/constants/theme";
 
 const MAX_CARRY_WEIGHT = 30;
 const NUM_COLUMNS = 3;
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     height: 44,
   },
   tileName: {
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 10,
     color: BrandColors.bone,
     textAlign: "center",
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   quantityText: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 8,
     color: BrandColors.parchment,
   },
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     borderTopColor: BrandColors.charcoal,
   },
   weightLabel: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 9,
     color: BrandColors.ash,
     letterSpacing: 2,
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   },
   weightFill: { height: 3, borderRadius: 1.5 },
   empty: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: Spacing.five },
-  emptyText: { color: BrandColors.ash, fontFamily: FontFamilies.system, fontSize: 12 },
+  emptyText: { color: BrandColors.ash, ...FontStyles.system, fontSize: 12 },
 
   // Detail view
   detailImage: {
@@ -193,43 +193,43 @@ const styles = StyleSheet.create({
   detailContainer: { flex: 1 },
   detailContent: { padding: Spacing.three },
   backButton: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 12,
     color: BrandColors.hollow,
     marginBottom: Spacing.two,
   },
   detailName: {
-    fontFamily: FontFamilies.displayRegular,
+    ...FontStyles.displayRegular,
     fontSize: 18,
     color: BrandColors.parchment,
   },
   detailRarity: {
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 9,
     letterSpacing: 3,
     marginTop: 4,
   },
   detailDesc: {
-    fontFamily: FontFamilies.bodyLight,
+    ...FontStyles.bodyLight,
     fontSize: 14,
     color: BrandColors.bone,
     marginTop: Spacing.two,
   },
   detailSection: { marginTop: Spacing.three },
   detailLabel: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 9,
     color: BrandColors.ash,
     letterSpacing: 2,
     marginBottom: 4,
   },
   detailText: {
-    fontFamily: FontFamilies.bodyLight,
+    ...FontStyles.bodyLight,
     fontSize: 13,
     color: BrandColors.bone,
   },
   detailLore: {
-    fontFamily: FontFamilies.displayItalic,
+    ...FontStyles.displayItalic,
     fontSize: 13,
     color: BrandColors.ash,
   },
@@ -240,12 +240,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   detailStatText: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 11,
     color: BrandColors.ash,
   },
   equippedBadge: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 9,
     color: BrandColors.hollow,
     letterSpacing: 2,

@@ -16,7 +16,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
-import { BrandColors, FontFamilies, Spacing } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { hudStore } from "@/stores/hud-store";
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     marginRight: Spacing.two,
   },
   locationLabel: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 10,
     color: BrandColors.ash,
     letterSpacing: 2,
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   liveLabel: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 10,
     color: BrandColors.hollow,
     letterSpacing: 1,
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   questObjective: {
-    fontFamily: FontFamilies.bodyLight,
+    ...FontStyles.bodyLight,
     fontSize: 13,
     color: `${BrandColors.bone}B3`, // 0.7 opacity
   },

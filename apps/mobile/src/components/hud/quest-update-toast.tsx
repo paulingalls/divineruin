@@ -2,7 +2,7 @@ import { StyleSheet } from "react-native";
 import Animated, { SlideInUp } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
-import { AnimationPresets, BrandColors, FontFamilies, Spacing } from "@/constants/theme";
+import { AnimationPresets, BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
 interface QuestUpdateToastProps {
   payload: Record<string, unknown>;
@@ -47,19 +47,19 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   label: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 9,
     color: BrandColors.hollow,
     letterSpacing: 2,
   },
   questName: {
-    fontFamily: FontFamilies.body,
+    ...FontStyles.body,
     fontSize: 14,
     color: BrandColors.bone,
     marginTop: 2,
   },
   objective: {
-    fontFamily: FontFamilies.bodyLight,
+    ...FontStyles.bodyLight,
     fontSize: 13,
     color: BrandColors.ash,
     marginTop: 2,

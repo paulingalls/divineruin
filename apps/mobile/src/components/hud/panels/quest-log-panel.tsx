@@ -4,7 +4,7 @@ import { useStore } from "zustand";
 
 import { ThemedText } from "@/components/themed-text";
 import { panelStore, type QuestView } from "@/stores/panel-store";
-import { BrandColors, FontFamilies, Spacing } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
 function QuestRow({ quest }: { quest: QuestView }) {
   const [expanded, setExpanded] = useState(false);
@@ -104,14 +104,14 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.three, paddingBottom: Spacing.five },
   sectionLabel: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 9,
     color: BrandColors.ash,
     letterSpacing: 2,
     marginBottom: Spacing.two,
   },
   emptyText: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 12,
     color: BrandColors.ash,
     paddingBottom: Spacing.three,
@@ -129,12 +129,12 @@ const styles = StyleSheet.create({
   },
   questHeaderLeft: { flex: 1 },
   questName: {
-    fontFamily: FontFamilies.body,
+    ...FontStyles.body,
     fontSize: 15,
     color: BrandColors.parchment,
   },
   currentStageName: {
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 11,
     color: BrandColors.ash,
     marginTop: 2,
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   chevron: { color: BrandColors.ash, fontSize: 12 },
   questExpanded: { marginTop: Spacing.two, paddingLeft: Spacing.two },
   objective: {
-    fontFamily: FontFamilies.displayItalic,
+    ...FontStyles.displayItalic,
     fontSize: 14,
     color: BrandColors.bone,
     marginBottom: Spacing.two,
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   currentDot: { color: BrandColors.hollowFaint, fontSize: 12, width: 14, textAlign: "center" },
   futureDot: { color: BrandColors.slate, fontSize: 10, width: 14, textAlign: "center" },
   stageName: {
-    fontFamily: FontFamilies.bodyLight,
+    ...FontStyles.bodyLight,
     fontSize: 13,
     color: BrandColors.ash,
   },
@@ -165,12 +165,12 @@ const styles = StyleSheet.create({
   stageCurrent: { color: BrandColors.bone },
   hintButton: { marginTop: Spacing.two },
   hintButtonText: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 10,
     color: BrandColors.hollowMuted,
   },
   hintText: {
-    fontFamily: FontFamilies.displayItalic,
+    ...FontStyles.displayItalic,
     fontSize: 13,
     color: BrandColors.ash,
     marginTop: 4,
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   },
   completedRow: { paddingVertical: 4, paddingLeft: Spacing.two },
   completedName: {
-    fontFamily: FontFamilies.bodyLight,
+    ...FontStyles.bodyLight,
     fontSize: 13,
     color: BrandColors.slate,
   },

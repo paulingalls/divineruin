@@ -13,7 +13,7 @@ import { useStore } from "zustand";
 import { panelStore, type PanelTab } from "@/stores/panel-store";
 import { playSfx } from "@/audio/sfx-player";
 import { hapticPanelOpen } from "@/audio/haptics";
-import { BrandColors, FontFamilies, Spacing, Radius, AnimationPresets } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing, Radius, AnimationPresets } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
 
 import { CharacterSheetPanel } from "./panels/character-sheet-panel";
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   tabLabel: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 10,
     letterSpacing: 2,
     textTransform: "uppercase",

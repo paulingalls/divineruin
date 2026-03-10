@@ -10,7 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
-import { BrandColors, FontFamilies, Radius } from "@/constants/theme";
+import { BrandColors, FontStyles, Radius } from "@/constants/theme";
 import { hapticSuccess, hapticCritical } from "@/audio/haptics";
 
 /** Duration of the dice tumble spin in ms. */
@@ -128,31 +128,31 @@ const styles = StyleSheet.create({
     minWidth: 140,
   },
   rollType: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 10,
     letterSpacing: 2,
     color: BrandColors.ash,
     marginBottom: 4,
   },
   rollNumber: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 32,
     lineHeight: 40,
     color: BrandColors.parchment,
   },
   modifier: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 14,
     color: BrandColors.ash,
     marginTop: 4,
   },
   result: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 12,
     marginTop: 8,
   },
   narrative: {
-    fontFamily: FontFamilies.displayItalic,
+    ...FontStyles.displayItalic,
     fontSize: 13,
     color: BrandColors.ash,
     marginTop: 8,

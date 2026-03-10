@@ -17,7 +17,7 @@ import { ThemedView } from "@/components/themed-view";
 import { TitleBar } from "@/components/title-bar";
 import { authStore } from "@/stores/auth-store";
 import { API_BASE } from "@/utils/api";
-import { BrandColors, FontFamilies, Spacing, Radius, MaxContentWidth } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing, Radius, MaxContentWidth } from "@/constants/theme";
 
 type Phase = "email" | "code";
 
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tagline: {
-    fontFamily: FontFamilies.displayItalic,
+    ...FontStyles.displayItalic,
     fontSize: 21,
     color: BrandColors.ash,
     textAlign: "center",
@@ -218,12 +218,12 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   label: {
-    fontFamily: FontFamilies.displayItalic,
+    ...FontStyles.displayItalic,
     fontSize: 27,
     color: BrandColors.bone,
   },
   sublabel: {
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 13,
     color: BrandColors.slate,
     marginTop: -Spacing.two,
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
     color: BrandColors.parchment,
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 16,
   },
   button: {
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 16,
     color: BrandColors.void,
     letterSpacing: 2,
@@ -259,12 +259,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   linkText: {
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 13,
     color: BrandColors.hollowMuted,
   },
   errorText: {
-    fontFamily: FontFamilies.system,
+    ...FontStyles.system,
     fontSize: 13,
     color: BrandColors.ember,
     textAlign: "center",

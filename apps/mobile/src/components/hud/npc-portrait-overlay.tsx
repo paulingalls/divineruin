@@ -4,7 +4,7 @@ import { useStore } from "zustand";
 
 import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
-import { BrandColors, FontFamilies, Spacing } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 import { portraitStore } from "@/stores/portrait-store";
 
 export function NpcPortraitOverlay() {
@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
     height: 56,
   },
   name: {
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 10,
     color: BrandColors.ash,
     letterSpacing: 1,

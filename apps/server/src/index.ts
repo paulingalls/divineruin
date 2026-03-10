@@ -186,14 +186,11 @@ const server = serve({
       }
     }
 
-    // --- Debug routes (dev-only, auth required) ---
+    // --- Debug routes (dev-only, no auth) ---
 
     if (enableDebug) {
       const { handleDebugPage, handleDebugRooms, handleDebugSendEvent } =
         await import("./debug.ts");
-
-      const debugAuth = await requireAuth(req);
-      if (debugAuth instanceof Response) return withCors(debugAuth);
 
       if (path === "/debug" && req.method === "GET") {
         return withCors(handleDebugPage());

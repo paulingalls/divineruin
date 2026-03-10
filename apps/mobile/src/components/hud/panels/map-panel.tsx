@@ -13,7 +13,7 @@ import { ThemedText } from "@/components/themed-text";
 import { panelStore } from "@/stores/panel-store";
 import { characterStore } from "@/stores/character-store";
 import { MAP_LAYOUT_BY_ID } from "@/data/map-layout";
-import { BrandColors, FontFamilies, Spacing } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
 const CONTAINER_SIZE = 300;
 const COORD_MAX = 1100;
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.three,
   },
   empty: { flex: 1, justifyContent: "center", alignItems: "center" },
-  emptyText: { color: BrandColors.ash, fontFamily: FontFamilies.system, fontSize: 12 },
+  emptyText: { color: BrandColors.ash, ...FontStyles.system, fontSize: 12 },
   connectionLine: {
     position: "absolute",
     height: 1,
@@ -340,13 +340,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 60,
     textAlign: "center",
-    fontFamily: FontFamilies.systemLight,
+    ...FontStyles.systemLight,
     fontSize: 7,
     color: BrandColors.bone,
   },
   regionLabel: {
     position: "absolute",
-    fontFamily: FontFamilies.display,
+    ...FontStyles.display,
     fontSize: 14,
     color: `${BrandColors.ash}80`, // 50% opacity
   },
