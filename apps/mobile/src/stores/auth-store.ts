@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import * as SecureStore from "expo-secure-store";
+import { getItem, setItem, removeItem } from "@/utils/secure-kv";
 
 export type AuthPhase = "loading" | "unauthenticated" | "authenticated";
 
@@ -31,10 +31,10 @@ export const authStore = createStore<AuthState>((set) => ({
   loadStoredToken: async () => {
     try {
       const [token, accountId, playerId, email] = await Promise.all([
-        SecureStore.getItemAsync(TOKEN_KEY),
-        SecureStore.getItemAsync(ACCOUNT_ID_KEY),
-        SecureStore.getItemAsync(PLAYER_ID_KEY),
-        SecureStore.getItemAsync(EMAIL_KEY),
+        getItem(TOKEN_KEY),
+        getItem(ACCOUNT_ID_KEY),
+        getItem(PLAYER_ID_KEY),
+        getItem(EMAIL_KEY),
       ]);
       if (token && accountId && playerId) {
         set({ phase: "authenticated", token, accountId, playerId, email });
@@ -49,10 +49,10 @@ export const authStore = createStore<AuthState>((set) => ({
   setAuthenticated: async (token, accountId, playerId) => {
     const email = authStore.getState().email;
     await Promise.all([
-      SecureStore.setItemAsync(TOKEN_KEY, token),
-      SecureStore.setItemAsync(ACCOUNT_ID_KEY, accountId),
-      SecureStore.setItemAsync(PLAYER_ID_KEY, playerId),
-      ...(email ? [SecureStore.setItemAsync(EMAIL_KEY, email)] : []),
+      setItem(TOKEN_KEY, token),
+      setItem(ACCOUNT_ID_KEY, accountId),
+      setItem(PLAYER_ID_KEY, playerId),
+      ...(email ? [setItem(EMAIL_KEY, email)] : []),
     ]);
     set({ phase: "authenticated", token, accountId, playerId });
   },
@@ -61,10 +61,10 @@ export const authStore = createStore<AuthState>((set) => ({
 
   logout: async () => {
     await Promise.all([
-      SecureStore.deleteItemAsync(TOKEN_KEY),
-      SecureStore.deleteItemAsync(ACCOUNT_ID_KEY),
-      SecureStore.deleteItemAsync(PLAYER_ID_KEY),
-      SecureStore.deleteItemAsync(EMAIL_KEY),
+      removeItem(TOKEN_KEY),
+      removeItem(ACCOUNT_ID_KEY),
+      removeItem(PLAYER_ID_KEY),
+      removeItem(EMAIL_KEY),
     ]);
     set({
       phase: "unauthenticated",

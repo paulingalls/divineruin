@@ -1,5 +1,5 @@
 import { ThemeProvider, type Theme } from "@react-navigation/native";
-import { registerGlobals } from "@livekit/react-native";
+import { setupLiveKit } from "@/livekit/register";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
@@ -31,7 +31,7 @@ import {
 
 import { IBMPlexMono_300Light, IBMPlexMono_400Regular } from "@expo-google-fonts/ibm-plex-mono";
 
-registerGlobals();
+setupLiveKit();
 void SplashScreen.preventAutoHideAsync();
 
 const DivineRuinTheme: Theme = {

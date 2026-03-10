@@ -2,12 +2,7 @@ import { useEffect, useRef, useCallback, useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import {
-  LiveKitRoom,
-  useConnectionState,
-  useLocalParticipant,
-  useVoiceAssistant,
-} from "@livekit/react-native";
+import { LiveKitRoom, useConnectionState, useLocalParticipant, useVoiceAssistant } from "@/livekit";
 import { ConnectionState } from "livekit-client";
 import { useStore } from "zustand";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";

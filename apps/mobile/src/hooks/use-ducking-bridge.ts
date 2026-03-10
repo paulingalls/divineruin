@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useVoiceAssistant } from "@livekit/react-native";
+import { useVoiceAssistant } from "@/livekit";
 import { setDucking } from "@/audio/soundscape-player";
 import { setMusicDucking } from "@/audio/music-player";
 

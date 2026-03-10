@@ -15,6 +15,8 @@
     "@expo-google-fonts/crimson-pro": "^0.4.2",
     "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
     "@expo/vector-icons": "^15.0.2",
+    "@livekit/components-core": "^0.12.13",
+    "@livekit/components-react": "^2.9.20",
     "@livekit/react-native": "^2.9.6",
     "@livekit/react-native-expo-plugin": "^1.0.1",
     "@livekit/react-native-webrtc": "^137.0.2",
