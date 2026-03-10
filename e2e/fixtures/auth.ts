@@ -3,7 +3,7 @@ import pg from "pg";
 
 const { Client } = pg;
 
-interface TestUser {
+export interface TestUser {
   email: string;
   token: string;
   accountId: string;
@@ -40,35 +40,26 @@ export const test = base.extend<
     async ({}, use) => {
       const email = `e2e-${crypto.randomUUID()}@test.divineruin.com`;
 
-      // Request auth code via API
-      const reqRes = await fetch(
-        "http://localhost:3001/api/auth/request-code",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        },
-      );
-      if (!reqRes.ok) {
-        throw new Error(
-          `request-code failed: ${reqRes.status} ${await reqRes.text()}`,
-        );
-      }
-
-      // Get code directly from DB
-      const codes = await queryDb<{ code: string }>(
-        `SELECT code FROM auth_codes
-         WHERE account_id = (SELECT id FROM accounts WHERE email = $1)
-           AND used = FALSE
-         ORDER BY id DESC LIMIT 1`,
+      // Create account and auth code directly in DB to avoid rate limits
+      await queryDb(`INSERT INTO accounts (email) VALUES ($1)`, [email]);
+      const accounts = await queryDb<{ id: string }>(
+        `SELECT id FROM accounts WHERE email = $1`,
         [email],
       );
-      if (codes.length === 0) {
-        throw new Error("No auth code found in DB");
-      }
-      const code = codes[0].code;
+      if (accounts.length === 0) throw new Error("Failed to create account");
+      const accountId = accounts[0].id;
 
-      // Verify code via API
+      const code = String(Math.floor(Math.random() * 1_000_000)).padStart(
+        6,
+        "0",
+      );
+      const expiresAt = new Date(Date.now() + 10 * 60_000);
+      await queryDb(
+        `INSERT INTO auth_codes (account_id, code, expires_at) VALUES ($1, $2, $3)`,
+        [accountId, code, expiresAt.toISOString()],
+      );
+
+      // Verify code via API to get a valid JWT
       const verifyRes = await fetch(
         "http://localhost:3001/api/auth/verify-code",
         {
@@ -101,14 +92,14 @@ export const test = base.extend<
       // Teardown: clean up test user data
       try {
         await queryDb(
-          `DELETE FROM players WHERE account_id = (SELECT id FROM accounts WHERE email = $1)`,
-          [email],
+          `DELETE FROM async_activities WHERE player_id IN (SELECT player_id FROM players WHERE account_id = $1)`,
+          [accountId],
         );
-        await queryDb(
-          `DELETE FROM auth_codes WHERE account_id = (SELECT id FROM accounts WHERE email = $1)`,
-          [email],
-        );
-        await queryDb(`DELETE FROM accounts WHERE email = $1`, [email]);
+        await queryDb(`DELETE FROM players WHERE account_id = $1`, [accountId]);
+        await queryDb(`DELETE FROM auth_codes WHERE account_id = $1`, [
+          accountId,
+        ]);
+        await queryDb(`DELETE FROM accounts WHERE id = $1`, [accountId]);
       } catch (e) {
         console.warn("Teardown cleanup failed:", e);
       }
