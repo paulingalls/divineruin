@@ -4,7 +4,7 @@ import logging
 import re
 
 from activity_templates import build_narration_prompt
-from llm_config import MODEL
+from llm_config import MODEL, extract_llm_text
 from llm_config import client as _client
 
 logger = logging.getLogger("divineruin.narration")
@@ -64,8 +64,8 @@ async def generate_progress_snippets(
         messages=[{"role": "user", "content": prompt}],
     )
 
-    text = response.content[0].text
-    lines = [line.strip() for line in text.strip().split("\n") if line.strip()]
+    text = extract_llm_text(response)
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
 
     logger.info(
         "Progress snippets generated: %d input tokens, %d output tokens",
@@ -108,7 +108,7 @@ async def generate_notification_hook(
         ],
     )
 
-    hook = response.content[0].text.strip()
+    hook = extract_llm_text(response)
     logger.info(
         "Notification hook generated: %d input tokens, %d output tokens",
         response.usage.input_tokens,
@@ -146,7 +146,7 @@ async def generate_activity_narration(
         messages=[{"role": "user", "content": prompt}],
     )
 
-    narration = response.content[0].text
+    narration = extract_llm_text(response)
 
     # Log token usage for cost tracking
     input_tokens = response.usage.input_tokens

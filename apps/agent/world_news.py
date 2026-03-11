@@ -6,7 +6,7 @@ import os
 import uuid
 
 import db
-from llm_config import AUDIO_DIR, MODEL, audio_url_for
+from llm_config import AUDIO_DIR, MODEL, audio_url_for, extract_llm_text
 from llm_config import client as _client
 from tts_prerender import synthesize_to_file
 
@@ -77,7 +77,7 @@ async def generate_world_news(player_id: str) -> dict | None:
         ],
     )
 
-    narration_text = response.content[0].text
+    narration_text = extract_llm_text(response)
     logger.info(
         "World news generated: %d input tokens, %d output tokens",
         response.usage.input_tokens,

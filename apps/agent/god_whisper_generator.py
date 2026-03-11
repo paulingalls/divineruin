@@ -5,7 +5,7 @@ import os
 
 import db
 from god_whisper_data import get_god_profile
-from llm_config import AUDIO_DIR, MODEL, audio_url_for, client
+from llm_config import AUDIO_DIR, MODEL, audio_url_for, client, extract_llm_text
 from push import send_push_notification
 from tts_prerender import synthesize_to_file
 from voices import get_voice_config
@@ -38,7 +38,7 @@ async def generate_god_whisper(
         max_tokens=150,
         messages=[{"role": "user", "content": prompt}],
     )
-    narration_text = response.content[0].text.strip()
+    narration_text = extract_llm_text(response)
 
     # Pre-render TTS
     voice_cfg = get_voice_config(profile.voice_character, profile.voice_emotion)

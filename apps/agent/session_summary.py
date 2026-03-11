@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -10,6 +11,7 @@ import db
 from asset_utils import asset_url
 from llm_config import MODEL as _MODEL
 from llm_config import client as _client
+from llm_config import extract_llm_text
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.summary")
@@ -74,22 +76,25 @@ async def generate_session_summary(
         tail_events = recent[-10:]
         transcript_tail = "\n".join(tail_events) if tail_events else "No transcript available."
 
-    # Try LLM summary
-    llm_result = await _call_llm_summary(
-        xp_earned=metrics["xp_earned"],
-        items_found=", ".join(metrics["items_found"]) or "none",
-        quests_progressed=", ".join(metrics["quests_progressed"]) or "none",
-        locations_visited=", ".join(metrics["locations_visited"]) or "none",
-        duration_minutes=duration_minutes,
-        transcript_tail=transcript_tail,
-    )
+    # Run LLM summary and story moments fetch concurrently
+    async def _fetch_story_moments() -> list:
+        try:
+            return await db.get_session_story_moments(session_data.session_id)
+        except Exception:
+            logger.debug("Could not fetch story moments for session %s", session_data.session_id)
+            return []
 
-    # Fetch story moments for this session
-    story_moments_raw = []
-    try:
-        story_moments_raw = await db.get_session_story_moments(session_data.session_id)
-    except Exception:
-        logger.debug("Could not fetch story moments for session %s", session_data.session_id)
+    llm_result, story_moments_raw = await asyncio.gather(
+        _call_llm_summary(
+            xp_earned=metrics["xp_earned"],
+            items_found=", ".join(metrics["items_found"]) or "none",
+            quests_progressed=", ".join(metrics["quests_progressed"]) or "none",
+            locations_visited=", ".join(metrics["locations_visited"]) or "none",
+            duration_minutes=duration_minutes,
+            transcript_tail=transcript_tail,
+        ),
+        _fetch_story_moments(),
+    )
 
     story_moments = [
         {
@@ -147,7 +152,15 @@ async def _call_llm_summary(
             max_tokens=512,
             messages=[{"role": "user", "content": prompt}],
         )
-        text = response.content[0].text.strip()
+        text = extract_llm_text(response)
+        if not text:
+            logger.warning("LLM returned empty text for summary (stop_reason=%s)", response.stop_reason)
+            return None
+
+        # Strip markdown fences if the model wraps the JSON anyway
+        if text.startswith("```"):
+            text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+
         return json.loads(text)
     except Exception:
         logger.warning("LLM summary generation failed — using fallback", exc_info=True)

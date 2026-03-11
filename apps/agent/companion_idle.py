@@ -8,7 +8,7 @@ import uuid
 
 import db
 from activity_templates import get_companion_context
-from llm_config import AUDIO_DIR, MODEL, audio_url_for
+from llm_config import AUDIO_DIR, MODEL, audio_url_for, extract_llm_text
 from llm_config import client as _client
 from tts_prerender import synthesize_to_file, tts_session
 
@@ -41,8 +41,8 @@ async def generate_idle_pool(companion_id: str, count: int = 5) -> list[dict]:
         ],
     )
 
-    text = response.content[0].text
-    lines = [line.strip() for line in text.strip().split("\n") if line.strip()]
+    text = extract_llm_text(response)
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
     lines = lines[:count]
 
     logger.info(

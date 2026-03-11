@@ -15,7 +15,7 @@ class TestGenerateGodWhisper:
     async def test_generates_whisper(self, mock_client, mock_tts, mock_db):
         # Mock LLM response
         mock_response = MagicMock()
-        mock_response.content = [MagicMock(text="Your blade has spoken well today.")]
+        mock_response.content = [MagicMock(type="text", text="Your blade has spoken well today.")]
         mock_client.messages.create = AsyncMock(return_value=mock_response)
 
         # Patch the push notification (imported dynamically inside the function)
@@ -46,7 +46,7 @@ class TestGenerateGodWhisper:
     @patch("god_whisper_generator.client")
     async def test_sends_push_notification(self, mock_client, mock_tts, mock_db):
         mock_response = MagicMock()
-        mock_response.content = [MagicMock(text="The threads tighten.")]
+        mock_response.content = [MagicMock(type="text", text="The threads tighten.")]
         mock_client.messages.create = AsyncMock(return_value=mock_response)
 
         with patch("god_whisper_generator.send_push_notification", new_callable=AsyncMock) as mock_push:

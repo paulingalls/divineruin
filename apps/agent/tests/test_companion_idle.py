@@ -7,6 +7,7 @@ import pytest
 
 def _mock_anthropic_response(text: str) -> MagicMock:
     mock_content = MagicMock()
+    mock_content.type = "text"
     mock_content.text = text
     mock_response = MagicMock()
     mock_response.content = [mock_content]
