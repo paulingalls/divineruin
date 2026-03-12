@@ -35,7 +35,7 @@ function Card({ card, isSelected }: { card: CreationCard; isSelected: boolean })
         <ThemedText style={styles.title} numberOfLines={1}>
           {card.title}
         </ThemedText>
-        <ThemedText style={styles.description} numberOfLines={3}>
+        <ThemedText style={styles.description} numberOfLines={4}>
           {card.description}
         </ThemedText>
       </View>
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     ...FontStyles.displayRegular,
-    fontSize: 14,
+    fontSize: 16,
     color: BrandColors.ash,
     textAlign: "center",
     marginBottom: Spacing.two,
@@ -113,12 +113,12 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   card: {
-    width: 140,
+    width: 200,
     backgroundColor: BrandColors.ink,
     borderWidth: 1,
     borderColor: BrandColors.charcoal,
     borderRadius: Radius.md,
-    padding: Spacing.two,
+    padding: Spacing.three,
   },
   cardSelected: {
     borderColor: BrandColors.hollow,
@@ -130,17 +130,17 @@ const styles = StyleSheet.create({
   },
   artPlaceholder: {
     width: "100%",
-    height: 60,
+    height: 90,
     marginBottom: Spacing.two,
   },
   title: {
     ...FontStyles.displayRegular,
-    fontSize: 16,
+    fontSize: 18,
     color: BrandColors.parchment,
   },
   description: {
     ...FontStyles.bodyLight,
-    fontSize: 12,
+    fontSize: 14,
     color: BrandColors.ash,
     marginTop: 4,
   },

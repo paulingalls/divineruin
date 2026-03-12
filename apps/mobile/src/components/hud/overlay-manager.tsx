@@ -90,6 +90,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 10,
   },
   overlayWrapper: {
     ...StyleSheet.absoluteFillObject,

@@ -5,6 +5,7 @@ const CI = !!process.env.CI;
 
 export default defineConfig({
   testDir: "./specs",
+  testMatch: "*.e2e.ts",
   fullyParallel: false,
   workers: 1,
   retries: CI ? 2 : 0,

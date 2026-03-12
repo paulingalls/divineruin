@@ -286,6 +286,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: Spacing.three,
+    zIndex: 20,
   },
   buttonBase: {
     minWidth: 120,
