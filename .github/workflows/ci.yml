@@ -52,7 +52,7 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: oven-sh/setup-bun@ecf28ddc73e819eb6fa29df6b34ef8921c743461 # v2
-      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
+      - uses: astral-sh/setup-uv@65ef90775fa85bf7130e46f3f22dc79a206581c8 # v7
       - run: bun install
       - run: bun run scripts/migrate.ts
       - run: cd scripts && uv sync && uv run python seed_content.py
@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
+      - uses: astral-sh/setup-uv@65ef90775fa85bf7130e46f3f22dc79a206581c8 # v7
       - run: cd apps/agent && uv sync
       - run: cd apps/agent && uv run ruff check .
       - run: cd apps/agent && uv run ruff format --check .
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
+      - uses: astral-sh/setup-uv@65ef90775fa85bf7130e46f3f22dc79a206581c8 # v7
       - run: cd apps/agent && uv sync
       - run: cd apps/agent && uv run pytest tests/ -q
 
@@ -112,7 +112,7 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: oven-sh/setup-bun@ecf28ddc73e819eb6fa29df6b34ef8921c743461 # v2
-      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
+      - uses: astral-sh/setup-uv@65ef90775fa85bf7130e46f3f22dc79a206581c8 # v7
       - run: bun install
       - run: bun run scripts/migrate.ts
       - run: cd scripts && uv sync && uv run python seed_content.py
