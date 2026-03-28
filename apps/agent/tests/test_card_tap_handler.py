@@ -2,7 +2,7 @@
 
 import json
 import time
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -72,7 +72,7 @@ def _make_data_packet(payload: dict, topic: str = PLAYER_HINTS_TOPIC) -> MagicMo
 def _make_handler(in_creation: bool = True) -> tuple[CardTapHandler, MagicMock]:
     room = MagicMock()
     session = MagicMock()
-    session.generate_reply = AsyncMock()
+    session.generate_reply = MagicMock()
     sd = SessionData(
         player_id="test",
         location_id="",
