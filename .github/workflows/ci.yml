@@ -73,6 +73,7 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: astral-sh/setup-uv@65ef90775fa85bf7130e46f3f22dc79a206581c8 # v7
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: cd apps/agent && uv sync
       - run: cd apps/agent && uv run pytest tests/ -q
 
