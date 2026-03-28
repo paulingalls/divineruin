@@ -43,7 +43,7 @@
         "expo-constants": "~55.0.9",
         "expo-dev-client": "~55.0.18",
         "expo-device": "~55.0.10",
-        "expo-disable-pods-indexing": "file:../../../expo-disable-pods-indexing",
+        "expo-disable-pods-indexing": "github:paulingalls/expo-disable-pods-indexing",
         "expo-font": "~55.0.4",
         "expo-glass-effect": "~55.0.8",
         "expo-haptics": "~55.0.9",
@@ -969,6 +969,8 @@
     "expo-dev-menu-interface": ["expo-dev-menu-interface@55.0.1", "", { "peerDependencies": { "expo": "*" } }, "sha512-FkNtwq1q6NmYoy28pj+ZLuHmirJgc039pQbJ167MZJIaprLcMN1yy67qA7xBHK+FNJ8AN8kGCtMTPByg5UC72A=="],
 
     "expo-device": ["expo-device@55.0.10", "", { "dependencies": { "ua-parser-js": "^0.7.33" }, "peerDependencies": { "expo": "*" } }, "sha512-jvPImQg5LN7LNL57sGY6WaJxrWrPKXueUiDctZ7brLyiZfioS6wUieLwOTTkHUdtSSBtHkTvUg675w0sOzwlTg=="],
+
+    "expo-disable-pods-indexing": ["expo-disable-pods-indexing@github:paulingalls/expo-disable-pods-indexing#fdd8959", { "peerDependencies": { "expo": ">=50.0.0" } }, "paulingalls-expo-disable-pods-indexing-fdd8959", "sha512-Ww37QDoBKun2mmDeNBdrgxTkkuL5dSOF+hwzeOEggZ49yKaTC8ygzZR7VugK9L9auvPnZop2O4qcLeRQwa224Q=="],
 
     "expo-file-system": ["expo-file-system@55.0.11", "", { "peerDependencies": { "expo": "*", "react-native": "*" } }, "sha512-KMUd6OY375J9WD79ZvjvCDZMveT7YfgiGWdi58/gfuTBsr14TRuoPk8RRQHAtc4UquzWViKcHwna9aPY7/XPpw=="],
 
@@ -1969,8 +1971,6 @@
     "compression/negotiator": ["negotiator@0.6.4", "", {}, "sha512-myRT3DiWPHqho5PrJaIRyaMv2kgYf0mUVgBNOYMuCH5Ki1yEiQaf/ZJuQ62nvpc44wL5WDbTX7yGJi1Neevw8w=="],
 
     "connect/debug": ["debug@2.6.9", "", { "dependencies": { "ms": "2.0.0" } }, "sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA=="],
-
-    "divineruin/expo-disable-pods-indexing": ["expo-disable-pods-indexing@file:../expo-disable-pods-indexing", { "peerDependencies": { "expo": ">=50.0.0" } }],
 
     "expo-modules-autolinking/commander": ["commander@7.2.0", "", {}, "sha512-QrWXB+ZQSVPmIWIhtEO9H+gwHaMGYiF5ChvoJ+K9ZGHG/sVsa6yiesAD1GC/x46sET00Xlwo1u49RVVVzvcSkw=="],
 
