@@ -47,7 +47,11 @@ async def publish_game_event(
     """
     if room is not None:
         if not room.isconnected():
-            await _wait_for_connection(room)
+            try:
+                await _wait_for_connection(room)
+            except RuntimeError:
+                logger.warning("Room disconnected, skipping %s event", event_type)
+                return
         data = json.dumps({"type": event_type, **payload}).encode("utf-8")
         await room.local_participant.publish_data(data, reliable=True, topic="game_events")
         logger.debug("Published %s event to data channel", event_type)
