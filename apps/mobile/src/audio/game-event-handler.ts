@@ -1,9 +1,9 @@
 import { playSfx } from "./sfx-player";
 import { hapticDiceRoll, hapticItemAcquired, hapticLevelUp } from "./haptics";
 import { overrideMusicState } from "./music-player";
-import { playNarration, stopNarration } from "./narration-player";
 import type { MusicState } from "./music-registry";
 import * as E from "./event-types";
+import Constants from "expo-constants";
 import { getApiBase, resolveApiUrl } from "@/utils/base-url";
 import { sessionStore, type CombatDifficulty, type StoryMoment } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
@@ -570,7 +570,10 @@ export function handleGameEvent(event: DataChannelEvent): void {
         title: typeof c.title === "string" ? c.title : "",
         description: typeof c.description === "string" ? c.description : "",
         category: typeof c.category === "string" ? c.category : "",
-        imageUrl: typeof c.image_url === "string" ? c.image_url : undefined,
+        imageUrl:
+          typeof c.image_url === "string"
+            ? resolveApiUrl(c.image_url, getApiBase(Constants))
+            : undefined,
       }));
       hudStore.getState().setCreationCards(cards);
       break;
@@ -601,22 +604,6 @@ export function handleGameEvent(event: DataChannelEvent): void {
           );
         }
       }
-      break;
-
-    case E.PLAY_NARRATION:
-      if (
-        typeof event.url === "string" &&
-        event.url.length <= 256 &&
-        !event.url.includes("..") &&
-        SAFE_API_PATH_RE.test(event.url) &&
-        event.url.startsWith("/api/audio/")
-      ) {
-        playNarration(resolveApiUrl(event.url, getApiBase()));
-      }
-      break;
-
-    case E.STOP_NARRATION:
-      stopNarration();
       break;
 
     case E.PLAYER_PORTRAIT_READY:

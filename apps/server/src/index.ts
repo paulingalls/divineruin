@@ -39,6 +39,7 @@ const server = serve({
       return handlePreflight();
     }
 
+    console.log(`[${req.method}] ${path}`);
     const ip = server.requestIP(req)?.address ?? "unknown";
     const rateLimited = checkRateLimit(ip, path);
     if (rateLimited) return rateLimited;

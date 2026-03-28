@@ -10,6 +10,8 @@ import contextlib
 import json
 import logging
 import os
+import subprocess
+import tempfile
 from collections.abc import AsyncIterator, Callable, Coroutine
 from functools import partial
 
@@ -95,6 +97,46 @@ async def tts_session() -> AsyncIterator[SynthesizeFn]:
         yield partial(inworld_tts, session=session)
 
 
+def _reencode_mp3(raw_mp3: bytes) -> bytes:
+    """Re-encode raw MP3 bytes through ffmpeg to fix invalid frame headers.
+
+    The Inworld streaming API returns chunks that, when concatenated, can
+    produce malformed MP3 files.  A quick ffmpeg pass produces a clean file
+    that strict decoders (like PyAV) can handle.
+    """
+    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_in:
+        tmp_in.write(raw_mp3)
+        tmp_in_path = tmp_in.name
+
+    tmp_out_path = tmp_in_path.replace(".mp3", "_clean.mp3")
+    try:
+        result = subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                tmp_in_path,
+                "-c:a",
+                "libmp3lame",
+                "-b:a",
+                "128k",
+                tmp_out_path,
+            ],
+            capture_output=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            logger.warning("ffmpeg re-encode failed, using raw bytes: %s", result.stderr[-200:])
+            return raw_mp3
+
+        with open(tmp_out_path, "rb") as f:
+            return f.read()
+    finally:
+        for p in (tmp_in_path, tmp_out_path):
+            with contextlib.suppress(OSError):
+                os.unlink(p)
+
+
 async def synthesize_to_file(
     text: str,
     voice_id: str,
@@ -111,6 +153,7 @@ async def synthesize_to_file(
         raise ValueError(f"Path traversal not allowed in output_path: {output_path}")
 
     mp3_data = await synthesize(text, voice_id)
+    mp3_data = _reencode_mp3(mp3_data)
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "wb") as f:

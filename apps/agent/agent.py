@@ -485,9 +485,11 @@ async def dm_session(ctx: agents.JobContext) -> None:
             llm=anthropic.LLM(model=model, temperature=0.8),
             tts=_make_tts(),
             vad=silero.VAD.load(min_silence_duration=0.5),
-            turn_detection=MultilingualModel(),
-            allow_interruptions=True,
-            min_endpointing_delay=0.5,
+            turn_handling={
+                "turn_detection": MultilingualModel(),
+                "endpointing": {"min_delay": 0.5},
+                "interruption": {"enabled": True},
+            },
             userdata=userdata,
         )
 
@@ -500,6 +502,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
     if needs_creation:
         # --- Character creation mode ---
+        from card_tap_handler import CardTapHandler
         from creation_prompts import CREATION_SYSTEM_PROMPT
         from creation_tools import finalize_character, push_creation_cards, set_creation_choice
 
@@ -521,6 +524,10 @@ async def dm_session(ctx: agents.JobContext) -> None:
                 creation_mode=True,
             ),
         )
+
+        # Listen for card tap hints from the client
+        card_tap = CardTapHandler(room=ctx.room, session=session, userdata=userdata)
+        card_tap.start()
 
         # Play prologue narration — skips ahead if the player speaks
         await play_prologue(session, ctx.room)

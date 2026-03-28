@@ -33,10 +33,17 @@ mock.module("expo-haptics", () => ({
   NotificationFeedbackType: { Success: "success", Warning: "warning", Error: "error" },
 }));
 
+mock.module("expo-constants", () => ({
+  default: {
+    expoConfig: { hostUri: "localhost:8082" },
+  },
+}));
+
 mock.module("expo-audio", () => ({
   createAudioPlayer: (_source: unknown) => ({
     volume: 1,
     play: () => {},
+    pause: () => {},
     remove: () => {},
     addListener: (_event: string, _cb: () => void) => ({ remove: () => {} }),
   }),

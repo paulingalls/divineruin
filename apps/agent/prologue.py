@@ -1,19 +1,25 @@
-"""Interruptible prologue narration for new player sessions."""
+"""Prologue narration for new player sessions.
+
+Streams the prologue MP3 through the agent's WebRTC audio track so that
+iOS acoustic echo cancellation prevents the VAD from hearing the narration
+through the microphone.  The player can interrupt by speaking.
+"""
 
 import asyncio
 import logging
+import os
 
 from livekit import rtc
 from livekit.agents import AgentSession
-from livekit.agents.voice.events import UserStateChangedEvent
-
-import event_types as E
-from game_events import publish_game_event
+from livekit.agents.utils.audio import audio_frames_from_file
 
 logger = logging.getLogger("divineruin.prologue")
 
-PROLOGUE_DURATION_S = 70
-PROLOGUE_URL = "/api/audio/prologue.mp3"
+AUDIO_DIR = os.environ.get(
+    "ASYNC_AUDIO_DIR",
+    os.path.join(os.path.dirname(__file__), "..", "..", "assets", "audio"),
+)
+PROLOGUE_PATH = os.path.join(AUDIO_DIR, "prologue.mp3")
 MAX_PARTICIPANT_WAIT_S = 15.0
 
 
@@ -31,44 +37,38 @@ async def _wait_for_participant(room: rtc.Room) -> None:
     try:
         await asyncio.wait_for(joined.wait(), timeout=MAX_PARTICIPANT_WAIT_S)
     except TimeoutError:
-        logger.warning("No participant joined after %.1fs — sending prologue anyway", MAX_PARTICIPANT_WAIT_S)
+        logger.warning("No participant joined after %.1fs — starting prologue anyway", MAX_PARTICIPANT_WAIT_S)
     finally:
         room.off("participant_connected", _on_join)
 
 
 async def play_prologue(session: AgentSession, room: rtc.Room) -> bool:
-    """Play the prologue narration, interruptible by player speech.
+    """Play prologue narration through the agent's voice track.
 
     Returns True if the player interrupted (spoke during playback).
     """
     await _wait_for_participant(room)
-    await publish_game_event(room, E.PLAY_NARRATION, {"url": PROLOGUE_URL})
 
-    player_spoke = asyncio.Event()
+    if not os.path.isfile(PROLOGUE_PATH):
+        logger.error("Prologue audio not found at %s — skipping", PROLOGUE_PATH)
+        return False
 
-    def _on_user_state(ev: UserStateChangedEvent) -> None:
-        if ev.new_state == "speaking":
-            player_spoke.set()
+    logger.info("Starting prologue via agent audio track: %s", PROLOGUE_PATH)
+    frames = audio_frames_from_file(PROLOGUE_PATH, sample_rate=24000, num_channels=1)
 
-    session.on("user_state_changed", _on_user_state)
+    handle = session.say(
+        text="",
+        audio=frames,
+        allow_interruptions=True,
+        add_to_chat_ctx=False,
+    )
 
-    sleep_task = asyncio.create_task(asyncio.sleep(PROLOGUE_DURATION_S))
-    speak_task = asyncio.create_task(player_spoke.wait())
+    await handle.wait_for_playout()
 
-    try:
-        _done, pending = await asyncio.wait(
-            {sleep_task, speak_task},
-            return_when=asyncio.FIRST_COMPLETED,
-        )
-        for task in pending:
-            task.cancel()
-        await asyncio.gather(*pending, return_exceptions=True)
-    finally:
-        session.off("user_state_changed", _on_user_state)
-
-    interrupted = player_spoke.is_set()
+    interrupted = handle.interrupted
     if interrupted:
-        logger.info("Player spoke during prologue — skipping remaining narration")
-        await publish_game_event(room, E.STOP_NARRATION, {})
+        logger.info("Player interrupted prologue")
+    else:
+        logger.info("Prologue finished")
 
     return interrupted

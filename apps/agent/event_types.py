@@ -7,8 +7,6 @@ Keep in sync with apps/mobile/src/audio/event-types.ts.
 # Audio / music
 PLAY_SOUND = "play_sound"
 SET_MUSIC_STATE = "set_music_state"
-PLAY_NARRATION = "play_narration"
-STOP_NARRATION = "stop_narration"
 
 # Dice
 DICE_ROLL = "dice_roll"
@@ -50,3 +48,6 @@ TRANSCRIPT_ENTRY = "transcript_entry"
 # Character creation
 CREATION_CARDS = "creation_cards"
 CREATION_CARD_SELECTED = "creation_card_selected"
+
+# Client → Agent hints (received via data channel, topic "player_hints")
+CREATION_CARD_TAP = "creation_card_tap"

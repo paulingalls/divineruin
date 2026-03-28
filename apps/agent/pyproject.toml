@@ -3,14 +3,14 @@ name = "divineruin-agent"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "livekit-agents[silero,turn-detector]~=1.4",
+    "livekit-agents[silero,turn-detector]~=1.5",
     "livekit-plugins-noise-cancellation~=0.2",
-    "livekit-plugins-anthropic~=1.4",
-    "livekit-plugins-deepgram~=1.4",
-    "livekit-plugins-inworld~=1.4",
+    "livekit-plugins-anthropic~=1.5",
+    "livekit-plugins-deepgram~=1.5",
+    "livekit-plugins-inworld~=1.5",
     "asyncpg>=0.30.0",
-    "redis>=5.0.0",
-    "anthropic>=0.40.0",
+    "redis>=7.4.0",
+    "anthropic>=0.86.0",
     "httpx>=0.27.0",
 ]
 
@@ -19,7 +19,7 @@ dev = [
     "pillow>=12.1.1",
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
-    "ruff>=0.8",
+    "ruff>=0.15.7",
 ]
 
 [tool.pytest.ini_options]
@@ -42,4 +42,4 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["db", "tools", "prompts", "voices", "session_data", "affect_analyzer", "game_events", "rules_engine", "dialogue_parser", "latency", "background_process", "db_errors", "async_rules", "async_worker", "narration", "tts_prerender", "activity_templates", "creation_data", "creation_rules", "creation_prompts", "creation_tools", "session_summary"]
+known-first-party = ["db", "tools", "prompts", "voices", "session_data", "affect_analyzer", "game_events", "rules_engine", "dialogue_parser", "latency", "background_process", "db_errors", "async_rules", "async_worker", "narration", "tts_prerender", "activity_templates", "creation_data", "creation_rules", "creation_prompts", "creation_tools", "card_tap_handler", "session_summary"]

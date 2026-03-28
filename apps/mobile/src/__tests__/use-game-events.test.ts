@@ -867,28 +867,6 @@ test("combat_started without difficulty keeps default", () => {
   expect(sessionStore.getState().inCombat).toBe(true);
 });
 
-// --- Security: narration URL validation ---
-
-test("play_narration rejects URL with path traversal", () => {
-  handleGameEvent({ type: "play_narration", url: "/api/audio/../../../etc/passwd" });
-  // Should not play — no error, just silently ignored
-});
-
-test("play_narration rejects URL exceeding 256 chars", () => {
-  const longUrl = "/api/audio/" + "a".repeat(250);
-  handleGameEvent({ type: "play_narration", url: longUrl });
-  // Should not play
-});
-
-test("play_narration accepts valid short URL", () => {
-  handleGameEvent({ type: "play_narration", url: "/api/audio/narration_1.mp3" });
-  // Should not crash
-});
-
-test("stop_narration does not crash", () => {
-  handleGameEvent({ type: "stop_narration" });
-});
-
 // --- Security: payload size limit ---
 
 test("parseGameEvent rejects payload over 1 MB", () => {
@@ -927,7 +905,7 @@ test("creation_cards maps image_url to imageUrl", () => {
   });
   const cards = hudStore.getState().creationCards;
   expect(cards).toHaveLength(2);
-  expect(cards[0]?.imageUrl).toBe("/api/assets/images/img_abc123");
+  expect(cards[0]?.imageUrl).toMatch(/^https?:\/\/.+\/api\/assets\/images\/img_abc123$/);
   expect(cards[1]?.imageUrl).toBeUndefined();
 });
 

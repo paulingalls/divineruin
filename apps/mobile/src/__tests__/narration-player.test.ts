@@ -9,6 +9,7 @@ void mock.module("expo-audio", () => ({
     play: () => {
       playCallCount++;
     },
+    pause: () => {},
     remove: () => {
       removeCallCount++;
     },

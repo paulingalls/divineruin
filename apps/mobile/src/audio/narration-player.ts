@@ -30,6 +30,7 @@ function _cleanup() {
     _subscription = null;
   }
   if (_player) {
+    _player.pause();
     _player.remove();
     _player = null;
   }
@@ -38,6 +39,7 @@ function _cleanup() {
 }
 
 export function playNarration(url: string): void {
+  console.log("[narration] playNarration called with url:", url);
   // Stop any existing playback first
   if (_player) {
     _cleanup();
@@ -46,8 +48,10 @@ export function playNarration(url: string): void {
   _player = createAudioPlayer({ uri: url });
   _player.volume = getEffectiveVolume("voice");
   _currentUrl = url;
+  console.log("[narration] volume:", _player.volume, "playing:", _player.playing);
 
   _subscription = _player.addListener("playbackStatusUpdate", (status) => {
+    console.log("[narration] status update:", JSON.stringify(status));
     if (status.didJustFinish) {
       _cleanup();
     }
@@ -55,13 +59,16 @@ export function playNarration(url: string): void {
 
   try {
     _player.play();
+    console.log("[narration] play() called successfully");
     _notifyListeners();
-  } catch {
+  } catch (err) {
+    console.error("[narration] play() failed:", err);
     _cleanup();
   }
 }
 
 export function stopNarration(): void {
+  console.log("[narration] stopNarration called, player exists:", !!_player);
   _cleanup();
 }
 

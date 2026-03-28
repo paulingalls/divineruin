@@ -58,6 +58,7 @@
           }
         }
       ],
+      "expo-disable-pods-indexing",
       "expo-audio",
       "expo-secure-store",
       "expo-asset",

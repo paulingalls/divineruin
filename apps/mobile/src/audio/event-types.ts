@@ -8,8 +8,6 @@
 // Audio / music
 export const PLAY_SOUND = "play_sound" as const;
 export const SET_MUSIC_STATE = "set_music_state" as const;
-export const PLAY_NARRATION = "play_narration" as const;
-export const STOP_NARRATION = "stop_narration" as const;
 
 // Dice
 export const DICE_ROLL = "dice_roll" as const;
@@ -51,3 +49,6 @@ export const TRANSCRIPT_ENTRY = "transcript_entry" as const;
 // Character creation
 export const CREATION_CARDS = "creation_cards" as const;
 export const CREATION_CARD_SELECTED = "creation_card_selected" as const;
+
+// Client → Agent hints
+export const CREATION_CARD_TAP = "creation_card_tap" as const;

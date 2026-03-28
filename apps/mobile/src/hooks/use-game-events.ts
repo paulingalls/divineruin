@@ -5,7 +5,10 @@ import { parseGameEvent, handleGameEvent } from "@/audio/game-event-handler";
 export function useGameEvents(): void {
   const onMessage = useCallback((msg: ReceivedDataMessage) => {
     const event = parseGameEvent(msg.payload);
-    if (event) handleGameEvent(event);
+    if (event) {
+      console.log("[game-events] received:", event.type);
+      handleGameEvent(event);
+    }
   }, []);
 
   useDataChannel("game_events", onMessage);

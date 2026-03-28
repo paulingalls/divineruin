@@ -5,6 +5,7 @@ import { useStore } from "zustand";
 import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors, FontStyles, Radius, Shadows, Spacing } from "@/constants/theme";
+import { useCreationHints } from "@/hooks/use-creation-hints";
 import { hudStore, type CreationCard } from "@/stores/hud-store";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -13,10 +14,20 @@ const CATEGORY_LABELS: Record<string, string> = {
   deity: "Who Do You Follow?",
 };
 
-function Card({ card, isSelected }: { card: CreationCard; isSelected: boolean }) {
+function Card({
+  card,
+  isSelected,
+  onHint,
+}: {
+  card: CreationCard;
+  isSelected: boolean;
+  onHint: (cardId: string, category: string) => void;
+}) {
+  const hasSelection = useStore(hudStore, (s) => s.selectedCreationCard !== null);
   const handlePress = useCallback(() => {
     hudStore.getState().setSelectedCreationCard(card.id);
-  }, [card.id]);
+    onHint(card.id, card.category);
+  }, [card.id, card.category, onHint]);
 
   return (
     <Pressable onPress={handlePress}>
@@ -24,7 +35,7 @@ function Card({ card, isSelected }: { card: CreationCard; isSelected: boolean })
         style={[
           styles.card,
           isSelected && styles.cardSelected,
-          !isSelected && styles.cardUnselected,
+          !isSelected && hasSelection && styles.cardUnselected,
         ]}
       >
         <CachedImage
@@ -46,6 +57,7 @@ function Card({ card, isSelected }: { card: CreationCard; isSelected: boolean })
 export function CreationCardRow() {
   const cards = useStore(hudStore, (s) => s.creationCards);
   const selectedId = useStore(hudStore, (s) => s.selectedCreationCard);
+  const { sendCreationHint } = useCreationHints();
 
   // Entrance animation — useMemo keeps stable Animated.Value instances
   const fadeAnim = useMemo(() => new Animated.Value(0), []);
@@ -85,7 +97,9 @@ export function CreationCardRow() {
         horizontal
         data={cards}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <Card card={item} isSelected={item.id === selectedId} />}
+        renderItem={({ item }) => (
+          <Card card={item} isSelected={item.id === selectedId} onHint={sendCreationHint} />
+        )}
         contentContainerStyle={styles.list}
         showsHorizontalScrollIndicator={false}
       />
@@ -126,7 +140,7 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
   cardUnselected: {
-    opacity: 0.5,
+    opacity: 0.85,
   },
   artPlaceholder: {
     width: "100%",
