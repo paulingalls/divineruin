@@ -42,4 +42,4 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["db", "tools", "prompts", "voices", "session_data", "affect_analyzer", "game_events", "rules_engine", "dialogue_parser", "latency", "background_process", "db_errors", "async_rules", "async_worker", "narration", "tts_prerender", "activity_templates", "creation_data", "creation_rules", "creation_prompts", "creation_tools", "card_tap_handler", "session_summary"]
+known-first-party = ["db", "tools", "prompts", "voices", "session_data", "affect_analyzer", "game_events", "rules_engine", "dialogue_parser", "latency", "background_process", "db_errors", "async_rules", "async_worker", "narration", "tts_prerender", "tts_pauses", "activity_templates", "creation_data", "creation_rules", "creation_prompts", "creation_tools", "card_tap_handler", "session_summary"]

@@ -53,6 +53,9 @@ from tools import (
     update_quest,
 )
 from transcript import TranscriptLogger
+from tts_pauses import PAUSE_DURATIONS as _PAUSE_DURATIONS
+from tts_pauses import PAUSE_PATTERN as _PAUSE_PATTERN
+from tts_pauses import SENTENCE_END_PAUSE
 from voices import VOICES, get_voice_config
 
 logging.basicConfig(level=logging.INFO)
@@ -363,7 +366,7 @@ class DungeonMasterAgent(Agent):
             if re.search(r'[.!?][""\u201d]?\s*$', buffered_text):
                 async for frame in flush_buffer():
                     yield frame
-                yield _silence(0.8)
+                yield _silence(SENTENCE_END_PAUSE)
 
         async for frame in flush_buffer():
             yield frame
@@ -372,15 +375,6 @@ class DungeonMasterAgent(Agent):
         self._turn_timer.finish()
         self._affect_analyzer.record_tts_end()
 
-
-_PAUSE_PATTERN = re.compile(r"(\.{2,}|…|—|–)")
-
-_PAUSE_DURATIONS: dict[str, float] = {
-    "...": 0.6,
-    "…": 0.6,
-    "—": 0.3,
-    "–": 0.3,
-}
 
 TTS_SAMPLE_RATE = 24000
 TTS_NUM_CHANNELS = 1

@@ -30,7 +30,8 @@ def _load_env(path: str) -> None:
 # Load .env from project root (must happen before importing agent modules)
 _load_env(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-from tts_prerender import synthesize_to_file  # noqa: E402
+from tts_prerender import synthesize_with_pauses  # noqa: E402
+from voices import get_voice_config  # noqa: E402
 
 AUDIO_DIR = os.environ.get(
     "ASYNC_AUDIO_DIR",
@@ -67,17 +68,22 @@ PROLOGUE_TEXT = (
 
 
 async def main() -> None:
-    voice_id = os.environ.get("INWORLD_VOICE_DM")
-    if not voice_id:
+    voice_cfg = get_voice_config("DM_NARRATOR", "calm")
+    if not voice_cfg.voice:
         print("ERROR: INWORLD_VOICE_DM not set in environment")
         sys.exit(1)
 
     output_path = os.path.join(AUDIO_DIR, "prologue.mp3")
-    print(f"Voice: {voice_id}")
+    print(f"Voice: {voice_cfg.voice} (rate: {voice_cfg.speaking_rate})")
     print(f"Output: {output_path}")
     print(f"Text: {len(PROLOGUE_TEXT)} chars, {len(PROLOGUE_TEXT.split())} words")
 
-    await synthesize_to_file(PROLOGUE_TEXT, voice_id, output_path)
+    await synthesize_with_pauses(
+        PROLOGUE_TEXT,
+        voice_cfg.voice,
+        output_path,
+        speaking_rate=voice_cfg.speaking_rate,
+    )
 
     file_size = os.path.getsize(output_path)
     print(f"Done! {os.path.basename(output_path)} ({file_size:,} bytes)")

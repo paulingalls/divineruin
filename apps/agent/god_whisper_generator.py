@@ -7,7 +7,7 @@ import db
 from god_whisper_data import get_god_profile
 from llm_config import AUDIO_DIR, MODEL, audio_url_for, client, extract_llm_text
 from push import send_push_notification
-from tts_prerender import synthesize_to_file
+from tts_prerender import synthesize_with_pauses
 from voices import get_voice_config
 
 logger = logging.getLogger("divineruin.god_whisper_generator")
@@ -44,7 +44,12 @@ async def generate_god_whisper(
     voice_cfg = get_voice_config(profile.voice_character, profile.voice_emotion)
     audio_filename = f"whisper_{player_id}_{deity_id}_{os.urandom(4).hex()}.mp3"
     audio_path = os.path.join(AUDIO_DIR, audio_filename)
-    await synthesize_to_file(narration_text, voice_cfg.voice, audio_path)
+    await synthesize_with_pauses(
+        narration_text,
+        voice_cfg.voice,
+        audio_path,
+        speaking_rate=voice_cfg.speaking_rate,
+    )
     audio_url = audio_url_for(audio_filename)
 
     # Store in DB

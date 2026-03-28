@@ -10,7 +10,7 @@ from god_whisper_generator import generate_god_whisper
 class TestGenerateGodWhisper:
     @pytest.mark.asyncio
     @patch("god_whisper_generator.db.create_god_whisper", new_callable=AsyncMock, return_value="whisper_abc123")
-    @patch("god_whisper_generator.synthesize_to_file", new_callable=AsyncMock, return_value="whisper_test.mp3")
+    @patch("god_whisper_generator.synthesize_with_pauses", new_callable=AsyncMock, return_value="whisper_test.mp3")
     @patch("god_whisper_generator.client")
     async def test_generates_whisper(self, mock_client, mock_tts, mock_db):
         # Mock LLM response
@@ -42,7 +42,7 @@ class TestGenerateGodWhisper:
 
     @pytest.mark.asyncio
     @patch("god_whisper_generator.db.create_god_whisper", new_callable=AsyncMock, return_value="whisper_xyz")
-    @patch("god_whisper_generator.synthesize_to_file", new_callable=AsyncMock, return_value="w.mp3")
+    @patch("god_whisper_generator.synthesize_with_pauses", new_callable=AsyncMock, return_value="w.mp3")
     @patch("god_whisper_generator.client")
     async def test_sends_push_notification(self, mock_client, mock_tts, mock_db):
         mock_response = MagicMock()
