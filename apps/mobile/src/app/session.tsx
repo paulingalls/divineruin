@@ -47,7 +47,9 @@ function LoadingShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-const ROOM_NAME = "divineruin-session";
+function makeRoomName(): string {
+  return `divineruin-session-${Date.now().toString(36)}`;
+}
 const RECONNECT_TIMEOUT_MS = 2 * 60 * 1000;
 const SWIPE_UP_THRESHOLD = -50;
 
@@ -204,7 +206,7 @@ export default function SessionScreen() {
   useEffect(() => {
     sessionStore.getState().setPhase("connecting");
     configureAudioSession().catch((err) => console.error("[session] Audio config failed:", err));
-    void fetchToken(ROOM_NAME);
+    void fetchToken(makeRoomName());
   }, [fetchToken]);
 
   const handleLeave = useCallback(() => {
