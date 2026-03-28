@@ -104,7 +104,7 @@ export async function handleLivekitToken(req: Request, playerId: string): Promis
     room: room_name,
     canPublish: true,
     canSubscribe: true,
-    canPublishData: false,
+    canPublishData: true,
     canPublishSources: [TrackSource.MICROPHONE],
   });
 

@@ -20,6 +20,11 @@ export function useCreationHints() {
 
   const sendCreationHint = useCallback(
     (cardId: string, category: string) => {
+      console.log("[creation-hints] sendCreationHint called", {
+        cardId,
+        category,
+        hasRoom: !!room,
+      });
       if (!room) return;
       if (timerRef.current) clearTimeout(timerRef.current);
 
@@ -31,6 +36,7 @@ export function useCreationHints() {
             category,
           }),
         );
+        console.log("[creation-hints] Publishing data channel message", { cardId, category });
         void room.localParticipant.publishData(payload, {
           reliable: true,
           topic: PLAYER_HINTS_TOPIC,

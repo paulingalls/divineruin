@@ -8,7 +8,6 @@ agent to narrate it and confirm the choice.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import time
@@ -32,19 +31,21 @@ def build_hint_instruction(card_id: str, category: str) -> str | None:
     Returns None if the card_id/category is invalid.
     Uses the full ``description`` field (ear-first narration text).
     """
+    no_tools = "Do NOT call push_creation_cards or any other tool — just narrate."
+
     if category == "race" and card_id in RACES:
         item = RACES[card_id]
         return (
-            f"The player is interested in the {item.name}. "
+            f"The player tapped the {item.name} card. "
             f"Describe what it feels like to be a {item.name} using this detail: {item.description} "
-            "Keep it to two vivid sentences. Then ask if this is what they feel."
+            f"Keep it to two vivid sentences. Then ask if this is what they feel. {no_tools}"
         )
     elif category == "class" and card_id in CLASSES:
         item = CLASSES[card_id]
         return (
-            f"The player is interested in the {item.name} ({item.category}). "
+            f"The player tapped the {item.name} card ({item.category}). "
             f"Describe the {item.name} using this detail: {item.description} "
-            "Keep it to two vivid sentences. Then ask if this is their calling."
+            f"Keep it to two vivid sentences. Then ask if this is their calling. {no_tools}"
         )
     elif category == "deity" and card_id in DEITIES:
         item = DEITIES[card_id]
@@ -52,12 +53,12 @@ def build_hint_instruction(card_id: str, category: str) -> str | None:
             return (
                 "The player is considering walking without a patron. "
                 f"Describe: {item.description} "
-                "Keep it to two sentences. Ask if they are sure."
+                f"Keep it to two sentences. Ask if they are sure. {no_tools}"
             )
         return (
-            f"The player is interested in {item.name}, {item.title}. "
+            f"The player tapped the {item.name} card, {item.title}. "
             f"Describe {item.name} using this detail: {item.description} "
-            "Keep it to two vivid sentences. Then ask if this god speaks to them."
+            f"Keep it to two vivid sentences. Then ask if this god speaks to them. {no_tools}"
         )
     return None
 
@@ -72,21 +73,27 @@ class CardTapHandler:
         self._last_hint_time: float = 0.0
 
     def start(self) -> None:
+        logger.info("CardTapHandler started, listening for data_received events")
         self._room.on("data_received", self._on_data_received)
 
     def stop(self) -> None:
         self._room.off("data_received", self._on_data_received)
 
     def _on_data_received(self, data: rtc.DataPacket) -> None:
+        logger.info("Data received: topic=%s", data.topic)
         if data.topic != PLAYER_HINTS_TOPIC:
             return
 
         now = time.time()
         if now - self._last_hint_time < HINT_COOLDOWN_S:
-            logger.debug("Card tap hint ignored (cooldown)")
+            logger.info("Card tap hint ignored (cooldown)")
             return
 
         if not self._userdata.in_creation:
+            logger.info(
+                "Card tap ignored: not in creation mode (phase=%s)",
+                getattr(self._userdata.creation_state, "phase", "N/A"),
+            )
             return
 
         try:
@@ -95,7 +102,10 @@ class CardTapHandler:
             logger.warning("Invalid card tap payload")
             return
 
+        logger.info("Card tap payload: %s", payload)
+
         if payload.get("type") != E.CREATION_CARD_TAP:
+            logger.info("Ignoring non-card-tap type: %s", payload.get("type"))
             return
 
         card_id = payload.get("card_id", "")
@@ -109,4 +119,4 @@ class CardTapHandler:
         self._last_hint_time = now
         logger.info("Card tap hint: %s/%s", category, card_id)
 
-        _task = asyncio.create_task(self._session.generate_reply(instructions=instruction))  # noqa: RUF006
+        self._session.generate_reply(instructions=instruction, tool_choice="none")

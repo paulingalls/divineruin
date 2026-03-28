@@ -498,7 +498,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
         # --- Character creation mode ---
         from card_tap_handler import CardTapHandler
         from creation_prompts import CREATION_SYSTEM_PROMPT
-        from creation_tools import finalize_character, push_creation_cards, set_creation_choice
+        from creation_tools import finalize_character, push_cards_to_client, push_creation_cards, set_creation_choice
 
         userdata = SessionData(
             player_id=player_id,
@@ -523,14 +523,23 @@ async def dm_session(ctx: agents.JobContext) -> None:
         card_tap = CardTapHandler(room=ctx.room, session=session, userdata=userdata)
         card_tap.start()
 
+        @ctx.room.on("data_received")
+        def _debug_data(packet):
+            logger.info("DEBUG data_received: topic=%s len=%d", packet.topic, len(packet.data))
+
         # Play prologue narration — skips ahead if the player speaks
         await play_prologue(session, ctx.room)
 
-        await session.generate_reply(
+        # Push race cards immediately so they're on screen regardless of
+        # whether the player interrupted the prologue or let it finish.
+        await push_cards_to_client("race", ctx.room, userdata.event_bus)
+
+        session.generate_reply(
             instructions=(
                 "The prologue has finished. Begin the Awakening phase. "
-                "Call push_creation_cards with category 'race', then ask the player "
-                "about their race using the sensory approach from your instructions."
+                "The race cards are already visible to the player. "
+                "Ask the player about their race using the sensory approach from your instructions. "
+                "Do NOT call push_creation_cards for race — the cards are already showing."
             ),
         )
     else:

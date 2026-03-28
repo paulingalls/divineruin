@@ -53,21 +53,11 @@ def _safe_id_snippet(value: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_\-]", "", value[:32])
 
 
-@function_tool
-async def push_creation_cards(
-    context: RunContext,
-    category: str,
-) -> str:
-    """Push visual cards to client and return full data for narration.
+def _build_cards_and_data(category: str) -> tuple[list[dict], list[dict]]:
+    """Build card payloads and full data for a creation category.
 
-    Args:
-        category: One of "race", "class", or "deity".
+    Returns (cards_for_client, full_data_for_llm).
     """
-    if category not in VALID_CARD_CATEGORIES:
-        return json.dumps({"error": f"Invalid category: {category}. Use: race, class, or deity."})
-
-    sd: SessionData = context.userdata
-
     if category == "race":
         items = RACES
         cards = [
@@ -96,7 +86,7 @@ async def push_creation_cards(
         full_data = [
             {"id": c.id, "name": c.name, "category": c.category, "description": c.description} for c in items.values()
         ]
-    else:  # deity
+    elif category == "deity":
         items = DEITIES
         cards = [
             {
@@ -112,6 +102,34 @@ async def push_creation_cards(
             {"id": d.id, "name": d.name, "title": d.title, "domain": d.domain, "description": d.description}
             for d in items.values()
         ]
+    else:
+        return [], []
+
+    return cards, full_data
+
+
+async def push_cards_to_client(category: str, room, event_bus=None) -> None:
+    """Push creation cards to the client without going through the LLM tool."""
+    cards, _ = _build_cards_and_data(category)
+    if cards:
+        await publish_game_event(room, E.CREATION_CARDS, {"cards": cards}, event_bus)
+
+
+@function_tool
+async def push_creation_cards(
+    context: RunContext,
+    category: str,
+) -> str:
+    """Push visual cards to client and return full data for narration.
+
+    Args:
+        category: One of "race", "class", or "deity".
+    """
+    if category not in VALID_CARD_CATEGORIES:
+        return json.dumps({"error": f"Invalid category: {category}. Use: race, class, or deity."})
+
+    sd: SessionData = context.userdata
+    cards, full_data = _build_cards_and_data(category)
 
     # Publish cards to client
     await publish_game_event(sd.room, E.CREATION_CARDS, {"cards": cards}, sd.event_bus)

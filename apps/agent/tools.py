@@ -5,6 +5,7 @@ import json
 import logging
 import re
 import uuid
+from typing import Literal
 
 from livekit.agents.llm import function_tool
 from livekit.agents.voice import RunContext
@@ -705,13 +706,27 @@ async def roll_dice(
     )
 
 
+SoundName = Literal[
+    "sword_clash",
+    "tavern",
+    "spell_cast",
+    "arrow_loose",
+    "hit_taken",
+    "shield_block",
+    "potion_use",
+    "door_creak",
+    "discovery_chime",
+    "notification",
+    "god_whisper_stinger",
+]
+
+
 @function_tool()
 async def play_sound(
     context: RunContext[SessionData],
-    sound_name: str,
+    sound_name: SoundName,
 ) -> str:
-    """Play a sound effect on the client. Provide a descriptive sound name
-    like 'sword_clash', 'door_creak', 'thunder', 'tavern_ambience'."""
+    """Play a sound effect on the client."""
     logger.info("play_sound called: sound_name=%s", sound_name)
     session: SessionData = context.userdata
 
@@ -729,24 +744,19 @@ async def play_sound(
     return json.dumps({"status": "playing", "sound_name": sound_name})
 
 
-_MUSIC_STATES_AGENT = {"wonder", "sorrow", "tension", "silence"}
+MusicStateName = Literal["wonder", "sorrow", "tension", "silence"]
 
 
 @function_tool()
 async def set_music_state(
     context: RunContext[SessionData],
-    music_state: str,
+    music_state: MusicStateName,
 ) -> str:
     """Set the background music mood. Use sparingly for specific emotional
-    moments the player should feel. Allowed values: 'wonder', 'sorrow',
-    'tension', 'silence'. Combat and exploration music are handled
+    moments the player should feel. Combat and exploration music are handled
     automatically — do not set those here."""
     logger.info("set_music_state called: music_state=%s", music_state)
     session: SessionData = context.userdata
-
-    if music_state not in _MUSIC_STATES_AGENT:
-        valid = ", ".join(sorted(_MUSIC_STATES_AGENT))
-        return json.dumps({"error": f"Invalid music_state '{music_state}'. Allowed: {valid}"})
 
     await publish_game_event(
         session.room,

@@ -11,7 +11,7 @@ function clamp01(value: number): number {
 const DEFAULTS: Record<Bus, number> = {
   master: 1.0,
   voice: 1.0,
-  music: 0.7,
+  music: 0.3,
   ambience: 0.8,
   effects: 1.0,
   ui: 0.8,
