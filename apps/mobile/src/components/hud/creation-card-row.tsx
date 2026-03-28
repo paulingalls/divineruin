@@ -40,15 +40,17 @@ function Card({
       >
         <CachedImage
           uri={card.imageUrl ?? null}
-          style={styles.artPlaceholder}
-          borderRadius={Radius.sm}
+          style={styles.cardImage}
+          borderRadius={Radius.md}
         />
-        <ThemedText style={styles.title} numberOfLines={1}>
-          {card.title}
-        </ThemedText>
-        <ThemedText style={styles.description} numberOfLines={4}>
-          {card.description}
-        </ThemedText>
+        <View style={styles.textOverlay}>
+          <ThemedText style={styles.title} numberOfLines={1}>
+            {card.title}
+          </ThemedText>
+          <ThemedText style={styles.description} numberOfLines={3}>
+            {card.description}
+          </ThemedText>
+        </View>
       </View>
     </Pressable>
   );
@@ -92,7 +94,11 @@ export function CreationCardRow() {
       testID="creation-card-row"
       style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
     >
-      {label ? <ThemedText style={styles.categoryLabel}>{label}</ThemedText> : null}
+      {label ? (
+        <View style={styles.categoryLabelBox}>
+          <ThemedText style={styles.categoryLabel}>{label}</ThemedText>
+        </View>
+      ) : null}
       <FlatList
         horizontal
         data={cards}
@@ -114,12 +120,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
+  categoryLabelBox: {
+    alignSelf: "center",
+    backgroundColor: "rgba(20, 20, 23, 0.75)",
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    marginBottom: Spacing.two,
+  },
   categoryLabel: {
     ...FontStyles.displayRegular,
     fontSize: 16,
-    color: BrandColors.ash,
+    color: BrandColors.parchment,
     textAlign: "center",
-    marginBottom: Spacing.two,
     letterSpacing: 1,
   },
   list: {
@@ -127,12 +140,13 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   card: {
-    width: 200,
+    width: 300,
+    height: 350,
     backgroundColor: BrandColors.ink,
     borderWidth: 1,
     borderColor: BrandColors.charcoal,
     borderRadius: Radius.md,
-    padding: Spacing.three,
+    overflow: "hidden",
   },
   cardSelected: {
     borderColor: BrandColors.hollow,
@@ -142,20 +156,35 @@ const styles = StyleSheet.create({
   cardUnselected: {
     opacity: 0.85,
   },
-  artPlaceholder: {
-    width: "100%",
-    height: 90,
-    marginBottom: Spacing.two,
+  cardImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  textOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(20, 20, 23, 0.75)",
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.three,
+    paddingHorizontal: Spacing.three,
   },
   title: {
     ...FontStyles.displayRegular,
-    fontSize: 18,
+    fontSize: 22,
+    lineHeight: 28,
     color: BrandColors.parchment,
   },
   description: {
     ...FontStyles.bodyLight,
-    fontSize: 14,
+    fontSize: 16,
+    lineHeight: 22,
     color: BrandColors.ash,
     marginTop: 4,
+    minHeight: 74,
   },
 });
