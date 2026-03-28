@@ -652,12 +652,12 @@ class TestSessionInitPortraits:
         assert "alert" in result["portraits"]["companion"]
         # Verify NPC portrait URLs are present
         assert "Guildmaster Torin" in result["portraits"]["npcs"]
-        assert result["portraits"]["npcs"]["Guildmaster Torin"].startswith("/api/assets/images/img_")
+        assert result["portraits"]["npcs"]["Guildmaster Torin"].startswith("/api/assets/images/npc_")
 
     def test_build_portraits_produces_valid_urls(self):
         """_build_portraits should produce /api/assets/images/ URLs."""
         result = db._build_portraits(None, "tavern")
-        assert result["companion"]["primary"].startswith("/api/assets/images/img_")
-        assert result["companion"]["alert"].startswith("/api/assets/images/img_")
+        assert result["companion"]["primary"].startswith("/api/assets/images/companion_")
+        assert result["companion"]["alert"].startswith("/api/assets/images/companion_")
         for url in result["npcs"].values():
-            assert url.startswith("/api/assets/images/img_")
+            assert url.startswith("/api/assets/images/npc_")

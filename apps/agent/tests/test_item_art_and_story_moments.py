@@ -129,7 +129,7 @@ class TestRecordStoryMoment:
         )
         assert result["recorded"] is True
         assert result["moment_key"] == "combat"
-        assert result["image_url"].startswith("/api/assets/images/img_")
+        assert result["image_url"].startswith("/api/assets/images/story_")
         mock_save.assert_called_once()
         call_kwargs = mock_save.call_args
         assert call_kwargs[1]["template_id"] == "story_combat" or call_kwargs[0][4] == "story_combat"

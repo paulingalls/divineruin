@@ -8,7 +8,7 @@ import logging
 import time
 
 import db
-from asset_utils import asset_url
+from asset_utils import slug_asset_url
 from llm_config import MODEL as _MODEL
 from llm_config import client as _client
 from llm_config import extract_llm_text
@@ -100,7 +100,7 @@ async def generate_session_summary(
         {
             "moment_key": m["moment_key"],
             "description": m["description"],
-            "image_url": asset_url(m["template_id"], {}) if m.get("template_id") else None,
+            "image_url": slug_asset_url(m["asset_id"]) if m.get("asset_id") else None,
         }
         for m in story_moments_raw
     ]

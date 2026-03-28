@@ -11,108 +11,30 @@ from contextlib import asynccontextmanager
 import asyncpg
 import redis.asyncio as aioredis
 
-from asset_utils import asset_url
+from asset_utils import asset_url, slug_asset_url
 
 logger = logging.getLogger("divineruin.db")
 
-# Pre-computed portrait URLs (deterministic — same inputs every time)
+# Pre-generated portrait URLs — slug-based, matching files in assets/images/
 _PORTRAITS_CACHE: dict = {
     "companion": {
-        "primary": asset_url("companion_portrait_primary", {}),
-        "alert": asset_url("companion_portrait_alert", {}),
+        "primary": slug_asset_url("companion_kael_primary"),
+        "alert": slug_asset_url("companion_kael_alert"),
     },
     "npcs": {
-        "Guildmaster Torin": asset_url(
-            "npc_portrait",
-            {
-                "description": "a broad-shouldered older man, guild leader",
-                "features": "weathered face, thick beard, shrewd eyes",
-            },
-        ),
-        "Elder Yanna": asset_url(
-            "npc_portrait",
-            {
-                "description": "an elderly woman, village elder",
-                "features": "deep-set wise eyes, silver hair, lined face",
-            },
-        ),
-        "Scholar Emris": asset_url(
-            "npc_portrait",
-            {
-                "description": "a young scholarly figure",
-                "features": "sharp focused eyes, ink-stained fingers, slight frame",
-            },
-        ),
-        "Wounded Rider": asset_url(
-            "npc_portrait",
-            {
-                "description": "a dust-caked young man, exhausted messenger",
-                "features": "bloodshot eyes, one arm in a sling, desperate expression",
-            },
-        ),
-        "Maren": asset_url(
-            "npc_portrait",
-            {
-                "description": "a sturdy woman in a flour-dusted apron, innkeeper",
-                "features": "sharp eyes with dark circles, hair pinned back, strong arms",
-            },
-        ),
-        "Investigator Valdris": asset_url(
-            "npc_portrait",
-            {
-                "description": "a man in an immaculate dark coat with silver clasp, investigator",
-                "features": "calculating eyes that miss nothing, manicured hands, temple insignia",
-            },
-        ),
-        "Grimjaw": asset_url(
-            "npc_portrait",
-            {
-                "description": "a barrel-chested dwarf blacksmith in a soot-streaked apron",
-                "features": "burn-scarred hands, beard braided tight, fierce focused eyes",
-            },
-        ),
-        "Bryn": asset_url(
-            "npc_portrait",
-            {
-                "description": "a broad-hipped woman with dark hair streaked grey, tavern keeper",
-                "features": "warm observant eyes, hands that never stop moving, knowing smile",
-            },
-        ),
-        "Warden Selene": asset_url(
-            "npc_portrait",
-            {
-                "description": "a tall Elari woman with silver-white hair in a single braid, temple warden",
-                "features": "serene distant gaze, robes that shift with light, eyes focused beyond you",
-            },
-        ),
-        "Aldric": asset_url(
-            "npc_portrait",
-            {
-                "description": "a gaunt hollow-eyed man sitting with unnatural stillness",
-                "features": "vacant stare, fingers twitching in patterns, something essential missing",
-            },
-        ),
-        "Nyx": asset_url(
-            "npc_portrait",
-            {
-                "description": "a lean sharp-featured woman who moves like smoke, operative",
-                "features": "cataloguing eyes, thin scar along jawline, dark clothes blending with shadow",
-            },
-        ),
-        "Archivist Theron": asset_url(
-            "npc_portrait",
-            {
-                "description": "a neat young scholar in immaculate robes, archivist",
-                "features": "spectacles, nervous eager expression, leather satchel, fidgeting hands",
-            },
-        ),
-        "Guild Master Dara": asset_url(
-            "npc_portrait",
-            {
-                "description": "a sturdy woman with calloused hands, guild master",
-                "features": "weathered honest face, guild chain with Aelora's mark, practical clothing",
-            },
-        ),
+        "Guildmaster Torin": slug_asset_url("npc_torin"),
+        "Elder Yanna": slug_asset_url("npc_yanna"),
+        "Scholar Emris": slug_asset_url("npc_emris"),
+        "Wounded Rider": slug_asset_url("npc_wounded_rider"),
+        "Maren": slug_asset_url("npc_maren"),
+        "Investigator Valdris": slug_asset_url("npc_valdris"),
+        "Grimjaw": slug_asset_url("npc_grimjaw"),
+        "Bryn": slug_asset_url("npc_bryn"),
+        "Warden Selene": slug_asset_url("npc_selene"),
+        "Aldric": slug_asset_url("npc_aldric"),
+        "Nyx": slug_asset_url("npc_nyx"),
+        "Archivist Theron": slug_asset_url("npc_theron"),
+        "Guild Master Dara": slug_asset_url("npc_dara"),
     },
 }
 

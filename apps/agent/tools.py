@@ -13,7 +13,7 @@ import db
 import dice
 import event_types as E
 import rules_engine
-from asset_utils import asset_url, compute_asset_id
+from asset_utils import slug_asset_url
 from db_errors import db_tool
 from game_events import publish_game_event
 from session_data import CombatParticipant, CombatState, SessionData
@@ -1469,11 +1469,11 @@ async def end_session(context: RunContext[SessionData], reason: str) -> str:
     )
 
 
-VALID_MOMENT_KEYS = {"combat", "hollow_encounter", "god_contact"}
-MOMENT_KEY_TO_TEMPLATE: dict[str, str] = {
-    "combat": "story_combat",
-    "hollow_encounter": "story_hollow_encounter",
-    "god_contact": "story_god_contact",
+STORY_MOMENTS: dict[str, tuple[str, str]] = {
+    # moment_key: (template_id, asset_slug)
+    "combat": ("story_combat", "story_combat_victory"),
+    "hollow_encounter": ("story_hollow_encounter", "story_hollow_encounter"),
+    "god_contact": ("story_god_contact", "story_god_contact"),
 }
 MAX_STORY_MOMENTS_PER_SESSION = 3
 
@@ -1490,18 +1490,17 @@ async def record_story_moment(
     moment_key must be one of: combat, hollow_encounter, god_contact.
     description is a brief (1-2 sentence) scene summary."""
     logger.info("record_story_moment called: moment_key=%s", moment_key)
-    if moment_key not in VALID_MOMENT_KEYS:
+    if moment_key not in STORY_MOMENTS:
         return json.dumps(
-            {"error": f"Invalid moment_key: '{moment_key}'. Must be one of: {', '.join(sorted(VALID_MOMENT_KEYS))}"}
+            {"error": f"Invalid moment_key: '{moment_key}'. Must be one of: {', '.join(sorted(STORY_MOMENTS))}"}
         )
     cap_err = _cap_str(description, 512, "description")
     if cap_err:
         return cap_err
 
     sd: SessionData = context.userdata
-    template_id = MOMENT_KEY_TO_TEMPLATE[moment_key]
-    asset_id = compute_asset_id(template_id, {})
-    image_url = asset_url(template_id, {})
+    template_id, asset_id = STORY_MOMENTS[moment_key]
+    image_url = slug_asset_url(asset_id)
 
     # Enforce per-session limit
     count = await db.count_session_story_moments(sd.session_id)

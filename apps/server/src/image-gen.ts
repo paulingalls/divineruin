@@ -30,8 +30,12 @@ export async function assetExists(assetId: string): Promise<boolean> {
 export async function generateImage(
   templateId: string,
   vars: Record<string, string>,
+  options?: { assetId?: string },
 ): Promise<{ assetId: string; path: string }> {
-  const assetId = computeAssetId(templateId, vars);
+  if (options?.assetId && !/^[a-zA-Z0-9_]+$/.test(options.assetId)) {
+    throw new Error(`Invalid assetId: ${options.assetId}`);
+  }
+  const assetId = options?.assetId ?? computeAssetId(templateId, vars);
   const path = getAssetPath(assetId);
 
   // Dedup: skip if already generated

@@ -498,4 +498,4 @@ class TestCreationCardsImageUrl:
         cards = cards_call[0][0][2]["cards"]
         for card in cards:
             assert "image_url" in card, f"Card {card['id']} missing image_url"
-            assert card["image_url"].startswith("/api/assets/images/img_")
+            assert card["image_url"].startswith(f"/api/assets/images/{category}_")
