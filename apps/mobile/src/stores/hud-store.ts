@@ -110,7 +110,7 @@ const INITIAL: Pick<
   selectedCreationCard: null,
 };
 
-export const hudStore = createStore<HudState>((set) => ({
+export const hudStore = createStore<HudState>((set, get) => ({
   ...INITIAL,
 
   pushOverlay: (type, payload, ttl = 3500) => {
@@ -156,7 +156,17 @@ export const hudStore = createStore<HudState>((set) => ({
   setCombatState: (state) => set({ combatState: state }),
   clearCombatState: () => set({ combatState: null }),
 
-  setCreationCards: (cards) => set({ creationCards: cards, selectedCreationCard: null }),
+  setCreationCards: (cards) => {
+    const current = get().creationCards;
+    if (
+      current.length === cards.length &&
+      current.length > 0 &&
+      current[0].category === cards[0]?.category
+    ) {
+      return;
+    }
+    set({ creationCards: cards, selectedCreationCard: null });
+  },
   setSelectedCreationCard: (id) => set({ selectedCreationCard: id }),
   clearCreationCards: () => set({ creationCards: [], selectedCreationCard: null }),
 

@@ -80,20 +80,15 @@ class CardTapHandler:
         self._room.off("data_received", self._on_data_received)
 
     def _on_data_received(self, data: rtc.DataPacket) -> None:
-        logger.info("Data received: topic=%s", data.topic)
         if data.topic != PLAYER_HINTS_TOPIC:
             return
 
         now = time.time()
         if now - self._last_hint_time < HINT_COOLDOWN_S:
-            logger.info("Card tap hint ignored (cooldown)")
+            logger.debug("Card tap hint ignored (cooldown)")
             return
 
         if not self._userdata.in_creation:
-            logger.info(
-                "Card tap ignored: not in creation mode (phase=%s)",
-                getattr(self._userdata.creation_state, "phase", "N/A"),
-            )
             return
 
         try:
@@ -102,10 +97,7 @@ class CardTapHandler:
             logger.warning("Invalid card tap payload")
             return
 
-        logger.info("Card tap payload: %s", payload)
-
         if payload.get("type") != E.CREATION_CARD_TAP:
-            logger.info("Ignoring non-card-tap type: %s", payload.get("type"))
             return
 
         card_id = payload.get("card_id", "")
@@ -119,4 +111,8 @@ class CardTapHandler:
         self._last_hint_time = now
         logger.info("Card tap hint: %s/%s", category, card_id)
 
-        self._session.generate_reply(instructions=instruction, tool_choice="none")
+        self._session.generate_reply(
+            user_input=f"[The player tapped the {card_id} card]",
+            instructions=instruction,
+            tool_choice="none",
+        )

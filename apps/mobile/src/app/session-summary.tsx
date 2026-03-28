@@ -7,6 +7,8 @@ import { useStore } from "zustand";
 
 import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
+import { hudStore } from "@/stores/hud-store";
+import { panelStore } from "@/stores/panel-store";
 import { sessionStore } from "@/stores/session-store";
 import { transcriptStore } from "@/stores/transcript-store";
 import { resolveLocationArt } from "@/constants/location-art-registry";
@@ -42,6 +44,16 @@ export default function SessionSummaryScreen() {
   useEffect(() => {
     if (!summary) handleReturn();
   }, [summary, handleReturn]);
+
+  // Clear stores on unmount in case the user navigates away without tapping Return
+  useEffect(() => {
+    return () => {
+      sessionStore.getState().reset();
+      transcriptStore.getState().clear();
+      hudStore.getState().reset();
+      panelStore.getState().reset();
+    };
+  }, []);
 
   if (!summary) {
     return null;

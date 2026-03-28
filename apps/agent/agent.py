@@ -115,6 +115,7 @@ class DungeonMasterAgent(Agent):
             tools=tools or ALL_TOOLS,
         )
         self._creation_mode = creation_mode
+        self._suppress_auto_reply: bool = False
         self._turn_timer = TurnTimer()
         self._background: BackgroundProcess | None = None
         self._affect_analyzer = PlayerAffectAnalyzer()
@@ -209,6 +210,13 @@ class DungeonMasterAgent(Agent):
     async def on_user_turn_completed(
         self, turn_ctx: agents.llm.ChatContext, new_message: agents.llm.ChatMessage
     ) -> None:
+        # During prologue playback, suppress the auto-reply — our code will
+        # handle the transition to creation after the prologue returns.
+        if self._suppress_auto_reply:
+            from livekit.agents import StopResponse
+
+            raise StopResponse()
+
         self._turn_timer.start()
         self._turn_timer.mark("user_turn_end")
 
@@ -510,38 +518,44 @@ async def dm_session(ctx: agents.JobContext) -> None:
         creation_tools = [push_creation_cards, set_creation_choice, finalize_character, play_sound, set_music_state]
         session = _make_agent_session("claude-sonnet-4-20250514", userdata)
 
-        await session.start(
-            room=ctx.room,
-            agent=DungeonMasterAgent(
-                instructions=CREATION_SYSTEM_PROMPT,
-                tools=creation_tools,
-                creation_mode=True,
-            ),
+        dm_agent = DungeonMasterAgent(
+            instructions=CREATION_SYSTEM_PROMPT,
+            tools=creation_tools,
+            creation_mode=True,
         )
+        # Suppress auto-replies during prologue so the player's interruption
+        # doesn't trigger a competing LLM response.
+        dm_agent._suppress_auto_reply = True
+
+        await session.start(room=ctx.room, agent=dm_agent)
 
         # Listen for card tap hints from the client
         card_tap = CardTapHandler(room=ctx.room, session=session, userdata=userdata)
         card_tap.start()
 
-        @ctx.room.on("data_received")
-        def _debug_data(packet):
-            logger.info("DEBUG data_received: topic=%s len=%d", packet.topic, len(packet.data))
-
-        # Play prologue narration — skips ahead if the player speaks
+        # Play prologue narration — skips ahead if the player speaks.
+        # Auto-reply is suppressed so the player's interruption speech
+        # doesn't trigger a competing LLM response with tool calls.
         await play_prologue(session, ctx.room)
 
-        # Push race cards immediately so they're on screen regardless of
-        # whether the player interrupted the prologue or let it finish.
+        # Push race cards so they're on screen regardless of interruption.
         await push_cards_to_client("race", ctx.room, userdata.event_bus)
+
+        # Wait for the end-of-utterance prediction to fire while suppress
+        # is still active — StopResponse kills the auto-reply.
+        await asyncio.sleep(0.5)
 
         session.generate_reply(
             instructions=(
                 "The prologue has finished. Begin the Awakening phase. "
-                "The race cards are already visible to the player. "
-                "Ask the player about their race using the sensory approach from your instructions. "
-                "Do NOT call push_creation_cards for race — the cards are already showing."
+                "The race cards are already visible to the player — "
+                "do NOT call push_creation_cards. "
+                "Ask the player about their race using the sensory approach "
+                "from your instructions."
             ),
+            tool_choice="none",
         )
+        dm_agent._suppress_auto_reply = False
     else:
         # --- Existing gameplay flow ---
         if last_summary is not None:

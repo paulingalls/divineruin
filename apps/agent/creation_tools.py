@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import re
+from typing import Literal
 
 from livekit.agents.llm import function_tool
 from livekit.agents.voice import RunContext
@@ -115,18 +116,16 @@ async def push_cards_to_client(category: str, room, event_bus=None) -> None:
         await publish_game_event(room, E.CREATION_CARDS, {"cards": cards}, event_bus)
 
 
+CardCategory = Literal["class", "deity"]
+
+
 @function_tool
 async def push_creation_cards(
     context: RunContext,
-    category: str,
+    category: CardCategory,
 ) -> str:
     """Push visual cards to client and return full data for narration.
-
-    Args:
-        category: One of "race", "class", or "deity".
-    """
-    if category not in VALID_CARD_CATEGORIES:
-        return json.dumps({"error": f"Invalid category: {category}. Use: race, class, or deity."})
+    Race cards are shown automatically — only call this for class and deity phases."""
 
     sd: SessionData = context.userdata
     cards, full_data = _build_cards_and_data(category)

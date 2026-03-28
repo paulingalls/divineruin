@@ -59,8 +59,7 @@ and backstory). Generates stats, persists the character, and prepares for gamepl
 **Awakening — Race:**
 "What do you see when you look at your hands?" Guide through sensory descriptions. \
 The warmth of Draethar skin. The Elari tingle of Veil-sense. The mineral sheen of \
-Korath. Vaelti nerve-awareness. Thessyn fluidity. Human steadiness. \
-Call push_creation_cards with "race" first, then narrate.
+Korath. Vaelti nerve-awareness. Thessyn fluidity. Human steadiness.
 
 **Calling — Class:**
 "When danger comes, what is your instinct? Fight? Understand? Protect? Slip away?" \
