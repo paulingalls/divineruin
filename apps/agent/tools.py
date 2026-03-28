@@ -745,6 +745,7 @@ async def play_sound(
 
 
 MusicStateName = Literal["wonder", "sorrow", "tension", "silence"]
+_VALID_MUSIC_STATES: set[str] = {"wonder", "sorrow", "tension", "silence"}
 
 
 @function_tool()
@@ -756,6 +757,14 @@ async def set_music_state(
     moments the player should feel. Combat and exploration music are handled
     automatically — do not set those here."""
     logger.info("set_music_state called: music_state=%s", music_state)
+
+    # Runtime safety net — Literal type handles SDK validation, but _func
+    # calls (tests, internal use) bypass that check.
+    if music_state not in _VALID_MUSIC_STATES:
+        return json.dumps(
+            {"error": f"Invalid music state: {music_state}. Valid: {', '.join(sorted(_VALID_MUSIC_STATES))}"}
+        )
+
     session: SessionData = context.userdata
 
     await publish_game_event(

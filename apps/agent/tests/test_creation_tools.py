@@ -51,10 +51,12 @@ class TestPushCreationCards:
         assert "none" in ids
         assert "kaelen" in ids
 
-    async def test_invalid_category_returns_error(self):
+    async def test_invalid_category_returns_empty(self):
+        """Literal type validates at SDK level; _func bypass returns empty data."""
         ctx = _make_context()
         result = json.loads(await push_creation_cards._func(ctx, category="invalid"))
-        assert "error" in result
+        assert result["count"] == 0
+        assert result["options"] == []
 
     async def test_race_cards_have_descriptions(self):
         ctx = _make_context()

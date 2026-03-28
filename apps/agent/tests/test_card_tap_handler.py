@@ -2,7 +2,7 @@
 
 import json
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -116,40 +116,37 @@ class TestCardTapHandler:
         handler._on_data_received(pkt)
         session.generate_reply.assert_not_called()
 
-    @patch("card_tap_handler.asyncio")
-    def test_valid_hint_triggers_generate_reply(self, mock_asyncio):
-        handler, _session = _make_handler()
+    def test_valid_hint_triggers_generate_reply(self):
+        handler, session = _make_handler()
         pkt = _make_data_packet({"type": "creation_card_tap", "card_id": "warrior", "category": "class"})
         handler._on_data_received(pkt)
-        mock_asyncio.create_task.assert_called_once()
-        call_args = mock_asyncio.create_task.call_args[0][0]
-        # The coroutine was created with the right instruction
-        assert call_args is not None
+        session.generate_reply.assert_called_once()
+        call_kwargs = session.generate_reply.call_args[1]
+        assert "user_input" in call_kwargs
+        assert call_kwargs["tool_choice"] == "none"
 
-    @patch("card_tap_handler.asyncio")
-    def test_cooldown_prevents_rapid_hints(self, mock_asyncio):
-        handler, _session = _make_handler()
+    def test_cooldown_prevents_rapid_hints(self):
+        handler, session = _make_handler()
         pkt = _make_data_packet({"type": "creation_card_tap", "card_id": "elari", "category": "race"})
 
         handler._on_data_received(pkt)
-        assert mock_asyncio.create_task.call_count == 1
+        assert session.generate_reply.call_count == 1
 
         # Second tap within cooldown window
         handler._on_data_received(pkt)
-        assert mock_asyncio.create_task.call_count == 1  # still 1
+        assert session.generate_reply.call_count == 1  # still 1
 
-    @patch("card_tap_handler.asyncio")
-    def test_hint_after_cooldown_succeeds(self, mock_asyncio):
-        handler, _session = _make_handler()
+    def test_hint_after_cooldown_succeeds(self):
+        handler, session = _make_handler()
         pkt = _make_data_packet({"type": "creation_card_tap", "card_id": "elari", "category": "race"})
 
         handler._on_data_received(pkt)
-        assert mock_asyncio.create_task.call_count == 1
+        assert session.generate_reply.call_count == 1
 
         # Simulate cooldown expiry
         handler._last_hint_time = time.time() - HINT_COOLDOWN_S - 1
         handler._on_data_received(pkt)
-        assert mock_asyncio.create_task.call_count == 2
+        assert session.generate_reply.call_count == 2
 
     def test_start_registers_listener(self):
         handler, _ = _make_handler()
