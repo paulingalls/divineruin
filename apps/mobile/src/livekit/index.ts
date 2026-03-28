@@ -7,3 +7,5 @@ export {
   useDataChannel,
   type ReceivedDataMessage,
 } from "@livekit/react-native";
+
+export { useMaybeRoomContext } from "@livekit/components-react";
