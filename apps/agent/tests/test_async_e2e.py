@@ -97,15 +97,18 @@ class TestFullPipeline:
             ):
                 await _resolve_single_activity(activity)
 
-        assert len(update_calls) == 1
-        activity_id, updates = update_calls[0]
-        assert activity_id == "activity_e2e_craft"
-        assert updates["status"] == "resolved"
-        assert updates["narration_text"] is not None
-        assert "Grimjaw" in updates["narration_text"]
-        assert updates["narration_audio_url"] == "/api/audio/activity_e2e_craft.mp3"
-        assert updates["outcome"]["tier"] in ("success", "partial", "unexpected", "failure")
-        assert len(updates["decision_options"]) >= 2
+        assert len(update_calls) == 2
+        # First call: cache outcome + narration
+        cache_id, cached = update_calls[0]
+        assert cache_id == "activity_e2e_craft"
+        assert cached["narration_text"] is not None
+        assert "Grimjaw" in cached["narration_text"]
+        assert cached["outcome"]["tier"] in ("success", "partial", "unexpected", "failure")
+        assert len(cached["decision_options"]) >= 2
+        # Second call: mark resolved with audio
+        _, resolved = update_calls[1]
+        assert resolved["status"] == "resolved"
+        assert resolved["narration_audio_url"] == "/api/audio/activity_e2e_craft.mp3"
 
     @pytest.mark.asyncio
     async def test_training_e2e(self):
@@ -143,11 +146,12 @@ class TestFullPipeline:
         ):
             await _resolve_single_activity(activity)
 
-        assert len(update_calls) == 1
-        updates = update_calls[0][1]
-        assert updates["status"] == "resolved"
-        assert updates["outcome"]["tier"] in ("breakthrough", "plateau", "redirection")
-        assert "stat_gains" in updates["outcome"]
+        assert len(update_calls) == 2
+        cached = update_calls[0][1]
+        assert cached["outcome"]["tier"] in ("breakthrough", "plateau", "redirection")
+        assert "stat_gains" in cached["outcome"]
+        resolved = update_calls[1][1]
+        assert resolved["status"] == "resolved"
 
     @pytest.mark.asyncio
     async def test_companion_errand_e2e(self):
@@ -186,11 +190,13 @@ class TestFullPipeline:
         ):
             await _resolve_single_activity(activity)
 
-        updates = update_calls[0][1]
-        assert updates["status"] == "resolved"
-        assert updates["outcome"]["errand_type"] == "scout"
-        assert "information_gained" in updates["outcome"]
-        assert "narrative_context" in updates["outcome"]
+        assert len(update_calls) == 2
+        cached = update_calls[0][1]
+        assert cached["outcome"]["errand_type"] == "scout"
+        assert "information_gained" in cached["outcome"]
+        resolved = update_calls[1][1]
+        assert resolved["status"] == "resolved"
+        assert "narrative_context" in cached["outcome"]
 
     @pytest.mark.asyncio
     async def test_batch_resolution(self):

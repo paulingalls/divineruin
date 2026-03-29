@@ -107,15 +107,19 @@ class TestResolveSingleActivity:
         ):
             await _resolve_single_activity(SAMPLE_ACTIVITY)
 
-        mock_update.assert_awaited_once()
-        call_args = mock_update.call_args
-        assert call_args[0][0] == "activity_abc123"
-        updates = call_args[0][1]
-        assert updates["status"] == "resolved"
-        assert updates["narration_text"] == "[NPC:Grimjaw] The blade sings."
-        assert updates["narration_audio_url"] == "/api/audio/activity_abc123.mp3"
-        assert "outcome" in updates
-        assert "decision_options" in updates
+        assert mock_update.await_count == 2
+        # First call: cache outcome + narration
+        cache_call = mock_update.call_args_list[0]
+        assert cache_call[0][0] == "activity_abc123"
+        cached = cache_call[0][1]
+        assert "outcome" in cached
+        assert cached["narration_text"] == "[NPC:Grimjaw] The blade sings."
+        assert "decision_options" in cached
+        # Second call: mark resolved with audio
+        resolve_call = mock_update.call_args_list[1]
+        resolved = resolve_call[0][1]
+        assert resolved["status"] == "resolved"
+        assert resolved["narration_audio_url"] == "/api/audio/activity_abc123.mp3"
 
     @pytest.mark.asyncio
     async def test_training_resolution(self):
@@ -142,9 +146,10 @@ class TestResolveSingleActivity:
         ):
             await _resolve_single_activity(activity)
 
-        updates = mock_update.call_args[0][1]
-        assert updates["status"] == "resolved"
-        assert updates["outcome"]["tier"] in ("breakthrough", "plateau", "redirection")
+        resolve_call = mock_update.call_args_list[1]
+        assert resolve_call[0][1]["status"] == "resolved"
+        cache_call = mock_update.call_args_list[0]
+        assert cache_call[0][1]["outcome"]["tier"] in ("breakthrough", "plateau", "redirection")
 
     @pytest.mark.asyncio
     async def test_companion_errand_resolution(self):
@@ -184,9 +189,10 @@ class TestResolveSingleActivity:
         ):
             await _resolve_single_activity(activity)
 
-        updates = mock_update.call_args[0][1]
-        assert updates["status"] == "resolved"
-        assert updates["outcome"]["errand_type"] == "scout"
+        resolve_call = mock_update.call_args_list[1]
+        assert resolve_call[0][1]["status"] == "resolved"
+        cache_call = mock_update.call_args_list[0]
+        assert cache_call[0][1]["outcome"]["errand_type"] == "scout"
 
     @pytest.mark.asyncio
     async def test_does_not_update_on_narration_failure(self):
@@ -204,8 +210,8 @@ class TestResolveSingleActivity:
         mock_update.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_does_not_update_on_tts_failure(self):
-        """If TTS fails, the activity stays in_progress for retry."""
+    async def test_caches_narration_on_tts_failure(self):
+        """If TTS fails, outcome and narration are cached but status stays in_progress."""
         with (
             patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch("async_worker.generate_activity_narration", new_callable=AsyncMock, return_value="Text."),
@@ -215,7 +221,12 @@ class TestResolveSingleActivity:
             with pytest.raises(RuntimeError):
                 await _resolve_single_activity(SAMPLE_ACTIVITY)
 
-        mock_update.assert_not_awaited()
+        # Cache write should happen, but not the resolve write
+        mock_update.assert_awaited_once()
+        cached = mock_update.call_args[0][1]
+        assert "outcome" in cached
+        assert cached["narration_text"] == "Text."
+        assert "status" not in cached
 
     @pytest.mark.asyncio
     async def test_handles_missing_player_data(self):
@@ -230,9 +241,9 @@ class TestResolveSingleActivity:
         ):
             await _resolve_single_activity(SAMPLE_ACTIVITY)
 
-        mock_update.assert_awaited_once()
-        updates = mock_update.call_args[0][1]
-        assert updates["status"] == "resolved"
+        assert mock_update.await_count == 2
+        resolve_call = mock_update.call_args_list[1]
+        assert resolve_call[0][1]["status"] == "resolved"
 
 
 # --- check_god_whisper_triggers ---

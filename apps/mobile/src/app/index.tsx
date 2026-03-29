@@ -16,7 +16,9 @@ import { useCatchUp } from "@/hooks/use-catchup";
 import { useActivityActions } from "@/hooks/use-activity-actions";
 import { characterStore } from "@/stores/character-store";
 import { playNarration, stopNarration, onNarrationStateChange } from "@/audio/narration-player";
-import { getPlayerId } from "@/utils/api";
+import { configureAudioSession } from "@/audio/audio-config";
+import { getPlayerId, API_BASE } from "@/utils/api";
+import { resolveApiUrl } from "@/utils/base-url";
 import { BrandColors, MaxContentWidth, Spacing, Radius, FontStyles } from "@/constants/theme";
 
 const LANDSCAPE_THRESHOLD = 1.2;
@@ -41,7 +43,8 @@ export default function HomeScreen() {
   }, []);
 
   const handlePlay = useCallback((audioUrl: string) => {
-    playNarration(audioUrl);
+    void configureAudioSession();
+    playNarration(resolveApiUrl(audioUrl, API_BASE));
   }, []);
 
   const handleStop = useCallback(() => {

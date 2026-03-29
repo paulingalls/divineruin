@@ -19,6 +19,7 @@ void mock.module("expo-audio", () => ({
     },
     volume: 1,
   }),
+  setAudioModeAsync: () => Promise.resolve(),
 }));
 
 const { playNarration, stopNarration, getNarrationState, onNarrationStateChange } =

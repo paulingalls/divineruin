@@ -5,6 +5,8 @@ import { ThemedText } from "@/components/themed-text";
 import { CatchUpCardView } from "@/components/catchup-card";
 import { catchupStore } from "@/stores/catchup-store";
 import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
+import { API_BASE } from "@/utils/api";
+import { resolveApiUrl } from "@/utils/base-url";
 
 interface CatchUpListProps {
   onDecision?: (activityId: string, decisionId: string) => void;
@@ -80,7 +82,13 @@ export function CatchUpList({
           <CatchUpCardView
             key={card.id}
             card={card}
-            isPlaying={!!(playingAudioUrl && card.audioUrl === playingAudioUrl)}
+            isPlaying={
+              !!(
+                playingAudioUrl &&
+                card.audioUrl &&
+                resolveApiUrl(card.audioUrl, API_BASE) === playingAudioUrl
+              )
+            }
             onPlay={onPlay}
             onStop={onStop}
             onDecision={onDecision}

@@ -67,25 +67,44 @@ async def _resolve_single_activity(activity: dict) -> None:
 
     logger.info("Resolving activity %s (type=%s, player=%s)", activity_id, activity_type, player_id)
 
-    # Load player data
-    player_data = await db.get_player(player_id) or {}
+    # Check for cached narration from a previous partial resolve (e.g. TTS failed)
+    cached_outcome = activity.get("outcome")
+    cached_narration = activity.get("narration_text")
 
-    # Compute outcome using rules engine
-    if activity_type == "crafting":
-        outcome = resolve_crafting(player_data, parameters)
-    elif activity_type == "training":
-        outcome = resolve_training(player_data, parameters)
-    elif activity_type == "companion_errand":
-        companion_data = player_data.get("companion", {})
-        outcome = resolve_companion_errand(companion_data, parameters)
+    if cached_outcome and cached_narration:
+        logger.info("Using cached narration for %s (TTS retry)", activity_id)
+        outcome_dict = cached_outcome
+        narration_text = cached_narration
     else:
-        logger.error("Unknown activity type: %s", activity_type)
-        return
+        # Load player data
+        player_data = await db.get_player(player_id) or {}
 
-    outcome_dict = asdict(outcome)
+        # Compute outcome using rules engine
+        if activity_type == "crafting":
+            outcome = resolve_crafting(player_data, parameters)
+        elif activity_type == "training":
+            outcome = resolve_training(player_data, parameters)
+        elif activity_type == "companion_errand":
+            companion_data = player_data.get("companion", {})
+            outcome = resolve_companion_errand(companion_data, parameters)
+        else:
+            logger.error("Unknown activity type: %s", activity_type)
+            return
 
-    # Generate narration via LLM
-    narration_text = await generate_activity_narration(outcome_dict, player_data, activity)
+        outcome_dict = asdict(outcome)
+
+        # Generate narration via LLM
+        narration_text = await generate_activity_narration(outcome_dict, player_data, activity)
+
+        # Cache outcome + narration so retries skip the LLM call
+        await db.update_activity(
+            activity_id,
+            {
+                "outcome": outcome_dict,
+                "narration_text": narration_text,
+                "decision_options": outcome_dict.get("decision_options", []),
+            },
+        )
 
     # Pre-render audio with voice swapping for dialogue tags
     audio_filename = f"{activity_id}.mp3"
@@ -93,15 +112,12 @@ async def _resolve_single_activity(activity: dict) -> None:
     await synthesize_multi_voice(narration_text, audio_path)
     audio_url = audio_url_for(audio_filename)
 
-    # Update activity in DB with all results
+    # Mark fully resolved
     await db.update_activity(
         activity_id,
         {
             "status": "resolved",
-            "outcome": outcome_dict,
-            "narration_text": narration_text,
             "narration_audio_url": audio_url,
-            "decision_options": outcome_dict.get("decision_options", []),
         },
     )
 
