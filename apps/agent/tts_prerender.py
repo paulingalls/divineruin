@@ -17,7 +17,9 @@ from functools import partial
 
 import aiohttp
 
+from dialogue_parser import Segment, parse_dialogue_stream
 from tts_pauses import chunk_text_with_pauses
+from voices import get_voice_config
 
 logger = logging.getLogger("divineruin.tts_prerender")
 
@@ -213,6 +215,57 @@ def _generate_mp3_silence(seconds: float) -> bytes:
     finally:
         with contextlib.suppress(OSError):
             os.unlink(tmp_path)
+
+
+async def _text_to_async_iter(text: str) -> AsyncIterator[str]:
+    """Wrap a string as a single-chunk async iterator for the dialogue parser."""
+    yield text
+
+
+async def synthesize_multi_voice(
+    narration_text: str,
+    output_path: str,
+) -> str:
+    """Synthesize narration with voice swapping based on dialogue tags.
+
+    Parses [CHARACTER, emotion]: "dialogue" tags and synthesizes each segment
+    with the correct Inworld voice. Untagged text uses the DM narrator voice.
+
+    Returns the filename (not full path) for URL construction.
+    """
+    _validate_output_path(output_path)
+
+    segments: list[Segment] = []
+    async for segment in parse_dialogue_stream(_text_to_async_iter(narration_text)):
+        if segment.text.strip():
+            segments.append(segment)
+
+    if not segments:
+        raise RuntimeError("No dialogue segments found in narration text")
+
+    mp3_parts: list[bytes] = []
+    async with aiohttp.ClientSession() as session:
+        for segment in segments:
+            cfg = get_voice_config(segment.character, segment.emotion)
+            audio = await inworld_tts(
+                segment.text,
+                cfg.voice,
+                speaking_rate=cfg.speaking_rate,
+                session=session,
+            )
+            mp3_parts.append(audio)
+
+    combined = b"".join(mp3_parts)
+    combined = _reencode_mp3(combined)
+
+    filename = _write_mp3(output_path, combined)
+    logger.info(
+        "Audio rendered multi-voice: %s (%d bytes, %d segments)",
+        filename,
+        len(combined),
+        len(segments),
+    )
+    return filename
 
 
 async def synthesize_with_pauses(

@@ -2,6 +2,8 @@ import { useState, useCallback } from "react";
 import { catchupStore } from "@/stores/catchup-store";
 import { API_BASE, authHeaders } from "@/utils/api";
 import { fetchCards } from "@/hooks/use-catchup";
+import { playSfx } from "@/audio/sfx-player";
+import { hapticSuccess } from "@/audio/haptics";
 
 export function useActivityActions() {
   const [decisionLoading, setDecisionLoading] = useState(false);
@@ -9,9 +11,11 @@ export function useActivityActions() {
   const submitDecision = useCallback(async (activityId: string, decisionId: string) => {
     setDecisionLoading(true);
 
-    // Optimistically remove the card
+    // Optimistic removal with immediate feedback
     const previousCards = catchupStore.getState().cards;
     catchupStore.getState().removeCard(activityId);
+    playSfx("success_sting");
+    hapticSuccess();
 
     try {
       const res = await fetch(`${API_BASE}/api/activities/${activityId}/decide`, {
@@ -29,6 +33,7 @@ export function useActivityActions() {
     } catch {
       // Restore on failure
       catchupStore.getState().setCards(previousCards);
+      playSfx("fail_sting");
     } finally {
       setDecisionLoading(false);
     }

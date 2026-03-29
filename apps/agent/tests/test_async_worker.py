@@ -100,7 +100,7 @@ class TestResolveSingleActivity:
                 new_callable=AsyncMock,
                 return_value="[NPC:Grimjaw] The blade sings.",
             ),
-            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
+            patch("async_worker.synthesize_multi_voice", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Blade ready."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
@@ -135,7 +135,7 @@ class TestResolveSingleActivity:
             patch(
                 "async_worker.generate_activity_narration", new_callable=AsyncMock, return_value="Training narration."
             ),
-            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
+            patch("async_worker.synthesize_multi_voice", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Training done."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
@@ -177,7 +177,7 @@ class TestResolveSingleActivity:
         with (
             patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=player_with_companion),
             patch("async_worker.generate_activity_narration", new_callable=AsyncMock, return_value="Kael returns."),
-            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
+            patch("async_worker.synthesize_multi_voice", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Kael returns."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
@@ -209,7 +209,7 @@ class TestResolveSingleActivity:
         with (
             patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch("async_worker.generate_activity_narration", new_callable=AsyncMock, return_value="Text."),
-            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, side_effect=RuntimeError("TTS down")),
+            patch("async_worker.synthesize_multi_voice", new_callable=AsyncMock, side_effect=RuntimeError("TTS down")),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
         ):
             with pytest.raises(RuntimeError):
@@ -223,7 +223,7 @@ class TestResolveSingleActivity:
         with (
             patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=None),
             patch("async_worker.generate_activity_narration", new_callable=AsyncMock, return_value="Narration."),
-            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
+            patch("async_worker.synthesize_multi_voice", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Update."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),

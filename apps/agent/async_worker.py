@@ -11,12 +11,11 @@ import os
 from dataclasses import asdict
 
 import db
-from activity_templates import get_companion_context, get_crafting_npc, get_training_mentor
 from async_rules import resolve_companion_errand, resolve_crafting, resolve_training
 from llm_config import AUDIO_DIR, audio_url_for
 from narration import generate_activity_narration, generate_notification_hook, generate_progress_snippets
 from push import send_push_notification
-from tts_prerender import synthesize_to_file
+from tts_prerender import synthesize_multi_voice
 from world_news import generate_world_news
 
 logger = logging.getLogger("divineruin.async_worker")
@@ -51,7 +50,7 @@ async def resolve_due_activities() -> int:
             try:
                 await generate_world_news(pid)
             except Exception:
-                logger.warning("Failed to generate world news for %s", pid)
+                logger.warning("Failed to generate world news for %s", pid, exc_info=True)
 
     # Backfill progress snippets for remaining in-progress activities (skip just-resolved ones)
     await _backfill_progress_snippets(exclude_ids=due_ids)
@@ -88,11 +87,10 @@ async def _resolve_single_activity(activity: dict) -> None:
     # Generate narration via LLM
     narration_text = await generate_activity_narration(outcome_dict, player_data, activity)
 
-    # Pre-render audio
-    voice_id = _get_voice_id(activity_type, parameters, outcome_dict)
+    # Pre-render audio with voice swapping for dialogue tags
     audio_filename = f"{activity_id}.mp3"
     audio_path = os.path.join(AUDIO_DIR, audio_filename)
-    await synthesize_to_file(narration_text, voice_id, audio_path)
+    await synthesize_multi_voice(narration_text, audio_path)
     audio_url = audio_url_for(audio_filename)
 
     # Update activity in DB with all results
@@ -154,20 +152,6 @@ async def _backfill_progress_snippets(exclude_ids: set[str] | None = None) -> No
             logger.info("Generated progress snippets for %s", row["id"])
         except Exception:
             logger.warning("Failed to generate progress snippets for %s", row["id"])
-
-
-def _get_voice_id(activity_type: str, parameters: dict, outcome: dict) -> str:
-    """Determine the voice ID for TTS based on activity type."""
-    ctx = outcome.get("narrative_context", {})
-    if activity_type == "crafting":
-        npc = get_crafting_npc(ctx.get("npc_id", "grimjaw_blacksmith"))
-        return npc["voice_id"]
-    elif activity_type == "training":
-        mentor = get_training_mentor(ctx.get("mentor_id", "guildmaster_torin"))
-        return mentor["voice_id"]
-    else:
-        companion = get_companion_context(ctx.get("companion_id", "companion_kael"))
-        return companion["voice_id"]
 
 
 async def check_god_whisper_triggers() -> int:

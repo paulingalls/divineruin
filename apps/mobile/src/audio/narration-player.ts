@@ -1,5 +1,13 @@
 import { createAudioPlayer, type AudioPlayer } from "expo-audio";
+import { configureAudioSession } from "./audio-config";
 import { getEffectiveVolume } from "./volume";
+import { API_BASE } from "@/utils/api";
+
+/** Resolve a relative API path to a full URL for audio playback. */
+function resolveAudioUrl(url: string): string {
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_BASE}${url}`;
+}
 
 type NarrationState = {
   playing: boolean;
@@ -40,12 +48,15 @@ function _cleanup() {
 
 export function playNarration(url: string): void {
   console.log("[narration] playNarration called with url:", url);
+  // Ensure audio plays through silent switch
+  void configureAudioSession();
+
   // Stop any existing playback first
   if (_player) {
     _cleanup();
   }
 
-  _player = createAudioPlayer({ uri: url });
+  _player = createAudioPlayer({ uri: resolveAudioUrl(url) });
   _player.volume = getEffectiveVolume("voice");
   _currentUrl = url;
   console.log("[narration] volume:", _player.volume, "playing:", _player.playing);

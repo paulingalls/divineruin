@@ -110,7 +110,6 @@ const PANEL_ICONS: {
   tab: PanelTab;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
 }[] = [
-  { tab: "character", icon: "shield-sword-outline" },
   { tab: "inventory", icon: "bag-personal-outline" },
   { tab: "quests", icon: "script-text-outline" },
   { tab: "map", icon: "compass-outline" },
@@ -126,7 +125,7 @@ function PanelAccessIcons() {
         <Pressable key={tab} hitSlop={8} onPress={() => panelStore.getState().openPanel(tab)}>
           <MaterialCommunityIcons
             name={icon}
-            size={22}
+            size={28}
             color={isOpen && activeTab === tab ? BrandColors.hollow : BrandColors.ash}
           />
         </Pressable>
@@ -142,16 +141,23 @@ function CharacterIdentity({ trailing }: { trailing?: ReactNode }) {
 
   return (
     <View style={styles.identityRow}>
-      <CachedImage
-        uri={
-          character.portraitUrl ? `${API_BASE}${character.portraitUrl.replace(/^"|"$/g, "")}` : null
-        }
-        style={styles.portrait}
-        borderRadius={Radius.sm}
-      />
-      <ThemedText variant="label" numberOfLines={1} style={styles.characterName}>
-        {character.name}
-      </ThemedText>
+      <Pressable
+        style={styles.identityTappable}
+        onPress={() => panelStore.getState().openPanel("character")}
+      >
+        <CachedImage
+          uri={
+            character.portraitUrl
+              ? `${API_BASE}${character.portraitUrl.replace(/^"|"$/g, "")}`
+              : null
+          }
+          style={styles.portrait}
+          borderRadius={Radius.sm}
+        />
+        <ThemedText variant="label" numberOfLines={1} style={styles.characterName}>
+          {character.name}
+        </ThemedText>
+      </Pressable>
       {trailing}
     </View>
   );
@@ -214,22 +220,28 @@ const styles = StyleSheet.create({
   identityRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.two,
+  },
+  identityTappable: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.three,
+    flex: 1,
   },
   portrait: {
-    width: 36,
-    height: 36,
+    width: 48,
+    height: 48,
   },
   characterName: {
     flex: 1,
     ...FontStyles.displayRegular,
-    fontSize: 18,
+    fontSize: 22,
     color: BrandColors.parchment,
   },
   panelIcons: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.three,
+    gap: Spacing.four,
+    paddingVertical: Spacing.one,
   },
   voiceGroup: {
     flexDirection: "row",

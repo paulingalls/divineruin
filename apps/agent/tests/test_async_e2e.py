@@ -83,7 +83,9 @@ class TestFullPipeline:
                     new_callable=AsyncMock,
                     return_value="[NPC:Grimjaw] The blade holds true. A fine piece of work, recruit. [NARRATOR] The iron sword gleams.",
                 ),
-                patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_e2e_craft.mp3"),
+                patch(
+                    "async_worker.synthesize_multi_voice", new_callable=AsyncMock, return_value="activity_e2e_craft.mp3"
+                ),
                 patch("async_worker.db.update_activity", side_effect=mock_update),
                 patch("async_worker.AUDIO_DIR", tmpdir),
                 patch(
@@ -134,7 +136,7 @@ class TestFullPipeline:
                 new_callable=AsyncMock,
                 return_value="[NPC:Torin] Again. Better.",
             ),
-            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_e2e_train.mp3"),
+            patch("async_worker.synthesize_multi_voice", new_callable=AsyncMock, return_value="activity_e2e_train.mp3"),
             patch("async_worker.db.update_activity", side_effect=mock_update),
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Training complete."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
@@ -175,7 +177,9 @@ class TestFullPipeline:
                 new_callable=AsyncMock,
                 return_value="[NPC:Kael] Found tracks north.",
             ),
-            patch("async_worker.synthesize_to_file", new_callable=AsyncMock, return_value="activity_e2e_errand.mp3"),
+            patch(
+                "async_worker.synthesize_multi_voice", new_callable=AsyncMock, return_value="activity_e2e_errand.mp3"
+            ),
             patch("async_worker.db.update_activity", side_effect=mock_update),
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Kael returns."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),

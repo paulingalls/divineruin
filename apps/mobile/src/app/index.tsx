@@ -10,6 +10,7 @@ import { TitleBar } from "@/components/title-bar";
 import { TopBar } from "@/components/hud/top-bar";
 import { CatchUpList } from "@/components/catchup-list";
 import { ActivityLauncher } from "@/components/activity-launcher";
+import { PanelShell } from "@/components/hud/panel-shell";
 import { useCharacter } from "@/hooks/use-character";
 import { useCatchUp } from "@/hooks/use-catchup";
 import { useActivityActions } from "@/hooks/use-activity-actions";
@@ -107,6 +108,7 @@ export default function HomeScreen() {
             <View style={styles.landscapeRight}>{enterButton}</View>
           </View>
         </SafeAreaView>
+        <PanelShell />
       </ThemedView>
     );
   }
@@ -126,6 +128,7 @@ export default function HomeScreen() {
         </ScrollView>
         <View style={styles.stickyFooter}>{enterButton}</View>
       </SafeAreaView>
+      <PanelShell />
     </ThemedView>
   );
 }

@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/themed-text";
 import type { CatchUpCard } from "@/stores/catchup-store";
@@ -33,6 +35,7 @@ export function CatchUpCardView({
   decisionLoading,
 }: CatchUpCardViewProps) {
   const theme = useTheme();
+  const [expanded, setExpanded] = useState(false);
   const dotColor = TYPE_DOT_COLORS[card.type];
   const locationThumbnail = card.locationId ? resolveLocationArt(card.locationId) : null;
 
@@ -60,17 +63,23 @@ export function CatchUpCardView({
         )}
       </View>
       <View style={styles.content}>
-        <View style={styles.header}>
-          <ThemedText variant="body" numberOfLines={1} style={styles.title}>
-            {card.title}
+        <Pressable onPress={() => setExpanded((prev) => !prev)}>
+          <View style={styles.header}>
+            <ThemedText variant="body" numberOfLines={1} style={styles.title}>
+              {card.title}
+            </ThemedText>
+            <ThemedText variant="caption" themeColor="textSecondary">
+              {card.relativeTime}
+            </ThemedText>
+          </View>
+          <ThemedText
+            variant="system"
+            themeColor="textSecondary"
+            numberOfLines={expanded ? undefined : 2}
+          >
+            {card.summary}
           </ThemedText>
-          <ThemedText variant="caption" themeColor="textSecondary">
-            {card.relativeTime}
-          </ThemedText>
-        </View>
-        <ThemedText variant="system" themeColor="textSecondary" numberOfLines={2}>
-          {card.summary}
-        </ThemedText>
+        </Pressable>
 
         {card.type === "in_progress" && card.progress && (
           <View style={styles.progressSection}>
@@ -95,7 +104,11 @@ export function CatchUpCardView({
                 }
               }}
             >
-              <ThemedText style={styles.playIcon}>{isPlaying ? "\u25A0" : "\u25B6"}</ThemedText>
+              <MaterialCommunityIcons
+                name={isPlaying ? "stop" : "play"}
+                size={14}
+                color={BrandColors.hollow}
+              />
             </Pressable>
           )}
           {card.type === "pending_decision" && card.decisionOptions && (
@@ -200,11 +213,6 @@ const styles = StyleSheet.create({
   playButtonActive: {
     backgroundColor: BrandColors.hollowFaint,
     borderColor: BrandColors.hollow,
-  },
-  playIcon: {
-    fontSize: 12,
-    color: BrandColors.hollow,
-    marginLeft: 2,
   },
   decisionRow: {
     flexDirection: "row",
