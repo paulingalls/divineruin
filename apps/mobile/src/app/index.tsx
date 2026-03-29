@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useStore } from "zustand";
@@ -57,7 +57,7 @@ export default function HomeScreen() {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
-          <ThemedView style={styles.content}>
+          <View style={styles.scrollContent}>
             <TitleBar />
             <View style={styles.gateContainer}>
               <ThemedText style={styles.gateMessage}>Your story is about to begin.</ThemedText>
@@ -65,7 +65,7 @@ export default function HomeScreen() {
                 <ThemedText style={styles.enterText}>AWAKEN</ThemedText>
               </Pressable>
             </View>
-          </ThemedView>
+          </View>
         </SafeAreaView>
       </ThemedView>
     );
@@ -114,13 +114,17 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.content}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <TitleBar />
           {playerSection}
           <CatchUpList {...feedProps} />
           <ActivityLauncher onStartActivity={startActivity} />
-          {enterButton}
-        </ThemedView>
+        </ScrollView>
+        <View style={styles.stickyFooter}>{enterButton}</View>
       </SafeAreaView>
     </ThemedView>
   );
@@ -137,11 +141,18 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     paddingBottom: Spacing.three,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.two,
+    paddingBottom: Spacing.two,
     gap: Spacing.three,
+  },
+  stickyFooter: {
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
   },
   enterButton: {
     paddingVertical: Spacing.three,
@@ -165,7 +176,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   settingsIcon: {
-    fontSize: 18,
+    fontSize: 28,
+    lineHeight: 36,
     color: BrandColors.ash,
   },
   landscapeSafeArea: {

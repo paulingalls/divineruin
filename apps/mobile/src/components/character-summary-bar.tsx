@@ -7,6 +7,7 @@ import { ThemedText } from "@/components/themed-text";
 import { characterStore } from "@/stores/character-store";
 import { BrandColors, Spacing, Radius, FontStyles } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
+import { API_BASE } from "@/utils/api";
 
 function hpColor(ratio: number, theme: ReturnType<typeof useTheme>): string {
   if (ratio > 0.5) return theme.hpGreen;
@@ -24,7 +25,7 @@ export function CharacterSummaryBar({ trailing }: { trailing?: ReactNode }) {
         <ThemedText variant="label" themeColor="textSecondary">
           Loading...
         </ThemedText>
-        <View style={[styles.bar, { backgroundColor: theme.backgroundElement }]}>
+        <View style={styles.statsRow}>
           <ThemedText variant="system" themeColor="textSecondary">
             —
           </ThemedText>
@@ -38,18 +39,26 @@ export function CharacterSummaryBar({ trailing }: { trailing?: ReactNode }) {
   return (
     <View style={styles.wrapper}>
       <View style={styles.nameRow}>
-        <CachedImage uri={character.portraitUrl} style={styles.portrait} borderRadius={20} />
+        <CachedImage
+          uri={
+            character.portraitUrl
+              ? `${API_BASE}${character.portraitUrl.replace(/^"|"$/g, "")}`
+              : null
+          }
+          style={styles.portrait}
+          borderRadius={Radius.md}
+        />
         <ThemedText
           variant="label"
           themeColor="textSecondary"
           numberOfLines={1}
-          style={{ flex: 1 }}
+          style={styles.name}
         >
           {character.name}
         </ThemedText>
         {trailing}
       </View>
-      <View style={[styles.bar, { backgroundColor: theme.backgroundElement }]}>
+      <View style={styles.statsRow}>
         <ThemedText variant="system" numberOfLines={1} style={styles.stat}>
           Lv.{character.level}
         </ThemedText>
@@ -93,23 +102,29 @@ export function CharacterSummaryBar({ trailing }: { trailing?: ReactNode }) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    gap: Spacing.two,
+    backgroundColor: BrandColors.ink,
+    borderRadius: Radius.md,
+    padding: Spacing.three,
+    gap: Spacing.three,
   },
   nameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.two,
+    gap: Spacing.three,
   },
   portrait: {
-    width: 40,
-    height: 40,
+    width: 56,
+    height: 56,
   },
-  bar: {
+  name: {
+    flex: 1,
+    ...FontStyles.displayRegular,
+    fontSize: 22,
+    color: BrandColors.parchment,
+  },
+  statsRow: {
     flexDirection: "row",
     alignItems: "center",
-    height: 44,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Radius.md,
     gap: Spacing.two,
   },
   stat: {
