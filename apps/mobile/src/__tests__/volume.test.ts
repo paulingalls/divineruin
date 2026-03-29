@@ -4,6 +4,7 @@ import {
   getEffectiveVolume,
   setVolume,
   loadVolumes,
+  DEFAULTS,
   _resetForTesting,
   _flushPersistForTesting,
 } from "@/audio/volume";
@@ -14,25 +15,22 @@ beforeEach(() => {
   (AsyncStorage as unknown as { _clear?: () => void })._clear?.();
 });
 
-test("default volumes match spec", () => {
-  expect(getVolume("master")).toBe(1.0);
-  expect(getVolume("voice")).toBe(1.0);
-  expect(getVolume("music")).toBe(0.3);
-  expect(getVolume("ambience")).toBe(0.8);
-  expect(getVolume("effects")).toBe(1.0);
-  expect(getVolume("ui")).toBe(0.8);
+test("default volumes match DEFAULTS", () => {
+  for (const [bus, expected] of Object.entries(DEFAULTS)) {
+    expect(getVolume(bus as keyof typeof DEFAULTS)).toBe(expected);
+  }
 });
 
 test("getEffectiveVolume multiplies master by bus", () => {
-  expect(getEffectiveVolume("music")).toBeCloseTo(0.3);
-  expect(getEffectiveVolume("ui")).toBeCloseTo(0.8);
-  expect(getEffectiveVolume("master")).toBe(1.0);
+  expect(getEffectiveVolume("music")).toBeCloseTo(DEFAULTS.master * DEFAULTS.music);
+  expect(getEffectiveVolume("ui")).toBeCloseTo(DEFAULTS.master * DEFAULTS.ui);
+  expect(getEffectiveVolume("master")).toBe(DEFAULTS.master);
 });
 
 test("getEffectiveVolume reflects master changes", () => {
   setVolume("master", 0.5);
-  expect(getEffectiveVolume("music")).toBeCloseTo(0.15);
-  expect(getEffectiveVolume("effects")).toBeCloseTo(0.5);
+  expect(getEffectiveVolume("music")).toBeCloseTo(0.5 * DEFAULTS.music);
+  expect(getEffectiveVolume("effects")).toBeCloseTo(0.5 * DEFAULTS.effects);
 });
 
 test("setVolume clamps to [0, 1]", () => {
@@ -55,23 +53,23 @@ test("loadVolumes restores persisted values", async () => {
   _flushPersistForTesting();
 
   _resetForTesting();
-  expect(getVolume("music")).toBe(0.3); // default
+  expect(getVolume("music")).toBe(DEFAULTS.music); // default
 
   await loadVolumes();
   expect(getVolume("music")).toBeCloseTo(0.5); // restored from persisted
   expect(getVolume("ambience")).toBeCloseTo(0.6);
-  expect(getVolume("voice")).toBe(1.0);
+  expect(getVolume("voice")).toBe(DEFAULTS.voice);
 });
 
 test("loadVolumes handles missing storage gracefully", async () => {
   (AsyncStorage as unknown as { _clear: () => void })._clear();
   await loadVolumes();
-  expect(getVolume("master")).toBe(1.0);
-  expect(getVolume("music")).toBe(0.3);
+  expect(getVolume("master")).toBe(DEFAULTS.master);
+  expect(getVolume("music")).toBe(DEFAULTS.music);
 });
 
 test("loadVolumes handles corrupted storage gracefully", async () => {
   await AsyncStorage.setItem("divineruin:volumes", "not valid json{{{");
   await loadVolumes();
-  expect(getVolume("master")).toBe(1.0);
+  expect(getVolume("master")).toBe(DEFAULTS.master);
 });

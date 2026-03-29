@@ -14,14 +14,12 @@ import { useStore } from "zustand";
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { hudStore } from "@/stores/hud-store";
 import { panelStore, type PanelTab } from "@/stores/panel-store";
-import { portraitStore } from "@/stores/portrait-store";
 
 interface PersistentBarProps {
   connectionState: string;
@@ -166,19 +164,6 @@ function QuestObjectiveStrip() {
   );
 }
 
-function CompanionAvatar() {
-  const visible = useStore(portraitStore, (s) => s.companionVisible);
-  const url = useStore(portraitStore, (s) => s.companionPrimaryUrl);
-
-  if (!visible || !url) return null;
-
-  return (
-    <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(200)}>
-      <CachedImage uri={url} style={styles.companionAvatar} borderRadius={14} />
-    </Animated.View>
-  );
-}
-
 const PANEL_ICONS: {
   tab: PanelTab;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
@@ -199,7 +184,7 @@ function PanelAccessIcons() {
         <Pressable key={tab} hitSlop={8} onPress={() => panelStore.getState().openPanel(tab)}>
           <MaterialCommunityIcons
             name={icon}
-            size={14}
+            size={28}
             color={isOpen && activeTab === tab ? BrandColors.hollow : BrandColors.ash}
           />
         </Pressable>
@@ -221,18 +206,21 @@ export function PersistentBar({ connectionState, agentState: _agentState }: Pers
 
   return (
     <View testID="persistent-bar" style={styles.container}>
-      <View style={styles.topRow}>
-        <CompanionAvatar />
+      <View style={styles.row}>
+        <PanelAccessIcons />
+        <VoiceStateIndicator connectionState={connectionState} />
+      </View>
+      <View style={styles.row}>
         {locationLabel ? (
           <ThemedText style={styles.locationLabel} numberOfLines={1}>
             {locationLabel}
           </ThemedText>
-        ) : null}
-        <PanelAccessIcons />
+        ) : (
+          <View />
+        )}
         <View style={styles.rightGroup}>
-          <VoiceStateIndicator connectionState={connectionState} />
-          <HpBar />
           <StatusEffectIcons />
+          <HpBar />
         </View>
       </View>
       <QuestObjectiveStrip />
@@ -247,16 +235,12 @@ const styles = StyleSheet.create({
     borderBottomColor: BrandColors.charcoal,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
+    gap: Spacing.two,
   },
-  topRow: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-  },
-  companionAvatar: {
-    width: 28,
-    height: 28,
-    marginRight: Spacing.two,
   },
   locationLabel: {
     ...FontStyles.system,
@@ -269,7 +253,7 @@ const styles = StyleSheet.create({
   panelIcons: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.two,
+    gap: Spacing.three,
   },
   rightGroup: {
     flexDirection: "row",
@@ -313,7 +297,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   questStrip: {
-    marginTop: 4,
+    marginTop: -4,
   },
   questObjective: {
     ...FontStyles.bodyLight,

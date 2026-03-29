@@ -1,6 +1,6 @@
 import { serve } from "bun";
 import { handleLivekitToken } from "./livekit.ts";
-import { handleGetCharacter, handleRegeneratePortrait } from "./character.ts";
+import { handleGetCharacter } from "./character.ts";
 import { handleRequestCode, handleVerifyCode, handleGetMe, requireAuth } from "./auth.ts";
 import { handlePreflight, withCors, checkRateLimit } from "./middleware.ts";
 import {
@@ -22,7 +22,6 @@ const enableDebug =
   isDev && process.env.NODE_ENV !== "production" && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
 
 const CHARACTER_RE = /^\/api\/character\/([a-zA-Z0-9_-]+)$/;
-const REGEN_PORTRAIT_RE = /^\/api\/character\/([a-zA-Z0-9_-]+)\/regenerate-portrait$/;
 const ACTIVITY_ID_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)$/;
 const ACTIVITY_DECIDE_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)\/decide$/;
 const AUDIO_FILE_RE = /^\/api\/audio\/([a-zA-Z0-9_.-]+)$/;
@@ -31,6 +30,7 @@ const GOD_WHISPER_PLAYED_RE = /^\/api\/god-whispers\/([a-zA-Z0-9_]+)\/played$/;
 
 const server = serve({
   port: Number(process.env.PORT ?? 3001),
+  idleTimeout: 120,
   async fetch(req) {
     const url = new URL(req.url);
     const path = url.pathname;
@@ -63,19 +63,6 @@ const server = serve({
       const auth = await requireAuth(req);
       if (auth instanceof Response) return withCors(auth);
       return withCors(await handleLivekitToken(req, auth.playerId));
-    }
-
-    if (
-      path.startsWith("/api/character/") &&
-      path.endsWith("/regenerate-portrait") &&
-      req.method === "POST"
-    ) {
-      const regenMatch = path.match(REGEN_PORTRAIT_RE);
-      if (regenMatch) {
-        const auth = await requireAuth(req);
-        if (auth instanceof Response) return withCors(auth);
-        return withCors(await handleRegeneratePortrait(req, auth.playerId));
-      }
     }
 
     if (path.startsWith("/api/character/") && req.method === "GET") {

@@ -1,5 +1,4 @@
-import { useCallback, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Slider from "@react-native-community/slider";
@@ -15,7 +14,7 @@ import { createAudioPlayer, type AudioPlayer } from "expo-audio";
 import { lookupSoundscape } from "@/audio/soundscape-registry";
 import { authStore } from "@/stores/auth-store";
 import { characterStore } from "@/stores/character-store";
-import { API_BASE, authHeaders } from "@/utils/api";
+import { API_BASE } from "@/utils/api";
 import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
 let previewPlayer: AudioPlayer | null = null;
@@ -84,11 +83,16 @@ function VolumeSlider({ label, bus, disabled }: SliderRowProps) {
   );
 }
 
+function resolvePortraitUri(url: string | null): string | null {
+  if (!url) return null;
+  const clean = url.replace(/^"|"$/g, "");
+  return `${API_BASE}${clean}`;
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
   const email = useStore(authStore, (s) => s.email);
   const character = useStore(characterStore, (s) => s.character);
-  const [regenerating, setRegenerating] = useState(false);
 
   const handleSignOut = () => {
     void authStore.getState().logout();
@@ -98,27 +102,6 @@ export default function SettingsScreen() {
       router.dismiss();
     }
   };
-
-  const handleRegenerate = useCallback(async () => {
-    if (!character || regenerating) return;
-    setRegenerating(true);
-    try {
-      const res = await fetch(
-        `${API_BASE}/api/character/${character.playerId}/regenerate-portrait`,
-        { method: "POST", headers: authHeaders() },
-      );
-      if (res.ok) {
-        const data = (await res.json()) as { portrait_url: string };
-        if (data.portrait_url) {
-          characterStore.getState().updatePortraitUrl(data.portrait_url);
-        }
-      }
-    } catch {
-      // Silently fail — portrait stays as-is
-    } finally {
-      setRegenerating(false);
-    }
-  }, [character, regenerating]);
 
   return (
     <View style={styles.container}>
@@ -145,21 +128,11 @@ export default function SettingsScreen() {
             <ThemedText style={styles.sectionTitle}>CHARACTER</ThemedText>
             <View style={styles.portraitRow}>
               <CachedImage
-                uri={character.portraitUrl}
+                uri={resolvePortraitUri(character.portraitUrl)}
                 style={styles.portraitImage}
                 borderRadius={28}
               />
-              <Pressable
-                onPress={() => void handleRegenerate()}
-                disabled={regenerating}
-                style={styles.regenButton}
-              >
-                {regenerating ? (
-                  <ActivityIndicator size="small" color={BrandColors.hollow} />
-                ) : (
-                  <ThemedText style={styles.regenText}>REGENERATE PORTRAIT</ThemedText>
-                )}
-              </Pressable>
+              <ThemedText style={styles.characterName}>{character.name}</ThemedText>
             </View>
           </View>
         )}
@@ -254,15 +227,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
   },
-  regenButton: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
-  },
-  regenText: {
-    ...FontStyles.system,
-    fontSize: 12,
-    color: BrandColors.hollow,
-    letterSpacing: 1,
+  characterName: {
+    ...FontStyles.displayRegular,
+    fontSize: 18,
+    color: BrandColors.parchment,
   },
   emailText: {
     ...FontStyles.systemLight,

@@ -322,15 +322,26 @@ async def _generate_player_portrait(sd: SessionData, cs: object) -> None:
 
         race_id = getattr(cs, "race", None)
         class_id = getattr(cs, "class_choice", None)
-        class_name = CLASSES[class_id].name if class_id and class_id in CLASSES else "adventurer"
-        race_desc = RACES[race_id].card_description if race_id and race_id in RACES else ""
+        class_data = CLASSES.get(class_id) if class_id else None
+        class_name = class_data.name if class_data else "Adventurer"
+        class_fantasy = class_data.card_description if class_data else "A versatile wanderer."
+        race_data = RACES.get(race_id) if race_id else None
+        race_name = race_data.name if race_data else "Human"
+        physical_features = race_data.card_description if race_data else "Adaptable and determined."
 
-        template_vars = {"class": class_name, "key_feature": race_desc}
+        template_vars = {
+            "class": class_name,
+            "class_fantasy": class_fantasy,
+            "race_name": race_name,
+            "physical_features": physical_features,
+        }
 
-        async with httpx.AsyncClient(timeout=60) as client:
+        internal_secret = os.environ.get("INTERNAL_SECRET", "")
+        async with httpx.AsyncClient(timeout=120) as client:
             resp = await client.post(
                 f"{SERVER_URL}/api/images/generate",
                 json={"templateId": "player_character_creation", "vars": template_vars},
+                headers={"X-Internal-Secret": internal_secret},
             )
             if resp.status_code != 200:
                 logger.warning("Portrait generation failed: %s", resp.text)

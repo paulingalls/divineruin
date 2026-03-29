@@ -54,6 +54,9 @@ export async function generateImage(
       thinkingConfig: {
         thinkingLevel: "HIGH" as ThinkingLevel,
       },
+      httpOptions: {
+        timeout: 120_000,
+      },
     },
   });
 

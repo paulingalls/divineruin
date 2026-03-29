@@ -8,13 +8,13 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-const DEFAULTS: Record<Bus, number> = {
+export const DEFAULTS: Record<Bus, number> = {
   master: 1.0,
   voice: 1.0,
   music: 0.3,
-  ambience: 0.8,
-  effects: 1.0,
-  ui: 0.8,
+  ambience: 0.2,
+  effects: 0.4,
+  ui: 0.5,
 };
 
 const busVolumes: Record<Bus, number> = { ...DEFAULTS };
