@@ -23,6 +23,7 @@
       "version": "1.0.0",
       "dependencies": {
         "@config-plugins/react-native-webrtc": "^13.0.0",
+        "@divineruin/shared": "workspace:*",
         "@expo-google-fonts/cormorant-garamond": "^0.4.1",
         "@expo-google-fonts/crimson-pro": "^0.4.2",
         "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
@@ -80,6 +81,7 @@
       "name": "divineruin-server",
       "version": "0.1.0",
       "dependencies": {
+        "@divineruin/shared": "workspace:*",
         "@google/genai": "^1.44.0",
         "@livekit/protocol": "^1.44.1",
         "@types/sharp": "^0.32.0",

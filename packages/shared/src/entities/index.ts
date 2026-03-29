@@ -1,8 +1,8 @@
-export type { Location, LocationExit, LocationCondition, HiddenElement } from "./location.ts";
+export type { Location, LocationExit, LocationCondition, HiddenElement } from "./location";
 
-export type { Npc, NpcKnowledge, NpcQuestKnowledge, NpcSchedule } from "./npc.ts";
+export type { Npc, NpcKnowledge, NpcQuestKnowledge, NpcSchedule } from "./npc";
 
-export type { Item, ItemEffect } from "./item.ts";
+export type { Item, ItemEffect } from "./item";
 
 export type {
   Quest,
@@ -12,8 +12,8 @@ export type {
   QuestReward,
   QuestStageComplete,
   QuestFailureCondition,
-} from "./quest.ts";
+} from "./quest";
 
-export type { GameEvent, EventTrigger, EventEffects, EventEscalation } from "./event.ts";
+export type { GameEvent, EventTrigger, EventEffects, EventEscalation } from "./event";
 
-export type { Faction, ReputationTier } from "./faction.ts";
+export type { Faction, ReputationTier } from "./faction";

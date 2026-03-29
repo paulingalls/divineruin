@@ -1,19 +1,19 @@
 import { CRAFTING_RECIPES, TRAINING_PROGRAMS, ERRAND_TEMPLATES } from "./activity_templates.ts";
 import { sql } from "./db.ts";
 import { logError } from "./env.ts";
+import {
+  displayName,
+  computePercentComplete,
+  type ActiveStatus,
+  type MaterialRequirement,
+  type TemplateGroup,
+} from "@divineruin/shared";
 
 function formatDuration(minSec: number, maxSec: number): string {
   const minH = Math.round(minSec / 3600);
   const maxH = Math.round(maxSec / 3600);
   if (minH === maxH) return `${minH}h`;
   return `${minH}-${maxH}h`;
-}
-
-function displayName(itemId: string): string {
-  return itemId
-    .split("_")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
 }
 
 /** Aggregate ["iron_ingot", "iron_ingot", "leather_strip"] → { iron_ingot: 2, leather_strip: 1 } */
@@ -25,34 +25,6 @@ function countMaterials(materials: string[]): Record<string, number> {
   return counts;
 }
 
-interface MaterialRequirement {
-  itemId: string;
-  name: string;
-  required: number;
-  owned: number;
-}
-
-interface ActiveStatus {
-  startTime: string;
-  resolveAtEstimate: string;
-  percentEstimate: number;
-}
-
-interface TemplateItem {
-  id: string;
-  name: string;
-  duration: string;
-  params: Record<string, unknown>;
-  materials: MaterialRequirement[] | null;
-  active: ActiveStatus | null;
-}
-
-interface TemplateGroup {
-  type: string;
-  label: string;
-  items: TemplateItem[];
-}
-
 /** Map template key (recipe_id, program_id, errand_type) from in-progress activity data. */
 function templateKeyFromActivity(data: Record<string, unknown>): string | null {
   const params = (data.parameters ?? {}) as Record<string, unknown>;
@@ -61,15 +33,6 @@ function templateKeyFromActivity(data: Record<string, unknown>): string | null {
   if (type === "training") return (params.program_id as string | undefined) ?? null;
   if (type === "companion_errand") return (params.errand_type as string | undefined) ?? null;
   return null;
-}
-
-function computePercent(startTime: string, resolveAt: string): number {
-  const now = Date.now();
-  const start = new Date(startTime).getTime();
-  const end = new Date(resolveAt).getTime();
-  const total = end - start;
-  if (total <= 0) return 100;
-  return Math.min(100, Math.max(0, Math.round(((now - start) / total) * 100)));
 }
 
 export async function handleGetActivityTemplates(playerId: string): Promise<Response> {
@@ -95,6 +58,7 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
     const activePromise = sql`
       SELECT data FROM async_activities
       WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
+      LIMIT 50
     ` as Promise<{ data: unknown }[]>;
 
     const [inventoryRows, activeRows] = await Promise.all([inventoryPromise, activePromise]);
@@ -119,7 +83,7 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
         activeMap.set(key, {
           startTime,
           resolveAtEstimate: resolveAt,
-          percentEstimate: computePercent(startTime, resolveAt),
+          percentEstimate: computePercentComplete(startTime, resolveAt),
         });
       }
     }

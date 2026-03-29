@@ -1,7 +1,9 @@
+import type { ActivityType } from "@divineruin/shared";
+
 export interface ActivityTemplate {
   id: string;
   name: string;
-  activity_type: "crafting" | "training" | "companion_errand";
+  activity_type: ActivityType;
   duration_min_seconds: number;
   duration_max_seconds: number;
   required_params: string[];

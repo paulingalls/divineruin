@@ -1,17 +1,10 @@
 import { sql } from "./db.ts";
 import { logError } from "./env.ts";
-
-interface DecisionOption {
-  id: string;
-  label: string;
-}
-
-interface FeedItemProgress {
-  startTime: string;
-  resolveAtEstimate: string;
-  progressText: string | null;
-  percentEstimate: number;
-}
+import {
+  computePercentComplete,
+  type DecisionOption,
+  type FeedItemProgress,
+} from "@divineruin/shared";
 
 export interface FeedItem {
   id: string;
@@ -127,18 +120,11 @@ function computeProgress(data: Record<string, unknown>): FeedItemProgress | null
   const resolveAt = data.resolve_at as string | undefined;
   if (!startTime || !resolveAt) return null;
 
-  const now = Date.now();
-  const start = new Date(startTime).getTime();
-  const end = new Date(resolveAt).getTime();
-  const total = end - start;
-  const elapsed = now - start;
-
   return {
     startTime,
     resolveAtEstimate: resolveAt,
     progressText: pickProgressText(data),
-    percentEstimate:
-      total > 0 ? Math.min(100, Math.max(0, Math.round((elapsed / total) * 100))) : 0,
+    percentEstimate: computePercentComplete(startTime, resolveAt),
   };
 }
 

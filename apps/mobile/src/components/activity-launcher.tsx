@@ -4,34 +4,7 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from "react-nat
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors, FontStyles, Radius, Spacing } from "@/constants/theme";
 import { API_BASE, authHeaders } from "@/utils/api";
-
-interface MaterialRequirement {
-  itemId: string;
-  name: string;
-  required: number;
-  owned: number;
-}
-
-interface ActiveStatus {
-  startTime: string;
-  resolveAtEstimate: string;
-  percentEstimate: number;
-}
-
-interface TemplateItem {
-  id: string;
-  name: string;
-  duration: string;
-  params: Record<string, unknown>;
-  materials: MaterialRequirement[] | null;
-  active: ActiveStatus | null;
-}
-
-interface TemplateGroup {
-  type: string;
-  label: string;
-  items: TemplateItem[];
-}
+import type { MaterialRequirement, TemplateItem, TemplateGroup } from "@divineruin/shared";
 
 interface ActivityLauncherProps {
   onStartActivity: (type: string, parameters: Record<string, unknown>) => Promise<void>;
@@ -60,8 +33,7 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
   const [groups, setGroups] = useState<TemplateGroup[]>([]);
   const [expandedType, setExpandedType] = useState<string | null>(null);
   const [startingItemId, setStartingItemId] = useState<string | null>(null);
-  const [errorItemId, setErrorItemId] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [error, setError] = useState<{ itemId: string; message: string } | null>(null);
   const [errandPicker, setErrandPicker] = useState<ErrandPickerState | null>(null);
   const [pickerSelection, setPickerSelection] = useState<string | null>(null);
   const mountedRef = useRef(true);
@@ -91,14 +63,15 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
   const executeStart = useCallback(
     async (type: string, params: Record<string, unknown>, itemId: string) => {
       setStartingItemId(itemId);
-      setErrorItemId(null);
-      setErrorMessage(null);
+      setError(null);
       try {
         await onStartActivity(type, params);
         await fetchTemplates();
       } catch (err) {
-        setErrorItemId(itemId);
-        setErrorMessage(err instanceof Error ? err.message : "Failed to start activity");
+        setError({
+          itemId,
+          message: err instanceof Error ? err.message : "Failed to start activity",
+        });
       } finally {
         setStartingItemId(null);
       }
@@ -216,7 +189,7 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
                           </View>
                         ) : showStart ? (
                           <View style={styles.itemBottomRow}>
-                            {item.materials && item.materials.length > 0 ? (
+                            {item.materials && item.materials.length > 0 && (
                               <View style={styles.materialsColumn}>
                                 {item.materials.map((mat) => {
                                   const sufficient = mat.owned >= mat.required;
@@ -233,8 +206,6 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
                                   );
                                 })}
                               </View>
-                            ) : (
-                              <View />
                             )}
 
                             <Pressable
@@ -255,9 +226,9 @@ export function ActivityLauncher({ onStartActivity }: ActivityLauncherProps) {
                           </View>
                         ) : null}
                       </View>
-                      {errorItemId === item.id && errorMessage && (
+                      {error?.itemId === item.id && (
                         <View style={styles.errorBanner}>
-                          <ThemedText style={styles.errorText}>{errorMessage}</ThemedText>
+                          <ThemedText style={styles.errorText}>{error.message}</ThemedText>
                         </View>
                       )}
                     </View>

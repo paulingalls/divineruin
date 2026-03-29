@@ -6,6 +6,7 @@ import {
   ERRAND_TEMPLATES,
   VALID_ACTIVITY_TYPES,
 } from "./activity_templates.ts";
+import { displayName } from "@divineruin/shared";
 
 const MAX_CONCURRENT = 4;
 
@@ -126,20 +127,13 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         const ownedSet = new Set(ownedRows.map((r) => r.item_id));
         for (const matId of materialsToConsume) {
           if (!ownedSet.has(matId)) {
-            const name = matId
-              .split("_")
-              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-              .join(" ");
-            return { error: `Missing required material: ${name}` } as const;
+            return { error: `Missing required material: ${displayName(matId)}` } as const;
           }
         }
-        // Consume materials
-        for (const matId of materialsToConsume) {
-          await tx`
-            DELETE FROM player_inventory
-            WHERE player_id = ${playerId} AND item_id = ${matId}
-          `;
-        }
+        await tx`
+          DELETE FROM player_inventory
+          WHERE player_id = ${playerId} AND item_id IN ${sql(materialsToConsume)}
+        `;
       }
 
       const now = new Date();

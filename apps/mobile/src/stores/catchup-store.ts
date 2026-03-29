@@ -1,16 +1,5 @@
 import { createStore } from "zustand/vanilla";
-
-interface DecisionOption {
-  id: string;
-  label: string;
-}
-
-interface FeedItemProgress {
-  startTime: string;
-  resolveAtEstimate: string;
-  progressText: string | null;
-  percentEstimate: number;
-}
+import type { DecisionOption, FeedItemProgress } from "@divineruin/shared";
 
 export interface CatchUpCard {
   id: string;

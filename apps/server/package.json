@@ -10,6 +10,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@divineruin/shared": "workspace:*",
     "@google/genai": "^1.44.0",
     "@livekit/protocol": "^1.44.1",
     "@types/sharp": "^0.32.0",

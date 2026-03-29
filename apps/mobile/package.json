@@ -10,6 +10,7 @@
     "prebuild:clean": "expo prebuild --clean"
   },
   "dependencies": {
+    "@divineruin/shared": "workspace:*",
     "@config-plugins/react-native-webrtc": "^13.0.0",
     "@expo-google-fonts/cormorant-garamond": "^0.4.1",
     "@expo-google-fonts/crimson-pro": "^0.4.2",
