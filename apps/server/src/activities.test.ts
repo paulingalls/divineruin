@@ -14,10 +14,22 @@ void mock.module("./db.ts", () => {
   const mockSql = Object.assign(mockTaggedTemplate, {
     close: () => Promise.resolve(),
     begin: async (fn: (tx: typeof mockTaggedTemplate) => Promise<unknown>) => {
-      return fn(mockTaggedTemplate);
+      return fn(mockSql as typeof mockTaggedTemplate);
     },
   });
-  return { sql: mockSql };
+  // Support sql(values) call form for IN expressions (distinct from tagged template calls)
+  const proxy = new Proxy(mockSql, {
+    apply(_target, _thisArg, args: [unknown, ...unknown[]]) {
+      const first = args[0] as { raw?: unknown } | unknown[] | undefined;
+      // Tagged template: first arg has .raw property
+      if (first && typeof first === "object" && "raw" in first)
+        return mockTaggedTemplate(first as TemplateStringsArray, ...args.slice(1));
+      // sql(array) form for IN clauses — return passthrough
+      if (Array.isArray(first)) return first;
+      return mockTaggedTemplate(first as TemplateStringsArray, ...args.slice(1));
+    },
+  });
+  return { sql: proxy };
 });
 
 const {
@@ -46,7 +58,7 @@ describe("handleCreateActivity", () => {
   test("creates crafting activity", async () => {
     // Inside transaction: count, material check, delete mat 1, delete mat 2, insert
     mockQueryResults = [
-      [{ cnt: 0 }], // count (FOR UPDATE)
+      [], // lock rows (FOR UPDATE) — no in-progress activities
       [{ item_id: "iron_ingot" }, { item_id: "leather_strip" }], // material check (FOR UPDATE)
       [], // delete iron_ingot
       [], // delete leather_strip
@@ -86,7 +98,7 @@ describe("handleCreateActivity", () => {
   });
 
   test("rejects when too many concurrent", async () => {
-    mockQueryResults = [[{ cnt: 4 }]];
+    mockQueryResults = [[{ id: "a1" }, { id: "a2" }, { id: "a3" }, { id: "a4" }]];
 
     const req = makeRequest("POST", "/api/activities", {
       type: "crafting",
@@ -139,7 +151,7 @@ describe("handleCreateActivity", () => {
   test("creates training activity", async () => {
     // Inside transaction: count, insert
     mockQueryResults = [
-      [{ cnt: 0 }], // count (FOR UPDATE)
+      [], // lock rows (FOR UPDATE) — no in-progress activities
       [], // insert activity
     ];
 
@@ -167,7 +179,7 @@ describe("handleCreateActivity", () => {
   test("creates companion errand", async () => {
     // Inside transaction: count, insert
     mockQueryResults = [
-      [{ cnt: 0 }], // count (FOR UPDATE)
+      [], // lock rows (FOR UPDATE) — no in-progress activities
       [], // insert activity
     ];
 

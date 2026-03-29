@@ -107,7 +107,7 @@ const server = serve({
     if (path === "/api/activity-templates" && req.method === "GET") {
       const auth = await requireAuth(req);
       if (auth instanceof Response) return withCors(auth);
-      return withCors(handleGetActivityTemplates());
+      return withCors(await handleGetActivityTemplates(auth.playerId));
     }
 
     // --- Push notifications ---

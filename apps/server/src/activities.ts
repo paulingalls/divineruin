@@ -106,12 +106,12 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
     // Atomic transaction: check concurrent count, verify+consume materials, insert activity
     const txnResult = await sql.begin(async (tx) => {
       // Lock player's in-progress activities to prevent race conditions
-      const countRows: { cnt: number }[] = await tx`
-        SELECT COUNT(*)::int AS cnt FROM async_activities
+      const locked: { id: string }[] = await tx`
+        SELECT id FROM async_activities
         WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
         FOR UPDATE
       `;
-      const activeCount = countRows[0]?.cnt ?? 0;
+      const activeCount = locked.length;
       if (activeCount >= MAX_CONCURRENT) {
         return { error: `Maximum ${MAX_CONCURRENT} concurrent activities allowed` } as const;
       }
@@ -120,13 +120,17 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       if (materialsToConsume.length > 0) {
         const ownedRows: { item_id: string }[] = await tx`
           SELECT item_id FROM player_inventory
-          WHERE player_id = ${playerId} AND item_id = ANY(${materialsToConsume})
+          WHERE player_id = ${playerId} AND item_id IN ${sql(materialsToConsume)}
           FOR UPDATE
         `;
         const ownedSet = new Set(ownedRows.map((r) => r.item_id));
         for (const matId of materialsToConsume) {
           if (!ownedSet.has(matId)) {
-            return { error: `Missing required material: ${matId}` } as const;
+            const name = matId
+              .split("_")
+              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+              .join(" ");
+            return { error: `Missing required material: ${name}` } as const;
           }
         }
         // Consume materials
@@ -159,7 +163,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
 
       await tx`
         INSERT INTO async_activities (id, player_id, data)
-        VALUES (${activityId}, ${playerId}, ${JSON.stringify(data)})
+        VALUES (${activityId}, ${playerId}, ${data})
       `;
 
       return { activityId, resolveAt: resolveAt.toISOString() } as const;
@@ -295,7 +299,7 @@ export async function handleActivityDecision(
       if (craftedItemId && body.decision_id === "keep") {
         await sql`
           INSERT INTO player_inventory (player_id, item_id, data)
-          VALUES (${playerId}, ${craftedItemId}, ${JSON.stringify({ quantity: 1, equipped: false })})
+          VALUES (${playerId}, ${craftedItemId}, ${{ quantity: 1, equipped: false }})
           ON CONFLICT (player_id, item_id)
           DO UPDATE SET data = jsonb_set(
             player_inventory.data,

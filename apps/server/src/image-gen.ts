@@ -88,7 +88,7 @@ export async function generateImage(
   try {
     await sql`
       INSERT INTO generated_assets (id, template_id, variables, file_path, aspect_ratio, category)
-      VALUES (${assetId}, ${templateId}, ${JSON.stringify(vars)}::jsonb, ${path}, ${template.aspectRatio}, ${template.category})
+      VALUES (${assetId}, ${templateId}, ${vars}, ${path}, ${template.aspectRatio}, ${template.category})
       ON CONFLICT (id) DO NOTHING
     `;
   } catch (err) {

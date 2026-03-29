@@ -14,6 +14,7 @@
     "migrate": "bun run scripts/migrate.ts",
     "seed": "cd scripts && uv run --project ../apps/agent python seed_content.py",
     "dev:agent": "cd apps/agent && uv run --env-file ../../.env python agent.py dev",
+    "dev:worker": "cd apps/agent && uv run --env-file ../../.env python async_worker.py",
     "typecheck": "tsc --noEmit",
     "typecheck:mobile": "cd apps/mobile && bunx tsc --noEmit",
     "lint:python": "cd apps/agent && uv run ruff check . && uv run ruff format --check .",
