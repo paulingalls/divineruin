@@ -7,7 +7,7 @@ import { useStore } from "zustand";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { TitleBar } from "@/components/title-bar";
-import { CharacterSummaryBar } from "@/components/character-summary-bar";
+import { TopBar } from "@/components/hud/top-bar";
 import { CatchUpList } from "@/components/catchup-list";
 import { ActivityLauncher } from "@/components/activity-launcher";
 import { useCharacter } from "@/hooks/use-character";
@@ -91,7 +91,7 @@ export default function HomeScreen() {
     </Pressable>
   );
 
-  const playerSection = <CharacterSummaryBar trailing={settingsButton} />;
+  const playerSection = <TopBar mode="home" trailing={settingsButton} />;
 
   if (isLandscape) {
     return (

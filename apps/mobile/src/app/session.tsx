@@ -15,7 +15,7 @@ import { LocationArtBackground } from "@/components/location-art-background";
 import { CorruptionOverlay } from "@/components/corruption-overlay";
 import { ReconnectionOverlay } from "@/components/reconnection-overlay";
 import { LOADING_ART } from "@/constants/location-art-registry";
-import { PersistentBar } from "@/components/hud/persistent-bar";
+import { TopBar } from "@/components/hud/top-bar";
 import { OverlayManager } from "@/components/hud/overlay-manager";
 import { PanelShell } from "@/components/hud/panel-shell";
 import { useSessionToken } from "@/hooks/useSessionToken";
@@ -73,9 +73,8 @@ function SwipeUpTrigger() {
 
 function SessionContent({ onLeave }: { onLeave: () => void }) {
   const connectionState = useConnectionState();
-  const voiceAssistant = useVoiceAssistant();
+  useVoiceAssistant();
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
-  const agentState = voiceAssistant.state;
   const wasActive = useRef(false);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
@@ -159,7 +158,15 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
 
   return (
     <View style={styles.content}>
-      <PersistentBar connectionState={connectionState} agentState={agentState} />
+      <TopBar
+        mode="session"
+        connectionState={connectionState}
+        trailing={
+          <Pressable style={styles.settingsButton} onPress={() => router.push("/settings")}>
+            <ThemedText style={styles.settingsIcon}>{"\u2699"}</ThemedText>
+          </Pressable>
+        }
+      />
 
       <TranscriptView />
 
@@ -329,5 +336,15 @@ const styles = StyleSheet.create({
   swipeZone: {
     height: 24,
     width: "100%",
+  },
+  settingsButton: {
+    paddingLeft: Spacing.two,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  settingsIcon: {
+    fontSize: 28,
+    lineHeight: 36,
+    color: BrandColors.ash,
   },
 });
