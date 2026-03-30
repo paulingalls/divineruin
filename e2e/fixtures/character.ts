@@ -78,10 +78,8 @@ export async function seedActivity(
 
 async function cleanupCharacterData(playerId: string): Promise<void> {
   try {
-    await queryDb(
-      `DELETE FROM async_activities WHERE player_id = $1; UPDATE players SET data = '{}'::jsonb WHERE player_id = $1`,
-      [playerId],
-    );
+    await queryDb(`DELETE FROM async_activities WHERE player_id = $1`, [playerId]);
+    await queryDb(`UPDATE players SET data = '{}'::jsonb WHERE player_id = $1`, [playerId]);
   } catch {
     // best-effort
   }

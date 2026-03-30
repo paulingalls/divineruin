@@ -130,7 +130,7 @@ test.describe("Session HUD overlays", () => {
     // Verify initial location
     const bar = sessionPage.page.getByTestId("persistent-bar");
     await expect(bar).toBeVisible({ timeout: 10_000 });
-    await expect(sessionPage.page.getByText(/GREYVALE/)).toBeVisible();
+    await expect(bar.getByText(/GREYVALE/)).toBeVisible();
 
     // Change location
     await sessionPage.injectEvent({
@@ -143,7 +143,7 @@ test.describe("Session HUD overlays", () => {
     });
 
     await expect(
-      sessionPage.page.getByText(/ASHEN WEALD/),
+      bar.getByText(/ASHEN WEALD/),
     ).toBeVisible({ timeout: 10_000 });
   });
 
@@ -257,7 +257,7 @@ test.describe("Session HUD overlays", () => {
       category: "buff",
     });
 
-    const dot = sessionPage.page.getByTestId("status-effect-bless_1");
+    const dot = bar.getByTestId("status-effect-bless_1");
     await expect(dot).toBeVisible({ timeout: 10_000 });
 
     // Remove the status effect
