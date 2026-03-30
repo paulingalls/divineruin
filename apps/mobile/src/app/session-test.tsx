@@ -9,6 +9,7 @@ import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { TopBar } from "@/components/hud/top-bar";
+import { PersistentBar } from "@/components/hud/persistent-bar";
 import { OverlayManager } from "@/components/hud/overlay-manager";
 import { PanelShell } from "@/components/hud/panel-shell";
 import { TranscriptView } from "@/components/transcript-view";
@@ -51,6 +52,7 @@ export default function SessionTestScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
           <TopBar mode="session" connectionState="connected" />
+          <PersistentBar connectionState="connected" />
           <TranscriptView />
           <OverlayManager />
           <PanelShell />

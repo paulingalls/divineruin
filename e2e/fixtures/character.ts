@@ -45,6 +45,7 @@ export async function seedActivity(
     type: string;
     status: string;
     narrationText?: string;
+    narrationSummary?: string;
     decisionOptions?: { id: string; label: string }[];
     parameters?: Record<string, unknown>;
     startTime?: Date;
@@ -59,6 +60,7 @@ export async function seedActivity(
     start_time: (opts.startTime ?? new Date(now.getTime() - 3_600_000)).toISOString(),
     resolve_at: (opts.resolveAt ?? new Date(now.getTime() - 60_000)).toISOString(),
     narration_text: opts.narrationText ?? null,
+    narration_summary: opts.narrationSummary ?? opts.narrationText ?? null,
     narration_audio_url: null,
     decision_options: opts.decisionOptions ?? null,
     parameters: opts.parameters ?? {},
