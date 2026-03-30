@@ -31,9 +31,19 @@ echo "  Python tests (agent, clean env)..."
   bun run test:python
 )
 
-# E2E tests — run in Docker via act, matching CI exactly
-# Uses containerized Postgres + Redis so dev DB is never touched.
-echo "  E2E tests (act → Docker)..."
-act -j test-e2e --no-cache-server --container-architecture linux/amd64 -W .github/workflows/ci.yml
+# E2E tests — use isolated test database to avoid polluting dev data.
+# Requires: createdb divineruin_test (one-time setup)
+# For full CI parity in Docker: act -j test-e2e --container-architecture linux/amd64
+E2E_DB_URL="postgresql://divineruin:divineruin@localhost:5432/divineruin_test"
+echo "  E2E tests (Playwright, using divineruin_test)..."
+(
+  export DATABASE_URL="$E2E_DB_URL"
+  bun run scripts/migrate.ts
+  cd scripts && uv sync --quiet && uv run python seed_content.py
+)
+(
+  export DATABASE_URL="$E2E_DB_URL"
+  cd e2e && bun run test
+)
 
 echo "All tests passed."
