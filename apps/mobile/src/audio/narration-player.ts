@@ -51,10 +51,7 @@ export function playNarration(url: string): void {
   _player = createAudioPlayer({ uri: url });
   _player.volume = getEffectiveVolume("voice");
   _currentUrl = url;
-  console.log("[narration] volume:", _player.volume, "playing:", _player.playing);
-
   _subscription = _player.addListener("playbackStatusUpdate", (status) => {
-    console.log("[narration] status update:", JSON.stringify(status));
     if (status.didJustFinish) {
       _cleanup();
     }
@@ -62,7 +59,6 @@ export function playNarration(url: string): void {
 
   try {
     _player.play();
-    console.log("[narration] play() called successfully");
     _notifyListeners();
   } catch (err) {
     console.error("[narration] play() failed:", err);
