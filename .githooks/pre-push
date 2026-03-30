@@ -31,4 +31,8 @@ echo "  Python tests (agent, clean env)..."
   bun run test:python
 )
 
+# E2E tests — requires local Postgres + Redis and starts web servers
+echo "  E2E tests (Playwright)..."
+(cd e2e && bun run test)
+
 echo "All tests passed."

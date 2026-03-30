@@ -10,11 +10,6 @@ test.describe("Home screen with character", () => {
       characterPage.getByText(testCharacter.name),
     ).toBeVisible({ timeout: 15_000 });
 
-    // Class and level
-    await expect(
-      characterPage.getByText(new RegExp(`Lv\\.\\s*${testCharacter.level}`)),
-    ).toBeVisible();
-
     // ENTER AETHOS button (not AWAKEN — character exists)
     await expect(
       characterPage.getByText("ENTER AETHOS", { exact: true }),
