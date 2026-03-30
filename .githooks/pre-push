@@ -31,8 +31,10 @@ echo "  Python tests (agent, clean env)..."
   bun run test:python
 )
 
-# E2E tests — requires local Postgres + Redis and starts web servers
+# E2E tests — mirrors CI: migrate, seed, then run Playwright
 echo "  E2E tests (Playwright)..."
+bun run scripts/migrate.ts
+(cd scripts && uv sync --quiet && uv run python seed_content.py)
 (cd e2e && bun run test)
 
 echo "All tests passed."
