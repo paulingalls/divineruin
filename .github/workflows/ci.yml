@@ -13,8 +13,8 @@ jobs:
   lint-and-typecheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: oven-sh/setup-bun@ecf28ddc73e819eb6fa29df6b34ef8921c743461 # v2
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
       - run: bun install
       - run: bun run typecheck
       - run: bunx eslint --max-warnings 0 .
@@ -50,9 +50,9 @@ jobs:
       DATABASE_URL: postgresql://divineruin:divineruin@localhost:5432/divineruin
       REDIS_URL: redis://localhost:6379
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: oven-sh/setup-bun@ecf28ddc73e819eb6fa29df6b34ef8921c743461 # v2
-      - uses: astral-sh/setup-uv@65ef90775fa85bf7130e46f3f22dc79a206581c8 # v7
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: astral-sh/setup-uv@v7
       - run: bun install
       - run: bun run scripts/migrate.ts
       - run: cd scripts && uv sync && uv run python seed_content.py
@@ -62,8 +62,8 @@ jobs:
   lint-python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: astral-sh/setup-uv@65ef90775fa85bf7130e46f3f22dc79a206581c8 # v7
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
       - run: cd apps/agent && uv sync
       - run: cd apps/agent && uv run ruff check .
       - run: cd apps/agent && uv run ruff format --check .
@@ -71,8 +71,8 @@ jobs:
   test-python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: astral-sh/setup-uv@65ef90775fa85bf7130e46f3f22dc79a206581c8 # v7
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: cd apps/agent && uv sync
       - run: cd apps/agent && uv run pytest tests/ -q
@@ -111,16 +111,16 @@ jobs:
       NODE_ENV: development
       EXPO_PUBLIC_API_URL: http://localhost:3001
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: oven-sh/setup-bun@ecf28ddc73e819eb6fa29df6b34ef8921c743461 # v2
-      - uses: astral-sh/setup-uv@65ef90775fa85bf7130e46f3f22dc79a206581c8 # v7
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: astral-sh/setup-uv@v7
       - run: bun install
       - run: bun run scripts/migrate.ts
       - run: cd scripts && uv sync && uv run python seed_content.py
       - run: cd e2e && bun install
       - run: cd e2e && bunx playwright install --with-deps chromium
       - run: cd e2e && bunx playwright test
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
