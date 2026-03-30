@@ -7,8 +7,13 @@ from unittest.mock import patch
 import pytest
 
 from tts_prerender import synthesize_to_file, synthesize_with_pauses
+from voices import VoiceConfig
 
 MP3_STUB = b"\xff\xfb" * 50
+
+# Neutral voice config for tests — no emotion markup
+_TEST_VOICE = VoiceConfig(voice="v", speaking_rate=0.8)
+_TEST_VOICE_DEFAULT = VoiceConfig(voice="v", speaking_rate=1.0)
 
 
 def _fake_synthesize(data: bytes):
@@ -145,12 +150,7 @@ class TestSynthesizeWithPauses:
         p_tts, p_silence = _patch_tts_and_silence(mock_tts=_tracking_tts)
         with p_tts, p_silence, tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "test.mp3")
-            await synthesize_with_pauses(
-                "Hello world. Goodbye world.",
-                "voice_1",
-                path,
-                speaking_rate=0.8,
-            )
+            await synthesize_with_pauses("Hello world. Goodbye world.", _TEST_VOICE, path)
 
         assert len(tts_calls) == 2
         assert tts_calls[0]["text"] == "Hello world."
@@ -171,7 +171,7 @@ class TestSynthesizeWithPauses:
         p_tts, p_silence = _patch_tts_and_silence(mock_tts=_log_tts, mock_silence=_log_silence)
         with p_tts, p_silence, tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "test.mp3")
-            await synthesize_with_pauses("First. Second.", "v", path)
+            await synthesize_with_pauses("First. Second.", _TEST_VOICE_DEFAULT, path)
 
         silence_calls = [c for c in call_log if c[0] == "silence"]
         assert any(s[1] == 0.6 for s in silence_calls)
@@ -190,7 +190,7 @@ class TestSynthesizeWithPauses:
         p_tts, p_silence = _patch_tts_and_silence(mock_tts=_log_tts, mock_silence=_log_silence)
         with p_tts, p_silence, tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "test.mp3")
-            await synthesize_with_pauses("Para one.\n\nPara two.", "v", path)
+            await synthesize_with_pauses("Para one.\n\nPara two.", _TEST_VOICE_DEFAULT, path)
 
         silence_calls = [c for c in call_log if c[0] == "silence"]
         assert any(s[1] == 0.8 for s in silence_calls)
@@ -199,7 +199,7 @@ class TestSynthesizeWithPauses:
         p_tts, p_silence = _patch_tts_and_silence()
         with p_tts, p_silence, tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "output.mp3")
-            filename = await synthesize_with_pauses("Hello.", "v", path)
+            filename = await synthesize_with_pauses("Hello.", _TEST_VOICE_DEFAULT, path)
 
             assert filename == "output.mp3"
             assert os.path.exists(path)
@@ -207,7 +207,7 @@ class TestSynthesizeWithPauses:
 
     async def test_rejects_path_traversal(self):
         with pytest.raises(ValueError, match="Path traversal"):
-            await synthesize_with_pauses("Hello.", "v", "/tmp/../../../etc/passwd")
+            await synthesize_with_pauses("Hello.", _TEST_VOICE_DEFAULT, "/tmp/../../../etc/passwd")
 
     async def test_caches_silence_durations(self):
         """Silence generation should be called once per unique duration, not per occurrence."""
@@ -220,6 +220,39 @@ class TestSynthesizeWithPauses:
         p_tts, p_silence = _patch_tts_and_silence(mock_silence=_tracking_silence)
         with p_tts, p_silence, tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "test.mp3")
-            await synthesize_with_pauses("One. Two. Three.", "v", path)
+            await synthesize_with_pauses("One. Two. Three.", _TEST_VOICE_DEFAULT, path)
 
         assert silence_gen_calls.count(0.6) == 1
+
+    async def test_emotion_markup_prepended_to_tts_text(self):
+        """When VoiceConfig has an inworld_markup, it should be prepended to each chunk."""
+        tts_texts = []
+
+        async def _tracking_tts(text, voice_id, *, speaking_rate=1.0, session=None):
+            tts_texts.append(text)
+            return MP3_STUB
+
+        sad_voice = VoiceConfig(voice="v", speaking_rate=0.9, inworld_markup="[sad]")
+        p_tts, p_silence = _patch_tts_and_silence(mock_tts=_tracking_tts)
+        with p_tts, p_silence, tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "test.mp3")
+            await synthesize_with_pauses("I miss you.", sad_voice, path)
+
+        assert len(tts_texts) == 1
+        assert tts_texts[0] == "[sad] I miss you."
+
+    async def test_no_markup_when_empty(self):
+        """When VoiceConfig has no markup, text should pass through unchanged."""
+        tts_texts = []
+
+        async def _tracking_tts(text, voice_id, *, speaking_rate=1.0, session=None):
+            tts_texts.append(text)
+            return MP3_STUB
+
+        p_tts, p_silence = _patch_tts_and_silence(mock_tts=_tracking_tts)
+        with p_tts, p_silence, tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "test.mp3")
+            await synthesize_with_pauses("Hello.", _TEST_VOICE_DEFAULT, path)
+
+        assert len(tts_texts) == 1
+        assert tts_texts[0] == "Hello."

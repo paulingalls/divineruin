@@ -37,8 +37,8 @@ async def generate_world_news(player_id: str) -> dict | None:
     rows = await pool.fetch(
         """
         SELECT data FROM world_events_log
-        WHERE created_at > $1
-        ORDER BY created_at DESC
+        WHERE timestamp > $1
+        ORDER BY timestamp DESC
         LIMIT 10
         """,
         last_check,

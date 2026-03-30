@@ -38,6 +38,7 @@ export function CatchUpCardView({
   const [expanded, setExpanded] = useState(false);
   const dotColor = TYPE_DOT_COLORS[card.type];
   const locationThumbnail = card.locationId ? resolveLocationArt(card.locationId) : null;
+  const canPlay = card.hasAudio && card.audioUrl;
 
   if (card.type === "companion_idle") {
     return (
@@ -55,124 +56,134 @@ export function CatchUpCardView({
         Shadows.card,
       ]}
     >
-      <View style={styles.iconColumn}>
+      {/* Header row: icon/dot, title, timestamp */}
+      <View style={styles.headerRow}>
         {locationThumbnail !== null ? (
           <Image source={locationThumbnail} style={styles.locationThumb} contentFit="cover" />
         ) : (
           dotColor && <View style={[styles.dot, { backgroundColor: dotColor }]} />
         )}
+        <ThemedText variant="body" numberOfLines={1} style={styles.title}>
+          {card.title}
+        </ThemedText>
+        <ThemedText variant="caption" themeColor="textSecondary">
+          {card.relativeTime}
+        </ThemedText>
       </View>
-      <View style={styles.content}>
-        <Pressable onPress={() => setExpanded((prev) => !prev)}>
-          <View style={styles.header}>
-            <ThemedText variant="body" numberOfLines={1} style={styles.title}>
-              {card.title}
-            </ThemedText>
-            <ThemedText variant="caption" themeColor="textSecondary">
-              {card.relativeTime}
-            </ThemedText>
-          </View>
-          <ThemedText
-            variant="system"
-            themeColor="textSecondary"
-            numberOfLines={expanded ? undefined : 2}
-          >
-            {card.summary}
-          </ThemedText>
+
+      {/* Play button — primary action */}
+      {canPlay && (
+        <Pressable
+          style={[styles.playButton, isPlaying && styles.playButtonActive]}
+          onPress={() => {
+            if (isPlaying) {
+              onStop?.();
+            } else {
+              onPlay?.(card.audioUrl!);
+            }
+          }}
+        >
+          <MaterialCommunityIcons
+            name={isPlaying ? "stop" : "play"}
+            size={20}
+            color={isPlaying ? BrandColors.hollowGlow : BrandColors.hollow}
+          />
+          <ThemedText style={styles.playLabel}>{isPlaying ? "Stop" : "Listen"}</ThemedText>
         </Pressable>
+      )}
 
-        {card.type === "in_progress" && card.progress && (
-          <View style={styles.progressSection}>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${card.progress.percentEstimate}%` }]} />
-            </View>
-            {card.progress.progressText && (
-              <ThemedText style={styles.progressText}>{card.progress.progressText}</ThemedText>
-            )}
+      {/* In-progress bar */}
+      {card.type === "in_progress" && card.progress && (
+        <View style={styles.progressSection}>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${card.progress.percentEstimate}%` }]} />
           </View>
-        )}
-
-        <View style={styles.actions}>
-          {card.hasAudio && card.audioUrl && (
-            <Pressable
-              style={[styles.playButton, isPlaying && styles.playButtonActive]}
-              onPress={() => {
-                if (isPlaying) {
-                  onStop?.();
-                } else {
-                  onPlay?.(card.audioUrl!);
-                }
-              }}
-            >
-              <MaterialCommunityIcons
-                name={isPlaying ? "stop" : "play"}
-                size={14}
-                color={BrandColors.hollow}
-              />
-            </Pressable>
-          )}
-          {card.type === "pending_decision" && card.decisionOptions && (
-            <View style={styles.decisionRow}>
-              {card.decisionOptions.map((opt) => (
-                <Pressable
-                  key={opt.id}
-                  style={[styles.decisionButton, decisionLoading && styles.decisionButtonDisabled]}
-                  disabled={decisionLoading}
-                  onPress={() => onDecision?.(card.id, opt.id)}
-                >
-                  {decisionLoading ? (
-                    <ActivityIndicator size="small" color={BrandColors.ash} />
-                  ) : (
-                    <ThemedText style={styles.decisionText}>{opt.label}</ThemedText>
-                  )}
-                </Pressable>
-              ))}
-            </View>
+          {card.progress.progressText && (
+            <ThemedText style={styles.progressText}>{card.progress.progressText}</ThemedText>
           )}
         </View>
-      </View>
+      )}
+
+      {/* Summary — tap to expand */}
+      <Pressable onPress={() => setExpanded((prev) => !prev)}>
+        <ThemedText
+          variant="system"
+          themeColor="textSecondary"
+          numberOfLines={expanded ? undefined : 2}
+        >
+          {card.summary}
+        </ThemedText>
+      </Pressable>
+
+      {/* Decision buttons */}
+      {card.type === "pending_decision" && card.decisionOptions && (
+        <View style={styles.decisionRow}>
+          {card.decisionOptions.map((opt) => (
+            <Pressable
+              key={opt.id}
+              style={[styles.decisionButton, decisionLoading && styles.decisionButtonDisabled]}
+              disabled={decisionLoading}
+              onPress={() => onDecision?.(card.id, opt.id)}
+            >
+              {decisionLoading ? (
+                <ActivityIndicator size="small" color={BrandColors.ash} />
+              ) : (
+                <ThemedText style={styles.decisionText}>{opt.label}</ThemedText>
+              )}
+            </Pressable>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: "row",
     borderWidth: 1,
     borderRadius: Radius.md,
     padding: Spacing.three,
-    minHeight: 80,
     gap: Spacing.two,
   },
-  iconColumn: {
-    width: 48,
+  headerRow: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-start",
-    paddingTop: 4,
+    gap: Spacing.two,
   },
   locationThumb: {
-    width: 48,
-    height: 48,
+    width: 28,
+    height: 28,
     borderRadius: Radius.sm,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginTop: 4,
-  },
-  content: {
-    flex: 1,
-    gap: Spacing.one,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: Spacing.two,
   },
   title: {
     flex: 1,
+  },
+  playButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.two,
+    paddingVertical: Spacing.two,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: BrandColors.hollowMuted,
+  },
+  playButtonActive: {
+    backgroundColor: BrandColors.hollowFaint,
+    borderColor: BrandColors.hollow,
+  },
+  playLabel: {
+    ...FontStyles.system,
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    color: BrandColors.hollow,
   },
   progressSection: {
     gap: Spacing.one,
@@ -195,34 +206,16 @@ const styles = StyleSheet.create({
     color: BrandColors.bone,
     opacity: 0.7,
   },
-  actions: {
-    flexDirection: "row",
-    gap: Spacing.two,
-    marginTop: Spacing.one,
-    alignItems: "center",
-  },
-  playButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: BrandColors.hollowMuted,
-  },
-  playButtonActive: {
-    backgroundColor: BrandColors.hollowFaint,
-    borderColor: BrandColors.hollow,
-  },
   decisionRow: {
     flexDirection: "row",
     gap: Spacing.two,
     flexWrap: "wrap",
-    flex: 1,
   },
   decisionButton: {
+    flex: 1,
+    alignItems: "center",
     paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
+    paddingVertical: Spacing.two,
     borderRadius: Radius.sm,
     borderWidth: 1,
     borderColor: BrandColors.hollowMuted,
@@ -232,9 +225,11 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   decisionText: {
-    fontSize: 12,
     ...FontStyles.system,
+    fontSize: 12,
+    lineHeight: 16,
     color: BrandColors.hollow,
+    textAlign: "center",
   },
   idleContainer: {
     paddingHorizontal: Spacing.three,

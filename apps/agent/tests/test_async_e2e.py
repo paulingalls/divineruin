@@ -17,6 +17,7 @@ import pytest
 
 from async_rules import compute_resolve_time, resolve_crafting
 from async_worker import _resolve_single_activity, resolve_due_activities
+from dialogue_parser import Segment
 
 SAMPLE_PLAYER = {
     "name": "Aldric",
@@ -81,10 +82,19 @@ class TestFullPipeline:
                 patch(
                     "async_worker.generate_activity_narration",
                     new_callable=AsyncMock,
-                    return_value="[NPC:Grimjaw] The blade holds true. A fine piece of work, recruit. [NARRATOR] The iron sword gleams.",
+                    return_value=(
+                        [
+                            Segment(
+                                "GRIMJAW_BLACKSMITH", "stern", "The blade holds true. A fine piece of work, recruit."
+                            ),
+                            Segment("DM_NARRATOR", "neutral", "The iron sword gleams."),
+                        ],
+                        "The blade holds true. A fine piece of work, recruit. The iron sword gleams.",
+                        "Grimjaw approves of the finished blade.",
+                    ),
                 ),
                 patch(
-                    "async_worker.synthesize_multi_voice", new_callable=AsyncMock, return_value="activity_e2e_craft.mp3"
+                    "async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_e2e_craft.mp3"
                 ),
                 patch("async_worker.db.update_activity", side_effect=mock_update),
                 patch("async_worker.AUDIO_DIR", tmpdir),
@@ -102,7 +112,9 @@ class TestFullPipeline:
         cache_id, cached = update_calls[0]
         assert cache_id == "activity_e2e_craft"
         assert cached["narration_text"] is not None
-        assert "Grimjaw" in cached["narration_text"]
+        assert any("GRIMJAW" in seg["character"].upper() for seg in cached["narration_segments"])
+        assert cached["narration_summary"] is not None
+        assert isinstance(cached["narration_segments"], list)
         assert cached["outcome"]["tier"] in ("success", "partial", "unexpected", "failure")
         assert len(cached["decision_options"]) >= 2
         # Second call: mark resolved with audio
@@ -137,9 +149,13 @@ class TestFullPipeline:
             patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
-                return_value="[NPC:Torin] Again. Better.",
+                return_value=(
+                    [Segment("GUILDMASTER_TORIN", "stern", "Again. Better.")],
+                    "Again. Better.",
+                    "Torin pushes the recruit harder.",
+                ),
             ),
-            patch("async_worker.synthesize_multi_voice", new_callable=AsyncMock, return_value="activity_e2e_train.mp3"),
+            patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_e2e_train.mp3"),
             patch("async_worker.db.update_activity", side_effect=mock_update),
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Training complete."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
@@ -179,11 +195,13 @@ class TestFullPipeline:
             patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
-                return_value="[NPC:Kael] Found tracks north.",
+                return_value=(
+                    [Segment("COMPANION_KAEL", "neutral", "Found tracks north.")],
+                    "Found tracks north.",
+                    "Kael discovers tracks heading north.",
+                ),
             ),
-            patch(
-                "async_worker.synthesize_multi_voice", new_callable=AsyncMock, return_value="activity_e2e_errand.mp3"
-            ),
+            patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_e2e_errand.mp3"),
             patch("async_worker.db.update_activity", side_effect=mock_update),
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Kael returns."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
@@ -283,9 +301,18 @@ class TestCostVerification:
     @pytest.mark.asyncio
     async def test_narration_token_budget(self):
         """Typical narration should use < 200 input tokens, < 200 output tokens."""
-        # Mock Anthropic response with realistic token counts
-        mock_content = MagicMock()
-        mock_content.text = "[NPC:Grimjaw] The blade holds. Not bad, recruit."
+        # Mock Anthropic tool_use response with realistic token counts
+        # Note: MagicMock(name=...) sets the mock's repr name, not an attribute,
+        # so we use spec=[] and set attributes directly.
+        mock_content = MagicMock(spec=[])
+        mock_content.type = "tool_use"
+        mock_content.name = "narration_result"
+        mock_content.input = {
+            "segments": [
+                {"character": "GRIMJAW_BLACKSMITH", "emotion": "stern", "text": "The blade holds. Not bad, recruit."},
+            ],
+            "summary": "Grimjaw approves of the finished blade.",
+        }
         mock_response = MagicMock()
         mock_response.content = [mock_content]
         mock_response.usage = MagicMock()
@@ -314,7 +341,11 @@ class TestCostVerification:
         }
 
         with patch("narration._client.messages.create", new_callable=AsyncMock, return_value=mock_response):
-            await generate_activity_narration(outcome, SAMPLE_PLAYER, activity_data)
+            segments, narration_text, summary = await generate_activity_narration(outcome, SAMPLE_PLAYER, activity_data)
+
+        assert len(segments) >= 1
+        assert isinstance(narration_text, str)
+        assert isinstance(summary, str)
 
         # Haiku pricing: $0.80/M input, $4/M output
         input_cost = mock_response.usage.input_tokens * 0.80 / 1_000_000

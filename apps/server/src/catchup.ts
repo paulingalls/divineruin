@@ -146,15 +146,11 @@ function activityToFeedItem(id: string, data: Record<string, unknown>): FeedItem
     type = "resolved";
   }
 
-  const narrationText = data.narration_text as string | undefined;
-
   return {
     id,
     type,
     title: activityTitle(data),
-    summary: narrationText
-      ? narrationText.replace(/\[(?:NPC:[^\]]*|NARRATOR)\]\s*/g, "").slice(0, 200)
-      : activityTitle(data),
+    summary: (data.narration_summary as string) || activityTitle(data),
     timestamp,
     relativeTime: getRelativeTime(timestamp),
     hasAudio: typeof data.narration_audio_url === "string",

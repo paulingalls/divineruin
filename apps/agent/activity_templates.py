@@ -43,7 +43,8 @@ COMPANION_CONTEXT = {
     },
 }
 
-# Narration prompt templates per activity type
+# Narration prompt templates per activity type.
+# Structure (segments, emotions) is enforced by the tool schema, not the prompt.
 NARRATION_PROMPTS = {
     "crafting": """You are {npc_name}, {npc_role} in the world of Divine Ruin.
 Personality: {npc_personality}
@@ -53,14 +54,14 @@ The player attempted to craft: {recipe_name}
 Outcome: {tier} (roll: {roll}, DC: {dc})
 Quality bonus: {quality_bonus}
 
-Write a short narration (60-120 words) of this crafting outcome, speaking as {npc_name}.
+Write a short narration (60-120 words) of this crafting outcome.
 Include sensory details — the sound of the hammer, the smell of hot metal, the feel of the work.
 End with the decision point the player must make.
 
 Decision options:
 {decision_options}
 
-Use dialogue tags for voice routing: [NPC:{npc_name}] before NPC speech, [NARRATOR] before narration.
+Use DM_NARRATOR for narration and {voice_id} for {npc_name}'s dialogue.
 Keep it concise and in-character.""",
     "training": """You are {mentor_name}, training mentor in the world of Divine Ruin.
 Personality: {mentor_personality}
@@ -70,14 +71,14 @@ The player trained: {training_stat}{skill_note}
 Outcome: {tier} (roll: {roll}, DC: {dc})
 Stat gains: {stat_gains}
 
-Write a short narration (60-120 words) of this training session, speaking as {mentor_name}.
+Write a short narration (60-120 words) of this training session.
 Include physical sensory details — sweat, exertion, the moment of clarity or frustration.
 End with the decision point.
 
 Decision options:
 {decision_options}
 
-Use dialogue tags: [NPC:{mentor_name}] before mentor speech, [NARRATOR] before narration.
+Use DM_NARRATOR for narration and {voice_id} for {mentor_name}'s dialogue.
 Keep it concise and in-character.""",
     "companion_errand": """You are narrating {companion_name}'s return from an errand in the world of Divine Ruin.
 Companion personality: {companion_personality}
@@ -95,7 +96,7 @@ End with the decision point.
 Decision options:
 {decision_options}
 
-Use dialogue tags: [NPC:{companion_name}] before companion speech, [NARRATOR] before narration.
+Use DM_NARRATOR for narration and {voice_id} for {companion_name}'s dialogue.
 Keep it concise and in-character.""",
 }
 
@@ -112,8 +113,11 @@ def get_companion_context(companion_id: str) -> dict:
     return COMPANION_CONTEXT.get(companion_id, COMPANION_CONTEXT["companion_kael"])
 
 
-def build_narration_prompt(activity_type: str, outcome: dict, activity_data: dict) -> str:
-    """Build a narration prompt from outcome and activity data."""
+def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list[str]]:
+    """Build a narration prompt and return (prompt, npc_voice_ids).
+
+    The voice IDs are used to constrain the tool schema's character enum.
+    """
     template = NARRATION_PROMPTS[activity_type]
     ctx = outcome.get("narrative_context", {})
     decisions = outcome.get("decision_options", [])
@@ -121,11 +125,12 @@ def build_narration_prompt(activity_type: str, outcome: dict, activity_data: dic
 
     if activity_type == "crafting":
         npc = get_crafting_npc(ctx.get("npc_id", "grimjaw_blacksmith"))
-        return template.format(
+        prompt = template.format(
             npc_name=npc["name"],
             npc_role=npc["role"],
             npc_personality=npc["personality"],
             npc_speech_style=npc["speech_style"],
+            voice_id=npc["voice_id"],
             recipe_name=ctx.get("recipe_name", "unknown item"),
             tier=ctx.get("tier", "unknown"),
             roll=ctx.get("roll", "?"),
@@ -133,13 +138,16 @@ def build_narration_prompt(activity_type: str, outcome: dict, activity_data: dic
             quality_bonus=ctx.get("quality_bonus", 0),
             decision_options=decision_text,
         )
+        return prompt, [npc["voice_id"]]
+
     elif activity_type == "training":
         mentor = get_training_mentor(ctx.get("mentor_id", "guildmaster_torin"))
         skill_note = f" (skill: {ctx['training_skill']})" if ctx.get("training_skill") else ""
-        return template.format(
+        prompt = template.format(
             mentor_name=mentor["name"],
             mentor_personality=mentor["personality"],
             mentor_speech_style=mentor["speech_style"],
+            voice_id=mentor["voice_id"],
             training_stat=ctx.get("training_stat", "unknown"),
             skill_note=skill_note,
             tier=ctx.get("tier", "unknown"),
@@ -148,14 +156,17 @@ def build_narration_prompt(activity_type: str, outcome: dict, activity_data: dic
             stat_gains=outcome.get("stat_gains", {}),
             decision_options=decision_text,
         )
+        return prompt, [mentor["voice_id"]]
+
     else:  # companion_errand
         companion = get_companion_context(ctx.get("companion_id", "companion_kael"))
         errand_type = ctx.get("errand_type", "scout")
         errand_frame = companion.get("errand_frames", {}).get(errand_type, "")
-        return template.format(
+        prompt = template.format(
             companion_name=companion["name"],
             companion_personality=companion["personality"],
             companion_speech_style=companion["speech_style"],
+            voice_id=companion["voice_id"],
             errand_frame=errand_frame,
             errand_type=errand_type,
             destination=ctx.get("destination", "unknown"),
@@ -163,3 +174,4 @@ def build_narration_prompt(activity_type: str, outcome: dict, activity_data: dic
             information=outcome.get("information_gained", []),
             decision_options=decision_text,
         )
+        return prompt, [companion["voice_id"]]

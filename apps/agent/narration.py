@@ -2,14 +2,17 @@
 
 import logging
 import re
+from typing import Any
 
 from activity_templates import build_narration_prompt
+from dialogue_parser import Segment
 from llm_config import MODEL, extract_llm_text
 from llm_config import client as _client
+from voices import DEFAULT_VOICE, EMOTIONS
 
 logger = logging.getLogger("divineruin.narration")
 
-MAX_TOKENS = 300
+MAX_TOKENS = 500
 
 _SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9 '\-]")
 MAX_NAME_LENGTH = 30
@@ -117,17 +120,93 @@ async def generate_notification_hook(
     return hook
 
 
+def _build_narration_tool(npc_voice_ids: list[str]) -> dict[str, Any]:
+    """Build the tool schema for structured narration output.
+
+    The character enum is constrained to DM_NARRATOR + the specific NPCs
+    involved in this activity.
+    """
+    valid_characters = [DEFAULT_VOICE, *npc_voice_ids]
+
+    return {
+        "name": "narration_result",
+        "description": "Submit the structured narration segments and a short UI summary.",
+        "input_schema": {
+            "type": "object",
+            "required": ["segments", "summary"],
+            "properties": {
+                "segments": {
+                    "type": "array",
+                    "description": "Ordered narration segments. Each is one voice block.",
+                    "items": {
+                        "type": "object",
+                        "required": ["character", "emotion", "text"],
+                        "properties": {
+                            "character": {
+                                "type": "string",
+                                "enum": valid_characters,
+                                "description": "Voice character ID. DM_NARRATOR for narration, NPC voice ID for dialogue.",
+                            },
+                            "emotion": {
+                                "type": "string",
+                                "enum": EMOTIONS,
+                                "description": "Emotional tone for this segment.",
+                            },
+                            "text": {
+                                "type": "string",
+                                "description": "The spoken text for this segment. No tags or brackets.",
+                            },
+                        },
+                    },
+                },
+                "summary": {
+                    "type": "string",
+                    "description": "1-2 sentence plain-text summary of what happened (20-40 words). For the UI card, not audio.",
+                },
+            },
+        },
+    }
+
+
+def _extract_tool_input(response: Any) -> dict[str, Any] | None:
+    """Extract the tool input from an Anthropic tool_use response."""
+    for block in response.content:
+        if block.type == "tool_use" and block.name == "narration_result":
+            return block.input
+    return None
+
+
+def _segments_to_text(segments: list[dict[str, str]]) -> str:
+    """Concatenate segment text into a single plain-text narration."""
+    return " ".join(seg["text"] for seg in segments)
+
+
+def _segments_to_segment_objects(segments: list[dict[str, str]]) -> list[Segment]:
+    """Convert raw dicts from tool output to Segment dataclass instances."""
+    return [
+        Segment(
+            character=seg["character"],
+            emotion=seg["emotion"],
+            text=seg["text"],
+        )
+        for seg in segments
+        if seg.get("text", "").strip()
+    ]
+
+
 async def generate_activity_narration(
     outcome: dict,
     player_data: dict,
     activity_data: dict,
-) -> str:
-    """Generate narration text for a resolved async activity.
+) -> tuple[list[Segment], str, str]:
+    """Generate structured narration for a resolved async activity.
 
-    Uses Claude Haiku for cost efficiency. Returns narration text with dialogue tags.
+    Uses Claude Haiku with tool_use for deterministic structured output.
+    Returns (segments, narration_text, summary).
     """
     activity_type = activity_data.get("activity_type", "crafting")
-    prompt = build_narration_prompt(activity_type, outcome, activity_data)
+    prompt, npc_voice_ids = build_narration_prompt(activity_type, outcome)
+    tool = _build_narration_tool(npc_voice_ids)
 
     player_name = _sanitize_player_text(player_data.get("name", "the adventurer"))
     player_level = player_data.get("level", 1)
@@ -136,26 +215,33 @@ async def generate_activity_narration(
     system_msg = (
         f"You narrate for a level {player_level} {player_class} named {player_name} "
         "in a dark fantasy world. Write for the ear: short sentences, concrete sensory details. "
-        "60-120 words. End with the decision point. Use dialogue tags [NPC:Name] and [NARRATOR]."
+        "60-120 words total across all segments. End with the decision point."
     )
 
     response = await _client.messages.create(
         model=MODEL,
         max_tokens=MAX_TOKENS,
         system=system_msg,
+        tools=[tool],
+        tool_choice={"type": "tool", "name": "narration_result"},
         messages=[{"role": "user", "content": prompt}],
     )
 
-    narration = extract_llm_text(response)
-
-    # Log token usage for cost tracking
-    input_tokens = response.usage.input_tokens
-    output_tokens = response.usage.output_tokens
     logger.info(
         "Narration generated: %d input tokens, %d output tokens (model=%s)",
-        input_tokens,
-        output_tokens,
+        response.usage.input_tokens,
+        response.usage.output_tokens,
         MODEL,
     )
 
-    return narration
+    tool_input = _extract_tool_input(response)
+    if not tool_input or not tool_input.get("segments"):
+        raise RuntimeError(f"LLM did not return valid narration segments: {response.content}")
+
+    segments = _segments_to_segment_objects(tool_input["segments"])
+    narration_text = _segments_to_text(tool_input["segments"])
+    summary = tool_input.get("summary", "")
+
+    logger.info("Narration: %d segments, %d chars, summary=%s", len(segments), len(narration_text), summary[:60])
+
+    return segments, narration_text, summary

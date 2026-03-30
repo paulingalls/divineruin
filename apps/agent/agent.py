@@ -56,7 +56,7 @@ from transcript import TranscriptLogger
 from tts_pauses import PAUSE_DURATIONS as _PAUSE_DURATIONS
 from tts_pauses import PAUSE_PATTERN as _PAUSE_PATTERN
 from tts_pauses import SENTENCE_END_PAUSE
-from voices import VOICES, get_voice_config
+from voices import VOICES, apply_markup, get_voice_config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("divineruin.dm")
@@ -327,7 +327,8 @@ class DungeonMasterAgent(Agent):
             if cached_tts is None or voice_key != cached_voice_key:
                 cached_tts = _make_tts(voice=cfg.voice, speaking_rate=cfg.speaking_rate)
                 cached_voice_key = voice_key
-            async with cached_tts.synthesize(chunk) as stream:
+            marked_up = apply_markup(chunk, cfg.inworld_markup)
+            async with cached_tts.synthesize(marked_up) as stream:
                 async for ev in stream:
                     if first_frame:
                         self._turn_timer.mark("tts_first_byte")

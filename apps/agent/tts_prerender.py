@@ -17,14 +17,14 @@ from functools import partial
 
 import aiohttp
 
-from dialogue_parser import Segment, parse_dialogue_stream
+from dialogue_parser import Segment
 from tts_pauses import chunk_text_with_pauses
-from voices import get_voice_config
+from voices import VoiceConfig, apply_markup, get_voice_config
 
 logger = logging.getLogger("divineruin.tts_prerender")
 
 INWORLD_BASE_URL = os.environ.get("INWORLD_BASE_URL", "https://api.inworld.ai")
-INWORLD_MODEL = "inworld-tts-1"
+INWORLD_MODEL = "inworld-tts-1.5-max"
 
 # Type alias for the TTS synthesizer function
 SynthesizeFn = Callable[[str, str], Coroutine[None, None, bytes]]
@@ -44,6 +44,10 @@ async def inworld_tts(
     api_key = os.environ.get("INWORLD_API_KEY")
     if not api_key:
         raise RuntimeError("INWORLD_API_KEY not set")
+    if not voice_id:
+        raise RuntimeError(f"Empty voice_id for text: {text[:80]!r}")
+
+    logger.debug("Inworld TTS request: voice=%s, rate=%.2f, text=%s", voice_id, speaking_rate, text[:60])
 
     payload = {
         "text": text,
@@ -52,6 +56,7 @@ async def inworld_tts(
         "audioConfig": {
             "audioEncoding": "MP3",
             "sampleRateHertz": 44100,
+            "bitrate": 128000,
             "speakingRate": speaking_rate,
         },
     }
@@ -217,46 +222,67 @@ def _generate_mp3_silence(seconds: float) -> bytes:
             os.unlink(tmp_path)
 
 
-async def _text_to_async_iter(text: str) -> AsyncIterator[str]:
-    """Wrap a string as a single-chunk async iterator for the dialogue parser."""
-    yield text
+async def _synthesize_segment_bytes(
+    text: str,
+    voice_config: VoiceConfig,
+    session: aiohttp.ClientSession,
+    silence_cache: dict[float, bytes] | None = None,
+) -> bytes:
+    """Synthesize a text segment to MP3 bytes with pauses and emotion markup.
+
+    Pass a shared ``silence_cache`` to avoid regenerating identical silence
+    durations across multiple segments.
+    """
+    chunks = chunk_text_with_pauses(text)
+    mp3_parts: list[bytes] = []
+    if silence_cache is None:
+        silence_cache = {}
+
+    for chunk in chunks:
+        if chunk.text:
+            marked_up = apply_markup(chunk.text, voice_config.inworld_markup)
+            audio = await inworld_tts(
+                marked_up,
+                voice_config.voice,
+                speaking_rate=voice_config.speaking_rate,
+                session=session,
+            )
+            mp3_parts.append(audio)
+        elif chunk.silence:
+            if chunk.silence not in silence_cache:
+                silence_cache[chunk.silence] = _generate_mp3_silence(chunk.silence)
+            if silence_cache[chunk.silence]:
+                mp3_parts.append(silence_cache[chunk.silence])
+
+    return b"".join(mp3_parts)
 
 
-async def synthesize_multi_voice(
-    narration_text: str,
+async def synthesize_segments(
+    segments: list[Segment],
     output_path: str,
 ) -> str:
-    """Synthesize narration with voice swapping based on dialogue tags.
+    """Synthesize pre-parsed segments to an MP3 file.
 
-    Parses [CHARACTER, emotion]: "dialogue" tags and synthesizes each segment
-    with the correct Inworld voice. Untagged text uses the DM narrator voice.
+    Each segment gets its own voice config (from character + emotion),
+    emotion markup, and pause handling. This is the preferred path when
+    segments come from structured LLM output (tool_use).
 
     Returns the filename (not full path) for URL construction.
     """
     _validate_output_path(output_path)
 
-    segments: list[Segment] = []
-    async for segment in parse_dialogue_stream(_text_to_async_iter(narration_text)):
-        if segment.text.strip():
-            segments.append(segment)
-
     if not segments:
-        raise RuntimeError("No dialogue segments found in narration text")
+        raise RuntimeError("No segments to synthesize")
 
     mp3_parts: list[bytes] = []
+    silence_cache: dict[float, bytes] = {}
     async with aiohttp.ClientSession() as session:
         for segment in segments:
             cfg = get_voice_config(segment.character, segment.emotion)
-            audio = await inworld_tts(
-                segment.text,
-                cfg.voice,
-                speaking_rate=cfg.speaking_rate,
-                session=session,
-            )
-            mp3_parts.append(audio)
+            part = await _synthesize_segment_bytes(segment.text, cfg, session, silence_cache)
+            mp3_parts.append(part)
 
-    combined = b"".join(mp3_parts)
-    combined = _reencode_mp3(combined)
+    combined = _reencode_mp3(b"".join(mp3_parts))
 
     filename = _write_mp3(output_path, combined)
     logger.info(
@@ -270,55 +296,28 @@ async def synthesize_multi_voice(
 
 async def synthesize_with_pauses(
     text: str,
-    voice_id: str,
+    voice_config: VoiceConfig,
     output_path: str,
-    *,
-    speaking_rate: float = 1.0,
-    session: aiohttp.ClientSession | None = None,
 ) -> str:
-    """Synthesize text to MP3 with pause/silence insertion between sentences.
+    """Synthesize text to MP3 with pause/silence insertion and emotion markup.
 
-    Replicates the live agent's pause behavior for pre-rendered audio:
     - Splits on pause markers (..., \u2026, \u2014, \u2013) and inserts silence
     - Inserts silence after sentence endings (.!?)
     - Inserts longer silence at paragraph breaks (\\n\\n)
-    - Passes speaking_rate to the TTS API
+    - Prepends Inworld emotion markup from voice_config
 
     Returns the filename (not full path) for URL construction.
     """
     _validate_output_path(output_path)
 
-    chunks = chunk_text_with_pauses(text)
-    mp3_parts: list[bytes] = []
-    silence_cache: dict[float, bytes] = {}
+    async with aiohttp.ClientSession() as session:
+        raw = await _synthesize_segment_bytes(text, voice_config, session)
 
-    for chunk in chunks:
-        if chunk.text:
-            audio = await inworld_tts(
-                chunk.text,
-                voice_id,
-                speaking_rate=speaking_rate,
-                session=session,
-            )
-            mp3_parts.append(audio)
-        elif chunk.silence:
-            if chunk.silence not in silence_cache:
-                silence_cache[chunk.silence] = _generate_mp3_silence(chunk.silence)
-            silence = silence_cache[chunk.silence]
-            if silence:
-                mp3_parts.append(silence)
-
-    if not mp3_parts:
+    if not raw:
         raise RuntimeError("No audio produced from text chunks")
 
-    combined = b"".join(mp3_parts)
-    combined = _reencode_mp3(combined)
+    combined = _reencode_mp3(raw)
 
     filename = _write_mp3(output_path, combined)
-    logger.info(
-        "Audio rendered with pauses: %s (%d bytes, %d chunks)",
-        filename,
-        len(combined),
-        len(chunks),
-    )
+    logger.info("Audio rendered with pauses: %s (%d bytes)", filename, len(combined))
     return filename

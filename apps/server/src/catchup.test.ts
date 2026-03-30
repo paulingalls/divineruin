@@ -133,21 +133,35 @@ describe("activityToFeedItem", () => {
     expect(item.progress!.progressText).toBeTruthy();
   });
 
-  test("strips dialogue tags from summary", () => {
+  test("uses narration_summary for summary", () => {
     const data = {
       status: "resolved",
       activity_type: "crafting",
       parameters: { result_item_name: "Blade" },
       narration_text: "[NPC:Grimjaw] The blade rings true. [NARRATOR] You take it.",
+      narration_summary: "Grimjaw forged the blade true. You claimed it.",
       decision_options: null,
       start_time: new Date().toISOString(),
       resolve_at: new Date().toISOString(),
     };
 
     const item = activityToFeedItem("act_4", data);
-    expect(item.summary).not.toContain("[NPC:");
-    expect(item.summary).not.toContain("[NARRATOR]");
-    expect(item.summary).toContain("The blade rings true.");
+    expect(item.summary).toBe("Grimjaw forged the blade true. You claimed it.");
+  });
+
+  test("falls back to title when no narration_summary", () => {
+    const data = {
+      status: "resolved",
+      activity_type: "crafting",
+      parameters: { result_item_name: "Blade" },
+      narration_text: "[NPC:Grimjaw] The blade rings true.",
+      decision_options: null,
+      start_time: new Date().toISOString(),
+      resolve_at: new Date().toISOString(),
+    };
+
+    const item = activityToFeedItem("act_4", data);
+    expect(item.summary).toBe("Blade");
   });
 });
 

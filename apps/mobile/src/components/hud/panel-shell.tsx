@@ -128,7 +128,7 @@ export function PanelShell() {
       </Pressable>
 
       <GestureDetector gesture={panGesture}>
-        <Animated.View style={[styles.sheet, { maxHeight: sheetMaxHeight }, sheetStyle]}>
+        <Animated.View style={[styles.sheet, { height: sheetMaxHeight }, sheetStyle]}>
           <View style={styles.handleRow}>
             <View style={styles.handle} />
             <Pressable style={styles.closeButton} onPress={close} hitSlop={12}>
@@ -136,11 +136,11 @@ export function PanelShell() {
             </Pressable>
           </View>
 
-          <PanelTabBar />
-
           <View style={styles.contentArea}>
             <PanelContent />
           </View>
+
+          <PanelTabBar />
         </Animated.View>
       </GestureDetector>
     </View>

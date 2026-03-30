@@ -79,9 +79,31 @@ ERRAND_OUTCOME = {
 
 
 def _mock_anthropic_response(text: str = "The hammer struck true.") -> MagicMock:
+    """Mock a plain text Anthropic response (used by progress snippets, notification hooks)."""
     mock_content = MagicMock()
     mock_content.type = "text"
     mock_content.text = text
+    mock_response = MagicMock()
+    mock_response.content = [mock_content]
+    mock_response.usage = MagicMock()
+    mock_response.usage.input_tokens = 150
+    mock_response.usage.output_tokens = 100
+    return mock_response
+
+
+def _mock_tool_use_response(
+    segments: list[dict] | None = None,
+    summary: str = "Summary.",
+) -> MagicMock:
+    """Mock a tool_use Anthropic response (used by generate_activity_narration)."""
+    if segments is None:
+        segments = [
+            {"character": "DM_NARRATOR", "emotion": "neutral", "text": "The hammer struck true."},
+        ]
+    mock_content = MagicMock(spec=[])
+    mock_content.type = "tool_use"
+    mock_content.name = "narration_result"
+    mock_content.input = {"segments": segments, "summary": summary}
     mock_response = MagicMock()
     mock_response.content = [mock_content]
     mock_response.usage = MagicMock()
@@ -125,12 +147,21 @@ class TestGenerateActivityNarration:
     @pytest.mark.asyncio
     async def test_crafting_narration(self):
         activity_data = {"activity_type": "crafting"}
-        mock_response = _mock_anthropic_response("[NPC:Grimjaw] The blade rings true.")
+        mock_response = _mock_tool_use_response(
+            segments=[
+                {"character": "GRIMJAW_BLACKSMITH", "emotion": "stern", "text": "The blade rings true."},
+            ],
+            summary="Grimjaw approves the blade.",
+        )
 
         with _patch_client(mock_response) as mock_create:
-            result = await generate_activity_narration(CRAFTING_OUTCOME, SAMPLE_PLAYER, activity_data)
+            segments, narration_text, summary = await generate_activity_narration(
+                CRAFTING_OUTCOME, SAMPLE_PLAYER, activity_data
+            )
 
-        assert "Grimjaw" in result
+        assert any(s.character == "GRIMJAW_BLACKSMITH" for s in segments)
+        assert "blade rings true" in narration_text
+        assert isinstance(summary, str)
         mock_create.assert_awaited_once()
         call_kwargs = mock_create.call_args[1]
         assert call_kwargs["model"] == MODEL
@@ -140,12 +171,17 @@ class TestGenerateActivityNarration:
     @pytest.mark.asyncio
     async def test_training_narration(self):
         activity_data = {"activity_type": "training"}
-        mock_response = _mock_anthropic_response("[NARRATOR] Sweat drips from your brow.")
+        mock_response = _mock_tool_use_response(
+            segments=[
+                {"character": "DM_NARRATOR", "emotion": "neutral", "text": "Sweat drips from your brow."},
+            ],
+            summary="Training pushes the warrior's limits.",
+        )
 
         with _patch_client(mock_response) as mock_create:
-            result = await generate_activity_narration(TRAINING_OUTCOME, SAMPLE_PLAYER, activity_data)
+            _, narration_text, _ = await generate_activity_narration(TRAINING_OUTCOME, SAMPLE_PLAYER, activity_data)
 
-        assert "Sweat" in result
+        assert "Sweat" in narration_text
         call_kwargs = mock_create.call_args[1]
         prompt = call_kwargs["messages"][0]["content"]
         assert "strength" in prompt
@@ -154,12 +190,17 @@ class TestGenerateActivityNarration:
     @pytest.mark.asyncio
     async def test_companion_errand_narration(self):
         activity_data = {"activity_type": "companion_errand"}
-        mock_response = _mock_anthropic_response("[NPC:Kael] Found tracks leading north.")
+        mock_response = _mock_tool_use_response(
+            segments=[
+                {"character": "COMPANION_KAEL", "emotion": "neutral", "text": "Found tracks leading north."},
+            ],
+            summary="Kael discovers tracks.",
+        )
 
         with _patch_client(mock_response) as mock_create:
-            result = await generate_activity_narration(ERRAND_OUTCOME, SAMPLE_PLAYER, activity_data)
+            _, narration_text, _ = await generate_activity_narration(ERRAND_OUTCOME, SAMPLE_PLAYER, activity_data)
 
-        assert "Kael" in result
+        assert "tracks leading north" in narration_text
         call_kwargs = mock_create.call_args[1]
         prompt = call_kwargs["messages"][0]["content"]
         assert "scout" in prompt
@@ -168,33 +209,40 @@ class TestGenerateActivityNarration:
     @pytest.mark.asyncio
     async def test_uses_haiku_model(self):
         activity_data = {"activity_type": "crafting"}
-        mock_response = _mock_anthropic_response("Test narration.")
+        mock_response = _mock_tool_use_response(
+            segments=[{"character": "DM_NARRATOR", "emotion": "neutral", "text": "Test narration."}],
+        )
 
         with _patch_client(mock_response) as mock_create:
             await generate_activity_narration(CRAFTING_OUTCOME, SAMPLE_PLAYER, activity_data)
 
         call_kwargs = mock_create.call_args[1]
         assert call_kwargs["model"] == MODEL
-        assert call_kwargs["max_tokens"] == 300
+        assert call_kwargs["max_tokens"] == 500
 
     @pytest.mark.asyncio
     async def test_cost_tracking_logged(self):
         activity_data = {"activity_type": "crafting"}
-        mock_response = _mock_anthropic_response("Narration text.")
+        mock_response = _mock_tool_use_response(
+            segments=[{"character": "DM_NARRATOR", "emotion": "neutral", "text": "Narration text."}],
+        )
 
         with _patch_client(mock_response):
             with patch("narration.logger") as mock_logger:
                 await generate_activity_narration(CRAFTING_OUTCOME, SAMPLE_PLAYER, activity_data)
 
-                mock_logger.info.assert_called_once()
-                log_args = mock_logger.info.call_args[0]
-                assert 150 in log_args  # input tokens
-                assert 100 in log_args  # output tokens
+                # Now there are two logger.info calls: token counts + segment info
+                assert mock_logger.info.call_count == 2
+                first_log_args = mock_logger.info.call_args_list[0][0]
+                assert 150 in first_log_args  # input tokens
+                assert 100 in first_log_args  # output tokens
 
     @pytest.mark.asyncio
     async def test_system_message_includes_player_context(self):
         activity_data = {"activity_type": "crafting"}
-        mock_response = _mock_anthropic_response("Test.")
+        mock_response = _mock_tool_use_response(
+            segments=[{"character": "DM_NARRATOR", "emotion": "neutral", "text": "Test."}],
+        )
 
         with _patch_client(mock_response) as mock_create:
             await generate_activity_narration(CRAFTING_OUTCOME, SAMPLE_PLAYER, activity_data)

@@ -12,10 +12,11 @@ from dataclasses import asdict
 
 import db
 from async_rules import resolve_companion_errand, resolve_crafting, resolve_training
+from dialogue_parser import Segment
 from llm_config import AUDIO_DIR, audio_url_for
 from narration import generate_activity_narration, generate_notification_hook, generate_progress_snippets
 from push import send_push_notification
-from tts_prerender import synthesize_multi_voice
+from tts_prerender import synthesize_segments
 from world_news import generate_world_news
 
 logger = logging.getLogger("divineruin.async_worker")
@@ -69,12 +70,13 @@ async def _resolve_single_activity(activity: dict) -> None:
 
     # Check for cached narration from a previous partial resolve (e.g. TTS failed)
     cached_outcome = activity.get("outcome")
-    cached_narration = activity.get("narration_text")
+    cached_segments = activity.get("narration_segments")
 
-    if cached_outcome and cached_narration:
+    if cached_outcome and cached_segments:
         logger.info("Using cached narration for %s (TTS retry)", activity_id)
         outcome_dict = cached_outcome
-        narration_text = cached_narration
+        narration_text = activity.get("narration_text", "")
+        segments = [Segment(**s) for s in cached_segments]
     else:
         # Load player data
         player_data = await db.get_player(player_id) or {}
@@ -93,23 +95,29 @@ async def _resolve_single_activity(activity: dict) -> None:
 
         outcome_dict = asdict(outcome)
 
-        # Generate narration via LLM
-        narration_text = await generate_activity_narration(outcome_dict, player_data, activity)
+        # Generate structured narration via LLM tool_use
+        segments, narration_text, narration_summary = await generate_activity_narration(
+            outcome_dict, player_data, activity
+        )
 
-        # Cache outcome + narration so retries skip the LLM call
+        # Cache everything so retries skip the LLM call
         await db.update_activity(
             activity_id,
             {
                 "outcome": outcome_dict,
                 "narration_text": narration_text,
+                "narration_summary": narration_summary,
+                "narration_segments": [
+                    {"character": s.character, "emotion": s.emotion, "text": s.text} for s in segments
+                ],
                 "decision_options": outcome_dict.get("decision_options", []),
             },
         )
 
-    # Pre-render audio with voice swapping for dialogue tags
+    # Pre-render audio from structured segments
     audio_filename = f"{activity_id}.mp3"
     audio_path = os.path.join(AUDIO_DIR, audio_filename)
-    await synthesize_multi_voice(narration_text, audio_path)
+    await synthesize_segments(segments, audio_path)
     audio_url = audio_url_for(audio_filename)
 
     # Mark fully resolved

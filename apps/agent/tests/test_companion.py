@@ -216,8 +216,9 @@ class TestKaelVoiceRateOffset:
         from voices import get_voice_config
 
         cfg = get_voice_config("COMPANION_KAEL", "neutral")
-        # neutral rate = 0.8, offset = -0.05 → 0.75
-        assert cfg.speaking_rate == pytest.approx(0.75)
+        # neutral rate = 0.95, offset = -0.05 → 0.90
+        assert cfg.speaking_rate == pytest.approx(0.90)
+        assert cfg.inworld_markup == ""  # neutral has no markup
 
 
 # --- WU3: Proactive Companion Speech ---

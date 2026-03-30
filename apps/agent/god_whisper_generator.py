@@ -44,12 +44,7 @@ async def generate_god_whisper(
     voice_cfg = get_voice_config(profile.voice_character, profile.voice_emotion)
     audio_filename = f"whisper_{player_id}_{deity_id}_{os.urandom(4).hex()}.mp3"
     audio_path = os.path.join(AUDIO_DIR, audio_filename)
-    await synthesize_with_pauses(
-        narration_text,
-        voice_cfg.voice,
-        audio_path,
-        speaking_rate=voice_cfg.speaking_rate,
-    )
+    await synthesize_with_pauses(narration_text, voice_cfg, audio_path)
     audio_url = audio_url_for(audio_filename)
 
     # Store in DB

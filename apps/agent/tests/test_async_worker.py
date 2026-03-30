@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from async_worker import _resolve_single_activity, resolve_due_activities
+from dialogue_parser import Segment
 
 SAMPLE_ACTIVITY = {
     "id": "activity_abc123",
@@ -98,9 +99,13 @@ class TestResolveSingleActivity:
             patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
-                return_value="[NPC:Grimjaw] The blade sings.",
+                return_value=(
+                    [Segment("GRIMJAW_BLACKSMITH", "stern", "The blade sings.")],
+                    "The blade sings.",
+                    "Grimjaw is pleased with the blade.",
+                ),
             ),
-            patch("async_worker.synthesize_multi_voice", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
+            patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Blade ready."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
@@ -113,7 +118,10 @@ class TestResolveSingleActivity:
         assert cache_call[0][0] == "activity_abc123"
         cached = cache_call[0][1]
         assert "outcome" in cached
-        assert cached["narration_text"] == "[NPC:Grimjaw] The blade sings."
+        assert cached["narration_text"] == "The blade sings."
+        assert cached["narration_summary"] == "Grimjaw is pleased with the blade."
+        assert isinstance(cached["narration_segments"], list)
+        assert cached["narration_segments"][0]["character"] == "GRIMJAW_BLACKSMITH"
         assert "decision_options" in cached
         # Second call: mark resolved with audio
         resolve_call = mock_update.call_args_list[1]
@@ -137,9 +145,15 @@ class TestResolveSingleActivity:
         with (
             patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
-                "async_worker.generate_activity_narration", new_callable=AsyncMock, return_value="Training narration."
+                "async_worker.generate_activity_narration",
+                new_callable=AsyncMock,
+                return_value=(
+                    [Segment("DM_NARRATOR", "neutral", "Training narration.")],
+                    "Training narration.",
+                    "Training complete.",
+                ),
             ),
-            patch("async_worker.synthesize_multi_voice", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
+            patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Training done."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
@@ -181,8 +195,16 @@ class TestResolveSingleActivity:
 
         with (
             patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=player_with_companion),
-            patch("async_worker.generate_activity_narration", new_callable=AsyncMock, return_value="Kael returns."),
-            patch("async_worker.synthesize_multi_voice", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
+            patch(
+                "async_worker.generate_activity_narration",
+                new_callable=AsyncMock,
+                return_value=(
+                    [Segment("COMPANION_KAEL", "neutral", "Kael returns.")],
+                    "Kael returns.",
+                    "Kael returns from scouting.",
+                ),
+            ),
+            patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Kael returns."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
@@ -214,8 +236,16 @@ class TestResolveSingleActivity:
         """If TTS fails, outcome and narration are cached but status stays in_progress."""
         with (
             patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
-            patch("async_worker.generate_activity_narration", new_callable=AsyncMock, return_value="Text."),
-            patch("async_worker.synthesize_multi_voice", new_callable=AsyncMock, side_effect=RuntimeError("TTS down")),
+            patch(
+                "async_worker.generate_activity_narration",
+                new_callable=AsyncMock,
+                return_value=(
+                    [Segment("DM_NARRATOR", "neutral", "Text.")],
+                    "Text.",
+                    "Summary.",
+                ),
+            ),
+            patch("async_worker.synthesize_segments", new_callable=AsyncMock, side_effect=RuntimeError("TTS down")),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
         ):
             with pytest.raises(RuntimeError):
@@ -226,6 +256,8 @@ class TestResolveSingleActivity:
         cached = mock_update.call_args[0][1]
         assert "outcome" in cached
         assert cached["narration_text"] == "Text."
+        assert cached["narration_summary"] == "Summary."
+        assert isinstance(cached["narration_segments"], list)
         assert "status" not in cached
 
     @pytest.mark.asyncio
@@ -233,8 +265,16 @@ class TestResolveSingleActivity:
         """Should still work with empty player data."""
         with (
             patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=None),
-            patch("async_worker.generate_activity_narration", new_callable=AsyncMock, return_value="Narration."),
-            patch("async_worker.synthesize_multi_voice", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
+            patch(
+                "async_worker.generate_activity_narration",
+                new_callable=AsyncMock,
+                return_value=(
+                    [Segment("DM_NARRATOR", "neutral", "Narration.")],
+                    "Narration.",
+                    "Summary.",
+                ),
+            ),
+            patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Update."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
