@@ -73,6 +73,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       durationMax = program.duration_max_seconds;
       activityParams = {
         program_id: program.id,
+        name: program.name,
         stat: program.stat,
         skill: program.skill,
         dc: program.dc,

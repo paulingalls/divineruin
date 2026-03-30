@@ -83,6 +83,7 @@ function activityTitle(data: Record<string, unknown>): string {
     return str(params.result_item_name, "Crafting");
   }
   if (type === "training") {
+    if (typeof params.name === "string") return params.name;
     const stat = typeof params.stat === "string" ? params.stat : "";
     return stat ? `${stat.charAt(0).toUpperCase() + stat.slice(1)} Training` : "Training";
   }
