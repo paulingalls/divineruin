@@ -125,7 +125,7 @@ class TestCityAgentBackgroundProcess:
         mock_session.userdata = mock_sd
 
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch("city_agent.BackgroundProcess") as MockBP:
+            with patch("gameplay_agent.BackgroundProcess") as MockBP:
                 mock_bp = MagicMock()
                 MockBP.return_value = mock_bp
                 await agent.on_enter()
@@ -151,9 +151,9 @@ class TestCityAgentBackgroundProcess:
         mock_session.userdata = mock_sd
 
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch("city_agent.generate_session_summary", new_callable=AsyncMock, return_value={}):
-                with patch("city_agent.publish_game_event", new_callable=AsyncMock):
-                    with patch("city_agent.db.save_session_summary", new_callable=AsyncMock):
+            with patch("gameplay_agent.generate_session_summary", new_callable=AsyncMock, return_value={}):
+                with patch("gameplay_agent.publish_game_event", new_callable=AsyncMock):
+                    with patch("gameplay_agent.db.save_session_summary", new_callable=AsyncMock):
                         await agent.on_exit()
 
         agent._background.stop.assert_awaited_once()
