@@ -877,13 +877,14 @@ Greyvale scenes).
   narration, delay the hint. Don't interrupt.
 
 **Acceptance criteria:**
-- [ ] Player sits idle during a scene beat for the configured delay — Kael
+- [x] Player sits idle during a scene beat for the configured delay — Kael
       delivers a contextual hint.
-- [ ] Hints are specific to the current beat, not generic quest-level hints.
-- [ ] Hints don't interrupt active speech (player or agent).
-- [ ] Multiple hints per beat are delivered sequentially with escalating
+- [x] Hints are specific to the current beat, not generic quest-level hints.
+- [x] Hints don't interrupt active speech (player or agent).
+- [x] Multiple hints per beat are delivered sequentially with escalating
       specificity if the player remains stuck.
 - [ ] `global_hints` fields are removed from `quests.json`.
+      (Deferred: mobile client depends on global_hints for "Show Hint" button)
 - [ ] A full Greyvale playthrough with deliberate pauses triggers appropriate
       companion hints at each beat.
 

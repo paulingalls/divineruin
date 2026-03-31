@@ -254,6 +254,19 @@ class TestGreyvaleScenes:
             scene = get_active_scene(self.greyvale, stage_idx)
             assert scene is not None, f"No scene for stage {stage_idx}"
 
+    def test_beat_hint_delays_are_positive(self):
+        for scene in self.greyvale["scenes"]:
+            for beat in scene.get("beats", []):
+                assert beat["hint_delay_seconds"] > 0, (
+                    f"Beat {beat['id']} in scene {scene['id']} has non-positive delay"
+                )
+
+    def test_scene_has_escalation_path(self):
+        """Each scene should have at least 2 total hints across all beats for escalation."""
+        for scene in self.greyvale["scenes"]:
+            total_hints = sum(len(b.get("companion_hints", [])) for b in scene.get("beats", []))
+            assert total_hints >= 2, f"Scene {scene['id']} has only {total_hints} total hints — needs escalation"
+
 
 # === Warm layer scene injection ===
 
