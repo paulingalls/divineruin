@@ -312,11 +312,11 @@ async def finalize_character(context: RunContext) -> str:
             "starting location. Keep it to two vivid sentences. Then begin the first scene."
         ),
     }
-    # Tool-return handoff: return (CityAgent, json_str) tuple.
+    # Tool-return handoff: return (OnboardingAgent, json_str) tuple.
     # Framework detects the Agent and performs the handoff automatically.
     from livekit.agents.llm import ChatContext
 
-    from city_agent import CityAgent
+    from onboarding_agent import OnboardingAgent
 
     summary_ctx = ChatContext()
     summary_ctx.add_message(
@@ -327,7 +327,8 @@ async def finalize_character(context: RunContext) -> str:
             f"Backstory: {cs.backstory or 'none provided'}."
         ),
     )
-    return CityAgent(initial_location=character_data["location_id"], chat_ctx=summary_ctx), json.dumps(summary)
+    sd.onboarding_beat = 1
+    return OnboardingAgent(onboarding_beat=1, chat_ctx=summary_ctx), json.dumps(summary)
 
 
 async def _generate_player_portrait(sd: SessionData, cs: object) -> None:

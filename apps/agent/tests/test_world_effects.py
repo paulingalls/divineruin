@@ -377,37 +377,29 @@ class TestGodWhisper:
 
 
 class TestRiderScene:
-    def test_rider_triggers_at_market_square_without_quest_or_meeting(self):
-        """Rider triggers at market when: no quest, no companion meeting pending."""
+    def test_rider_triggers_at_market_without_companion_or_quest(self):
+        """Rider triggers at market when: no quest, no companion."""
         sd = _make_session(location_id="accord_market_square")
-        # Give the player a companion so meeting won't trigger
+        bg, _, _ = _make_bg(session_data=sd)
+        bg._quest_cache = []
+        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "accord_market_square"})]
+        bg._handle_events(events)
+        assert bg._rider_triggered is True
+
+    def test_rider_does_not_trigger_with_companion(self):
+        """Rider scene is suppressed when player already has a companion."""
+        sd = _make_session(location_id="accord_market_square")
         sd.companion = CompanionState(id="companion_kael", name="Kael")
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = []
-        bg._meeting_triggered = True  # meeting already happened
         events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "accord_market_square"})]
         bg._handle_events(events)
-        # With companion + no quest + meeting already done, rider should NOT trigger
-        # because _meeting_triggered is True. Rider requires meeting NOT triggered.
-        assert bg._rider_triggered is False
-
-    def test_rider_does_not_trigger_if_meeting_also_triggers(self):
-        """Rider scene is suppressed when companion meeting fires at same location."""
-        sd = _make_session(location_id="accord_market_square")
-        bg, _, _ = _make_bg(session_data=sd)
-        bg._quest_cache = []
-        # No companion, so meeting will trigger first, blocking rider
-        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "accord_market_square"})]
-        bg._handle_events(events)
-        # Meeting scene should fire, not rider
-        assert bg._meeting_triggered is True
         assert bg._rider_triggered is False
 
     def test_rider_does_not_trigger_with_active_quest(self):
         sd = _make_session(location_id="accord_market_square")
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = [{"quest_id": "greyvale_anomaly", "current_stage": 0}]
-        bg._meeting_triggered = True  # skip meeting check
         events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "accord_market_square"})]
         bg._handle_events(events)
         assert bg._rider_triggered is False

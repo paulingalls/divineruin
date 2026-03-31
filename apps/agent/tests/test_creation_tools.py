@@ -230,14 +230,15 @@ class TestFinalizeCharacter:
         agent, json_str = await finalize_character._func(ctx)
         result = json.loads(json_str)
 
-        from city_agent import CityAgent
+        from onboarding_agent import OnboardingAgent
 
-        assert isinstance(agent, CityAgent)
+        assert isinstance(agent, OnboardingAgent)
         assert "character" in result
         assert result["character"]["name"] == "Aric"
         assert result["character"]["race"] == "Human"
         assert result["character"]["class"] == "Warrior"
         assert cs.phase == "complete"
+        assert ctx.userdata.onboarding_beat == 1
         mock_db.create_player.assert_awaited_once()
 
     @patch("creation_tools.db")
@@ -266,9 +267,9 @@ class TestFinalizeCharacter:
         agent, json_str = await finalize_character._func(ctx)
         result = json.loads(json_str)
 
-        from city_agent import CityAgent
+        from onboarding_agent import OnboardingAgent
 
-        assert isinstance(agent, CityAgent)
+        assert isinstance(agent, OnboardingAgent)
         assert "character" in result
         assert cs.phase == "complete"
 
@@ -403,12 +404,13 @@ class TestFullCreationFlow:
         # Finalize
         agent, json_str = await finalize_character._func(ctx)
         result = json.loads(json_str)
-        from city_agent import CityAgent
+        from onboarding_agent import OnboardingAgent
 
-        assert isinstance(agent, CityAgent)
+        assert isinstance(agent, OnboardingAgent)
         assert "character" in result
         assert cs.phase == "complete"
         assert not ctx.userdata.in_creation
+        assert ctx.userdata.onboarding_beat == 1
 
         mock_db.create_player.assert_awaited_once()
         data = mock_db.create_player.call_args[0][2]

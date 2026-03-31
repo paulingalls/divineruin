@@ -34,26 +34,6 @@ REBUILD_EVENT_TYPES = {
     E.DIVINE_FAVOR_CHANGED,
 }
 
-MEETING_LOCATIONS = {"accord_market_square", "accord_dockside"}
-
-MEETING_SCENE_INSTRUCTIONS = """\
-A commotion erupts near a market stall. A vendor is being hassled by a pair of rough \
-dockworkers — intimidation, not violence, but escalating. A man stands nearby watching. \
-Broad-shouldered, practical gear, old scars on his forearms. He clearly wants to \
-intervene but is hesitating, jaw tight, hand half-reaching toward a sword he's not \
-carrying today.
-
-Narrate this scene. Do NOT name the man yet. Let the player decide what to do. \
-If the player approaches, speaks up, or intervenes in any way, the man joins them. \
-Together they defuse the situation — he's capable, calm under pressure, clearly trained.
-
-After the situation resolves, he's grateful but embarrassed about hesitating. \
-He introduces himself: [COMPANION_KAEL, weary]: "Kael. Thanks for stepping in. \
-I should have... I used to not hesitate."
-
-He doesn't explain further unless asked. If the player asks, he says he used to be \
-a caravan guard. Doesn't elaborate on what happened.\
-"""
 
 RIDER_SCENE_INSTRUCTIONS = """\
 A commotion at the edge of the market. A rider — young, dust-caked, one arm in a crude \
@@ -70,23 +50,6 @@ old ruins glowing at night. Then he needs to sit down — he's been riding for h
 
 End with the rider's information hanging in the air. Don't push the player toward the \
 guild hall. Let them decide what to do with this.\
-"""
-
-GOD_WHISPER_INSTRUCTIONS = """\
-Something shifts. The air thickens. Sound stops — not fades, stops, as if the world \
-has held its breath. For a heartbeat, everything is impossibly still.
-
-Then a presence. Not a voice yet, but a weight — ancient, immense, weary. It notices \
-you the way a mountain notices an ant: not with contempt, but with the vast indifference \
-of scale.
-
-Two sentences from the god. Short. Weighted. Ancient perspective. Something about what \
-you've found, what it means, what's coming. Then silence returns like a wave breaking, \
-and the world resumes as if nothing happened.
-
-Use your DM narrator voice — no character tags. This is environmental narration of \
-something beyond mortal. The companion does NOT react during this moment. After the \
-silence breaks, Kael looks shaken but says nothing unless the player speaks first.\
 """
 
 CORRUPTION_COMPANION_SPEECH: dict[int, str] = {
@@ -142,9 +105,6 @@ class BackgroundProcess:
         self._stop = False
         self._last_guidance_time: float = 0.0
         self._quest_cache: list[dict] = []
-        self._meeting_triggered: bool = False
-        self._meeting_pending: bool = False
-        self._meeting_init_task: asyncio.Task | None = None
         self._rider_triggered: bool = False
         self._last_static_key: tuple[str, bool] | None = None
         self._cached_static: str = ""
@@ -161,12 +121,6 @@ class BackgroundProcess:
 
     async def stop(self) -> None:
         self._stop = True
-        if self._meeting_init_task is not None:
-            self._meeting_init_task.cancel()
-            try:
-                await self._meeting_init_task
-            except asyncio.CancelledError:
-                pass
         if self._task is not None:
             self._task.cancel()
             try:
@@ -211,21 +165,10 @@ class BackgroundProcess:
 
             if ev.event_type == E.LOCATION_CHANGED:
                 new_loc = ev.payload.get("new_location", "")
-                # Check for companion meeting trigger
-                if not self._sd.has_companion and not self._meeting_triggered and new_loc in MEETING_LOCATIONS:
-                    self._meeting_triggered = True
-                    self._meeting_pending = True
-                    self._queue_speech(
-                        SpeechPriority.CRITICAL,
-                        MEETING_SCENE_INSTRUCTIONS,
-                    )
-                    continue
 
                 # Check for rider scene trigger (first session, no active quest, at market)
-                # Skip if meeting scene fires or companion already present
                 if (
                     not self._rider_triggered
-                    and not self._meeting_triggered
                     and not self._sd.has_companion
                     and new_loc == "accord_market_square"
                     and not self._quest_cache
@@ -338,25 +281,6 @@ class BackgroundProcess:
                     self._queue_god_whisper(ev.payload)
 
         return needs_rebuild
-
-    async def _initialize_companion_after_meeting(self) -> None:
-        """Initialize companion state after the meeting scene fires."""
-        # Short delay to let the meeting speech play out
-        await asyncio.sleep(5.0)
-        try:
-            from session_data import CompanionState
-
-            self._sd.companion = CompanionState(
-                id="companion_kael",
-                name="Kael",
-                last_speech_time=time.time(),
-            )
-            await db.set_player_flag(self._sd.player_id, "companion_met", True)
-            # Rebuild warm layer to include companion context
-            await self._rebuild_warm_layer()
-            logger.info("Companion Kael initialized after meeting scene")
-        except Exception:
-            logger.warning("Failed to initialize companion after meeting", exc_info=True)
 
     def _queue_god_whisper(self, payload: dict) -> None:
         """Build god-specific whisper instructions and queue as CRITICAL."""
@@ -493,9 +417,6 @@ class BackgroundProcess:
                     logger.warning("Failed to mark favor whisper level", exc_info=True)
             if "COMPANION_KAEL" in top.instructions and self._sd.companion:
                 self._sd.companion.last_speech_time = time.time()
-            if self._meeting_pending:
-                self._meeting_pending = False
-                self._meeting_init_task = asyncio.create_task(self._initialize_companion_after_meeting())
         except Exception:
             logger.warning("Failed to deliver proactive speech", exc_info=True)
 

@@ -586,55 +586,6 @@ class TestCompanionInCombat:
             assert "knocked unconscious" in ctx.userdata.companion.session_memories[-1]
 
 
-# --- WU5: Meeting Scene ---
-
-
-class TestMeetingScene:
-    def test_meeting_triggers_on_market_visit(self):
-        sd = _make_session_data()
-        bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "accord_market_square"})]
-        bg._handle_events(events)
-        assert len(bg._speech_queue) == 1
-        assert bg._speech_queue[0].priority == SpeechPriority.CRITICAL
-        assert "commotion" in bg._speech_queue[0].instructions.lower()
-
-    def test_meeting_does_not_retrigger(self):
-        sd = _make_session_data()
-        bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "accord_market_square"})]
-        bg._handle_events(events)
-        bg._speech_queue.clear()
-
-        # Second visit
-        bg._handle_events(events)
-        assert len(bg._speech_queue) == 1
-        # Should be a regular location speech, not the meeting
-        assert "commotion" not in bg._speech_queue[0].instructions.lower()
-
-    def test_meeting_does_not_trigger_when_companion_present(self):
-        sd = _make_session_data()
-        sd.companion = CompanionState(id="companion_kael", name="Kael")
-        bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "accord_market_square"})]
-        bg._handle_events(events)
-        assert "commotion" not in bg._speech_queue[0].instructions.lower()
-
-    @pytest.mark.asyncio
-    async def test_initialize_companion_after_meeting(self):
-        sd = _make_session_data()
-        bg, _, _ = _make_bg(session_data=sd)
-
-        with patch("db.set_player_flag", new_callable=AsyncMock) as mock_flag:
-            with patch.object(bg, "_rebuild_warm_layer", new_callable=AsyncMock):
-                await bg._initialize_companion_after_meeting()
-
-        assert sd.companion is not None
-        assert sd.companion.id == "companion_kael"
-        assert sd.companion.name == "Kael"
-        mock_flag.assert_awaited_once_with("player_1", "companion_met", True)
-
-
 # --- WU6: Emotional State + Memory ---
 
 

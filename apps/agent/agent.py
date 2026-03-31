@@ -175,13 +175,26 @@ async def dm_session(ctx: agents.JobContext) -> None:
             patron_id=patron_id,
         )
 
-        if player.get("flags", {}).get("companion_met") == "true":
+        if player.get("flags", {}).get("companion_met"):
             userdata.companion = CompanionState(
                 id="companion_kael",
                 name="Kael",
                 last_speech_time=time.time(),
             )
             logger.info("Companion Kael loaded for returning player")
+
+        # Check for mid-onboarding reconnection
+        onboarding_beat = player.get("flags", {}).get("onboarding_beat")
+        if isinstance(onboarding_beat, int):
+            from onboarding_agent import OnboardingAgent
+
+            userdata.onboarding_beat = onboarding_beat
+            session = _make_agent_session("claude-haiku-4-5-20251001", userdata)
+            await session.start(
+                room=ctx.room,
+                agent=OnboardingAgent(onboarding_beat=onboarding_beat),
+            )
+            return
 
         session = _make_agent_session("claude-haiku-4-5-20251001", userdata)
         city_agent = CityAgent(initial_location=location_id)
