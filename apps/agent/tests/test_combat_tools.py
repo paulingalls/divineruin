@@ -532,15 +532,15 @@ class TestEndCombat:
 
     @pytest.mark.asyncio
     @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
-    async def test_returns_dungeon_master_agent(self, mock_delete):
-        from agent import DungeonMasterAgent
+    async def test_returns_city_agent(self, mock_delete):
+        from city_agent import CityAgent
 
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
         raw = await end_combat._func(ctx, outcome="victory")
         agent_instance, _ = raw
-        assert isinstance(agent_instance, DungeonMasterAgent)
+        assert isinstance(agent_instance, CityAgent)
 
     @pytest.mark.asyncio
     @patch("tools.db.delete_combat_state", new_callable=AsyncMock)

@@ -2059,10 +2059,10 @@ async def end_combat(
     }
     logger.info("end_combat result: %s, xp=%d", outcome, xp_total)
 
-    # Build DungeonMasterAgent with combat summary context for handoff
+    # Build CityAgent with combat summary context for handoff
     from livekit.agents.llm import ChatContext
 
-    from agent import DungeonMasterAgent
+    from city_agent import CityAgent
 
     summary_parts = [f"Combat resolved: {outcome}."]
     if xp_total > 0:
@@ -2073,4 +2073,4 @@ async def end_combat(
     summary_ctx = ChatContext()
     summary_ctx.add_message(role="system", content=" ".join(summary_parts))
 
-    return DungeonMasterAgent(initial_location=session.location_id, chat_ctx=summary_ctx), json.dumps(response)
+    return CityAgent(initial_location=session.location_id, chat_ctx=summary_ctx), json.dumps(response)

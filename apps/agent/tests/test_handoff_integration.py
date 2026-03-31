@@ -5,8 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent import ALL_TOOLS, DungeonMasterAgent
+from agent import ALL_TOOLS
 from base_agent import BaseGameAgent
+from city_agent import CityAgent
 from combat_agent import COMBAT_AGENT_TOOLS, CombatAgent
 from session_data import CombatParticipant, CombatState, CompanionState, SessionData
 from tools import (
@@ -159,11 +160,11 @@ class TestStartCombatHandoff:
 
 
 class TestEndCombatHandoff:
-    """Test CombatAgent → DM handoff via end_combat."""
+    """Test CombatAgent → CityAgent handoff via end_combat."""
 
     @pytest.mark.asyncio
     @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
-    async def test_end_combat_returns_dm_agent(self, mock_delete):
+    async def test_end_combat_returns_city_agent(self, mock_delete):
         ctx = _make_context(location_id="greyvale_south_road")
         ctx.userdata.combat_state = CombatState(
             combat_id="combat_test",
@@ -191,7 +192,7 @@ class TestEndCombatHandoff:
         assert isinstance(raw, tuple)
         agent_instance, json_str = raw
 
-        assert isinstance(agent_instance, DungeonMasterAgent)
+        assert isinstance(agent_instance, CityAgent)
         assert isinstance(agent_instance, BaseGameAgent)
 
         result = json.loads(json_str)
@@ -200,7 +201,7 @@ class TestEndCombatHandoff:
 
     @pytest.mark.asyncio
     @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
-    async def test_returned_dm_has_combat_summary_in_chat_ctx(self, mock_delete):
+    async def test_returned_city_agent_has_combat_summary_in_chat_ctx(self, mock_delete):
         ctx = _make_context(location_id="greyvale_south_road")
         ctx.userdata.combat_state = CombatState(
             combat_id="combat_test",
@@ -263,7 +264,7 @@ class TestEndCombatHandoff:
 
 
 class TestRoundTrip:
-    """Test the full DM → Combat → DM round-trip."""
+    """Test the full CityAgent → Combat → CityAgent round-trip."""
 
     @pytest.mark.asyncio
     @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
@@ -271,12 +272,12 @@ class TestRoundTrip:
     @patch("tools.db.get_player", new_callable=AsyncMock)
     @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
     async def test_full_round_trip(self, mock_encounter, mock_player, mock_save, mock_delete):
-        """DM starts combat → CombatAgent handles it → DM returns."""
+        """CityAgent starts combat → CombatAgent handles it → CityAgent returns."""
         mock_encounter.return_value = SAMPLE_ENCOUNTER
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context(location_id="greyvale_south_road")
 
-        # Step 1: DM triggers start_combat
+        # Step 1: CityAgent triggers start_combat
         raw = await start_combat._func(ctx, encounter_id="wolf_pack", encounter_description="Wolves!")
         combat_agent, _ = raw
         assert isinstance(combat_agent, CombatAgent)
@@ -284,15 +285,15 @@ class TestRoundTrip:
 
         # Step 2: End combat from CombatAgent
         raw2 = await end_combat._func(ctx, outcome="victory")
-        dm_agent, json_str = raw2
-        assert isinstance(dm_agent, DungeonMasterAgent)
+        returned_agent, json_str = raw2
+        assert isinstance(returned_agent, CityAgent)
 
         result = json.loads(json_str)
         assert result["outcome"] == "victory"
         assert result["xp_total"] == 100
         assert ctx.userdata.in_combat is False
 
-        # Step 3: Returned DM agent has correct location
+        # Step 3: Returned CityAgent has correct location
         assert ctx.userdata.location_id == "greyvale_south_road"
 
 
