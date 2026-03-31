@@ -248,9 +248,14 @@ class TestDMSession:
                                             with patch(
                                                 "agent.db.get_player_flag", new_callable=AsyncMock, return_value=False
                                             ):
-                                                from agent import dm_session
+                                                with patch(
+                                                    "agent.db.get_location",
+                                                    new_callable=AsyncMock,
+                                                    return_value={"region_type": "city"},
+                                                ):
+                                                    from agent import dm_session
 
-                                                await dm_session(mock_ctx)
+                                                    await dm_session(mock_ctx)
 
                 MockSD.assert_called_once_with(
                     player_id="player_1",
@@ -287,9 +292,14 @@ class TestDMSession:
                                             with patch(
                                                 "agent.db.get_player_flag", new_callable=AsyncMock, return_value=False
                                             ):
-                                                from agent import dm_session
+                                                with patch(
+                                                    "agent.db.get_location",
+                                                    new_callable=AsyncMock,
+                                                    return_value={"region_type": "city"},
+                                                ):
+                                                    from agent import dm_session
 
-                                                await dm_session(mock_ctx)
+                                                    await dm_session(mock_ctx)
 
                 mock_session_instance.start.assert_awaited_once()
                 start_call = mock_session_instance.start.call_args
@@ -324,9 +334,14 @@ class TestDMSession:
                                             with patch(
                                                 "agent.db.get_player_flag", new_callable=AsyncMock, return_value=False
                                             ):
-                                                from agent import dm_session
+                                                with patch(
+                                                    "agent.db.get_location",
+                                                    new_callable=AsyncMock,
+                                                    return_value={"region_type": "city"},
+                                                ):
+                                                    from agent import dm_session
 
-                                                await dm_session(mock_ctx)
+                                                    await dm_session(mock_ctx)
 
                 mock_session_instance.generate_reply.assert_awaited_once()
                 call_kwargs = mock_session_instance.generate_reply.call_args[1]
@@ -400,9 +415,14 @@ class TestDMSession:
                                             new_callable=AsyncMock,
                                             return_value=None,
                                         ):
-                                            from agent import dm_session
+                                            with patch(
+                                                "agent.db.get_location",
+                                                new_callable=AsyncMock,
+                                                return_value={"region_type": "city"},
+                                            ):
+                                                from agent import dm_session
 
-                                            await dm_session(mock_ctx)
+                                                await dm_session(mock_ctx)
 
                 mock_session_instance.start.assert_awaited_once()
                 start_call = mock_session_instance.start.call_args

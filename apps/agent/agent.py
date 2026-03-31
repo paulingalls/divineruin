@@ -12,7 +12,6 @@ from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 import db
 from base_agent import _make_tts
-from city_agent import CityAgent
 from session_data import CompanionState, CreationState, SessionData
 from voices import VOICES
 
@@ -196,12 +195,18 @@ async def dm_session(ctx: agents.JobContext) -> None:
             )
             return
 
+        # Dispatch correct gameplay agent based on location's region_type
+        from gameplay_agent import create_gameplay_agent
+
+        location_data = await db.get_location(location_id)
+        region_type = location_data.get("region_type", "city") if location_data else "city"
+        gameplay_agent = create_gameplay_agent(region_type, location_id, companion=userdata.companion)
+
         session = _make_agent_session("claude-haiku-4-5-20251001", userdata)
-        city_agent = CityAgent(initial_location=location_id)
 
         await session.start(
             room=ctx.room,
-            agent=city_agent,
+            agent=gameplay_agent,
         )
 
         # --- Reconnection handling ---
@@ -215,8 +220,8 @@ async def dm_session(ctx: agents.JobContext) -> None:
                 return
             userdata.player_disconnected = True
             userdata.disconnect_time = time.time()
-            if city_agent._background:
-                city_agent._background.pause()
+            if gameplay_agent._background:
+                gameplay_agent._background.pause()
             reconnect_task = asyncio.create_task(_grace_timeout())
 
         @ctx.room.on("participant_connected")
@@ -228,9 +233,9 @@ async def dm_session(ctx: agents.JobContext) -> None:
             if reconnect_task and not reconnect_task.done():
                 reconnect_task.cancel()
                 reconnect_task = None
-            if city_agent._background:
-                city_agent._background.resume()
-            city_agent._fire_and_forget(
+            if gameplay_agent._background:
+                gameplay_agent._background.resume()
+            gameplay_agent._fire_and_forget(
                 session.generate_reply(
                     instructions="The player reconnected after a brief drop. "
                     "Welcome them back naturally in one short sentence and remind them where they were."
