@@ -38,6 +38,38 @@ EFFECT_NPC_MAP: dict[str, str] = {
 }
 
 
+# --- Scene / play-tree resolution ---
+
+
+def get_active_scene(quest: dict, current_stage: int) -> dict | None:
+    """Return the scene covering *current_stage*, or None."""
+    for scene in quest.get("scenes", []):
+        if current_stage in scene.get("stage_refs", []):
+            return scene
+    return None
+
+
+def detect_scene_transition(quest: dict, old_stage: int, new_stage: int) -> dict | None:
+    """Compare scenes at *old_stage* and *new_stage*.
+
+    Returns ``{"old_scene": …, "new_scene": …, "region_changed": bool}``
+    when the scene changes, or ``None`` otherwise.
+    """
+    if old_stage < 0:
+        return None
+    old_scene = get_active_scene(quest, old_stage)
+    new_scene = get_active_scene(quest, new_stage)
+    if old_scene is None or new_scene is None:
+        return None
+    if old_scene["id"] == new_scene["id"]:
+        return None
+    return {
+        "old_scene": old_scene,
+        "new_scene": new_scene,
+        "region_changed": old_scene.get("region_type") != new_scene.get("region_type"),
+    }
+
+
 def _validate_id(value: str, label: str) -> str | None:
     """Return an error JSON string if the ID is invalid, else None."""
     if not value or len(value) > 128 or not _ID_RE.match(value):
