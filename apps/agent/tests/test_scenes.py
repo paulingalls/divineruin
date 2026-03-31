@@ -4,8 +4,14 @@ from __future__ import annotations
 
 import json
 import pathlib
+from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from tools import detect_scene_transition, get_active_scene
+import pytest
+
+from prompts import build_warm_layer
+from session_data import SessionData
+from tools import detect_scene_transition, get_active_scene, update_quest
 
 # --- Shared test fixtures ---
 
@@ -247,3 +253,211 @@ class TestGreyvaleScenes:
         for stage_idx in range(5):
             scene = get_active_scene(self.greyvale, stage_idx)
             assert scene is not None, f"No scene for stage {stage_idx}"
+
+
+# === Warm layer scene injection ===
+
+SAMPLE_LOCATION = {
+    "id": "accord_guild_hall",
+    "name": "Guild Hall",
+    "description": "Heavy oak doors open onto a hall.",
+    "atmosphere": "busy, purposeful",
+    "key_features": ["the main counter"],
+    "hidden_elements": [],
+    "exits": {"south": {"destination": "accord_market_square"}},
+    "tags": ["guild"],
+}
+
+QUEST_WITH_SCENES_FOR_WARM = {
+    "quest_id": "greyvale_anomaly",
+    "quest_name": "The Greyvale Anomaly",
+    "current_stage": 0,
+    "stages": [{"id": "s0", "objective": "Travel to Millhaven."}],
+    "global_hints": {},
+    "scenes": [
+        {
+            "id": "scene_road",
+            "name": "Road to Millhaven",
+            "region_type": "wilderness",
+            "instructions": "Narrate the journey with growing unease.",
+            "stage_refs": [0],
+        },
+    ],
+}
+
+QUEST_WITHOUT_SCENES_FOR_WARM = {
+    "quest_id": "plain_quest",
+    "quest_name": "Plain Quest",
+    "current_stage": 0,
+    "stages": [{"id": "s0", "objective": "Do stuff."}],
+    "global_hints": {},
+}
+
+
+class TestWarmLayerSceneInjection:
+    @pytest.mark.asyncio
+    @patch("db.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db.get_location", new_callable=AsyncMock)
+    async def test_includes_scene_instructions(self, mock_loc, mock_npcs, mock_quests):
+        mock_loc.return_value = SAMPLE_LOCATION
+        mock_npcs.return_value = []
+        mock_quests.return_value = [QUEST_WITH_SCENES_FOR_WARM]
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "ACTIVE SCENE" in result
+        assert "Road to Millhaven" in result
+        assert "Narrate the journey with growing unease." in result
+
+    @pytest.mark.asyncio
+    @patch("db.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db.get_location", new_callable=AsyncMock)
+    async def test_no_scene_section_without_scenes(self, mock_loc, mock_npcs, mock_quests):
+        mock_loc.return_value = SAMPLE_LOCATION
+        mock_npcs.return_value = []
+        mock_quests.return_value = [QUEST_WITHOUT_SCENES_FOR_WARM]
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "ACTIVE SCENE" not in result
+
+    @pytest.mark.asyncio
+    @patch("db.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db.get_location", new_callable=AsyncMock)
+    async def test_no_scene_section_with_empty_quests(self, mock_loc, mock_npcs, mock_quests):
+        mock_loc.return_value = SAMPLE_LOCATION
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "ACTIVE SCENE" not in result
+
+
+# === update_quest scene-triggered handoffs ===
+
+QUEST_WITH_SCENES_FOR_HANDOFF: dict = {
+    "id": "scene_quest",
+    "name": "Scene Quest",
+    "stages": [
+        {"id": "s0", "objective": "Travel.", "on_complete": {}},
+        {"id": "s1", "objective": "Investigate.", "on_complete": {}},
+        {"id": "s2", "objective": "Fight.", "on_complete": {}},
+    ],
+    "scenes": [
+        {
+            "id": "scene_wild",
+            "name": "Wilderness Scene",
+            "region_type": "wilderness",
+            "instructions": "Travel narration.",
+            "stage_refs": [0],
+        },
+        {
+            "id": "scene_city",
+            "name": "City Scene",
+            "region_type": "city",
+            "instructions": "City narration.",
+            "stage_refs": [1],
+        },
+        {
+            "id": "scene_wild2",
+            "name": "Wilderness Again",
+            "region_type": "wilderness",
+            "instructions": "Back to wilderness.",
+            "stage_refs": [2],
+        },
+    ],
+}
+
+QUEST_NO_SCENES_FOR_HANDOFF: dict = {
+    "id": "plain_quest",
+    "name": "Plain Quest",
+    "stages": [
+        {"id": "s0", "objective": "A.", "on_complete": {}},
+        {"id": "s1", "objective": "B.", "on_complete": {}},
+    ],
+}
+
+_mock_conn = MagicMock(name="mock_txn_conn")
+
+
+@asynccontextmanager
+async def _mock_transaction():
+    yield _mock_conn
+
+
+def _make_context(player_id="player_1", location_id="accord_guild_hall"):
+    ctx = MagicMock()
+    ctx.userdata = SessionData(player_id=player_id, location_id=location_id)
+    return ctx
+
+
+@patch("tools.db.transaction", _mock_transaction)
+class TestUpdateQuestSceneHandoff:
+    @pytest.mark.asyncio
+    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
+    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
+    @patch("tools.db.get_quest", new_callable=AsyncMock)
+    async def test_region_change_returns_agent_tuple(self, mock_quest, mock_pq, mock_set):
+        """Advancing from wilderness scene to city scene returns (agent, json)."""
+        mock_quest.return_value = QUEST_WITH_SCENES_FOR_HANDOFF
+        mock_pq.return_value = {"current_stage": 0}
+        ctx = _make_context()
+        result = await update_quest._func(ctx, quest_id="scene_quest", new_stage_id=1)
+        assert isinstance(result, tuple), f"Expected tuple, got {type(result)}"
+        agent, json_str = result
+        from gameplay_agent import GameplayAgent
+
+        assert isinstance(agent, GameplayAgent)
+        assert agent._agent_type == "city"
+        parsed = json.loads(json_str)
+        assert parsed["new_stage"] == 1
+
+    @pytest.mark.asyncio
+    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
+    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
+    @patch("tools.db.get_quest", new_callable=AsyncMock)
+    async def test_same_region_returns_string(self, mock_quest, mock_pq, mock_set):
+        """Advancing within same region type returns plain json string."""
+        quest = {
+            "id": "q",
+            "name": "Q",
+            "stages": [
+                {"id": "s0", "objective": "A.", "on_complete": {}},
+                {"id": "s1", "objective": "B.", "on_complete": {}},
+            ],
+            "scenes": [
+                {"id": "a", "name": "A", "region_type": "city", "instructions": "x", "stage_refs": [0]},
+                {"id": "b", "name": "B", "region_type": "city", "instructions": "y", "stage_refs": [1]},
+            ],
+        }
+        mock_quest.return_value = quest
+        mock_pq.return_value = {"current_stage": 0}
+        ctx = _make_context()
+        result = await update_quest._func(ctx, quest_id="q", new_stage_id=1)
+        assert isinstance(result, str), f"Expected str, got {type(result)}"
+        parsed = json.loads(result)
+        assert parsed["new_stage"] == 1
+
+    @pytest.mark.asyncio
+    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
+    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
+    @patch("tools.db.get_quest", new_callable=AsyncMock)
+    async def test_no_scenes_returns_string(self, mock_quest, mock_pq, mock_set):
+        """Quest without scenes returns plain json string (backward compat)."""
+        mock_quest.return_value = QUEST_NO_SCENES_FOR_HANDOFF
+        mock_pq.return_value = {"current_stage": 0}
+        ctx = _make_context()
+        result = await update_quest._func(ctx, quest_id="plain_quest", new_stage_id=1)
+        assert isinstance(result, str), f"Expected str, got {type(result)}"
+        parsed = json.loads(result)
+        assert parsed["new_stage"] == 1
+
+    @pytest.mark.asyncio
+    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
+    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
+    @patch("tools.db.get_quest", new_callable=AsyncMock)
+    async def test_quest_start_no_handoff(self, mock_quest, mock_pq, mock_set):
+        """Starting a quest (stage -1 → 0) never triggers a handoff."""
+        mock_quest.return_value = QUEST_WITH_SCENES_FOR_HANDOFF
+        mock_pq.return_value = None  # quest not started yet
+        ctx = _make_context()
+        result = await update_quest._func(ctx, quest_id="scene_quest", new_stage_id=0)
+        assert isinstance(result, str), f"Expected str on quest start, got {type(result)}"

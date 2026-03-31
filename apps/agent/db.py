@@ -539,6 +539,7 @@ async def get_active_player_quests(
                 "current_stage": current_stage,
                 "stages": stages,
                 "global_hints": quest.get("global_hints", []),
+                "scenes": quest.get("scenes", []),
             }
         )
     return results

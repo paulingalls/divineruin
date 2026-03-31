@@ -1516,6 +1516,29 @@ async def update_quest(
         "rewards_applied": rewards_applied,
     }
     logger.info("update_quest result: %s → stage %d, %d rewards", quest_id, new_stage_id, len(rewards_applied))
+
+    # Scene transition check — if scene changes region, trigger handoff
+    transition = detect_scene_transition(quest, current_stage, new_stage_id)
+    if transition and transition["region_changed"]:
+        from livekit.agents.llm import ChatContext
+
+        from gameplay_agent import create_gameplay_agent
+
+        new_region = transition["new_scene"]["region_type"]
+        summary_ctx = ChatContext()
+        summary_ctx.add_message(
+            role="system",
+            content=(
+                f"Quest '{quest_name}' advanced. Scene changed from "
+                f"'{transition['old_scene']['name']}' to '{transition['new_scene']['name']}'. "
+                f"Region changed to {new_region}."
+            ),
+        )
+        return (
+            create_gameplay_agent(new_region, session.location_id, companion=session.companion, chat_ctx=summary_ctx),
+            json.dumps(response),
+        )
+
     return json.dumps(response)
 
 

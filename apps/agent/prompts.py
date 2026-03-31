@@ -555,6 +555,16 @@ async def build_warm_layer(
             quest_lines.append(f"- {q['quest_name']}: {objective}")
         sections.append("ACTIVE QUESTS\n" + "\n".join(quest_lines))
 
+    # Active scene (from quest play tree)
+    if quests:
+        from tools import get_active_scene
+
+        for q in quests:
+            scene = get_active_scene(q, q.get("current_stage", 0))
+            if scene:
+                sections.append(f"ACTIVE SCENE — {scene['name']}\n{scene['instructions']}")
+                break
+
     # Companion state
     if companion is not None and companion.is_present:
         conscious_str = "yes" if companion.is_conscious else "no"
