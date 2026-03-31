@@ -677,15 +677,15 @@ this milestone, the monolith is gone — `CityAgent` is the primary gameplay age
   next milestones).
 
 **Acceptance criteria:**
-- [ ] A returning player session starts with `CityAgent` and has access to all
+- [x] A returning player session starts with `CityAgent` and has access to all
       non-combat gameplay tools.
-- [ ] Combat round-trip works: CityAgent → CombatAgent → CityAgent.
-- [ ] Warm layer renders city-appropriate context (NPCs, social, quests).
-- [ ] Background process attaches to `CityAgent` and delivers companion speech,
+- [x] Combat round-trip works: CityAgent → CombatAgent → CityAgent.
+- [x] Warm layer renders city-appropriate context (NPCs, social, quests).
+- [x] Background process attaches to `CityAgent` and delivers companion speech,
       world events, warm layer rebuilds.
-- [ ] System prompt is measurably smaller than the monolith's (no combat rules,
+- [x] System prompt is measurably smaller than the monolith's (no combat rules,
       no creation instructions).
-- [ ] All existing non-combat gameplay tests pass.
+- [x] All existing non-combat gameplay tests pass.
 
 **Key references:**
 - *This document — CityAgent, Warm Layer Architecture*
