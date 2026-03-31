@@ -6,6 +6,7 @@
     "district": "accord_central",
     "region": "sunward_coast",
     "region_type": "city",
+    "default_scene": "scene_accord_market_exploration",
     "tags": [
       "market",
       "social",
@@ -209,6 +210,7 @@
     "district": "accord_central",
     "region": "sunward_coast",
     "region_type": "city",
+    "default_scene": "scene_accord_guild_exploration",
     "tags": [
       "guild",
       "social",

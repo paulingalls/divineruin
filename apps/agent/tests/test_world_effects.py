@@ -404,6 +404,23 @@ class TestRiderScene:
         bg._handle_events(events)
         assert bg._rider_triggered is False
 
+    def test_rider_uses_scene_cache_when_available(self):
+        """Rider scene uses instructions from scene_cache if scene_rider_arrival is cached."""
+        sd = _make_session(location_id="accord_market_square")
+        bg, _, _ = _make_bg(session_data=sd)
+        bg._quest_cache = []
+        bg._scene_cache = {
+            "scene_rider_arrival": {
+                "id": "scene_rider_arrival",
+                "instructions": "Data-driven rider instructions.",
+            }
+        }
+        events = [GameEvent(event_type=E.LOCATION_CHANGED, payload={"new_location": "accord_market_square"})]
+        bg._handle_events(events)
+        assert bg._rider_triggered is True
+        assert len(bg._speech_queue) == 1
+        assert "Data-driven rider instructions." in bg._speech_queue[0].instructions
+
 
 # --- EFFECT_NPC_MAP ---
 

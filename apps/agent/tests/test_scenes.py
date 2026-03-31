@@ -387,6 +387,38 @@ class TestScenesJson:
         for scene in quest_scenes:
             assert len(scene.get("beats", [])) >= 2, f"Quest scene {scene['id']} needs >= 2 beats"
 
+    def test_location_scenes_exist(self):
+        location_scenes = [s for s in self.scenes if s["type"] == "location"]
+        assert len(location_scenes) >= 2, "Need at least 2 location default scenes"
+
+    def test_location_scenes_have_instructions(self):
+        for scene in self.scenes:
+            if scene["type"] == "location":
+                assert len(scene["instructions"]) > 20, f"Location scene {scene['id']} needs meaningful instructions"
+
+
+class TestLocationDefaultScenes:
+    """Validate locations reference valid default scenes."""
+
+    @classmethod
+    def setup_class(cls):
+        with open(CONTENT_DIR / "locations.json") as f:
+            cls.locations = json.load(f)
+        with open(CONTENT_DIR / "scenes.json") as f:
+            scenes = json.load(f)
+        cls.scene_ids = {s["id"] for s in scenes}
+
+    def test_key_locations_have_default_scene(self):
+        loc_map = {loc["id"]: loc for loc in self.locations}
+        for loc_id in ["accord_market_square", "accord_guild_hall"]:
+            assert "default_scene" in loc_map[loc_id], f"{loc_id} missing default_scene"
+
+    def test_default_scene_ids_are_valid(self):
+        for loc in self.locations:
+            default = loc.get("default_scene")
+            if default:
+                assert default in self.scene_ids, f"Location {loc['id']} references unknown scene: {default}"
+
 
 class TestGreyvaleScenes:
     """Validate the authored Greyvale play tree in quests.json."""

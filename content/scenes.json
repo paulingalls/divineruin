@@ -174,5 +174,61 @@
       "no_active_quest": true
     },
     "beats": []
+  },
+  {
+    "id": "scene_accord_market_exploration",
+    "name": "Market Square Exploration",
+    "type": "location",
+    "region_type": "city",
+    "instructions": "The player is exploring the Market Square of the Accord of Tides. This is a bustling hub — merchants, guild postings, overheard conversations. Let the player soak in the atmosphere. If they seem directionless, the companion can point out interesting features: the guild noticeboard, the fountain, vendors with unusual wares. Keep narration warm and inviting — this is home base.",
+    "beats": [
+      {
+        "id": "beat_market_arrival",
+        "description": "The player takes in the market square.",
+        "completion_condition": "Player observes the market or interacts with something",
+        "companion_hints": [
+          "Your companion gestures around the square. 'Plenty to see here. The guild hall's north, if you're looking for work.'",
+          "Your companion says: 'The noticeboard usually has postings. Might be worth a look.'"
+        ],
+        "hint_delay_seconds": 60
+      },
+      {
+        "id": "beat_market_wandering",
+        "description": "The player wanders the market, browsing or talking to vendors.",
+        "completion_condition": "Player engages with market activities",
+        "companion_hints": [
+          "Your companion nods toward a vendor. 'See anything you like? Never hurts to be prepared.'"
+        ],
+        "hint_delay_seconds": 90
+      }
+    ]
+  },
+  {
+    "id": "scene_accord_guild_exploration",
+    "name": "Guild Hall Exploration",
+    "type": "location",
+    "region_type": "city",
+    "instructions": "The player is in the Guild Hall of the Accord of Tides. This is where adventurers get their assignments. Guildmaster Torin is the key NPC. The atmosphere is purposeful — people with jobs to do. If the player has no active quest, guide attention toward Torin or the job board. Keep it professional but welcoming.",
+    "beats": [
+      {
+        "id": "beat_guild_arrival",
+        "description": "The player enters the guild hall and takes stock.",
+        "completion_condition": "Player looks around or approaches the counter",
+        "companion_hints": [
+          "Your companion looks around. 'The guild hall. This is where the work is.'",
+          "Your companion says: 'Guildmaster Torin runs things here. Might be worth introducing yourself.'"
+        ],
+        "hint_delay_seconds": 45
+      },
+      {
+        "id": "beat_guild_interaction",
+        "description": "The player interacts with guild services or NPCs.",
+        "completion_condition": "Player speaks to an NPC or checks the board",
+        "companion_hints": [
+          "Your companion glances at the noticeboard. 'Something new posted, looks like.'"
+        ],
+        "hint_delay_seconds": 90
+      }
+    ]
   }
 ]

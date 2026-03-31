@@ -174,10 +174,9 @@ class BackgroundProcess:
                     and not self._quest_cache
                 ):
                     self._rider_triggered = True
-                    self._queue_speech(
-                        SpeechPriority.CRITICAL,
-                        RIDER_SCENE_INSTRUCTIONS,
-                    )
+                    rider_scene = self._scene_cache.get("scene_rider_arrival")
+                    rider_instructions = rider_scene["instructions"] if rider_scene else RIDER_SCENE_INSTRUCTIONS
+                    self._queue_speech(SpeechPriority.CRITICAL, rider_instructions)
                     continue
 
                 if can_act and companion:
