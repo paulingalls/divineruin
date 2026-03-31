@@ -715,16 +715,16 @@ session boundary between creation and gameplay.
   to disconnect and reconnect.
 
 **Acceptance criteria:**
-- [ ] New player flow: PrologueAgent plays audio → CreationAgent guides creation →
+- [x] New player flow: PrologueAgent plays audio → CreationAgent guides creation →
       CityAgent starts gameplay. One continuous session, no reconnection required.
-- [ ] Prologue skip works: player speaks during prologue, audio stops, CreationAgent
+- [x] Prologue skip works: player speaks during prologue, audio stops, CreationAgent
       starts immediately. Player's utterance is not lost.
-- [ ] `finalize_character` transitions smoothly to CityAgent with the player's
+- [x] `finalize_character` transitions smoothly to CityAgent with the player's
       character summary in context.
-- [ ] CityAgent's first narration references the player's character (race, class,
+- [x] CityAgent's first narration references the player's character (race, class,
       deity) — context transfer is working.
-- [ ] Returning players skip straight to CityAgent with recap instruction.
-- [ ] Creation tools are not available on CityAgent. Gameplay tools are not
+- [x] Returning players skip straight to CityAgent with recap instruction.
+- [x] Creation tools are not available on CityAgent. Gameplay tools are not
       available on CreationAgent.
 
 **Key references:**
