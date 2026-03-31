@@ -50,7 +50,7 @@ class TestEnvironmentValidation:
 
 
 class TestDungeonMasterAgent:
-    """Test DungeonMasterAgent initialization and lifecycle."""
+    """Test DungeonMasterAgent — creation-only agent."""
 
     def test_init_sets_instructions_and_tools(self):
         """__init__ should set initial instructions and tools."""
@@ -70,37 +70,19 @@ class TestDungeonMasterAgent:
 
             assert agent._turn_timer is not None
 
-    def test_init_sets_background_to_none(self):
-        """__init__ should initialize background process to None."""
+    def test_init_defaults_to_creation_mode(self):
+        """__init__ should default to creation_mode=True."""
         with patch("agent.build_system_prompt", return_value="prompt"):
             agent = DungeonMasterAgent()
 
-            assert agent._background is None
+            assert agent._creation_mode is True
 
-    @pytest.mark.asyncio
-    async def test_on_enter_starts_background_process(self):
-        """on_enter should start background process."""
+    def test_no_background_process(self):
+        """DungeonMasterAgent should not have a background process attribute."""
         with patch("agent.build_system_prompt", return_value="prompt"):
             agent = DungeonMasterAgent()
 
-        mock_session = MagicMock()
-        mock_session_data = MagicMock()
-        mock_session.userdata = mock_session_data
-
-        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch("agent.BackgroundProcess") as MockBP:
-                mock_bp_instance = MagicMock()
-                MockBP.return_value = mock_bp_instance
-
-                await agent.on_enter()
-
-                MockBP.assert_called_once_with(
-                    agent=agent,
-                    session=mock_session,
-                    session_data=mock_session_data,
-                )
-                mock_bp_instance.start.assert_called_once()
-                assert agent._background is mock_bp_instance
+            assert not hasattr(agent, "_background")
 
     @pytest.mark.asyncio
     async def test_on_user_turn_completed_starts_timer(self):
@@ -119,11 +101,10 @@ class TestDungeonMasterAgent:
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
             with patch.object(agent._turn_timer, "start") as mock_start:
                 with patch.object(agent._turn_timer, "mark") as mock_mark:
-                    with patch.object(agent, "_build_hot_context", return_value=""):
-                        await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
+                    await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
 
-                        mock_start.assert_called_once()
-                        mock_mark.assert_called_once_with("user_turn_end")
+                    mock_start.assert_called_once()
+                    mock_mark.assert_called_once_with("user_turn_end")
 
     @pytest.mark.asyncio
     async def test_on_user_turn_completed_updates_player_speech_time(self):
@@ -140,169 +121,10 @@ class TestDungeonMasterAgent:
         mock_session.userdata = mock_session_data
 
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch.object(agent, "_build_hot_context", return_value=""):
-                before = mock_session_data.last_player_speech_time
-                await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
+            before = mock_session_data.last_player_speech_time
+            await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
 
-                assert mock_session_data.last_player_speech_time > before
-
-    @pytest.mark.asyncio
-    async def test_on_user_turn_completed_adds_hot_context_to_turn(self):
-        """on_user_turn_completed should add hot context to chat."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            agent = DungeonMasterAgent()
-
-        mock_turn_ctx = MagicMock()
-        mock_message = MagicMock()
-        mock_session_data = MagicMock()
-
-        mock_session = MagicMock()
-        mock_session.userdata = mock_session_data
-
-        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch.object(agent, "_build_hot_context", return_value="[Context: Tavern]"):
-                await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
-
-                mock_turn_ctx.add_message.assert_called_once_with(role="assistant", content="[Context: Tavern]")
-
-    @pytest.mark.asyncio
-    async def test_on_user_turn_completed_skips_empty_hot_context(self):
-        """on_user_turn_completed should not add message if hot context is empty."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            agent = DungeonMasterAgent()
-
-        mock_turn_ctx = MagicMock()
-        mock_message = MagicMock()
-        mock_session_data = MagicMock()
-
-        mock_session = MagicMock()
-        mock_session.userdata = mock_session_data
-
-        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch.object(agent, "_build_hot_context", return_value=""):
-                await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
-
-                mock_turn_ctx.add_message.assert_not_called()
-
-
-class TestHotContextBuilding:
-    """Test _build_hot_context per-turn context assembly (pure in-memory, no DB)."""
-
-    def test_build_hot_context_includes_location_and_time(self):
-        """_build_hot_context should include location name and world time."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            agent = DungeonMasterAgent()
-
-        mock_sd = MagicMock()
-        mock_sd.location_id = "tavern"
-        mock_sd.world_time = "evening"
-        mock_sd.cached_location_name = "The Rusty Sword"
-        mock_sd.cached_quest_summaries = []
-        mock_sd.cached_npc_names = []
-        mock_sd.recent_events = []
-        mock_sd.combat_state = None
-
-        result = agent._build_hot_context(mock_sd)
-
-        assert "[Context: The Rusty Sword, evening]" in result
-
-    def test_build_hot_context_uses_location_id_if_no_name(self):
-        """_build_hot_context should fall back to location_id if cached name is empty."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            agent = DungeonMasterAgent()
-
-        mock_sd = MagicMock()
-        mock_sd.location_id = "unknown_place"
-        mock_sd.world_time = "morning"
-        mock_sd.cached_location_name = ""
-        mock_sd.cached_quest_summaries = []
-        mock_sd.cached_npc_names = []
-        mock_sd.recent_events = []
-        mock_sd.combat_state = None
-
-        result = agent._build_hot_context(mock_sd)
-
-        assert "[Context: unknown_place, morning]" in result
-
-    def test_build_hot_context_includes_active_quest_objectives(self):
-        """_build_hot_context should include cached quest summaries."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            agent = DungeonMasterAgent()
-
-        mock_sd = MagicMock()
-        mock_sd.location_id = "forest"
-        mock_sd.world_time = "day"
-        mock_sd.cached_location_name = "Dark Forest"
-        mock_sd.cached_quest_summaries = ["Find the Artifact: Search the ruins"]
-        mock_sd.cached_npc_names = []
-        mock_sd.recent_events = []
-        mock_sd.combat_state = None
-
-        result = agent._build_hot_context(mock_sd)
-
-        assert "[Quests:" in result
-        assert "Find the Artifact" in result
-        assert "Search the ruins" in result
-
-    def test_build_hot_context_includes_recent_events(self):
-        """_build_hot_context should include recent events from session data."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            agent = DungeonMasterAgent()
-
-        mock_sd = MagicMock()
-        mock_sd.location_id = "town"
-        mock_sd.world_time = "night"
-        mock_sd.cached_location_name = "Town Square"
-        mock_sd.cached_quest_summaries = []
-        mock_sd.cached_npc_names = []
-        mock_sd.recent_events = ["Found a key", "Defeated goblin", "Talked to merchant", "Entered tavern"]
-        mock_sd.combat_state = None
-
-        result = agent._build_hot_context(mock_sd)
-
-        assert "[Recent:" in result
-        # Should only include last 3 events
-        assert "Talked to merchant" in result
-        assert "Entered tavern" in result
-        assert "Found a key" not in result  # Too old
-
-    def test_build_hot_context_includes_npcs_nearby(self):
-        """_build_hot_context should include cached NPC names."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            agent = DungeonMasterAgent()
-
-        mock_sd = MagicMock()
-        mock_sd.location_id = "guild_hall"
-        mock_sd.world_time = "evening"
-        mock_sd.cached_location_name = "Guild Hall"
-        mock_sd.cached_quest_summaries = []
-        mock_sd.cached_npc_names = ["Guildmaster Torin", "Elara the Sage"]
-        mock_sd.recent_events = []
-        mock_sd.combat_state = None
-
-        result = agent._build_hot_context(mock_sd)
-
-        assert "[NPCs nearby:" in result
-        assert "Guildmaster Torin" in result
-        assert "Elara the Sage" in result
-
-    def test_build_hot_context_handles_npc_without_name(self):
-        """_build_hot_context should use whatever name is cached (fallback handled at cache time)."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            agent = DungeonMasterAgent()
-
-        mock_sd = MagicMock()
-        mock_sd.location_id = "cave"
-        mock_sd.world_time = "day"
-        mock_sd.cached_location_name = "Cave"
-        mock_sd.cached_quest_summaries = []
-        mock_sd.cached_npc_names = ["mysterious_figure"]
-        mock_sd.recent_events = []
-        mock_sd.combat_state = None
-
-        result = agent._build_hot_context(mock_sd)
-
-        assert "mysterious_figure" in result
+            assert mock_session_data.last_player_speech_time > before
 
 
 class TestTTSNode:

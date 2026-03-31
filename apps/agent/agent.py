@@ -12,16 +12,11 @@ from livekit.plugins import anthropic, deepgram, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 import db
-import event_types as E
-from background_process import BackgroundProcess
 from base_agent import BaseGameAgent, _make_tts
 from city_agent import CityAgent
-from game_events import publish_game_event
 from prologue import play_prologue
 from prompts import build_system_prompt, format_affect_context
-from rules_engine import hp_threshold_status
 from session_data import CompanionState, CreationState, SessionData
-from session_summary import generate_session_summary
 from tools import (
     add_to_inventory,
     award_divine_favor,
@@ -93,77 +88,34 @@ START_LOCATION = "accord_guild_hall"
 
 
 class DungeonMasterAgent(BaseGameAgent):
+    """Creation-only agent. Gameplay sessions use CityAgent instead.
+
+    Handles character creation flow with prologue suppression. Will be
+    replaced by a dedicated CreationAgent in milestone H.3.
+    """
+
     def __init__(
         self,
-        initial_location: str = START_LOCATION,
         instructions: str | None = None,
         tools: list | None = None,
-        creation_mode: bool = False,
+        creation_mode: bool = True,
         chat_ctx: Any = None,
     ) -> None:
         super().__init__(
-            instructions=instructions or build_system_prompt(initial_location),
+            instructions=instructions or build_system_prompt(START_LOCATION),
             tools=tools or ALL_TOOLS,
             chat_ctx=chat_ctx,
         )
         self._creation_mode = creation_mode
         self._suppress_auto_reply: bool = False
-        self._background: BackgroundProcess | None = None
-        self._session_start_time: float = time.time()
-        self._close_scheduled: bool = False
-
-    async def _publish_session_init(self, sd: SessionData) -> None:
-        try:
-            payload = await db.get_session_init_payload(sd.player_id)
-            await publish_game_event(sd.room, E.SESSION_INIT, payload, sd.event_bus)
-        except Exception:
-            logger.exception("Failed to publish session_init")
 
     async def on_enter(self) -> None:
         await super().on_enter()
         logger.info("DM agent entered session (creation_mode=%s)", self._creation_mode)
-        self._session_start_time = time.time()
-        sd: SessionData = self.session.userdata
-
-        if not self._creation_mode:
-            self._background = BackgroundProcess(
-                agent=self,
-                session=self.session,
-                session_data=sd,
-            )
-            self._background.start()
-            self._fire_and_forget(self._publish_session_init(sd))
-
-    async def on_exit(self) -> None:
-        logger.info("DM agent exiting session")
-        sd: SessionData = self.session.userdata
-
-        transcript_path = self._transcript.log_path if self._transcript else None
-        summary_payload = await generate_session_summary(sd, transcript_path, self._session_start_time)
-
-        results = await asyncio.gather(
-            publish_game_event(sd.room, E.SESSION_END, summary_payload, sd.event_bus),
-            db.save_session_summary(sd.player_id, sd.session_id, summary_payload),
-            return_exceptions=True,
-        )
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
-                labels = ("publish session_end", "save session summary")
-                logger.exception("Failed to %s", labels[i], exc_info=result)
-
-        try:
-            if self._background:
-                await self._background.stop()
-        except Exception:
-            logger.exception("Failed to stop background process")
-
-        await super().on_exit()
 
     async def on_user_turn_completed(
         self, turn_ctx: agents.llm.ChatContext, new_message: agents.llm.ChatMessage
     ) -> None:
-        # During prologue playback, suppress the auto-reply — our code will
-        # handle the transition to creation after the prologue returns.
         if self._suppress_auto_reply:
             from livekit.agents import StopResponse
 
@@ -175,64 +127,9 @@ class DungeonMasterAgent(BaseGameAgent):
         sd: SessionData = self.session.userdata
         sd.last_player_speech_time = time.time()
 
-        # Skip hot context injection during creation — no location/quest/NPC data yet
-        if not self._creation_mode:
-            hot = self._build_hot_context(sd)
-            if hot:
-                turn_ctx.add_message(role="assistant", content=hot)
-
         affect = self._affect_analyzer.get_current_vector()
         if affect:
             turn_ctx.add_message(role="assistant", content=format_affect_context(affect))
-
-    async def on_agent_turn_completed(
-        self, turn_ctx: agents.llm.ChatContext, new_message: agents.llm.ChatMessage
-    ) -> None:
-        sd: SessionData = self.session.userdata
-        if sd.ending_requested and not self._close_scheduled:
-            self._close_scheduled = True
-            self._fire_and_forget(self._delayed_close())
-
-    async def _delayed_close(self) -> None:
-        await asyncio.sleep(3.0)
-        await self.session.aclose()
-
-    def _build_hot_context(self, sd: SessionData) -> str:
-        """Build hot context from in-memory SessionData only — zero I/O.
-
-        All data is kept current by the background process warm layer rebuild.
-        """
-        parts: list[str] = []
-
-        # Current location + time (cached by background process)
-        loc_name = sd.cached_location_name or sd.location_id
-        parts.append(f"[Context: {loc_name}, {sd.world_time}]")
-
-        # Combat state (in-memory)
-        if sd.combat_state is not None:
-            cs = sd.combat_state
-            combatants = []
-            for pid in cs.initiative_order:
-                p = cs.get_participant(pid)
-                if p is not None:
-                    status = hp_threshold_status(p.hp_current, p.hp_max)
-                    combatants.append(f"{p.name}({status})")
-            parts.append(f"[COMBAT Round {cs.round_number}: {', '.join(combatants)}]")
-
-        # Active quest objectives (cached by background process)
-        if sd.cached_quest_summaries:
-            parts.append("[Quests: " + "; ".join(sd.cached_quest_summaries) + "]")
-
-        # Recent events (in-memory deque)
-        if sd.recent_events:
-            recent = list(sd.recent_events)[-3:]
-            parts.append("[Recent: " + "; ".join(recent) + "]")
-
-        # NPCs nearby (cached by background process)
-        if sd.cached_npc_names:
-            parts.append("[NPCs nearby: " + ", ".join(sd.cached_npc_names) + "]")
-
-        return " ".join(parts)
 
 
 server = AgentServer()
