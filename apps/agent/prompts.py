@@ -557,20 +557,12 @@ async def build_warm_layer(
         sections.append("ACTIVE QUESTS\n" + "\n".join(quest_lines))
 
     # Active scene (from quest play tree or location default)
-    active_scene = None
-    if scene_cache and quests:
+    if scene_cache:
         from tools import get_active_scene_for_context
 
-        active_scene = get_active_scene_for_context(scene_cache, quests, location)
-    elif quests:
-        from tools import get_active_scene
-
-        for q in quests:
-            active_scene = get_active_scene(q, q.get("current_stage", 0))
-            if active_scene:
-                break
-    if active_scene:
-        sections.append(f"ACTIVE SCENE — {active_scene['name']}\n{active_scene['instructions']}")
+        active_scene = get_active_scene_for_context(scene_cache, quests or [], location)
+        if active_scene:
+            sections.append(f"ACTIVE SCENE — {active_scene['name']}\n{active_scene['instructions']}")
 
     # Companion state
     if companion is not None and companion.is_present:

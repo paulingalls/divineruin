@@ -340,19 +340,9 @@ class BackgroundProcess:
         if self._sd.last_player_speech_time <= 0:
             return
 
-        # Resolve active scene via scene_cache (v2) or embedded scenes (v1 fallback)
-        scene = None
-        if self._scene_cache:
-            from tools import get_active_scene_for_context
+        from tools import get_active_scene_for_context
 
-            scene = get_active_scene_for_context(self._scene_cache, self._quest_cache, None)
-        else:
-            from tools import get_active_scene
-
-            for quest in self._quest_cache:
-                scene = get_active_scene(quest, quest.get("current_stage", 0))
-                if scene:
-                    break
+        scene = get_active_scene_for_context(self._scene_cache, self._quest_cache, None)
         if scene is None:
             return
 

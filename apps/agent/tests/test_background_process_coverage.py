@@ -184,24 +184,26 @@ BEAT_QUEST = {
     "current_stage": 0,
     "stages": [{"id": "s0", "objective": "Go."}],
     "global_hints": {},
-    "scenes": [
-        {
-            "id": "test_scene",
-            "name": "Test Scene",
-            "region_type": "wilderness",
-            "instructions": "Narrate.",
-            "stage_refs": [0],
-            "beats": [
-                {
-                    "id": "b1",
-                    "description": "Beat one.",
-                    "completion_condition": "Done",
-                    "companion_hints": ["Test hint 1"],
-                    "hint_delay_seconds": 30,
-                },
-            ],
-        },
-    ],
+    "scene_graph": [{"scene_id": "test_scene", "stage_refs": [0]}],
+}
+
+BEAT_SCENE_CACHE = {
+    "test_scene": {
+        "id": "test_scene",
+        "name": "Test Scene",
+        "type": "quest",
+        "region_type": "wilderness",
+        "instructions": "Narrate.",
+        "beats": [
+            {
+                "id": "b1",
+                "description": "Beat one.",
+                "completion_condition": "Done",
+                "companion_hints": ["Test hint 1"],
+                "hint_delay_seconds": 30,
+            },
+        ],
+    },
 }
 
 
@@ -214,6 +216,7 @@ class TestGuidanceSystem:
         mock_sd.last_player_speech_time = time.time() - 100
         bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
         bp._quest_cache = [BEAT_QUEST]
+        bp._scene_cache = BEAT_SCENE_CACHE
         with patch.object(bp, "_queue_speech") as mock_queue:
             bp._check_scene_beat_hints()
             mock_queue.assert_not_called()
@@ -224,6 +227,7 @@ class TestGuidanceSystem:
         mock_sd.last_player_speech_time = 0
         bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
         bp._quest_cache = [BEAT_QUEST]
+        bp._scene_cache = BEAT_SCENE_CACHE
         with patch.object(bp, "_queue_speech") as mock_queue:
             bp._check_scene_beat_hints()
             mock_queue.assert_not_called()
@@ -239,6 +243,7 @@ class TestGuidanceSystem:
         mock_sd.companion.emotional_state = "steady"
         bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
         bp._quest_cache = [BEAT_QUEST]
+        bp._scene_cache = BEAT_SCENE_CACHE
         with patch.object(bp, "_queue_speech") as mock_queue:
             bp._check_scene_beat_hints()
             mock_queue.assert_called_once()
@@ -253,6 +258,7 @@ class TestGuidanceSystem:
         mock_sd.last_agent_speech_end = time.time() - 5  # Agent spoke 5s ago
         bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
         bp._quest_cache = [BEAT_QUEST]
+        bp._scene_cache = BEAT_SCENE_CACHE
         with patch.object(bp, "_queue_speech") as mock_queue:
             bp._check_scene_beat_hints()
             mock_queue.assert_not_called()
@@ -265,6 +271,7 @@ class TestGuidanceSystem:
         mock_sd.last_agent_speech_end = now - 10  # Under 30s threshold
         bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
         bp._quest_cache = [BEAT_QUEST]
+        bp._scene_cache = BEAT_SCENE_CACHE
         with patch.object(bp, "_queue_speech") as mock_queue:
             bp._check_scene_beat_hints()
             mock_queue.assert_not_called()
@@ -276,6 +283,7 @@ class TestGuidanceSystem:
         mock_sd.last_agent_speech_end = time.time() - 100
         bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
         bp._quest_cache = [BEAT_QUEST]
+        bp._scene_cache = BEAT_SCENE_CACHE
         bp._scene_hint_state = {
             "scene_id": "test_scene",
             "beat_index": 0,

@@ -373,26 +373,27 @@ class TestQuestHints:
                 "current_stage": 0,
                 "stages": [{"id": "s0", "objective": "Travel."}],
                 "global_hints": {},
-                "scenes": [
-                    {
-                        "id": "scene_road",
-                        "name": "Road",
-                        "region_type": "wilderness",
-                        "instructions": "Travel.",
-                        "stage_refs": [0],
-                        "beats": [
-                            {
-                                "id": "b1",
-                                "description": "Depart.",
-                                "completion_condition": "Go north",
-                                "companion_hints": ["Head north to Millhaven."],
-                                "hint_delay_seconds": 45,
-                            },
-                        ],
-                    },
-                ],
+                "scene_graph": [{"scene_id": "scene_road", "stage_refs": [0]}],
             }
         ]
+        bg._scene_cache = {
+            "scene_road": {
+                "id": "scene_road",
+                "name": "Road",
+                "type": "quest",
+                "region_type": "wilderness",
+                "instructions": "Travel.",
+                "beats": [
+                    {
+                        "id": "b1",
+                        "description": "Depart.",
+                        "completion_condition": "Go north",
+                        "companion_hints": ["Head north to Millhaven."],
+                        "hint_delay_seconds": 45,
+                    },
+                ],
+            },
+        }
         bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 1
         assert "COMPANION_KAEL" in bg._speech_queue[0].instructions

@@ -41,35 +41,6 @@ EFFECT_NPC_MAP: dict[str, str] = {
 # --- Scene / play-tree resolution ---
 
 
-def get_active_scene(quest: dict, current_stage: int) -> dict | None:
-    """Return the scene covering *current_stage*, or None."""
-    for scene in quest.get("scenes", []):
-        if current_stage in scene.get("stage_refs", []):
-            return scene
-    return None
-
-
-def detect_scene_transition(quest: dict, old_stage: int, new_stage: int) -> dict | None:
-    """Compare scenes at *old_stage* and *new_stage*.
-
-    Returns ``{"old_scene": …, "new_scene": …, "region_changed": bool}``
-    when the scene changes, or ``None`` otherwise.
-    """
-    if old_stage < 0:
-        return None
-    old_scene = get_active_scene(quest, old_stage)
-    new_scene = get_active_scene(quest, new_stage)
-    if old_scene is None or new_scene is None:
-        return None
-    if old_scene["id"] == new_scene["id"]:
-        return None
-    return {
-        "old_scene": old_scene,
-        "new_scene": new_scene,
-        "region_changed": old_scene.get("region_type") != new_scene.get("region_type"),
-    }
-
-
 def _resolve_scene_from_graph(scene_cache: dict[str, dict], quest: dict, current_stage: int) -> dict | None:
     """Look up scene from quest's scene_graph for the given stage."""
     for entry in quest.get("scene_graph", []):
@@ -1561,14 +1532,12 @@ async def update_quest(
     }
     logger.info("update_quest result: %s → stage %d, %d rewards", quest_id, new_stage_id, len(rewards_applied))
 
-    # Scene transition check — try v2 (scene_graph + scene_cache) first, fall back to v1 (embedded)
+    # Scene transition check — if scene changes region, trigger handoff
     transition = None
     if quest.get("scene_graph"):
         scene_ids = [e["scene_id"] for e in quest["scene_graph"]]
         scene_cache = await db.get_scenes_batch(scene_ids)
         transition = detect_scene_transition_v2(scene_cache, quest, current_stage, new_stage_id)
-    if transition is None:
-        transition = detect_scene_transition(quest, current_stage, new_stage_id)
     if transition and transition["region_changed"]:
         from livekit.agents.llm import ChatContext
 

@@ -91,31 +91,33 @@ QUEST_WITH_BEATS = {
     "current_stage": 0,
     "stages": [{"id": "s0", "objective": "Travel."}],
     "global_hints": {},
-    "scenes": [
-        {
-            "id": "scene_road",
-            "name": "Road to Millhaven",
-            "region_type": "wilderness",
-            "instructions": "Travel narration.",
-            "stage_refs": [0],
-            "beats": [
-                {
-                    "id": "beat_1",
-                    "description": "Depart.",
-                    "completion_condition": "Player travels north",
-                    "companion_hints": ["Hint A1", "Hint A2"],
-                    "hint_delay_seconds": 45,
-                },
-                {
-                    "id": "beat_2",
-                    "description": "Unease.",
-                    "completion_condition": "Player notices quiet",
-                    "companion_hints": ["Hint B1"],
-                    "hint_delay_seconds": 60,
-                },
-            ],
-        },
-    ],
+    "scene_graph": [{"scene_id": "scene_road", "stage_refs": [0]}],
+}
+
+SCENE_CACHE_FOR_BEATS = {
+    "scene_road": {
+        "id": "scene_road",
+        "name": "Road to Millhaven",
+        "type": "quest",
+        "region_type": "wilderness",
+        "instructions": "Travel narration.",
+        "beats": [
+            {
+                "id": "beat_1",
+                "description": "Depart.",
+                "completion_condition": "Player travels north",
+                "companion_hints": ["Hint A1", "Hint A2"],
+                "hint_delay_seconds": 45,
+            },
+            {
+                "id": "beat_2",
+                "description": "Unease.",
+                "completion_condition": "Player notices quiet",
+                "companion_hints": ["Hint B1"],
+                "hint_delay_seconds": 60,
+            },
+        ],
+    },
 }
 
 QUEST_NO_SCENES = {
@@ -139,6 +141,7 @@ class TestCheckSceneBeatHints:
         sd = _make_session_data(combat_state=cs, last_player_speech_time=time.time() - 60)
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = [QUEST_WITH_BEATS]
+        bg._scene_cache = SCENE_CACHE_FOR_BEATS
         bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 0
 
@@ -146,6 +149,7 @@ class TestCheckSceneBeatHints:
         sd = _make_session_data(last_player_speech_time=0.0)
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = [QUEST_WITH_BEATS]
+        bg._scene_cache = SCENE_CACHE_FOR_BEATS
         bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 0
 
@@ -160,6 +164,7 @@ class TestCheckSceneBeatHints:
         sd = self._make_sd_with_companion()
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = [QUEST_WITH_BEATS]
+        bg._scene_cache = SCENE_CACHE_FOR_BEATS
         bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 1
         assert bg._speech_queue[0].priority == SpeechPriority.IMPORTANT
@@ -169,6 +174,7 @@ class TestCheckSceneBeatHints:
         sd = self._make_sd_with_companion(last_player_speech_time=time.time() - 10)
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = [QUEST_WITH_BEATS]
+        bg._scene_cache = SCENE_CACHE_FOR_BEATS
         bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 0
 
@@ -176,6 +182,7 @@ class TestCheckSceneBeatHints:
         sd = self._make_sd_with_companion()
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = [QUEST_WITH_BEATS]
+        bg._scene_cache = SCENE_CACHE_FOR_BEATS
         # First call delivers hint A1
         bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 1
@@ -191,6 +198,7 @@ class TestCheckSceneBeatHints:
         sd = self._make_sd_with_companion()
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = [QUEST_WITH_BEATS]
+        bg._scene_cache = SCENE_CACHE_FOR_BEATS
         # Deliver all hints from beat 0
         bg._check_scene_beat_hints()  # Hint A1
         bg._speech_queue.clear()
@@ -207,6 +215,7 @@ class TestCheckSceneBeatHints:
         sd = _make_session_data(last_player_speech_time=past)
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = [QUEST_WITH_BEATS]
+        bg._scene_cache = SCENE_CACHE_FOR_BEATS
         # Exhaust beat 0 (2 hints) + beat 1 (1 hint)
         bg._scene_hint_state = {
             "scene_id": "scene_road",
@@ -221,6 +230,7 @@ class TestCheckSceneBeatHints:
         sd = self._make_sd_with_companion()
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = [QUEST_WITH_BEATS]
+        bg._scene_cache = SCENE_CACHE_FOR_BEATS
         # Set stale state from a different scene
         bg._scene_hint_state = {
             "scene_id": "old_scene",
