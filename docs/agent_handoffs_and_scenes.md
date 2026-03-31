@@ -756,16 +756,16 @@ in their first session.
 - Old companion meeting trigger in `background_process.py` removed.
 
 **Acceptance criteria:**
-- [ ] New player completes creation and enters onboarding — no manual navigation
+- [x] New player completes creation and enters onboarding — no manual navigation
       required to meet Kael.
-- [ ] Kael is reliably present after Beat 3, every time.
-- [ ] Player has the Greyvale quest hook after Beat 5.
-- [ ] Player can interact naturally within each beat (ask questions, look around)
+- [x] Kael is reliably present after Beat 3, every time.
+- [x] Player has the Greyvale quest hook after Beat 5.
+- [x] Player can interact naturally within each beat (ask questions, look around)
       without breaking the sequence.
-- [ ] Disconnect mid-onboarding and reconnect: resumes at the correct beat.
-- [ ] After onboarding completes, player is on CityAgent with full open-world
+- [x] Disconnect mid-onboarding and reconnect: resumes at the correct beat.
+- [x] After onboarding completes, player is on CityAgent with full open-world
       gameplay.
-- [ ] The old `MEETING_SCENE_INSTRUCTIONS` / `_meeting_triggered` logic is removed.
+- [x] The old `MEETING_SCENE_INSTRUCTIONS` / `_meeting_triggered` logic is removed.
 
 **Key references:**
 - *This document — OnboardingAgent, Onboarding Beat Sequence*
