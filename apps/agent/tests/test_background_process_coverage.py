@@ -423,6 +423,7 @@ class TestWarmLayerRebuild:
         """_rebuild_warm_layer should update agent instructions with new warm layer."""
         mock_agent = MagicMock()
         mock_agent.update_instructions = AsyncMock()
+        mock_agent._agent_type = "city"
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.location_id = "tavern"
@@ -452,6 +453,7 @@ class TestWarmLayerRebuild:
                         corruption_level=mock_sd.corruption_level,
                         location=mock_location,
                         npcs_raw=mock_npcs,
+                        region_type="city",
                     )
                     mock_agent.update_instructions.assert_awaited_once_with("full prompt")
                     assert bp._last_warm_layer == "warm layer content"

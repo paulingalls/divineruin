@@ -325,8 +325,77 @@ a moment of rest. Mention what they accomplished. Plant one seed for next time. 
 """
 
 
-def build_system_prompt(location_id: str, companion: CompanionState | None = None) -> str:
-    parts = SYSTEM_PROMPT + PLAYER_AWARENESS_PROMPT + NAVIGATION_PROMPT + STORY_MOMENT_PROMPT + SESSION_ENDING_PROMPT
+WILDERNESS_PROMPT = """\
+
+## Wilderness Mode
+
+You are narrating wilderness travel and exploration. Paced, atmospheric, \
+tension-aware narration. Sound and smell dominate over sight — the player \
+is traveling eyes-closed.
+
+Narration style:
+- Longer descriptions of landscape, weather, and distance than in cities.
+- Environmental hazards are constant companions: weather shifts, terrain \
+  difficulty, wildlife signs.
+- No NPC commerce rules apply. There are no shopkeepers out here.
+- No social context rules. Wilderness encounters are about survival and discovery.
+
+Travel pacing: compress routine travel to one sentence per location. Save \
+full narration for encounters, discoveries, and destination arrivals.
+
+The companion is especially active during travel — pointing things out, \
+sharing stories, warning about danger. Let Kael fill the silences of the road.\
+"""
+
+
+DUNGEON_PROMPT = """\
+
+## Dungeon Mode
+
+You are narrating dungeon exploration. Terse, tense, sensory-heavy narration. \
+Short sentences. Every sound matters. Echo and dripping water. The darkness \
+presses close.
+
+Narration style:
+- Emphasize what the player hears and feels. Sight is limited.
+- Hidden elements are everywhere. Reward careful exploration.
+- Traps and puzzles are narrated through sensory clues, never revealed directly.
+- No social context rules. No commerce. No casual NPC conversation.
+- The Hollow's corruption is strongest here. Describe its effects on the senses: \
+  sounds from wrong distances, metallic tastes, moments where reality overlaps.
+
+The companion speaks in whispers here. Nervous, alert. Shorter sentences than \
+usual. Old instincts from the caravan keep him checking corners.\
+"""
+
+
+def build_system_prompt(
+    location_id: str,
+    companion: CompanionState | None = None,
+    region_type: str = "city",
+) -> str:
+    if region_type == "wilderness":
+        parts = (
+            SYSTEM_PROMPT
+            + PLAYER_AWARENESS_PROMPT
+            + NAVIGATION_PROMPT
+            + WILDERNESS_PROMPT
+            + STORY_MOMENT_PROMPT
+            + SESSION_ENDING_PROMPT
+        )
+    elif region_type == "dungeon":
+        parts = (
+            SYSTEM_PROMPT
+            + PLAYER_AWARENESS_PROMPT
+            + NAVIGATION_PROMPT
+            + DUNGEON_PROMPT
+            + STORY_MOMENT_PROMPT
+            + SESSION_ENDING_PROMPT
+        )
+    else:
+        parts = (
+            SYSTEM_PROMPT + PLAYER_AWARENESS_PROMPT + NAVIGATION_PROMPT + STORY_MOMENT_PROMPT + SESSION_ENDING_PROMPT
+        )
     if companion is not None and companion.is_present:
         parts += COMPANION_PROMPT
     parts += (
@@ -421,6 +490,7 @@ async def build_warm_layer(
     corruption_level: int = 0,
     location: dict | None = None,
     npcs_raw: list[dict] | None = None,
+    region_type: str = "city",
 ) -> str:
     import asyncio
 
@@ -466,8 +536,8 @@ async def build_warm_layer(
                 exit_lines.append(line)
             sections.append("EXITS\n" + "\n".join(exit_lines))
 
-    # Active NPCs at location
-    if npcs_raw:
+    # Active NPCs at location (city only — wilderness/dungeon de-emphasize NPCs)
+    if npcs_raw and region_type == "city":
         npc_ids = [npc["id"] for npc in npcs_raw]
         dispositions = await db.get_npc_dispositions(npc_ids, player_id)
         npc_lines = []

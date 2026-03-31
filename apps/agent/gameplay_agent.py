@@ -43,7 +43,7 @@ class GameplayAgent(BaseGameAgent):
         tools: list | None = None,
     ) -> None:
         super().__init__(
-            instructions=build_system_prompt(initial_location, companion),
+            instructions=build_system_prompt(initial_location, companion, region_type=self._agent_type),
             tools=tools or [],
             chat_ctx=chat_ctx,
         )

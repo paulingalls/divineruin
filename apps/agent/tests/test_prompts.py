@@ -146,6 +146,114 @@ class TestNavigationPromptIncluded:
         assert "Navigation" in prompt
 
 
+class TestRegionTypePrompts:
+    """System prompts vary by region_type."""
+
+    def test_city_prompt_is_default(self):
+        default = build_system_prompt("loc")
+        city = build_system_prompt("loc", region_type="city")
+        assert default == city
+
+    def test_wilderness_prompt_includes_travel(self):
+        prompt = build_system_prompt("loc", region_type="wilderness")
+        assert "travel" in prompt.lower() or "wilderness" in prompt.lower()
+
+    def test_wilderness_prompt_has_no_commerce_rule(self):
+        from prompts import WILDERNESS_PROMPT
+
+        prompt = build_system_prompt("loc", region_type="wilderness")
+        assert WILDERNESS_PROMPT in prompt
+        assert "No NPC commerce" in prompt
+
+    def test_dungeon_prompt_includes_corruption(self):
+        from prompts import DUNGEON_PROMPT
+
+        prompt = build_system_prompt("loc", region_type="dungeon")
+        assert DUNGEON_PROMPT in prompt
+        assert "corruption" in prompt.lower()
+
+    def test_dungeon_prompt_has_no_social_rule(self):
+        prompt = build_system_prompt("loc", region_type="dungeon")
+        assert "No social context" in prompt
+
+    def test_each_region_type_has_voice_style(self):
+        from prompts import VOICE_STYLE_PROMPT
+
+        for rt in ("city", "wilderness", "dungeon"):
+            prompt = build_system_prompt("loc", region_type=rt)
+            assert VOICE_STYLE_PROMPT in prompt, f"{rt} prompt missing VOICE_STYLE_PROMPT"
+
+
+class TestRegionTypeWarmLayer:
+    """Warm layer adjusts sections by region_type."""
+
+    @patch("db.get_npc_dispositions", new_callable=AsyncMock, return_value={"guildmaster_torin": "friendly"})
+    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db.get_location", new_callable=AsyncMock)
+    async def test_city_warm_layer_includes_npcs(self, mock_loc, mock_npcs, mock_disp):
+        mock_loc.return_value = SAMPLE_LOCATION
+        mock_npcs.return_value = [SAMPLE_NPC_RAW]
+        result = await build_warm_layer(
+            "accord_guild_hall",
+            "p1",
+            "evening",
+            quests=[SAMPLE_QUEST],
+            location=SAMPLE_LOCATION,
+            npcs_raw=[SAMPLE_NPC_RAW],
+            region_type="city",
+        )
+        assert "NPCS PRESENT" in result
+
+    @patch("db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("db.get_location", new_callable=AsyncMock)
+    async def test_wilderness_warm_layer_omits_npcs(self, mock_loc, mock_npcs, mock_disp):
+        mock_loc.return_value = SAMPLE_LOCATION
+        result = await build_warm_layer(
+            "greyvale_south_road",
+            "p1",
+            "evening",
+            quests=[],
+            location=SAMPLE_LOCATION,
+            npcs_raw=[SAMPLE_NPC_RAW],
+            region_type="wilderness",
+        )
+        assert "NPCS PRESENT" not in result
+
+    @patch("db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("db.get_location", new_callable=AsyncMock)
+    async def test_dungeon_warm_layer_omits_npcs(self, mock_loc, mock_npcs, mock_disp):
+        mock_loc.return_value = SAMPLE_LOCATION
+        result = await build_warm_layer(
+            "greyvale_ruins_entrance",
+            "p1",
+            "evening",
+            quests=[],
+            location=SAMPLE_LOCATION,
+            npcs_raw=[SAMPLE_NPC_RAW],
+            region_type="dungeon",
+        )
+        assert "NPCS PRESENT" not in result
+
+    @patch("db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("db.get_location", new_callable=AsyncMock)
+    async def test_dungeon_warm_layer_includes_corruption(self, mock_loc, mock_npcs, mock_disp):
+        mock_loc.return_value = SAMPLE_LOCATION
+        result = await build_warm_layer(
+            "greyvale_ruins_inner",
+            "p1",
+            "evening",
+            quests=[],
+            location=SAMPLE_LOCATION,
+            npcs_raw=[],
+            corruption_level=2,
+            region_type="dungeon",
+        )
+        assert "HOLLOW CORRUPTION" in result
+
+
 class TestBuildFullPrompt:
     def test_combines_layers(self):
         result = build_full_prompt("STATIC", "WARM")
