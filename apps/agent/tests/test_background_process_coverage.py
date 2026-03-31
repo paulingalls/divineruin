@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import event_types as E
-from background_process import GUIDANCE_LEVEL_2_SECS, BackgroundProcess, PendingSpeech, SpeechPriority
+from background_process import BackgroundProcess, PendingSpeech, SpeechPriority
 from event_bus import GameEvent
 
 
@@ -167,7 +167,7 @@ class TestEventHandling:
 
         with patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock) as mock_rebuild:
             with patch.object(bp, "_deliver_speech", new_callable=AsyncMock):
-                with patch.object(bp, "_check_guidance"):
+                with patch.object(bp, "_check_scene_beat_hints"):
                     with patch.object(bp, "_check_companion_idle"):
                         try:
                             await bp._run()
@@ -178,153 +178,113 @@ class TestEventHandling:
                         assert mock_rebuild.call_count == 2
 
 
-class TestGuidanceSystem:
-    """Test player guidance nudges."""
+BEAT_QUEST = {
+    "quest_id": "test_quest",
+    "quest_name": "Test Quest",
+    "current_stage": 0,
+    "stages": [{"id": "s0", "objective": "Go."}],
+    "global_hints": {},
+    "scenes": [
+        {
+            "id": "test_scene",
+            "name": "Test Scene",
+            "region_type": "wilderness",
+            "instructions": "Narrate.",
+            "stage_refs": [0],
+            "beats": [
+                {
+                    "id": "b1",
+                    "description": "Beat one.",
+                    "completion_condition": "Done",
+                    "companion_hints": ["Test hint 1"],
+                    "hint_delay_seconds": 30,
+                },
+            ],
+        },
+    ],
+}
 
-    def test_check_guidance_skips_if_in_combat(self):
-        """_check_guidance should skip if player is in combat."""
-        mock_agent = MagicMock()
-        mock_session = MagicMock()
+
+class TestGuidanceSystem:
+    """Test scene beat hint delivery (replaced old _check_guidance)."""
+
+    def test_skips_if_in_combat(self):
         mock_sd = MagicMock()
         mock_sd.in_combat = True
         mock_sd.last_player_speech_time = time.time() - 100
-
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
-
+        bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
+        bp._quest_cache = [BEAT_QUEST]
         with patch.object(bp, "_queue_speech") as mock_queue:
-            bp._check_guidance()
-
+            bp._check_scene_beat_hints()
             mock_queue.assert_not_called()
 
-    def test_check_guidance_skips_if_player_never_spoke(self):
-        """_check_guidance should skip if player hasn't spoken yet."""
-        mock_agent = MagicMock()
-        mock_session = MagicMock()
+    def test_skips_if_player_never_spoke(self):
         mock_sd = MagicMock()
         mock_sd.in_combat = False
         mock_sd.last_player_speech_time = 0
-
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
-
+        bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
+        bp._quest_cache = [BEAT_QUEST]
         with patch.object(bp, "_queue_speech") as mock_queue:
-            bp._check_guidance()
-
+            bp._check_scene_beat_hints()
             mock_queue.assert_not_called()
 
-    def test_check_guidance_skips_if_already_nudged_since_last_speech(self):
-        """_check_guidance should not re-nudge if player hasn't spoken since last nudge."""
-        mock_agent = MagicMock()
-        mock_session = MagicMock()
+    def test_queues_after_silence(self):
         mock_sd = MagicMock()
         mock_sd.in_combat = False
-        player_speech_time = time.time() - 100
-        mock_sd.last_player_speech_time = player_speech_time
-
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
-        bp._last_guidance_time = player_speech_time + 1  # Nudged after player spoke
-
-        with patch.object(bp, "_queue_speech") as mock_queue:
-            bp._check_guidance()
-
-            mock_queue.assert_not_called()
-
-    def test_check_guidance_queues_speech_after_silence_threshold(self):
-        """_check_guidance should queue guidance after silence threshold."""
-        mock_agent = MagicMock()
-        mock_session = MagicMock()
-        mock_sd = MagicMock()
-        mock_sd.in_combat = False
-        past = time.time() - (GUIDANCE_LEVEL_2_SECS + 1)
+        past = time.time() - 35
         mock_sd.last_player_speech_time = past
         mock_sd.last_agent_speech_end = past
-
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
-        bp._last_guidance_time = 0
-
+        mock_sd.companion_can_act = True
+        mock_sd.companion = MagicMock()
+        mock_sd.companion.emotional_state = "steady"
+        bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
+        bp._quest_cache = [BEAT_QUEST]
         with patch.object(bp, "_queue_speech") as mock_queue:
-            with patch.object(bp, "_get_quest_hints", return_value=[]):
-                bp._check_guidance()
+            bp._check_scene_beat_hints()
+            mock_queue.assert_called_once()
+            call_args = mock_queue.call_args[0]
+            assert call_args[0] == SpeechPriority.IMPORTANT
+            assert "Test hint 1" in call_args[1]
 
-                mock_queue.assert_called_once()
-                call_args = mock_queue.call_args[0]
-                assert call_args[0] == SpeechPriority.IMPORTANT
-                assert "quiet for a while" in call_args[1]
-                assert bp._last_guidance_time > 0
-
-    def test_check_guidance_skips_while_agent_recently_spoke(self):
-        """_check_guidance should not nudge if agent finished speaking recently."""
-        mock_agent = MagicMock()
-        mock_session = MagicMock()
+    def test_skips_while_agent_spoke(self):
         mock_sd = MagicMock()
         mock_sd.in_combat = False
-        mock_sd.last_player_speech_time = time.time() - (GUIDANCE_LEVEL_2_SECS + 30)
+        mock_sd.last_player_speech_time = time.time() - 100
         mock_sd.last_agent_speech_end = time.time() - 5  # Agent spoke 5s ago
-
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
-        bp._last_guidance_time = 0
-
+        bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
+        bp._quest_cache = [BEAT_QUEST]
         with patch.object(bp, "_queue_speech") as mock_queue:
-            bp._check_guidance()
+            bp._check_scene_beat_hints()
             mock_queue.assert_not_called()
 
-    def test_check_guidance_uses_later_of_player_and_agent_time(self):
-        """_check_guidance should use max(player_speech, agent_speech_end) as baseline."""
-        mock_agent = MagicMock()
-        mock_session = MagicMock()
+    def test_uses_later_of_player_and_agent_time(self):
         mock_sd = MagicMock()
         mock_sd.in_combat = False
-
         now = time.time()
-        # Player spoke long ago, but agent finished speaking recently
-        mock_sd.last_player_speech_time = now - (GUIDANCE_LEVEL_2_SECS + 50)
-        mock_sd.last_agent_speech_end = now - 10  # 10s ago — under threshold
-
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
-        bp._last_guidance_time = 0
-
+        mock_sd.last_player_speech_time = now - 100
+        mock_sd.last_agent_speech_end = now - 10  # Under 30s threshold
+        bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
+        bp._quest_cache = [BEAT_QUEST]
         with patch.object(bp, "_queue_speech") as mock_queue:
-            bp._check_guidance()
+            bp._check_scene_beat_hints()
             mock_queue.assert_not_called()
 
-        # Now set agent speech end to also be past threshold
-        mock_sd.last_agent_speech_end = now - (GUIDANCE_LEVEL_2_SECS + 5)
-
-        with patch.object(bp, "_queue_speech") as mock_queue:
-            with patch.object(bp, "_get_quest_hints", return_value=[]):
-                bp._check_guidance()
-                mock_queue.assert_called_once()
-
-    def test_check_guidance_includes_quest_hint_if_available(self):
-        """_check_guidance should include quest hint in guidance prompt."""
-        mock_agent = MagicMock()
-        mock_session = MagicMock()
+    def test_skips_if_recently_hinted(self):
         mock_sd = MagicMock()
         mock_sd.in_combat = False
-        past = time.time() - (GUIDANCE_LEVEL_2_SECS + 1)
-        mock_sd.last_player_speech_time = past
-        mock_sd.last_agent_speech_end = past
-
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
-        bp._last_guidance_time = 0
-
+        mock_sd.last_player_speech_time = time.time() - 100
+        mock_sd.last_agent_speech_end = time.time() - 100
+        bp = BackgroundProcess(MagicMock(), MagicMock(), mock_sd)
+        bp._quest_cache = [BEAT_QUEST]
+        bp._scene_hint_state = {
+            "scene_id": "test_scene",
+            "beat_index": 0,
+            "hint_index": 0,
+            "last_hint_time": time.time() - 5,  # Hinted 5s ago, delay is 30s
+        }
         with patch.object(bp, "_queue_speech") as mock_queue:
-            with patch.object(bp, "_get_quest_hints", return_value=["Check the library"]):
-                bp._check_guidance()
-
-                call_args = mock_queue.call_args[0]
-                assert "Check the library" in call_args[1]
-
-    def test_get_quest_hints_returns_empty_list(self):
-        """_get_quest_hints should return empty list (placeholder implementation)."""
-        mock_agent = MagicMock()
-        mock_session = MagicMock()
-        mock_sd = MagicMock()
-
-        bp = BackgroundProcess(mock_agent, mock_session, mock_sd)
-
-        result = bp._get_quest_hints()
-
-        assert result == []
+            bp._check_scene_beat_hints()
+            mock_queue.assert_not_called()
 
 
 class TestSpeechQueue:

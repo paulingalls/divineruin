@@ -359,48 +359,44 @@ class TestCompanionIdleSpeech:
 
 
 class TestQuestHints:
-    def test_get_quest_hints_returns_hint_for_current_stage(self):
-        sd = _make_session_data()
-        bg, _, _ = _make_bg(session_data=sd)
-        bg._quest_cache = [
-            {
-                "quest_id": "greyvale_anomaly",
-                "current_stage": 0,
-                "global_hints": {"stuck_stage_1": "Head north to Millhaven."},
-            }
-        ]
-        hints = bg._get_quest_hints()
-        assert hints == ["Head north to Millhaven."]
-
-    def test_get_quest_hints_empty_without_cache(self):
-        sd = _make_session_data()
-        bg, _, _ = _make_bg(session_data=sd)
-        hints = bg._get_quest_hints()
-        assert hints == []
-
-    def test_get_quest_hints_no_matching_stage(self):
-        sd = _make_session_data()
-        bg, _, _ = _make_bg(session_data=sd)
-        bg._quest_cache = [
-            {
-                "quest_id": "greyvale_anomaly",
-                "current_stage": 4,
-                "global_hints": {"stuck_stage_1": "Head north."},
-            }
-        ]
-        hints = bg._get_quest_hints()
-        assert hints == []
-
-    def test_guidance_with_companion_uses_kael(self):
+    def test_scene_beat_hint_with_companion_uses_kael(self):
         sd = _make_session_data()
         sd.companion = CompanionState(id="companion_kael", name="Kael")
-        past = time.time() - 40
+        past = time.time() - 50
         sd.last_player_speech_time = past
         sd.last_agent_speech_end = past
         bg, _, _ = _make_bg(session_data=sd)
-        bg._check_guidance()
+        bg._quest_cache = [
+            {
+                "quest_id": "greyvale_anomaly",
+                "quest_name": "The Greyvale Anomaly",
+                "current_stage": 0,
+                "stages": [{"id": "s0", "objective": "Travel."}],
+                "global_hints": {},
+                "scenes": [
+                    {
+                        "id": "scene_road",
+                        "name": "Road",
+                        "region_type": "wilderness",
+                        "instructions": "Travel.",
+                        "stage_refs": [0],
+                        "beats": [
+                            {
+                                "id": "b1",
+                                "description": "Depart.",
+                                "completion_condition": "Go north",
+                                "companion_hints": ["Head north to Millhaven."],
+                                "hint_delay_seconds": 45,
+                            },
+                        ],
+                    },
+                ],
+            }
+        ]
+        bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 1
         assert "COMPANION_KAEL" in bg._speech_queue[0].instructions
+        assert "Head north to Millhaven." in bg._speech_queue[0].instructions
 
 
 # --- WU4: Companion in Combat ---

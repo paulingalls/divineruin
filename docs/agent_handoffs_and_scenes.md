@@ -843,12 +843,12 @@ Author the Greyvale quest line as the first structured play tree.
 - Each scene has 2-3 beats with companion hints.
 
 **Acceptance criteria:**
-- [ ] Quest scenes load from `quests.json` and inject instructions into the
+- [x] Quest scenes load from `quests.json` and inject instructions into the
       active gameplay agent's prompt.
-- [ ] Scene transitions advance automatically when completion conditions are met.
-- [ ] Scene transitions that cross region types trigger agent handoffs.
-- [ ] Existing `update_quest` tool still works — stage advancement is unchanged.
-- [ ] Greyvale play tree is authored with all 5 scenes and their beats.
+- [x] Scene transitions advance automatically when completion conditions are met.
+- [x] Scene transitions that cross region types trigger agent handoffs.
+- [x] Existing `update_quest` tool still works — stage advancement is unchanged.
+- [x] Greyvale play tree is authored with all 5 scenes and their beats.
 - [ ] A playthrough of the Greyvale arc hits all 5 scenes in order with
       appropriate agent types.
 

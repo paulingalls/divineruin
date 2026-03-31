@@ -69,7 +69,6 @@ CORRUPTION_COMPANION_SPEECH: dict[int, str] = {
     ),
 }
 
-GUIDANCE_LEVEL_2_SECS = 35.0
 COMPANION_IDLE_SECS = 45.0
 
 TIMER_FALLBACK_SECS = 30.0
@@ -103,8 +102,8 @@ class BackgroundProcess:
         self._last_warm_layer: str = ""
         self._speech_queue: list[PendingSpeech] = []
         self._stop = False
-        self._last_guidance_time: float = 0.0
         self._quest_cache: list[dict] = []
+        self._scene_hint_state: dict = {}
         self._rider_triggered: bool = False
         self._last_static_key: tuple[str, bool] | None = None
         self._cached_static: str = ""
@@ -150,7 +149,7 @@ class BackgroundProcess:
                 continue
 
             self._check_companion_idle()
-            self._check_guidance()
+            self._check_scene_beat_hints()
 
             await self._deliver_speech()
 
@@ -334,52 +333,76 @@ class BackgroundProcess:
                 f"One sentence. Use [COMPANION_KAEL, {companion.emotional_state}] tag.",
             )
 
-    def _check_guidance(self) -> None:
+    def _check_scene_beat_hints(self) -> None:
+        """Deliver companion hints from the active scene's beats on player silence."""
         if self._sd.in_combat:
             return
-
         if self._sd.last_player_speech_time <= 0:
             return
 
-        # Don't nudge again if player hasn't spoken since last nudge
-        if self._last_guidance_time >= self._sd.last_player_speech_time:
+        from tools import get_active_scene
+
+        # Find active scene from quest cache
+        scene = None
+        for quest in self._quest_cache:
+            scene = get_active_scene(quest, quest.get("current_stage", 0))
+            if scene:
+                break
+        if scene is None:
             return
 
+        beats = scene.get("beats", [])
+        if not beats:
+            return
+
+        # Reset hint state if scene changed
+        state = self._scene_hint_state
+        if state.get("scene_id") != scene["id"]:
+            self._scene_hint_state = {
+                "scene_id": scene["id"],
+                "beat_index": 0,
+                "hint_index": 0,
+                "last_hint_time": 0.0,
+            }
+            state = self._scene_hint_state
+
+        beat_idx = state["beat_index"]
+        if beat_idx >= len(beats):
+            return  # all beats exhausted
+
+        beat = beats[beat_idx]
+        hints = beat.get("companion_hints", [])
+        hint_idx = state["hint_index"]
+
+        if hint_idx >= len(hints):
+            # Advance to next beat
+            state["beat_index"] += 1
+            state["hint_index"] = 0
+            state["last_hint_time"] = 0.0
+            return
+
+        delay = beat.get("hint_delay_seconds", 45)
+
+        # Silence baseline: max of player speech, agent speech, and last hint delivery
         baseline = max(self._sd.last_player_speech_time, self._sd.last_agent_speech_end)
+        if state["last_hint_time"] > 0:
+            baseline = max(baseline, state["last_hint_time"])
+
         silence = time.time() - baseline
+        if silence < delay:
+            return
 
-        if silence >= GUIDANCE_LEVEL_2_SECS:
-            self._last_guidance_time = time.time()
-            hints = self._get_quest_hints()
-            hint_text = f" Consider using this hint: {hints[0]}" if hints else ""
-            if self._sd.companion_can_act and self._sd.companion:
-                self._sd.companion.last_speech_time = time.time()
-                self._queue_speech(
-                    SpeechPriority.IMPORTANT,
-                    "The player has been quiet for a while. Kael offers a gentle "
-                    "practical suggestion about what to do next — one sentence. "
-                    f"Use [COMPANION_KAEL, {self._sd.companion.emotional_state}] tag.{hint_text}",
-                )
-            else:
-                self._queue_speech(
-                    SpeechPriority.IMPORTANT,
-                    "The player has been quiet for a while. Have a companion "
-                    "offer a gentle suggestion about what to do next — "
-                    f"one sentence, in character.{hint_text}",
-                )
+        # Deliver hint
+        hint_text = hints[hint_idx]
+        state["hint_index"] = hint_idx + 1
+        state["last_hint_time"] = time.time()
 
-    def _get_quest_hints(self) -> list[str]:
-        """Pull hints from cached quest data in recent events."""
-        if not self._quest_cache:
-            return []
-        for quest in self._quest_cache:
-            current_stage = quest.get("current_stage", 0)
-            global_hints = quest.get("global_hints", {})
-            hint_key = f"stuck_stage_{current_stage + 1}"
-            hint = global_hints.get(hint_key)
-            if hint:
-                return [hint]
-        return []
+        if self._sd.companion_can_act and self._sd.companion:
+            self._sd.companion.last_speech_time = time.time()
+            self._queue_speech(
+                SpeechPriority.IMPORTANT,
+                f"Kael offers guidance: {hint_text} Use [COMPANION_KAEL, {self._sd.companion.emotional_state}] tag.",
+            )
 
     def _queue_speech(self, priority: SpeechPriority, instructions: str) -> None:
         self._speech_queue.append(PendingSpeech(priority=priority, instructions=instructions))

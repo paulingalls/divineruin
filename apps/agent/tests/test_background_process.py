@@ -11,7 +11,7 @@ from background_process import (
     SpeechPriority,
 )
 from event_bus import GameEvent
-from session_data import CombatParticipant, CombatState, SessionData
+from session_data import CombatParticipant, CombatState, CompanionState, SessionData
 
 
 @contextmanager
@@ -85,8 +85,50 @@ class TestHandleEvents:
         assert len(bg._speech_queue) == 2
 
 
-class TestCheckGuidance:
-    def test_no_nudge_during_combat(self):
+QUEST_WITH_BEATS = {
+    "quest_id": "greyvale_anomaly",
+    "quest_name": "The Greyvale Anomaly",
+    "current_stage": 0,
+    "stages": [{"id": "s0", "objective": "Travel."}],
+    "global_hints": {},
+    "scenes": [
+        {
+            "id": "scene_road",
+            "name": "Road to Millhaven",
+            "region_type": "wilderness",
+            "instructions": "Travel narration.",
+            "stage_refs": [0],
+            "beats": [
+                {
+                    "id": "beat_1",
+                    "description": "Depart.",
+                    "completion_condition": "Player travels north",
+                    "companion_hints": ["Hint A1", "Hint A2"],
+                    "hint_delay_seconds": 45,
+                },
+                {
+                    "id": "beat_2",
+                    "description": "Unease.",
+                    "completion_condition": "Player notices quiet",
+                    "companion_hints": ["Hint B1"],
+                    "hint_delay_seconds": 60,
+                },
+            ],
+        },
+    ],
+}
+
+QUEST_NO_SCENES = {
+    "quest_id": "plain",
+    "quest_name": "Plain",
+    "current_stage": 0,
+    "stages": [{"id": "s0", "objective": "Do stuff."}],
+    "global_hints": {},
+}
+
+
+class TestCheckSceneBeatHints:
+    def test_no_hint_during_combat(self):
         cs = CombatState(
             combat_id="test",
             participants=[
@@ -96,36 +138,116 @@ class TestCheckGuidance:
         )
         sd = _make_session_data(combat_state=cs, last_player_speech_time=time.time() - 60)
         bg, _, _ = _make_bg(session_data=sd)
-        bg._check_guidance()
+        bg._quest_cache = [QUEST_WITH_BEATS]
+        bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 0
 
-    def test_no_nudge_if_no_speech_time(self):
+    def test_no_hint_if_no_speech_time(self):
         sd = _make_session_data(last_player_speech_time=0.0)
         bg, _, _ = _make_bg(session_data=sd)
-        bg._check_guidance()
+        bg._quest_cache = [QUEST_WITH_BEATS]
+        bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 0
 
-    def test_nudge_after_level2_silence(self):
-        sd = _make_session_data(last_player_speech_time=time.time() - 40)
+    def _make_sd_with_companion(self, **kwargs):
+        defaults = {"last_player_speech_time": time.time() - 50}
+        defaults.update(kwargs)
+        sd = _make_session_data(**defaults)
+        sd.companion = CompanionState(id="companion_kael", name="Kael")
+        return sd
+
+    def test_hint_after_beat_delay(self):
+        sd = self._make_sd_with_companion()
         bg, _, _ = _make_bg(session_data=sd)
-        bg._check_guidance()
+        bg._quest_cache = [QUEST_WITH_BEATS]
+        bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 1
         assert bg._speech_queue[0].priority == SpeechPriority.IMPORTANT
+        assert "Hint A1" in bg._speech_queue[0].instructions
 
-    def test_no_nudge_before_level2(self):
-        sd = _make_session_data(last_player_speech_time=time.time() - 10)
+    def test_no_hint_before_delay(self):
+        sd = self._make_sd_with_companion(last_player_speech_time=time.time() - 10)
         bg, _, _ = _make_bg(session_data=sd)
-        bg._check_guidance()
+        bg._quest_cache = [QUEST_WITH_BEATS]
+        bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 0
 
-    def test_no_repeated_nudge_without_new_speech(self):
-        sd = _make_session_data(last_player_speech_time=time.time() - 40)
+    def test_hint_advances_index(self):
+        sd = self._make_sd_with_companion()
         bg, _, _ = _make_bg(session_data=sd)
-        bg._check_guidance()
+        bg._quest_cache = [QUEST_WITH_BEATS]
+        # First call delivers hint A1
+        bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 1
+        assert "Hint A1" in bg._speech_queue[0].instructions
         bg._speech_queue.clear()
-        # Second check without new player speech should not nudge again
-        bg._check_guidance()
+        # Simulate more silence after first hint
+        bg._scene_hint_state["last_hint_time"] = time.time() - 50
+        bg._check_scene_beat_hints()
+        assert len(bg._speech_queue) == 1
+        assert "Hint A2" in bg._speech_queue[0].instructions
+
+    def test_beat_advances_when_hints_exhausted(self):
+        sd = self._make_sd_with_companion()
+        bg, _, _ = _make_bg(session_data=sd)
+        bg._quest_cache = [QUEST_WITH_BEATS]
+        # Deliver all hints from beat 0
+        bg._check_scene_beat_hints()  # Hint A1
+        bg._speech_queue.clear()
+        bg._scene_hint_state["last_hint_time"] = time.time() - 50
+        bg._check_scene_beat_hints()  # Hint A2
+        bg._speech_queue.clear()
+        # hint_index is now 2, which is >= len(hints). Next call advances beat.
+        bg._check_scene_beat_hints()
+        assert bg._scene_hint_state["beat_index"] == 1
+        assert bg._scene_hint_state["hint_index"] == 0
+
+    def test_all_beats_exhausted_no_crash(self):
+        past = time.time() - 70
+        sd = _make_session_data(last_player_speech_time=past)
+        bg, _, _ = _make_bg(session_data=sd)
+        bg._quest_cache = [QUEST_WITH_BEATS]
+        # Exhaust beat 0 (2 hints) + beat 1 (1 hint)
+        bg._scene_hint_state = {
+            "scene_id": "scene_road",
+            "beat_index": 2,  # past all beats
+            "hint_index": 0,
+            "last_hint_time": 0.0,
+        }
+        bg._check_scene_beat_hints()
+        assert len(bg._speech_queue) == 0
+
+    def test_scene_change_resets_state(self):
+        sd = self._make_sd_with_companion()
+        bg, _, _ = _make_bg(session_data=sd)
+        bg._quest_cache = [QUEST_WITH_BEATS]
+        # Set stale state from a different scene
+        bg._scene_hint_state = {
+            "scene_id": "old_scene",
+            "beat_index": 5,
+            "hint_index": 3,
+            "last_hint_time": 0.0,
+        }
+        bg._check_scene_beat_hints()
+        # Should have reset and delivered first hint
+        assert bg._scene_hint_state["scene_id"] == "scene_road"
+        assert bg._scene_hint_state["beat_index"] == 0
+        assert bg._scene_hint_state["hint_index"] == 1  # advanced after delivery
+        assert len(bg._speech_queue) == 1
+        assert "Hint A1" in bg._speech_queue[0].instructions
+
+    def test_no_hint_without_scenes(self):
+        sd = _make_session_data(last_player_speech_time=time.time() - 50)
+        bg, _, _ = _make_bg(session_data=sd)
+        bg._quest_cache = [QUEST_NO_SCENES]
+        bg._check_scene_beat_hints()
+        assert len(bg._speech_queue) == 0
+
+    def test_no_hint_with_empty_cache(self):
+        sd = _make_session_data(last_player_speech_time=time.time() - 50)
+        bg, _, _ = _make_bg(session_data=sd)
+        bg._quest_cache = []
+        bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 0
 
 
