@@ -639,14 +639,14 @@ extracting CombatAgent — the clearest boundary in the system.
 - `COMBAT_PROMPT` removed from monolith's system prompt.
 
 **Acceptance criteria:**
-- [ ] `start_combat` triggers a LiveKit agent handoff — new agent receives combat
+- [x] `start_combat` triggers a LiveKit agent handoff — new agent receives combat
       tools, old agent's tools are no longer available.
 - [ ] STT stream survives the handoff — player can speak during transition without
-      audio loss.
-- [ ] `end_combat` hands back to the monolith agent with a summary in chat context.
-- [ ] Combat tools are not available outside of `CombatAgent`.
-- [ ] Existing combat tests pass against the extracted `CombatAgent`.
-- [ ] `SessionData` persists across the handoff — player state, location, companion
+      audio loss. *(requires manual playtest)*
+- [x] `end_combat` hands back to the monolith agent with a summary in chat context.
+- [x] Combat tools are not available outside of `CombatAgent`.
+- [x] Existing combat tests pass against the extracted `CombatAgent`.
+- [x] `SessionData` persists across the handoff — player state, location, companion
       are intact on return.
 
 **Key references:**
