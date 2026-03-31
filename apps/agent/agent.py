@@ -4,22 +4,18 @@ import logging
 import os
 import re
 import time
-from collections.abc import AsyncGenerator, AsyncIterable
 from typing import Any
 
 from livekit import agents, rtc
-from livekit.agents import Agent, AgentServer, AgentSession, ModelSettings, stt
-from livekit.agents.stt import SpeechEventType
-from livekit.plugins import anthropic, deepgram, inworld, silero
+from livekit.agents import AgentServer, AgentSession
+from livekit.plugins import anthropic, deepgram, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 import db
 import event_types as E
-from affect_analyzer import PlayerAffectAnalyzer
 from background_process import BackgroundProcess
-from dialogue_parser import parse_dialogue_stream
+from base_agent import BaseGameAgent, _make_tts
 from game_events import publish_game_event
-from latency import TurnTimer
 from prologue import play_prologue
 from prompts import build_system_prompt, format_affect_context
 from rules_engine import hp_threshold_status
@@ -30,7 +26,6 @@ from tools import (
     award_divine_favor,
     award_xp,
     discover_hidden_element,
-    end_combat,
     end_session,
     enter_location,
     move_player,
@@ -42,21 +37,15 @@ from tools import (
     record_story_moment,
     remove_from_inventory,
     request_attack,
-    request_death_save,
     request_saving_throw,
     request_skill_check,
-    resolve_enemy_turn,
     roll_dice,
     set_music_state,
     start_combat,
     update_npc_disposition,
     update_quest,
 )
-from transcript import TranscriptLogger
-from tts_pauses import PAUSE_DURATIONS as _PAUSE_DURATIONS
-from tts_pauses import PAUSE_PATTERN as _PAUSE_PATTERN
-from tts_pauses import SENTENCE_END_PAUSE
-from voices import VOICES, apply_markup, get_voice_config
+from voices import VOICES
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("divineruin.dm")
@@ -86,8 +75,8 @@ MUTATION_TOOLS = [
     record_story_moment,
     end_session,
 ]
-COMBAT_TOOLS = [start_combat, resolve_enemy_turn, request_death_save, end_combat]
-ALL_TOOLS = WORLD_TOOLS + MECHANICS_TOOLS + MUTATION_TOOLS + COMBAT_TOOLS
+DM_COMBAT_TOOLS = [start_combat]  # triggers handoff to CombatAgent
+ALL_TOOLS = WORLD_TOOLS + MECHANICS_TOOLS + MUTATION_TOOLS + DM_COMBAT_TOOLS
 
 
 def validate_env() -> None:
@@ -102,37 +91,25 @@ def validate_env() -> None:
 START_LOCATION = "accord_guild_hall"
 
 
-class DungeonMasterAgent(Agent):
+class DungeonMasterAgent(BaseGameAgent):
     def __init__(
         self,
         initial_location: str = START_LOCATION,
         instructions: str | None = None,
         tools: list | None = None,
         creation_mode: bool = False,
+        chat_ctx: Any = None,
     ) -> None:
         super().__init__(
             instructions=instructions or build_system_prompt(initial_location),
             tools=tools or ALL_TOOLS,
+            chat_ctx=chat_ctx,
         )
         self._creation_mode = creation_mode
         self._suppress_auto_reply: bool = False
-        self._turn_timer = TurnTimer()
         self._background: BackgroundProcess | None = None
-        self._affect_analyzer = PlayerAffectAnalyzer()
-        self._transcript: TranscriptLogger | None = None
-        self._bg_tasks: set[asyncio.Task[None]] = set()
         self._session_start_time: float = time.time()
         self._close_scheduled: bool = False
-
-    def _fire_and_forget(self, coro: Any) -> None:
-        task = asyncio.create_task(coro)
-        self._bg_tasks.add(task)
-        task.add_done_callback(self._on_bg_task_done)
-
-    def _on_bg_task_done(self, task: asyncio.Task[None]) -> None:
-        self._bg_tasks.discard(task)
-        if not task.cancelled() and task.exception():
-            logger.error("Background task failed", exc_info=task.exception())
 
     async def _publish_session_init(self, sd: SessionData) -> None:
         try:
@@ -142,11 +119,10 @@ class DungeonMasterAgent(Agent):
             logger.exception("Failed to publish session_init")
 
     async def on_enter(self) -> None:
+        await super().on_enter()
         logger.info("DM agent entered session (creation_mode=%s)", self._creation_mode)
         self._session_start_time = time.time()
-        self._affect_analyzer.start()
         sd: SessionData = self.session.userdata
-        self._transcript = TranscriptLogger(sd.room, sd.event_bus)
 
         if not self._creation_mode:
             self._background = BackgroundProcess(
@@ -160,13 +136,6 @@ class DungeonMasterAgent(Agent):
     async def on_exit(self) -> None:
         logger.info("DM agent exiting session")
         sd: SessionData = self.session.userdata
-
-        # Cancel in-flight background tasks (transcript writes, etc.)
-        # before closing resources they depend on.
-        for task in list(self._bg_tasks):
-            task.cancel()
-        if self._bg_tasks:
-            await asyncio.gather(*self._bg_tasks, return_exceptions=True)
 
         transcript_path = self._transcript.log_path if self._transcript else None
         summary_payload = await generate_session_summary(sd, transcript_path, self._session_start_time)
@@ -182,30 +151,12 @@ class DungeonMasterAgent(Agent):
                 logger.exception("Failed to %s", labels[i], exc_info=result)
 
         try:
-            await self._affect_analyzer.stop()
-        except Exception:
-            logger.exception("Failed to stop affect analyzer")
-        try:
             if self._background:
                 await self._background.stop()
         except Exception:
             logger.exception("Failed to stop background process")
-        if self._transcript:
-            self._transcript.close()
 
-    async def stt_node(
-        self,
-        audio: AsyncIterable[rtc.AudioFrame],
-        model_settings: ModelSettings,
-    ) -> AsyncGenerator[stt.SpeechEvent | str, None]:
-        """Override stt_node to fork STT events to the affect analyzer."""
-        # Phase A: pass audio through unchanged (Phase B adds audio forking)
-        async for event in Agent.default.stt_node(self, audio, model_settings):
-            if isinstance(event, stt.SpeechEvent) and event.type == SpeechEventType.FINAL_TRANSCRIPT:
-                self._affect_analyzer.enqueue_event(event)
-                if self._transcript and event.alternatives:
-                    self._fire_and_forget(self._transcript.log_player(event.alternatives[0].text))
-            yield event
+        await super().on_exit()
 
     async def on_user_turn_completed(
         self, turn_ctx: agents.llm.ChatContext, new_message: agents.llm.ChatMessage
@@ -245,30 +196,6 @@ class DungeonMasterAgent(Agent):
         await asyncio.sleep(3.0)
         await self.session.aclose()
 
-    async def llm_node(
-        self,
-        chat_ctx: agents.llm.ChatContext,
-        tools: list,
-        model_settings: ModelSettings,
-    ) -> AsyncGenerator:
-        max_retries = 2
-        for attempt in range(max_retries + 1):
-            yielded_any = False
-            try:
-                async for chunk in Agent.default.llm_node(self, chat_ctx, tools, model_settings):
-                    yielded_any = True
-                    yield chunk
-                return
-            except Exception as e:
-                logger.error("LLM error (attempt %d/%d): %s", attempt + 1, max_retries + 1, e)
-                if yielded_any:
-                    # Already sent partial output — can't retry cleanly
-                    return
-                if attempt < max_retries:
-                    await asyncio.sleep(0.5 * (attempt + 1))
-                else:
-                    yield "The threads of fate tangle for a moment... What were you saying?"
-
     def _build_hot_context(self, sd: SessionData) -> str:
         """Build hot context from in-memory SessionData only — zero I/O.
 
@@ -305,105 +232,6 @@ class DungeonMasterAgent(Agent):
             parts.append("[NPCs nearby: " + ", ".join(sd.cached_npc_names) + "]")
 
         return " ".join(parts)
-
-    async def tts_node(
-        self, text: AsyncIterable[str], model_settings: ModelSettings
-    ) -> AsyncGenerator[rtc.AudioFrame, None]:
-        self._turn_timer.mark("tts_start")
-        first_frame = True
-
-        buffered_text = ""
-        buffered_character = ""
-        buffered_emotion = ""
-
-        # Cache TTS instance to reuse when voice config hasn't changed
-        cached_tts: inworld.TTS | None = None
-        cached_voice_key: tuple[str, float] = ("", 1.0)
-
-        async def synthesize_chunk(chunk: str) -> AsyncGenerator[rtc.AudioFrame, None]:
-            nonlocal first_frame, cached_tts, cached_voice_key
-            cfg = get_voice_config(buffered_character, buffered_emotion)
-            voice_key = (cfg.voice, cfg.speaking_rate)
-            if cached_tts is None or voice_key != cached_voice_key:
-                cached_tts = _make_tts(voice=cfg.voice, speaking_rate=cfg.speaking_rate)
-                cached_voice_key = voice_key
-            marked_up = apply_markup(chunk, cfg.inworld_markup)
-            async with cached_tts.synthesize(marked_up) as stream:
-                async for ev in stream:
-                    if first_frame:
-                        self._turn_timer.mark("tts_first_byte")
-                        first_frame = False
-                    yield ev.frame
-
-        # Transcript accumulation — collect full text per character before logging
-        transcript_text = ""
-
-        def flush_transcript() -> None:
-            nonlocal transcript_text
-            clean = transcript_text.strip()
-            if clean and self._transcript:
-                self._fire_and_forget(self._transcript.log_dm(buffered_character, buffered_emotion, clean))
-            transcript_text = ""
-
-        async def flush_buffer() -> AsyncGenerator[rtc.AudioFrame, None]:
-            nonlocal buffered_text
-            clean = buffered_text.strip()
-            buffered_text = ""
-            if not clean or not re.sub(r"[^\w]", "", clean):
-                return
-
-            parts = _PAUSE_PATTERN.split(clean)
-            for part in parts:
-                pause = _PAUSE_DURATIONS.get(part)
-                if pause is not None:
-                    yield _silence(pause)
-                elif part.strip() and re.sub(r"[^\w]", "", part):
-                    async for frame in synthesize_chunk(part.strip()):
-                        yield frame
-
-        async for segment in parse_dialogue_stream(text):
-            if segment.character != buffered_character or segment.emotion != buffered_emotion:
-                async for frame in flush_buffer():
-                    yield frame
-                flush_transcript()
-                buffered_character = segment.character
-                buffered_emotion = segment.emotion
-
-            transcript_text += segment.text
-            buffered_text += segment.text
-
-            if re.search(r'[.!?][""\u201d]?\s*$', buffered_text):
-                async for frame in flush_buffer():
-                    yield frame
-                yield _silence(SENTENCE_END_PAUSE)
-
-        async for frame in flush_buffer():
-            yield frame
-        flush_transcript()
-
-        self._turn_timer.finish()
-        self._affect_analyzer.record_tts_end()
-
-
-TTS_SAMPLE_RATE = 24000
-TTS_NUM_CHANNELS = 1
-
-
-def _silence(seconds: float) -> rtc.AudioFrame:
-    samples = int(TTS_SAMPLE_RATE * seconds)
-    return rtc.AudioFrame(
-        data=b"\x00\x00" * samples * TTS_NUM_CHANNELS,
-        sample_rate=TTS_SAMPLE_RATE,
-        num_channels=TTS_NUM_CHANNELS,
-        samples_per_channel=samples,
-    )
-
-
-def _make_tts(voice: str = "", speaking_rate: float = 1.0) -> inworld.TTS:
-    kwargs: dict[str, Any] = {"speaking_rate": speaking_rate}
-    if voice:
-        kwargs["voice"] = voice
-    return inworld.TTS(**kwargs)
 
 
 server = AgentServer()

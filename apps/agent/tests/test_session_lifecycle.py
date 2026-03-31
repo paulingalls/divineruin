@@ -439,7 +439,7 @@ class TestLLMErrorHandling:
             # Make this an async generator
             yield  # pragma: no cover
 
-        with patch("agent.Agent.default") as mock_default:
+        with patch("base_agent.Agent.default") as mock_default:
             mock_default.llm_node = _failing_llm_node
 
             chunks = []
@@ -464,7 +464,7 @@ class TestLLMErrorHandling:
         async def _success_llm_node(self_agent, ctx, tools, settings):
             yield "Hello adventurer"
 
-        with patch("agent.Agent.default") as mock_default:
+        with patch("base_agent.Agent.default") as mock_default:
             mock_default.llm_node = _success_llm_node
 
             chunks = []
@@ -493,7 +493,7 @@ class TestLLMErrorHandling:
                 raise Exception("Temporary error")
             yield "Recovered response"
 
-        with patch("agent.Agent.default") as mock_default:
+        with patch("base_agent.Agent.default") as mock_default:
             mock_default.llm_node = _flaky_llm_node
 
             chunks = []
@@ -523,7 +523,7 @@ class TestLLMErrorHandling:
             yield "You see a"
             raise Exception("Connection reset")
 
-        with patch("agent.Agent.default") as mock_default:
+        with patch("base_agent.Agent.default") as mock_default:
             mock_default.llm_node = _mid_stream_fail
 
             chunks = []

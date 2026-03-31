@@ -148,9 +148,10 @@ class TestStartCombat:
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
 
-        result = json.loads(
-            await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Goblins ambush!")
-        )
+        raw = await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Goblins ambush!")
+        assert isinstance(raw, tuple), "start_combat success should return (CombatAgent, json_str)"
+        _, json_str = raw
+        result = json.loads(json_str)
 
         assert "combat_id" in result
         assert result["encounter_name"] == "Goblin Patrol"
@@ -164,14 +165,28 @@ class TestStartCombat:
     @patch("tools.db.save_combat_state", new_callable=AsyncMock)
     @patch("tools.db.get_player", new_callable=AsyncMock)
     @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
+    async def test_returns_combat_agent(self, mock_encounter, mock_player, mock_save):
+        from combat_agent import CombatAgent
+
+        mock_encounter.return_value = SAMPLE_ENCOUNTER
+        mock_player.return_value = SAMPLE_PLAYER
+        ctx = _make_context()
+
+        raw = await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Ambush!")
+        agent_instance, _ = raw
+        assert isinstance(agent_instance, CombatAgent)
+
+    @pytest.mark.asyncio
+    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
+    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
     async def test_rolls_initiative(self, mock_encounter, mock_player, mock_save):
         mock_encounter.return_value = SAMPLE_ENCOUNTER
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
 
-        result = json.loads(
-            await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Ambush!")
-        )
+        _, json_str = await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Ambush!")
+        result = json.loads(json_str)
 
         for entry in result["initiative_order"]:
             assert "roll" in entry
@@ -505,7 +520,10 @@ class TestEndCombat:
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        result = json.loads(await end_combat._func(ctx, outcome="victory"))
+        raw = await end_combat._func(ctx, outcome="victory")
+        assert isinstance(raw, tuple), "end_combat success should return (DungeonMasterAgent, json_str)"
+        _, json_str = raw
+        result = json.loads(json_str)
 
         assert result["outcome"] == "victory"
         assert ctx.userdata.in_combat is False
@@ -514,11 +532,36 @@ class TestEndCombat:
 
     @pytest.mark.asyncio
     @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
+    async def test_returns_dungeon_master_agent(self, mock_delete):
+        from agent import DungeonMasterAgent
+
+        ctx = _make_context()
+        ctx.userdata.combat_state = _make_combat_state()
+
+        raw = await end_combat._func(ctx, outcome="victory")
+        agent_instance, _ = raw
+        assert isinstance(agent_instance, DungeonMasterAgent)
+
+    @pytest.mark.asyncio
+    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
+    async def test_returned_agent_has_combat_summary_context(self, mock_delete):
+        ctx = _make_context()
+        ctx.userdata.combat_state = _make_combat_state()
+
+        raw = await end_combat._func(ctx, outcome="victory")
+        agent_instance, _ = raw
+        # The returned agent should have a chat_ctx with a combat summary
+        items = list(agent_instance.chat_ctx.items)
+        assert len(items) > 0
+
+    @pytest.mark.asyncio
+    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
     async def test_calculates_xp_on_victory(self, mock_delete):
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        result = json.loads(await end_combat._func(ctx, outcome="victory"))
+        _, json_str = await end_combat._func(ctx, outcome="victory")
+        result = json.loads(json_str)
 
         assert result["xp_total"] == 50
         assert "Goblin Scout" in result["defeated_enemies"]
@@ -529,7 +572,8 @@ class TestEndCombat:
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        result = json.loads(await end_combat._func(ctx, outcome="defeat"))
+        _, json_str = await end_combat._func(ctx, outcome="defeat")
+        result = json.loads(json_str)
 
         assert result["xp_total"] == 0
         assert result["defeated_enemies"] == []
@@ -540,7 +584,8 @@ class TestEndCombat:
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        result = json.loads(await end_combat._func(ctx, outcome="fled"))
+        _, json_str = await end_combat._func(ctx, outcome="fled")
+        result = json.loads(json_str)
 
         assert result["xp_total"] == 0
 

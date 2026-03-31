@@ -112,11 +112,11 @@ class TestStartCombatDifficulty:
 
         from tools import start_combat
 
-        result = json.loads(
-            await start_combat._func(
-                ctx, encounter_id="goblin_ambush", encounter_description="Goblins jump from the bushes"
-            )
+        raw = await start_combat._func(
+            ctx, encounter_id="goblin_ambush", encounter_description="Goblins jump from the bushes"
         )
+        _, json_str = raw
+        result = json.loads(json_str)
         assert result["combat_id"]
 
         # Find the combat_started event call

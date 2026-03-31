@@ -8,14 +8,11 @@ import pytest
 from agent import (
     REQUIRED_ENV_VARS,
     START_LOCATION,
-    TTS_NUM_CHANNELS,
-    TTS_SAMPLE_RATE,
     DungeonMasterAgent,
     _extract_player_id,
-    _make_tts,
-    _silence,
     validate_env,
 )
+from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, _make_tts, _silence
 
 
 class TestEnvironmentValidation:
@@ -321,7 +318,7 @@ class TestTTSNode:
 
         mock_model_settings = MagicMock()
 
-        with patch("agent.parse_dialogue_stream") as mock_parse:
+        with patch("base_agent.parse_dialogue_stream") as mock_parse:
             mock_segment = MagicMock()
             mock_segment.character = "narrator"
             mock_segment.emotion = "neutral"
@@ -332,7 +329,7 @@ class TestTTSNode:
 
             mock_parse.return_value = mock_segments()
 
-            with patch("agent._make_tts") as mock_make_tts:
+            with patch("base_agent._make_tts") as mock_make_tts:
                 mock_tts = MagicMock()
                 mock_stream = MagicMock()
                 mock_stream.__aenter__ = AsyncMock(return_value=mock_stream)
@@ -380,14 +377,14 @@ class TestAudioHelpers:
 
     def test_make_tts_creates_inworld_tts(self):
         """_make_tts should create InWorld TTS with correct parameters."""
-        with patch("agent.inworld.TTS") as MockTTS:
+        with patch("base_agent.inworld.TTS") as MockTTS:
             _make_tts(voice="test_voice", speaking_rate=1.2)
 
             MockTTS.assert_called_once_with(voice="test_voice", speaking_rate=1.2)
 
     def test_make_tts_omits_voice_if_empty(self):
         """_make_tts should not include voice parameter if empty."""
-        with patch("agent.inworld.TTS") as MockTTS:
+        with patch("base_agent.inworld.TTS") as MockTTS:
             _make_tts(voice="", speaking_rate=1.0)
 
             call_kwargs = MockTTS.call_args[1]

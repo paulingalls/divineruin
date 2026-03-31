@@ -1756,7 +1756,16 @@ async def start_combat(
         "participants": [_participant_summary(p) for p in participants],
     }
     logger.info("start_combat result: combat_id=%s, %d participants", combat_id, len(participants))
-    return json.dumps(response)
+
+    # Build CombatAgent with truncated chat context for handoff
+    from combat_agent import CombatAgent
+
+    chat_ctx = None
+    agent = context.session.current_agent
+    if agent is not None:
+        chat_ctx = agent.chat_ctx.copy(exclude_instructions=True).truncate(max_items=10)
+
+    return CombatAgent(chat_ctx=chat_ctx), json.dumps(response)
 
 
 @function_tool()
@@ -2049,4 +2058,19 @@ async def end_combat(
         "note": "Call award_xp with the xp_total to grant experience to the player." if xp_total > 0 else None,
     }
     logger.info("end_combat result: %s, xp=%d", outcome, xp_total)
-    return json.dumps(response)
+
+    # Build DungeonMasterAgent with combat summary context for handoff
+    from livekit.agents.llm import ChatContext
+
+    from agent import DungeonMasterAgent
+
+    summary_parts = [f"Combat resolved: {outcome}."]
+    if xp_total > 0:
+        summary_parts.append(f"XP earned: {xp_total}.")
+    if defeated_enemies:
+        summary_parts.append(f"Defeated: {', '.join(defeated_enemies)}.")
+
+    summary_ctx = ChatContext()
+    summary_ctx.add_message(role="system", content=" ".join(summary_parts))
+
+    return DungeonMasterAgent(initial_location=session.location_id, chat_ctx=summary_ctx), json.dumps(response)

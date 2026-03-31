@@ -483,7 +483,9 @@ class TestCompanionInCombat:
         ctx = _make_context()
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
 
-        result = json.loads(await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Fight!"))
+        raw = await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Fight!")
+        _, json_str = raw
+        result = json.loads(json_str)
 
         assert len(result["participants"]) == 3
         companion_p = next(p for p in result["participants"] if p["name"] == "Kael")
@@ -508,7 +510,8 @@ class TestCompanionInCombat:
 
         ctx = _make_context()
 
-        result = json.loads(await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Fight!"))
+        _, json_str = await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Fight!")
+        result = json.loads(json_str)
 
         assert len(result["participants"]) == 2
 
@@ -529,7 +532,8 @@ class TestCompanionInCombat:
         ctx = _make_context()
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael", is_conscious=False)
 
-        result = json.loads(await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Fight!"))
+        _, json_str = await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Fight!")
+        result = json.loads(json_str)
 
         assert len(result["participants"]) == 2
 
