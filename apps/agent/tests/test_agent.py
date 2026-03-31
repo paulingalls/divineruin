@@ -13,6 +13,7 @@ from agent import (
     validate_env,
 )
 from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, _make_tts, _silence
+from city_agent import CityAgent
 
 
 class TestEnvironmentValidation:
@@ -493,8 +494,8 @@ class TestDMSession:
                 )
 
     @pytest.mark.asyncio
-    async def test_dm_session_starts_agent_session(self):
-        """dm_session should start AgentSession with DM agent."""
+    async def test_dm_session_starts_agent_session_with_city_agent(self):
+        """dm_session should start AgentSession with CityAgent for existing players."""
         mock_ctx = MagicMock()
         mock_ctx.room = MagicMock()
         mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
@@ -527,7 +528,7 @@ class TestDMSession:
                 mock_session_instance.start.assert_awaited_once()
                 start_call = mock_session_instance.start.call_args
                 assert start_call[1]["room"] == mock_ctx.room
-                assert isinstance(start_call[1]["agent"], DungeonMasterAgent)
+                assert isinstance(start_call[1]["agent"], CityAgent)
 
     @pytest.mark.asyncio
     async def test_dm_session_generates_initial_greeting(self):

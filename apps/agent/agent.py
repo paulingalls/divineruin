@@ -15,6 +15,7 @@ import db
 import event_types as E
 from background_process import BackgroundProcess
 from base_agent import BaseGameAgent, _make_tts
+from city_agent import CityAgent
 from game_events import publish_game_event
 from prologue import play_prologue
 from prompts import build_system_prompt, format_affect_context
@@ -414,11 +415,11 @@ async def dm_session(ctx: agents.JobContext) -> None:
             logger.info("Companion Kael loaded for returning player")
 
         session = _make_agent_session("claude-haiku-4-5-20251001", userdata)
-        dm_agent = DungeonMasterAgent(initial_location=location_id)
+        city_agent = CityAgent(initial_location=location_id)
 
         await session.start(
             room=ctx.room,
-            agent=dm_agent,
+            agent=city_agent,
         )
 
         # --- Reconnection handling ---
@@ -432,8 +433,8 @@ async def dm_session(ctx: agents.JobContext) -> None:
                 return
             userdata.player_disconnected = True
             userdata.disconnect_time = time.time()
-            if dm_agent._background:
-                dm_agent._background.pause()
+            if city_agent._background:
+                city_agent._background.pause()
             reconnect_task = asyncio.create_task(_grace_timeout())
 
         @ctx.room.on("participant_connected")
@@ -445,9 +446,9 @@ async def dm_session(ctx: agents.JobContext) -> None:
             if reconnect_task and not reconnect_task.done():
                 reconnect_task.cancel()
                 reconnect_task = None
-            if dm_agent._background:
-                dm_agent._background.resume()
-            dm_agent._fire_and_forget(
+            if city_agent._background:
+                city_agent._background.resume()
+            city_agent._fire_and_forget(
                 session.generate_reply(
                     instructions="The player reconnected after a brief drop. "
                     "Welcome them back naturally in one short sentence and remind them where they were."
