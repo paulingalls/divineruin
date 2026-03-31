@@ -664,6 +664,23 @@ async def get_player_flag(
     return row["val"] == "true"
 
 
+async def get_player_flag_value(
+    player_id: str,
+    flag: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> bool | str | int | None:
+    _conn = conn or await get_pool()
+    row = await _conn.fetchrow(
+        "SELECT data->'flags'->$2 AS val FROM players WHERE player_id = $1",
+        player_id,
+        flag,
+    )
+    if row is None or row["val"] is None:
+        return None
+    return json.loads(row["val"])
+
+
 async def set_player_flag(
     player_id: str,
     flag: str,

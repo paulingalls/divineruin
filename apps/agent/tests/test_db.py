@@ -661,3 +661,63 @@ class TestSessionInitPortraits:
         assert result["companion"]["alert"].startswith("/api/assets/images/companion_")
         for url in result["npcs"].values():
             assert url.startswith("/api/assets/images/npc_")
+
+
+class TestGetPlayerFlagValue:
+    @pytest.mark.asyncio
+    async def test_returns_int(self):
+        mock_pool = AsyncMock()
+        mock_pool.fetchrow = AsyncMock(return_value={"val": "3"})
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            result = await db.get_player_flag_value("p1", "onboarding_beat")
+        assert result == 3
+        assert isinstance(result, int)
+
+    @pytest.mark.asyncio
+    async def test_returns_bool_true(self):
+        mock_pool = AsyncMock()
+        mock_pool.fetchrow = AsyncMock(return_value={"val": "true"})
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            result = await db.get_player_flag_value("p1", "companion_met")
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_returns_bool_false(self):
+        mock_pool = AsyncMock()
+        mock_pool.fetchrow = AsyncMock(return_value={"val": "false"})
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            result = await db.get_player_flag_value("p1", "some_flag")
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_returns_string(self):
+        mock_pool = AsyncMock()
+        mock_pool.fetchrow = AsyncMock(return_value={"val": '"hello"'})
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            result = await db.get_player_flag_value("p1", "greeting")
+        assert result == "hello"
+        assert isinstance(result, str)
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_missing(self):
+        mock_pool = AsyncMock()
+        mock_pool.fetchrow = AsyncMock(return_value={"val": None})
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            result = await db.get_player_flag_value("p1", "nonexistent")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_no_row(self):
+        mock_pool = AsyncMock()
+        mock_pool.fetchrow = AsyncMock(return_value=None)
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            result = await db.get_player_flag_value("p1", "any_flag")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_uses_provided_connection(self):
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow = AsyncMock(return_value={"val": "42"})
+        result = await db.get_player_flag_value("p1", "score", conn=mock_conn)
+        assert result == 42
+        mock_conn.fetchrow.assert_awaited_once()
