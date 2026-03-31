@@ -468,6 +468,30 @@ async def get_scene(scene_id: str) -> dict | None:
     return data
 
 
+async def get_scenes_batch(scene_ids: list[str]) -> dict[str, dict]:
+    """Fetch multiple scenes by ID, returning a dict mapping scene_id → scene data."""
+    if not scene_ids:
+        return {}
+    # Check cache first for each id, collect misses
+    result: dict[str, dict] = {}
+    missing: list[str] = []
+    for sid in scene_ids:
+        cached = await _cache_get(f"scene:{sid}")
+        if cached is not None:
+            result[sid] = json.loads(cached)
+        else:
+            missing.append(sid)
+    # Batch-fetch misses with single query (mirrors get_npc_dispositions pattern)
+    if missing:
+        pool = await get_pool()
+        rows = await pool.fetch("SELECT id, data FROM scenes WHERE id = ANY($1)", missing)
+        for row in rows:
+            data = json.loads(row["data"])
+            result[row["id"]] = data
+            await _cache_set(f"scene:{row['id']}", json.dumps(data))
+    return result
+
+
 # --- Quest state ---
 
 
@@ -556,6 +580,7 @@ async def get_active_player_quests(
                 "stages": stages,
                 "global_hints": quest.get("global_hints", []),
                 "scenes": quest.get("scenes", []),
+                "scene_graph": quest.get("scene_graph", []),
             }
         )
     return results

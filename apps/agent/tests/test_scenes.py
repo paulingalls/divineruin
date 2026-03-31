@@ -546,6 +546,38 @@ class TestWarmLayerSceneInjection:
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
         assert "ACTIVE SCENE" not in result
 
+    @pytest.mark.asyncio
+    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db.get_location", new_callable=AsyncMock)
+    async def test_scene_from_scene_cache_via_graph(self, mock_loc, mock_npcs):
+        """When scene_cache is provided, resolves via scene_graph."""
+        mock_loc.return_value = SAMPLE_LOCATION
+        mock_npcs.return_value = []
+        quest_with_graph = {
+            "quest_id": "greyvale",
+            "quest_name": "Greyvale",
+            "current_stage": 0,
+            "stages": [{"id": "s0", "objective": "Travel."}],
+            "scene_graph": [{"scene_id": "scene_road", "stage_refs": [0]}],
+        }
+        scene_cache = {
+            "scene_road": {
+                "id": "scene_road",
+                "name": "Road to Millhaven",
+                "instructions": "Narrate the journey with growing unease.",
+            },
+        }
+        result = await build_warm_layer(
+            "accord_guild_hall",
+            "player_1",
+            "evening",
+            quests=[quest_with_graph],
+            scene_cache=scene_cache,
+        )
+        assert "ACTIVE SCENE" in result
+        assert "Road to Millhaven" in result
+        assert "Narrate the journey with growing unease." in result
+
 
 # === update_quest scene-triggered handoffs ===
 
@@ -677,3 +709,37 @@ class TestUpdateQuestSceneHandoff:
         ctx = _make_context()
         result = await update_quest._func(ctx, quest_id="scene_quest", new_stage_id=0)
         assert isinstance(result, str), f"Expected str on quest start, got {type(result)}"
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_scenes_batch", new_callable=AsyncMock)
+    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
+    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
+    @patch("tools.db.get_quest", new_callable=AsyncMock)
+    async def test_scene_graph_handoff(self, mock_quest, mock_pq, mock_set, mock_batch):
+        """Quest with scene_graph (no embedded scenes) triggers handoff on region change."""
+        quest = {
+            "id": "graph_quest",
+            "name": "Graph Quest",
+            "stages": [
+                {"id": "s0", "objective": "Travel.", "on_complete": {}},
+                {"id": "s1", "objective": "Investigate.", "on_complete": {}},
+            ],
+            "scene_graph": [
+                {"scene_id": "scene_wild", "stage_refs": [0]},
+                {"scene_id": "scene_city", "stage_refs": [1]},
+            ],
+        }
+        mock_quest.return_value = quest
+        mock_pq.return_value = {"current_stage": 0}
+        mock_batch.return_value = {
+            "scene_wild": {"id": "scene_wild", "name": "Wild", "region_type": "wilderness"},
+            "scene_city": {"id": "scene_city", "name": "City", "region_type": "city"},
+        }
+        ctx = _make_context()
+        result = await update_quest._func(ctx, quest_id="graph_quest", new_stage_id=1)
+        assert isinstance(result, tuple), f"Expected tuple, got {type(result)}"
+        agent, _json = result
+        from gameplay_agent import GameplayAgent
+
+        assert isinstance(agent, GameplayAgent)
+        assert agent._agent_type == "city"

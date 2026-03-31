@@ -414,6 +414,7 @@ class TestWarmLayerRebuild:
                         location=mock_location,
                         npcs_raw=mock_npcs,
                         region_type="city",
+                        scene_cache=None,
                     )
                     mock_agent.update_instructions.assert_awaited_once_with("full prompt")
                     assert bp._last_warm_layer == "warm layer content"

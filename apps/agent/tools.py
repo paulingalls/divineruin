@@ -1561,8 +1561,14 @@ async def update_quest(
     }
     logger.info("update_quest result: %s → stage %d, %d rewards", quest_id, new_stage_id, len(rewards_applied))
 
-    # Scene transition check — if scene changes region, trigger handoff
-    transition = detect_scene_transition(quest, current_stage, new_stage_id)
+    # Scene transition check — try v2 (scene_graph + scene_cache) first, fall back to v1 (embedded)
+    transition = None
+    if quest.get("scene_graph"):
+        scene_ids = [e["scene_id"] for e in quest["scene_graph"]]
+        scene_cache = await db.get_scenes_batch(scene_ids)
+        transition = detect_scene_transition_v2(scene_cache, quest, current_stage, new_stage_id)
+    if transition is None:
+        transition = detect_scene_transition(quest, current_stage, new_stage_id)
     if transition and transition["region_changed"]:
         from livekit.agents.llm import ChatContext
 

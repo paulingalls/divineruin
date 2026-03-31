@@ -103,6 +103,7 @@ class BackgroundProcess:
         self._speech_queue: list[PendingSpeech] = []
         self._stop = False
         self._quest_cache: list[dict] = []
+        self._scene_cache: dict[str, dict] = {}
         self._scene_hint_state: dict = {}
         self._rider_triggered: bool = False
         self._last_static_key: tuple[str, bool] | None = None
@@ -340,14 +341,19 @@ class BackgroundProcess:
         if self._sd.last_player_speech_time <= 0:
             return
 
-        from tools import get_active_scene
-
-        # Find active scene from quest cache
+        # Resolve active scene via scene_cache (v2) or embedded scenes (v1 fallback)
         scene = None
-        for quest in self._quest_cache:
-            scene = get_active_scene(quest, quest.get("current_stage", 0))
-            if scene:
-                break
+        if self._scene_cache:
+            from tools import get_active_scene_for_context
+
+            scene = get_active_scene_for_context(self._scene_cache, self._quest_cache, None)
+        else:
+            from tools import get_active_scene
+
+            for quest in self._quest_cache:
+                scene = get_active_scene(quest, quest.get("current_stage", 0))
+                if scene:
+                    break
         if scene is None:
             return
 
@@ -451,6 +457,18 @@ class BackgroundProcess:
                 db.get_npcs_at_location(self._sd.location_id),
             )
             self._quest_cache = quests
+
+            # Build scene cache from quest scene_graphs
+            scene_ids: list[str] = []
+            for q in quests:
+                for entry in q.get("scene_graph", []):
+                    sid = entry.get("scene_id")
+                    if sid and sid not in scene_ids:
+                        scene_ids.append(sid)
+            if scene_ids:
+                self._scene_cache = await db.get_scenes_batch(scene_ids)
+            else:
+                self._scene_cache = {}
         except Exception:
             logger.debug("Warm layer data fetch failed", exc_info=True)
             return
@@ -483,6 +501,7 @@ class BackgroundProcess:
                 location=location,
                 npcs_raw=npcs_raw,
                 region_type=region_type,
+                scene_cache=self._scene_cache or None,
             )
         except Exception:
             logger.warning("Warm layer build failed", exc_info=True)

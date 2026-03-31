@@ -439,6 +439,31 @@ class TestStateQueries:
         assert result[0]["current_stage"] == 2
         assert len(result[0]["stages"]) == 3
 
+    @pytest.mark.asyncio
+    async def test_get_active_player_quests_includes_scene_graph(self):
+        """get_active_player_quests should include scene_graph when present."""
+        mock_pool = AsyncMock()
+        mock_pool.fetch = AsyncMock(
+            return_value=[
+                {
+                    "quest_id": "q1",
+                    "pq_data": json.dumps({"current_stage": 0}),
+                    "q_data": json.dumps(
+                        {
+                            "name": "Quest With Graph",
+                            "stages": [{"id": "s0"}],
+                            "scene_graph": [{"scene_id": "scene_a", "stage_refs": [0]}],
+                        }
+                    ),
+                }
+            ]
+        )
+
+        with patch("db.get_pool", return_value=mock_pool):
+            result = await db.get_active_player_quests("p1")
+
+        assert result[0]["scene_graph"] == [{"scene_id": "scene_a", "stage_refs": [0]}]
+
 
 class TestStateMutations:
     """Test state mutation functions."""
@@ -760,3 +785,67 @@ class TestGetScene:
         result = await db.get_player_flag_value("p1", "score", conn=mock_conn)
         assert result == 42
         mock_conn.fetchrow.assert_awaited_once()
+
+
+class TestGetScenesBatch:
+    SCENE_A = {"id": "scene_a", "name": "A", "type": "quest", "region_type": "city", "instructions": "x", "beats": []}
+    SCENE_B = {
+        "id": "scene_b",
+        "name": "B",
+        "type": "quest",
+        "region_type": "wilderness",
+        "instructions": "y",
+        "beats": [],
+    }
+
+    @pytest.mark.asyncio
+    async def test_returns_all_scenes_from_db(self):
+        mock_pool = AsyncMock()
+        mock_pool.fetch = AsyncMock(
+            return_value=[
+                {"id": "scene_a", "data": json.dumps(self.SCENE_A)},
+                {"id": "scene_b", "data": json.dumps(self.SCENE_B)},
+            ]
+        )
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
+                with patch("db._cache_set", new_callable=AsyncMock):
+                    result = await db.get_scenes_batch(["scene_a", "scene_b"])
+        assert len(result) == 2
+        assert result["scene_a"]["name"] == "A"
+        assert result["scene_b"]["name"] == "B"
+
+    @pytest.mark.asyncio
+    async def test_returns_cached_scenes(self):
+        async def cache_get(key):
+            if key == "scene:scene_a":
+                return json.dumps(self.SCENE_A)
+            return None
+
+        mock_pool = AsyncMock()
+        mock_pool.fetch = AsyncMock(return_value=[{"id": "scene_b", "data": json.dumps(self.SCENE_B)}])
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            with patch("db._cache_get", new_callable=AsyncMock, side_effect=cache_get):
+                with patch("db._cache_set", new_callable=AsyncMock):
+                    result = await db.get_scenes_batch(["scene_a", "scene_b"])
+        assert len(result) == 2
+        # scene_a from cache, scene_b from DB
+        assert result["scene_a"]["name"] == "A"
+        assert result["scene_b"]["name"] == "B"
+
+    @pytest.mark.asyncio
+    async def test_skips_missing_scenes(self):
+        mock_pool = AsyncMock()
+        mock_pool.fetch = AsyncMock(return_value=[{"id": "scene_a", "data": json.dumps(self.SCENE_A)}])
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
+                with patch("db._cache_set", new_callable=AsyncMock):
+                    result = await db.get_scenes_batch(["scene_a", "nonexistent"])
+        assert len(result) == 1
+        assert "scene_a" in result
+        assert "nonexistent" not in result
+
+    @pytest.mark.asyncio
+    async def test_empty_ids_returns_empty(self):
+        result = await db.get_scenes_batch([])
+        assert result == {}
