@@ -4,7 +4,6 @@ import logging
 import os
 import re
 import time
-from typing import Any
 
 from livekit import agents, rtc
 from livekit.agents import AgentServer, AgentSession
@@ -12,35 +11,9 @@ from livekit.plugins import anthropic, deepgram, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 import db
-from base_agent import BaseGameAgent, _make_tts
+from base_agent import _make_tts
 from city_agent import CityAgent
-from prologue import play_prologue
-from prompts import build_system_prompt, format_affect_context
 from session_data import CompanionState, CreationState, SessionData
-from tools import (
-    add_to_inventory,
-    award_divine_favor,
-    award_xp,
-    discover_hidden_element,
-    end_session,
-    enter_location,
-    move_player,
-    play_sound,
-    query_inventory,
-    query_location,
-    query_lore,
-    query_npc,
-    record_story_moment,
-    remove_from_inventory,
-    request_attack,
-    request_saving_throw,
-    request_skill_check,
-    roll_dice,
-    set_music_state,
-    start_combat,
-    update_npc_disposition,
-    update_quest,
-)
 from voices import VOICES
 
 logging.basicConfig(level=logging.INFO)
@@ -58,22 +31,6 @@ REQUIRED_ENV_VARS = [
     "INTERNAL_SECRET",
 ]
 
-WORLD_TOOLS = [enter_location, query_location, query_npc, query_lore, query_inventory, discover_hidden_element]
-MECHANICS_TOOLS = [request_skill_check, request_attack, request_saving_throw, roll_dice, play_sound, set_music_state]
-MUTATION_TOOLS = [
-    move_player,
-    add_to_inventory,
-    remove_from_inventory,
-    update_quest,
-    award_xp,
-    award_divine_favor,
-    update_npc_disposition,
-    record_story_moment,
-    end_session,
-]
-DM_COMBAT_TOOLS = [start_combat]  # triggers handoff to CombatAgent
-ALL_TOOLS = WORLD_TOOLS + MECHANICS_TOOLS + MUTATION_TOOLS + DM_COMBAT_TOOLS
-
 
 def validate_env() -> None:
     missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
@@ -85,51 +42,6 @@ def validate_env() -> None:
 
 
 START_LOCATION = "accord_guild_hall"
-
-
-class DungeonMasterAgent(BaseGameAgent):
-    """Creation-only agent. Gameplay sessions use CityAgent instead.
-
-    Handles character creation flow with prologue suppression. Will be
-    replaced by a dedicated CreationAgent in milestone H.3.
-    """
-
-    def __init__(
-        self,
-        instructions: str | None = None,
-        tools: list | None = None,
-        creation_mode: bool = True,
-        chat_ctx: Any = None,
-    ) -> None:
-        super().__init__(
-            instructions=instructions or build_system_prompt(START_LOCATION),
-            tools=tools or ALL_TOOLS,
-            chat_ctx=chat_ctx,
-        )
-        self._creation_mode = creation_mode
-        self._suppress_auto_reply: bool = False
-
-    async def on_enter(self) -> None:
-        await super().on_enter()
-        logger.info("DM agent entered session (creation_mode=%s)", self._creation_mode)
-
-    async def on_user_turn_completed(
-        self, turn_ctx: agents.llm.ChatContext, new_message: agents.llm.ChatMessage
-    ) -> None:
-        if self._suppress_auto_reply:
-            from livekit.agents import StopResponse
-
-            raise StopResponse()
-
-        self._turn_timer.start()
-        self._turn_timer.mark("user_turn_end")
-
-        sd: SessionData = self.session.userdata
-        sd.last_player_speech_time = time.time()
-
-        affect = self._affect_analyzer.get_current_vector()
-        if affect:
-            turn_ctx.add_message(role="assistant", content=format_affect_context(affect))
 
 
 server = AgentServer()
@@ -231,9 +143,9 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
     if needs_creation:
         # --- Character creation mode ---
-        from card_tap_handler import CardTapHandler
-        from creation_prompts import CREATION_SYSTEM_PROMPT
-        from creation_tools import finalize_character, push_cards_to_client, push_creation_cards, set_creation_choice
+        # PrologueAgent plays audio, hands off to CreationAgent,
+        # which guides creation and hands off to CityAgent via finalize_character.
+        from prologue_agent import PrologueAgent
 
         userdata = SessionData(
             player_id=player_id,
@@ -241,48 +153,8 @@ async def dm_session(ctx: agents.JobContext) -> None:
             room=ctx.room,
             creation_state=CreationState(),
         )
-
-        creation_tools = [push_creation_cards, set_creation_choice, finalize_character, play_sound, set_music_state]
         session = _make_agent_session("claude-sonnet-4-20250514", userdata)
-
-        dm_agent = DungeonMasterAgent(
-            instructions=CREATION_SYSTEM_PROMPT,
-            tools=creation_tools,
-            creation_mode=True,
-        )
-        # Suppress auto-replies during prologue so the player's interruption
-        # doesn't trigger a competing LLM response.
-        dm_agent._suppress_auto_reply = True
-
-        await session.start(room=ctx.room, agent=dm_agent)
-
-        # Listen for card tap hints from the client
-        card_tap = CardTapHandler(room=ctx.room, session=session, userdata=userdata)
-        card_tap.start()
-
-        # Play prologue narration — skips ahead if the player speaks.
-        # Auto-reply is suppressed so the player's interruption speech
-        # doesn't trigger a competing LLM response with tool calls.
-        await play_prologue(session, ctx.room)
-
-        # Push race cards so they're on screen regardless of interruption.
-        await push_cards_to_client("race", ctx.room, userdata.event_bus)
-
-        # Wait for the end-of-utterance prediction to fire while suppress
-        # is still active — StopResponse kills the auto-reply.
-        await asyncio.sleep(0.5)
-
-        session.generate_reply(
-            instructions=(
-                "The prologue has finished. Begin the Awakening phase. "
-                "The race cards are already visible to the player — "
-                "do NOT call push_creation_cards. "
-                "Ask the player about their race using the sensory approach "
-                "from your instructions."
-            ),
-            tool_choice="none",
-        )
-        dm_agent._suppress_auto_reply = False
+        await session.start(room=ctx.room, agent=PrologueAgent())
     else:
         # --- Existing gameplay flow ---
         if last_summary is not None:

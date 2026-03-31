@@ -5,9 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent import ALL_TOOLS
 from base_agent import BaseGameAgent
-from city_agent import CityAgent
+from city_agent import CITY_TOOLS, CityAgent
 from combat_agent import COMBAT_AGENT_TOOLS, CombatAgent
 from session_data import CombatParticipant, CombatState, CompanionState, SessionData
 from tools import (
@@ -70,25 +69,25 @@ def _make_context(location_id="greyvale_south_road"):
 
 
 class TestToolIsolation:
-    """Verify that DM and CombatAgent have the correct tool sets."""
+    """Verify that CityAgent and CombatAgent have the correct tool sets."""
 
-    def test_dm_has_start_combat(self):
-        """DungeonMasterAgent should have start_combat tool."""
-        assert start_combat in ALL_TOOLS
+    def test_city_has_start_combat(self):
+        """CityAgent should have start_combat tool."""
+        assert start_combat in CITY_TOOLS
 
-    def test_dm_does_not_have_combat_only_tools(self):
-        """DungeonMasterAgent should NOT have combat-only tools."""
-        assert resolve_enemy_turn not in ALL_TOOLS
-        assert request_death_save not in ALL_TOOLS
-        assert end_combat not in ALL_TOOLS
+    def test_city_does_not_have_combat_only_tools(self):
+        """CityAgent should NOT have combat-only tools."""
+        assert resolve_enemy_turn not in CITY_TOOLS
+        assert request_death_save not in CITY_TOOLS
+        assert end_combat not in CITY_TOOLS
 
-    def test_dm_has_exploration_tools(self):
-        """DungeonMasterAgent should have exploration and mutation tools."""
-        assert enter_location in ALL_TOOLS
-        assert move_player in ALL_TOOLS
-        assert query_location in ALL_TOOLS
-        assert query_npc in ALL_TOOLS
-        assert update_quest in ALL_TOOLS
+    def test_city_has_exploration_tools(self):
+        """CityAgent should have exploration and mutation tools."""
+        assert enter_location in CITY_TOOLS
+        assert move_player in CITY_TOOLS
+        assert query_location in CITY_TOOLS
+        assert query_npc in CITY_TOOLS
+        assert update_quest in CITY_TOOLS
 
     def test_combat_agent_has_combat_tools(self):
         """CombatAgent should have combat-specific tools."""

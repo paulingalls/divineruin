@@ -7,13 +7,18 @@ import pytest
 
 from agent import (
     REQUIRED_ENV_VARS,
-    START_LOCATION,
-    DungeonMasterAgent,
     _extract_player_id,
     validate_env,
 )
-from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, _make_tts, _silence
+from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, BaseGameAgent, _make_tts, _silence
 from city_agent import CityAgent
+
+
+class _TestAgent(BaseGameAgent):
+    """Minimal BaseGameAgent subclass for testing voice pipeline methods."""
+
+    def __init__(self):
+        super().__init__(instructions="test", tools=[])
 
 
 class TestEnvironmentValidation:
@@ -49,92 +54,13 @@ class TestEnvironmentValidation:
                     assert "narrator" in mock_logger.warning.call_args[0][1]
 
 
-class TestDungeonMasterAgent:
-    """Test DungeonMasterAgent — creation-only agent."""
-
-    def test_init_sets_instructions_and_tools(self):
-        """__init__ should set initial instructions and tools."""
-        with patch("agent.build_system_prompt") as mock_build_prompt:
-            mock_build_prompt.return_value = "System prompt"
-
-            agent = DungeonMasterAgent()
-
-            mock_build_prompt.assert_called_once_with(START_LOCATION)
-            assert agent.instructions == "System prompt"
-            assert len(agent.tools) > 0
-
-    def test_init_creates_turn_timer(self):
-        """__init__ should create a TurnTimer instance."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            agent = DungeonMasterAgent()
-
-            assert agent._turn_timer is not None
-
-    def test_init_defaults_to_creation_mode(self):
-        """__init__ should default to creation_mode=True."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            agent = DungeonMasterAgent()
-
-            assert agent._creation_mode is True
-
-    def test_no_background_process(self):
-        """DungeonMasterAgent should not have a background process attribute."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            agent = DungeonMasterAgent()
-
-            assert not hasattr(agent, "_background")
-
-    @pytest.mark.asyncio
-    async def test_on_user_turn_completed_starts_timer(self):
-        """on_user_turn_completed should start turn timer."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            agent = DungeonMasterAgent()
-
-        mock_turn_ctx = MagicMock()
-        mock_message = MagicMock()
-        mock_session_data = MagicMock()
-        mock_session_data.last_player_speech_time = 0
-
-        mock_session = MagicMock()
-        mock_session.userdata = mock_session_data
-
-        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch.object(agent._turn_timer, "start") as mock_start:
-                with patch.object(agent._turn_timer, "mark") as mock_mark:
-                    await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
-
-                    mock_start.assert_called_once()
-                    mock_mark.assert_called_once_with("user_turn_end")
-
-    @pytest.mark.asyncio
-    async def test_on_user_turn_completed_updates_player_speech_time(self):
-        """on_user_turn_completed should update last_player_speech_time."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            agent = DungeonMasterAgent()
-
-        mock_turn_ctx = MagicMock()
-        mock_message = MagicMock()
-        mock_session_data = MagicMock()
-        mock_session_data.last_player_speech_time = 0
-
-        mock_session = MagicMock()
-        mock_session.userdata = mock_session_data
-
-        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            before = mock_session_data.last_player_speech_time
-            await agent.on_user_turn_completed(mock_turn_ctx, mock_message)
-
-            assert mock_session_data.last_player_speech_time > before
-
-
 class TestTTSNode:
     """Test TTS streaming and audio generation."""
 
     @pytest.mark.asyncio
     async def test_tts_node_marks_latency_milestones(self):
         """tts_node should mark latency milestones."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            agent = DungeonMasterAgent()
+        agent = _TestAgent()
 
         async def mock_text_stream():
             yield "Hello world"

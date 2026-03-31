@@ -227,8 +227,12 @@ class TestFinalizeCharacter:
             backstory="A wandering sellsword.",
         )
         ctx = _make_context(cs)
-        result = json.loads(await finalize_character._func(ctx))
+        agent, json_str = await finalize_character._func(ctx)
+        result = json.loads(json_str)
 
+        from city_agent import CityAgent
+
+        assert isinstance(agent, CityAgent)
         assert "character" in result
         assert result["character"]["name"] == "Aric"
         assert result["character"]["race"] == "Human"
@@ -259,8 +263,12 @@ class TestFinalizeCharacter:
             backstory="Seeker of truth.",
         )
         ctx = _make_context(cs)
-        result = json.loads(await finalize_character._func(ctx))
+        agent, json_str = await finalize_character._func(ctx)
+        result = json.loads(json_str)
 
+        from city_agent import CityAgent
+
+        assert isinstance(agent, CityAgent)
         assert "character" in result
         assert cs.phase == "complete"
 
@@ -286,7 +294,7 @@ class TestFinalizeCharacter:
             backstory="Protector of the weak.",
         )
         ctx = _make_context(cs)
-        await finalize_character._func(ctx)
+        _agent, _json_str = await finalize_character._func(ctx)
 
         mock_db.create_player.assert_awaited_once()
         call_args = mock_db.create_player.call_args
@@ -320,7 +328,7 @@ class TestFinalizeCharacter:
             backstory="Test.",
         )
         ctx = _make_context(cs)
-        await finalize_character._func(ctx)
+        _agent, _json_str = await finalize_character._func(ctx)
 
         assert ctx.userdata.location_id != ""
 
@@ -393,7 +401,11 @@ class TestFullCreationFlow:
         assert cs.backstory == "A scholar of the diaspora."
 
         # Finalize
-        result = json.loads(await finalize_character._func(ctx))
+        agent, json_str = await finalize_character._func(ctx)
+        result = json.loads(json_str)
+        from city_agent import CityAgent
+
+        assert isinstance(agent, CityAgent)
         assert "character" in result
         assert cs.phase == "complete"
         assert not ctx.userdata.in_creation
@@ -436,7 +448,8 @@ class TestFullCreationFlow:
             await set_creation_choice._func(ctx, category="deity", value="none")
             await set_creation_choice._func(ctx, category="name", value="TestChar")
             await set_creation_choice._func(ctx, category="backstory", value="Test.")
-            result = json.loads(await finalize_character._func(ctx))
+            _agent, json_str = await finalize_character._func(ctx)
+            result = json.loads(json_str)
             assert "character" in result, f"Failed for {race_id}/{class_id}: {result}"
             assert cs.phase == "complete"
 

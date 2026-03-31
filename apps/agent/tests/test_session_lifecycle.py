@@ -404,11 +404,11 @@ class TestSessionEndingPrompt:
         assert "Session Ending" in prompt
         assert "end_session" in prompt
 
-    def test_end_session_in_mutation_tools(self):
-        from agent import MUTATION_TOOLS
+    def test_end_session_in_city_tools(self):
+        from city_agent import CITY_TOOLS
         from tools import end_session
 
-        assert end_session in MUTATION_TOOLS
+        assert end_session in CITY_TOOLS
 
 
 # =============================================================================
@@ -421,10 +421,9 @@ class TestLLMErrorHandling:
 
     @pytest.mark.asyncio
     async def test_fallback_on_repeated_failure(self):
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            from agent import DungeonMasterAgent
+        from creation_agent import CreationAgent
 
-            agent = DungeonMasterAgent()
+        agent = CreationAgent()
 
         mock_chat_ctx = MagicMock()
         mock_tools = []
@@ -452,10 +451,9 @@ class TestLLMErrorHandling:
 
     @pytest.mark.asyncio
     async def test_success_on_first_try(self):
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            from agent import DungeonMasterAgent
+        from creation_agent import CreationAgent
 
-            agent = DungeonMasterAgent()
+        agent = CreationAgent()
 
         mock_chat_ctx = MagicMock()
         mock_tools = []
@@ -475,10 +473,9 @@ class TestLLMErrorHandling:
 
     @pytest.mark.asyncio
     async def test_succeeds_after_retry(self):
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            from agent import DungeonMasterAgent
+        from creation_agent import CreationAgent
 
-            agent = DungeonMasterAgent()
+        agent = CreationAgent()
 
         mock_chat_ctx = MagicMock()
         mock_tools = []
@@ -506,10 +503,9 @@ class TestLLMErrorHandling:
     @pytest.mark.asyncio
     async def test_mid_stream_failure_does_not_retry(self):
         """If chunks were already yielded, don't retry (would produce garbled output)."""
-        with patch("agent.build_system_prompt", return_value="prompt"):
-            from agent import DungeonMasterAgent
+        from creation_agent import CreationAgent
 
-            agent = DungeonMasterAgent()
+        agent = CreationAgent()
 
         mock_chat_ctx = MagicMock()
         mock_tools = []
