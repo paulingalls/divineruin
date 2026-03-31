@@ -15,6 +15,7 @@ TABLE_MAP = {
     "locations.json": "locations",
     "npcs.json": "npcs",
     "items.json": "items",
+    "scenes.json": "scenes",
     "quests.json": "quests",
     "factions.json": "factions",
     "lore_entries.json": "lore_entries",

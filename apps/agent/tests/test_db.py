@@ -714,6 +714,45 @@ class TestGetPlayerFlagValue:
             result = await db.get_player_flag_value("p1", "any_flag")
         assert result is None
 
+
+class TestGetScene:
+    SAMPLE_SCENE = {
+        "id": "scene_road_to_millhaven",
+        "name": "Road to Millhaven",
+        "type": "quest",
+        "region_type": "wilderness",
+        "instructions": "Travel narration.",
+        "beats": [],
+    }
+
+    @pytest.mark.asyncio
+    async def test_returns_scene_from_db(self):
+        mock_pool = AsyncMock()
+        mock_pool.fetchrow = AsyncMock(return_value={"data": json.dumps(self.SAMPLE_SCENE)})
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
+                with patch("db._cache_set", new_callable=AsyncMock):
+                    result = await db.get_scene("scene_road_to_millhaven")
+        assert result is not None
+        assert result["id"] == "scene_road_to_millhaven"
+        assert result["region_type"] == "wilderness"
+
+    @pytest.mark.asyncio
+    async def test_returns_cached_data(self):
+        with patch("db._cache_get", new_callable=AsyncMock, return_value=json.dumps(self.SAMPLE_SCENE)):
+            result = await db.get_scene("scene_road_to_millhaven")
+        assert result is not None
+        assert result["name"] == "Road to Millhaven"
+
+    @pytest.mark.asyncio
+    async def test_returns_none_if_not_found(self):
+        mock_pool = AsyncMock()
+        mock_pool.fetchrow = AsyncMock(return_value=None)
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
+                result = await db.get_scene("nonexistent")
+        assert result is None
+
     @pytest.mark.asyncio
     async def test_uses_provided_connection(self):
         mock_conn = AsyncMock()

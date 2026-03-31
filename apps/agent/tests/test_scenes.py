@@ -202,6 +202,48 @@ class TestDetectSceneTransition:
 CONTENT_DIR = pathlib.Path(__file__).resolve().parents[3] / "content"
 
 
+class TestScenesJson:
+    """Validate the standalone scenes.json content file."""
+
+    @classmethod
+    def setup_class(cls):
+        with open(CONTENT_DIR / "scenes.json") as f:
+            cls.scenes = json.load(f)
+
+    def test_scenes_file_is_valid(self):
+        assert isinstance(self.scenes, list)
+        assert len(self.scenes) >= 6  # 5 quest scenes + rider event
+
+    def test_each_scene_has_required_fields(self):
+        for scene in self.scenes:
+            assert "id" in scene, "Scene missing id"
+            assert "name" in scene, f"Scene {scene.get('id')} missing name"
+            assert "type" in scene, f"Scene {scene['id']} missing type"
+            assert scene["type"] in ("quest", "location", "event"), (
+                f"Scene {scene['id']} has invalid type: {scene['type']}"
+            )
+            assert "region_type" in scene, f"Scene {scene['id']} missing region_type"
+            assert "instructions" in scene, f"Scene {scene['id']} missing instructions"
+            assert len(scene["instructions"]) > 0
+
+    def test_scene_ids_are_unique(self):
+        ids = [s["id"] for s in self.scenes]
+        assert len(ids) == len(set(ids)), f"Duplicate scene IDs: {[x for x in ids if ids.count(x) > 1]}"
+
+    def test_rider_event_scene_exists(self):
+        rider = next((s for s in self.scenes if s["id"] == "scene_rider_arrival"), None)
+        assert rider is not None
+        assert rider["type"] == "event"
+        assert "entry_conditions" in rider
+        assert rider["entry_conditions"]["location"] == "accord_market_square"
+
+    def test_quest_scenes_have_beats(self):
+        quest_scenes = [s for s in self.scenes if s["type"] == "quest"]
+        assert len(quest_scenes) == 5
+        for scene in quest_scenes:
+            assert len(scene.get("beats", [])) >= 2, f"Quest scene {scene['id']} needs >= 2 beats"
+
+
 class TestGreyvaleScenes:
     """Validate the authored Greyvale play tree in quests.json."""
 

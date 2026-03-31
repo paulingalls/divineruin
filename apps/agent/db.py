@@ -452,6 +452,22 @@ async def get_quest(quest_id: str) -> dict | None:
     return data
 
 
+async def get_scene(scene_id: str) -> dict | None:
+    cache_key = f"scene:{scene_id}"
+    cached = await _cache_get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
+    pool = await get_pool()
+    row = await pool.fetchrow("SELECT data FROM scenes WHERE id = $1", scene_id)
+    if row is None:
+        return None
+
+    data = json.loads(row["data"])
+    await _cache_set(cache_key, json.dumps(data))
+    return data
+
+
 # --- Quest state ---
 
 
