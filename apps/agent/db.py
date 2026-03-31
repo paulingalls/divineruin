@@ -656,7 +656,7 @@ async def get_player_flag(
 async def set_player_flag(
     player_id: str,
     flag: str,
-    value: bool,
+    value: bool | str | int,
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:

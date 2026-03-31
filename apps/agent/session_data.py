@@ -88,6 +88,7 @@ class SessionData:
     corruption_level: int = 0
     patron_id: str = "none"
     creation_state: CreationState | None = None
+    onboarding_beat: int | None = None
 
     # Cached data for hot context (updated by background process, read by voice loop)
     cached_location_name: str = ""
@@ -102,6 +103,10 @@ class SessionData:
     ending_requested: bool = False
     player_disconnected: bool = False
     disconnect_time: float = 0.0
+
+    @property
+    def in_onboarding(self) -> bool:
+        return self.onboarding_beat is not None
 
     @property
     def in_creation(self) -> bool:
