@@ -560,3 +560,107 @@ class TestDynamicEndCombat:
         assert isinstance(result, tuple)
         agent, _ = result
         assert isinstance(agent, DungeonAgent)
+
+
+class TestMovePlayerRegionHandoff:
+    """move_player triggers handoff when crossing region boundaries."""
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
+    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_city_to_wilderness_returns_agent_tuple(
+        self, mock_loc, mock_upsert, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
+    ):
+        """Moving from city to wilderness location returns (WildernessAgent, str)."""
+        from contextlib import asynccontextmanager
+
+        from wilderness_agent import WildernessAgent
+
+        city_location = {
+            "id": "accord_market_square",
+            "name": "Market Square",
+            "region_type": "city",
+            "exits": {"south": {"destination": "greyvale_south_road"}},
+        }
+        wilderness_location = {
+            "id": "greyvale_south_road",
+            "name": "South Road",
+            "region_type": "wilderness",
+            "description": "A dusty road heading south.",
+            "atmosphere": "open, windswept",
+            "exits": {"north": {"destination": "accord_market_square"}},
+        }
+        mock_loc.side_effect = lambda loc_id: {
+            "accord_market_square": city_location,
+            "greyvale_south_road": wilderness_location,
+        }.get(loc_id)
+
+        @asynccontextmanager
+        async def _mock_txn():
+            yield MagicMock()
+
+        ctx = MagicMock()
+        session = SessionData(player_id="player_1", location_id="accord_market_square")
+        ctx.userdata = session
+
+        with patch("tools.db.transaction", _mock_txn):
+            with patch("tools.db.extract_exit_connections", return_value=[]):
+                with patch("tools.publish_game_event", new_callable=AsyncMock):
+                    result = await move_player._func(ctx, "greyvale_south_road")
+
+        assert isinstance(result, tuple), f"Expected tuple, got {type(result)}"
+        agent, _json_str = result
+        assert isinstance(agent, WildernessAgent)
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
+    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_same_region_returns_string(
+        self, mock_loc, mock_upsert, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
+    ):
+        """Moving within the same region type returns str (no handoff)."""
+        from contextlib import asynccontextmanager
+
+        loc_a = {
+            "id": "accord_market_square",
+            "name": "Market Square",
+            "region_type": "city",
+            "exits": {"north": {"destination": "accord_guild_hall"}},
+        }
+        loc_b = {
+            "id": "accord_guild_hall",
+            "name": "Guild Hall",
+            "region_type": "city",
+            "description": "Heavy oak doors.",
+            "atmosphere": "busy",
+            "exits": {"south": {"destination": "accord_market_square"}},
+        }
+        mock_loc.side_effect = lambda loc_id: {
+            "accord_market_square": loc_a,
+            "accord_guild_hall": loc_b,
+        }.get(loc_id)
+
+        @asynccontextmanager
+        async def _mock_txn():
+            yield MagicMock()
+
+        ctx = MagicMock()
+        session = SessionData(player_id="player_1", location_id="accord_market_square")
+        ctx.userdata = session
+
+        with patch("tools.db.transaction", _mock_txn):
+            with patch("tools.db.extract_exit_connections", return_value=[]):
+                with patch("tools.publish_game_event", new_callable=AsyncMock):
+                    result = await move_player._func(ctx, "accord_guild_hall")
+
+        assert isinstance(result, str), f"Expected str, got {type(result)}"

@@ -1254,6 +1254,11 @@ async def move_player(
 
     destination_location = await db.get_location(destination_id)
 
+    # Detect region boundary crossing for handoff
+    current_region = current_location.get("region_type", "city")
+    dest_region = destination_location.get("region_type", "city") if destination_location else "city"
+    region_change = current_region != dest_region
+
     destination_exits = destination_location.get("exits", {}) if destination_location else {}
     exit_connections = db.extract_exit_connections(destination_exits)
 
@@ -1320,7 +1325,23 @@ async def move_player(
         len(result.get("npcs", [])),
         len(result.get("targets", [])),
     )
-    return json.dumps(result)
+    json_str = json.dumps(result)
+
+    if region_change:
+        from livekit.agents.llm import ChatContext
+
+        from gameplay_agent import create_gameplay_agent
+
+        summary_ctx = ChatContext()
+        summary_ctx.add_message(
+            role="system",
+            content=f"Player moved from {previous_location_id} to {destination_id}. Region changed from {current_region} to {dest_region}.",
+        )
+        return create_gameplay_agent(
+            dest_region, destination_id, companion=session.companion, chat_ctx=summary_ctx
+        ), json_str
+
+    return json_str
 
 
 @function_tool()
