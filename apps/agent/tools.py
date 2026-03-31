@@ -70,6 +70,50 @@ def detect_scene_transition(quest: dict, old_stage: int, new_stage: int) -> dict
     }
 
 
+def _resolve_scene_from_graph(scene_cache: dict[str, dict], quest: dict, current_stage: int) -> dict | None:
+    """Look up scene from quest's scene_graph for the given stage."""
+    for entry in quest.get("scene_graph", []):
+        if current_stage in entry.get("stage_refs", []):
+            return scene_cache.get(entry["scene_id"])
+    return None
+
+
+def get_active_scene_for_context(
+    scene_cache: dict[str, dict],
+    quest_cache: list[dict],
+    location_data: dict | None,
+) -> dict | None:
+    """Resolve active scene: quest scene_graph first, then location default."""
+    for quest in quest_cache:
+        scene = _resolve_scene_from_graph(scene_cache, quest, quest.get("current_stage", 0))
+        if scene:
+            return scene
+    if location_data:
+        default_id = location_data.get("default_scene")
+        if default_id:
+            return scene_cache.get(default_id)
+    return None
+
+
+def detect_scene_transition_v2(
+    scene_cache: dict[str, dict], quest: dict, old_stage: int, new_stage: int
+) -> dict | None:
+    """Detect scene transition using scene_graph + scene_cache."""
+    if old_stage < 0:
+        return None
+    old_scene = _resolve_scene_from_graph(scene_cache, quest, old_stage)
+    new_scene = _resolve_scene_from_graph(scene_cache, quest, new_stage)
+    if old_scene is None or new_scene is None:
+        return None
+    if old_scene["id"] == new_scene["id"]:
+        return None
+    return {
+        "old_scene": old_scene,
+        "new_scene": new_scene,
+        "region_changed": old_scene.get("region_type") != new_scene.get("region_type"),
+    }
+
+
 def _validate_id(value: str, label: str) -> str | None:
     """Return an error JSON string if the ID is invalid, else None."""
     if not value or len(value) > 128 or not _ID_RE.match(value):

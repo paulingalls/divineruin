@@ -197,6 +197,150 @@ class TestDetectSceneTransition:
         assert result["region_changed"] is True
 
 
+# === Centralized scene resolution (v2 — standalone scenes) ===
+
+SCENE_CACHE = {
+    "scene_wild": {
+        "id": "scene_wild",
+        "name": "Wilderness Scene",
+        "type": "quest",
+        "region_type": "wilderness",
+        "instructions": "Travel.",
+        "beats": [],
+    },
+    "scene_city": {
+        "id": "scene_city",
+        "name": "City Scene",
+        "type": "quest",
+        "region_type": "city",
+        "instructions": "Investigate.",
+        "beats": [],
+    },
+    "scene_explore": {
+        "id": "scene_explore",
+        "name": "Market Exploration",
+        "type": "location",
+        "region_type": "city",
+        "instructions": "Explore the market.",
+        "beats": [],
+    },
+}
+
+QUEST_WITH_GRAPH = {
+    "quest_id": "greyvale",
+    "quest_name": "Greyvale",
+    "current_stage": 0,
+    "stages": [{"id": "s0"}, {"id": "s1"}],
+    "scene_graph": [
+        {"scene_id": "scene_wild", "stage_refs": [0]},
+        {"scene_id": "scene_city", "stage_refs": [1]},
+    ],
+}
+
+QUEST_NO_GRAPH = {
+    "quest_id": "plain",
+    "quest_name": "Plain",
+    "current_stage": 0,
+    "stages": [{"id": "s0"}],
+}
+
+LOCATION_WITH_DEFAULT = {"id": "market", "default_scene": "scene_explore"}
+LOCATION_NO_DEFAULT = {"id": "road"}
+
+
+class TestGetActiveSceneForContext:
+    def test_resolves_quest_scene_via_graph(self):
+        from tools import get_active_scene_for_context
+
+        result = get_active_scene_for_context(SCENE_CACHE, [QUEST_WITH_GRAPH], LOCATION_NO_DEFAULT)
+        assert result is not None
+        assert result["id"] == "scene_wild"
+
+    def test_resolves_second_stage(self):
+        from tools import get_active_scene_for_context
+
+        quest = {**QUEST_WITH_GRAPH, "current_stage": 1}
+        result = get_active_scene_for_context(SCENE_CACHE, [quest], LOCATION_NO_DEFAULT)
+        assert result is not None
+        assert result["id"] == "scene_city"
+
+    def test_falls_back_to_location_default(self):
+        from tools import get_active_scene_for_context
+
+        result = get_active_scene_for_context(SCENE_CACHE, [QUEST_NO_GRAPH], LOCATION_WITH_DEFAULT)
+        assert result is not None
+        assert result["id"] == "scene_explore"
+
+    def test_quest_takes_priority_over_location(self):
+        from tools import get_active_scene_for_context
+
+        result = get_active_scene_for_context(SCENE_CACHE, [QUEST_WITH_GRAPH], LOCATION_WITH_DEFAULT)
+        assert result is not None
+        assert result["id"] == "scene_wild"  # quest wins
+
+    def test_returns_none_when_no_scene(self):
+        from tools import get_active_scene_for_context
+
+        result = get_active_scene_for_context(SCENE_CACHE, [QUEST_NO_GRAPH], LOCATION_NO_DEFAULT)
+        assert result is None
+
+    def test_returns_none_with_empty_cache(self):
+        from tools import get_active_scene_for_context
+
+        result = get_active_scene_for_context({}, [QUEST_WITH_GRAPH], LOCATION_WITH_DEFAULT)
+        assert result is None
+
+    def test_returns_none_with_no_quests_no_location(self):
+        from tools import get_active_scene_for_context
+
+        result = get_active_scene_for_context(SCENE_CACHE, [], LOCATION_NO_DEFAULT)
+        assert result is None
+
+    def test_missing_scene_id_in_cache_falls_through(self):
+        from tools import get_active_scene_for_context
+
+        partial_cache = {"scene_explore": SCENE_CACHE["scene_explore"]}  # no scene_wild
+        result = get_active_scene_for_context(partial_cache, [QUEST_WITH_GRAPH], LOCATION_WITH_DEFAULT)
+        assert result is not None
+        assert result["id"] == "scene_explore"  # falls to location default
+
+
+class TestDetectSceneTransitionV2:
+    def test_different_region_returns_transition(self):
+        from tools import detect_scene_transition_v2
+
+        result = detect_scene_transition_v2(SCENE_CACHE, QUEST_WITH_GRAPH, 0, 1)
+        assert result is not None
+        assert result["old_scene"]["id"] == "scene_wild"
+        assert result["new_scene"]["id"] == "scene_city"
+        assert result["region_changed"] is True
+
+    def test_same_scene_returns_none(self):
+        from tools import detect_scene_transition_v2
+
+        quest = {**QUEST_WITH_GRAPH, "scene_graph": [{"scene_id": "scene_wild", "stage_refs": [0, 1]}]}
+        result = detect_scene_transition_v2(SCENE_CACHE, quest, 0, 1)
+        assert result is None
+
+    def test_quest_start_returns_none(self):
+        from tools import detect_scene_transition_v2
+
+        result = detect_scene_transition_v2(SCENE_CACHE, QUEST_WITH_GRAPH, -1, 0)
+        assert result is None
+
+    def test_no_graph_returns_none(self):
+        from tools import detect_scene_transition_v2
+
+        result = detect_scene_transition_v2(SCENE_CACHE, QUEST_NO_GRAPH, 0, 1)
+        assert result is None
+
+    def test_missing_scene_in_cache_returns_none(self):
+        from tools import detect_scene_transition_v2
+
+        result = detect_scene_transition_v2({}, QUEST_WITH_GRAPH, 0, 1)
+        assert result is None
+
+
 # === Greyvale quest content validation ===
 
 CONTENT_DIR = pathlib.Path(__file__).resolve().parents[3] / "content"
@@ -308,6 +452,23 @@ class TestGreyvaleScenes:
         for scene in self.greyvale["scenes"]:
             total_hints = sum(len(b.get("companion_hints", [])) for b in scene.get("beats", []))
             assert total_hints >= 2, f"Scene {scene['id']} has only {total_hints} total hints — needs escalation"
+
+    def test_scene_graph_exists(self):
+        assert "scene_graph" in self.greyvale
+        assert len(self.greyvale["scene_graph"]) == 5
+
+    def test_scene_graph_covers_all_stages(self):
+        all_refs = []
+        for entry in self.greyvale["scene_graph"]:
+            all_refs.extend(entry["stage_refs"])
+        assert sorted(all_refs) == [0, 1, 2, 3, 4]
+
+    def test_scene_graph_ids_exist_in_scenes_json(self):
+        with open(CONTENT_DIR / "scenes.json") as f:
+            scenes = json.load(f)
+        scene_ids = {s["id"] for s in scenes}
+        for entry in self.greyvale["scene_graph"]:
+            assert entry["scene_id"] in scene_ids, f"scene_graph references unknown scene: {entry['scene_id']}"
 
 
 # === Warm layer scene injection ===

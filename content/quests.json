@@ -295,6 +295,13 @@
         ]
       }
     ],
+    "scene_graph": [
+      {"scene_id": "scene_road_to_millhaven", "stage_refs": [0]},
+      {"scene_id": "scene_millhaven_investigation", "stage_refs": [1]},
+      {"scene_id": "scene_first_hollow_encounter", "stage_refs": [2]},
+      {"scene_id": "scene_ruins_exploration", "stage_refs": [3]},
+      {"scene_id": "scene_return_to_accord", "stage_refs": [4]}
+    ],
     "failure_conditions": {
       "player_death_in_ruins": {
         "consequence": "respawn at Millhaven, ruins remain accessible, Hollow corruption +1"
