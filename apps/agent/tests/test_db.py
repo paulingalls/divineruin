@@ -423,7 +423,6 @@ class TestStateQueries:
                         {
                             "name": "The Quest",
                             "stages": ["stage1", "stage2", "stage3"],
-                            "global_hints": ["hint1"],
                         }
                     ),
                 }

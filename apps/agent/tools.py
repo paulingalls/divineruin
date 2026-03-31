@@ -66,9 +66,7 @@ def get_active_scene_for_context(
     return None
 
 
-def detect_scene_transition_v2(
-    scene_cache: dict[str, dict], quest: dict, old_stage: int, new_stage: int
-) -> dict | None:
+def detect_scene_transition(scene_cache: dict[str, dict], quest: dict, old_stage: int, new_stage: int) -> dict | None:
     """Detect scene transition using scene_graph + scene_cache."""
     if old_stage < 0:
         return None
@@ -1537,7 +1535,7 @@ async def update_quest(
     if quest.get("scene_graph"):
         scene_ids = [e["scene_id"] for e in quest["scene_graph"]]
         scene_cache = await db.get_scenes_batch(scene_ids)
-        transition = detect_scene_transition_v2(scene_cache, quest, current_stage, new_stage_id)
+        transition = detect_scene_transition(scene_cache, quest, current_stage, new_stage_id)
     if transition and transition["region_changed"]:
         from livekit.agents.llm import ChatContext
 

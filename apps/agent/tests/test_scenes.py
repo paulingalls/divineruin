@@ -121,39 +121,39 @@ class TestGetActiveSceneForContext:
         assert result["id"] == "scene_explore"  # falls to location default
 
 
-class TestDetectSceneTransitionV2:
+class TestDetectSceneTransition:
     def test_different_region_returns_transition(self):
-        from tools import detect_scene_transition_v2
+        from tools import detect_scene_transition
 
-        result = detect_scene_transition_v2(SCENE_CACHE, QUEST_WITH_GRAPH, 0, 1)
+        result = detect_scene_transition(SCENE_CACHE, QUEST_WITH_GRAPH, 0, 1)
         assert result is not None
         assert result["old_scene"]["id"] == "scene_wild"
         assert result["new_scene"]["id"] == "scene_city"
         assert result["region_changed"] is True
 
     def test_same_scene_returns_none(self):
-        from tools import detect_scene_transition_v2
+        from tools import detect_scene_transition
 
         quest = {**QUEST_WITH_GRAPH, "scene_graph": [{"scene_id": "scene_wild", "stage_refs": [0, 1]}]}
-        result = detect_scene_transition_v2(SCENE_CACHE, quest, 0, 1)
+        result = detect_scene_transition(SCENE_CACHE, quest, 0, 1)
         assert result is None
 
     def test_quest_start_returns_none(self):
-        from tools import detect_scene_transition_v2
+        from tools import detect_scene_transition
 
-        result = detect_scene_transition_v2(SCENE_CACHE, QUEST_WITH_GRAPH, -1, 0)
+        result = detect_scene_transition(SCENE_CACHE, QUEST_WITH_GRAPH, -1, 0)
         assert result is None
 
     def test_no_graph_returns_none(self):
-        from tools import detect_scene_transition_v2
+        from tools import detect_scene_transition
 
-        result = detect_scene_transition_v2(SCENE_CACHE, QUEST_NO_GRAPH, 0, 1)
+        result = detect_scene_transition(SCENE_CACHE, QUEST_NO_GRAPH, 0, 1)
         assert result is None
 
     def test_missing_scene_in_cache_returns_none(self):
-        from tools import detect_scene_transition_v2
+        from tools import detect_scene_transition
 
-        result = detect_scene_transition_v2({}, QUEST_WITH_GRAPH, 0, 1)
+        result = detect_scene_transition({}, QUEST_WITH_GRAPH, 0, 1)
         assert result is None
 
 

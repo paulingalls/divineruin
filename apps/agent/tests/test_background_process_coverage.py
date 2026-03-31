@@ -79,7 +79,8 @@ class TestBackgroundProcessLifecycle:
         assert bp._stop is True
 
     @pytest.mark.asyncio
-    async def test_run_builds_initial_warm_layer(self):
+    @patch("background_process.db.get_scene", new_callable=AsyncMock, return_value=None)
+    async def test_run_builds_initial_warm_layer(self, _mock_scene):
         """_run() should build warm layer on startup."""
         mock_agent = MagicMock()
         mock_session = MagicMock()
@@ -106,7 +107,8 @@ class TestEventHandling:
     """Test event processing and warm layer rebuilding."""
 
     @pytest.mark.asyncio
-    async def test_run_drains_multiple_events(self):
+    @patch("background_process.db.get_scene", new_callable=AsyncMock, return_value=None)
+    async def test_run_drains_multiple_events(self, _mock_scene):
         """_run() should drain all pending events from bus."""
         mock_agent = MagicMock()
         mock_session = MagicMock()
@@ -141,7 +143,8 @@ class TestEventHandling:
                         assert event2 in handled_events
 
     @pytest.mark.asyncio
-    async def test_run_rebuilds_on_timeout(self):
+    @patch("background_process.db.get_scene", new_callable=AsyncMock, return_value=None)
+    async def test_run_rebuilds_on_timeout(self, _mock_scene):
         """_run() should rebuild warm layer on event timeout (no events)."""
         mock_agent = MagicMock()
         mock_session = MagicMock()
@@ -183,7 +186,6 @@ BEAT_QUEST = {
     "quest_name": "Test Quest",
     "current_stage": 0,
     "stages": [{"id": "s0", "objective": "Go."}],
-    "global_hints": {},
     "scene_graph": [{"scene_id": "test_scene", "stage_refs": [0]}],
 }
 

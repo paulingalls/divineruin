@@ -578,7 +578,6 @@ async def get_active_player_quests(
                 "quest_name": quest.get("name", row["quest_id"]),
                 "current_stage": current_stage,
                 "stages": stages,
-                "global_hints": quest.get("global_hints", []),
                 "scene_graph": quest.get("scene_graph", []),
             }
         )

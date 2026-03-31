@@ -372,7 +372,6 @@ class TestQuestHints:
                 "quest_name": "The Greyvale Anomaly",
                 "current_stage": 0,
                 "stages": [{"id": "s0", "objective": "Travel."}],
-                "global_hints": {},
                 "scene_graph": [{"scene_id": "scene_road", "stage_refs": [0]}],
             }
         ]

@@ -35,23 +35,6 @@ REBUILD_EVENT_TYPES = {
 }
 
 
-RIDER_SCENE_INSTRUCTIONS = """\
-A commotion at the edge of the market. A rider — young, dust-caked, one arm in a crude \
-sling — stumbles from a horse that looks half-dead. He's desperate, scanning the crowd \
-for anyone who looks like they could help. He grabs the nearest person: "The guild — \
-where's the guild hall? I need to report — Hollow creatures, north of here, near \
-Greyvale. Millhaven's in danger."
-
-Narrate this scene. The rider is panicked, exhausted. Use [WOUNDED_RIDER, urgent] for \
-his dialogue. He doesn't know the player — he's talking to anyone who'll listen. If \
-the player approaches or responds, the rider latches onto them as someone who might \
-actually do something. He gives his report: Hollow sightings, Millhaven scared, the \
-old ruins glowing at night. Then he needs to sit down — he's been riding for hours.
-
-End with the rider's information hanging in the air. Don't push the player toward the \
-guild hall. Let them decide what to do with this.\
-"""
-
 CORRUPTION_COMPANION_SPEECH: dict[int, str] = {
     1: (
         "Kael tenses and looks around slowly. Have him make one quiet observation: "
@@ -129,6 +112,11 @@ class BackgroundProcess:
                 pass
 
     async def _run(self) -> None:
+        # Pre-fetch event scenes into cache
+        rider = await db.get_scene("scene_rider_arrival")
+        if rider:
+            self._scene_cache["scene_rider_arrival"] = rider
+
         # Initial warm layer build
         await self._rebuild_warm_layer()
         logger.info("Background process started")
@@ -175,8 +163,8 @@ class BackgroundProcess:
                 ):
                     self._rider_triggered = True
                     rider_scene = self._scene_cache.get("scene_rider_arrival")
-                    rider_instructions = rider_scene["instructions"] if rider_scene else RIDER_SCENE_INSTRUCTIONS
-                    self._queue_speech(SpeechPriority.CRITICAL, rider_instructions)
+                    if rider_scene:
+                        self._queue_speech(SpeechPriority.CRITICAL, rider_scene["instructions"])
                     continue
 
                 if can_act and companion:

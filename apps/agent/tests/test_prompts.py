@@ -38,7 +38,6 @@ SAMPLE_QUEST = {
         {"id": 0, "objective": "Investigate the strange lights."},
         {"id": 1, "objective": "Find the source of the anomaly."},
     ],
-    "global_hints": ["The anomaly pulses at dusk."],
 }
 
 
