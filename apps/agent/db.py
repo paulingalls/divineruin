@@ -751,6 +751,30 @@ async def set_player_flag(
 # --- Session lifecycle ---
 
 
+async def _enrich_quests_with_scene_hints(quests: list[dict]) -> list[dict]:
+    """Add 'hints' from scene beats to each quest's data for client display."""
+    from tools import _resolve_scene_from_graph
+
+    scene_ids: list[str] = []
+    for q in quests:
+        for entry in q.get("scene_graph", []):
+            sid = entry.get("scene_id")
+            if sid and sid not in scene_ids:
+                scene_ids.append(sid)
+    if not scene_ids:
+        return quests
+
+    scene_cache = await get_scenes_batch(scene_ids)
+    for q in quests:
+        scene = _resolve_scene_from_graph(scene_cache, q, q.get("current_stage", 0))
+        hints: list[str] = []
+        if scene:
+            for beat in scene.get("beats", []):
+                hints.extend(beat.get("companion_hints", []))
+        q["hints"] = hints
+    return quests
+
+
 async def get_session_init_payload(player_id: str) -> dict:
     """Build the full session_init payload for a player."""
     # Fetch player first (need location_id), then parallelize the rest
@@ -763,6 +787,9 @@ async def get_session_init_payload(player_id: str) -> dict:
         get_active_player_quests(player_id),
         get_player_map_progress(player_id),
     )
+
+    # Enrich quests with scene beat hints for client display
+    quests = await _enrich_quests_with_scene_hints(quests)
 
     # Build portraits dict
     portraits = _build_portraits(player, location_id)

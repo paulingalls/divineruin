@@ -266,12 +266,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
             type: typeof raw.type === "string" ? raw.type : "",
             currentStage,
             stages,
-            globalHints:
-              raw.global_hints &&
-              typeof raw.global_hints === "object" &&
-              !Array.isArray(raw.global_hints)
-                ? (raw.global_hints as Record<string, string>)
-                : {},
+            hints: Array.isArray(raw.hints) ? (raw.hints as string[]) : [],
             status: "active" as const,
           };
         });

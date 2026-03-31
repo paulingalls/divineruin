@@ -408,7 +408,7 @@ test("quest_updated advances quest in panelStore", () => {
           targetLocationId: "millhaven",
         },
       ],
-      globalHints: {},
+      hints: [],
       status: "active",
     },
   ]);
@@ -677,7 +677,7 @@ test("session_init populates panelStore quests", () => {
           { id: "s0", name: "Intro", objective: "Talk to NPC" },
           { id: "s1", name: "Discovery", objective: "Find item" },
         ],
-        global_hints: { stuck_stage_1: "Check the market" },
+        hints: ["Check the market", "Ask the barkeep"],
       },
     ],
     inventory: [],
@@ -687,7 +687,7 @@ test("session_init populates panelStore quests", () => {
   expect(quests[0].questName).toBe("Guild Initiation");
   expect(quests[0].stages[0].completed).toBe(true);
   expect(quests[0].stages[1].completed).toBe(false);
-  expect(quests[0].globalHints).toEqual({ stuck_stage_1: "Check the market" });
+  expect(quests[0].hints).toEqual(["Check the market", "Ask the barkeep"]);
 });
 
 test("session_init populates panelStore map from location exits", () => {

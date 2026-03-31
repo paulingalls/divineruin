@@ -55,7 +55,7 @@ export interface QuestView {
   type: string;
   currentStage: number;
   stages: QuestStage[];
-  globalHints: Record<string, string>;
+  hints: string[];
   status: "active" | "completed" | "failed";
 }
 

@@ -8,11 +8,11 @@ import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
 function QuestRow({ quest }: { quest: QuestView }) {
   const [expanded, setExpanded] = useState(false);
+  const [hintIndex, setHintIndex] = useState(0);
   const [hintVisible, setHintVisible] = useState(false);
 
   const currentStage = quest.stages[quest.currentStage];
-  const hintKey = `stuck_stage_${quest.currentStage + 1}`;
-  const hint = quest.globalHints[hintKey];
+  const hasHints = quest.hints.length > 0;
 
   return (
     <View style={styles.questRow}>
@@ -49,14 +49,30 @@ function QuestRow({ quest }: { quest: QuestView }) {
             </View>
           ))}
 
-          {hint && (
-            <Pressable onPress={() => setHintVisible(!hintVisible)} style={styles.hintButton}>
+          {hasHints && (
+            <Pressable
+              onPress={() => {
+                if (hintVisible && hintIndex < quest.hints.length - 1) {
+                  setHintIndex(hintIndex + 1);
+                } else {
+                  setHintVisible(!hintVisible);
+                  setHintIndex(0);
+                }
+              }}
+              style={styles.hintButton}
+            >
               <ThemedText style={styles.hintButtonText}>
-                {hintVisible ? "Hide Hint" : "Show Hint"}
+                {hintVisible
+                  ? hintIndex < quest.hints.length - 1
+                    ? "Next Hint"
+                    : "Hide Hints"
+                  : "Show Hint"}
               </ThemedText>
             </Pressable>
           )}
-          {hintVisible && hint && <ThemedText style={styles.hintText}>{hint}</ThemedText>}
+          {hintVisible && hasHints && (
+            <ThemedText style={styles.hintText}>{quest.hints[hintIndex]}</ThemedText>
+          )}
         </View>
       )}
     </View>

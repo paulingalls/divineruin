@@ -56,7 +56,7 @@ const SAMPLE_QUEST: QuestView = {
     { id: "stage_0", name: "Introduction", objective: "Speak to Torin", completed: true },
     { id: "stage_1", name: "Discovery", objective: "Find the cartographer", completed: false },
   ],
-  globalHints: { stuck_stage_1: "Try asking around the market." },
+  hints: ["Try asking around the market."],
   status: "active",
 };
 
@@ -175,7 +175,7 @@ test("advanceQuest updates currentStage and marks prior stages completed", () =>
       },
       { id: "s2", name: "Stage 2", objective: "Fight", completed: false },
     ],
-    globalHints: {},
+    hints: [],
     status: "active",
   };
   panelStore.getState().setQuests([quest]);
