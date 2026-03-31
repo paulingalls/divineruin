@@ -132,6 +132,17 @@ async def get_location(location_id: str) -> dict | None:
     return data
 
 
+async def get_location_region_type(location_id: str) -> str:
+    """Return the region_type for a location ('city', 'wilderness', or 'dungeon').
+
+    Falls back to 'city' if the location is not found or has no region_type.
+    """
+    location = await get_location(location_id)
+    if location is None:
+        return "city"
+    return location.get("region_type", "city")
+
+
 async def get_npc(npc_id: str) -> dict | None:
     cache_key = f"npc:{npc_id}"
     cached = await _cache_get(cache_key)

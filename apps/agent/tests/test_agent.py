@@ -142,6 +142,23 @@ class TestAudioHelpers:
             assert call_kwargs["speaking_rate"] == 1.0
 
 
+class TestSessionDataFields:
+    """Test SessionData field defaults and properties."""
+
+    def test_pre_combat_agent_type_defaults_to_none(self):
+        from session_data import SessionData
+
+        sd = SessionData(player_id="p1", location_id="loc1")
+        assert sd.pre_combat_agent_type is None
+
+    def test_pre_combat_agent_type_can_be_set(self):
+        from session_data import SessionData
+
+        sd = SessionData(player_id="p1", location_id="loc1")
+        sd.pre_combat_agent_type = "wilderness"
+        assert sd.pre_combat_agent_type == "wilderness"
+
+
 class TestExtractPlayerId:
     """Test _extract_player_id metadata parsing and env-based fallback."""
 

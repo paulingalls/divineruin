@@ -149,3 +149,12 @@ class TestContentIntegrity:
         greyvale = next((q for q in quests if q["id"] == "greyvale_anomaly"), None)
         assert greyvale is not None, "greyvale_anomaly quest not found"
         assert len(greyvale["stages"]) == 5, f"Expected 5 stages, got {len(greyvale['stages'])}"
+
+    def test_all_locations_have_region_type(self):
+        locations = _load_json("locations.json")
+        valid_types = {"city", "wilderness", "dungeon"}
+        for loc in locations:
+            assert "region_type" in loc, f"Location '{loc['id']}' missing 'region_type'"
+            assert loc["region_type"] in valid_types, (
+                f"Location '{loc['id']}' has invalid region_type '{loc['region_type']}', expected one of {valid_types}"
+            )
