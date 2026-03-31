@@ -664,3 +664,107 @@ class TestMovePlayerRegionHandoff:
                     result = await move_player._func(ctx, "accord_guild_hall")
 
         assert isinstance(result, str), f"Expected str, got {type(result)}"
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
+    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_wilderness_to_dungeon_returns_dungeon_agent(
+        self, mock_loc, mock_upsert, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
+    ):
+        """Moving from wilderness to dungeon triggers WildernessAgent → DungeonAgent handoff."""
+        from contextlib import asynccontextmanager
+
+        from dungeon_agent import DungeonAgent
+
+        wilderness_loc = {
+            "id": "greyvale_wilderness_north",
+            "name": "Northern Wilderness",
+            "region_type": "wilderness",
+            "exits": {"east": {"destination": "greyvale_ruins_entrance"}},
+        }
+        dungeon_loc = {
+            "id": "greyvale_ruins_entrance",
+            "name": "Ruins Entrance",
+            "region_type": "dungeon",
+            "description": "Cold stone steps descend into darkness.",
+            "atmosphere": "oppressive, damp",
+            "exits": {"west": {"destination": "greyvale_wilderness_north"}},
+        }
+        mock_loc.side_effect = lambda loc_id: {
+            "greyvale_wilderness_north": wilderness_loc,
+            "greyvale_ruins_entrance": dungeon_loc,
+        }.get(loc_id)
+
+        @asynccontextmanager
+        async def _mock_txn():
+            yield MagicMock()
+
+        ctx = MagicMock()
+        session = SessionData(player_id="player_1", location_id="greyvale_wilderness_north")
+        ctx.userdata = session
+
+        with patch("tools.db.transaction", _mock_txn):
+            with patch("tools.db.extract_exit_connections", return_value=[]):
+                with patch("tools.publish_game_event", new_callable=AsyncMock):
+                    result = await move_player._func(ctx, "greyvale_ruins_entrance")
+
+        assert isinstance(result, tuple)
+        agent, _ = result
+        assert isinstance(agent, DungeonAgent)
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
+    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
+    @patch("tools.db.get_location", new_callable=AsyncMock)
+    async def test_dungeon_to_wilderness_returns_wilderness_agent(
+        self, mock_loc, mock_upsert, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
+    ):
+        """Moving from dungeon to exterior triggers DungeonAgent → WildernessAgent handoff."""
+        from contextlib import asynccontextmanager
+
+        from wilderness_agent import WildernessAgent
+
+        dungeon_loc = {
+            "id": "greyvale_ruins_entrance",
+            "name": "Ruins Entrance",
+            "region_type": "dungeon",
+            "exits": {"west": {"destination": "greyvale_ruins_exterior"}},
+        }
+        exterior_loc = {
+            "id": "greyvale_ruins_exterior",
+            "name": "Ruins Exterior",
+            "region_type": "wilderness",
+            "description": "Wildflowers grow among broken stone.",
+            "atmosphere": "windswept, open",
+            "exits": {"east": {"destination": "greyvale_ruins_entrance"}},
+        }
+        mock_loc.side_effect = lambda loc_id: {
+            "greyvale_ruins_entrance": dungeon_loc,
+            "greyvale_ruins_exterior": exterior_loc,
+        }.get(loc_id)
+
+        @asynccontextmanager
+        async def _mock_txn():
+            yield MagicMock()
+
+        ctx = MagicMock()
+        session = SessionData(player_id="player_1", location_id="greyvale_ruins_entrance")
+        ctx.userdata = session
+
+        with patch("tools.db.transaction", _mock_txn):
+            with patch("tools.db.extract_exit_connections", return_value=[]):
+                with patch("tools.publish_game_event", new_callable=AsyncMock):
+                    result = await move_player._func(ctx, "greyvale_ruins_exterior")
+
+        assert isinstance(result, tuple)
+        agent, _ = result
+        assert isinstance(agent, WildernessAgent)

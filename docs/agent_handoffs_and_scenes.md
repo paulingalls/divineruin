@@ -795,20 +795,20 @@ handoffs on region boundary crossings.
   select the correct gameplay agent.
 
 **Acceptance criteria:**
-- [ ] Moving from `accord_market_square` to `greyvale_south_road` triggers a
+- [x] Moving from `accord_market_square` to `greyvale_south_road` triggers a
       CityAgent → WildernessAgent handoff.
-- [ ] Moving from `greyvale_wilderness_north` to `greyvale_ruins_entrance` triggers
+- [x] Moving from `greyvale_wilderness_north` to `greyvale_ruins_entrance` triggers
       WildernessAgent → DungeonAgent handoff.
-- [ ] Moving from `greyvale_ruins_entrance` back to exterior triggers
+- [x] Moving from `greyvale_ruins_entrance` back to exterior triggers
       DungeonAgent → WildernessAgent handoff.
-- [ ] Departure narration is delivered by the outgoing agent before handoff.
-- [ ] Arrival narration is delivered by the incoming agent after handoff.
-- [ ] Movement within the same region type (e.g., city to city) does NOT trigger
+- [x] Departure narration is delivered by the outgoing agent before handoff.
+- [x] Arrival narration is delivered by the incoming agent after handoff.
+- [x] Movement within the same region type (e.g., city to city) does NOT trigger
       a handoff.
-- [ ] Combat round-trip works from all three gameplay agents.
-- [ ] Reconnection dispatches the correct agent based on saved location.
-- [ ] Each agent's warm layer renders region-appropriate context.
-- [ ] WildernessAgent's system prompt has no NPC commerce rules. DungeonAgent's
+- [x] Combat round-trip works from all three gameplay agents.
+- [x] Reconnection dispatches the correct agent based on saved location.
+- [x] Each agent's warm layer renders region-appropriate context.
+- [x] WildernessAgent's system prompt has no NPC commerce rules. DungeonAgent's
       prompt has no social context rules. CityAgent's prompt has no survival rules.
 
 **Key references:**
