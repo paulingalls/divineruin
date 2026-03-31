@@ -314,3 +314,120 @@ class TestVoicePipelineInheritance:
         agent = CombatAgent()
         assert hasattr(agent, "llm_node")
         assert agent.llm_node.__func__ is BaseGameAgent.llm_node
+
+
+class TestCreationOnboardingCityRoundTrip:
+    """Test the full Creation → OnboardingAgent → CityAgent handoff chain."""
+
+    @pytest.mark.asyncio
+    @patch("creation_tools.db")
+    async def test_finalize_returns_onboarding_agent(self, mock_db):
+        """finalize_character returns OnboardingAgent at beat 1."""
+        from creation_tools import finalize_character
+        from onboarding_agent import OnboardingAgent
+        from session_data import CreationState
+
+        mock_db.create_player = AsyncMock()
+        mock_db.get_session_init_payload = AsyncMock(
+            return_value={
+                "character": {"name": "Aric"},
+                "location": None,
+                "quests": [],
+                "inventory": [],
+                "map_progress": [],
+                "world_state": {"time": "evening"},
+            }
+        )
+
+        cs = CreationState(
+            phase="identity",
+            race="human",
+            class_choice="warrior",
+            deity="kaelen",
+            name="Aric",
+            backstory="A wanderer.",
+        )
+        ctx = MagicMock()
+        ctx.userdata = SessionData(player_id="player_1", location_id="", creation_state=cs)
+
+        agent, _json_str = await finalize_character._func(ctx)
+        assert isinstance(agent, OnboardingAgent)
+        assert ctx.userdata.onboarding_beat == 1
+
+    @pytest.mark.asyncio
+    @patch("onboarding_tools.db")
+    async def test_beat_5_returns_city_agent(self, mock_db):
+        """advance_onboarding_beat at beat 5 returns CityAgent for open-world gameplay."""
+        from onboarding_tools import advance_onboarding_beat
+
+        mock_db.set_player_flag = AsyncMock()
+        ctx = MagicMock()
+        ctx.userdata = SessionData(
+            player_id="player_1",
+            location_id="accord_guild_hall",
+            onboarding_beat=5,
+        )
+        ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
+
+        raw = await advance_onboarding_beat._func(ctx)
+        assert isinstance(raw, tuple)
+        agent, json_str = raw
+        assert isinstance(agent, CityAgent)
+        result = json.loads(json_str)
+        assert result["onboarding_complete"] is True
+        assert ctx.userdata.onboarding_beat is None
+
+    @pytest.mark.asyncio
+    @patch("onboarding_tools.db")
+    @patch("creation_tools.db")
+    async def test_full_creation_to_city_roundtrip(self, mock_creation_db, mock_onboarding_db):
+        """Full chain: finalize_character → OnboardingAgent → advance through beats → CityAgent."""
+        from creation_tools import finalize_character
+        from onboarding_agent import OnboardingAgent
+        from onboarding_tools import advance_onboarding_beat
+        from session_data import CreationState
+
+        mock_creation_db.create_player = AsyncMock()
+        mock_creation_db.get_session_init_payload = AsyncMock(
+            return_value={
+                "character": {"name": "Aric"},
+                "location": None,
+                "quests": [],
+                "inventory": [],
+                "map_progress": [],
+                "world_state": {"time": "evening"},
+            }
+        )
+        mock_onboarding_db.set_player_flag = AsyncMock()
+
+        # Step 1: Create character
+        cs = CreationState(
+            phase="identity",
+            race="human",
+            class_choice="warrior",
+            deity="kaelen",
+            name="Aric",
+            backstory="A wanderer.",
+        )
+        ctx = MagicMock()
+        ctx.userdata = SessionData(player_id="player_1", location_id="", creation_state=cs)
+
+        onboarding_agent, _ = await finalize_character._func(ctx)
+        assert isinstance(onboarding_agent, OnboardingAgent)
+        assert ctx.userdata.onboarding_beat == 1
+
+        # Step 2: Advance through all 5 beats
+        for expected_beat in range(2, 6):
+            result = await advance_onboarding_beat._func(ctx)
+            if isinstance(result, tuple):
+                # Beat 5 → CityAgent handoff
+                city_agent, _json_str = result
+                assert isinstance(city_agent, CityAgent)
+                assert ctx.userdata.onboarding_beat is None
+                break
+            parsed = json.loads(result)
+            assert parsed["beat"] == expected_beat
+
+        # Companion should have been initialized at beat 3→4
+        assert ctx.userdata.companion is not None
+        assert ctx.userdata.companion.name == "Kael"
