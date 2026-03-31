@@ -431,3 +431,132 @@ class TestCreationOnboardingCityRoundTrip:
         # Companion should have been initialized at beat 3→4
         assert ctx.userdata.companion is not None
         assert ctx.userdata.companion.name == "Kael"
+
+
+class TestGameplayAgentFactory:
+    """create_gameplay_agent returns the correct agent by region_type."""
+
+    def test_city_returns_city_agent(self):
+        from gameplay_agent import create_gameplay_agent
+
+        agent = create_gameplay_agent("city", "accord_guild_hall")
+        assert isinstance(agent, CityAgent)
+
+    def test_wilderness_returns_wilderness_agent(self):
+        from gameplay_agent import create_gameplay_agent
+        from wilderness_agent import WildernessAgent
+
+        agent = create_gameplay_agent("wilderness", "greyvale_south_road")
+        assert isinstance(agent, WildernessAgent)
+
+    def test_dungeon_returns_dungeon_agent(self):
+        from dungeon_agent import DungeonAgent
+        from gameplay_agent import create_gameplay_agent
+
+        agent = create_gameplay_agent("dungeon", "greyvale_ruins_entrance")
+        assert isinstance(agent, DungeonAgent)
+
+    def test_unknown_defaults_to_city(self):
+        from gameplay_agent import create_gameplay_agent
+
+        agent = create_gameplay_agent("unknown", "somewhere")
+        assert isinstance(agent, CityAgent)
+
+    def test_passes_companion(self):
+        from gameplay_agent import create_gameplay_agent
+
+        companion = CompanionState(id="companion_kael", name="Kael")
+        agent = create_gameplay_agent("city", "accord_guild_hall", companion=companion)
+        assert isinstance(agent, CityAgent)
+
+
+class TestDynamicEndCombat:
+    """end_combat returns the correct agent based on pre_combat_agent_type."""
+
+    @pytest.mark.asyncio
+    @patch("tools.db")
+    async def test_end_combat_returns_wilderness_agent(self, mock_db):
+        """end_combat with pre_combat_agent_type='wilderness' returns WildernessAgent."""
+        from wilderness_agent import WildernessAgent
+
+        mock_db.delete_combat_state = AsyncMock()
+        mock_db.get_location = AsyncMock(return_value={"region_type": "wilderness"})
+
+        ctx = MagicMock()
+        session = SessionData(
+            player_id="player_1",
+            location_id="greyvale_south_road",
+            combat_state=CombatState(
+                combat_id="c1",
+                participants=[
+                    CombatParticipant(
+                        id="wolf_1",
+                        name="Wolf",
+                        type="enemy",
+                        initiative=10,
+                        hp_current=0,
+                        hp_max=15,
+                        ac=12,
+                        attributes={"strength": 14},
+                        action_pool=[],
+                        xp_value=50,
+                    )
+                ],
+                initiative_order=["wolf_1"],
+                location_id="greyvale_south_road",
+            ),
+            pre_combat_agent_type="wilderness",
+        )
+        ctx.userdata = session
+
+        with patch("tools.publish_game_event", new_callable=AsyncMock):
+            with patch("tools._publish_sounds", new_callable=AsyncMock):
+                result = await end_combat._func(ctx, "victory")
+
+        assert isinstance(result, tuple)
+        agent, _ = result
+        assert isinstance(agent, WildernessAgent)
+
+    @pytest.mark.asyncio
+    @patch("tools.db")
+    async def test_end_combat_returns_dungeon_agent(self, mock_db):
+        """end_combat with pre_combat_agent_type='dungeon' returns DungeonAgent."""
+        from dungeon_agent import DungeonAgent
+
+        mock_db.delete_combat_state = AsyncMock()
+        mock_db.get_location = AsyncMock(return_value={"region_type": "dungeon"})
+
+        ctx = MagicMock()
+        session = SessionData(
+            player_id="player_1",
+            location_id="greyvale_ruins_entrance",
+            combat_state=CombatState(
+                combat_id="c2",
+                participants=[
+                    CombatParticipant(
+                        id="skeleton_1",
+                        name="Skeleton",
+                        type="enemy",
+                        initiative=8,
+                        hp_current=0,
+                        hp_max=10,
+                        ac=11,
+                        attributes={"strength": 12},
+                        action_pool=[],
+                        xp_value=30,
+                    )
+                ],
+                initiative_order=["skeleton_1"],
+                location_id="greyvale_ruins_entrance",
+            ),
+            pre_combat_agent_type="dungeon",
+        )
+        ctx.userdata = session
+
+        with patch("tools.publish_game_event", new_callable=AsyncMock):
+            with patch("tools._publish_sounds", new_callable=AsyncMock):
+                result = await end_combat._func(ctx, "victory")
+
+        assert isinstance(result, tuple)
+        agent, _ = result
+        assert isinstance(agent, DungeonAgent)

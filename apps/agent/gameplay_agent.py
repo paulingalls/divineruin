@@ -155,3 +155,23 @@ class GameplayAgent(BaseGameAgent):
             parts.append("[NPCs nearby: " + ", ".join(sd.cached_npc_names) + "]")
 
         return " ".join(parts)
+
+
+def create_gameplay_agent(
+    region_type: str,
+    location_id: str,
+    companion: Any = None,
+    chat_ctx: Any = None,
+) -> "GameplayAgent":
+    """Factory: instantiate the correct gameplay agent for a region_type."""
+    from city_agent import CityAgent
+    from dungeon_agent import DungeonAgent
+    from wilderness_agent import WildernessAgent
+
+    agents = {
+        "city": CityAgent,
+        "wilderness": WildernessAgent,
+        "dungeon": DungeonAgent,
+    }
+    cls = agents.get(region_type, CityAgent)
+    return cls(initial_location=location_id, companion=companion, chat_ctx=chat_ctx)

@@ -1757,13 +1757,16 @@ async def start_combat(
     }
     logger.info("start_combat result: combat_id=%s, %d participants", combat_id, len(participants))
 
+    # Record which agent type to return to after combat
+    current_agent = context.session.current_agent
+    session.pre_combat_agent_type = getattr(current_agent, "_agent_type", "city")
+
     # Build CombatAgent with truncated chat context for handoff
     from combat_agent import CombatAgent
 
     chat_ctx = None
-    agent = context.session.current_agent
-    if agent is not None:
-        chat_ctx = agent.chat_ctx.copy(exclude_instructions=True).truncate(max_items=10)
+    if current_agent is not None:
+        chat_ctx = current_agent.chat_ctx.copy(exclude_instructions=True).truncate(max_items=10)
 
     return CombatAgent(chat_ctx=chat_ctx), json.dumps(response)
 
@@ -2059,10 +2062,10 @@ async def end_combat(
     }
     logger.info("end_combat result: %s, xp=%d", outcome, xp_total)
 
-    # Build CityAgent with combat summary context for handoff
+    # Build gameplay agent with combat summary context for handoff
     from livekit.agents.llm import ChatContext
 
-    from city_agent import CityAgent
+    from gameplay_agent import create_gameplay_agent
 
     summary_parts = [f"Combat resolved: {outcome}."]
     if xp_total > 0:
@@ -2073,4 +2076,8 @@ async def end_combat(
     summary_ctx = ChatContext()
     summary_ctx.add_message(role="system", content=" ".join(summary_parts))
 
-    return CityAgent(initial_location=session.location_id, chat_ctx=summary_ctx), json.dumps(response)
+    agent_type = session.pre_combat_agent_type or "city"
+    session.pre_combat_agent_type = None
+    return create_gameplay_agent(
+        agent_type, session.location_id, companion=session.companion, chat_ctx=summary_ctx
+    ), json.dumps(response)
