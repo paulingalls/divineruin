@@ -1,5 +1,8 @@
 """Tests for OnboardingAgent and onboarding-related SessionData fields."""
 
+import time
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from base_agent import BaseGameAgent
@@ -104,3 +107,63 @@ class TestOnboardingAgentClass:
         assert "Arrival" in instructions or "arrival" in instructions
         assert "Market" in instructions or "market" in instructions
         assert "Companion" in instructions or "Kael" in instructions
+
+
+class TestOnboardingAgentIntegration:
+    """OnboardingAgent background process lifecycle and speech timing."""
+
+    @pytest.mark.asyncio
+    async def test_on_user_turn_completed_sets_speech_time(self):
+        from onboarding_agent import OnboardingAgent
+
+        agent = OnboardingAgent()
+        mock_session = MagicMock()
+        sd = SessionData(player_id="p1", location_id="accord_market_square", onboarding_beat=4)
+        mock_session.userdata = sd
+
+        before = time.time()
+        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
+            await agent.on_user_turn_completed(MagicMock(), MagicMock())
+        after = time.time()
+
+        assert before <= sd.last_player_speech_time <= after
+
+    @pytest.mark.asyncio
+    async def test_on_enter_starts_background_process(self):
+        from onboarding_agent import OnboardingAgent
+
+        agent = OnboardingAgent(onboarding_beat=1)
+        mock_session = MagicMock()
+        sd = SessionData(player_id="p1", location_id="accord_market_square", onboarding_beat=1)
+        mock_session.userdata = sd
+
+        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
+            with patch("onboarding_agent.OnboardingBackgroundProcess") as MockBG:
+                mock_bg = MagicMock()
+                MockBG.return_value = mock_bg
+                await agent.on_enter()
+
+                MockBG.assert_called_once_with(session=mock_session, session_data=sd)
+                mock_bg.start.assert_called_once()
+                assert agent._background is mock_bg
+
+    @pytest.mark.asyncio
+    async def test_on_exit_stops_background_process(self):
+        from onboarding_agent import OnboardingAgent
+
+        agent = OnboardingAgent()
+        mock_bg = AsyncMock()
+        agent._background = mock_bg
+        agent._transcript = MagicMock()
+        agent._transcript.log_path = "/tmp/test.log"
+
+        mock_session = MagicMock()
+        sd = MagicMock()
+        sd.player_id = "p1"
+        sd.onboarding_beat = 4
+        mock_session.userdata = sd
+
+        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
+            await agent.on_exit()
+
+        mock_bg.stop.assert_awaited_once()

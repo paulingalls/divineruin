@@ -1,13 +1,17 @@
 """OnboardingAgent — guided first 10-15 minutes for new players.
 
 Haiku model, city-appropriate tools, scripted 5-beat sequence.
-No BackgroundProcess — beat sequence drives narration.
+Lightweight BackgroundProcess for beats 4-5 (stall detection + Kael nudges).
 """
 
 import logging
+import time
 from typing import Any
 
+from livekit.agents import llm
+
 from base_agent import BaseGameAgent
+from onboarding_background import OnboardingBackgroundProcess
 from onboarding_tools import advance_onboarding_beat
 from prompts import VOICE_STYLE_PROMPT
 from session_data import SessionData
@@ -127,11 +131,15 @@ class OnboardingAgent(BaseGameAgent):
             chat_ctx=chat_ctx,
         )
         self._onboarding_beat = onboarding_beat
+        self._background: OnboardingBackgroundProcess | None = None
 
     async def on_enter(self) -> None:
         await super().on_enter()
         sd: SessionData = self.session.userdata
         sd.onboarding_beat = self._onboarding_beat
+        self._background = OnboardingBackgroundProcess(session=self.session, session_data=sd)
+        self._background.start()
+
         logger.info(
             "OnboardingAgent entered session for player %s at beat %d",
             sd.player_id,
@@ -150,7 +158,13 @@ class OnboardingAgent(BaseGameAgent):
                 ),
             )
 
+    async def on_user_turn_completed(self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage) -> None:
+        sd: SessionData = self.session.userdata
+        sd.last_player_speech_time = time.time()
+
     async def on_exit(self) -> None:
+        if self._background:
+            await self._background.stop()
         sd: SessionData = self.session.userdata
         logger.info("OnboardingAgent exiting at beat %s", sd.onboarding_beat)
         await super().on_exit()
