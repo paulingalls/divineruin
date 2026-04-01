@@ -1378,11 +1378,23 @@ async def move_player(
 
         from gameplay_agent import create_gameplay_agent
 
-        summary_ctx = ChatContext()
-        summary_ctx.add_message(
-            role="system",
-            content=f"Player moved from {previous_location_id} to {destination_id}. Region changed from {current_region} to {dest_region}.",
+        dest_name = destination_location.get("name", destination_id) if destination_location else destination_id
+        atmosphere = destination_location.get("atmosphere", "") if destination_location else ""
+
+        parts = [
+            f"The player has arrived at {dest_name} ({dest_region} region).",
+        ]
+        if atmosphere:
+            parts.append(f"The atmosphere is {atmosphere}.")
+        if session.companion and session.companion.is_present:
+            parts.append(f"{session.companion.name} is at the player's side.")
+        parts.append(
+            "Narrate the transition — describe what the player sees, hears, and feels "
+            "as they enter this new area. Be vivid and sensory."
         )
+
+        summary_ctx = ChatContext()
+        summary_ctx.add_message(role="system", content=" ".join(parts))
         return create_gameplay_agent(
             dest_region, destination_id, companion=session.companion, chat_ctx=summary_ctx
         ), json_str
