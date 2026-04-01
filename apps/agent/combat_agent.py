@@ -43,3 +43,8 @@ class CombatAgent(BaseGameAgent):
             tools=COMBAT_AGENT_TOOLS,
             chat_ctx=chat_ctx,
         )
+
+
+def create_combat_agent(chat_ctx: Any = None) -> CombatAgent:
+    """Factory for CombatAgent — mockable in tests to avoid LiveKit lifecycle warnings."""
+    return CombatAgent(chat_ctx=chat_ctx)

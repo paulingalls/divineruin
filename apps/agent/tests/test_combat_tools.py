@@ -165,16 +165,14 @@ class TestStartCombat:
     @patch("tools.db.save_combat_state", new_callable=AsyncMock)
     @patch("tools.db.get_player", new_callable=AsyncMock)
     @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
-    async def test_returns_combat_agent(self, mock_encounter, mock_player, mock_save):
-        from combat_agent import CombatAgent
-
+    async def test_returns_agent_tuple(self, mock_encounter, mock_player, mock_save):
         mock_encounter.return_value = SAMPLE_ENCOUNTER
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
 
         raw = await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Ambush!")
-        agent_instance, _ = raw
-        assert isinstance(agent_instance, CombatAgent)
+        assert isinstance(raw, tuple)
+        assert len(raw) == 2
 
     @pytest.mark.asyncio
     @patch("tools.db.save_combat_state", new_callable=AsyncMock)

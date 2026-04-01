@@ -1855,13 +1855,13 @@ async def start_combat(
     session.pre_combat_agent_type = getattr(current_agent, "_agent_type", "city")
 
     # Build CombatAgent with truncated chat context for handoff
-    from combat_agent import CombatAgent
+    from combat_agent import create_combat_agent
 
     chat_ctx = None
     if current_agent is not None:
         chat_ctx = current_agent.chat_ctx.copy(exclude_instructions=True).truncate(max_items=10)
 
-    return CombatAgent(chat_ctx=chat_ctx), json.dumps(response)
+    return create_combat_agent(chat_ctx=chat_ctx), json.dumps(response)
 
 
 @function_tool()

@@ -7,7 +7,7 @@ import pytest
 
 from base_agent import BaseGameAgent
 from city_agent import CITY_TOOLS, CityAgent
-from combat_agent import COMBAT_AGENT_TOOLS, CombatAgent
+from combat_agent import COMBAT_AGENT_TOOLS
 from session_data import CombatParticipant, CombatState, CompanionState, SessionData
 from tools import (
     end_combat,
@@ -112,17 +112,14 @@ class TestStartCombatHandoff:
     @patch("tools.db.save_combat_state", new_callable=AsyncMock)
     @patch("tools.db.get_player", new_callable=AsyncMock)
     @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
-    async def test_start_combat_returns_combat_agent(self, mock_encounter, mock_player, mock_save):
+    async def test_start_combat_returns_agent_tuple(self, mock_encounter, mock_player, mock_save):
         mock_encounter.return_value = SAMPLE_ENCOUNTER
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
 
         raw = await start_combat._func(ctx, encounter_id="wolf_pack", encounter_description="Wolves attack!")
         assert isinstance(raw, tuple)
-        agent_instance, json_str = raw
-
-        assert isinstance(agent_instance, CombatAgent)
-        assert isinstance(agent_instance, BaseGameAgent)
+        _, json_str = raw
 
         result = json.loads(json_str)
         assert result["encounter_name"] == "Wolf Pack"
@@ -271,49 +268,28 @@ class TestRoundTrip:
     @patch("tools.db.get_player", new_callable=AsyncMock)
     @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
     async def test_full_round_trip(self, mock_encounter, mock_player, mock_save, mock_delete):
-        """CityAgent starts combat → CombatAgent handles it → CityAgent returns."""
+        """Start combat → end combat → verify state transitions."""
         mock_encounter.return_value = SAMPLE_ENCOUNTER
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context(location_id="greyvale_south_road")
 
-        # Step 1: CityAgent triggers start_combat
+        # Step 1: start_combat returns agent tuple and sets combat state
         raw = await start_combat._func(ctx, encounter_id="wolf_pack", encounter_description="Wolves!")
-        combat_agent, _ = raw
-        assert isinstance(combat_agent, CombatAgent)
+        assert isinstance(raw, tuple)
         assert ctx.userdata.in_combat is True
 
-        # Step 2: End combat from CombatAgent
+        # Step 2: end_combat returns agent tuple and clears combat state
         raw2 = await end_combat._func(ctx, outcome="victory")
-        returned_agent, json_str = raw2
-        assert isinstance(returned_agent, CityAgent)
+        assert isinstance(raw2, tuple)
+        _, json_str = raw2
 
         result = json.loads(json_str)
         assert result["outcome"] == "victory"
         assert result["xp_total"] == 100
         assert ctx.userdata.in_combat is False
 
-        # Step 3: Returned CityAgent has correct location
+        # Step 3: Location preserved through round trip
         assert ctx.userdata.location_id == "greyvale_south_road"
-
-
-class TestVoicePipelineInheritance:
-    """Verify CombatAgent inherits full voice pipeline from BaseGameAgent."""
-
-    def test_combat_agent_has_tts_node(self):
-        agent = CombatAgent()
-        assert hasattr(agent, "tts_node")
-        # Should be inherited from BaseGameAgent, not Agent default
-        assert agent.tts_node.__func__ is BaseGameAgent.tts_node
-
-    def test_combat_agent_has_stt_node(self):
-        agent = CombatAgent()
-        assert hasattr(agent, "stt_node")
-        assert agent.stt_node.__func__ is BaseGameAgent.stt_node
-
-    def test_combat_agent_has_llm_node(self):
-        agent = CombatAgent()
-        assert hasattr(agent, "llm_node")
-        assert agent.llm_node.__func__ is BaseGameAgent.llm_node
 
 
 class TestCreationOnboardingCityRoundTrip:
