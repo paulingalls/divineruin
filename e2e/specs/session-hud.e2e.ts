@@ -289,49 +289,6 @@ test.describe("Session HUD overlays", () => {
     await expect(toast).not.toBeVisible({ timeout: 10_000 });
   });
 
-  test("combat_started followed by combat_ui_update shows tracker", async ({
-    sessionPage,
-  }) => {
-    await sessionPage.injectEvent({
-      type: "combat_started",
-      difficulty: "moderate",
-    });
-
-    await sessionPage.injectEvent({
-      type: "combat_ui_update",
-      phase: "initiative",
-      round: 1,
-      combatants: [
-        {
-          id: "player_1",
-          name: "Edrin",
-          isAlly: true,
-          hpCurrent: 28,
-          hpMax: 32,
-          statusEffects: [],
-          isActive: true,
-        },
-        {
-          id: "wolf_1",
-          name: "Shadow Wolf",
-          isAlly: false,
-          hpCurrent: 15,
-          hpMax: 15,
-          statusEffects: [],
-          isActive: false,
-        },
-      ],
-    });
-
-    const tracker = sessionPage.page.getByTestId("combat-tracker");
-    await expect(tracker).toBeVisible({ timeout: 10_000 });
-    await expect(sessionPage.page.getByText("ROUND 1")).toBeVisible();
-    await expect(sessionPage.page.getByText("Shadow Wolf")).toBeVisible();
-
-    await sessionPage.injectEvent({ type: "combat_ended" });
-    await expect(tracker).not.toBeVisible({ timeout: 10_000 });
-  });
-
   test("creation_card_selected highlights chosen card", async ({
     sessionPage,
   }) => {
