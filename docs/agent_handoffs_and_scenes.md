@@ -912,12 +912,12 @@ experience.
 - Updated `dev_milestones.md` with handoff milestone checkboxes.
 
 **Acceptance criteria:**
-- [ ] Complete new-player flow works: Prologue → Creation → Onboarding → CityAgent
+- [x] Complete new-player flow works: Prologue → Creation → Onboarding → CityAgent
       → WildernessAgent → CombatAgent → WildernessAgent → DungeonAgent → CityAgent.
-- [ ] Returning player flow works: dispatches correct agent based on saved state.
-- [ ] Reconnection works from every agent type.
-- [ ] No narration gaps or dead air during handoffs.
-- [ ] Companion is reliably present after onboarding and provides hints during
+- [x] Returning player flow works: dispatches correct agent based on saved state.
+- [x] Reconnection works from every agent type.
+- [x] No narration gaps or dead air during handoffs.
+- [x] Companion is reliably present after onboarding and provides hints during
       the Greyvale arc.
-- [ ] Per-turn token usage is equal to or lower than pre-refactor baseline.
+- [x] Per-turn token usage is equal to or lower than pre-refactor baseline.
 
