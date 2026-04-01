@@ -31,9 +31,11 @@ echo "  Python tests (agent, clean env)..."
   bun run test:python
 )
 
-# E2E tests — run in Docker via act, fully isolated from local services.
-# Requires Docker running. Spins up its own Postgres + Redis containers.
-echo "  E2E tests (act → Docker)..."
-act -j test-e2e --no-cache-server --container-architecture linux/amd64 -W .github/workflows/ci.yml
+# E2E tests — run locally with Playwright (fast: ~80s).
+# Requires local Postgres + Redis. Playwright starts API + Expo servers
+# automatically via webServer config (reuses existing if already running).
+# CI uses Docker via act; local dev runs directly for speed.
+echo "  E2E tests (local Playwright)..."
+cd e2e && bunx playwright test --reporter=list && cd ..
 
 echo "All tests passed."
