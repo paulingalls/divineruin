@@ -182,6 +182,62 @@ class TestStartCombatHandoff:
         assert ctx.userdata.in_combat is True
 
 
+class TestCombatHandoffContext:
+    """Verify that combat-start handoff passes rich context via create_combat_agent."""
+
+    @pytest.mark.asyncio
+    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
+    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
+    async def test_combat_handoff_context_includes_location(
+        self, mock_encounter, mock_player, mock_save, mock_combat_agent_factory
+    ):
+        """create_combat_agent receives chat_ctx with location name."""
+        mock_encounter.return_value = SAMPLE_ENCOUNTER
+        mock_player.return_value = SAMPLE_PLAYER
+        ctx = _make_context(location_id="greyvale_south_road")
+        ctx.userdata.cached_location_name = "Greyvale South Road"
+
+        await start_combat._func(ctx, encounter_id="wolf_pack", encounter_description="Wolves attack!")
+        mock_combat_agent_factory.assert_called_once()
+        chat_ctx = mock_combat_agent_factory.call_args.kwargs.get("chat_ctx")
+        assert chat_ctx is not None
+        system_msgs = [item for item in chat_ctx.items if item.role == "system"]
+        content = (
+            system_msgs[0].content[0].text
+            if hasattr(system_msgs[0].content[0], "text")
+            else str(system_msgs[0].content[0])
+        )
+        assert "Greyvale South Road" in content
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_npc", new_callable=AsyncMock)
+    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
+    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
+    async def test_combat_handoff_context_includes_companion(
+        self, mock_encounter, mock_player, mock_save, mock_npc, mock_combat_agent_factory
+    ):
+        """create_combat_agent receives chat_ctx mentioning companion."""
+        mock_encounter.return_value = SAMPLE_ENCOUNTER
+        mock_player.return_value = SAMPLE_PLAYER
+        mock_npc.return_value = {
+            "combat_stats": {"hp": 20, "ac": 14, "level": 2, "action_pool": []},
+        }
+        ctx = _make_context(location_id="greyvale_south_road")
+        ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
+
+        await start_combat._func(ctx, encounter_id="wolf_pack", encounter_description="Wolves attack!")
+        chat_ctx = mock_combat_agent_factory.call_args.kwargs.get("chat_ctx")
+        system_msgs = [item for item in chat_ctx.items if item.role == "system"]
+        content = (
+            system_msgs[0].content[0].text
+            if hasattr(system_msgs[0].content[0], "text")
+            else str(system_msgs[0].content[0])
+        )
+        assert "Kael" in content
+
+
 class TestEndCombatHandoff:
     """Test CombatAgent → CityAgent handoff via end_combat."""
 

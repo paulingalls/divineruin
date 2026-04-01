@@ -299,6 +299,50 @@ class TestRecapInstruction:
         assert "Key events" not in recap
 
 
+class TestReconnectInstruction:
+    """Test _build_reconnect_instruction includes location and companion."""
+
+    def test_includes_location(self):
+        from agent import _build_reconnect_instruction
+        from session_data import SessionData
+
+        sd = SessionData(player_id="p1", location_id="accord_guild_hall")
+        sd.cached_location_name = "Guild Hall"
+        instruction = _build_reconnect_instruction(sd)
+        assert "Guild Hall" in instruction
+
+    def test_includes_companion(self):
+        from agent import _build_reconnect_instruction
+        from session_data import CompanionState, SessionData
+
+        sd = SessionData(player_id="p1", location_id="accord_guild_hall")
+        sd.companion = CompanionState(id="companion_kael", name="Kael")
+        instruction = _build_reconnect_instruction(sd)
+        assert "Kael" in instruction
+
+    def test_includes_combat_state(self):
+        from agent import _build_reconnect_instruction
+        from session_data import CombatState, SessionData
+
+        sd = SessionData(player_id="p1", location_id="greyvale_south_road")
+        sd.combat_state = CombatState(
+            combat_id="c1",
+            participants=[],
+            initiative_order=[],
+            location_id="greyvale_south_road",
+        )
+        instruction = _build_reconnect_instruction(sd)
+        assert "combat" in instruction.lower()
+
+    def test_minimal_session_data(self):
+        from agent import _build_reconnect_instruction
+        from session_data import SessionData
+
+        sd = SessionData(player_id="p1", location_id="unknown")
+        instruction = _build_reconnect_instruction(sd)
+        assert "reconnected" in instruction.lower()
+
+
 # =============================================================================
 # 8.3c — Agent-Side Reconnection Handling
 # =============================================================================

@@ -103,6 +103,20 @@ def _build_recap_instruction(last_summary: dict | None) -> str:
     return " " + " ".join(parts)
 
 
+def _build_reconnect_instruction(sd: SessionData) -> str:
+    """Build a context-rich reconnection greeting instruction."""
+    parts = ["The player reconnected after a brief drop."]
+    loc_name = sd.cached_location_name or sd.location_id
+    if loc_name:
+        parts.append(f"They are at {loc_name}.")
+    if sd.companion and sd.companion.is_present:
+        parts.append(f"{sd.companion.name} is with them.")
+    if sd.combat_state:
+        parts.append("They are in combat.")
+    parts.append("Welcome them back naturally in one short sentence and remind them where they were.")
+    return " ".join(parts)
+
+
 @server.rtc_session(agent_name="divineruin-dm")
 async def dm_session(ctx: agents.JobContext) -> None:
     player_id = _extract_player_id(ctx)
@@ -236,12 +250,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
                 reconnect_task = None
             if gameplay_agent._background:
                 gameplay_agent._background.resume()
-            gameplay_agent._fire_and_forget(
-                session.generate_reply(
-                    instructions="The player reconnected after a brief drop. "
-                    "Welcome them back naturally in one short sentence and remind them where they were."
-                )
-            )
+            gameplay_agent._fire_and_forget(session.generate_reply(instructions=_build_reconnect_instruction(userdata)))
 
         async def _grace_timeout():
             await asyncio.sleep(RECONNECT_GRACE_S)

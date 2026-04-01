@@ -1867,14 +1867,21 @@ async def start_combat(
     current_agent = context.session.current_agent
     session.pre_combat_agent_type = getattr(current_agent, "_agent_type", REGION_CITY)
 
-    # Build CombatAgent with truncated chat context for handoff
+    # Build CombatAgent with combat-entry context for handoff
+    from livekit.agents.llm import ChatContext
+
     from combat_agent import create_combat_agent
 
-    chat_ctx = None
-    if current_agent is not None:
-        chat_ctx = current_agent.chat_ctx.copy(exclude_instructions=True).truncate(max_items=10)
+    parts = [f"Combat begins: {encounter_description}"]
+    loc_name = getattr(session, "cached_location_name", None) or session.location_id
+    parts.append(f"Location: {loc_name}.")
+    if session.companion and session.companion.is_present:
+        parts.append(f"{session.companion.name} fights alongside the player.")
 
-    return create_combat_agent(chat_ctx=chat_ctx), json.dumps(response)
+    combat_ctx = ChatContext()
+    combat_ctx.add_message(role="system", content=" ".join(parts))
+
+    return create_combat_agent(chat_ctx=combat_ctx), json.dumps(response)
 
 
 @function_tool()
