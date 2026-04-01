@@ -5,7 +5,9 @@ from typing import Any
 from gameplay_agent import GameplayAgent
 from region_types import REGION_WILDERNESS
 from tools import (
+    award_xp,
     discover_hidden_element,
+    end_session,
     enter_location,
     move_player,
     play_sound,
@@ -29,11 +31,13 @@ WILDERNESS_TOOLS = [
     update_quest,
     roll_dice,
     start_combat,
+    award_xp,
     query_inventory,
     query_lore,
     record_story_moment,
     play_sound,
     set_music_state,
+    end_session,
 ]
 
 

@@ -8,9 +8,12 @@ import pytest
 from base_agent import BaseGameAgent
 from city_agent import CITY_TOOLS, CityAgent
 from combat_agent import COMBAT_AGENT_TOOLS
+from dungeon_agent import DUNGEON_TOOLS
 from session_data import CombatParticipant, CombatState, CompanionState, SessionData
 from tools import (
+    award_xp,
     end_combat,
+    end_session,
     enter_location,
     move_player,
     query_location,
@@ -20,6 +23,7 @@ from tools import (
     start_combat,
     update_quest,
 )
+from wilderness_agent import WILDERNESS_TOOLS
 
 SAMPLE_PLAYER = {
     "player_id": "player_1",
@@ -66,6 +70,29 @@ def _make_context(location_id="greyvale_south_road"):
     ctx.session = MagicMock()
     ctx.session.current_agent = None
     return ctx
+
+
+class TestToolSetCompleteness:
+    """Verify that all gameplay agents have award_xp and end_session."""
+
+    def test_wilderness_has_award_xp(self):
+        assert award_xp in WILDERNESS_TOOLS
+
+    def test_wilderness_has_end_session(self):
+        assert end_session in WILDERNESS_TOOLS
+
+    def test_dungeon_has_award_xp(self):
+        assert award_xp in DUNGEON_TOOLS
+
+    def test_dungeon_has_end_session(self):
+        assert end_session in DUNGEON_TOOLS
+
+    def test_city_has_award_xp(self):
+        """Baseline — CityAgent already has these."""
+        assert award_xp in CITY_TOOLS
+
+    def test_city_has_end_session(self):
+        assert end_session in CITY_TOOLS
 
 
 class TestToolIsolation:

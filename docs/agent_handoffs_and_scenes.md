@@ -850,7 +850,7 @@ Author the Greyvale quest line as the first structured play tree.
 - [x] Existing `update_quest` tool still works — stage advancement is unchanged.
 - [x] Greyvale play tree is authored with all 5 scenes and their beats.
 - [ ] A playthrough of the Greyvale arc hits all 5 scenes in order with
-      appropriate agent types.
+      appropriate agent types. (Covered by H.8 playtest)
 
 **Key references:**
 - *This document — Scenes and Play Trees, Integration with Agent Handoffs*
@@ -883,10 +883,9 @@ Greyvale scenes).
 - [x] Hints don't interrupt active speech (player or agent).
 - [x] Multiple hints per beat are delivered sequentially with escalating
       specificity if the player remains stuck.
-- [ ] `global_hints` fields are removed from `quests.json`.
-      (Deferred: mobile client depends on global_hints for "Show Hint" button)
+- [x] `global_hints` fields are removed from `quests.json`.
 - [ ] A full Greyvale playthrough with deliberate pauses triggers appropriate
-      companion hints at each beat.
+      companion hints at each beat. (Covered by H.8 playtest)
 
 **Key references:**
 - *This document — Companion as Guide*

@@ -6,7 +6,9 @@ from gameplay_agent import GameplayAgent
 from region_types import REGION_DUNGEON
 from tools import (
     add_to_inventory,
+    award_xp,
     discover_hidden_element,
+    end_session,
     enter_location,
     move_player,
     play_sound,
@@ -31,6 +33,7 @@ DUNGEON_TOOLS = [
     discover_hidden_element,
     update_quest,
     start_combat,
+    award_xp,
     roll_dice,
     query_inventory,
     add_to_inventory,
@@ -38,6 +41,7 @@ DUNGEON_TOOLS = [
     record_story_moment,
     play_sound,
     set_music_state,
+    end_session,
 ]
 
 
