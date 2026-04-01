@@ -152,6 +152,8 @@ class TestBaseGameAgentInfrastructure:
             assert mock_task in agent._bg_tasks
             mock_task.add_done_callback.assert_called_once()
 
+        coro.close()
+
 
 class TestHelperFunctions:
     """Test module-level helper functions."""
