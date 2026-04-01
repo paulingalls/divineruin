@@ -162,22 +162,22 @@ Per-session cost breakdowns, subscriber economics.
 
 ---
 
-## dev_milestones.md (~900 lines)
+## milestones/ (10 phase files, ~1580 lines total)
 
-Phased build plan. Check acceptance criteria boxes when work lands.
+Game mechanics implementation milestones. See `milestones/README.md` for dependency graph and parallelism guide.
 
-| Section | Lines | What's There |
+| File | Phase | Milestones |
 |---|---|---|
-| Design Doc Reference Guide | 16-40 | Table of all docs with usage guidance |
-| Milestone 1: Infrastructure | 42-120 | Monorepo, Docker, PostgreSQL/Redis, Bun API, Expo shell, LiveKit test room |
-| Milestone 2: Voice Pipeline | 120-250 | LiveKit + STT + Claude + TTS, latency validation |
-| Milestone 3: DM Agent Core | 250-400 | DungeonMasterAgent, tools (4 categories), background process, hot layer |
-| Milestone 4: Rules Engine | 400-480 | Skill checks, attacks, saving throws, combat state machine, status effects |
-| Milestone 5: Client App | 480-840 | 5.1 Home/session lifecycle, 5.2 reactive HUD (persistent bar + overlays), 5.3 pull-up panels, 5.4 audio engine |
-| Milestone 6: Game Content | 620-720 | Greyvale content, Kael companion, guidance, narrative tuning |
-| Milestone 7: Multiplayer | 720-780 | 2-player rooms, input handling, declarations, party flow |
-| Milestone 8: Async System | 780-840 | REST API, timers, catch-up screen, notifications |
-| Milestone 9: Playtest & Polish | 840-end | Playtests, bugs, performance, external prep |
+| `00_doc_updates.md` | Doc fixes | 1 — currency notation, economy anchor |
+| `01_core_systems.md` | Core | 6 — attributes, skills, resources, leveling, training, errands |
+| `02_archetypes.md` | Archetypes | 5 — chassis, abilities, specialization, spells, mentors |
+| `03_magic.md` | Magic | 4 — resonance, hollow echo, spell catalog, concentration |
+| `04_combat.md` | Combat | 6 — 4-beat phases, actions, conditions, death, dramatic dice, social/travel |
+| `05_crafting.md` | Crafting | 4 — recipes, workspaces, quality, durability |
+| `06_npcs.md` | NPCs | 4 — stat blocks, settlements, mentors, companions |
+| `07_bestiary.md` | Bestiary | 4 — creature schema, regional catalog, hollow creatures, loot/encounters |
+| `08_patrons.md` | Patrons | 3 — profiles, abilities, synergies |
+| `09_economy.md` | Economy | 3 — currency, merchant pricing, quest rewards |
 
 ---
 

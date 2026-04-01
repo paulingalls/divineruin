@@ -32,7 +32,7 @@ Pre-extracted specs in `memory/` — compact, implementation-ready.
 
 Read specific sections via INDEX.md, not whole files. For task-to-doc mapping, see `memory/doc-navigator.md`.
 
-Key docs: `product_overview.md`, `game_design_doc.md` (1499 lines), `technical_architecture.md` (1499+ lines), `audio_design.md`, `world_data_simulation.md`, `mvp_spec.md`, `aethos_lore.md`, `cost_model.md`, `dev_milestones.md`, `player_resonance_system.md`, `brand_spec.md`, `image_prompt_library.md`
+Key docs: `product_overview.md`, `game_design_doc.md` (1499 lines), `technical_architecture.md` (1499+ lines), `audio_design.md`, `world_data_simulation.md`, `mvp_spec.md`, `aethos_lore.md`, `cost_model.md`, `milestones/README.md` (10 phase files), `player_resonance_system.md`, `brand_spec.md`, `image_prompt_library.md`
 
 ## Architecture
 
@@ -135,13 +135,13 @@ Don't revisit: LiveKit, Python (agent), Bun (TS), Expo, PostgreSQL+JSONB, Redis,
 
 ## Dev Flow
 
-1. Read `dev_milestones.md` for current phase
+1. Read `docs/milestones/README.md` for current phase
 2. Read milestone's referenced doc sections
 3. Implement against acceptance criteria
 4. Tests for every change (bun test / pytest)
 5. DB changes need migrations
 6. New tools need docstrings (LLM reads them to decide when to call)
-7. **Update `docs/dev_milestones.md` checkboxes** when work is committed
+7. **Update milestone checkboxes in `docs/milestones/`** when work is committed
 
 ## Environment Variables
 
