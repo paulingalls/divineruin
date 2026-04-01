@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
 from rules_engine import hp_threshold_status
 from session_data import CombatState
 from voices import DEFAULT_VOICE, EMOTIONS, VOICES
@@ -372,9 +373,9 @@ usual. Old instincts from the caravan keep him checking corners.\
 def build_system_prompt(
     location_id: str,
     companion: CompanionState | None = None,
-    region_type: str = "city",
+    region_type: str = REGION_CITY,
 ) -> str:
-    if region_type == "wilderness":
+    if region_type == REGION_WILDERNESS:
         parts = (
             SYSTEM_PROMPT
             + PLAYER_AWARENESS_PROMPT
@@ -383,7 +384,7 @@ def build_system_prompt(
             + STORY_MOMENT_PROMPT
             + SESSION_ENDING_PROMPT
         )
-    elif region_type == "dungeon":
+    elif region_type == REGION_DUNGEON:
         parts = (
             SYSTEM_PROMPT
             + PLAYER_AWARENESS_PROMPT
@@ -490,7 +491,7 @@ async def build_warm_layer(
     corruption_level: int = 0,
     location: dict | None = None,
     npcs_raw: list[dict] | None = None,
-    region_type: str = "city",
+    region_type: str = REGION_CITY,
     scene_cache: dict[str, dict] | None = None,
 ) -> str:
     import asyncio
@@ -538,7 +539,7 @@ async def build_warm_layer(
             sections.append("EXITS\n" + "\n".join(exit_lines))
 
     # Active NPCs at location (city only — wilderness/dungeon de-emphasize NPCs)
-    if npcs_raw and region_type == "city":
+    if npcs_raw and region_type == REGION_CITY:
         npc_ids = [npc["id"] for npc in npcs_raw]
         dispositions = await db.get_npc_dispositions(npc_ids, player_id)
         npc_lines = []

@@ -3,6 +3,7 @@
 from typing import Any
 
 from gameplay_agent import GameplayAgent
+from region_types import REGION_WILDERNESS
 from tools import (
     discover_hidden_element,
     enter_location,
@@ -39,7 +40,7 @@ WILDERNESS_TOOLS = [
 class WildernessAgent(GameplayAgent):
     """Gameplay agent for wilderness travel and exploration."""
 
-    _agent_type = "wilderness"
+    _agent_type = REGION_WILDERNESS
 
     def __init__(
         self,

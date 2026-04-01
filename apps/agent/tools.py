@@ -17,6 +17,7 @@ import rules_engine
 from asset_utils import slug_asset_url
 from db_errors import db_tool
 from game_events import publish_game_event
+from region_types import REGION_CITY
 from session_data import CombatParticipant, CombatState, SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -1300,8 +1301,8 @@ async def move_player(
     destination_location = await db.get_location(destination_id)
 
     # Detect region boundary crossing for handoff
-    current_region = current_location.get("region_type", "city")
-    dest_region = destination_location.get("region_type", "city") if destination_location else "city"
+    current_region = current_location.get("region_type", REGION_CITY)
+    dest_region = destination_location.get("region_type", REGION_CITY) if destination_location else REGION_CITY
     region_change = current_region != dest_region
 
     destination_exits = destination_location.get("exits", {}) if destination_location else {}
@@ -1852,7 +1853,7 @@ async def start_combat(
 
     # Record which agent type to return to after combat
     current_agent = context.session.current_agent
-    session.pre_combat_agent_type = getattr(current_agent, "_agent_type", "city")
+    session.pre_combat_agent_type = getattr(current_agent, "_agent_type", REGION_CITY)
 
     # Build CombatAgent with truncated chat context for handoff
     from combat_agent import create_combat_agent
@@ -2169,7 +2170,7 @@ async def end_combat(
     summary_ctx = ChatContext()
     summary_ctx.add_message(role="system", content=" ".join(summary_parts))
 
-    agent_type = session.pre_combat_agent_type or "city"
+    agent_type = session.pre_combat_agent_type or REGION_CITY
     session.pre_combat_agent_type = None
     return create_gameplay_agent(
         agent_type, session.location_id, companion=session.companion, chat_ctx=summary_ctx

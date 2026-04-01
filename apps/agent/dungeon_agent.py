@@ -3,6 +3,7 @@
 from typing import Any
 
 from gameplay_agent import GameplayAgent
+from region_types import REGION_DUNGEON
 from tools import (
     add_to_inventory,
     discover_hidden_element,
@@ -43,7 +44,7 @@ DUNGEON_TOOLS = [
 class DungeonAgent(GameplayAgent):
     """Gameplay agent for dungeon exploration."""
 
-    _agent_type = "dungeon"
+    _agent_type = REGION_DUNGEON
 
     def __init__(
         self,

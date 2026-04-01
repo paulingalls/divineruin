@@ -12,6 +12,7 @@ from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 import db
 from base_agent import _make_tts
+from region_types import REGION_CITY
 from session_data import CompanionState, CreationState, SessionData
 from voices import VOICES
 
@@ -199,7 +200,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
         from gameplay_agent import create_gameplay_agent
 
         location_data = await db.get_location(location_id)
-        region_type = location_data.get("region_type", "city") if location_data else "city"
+        region_type = location_data.get("region_type", REGION_CITY) if location_data else REGION_CITY
         gameplay_agent = create_gameplay_agent(region_type, location_id, companion=userdata.companion)
 
         session = _make_agent_session("claude-haiku-4-5-20251001", userdata)

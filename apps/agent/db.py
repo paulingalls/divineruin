@@ -137,10 +137,12 @@ async def get_location_region_type(location_id: str) -> str:
 
     Falls back to 'city' if the location is not found or has no region_type.
     """
+    from region_types import REGION_CITY
+
     location = await get_location(location_id)
     if location is None:
-        return "city"
-    return location.get("region_type", "city")
+        return REGION_CITY
+    return location.get("region_type", REGION_CITY)
 
 
 async def get_npc(npc_id: str) -> dict | None:
