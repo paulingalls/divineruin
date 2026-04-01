@@ -7,7 +7,7 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def mock_combat_agent_factory():
-    """Prevent real CombatAgent construction in tests.
+    """Prevent real CombatAgent construction via start_combat in tests.
 
     CombatAgent inherits LiveKit Agent lifecycle methods that create
     unawaited coroutines during GC in test contexts. Mocking the factory
