@@ -3,6 +3,7 @@
 from typing import Any
 
 from gameplay_agent import GameplayAgent
+from region_types import REGION_CITY
 from tools import (
     add_to_inventory,
     award_divine_favor,
@@ -61,7 +62,7 @@ CITY_TOOLS = [
 class CityAgent(GameplayAgent):
     """Gameplay agent for settlement/city exploration."""
 
-    _agent_type = "city"
+    _agent_type = REGION_CITY
 
     def __init__(
         self,

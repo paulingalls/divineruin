@@ -4,7 +4,6 @@ Sonnet model, creation-only tools, CREATION_SYSTEM_PROMPT.
 Manages CardTapHandler lifecycle for client card interactions.
 """
 
-import asyncio
 import logging
 
 from base_agent import BaseGameAgent
@@ -33,6 +32,7 @@ class CreationAgent(BaseGameAgent):
             chat_ctx=chat_ctx,
         )
         self._card_tap: CardTapHandler | None = None
+        self._ready = False
 
     async def on_enter(self) -> None:
         await super().on_enter()
@@ -46,9 +46,6 @@ class CreationAgent(BaseGameAgent):
         # Push initial race cards so they're on screen
         await push_cards_to_client("race", sd.room, sd.event_bus)
 
-        # Brief pause for STT drain (skip utterance StopResponse from PrologueAgent)
-        await asyncio.sleep(0.5)
-
         # Trigger opening narration
         self.session.generate_reply(
             instructions=(
@@ -60,6 +57,13 @@ class CreationAgent(BaseGameAgent):
             ),
             tool_choice="none",
         )
+        self._ready = True
+
+    async def on_user_turn_completed(self, turn_ctx, new_message) -> None:
+        if not self._ready:
+            from livekit.agents import StopResponse
+
+            raise StopResponse()
 
     async def on_exit(self) -> None:
         if self._card_tap:

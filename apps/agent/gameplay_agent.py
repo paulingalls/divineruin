@@ -17,6 +17,7 @@ from background_process import BackgroundProcess
 from base_agent import BaseGameAgent
 from game_events import publish_game_event
 from prompts import build_system_prompt, format_affect_context
+from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
 from rules_engine import hp_threshold_status
 from session_data import SessionData
 from session_summary import generate_session_summary
@@ -32,7 +33,7 @@ class GameplayAgent(BaseGameAgent):
     delayed close — is shared.
     """
 
-    _agent_type: str = "city"  # Override in subclasses
+    _agent_type: str = REGION_CITY  # Override in subclasses
 
     def __init__(
         self,
@@ -169,9 +170,9 @@ def create_gameplay_agent(
     from wilderness_agent import WildernessAgent
 
     agents = {
-        "city": CityAgent,
-        "wilderness": WildernessAgent,
-        "dungeon": DungeonAgent,
+        REGION_CITY: CityAgent,
+        REGION_WILDERNESS: WildernessAgent,
+        REGION_DUNGEON: DungeonAgent,
     }
     cls = agents.get(region_type, CityAgent)
     return cls(initial_location=location_id, companion=companion, chat_ctx=chat_ctx)

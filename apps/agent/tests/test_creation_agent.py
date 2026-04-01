@@ -130,6 +130,57 @@ class TestCreationAgentOnEnter:
                 assert call_kwargs["tool_choice"] == "none"
 
 
+class TestCreationAgentReadinessGate:
+    """CreationAgent ignores stale STT turns until ready."""
+
+    def test_not_ready_on_init(self):
+        from creation_agent import CreationAgent
+
+        agent = CreationAgent()
+        assert agent._ready is False
+
+    @pytest.mark.asyncio
+    async def test_rejects_user_turn_before_ready(self):
+        from livekit.agents import StopResponse
+
+        from creation_agent import CreationAgent
+
+        agent = CreationAgent()
+        assert not agent._ready
+
+        with pytest.raises(StopResponse):
+            await agent.on_user_turn_completed(MagicMock(), MagicMock())
+
+    @pytest.mark.asyncio
+    async def test_allows_user_turn_after_ready(self):
+        from creation_agent import CreationAgent
+
+        agent = CreationAgent()
+        agent._ready = True
+
+        # Should not raise StopResponse
+        await agent.on_user_turn_completed(MagicMock(), MagicMock())
+
+    @pytest.mark.asyncio
+    async def test_on_enter_sets_ready(self):
+        from creation_agent import CreationAgent
+
+        agent = CreationAgent()
+        mock_session = MagicMock()
+        mock_sd = SessionData(
+            player_id="test_player",
+            location_id="",
+            room=MagicMock(),
+        )
+        mock_session.userdata = mock_sd
+
+        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
+            with patch("creation_agent.push_cards_to_client", new_callable=AsyncMock):
+                await agent.on_enter()
+
+        assert agent._ready is True
+
+
 class TestCreationAgentOnExit:
     """CreationAgent.on_exit stops CardTapHandler."""
 
