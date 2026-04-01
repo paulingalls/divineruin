@@ -348,6 +348,39 @@ class TestReconnectInstruction:
 # =============================================================================
 
 
+class TestReconnectionSetup:
+    """Test _setup_reconnection registers handlers for any agent type."""
+
+    def test_setup_reconnection_registers_handlers(self):
+        from agent import _setup_reconnection
+
+        room = MagicMock()
+        session = MagicMock()
+        userdata = SessionData(player_id="p1", location_id="loc1")
+        agent = MagicMock()
+        agent._background = None
+
+        _setup_reconnection(room, session, userdata, agent)
+
+        # Should register both participant_disconnected and participant_connected
+        on_calls = [call.args[0] for call in room.on.call_args_list]
+        assert "participant_disconnected" in on_calls
+        assert "participant_connected" in on_calls
+
+    def test_setup_reconnection_works_without_background(self):
+        """Creation/onboarding agents have no background process."""
+        from agent import _setup_reconnection
+
+        room = MagicMock()
+        session = MagicMock()
+        userdata = SessionData(player_id="p1", location_id="loc1")
+        agent = MagicMock()
+        agent._background = None
+
+        # Should not raise
+        _setup_reconnection(room, session, userdata, agent)
+
+
 class TestBackgroundProcessPauseResume:
     """Test pause/resume on BackgroundProcess."""
 

@@ -117,6 +117,56 @@ def _build_reconnect_instruction(sd: SessionData) -> str:
     return " ".join(parts)
 
 
+RECONNECT_GRACE_S = 120  # 2 minutes
+
+
+def _setup_reconnection(
+    room: rtc.Room,
+    session: AgentSession,
+    userdata: SessionData,
+    agent,
+) -> None:
+    """Register disconnect/reconnect handlers for any agent type."""
+    reconnect_task: asyncio.Task | None = None
+    player_id = userdata.player_id
+
+    @room.on("participant_disconnected")
+    def _on_disconnect(participant: rtc.RemoteParticipant):
+        nonlocal reconnect_task
+        if participant.identity != player_id:
+            return
+        userdata.player_disconnected = True
+        userdata.disconnect_time = time.time()
+        bg = getattr(agent, "_background", None)
+        if bg:
+            bg.pause()
+        reconnect_task = asyncio.create_task(_grace_timeout())
+
+    @room.on("participant_connected")
+    def _on_reconnect(participant: rtc.RemoteParticipant):
+        nonlocal reconnect_task
+        if participant.identity != player_id or not userdata.player_disconnected:
+            return
+        userdata.player_disconnected = False
+        if reconnect_task and not reconnect_task.done():
+            reconnect_task.cancel()
+            reconnect_task = None
+        bg = getattr(agent, "_background", None)
+        if bg:
+            bg.resume()
+        fire = getattr(agent, "_fire_and_forget", None)
+        reconnect_reply = session.generate_reply(instructions=_build_reconnect_instruction(userdata))
+        if fire:
+            fire(reconnect_reply)
+        else:
+            _task = asyncio.create_task(reconnect_reply)  # noqa: RUF006
+
+    async def _grace_timeout():
+        await asyncio.sleep(RECONNECT_GRACE_S)
+        logger.info("Reconnect grace period expired for %s", player_id)
+        await session.aclose()
+
+
 @server.rtc_session(agent_name="divineruin-dm")
 async def dm_session(ctx: agents.JobContext) -> None:
     player_id = _extract_player_id(ctx)
@@ -168,7 +218,9 @@ async def dm_session(ctx: agents.JobContext) -> None:
             creation_state=CreationState(),
         )
         session = _make_agent_session("claude-sonnet-4-20250514", userdata)
-        await session.start(room=ctx.room, agent=PrologueAgent())
+        prologue_agent = PrologueAgent()
+        await session.start(room=ctx.room, agent=prologue_agent)
+        _setup_reconnection(ctx.room, session, userdata, prologue_agent)
     else:
         # --- Existing gameplay flow ---
         if last_summary is not None:
@@ -204,10 +256,9 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
             userdata.onboarding_beat = onboarding_beat
             session = _make_agent_session("claude-haiku-4-5-20251001", userdata)
-            await session.start(
-                room=ctx.room,
-                agent=OnboardingAgent(onboarding_beat=onboarding_beat),
-            )
+            onboarding_agent = OnboardingAgent(onboarding_beat=onboarding_beat)
+            await session.start(room=ctx.room, agent=onboarding_agent)
+            _setup_reconnection(ctx.room, session, userdata, onboarding_agent)
             return
 
         # Dispatch correct gameplay agent based on location's region_type
@@ -224,38 +275,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
             agent=gameplay_agent,
         )
 
-        # --- Reconnection handling ---
-        RECONNECT_GRACE_S = 120  # 2 minutes
-        reconnect_task: asyncio.Task | None = None
-
-        @ctx.room.on("participant_disconnected")
-        def _on_disconnect(participant: rtc.RemoteParticipant):
-            nonlocal reconnect_task
-            if participant.identity != player_id:
-                return
-            userdata.player_disconnected = True
-            userdata.disconnect_time = time.time()
-            if gameplay_agent._background:
-                gameplay_agent._background.pause()
-            reconnect_task = asyncio.create_task(_grace_timeout())
-
-        @ctx.room.on("participant_connected")
-        def _on_reconnect(participant: rtc.RemoteParticipant):
-            nonlocal reconnect_task
-            if participant.identity != player_id or not userdata.player_disconnected:
-                return
-            userdata.player_disconnected = False
-            if reconnect_task and not reconnect_task.done():
-                reconnect_task.cancel()
-                reconnect_task = None
-            if gameplay_agent._background:
-                gameplay_agent._background.resume()
-            gameplay_agent._fire_and_forget(session.generate_reply(instructions=_build_reconnect_instruction(userdata)))
-
-        async def _grace_timeout():
-            await asyncio.sleep(RECONNECT_GRACE_S)
-            logger.info("Reconnect grace period expired for %s", player_id)
-            await session.aclose()
+        _setup_reconnection(ctx.room, session, userdata, gameplay_agent)
 
         # --- Initial greeting ---
         if is_first_session:
