@@ -288,4 +288,104 @@ test.describe("Session HUD overlays", () => {
     // Wait for TTL + animation buffer
     await expect(toast).not.toBeVisible({ timeout: 10_000 });
   });
+
+  test("combat_started followed by combat_ui_update shows tracker", async ({
+    sessionPage,
+  }) => {
+    await sessionPage.injectEvent({
+      type: "combat_started",
+      difficulty: "moderate",
+    });
+
+    await sessionPage.injectEvent({
+      type: "combat_ui_update",
+      phase: "initiative",
+      round: 1,
+      combatants: [
+        {
+          id: "player_1",
+          name: "Edrin",
+          isAlly: true,
+          hpCurrent: 28,
+          hpMax: 32,
+          statusEffects: [],
+          isActive: true,
+        },
+        {
+          id: "wolf_1",
+          name: "Shadow Wolf",
+          isAlly: false,
+          hpCurrent: 15,
+          hpMax: 15,
+          statusEffects: [],
+          isActive: false,
+        },
+      ],
+    });
+
+    const tracker = sessionPage.page.getByTestId("combat-tracker");
+    await expect(tracker).toBeVisible({ timeout: 10_000 });
+    await expect(sessionPage.page.getByText("ROUND 1")).toBeVisible();
+    await expect(sessionPage.page.getByText("Shadow Wolf")).toBeVisible();
+
+    await sessionPage.injectEvent({ type: "combat_ended" });
+    await expect(tracker).not.toBeVisible({ timeout: 10_000 });
+  });
+
+  test("creation_card_selected highlights chosen card", async ({
+    sessionPage,
+  }) => {
+    await sessionPage.injectEvent({
+      type: "creation_cards",
+      cards: [
+        {
+          id: "warrior",
+          title: "Warrior",
+          description: "Strength in arms.",
+          category: "class",
+        },
+        {
+          id: "mage",
+          title: "Mage",
+          description: "Power of the arcane.",
+          category: "class",
+        },
+        {
+          id: "rogue",
+          title: "Rogue",
+          description: "Shadows and steel.",
+          category: "class",
+        },
+      ],
+    });
+
+    const row = sessionPage.page.getByTestId("creation-card-row");
+    await expect(row).toBeVisible({ timeout: 10_000 });
+
+    await sessionPage.injectEvent({
+      type: "creation_card_selected",
+      card_id: "warrior",
+    });
+
+    // Selected card and its title remain visible
+    await expect(sessionPage.page.getByText("Warrior")).toBeVisible();
+    await expect(sessionPage.page.getByText("Mage")).toBeVisible();
+    await expect(sessionPage.page.getByText("Rogue")).toBeVisible();
+  });
+
+  test("corruption overlay appears on hollow_corruption_changed", async ({
+    sessionPage,
+  }) => {
+    // At level 0, corruption overlay is not rendered
+    const overlay = sessionPage.page.getByTestId("corruption-overlay");
+    await expect(overlay).not.toBeVisible({ timeout: 5_000 });
+
+    // Set corruption to level 2
+    await sessionPage.injectEvent({
+      type: "hollow_corruption_changed",
+      level: 2,
+    });
+
+    await expect(overlay).toBeVisible({ timeout: 10_000 });
+  });
 });
