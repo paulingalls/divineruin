@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER
 
 from base_agent import BaseGameAgent
 from city_agent import CITY_TOOLS, CityAgent
@@ -24,44 +25,6 @@ from tools import (
     update_quest,
 )
 from wilderness_agent import WILDERNESS_TOOLS
-
-SAMPLE_PLAYER = {
-    "player_id": "player_1",
-    "name": "Arwen",
-    "class": "ranger",
-    "level": 2,
-    "attributes": {
-        "strength": 12,
-        "dexterity": 16,
-        "constitution": 14,
-        "intelligence": 10,
-        "wisdom": 13,
-        "charisma": 8,
-    },
-    "proficiencies": ["stealth", "perception"],
-    "saving_throw_proficiencies": ["strength", "dexterity"],
-    "equipment": {"main_hand": {"name": "Longbow", "damage": "1d8", "damage_type": "piercing", "properties": []}},
-    "hp": {"current": 28, "max": 28},
-    "ac": 15,
-}
-
-SAMPLE_ENCOUNTER = {
-    "id": "wolf_pack",
-    "name": "Wolf Pack",
-    "difficulty": "moderate",
-    "enemies": [
-        {
-            "id": "dire_wolf_1",
-            "name": "Dire Wolf",
-            "level": 2,
-            "ac": 14,
-            "hp": 15,
-            "attributes": {"strength": 16, "dexterity": 14},
-            "action_pool": [{"name": "Bite", "damage": "1d8+3", "damage_type": "piercing", "properties": []}],
-            "xp_value": 100,
-        },
-    ],
-}
 
 
 def _make_context(location_id="greyvale_south_road"):
