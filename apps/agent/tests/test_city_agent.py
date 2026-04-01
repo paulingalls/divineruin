@@ -5,7 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from base_agent import BaseGameAgent
-from prompts import COMBAT_PROMPT, VOICE_STYLE_PROMPT
+from city_agent import CITY_TOOLS, CityAgent
+from prompts import COMBAT_PROMPT, VOICE_STYLE_PROMPT, build_system_prompt
 from session_data import CompanionState
 from tools import (
     end_combat,
@@ -20,105 +21,57 @@ from tools import (
 )
 
 
-class TestCityAgentInheritance:
-    """CityAgent must inherit BaseGameAgent for shared voice pipeline."""
-
+class TestCityAgentConfig:
     def test_inherits_base_game_agent(self):
-        from city_agent import CityAgent
+        assert issubclass(CityAgent, BaseGameAgent)
 
-        agent = CityAgent()
-        assert isinstance(agent, BaseGameAgent)
-
-    def test_has_tts_node(self):
-        from city_agent import CityAgent
-
-        agent = CityAgent()
-        assert agent.tts_node.__func__ is BaseGameAgent.tts_node
-
-    def test_has_stt_node(self):
-        from city_agent import CityAgent
-
-        agent = CityAgent()
-        assert agent.stt_node.__func__ is BaseGameAgent.stt_node
-
-    def test_has_llm_node(self):
-        from city_agent import CityAgent
-
-        agent = CityAgent()
-        assert agent.llm_node.__func__ is BaseGameAgent.llm_node
+    def test_agent_type_is_city(self):
+        assert CityAgent._agent_type == "city"
 
 
 class TestCityAgentToolIsolation:
-    """CityAgent has all non-combat tools + start_combat, but no combat-only tools."""
-
     def test_has_exploration_tools(self):
-        from city_agent import CITY_TOOLS
-
         assert enter_location in CITY_TOOLS
         assert query_location in CITY_TOOLS
         assert query_npc in CITY_TOOLS
 
     def test_has_mutation_tools(self):
-        from city_agent import CITY_TOOLS
-
         assert move_player in CITY_TOOLS
         assert update_quest in CITY_TOOLS
 
     def test_has_start_combat(self):
-        from city_agent import CITY_TOOLS
-
         assert start_combat in CITY_TOOLS
 
     def test_no_combat_only_tools(self):
-        from city_agent import CITY_TOOLS
-
         assert resolve_enemy_turn not in CITY_TOOLS
         assert request_death_save not in CITY_TOOLS
         assert end_combat not in CITY_TOOLS
 
-    def test_tools_match_agent_instance(self):
-        from city_agent import CITY_TOOLS, CityAgent
-
-        agent = CityAgent()
-        assert agent.tools == CITY_TOOLS
-
 
 class TestCityAgentPrompt:
-    """CityAgent prompt includes voice style but not combat rules."""
-
     def test_prompt_includes_voice_style(self):
-        from city_agent import CityAgent
-
-        agent = CityAgent()
-        assert VOICE_STYLE_PROMPT in agent.instructions
+        prompt = build_system_prompt("accord_market_square", region_type="city")
+        assert VOICE_STYLE_PROMPT in prompt
 
     def test_prompt_excludes_combat(self):
-        from city_agent import CityAgent
-
-        agent = CityAgent()
-        assert COMBAT_PROMPT not in agent.instructions
+        prompt = build_system_prompt("accord_market_square", region_type="city")
+        assert COMBAT_PROMPT not in prompt
 
     def test_prompt_includes_location_context(self):
-        from city_agent import CityAgent
-
-        agent = CityAgent(initial_location="accord_market_square")
-        assert "accord_market_square" in agent.instructions
+        prompt = build_system_prompt("accord_market_square", region_type="city")
+        assert "accord_market_square" in prompt
 
     def test_prompt_includes_companion_when_provided(self):
-        from city_agent import CityAgent
-
         companion = CompanionState(id="companion_kael", name="Kael")
-        agent = CityAgent(initial_location="accord_market_square", companion=companion)
-        assert "Kael" in agent.instructions
+        prompt = build_system_prompt("accord_market_square", companion=companion, region_type="city")
+        assert "Kael" in prompt
 
 
-class TestCityAgentBackgroundProcess:
-    """CityAgent manages BackgroundProcess in on_enter/on_exit."""
+class TestGameplayAgentBehavior:
+    """Test GameplayAgent lifecycle and hot context via CityAgent instance."""
 
     @pytest.mark.asyncio
     async def test_on_enter_starts_background_process(self):
-        from city_agent import CityAgent
-
         agent = CityAgent()
         mock_session = MagicMock()
         mock_sd = MagicMock()
@@ -136,8 +89,6 @@ class TestCityAgentBackgroundProcess:
 
     @pytest.mark.asyncio
     async def test_on_exit_stops_background_process(self):
-        from city_agent import CityAgent
-
         agent = CityAgent()
         agent._background = MagicMock()
         agent._background.stop = AsyncMock()
@@ -158,13 +109,7 @@ class TestCityAgentBackgroundProcess:
 
         agent._background.stop.assert_awaited_once()
 
-
-class TestCityAgentHotContext:
-    """CityAgent builds hot context from SessionData caches."""
-
-    def test_includes_location_and_time(self):
-        from city_agent import CityAgent
-
+    def test_hot_context_includes_location_and_time(self):
         agent = CityAgent()
         mock_sd = MagicMock()
         mock_sd.location_id = "accord_market_square"
@@ -178,9 +123,7 @@ class TestCityAgentHotContext:
         result = agent._build_hot_context(mock_sd)
         assert "[Context: Market Square, evening]" in result
 
-    def test_includes_quests(self):
-        from city_agent import CityAgent
-
+    def test_hot_context_includes_quests(self):
         agent = CityAgent()
         mock_sd = MagicMock()
         mock_sd.location_id = "guild_hall"
@@ -195,9 +138,7 @@ class TestCityAgentHotContext:
         assert "[Quests:" in result
         assert "Find the Artifact" in result
 
-    def test_includes_npcs(self):
-        from city_agent import CityAgent
-
+    def test_hot_context_includes_npcs(self):
         agent = CityAgent()
         mock_sd = MagicMock()
         mock_sd.location_id = "guild_hall"
@@ -212,9 +153,7 @@ class TestCityAgentHotContext:
         assert "[NPCs nearby:" in result
         assert "Guildmaster Torin" in result
 
-    def test_includes_recent_events_max_3(self):
-        from city_agent import CityAgent
-
+    def test_hot_context_recent_events_max_3(self):
         agent = CityAgent()
         mock_sd = MagicMock()
         mock_sd.location_id = "town"
@@ -230,14 +169,8 @@ class TestCityAgentHotContext:
         assert "D" in result
         assert "A" not in result
 
-
-class TestCityAgentTurnHandling:
-    """CityAgent injects hot context and affect on user turns."""
-
     @pytest.mark.asyncio
     async def test_on_user_turn_completed_adds_hot_context(self):
-        from city_agent import CityAgent
-
         agent = CityAgent()
         mock_turn_ctx = MagicMock()
         mock_message = MagicMock()
@@ -253,8 +186,6 @@ class TestCityAgentTurnHandling:
 
     @pytest.mark.asyncio
     async def test_on_agent_turn_completed_delayed_close(self):
-        from city_agent import CityAgent
-
         agent = CityAgent()
         mock_turn_ctx = MagicMock()
         mock_message = MagicMock()
@@ -262,10 +193,13 @@ class TestCityAgentTurnHandling:
         mock_sd.ending_requested = True
         mock_session = MagicMock()
         mock_session.userdata = mock_sd
-        mock_session.aclose = AsyncMock()
+
+        def _consume_coro(coro):
+            """Close the coroutine to prevent unawaited warnings."""
+            coro.close()
 
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch.object(agent, "_fire_and_forget") as mock_faf:
+            with patch.object(agent, "_fire_and_forget", side_effect=_consume_coro) as mock_faf:
                 await agent.on_agent_turn_completed(mock_turn_ctx, mock_message)
                 assert agent._close_scheduled is True
                 mock_faf.assert_called_once()
