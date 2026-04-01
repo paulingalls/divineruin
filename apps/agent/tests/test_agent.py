@@ -159,6 +159,30 @@ class TestSessionDataFields:
         assert sd.pre_combat_agent_type == "wilderness"
 
 
+class TestPromptCaching:
+    """Verify LLM is constructed with prompt caching enabled."""
+
+    def test_agent_module_uses_caching(self):
+        """agent.py should pass caching='ephemeral' to anthropic.LLM."""
+        import ast
+        import inspect
+
+        import agent
+
+        source = inspect.getsource(agent)
+        tree = ast.parse(source)
+        # Find the anthropic.LLM(...) call in _make_agent_session
+        found_caching = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and "LLM" in ast.dump(node.func):
+                for kw in node.keywords:
+                    if kw.arg == "caching":
+                        assert isinstance(kw.value, ast.Constant)
+                        assert kw.value.value == "ephemeral"
+                        found_caching = True
+        assert found_caching, "anthropic.LLM() call missing caching='ephemeral'"
+
+
 class TestExtractPlayerId:
     """Test _extract_player_id metadata parsing and env-based fallback."""
 

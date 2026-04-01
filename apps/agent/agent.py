@@ -14,6 +14,7 @@ import db
 from base_agent import _make_tts
 from region_types import REGION_CITY
 from session_data import CompanionState, CreationState, SessionData
+from token_tracker import TokenTracker
 from voices import VOICES
 
 logging.basicConfig(level=logging.INFO)
@@ -187,7 +188,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
     def _make_agent_session(model: str, userdata: SessionData) -> AgentSession:
         session = AgentSession(
             stt=deepgram.STT(model="nova-3", language="en"),
-            llm=anthropic.LLM(model=model, temperature=0.8),
+            llm=anthropic.LLM(model=model, temperature=0.8, caching="ephemeral"),
             tts=_make_tts(),
             vad=silero.VAD.load(min_silence_duration=0.5),
             turn_handling={
@@ -202,6 +203,9 @@ async def dm_session(ctx: agents.JobContext) -> None:
         def _on_agent_state(ev):
             if ev.old_state == "speaking" and ev.new_state == "listening":
                 userdata.last_agent_speech_end = time.time()
+
+        tracker = TokenTracker()
+        session.on("metrics_collected", tracker.on_metrics)
 
         return session
 
