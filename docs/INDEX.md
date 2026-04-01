@@ -168,7 +168,7 @@ Game mechanics implementation milestones. See `milestones/README.md` for depende
 
 | File | Phase | Milestones |
 |---|---|---|
-| `00_doc_updates.md` | Doc fixes | 1 — currency notation, economy anchor |
+| `00_doc_updates.md` | Doc fixes | 4 — CLAUDE.md overhaul, INDEX.md indexes, economy fixes, cross-references |
 | `01_core_systems.md` | Core | 6 — attributes, skills, resources, leveling, training, errands |
 | `02_archetypes.md` | Archetypes | 5 — chassis, abilities, specialization, spells, mentors |
 | `03_magic.md` | Magic | 4 — resonance, hollow echo, spell catalog, concentration |
