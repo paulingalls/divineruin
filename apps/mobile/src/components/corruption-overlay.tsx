@@ -64,7 +64,7 @@ function CorruptionOverlayInner({ stage }: { stage: number }) {
   const noiseStyle = useAnimatedStyle(() => ({ opacity: noiseOpacity.value }));
 
   return (
-    <View style={styles.container} pointerEvents="none">
+    <View testID="corruption-overlay" style={styles.container} pointerEvents="none">
       {/* Teal tint */}
       <Animated.View style={[styles.tealTint, tealStyle]} />
 

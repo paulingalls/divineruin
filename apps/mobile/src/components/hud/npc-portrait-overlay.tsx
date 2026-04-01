@@ -14,6 +14,7 @@ export function NpcPortraitOverlay() {
 
   return (
     <Animated.View
+      testID="npc-portrait-overlay"
       entering={FadeIn.duration(200)}
       exiting={FadeOut.duration(300)}
       style={styles.container}

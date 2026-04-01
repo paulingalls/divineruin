@@ -62,7 +62,7 @@ export default function SessionSummaryScreen() {
   const locationArt = summary.lastLocationId ? resolveLocationArt(summary.lastLocationId) : null;
 
   return (
-    <View style={styles.container}>
+    <View testID="session-summary-screen" style={styles.container}>
       {locationArt !== null && (
         <>
           <Image

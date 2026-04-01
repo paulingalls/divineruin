@@ -92,7 +92,7 @@ export function TranscriptView() {
   );
 
   return (
-    <View style={styles.container}>
+    <View testID="transcript-view" style={styles.container}>
       <FlatList
         ref={listRef}
         data={entries}

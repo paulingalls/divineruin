@@ -7,6 +7,8 @@
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { useStore } from "zustand";
 
 import { TopBar } from "@/components/hud/top-bar";
 import { PersistentBar } from "@/components/hud/persistent-bar";
@@ -25,6 +27,9 @@ import { portraitStore } from "@/stores/portrait-store";
 import { BrandColors, Spacing } from "@/constants/theme";
 
 export default function SessionTestScreen() {
+  const router = useRouter();
+  const phase = useStore(sessionStore, (s) => s.phase);
+
   // Expose handleGameEvent and helpers for Playwright injection; cleanup on unmount
   useEffect(() => {
     window.__DR = {
@@ -34,7 +39,8 @@ export default function SessionTestScreen() {
     };
     return () => {
       delete window.__DR;
-      sessionStore.getState().reset();
+      // Don't reset sessionStore here — session-summary reads sessionSummary
+      // from the store on mount and handles its own cleanup.
       characterStore.getState().clear();
       transcriptStore.getState().clear();
       hudStore.getState().reset();
@@ -42,6 +48,13 @@ export default function SessionTestScreen() {
       portraitStore.getState().reset();
     };
   }, []);
+
+  // Navigate to summary screen when session ends (mirrors session.tsx)
+  useEffect(() => {
+    if (phase === "summary") {
+      router.replace("/session-summary");
+    }
+  }, [phase, router]);
 
   if (!__DEV__) return null;
 
