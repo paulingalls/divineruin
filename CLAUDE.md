@@ -6,33 +6,22 @@ Audio-first AI tabletop RPG. Players speak to an AI Dungeon Master via voice —
 
 ## Knowledge System
 
-**Three tiers of progressive disclosure. Start with memory digests, drill into docs only when needed.**
+**Two tiers. Use INDEX.md to navigate, read specific sections — not whole files.**
 
-### Tier 1 — Memory Digests (read these first)
-
-Pre-extracted specs in `memory/` — compact, implementation-ready.
-
-| Digest | Covers |
-|---|---|
-| `memory/game-mechanics.md` | d20 resolution, skills, combat phases, classes, status effects, death, economy, PvP |
-| `memory/dm-agent-spec.md` | Three layers, tools, prompt architecture, ventriloquism, behavioral modes, affect system |
-| `memory/world-simulation.md` | World clock, 4 sim layers, corruption formula, disposition decay, data layer |
-| `memory/entity-schemas.md` | Location, NPC, item, quest, event, faction JSON schemas. Content tiers. |
-| `memory/audio-pipeline.md` | Voice pipeline, 4 audio channels, ducking, ventriloquism, Hollow audio, music |
-| `memory/client-ui-spec.md` | Expo screens, HUD layers, performance targets, brand tokens, art style |
-| `memory/mvp-scope.md` | Scope boundaries, Greyvale arc, success criteria, milestone order |
-| `memory/cost-constraints.md` | Session costs, margins, token estimates, optimization paths |
-| `memory/lore-quick-ref.md` | Core mystery, 10 gods, races, cultures, Hollow taxonomy, geography |
-
-### Tier 2 — Doc Section Index
+### Tier 1 — Doc Section Index
 
 `docs/INDEX.md` has line-range indexes for every doc. Use it to jump to specific sections.
 
-### Tier 3 — Full Docs (docs/)
+### Tier 2 — Full Docs (docs/)
 
-Read specific sections via INDEX.md, not whole files. For task-to-doc mapping, see `memory/doc-navigator.md`.
+Read specific sections via INDEX.md, not whole files.
 
-Key docs: `product_overview.md`, `game_design_doc.md` (1499 lines), `technical_architecture.md` (1499+ lines), `audio_design.md`, `world_data_simulation.md`, `mvp_spec.md`, `aethos_lore.md`, `cost_model.md`, `milestones/README.md` (10 phase files), `player_resonance_system.md`, `brand_spec.md`, `image_prompt_library.md`
+| Category | Docs |
+|---|---|
+| **Game Mechanics** (canonical specs) | `game_mechanics/game_mechanics_core.md` (1103 lines), `game_mechanics/game_mechanics_combat.md` (1060), `game_mechanics/game_mechanics_archetypes.md` (1224), `game_mechanics/game_mechanics_magic.md` (542), `game_mechanics/game_mechanics_crafting.md` (587), `game_mechanics/game_mechanics_npcs.md` (885), `game_mechanics/game_mechanics_bestiary.md` (1234), `game_mechanics/game_mechanics_patrons.md` (366), `game_mechanics/game_mechanics_decisions.md` (186), `game_mechanics/economy_reconciliation.md` (250) |
+| **Design & Architecture** | `product_overview.md` (254), `game_design_doc.md` (1514), `technical_architecture.md` (1732), `audio_design.md` (718), `world_data_simulation.md` (948), `player_resonance_system.md` (569) |
+| **Content & Lore** | `mvp_spec.md` (968), `aethos_lore.md` (1750), `brand_spec.md` (249), `image_prompt_library.md` (379) |
+| **Project** | `milestones/README.md` (10 phase files), `cost_model.md` (276), `agent_handoffs_and_scenes.md` |
 
 ## Architecture
 
@@ -110,7 +99,7 @@ Apply XP values in all work:
 2. **Background Process:** Async coroutine. Monitors world events, updates warm prompt layer, injects proactive events.
 3. **Toolset:** `@function_tool` functions — world queries (read), dice/mechanics (deterministic), state mutation (enforced rules), client effects (UI events).
 
-**Ventriloquism:** One agent voices all characters. Tag format: `[CHARACTER_NAME, emotion_hint]: "dialogue"`. Untagged = narrator. See `memory/dm-agent-spec.md` for tool pattern and details.
+**Ventriloquism:** One agent voices all characters. Tag format: `[CHARACTER_NAME, emotion_hint]: "dialogue"`. Untagged = narrator. See `technical_architecture.md` — DM Agent Architecture section for tool pattern and details.
 
 ## Content Rules
 
