@@ -5,8 +5,14 @@ All resolution functions accept an optional `rng` for deterministic testing.
 
 import random
 from dataclasses import dataclass
+from typing import Literal
 
 from dice import roll as dice_roll
+
+# --- Type aliases ---
+
+SkillTier = Literal["untrained", "trained", "expert", "master"]
+DcTier = Literal["trivial", "easy", "moderate", "hard", "very_hard", "extreme", "legendary"]
 
 # --- Constants ---
 
@@ -291,7 +297,7 @@ def attribute_modifier(score: int) -> int:
     return (score - 10) // 2
 
 
-def _get_skill_tier(player_data: dict, skill_lower: str) -> str:
+def _get_skill_tier(player_data: dict, skill_lower: str) -> SkillTier:
     """Get the skill tier for a character, with fallback to proficiencies list."""
     skill_tiers = player_data.get("skill_tiers", {})
     if skill_lower in skill_tiers:
@@ -324,8 +330,12 @@ def skill_modifier(player_data: dict, skill: str) -> int:
     return mod
 
 
-def dc_for_tier(tier: str) -> int:
-    return DC_TIERS.get(tier.lower(), DC_TIERS["moderate"])
+def dc_for_tier(tier: DcTier | str) -> int:
+    """Look up DC value for a difficulty tier. Raises ValueError on unknown tiers."""
+    normalized = tier.lower()
+    if normalized not in DC_TIERS:
+        raise ValueError(f"Unknown difficulty tier: '{tier}'. Valid: {sorted(set(DC_TIERS.keys()) - {'deadly'})}")
+    return DC_TIERS[normalized]
 
 
 def narrative_hint(roll: int, total: int, dc: int) -> str:
@@ -347,7 +357,7 @@ def narrative_hint(roll: int, total: int, dc: int) -> str:
 
 
 def record_skill_use(
-    skill_tiers: dict[str, str],
+    skill_tiers: dict[str, SkillTier],
     skill: str,
     use_counters: dict[str, int],
     narrative_moment: bool = False,
@@ -399,7 +409,7 @@ def record_skill_use(
     )
 
 
-def check_skill_capabilities(skill: str, tier: str) -> SkillCapabilities:
+def check_skill_capabilities(skill: str, tier: SkillTier) -> SkillCapabilities:
     """Return available capabilities for a skill at the given tier. Pure function."""
     skill_lower = skill.lower()
     if skill_lower not in SKILLS:
@@ -423,7 +433,7 @@ _EXPERT_RANK = _TIER_RANK["expert"]
 _MASTER_RANK = _TIER_RANK["master"]
 
 
-def _check_auto_fail(dc: int, skill_tier: str) -> bool:
+def _check_auto_fail(dc: int, skill_tier: SkillTier) -> bool:
     """Return True if the DC is beyond the character's tier gate."""
     rank = _TIER_RANK[skill_tier]
     if dc >= 28 and rank < _MASTER_RANK:
@@ -434,7 +444,7 @@ def _check_auto_fail(dc: int, skill_tier: str) -> bool:
 def resolve_check(
     attribute_score: int,
     level: int,
-    skill_tier: str,
+    skill_tier: SkillTier,
     dc: int,
     *,
     rng: random.Random | None = None,

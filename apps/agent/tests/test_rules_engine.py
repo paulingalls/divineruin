@@ -14,7 +14,9 @@ from rules_engine import (
     XP_FOR_LEVEL,
     AdvancementResult,
     CheckResult,
+    DcTier,
     SkillCapabilities,
+    SkillTier,
     attack_modifier,
     attribute_modifier,
     calculate_combat_xp,
@@ -189,8 +191,9 @@ class TestDcForTier:
     def test_deadly_alias(self):
         assert dc_for_tier("deadly") == 24
 
-    def test_unknown_defaults_moderate(self):
-        assert dc_for_tier("impossible") == 12
+    def test_unknown_raises_value_error(self):
+        with pytest.raises(ValueError, match="Unknown difficulty tier"):
+            dc_for_tier("impossible")
 
     def test_case_insensitive(self):
         assert dc_for_tier("HARD") == 16
@@ -198,6 +201,19 @@ class TestDcForTier:
 
     def test_dc_tiers_dict_has_all_entries(self):
         assert len(DC_TIERS) == 8  # 7 canonical + 1 deprecated alias
+
+
+# --- type aliases ---
+
+
+class TestTypeAliases:
+    def test_dc_tier_type_exists(self):
+        # DcTier should be a Literal type alias importable from rules_engine
+        assert DcTier is not None
+
+    def test_skill_tier_type_exists(self):
+        # SkillTier should be a Literal type alias importable from rules_engine
+        assert SkillTier is not None
 
 
 # --- proficiency_bonus ---
