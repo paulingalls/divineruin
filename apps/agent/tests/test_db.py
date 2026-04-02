@@ -848,3 +848,60 @@ class TestGetScenesBatch:
     async def test_empty_ids_returns_empty(self):
         result = await db.get_scenes_batch([])
         assert result == {}
+
+
+class TestSkillAdvancement:
+    @pytest.mark.asyncio
+    async def test_get_skill_advancement_returns_dict(self):
+        mock_pool = AsyncMock()
+        mock_pool.fetch = AsyncMock(
+            return_value=[
+                {"skill_id": "athletics", "tier": "trained", "use_counter": 12, "narrative_moment_ready": False},
+                {"skill_id": "stealth", "tier": "untrained", "use_counter": 3, "narrative_moment_ready": False},
+            ]
+        )
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            result = await db.get_skill_advancement("p1")
+        assert result["athletics"]["tier"] == "trained"
+        assert result["athletics"]["use_counter"] == 12
+        assert result["stealth"]["use_counter"] == 3
+
+    @pytest.mark.asyncio
+    async def test_get_skill_advancement_empty(self):
+        mock_pool = AsyncMock()
+        mock_pool.fetch = AsyncMock(return_value=[])
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            result = await db.get_skill_advancement("p1")
+        assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_update_skill_advancement_upserts(self):
+        mock_pool = AsyncMock()
+        mock_pool.execute = AsyncMock()
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            await db.update_skill_advancement("p1", "athletics", "trained", 12)
+        call_args = mock_pool.execute.call_args[0]
+        assert "ON CONFLICT" in call_args[0]
+        assert call_args[1] == "p1"
+        assert call_args[2] == "athletics"
+        assert call_args[3] == "trained"
+        assert call_args[4] == 12
+
+    @pytest.mark.asyncio
+    async def test_mark_narrative_moment_sets_flag(self):
+        mock_pool = AsyncMock()
+        mock_pool.execute = AsyncMock()
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            await db.mark_narrative_moment("p1", "athletics")
+        call_args = mock_pool.execute.call_args[0]
+        assert "narrative_moment_ready" in call_args[0]
+        assert "TRUE" in call_args[0]
+
+    @pytest.mark.asyncio
+    async def test_clear_narrative_moment_clears_flag(self):
+        mock_pool = AsyncMock()
+        mock_pool.execute = AsyncMock()
+        with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
+            await db.clear_narrative_moment("p1", "athletics")
+        call_args = mock_pool.execute.call_args[0]
+        assert "FALSE" in call_args[0]

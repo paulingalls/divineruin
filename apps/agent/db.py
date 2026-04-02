@@ -384,6 +384,84 @@ async def update_player_xp(
     )
 
 
+async def get_skill_advancement(
+    player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> dict[str, dict]:
+    """Fetch all skill advancement data for a player.
+
+    Returns dict keyed by skill_id: {"tier": str, "use_counter": int, "narrative_moment_ready": bool}
+    """
+    _conn = conn or await get_pool()
+    rows = await _conn.fetch(
+        "SELECT skill_id, tier, use_counter, narrative_moment_ready FROM skill_advancement WHERE player_id = $1",
+        player_id,
+    )
+    return {
+        row["skill_id"]: {
+            "tier": row["tier"],
+            "use_counter": row["use_counter"],
+            "narrative_moment_ready": row["narrative_moment_ready"],
+        }
+        for row in rows
+    }
+
+
+async def update_skill_advancement(
+    player_id: str,
+    skill: str,
+    tier: str,
+    use_counter: int,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> None:
+    """Upsert skill advancement record."""
+    _conn = conn or await get_pool()
+    await _conn.execute(
+        """
+        INSERT INTO skill_advancement (player_id, skill_id, tier, use_counter, updated_at)
+        VALUES ($1, $2, $3, $4, NOW())
+        ON CONFLICT (player_id, skill_id)
+        DO UPDATE SET tier = $3, use_counter = $4, updated_at = NOW()
+        """,
+        player_id,
+        skill,
+        tier,
+        use_counter,
+    )
+
+
+async def mark_narrative_moment(
+    player_id: str, skill: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    """Set narrative_moment_ready flag for Expert→Master advancement."""
+    _conn = conn or await get_pool()
+    await _conn.execute(
+        """
+        INSERT INTO skill_advancement (player_id, skill_id, narrative_moment_ready, updated_at)
+        VALUES ($1, $2, TRUE, NOW())
+        ON CONFLICT (player_id, skill_id)
+        DO UPDATE SET narrative_moment_ready = TRUE, updated_at = NOW()
+        """,
+        player_id,
+        skill,
+    )
+
+
+async def clear_narrative_moment(
+    player_id: str, skill: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    """Clear narrative_moment_ready flag after Expert→Master advancement."""
+    _conn = conn or await get_pool()
+    await _conn.execute(
+        """
+        UPDATE skill_advancement SET narrative_moment_ready = FALSE, updated_at = NOW()
+        WHERE player_id = $1 AND skill_id = $2
+        """,
+        player_id,
+        skill,
+    )
+
+
 async def add_inventory_item(
     player_id: str, item_id: str, quantity: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> None:
