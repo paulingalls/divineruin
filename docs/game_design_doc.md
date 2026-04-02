@@ -1047,7 +1047,7 @@ A single primary currency keeps things simple: **silver pieces (sp).** The denom
 
 - **Copper pieces (cp)** — 10 cp = 1 sp. Pocket change. A meal, a drink, a night at a cheap inn.
 - **Silver pieces (sp)** — The baseline. A good weapon, a day's skilled labor, a useful potion.
-- **Gold crowns (gc)** — 1 gc = 100 sp. Significant wealth. Property, rare items, major services.
+- **Gold crowns (gc)** — 1 gc = 10 sp. Significant wealth. Property, rare items, major services. Economic anchor: 1 sp = 1 day's unskilled labor (see `game_mechanics/economy_reconciliation.md`).
 
 The player doesn't need to track currency precisely. The DM narrates financial state naturally: "You've got enough coin for supplies and a comfortable room" or "That enchantment would cost more than everything in your pack." The exact numbers live on the character sheet for players who want them.
 
