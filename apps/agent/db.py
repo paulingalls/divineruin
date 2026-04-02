@@ -406,6 +406,25 @@ async def get_skill_advancement(
     }
 
 
+async def get_single_skill_advancement(
+    player_id: str, skill: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> dict:
+    """Fetch advancement data for a single skill. Returns {tier, use_counter, narrative_moment_ready} or defaults."""
+    _conn = conn or await get_pool()
+    row = await _conn.fetchrow(
+        "SELECT tier, use_counter, narrative_moment_ready FROM skill_advancement WHERE player_id = $1 AND skill_id = $2",
+        player_id,
+        skill,
+    )
+    if row is None:
+        return {"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False}
+    return {
+        "tier": row["tier"],
+        "use_counter": row["use_counter"],
+        "narrative_moment_ready": row["narrative_moment_ready"],
+    }
+
+
 async def update_skill_advancement(
     player_id: str,
     skill: str,

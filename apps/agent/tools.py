@@ -535,6 +535,28 @@ async def request_skill_check(
         event_bus=session.event_bus,
     )
 
+    # Track skill use for tier advancement
+    skill_lower = skill.lower()
+    skill_adv = await db.get_single_skill_advancement(session.player_id, skill_lower)
+
+    adv = rules_engine.record_skill_use(
+        {skill_lower: skill_adv["tier"]},
+        skill_lower,
+        {skill_lower: skill_adv["use_counter"]},
+        narrative_moment=skill_adv["narrative_moment_ready"],
+    )
+    await db.update_skill_advancement(session.player_id, adv.skill, adv.new_tier, adv.new_use_count)
+
+    if adv.advanced:
+        if adv.old_tier == "expert":
+            await db.clear_narrative_moment(session.player_id, adv.skill)
+        await publish_game_event(
+            session.room,
+            E.SKILL_TIER_ADVANCED,
+            {"skill": adv.skill, "old_tier": adv.old_tier, "new_tier": adv.new_tier},
+            event_bus=session.event_bus,
+        )
+
     outcome = "success" if result.success else "failure"
     session.record_event(f"Skill check ({skill}, {difficulty}): {outcome}")
 
@@ -549,6 +571,12 @@ async def request_skill_check(
         "narrative_hint": result.narrative_hint,
         "context": context_description,
     }
+    if adv.advanced:
+        response["advancement"] = {
+            "old_tier": adv.old_tier,
+            "new_tier": adv.new_tier,
+            "narrative_cue": adv.narrative_cue,
+        }
     logger.info(
         "request_skill_check result: d20=%d+%d=%d vs DC %d → %s (%s)",
         result.roll,
@@ -559,6 +587,27 @@ async def request_skill_check(
         result.narrative_hint,
     )
     return json.dumps(response)
+
+
+@function_tool()
+@db_tool
+async def mark_skill_breakthrough(
+    context: RunContext[SessionData],
+    skill: str,
+) -> str:
+    """Mark that the current player has achieved a narrative breakthrough
+    moment for the specified skill. This enables Expert→Master advancement
+    once the use counter threshold (40) is reached. Use when the player
+    performs exceptionally on a skill during a high-stakes moment."""
+    session: SessionData = context.userdata
+    skill_lower = skill.lower()
+
+    if skill_lower not in VALID_SKILLS:
+        return json.dumps({"error": f"Unknown skill: '{skill}'. Valid: {sorted(VALID_SKILLS)}"})
+
+    await db.mark_narrative_moment(session.player_id, skill_lower)
+    logger.info("mark_skill_breakthrough: player=%s, skill=%s", session.player_id, skill_lower)
+    return json.dumps({"status": "ok", "skill": skill_lower, "narrative_moment_ready": True})
 
 
 @function_tool()

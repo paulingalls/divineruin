@@ -8,6 +8,7 @@ import pytest
 import event_types as E
 from session_data import SessionData
 from tools import (
+    mark_skill_breakthrough,
     play_sound,
     request_attack,
     request_saving_throw,
@@ -68,8 +69,14 @@ def _make_mock_room():
 
 class TestRequestSkillCheck:
     @pytest.mark.asyncio
+    @patch("tools.db.update_skill_advancement", new_callable=AsyncMock)
+    @patch(
+        "tools.db.get_single_skill_advancement",
+        new_callable=AsyncMock,
+        return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False},
+    )
     @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_returns_result(self, mock_get_player):
+    async def test_returns_result(self, mock_get_player, _mock_get_adv, _mock_update_adv):
         mock_get_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
         result = json.loads(
@@ -107,18 +114,56 @@ class TestRequestSkillCheck:
         assert "error" in result
 
     @pytest.mark.asyncio
+    @patch("tools.db.update_skill_advancement", new_callable=AsyncMock)
+    @patch(
+        "tools.db.get_single_skill_advancement",
+        new_callable=AsyncMock,
+        return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False},
+    )
     @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_publishes_event(self, mock_get_player):
+    async def test_publishes_event(self, mock_get_player, _mock_get_adv, _mock_update_adv):
         mock_get_player.return_value = SAMPLE_PLAYER
         room = _make_mock_room()
         ctx = _make_context(room=room)
         await request_skill_check._func(
             ctx, skill="stealth", difficulty="hard", context_description="sneaking past guard"
         )
-        room.local_participant.publish_data.assert_called_once()
-        call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
+        room.local_participant.publish_data.assert_called()
+        call_data = json.loads(room.local_participant.publish_data.call_args_list[0][0][0])
         assert call_data["type"] == E.DICE_ROLL
         assert call_data["roll_type"] == "skill_check"
+
+    @pytest.mark.asyncio
+    @patch("tools.db.update_skill_advancement", new_callable=AsyncMock)
+    @patch(
+        "tools.db.get_single_skill_advancement",
+        new_callable=AsyncMock,
+        return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False},
+    )
+    @patch("tools.db.get_player", new_callable=AsyncMock)
+    async def test_records_skill_use(self, mock_get_player, _mock_get_adv, mock_update_adv):
+        mock_get_player.return_value = SAMPLE_PLAYER
+        ctx = _make_context()
+        await request_skill_check._func(ctx, skill="athletics", difficulty="moderate", context_description="climbing")
+        mock_update_adv.assert_awaited_once()
+        call_args = mock_update_adv.call_args[0]
+        assert call_args[0] == "player_1"
+        assert call_args[1] == "athletics"
+
+    @pytest.mark.asyncio
+    @patch("tools.db.mark_narrative_moment", new_callable=AsyncMock)
+    async def test_mark_skill_breakthrough_sets_flag(self, mock_mark):
+        ctx = _make_context()
+        result = json.loads(await mark_skill_breakthrough._func(ctx, skill="athletics"))
+        assert result["status"] == "ok"
+        assert result["skill"] == "athletics"
+        mock_mark.assert_awaited_once_with("player_1", "athletics")
+
+    @pytest.mark.asyncio
+    async def test_mark_skill_breakthrough_invalid_skill(self):
+        ctx = _make_context()
+        result = json.loads(await mark_skill_breakthrough._func(ctx, skill="flying"))
+        assert "error" in result
 
 
 # --- request_attack ---
