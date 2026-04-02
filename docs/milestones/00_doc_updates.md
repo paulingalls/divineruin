@@ -20,10 +20,10 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 - Verify all file paths referenced in CLAUDE.md actually exist
 
 **Acceptance criteria:**
-- [ ] Every file path referenced in CLAUDE.md exists on disk
-- [ ] `game_mechanics/` docs are listed in the Key docs or Knowledge System section
-- [ ] No phantom references to non-existent memory digest files
-- [ ] Knowledge System tiers accurately reflect the doc hierarchy: CLAUDE.md → INDEX.md → docs/ and game_mechanics/
+- [x] Every file path referenced in CLAUDE.md exists on disk
+- [x] `game_mechanics/` docs are listed in the Key docs or Knowledge System section
+- [x] No phantom references to non-existent memory digest files
+- [x] Knowledge System tiers accurately reflect the doc hierarchy: CLAUDE.md → INDEX.md → docs/ and game_mechanics/
 
 **Key references:**
 - *Current CLAUDE.md — Knowledge System section (lines 8-35)*
@@ -43,10 +43,10 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 - Add `agent_handoffs_and_scenes.md` to INDEX.md if not already present
 
 **Acceptance criteria:**
-- [ ] All 10 game mechanics docs have section indexes in INDEX.md
-- [ ] Each index entry has accurate line ranges (verified against actual file content)
-- [ ] Index entries follow the existing format: `## filename.md (~N lines)` with description and table
-- [ ] `agent_handoffs_and_scenes.md` is indexed
+- [x] All 10 game mechanics docs have section indexes in INDEX.md
+- [x] Each index entry has accurate line ranges (verified against actual file content)
+- [x] Index entries follow the existing format: `## filename.md (~N lines)` with description and table
+- [x] `agent_handoffs_and_scenes.md` is indexed
 
 **Key references:**
 - *Existing INDEX.md format (any existing entry as template)*
@@ -67,11 +67,11 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 - Add canonical price reference table to the GDD economy section or as a standalone reference
 
 **Acceptance criteria:**
-- [ ] Zero instances of "gp" remain across all docs — all replaced with "gc"
-- [ ] GDD economy section states 1 gc = 10 sp
-- [ ] Economic anchor (1 sp = 1 day unskilled labor) is stated in the GDD
-- [ ] Canonical price reference table exists with at least 14 item categories
-- [ ] No contradictory currency ratios remain across docs
+- [x] Zero instances of "gp" remain across all docs — all replaced with "gc"
+- [x] GDD economy section states 1 gc = 10 sp
+- [x] Economic anchor (1 sp = 1 day unskilled labor) is stated in the GDD
+- [x] Canonical price reference table exists with at least 14 item categories
+- [x] No contradictory currency ratios remain across docs
 
 **Key references:**
 - *Economy Reconciliation Doc — Currency Notation Fixes*
@@ -94,16 +94,16 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 - Format: brief note at the top of each section, e.g., "> For detailed mechanics, see `game_mechanics/game_mechanics_combat.md`"
 
 **Acceptance criteria:**
-- [ ] GDD Game Mechanics section references `game_mechanics_core.md`
-- [ ] GDD Combat section references `game_mechanics_combat.md`
-- [ ] GDD NPC section references `game_mechanics_npcs.md`
-- [ ] GDD Async section references `game_mechanics_crafting.md` and `game_mechanics_core.md` (training)
-- [ ] GDD Economy section references `economy_reconciliation.md`
-- [ ] GDD Death section references `game_mechanics_combat.md` (death system)
-- [ ] Technical architecture Game Engine section references `game_mechanics/`
-- [ ] World data NPC/content schemas reference `game_mechanics_npcs.md` and `game_mechanics_bestiary.md`
-- [ ] Cross-references use consistent format across all docs
-- [ ] No existing content is deleted — only cross-reference notes added
+- [x] GDD Game Mechanics section references `game_mechanics_core.md`
+- [x] GDD Combat section references `game_mechanics_combat.md`
+- [x] GDD NPC section references `game_mechanics_npcs.md`
+- [x] GDD Async section references `game_mechanics_crafting.md` and `game_mechanics_core.md` (training)
+- [x] GDD Economy section references `economy_reconciliation.md`
+- [x] GDD Death section references `game_mechanics_combat.md` (death system)
+- [x] Technical architecture Game Engine section references `game_mechanics/`
+- [x] World data NPC/content schemas reference `game_mechanics_npcs.md` and `game_mechanics_bestiary.md`
+- [x] Cross-references use consistent format across all docs
+- [x] No existing content is deleted — only cross-reference notes added
 
 **Key references:**
 - *Game Design Doc — all mechanical sections*
