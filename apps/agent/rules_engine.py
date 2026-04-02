@@ -10,53 +10,63 @@ from dice import roll as dice_roll
 
 # --- Constants ---
 
-SKILLS: dict[str, str] = {
+SKILLS: dict[str, str | tuple[str, ...]] = {
+    # Physical
     "athletics": "strength",
     "acrobatics": "dexterity",
     "sleight_of_hand": "dexterity",
     "stealth": "dexterity",
+    "endurance": "constitution",
+    # Mental
     "arcana": "intelligence",
     "history": "intelligence",
     "investigation": "intelligence",
     "nature": "intelligence",
     "religion": "intelligence",
-    "animal_handling": "wisdom",
-    "insight": "wisdom",
+    "crafting": ("intelligence", "wisdom"),
     "medicine": "wisdom",
     "perception": "wisdom",
     "survival": "wisdom",
+    "insight": "wisdom",
+    "animal_handling": "wisdom",
+    # Social
     "persuasion": "charisma",
+    "deception": "charisma",
+    "intimidation": "charisma",
+    "performance": "charisma",
 }
 
 DC_TIERS: dict[str, int] = {
-    "easy": 9,
-    "moderate": 13,
-    "hard": 17,
-    "deadly": 21,
+    "trivial": 5,
+    "easy": 8,
+    "moderate": 12,
+    "hard": 16,
+    "very_hard": 20,
+    "extreme": 24,
+    "legendary": 28,
+    "deadly": 24,  # deprecated alias → extreme
 }
 
-PROFICIENCY_BY_LEVEL: dict[int, int] = {
-    1: 2,
-    2: 2,
-    3: 2,
-    4: 2,
-    5: 3,
-    6: 3,
-    7: 3,
-    8: 3,
-    9: 4,
-    10: 4,
-    11: 4,
-    12: 4,
-    13: 5,
-    14: 5,
-    15: 5,
-    16: 5,
-    17: 6,
-    18: 6,
-    19: 6,
-    20: 6,
+SKILL_TIER_BONUS: dict[str, int] = {
+    "untrained": 0,
+    "trained": 2,
+    "expert": 4,
+    "master": 5,
 }
+
+SKILL_TIER_ORDER: list[str] = ["untrained", "trained", "expert", "master"]
+
+
+def proficiency_bonus(level: int) -> int:
+    """Bounded proficiency scale: +1 (L1-6), +2 (L7-13), +3 (L14-20)."""
+    if level <= 6:
+        return 1
+    if level <= 13:
+        return 2
+    return 3
+
+
+PROFICIENCY_BY_LEVEL: dict[int, int] = {lvl: proficiency_bonus(lvl) for lvl in range(1, 21)}
 
 XP_FOR_LEVEL: dict[int, int] = {
     1: 0,
@@ -171,9 +181,9 @@ def skill_modifier(player_data: dict, skill: str) -> int:
     mod = attribute_modifier(score)
 
     proficiencies = player_data.get("proficiencies", [])
-    if skill_lower in [p.lower() for p in proficiencies]:
+    if any(p.lower() == skill_lower for p in proficiencies):
         level = player_data.get("level", 1)
-        mod += PROFICIENCY_BY_LEVEL.get(level, 2)
+        mod += PROFICIENCY_BY_LEVEL.get(level, 1)
 
     return mod
 
@@ -214,7 +224,7 @@ def attack_modifier(player_data: dict, weapon: dict) -> int:
         attr_mod = attribute_modifier(attributes.get("strength", 10))
 
     level = player_data.get("level", 1)
-    prof = PROFICIENCY_BY_LEVEL.get(level, 2)
+    prof = PROFICIENCY_BY_LEVEL.get(level, 1)
 
     return attr_mod + prof
 
@@ -467,9 +477,9 @@ def resolve_saving_throw(
     mod = attribute_modifier(score)
 
     save_proficiencies = player_data.get("saving_throw_proficiencies", [])
-    if save_lower in [p.lower() for p in save_proficiencies]:
+    if any(p.lower() == save_lower for p in save_proficiencies):
         level = player_data.get("level", 1)
-        mod += PROFICIENCY_BY_LEVEL.get(level, 2)
+        mod += PROFICIENCY_BY_LEVEL.get(level, 1)
 
     result = dice_roll("d20", rng=rng)
     d20 = result.total

@@ -78,7 +78,7 @@ class TestRequestSkillCheck:
             )
         )
         assert result["skill"] == "athletics"
-        assert result["dc"] == 13
+        assert result["dc"] == 12  # moderate = 12
         assert result["outcome"] in ("success", "failure")
         assert "narrative_hint" in result
 

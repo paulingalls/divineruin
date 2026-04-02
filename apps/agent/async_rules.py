@@ -7,7 +7,7 @@ import random
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
-from rules_engine import attribute_modifier, skill_modifier
+from rules_engine import attribute_modifier, dc_for_tier, skill_modifier
 
 # --- Constants ---
 
@@ -131,7 +131,7 @@ def resolve_crafting(
 
     # Skill check for crafting
     craft_skill = parameters.get("skill", "arcana")
-    dc = parameters.get("dc", 13)
+    dc = parameters.get("dc", dc_for_tier("moderate"))
     mod = skill_modifier(player_data, craft_skill)
     d20 = r.randint(1, 20)
     total = d20 + mod
@@ -222,7 +222,7 @@ def resolve_training(
 
     training_stat = parameters.get("stat", "strength")
     training_skill = parameters.get("skill")
-    dc = parameters.get("dc", 13)
+    dc = parameters.get("dc", dc_for_tier("moderate"))
 
     # Roll for training outcome
     d20 = r.randint(1, 20)
