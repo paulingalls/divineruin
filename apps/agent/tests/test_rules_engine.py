@@ -70,23 +70,23 @@ SAMPLE_PLAYER = {
 class TestSkillModifier:
     def test_proficient_skill(self):
         mod = skill_modifier(SAMPLE_PLAYER, "athletics")
-        # STR 14 -> +2, plus prof +1 at L1 = +3
-        assert mod == 3
+        # STR 14 → +2, trained: prof +1 + tier +2 = +5
+        assert mod == 5
 
     def test_unproficient_skill(self):
         mod = skill_modifier(SAMPLE_PLAYER, "persuasion")
-        # CHA 8 -> -1, no proficiency
+        # CHA 8 → -1, untrained: no prof, no tier = -1
         assert mod == -1
 
     def test_proficient_dex_skill(self):
         mod = skill_modifier(SAMPLE_PLAYER, "stealth")
-        # DEX 12 -> +1, plus prof +1 at L1 = +2
-        assert mod == 2
+        # DEX 12 → +1, trained: prof +1 + tier +2 = +4
+        assert mod == 4
 
     def test_wisdom_perception(self):
         mod = skill_modifier(SAMPLE_PLAYER, "perception")
-        # WIS 11 -> +0, plus prof +1 at L1 = +1
-        assert mod == 1
+        # WIS 11 → +0, trained: prof +1 + tier +2 = +3
+        assert mod == 3
 
     def test_unknown_skill_raises(self):
         with pytest.raises(ValueError, match="Unknown skill"):
@@ -99,14 +99,36 @@ class TestSkillModifier:
 
     def test_case_insensitive(self):
         mod = skill_modifier(SAMPLE_PLAYER, "Athletics")
-        # STR 14 -> +2, plus prof +1 at L1 = +3
-        assert mod == 3
+        # STR 14 → +2, trained: prof +1 + tier +2 = +5
+        assert mod == 5
 
     def test_higher_level_proficiency(self):
-        player = {**SAMPLE_PLAYER, "level": 5}
+        player = {**SAMPLE_PLAYER, "level": 7}
         mod = skill_modifier(player, "athletics")
-        # STR +2, prof +1 at level 5 = +3
+        # STR +2, trained: prof +2 at L7 + tier +2 = +6
+        assert mod == 6
+
+    def test_crafting_uses_max_attribute(self):
+        # INT 10 → +0, WIS 11 → +0. max(+0, +0) = 0. Untrained = 0
+        mod = skill_modifier(SAMPLE_PLAYER, "crafting")
+        assert mod == 0
+        # Player with higher WIS
+        player = {**SAMPLE_PLAYER, "attributes": {**SAMPLE_PLAYER["attributes"], "wisdom": 16}}
+        mod = skill_modifier(player, "crafting")
+        # max(INT +0, WIS +3) = +3. Untrained = +3 (no prof, no tier)
         assert mod == 3
+
+    def test_skill_tier_from_player_data(self):
+        # Player with explicit skill_tiers
+        player = {**SAMPLE_PLAYER, "skill_tiers": {"athletics": "expert"}}
+        mod = skill_modifier(player, "athletics")
+        # STR +2, expert: prof +1 + tier +4 = +7
+        assert mod == 7
+
+    def test_untrained_gets_no_prof_or_tier(self):
+        mod = skill_modifier(SAMPLE_PLAYER, "arcana")
+        # INT 10 → +0, not in proficiencies, untrained: no prof, no tier = 0
+        assert mod == 0
 
 
 # --- skills ---
@@ -429,8 +451,8 @@ class TestResolveSkillCheck:
         result = resolve_skill_check(SAMPLE_PLAYER, "athletics", "moderate", rng=rng)
         assert result.roll == test_roll
         assert result.skill == "athletics"
-        assert result.modifier == 3  # STR +2, prof +1 at L1
-        assert result.total == test_roll + 3
+        assert result.modifier == 5  # STR +2, trained: prof +1 + tier +2
+        assert result.total == test_roll + 5
         assert result.dc == 12  # moderate = 12
         assert result.success == (result.total >= 12 or test_roll == 20)
 
@@ -464,8 +486,8 @@ class TestResolveSkillCheck:
         prof_result = resolve_skill_check(SAMPLE_PLAYER, "athletics", "moderate", rng=rng)
         rng = random.Random(42)
         unprof_result = resolve_skill_check(SAMPLE_PLAYER, "persuasion", "moderate", rng=rng)
-        # athletics: STR+2, prof+1 = +3; persuasion: CHA-1, no prof = -1
-        assert prof_result.modifier == 3
+        # athletics: STR+2, trained(prof+1, tier+2) = +5; persuasion: CHA-1, untrained = -1
+        assert prof_result.modifier == 5
         assert unprof_result.modifier == -1
 
 
@@ -478,7 +500,7 @@ class TestResolveSkillCheckDc:
         result = resolve_skill_check_dc(SAMPLE_PLAYER, "athletics", 10, rng=rng)
         assert result.dc == 10
         assert result.skill == "athletics"
-        assert result.modifier == 3  # STR +2, prof +1 at L1
+        assert result.modifier == 5  # STR +2, trained: prof +1 + tier +2
 
     def test_failure_with_high_dc(self):
         for seed in range(1000):
@@ -527,8 +549,8 @@ class TestResolveSkillCheckDc:
     def test_proficiency_applied(self):
         rng = random.Random(42)
         result = resolve_skill_check_dc(SAMPLE_PLAYER, "perception", 10, rng=rng)
-        # WIS 11 -> +0, prof +1 at L1 = +1
-        assert result.modifier == 1
+        # WIS 11 → +0, trained: prof +1 + tier +2 = +3
+        assert result.modifier == 3
 
 
 # --- resolve_attack ---

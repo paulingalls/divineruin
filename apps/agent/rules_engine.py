@@ -184,6 +184,17 @@ def attribute_modifier(score: int) -> int:
     return (score - 10) // 2
 
 
+def _get_skill_tier(player_data: dict, skill_lower: str) -> str:
+    """Get the skill tier for a character, with fallback to proficiencies list."""
+    skill_tiers = player_data.get("skill_tiers", {})
+    if skill_lower in skill_tiers:
+        return skill_tiers[skill_lower]
+    proficiencies = player_data.get("proficiencies", [])
+    if any(p.lower() == skill_lower for p in proficiencies):
+        return "trained"
+    return "untrained"
+
+
 def skill_modifier(player_data: dict, skill: str) -> int:
     skill_lower = skill.lower()
     attr = SKILLS.get(skill_lower)
@@ -191,13 +202,17 @@ def skill_modifier(player_data: dict, skill: str) -> int:
         raise ValueError(f"Unknown skill: '{skill}'")
 
     attributes = player_data.get("attributes", {})
-    score = attributes.get(attr, 10)
-    mod = attribute_modifier(score)
+    if isinstance(attr, tuple):
+        mod = max(attribute_modifier(attributes.get(a, 10)) for a in attr)
+    else:
+        mod = attribute_modifier(attributes.get(attr, 10))
 
-    proficiencies = player_data.get("proficiencies", [])
-    if any(p.lower() == skill_lower for p in proficiencies):
+    tier = _get_skill_tier(player_data, skill_lower)
+    mod += SKILL_TIER_BONUS[tier]
+
+    if tier != "untrained":
         level = player_data.get("level", 1)
-        mod += PROFICIENCY_BY_LEVEL.get(level, 1)
+        mod += proficiency_bonus(level)
 
     return mod
 
