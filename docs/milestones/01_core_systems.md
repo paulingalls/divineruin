@@ -79,10 +79,11 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 
 **Deliverables:**
 - Stamina pool (martial abilities) and Focus pool (magic/mental abilities) per character
-- Archetype resource assignments:
-  - Stamina-only: Warrior, Rogue, Spy
-  - Focus-only: Mage, Artificer, Seeker
-  - Both: Druid, Cleric, Beastcaller, Warden, Paladin, Oracle, Bard, Diplomat
+- Archetype resource assignments (4 patterns):
+  - Stamina-only (full pool, no Focus): Warrior, Guardian, Skirmisher, Rogue, Spy
+  - Focus-only (no Stamina, full Focus pool): Mage, Artificer, Seeker
+  - Focus-primary (small flat Stamina ~4+CON, full Focus pool): Druid, Cleric, Beastcaller, Warden, Paladin, Oracle
+  - Split (half Stamina, half Focus, both grow at half rate): Bard, Diplomat
 - HP formula including CON modifier at half-rate per level
 - Recovery mechanics: Short rest (Stamina full, Focus half), Long rest (all full)
 - Narrative state indicators at resource thresholds ("winded", "concentration wavers", etc.)
@@ -91,7 +92,7 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Pure function: `get_narrative_state(current_pools, max_pools)` → narrative indicator string
 
 **Acceptance criteria:**
-- [ ] Each archetype correctly assigned to Stamina-only, Focus-only, or Both
+- [ ] Each archetype correctly assigned to Stamina-only, Focus-only, Focus-primary, or Split
 - [ ] HP formula uses CON modifier at half-rate per level and produces correct values L1-20
 - [ ] Short rest restores Stamina to full and Focus to 50%
 - [ ] Long rest restores all pools to full
@@ -147,7 +148,10 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 **Deliverables:**
 - Training cycle state machine: initiate → first-half → midpoint decision → second-half → completion
 - Activity types: spell study, recipe learning, technique training, skill practice, crafting, companion errands
-- Variable duration ranges per activity type with micro-bonus variations
+- Variable duration ranges per activity type with micro-bonus variations:
+  - Spell study (cantrip/minor): 5–9 hrs total, Spell study (standard/major): 7–11 hrs, Spell study (supreme): 9–14 hrs
+  - Recipe study: 5–9 hrs, Technique training (base): 7–11 hrs, Technique training (mentor variant): 9–13 hrs
+  - Skill practice: 5–8 hrs, Crafting: 7–11 hrs, Companion errand: 7–13 hrs
 - Midpoint decision system: player chooses direction at cycle midpoint
 - DB migration: `training_activities` table (type, target, cycle_number, first_half_duration, second_half_duration, state, decision_made, micro_bonus)
 - Agent tool: `initiate_training_cycle(character_id, activity_type, target)` → creates training record
@@ -178,10 +182,10 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 **Inputs:** M1.5 (training system for async slot management), existing companion data.
 
 **Deliverables:**
-- 4 errand types: Scouting, Social, Acquisition, Relationship
-- Risk-based return mechanics: success/partial/failure outcomes with weighted probabilities
+- 4 errand types with duration ranges: Scouting (4–8 hrs), Social (3–6 hrs), Acquisition (4–10 hrs), Relationship (2–4 hrs)
+- Risk-based return mechanics per destination safety: Safe (no injury), Moderate (10% injured), Dangerous (25% injured, 5% emergency), Extreme (40% injured, 15% emergency)
 - Return narration scenes pre-rendered for Catch-Up feed
-- Async concurrency: 1 Training + 1 companion errand simultaneously (3 slots for Artificer with Portable Lab)
+- Async concurrency: 3 independent slots — Training + Crafting + Companion errand. Artificer exception: can use Training slot for crafting (2 crafting + 1 errand)
 - DB migration: `companion_errands` table (type, destination, duration, risk_level, return_narration)
 - Agent tool: `dispatch_companion_errand(companion_id, errand_type, destination)` → creates errand record
 - Agent tool: `resolve_companion_errand(errand_id)` → generates return narration
@@ -191,7 +195,7 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - [ ] All 4 errand types defined with duration ranges, risk levels, and possible outcomes
 - [ ] Risk-based return produces correct outcome distribution per risk level
 - [ ] Return narration is pre-rendered and stored for Catch-Up feed delivery
-- [ ] Concurrency enforced: max 1 Training + 1 errand (3 slots for Artificer with Portable Lab)
+- [ ] Concurrency enforced: 3 independent slots (Training + Crafting + Companion). Artificer can craft in Training slot
 - [ ] Cannot dispatch errand if companion errand slot is full
 - [ ] DB migration creates `companion_errands` table with correct schema
 - [ ] Tests cover all errand types, risk outcomes, and concurrency limits
