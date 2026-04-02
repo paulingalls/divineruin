@@ -10,6 +10,8 @@ How is the game world authored, stored, and simulated? This document defines the
 
 ## Content Authoring Format
 
+> **Detailed specifications:** See [game_mechanics_npcs.md](game_mechanics/game_mechanics_npcs.md) for expanded NPC stat blocks, role archetypes, and settlement templates. See [game_mechanics_bestiary.md](game_mechanics/game_mechanics_bestiary.md) for creature stat blocks and loot tables.
+
 All game content is authored in JSON. The schemas are designed for machine generation with human review — most content is AI-generated, then reviewed and tuned by human authors.
 
 ### Content Tiers

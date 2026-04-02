@@ -1037,6 +1037,8 @@ This gives us WebRTC's reliability and NAT traversal for the player-facing conne
 
 ## Game Engine Layer
 
+> **Detailed specification:** See `docs/game_mechanics/` for full rules engine specs — core resolution, combat, archetypes, magic, crafting, NPCs, bestiary, patrons, and economy.
+
 ### Rules Engine
 Deterministic game logic — no LLM needed. Fast (millisecond responses).
 - Dice rolling with defined probability distributions

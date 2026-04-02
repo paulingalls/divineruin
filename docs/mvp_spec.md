@@ -25,6 +25,8 @@ Six core questions the MVP needs to answer:
 
 ## MVP Scope Summary
 
+> **Detailed system specifications:** See `docs/game_mechanics/` for the full mechanical specs behind MVP entities — core rules, combat, archetypes, magic, crafting, NPCs, bestiary, patrons, and economy.
+
 **One starting culture.** Sunward Accord / Accord of Tides.
 **One city.** The Accord of Tides (partial — one playable district).
 **One wilderness zone.** The Greyvale (countryside north of the city).

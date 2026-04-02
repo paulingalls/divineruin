@@ -240,6 +240,8 @@ How the world perceives you. Built through actions, choices, and their consequen
 
 ## Game Mechanics
 
+> **Detailed specification:** See [game_mechanics_core.md](game_mechanics/game_mechanics_core.md) for the full rules engine spec — attributes, skills, resources, leveling, async training.
+
 ### Philosophy: Narrative-First with Dramatic Dice
 
 The fiction leads, not spreadsheets. Inspired more by lightweight systems (Powered by the Apocalypse) than heavy crunch (D&D 5e full rules). Heavy mechanical crunch doesn't translate well to voice-only interaction. The player should never need to do math, consult a table, or track complex resource pools. They describe what they want to do; the system handles the rest.
@@ -434,6 +436,8 @@ The two layers of the home screen map to real-world contexts, not game modes:
 
 ## Combat Design — Voice-First Combat
 
+> **Detailed specification:** See [game_mechanics_combat.md](game_mechanics/game_mechanics_combat.md) for phase-based combat, status effects, death/resurrection, social encounters, travel, and gathering.
+
 ### Design Philosophy
 
 Audio's strengths are tension, intimacy, and imagination. Combat should feel like you're *in* the fight. Horror games and radio dramas prove audio can be more intense than visuals because the player's brain fills in the imagery. The system is inspired more by lightweight tabletop systems (Powered by the Apocalypse) than heavy crunch (D&D 5e full rules) — heavy mechanical crunch doesn't translate well to voice-only interaction.
@@ -612,6 +616,8 @@ Every player receives an NPC companion early in the game. Beyond being a party m
 ---
 
 ## NPC Design — Characters, Not Furniture
+
+> **Detailed specification:** See [game_mechanics_npcs.md](game_mechanics/game_mechanics_npcs.md) for NPC stat blocks, role archetypes, mentor registry, settlement templates, and companion mechanics.
 
 ### Philosophy
 
@@ -859,6 +865,8 @@ The companion is how the game loves the player back.
 
 ## Asynchronous Play — The Living World Between Sessions
 
+> **Detailed specification:** See [game_mechanics_core.md](game_mechanics/game_mechanics_core.md) (Async Training, Companion Errands) and [game_mechanics_crafting.md](game_mechanics/game_mechanics_crafting.md) (Async Crafting) for full mechanics.
+
 ### Philosophy
 
 Sync sessions are the main event. Async is what makes the player open the app every day.
@@ -1037,6 +1045,8 @@ A player who checks in every 30 minutes will often find nothing has resolved —
 
 ## The Economy — Currency, Trade, and Value
 
+> **Detailed specification:** See [economy_reconciliation.md](game_mechanics/economy_reconciliation.md) for the full price audit, currency anchor (1 sp = 1 day labor), and validated pricing across all categories.
+
 ### Philosophy
 
 The economy exists to make choices meaningful. Every purchase is a tradeoff. Every item found has a value the player understands. The economy should feel like a living system — prices change based on supply, demand, and world events — without requiring the player to study spreadsheets. The DM handles all transactions conversationally: "Grimjaw offers 12 silver for the wolf pelts. He's being generous — the market's been flooded with hides from the northern hunters."
@@ -1082,6 +1092,8 @@ A player who only does sync sessions earns and spends during adventures. A playe
 ---
 
 ## Death and Resurrection — Consequences with Compassion
+
+> **Detailed specification:** See [game_mechanics_combat.md](game_mechanics/game_mechanics_combat.md) — Death and Dying section for death saves, escalating costs, Mortaen's domain, Hollowed Death, and resurrection mechanics.
 
 ### Philosophy
 
