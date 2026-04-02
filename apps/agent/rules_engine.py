@@ -124,6 +124,20 @@ def check_level_up(current_xp: int, xp_gained: int, current_level: int) -> Level
 
 
 @dataclass(frozen=True)
+class CheckResult:
+    roll: int
+    modifier: int
+    total: int
+    dc: int
+    success: bool
+    auto_fail: bool
+    margin: int
+    critical_success: bool
+    critical_failure: bool
+    narrative_hint: str
+
+
+@dataclass(frozen=True)
 class SkillCheckResult:
     skill: str
     roll: int
@@ -208,6 +222,82 @@ def narrative_hint(roll: int, total: int, dc: int) -> str:
     if margin <= 5:
         return "succeeded comfortably"
     return "critical success"
+
+
+_TIER_RANK: dict[str, int] = {tier: i for i, tier in enumerate(SKILL_TIER_ORDER)}
+_EXPERT_RANK = _TIER_RANK["expert"]
+_MASTER_RANK = _TIER_RANK["master"]
+
+
+def _check_auto_fail(dc: int, skill_tier: str) -> bool:
+    """Return True if the DC is beyond the character's tier gate."""
+    rank = _TIER_RANK[skill_tier]
+    if dc >= 28 and rank < _MASTER_RANK:
+        return True
+    return dc >= 24 and rank < _EXPERT_RANK
+
+
+def resolve_check(
+    attribute_score: int,
+    level: int,
+    skill_tier: str,
+    dc: int,
+    *,
+    rng: random.Random | None = None,
+) -> CheckResult:
+    """Unified d20 resolution. Pure function, no IO.
+
+    Args:
+        attribute_score: Raw attribute value (e.g. 14 for STR 14).
+        level: Character level (1-20).
+        skill_tier: One of "untrained", "trained", "expert", "master".
+        dc: Difficulty class to beat.
+        rng: Optional seeded RNG for deterministic testing.
+    """
+    attr_mod = attribute_modifier(attribute_score)
+    tier_bonus = SKILL_TIER_BONUS[skill_tier]
+
+    prof = 0 if skill_tier == "untrained" else proficiency_bonus(level)
+
+    total_mod = attr_mod + prof + tier_bonus
+
+    if _check_auto_fail(dc, skill_tier):
+        return CheckResult(
+            roll=0,
+            modifier=total_mod,
+            total=0,
+            dc=dc,
+            success=False,
+            auto_fail=True,
+            margin=-dc,
+            critical_success=False,
+            critical_failure=False,
+            narrative_hint="This task is beyond your current ability",
+        )
+
+    result = dice_roll("d20", rng=rng)
+    d20 = result.total
+    total = d20 + total_mod
+
+    if d20 == 20:
+        success = True
+    elif d20 == 1:
+        success = False
+    else:
+        success = total >= dc
+
+    return CheckResult(
+        roll=d20,
+        modifier=total_mod,
+        total=total,
+        dc=dc,
+        success=success,
+        auto_fail=False,
+        margin=total - dc,
+        critical_success=d20 == 20,
+        critical_failure=d20 == 1,
+        narrative_hint=narrative_hint(d20, total, dc),
+    )
 
 
 def attack_modifier(player_data: dict, weapon: dict) -> int:
