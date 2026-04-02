@@ -399,6 +399,25 @@ def record_skill_use(
     )
 
 
+def check_skill_capabilities(skill: str, tier: str) -> SkillCapabilities:
+    """Return available capabilities for a skill at the given tier. Pure function."""
+    skill_lower = skill.lower()
+    if skill_lower not in SKILLS:
+        raise ValueError(f"Unknown skill: '{skill}'")
+
+    rank = SKILL_TIER_ORDER.index(tier)
+    expert_rank = SKILL_TIER_ORDER.index("expert")
+    master_rank = SKILL_TIER_ORDER.index("master")
+
+    caps = SKILL_CAPABILITIES[skill_lower]
+    return SkillCapabilities(
+        skill=skill_lower,
+        tier=tier,
+        expert_unlock=caps["expert"] if rank >= expert_rank else None,
+        master_unlock=caps["master"] if rank >= master_rank else None,
+    )
+
+
 _TIER_RANK: dict[str, int] = {tier: i for i, tier in enumerate(SKILL_TIER_ORDER)}
 _EXPERT_RANK = _TIER_RANK["expert"]
 _MASTER_RANK = _TIER_RANK["master"]

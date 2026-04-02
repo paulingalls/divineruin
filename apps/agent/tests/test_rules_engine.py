@@ -19,6 +19,7 @@ from rules_engine import (
     attribute_modifier,
     calculate_combat_xp,
     check_level_up,
+    check_skill_capabilities,
     dc_for_tier,
     hp_threshold_status,
     narrative_hint,
@@ -1105,3 +1106,51 @@ class TestRecordSkillUse:
     def test_default_tier_is_untrained(self):
         result = record_skill_use({}, "stealth", {})
         assert result.old_tier == "untrained"
+
+
+# --- check_skill_capabilities ---
+
+
+class TestCheckSkillCapabilities:
+    def test_untrained_returns_no_unlocks(self):
+        caps = check_skill_capabilities("athletics", "untrained")
+        assert caps.expert_unlock is None
+        assert caps.master_unlock is None
+
+    def test_trained_returns_no_unlocks(self):
+        caps = check_skill_capabilities("athletics", "trained")
+        assert caps.expert_unlock is None
+        assert caps.master_unlock is None
+
+    def test_expert_returns_expert_unlock_only(self):
+        caps = check_skill_capabilities("athletics", "expert")
+        assert caps.expert_unlock is not None
+        assert len(caps.expert_unlock) > 0
+        assert caps.master_unlock is None
+
+    def test_master_returns_both_unlocks(self):
+        caps = check_skill_capabilities("athletics", "master")
+        assert caps.expert_unlock is not None
+        assert caps.master_unlock is not None
+        assert len(caps.master_unlock) > 0
+
+    def test_all_skills_at_expert(self):
+        for skill in SKILLS:
+            caps = check_skill_capabilities(skill, "expert")
+            assert caps.expert_unlock is not None, f"{skill} missing expert unlock"
+            assert len(caps.expert_unlock) > 0
+
+    def test_all_skills_at_master(self):
+        for skill in SKILLS:
+            caps = check_skill_capabilities(skill, "master")
+            assert caps.master_unlock is not None, f"{skill} missing master unlock"
+            assert len(caps.master_unlock) > 0
+
+    def test_unknown_skill_raises(self):
+        with pytest.raises(ValueError, match="Unknown skill"):
+            check_skill_capabilities("flying", "trained")
+
+    def test_returns_correct_skill_and_tier(self):
+        caps = check_skill_capabilities("stealth", "expert")
+        assert caps.skill == "stealth"
+        assert caps.tier == "expert"
