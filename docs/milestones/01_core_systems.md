@@ -114,6 +114,7 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 **Inputs:** M1.1 (attribute system), M1.3 (resource pools for HP recalculation on level-up).
 
 **Deliverables:**
+- Replace `XP_FOR_LEVEL` D&D 5e values with canonical ~100 XP/session scale from `game_mechanics_core.md` (tech debt from M1.1)
 - XP-to-level progression table (~100 XP per session average pacing)
 - Unified milestone definitions: L4/L5 (specialization fork), L10 (power), L15 (mastery), L20 (capstone)
 - Attribute increases at levels 4, 8, 12, 16, 20 (+2 points each)
@@ -124,6 +125,7 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Agent tool: `apply_level_up(character_id)` → applies rewards, emits narration event
 
 **Acceptance criteria:**
+- [ ] `XP_FOR_LEVEL` updated from D&D 5e values to canonical scale
 - [ ] XP thresholds produce correct levels for all 20 levels
 - [ ] Attribute increase events fire at levels 4, 8, 12, 16, 20 with +2 points each
 - [ ] Specialization fork at L4/L5 is flagged in level-up rewards

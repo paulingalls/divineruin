@@ -13,6 +13,7 @@ Redesigns the existing basic combat state machine into a 4-beat phase-based syst
 **Inputs:** Existing `CombatAgent` with basic combat state machine, Phase 1 (core resolution), Phase 2 (archetypes for class-specific behavior).
 
 **Deliverables:**
+- Fix `narrative_hint()` in `rules_engine.py`: returns "critical success" for margin > 5, which is misleading (not a nat 20). `resolve_check` has proper `critical_success`/`critical_failure` booleans — update `resolve_attack` and `resolve_saving_throw` to use them (tech debt from M1.1)
 - Combat state machine: `idle → encounter_start → initiative_roll → [phase_loop: declaration → resolution → narration → wrap] → combat_end`
 - Beat 1 (Declaration): player + companion + enemies all declare intended actions simultaneously
 - Beat 2 (Resolution): engine resolves all declared actions silently, flags dramatic results for narration
@@ -25,6 +26,8 @@ Redesigns the existing basic combat state machine into a 4-beat phase-based syst
 - DB migration: `combat_encounters` table updated with phase tracking columns
 
 **Acceptance criteria:**
+- [ ] `narrative_hint()` fixed: no longer returns "critical success" for non-nat-20 rolls
+- [ ] `resolve_attack` and `resolve_saving_throw` use `CheckResult` critical flags
 - [ ] Combat state machine transitions through all states in correct order
 - [ ] Initiative roll uses `d20 + DEX modifier` and correctly orders resolution within a phase
 - [ ] Beat 1 collects declarations from player, companions, and enemies before any resolution
