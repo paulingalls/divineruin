@@ -103,6 +103,18 @@ class TestRequestSkillCheck:
 
     @pytest.mark.asyncio
     @patch("tools.db.get_player", new_callable=AsyncMock)
+    async def test_invalid_difficulty_returns_error(self, mock_get_player):
+        mock_get_player.return_value = SAMPLE_PLAYER
+        ctx = _make_context()
+        result = json.loads(
+            await request_skill_check._func(
+                ctx, skill="athletics", difficulty="impossible", context_description="climbing"
+            )
+        )
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    @patch("tools.db.get_player", new_callable=AsyncMock)
     async def test_missing_player(self, mock_get_player):
         mock_get_player.return_value = None
         ctx = _make_context()

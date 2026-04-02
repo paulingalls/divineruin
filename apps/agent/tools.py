@@ -491,6 +491,7 @@ async def discover_hidden_element(
 # --- Mechanics tools ---
 
 VALID_SKILLS = set(rules_engine.SKILLS.keys())
+VALID_DIFFICULTIES = set(rules_engine.DC_TIERS.keys())
 
 
 @function_tool()
@@ -515,6 +516,11 @@ async def request_skill_check(
 
     if skill.lower() not in VALID_SKILLS:
         return json.dumps({"error": f"Unknown skill: '{skill}'. Valid: {sorted(VALID_SKILLS)}"})
+
+    if difficulty.lower() not in VALID_DIFFICULTIES:
+        return json.dumps(
+            {"error": f"Unknown difficulty: '{difficulty}'. Valid: {sorted(VALID_DIFFICULTIES - {'deadly'})}"}
+        )
 
     player = await db.get_player(session.player_id)
     if player is None:
