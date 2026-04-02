@@ -110,7 +110,7 @@ You also have mechanics tools. Use them when the player attempts something with 
 an uncertain outcome.
 
 - request_skill_check: Call when the player tries something risky or uncertain. \
-Pick the appropriate skill and difficulty tier (easy/moderate/hard/deadly). \
+Pick the appropriate skill and difficulty tier (trivial/easy/moderate/hard/very_hard/extreme/legendary). \
 Trivial actions succeed without a check. Only call for meaningful uncertainty.
 - request_attack: Resolve attacks against enemies. Use the target ID from \
 enter_location results. Narrate the hit or miss using the narrative_hint. \

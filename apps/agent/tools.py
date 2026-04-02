@@ -503,8 +503,8 @@ async def request_skill_check(
 ) -> str:
     """Request a skill check for the current player. Use when the player
     attempts something uncertain. Provide the skill name, difficulty tier
-    (easy/moderate/hard/deadly), and a brief description of what they're
-    attempting."""
+    (trivial/easy/moderate/hard/very_hard/extreme/legendary), and a brief
+    description of what they're attempting."""
     logger.info(
         "request_skill_check called: skill=%s, difficulty=%s, context=%s", skill, difficulty, context_description
     )
