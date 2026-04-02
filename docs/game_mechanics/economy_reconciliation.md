@@ -10,55 +10,38 @@
 
 Derived benchmarks:
 - 1 cp = 1/10th of a day's labor (~1 hour of unskilled work)
-- 1 gc = 100 sp = 100 days' labor (~3.3 months of unskilled work)
+- 1 gc = 10 sp = 10 days' labor (~2 weeks of unskilled work)
 - Unskilled laborer: 1 sp/day = 7 sp/week = ~30 sp/month
 - Skilled laborer: ~1.5 sp/day = ~10 sp/week = ~45 sp/month
 - Expert craftsman: ~2-3 sp/day = ~15-20 sp/week = ~70 sp/month
 
 ---
 
-## CRITICAL ISSUE: Currency Notation Inconsistency
+## RESOLVED: Currency Notation Inconsistency
 
-### The Problem
+> **Status:** All fixes applied. See Decision 72 in `game_mechanics_decisions.md`.
 
-Four items use **"gp"** (gold pieces) — a denomination that doesn't exist in the currency system:
+### What Was Fixed
 
-| Item | Current Price | Location |
-|---|---|---|
-| Half Plate armor | 50 gp | `_crafting` — Armor Catalog |
-| Plate armor | 100 gp | `_crafting` — Armor Catalog |
-| Revivify diamond | 50 gp | `_combat` — Death and Resurrection Spells |
-| Resurrection diamond | 500 gp | `_combat` — Death and Resurrection Spells |
+Four items used **"gp"** (gold pieces) — a denomination that doesn't exist in the currency system. All were changed to **"gc"** (gold crowns):
 
-The canonical currency system (GDD) defines only three denominations: **cp** (copper pieces), **sp** (silver pieces), **gc** (gold crowns, 1 gc = 100 sp).
+| Item | Was | Now | Location Fixed |
+|---|---|---|---|
+| Half Plate armor | 50 gp | 50 gc | `game_mechanics_magic.md` |
+| Plate armor | 100 gp | 100 gc | `game_mechanics_magic.md` |
+| Revivify diamond | 50 gp | 50 gc | `game_mechanics_magic.md` |
+| Resurrection diamond | 500 gp | 500 gc | `game_mechanics_magic.md` |
 
-### The Lore Bible Discrepancy
+The GDD currency ratio was corrected from **1 gc = 100 sp** to **1 gc = 10 sp**, matching the lore bible (10 Marks = 1 Sun). Clean decimal system: 10 cp = 1 sp, 10 sp = 1 gc.
 
-The lore bible defines flavor currency as: 10 Marks (silver) = 1 Sun (gold). This implies 1 gold = 10 silver.
+All prices validated under the corrected ratio:
 
-The GDD defines: 1 gc = 100 sp. This implies 1 gold = 100 silver.
-
-These are **incompatible.** The economy_doc_reconciliation.md flagged this previously.
-
-### Recommended Fix
-
-**Adopt 1 gc = 10 sp** (matching the lore bible's 10 Marks = 1 Sun). This keeps a clean decimal system: 10 cp = 1 sp, 10 sp = 1 gc. The GDD's "1 gc = 100 sp" should be updated to "1 gc = 10 sp."
-
-Under this system, "gp" and "gc" are equivalent (1 gold piece = 1 gold crown = 10 sp), and all prices work:
-
-| Item | Current | Fixed | In Silver | In Days' Labor | Assessment |
-|---|---|---|---|---|---|
-| Half Plate | 50 gp | 50 gc | 500 sp | ~500 days (~1.4 years) | **Correct.** Rare military armor should be extraordinarily expensive. This is "commission a master smith for months" territory |
-| Plate | 100 gp | 100 gc | 1,000 sp | ~1,000 days (~2.7 years) | **Correct.** The most expensive mundane item. Plate armor is a kingdom's investment |
-| Revivify diamond | 50 gp | 50 gc | 500 sp | ~500 days | **Correct.** A rare gemstone consumed to cheat death. Should feel like spending a fortune |
-| Resurrection diamond | 500 gp | 500 gc | 5,000 sp | ~5,000 days (~14 years) | **Correct but steep.** Resurrection is meant to be nearly unaffordable except for the wealthy. Combined with the 1000+ sp NPC service fee = ~6000 sp total. This is intentionally prohibitive — Mortaen's domain (free return with cost) is the normal path |
-
-### Action Required
-
-1. **Update GDD** economy section: change "1 gc = 100 sp" to "1 gc = 10 sp"
-2. **Update lore bible**: confirm 10 Marks = 1 Sun (already correct)
-3. **Update mechanics docs**: change all "gp" to "gc" (4 instances — 2 in crafting, 2 in combat)
-4. **No price changes needed** — the amounts are correct under the 1 gc = 10 sp system
+| Item | Price | In Silver | In Days' Labor | Assessment |
+|---|---|---|---|---|
+| Half Plate | 50 gc | 500 sp | ~500 days (~1.4 years) | **Correct.** Rare military armor, extraordinarily expensive |
+| Plate | 100 gc | 1,000 sp | ~1,000 days (~2.7 years) | **Correct.** Most expensive mundane item |
+| Revivify diamond | 50 gc | 500 sp | ~500 days | **Correct.** Rare gemstone consumed to cheat death |
+| Resurrection diamond | 500 gc | 5,000 sp | ~5,000 days (~14 years) | **Correct but steep.** Intentionally prohibitive — Mortaen's domain is the normal path |
 
 ---
 
@@ -216,35 +199,18 @@ Under this system, "gp" and "gc" are equivalent (1 gold piece = 1 gold crown = 1
 
 ---
 
-## Summary of Issues Found
+## Summary
 
-### Critical (requires fix)
+### Resolved
 
-1. **"gp" notation doesn't exist in currency system.** Four items use "gp" instead of "gc" or "sp." Fix: change to "gc" (all 4 instances) and resolve the gc = 10 sp vs gc = 100 sp discrepancy by adopting 1 gc = 10 sp (matching lore bible).
+1. ~~**"gp" notation**~~ — All 4 instances changed to "gc". GDD ratio corrected to 1 gc = 10 sp. ✅
 
-### Minor (consider adjusting)
+### Minor (accepted as-is)
 
-2. **Common room at 1 sp/night** is a full day's unskilled labor for a crowded, noisy room. This means a laborer who sleeps at an inn has no money left for food. Consider reducing to 5 cp (half a day's labor), which leaves 5 cp/day for food and expenses. Alternatively, keep at 1 sp and accept that common rooms are for adventurers, not laborers — laborers sleep at home.
+2. **Common room at 1 sp/night** — Full day's labor for a crowded room. Accepted: common rooms are for adventurers, not laborers. Laborers sleep at home.
 
-3. **Tent at 2 sp** is cheap for a shelter. Consider 5 sp. Minor issue — 2 sp is defensible for basic canvas.
+3. **Tent at 2 sp** — Cheap for a shelter, but defensible for basic canvas.
 
 ### No Issues
 
-Everything else validates cleanly against the anchor. The price curves are internally consistent: weapons scale from 1-40 sp, armor from 3 sp to 100 gc, services from 5-1000+ sp, and each tier feels proportionate to the labor cost. The war economy context (weapon/armor demand high, refugee labor cheap) justifies slightly elevated military equipment prices.
-
----
-
-## Recommended Fixes (4 items)
-
-**Fix 1:** Change GDD's "1 gc = 100 sp" to "1 gc = 10 sp" (aligns with lore bible)
-
-**Fix 2:** In `game_mechanics_crafting.md`, change:
-- Half Plate: "50 gp" → "50 gc"
-- Plate: "100 gp" → "100 gc"
-
-**Fix 3:** In `game_mechanics_combat.md`, change:
-- Revivify diamond: "50 gp" → "50 gc"
-- Resurrection diamond: "500 gp" → "500 gc"
-
-**Fix 4 (optional):** In `game_mechanics_npcs.md`, consider changing:
-- Common room: "1 sp" → "5 cp" (more realistic for lowest-tier lodging)
+Everything else validates cleanly against the anchor. Weapons scale 1-40 sp, armor 3 sp to 100 gc, services 5-1000+ sp. Each tier is proportionate to labor cost. War economy context justifies slightly elevated military equipment prices.

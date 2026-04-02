@@ -13,22 +13,23 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 **Inputs:** Existing `rules_engine.py` with basic dice rolls, skill checks, and attacks.
 
 **Deliverables:**
-- Pure function: `resolve_check(attribute, modifier, dc, proficiency_tier)` → result packet
+- Pure function: `resolve_check(attribute_score, level, skill_tier, dc)` → CheckResult packet
 - 6-attribute model (STR, DEX, CON, INT, WIS, CHA) with standard modifier math: `(attr - 10) // 2`
-- DC scale constants: Trivial (5), Easy (8), Moderate (12), Hard (15), Very Hard (18), Extreme (22), Legendary (28)
-- Auto-fail thresholds: Untrained auto-fails DC 20+, Trained auto-fails DC 25+
+- DC scale constants: Trivial (5), Easy (8), Moderate (12), Hard (16), Very Hard (20), Extreme (24), Legendary (28)
+- Auto-fail thresholds: Below Expert auto-fails DC 24+, below Master auto-fails DC 28+
 - Proficiency bonus table: L1-6 (+1), L7-13 (+2), L14-20 (+3)
+- Skill tier bonus constants: Untrained (+0), Trained (+2), Expert (+4), Master (+5)
 - Result packet structure with narrative cues (margin of success/failure, critical flags, suggested tone)
 - Tests for every DC threshold and edge case
 
 **Acceptance criteria:**
-- [ ] `resolve_check` is a pure function with no side effects or DB calls
-- [ ] Modifier math matches `(attr - 10) // 2` for all attribute values 1-30
-- [ ] Auto-fail triggers correctly at DC 20+ for Untrained and DC 25+ for Trained
-- [ ] Proficiency bonus returns correct value for all 20 levels
-- [ ] Result packet includes margin, success/fail flag, critical flag, and narrative cue
-- [ ] All DC scale constants are defined and tested
-- [ ] 100% test coverage on resolution logic
+- [x] `resolve_check` is a pure function with no side effects or DB calls
+- [x] Modifier math matches `(attr - 10) // 2` for all attribute values 1-30
+- [x] Auto-fail triggers correctly at DC 24+ for below Expert and DC 28+ for below Master
+- [x] Proficiency bonus returns correct value for all 20 levels
+- [x] Result packet includes margin, success/fail flag, critical flag, and narrative cue
+- [x] All DC scale constants are defined and tested
+- [x] 100% test coverage on resolution logic
 
 **Key references:**
 - *Game Mechanics Core — d20 Resolution*
