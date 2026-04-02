@@ -272,3 +272,187 @@ Audio asset generation prompts not covered in audio_design.md.
 | UI Sounds (UI-002–010) | 253-301 | Cancel, error, async complete, menu, scroll, confirm |
 | Sable's Sounds | 304-322 | 5 emotional states as animal sounds |
 | Environment (ENV-004–008) | 326-352 | Millhaven variants, wilderness night |
+
+---
+
+## agent_handoffs_and_scenes.md (923 lines)
+
+Multi-agent architecture, LiveKit handoffs, scenes, and structured play.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Problem Statement | 6-27 | Why the monolithic agent doesn't work (prompt bloat, fragile transitions) |
+| LiveKit Agent Handoffs | 29-70 | Tool-return (LLM-driven) and programmatic handoff mechanisms |
+| Proposed Agent Architecture | 72-383 | Agent graph: Prologue → Creation → Onboarding → City/Wilderness/Dungeon/Combat |
+| Context Transfer Strategy | 385-403 | Template-based summaries, session.userdata persistence |
+| Structured Play: Scenes and Play Trees | 405-528 | Scenes as standalone entities, beat progression, play tree structure |
+| LiveKit Rooms as Shared Spaces | 530-616 | Room architecture, multi-agent rooms, data channels |
+| Development Milestones (H.1-H.8) | 618-end | Agent handoff milestones — all complete |
+
+---
+
+# Game Mechanics Docs (docs/game_mechanics/)
+
+Canonical specifications for all game systems. These supersede the summary sections in `game_design_doc.md`.
+
+---
+
+## game_mechanics/game_mechanics_core.md (1103 lines)
+
+Foundational systems: attributes, skills, resources, leveling, async activities.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Document Status | 9-47 | Status and update timestamps for all mechanics files |
+| Implementation Directive | 49-126 | LLM is narrator, not engine — rules engine returns narrative-ready packets |
+| Core Resolution Mechanic | 128-144 | d20 + modifier vs DC, result packets with narrative cues |
+| Attributes | 146-186 | 6 attributes, modifier math, attribute increases at L4/8/12/16/20 |
+| Proficiency Bonus | 188-205 | Bounded scale: +1 (L1-6), +2 (L7-13), +3 (L14-20) |
+| Skill System | 207-480 | 20 skills, 4 tiers (Untrained/Trained/Expert/Master), use counters, advancement |
+| Difficulty Class (DC) Scale | 482-511 | Trivial (5) through Legendary (28), auto-fail thresholds |
+| Hit Points | 513-543 | HP formula with half-CON growth rule |
+| Resource System — Stamina and Focus | 545-588 | Dual pools, archetype assignments, recovery rates |
+| Experience Points and Leveling | 590-685 | ~100 XP/session, 20-level progression, unified milestones |
+| Async Training System | 687-816 | Variable-duration cycles, midpoint decisions, micro-bonuses |
+| Companion Errands | 818-909 | 4 errand types (Scout/Social/Acquire/Relationship), risk-based returns |
+| Async Activity Concurrency | 911-931 | 3 independent slots: Training + Crafting + Errand |
+| Combat, Conditions & Death | 933-937 | Cross-reference to game_mechanics_combat.md |
+| Character Creation | 939-1099 | 5 narrative choices → auto-computed attributes, equipment, spells |
+| Design Decisions Log | 1101-end | Cross-reference to game_mechanics_decisions.md |
+
+---
+
+## game_mechanics/game_mechanics_combat.md (1060 lines)
+
+Combat resolution, status effects, death, social encounters, travel, gathering.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Dramatic Dice System | 11-87 | Scarcity-based d20 animation (0-2 per combat), dramatic context rules |
+| Combat System — Phase-Based | 89-201 | 4-beat phases (Declaration/Resolution/Narration/Wrap), no turn order |
+| Combat Math | 203-261 | Attack rolls, AC by armor, weapon damage, cantrip scaling |
+| Status Effects | 263-324 | 15+ conditions (Hollowed, Stunned, Prone, etc.) with mechanical effects |
+| Resting | 326-338 | Short rest (Stamina full, Focus half), Long rest (all recovery) |
+| Death and Dying | 340-613 | Death saves, Mortaen's domain, escalating costs, Hollowed Death, party wipe |
+| Social Encounter Resolution | 615-846 | 3-tier system, disposition-as-DC, Diplomat de-escalation |
+| Travel and Exploration | 848-971 | 3 travel modes, navigation checks, exhaustion, camping |
+| Gathering and Resource Discovery | 973-end | Skill-gated harvesting, regional resource tables, discovery moments |
+
+---
+
+## game_mechanics/game_mechanics_archetypes.md (1224 lines)
+
+16 archetype profiles with abilities, specializations, and spell acquisition.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Archetype Profiles | 9-415 | Overview of 16 archetypes: Martial(3), Arcane(3), Primal-Divine(5), Support(2), Shadow(2), Oracle(1) |
+| All Archetype Profiles — Complete | 417-1014 | Individual stat blocks: HP, armor, skills, passives, actives, reactions, milestones |
+| Core + Elective Ability Model | 1016-1087 | Core (always available) vs Elective (chosen at L4/L8), reaction abilities |
+| Spell Acquisition — Three Tracks | 1089-1152 | Core spells, Training study cycles, Discovery (scrolls/mentors) |
+| Martial Mentor-Style System | 1154-end | Technique variants via NPC mentors, cultural attribution, 2-3 session loops |
+
+---
+
+## game_mechanics/game_mechanics_magic.md (542 lines)
+
+Three magic sources, Resonance system, 87 spells.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Magic System — Three Sources and Resonance | 9-295 | Arcane/Divine/Primal multipliers, Resonance states, Hollow Echo, Veil Wards, racial interactions |
+| Arcane Spell Catalog | 297-376 | 30 arcane spells with Focus costs and Resonance generation |
+| Divine Spell Catalog | 378-450 | 28 divine spells: healing, protection, anti-Hollow |
+| Primal Spell Catalog | 452-527 | 29 primal spells: terrain manipulation, area denial |
+| Three-Source Catalog Comparison | 529-end | Side-by-side comparison of spell pools and Resonance profiles |
+
+---
+
+## game_mechanics/game_mechanics_crafting.md (587 lines)
+
+Recipe learning, crafting resolution, durability, item catalog.
+
+| Section | Lines | What's There |
+|---|---|---|
+| The Crafting Principle | 9-15 | Design philosophy: crafting mirrors spell acquisition |
+| Crafting Resolution | 17-108 | 4 quality outcomes (Exceptional/Success/Partial/Failure), DC checks |
+| Recipe System | 110-261 | Recipe slots, 3 acquisition tracks, experimentation |
+| Crafting Categories | 263-341 | 7 categories with tier progression |
+| Item Catalog | 343-517 | Complete pricing aligned to 1 sp = 1 day labor anchor |
+| Durability System | 519-551 | Fragile/Standard/Reinforced/Masterwork, Hollow double corrosion |
+| Async Crafting Activity | 553-583 | Concurrent crafting with variable timelines |
+| Design Decisions Log | 585-end | Crafting & item decisions (36-43) |
+
+---
+
+## game_mechanics/game_mechanics_npcs.md (885 lines)
+
+NPC schemas, role archetypes, mentors, settlements, companions.
+
+| Section | Lines | What's There |
+|---|---|---|
+| NPC Schema | 11-63 | Extended stat blocks with social/economic/schedule/mentor layers |
+| Role Archetype Templates | 65-377 | 12 roles: Merchant(7 subtypes), Blacksmith, Innkeeper, Healer, Scholar, Guard, etc. |
+| Mentor Registry | 379-542 | Named mentors teaching martial variants and spells across cultures |
+| Settlement Templates | 544-595 | Hamlet/Village/Town/City/Capital NPC distribution |
+| Encounter Design: Hostile NPC Groups | 597-628 | Bandit Ambush, Ashmark Patrol, Cult Cell, Hollow-Corrupted templates |
+| Companion Mechanical Framework | 630-881 | 4 companions (Kael/Lira/Tam/Sable), 75% player HP scaling, relationship tiers |
+| Design Decisions Log | 883-end | NPC & companion decisions (30-35, 54-57) |
+
+---
+
+## game_mechanics/game_mechanics_bestiary.md (1234 lines)
+
+Creature stat blocks, Hollow and natural creatures, materials, encounters.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Creature Stat Block Schema | 9-137 | Universal template: attributes, attacks, passives, loot, hollow fields |
+| Hollow Creatures | 139-614 | 9 Hollow entities (Shadeling through The Architect), special mechanics |
+| Natural Creatures | 616-1152 | 38+ creatures across 6 regions, Tier 1-3 |
+| Material Catalog Summary | 1154-1199 | Material values and crafting uses for all creature drops |
+| Encounter Building Guidelines | 1201-1230 | Tier-based scaling, solo player math, companion effectiveness |
+| Design Decisions Log | 1232-end | Bestiary decisions (24-29) |
+
+---
+
+## game_mechanics/game_mechanics_patrons.md (366 lines)
+
+10 divine patrons with 4-layer mechanical system.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Divine Patron System | 9-end | 4-layer architecture (Gift/Resonance/Favor/Synergy), 10 patron profiles (Veythar, Kaelen, Aelora, Thyra, Syrath, Orenthel, Valdris, Mortaen, Nythera, Zhael), Unbound Path, favor tracking, archetype synergies |
+
+---
+
+## game_mechanics/game_mechanics_decisions.md (186 lines)
+
+72 locked design decisions with reasoning. Master reference for settled choices.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Core Systems, Combat & Character Creation | 9-77 | Decisions 1-53: bounded accuracy, skill tiers, resources, combat phases |
+| Bestiary & Materials | 79-93 | Decisions 24-29: tier system, material drops, harvesting |
+| NPCs, Mentors & Companions | 95-117 | Decisions 30-57: NPC templates, mentors, companions, death |
+| Crafting & Items | 119-138 | Decisions 36-43: recipe system, quality, durability |
+| Async Activities | 140-149 | Decisions 58-61: errand models, concurrency, risk |
+| Racial Traits & Level Progression | 151-156 | Decisions 62-63: attribute bonuses, Thessyn adaptation |
+| Social Encounter Resolution | 158-167 | Decisions 64-67: social tiers, disposition mechanics |
+| Dramatic Dice System | 169-172 | Decision 68: rare visible rolls, tension management |
+| Travel, Exploration & Gathering | 174-181 | Decisions 69-71: travel modes, gathering, node discovery |
+| Economy Reconciliation | 183-end | Decision 72: 1 gc = 10 sp, matching lore bible |
+
+---
+
+## game_mechanics/economy_reconciliation.md (250 lines)
+
+Currency audit and pricing validation against the 1 sp = 1 day labor anchor.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Anchor Definition | 7-18 | 1 sp = 1 day unskilled labor, derived benchmarks |
+| Currency Notation Inconsistency | 20-63 | gp vs gc discrepancy, lore (10:1) vs GDD (100:1) mismatch |
+| Price Validation | 65-217 | 60+ items audited across 14 categories |
+| Summary of Issues Found | 219-235 | Critical notation issue, minor pricing issues |
+| Recommended Fixes | 237-end | 4 action items: GDD ratio, notation fixes |
