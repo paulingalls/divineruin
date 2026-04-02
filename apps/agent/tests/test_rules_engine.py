@@ -5,12 +5,16 @@ import random
 import pytest
 
 from rules_engine import (
+    ADVANCEMENT_THRESHOLDS,
     DC_TIERS,
+    SKILL_CAPABILITIES,
     SKILL_TIER_BONUS,
     SKILL_TIER_ORDER,
     SKILLS,
     XP_FOR_LEVEL,
+    AdvancementResult,
     CheckResult,
+    SkillCapabilities,
     attack_modifier,
     attribute_modifier,
     calculate_combat_xp,
@@ -937,3 +941,87 @@ class TestCalculateCombatXp:
 
     def test_single_enemy(self):
         assert calculate_combat_xp([{"xp_value": 200}]) == 200
+
+
+# --- advancement thresholds ---
+
+
+class TestAdvancementThresholds:
+    def test_three_transitions(self):
+        assert ADVANCEMENT_THRESHOLDS["untrained"] == 8
+        assert ADVANCEMENT_THRESHOLDS["trained"] == 20
+        assert ADVANCEMENT_THRESHOLDS["expert"] == 40
+
+    def test_no_master_threshold(self):
+        assert "master" not in ADVANCEMENT_THRESHOLDS
+
+
+# --- skill capabilities data ---
+
+
+class TestSkillCapabilitiesData:
+    def test_all_20_skills_present(self):
+        assert len(SKILL_CAPABILITIES) == 20
+        for skill in SKILLS:
+            assert skill in SKILL_CAPABILITIES, f"Missing capabilities for {skill}"
+
+    def test_each_skill_has_expert_and_master(self):
+        for skill, caps in SKILL_CAPABILITIES.items():
+            assert "expert" in caps, f"{skill} missing expert unlock"
+            assert "master" in caps, f"{skill} missing master unlock"
+            assert len(caps["expert"]) > 0, f"{skill} expert unlock is empty"
+            assert len(caps["master"]) > 0, f"{skill} master unlock is empty"
+
+
+# --- dataclass construction ---
+
+
+class TestAdvancementResultDataclass:
+    def test_construction(self):
+        result = AdvancementResult(
+            skill="athletics",
+            new_use_count=8,
+            advanced=True,
+            old_tier="untrained",
+            new_tier="trained",
+            narrative_cue="Your Athletics has improved!",
+        )
+        assert result.skill == "athletics"
+        assert result.advanced is True
+        assert result.old_tier == "untrained"
+        assert result.new_tier == "trained"
+
+    def test_frozen(self):
+        result = AdvancementResult(
+            skill="athletics",
+            new_use_count=1,
+            advanced=False,
+            old_tier="untrained",
+            new_tier="untrained",
+            narrative_cue="",
+        )
+        with pytest.raises(AttributeError):
+            result.advanced = True  # type: ignore[misc]
+
+
+class TestSkillCapabilitiesDataclass:
+    def test_construction(self):
+        caps = SkillCapabilities(
+            skill="athletics",
+            tier="expert",
+            expert_unlock="Superhuman feats",
+            master_unlock=None,
+        )
+        assert caps.skill == "athletics"
+        assert caps.expert_unlock == "Superhuman feats"
+        assert caps.master_unlock is None
+
+    def test_frozen(self):
+        caps = SkillCapabilities(
+            skill="athletics",
+            tier="trained",
+            expert_unlock=None,
+            master_unlock=None,
+        )
+        with pytest.raises(AttributeError):
+            caps.tier = "expert"  # type: ignore[misc]
