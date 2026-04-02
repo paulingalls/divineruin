@@ -346,6 +346,59 @@ def narrative_hint(roll: int, total: int, dc: int) -> str:
     return "critical success"
 
 
+def record_skill_use(
+    skill_tiers: dict[str, str],
+    skill: str,
+    use_counters: dict[str, int],
+    narrative_moment: bool = False,
+) -> AdvancementResult:
+    """Record a skill use and check for tier advancement. Pure function.
+
+    Args:
+        skill_tiers: Current tier per skill (e.g. {"athletics": "trained"}).
+        skill: The skill being used (lowercase).
+        use_counters: Current use counts per skill.
+        narrative_moment: Whether DM has flagged a qualifying moment (Expert→Master gate).
+    """
+    skill_lower = skill.lower()
+    if skill_lower not in SKILLS:
+        raise ValueError(f"Unknown skill: '{skill}'")
+
+    current_tier = skill_tiers.get(skill_lower, "untrained")
+    new_count = use_counters.get(skill_lower, 0) + 1
+
+    threshold = ADVANCEMENT_THRESHOLDS.get(current_tier)
+    if threshold is not None and new_count >= threshold:
+        if current_tier == "expert" and not narrative_moment:
+            return AdvancementResult(
+                skill=skill_lower,
+                new_use_count=new_count,
+                advanced=False,
+                old_tier=current_tier,
+                new_tier=current_tier,
+                narrative_cue="",
+            )
+        tier_idx = SKILL_TIER_ORDER.index(current_tier)
+        new_tier = SKILL_TIER_ORDER[tier_idx + 1]
+        return AdvancementResult(
+            skill=skill_lower,
+            new_use_count=new_count,
+            advanced=True,
+            old_tier=current_tier,
+            new_tier=new_tier,
+            narrative_cue=f"Your {skill_lower.replace('_', ' ').title()} skill has advanced to {new_tier.title()}!",
+        )
+
+    return AdvancementResult(
+        skill=skill_lower,
+        new_use_count=new_count,
+        advanced=False,
+        old_tier=current_tier,
+        new_tier=current_tier,
+        narrative_cue="",
+    )
+
+
 _TIER_RANK: dict[str, int] = {tier: i for i, tier in enumerate(SKILL_TIER_ORDER)}
 _EXPERT_RANK = _TIER_RANK["expert"]
 _MASTER_RANK = _TIER_RANK["master"]
