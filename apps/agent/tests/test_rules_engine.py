@@ -457,12 +457,12 @@ class TestResolveSkillCheck:
         assert result.success == (result.total >= 12 or test_roll == 20)
 
     def test_nat_20_always_succeeds(self):
-        # Find a seed that gives nat 20
+        # Find a seed that gives nat 20. Use very_hard (DC 20) to avoid auto-fail for untrained.
         for seed in range(1000):
             rng = random.Random(seed)
             if rng.randint(1, 20) == 20:
                 rng = random.Random(seed)
-                result = resolve_skill_check(SAMPLE_PLAYER, "persuasion", "extreme", rng=rng)
+                result = resolve_skill_check(SAMPLE_PLAYER, "persuasion", "very_hard", rng=rng)
                 assert result.success is True
                 assert result.roll == 20
                 assert result.narrative_hint == "critical success"
@@ -516,11 +516,12 @@ class TestResolveSkillCheckDc:
         pytest.fail("Could not find seed for failure")
 
     def test_nat_20_always_succeeds(self):
+        # Use DC 23 to avoid auto-fail for trained perception (auto-fail at DC 24+)
         for seed in range(1000):
             rng = random.Random(seed)
             if rng.randint(1, 20) == 20:
                 rng = random.Random(seed)
-                result = resolve_skill_check_dc(SAMPLE_PLAYER, "perception", 30, rng=rng)
+                result = resolve_skill_check_dc(SAMPLE_PLAYER, "perception", 23, rng=rng)
                 assert result.success is True
                 assert result.roll == 20
                 return

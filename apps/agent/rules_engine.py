@@ -343,27 +343,28 @@ def _resolve_skill_check_impl(
     dc: int,
     rng: random.Random | None = None,
 ) -> SkillCheckResult:
-    mod = skill_modifier(player_data, skill)
-    result = dice_roll("d20", rng=rng)
-    d20 = result.total
-    total = d20 + mod
+    skill_lower = skill.lower()
+    attr = SKILLS.get(skill_lower)
+    if attr is None:
+        raise ValueError(f"Unknown skill: '{skill}'")
 
-    if d20 == 20:
-        success = True
-    elif d20 == 1:
-        success = False
-    else:
-        success = total >= dc
+    attributes = player_data.get("attributes", {})
+    score = max(attributes.get(a, 10) for a in attr) if isinstance(attr, tuple) else attributes.get(attr, 10)
+
+    level = player_data.get("level", 1)
+    tier = _get_skill_tier(player_data, skill_lower)
+
+    check = resolve_check(score, level, tier, dc, rng=rng)
 
     return SkillCheckResult(
-        skill=skill.lower(),
-        roll=d20,
-        modifier=mod,
-        total=total,
-        dc=dc,
-        success=success,
-        margin=total - dc,
-        narrative_hint=narrative_hint(d20, total, dc),
+        skill=skill_lower,
+        roll=check.roll,
+        modifier=check.modifier,
+        total=check.total,
+        dc=check.dc,
+        success=check.success,
+        margin=check.margin,
+        narrative_hint=check.narrative_hint,
     )
 
 
