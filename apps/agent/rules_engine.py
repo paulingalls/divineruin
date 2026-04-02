@@ -329,9 +329,7 @@ def attack_modifier(player_data: dict, weapon: dict) -> int:
         attr_mod = attribute_modifier(attributes.get("strength", 10))
 
     level = player_data.get("level", 1)
-    prof = PROFICIENCY_BY_LEVEL.get(level, 1)
-
-    return attr_mod + prof
+    return attr_mod + proficiency_bonus(level)
 
 
 # --- Resolution functions ---
@@ -585,7 +583,7 @@ def resolve_saving_throw(
     save_proficiencies = player_data.get("saving_throw_proficiencies", [])
     if any(p.lower() == save_lower for p in save_proficiencies):
         level = player_data.get("level", 1)
-        mod += PROFICIENCY_BY_LEVEL.get(level, 1)
+        mod += proficiency_bonus(level)
 
     result = dice_roll("d20", rng=rng)
     d20 = result.total
