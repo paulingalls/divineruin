@@ -56,13 +56,13 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Pure function: `check_skill_capabilities(character_id, skill_id)` → available capabilities at current tier
 
 **Acceptance criteria:**
-- [ ] All 20 skills defined with category, tier thresholds, and unlock descriptions
-- [ ] `record_skill_use` increments counter and triggers tier advancement at correct thresholds
-- [ ] Expert→Master requires 40 uses AND a narrative moment flag
-- [ ] `check_skill_capabilities` returns correct capabilities for each tier
-- [ ] Hybrid counter: both session use and Training increments share the same counter
-- [ ] DB migration creates `skill_advancement` table with correct schema
-- [ ] Tests cover all tier transitions including edge cases (counter at threshold - 1, at threshold)
+- [x] All 20 skills defined with category, tier thresholds, and unlock descriptions
+- [x] `record_skill_use` increments counter and triggers tier advancement at correct thresholds
+- [x] Expert→Master requires 40 uses AND a narrative moment flag
+- [x] `check_skill_capabilities` returns correct capabilities for each tier
+- [x] Hybrid counter: both session use and Training increments share the same counter
+- [x] DB migration creates `skill_advancement` table with correct schema
+- [x] Tests cover all tier transitions including edge cases (counter at threshold - 1, at threshold)
 
 **Key references:**
 - *Game Mechanics Core — Skill Tiers*
