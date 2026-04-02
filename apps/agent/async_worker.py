@@ -11,6 +11,7 @@ import os
 from dataclasses import asdict
 
 import db
+import rules_engine
 from async_rules import resolve_companion_errand, resolve_crafting, resolve_training
 from dialogue_parser import Segment
 from llm_config import AUDIO_DIR, audio_url_for
@@ -86,6 +87,19 @@ async def _resolve_single_activity(activity: dict) -> None:
             outcome = resolve_crafting(player_data, parameters)
         elif activity_type == "training":
             outcome = resolve_training(player_data, parameters)
+            # Hybrid skill counter: training feeds the same counter as session use
+            training_skill = parameters.get("skill")
+            if training_skill:
+                skill_adv = await db.get_single_skill_advancement(player_id, training_skill.lower())
+                adv = rules_engine.record_skill_use(
+                    {training_skill.lower(): skill_adv["tier"]},
+                    training_skill,
+                    {training_skill.lower(): skill_adv["use_counter"]},
+                    narrative_moment=skill_adv["narrative_moment_ready"],
+                )
+                await db.update_skill_advancement(player_id, adv.skill, adv.new_tier, adv.new_use_count)
+                if adv.advanced and adv.old_tier == "expert":
+                    await db.clear_narrative_moment(player_id, adv.skill)
         elif activity_type == "companion_errand":
             companion_data = player_data.get("companion", {})
             outcome = resolve_companion_errand(companion_data, parameters)
