@@ -3,6 +3,7 @@
 import asyncio
 import time
 
+from livekit.agents.language import LanguageCode
 from livekit.agents.stt import SpeechData, SpeechEvent, SpeechEventType
 from livekit.agents.types import TimedString
 
@@ -511,14 +512,17 @@ class TestAsyncRun:
         analyzer = PlayerAffectAnalyzer()
         analyzer.start()
         # Simulate crash by cancelling
+        assert analyzer._task is not None
         analyzer._task.cancel()
         try:
             await analyzer._task
         except asyncio.CancelledError:
             pass
+        assert analyzer._task is not None
         assert analyzer._task.done()
         # start() should detect done task and create new one
         analyzer.start()
+        assert analyzer._task is not None
         assert not analyzer._task.done()
         await analyzer.stop()
 
@@ -628,7 +632,7 @@ def _make_speech_event(
             t += 0.4
 
     speech_data = SpeechData(
-        language="en",
+        language=LanguageCode("en"),
         text=text,
         words=words,
     )

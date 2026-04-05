@@ -32,10 +32,11 @@ async def _mock_transaction():
     yield _mock_conn
 
 
-def _make_session(location_id="accord_guild_hall", **kwargs):
-    defaults = dict(player_id="player_1", location_id=location_id, room=None)
-    defaults.update(kwargs)
-    return SessionData(**defaults)
+def _make_session(location_id: str = "accord_guild_hall", **kwargs: object) -> SessionData:
+    sd = SessionData(player_id="player_1", location_id=location_id)
+    for key, value in kwargs.items():
+        setattr(sd, key, value)
+    return sd
 
 
 def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None):

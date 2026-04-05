@@ -2,6 +2,7 @@
 
 import json
 import time
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -39,6 +40,7 @@ class TestBuildHintInstruction:
     def test_instruction_uses_full_description(self):
         """Should use the long ear-first description, not card_description."""
         result = build_hint_instruction("elari", "race")
+        assert result is not None
         assert RACES["elari"].description in result
 
     def test_none_deity_special_case(self):
@@ -153,9 +155,11 @@ class TestCardTapHandler:
     def test_start_registers_listener(self):
         handler, _ = _make_handler()
         handler.start()
-        handler._room.on.assert_called_once_with("data_received", handler._on_data_received)
+        room_mock: Any = handler._room
+        room_mock.on.assert_called_once_with("data_received", handler._on_data_received)
 
     def test_stop_unregisters_listener(self):
         handler, _ = _make_handler()
         handler.stop()
-        handler._room.off.assert_called_once_with("data_received", handler._on_data_received)
+        room_mock: Any = handler._room
+        room_mock.off.assert_called_once_with("data_received", handler._on_data_received)

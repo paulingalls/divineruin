@@ -112,6 +112,7 @@ class TestGetActivity:
         with patch("db.get_pool", return_value=mock_pool):
             result = await db_queries.get_activity("act_1")
 
+        assert result is not None
         assert result["id"] == "act_1"
         assert result["player_id"] == "p1"
         assert result["status"] == "in_progress"

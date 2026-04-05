@@ -798,7 +798,9 @@ class TestCapStr:
         assert _cap_str("hello", 10, "test") is None
 
     def test_returns_error_over_limit(self):
-        result = json.loads(_cap_str("x" * 300, 256, "reason"))
+        error_json = _cap_str("x" * 300, 256, "reason")
+        assert error_json is not None
+        result = json.loads(error_json)
         assert "error" in result
         assert "256" in result["error"]
 

@@ -2,6 +2,7 @@
 
 import time
 from contextlib import contextmanager
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import event_types as E
@@ -27,10 +28,11 @@ def _mock_db_for_warm_layer(quests=None, location=None, npcs=None):
                 yield
 
 
-def _make_session_data(**kwargs) -> SessionData:
-    defaults = dict(player_id="player_1", location_id="accord_guild_hall", room=None)
-    defaults.update(kwargs)
-    return SessionData(**defaults)
+def _make_session_data(**kwargs: object) -> SessionData:
+    sd = SessionData(player_id="player_1", location_id="accord_guild_hall")
+    for key, value in kwargs.items():
+        setattr(sd, key, value)
+    return sd
 
 
 def _make_bg(session_data=None) -> tuple[BackgroundProcess, MagicMock, MagicMock]:
@@ -430,8 +432,9 @@ class TestGodWhisperFlow:
             with patch.dict("sys.modules", {"db": MagicMock()}):
                 import db as _db
 
-                _db.get_divine_favor = AsyncMock(return_value={"level": 25})
-                _db.mark_favor_whisper_level = AsyncMock()
+                _db_mock: Any = _db
+                _db_mock.get_divine_favor = AsyncMock(return_value={"level": 25})
+                _db_mock.mark_favor_whisper_level = AsyncMock()
                 await bg._deliver_speech()
 
         assert call_order == ["stinger", "reply"]

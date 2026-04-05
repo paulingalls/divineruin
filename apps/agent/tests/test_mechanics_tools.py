@@ -332,9 +332,9 @@ class TestPlaySound:
     @pytest.mark.asyncio
     async def test_returns_confirmation(self):
         ctx = _make_context()
-        result = json.loads(await play_sound._func(ctx, sound_name="thunder"))
+        result = json.loads(await play_sound._func(ctx, sound_name="spell_cast"))
         assert result["status"] == "playing"
-        assert result["sound_name"] == "thunder"
+        assert result["sound_name"] == "spell_cast"
 
     @pytest.mark.asyncio
     async def test_publishes_event(self):

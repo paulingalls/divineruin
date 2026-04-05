@@ -24,10 +24,11 @@ async def _mock_transaction():
     yield _mock_conn
 
 
-def _make_session(**kwargs):
-    defaults = dict(player_id="player_1", location_id="accord_market_square", room=None)
-    defaults.update(kwargs)
-    return SessionData(**defaults)
+def _make_session(**kwargs: object) -> SessionData:
+    sd = SessionData(player_id="player_1", location_id="accord_market_square")
+    for key, value in kwargs.items():
+        setattr(sd, key, value)
+    return sd
 
 
 # Load the actual quest data

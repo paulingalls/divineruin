@@ -1,6 +1,7 @@
 """Tests for set_music_state tool and combat difficulty in start_combat."""
 
 import json
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -8,6 +9,9 @@ import pytest
 import event_types as E
 from session_data import SessionData
 from tools import set_music_state
+
+# _func bypasses SDK Literal validation — Any-typed ref accepts values outside MusicStateName
+_set_music: Any = set_music_state._func
 
 
 def _make_context(player_id="player_1", location_id="accord_guild_hall"):
@@ -21,7 +25,7 @@ class TestSetMusicState:
     @patch("environment_tools.publish_game_event", new_callable=AsyncMock)
     async def test_wonder_publishes_event(self, mock_event):
         ctx = _make_context()
-        result = json.loads(await set_music_state._func(ctx, music_state="wonder"))
+        result = json.loads(await _set_music(ctx, music_state="wonder"))
         assert result["status"] == "set"
         assert result["music_state"] == "wonder"
         mock_event.assert_called_once()
@@ -33,7 +37,7 @@ class TestSetMusicState:
     @patch("environment_tools.publish_game_event", new_callable=AsyncMock)
     async def test_sorrow_publishes_event(self, mock_event):
         ctx = _make_context()
-        result = json.loads(await set_music_state._func(ctx, music_state="sorrow"))
+        result = json.loads(await _set_music(ctx, music_state="sorrow"))
         assert result["status"] == "set"
         assert result["music_state"] == "sorrow"
 
@@ -41,33 +45,33 @@ class TestSetMusicState:
     @patch("environment_tools.publish_game_event", new_callable=AsyncMock)
     async def test_tension_publishes_event(self, mock_event):
         ctx = _make_context()
-        result = json.loads(await set_music_state._func(ctx, music_state="tension"))
+        result = json.loads(await _set_music(ctx, music_state="tension"))
         assert result["status"] == "set"
 
     @pytest.mark.asyncio
     @patch("environment_tools.publish_game_event", new_callable=AsyncMock)
     async def test_silence_publishes_event(self, mock_event):
         ctx = _make_context()
-        result = json.loads(await set_music_state._func(ctx, music_state="silence"))
+        result = json.loads(await _set_music(ctx, music_state="silence"))
         assert result["status"] == "set"
 
     @pytest.mark.asyncio
     async def test_combat_standard_returns_error(self):
         ctx = _make_context()
-        result = json.loads(await set_music_state._func(ctx, music_state="combat_standard"))
+        result = json.loads(await _set_music(ctx, music_state="combat_standard"))
         assert "error" in result
         assert "combat_standard" in result["error"]
 
     @pytest.mark.asyncio
     async def test_exploration_returns_error(self):
         ctx = _make_context()
-        result = json.loads(await set_music_state._func(ctx, music_state="exploration"))
+        result = json.loads(await _set_music(ctx, music_state="exploration"))
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_invalid_state_returns_error(self):
         ctx = _make_context()
-        result = json.loads(await set_music_state._func(ctx, music_state="party_time"))
+        result = json.loads(await _set_music(ctx, music_state="party_time"))
         assert "error" in result
         assert "party_time" in result["error"]
 

@@ -638,17 +638,25 @@ class TestValidateId:
         assert _validate_id("npc-123", "npc_id") is None
 
     def test_empty_id(self):
-        result = json.loads(_validate_id("", "location_id"))
+        error_json = _validate_id("", "location_id")
+        assert error_json is not None
+        result = json.loads(error_json)
         assert "error" in result
 
     def test_too_long_id(self):
-        result = json.loads(_validate_id("a" * 129, "location_id"))
+        error_json = _validate_id("a" * 129, "location_id")
+        assert error_json is not None
+        result = json.loads(error_json)
         assert "error" in result
 
     def test_special_characters_rejected(self):
-        result = json.loads(_validate_id("id; DROP TABLE", "location_id"))
+        error_json = _validate_id("id; DROP TABLE", "location_id")
+        assert error_json is not None
+        result = json.loads(error_json)
         assert "error" in result
 
     def test_path_traversal_rejected(self):
-        result = json.loads(_validate_id("../etc/passwd", "location_id"))
+        error_json = _validate_id("../etc/passwd", "location_id")
+        assert error_json is not None
+        result = json.loads(error_json)
         assert "error" in result

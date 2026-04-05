@@ -224,10 +224,11 @@ class TestKaelVoiceRateOffset:
 # --- WU3: Proactive Companion Speech ---
 
 
-def _make_session_data(**kwargs) -> SessionData:
-    defaults = dict(player_id="player_1", location_id="accord_guild_hall", room=None)
-    defaults.update(kwargs)
-    return SessionData(**defaults)
+def _make_session_data(**kwargs: object) -> SessionData:
+    sd = SessionData(player_id="player_1", location_id="accord_guild_hall")
+    for key, value in kwargs.items():
+        setattr(sd, key, value)
+    return sd
 
 
 def _make_bg(session_data=None) -> tuple[BackgroundProcess, MagicMock, MagicMock]:

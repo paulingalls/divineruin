@@ -221,14 +221,14 @@ class TestCompleteTrainingCycle:
         """Fundamentals option: +2 counter toward advancement."""
         decision = get_midpoint_decision("skill_practice")
         # Find the fundamentals option
-        fund_opt = next(o for o in decision.options if "fundamentals" in o.micro_bonus.get("type", ""))
+        fund_opt = next(o for o in decision.options if o.micro_bonus.get("type") == "fundamentals")
         result = complete_training_cycle("skill_practice", fund_opt.id)
         assert result.counter_increment == 2
 
     def test_skill_practice_advanced_gives_one_counter(self) -> None:
         """Advanced option: +1 counter but advantage on next check."""
         decision = get_midpoint_decision("skill_practice")
-        adv_opt = next(o for o in decision.options if "advanced" in o.micro_bonus.get("type", ""))
+        adv_opt = next(o for o in decision.options if o.micro_bonus.get("type") == "advanced")
         result = complete_training_cycle("skill_practice", adv_opt.id)
         assert result.counter_increment == 1
 

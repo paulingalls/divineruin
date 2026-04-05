@@ -12,6 +12,7 @@ from rules_engine import (
     ADVANCEMENT_THRESHOLDS,
     SKILL_CAPABILITIES,
     SKILLS,
+    SkillTier,
 )
 
 # --- advancement thresholds ---
@@ -164,7 +165,7 @@ class TestRecordSkillUse:
             record_skill_use({}, "flying", {})
 
     def test_does_not_mutate_inputs(self):
-        tiers = {"athletics": "trained"}
+        tiers: dict[str, SkillTier] = {"athletics": "trained"}
         counters = {"athletics": 5}
         tiers_copy = dict(tiers)
         counters_copy = dict(counters)

@@ -30,7 +30,9 @@ class TestAdvanceOnboardingBeat:
 
         ctx = _make_context(onboarding_beat=1)
 
-        result = json.loads(await advance_onboarding_beat._func(ctx))
+        raw = await advance_onboarding_beat._func(ctx)
+        assert isinstance(raw, str)
+        result = json.loads(raw)
 
         assert result["beat"] == 2
         assert result["beat_name"] == "market"
@@ -44,7 +46,9 @@ class TestAdvanceOnboardingBeat:
 
         ctx = _make_context(onboarding_beat=2)
 
-        result = json.loads(await advance_onboarding_beat._func(ctx))
+        raw = await advance_onboarding_beat._func(ctx)
+        assert isinstance(raw, str)
+        result = json.loads(raw)
 
         assert result["beat"] == 3
         assert result["beat_name"] == "companion_meeting"
@@ -58,7 +62,9 @@ class TestAdvanceOnboardingBeat:
 
         ctx = _make_context(onboarding_beat=3)
 
-        result = json.loads(await advance_onboarding_beat._func(ctx))
+        raw = await advance_onboarding_beat._func(ctx)
+        assert isinstance(raw, str)
+        result = json.loads(raw)
 
         assert result["beat"] == 4
         assert result["beat_name"] == "kael_suggestion"
@@ -81,7 +87,9 @@ class TestAdvanceOnboardingBeat:
         # Companion already set from beat 3
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
 
-        result = json.loads(await advance_onboarding_beat._func(ctx))
+        raw = await advance_onboarding_beat._func(ctx)
+        assert isinstance(raw, str)
+        result = json.loads(raw)
 
         assert result["beat"] == 5
         assert result["beat_name"] == "first_destination"
@@ -119,7 +127,9 @@ class TestAdvanceOnboardingBeat:
         ctx = _make_context(onboarding_beat=1)
         ctx.userdata.onboarding_beat = None
 
-        result = json.loads(await advance_onboarding_beat._func(ctx))
+        raw = await advance_onboarding_beat._func(ctx)
+        assert isinstance(raw, str)
+        result = json.loads(raw)
 
         assert "error" in result
 
