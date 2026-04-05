@@ -12,6 +12,7 @@ from dataclasses import asdict
 
 import check_resolution
 import db
+import db_activity_queries
 import db_mutations
 import db_queries
 import db_training
@@ -30,7 +31,7 @@ POLL_INTERVAL = 300  # 5 minutes
 
 async def resolve_due_activities() -> int:
     """Find and resolve all due activities. Returns count resolved."""
-    due = await db_queries.get_due_activities()
+    due = await db_activity_queries.get_due_activities()
     if not due:
         # Backfill progress snippets for in-progress activities even when none are due
         await _backfill_progress_snippets()
@@ -324,7 +325,7 @@ async def check_god_whisper_triggers() -> int:
             continue
 
         # Check no pending whisper already exists
-        pending = await db_queries.get_pending_god_whispers(player_id)
+        pending = await db_activity_queries.get_pending_god_whispers(player_id)
         if pending:
             continue
 

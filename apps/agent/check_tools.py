@@ -7,6 +7,7 @@ from livekit.agents.llm import function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import db_content_queries
 import db_mutations
 import db_queries
 import dice
@@ -41,7 +42,7 @@ async def discover_hidden_element(
     if element_id in session.attempted_discoveries:
         return json.dumps({"error": f"Already searched for '{element_id}' this session."})
 
-    location = await db_queries.get_location(session.location_id)
+    location = await db_content_queries.get_location(session.location_id)
     if location is None:
         return json.dumps({"error": f"Current location '{session.location_id}' not found."})
 
@@ -101,7 +102,7 @@ async def discover_hidden_element(
         response["outcome"] = "not_found"
 
     logger.info(
-        "discover_hidden_element result: %s d20=%d+%d=%d vs DC %d → %s",
+        "discover_hidden_element result: %s d20=%d+%d=%d vs DC %d \u2192 %s",
         element_id,
         result.roll,
         result.modifier,
@@ -202,7 +203,7 @@ async def request_skill_check(
             "narrative_cue": adv.narrative_cue,
         }
     logger.info(
-        "request_skill_check result: d20=%d+%d=%d vs DC %d → %s (%s)",
+        "request_skill_check result: d20=%d+%d=%d vs DC %d \u2192 %s (%s)",
         result.roll,
         result.modifier,
         result.total,
@@ -220,7 +221,7 @@ async def mark_skill_breakthrough(
     skill: str,
 ) -> str:
     """Mark that the current player has achieved a narrative breakthrough
-    moment for the specified skill. This enables Expert→Master advancement
+    moment for the specified skill. This enables Expert\u2192Master advancement
     once the use counter threshold (40) is reached. Use when the player
     performs exceptionally on a skill during a high-stakes moment."""
     session: SessionData = context.userdata
@@ -303,7 +304,7 @@ async def request_attack(
         "narrative_hint": result.narrative_hint,
     }
     logger.info(
-        "request_attack result: d20=%d+%d=%d vs AC %d → %s, damage=%d %s, target HP=%d",
+        "request_attack result: d20=%d+%d=%d vs AC %d \u2192 %s, damage=%d %s, target HP=%d",
         result.roll,
         result.attack_modifier,
         result.attack_total,
@@ -372,7 +373,7 @@ async def request_saving_throw(
         "narrative_hint": result.narrative_hint,
     }
     logger.info(
-        "request_saving_throw result: d20=%d+%d=%d vs DC %d → %s (%s)",
+        "request_saving_throw result: d20=%d+%d=%d vs DC %d \u2192 %s (%s)",
         result.roll,
         result.modifier,
         result.total,

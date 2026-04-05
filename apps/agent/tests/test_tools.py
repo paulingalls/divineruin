@@ -211,7 +211,7 @@ SAMPLE_NPC = {
 
 class TestQueryLocation:
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_returns_location(self, mock_get):
         mock_get.return_value = SAMPLE_LOCATION
         ctx = _make_context()
@@ -221,7 +221,7 @@ class TestQueryLocation:
         assert "discover_skill" not in json.dumps(result["hidden_elements"])
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_missing_location(self, mock_get):
         mock_get.return_value = None
         ctx = _make_context()
@@ -232,7 +232,7 @@ class TestQueryLocation:
 class TestQueryNpc:
     @pytest.mark.asyncio
     @patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     async def test_returns_npc_neutral(self, mock_npc, mock_disp):
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = None  # falls back to default_disposition
@@ -246,7 +246,7 @@ class TestQueryNpc:
 
     @pytest.mark.asyncio
     @patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     async def test_friendly_reveals_more(self, mock_npc, mock_disp):
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = "friendly"
@@ -258,7 +258,7 @@ class TestQueryNpc:
 
     @pytest.mark.asyncio
     @patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     async def test_trusted_reveals_all(self, mock_npc, mock_disp):
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = "trusted"
@@ -267,7 +267,7 @@ class TestQueryNpc:
         assert "he suspects the temple" in result["knowledge"]
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     async def test_missing_npc(self, mock_npc):
         mock_npc.return_value = None
         ctx = _make_context()
@@ -277,7 +277,7 @@ class TestQueryNpc:
 
 class TestQueryLore:
     @pytest.mark.asyncio
-    @patch("tools.db_queries.search_lore", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.search_lore", new_callable=AsyncMock)
     async def test_returns_entries(self, mock_search):
         mock_search.return_value = [
             {"title": "The Hollow", "category": "cosmology", "content": "Bad stuff.", "tags": ["hollow"]}
@@ -288,7 +288,7 @@ class TestQueryLore:
         assert result["entries"][0]["title"] == "The Hollow"
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.search_lore", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.search_lore", new_callable=AsyncMock)
     async def test_no_matches(self, mock_search):
         mock_search.return_value = []
         ctx = _make_context()
@@ -369,7 +369,7 @@ class TestEnterLocation:
     @patch("tools.db_queries.get_targets_at_location", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npc_dispositions", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_returns_full_context(self, mock_loc, mock_npcs, mock_disp, mock_targets, mock_player):
         mock_loc.return_value = SAMPLE_LOCATION
         mock_npcs.return_value = [SAMPLE_NPC_RAW]
@@ -390,7 +390,7 @@ class TestEnterLocation:
         assert result["player"]["weapon"] == "Longsword"
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_missing_location(self, mock_loc):
         mock_loc.return_value = None
         ctx = _make_context()
@@ -401,7 +401,7 @@ class TestEnterLocation:
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     @patch("tools.db_queries.get_targets_at_location", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_empty_npcs_and_targets(self, mock_loc, mock_npcs, mock_targets, mock_player):
         mock_loc.return_value = SAMPLE_LOCATION
         mock_npcs.return_value = []
@@ -442,7 +442,7 @@ class TestNightConditionsInTools:
     @patch("tools.db_queries.get_targets_at_location", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npc_dispositions", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_build_scene_applies_night(self, mock_loc, mock_npcs, mock_disp, mock_targets, mock_player):
         mock_loc.return_value = NIGHT_LOCATION
         mock_npcs.return_value = []
@@ -459,7 +459,7 @@ class TestNightConditionsInTools:
     @patch("tools.db_queries.get_targets_at_location", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npc_dispositions", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_build_scene_day_no_override(self, mock_loc, mock_npcs, mock_disp, mock_targets, mock_player):
         mock_loc.return_value = NIGHT_LOCATION
         mock_npcs.return_value = []
@@ -471,7 +471,7 @@ class TestNightConditionsInTools:
         assert result["location"]["description"] == "Sunny market"
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_query_location_applies_night(self, mock_loc):
         mock_loc.return_value = NIGHT_LOCATION
         ctx = _make_context()
@@ -480,7 +480,7 @@ class TestNightConditionsInTools:
         assert result["description"] == "Dark empty market"
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_query_location_day_no_override(self, mock_loc):
         mock_loc.return_value = NIGHT_LOCATION
         ctx = _make_context()
@@ -536,7 +536,7 @@ class TestDiscoverHiddenElement:
     @patch("tools.db_mutations.set_player_flag", new_callable=AsyncMock)
     @patch("check_tools.publish_game_event", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_successful_discovery(self, mock_loc, mock_player, mock_event, mock_set_flag):
         mock_loc.return_value = LOCATION_WITH_HIDDEN
         mock_player.return_value = DISCOVER_PLAYER
@@ -556,7 +556,7 @@ class TestDiscoverHiddenElement:
     @pytest.mark.asyncio
     @patch("check_tools.publish_game_event", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_failed_discovery(self, mock_loc, mock_player, mock_event):
         mock_loc.return_value = LOCATION_WITH_HIDDEN
         mock_player.return_value = DISCOVER_PLAYER
@@ -572,7 +572,7 @@ class TestDiscoverHiddenElement:
         assert "description" not in result
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_invalid_element_id(self, mock_loc):
         mock_loc.return_value = LOCATION_WITH_HIDDEN
         ctx = _make_context(location_id="test_location")
@@ -580,7 +580,7 @@ class TestDiscoverHiddenElement:
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_location_not_found(self, mock_loc):
         mock_loc.return_value = None
         ctx = _make_context(location_id="nowhere")
@@ -590,7 +590,7 @@ class TestDiscoverHiddenElement:
     @pytest.mark.asyncio
     @patch("check_tools.publish_game_event", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_blocks_repeated_attempt(self, mock_loc, mock_player, mock_event):
         mock_loc.return_value = LOCATION_WITH_HIDDEN
         mock_player.return_value = DISCOVER_PLAYER
@@ -610,7 +610,7 @@ class TestDiscoverHiddenElement:
     @patch("tools.db_mutations.set_player_flag", new_callable=AsyncMock)
     @patch("check_tools.publish_game_event", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_dice_roll_event_has_no_dc(self, mock_loc, mock_player, mock_event, mock_set_flag):
         """DC should not be included in the client-facing dice_roll event."""
         mock_loc.return_value = LOCATION_WITH_HIDDEN

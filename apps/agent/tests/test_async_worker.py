@@ -44,7 +44,7 @@ class TestResolveDueActivities:
     @pytest.mark.asyncio
     async def test_returns_zero_when_no_due_activities(self):
         with (
-            patch("async_worker.db_queries.get_due_activities", new_callable=AsyncMock, return_value=[]),
+            patch("async_worker.db_activity_queries.get_due_activities", new_callable=AsyncMock, return_value=[]),
             patch("async_worker._backfill_progress_snippets", new_callable=AsyncMock),
         ):
             count = await resolve_due_activities()
@@ -54,7 +54,11 @@ class TestResolveDueActivities:
     @pytest.mark.asyncio
     async def test_resolves_due_activities(self):
         with (
-            patch("async_worker.db_queries.get_due_activities", new_callable=AsyncMock, return_value=[SAMPLE_ACTIVITY]),
+            patch(
+                "async_worker.db_activity_queries.get_due_activities",
+                new_callable=AsyncMock,
+                return_value=[SAMPLE_ACTIVITY],
+            ),
             patch("async_worker._resolve_single_activity", new_callable=AsyncMock) as mock_resolve,
             patch("async_worker._backfill_progress_snippets", new_callable=AsyncMock),
             patch("async_worker.generate_world_news", new_callable=AsyncMock),
@@ -80,7 +84,9 @@ class TestResolveDueActivities:
                 raise RuntimeError("Transient failure")
 
         with (
-            patch("async_worker.db_queries.get_due_activities", new_callable=AsyncMock, return_value=activities),
+            patch(
+                "async_worker.db_activity_queries.get_due_activities", new_callable=AsyncMock, return_value=activities
+            ),
             patch("async_worker._resolve_single_activity", side_effect=mock_resolve),
             patch("async_worker._backfill_progress_snippets", new_callable=AsyncMock),
             patch("async_worker.generate_world_news", new_callable=AsyncMock),
@@ -257,7 +263,7 @@ class TestCheckGodWhisperTriggers:
     @pytest.mark.asyncio
     @patch("async_worker.db_mutations.mark_favor_whisper_level", new_callable=AsyncMock)
     @patch("god_whisper_generator.generate_god_whisper", new_callable=AsyncMock, return_value="whisper_1")
-    @patch("async_worker.db_queries.get_pending_god_whispers", new_callable=AsyncMock, return_value=[])
+    @patch("async_worker.db_activity_queries.get_pending_god_whispers", new_callable=AsyncMock, return_value=[])
     @patch("async_worker.db.get_pool")
     async def test_generates_whisper_above_threshold(self, mock_pool, mock_pending, mock_gen, mock_mark):
         import json

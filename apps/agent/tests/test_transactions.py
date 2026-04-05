@@ -110,7 +110,7 @@ class TestAwardXpRollback:
 class TestMovePlayerAtomicity:
     @pytest.mark.asyncio
     @patch("tools.db.transaction", _failing_transaction)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_session_location_unchanged_on_db_failure(self, mock_loc):
         mock_loc.return_value = SAMPLE_LOCATION
         ctx = _make_context(location_id="accord_guild_hall")
@@ -121,7 +121,7 @@ class TestMovePlayerAtomicity:
 
     @pytest.mark.asyncio
     @patch("tools.db.transaction", _failing_transaction)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_no_events_on_db_failure(self, mock_loc):
         mock_loc.return_value = SAMPLE_LOCATION
         room = _make_mock_room()
@@ -137,7 +137,7 @@ class TestMovePlayerAtomicity:
 class TestRemoveInventoryAtomicity:
     @pytest.mark.asyncio
     @patch("tools.db.transaction", _failing_transaction)
-    @patch("tools.db_queries.get_item", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_item", new_callable=AsyncMock)
     async def test_no_events_on_txn_failure(self, mock_item):
         mock_item.return_value = {"id": "hp", "name": "Health Potion"}
         room = _make_mock_room()
@@ -153,7 +153,7 @@ class TestRemoveInventoryAtomicity:
 class TestUpdateQuestAtomicity:
     @pytest.mark.asyncio
     @patch("tools.db.transaction", _failing_transaction)
-    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_quest", new_callable=AsyncMock)
     async def test_no_events_on_txn_failure(self, mock_quest):
         mock_quest.return_value = SAMPLE_QUEST
         room = _make_mock_room()
@@ -164,7 +164,7 @@ class TestUpdateQuestAtomicity:
 
     @pytest.mark.asyncio
     @patch("tools.db.transaction", _failing_transaction)
-    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_quest", new_callable=AsyncMock)
     async def test_no_session_event_on_txn_failure(self, mock_quest):
         mock_quest.return_value = SAMPLE_QUEST
         ctx = _make_context()

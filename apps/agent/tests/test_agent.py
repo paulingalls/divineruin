@@ -277,7 +277,7 @@ class TestDMSession:
                                                 return_value=False,
                                             ):
                                                 with patch(
-                                                    "agent.db_queries.get_location",
+                                                    "agent.db_content_queries.get_location",
                                                     new_callable=AsyncMock,
                                                     return_value={"region_type": "city"},
                                                 ):
@@ -325,7 +325,7 @@ class TestDMSession:
                                                 return_value=False,
                                             ):
                                                 with patch(
-                                                    "agent.db_queries.get_location",
+                                                    "agent.db_content_queries.get_location",
                                                     new_callable=AsyncMock,
                                                     return_value={"region_type": "city"},
                                                 ):
@@ -371,7 +371,7 @@ class TestDMSession:
                                                 return_value=False,
                                             ):
                                                 with patch(
-                                                    "agent.db_queries.get_location",
+                                                    "agent.db_content_queries.get_location",
                                                     new_callable=AsyncMock,
                                                     return_value={"region_type": "city"},
                                                 ):
@@ -456,7 +456,7 @@ class TestDMSession:
                                             return_value=None,
                                         ):
                                             with patch(
-                                                "agent.db_queries.get_location",
+                                                "agent.db_content_queries.get_location",
                                                 new_callable=AsyncMock,
                                                 return_value={"region_type": "city"},
                                             ):

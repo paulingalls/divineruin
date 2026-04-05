@@ -67,7 +67,7 @@ def _make_bg(session_data=None):
 
 class TestApplyWorldEffects:
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     @patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock)
     async def test_disposition_effect(self, mock_get_disp, mock_set_disp, mock_npc):
@@ -129,7 +129,11 @@ class TestApplyWorldEffects:
         with (
             patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock, return_value="neutral"),
             patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock),
-            patch("tools.db_queries.get_npc", new_callable=AsyncMock, return_value={"default_disposition": "neutral"}),
+            patch(
+                "tools.db_content_queries.get_npc",
+                new_callable=AsyncMock,
+                return_value={"default_disposition": "neutral"},
+            ),
         ):
             await _apply_world_effects(
                 ["emris_disposition +4", "event:faction_interest_triggered", "event:god_whisper:player_patron"],
@@ -222,7 +226,7 @@ class TestDiscoverSetsFlag:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.set_player_flag", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_successful_discovery_sets_flag(self, mock_loc, mock_player, mock_set_flag):
         mock_loc.return_value = {
             "id": "test_loc",
@@ -271,14 +275,14 @@ QUEST_WITH_EFFECTS = {
 @patch("tools.db.transaction", _mock_transaction)
 class TestUpdateQuestWorldEffects:
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     @patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock)
     @patch("tools.db_mutations.update_player_xp", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     @patch("tools.db_mutations.set_player_quest", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_quest", new_callable=AsyncMock)
     async def test_world_effects_applied_on_stage_advance(
         self, mock_quest, mock_pq, mock_set, mock_player, mock_xp, mock_get_disp, mock_set_disp, mock_npc
     ):

@@ -48,7 +48,10 @@ async def test_update_disposition_timeout_returns_json_error():
 
     # Simulate timeout during transaction
     # Must also mock db.get_npc since it's called before db.transaction
-    with patch("db.transaction") as mock_txn, patch("db_queries.get_npc", new_callable=AsyncMock) as mock_get_npc:
+    with (
+        patch("db.transaction") as mock_txn,
+        patch("db_content_queries.get_npc", new_callable=AsyncMock) as mock_get_npc,
+    ):
         mock_get_npc.return_value = {"id": "torin", "name": "Torin", "default_disposition": "neutral"}
         mock_txn.side_effect = TimeoutError("Query took too long")
 
@@ -121,7 +124,7 @@ async def test_successful_mutation_after_error():
         patch("db.transaction") as mock_txn,
         patch("db_queries.get_player") as mock_get,
         patch("db_mutations.update_player_xp"),
-        patch("action_tools.publish_game_event", new_callable=AsyncMock),
+        patch("progression_tools.publish_game_event", new_callable=AsyncMock),
     ):
         mock_conn = AsyncMock()
         mock_txn.return_value.__aenter__.return_value = mock_conn

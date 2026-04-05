@@ -5,7 +5,11 @@ Tool functions live in focused modules:
 - query_tools: World queries (location, NPC, lore, inventory)
 - check_tools: Skill checks, attacks, saving throws, dice
 - combat_tools: Combat lifecycle (start, enemy turns, death saves, end)
-- action_tools: Game actions (XP, inventory, movement, quests, session)
+- progression_tools: XP awards and divine favor
+- inventory_tools: Add and remove items
+- movement_tools: Player location changes
+- quest_tools: Quest progression and world effects
+- session_tools: End session, story moments, NPC disposition
 - environment_tools: Audio (sound effects, music state)
 
 This module keeps shared helpers and constants, and re-exports all tool
@@ -17,6 +21,8 @@ import logging
 import re
 
 import db  # noqa: F401 — kept as attribute for test patch targets (tools.db.X)
+import db_activity_queries  # noqa: F401 — kept as attribute for test patch targets
+import db_content_queries  # noqa: F401 — kept as attribute for test patch targets
 import db_mutations  # noqa: F401 — kept as attribute for test patch targets (tools.db_mutations.X)
 import db_queries
 from game_events import publish_game_event  # noqa: F401 — kept for test patch targets
@@ -242,20 +248,6 @@ MAX_STORY_MOMENTS_PER_SESSION = 3
 # --- Re-exports from focused modules ---
 # Allows existing ``from tools import X`` to keep working.
 
-from action_tools import (  # noqa: E402, F401
-    _apply_world_effects,
-    _check_exit_requirement,
-    _clamp_disposition_shift,
-    add_to_inventory,
-    award_divine_favor,
-    award_xp,
-    end_session,
-    move_player,
-    record_story_moment,
-    remove_from_inventory,
-    update_npc_disposition,
-    update_quest,
-)
 from check_tools import (  # noqa: E402, F401
     discover_hidden_element,
     mark_skill_breakthrough,
@@ -277,11 +269,28 @@ from environment_tools import (  # noqa: E402, F401
     play_sound,
     set_music_state,
 )
+from inventory_tools import (  # noqa: E402, F401
+    add_to_inventory,
+    remove_from_inventory,
+)
+from movement_tools import (  # noqa: E402, F401
+    _check_exit_requirement,
+    move_player,
+)
+from progression_tools import (  # noqa: E402, F401
+    award_divine_favor,
+    award_xp,
+)
 from query_tools import (  # noqa: E402, F401
     query_inventory,
     query_location,
     query_lore,
     query_npc,
+)
+from quest_tools import (  # noqa: E402, F401
+    _apply_world_effects,
+    _clamp_disposition_shift,
+    update_quest,
 )
 from scene_tools import (  # noqa: E402, F401
     _build_scene_context,
@@ -289,4 +298,9 @@ from scene_tools import (  # noqa: E402, F401
     detect_scene_transition,
     enter_location,
     get_active_scene_for_context,
+)
+from session_tools import (  # noqa: E402, F401
+    end_session,
+    record_story_moment,
+    update_npc_disposition,
 )

@@ -9,6 +9,7 @@ from livekit.agents.voice import RunContext
 
 import check_resolution
 import combat_resolution
+import db_content_queries
 import db_mutations
 import db_queries
 import event_types as E
@@ -84,7 +85,7 @@ async def start_combat(
     if session.in_combat:
         return json.dumps({"error": "Already in combat. End the current combat first."})
 
-    encounter = await db_queries.get_encounter_template(encounter_id)
+    encounter = await db_content_queries.get_encounter_template(encounter_id)
     if encounter is None:
         return json.dumps({"error": f"Encounter template '{encounter_id}' not found."})
 
@@ -118,7 +119,7 @@ async def start_combat(
     comp_stats: dict = {}
     comp_attrs: dict = {}
     if session.companion_can_act and session.companion:
-        companion_npc = await db_queries.get_npc(session.companion.id)
+        companion_npc = await db_content_queries.get_npc(session.companion.id)
         if companion_npc:
             comp_stats = companion_npc.get("combat_stats", {})
             comp_attrs = comp_stats.get("attributes", {"strength": 12, "dexterity": 12})

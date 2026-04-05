@@ -11,6 +11,7 @@ from livekit.plugins import anthropic, deepgram, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 import db
+import db_content_queries
 import db_queries
 from base_agent import _make_tts
 from region_types import REGION_CITY
@@ -270,7 +271,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
         # Dispatch correct gameplay agent based on location's region_type
         from gameplay_agent import create_gameplay_agent
 
-        location_data = await db_queries.get_location(location_id)
+        location_data = await db_content_queries.get_location(location_id)
         region_type = location_data.get("region_type", REGION_CITY) if location_data else REGION_CITY
         gameplay_agent = create_gameplay_agent(region_type, location_id, companion=userdata.companion)
 

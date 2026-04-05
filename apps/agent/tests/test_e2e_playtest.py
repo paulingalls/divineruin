@@ -43,7 +43,7 @@ class TestNewPlayerHandoffChain:
     @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
     @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
     @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_city_to_wilderness_to_dungeon_to_city(
         self,
         mock_loc,
@@ -91,7 +91,7 @@ class TestNewPlayerHandoffChain:
         ctx = _make_context("accord_market_square", companion=COMPANION)
         with patch("tools.db.transaction", _mock_txn):
             with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("action_tools.publish_game_event", new_callable=AsyncMock):
+                with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
                     result = await move_player._func(ctx, "greyvale_south_road")
 
         assert isinstance(result, tuple)
@@ -104,7 +104,7 @@ class TestNewPlayerHandoffChain:
         ctx.userdata.location_id = "greyvale_south_road"
         with patch("tools.db.transaction", _mock_txn):
             with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("action_tools.publish_game_event", new_callable=AsyncMock):
+                with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
                     result = await move_player._func(ctx, "greyvale_ruins_entrance")
 
         assert isinstance(result, tuple)
@@ -124,7 +124,7 @@ class TestNewPlayerHandoffChain:
         ctx.userdata.location_id = "greyvale_ruins_entrance"
         with patch("tools.db.transaction", _mock_txn):
             with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("action_tools.publish_game_event", new_callable=AsyncMock):
+                with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
                     result = await move_player._func(ctx, "accord_market_square")
 
         assert isinstance(result, tuple)
@@ -138,7 +138,7 @@ class TestNewPlayerHandoffChain:
     @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
     @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
     @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_companion_persists_across_handoffs(
         self,
         mock_loc,
@@ -171,7 +171,7 @@ class TestNewPlayerHandoffChain:
         ctx = _make_context("accord_market_square", companion=COMPANION)
         with patch("tools.db.transaction", _mock_txn):
             with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("action_tools.publish_game_event", new_callable=AsyncMock):
+                with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
                     result = await move_player._func(ctx, "greyvale_south_road")
 
         agent, _ = result
@@ -185,11 +185,11 @@ class TestCombatRoundTrip:
     """Verify combat handoff and return to correct agent type."""
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     @patch("tools.db_mutations.delete_combat_state", new_callable=AsyncMock)
     @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER)
-    @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_wilderness_combat_returns_to_wilderness(
         self,
         mock_encounter,

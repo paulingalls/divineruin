@@ -192,7 +192,9 @@ class TestFullPipeline:
         ]
 
         with (
-            patch("async_worker.db_queries.get_due_activities", new_callable=AsyncMock, return_value=activities),
+            patch(
+                "async_worker.db_activity_queries.get_due_activities", new_callable=AsyncMock, return_value=activities
+            ),
             patch("async_worker._resolve_single_activity", new_callable=AsyncMock) as mock_resolve,
             patch("async_worker._backfill_progress_snippets", new_callable=AsyncMock),
             patch("async_worker.generate_world_news", new_callable=AsyncMock),

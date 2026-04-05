@@ -142,7 +142,7 @@ class TestStartCombat:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_creates_combat_state(self, mock_encounter, mock_player, mock_save):
         mock_encounter.return_value = SAMPLE_ENCOUNTER
         mock_player.return_value = SAMPLE_PLAYER
@@ -164,7 +164,7 @@ class TestStartCombat:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_returns_agent_tuple(self, mock_encounter, mock_player, mock_save):
         mock_encounter.return_value = SAMPLE_ENCOUNTER
         mock_player.return_value = SAMPLE_PLAYER
@@ -177,7 +177,7 @@ class TestStartCombat:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_rolls_initiative(self, mock_encounter, mock_player, mock_save):
         mock_encounter.return_value = SAMPLE_ENCOUNTER
         mock_player.return_value = SAMPLE_PLAYER
@@ -194,7 +194,7 @@ class TestStartCombat:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_publishes_events(self, mock_encounter, mock_player, mock_save):
         mock_encounter.return_value = SAMPLE_ENCOUNTER
         mock_player.return_value = SAMPLE_PLAYER
@@ -223,7 +223,7 @@ class TestStartCombat:
         assert "Already in combat" in result["error"]
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_error_missing_encounter(self, mock_encounter):
         mock_encounter.return_value = None
         ctx = _make_context()

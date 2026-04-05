@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import db
+import db_activity_queries
+import db_content_queries
 import db_mutations
 import db_queries
 
@@ -182,7 +184,7 @@ class TestCachedContentQueries:
         with patch("db._cache_get", new_callable=AsyncMock) as mock_cache_get:
             mock_cache_get.return_value = json.dumps(cached_data)
 
-            result = await db_queries.get_location("tavern")
+            result = await db_content_queries.get_location("tavern")
 
         assert result == cached_data
         mock_cache_get.assert_awaited_once_with("location:tavern")
@@ -197,7 +199,7 @@ class TestCachedContentQueries:
         with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
             with patch("db._cache_set", new_callable=AsyncMock) as mock_cache_set:
                 with patch("db.get_pool", return_value=mock_pool):
-                    result = await db_queries.get_location("tavern")
+                    result = await db_content_queries.get_location("tavern")
 
         assert result == location_data
         mock_pool.fetchrow.assert_awaited_once_with("SELECT data FROM locations WHERE id = $1", "tavern")
@@ -211,7 +213,7 @@ class TestCachedContentQueries:
 
         with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
             with patch("db.get_pool", return_value=mock_pool):
-                result = await db_queries.get_location("nonexistent")
+                result = await db_content_queries.get_location("nonexistent")
 
         assert result is None
 
@@ -223,7 +225,7 @@ class TestCachedContentQueries:
         with patch("db._cache_get", new_callable=AsyncMock) as mock_cache_get:
             mock_cache_get.return_value = json.dumps(cached_data)
 
-            result = await db_queries.get_npc("torin")
+            result = await db_content_queries.get_npc("torin")
 
         assert result == cached_data
         mock_cache_get.assert_awaited_once_with("npc:torin")
@@ -238,7 +240,7 @@ class TestCachedContentQueries:
         with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
             with patch("db._cache_set", new_callable=AsyncMock):
                 with patch("db.get_pool", return_value=mock_pool):
-                    result = await db_queries.get_item("sword")
+                    result = await db_content_queries.get_item("sword")
 
         assert result == item_data
 
@@ -250,7 +252,7 @@ class TestCachedContentQueries:
         with patch("db._cache_get", new_callable=AsyncMock) as mock_cache_get:
             mock_cache_get.return_value = json.dumps(quest_data)
 
-            result = await db_queries.get_quest("hollow_threat")
+            result = await db_content_queries.get_quest("hollow_threat")
 
         assert result == quest_data
         mock_cache_get.assert_awaited_once_with("quest:hollow_threat")
@@ -266,7 +268,7 @@ class TestCachedContentQueries:
         mock_pool.fetch = AsyncMock(return_value=[{"data": json.dumps(entry)} for entry in lore_entries])
 
         with patch("db.get_pool", return_value=mock_pool):
-            result = await db_queries.search_lore("Hollow", limit=5)
+            result = await db_content_queries.search_lore("Hollow", limit=5)
 
         assert result == lore_entries
         mock_pool.fetch.assert_awaited_once_with(
@@ -282,7 +284,7 @@ class TestCachedContentQueries:
         mock_pool.fetch = AsyncMock(return_value=[])
 
         with patch("db.get_pool", return_value=mock_pool):
-            await db_queries.search_lore("100%_done", limit=5)
+            await db_content_queries.search_lore("100%_done", limit=5)
 
         call_args = mock_pool.fetch.call_args[0]
         assert call_args[1] == "%100\\%\\_done%"
@@ -622,7 +624,7 @@ class TestStateMutations:
         )
 
         with patch("db.get_pool", return_value=mock_pool):
-            result = await db_queries.get_player_map_progress("p1")
+            result = await db_activity_queries.get_player_map_progress("p1")
 
         assert len(result) == 2
         assert result[0]["location_id"] == "tavern"
@@ -637,7 +639,7 @@ class TestStateMutations:
         mock_pool.fetch = AsyncMock(return_value=[])
 
         with patch("db.get_pool", return_value=mock_pool):
-            result = await db_queries.get_player_map_progress("new_player")
+            result = await db_activity_queries.get_player_map_progress("new_player")
 
         assert result == []
 
@@ -668,7 +670,7 @@ class TestSessionInitPortraits:
         mock_pool.fetch = AsyncMock(return_value=[])
 
         with patch("db.get_pool", return_value=mock_pool):
-            with patch("db_queries.get_location", return_value={"id": "tavern", "name": "Tavern"}):
+            with patch("db_content_queries.get_location", return_value={"id": "tavern", "name": "Tavern"}):
                 result = await db_queries.get_session_init_payload("p1")
 
         assert "portraits" in result
@@ -758,7 +760,7 @@ class TestGetScene:
         with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
             with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
                 with patch("db._cache_set", new_callable=AsyncMock):
-                    result = await db_queries.get_scene("scene_road_to_millhaven")
+                    result = await db_content_queries.get_scene("scene_road_to_millhaven")
         assert result is not None
         assert result["id"] == "scene_road_to_millhaven"
         assert result["region_type"] == "wilderness"
@@ -766,7 +768,7 @@ class TestGetScene:
     @pytest.mark.asyncio
     async def test_returns_cached_data(self):
         with patch("db._cache_get", new_callable=AsyncMock, return_value=json.dumps(self.SAMPLE_SCENE)):
-            result = await db_queries.get_scene("scene_road_to_millhaven")
+            result = await db_content_queries.get_scene("scene_road_to_millhaven")
         assert result is not None
         assert result["name"] == "Road to Millhaven"
 
@@ -776,7 +778,7 @@ class TestGetScene:
         mock_pool.fetchrow = AsyncMock(return_value=None)
         with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
             with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
-                result = await db_queries.get_scene("nonexistent")
+                result = await db_content_queries.get_scene("nonexistent")
         assert result is None
 
     @pytest.mark.asyncio
@@ -811,7 +813,7 @@ class TestGetScenesBatch:
         with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
             with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
                 with patch("db._cache_set", new_callable=AsyncMock):
-                    result = await db_queries.get_scenes_batch(["scene_a", "scene_b"])
+                    result = await db_content_queries.get_scenes_batch(["scene_a", "scene_b"])
         assert len(result) == 2
         assert result["scene_a"]["name"] == "A"
         assert result["scene_b"]["name"] == "B"
@@ -828,7 +830,7 @@ class TestGetScenesBatch:
         with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
             with patch("db._cache_get", new_callable=AsyncMock, side_effect=cache_get):
                 with patch("db._cache_set", new_callable=AsyncMock):
-                    result = await db_queries.get_scenes_batch(["scene_a", "scene_b"])
+                    result = await db_content_queries.get_scenes_batch(["scene_a", "scene_b"])
         assert len(result) == 2
         # scene_a from cache, scene_b from DB
         assert result["scene_a"]["name"] == "A"
@@ -841,14 +843,14 @@ class TestGetScenesBatch:
         with patch("db.get_pool", new_callable=AsyncMock, return_value=mock_pool):
             with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
                 with patch("db._cache_set", new_callable=AsyncMock):
-                    result = await db_queries.get_scenes_batch(["scene_a", "nonexistent"])
+                    result = await db_content_queries.get_scenes_batch(["scene_a", "nonexistent"])
         assert len(result) == 1
         assert "scene_a" in result
         assert "nonexistent" not in result
 
     @pytest.mark.asyncio
     async def test_empty_ids_returns_empty(self):
-        result = await db_queries.get_scenes_batch([])
+        result = await db_content_queries.get_scenes_batch([])
         assert result == {}
 
 

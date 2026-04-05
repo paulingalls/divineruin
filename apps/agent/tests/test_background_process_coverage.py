@@ -18,7 +18,7 @@ def _mock_db_for_warm_layer(quests=None, location=None, npcs=None):
     with patch(
         "background_process.db_queries.get_active_player_quests", new_callable=AsyncMock, return_value=quests or []
     ):
-        with patch("background_process.db_queries.get_location", new_callable=AsyncMock, return_value=location):
+        with patch("background_process.db_content_queries.get_location", new_callable=AsyncMock, return_value=location):
             with patch(
                 "background_process.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=npcs or []
             ):
@@ -83,7 +83,7 @@ class TestBackgroundProcessLifecycle:
         assert bp._stop is True
 
     @pytest.mark.asyncio
-    @patch("background_process.db_queries.get_scene", new_callable=AsyncMock, return_value=None)
+    @patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None)
     async def test_run_builds_initial_warm_layer(self, _mock_scene):
         """_run() should build warm layer on startup."""
         mock_agent = MagicMock()
@@ -111,7 +111,7 @@ class TestEventHandling:
     """Test event processing and warm layer rebuilding."""
 
     @pytest.mark.asyncio
-    @patch("background_process.db_queries.get_scene", new_callable=AsyncMock, return_value=None)
+    @patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None)
     async def test_run_drains_multiple_events(self, _mock_scene):
         """_run() should drain all pending events from bus."""
         mock_agent = MagicMock()
@@ -147,7 +147,7 @@ class TestEventHandling:
                         assert event2 in handled_events
 
     @pytest.mark.asyncio
-    @patch("background_process.db_queries.get_scene", new_callable=AsyncMock, return_value=None)
+    @patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None)
     async def test_run_rebuilds_on_timeout(self, _mock_scene):
         """_run() should rebuild warm layer on event timeout (no events)."""
         mock_agent = MagicMock()
@@ -473,7 +473,9 @@ class TestWarmLayerRebuild:
 
         with _mock_db_for_warm_layer():
             with patch(
-                "background_process.db_queries.get_location", new_callable=AsyncMock, side_effect=Exception("DB down")
+                "background_process.db_content_queries.get_location",
+                new_callable=AsyncMock,
+                side_effect=Exception("DB down"),
             ):
                 await bp._rebuild_warm_layer()  # Should not raise
 

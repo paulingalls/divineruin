@@ -282,7 +282,7 @@ class TestUpdateNpcDisposition:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     async def test_shift_up(self, mock_npc, mock_disp, mock_set):
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = "neutral"
@@ -297,7 +297,7 @@ class TestUpdateNpcDisposition:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     async def test_shift_down(self, mock_npc, mock_disp, mock_set):
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = "friendly"
@@ -311,7 +311,7 @@ class TestUpdateNpcDisposition:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     async def test_clamp_at_top(self, mock_npc, mock_disp, mock_set):
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = "trusted"
@@ -324,7 +324,7 @@ class TestUpdateNpcDisposition:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     async def test_clamp_at_bottom(self, mock_npc, mock_disp, mock_set):
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = "hostile"
@@ -335,7 +335,7 @@ class TestUpdateNpcDisposition:
         assert result["new"] == "hostile"
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     async def test_unknown_npc(self, mock_npc):
         mock_npc.return_value = None
         ctx = _make_context()
@@ -345,7 +345,7 @@ class TestUpdateNpcDisposition:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     async def test_falls_back_to_default_disposition(self, mock_npc, mock_disp, mock_set):
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = None  # no existing disposition
@@ -359,7 +359,7 @@ class TestUpdateNpcDisposition:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     async def test_publishes_event(self, mock_npc, mock_disp, mock_set):
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = "neutral"
@@ -374,7 +374,7 @@ class TestUpdateNpcDisposition:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock)
     @patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
     async def test_delta_clamped_to_range(self, mock_npc, mock_disp, mock_set):
         mock_npc.return_value = SAMPLE_NPC
         mock_disp.return_value = "neutral"
@@ -394,7 +394,7 @@ class TestAddToInventory:
     @pytest.mark.asyncio
     @patch("tools.db_queries.get_player_inventory", new_callable=AsyncMock)
     @patch("tools.db_mutations.add_inventory_item", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_item", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_item", new_callable=AsyncMock)
     async def test_adds_item(self, mock_item, mock_add, mock_inv):
         mock_item.return_value = SAMPLE_ITEM
         mock_inv.return_value = [SAMPLE_ITEM]
@@ -406,7 +406,7 @@ class TestAddToInventory:
         mock_add.assert_called_once_with("player_1", "health_potion", 2, conn=_mock_conn)
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_item", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_item", new_callable=AsyncMock)
     async def test_unknown_item(self, mock_item):
         mock_item.return_value = None
         ctx = _make_context()
@@ -416,7 +416,7 @@ class TestAddToInventory:
     @pytest.mark.asyncio
     @patch("tools.db_queries.get_player_inventory", new_callable=AsyncMock)
     @patch("tools.db_mutations.add_inventory_item", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_item", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_item", new_callable=AsyncMock)
     async def test_publishes_event(self, mock_item, mock_add, mock_inv):
         mock_item.return_value = SAMPLE_ITEM
         mock_inv.return_value = [SAMPLE_ITEM]
@@ -438,7 +438,7 @@ class TestAddToInventory:
 @patch("tools.db.transaction", _mock_transaction)
 class TestRemoveFromInventory:
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_item", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_item", new_callable=AsyncMock)
     @patch("tools.db_mutations.remove_inventory_item", new_callable=AsyncMock)
     @patch("tools.db_queries.get_inventory_item", new_callable=AsyncMock)
     async def test_removes_item(self, mock_slot, mock_remove, mock_item):
@@ -452,7 +452,7 @@ class TestRemoveFromInventory:
         mock_remove.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_item", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_item", new_callable=AsyncMock)
     @patch("tools.db_queries.get_inventory_item", new_callable=AsyncMock)
     async def test_missing_item(self, mock_slot, mock_item):
         mock_slot.return_value = None
@@ -462,7 +462,7 @@ class TestRemoveFromInventory:
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_item", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_item", new_callable=AsyncMock)
     @patch("tools.db_queries.get_inventory_item", new_callable=AsyncMock)
     async def test_equipped_item_blocked(self, mock_slot, mock_item):
         mock_slot.return_value = {"quantity": 1, "equipped": True}
@@ -473,7 +473,7 @@ class TestRemoveFromInventory:
         assert "equipped" in result["error"].lower()
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_item", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_item", new_callable=AsyncMock)
     @patch("tools.db_mutations.remove_inventory_item", new_callable=AsyncMock)
     @patch("tools.db_queries.get_inventory_item", new_callable=AsyncMock)
     async def test_publishes_event(self, mock_slot, mock_remove, mock_item):
@@ -501,7 +501,7 @@ class TestMovePlayer:
     @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock)
     @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
     @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_valid_move(
         self, mock_loc, mock_upsert_map, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
     ):
@@ -521,7 +521,7 @@ class TestMovePlayer:
         )
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_invalid_destination(self, mock_loc):
         mock_loc.return_value = SAMPLE_LOCATION
         ctx = _make_context()
@@ -530,8 +530,8 @@ class TestMovePlayer:
         assert "valid_destinations" in result
 
     @pytest.mark.asyncio
-    @patch("action_tools._check_exit_requirement", new_callable=AsyncMock, return_value=False)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("movement_tools._check_exit_requirement", new_callable=AsyncMock, return_value=False)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_blocked_exit(self, mock_loc, mock_check):
         mock_loc.return_value = SAMPLE_LOCATION
         ctx = _make_context()
@@ -547,7 +547,7 @@ class TestMovePlayer:
     @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock)
     @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
     @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_publishes_event(
         self, mock_loc, mock_upsert_map, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
     ):
@@ -576,7 +576,7 @@ class TestMovePlayer:
     @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock)
     @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
     @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_session_state_updated(
         self, mock_loc, mock_upsert_map, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
     ):
@@ -590,7 +590,7 @@ class TestMovePlayer:
         assert ctx.userdata.location_id == "accord_market_square"
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
     async def test_missing_current_location(self, mock_loc):
         mock_loc.return_value = None
         ctx = _make_context()
@@ -606,7 +606,7 @@ class TestUpdateQuest:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.set_player_quest", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_quest", new_callable=AsyncMock)
     async def test_start_quest(self, mock_quest, mock_pq, mock_set):
         mock_quest.return_value = SAMPLE_QUEST
         mock_pq.return_value = None
@@ -619,7 +619,7 @@ class TestUpdateQuest:
 
     @pytest.mark.asyncio
     @patch("tools.db_queries.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_quest", new_callable=AsyncMock)
     async def test_start_quest_wrong_stage(self, mock_quest, mock_pq):
         mock_quest.return_value = SAMPLE_QUEST
         mock_pq.return_value = None
@@ -628,13 +628,13 @@ class TestUpdateQuest:
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_item", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_item", new_callable=AsyncMock)
     @patch("tools.db_mutations.add_inventory_item", new_callable=AsyncMock)
     @patch("tools.db_mutations.update_player_xp", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     @patch("tools.db_mutations.set_player_quest", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_quest", new_callable=AsyncMock)
     async def test_advance_with_rewards(self, mock_quest, mock_pq, mock_set, mock_player, mock_xp, mock_inv, mock_item):
         mock_quest.return_value = SAMPLE_QUEST
         mock_pq.return_value = {"current_stage": 1}
@@ -656,7 +656,7 @@ class TestUpdateQuest:
 
     @pytest.mark.asyncio
     @patch("tools.db_queries.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_quest", new_callable=AsyncMock)
     async def test_backward_blocked(self, mock_quest, mock_pq):
         mock_quest.return_value = SAMPLE_QUEST
         mock_pq.return_value = {"current_stage": 1}
@@ -667,7 +667,7 @@ class TestUpdateQuest:
 
     @pytest.mark.asyncio
     @patch("tools.db_queries.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_quest", new_callable=AsyncMock)
     async def test_skip_stage_blocked(self, mock_quest, mock_pq):
         mock_quest.return_value = SAMPLE_QUEST
         mock_pq.return_value = {"current_stage": 0}
@@ -677,7 +677,7 @@ class TestUpdateQuest:
         assert "skip" in result["error"].lower()
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_quest", new_callable=AsyncMock)
     async def test_unknown_quest(self, mock_quest):
         mock_quest.return_value = None
         ctx = _make_context()
@@ -687,7 +687,7 @@ class TestUpdateQuest:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.set_player_quest", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_quest", new_callable=AsyncMock)
     async def test_publishes_event(self, mock_quest, mock_pq, mock_set):
         mock_quest.return_value = SAMPLE_QUEST
         mock_pq.return_value = None
@@ -701,7 +701,7 @@ class TestUpdateQuest:
 
     @pytest.mark.asyncio
     @patch("tools.db_queries.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_content_queries.get_quest", new_callable=AsyncMock)
     async def test_invalid_stage_number(self, mock_quest, mock_pq):
         mock_quest.return_value = SAMPLE_QUEST
         mock_pq.return_value = None
@@ -725,7 +725,7 @@ SAMPLE_FAVOR = {
 class TestAwardDivineFavor:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.update_divine_favor", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_divine_favor", new_callable=AsyncMock)
+    @patch("tools.db_activity_queries.get_divine_favor", new_callable=AsyncMock)
     async def test_awards_favor(self, mock_get, mock_update):
         mock_get.return_value = SAMPLE_FAVOR
         ctx = _make_context()
@@ -738,7 +738,7 @@ class TestAwardDivineFavor:
 
     @pytest.mark.asyncio
     @patch("tools.db_mutations.update_divine_favor", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_divine_favor", new_callable=AsyncMock)
+    @patch("tools.db_activity_queries.get_divine_favor", new_callable=AsyncMock)
     async def test_clamps_at_max(self, mock_get, mock_update):
         favor = {**SAMPLE_FAVOR, "level": 95}
         mock_get.return_value = favor
@@ -760,7 +760,7 @@ class TestAwardDivineFavor:
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_divine_favor", new_callable=AsyncMock)
+    @patch("tools.db_activity_queries.get_divine_favor", new_callable=AsyncMock)
     async def test_no_patron(self, mock_get):
         mock_get.return_value = {"patron": "none", "level": 0, "max": 100, "last_whisper_level": 0}
         ctx = _make_context()
@@ -768,7 +768,7 @@ class TestAwardDivineFavor:
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_divine_favor", new_callable=AsyncMock)
+    @patch("tools.db_activity_queries.get_divine_favor", new_callable=AsyncMock)
     async def test_no_favor_data(self, mock_get):
         mock_get.return_value = None
         ctx = _make_context()
@@ -777,7 +777,7 @@ class TestAwardDivineFavor:
 
     @pytest.mark.asyncio
     @patch("tools.db_mutations.update_divine_favor", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_divine_favor", new_callable=AsyncMock)
+    @patch("tools.db_activity_queries.get_divine_favor", new_callable=AsyncMock)
     async def test_publishes_event(self, mock_get, mock_update):
         mock_get.return_value = SAMPLE_FAVOR
         room = _make_mock_room()

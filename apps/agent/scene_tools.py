@@ -7,6 +7,7 @@ import logging
 from livekit.agents.llm import function_tool
 from livekit.agents.voice import RunContext
 
+import db_content_queries
 import db_queries
 from db_errors import db_tool
 from session_data import SessionData
@@ -67,7 +68,7 @@ def detect_scene_transition(scene_cache: dict[str, dict], quest: dict, old_stage
 
 async def _build_scene_context(location_id: str, session: SessionData, location: dict | None = None) -> dict:
     if location is None:
-        location = await db_queries.get_location(location_id)
+        location = await db_content_queries.get_location(location_id)
     if location is None:
         return {"error": f"Location '{location_id}' not found."}
 

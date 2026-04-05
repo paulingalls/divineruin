@@ -6,6 +6,7 @@ import logging
 from livekit.agents.llm import function_tool
 from livekit.agents.voice import RunContext
 
+import db_content_queries
 import db_queries
 from db_errors import db_tool
 from session_data import SessionData
@@ -36,7 +37,7 @@ async def query_location(context: RunContext[SessionData], location_id: str) -> 
     logger.info("query_location called: location_id=%s", location_id)
     if err := _validate_id(location_id, "location_id"):
         return err
-    location = await db_queries.get_location(location_id)
+    location = await db_content_queries.get_location(location_id)
     if location is None:
         return json.dumps({"error": f"Location '{location_id}' not found."})
 
@@ -56,7 +57,7 @@ async def query_npc(context: RunContext[SessionData], npc_id: str) -> str:
     if err := _validate_id(npc_id, "npc_id"):
         return err
     session: SessionData = context.userdata
-    npc = await db_queries.get_npc(npc_id)
+    npc = await db_content_queries.get_npc(npc_id)
     if npc is None:
         return json.dumps({"error": f"NPC '{npc_id}' not found."})
 
@@ -73,7 +74,7 @@ async def query_lore(context: RunContext[SessionData], topic: str) -> str:
     """Search world lore by topic keyword. Use for history, gods, the Hollow,
     races, cultures, and world events."""
     logger.info("query_lore called: topic=%s", topic)
-    entries = await db_queries.search_lore(topic)
+    entries = await db_content_queries.search_lore(topic)
     if not entries:
         return json.dumps(
             {"note": f"No lore entries found for '{topic}'. Improvise from your general knowledge of Aethos."}

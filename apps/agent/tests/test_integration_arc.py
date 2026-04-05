@@ -58,7 +58,11 @@ class TestQuestArcProgression:
         with (
             patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock, return_value="neutral"),
             patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock) as mock_set,
-            patch("tools.db_queries.get_npc", new_callable=AsyncMock, return_value={"default_disposition": "neutral"}),
+            patch(
+                "tools.db_content_queries.get_npc",
+                new_callable=AsyncMock,
+                return_value={"default_disposition": "neutral"},
+            ),
         ):
             await _apply_world_effects(effects, session, pending)
 
@@ -90,7 +94,9 @@ class TestQuestArcProgression:
         with (
             patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock, return_value="wary"),
             patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock) as mock_set,
-            patch("tools.db_queries.get_npc", new_callable=AsyncMock, return_value={"default_disposition": "wary"}),
+            patch(
+                "tools.db_content_queries.get_npc", new_callable=AsyncMock, return_value={"default_disposition": "wary"}
+            ),
         ):
             await _apply_world_effects(effects, session, pending)
 
@@ -137,7 +143,11 @@ class TestQuestArcProgression:
         with (
             patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock, return_value="cautious"),
             patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock) as mock_set,
-            patch("tools.db_queries.get_npc", new_callable=AsyncMock, return_value={"default_disposition": "cautious"}),
+            patch(
+                "tools.db_content_queries.get_npc",
+                new_callable=AsyncMock,
+                return_value={"default_disposition": "cautious"},
+            ),
         ):
             await _apply_world_effects(effects, session, pending)
 
