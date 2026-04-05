@@ -12,7 +12,6 @@ from async_rules import (
     compute_resolve_time,
     resolve_companion_errand,
     resolve_crafting,
-    resolve_training,
     validate_activity_params,
 )
 
@@ -125,16 +124,6 @@ class TestValidateActivityParams:
         assert result.valid is False
         assert any("mithril_dust" in e for e in result.errors)
 
-    def test_training_valid(self):
-        params = {"program_id": "combat_basics"}
-        result = validate_activity_params("training", params, SAMPLE_PLAYER, 0)
-        assert result.valid is True
-
-    def test_training_missing_program(self):
-        result = validate_activity_params("training", {}, SAMPLE_PLAYER, 0)
-        assert result.valid is False
-        assert any("program_id" in e for e in result.errors)
-
     def test_companion_errand_valid(self):
         params = {"errand_type": "scout", "destination": "millhaven"}
         result = validate_activity_params("companion_errand", params, SAMPLE_PLAYER, 0)
@@ -156,8 +145,6 @@ class TestValidateActivityParams:
         for atype in VALID_ACTIVITY_TYPES:
             if atype == "crafting":
                 params = {"recipe_id": "x", "required_materials": []}
-            elif atype == "training":
-                params = {"program_id": "x"}
             else:
                 params = {"errand_type": "scout", "destination": "x"}
             result = validate_activity_params(atype, params, SAMPLE_PLAYER, 0)
@@ -238,61 +225,6 @@ class TestResolveCrafting:
             for opt in result.decision_options:
                 assert "id" in opt
                 assert "label" in opt
-
-
-# --- resolve_training ---
-
-
-class TestResolveTraining:
-    PARAMS = {
-        "program_id": "combat_basics",
-        "stat": "strength",
-        "dc": 13,
-        "mentor_id": "guildmaster_torin",
-    }
-
-    def test_breakthrough_on_nat_20(self):
-        for seed in range(200):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 20:
-                rng = random.Random(seed)
-                result = resolve_training(SAMPLE_PLAYER, self.PARAMS, rng=rng)
-                assert result.tier == "breakthrough"
-                assert "strength" in result.stat_gains
-                return
-        pytest.fail("Could not find seed for nat 20")
-
-    def test_skill_training(self):
-        params = {**self.PARAMS, "skill": "athletics"}
-        rng = random.Random(42)
-        result = resolve_training(SAMPLE_PLAYER, params, rng=rng)
-        assert result.tier in ("breakthrough", "plateau", "redirection")
-        assert result.narrative_context["training_skill"] == "athletics"
-
-    def test_all_tiers_reachable(self):
-        tiers_seen = set()
-        for seed in range(500):
-            result = resolve_training(SAMPLE_PLAYER, self.PARAMS, rng=random.Random(seed))
-            tiers_seen.add(result.tier)
-        assert len(tiers_seen) >= 2
-
-    def test_narrative_context_has_mentor(self):
-        result = resolve_training(SAMPLE_PLAYER, self.PARAMS, rng=random.Random(42))
-        assert result.narrative_context["mentor_id"] == "guildmaster_torin"
-
-    def test_redirection_suggests_different_stat(self):
-        for seed in range(500):
-            result = resolve_training(SAMPLE_PLAYER, self.PARAMS, rng=random.Random(seed))
-            if result.tier == "redirection":
-                assert "insight" in result.stat_gains
-                assert result.stat_gains["insight"] != "strength"
-                return
-        pytest.fail("Could not find seed for redirection")
-
-    def test_decision_options_present(self):
-        for seed in range(20):
-            result = resolve_training(SAMPLE_PLAYER, self.PARAMS, rng=random.Random(seed))
-            assert len(result.decision_options) >= 2
 
 
 # --- resolve_companion_errand ---

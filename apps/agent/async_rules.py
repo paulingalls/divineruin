@@ -13,7 +13,7 @@ from rules_engine import attribute_modifier, dc_for_tier, skill_modifier
 
 MAX_CONCURRENT_ACTIVITIES = 4
 
-VALID_ACTIVITY_TYPES = {"crafting", "training", "companion_errand"}
+VALID_ACTIVITY_TYPES = {"crafting", "companion_errand"}
 
 VALID_ERRAND_TYPES = {"scout", "social", "acquire", "relationship"}
 
@@ -33,15 +33,6 @@ class CraftingOutcome:
     quality_bonus: int
     materials_consumed: list[str]
     materials_returned: list[str]
-    narrative_context: dict
-    decision_options: list[dict]
-
-
-@dataclass(frozen=True)
-class TrainingOutcome:
-    tier: str  # breakthrough | plateau | redirection
-    stat_gains: dict  # e.g. {"strength": 1} or {"skill_bonus": "athletics"}
-    ability_unlocked: str | None
     narrative_context: dict
     decision_options: list[dict]
 
@@ -103,10 +94,6 @@ def validate_activity_params(
         for mat_id in required_materials:
             if mat_id not in inventory:
                 errors.append(f"Missing required material: {mat_id}")
-
-    elif activity_type == "training":
-        if not parameters.get("program_id"):
-            errors.append("program_id is required for training")
 
     elif activity_type == "companion_errand":
         errand_type = parameters.get("errand_type")
@@ -207,73 +194,6 @@ def resolve_crafting(
         quality_bonus=quality_bonus,
         materials_consumed=materials_consumed,
         materials_returned=materials_returned,
-        narrative_context=narrative_context,
-        decision_options=decisions,
-    )
-
-
-def resolve_training(
-    player_data: dict,
-    parameters: dict,
-    rng: random.Random | None = None,
-) -> TrainingOutcome:
-    """Resolve a training activity. Determines stat gains and breakthroughs."""
-    r = rng or random.Random()
-
-    training_stat = parameters.get("stat", "strength")
-    training_skill = parameters.get("skill")
-    dc = parameters.get("dc", dc_for_tier("moderate"))
-
-    # Roll for training outcome
-    d20 = r.randint(1, 20)
-    base_mod = attribute_modifier(player_data.get("attributes", {}).get(training_stat, 10))
-    total = d20 + base_mod
-    margin = total - dc
-
-    stat_gains: dict = {}
-    ability_unlocked = None
-
-    if d20 == 20 or margin >= 5:
-        tier = "breakthrough"
-        stat_gains = {"skill_bonus": training_skill} if training_skill else {training_stat: 1}
-        # Small chance to unlock ability on nat 20
-        if d20 == 20 and parameters.get("potential_ability"):
-            ability_unlocked = parameters["potential_ability"]
-        decisions = [
-            {"id": "continue", "label": "Continue pushing your limits"},
-            {"id": "rest", "label": "Rest and consolidate what you've learned"},
-        ]
-    elif margin >= -2:
-        tier = "plateau"
-        stat_gains = {"skill_familiarity": training_skill} if training_skill else {"training_progress": training_stat}
-        decisions = [
-            {"id": "persist", "label": "Keep training the same way"},
-            {"id": "change_approach", "label": "Try a different approach"},
-        ]
-    else:
-        tier = "redirection"
-        # Discover something different
-        alt_stat = r.choice([s for s in ("strength", "dexterity", "wisdom", "intelligence") if s != training_stat])
-        stat_gains = {"insight": alt_stat}
-        decisions = [
-            {"id": "follow_insight", "label": f"Explore the insight about {alt_stat}"},
-            {"id": "refocus", "label": f"Refocus on {training_stat}"},
-        ]
-
-    narrative_context = {
-        "tier": tier,
-        "roll": d20,
-        "total": total,
-        "dc": dc,
-        "training_stat": training_stat,
-        "training_skill": training_skill,
-        "mentor_id": parameters.get("mentor_id", "guildmaster_torin"),
-    }
-
-    return TrainingOutcome(
-        tier=tier,
-        stat_gains=stat_gains,
-        ability_unlocked=ability_unlocked,
         narrative_context=narrative_context,
         decision_options=decisions,
     )
