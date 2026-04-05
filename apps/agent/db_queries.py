@@ -445,7 +445,7 @@ async def get_player_flag_value(
 
 async def _enrich_quests_with_scene_hints(quests: list[dict]) -> list[dict]:
     """Add 'hints' from scene beats to each quest's data for client display."""
-    from tools import _resolve_scene_from_graph
+    from scene_tools import _resolve_scene_from_graph
 
     scene_ids: list[str] = []
     for q in quests:

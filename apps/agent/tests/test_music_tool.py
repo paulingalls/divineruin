@@ -18,7 +18,7 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall"):
 
 class TestSetMusicState:
     @pytest.mark.asyncio
-    @patch("tools.publish_game_event", new_callable=AsyncMock)
+    @patch("environment_tools.publish_game_event", new_callable=AsyncMock)
     async def test_wonder_publishes_event(self, mock_event):
         ctx = _make_context()
         result = json.loads(await set_music_state._func(ctx, music_state="wonder"))
@@ -30,7 +30,7 @@ class TestSetMusicState:
         assert call_args[2]["music_state"] == "wonder"
 
     @pytest.mark.asyncio
-    @patch("tools.publish_game_event", new_callable=AsyncMock)
+    @patch("environment_tools.publish_game_event", new_callable=AsyncMock)
     async def test_sorrow_publishes_event(self, mock_event):
         ctx = _make_context()
         result = json.loads(await set_music_state._func(ctx, music_state="sorrow"))
@@ -38,14 +38,14 @@ class TestSetMusicState:
         assert result["music_state"] == "sorrow"
 
     @pytest.mark.asyncio
-    @patch("tools.publish_game_event", new_callable=AsyncMock)
+    @patch("environment_tools.publish_game_event", new_callable=AsyncMock)
     async def test_tension_publishes_event(self, mock_event):
         ctx = _make_context()
         result = json.loads(await set_music_state._func(ctx, music_state="tension"))
         assert result["status"] == "set"
 
     @pytest.mark.asyncio
-    @patch("tools.publish_game_event", new_callable=AsyncMock)
+    @patch("environment_tools.publish_game_event", new_callable=AsyncMock)
     async def test_silence_publishes_event(self, mock_event):
         ctx = _make_context()
         result = json.loads(await set_music_state._func(ctx, music_state="silence"))
@@ -76,8 +76,8 @@ class TestStartCombatDifficulty:
     """Verify start_combat event payload includes difficulty field."""
 
     @pytest.mark.asyncio
-    @patch("tools.publish_game_event", new_callable=AsyncMock)
-    @patch("tools._publish_sounds", new_callable=AsyncMock)
+    @patch("combat_tools.publish_game_event", new_callable=AsyncMock)
+    @patch("combat_tools._publish_sounds", new_callable=AsyncMock)
     @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
@@ -126,8 +126,8 @@ class TestStartCombatDifficulty:
         assert payload["difficulty"] == "hard"
 
     @pytest.mark.asyncio
-    @patch("tools.publish_game_event", new_callable=AsyncMock)
-    @patch("tools._publish_sounds", new_callable=AsyncMock)
+    @patch("combat_tools.publish_game_event", new_callable=AsyncMock)
+    @patch("combat_tools._publish_sounds", new_callable=AsyncMock)
     @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)

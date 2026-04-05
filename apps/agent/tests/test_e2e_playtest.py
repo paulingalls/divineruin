@@ -91,7 +91,7 @@ class TestNewPlayerHandoffChain:
         ctx = _make_context("accord_market_square", companion=COMPANION)
         with patch("tools.db.transaction", _mock_txn):
             with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("tools.publish_game_event", new_callable=AsyncMock):
+                with patch("action_tools.publish_game_event", new_callable=AsyncMock):
                     result = await move_player._func(ctx, "greyvale_south_road")
 
         assert isinstance(result, tuple)
@@ -104,7 +104,7 @@ class TestNewPlayerHandoffChain:
         ctx.userdata.location_id = "greyvale_south_road"
         with patch("tools.db.transaction", _mock_txn):
             with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("tools.publish_game_event", new_callable=AsyncMock):
+                with patch("action_tools.publish_game_event", new_callable=AsyncMock):
                     result = await move_player._func(ctx, "greyvale_ruins_entrance")
 
         assert isinstance(result, tuple)
@@ -124,7 +124,7 @@ class TestNewPlayerHandoffChain:
         ctx.userdata.location_id = "greyvale_ruins_entrance"
         with patch("tools.db.transaction", _mock_txn):
             with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("tools.publish_game_event", new_callable=AsyncMock):
+                with patch("action_tools.publish_game_event", new_callable=AsyncMock):
                     result = await move_player._func(ctx, "accord_market_square")
 
         assert isinstance(result, tuple)
@@ -171,7 +171,7 @@ class TestNewPlayerHandoffChain:
         ctx = _make_context("accord_market_square", companion=COMPANION)
         with patch("tools.db.transaction", _mock_txn):
             with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("tools.publish_game_event", new_callable=AsyncMock):
+                with patch("action_tools.publish_game_event", new_callable=AsyncMock):
                     result = await move_player._func(ctx, "greyvale_south_road")
 
         agent, _ = result
@@ -239,8 +239,8 @@ class TestCombatRoundTrip:
             location_id="greyvale_south_road",
         )
 
-        with patch("tools.publish_game_event", new_callable=AsyncMock):
-            with patch("tools._publish_sounds", new_callable=AsyncMock):
+        with patch("combat_tools.publish_game_event", new_callable=AsyncMock):
+            with patch("combat_tools._publish_sounds", new_callable=AsyncMock):
                 result = await end_combat._func(ctx, "victory")
 
         assert isinstance(result, tuple)

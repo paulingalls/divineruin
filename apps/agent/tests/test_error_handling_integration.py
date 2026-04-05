@@ -121,7 +121,7 @@ async def test_successful_mutation_after_error():
         patch("db.transaction") as mock_txn,
         patch("db_queries.get_player") as mock_get,
         patch("db_mutations.update_player_xp"),
-        patch("tools.publish_game_event", new_callable=AsyncMock),
+        patch("action_tools.publish_game_event", new_callable=AsyncMock),
     ):
         mock_conn = AsyncMock()
         mock_txn.return_value.__aenter__.return_value = mock_conn

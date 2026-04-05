@@ -522,8 +522,8 @@ class TestDynamicEndCombat:
         )
         ctx.userdata = session
 
-        with patch("tools.publish_game_event", new_callable=AsyncMock):
-            with patch("tools._publish_sounds", new_callable=AsyncMock):
+        with patch("combat_tools.publish_game_event", new_callable=AsyncMock):
+            with patch("combat_tools._publish_sounds", new_callable=AsyncMock):
                 result = await end_combat._func(ctx, "victory")
 
         assert isinstance(result, tuple)
@@ -563,8 +563,8 @@ class TestDynamicEndCombat:
         )
         ctx.userdata = session
 
-        with patch("tools.publish_game_event", new_callable=AsyncMock):
-            with patch("tools._publish_sounds", new_callable=AsyncMock):
+        with patch("combat_tools.publish_game_event", new_callable=AsyncMock):
+            with patch("combat_tools._publish_sounds", new_callable=AsyncMock):
                 result = await end_combat._func(ctx, "victory")
 
         assert isinstance(result, tuple)
@@ -620,7 +620,7 @@ class TestMovePlayerRegionHandoff:
 
         with patch("tools.db.transaction", _mock_txn):
             with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("tools.publish_game_event", new_callable=AsyncMock):
+                with patch("action_tools.publish_game_event", new_callable=AsyncMock):
                     result = await move_player._func(ctx, "greyvale_south_road")
 
         assert isinstance(result, tuple), f"Expected tuple, got {type(result)}"
@@ -670,7 +670,7 @@ class TestMovePlayerRegionHandoff:
 
         with patch("tools.db.transaction", _mock_txn):
             with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("tools.publish_game_event", new_callable=AsyncMock):
+                with patch("action_tools.publish_game_event", new_callable=AsyncMock):
                     result = await move_player._func(ctx, "accord_guild_hall")
 
         assert isinstance(result, str), f"Expected str, got {type(result)}"
@@ -720,7 +720,7 @@ class TestMovePlayerRegionHandoff:
 
         with patch("tools.db.transaction", _mock_txn):
             with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("tools.publish_game_event", new_callable=AsyncMock):
+                with patch("action_tools.publish_game_event", new_callable=AsyncMock):
                     result = await move_player._func(ctx, "greyvale_ruins_entrance")
 
         assert isinstance(result, tuple)
@@ -772,7 +772,7 @@ class TestMovePlayerRegionHandoff:
 
         with patch("tools.db.transaction", _mock_txn):
             with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("tools.publish_game_event", new_callable=AsyncMock):
+                with patch("action_tools.publish_game_event", new_callable=AsyncMock):
                     result = await move_player._func(ctx, "greyvale_ruins_exterior")
 
         assert isinstance(result, tuple)
@@ -826,7 +826,7 @@ class TestRegionHandoffContext:
 
         with patch("tools.db.transaction", _mock_txn):
             with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("tools.publish_game_event", new_callable=AsyncMock):
+                with patch("action_tools.publish_game_event", new_callable=AsyncMock):
                     result = await move_player._func(ctx, "greyvale_south_road")
 
         agent, _ = result
@@ -881,7 +881,7 @@ class TestRegionHandoffContext:
 
         with patch("tools.db.transaction", _mock_txn):
             with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("tools.publish_game_event", new_callable=AsyncMock):
+                with patch("action_tools.publish_game_event", new_callable=AsyncMock):
                     result = await move_player._func(ctx, "greyvale_south_road")
 
         agent, _ = result

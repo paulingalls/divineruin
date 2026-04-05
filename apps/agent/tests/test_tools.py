@@ -534,7 +534,7 @@ DISCOVER_PLAYER = {
 class TestDiscoverHiddenElement:
     @pytest.mark.asyncio
     @patch("tools.db_mutations.set_player_flag", new_callable=AsyncMock)
-    @patch("tools.publish_game_event", new_callable=AsyncMock)
+    @patch("check_tools.publish_game_event", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     @patch("tools.db_queries.get_location", new_callable=AsyncMock)
     async def test_successful_discovery(self, mock_loc, mock_player, mock_event, mock_set_flag):
@@ -554,7 +554,7 @@ class TestDiscoverHiddenElement:
         mock_set_flag.assert_called_once_with("player_1", "secret_door.discovered", True)
 
     @pytest.mark.asyncio
-    @patch("tools.publish_game_event", new_callable=AsyncMock)
+    @patch("check_tools.publish_game_event", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     @patch("tools.db_queries.get_location", new_callable=AsyncMock)
     async def test_failed_discovery(self, mock_loc, mock_player, mock_event):
@@ -588,7 +588,7 @@ class TestDiscoverHiddenElement:
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.publish_game_event", new_callable=AsyncMock)
+    @patch("check_tools.publish_game_event", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     @patch("tools.db_queries.get_location", new_callable=AsyncMock)
     async def test_blocks_repeated_attempt(self, mock_loc, mock_player, mock_event):
@@ -608,7 +608,7 @@ class TestDiscoverHiddenElement:
 
     @pytest.mark.asyncio
     @patch("tools.db_mutations.set_player_flag", new_callable=AsyncMock)
-    @patch("tools.publish_game_event", new_callable=AsyncMock)
+    @patch("check_tools.publish_game_event", new_callable=AsyncMock)
     @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     @patch("tools.db_queries.get_location", new_callable=AsyncMock)
     async def test_dice_roll_event_has_no_dc(self, mock_loc, mock_player, mock_event, mock_set_flag):
