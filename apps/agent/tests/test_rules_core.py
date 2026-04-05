@@ -261,4 +261,4 @@ class TestNarrativeHint:
         assert narrative_hint(12, 17, 13) == "succeeded comfortably"
 
     def test_large_success(self):
-        assert narrative_hint(15, 22, 13) == "critical success"
+        assert narrative_hint(15, 22, 13) == "succeeded overwhelmingly"

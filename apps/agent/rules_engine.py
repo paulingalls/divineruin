@@ -358,4 +358,4 @@ def narrative_hint(roll: int, total: int, dc: int) -> str:
         return "barely succeeded"
     if margin <= 5:
         return "succeeded comfortably"
-    return "critical success"
+    return "succeeded overwhelmingly"
