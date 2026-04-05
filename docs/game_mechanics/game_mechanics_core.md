@@ -518,27 +518,27 @@ DCs are set by the rules engine based on entity data (lock quality, NPC disposit
 def calculate_hp(level: int, hp_base: int, hp_growth: int, con_mod: int) -> int:
     if level == 1:
         return hp_base + con_mod
-    return hp_base + con_mod + (level - 1) * (hp_growth + con_mod // 2)
+    return hp_base + con_mod + (level - 1) * (hp_growth + (con_mod + 1) // 2)
 ```
 
-**CON modifier contributes at half rate per level** (floor division) to keep HP bounded.
+**CON modifier contributes at half rate per level** (round half up) to keep HP bounded while ensuring CON +1 gives meaningful scaling (+1/level instead of +0 with floor division).
 
 ### HP by Archetype Category
 
 | Category | Archetypes | Base HP | Growth/Level | L1 (CON +1) | L10 (CON +1) | L20 (CON +1) |
 |---|---|---|---|---|---|---|
-| **Martial** | Warrior, Guardian, Skirmisher | 12 | 5 | 13 | 58 | 108 |
-| **Primal / Divine / Marshal** | Druid, Beastcaller, Warden, Cleric, Paladin, Oracle, Marshal | 10 | 4 | 11 | 47 | 87 |
-| **Arcane / Shadow / Support** | Mage, Artificer, Seeker, Rogue, Spy, Whisper, Bard, Diplomat | 8 | 3 | 9 | 36 | 66 |
+| **Martial** | Warrior, Guardian, Skirmisher | 12 | 5 | 13 | 67 | 127 |
+| **Primal / Divine / Marshal** | Druid, Beastcaller, Warden, Cleric, Paladin, Oracle, Marshal | 10 | 4 | 11 | 56 | 106 |
+| **Arcane / Shadow / Support** | Mage, Artificer, Seeker, Rogue, Spy, Whisper, Bard, Diplomat | 8 | 3 | 9 | 45 | 85 |
 
 ### HP Ranges at Key Levels (CON +0 to +5)
 
 | Level | Martial (low/high CON) | Primal-Divine (low/high) | Arcane-Shadow-Support (low/high) |
 |---|---|---|---|
 | 1 | 12 / 17 | 10 / 15 | 8 / 13 |
-| 5 | 32 / 45 | 26 / 39 | 20 / 33 |
-| 10 | 57 / 80 | 46 / 69 | 35 / 58 |
-| 20 | 107 / 150 | 86 / 129 | 65 / 108 |
+| 5 | 32 / 49 | 26 / 43 | 20 / 37 |
+| 10 | 57 / 89 | 46 / 78 | 35 / 67 |
+| 20 | 107 / 169 | 86 / 148 | 65 / 127 |
 
 ---
 

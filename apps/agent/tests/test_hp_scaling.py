@@ -60,34 +60,34 @@ class TestArchetypeHPConfig:
 class TestCalculateHP:
     """Verify calculate_hp against the doc table (game_mechanics_core.md:528-541)."""
 
-    # --- CON +1 ---
+    # --- CON +1 (round-half-up: (1+1)//2 = 1 per level) ---
 
     def test_martial_l1_con1(self):
         assert calculate_hp(level=1, base_hp=12, growth=5, con_mod=1) == 13
 
     def test_martial_l10_con1(self):
-        assert calculate_hp(level=10, base_hp=12, growth=5, con_mod=1) == 58
+        assert calculate_hp(level=10, base_hp=12, growth=5, con_mod=1) == 67
 
     def test_martial_l20_con1(self):
-        assert calculate_hp(level=20, base_hp=12, growth=5, con_mod=1) == 108
+        assert calculate_hp(level=20, base_hp=12, growth=5, con_mod=1) == 127
 
     def test_primal_divine_l1_con1(self):
         assert calculate_hp(level=1, base_hp=10, growth=4, con_mod=1) == 11
 
     def test_primal_divine_l10_con1(self):
-        assert calculate_hp(level=10, base_hp=10, growth=4, con_mod=1) == 47
+        assert calculate_hp(level=10, base_hp=10, growth=4, con_mod=1) == 56
 
     def test_primal_divine_l20_con1(self):
-        assert calculate_hp(level=20, base_hp=10, growth=4, con_mod=1) == 87
+        assert calculate_hp(level=20, base_hp=10, growth=4, con_mod=1) == 106
 
     def test_arcane_shadow_l1_con1(self):
         assert calculate_hp(level=1, base_hp=8, growth=3, con_mod=1) == 9
 
     def test_arcane_shadow_l10_con1(self):
-        assert calculate_hp(level=10, base_hp=8, growth=3, con_mod=1) == 36
+        assert calculate_hp(level=10, base_hp=8, growth=3, con_mod=1) == 45
 
     def test_arcane_shadow_l20_con1(self):
-        assert calculate_hp(level=20, base_hp=8, growth=3, con_mod=1) == 66
+        assert calculate_hp(level=20, base_hp=8, growth=3, con_mod=1) == 85
 
     # --- CON +0 ---
 
@@ -112,10 +112,10 @@ class TestCalculateHP:
         assert calculate_hp(level=1, base_hp=12, growth=5, con_mod=5) == 17
 
     def test_martial_l10_con5(self):
-        assert calculate_hp(level=10, base_hp=12, growth=5, con_mod=5) == 80
+        assert calculate_hp(level=10, base_hp=12, growth=5, con_mod=5) == 89
 
     def test_martial_l20_con5(self):
-        assert calculate_hp(level=20, base_hp=12, growth=5, con_mod=5) == 150
+        assert calculate_hp(level=20, base_hp=12, growth=5, con_mod=5) == 169
 
     # --- Edge cases ---
 
@@ -124,8 +124,8 @@ class TestCalculateHP:
         assert calculate_hp(level=1, base_hp=12, growth=5, con_mod=-1) == 11
 
     def test_negative_con_level10(self):
-        # CON -1, martial L10: 12 + (-1) + 9*(5 + (-1)//2) = 11 + 9*(5 + (-1)) = 11 + 9*4 = 47
-        assert calculate_hp(level=10, base_hp=12, growth=5, con_mod=-1) == 47
+        # CON -1, martial L10: 12 + (-1) + 9*(5 + (-1+1)//2) = 11 + 9*(5 + 0) = 11 + 45 = 56
+        assert calculate_hp(level=10, base_hp=12, growth=5, con_mod=-1) == 56
 
     def test_minimum_hp_floor(self):
         # Extreme negative CON should still yield at least 1
@@ -140,10 +140,10 @@ class TestCalculateMaxHP:
         assert calculate_max_hp("warrior", level=1, con_mod=1) == 13
 
     def test_mage_l10(self):
-        assert calculate_max_hp("mage", level=10, con_mod=1) == 36
+        assert calculate_max_hp("mage", level=10, con_mod=1) == 45
 
     def test_paladin_l20(self):
-        assert calculate_max_hp("paladin", level=20, con_mod=1) == 87
+        assert calculate_max_hp("paladin", level=20, con_mod=1) == 106
 
     def test_unknown_archetype(self):
         with pytest.raises(ValueError, match="Unknown archetype"):
@@ -153,10 +153,10 @@ class TestCalculateMaxHP:
         """E2E: level a warrior from 1-5 with CON+1, verify each level's HP."""
         expected = {
             1: 13,  # 12 + 1
-            2: 18,  # 12 + 1 + 1*(5 + 0) = 18
-            3: 23,  # 12 + 1 + 2*(5 + 0) = 23
-            4: 28,  # 12 + 1 + 3*(5 + 0) = 28
-            5: 33,  # 12 + 1 + 4*(5 + 0) = 33
+            2: 19,  # 12 + 1 + 1*(5 + 1) = 19
+            3: 25,  # 12 + 1 + 2*(5 + 1) = 25
+            4: 31,  # 12 + 1 + 3*(5 + 1) = 31
+            5: 37,  # 12 + 1 + 4*(5 + 1) = 37
         }
         for level, hp in expected.items():
             assert calculate_max_hp("warrior", level=level, con_mod=1) == hp, f"warrior L{level} CON+1: expected {hp}"
