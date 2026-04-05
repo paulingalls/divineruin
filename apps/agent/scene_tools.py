@@ -84,7 +84,7 @@ async def _build_scene_context(location_id: str, session: SessionData, location:
     dispositions = await db_queries.get_npc_dispositions(npc_ids, session.player_id) if npc_ids else {}
     npcs = []
     for npc in npcs_raw:
-        disposition = dispositions.get(npc["id"], npc.get("default_disposition", "neutral"))
+        disposition = dispositions.get(npc["id"]) or str(npc.get("default_disposition", "neutral"))
         npcs.append(_npc_summary(npc, disposition))
 
     targets = [_target_summary(t) for t in targets_raw]

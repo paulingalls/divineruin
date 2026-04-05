@@ -28,6 +28,7 @@ class PrologueAgent(Agent):
 
         sd: SessionData = self.session.userdata
         logger.info("PrologueAgent entered session for player %s", sd.player_id)
+        assert sd.room is not None  # room is set before agent enters
 
         await play_prologue(self.session, sd.room)
 

@@ -5,6 +5,7 @@ import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import cast
 
 import asyncpg
 import redis.asyncio as aioredis
@@ -91,7 +92,7 @@ async def transaction() -> AsyncIterator[asyncpg.Connection]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
-            yield conn
+            yield cast(asyncpg.Connection, conn)
 
 
 async def _cache_get(key: str) -> str | None:

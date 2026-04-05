@@ -73,7 +73,7 @@ async def start_combat(
     context: RunContext[SessionData],
     encounter_id: str,
     encounter_description: str,
-) -> str:
+) -> str | tuple:
     """Start combat using an encounter template. Rolls initiative for all
     participants and establishes turn order. Call this when combat begins.
     Provide the encounter template ID and a brief description of how
@@ -474,7 +474,7 @@ async def request_death_save(
 async def end_combat(
     context: RunContext[SessionData],
     outcome: str,
-) -> str:
+) -> str | tuple:
     """End the current combat. Outcome must be 'victory', 'defeat', or 'fled'.
     On victory, calculates XP from defeated enemies (call award_xp separately
     with the returned total). Clears all combat state."""

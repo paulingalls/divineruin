@@ -4,6 +4,7 @@ import json
 import logging
 import re
 
+import asyncpg
 from livekit.agents.llm import function_tool
 from livekit.agents.voice import RunContext
 
@@ -65,7 +66,7 @@ async def _apply_world_effects(
     effects: list[str],
     session: SessionData,
     pending_events: list[tuple[str, dict]],
-    conn: object | None = None,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
     """Parse and apply deterministic world_effects from quest on_complete."""
     for effect_str in effects:
@@ -456,7 +457,7 @@ async def remove_from_inventory(
 async def move_player(
     context: RunContext[SessionData],
     destination_id: str,
-) -> str:
+) -> str | tuple:
     """Move the player to a connected location. Provide the destination
     location ID from the current location's exits. Returns the full scene
     context for the new location."""
@@ -620,7 +621,7 @@ async def update_quest(
     context: RunContext[SessionData],
     quest_id: str,
     new_stage_id: int,
-) -> str:
+) -> str | tuple:
     """Advance a quest to a new stage. For starting a quest, use stage 0.
     Stages must advance forward — no skipping or going backward.
     Rewards from the completing stage are automatically applied."""

@@ -44,19 +44,22 @@ async def get_player_training_activities(
     player_id: str,
     state: TrainingState | None = None,
     *,
+    limit: int = 50,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> list[dict]:
     _conn = conn or await db.get_pool()
     if state:
         rows = await _conn.fetch(
-            f"SELECT {_COLUMNS} FROM training_activities WHERE player_id = $1 AND state = $2 ORDER BY created_at",
+            f"SELECT {_COLUMNS} FROM training_activities WHERE player_id = $1 AND state = $2 ORDER BY created_at LIMIT $3",
             player_id,
             state,
+            limit,
         )
     else:
         rows = await _conn.fetch(
-            f"SELECT {_COLUMNS} FROM training_activities WHERE player_id = $1 ORDER BY created_at",
+            f"SELECT {_COLUMNS} FROM training_activities WHERE player_id = $1 ORDER BY created_at LIMIT $2",
             player_id,
+            limit,
         )
     return [_to_dict(row) for row in rows]
 

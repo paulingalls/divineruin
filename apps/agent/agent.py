@@ -161,7 +161,7 @@ def _setup_reconnection(
         if fire:
             fire(reconnect_reply)
         else:
-            _task = asyncio.create_task(reconnect_reply)  # noqa: RUF006
+            _handle = reconnect_reply  # SpeechHandle is already started
 
     async def _grace_timeout():
         await asyncio.sleep(RECONNECT_GRACE_S)
@@ -228,6 +228,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
         _setup_reconnection(ctx.room, session, userdata, prologue_agent)
     else:
         # --- Existing gameplay flow ---
+        assert player is not None  # guaranteed by needs_creation check
         if last_summary is not None:
             location_id = player.get("location_id", START_LOCATION)
             is_first_session = False

@@ -40,6 +40,7 @@ class CreationAgent(BaseGameAgent):
         logger.info("CreationAgent entered session for player %s", sd.player_id)
 
         # Start listening for card taps from client
+        assert sd.room is not None  # room is set before agent enters
         self._card_tap = CardTapHandler(room=sd.room, session=self.session, userdata=sd)
         self._card_tap.start()
 

@@ -234,7 +234,7 @@ async def set_creation_choice(
 
 
 @function_tool
-async def finalize_character(context: RunContext) -> str:
+async def finalize_character(context: RunContext) -> str | tuple:
     """Generate stats and persist completed character.
 
     Call when all creation choices are set (race, class, deity, name, backstory).
@@ -257,6 +257,9 @@ async def finalize_character(context: RunContext) -> str:
 
     # Deity can be None (deferred) or "none" (explicitly no patron)
     deity_id = cs.deity
+
+    if not cs.name or not cs.race or not cs.class_choice:
+        return json.dumps({"error": "Missing required choices: name, race, or class"})
 
     try:
         character_data = build_character_data(

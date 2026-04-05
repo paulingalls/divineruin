@@ -527,18 +527,18 @@ def calculate_hp(level: int, hp_base: int, hp_growth: int, con_mod: int) -> int:
 
 | Category | Archetypes | Base HP | Growth/Level | L1 (CON +1) | L10 (CON +1) | L20 (CON +1) |
 |---|---|---|---|---|---|---|
-| **Martial** | Warrior, Guardian, Skirmisher | 12 | 5 | 13 | 62 | 117 |
-| **Primal / Divine / Marshal** | Druid, Beastcaller, Warden, Cleric, Paladin, Oracle, Marshal | 10 | 4 | 11 | 50 | 96 |
-| **Arcane / Shadow / Support** | Mage, Artificer, Seeker, Rogue, Spy, Whisper, Bard, Diplomat | 8 | 3 | 9 | 39 | 75 |
+| **Martial** | Warrior, Guardian, Skirmisher | 12 | 5 | 13 | 58 | 108 |
+| **Primal / Divine / Marshal** | Druid, Beastcaller, Warden, Cleric, Paladin, Oracle, Marshal | 10 | 4 | 11 | 47 | 87 |
+| **Arcane / Shadow / Support** | Mage, Artificer, Seeker, Rogue, Spy, Whisper, Bard, Diplomat | 8 | 3 | 9 | 36 | 66 |
 
 ### HP Ranges at Key Levels (CON +0 to +5)
 
 | Level | Martial (low/high CON) | Primal-Divine (low/high) | Arcane-Shadow-Support (low/high) |
 |---|---|---|---|
 | 1 | 12 / 17 | 10 / 15 | 8 / 13 |
-| 5 | 32 / 49 | 26 / 39 | 20 / 33 |
-| 10 | 57 / 89 | 46 / 72 | 35 / 55 |
-| 20 | 107 / 166 | 86 / 134 | 65 / 103 |
+| 5 | 32 / 45 | 26 / 39 | 20 / 33 |
+| 10 | 57 / 80 | 46 / 69 | 35 / 58 |
+| 20 | 107 / 150 | 86 / 129 | 65 / 108 |
 
 ---
 

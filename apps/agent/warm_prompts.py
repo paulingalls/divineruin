@@ -149,7 +149,7 @@ async def build_warm_layer(
         dispositions = await db_queries.get_npc_dispositions(npc_ids, player_id)
         npc_lines = []
         for npc in npcs_raw:
-            disposition = dispositions.get(npc["id"], npc.get("default_disposition", "neutral"))
+            disposition = dispositions.get(npc["id"]) or str(npc.get("default_disposition", "neutral"))
             summary = _npc_summary(npc, disposition)
             npc_lines.append(f"- {summary['name']} ({summary['role']}) — disposition: {summary['disposition']}")
         sections.append("NPCS PRESENT\n" + "\n".join(npc_lines))

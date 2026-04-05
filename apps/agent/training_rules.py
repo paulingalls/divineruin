@@ -12,6 +12,8 @@ from typing import Literal
 
 # ── Types ──────────────────────────────────────────────────────────────
 
+MicroBonus = dict[str, str | int | float | bool]
+
 TrainingActivityType = Literal[
     "spell_cantrip",
     "spell_standard",
@@ -47,7 +49,7 @@ class DurationRange:
 class DecisionOption:
     id: str
     label: str
-    micro_bonus: dict
+    micro_bonus: MicroBonus
 
 
 @dataclass(frozen=True)
@@ -71,7 +73,7 @@ class MidpointResult:
     state: TrainingState
     second_half_seconds: int
     completes_at: datetime
-    micro_bonus: dict
+    micro_bonus: MicroBonus
     decision_id: str
 
 
@@ -79,7 +81,7 @@ class MidpointResult:
 class CompletionResult:
     state: TrainingState
     counter_increment: int
-    micro_bonus: dict
+    micro_bonus: MicroBonus
 
 
 # ── Duration config (hours → seconds) ─────────────────────────────────
