@@ -14,6 +14,7 @@ import check_resolution
 import db
 import db_mutations
 import db_queries
+import db_training
 from async_rules import resolve_companion_errand, resolve_crafting, resolve_training
 from dialogue_parser import Segment
 from llm_config import AUDIO_DIR, audio_url_for
@@ -194,6 +195,117 @@ async def _backfill_progress_snippets(exclude_ids: set[str] | None = None) -> No
             logger.warning("Failed to generate progress snippets for %s", row["id"])
 
 
+async def advance_training_cycles() -> int:
+    """Poll for training activities whose transition_at has passed and advance state.
+
+    running_first_half → awaiting_decision (sends notification)
+    running_second_half → complete (applies outcome, increments skill counter)
+
+    Returns count of transitions applied.
+    """
+    from training_rules import complete_training_cycle, get_midpoint_decision
+
+    due = await db_training.get_due_training_transitions()
+    if not due:
+        return 0
+
+    count = 0
+    for activity in due:
+        activity_id = activity["id"]
+        player_id = activity["player_id"]
+        activity_type = activity["activity_type"]
+        state = activity["state"]
+        data = activity.get("data", {})
+
+        try:
+            if state == "running_first_half":
+                decision = get_midpoint_decision(activity_type)
+                await db_training.update_training_activity(
+                    activity_id,
+                    "awaiting_decision",
+                    {
+                        "decision_presented": True,
+                        "decision_prompt": decision.prompt,
+                        "decision_options": [{"id": o.id, "label": o.label} for o in decision.options],
+                    },
+                )
+                logger.info("Training %s → awaiting_decision (player=%s)", activity_id, player_id)
+
+                # Send push notification for midpoint decision
+                try:
+                    await send_push_notification(
+                        player_id,
+                        "Training Decision",
+                        decision.prompt[:100],
+                    )
+                except Exception:
+                    logger.warning("Failed to send midpoint notification for %s", activity_id)
+
+                count += 1
+
+            elif state == "running_second_half":
+                decision_id = data.get("decision_id", "")
+                completion = complete_training_cycle(activity_type, decision_id)
+
+                update_data: dict = {
+                    "counter_increment": completion.counter_increment,
+                    "micro_bonus": completion.micro_bonus,
+                }
+
+                # Skill practice: increment the skill use counter (hybrid advancement)
+                if activity_type == "skill_practice" and completion.counter_increment > 0:
+                    training_skill = data.get("skill")
+                    if training_skill:
+                        skill_key = training_skill.lower()
+                        skill_adv = await db_queries.get_single_skill_advancement(player_id, skill_key)
+                        # Simulate all increments in-memory, write once
+                        tiers = {skill_key: skill_adv["tier"]}
+                        counters = {skill_key: skill_adv["use_counter"]}
+                        narrative = skill_adv["narrative_moment_ready"]
+                        adv = None
+                        for _ in range(completion.counter_increment):
+                            adv = check_resolution.record_skill_use(
+                                tiers,
+                                training_skill,
+                                counters,
+                                narrative_moment=narrative,
+                            )
+                            tiers[skill_key] = adv.new_tier
+                            counters[skill_key] = adv.new_use_count
+                        if adv is not None:
+                            await db_mutations.update_skill_advancement(
+                                player_id, adv.skill, adv.new_tier, adv.new_use_count
+                            )
+                            if adv.advanced and adv.old_tier == "expert":
+                                await db_mutations.clear_narrative_moment(player_id, adv.skill)
+                            update_data["skill_advanced"] = adv.advanced
+                            update_data["new_tier"] = adv.new_tier
+                    else:
+                        logger.warning("Training %s is skill_practice but missing 'skill' in data", activity_id)
+
+                await db_training.update_training_activity(activity_id, "complete", update_data)
+                logger.info("Training %s → complete (player=%s, type=%s)", activity_id, player_id, activity_type)
+
+                # Send completion notification
+                try:
+                    await send_push_notification(
+                        player_id,
+                        "Training Complete",
+                        f"Your {activity_type.replace('_', ' ')} training is complete!",
+                    )
+                except Exception:
+                    logger.warning("Failed to send completion notification for %s", activity_id)
+
+                count += 1
+
+        except Exception:
+            logger.exception("Failed to advance training %s, will retry next cycle", activity_id)
+
+    if count > 0:
+        logger.info("Advanced %d/%d training cycles", count, len(due))
+    return count
+
+
 async def check_god_whisper_triggers() -> int:
     """Check for players who should receive async god whispers.
 
@@ -260,6 +372,11 @@ async def main() -> None:
                     logger.info("Cycle complete: %d activities resolved", count)
             except Exception:
                 logger.exception("Error in resolve cycle")
+
+            try:
+                await advance_training_cycles()
+            except Exception:
+                logger.exception("Error in training cycle advancement")
 
             try:
                 await check_god_whisper_triggers()
