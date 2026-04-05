@@ -70,7 +70,7 @@ async def count_active_by_slot(
         SELECT
             COALESCE(SUM(CASE WHEN src = 'training' THEN 1 ELSE 0 END), 0) AS training,
             COALESCE(SUM(CASE WHEN src = 'crafting' THEN 1 ELSE 0 END), 0) AS crafting,
-            COALESCE(SUM(CASE WHEN src = 'companion' THEN 1 ELSE 0 END), 0) AS companion
+            COALESCE(SUM(CASE WHEN src = 'companion_errand' THEN 1 ELSE 0 END), 0) AS companion
         FROM (
             SELECT data->>'activity_type' AS src
             FROM async_activities

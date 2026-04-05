@@ -7,8 +7,31 @@ import {
   VALID_ACTIVITY_TYPES,
 } from "./activity_templates.ts";
 import { displayName } from "@divineruin/shared";
+import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts";
 
-const MAX_CONCURRENT = 4;
+async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<SlotCounts> {
+  const rows: { training: number; crafting: number; companion: number }[] = await tx`
+    SELECT
+      COALESCE(SUM(CASE WHEN src = 'training' THEN 1 ELSE 0 END), 0)::int AS training,
+      COALESCE(SUM(CASE WHEN src = 'crafting' THEN 1 ELSE 0 END), 0)::int AS crafting,
+      COALESCE(SUM(CASE WHEN src = 'companion_errand' THEN 1 ELSE 0 END), 0)::int AS companion
+    FROM (
+      SELECT data->>'activity_type' AS src
+      FROM async_activities
+      WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
+      UNION ALL
+      SELECT 'training' AS src
+      FROM training_activities
+      WHERE player_id = ${playerId} AND state != 'complete'
+    ) combined
+  `;
+  const row = rows[0];
+  return {
+    training: row?.training ?? 0,
+    crafting: row?.crafting ?? 0,
+    companion: row?.companion ?? 0,
+  };
+}
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -105,17 +128,18 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       };
     }
 
-    // Atomic transaction: check concurrent count, verify+consume materials, insert activity
+    // Atomic transaction: check slot availability, verify+consume materials, insert activity
     const txnResult = await sql.begin(async (tx) => {
       // Lock player's in-progress activities to prevent race conditions
-      const locked: { id: string }[] = await tx`
+      await tx`
         SELECT id FROM async_activities
         WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
         FOR UPDATE
       `;
-      const activeCount = locked.length;
-      if (activeCount >= MAX_CONCURRENT) {
-        return { error: `Maximum ${MAX_CONCURRENT} concurrent activities allowed` } as const;
+      const slotCounts = await countActiveBySlot(playerId, tx);
+      const slotCheck = validateSlotAvailability(slotCounts, body.type);
+      if (!slotCheck.valid) {
+        return { error: slotCheck.error! } as const;
       }
 
       // Verify and consume materials atomically for crafting
