@@ -67,6 +67,7 @@ jobs:
       - run: cd apps/agent && uv sync
       - run: cd apps/agent && uv run ruff check .
       - run: cd apps/agent && uv run ruff format --check .
+      - run: cd apps/agent && uv run pyright
 
   test-python:
     runs-on: ubuntu-latest
