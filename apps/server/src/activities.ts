@@ -8,6 +8,7 @@ import {
 } from "./activity_templates.ts";
 import { displayName } from "@divineruin/shared";
 import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts";
+import { rollErrandRisk } from "./errand_risk.ts";
 
 async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<SlotCounts> {
   const rows: { training: number; crafting: number; companion: number }[] = await tx`
@@ -122,9 +123,11 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
 
       durationMin = template.duration_min_seconds;
       durationMax = template.duration_max_seconds;
+      const companionId = (params.companion_id as string) || "companion_kael";
       activityParams = {
         errand_type: errandType,
         destination,
+        risk_outcome: rollErrandRisk(errandType, destination, companionId),
       };
     }
 
