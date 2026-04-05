@@ -10,6 +10,8 @@ from typing import Literal
 from livekit.agents.llm import function_tool
 from livekit.agents.voice import RunContext
 
+import check_resolution
+import combat_resolution
 import db
 import dice
 import event_types as E
@@ -440,7 +442,7 @@ async def discover_hidden_element(
     if player is None:
         return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
-    result = rules_engine.resolve_skill_check_dc(player, discover_skill, dc)
+    result = check_resolution.resolve_skill_check_dc(player, discover_skill, dc)
 
     await publish_game_event(
         session.room,
@@ -526,7 +528,7 @@ async def request_skill_check(
     if player is None:
         return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
-    result = rules_engine.resolve_skill_check(player, skill, difficulty)
+    result = check_resolution.resolve_skill_check(player, skill, difficulty)
 
     await publish_game_event(
         session.room,
@@ -545,7 +547,7 @@ async def request_skill_check(
     skill_lower = skill.lower()
     skill_adv = await db.get_single_skill_advancement(session.player_id, skill_lower)
 
-    adv = rules_engine.record_skill_use(
+    adv = check_resolution.record_skill_use(
         {skill_lower: skill_adv["tier"]},
         skill_lower,
         {skill_lower: skill_adv["use_counter"]},
@@ -650,7 +652,7 @@ async def request_attack(
     target_ac = target.get("ac", 10)
     target_hp = target.get("hp", {}).get("current", 0)
 
-    result = rules_engine.resolve_attack(player, weapon, target_ac, target_hp)
+    result = check_resolution.resolve_attack(player, weapon, target_ac, target_hp)
 
     if result.hit:
         await db.update_npc_hp(target_id, result.target_hp_remaining)
@@ -722,7 +724,7 @@ async def request_saving_throw(
         return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
     try:
-        result = rules_engine.resolve_saving_throw(player, save_type, dc, effect_on_fail)
+        result = check_resolution.resolve_saving_throw(player, save_type, dc, effect_on_fail)
     except ValueError as e:
         return json.dumps({"error": str(e)})
 
@@ -1734,7 +1736,7 @@ def _participant_summary(p: CombatParticipant) -> dict:
         "name": p.name,
         "type": p.type,
         "initiative": p.initiative,
-        "hp_status": rules_engine.hp_threshold_status(p.hp_current, p.hp_max),
+        "hp_status": combat_resolution.hp_threshold_status(p.hp_current, p.hp_max),
         "ac": p.ac,
         "is_fallen": p.is_fallen,
     }
@@ -1822,7 +1824,7 @@ async def start_combat(
             )
 
     # Roll initiative and build lookup
-    initiative_entries = rules_engine.roll_initiative(initiative_inputs)
+    initiative_entries = combat_resolution.roll_initiative(initiative_inputs)
     initiative_order = [e.participant_id for e in initiative_entries]
     initiative_by_id = {e.participant_id: e.total for e in initiative_entries}
 
@@ -1987,7 +1989,7 @@ async def resolve_enemy_turn(
         "level": enemy.level,
     }
 
-    attack_result = rules_engine.resolve_attack(
+    attack_result = check_resolution.resolve_attack(
         attacker_data,
         action,
         target.ac,
@@ -2007,7 +2009,7 @@ async def resolve_enemy_turn(
         sounds.append(SOUND_ATTACK_MISS)
 
     # Check HP thresholds
-    hp_status = rules_engine.hp_threshold_status(target.hp_current, target.hp_max)
+    hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
     if target.hp_current <= 0:
         target.is_fallen = True
         sounds.append(SOUND_PLAYER_FALLEN)
@@ -2091,7 +2093,7 @@ async def request_death_save(
     if not player_participant.is_fallen:
         return json.dumps({"error": "Player has not fallen. Death saves only apply at 0 HP."})
 
-    result = rules_engine.resolve_death_save(
+    result = combat_resolution.resolve_death_save(
         player_participant.death_save_successes,
         player_participant.death_save_failures,
     )
@@ -2191,7 +2193,7 @@ async def end_combat(
             if p.type == "enemy":
                 enemy_dicts.append({"xp_value": p.xp_value})
                 defeated_enemies.append(p.name)
-        xp_total = rules_engine.calculate_combat_xp(enemy_dicts)
+        xp_total = combat_resolution.calculate_combat_xp(enemy_dicts)
 
     combat_id = cs.combat_id
 

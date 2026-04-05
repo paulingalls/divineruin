@@ -10,8 +10,8 @@ import logging
 import os
 from dataclasses import asdict
 
+import check_resolution
 import db
-import rules_engine
 from async_rules import resolve_companion_errand, resolve_crafting, resolve_training
 from dialogue_parser import Segment
 from llm_config import AUDIO_DIR, audio_url_for
@@ -91,7 +91,7 @@ async def _resolve_single_activity(activity: dict) -> None:
             training_skill = parameters.get("skill")
             if training_skill:
                 skill_adv = await db.get_single_skill_advancement(player_id, training_skill.lower())
-                adv = rules_engine.record_skill_use(
+                adv = check_resolution.record_skill_use(
                     {training_skill.lower(): skill_adv["tier"]},
                     training_skill,
                     {training_skill.lower(): skill_adv["use_counter"]},

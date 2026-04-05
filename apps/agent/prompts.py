@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from combat_resolution import hp_threshold_status
 from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
-from rules_engine import hp_threshold_status
 from session_data import CombatState
 from voices import DEFAULT_VOICE, EMOTIONS, VOICES
 
