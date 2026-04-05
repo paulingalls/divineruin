@@ -18,7 +18,9 @@ from livekit.agents.voice import RunContext
 import db
 import event_types as E
 from asset_utils import slug_asset_url
-from creation_data import CLASSES, DEITIES, RACES
+from creation_classes import CLASSES
+from creation_deities import DEITIES
+from creation_races import RACES
 from creation_rules import build_character_data, infer_culture
 from game_events import publish_game_event
 from session_data import SessionData

@@ -5,7 +5,9 @@ All functions are deterministic and fully testable without external dependencies
 
 from __future__ import annotations
 
-from creation_data import CLASSES, DEITIES, RACES
+from creation_classes import CLASSES
+from creation_deities import DEITIES
+from creation_races import RACES
 from rules_engine import attribute_modifier
 
 BASE_ATTRIBUTE = 10

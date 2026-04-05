@@ -542,7 +542,7 @@ class TestDiscoverHiddenElement:
         mock_player.return_value = DISCOVER_PLAYER
         ctx = _make_context(location_id="test_location")
 
-        with patch("rules_engine.dice_roll") as mock_dice:
+        with patch("check_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[15], dropped=[], total=15)
@@ -562,7 +562,7 @@ class TestDiscoverHiddenElement:
         mock_player.return_value = DISCOVER_PLAYER
         ctx = _make_context(location_id="test_location")
 
-        with patch("rules_engine.dice_roll") as mock_dice:
+        with patch("check_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[3], dropped=[], total=3)
@@ -596,7 +596,7 @@ class TestDiscoverHiddenElement:
         mock_player.return_value = DISCOVER_PLAYER
         ctx = _make_context(location_id="test_location")
 
-        with patch("rules_engine.dice_roll") as mock_dice:
+        with patch("check_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[3], dropped=[], total=3)
@@ -617,7 +617,7 @@ class TestDiscoverHiddenElement:
         mock_player.return_value = DISCOVER_PLAYER
         ctx = _make_context(location_id="test_location")
 
-        with patch("rules_engine.dice_roll") as mock_dice:
+        with patch("check_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[15], dropped=[], total=15)

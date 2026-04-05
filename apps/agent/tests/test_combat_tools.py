@@ -396,7 +396,7 @@ class TestRequestDeathSave:
         else:
             pytest.skip("Could not find seed for nat 20")
 
-        with patch("rules_engine.dice_roll") as mock_dice:
+        with patch("combat_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[20], dropped=[], total=20)
@@ -419,7 +419,7 @@ class TestRequestDeathSave:
     @patch("tools.db.update_player_hp", new_callable=AsyncMock)
     @patch("tools.db.save_combat_state", new_callable=AsyncMock)
     async def test_nat_1_double_fail(self, mock_save, mock_update_hp):
-        with patch("rules_engine.dice_roll") as mock_dice:
+        with patch("combat_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[1], dropped=[], total=1)
@@ -436,7 +436,7 @@ class TestRequestDeathSave:
     @patch("tools.db.update_player_hp", new_callable=AsyncMock)
     @patch("tools.db.save_combat_state", new_callable=AsyncMock)
     async def test_stabilize(self, mock_save, mock_update_hp):
-        with patch("rules_engine.dice_roll") as mock_dice:
+        with patch("combat_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[15], dropped=[], total=15)
@@ -456,7 +456,7 @@ class TestRequestDeathSave:
     @patch("tools.db.update_player_hp", new_callable=AsyncMock)
     @patch("tools.db.save_combat_state", new_callable=AsyncMock)
     async def test_death(self, mock_save, mock_update_hp):
-        with patch("rules_engine.dice_roll") as mock_dice:
+        with patch("combat_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[5], dropped=[], total=5)

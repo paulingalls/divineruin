@@ -7,7 +7,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from card_tap_handler import HINT_COOLDOWN_S, PLAYER_HINTS_TOPIC, CardTapHandler, build_hint_instruction
-from creation_data import CLASSES, DEITIES, RACES
+from creation_classes import CLASSES
+from creation_deities import DEITIES
+from creation_races import RACES
 from session_data import CreationState, SessionData
 
 # ---------------------------------------------------------------------------

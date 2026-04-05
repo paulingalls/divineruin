@@ -8,7 +8,9 @@ import pytest
 
 import event_types as E
 from asset_utils import compute_asset_id
-from creation_data import CLASSES, DEITIES, RACES
+from creation_classes import CLASSES
+from creation_deities import DEITIES
+from creation_races import RACES
 from creation_tools import finalize_character, push_creation_cards, set_creation_choice
 from session_data import CreationState, SessionData
 
