@@ -130,42 +130,6 @@ class TestResolveSingleActivity:
         assert resolved["narration_audio_url"] == "/api/audio/activity_abc123.mp3"
 
     @pytest.mark.asyncio
-    async def test_training_resolution(self):
-        activity = {
-            **SAMPLE_ACTIVITY,
-            "activity_type": "training",
-            "parameters": {
-                "program_id": "combat_basics",
-                "stat": "strength",
-                "dc": 13,
-                "mentor_id": "guildmaster_torin",
-            },
-        }
-
-        with (
-            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
-            patch(
-                "async_worker.generate_activity_narration",
-                new_callable=AsyncMock,
-                return_value=(
-                    [Segment("DM_NARRATOR", "neutral", "Training narration.")],
-                    "Training narration.",
-                    "Training complete.",
-                ),
-            ),
-            patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
-            patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock) as mock_update,
-            patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Training done."),
-            patch("async_worker.send_push_notification", new_callable=AsyncMock),
-        ):
-            await _resolve_single_activity(activity)
-
-        resolve_call = mock_update.call_args_list[1]
-        assert resolve_call[0][1]["status"] == "resolved"
-        cache_call = mock_update.call_args_list[0]
-        assert cache_call[0][1]["outcome"]["tier"] in ("breakthrough", "plateau", "redirection")
-
-    @pytest.mark.asyncio
     async def test_companion_errand_resolution(self):
         activity = {
             **SAMPLE_ACTIVITY,

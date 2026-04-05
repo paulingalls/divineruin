@@ -123,53 +123,6 @@ class TestFullPipeline:
         assert resolved["narration_audio_url"] == "/api/audio/activity_e2e_craft.mp3"
 
     @pytest.mark.asyncio
-    async def test_training_e2e(self):
-        """Full training pipeline."""
-        activity = {
-            "id": "activity_e2e_train",
-            "player_id": "player_1",
-            "status": "in_progress",
-            "activity_type": "training",
-            "parameters": {
-                "program_id": "combat_basics",
-                "stat": "strength",
-                "dc": 13,
-                "mentor_id": "guildmaster_torin",
-            },
-            "resolve_at": "2025-01-01T00:00:00Z",
-        }
-
-        update_calls = []
-
-        async def mock_update(activity_id, updates, **kwargs):
-            update_calls.append((activity_id, updates))
-
-        with (
-            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
-            patch(
-                "async_worker.generate_activity_narration",
-                new_callable=AsyncMock,
-                return_value=(
-                    [Segment("GUILDMASTER_TORIN", "stern", "Again. Better.")],
-                    "Again. Better.",
-                    "Torin pushes the recruit harder.",
-                ),
-            ),
-            patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_e2e_train.mp3"),
-            patch("async_worker.db_mutations.update_activity", side_effect=mock_update),
-            patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Training complete."),
-            patch("async_worker.send_push_notification", new_callable=AsyncMock),
-        ):
-            await _resolve_single_activity(activity)
-
-        assert len(update_calls) == 2
-        cached = update_calls[0][1]
-        assert cached["outcome"]["tier"] in ("breakthrough", "plateau", "redirection")
-        assert "stat_gains" in cached["outcome"]
-        resolved = update_calls[1][1]
-        assert resolved["status"] == "resolved"
-
-    @pytest.mark.asyncio
     async def test_companion_errand_e2e(self):
         """Full companion errand pipeline."""
         activity = {
