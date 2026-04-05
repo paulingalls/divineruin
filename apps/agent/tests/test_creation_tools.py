@@ -206,19 +206,17 @@ class TestFinalizeCharacter:
         result = json.loads(await finalize_character._func(ctx))
         assert "error" in result
 
-    @patch("creation_tools.db")
-    async def test_successful_finalize(self, mock_db):
-        mock_db.create_player = AsyncMock()
-        mock_db.get_session_init_payload = AsyncMock(
-            return_value={
-                "character": {"name": "Aric"},
-                "location": None,
-                "quests": [],
-                "inventory": [],
-                "map_progress": [],
-                "world_state": {"time": "evening"},
-            }
-        )
+    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
+    async def test_successful_finalize(self, mock_create_player, mock_get_payload):
+        mock_get_payload.return_value = {
+            "character": {"name": "Aric"},
+            "location": None,
+            "quests": [],
+            "inventory": [],
+            "map_progress": [],
+            "world_state": {"time": "evening"},
+        }
 
         cs = CreationState(
             phase="identity",
@@ -241,21 +239,19 @@ class TestFinalizeCharacter:
         assert result["character"]["class"] == "Warrior"
         assert cs.phase == "complete"
         assert ctx.userdata.onboarding_beat == 1
-        mock_db.create_player.assert_awaited_once()
+        mock_create_player.assert_awaited_once()
 
-    @patch("creation_tools.db")
-    async def test_finalize_with_deferred_deity(self, mock_db):
-        mock_db.create_player = AsyncMock()
-        mock_db.get_session_init_payload = AsyncMock(
-            return_value={
-                "character": {"name": "Aric"},
-                "location": None,
-                "quests": [],
-                "inventory": [],
-                "map_progress": [],
-                "world_state": {"time": "evening"},
-            }
-        )
+    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
+    async def test_finalize_with_deferred_deity(self, mock_create_player, mock_get_payload):
+        mock_get_payload.return_value = {
+            "character": {"name": "Aric"},
+            "location": None,
+            "quests": [],
+            "inventory": [],
+            "map_progress": [],
+            "world_state": {"time": "evening"},
+        }
 
         cs = CreationState(
             phase="identity",
@@ -275,19 +271,17 @@ class TestFinalizeCharacter:
         assert "character" in result
         assert cs.phase == "complete"
 
-    @patch("creation_tools.db")
-    async def test_finalize_calls_create_player(self, mock_db):
-        mock_db.create_player = AsyncMock()
-        mock_db.get_session_init_payload = AsyncMock(
-            return_value={
-                "character": {},
-                "location": None,
-                "quests": [],
-                "inventory": [],
-                "map_progress": [],
-                "world_state": {},
-            }
-        )
+    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
+    async def test_finalize_calls_create_player(self, mock_create_player, mock_get_payload):
+        mock_get_payload.return_value = {
+            "character": {},
+            "location": None,
+            "quests": [],
+            "inventory": [],
+            "map_progress": [],
+            "world_state": {},
+        }
 
         cs = CreationState(
             race="draethar",
@@ -299,8 +293,8 @@ class TestFinalizeCharacter:
         ctx = _make_context(cs)
         _agent, _json_str = await finalize_character._func(ctx)
 
-        mock_db.create_player.assert_awaited_once()
-        call_args = mock_db.create_player.call_args
+        mock_create_player.assert_awaited_once()
+        call_args = mock_create_player.call_args
         player_id = call_args[0][0]
         data = call_args[0][2]
         assert player_id == "test_player"
@@ -309,19 +303,17 @@ class TestFinalizeCharacter:
         assert data["class"] == "guardian"
         assert data["deity"] == "valdris"
 
-    @patch("creation_tools.db")
-    async def test_finalize_updates_session_location(self, mock_db):
-        mock_db.create_player = AsyncMock()
-        mock_db.get_session_init_payload = AsyncMock(
-            return_value={
-                "character": {},
-                "location": None,
-                "quests": [],
-                "inventory": [],
-                "map_progress": [],
-                "world_state": {},
-            }
-        )
+    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
+    async def test_finalize_updates_session_location(self, mock_create_player, mock_get_payload):
+        mock_get_payload.return_value = {
+            "character": {},
+            "location": None,
+            "quests": [],
+            "inventory": [],
+            "map_progress": [],
+            "world_state": {},
+        }
 
         cs = CreationState(
             race="human",
@@ -335,10 +327,8 @@ class TestFinalizeCharacter:
 
         assert ctx.userdata.location_id != ""
 
-    @patch("creation_tools.db")
-    async def test_finalize_db_error(self, mock_db):
-        mock_db.create_player = AsyncMock(side_effect=Exception("DB down"))
-
+    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock, side_effect=Exception("DB down"))
+    async def test_finalize_db_error(self, mock_create_player):
         cs = CreationState(
             race="human",
             class_choice="warrior",
@@ -352,19 +342,17 @@ class TestFinalizeCharacter:
 class TestFullCreationFlow:
     """End-to-end flow through the creation tools."""
 
-    @patch("creation_tools.db")
-    async def test_complete_flow(self, mock_db):
-        mock_db.create_player = AsyncMock()
-        mock_db.get_session_init_payload = AsyncMock(
-            return_value={
-                "character": {"name": "Aric"},
-                "location": None,
-                "quests": [],
-                "inventory": [],
-                "map_progress": [],
-                "world_state": {"time": "evening"},
-            }
-        )
+    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
+    async def test_complete_flow(self, mock_create_player, mock_get_payload):
+        mock_get_payload.return_value = {
+            "character": {"name": "Aric"},
+            "location": None,
+            "quests": [],
+            "inventory": [],
+            "map_progress": [],
+            "world_state": {"time": "evening"},
+        }
 
         cs = CreationState()
         ctx = _make_context(cs)
@@ -414,26 +402,24 @@ class TestFullCreationFlow:
         assert not ctx.userdata.in_creation
         assert ctx.userdata.onboarding_beat == 1
 
-        mock_db.create_player.assert_awaited_once()
-        data = mock_db.create_player.call_args[0][2]
+        mock_create_player.assert_awaited_once()
+        data = mock_create_player.call_args[0][2]
         assert data["name"] == "Seraphina"
         assert data["race"] == "elari"
         assert data["class"] == "mage"
         assert data["deity"] == "veythar"
 
-    @patch("creation_tools.db")
-    async def test_each_race_with_representative_class(self, mock_db):
-        mock_db.create_player = AsyncMock()
-        mock_db.get_session_init_payload = AsyncMock(
-            return_value={
-                "character": {},
-                "location": None,
-                "quests": [],
-                "inventory": [],
-                "map_progress": [],
-                "world_state": {},
-            }
-        )
+    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
+    async def test_each_race_with_representative_class(self, mock_create_player, mock_get_payload):
+        mock_get_payload.return_value = {
+            "character": {},
+            "location": None,
+            "quests": [],
+            "inventory": [],
+            "map_progress": [],
+            "world_state": {},
+        }
 
         combos = [
             ("draethar", "warrior"),

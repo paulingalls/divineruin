@@ -44,7 +44,7 @@ class TestResolveDueActivities:
     @pytest.mark.asyncio
     async def test_returns_zero_when_no_due_activities(self):
         with (
-            patch("async_worker.db.get_due_activities", new_callable=AsyncMock, return_value=[]),
+            patch("async_worker.db_queries.get_due_activities", new_callable=AsyncMock, return_value=[]),
             patch("async_worker._backfill_progress_snippets", new_callable=AsyncMock),
         ):
             count = await resolve_due_activities()
@@ -54,7 +54,7 @@ class TestResolveDueActivities:
     @pytest.mark.asyncio
     async def test_resolves_due_activities(self):
         with (
-            patch("async_worker.db.get_due_activities", new_callable=AsyncMock, return_value=[SAMPLE_ACTIVITY]),
+            patch("async_worker.db_queries.get_due_activities", new_callable=AsyncMock, return_value=[SAMPLE_ACTIVITY]),
             patch("async_worker._resolve_single_activity", new_callable=AsyncMock) as mock_resolve,
             patch("async_worker._backfill_progress_snippets", new_callable=AsyncMock),
             patch("async_worker.generate_world_news", new_callable=AsyncMock),
@@ -80,7 +80,7 @@ class TestResolveDueActivities:
                 raise RuntimeError("Transient failure")
 
         with (
-            patch("async_worker.db.get_due_activities", new_callable=AsyncMock, return_value=activities),
+            patch("async_worker.db_queries.get_due_activities", new_callable=AsyncMock, return_value=activities),
             patch("async_worker._resolve_single_activity", side_effect=mock_resolve),
             patch("async_worker._backfill_progress_snippets", new_callable=AsyncMock),
             patch("async_worker.generate_world_news", new_callable=AsyncMock),
@@ -95,7 +95,7 @@ class TestResolveSingleActivity:
     @pytest.mark.asyncio
     async def test_crafting_resolution(self):
         with (
-            patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
@@ -106,7 +106,7 @@ class TestResolveSingleActivity:
                 ),
             ),
             patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
-            patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Blade ready."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
         ):
@@ -143,7 +143,7 @@ class TestResolveSingleActivity:
         }
 
         with (
-            patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
@@ -154,7 +154,7 @@ class TestResolveSingleActivity:
                 ),
             ),
             patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
-            patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Training done."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
         ):
@@ -194,7 +194,7 @@ class TestResolveSingleActivity:
         }
 
         with (
-            patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=player_with_companion),
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=player_with_companion),
             patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
@@ -205,7 +205,7 @@ class TestResolveSingleActivity:
                 ),
             ),
             patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
-            patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Kael returns."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
         ):
@@ -220,11 +220,11 @@ class TestResolveSingleActivity:
     async def test_does_not_update_on_narration_failure(self):
         """If narration fails, the activity stays in_progress for retry."""
         with (
-            patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
                 "async_worker.generate_activity_narration", new_callable=AsyncMock, side_effect=RuntimeError("LLM down")
             ),
-            patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock) as mock_update,
         ):
             with pytest.raises(RuntimeError):
                 await _resolve_single_activity(SAMPLE_ACTIVITY)
@@ -235,7 +235,7 @@ class TestResolveSingleActivity:
     async def test_caches_narration_on_tts_failure(self):
         """If TTS fails, outcome and narration are cached but status stays in_progress."""
         with (
-            patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
@@ -246,7 +246,7 @@ class TestResolveSingleActivity:
                 ),
             ),
             patch("async_worker.synthesize_segments", new_callable=AsyncMock, side_effect=RuntimeError("TTS down")),
-            patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock) as mock_update,
         ):
             with pytest.raises(RuntimeError):
                 await _resolve_single_activity(SAMPLE_ACTIVITY)
@@ -264,7 +264,7 @@ class TestResolveSingleActivity:
     async def test_handles_missing_player_data(self):
         """Should still work with empty player data."""
         with (
-            patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=None),
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=None),
             patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
@@ -275,7 +275,7 @@ class TestResolveSingleActivity:
                 ),
             ),
             patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
-            patch("async_worker.db.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Update."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
         ):
@@ -291,9 +291,9 @@ class TestResolveSingleActivity:
 
 class TestCheckGodWhisperTriggers:
     @pytest.mark.asyncio
-    @patch("async_worker.db.mark_favor_whisper_level", new_callable=AsyncMock)
+    @patch("async_worker.db_mutations.mark_favor_whisper_level", new_callable=AsyncMock)
     @patch("god_whisper_generator.generate_god_whisper", new_callable=AsyncMock, return_value="whisper_1")
-    @patch("async_worker.db.get_pending_god_whispers", new_callable=AsyncMock, return_value=[])
+    @patch("async_worker.db_queries.get_pending_god_whispers", new_callable=AsyncMock, return_value=[])
     @patch("async_worker.db.get_pool")
     async def test_generates_whisper_above_threshold(self, mock_pool, mock_pending, mock_gen, mock_mark):
         import json

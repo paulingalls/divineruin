@@ -17,9 +17,13 @@ from session_data import CombatParticipant, CombatState, CompanionState, Session
 @contextmanager
 def _mock_db_for_warm_layer(quests=None, location=None, npcs=None):
     """Mock the three DB calls used by _rebuild_warm_layer."""
-    with patch("background_process.db.get_active_player_quests", new_callable=AsyncMock, return_value=quests or []):
-        with patch("background_process.db.get_location", new_callable=AsyncMock, return_value=location):
-            with patch("background_process.db.get_npcs_at_location", new_callable=AsyncMock, return_value=npcs or []):
+    with patch(
+        "background_process.db_queries.get_active_player_quests", new_callable=AsyncMock, return_value=quests or []
+    ):
+        with patch("background_process.db_queries.get_location", new_callable=AsyncMock, return_value=location):
+            with patch(
+                "background_process.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=npcs or []
+            ):
                 yield
 
 

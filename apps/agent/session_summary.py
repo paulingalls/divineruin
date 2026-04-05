@@ -7,7 +7,7 @@ import json
 import logging
 import time
 
-import db
+import db_queries
 from asset_utils import slug_asset_url
 from llm_config import MODEL as _MODEL
 from llm_config import client as _client
@@ -79,7 +79,7 @@ async def generate_session_summary(
     # Run LLM summary and story moments fetch concurrently
     async def _fetch_story_moments() -> list:
         try:
-            return await db.get_session_story_moments(session_data.session_id)
+            return await db_queries.get_session_story_moments(session_data.session_id)
         except Exception:
             logger.debug("Could not fetch story moments for session %s", session_data.session_id)
             return []

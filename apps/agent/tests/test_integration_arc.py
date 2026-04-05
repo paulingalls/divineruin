@@ -55,9 +55,9 @@ class TestQuestArcProgression:
         pending: list[tuple[str, dict]] = []
 
         with (
-            patch("tools.db.get_npc_disposition", new_callable=AsyncMock, return_value="neutral"),
-            patch("tools.db.set_npc_disposition", new_callable=AsyncMock) as mock_set,
-            patch("tools.db.get_npc", new_callable=AsyncMock, return_value={"default_disposition": "neutral"}),
+            patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock, return_value="neutral"),
+            patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock) as mock_set,
+            patch("tools.db_queries.get_npc", new_callable=AsyncMock, return_value={"default_disposition": "neutral"}),
         ):
             await _apply_world_effects(effects, session, pending)
 
@@ -87,9 +87,9 @@ class TestQuestArcProgression:
         pending: list[tuple[str, dict]] = []
 
         with (
-            patch("tools.db.get_npc_disposition", new_callable=AsyncMock, return_value="wary"),
-            patch("tools.db.set_npc_disposition", new_callable=AsyncMock) as mock_set,
-            patch("tools.db.get_npc", new_callable=AsyncMock, return_value={"default_disposition": "wary"}),
+            patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock, return_value="wary"),
+            patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock) as mock_set,
+            patch("tools.db_queries.get_npc", new_callable=AsyncMock, return_value={"default_disposition": "wary"}),
         ):
             await _apply_world_effects(effects, session, pending)
 
@@ -134,9 +134,9 @@ class TestQuestArcProgression:
         pending: list[tuple[str, dict]] = []
 
         with (
-            patch("tools.db.get_npc_disposition", new_callable=AsyncMock, return_value="cautious"),
-            patch("tools.db.set_npc_disposition", new_callable=AsyncMock) as mock_set,
-            patch("tools.db.get_npc", new_callable=AsyncMock, return_value={"default_disposition": "cautious"}),
+            patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock, return_value="cautious"),
+            patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock) as mock_set,
+            patch("tools.db_queries.get_npc", new_callable=AsyncMock, return_value={"default_disposition": "cautious"}),
         ):
             await _apply_world_effects(effects, session, pending)
 
@@ -182,14 +182,14 @@ class TestNavigationPath:
 
 class TestExitRequirementsOnPath:
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_flag", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player_flag", new_callable=AsyncMock)
     async def test_ruins_inner_blocked_without_discovery(self, mock_flag):
         mock_flag.return_value = False
         result = await _check_exit_requirement("veythar_seal_mark.discovered", "player_1")
         assert result is False
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_flag", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player_flag", new_callable=AsyncMock)
     async def test_ruins_inner_open_with_discovery(self, mock_flag):
         mock_flag.return_value = True
         result = await _check_exit_requirement("veythar_seal_mark.discovered", "player_1")

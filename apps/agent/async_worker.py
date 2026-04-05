@@ -12,6 +12,8 @@ from dataclasses import asdict
 
 import check_resolution
 import db
+import db_mutations
+import db_queries
 from async_rules import resolve_companion_errand, resolve_crafting, resolve_training
 from dialogue_parser import Segment
 from llm_config import AUDIO_DIR, audio_url_for
@@ -27,7 +29,7 @@ POLL_INTERVAL = 300  # 5 minutes
 
 async def resolve_due_activities() -> int:
     """Find and resolve all due activities. Returns count resolved."""
-    due = await db.get_due_activities()
+    due = await db_queries.get_due_activities()
     if not due:
         # Backfill progress snippets for in-progress activities even when none are due
         await _backfill_progress_snippets()
@@ -80,7 +82,7 @@ async def _resolve_single_activity(activity: dict) -> None:
         segments = [Segment(**s) for s in cached_segments]
     else:
         # Load player data
-        player_data = await db.get_player(player_id) or {}
+        player_data = await db_queries.get_player(player_id) or {}
 
         # Compute outcome using rules engine
         if activity_type == "crafting":
@@ -90,16 +92,16 @@ async def _resolve_single_activity(activity: dict) -> None:
             # Hybrid skill counter: training feeds the same counter as session use
             training_skill = parameters.get("skill")
             if training_skill:
-                skill_adv = await db.get_single_skill_advancement(player_id, training_skill.lower())
+                skill_adv = await db_queries.get_single_skill_advancement(player_id, training_skill.lower())
                 adv = check_resolution.record_skill_use(
                     {training_skill.lower(): skill_adv["tier"]},
                     training_skill,
                     {training_skill.lower(): skill_adv["use_counter"]},
                     narrative_moment=skill_adv["narrative_moment_ready"],
                 )
-                await db.update_skill_advancement(player_id, adv.skill, adv.new_tier, adv.new_use_count)
+                await db_mutations.update_skill_advancement(player_id, adv.skill, adv.new_tier, adv.new_use_count)
                 if adv.advanced and adv.old_tier == "expert":
-                    await db.clear_narrative_moment(player_id, adv.skill)
+                    await db_mutations.clear_narrative_moment(player_id, adv.skill)
         elif activity_type == "companion_errand":
             companion_data = player_data.get("companion", {})
             outcome = resolve_companion_errand(companion_data, parameters)
@@ -115,7 +117,7 @@ async def _resolve_single_activity(activity: dict) -> None:
         )
 
         # Cache everything so retries skip the LLM call
-        await db.update_activity(
+        await db_mutations.update_activity(
             activity_id,
             {
                 "outcome": outcome_dict,
@@ -135,7 +137,7 @@ async def _resolve_single_activity(activity: dict) -> None:
     audio_url = audio_url_for(audio_filename)
 
     # Mark fully resolved
-    await db.update_activity(
+    await db_mutations.update_activity(
         activity_id,
         {
             "status": "resolved",
@@ -184,9 +186,9 @@ async def _backfill_progress_snippets(exclude_ids: set[str] | None = None) -> No
             continue
         try:
             activity_data = json.loads(row["data"])
-            player_data = await db.get_player(row["player_id"]) or {}
+            player_data = await db_queries.get_player(row["player_id"]) or {}
             snippets = await generate_progress_snippets(activity_data, player_data)
-            await db.update_activity(row["id"], {"progress_stages": snippets})
+            await db_mutations.update_activity(row["id"], {"progress_stages": snippets})
             logger.info("Generated progress snippets for %s", row["id"])
         except Exception:
             logger.warning("Failed to generate progress snippets for %s", row["id"])
@@ -225,14 +227,14 @@ async def check_god_whisper_triggers() -> int:
             continue
 
         # Check no pending whisper already exists
-        pending = await db.get_pending_god_whispers(player_id)
+        pending = await db_queries.get_pending_god_whispers(player_id)
         if pending:
             continue
 
         patron_id = favor.get("patron", "none")
         try:
             await generate_god_whisper(player_id, patron_id)
-            await db.mark_favor_whisper_level(player_id, level)
+            await db_mutations.mark_favor_whisper_level(player_id, level)
             count += 1
         except Exception:
             logger.exception("Failed to generate god whisper for %s", player_id)

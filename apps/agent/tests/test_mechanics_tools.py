@@ -69,13 +69,13 @@ def _make_mock_room():
 
 class TestRequestSkillCheck:
     @pytest.mark.asyncio
-    @patch("tools.db.update_skill_advancement", new_callable=AsyncMock)
+    @patch("tools.db_mutations.update_skill_advancement", new_callable=AsyncMock)
     @patch(
-        "tools.db.get_single_skill_advancement",
+        "tools.db_queries.get_single_skill_advancement",
         new_callable=AsyncMock,
         return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False},
     )
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_returns_result(self, mock_get_player, _mock_get_adv, _mock_update_adv):
         mock_get_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
@@ -90,7 +90,7 @@ class TestRequestSkillCheck:
         assert "narrative_hint" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_unknown_skill(self, mock_get_player):
         mock_get_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
@@ -102,7 +102,7 @@ class TestRequestSkillCheck:
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_invalid_difficulty_returns_error(self, mock_get_player):
         mock_get_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
@@ -114,7 +114,7 @@ class TestRequestSkillCheck:
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_missing_player(self, mock_get_player):
         mock_get_player.return_value = None
         ctx = _make_context()
@@ -126,13 +126,13 @@ class TestRequestSkillCheck:
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_skill_advancement", new_callable=AsyncMock)
+    @patch("tools.db_mutations.update_skill_advancement", new_callable=AsyncMock)
     @patch(
-        "tools.db.get_single_skill_advancement",
+        "tools.db_queries.get_single_skill_advancement",
         new_callable=AsyncMock,
         return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False},
     )
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_publishes_event(self, mock_get_player, _mock_get_adv, _mock_update_adv):
         mock_get_player.return_value = SAMPLE_PLAYER
         room = _make_mock_room()
@@ -146,13 +146,13 @@ class TestRequestSkillCheck:
         assert call_data["roll_type"] == "skill_check"
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_skill_advancement", new_callable=AsyncMock)
+    @patch("tools.db_mutations.update_skill_advancement", new_callable=AsyncMock)
     @patch(
-        "tools.db.get_single_skill_advancement",
+        "tools.db_queries.get_single_skill_advancement",
         new_callable=AsyncMock,
         return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False},
     )
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_records_skill_use(self, mock_get_player, _mock_get_adv, mock_update_adv):
         mock_get_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
@@ -163,7 +163,7 @@ class TestRequestSkillCheck:
         assert call_args[1] == "athletics"
 
     @pytest.mark.asyncio
-    @patch("tools.db.mark_narrative_moment", new_callable=AsyncMock)
+    @patch("tools.db_mutations.mark_narrative_moment", new_callable=AsyncMock)
     async def test_mark_skill_breakthrough_sets_flag(self, mock_mark):
         ctx = _make_context()
         result = json.loads(await mark_skill_breakthrough._func(ctx, skill="athletics"))
@@ -183,9 +183,9 @@ class TestRequestSkillCheck:
 
 class TestRequestAttack:
     @pytest.mark.asyncio
-    @patch("tools.db.update_npc_hp", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_combat_stats", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_mutations.update_npc_hp", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_npc_combat_stats", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_returns_result(self, mock_player, mock_npc, mock_update):
         mock_player.return_value = SAMPLE_PLAYER
         mock_npc.return_value = SAMPLE_NPC_COMBAT
@@ -196,7 +196,7 @@ class TestRequestAttack:
         assert "narrative_hint" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_missing_player(self, mock_player):
         mock_player.return_value = None
         ctx = _make_context()
@@ -204,7 +204,7 @@ class TestRequestAttack:
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_missing_weapon(self, mock_player):
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
@@ -213,8 +213,8 @@ class TestRequestAttack:
         assert "Warhammer" in result["error"]
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_npc_combat_stats", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_npc_combat_stats", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_missing_target(self, mock_player, mock_npc):
         mock_player.return_value = SAMPLE_PLAYER
         mock_npc.return_value = None
@@ -223,9 +223,9 @@ class TestRequestAttack:
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_npc_hp", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_combat_stats", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_mutations.update_npc_hp", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_npc_combat_stats", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_hp_updated_on_hit(self, mock_player, mock_npc, mock_update):
         mock_player.return_value = SAMPLE_PLAYER
         mock_npc.return_value = SAMPLE_NPC_COMBAT
@@ -237,9 +237,9 @@ class TestRequestAttack:
             mock_update.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_npc_hp", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_combat_stats", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_mutations.update_npc_hp", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_npc_combat_stats", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_publishes_event(self, mock_player, mock_npc, mock_update):
         mock_player.return_value = SAMPLE_PLAYER
         mock_npc.return_value = SAMPLE_NPC_COMBAT
@@ -257,7 +257,7 @@ class TestRequestAttack:
 
 class TestRequestSavingThrow:
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_returns_result(self, mock_player):
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
@@ -269,7 +269,7 @@ class TestRequestSavingThrow:
         assert result["outcome"] in ("success", "failure")
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_missing_player(self, mock_player):
         mock_player.return_value = None
         ctx = _make_context()
@@ -277,7 +277,7 @@ class TestRequestSavingThrow:
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_invalid_save_type(self, mock_player):
         mock_player.return_value = SAMPLE_PLAYER
         ctx = _make_context()
@@ -285,7 +285,7 @@ class TestRequestSavingThrow:
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_publishes_event(self, mock_player):
         mock_player.return_value = SAMPLE_PLAYER
         room = _make_mock_room()

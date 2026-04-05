@@ -48,7 +48,7 @@ async def test_update_disposition_timeout_returns_json_error():
 
     # Simulate timeout during transaction
     # Must also mock db.get_npc since it's called before db.transaction
-    with patch("db.transaction") as mock_txn, patch("db.get_npc", new_callable=AsyncMock) as mock_get_npc:
+    with patch("db.transaction") as mock_txn, patch("db_queries.get_npc", new_callable=AsyncMock) as mock_get_npc:
         mock_get_npc.return_value = {"id": "torin", "name": "Torin", "default_disposition": "neutral"}
         mock_txn.side_effect = TimeoutError("Query took too long")
 
@@ -75,7 +75,7 @@ async def test_transaction_rollback_prevents_partial_state():
     initial_events = len(session.recent_events)
 
     # Simulate transaction that fails after read but before write
-    with patch("db.transaction") as mock_txn, patch("db.get_player") as mock_get:
+    with patch("db.transaction") as mock_txn, patch("db_queries.get_player") as mock_get:
         mock_conn = AsyncMock()
         mock_txn.return_value.__aenter__.return_value = mock_conn
 
@@ -119,8 +119,8 @@ async def test_successful_mutation_after_error():
     # Second call succeeds (mocked)
     with (
         patch("db.transaction") as mock_txn,
-        patch("db.get_player") as mock_get,
-        patch("db.update_player_xp"),
+        patch("db_queries.get_player") as mock_get,
+        patch("db_mutations.update_player_xp"),
         patch("tools.publish_game_event", new_callable=AsyncMock),
     ):
         mock_conn = AsyncMock()

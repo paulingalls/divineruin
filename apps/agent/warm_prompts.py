@@ -101,7 +101,7 @@ async def build_warm_layer(
 ) -> str:
     import asyncio
 
-    import db
+    import db_queries
     from tools import _location_for_narration, _npc_summary, apply_time_conditions
 
     sections: list[str] = []
@@ -110,14 +110,14 @@ async def build_warm_layer(
     if location is None or npcs_raw is None:
         if quests is not None:
             location, npcs_raw = await asyncio.gather(
-                db.get_location(location_id),
-                db.get_npcs_at_location(location_id),
+                db_queries.get_location(location_id),
+                db_queries.get_npcs_at_location(location_id),
             )
         else:
             location, npcs_raw, quests = await asyncio.gather(
-                db.get_location(location_id),
-                db.get_npcs_at_location(location_id),
-                db.get_active_player_quests(player_id),
+                db_queries.get_location(location_id),
+                db_queries.get_npcs_at_location(location_id),
+                db_queries.get_active_player_quests(player_id),
             )
 
     # Current scene
@@ -146,7 +146,7 @@ async def build_warm_layer(
     # Active NPCs at location (city only — wilderness/dungeon de-emphasize NPCs)
     if npcs_raw and region_type == REGION_CITY:
         npc_ids = [npc["id"] for npc in npcs_raw]
-        dispositions = await db.get_npc_dispositions(npc_ids, player_id)
+        dispositions = await db_queries.get_npc_dispositions(npc_ids, player_id)
         npc_lines = []
         for npc in npcs_raw:
             disposition = dispositions.get(npc["id"], npc.get("default_disposition", "neutral"))

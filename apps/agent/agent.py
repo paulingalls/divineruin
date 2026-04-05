@@ -11,6 +11,7 @@ from livekit.plugins import anthropic, deepgram, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 import db
+import db_queries
 from base_agent import _make_tts
 from region_types import REGION_CITY
 from session_data import CompanionState, CreationState, SessionData
@@ -177,8 +178,8 @@ async def dm_session(ctx: agents.JobContext) -> None:
     last_summary = None
     try:
         player, last_summary = await asyncio.gather(
-            db.get_player(player_id),
-            db.get_last_session_summary(player_id),
+            db_queries.get_player(player_id),
+            db_queries.get_last_session_summary(player_id),
         )
     except Exception:
         logger.warning("Failed to load player/session data", exc_info=True)
@@ -268,7 +269,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
         # Dispatch correct gameplay agent based on location's region_type
         from gameplay_agent import create_gameplay_agent
 
-        location_data = await db.get_location(location_id)
+        location_data = await db_queries.get_location(location_id)
         region_type = location_data.get("region_type", REGION_CITY) if location_data else REGION_CITY
         gameplay_agent = create_gameplay_agent(region_type, location_id, companion=userdata.companion)
 

@@ -66,9 +66,9 @@ def _make_bg(session_data=None):
 
 class TestApplyWorldEffects:
     @pytest.mark.asyncio
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    @patch("tools.db.set_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock)
     async def test_disposition_effect(self, mock_get_disp, mock_set_disp, mock_npc):
         mock_get_disp.return_value = "neutral"
         mock_npc.return_value = {"default_disposition": "neutral"}
@@ -126,9 +126,9 @@ class TestApplyWorldEffects:
         pending: list[tuple[str, dict]] = []
 
         with (
-            patch("tools.db.get_npc_disposition", new_callable=AsyncMock, return_value="neutral"),
-            patch("tools.db.set_npc_disposition", new_callable=AsyncMock),
-            patch("tools.db.get_npc", new_callable=AsyncMock, return_value={"default_disposition": "neutral"}),
+            patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock, return_value="neutral"),
+            patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock),
+            patch("tools.db_queries.get_npc", new_callable=AsyncMock, return_value={"default_disposition": "neutral"}),
         ):
             await _apply_world_effects(
                 ["emris_disposition +4", "event:faction_interest_triggered", "event:god_whisper:player_patron"],
@@ -166,35 +166,35 @@ class TestApplyWorldEffects:
 
 class TestCheckExitRequirement:
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_flag", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player_flag", new_callable=AsyncMock)
     async def test_discovered_flag_set(self, mock_flag):
         mock_flag.return_value = True
         result = await _check_exit_requirement("veythar_seal_mark.discovered", "player_1")
         assert result is True
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_flag", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player_flag", new_callable=AsyncMock)
     async def test_discovered_flag_not_set(self, mock_flag):
         mock_flag.return_value = False
         result = await _check_exit_requirement("veythar_seal_mark.discovered", "player_1")
         assert result is False
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_flag", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player_flag", new_callable=AsyncMock)
     async def test_or_logic_first_branch_true(self, mock_flag):
         mock_flag.side_effect = [True]
         result = await _check_exit_requirement("seal_a.discovered || seal_b.discovered", "player_1")
         assert result is True
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_flag", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player_flag", new_callable=AsyncMock)
     async def test_or_logic_second_branch_true(self, mock_flag):
         mock_flag.side_effect = [False, True]
         result = await _check_exit_requirement("seal_a.discovered || seal_b.discovered", "player_1")
         assert result is True
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_flag", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player_flag", new_callable=AsyncMock)
     async def test_or_logic_none_true(self, mock_flag):
         mock_flag.return_value = False
         result = await _check_exit_requirement("seal_a.discovered || seal_b.discovered", "player_1")
@@ -206,7 +206,7 @@ class TestCheckExitRequirement:
         assert result is False
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_flag", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player_flag", new_callable=AsyncMock)
     async def test_or_with_skill_check_and_discovered(self, mock_flag):
         mock_flag.return_value = True
         result = await _check_exit_requirement("skill_check:athletics:15 || seal.discovered", "player_1")
@@ -219,9 +219,9 @@ class TestCheckExitRequirement:
 @patch("tools.db.transaction", _mock_transaction)
 class TestDiscoverSetsFlag:
     @pytest.mark.asyncio
-    @patch("tools.db.set_player_flag", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
+    @patch("tools.db_mutations.set_player_flag", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
     async def test_successful_discovery_sets_flag(self, mock_loc, mock_player, mock_set_flag):
         mock_loc.return_value = {
             "id": "test_loc",
@@ -270,14 +270,14 @@ QUEST_WITH_EFFECTS = {
 @patch("tools.db.transaction", _mock_transaction)
 class TestUpdateQuestWorldEffects:
     @pytest.mark.asyncio
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    @patch("tools.db.set_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.update_player_xp", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_mutations.set_npc_disposition", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_npc_disposition", new_callable=AsyncMock)
+    @patch("tools.db_mutations.update_player_xp", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
+    @patch("tools.db_mutations.set_player_quest", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player_quest", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
     async def test_world_effects_applied_on_stage_advance(
         self, mock_quest, mock_pq, mock_set, mock_player, mock_xp, mock_get_disp, mock_set_disp, mock_npc
     ):

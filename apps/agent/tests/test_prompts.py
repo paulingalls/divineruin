@@ -43,10 +43,10 @@ SAMPLE_QUEST = {
 
 
 class TestBuildWarmLayer:
-    @patch("db.get_active_player_quests", new_callable=AsyncMock)
-    @patch("db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_queries.get_location", new_callable=AsyncMock)
     async def test_includes_location(self, mock_loc, mock_npcs, mock_disp, mock_quests):
         mock_loc.return_value = SAMPLE_LOCATION
         mock_npcs.return_value = []
@@ -55,10 +55,10 @@ class TestBuildWarmLayer:
         assert "Guild Hall" in result
         assert "evening" in result
 
-    @patch("db.get_active_player_quests", new_callable=AsyncMock)
-    @patch("db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_queries.get_location", new_callable=AsyncMock)
     async def test_includes_npcs(self, mock_loc, mock_npcs, mock_disp, mock_quests):
         mock_loc.return_value = SAMPLE_LOCATION
         mock_npcs.return_value = [SAMPLE_NPC_RAW]
@@ -68,10 +68,10 @@ class TestBuildWarmLayer:
         assert "Guildmaster Torin" in result
         assert "neutral" in result
 
-    @patch("db.get_active_player_quests", new_callable=AsyncMock)
-    @patch("db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_queries.get_location", new_callable=AsyncMock)
     async def test_includes_quests(self, mock_loc, mock_npcs, mock_disp, mock_quests):
         mock_loc.return_value = SAMPLE_LOCATION
         mock_npcs.return_value = []
@@ -80,10 +80,10 @@ class TestBuildWarmLayer:
         assert "Greyvale Anomaly" in result
         assert "Find the source" in result
 
-    @patch("db.get_active_player_quests", new_callable=AsyncMock)
-    @patch("db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_queries.get_location", new_callable=AsyncMock)
     async def test_night_applies_time_conditions(self, mock_loc, mock_npcs, mock_disp, mock_quests):
         mock_loc.return_value = SAMPLE_LOCATION
         mock_npcs.return_value = []
@@ -94,10 +94,10 @@ class TestBuildWarmLayer:
 
 
 class TestBuildWarmLayerExits:
-    @patch("db.get_active_player_quests", new_callable=AsyncMock)
-    @patch("db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_queries.get_location", new_callable=AsyncMock)
     async def test_exits_appear_in_warm_layer(self, mock_loc, mock_npcs, mock_disp, mock_quests):
         mock_loc.return_value = SAMPLE_LOCATION
         mock_npcs.return_value = []
@@ -107,10 +107,10 @@ class TestBuildWarmLayerExits:
         assert "south" in result
         assert "accord_market_square" in result
 
-    @patch("db.get_active_player_quests", new_callable=AsyncMock)
-    @patch("db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_queries.get_location", new_callable=AsyncMock)
     async def test_blocked_exit_shows_requires(self, mock_loc, mock_npcs, mock_disp, mock_quests):
         location_with_blocked = {
             **SAMPLE_LOCATION,
@@ -126,10 +126,10 @@ class TestBuildWarmLayerExits:
         assert "blocked" in result
         assert "temple_key" in result
 
-    @patch("db.get_active_player_quests", new_callable=AsyncMock)
-    @patch("db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_queries.get_location", new_callable=AsyncMock)
     async def test_no_exits_no_section(self, mock_loc, mock_npcs, mock_disp, mock_quests):
         location_no_exits = {**SAMPLE_LOCATION, "exits": {}}
         mock_loc.return_value = location_no_exits
@@ -187,9 +187,9 @@ class TestRegionTypePrompts:
 class TestRegionTypeWarmLayer:
     """Warm layer adjusts sections by region_type."""
 
-    @patch("db.get_npc_dispositions", new_callable=AsyncMock, return_value={"guildmaster_torin": "friendly"})
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={"guildmaster_torin": "friendly"})
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_queries.get_location", new_callable=AsyncMock)
     async def test_city_warm_layer_includes_npcs(self, mock_loc, mock_npcs, mock_disp):
         mock_loc.return_value = SAMPLE_LOCATION
         mock_npcs.return_value = [SAMPLE_NPC_RAW]
@@ -204,9 +204,9 @@ class TestRegionTypeWarmLayer:
         )
         assert "NPCS PRESENT" in result
 
-    @patch("db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("db_queries.get_location", new_callable=AsyncMock)
     async def test_wilderness_warm_layer_omits_npcs(self, mock_loc, mock_npcs, mock_disp):
         mock_loc.return_value = SAMPLE_LOCATION
         result = await build_warm_layer(
@@ -220,9 +220,9 @@ class TestRegionTypeWarmLayer:
         )
         assert "NPCS PRESENT" not in result
 
-    @patch("db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("db_queries.get_location", new_callable=AsyncMock)
     async def test_dungeon_warm_layer_omits_npcs(self, mock_loc, mock_npcs, mock_disp):
         mock_loc.return_value = SAMPLE_LOCATION
         result = await build_warm_layer(
@@ -236,9 +236,9 @@ class TestRegionTypeWarmLayer:
         )
         assert "NPCS PRESENT" not in result
 
-    @patch("db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("db_queries.get_location", new_callable=AsyncMock)
     async def test_dungeon_warm_layer_includes_corruption(self, mock_loc, mock_npcs, mock_disp):
         mock_loc.return_value = SAMPLE_LOCATION
         result = await build_warm_layer(

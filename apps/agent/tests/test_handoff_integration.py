@@ -99,9 +99,9 @@ class TestStartCombatHandoff:
     """Test DM → CombatAgent handoff via start_combat."""
 
     @pytest.mark.asyncio
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
+    @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_start_combat_returns_agent_tuple(self, mock_encounter, mock_player, mock_save):
         mock_encounter.return_value = SAMPLE_ENCOUNTER
         mock_player.return_value = SAMPLE_PLAYER
@@ -116,10 +116,10 @@ class TestStartCombatHandoff:
         assert len(result["participants"]) == 2
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_session_data_persists_across_handoff(self, mock_encounter, mock_player, mock_save, mock_npc):
         mock_encounter.return_value = SAMPLE_ENCOUNTER
         mock_player.return_value = SAMPLE_PLAYER
@@ -149,9 +149,9 @@ class TestCombatHandoffContext:
     """Verify that combat-start handoff passes rich context via create_combat_agent."""
 
     @pytest.mark.asyncio
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
+    @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_combat_handoff_context_includes_location(
         self, mock_encounter, mock_player, mock_save, mock_combat_agent_factory
     ):
@@ -174,10 +174,10 @@ class TestCombatHandoffContext:
         assert "Greyvale South Road" in content
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_combat_handoff_context_includes_companion(
         self, mock_encounter, mock_player, mock_save, mock_npc, mock_combat_agent_factory
     ):
@@ -205,7 +205,7 @@ class TestEndCombatHandoff:
     """Test CombatAgent → CityAgent handoff via end_combat."""
 
     @pytest.mark.asyncio
-    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
+    @patch("tools.db_mutations.delete_combat_state", new_callable=AsyncMock)
     async def test_end_combat_returns_city_agent(self, mock_delete):
         ctx = _make_context(location_id="greyvale_south_road")
         ctx.userdata.combat_state = CombatState(
@@ -242,7 +242,7 @@ class TestEndCombatHandoff:
         assert result["xp_total"] == 100
 
     @pytest.mark.asyncio
-    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
+    @patch("tools.db_mutations.delete_combat_state", new_callable=AsyncMock)
     async def test_returned_city_agent_has_combat_summary_in_chat_ctx(self, mock_delete):
         ctx = _make_context(location_id="greyvale_south_road")
         ctx.userdata.combat_state = CombatState(
@@ -279,7 +279,7 @@ class TestEndCombatHandoff:
         assert "victory" in combined.lower() or "combat" in combined.lower()
 
     @pytest.mark.asyncio
-    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
+    @patch("tools.db_mutations.delete_combat_state", new_callable=AsyncMock)
     async def test_session_data_cleared_after_combat(self, mock_delete):
         ctx = _make_context(location_id="greyvale_south_road")
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
@@ -309,10 +309,10 @@ class TestRoundTrip:
     """Test the full CityAgent → Combat → CityAgent round-trip."""
 
     @pytest.mark.asyncio
-    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
+    @patch("tools.db_mutations.delete_combat_state", new_callable=AsyncMock)
+    @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_full_round_trip(self, mock_encounter, mock_player, mock_save, mock_delete):
         """Start combat → end combat → verify state transitions."""
         mock_encounter.return_value = SAMPLE_ENCOUNTER
@@ -342,24 +342,22 @@ class TestCreationOnboardingCityRoundTrip:
     """Test the full Creation → OnboardingAgent → CityAgent handoff chain."""
 
     @pytest.mark.asyncio
-    @patch("creation_tools.db")
-    async def test_finalize_returns_onboarding_agent(self, mock_db):
+    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
+    async def test_finalize_returns_onboarding_agent(self, mock_create_player, mock_get_payload):
         """finalize_character returns OnboardingAgent at beat 1."""
         from creation_tools import finalize_character
         from onboarding_agent import OnboardingAgent
         from session_data import CreationState
 
-        mock_db.create_player = AsyncMock()
-        mock_db.get_session_init_payload = AsyncMock(
-            return_value={
-                "character": {"name": "Aric"},
-                "location": None,
-                "quests": [],
-                "inventory": [],
-                "map_progress": [],
-                "world_state": {"time": "evening"},
-            }
-        )
+        mock_get_payload.return_value = {
+            "character": {"name": "Aric"},
+            "location": None,
+            "quests": [],
+            "inventory": [],
+            "map_progress": [],
+            "world_state": {"time": "evening"},
+        }
 
         cs = CreationState(
             phase="identity",
@@ -377,12 +375,11 @@ class TestCreationOnboardingCityRoundTrip:
         assert ctx.userdata.onboarding_beat == 1
 
     @pytest.mark.asyncio
-    @patch("onboarding_tools.db")
-    async def test_beat_5_returns_city_agent(self, mock_db):
+    @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
+    async def test_beat_5_returns_city_agent(self, mock_set_player_flag):
         """advance_onboarding_beat at beat 5 returns CityAgent for open-world gameplay."""
         from onboarding_tools import advance_onboarding_beat
 
-        mock_db.set_player_flag = AsyncMock()
         ctx = MagicMock()
         ctx.userdata = SessionData(
             player_id="player_1",
@@ -400,27 +397,24 @@ class TestCreationOnboardingCityRoundTrip:
         assert ctx.userdata.onboarding_beat is None
 
     @pytest.mark.asyncio
-    @patch("onboarding_tools.db")
-    @patch("creation_tools.db")
-    async def test_full_creation_to_city_roundtrip(self, mock_creation_db, mock_onboarding_db):
+    @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
+    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
+    async def test_full_creation_to_city_roundtrip(self, mock_create_player, mock_get_payload, mock_set_player_flag):
         """Full chain: finalize_character → OnboardingAgent → advance through beats → CityAgent."""
         from creation_tools import finalize_character
         from onboarding_agent import OnboardingAgent
         from onboarding_tools import advance_onboarding_beat
         from session_data import CreationState
 
-        mock_creation_db.create_player = AsyncMock()
-        mock_creation_db.get_session_init_payload = AsyncMock(
-            return_value={
-                "character": {"name": "Aric"},
-                "location": None,
-                "quests": [],
-                "inventory": [],
-                "map_progress": [],
-                "world_state": {"time": "evening"},
-            }
-        )
-        mock_onboarding_db.set_player_flag = AsyncMock()
+        mock_get_payload.return_value = {
+            "character": {"name": "Aric"},
+            "location": None,
+            "quests": [],
+            "inventory": [],
+            "map_progress": [],
+            "world_state": {"time": "evening"},
+        }
 
         # Step 1: Create character
         cs = CreationState(
@@ -496,13 +490,10 @@ class TestDynamicEndCombat:
     """end_combat returns the correct agent based on pre_combat_agent_type."""
 
     @pytest.mark.asyncio
-    @patch("tools.db")
-    async def test_end_combat_returns_wilderness_agent(self, mock_db):
+    @patch("tools.db_mutations.delete_combat_state", new_callable=AsyncMock)
+    async def test_end_combat_returns_wilderness_agent(self, mock_delete):
         """end_combat with pre_combat_agent_type='wilderness' returns WildernessAgent."""
         from wilderness_agent import WildernessAgent
-
-        mock_db.delete_combat_state = AsyncMock()
-        mock_db.get_location = AsyncMock(return_value={"region_type": "wilderness"})
 
         ctx = MagicMock()
         session = SessionData(
@@ -540,13 +531,10 @@ class TestDynamicEndCombat:
         assert isinstance(agent, WildernessAgent)
 
     @pytest.mark.asyncio
-    @patch("tools.db")
-    async def test_end_combat_returns_dungeon_agent(self, mock_db):
+    @patch("tools.db_mutations.delete_combat_state", new_callable=AsyncMock)
+    async def test_end_combat_returns_dungeon_agent(self, mock_delete):
         """end_combat with pre_combat_agent_type='dungeon' returns DungeonAgent."""
         from dungeon_agent import DungeonAgent
-
-        mock_db.delete_combat_state = AsyncMock()
-        mock_db.get_location = AsyncMock(return_value={"region_type": "dungeon"})
 
         ctx = MagicMock()
         session = SessionData(
@@ -588,13 +576,13 @@ class TestMovePlayerRegionHandoff:
     """move_player triggers handoff when crossing region boundaries."""
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
+    @patch("tools.db_queries.get_targets_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
     async def test_city_to_wilderness_returns_agent_tuple(
         self, mock_loc, mock_upsert, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
     ):
@@ -640,13 +628,13 @@ class TestMovePlayerRegionHandoff:
         assert isinstance(agent, WildernessAgent)
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
+    @patch("tools.db_queries.get_targets_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
     async def test_same_region_returns_string(
         self, mock_loc, mock_upsert, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
     ):
@@ -688,13 +676,13 @@ class TestMovePlayerRegionHandoff:
         assert isinstance(result, str), f"Expected str, got {type(result)}"
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
+    @patch("tools.db_queries.get_targets_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
     async def test_wilderness_to_dungeon_returns_dungeon_agent(
         self, mock_loc, mock_upsert, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
     ):
@@ -740,13 +728,13 @@ class TestMovePlayerRegionHandoff:
         assert isinstance(agent, DungeonAgent)
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
+    @patch("tools.db_queries.get_targets_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
     async def test_dungeon_to_wilderness_returns_wilderness_agent(
         self, mock_loc, mock_upsert, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
     ):
@@ -796,13 +784,13 @@ class TestRegionHandoffContext:
     """Verify that region-change handoffs pass rich narration context."""
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
+    @patch("tools.db_queries.get_targets_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
     async def test_region_handoff_context_includes_location_name(
         self, mock_loc, mock_upsert, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
     ):
@@ -850,13 +838,13 @@ class TestRegionHandoffContext:
         assert "Greyvale South Road" in content
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock, return_value={"name": "Test", "level": 1})
+    @patch("tools.db_queries.get_targets_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
     async def test_region_handoff_context_includes_companion(
         self, mock_loc, mock_upsert, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
     ):

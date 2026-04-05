@@ -3,7 +3,7 @@
 import logging
 import os
 
-import db
+import db_mutations
 from god_whisper_data import get_god_profile
 from llm_config import AUDIO_DIR, MODEL, audio_url_for, client, extract_llm_text
 from push import send_push_notification
@@ -54,7 +54,7 @@ async def generate_god_whisper(
         "audio_url": audio_url,
         "status": "pending",
     }
-    whisper_id = await db.create_god_whisper(player_id, whisper_data)
+    whisper_id = await db_mutations.create_god_whisper(player_id, whisper_data)
 
     logger.info(
         "God whisper generated: id=%s, deity=%s, player=%s",

@@ -15,7 +15,8 @@ from typing import Literal
 from livekit.agents.llm import function_tool
 from livekit.agents.voice import RunContext
 
-import db
+import db_mutations
+import db_queries
 import event_types as E
 from asset_utils import slug_asset_url
 from creation_classes import CLASSES
@@ -271,7 +272,7 @@ async def finalize_character(context: RunContext) -> str:
 
     # Persist to DB
     try:
-        await db.create_player(sd.player_id, None, character_data)
+        await db_mutations.create_player(sd.player_id, None, character_data)
     except Exception:
         logger.exception("Failed to create player %s", sd.player_id)
         return json.dumps({"error": "Failed to save character. Please try again."})
@@ -285,7 +286,7 @@ async def finalize_character(context: RunContext) -> str:
 
     # Publish session_init so client gets character data
     try:
-        payload = await db.get_session_init_payload(sd.player_id)
+        payload = await db_queries.get_session_init_payload(sd.player_id)
         await publish_game_event(sd.room, E.SESSION_INIT, payload, sd.event_bus)
     except Exception:
         logger.exception("Failed to publish session_init after creation")
@@ -373,7 +374,7 @@ async def _generate_player_portrait(sd: SessionData, cs: object) -> None:
             portrait_url = slug_asset_url(asset_id)
 
             # Update player record
-            await db.update_player_portrait(sd.player_id, portrait_url)
+            await db_mutations.update_player_portrait(sd.player_id, portrait_url)
 
             # Notify client
             await publish_game_event(

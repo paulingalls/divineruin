@@ -282,9 +282,9 @@ SAMPLE_LOCATION = {
 
 class TestWarmLayerSceneInjection:
     @pytest.mark.asyncio
-    @patch("db.get_active_player_quests", new_callable=AsyncMock)
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_queries.get_location", new_callable=AsyncMock)
     async def test_no_scene_without_cache(self, mock_loc, mock_npcs, mock_quests):
         mock_loc.return_value = SAMPLE_LOCATION
         mock_npcs.return_value = []
@@ -293,8 +293,8 @@ class TestWarmLayerSceneInjection:
         assert "ACTIVE SCENE" not in result
 
     @pytest.mark.asyncio
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_queries.get_location", new_callable=AsyncMock)
     async def test_scene_from_scene_cache_via_graph(self, mock_loc, mock_npcs):
         """When scene_cache is provided, resolves via scene_graph."""
         mock_loc.return_value = SAMPLE_LOCATION
@@ -344,10 +344,10 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall"):
 @patch("tools.db.transaction", _mock_transaction)
 class TestUpdateQuestSceneHandoff:
     @pytest.mark.asyncio
-    @patch("tools.db.get_scenes_batch", new_callable=AsyncMock)
-    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_scenes_batch", new_callable=AsyncMock)
+    @patch("tools.db_mutations.set_player_quest", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player_quest", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
     async def test_scene_graph_handoff(self, mock_quest, mock_pq, mock_set, mock_batch):
         """Quest with scene_graph triggers handoff on region change."""
         quest = {
@@ -378,9 +378,9 @@ class TestUpdateQuestSceneHandoff:
         assert agent._agent_type == "city"
 
     @pytest.mark.asyncio
-    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_mutations.set_player_quest", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player_quest", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
     async def test_no_scene_graph_returns_string(self, mock_quest, mock_pq, mock_set):
         """Quest without scene_graph returns plain json string."""
         quest = {

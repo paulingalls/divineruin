@@ -129,8 +129,8 @@ class TestMetricsAccumulation:
     """Mutation tools increment session metrics."""
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_xp", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
+    @patch("tools.db_mutations.update_player_xp", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
     async def test_award_xp_tracks_metric(self, mock_player, mock_update):
         from tools import award_xp
 
@@ -143,9 +143,9 @@ class TestMetricsAccumulation:
         assert ctx.userdata.session_xp_earned == 80
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_inventory", new_callable=AsyncMock)
-    @patch("tools.db.add_inventory_item", new_callable=AsyncMock)
-    @patch("tools.db.get_item", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player_inventory", new_callable=AsyncMock)
+    @patch("tools.db_mutations.add_inventory_item", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_item", new_callable=AsyncMock)
     async def test_add_to_inventory_tracks_metric(self, mock_item, mock_add, mock_inv):
         from tools import add_to_inventory
 
@@ -156,9 +156,9 @@ class TestMetricsAccumulation:
         assert ctx.userdata.session_items_found == ["Health Potion"]
 
     @pytest.mark.asyncio
-    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
+    @patch("tools.db_mutations.set_player_quest", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player_quest", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_quest", new_callable=AsyncMock)
     async def test_update_quest_tracks_metric(self, mock_quest, mock_pq, mock_set):
         from tools import update_quest
 
@@ -169,13 +169,13 @@ class TestMetricsAccumulation:
         assert ctx.userdata.session_quests_progressed == ["greyvale_anomaly"]
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_targets_at_location", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
     async def test_move_player_tracks_metric(
         self, mock_loc, mock_upsert_map, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
     ):
@@ -617,11 +617,11 @@ class TestSessionLifecycleIntegration:
 
     @pytest.mark.asyncio
     @patch("tools.db.transaction", _mock_transaction)
-    @patch("tools.db.update_player_xp", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_player_inventory", new_callable=AsyncMock)
-    @patch("tools.db.add_inventory_item", new_callable=AsyncMock)
-    @patch("tools.db.get_item", new_callable=AsyncMock)
+    @patch("tools.db_mutations.update_player_xp", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player_inventory", new_callable=AsyncMock)
+    @patch("tools.db_mutations.add_inventory_item", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_item", new_callable=AsyncMock)
     async def test_metrics_accumulate_across_tools(self, mock_item, mock_add, mock_inv, mock_player, mock_xp):
         """Session metrics accumulate across multiple tool calls."""
         from tools import add_to_inventory, award_xp

@@ -37,13 +37,13 @@ class TestNewPlayerHandoffChain:
     """Verify the full new-player handoff chain produces correct agent types."""
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER)
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER)
+    @patch("tools.db_queries.get_targets_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
     async def test_city_to_wilderness_to_dungeon_to_city(
         self,
         mock_loc,
@@ -132,13 +132,13 @@ class TestNewPlayerHandoffChain:
         assert isinstance(agent3, CityAgent)
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER)
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER)
+    @patch("tools.db_queries.get_targets_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
+    @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
+    @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_location", new_callable=AsyncMock)
     async def test_companion_persists_across_handoffs(
         self,
         mock_loc,
@@ -185,11 +185,11 @@ class TestCombatRoundTrip:
     """Verify combat handoff and return to correct agent type."""
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER)
-    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_npc", new_callable=AsyncMock)
+    @patch("tools.db_mutations.delete_combat_state", new_callable=AsyncMock)
+    @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER)
+    @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_wilderness_combat_returns_to_wilderness(
         self,
         mock_encounter,
@@ -287,7 +287,7 @@ class TestOnboardingToGameplay:
     """Verify onboarding beat 5 hands off to CityAgent."""
 
     @pytest.mark.asyncio
-    @patch("onboarding_tools.db.set_player_flag", new_callable=AsyncMock)
+    @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
     async def test_beat5_returns_city_agent(self, mock_flag):
         from onboarding_tools import advance_onboarding_beat
 

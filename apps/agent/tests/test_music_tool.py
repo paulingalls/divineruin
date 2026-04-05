@@ -78,9 +78,9 @@ class TestStartCombatDifficulty:
     @pytest.mark.asyncio
     @patch("tools.publish_game_event", new_callable=AsyncMock)
     @patch("tools._publish_sounds", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
+    @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_combat_started_includes_difficulty(
         self, mock_encounter, mock_player, mock_save, mock_sounds, mock_event
     ):
@@ -128,9 +128,9 @@ class TestStartCombatDifficulty:
     @pytest.mark.asyncio
     @patch("tools.publish_game_event", new_callable=AsyncMock)
     @patch("tools._publish_sounds", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
+    @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
+    @patch("tools.db_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_combat_started_defaults_to_moderate(
         self, mock_encounter, mock_player, mock_save, mock_sounds, mock_event
     ):

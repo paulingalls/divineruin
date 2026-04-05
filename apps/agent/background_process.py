@@ -9,7 +9,8 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-import db
+import db_mutations
+import db_queries
 import event_types as E
 from event_bus import GameEvent
 from god_whisper_data import get_god_profile, should_trigger_whisper
@@ -114,7 +115,7 @@ class BackgroundProcess:
 
     async def _run(self) -> None:
         # Pre-fetch event scenes into cache
-        rider = await db.get_scene("scene_rider_arrival")
+        rider = await db_queries.get_scene("scene_rider_arrival")
         if rider:
             self._scene_cache["scene_rider_arrival"] = rider
 
@@ -417,9 +418,9 @@ class BackgroundProcess:
             # Mark last_whisper_level after delivering (deferred from critical path)
             if top.stinger_sound is not None:
                 try:
-                    favor = await db.get_divine_favor(self._sd.player_id)
+                    favor = await db_queries.get_divine_favor(self._sd.player_id)
                     if favor:
-                        await db.mark_favor_whisper_level(self._sd.player_id, favor.get("level", 0))
+                        await db_mutations.mark_favor_whisper_level(self._sd.player_id, favor.get("level", 0))
                 except Exception:
                     logger.warning("Failed to mark favor whisper level", exc_info=True)
             if "COMPANION_KAEL" in top.instructions and self._sd.companion:
@@ -430,9 +431,9 @@ class BackgroundProcess:
     async def _rebuild_warm_layer(self) -> None:
         try:
             quests, location, npcs_raw = await asyncio.gather(
-                db.get_active_player_quests(self._sd.player_id),
-                db.get_location(self._sd.location_id),
-                db.get_npcs_at_location(self._sd.location_id),
+                db_queries.get_active_player_quests(self._sd.player_id),
+                db_queries.get_location(self._sd.location_id),
+                db_queries.get_npcs_at_location(self._sd.location_id),
             )
             self._quest_cache = quests
 
@@ -444,7 +445,7 @@ class BackgroundProcess:
                     if sid and sid not in scene_ids:
                         scene_ids.append(sid)
             if scene_ids:
-                self._scene_cache = await db.get_scenes_batch(scene_ids)
+                self._scene_cache = await db_queries.get_scenes_batch(scene_ids)
             else:
                 self._scene_cache = {}
         except Exception:

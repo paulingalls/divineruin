@@ -5,7 +5,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-import db
+import db_mutations
+import db_queries
 
 
 class TestCreateAsyncActivity:
@@ -15,7 +16,9 @@ class TestCreateAsyncActivity:
         mock_pool.execute = AsyncMock()
 
         with patch("db.get_pool", return_value=mock_pool):
-            activity_id = await db.create_async_activity("p1", {"status": "in_progress", "activity_type": "crafting"})
+            activity_id = await db_mutations.create_async_activity(
+                "p1", {"status": "in_progress", "activity_type": "crafting"}
+            )
 
         assert activity_id.startswith("activity_")
         mock_pool.execute.assert_awaited_once()
@@ -32,8 +35,8 @@ class TestCreateAsyncActivity:
         mock_pool.execute = AsyncMock()
 
         with patch("db.get_pool", return_value=mock_pool):
-            id1 = await db.create_async_activity("p1", {"status": "in_progress"})
-            id2 = await db.create_async_activity("p1", {"status": "in_progress"})
+            id1 = await db_mutations.create_async_activity("p1", {"status": "in_progress"})
+            id2 = await db_mutations.create_async_activity("p1", {"status": "in_progress"})
 
         assert id1 != id2
 
@@ -50,7 +53,7 @@ class TestGetPlayerActivities:
         )
 
         with patch("db.get_pool", return_value=mock_pool):
-            result = await db.get_player_activities("p1")
+            result = await db_queries.get_player_activities("p1")
 
         assert len(result) == 2
         assert result[0]["id"] == "act_1"
@@ -67,7 +70,7 @@ class TestGetPlayerActivities:
         )
 
         with patch("db.get_pool", return_value=mock_pool):
-            result = await db.get_player_activities("p1", status="resolved")
+            result = await db_queries.get_player_activities("p1", status="resolved")
 
         assert len(result) == 1
         call_args = mock_pool.fetch.call_args[0]
@@ -80,7 +83,7 @@ class TestGetPlayerActivities:
         mock_pool.fetch = AsyncMock(return_value=[])
 
         with patch("db.get_pool", return_value=mock_pool):
-            result = await db.get_player_activities("p1")
+            result = await db_queries.get_player_activities("p1")
 
         assert result == []
 
@@ -89,7 +92,7 @@ class TestGetPlayerActivities:
         mock_conn = AsyncMock()
         mock_conn.fetch = AsyncMock(return_value=[])
 
-        result = await db.get_player_activities("p1", conn=mock_conn)
+        result = await db_queries.get_player_activities("p1", conn=mock_conn)
         assert result == []
         mock_conn.fetch.assert_awaited_once()
 
@@ -107,7 +110,7 @@ class TestGetActivity:
         )
 
         with patch("db.get_pool", return_value=mock_pool):
-            result = await db.get_activity("act_1")
+            result = await db_queries.get_activity("act_1")
 
         assert result["id"] == "act_1"
         assert result["player_id"] == "p1"
@@ -119,7 +122,7 @@ class TestGetActivity:
         mock_pool.fetchrow = AsyncMock(return_value=None)
 
         with patch("db.get_pool", return_value=mock_pool):
-            result = await db.get_activity("nonexistent")
+            result = await db_queries.get_activity("nonexistent")
 
         assert result is None
 
@@ -131,7 +134,7 @@ class TestGetActivity:
         )
 
         with patch("db.get_pool", return_value=mock_pool):
-            await db.get_activity("act_1", for_update=True)
+            await db_queries.get_activity("act_1", for_update=True)
 
         call_args = mock_pool.fetchrow.call_args[0]
         assert "FOR UPDATE" in call_args[0]
@@ -152,7 +155,7 @@ class TestGetDueActivities:
         )
 
         with patch("db.get_pool", return_value=mock_pool):
-            result = await db.get_due_activities()
+            result = await db_queries.get_due_activities()
 
         assert len(result) == 1
         assert result[0]["id"] == "act_1"
@@ -164,7 +167,7 @@ class TestGetDueActivities:
         mock_pool.fetch = AsyncMock(return_value=[])
 
         with patch("db.get_pool", return_value=mock_pool):
-            await db.get_due_activities()
+            await db_queries.get_due_activities()
 
         call_args = mock_pool.fetch.call_args[0]
         assert "data->>'status' = 'in_progress'" in call_args[0]
@@ -179,7 +182,7 @@ class TestUpdateActivity:
         mock_pool.execute = AsyncMock()
 
         with patch("db.get_pool", return_value=mock_pool):
-            await db.update_activity("act_1", {"status": "resolved"})
+            await db_mutations.update_activity("act_1", {"status": "resolved"})
 
         mock_pool.execute.assert_awaited_once()
         call_args = mock_pool.execute.call_args[0]
@@ -194,7 +197,7 @@ class TestUpdateActivity:
         mock_pool.execute = AsyncMock()
 
         with patch("db.get_pool", return_value=mock_pool):
-            await db.update_activity("act_1", {"status": "resolved", "outcome": {"tier": "success"}})
+            await db_mutations.update_activity("act_1", {"status": "resolved", "outcome": {"tier": "success"}})
 
         # Single merged query instead of N separate calls
         mock_pool.execute.assert_awaited_once()
@@ -208,7 +211,7 @@ class TestUpdateActivity:
         mock_conn = AsyncMock()
         mock_conn.execute = AsyncMock()
 
-        await db.update_activity("act_1", {"status": "resolved"}, conn=mock_conn)
+        await db_mutations.update_activity("act_1", {"status": "resolved"}, conn=mock_conn)
         mock_conn.execute.assert_awaited_once()
 
 
@@ -219,7 +222,7 @@ class TestCountActiveActivities:
         mock_pool.fetchrow = AsyncMock(return_value={"cnt": 3})
 
         with patch("db.get_pool", return_value=mock_pool):
-            result = await db.count_active_activities("p1")
+            result = await db_queries.count_active_activities("p1")
 
         assert result == 3
 
@@ -229,7 +232,7 @@ class TestCountActiveActivities:
         mock_pool.fetchrow = AsyncMock(return_value={"cnt": 0})
 
         with patch("db.get_pool", return_value=mock_pool):
-            result = await db.count_active_activities("p1")
+            result = await db_queries.count_active_activities("p1")
 
         assert result == 0
 
@@ -239,7 +242,7 @@ class TestCountActiveActivities:
         mock_pool.fetchrow = AsyncMock(return_value={"cnt": 0})
 
         with patch("db.get_pool", return_value=mock_pool):
-            await db.count_active_activities("p1")
+            await db_queries.count_active_activities("p1")
 
         call_args = mock_pool.fetchrow.call_args[0]
         assert "data->>'status' = 'in_progress'" in call_args[0]

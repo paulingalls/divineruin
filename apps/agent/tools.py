@@ -13,6 +13,8 @@ from livekit.agents.voice import RunContext
 import check_resolution
 import combat_resolution
 import db
+import db_mutations
+import db_queries
 import dice
 import event_types as E
 import rules_engine
@@ -251,7 +253,7 @@ def _resolve_ambient_sounds(location: dict | None, world_time: str) -> str:
 
 
 async def _resolve_disposition(npc_id: str, player_id: str, npc: dict) -> str:
-    disposition = await db.get_npc_disposition(npc_id, player_id)
+    disposition = await db_queries.get_npc_disposition(npc_id, player_id)
     if disposition is None:
         disposition = npc.get("default_disposition", "neutral")
     return disposition
@@ -259,7 +261,7 @@ async def _resolve_disposition(npc_id: str, player_id: str, npc: dict) -> str:
 
 async def _build_scene_context(location_id: str, session: SessionData, location: dict | None = None) -> dict:
     if location is None:
-        location = await db.get_location(location_id)
+        location = await db_queries.get_location(location_id)
     if location is None:
         return {"error": f"Location '{location_id}' not found."}
 
@@ -267,13 +269,13 @@ async def _build_scene_context(location_id: str, session: SessionData, location:
     location = _strip_hidden_dcs(location)
 
     npcs_raw, targets_raw, player = await asyncio.gather(
-        db.get_npcs_at_location(location_id),
-        db.get_targets_at_location(location_id),
-        db.get_player(session.player_id),
+        db_queries.get_npcs_at_location(location_id),
+        db_queries.get_targets_at_location(location_id),
+        db_queries.get_player(session.player_id),
     )
 
     npc_ids = [npc["id"] for npc in npcs_raw]
-    dispositions = await db.get_npc_dispositions(npc_ids, session.player_id) if npc_ids else {}
+    dispositions = await db_queries.get_npc_dispositions(npc_ids, session.player_id) if npc_ids else {}
     npcs = []
     for npc in npcs_raw:
         disposition = dispositions.get(npc["id"], npc.get("default_disposition", "neutral"))
@@ -320,7 +322,7 @@ async def query_location(context: RunContext[SessionData], location_id: str) -> 
     logger.info("query_location called: location_id=%s", location_id)
     if err := _validate_id(location_id, "location_id"):
         return err
-    location = await db.get_location(location_id)
+    location = await db_queries.get_location(location_id)
     if location is None:
         return json.dumps({"error": f"Location '{location_id}' not found."})
 
@@ -340,7 +342,7 @@ async def query_npc(context: RunContext[SessionData], npc_id: str) -> str:
     if err := _validate_id(npc_id, "npc_id"):
         return err
     session: SessionData = context.userdata
-    npc = await db.get_npc(npc_id)
+    npc = await db_queries.get_npc(npc_id)
     if npc is None:
         return json.dumps({"error": f"NPC '{npc_id}' not found."})
 
@@ -357,7 +359,7 @@ async def query_lore(context: RunContext[SessionData], topic: str) -> str:
     """Search world lore by topic keyword. Use for history, gods, the Hollow,
     races, cultures, and world events."""
     logger.info("query_lore called: topic=%s", topic)
-    entries = await db.search_lore(topic)
+    entries = await db_queries.search_lore(topic)
     if not entries:
         return json.dumps(
             {"note": f"No lore entries found for '{topic}'. Improvise from your general knowledge of Aethos."}
@@ -382,7 +384,7 @@ async def query_inventory(context: RunContext[SessionData]) -> str:
     """Get the current player's inventory items. Use when they ask what they are carrying."""
     session: SessionData = context.userdata
     logger.info("query_inventory called: player_id=%s", session.player_id)
-    items = await db.get_player_inventory(session.player_id)
+    items = await db_queries.get_player_inventory(session.player_id)
     if not items:
         return json.dumps({"note": "This player's inventory is empty. They carry nothing of note."})
 
@@ -419,7 +421,7 @@ async def discover_hidden_element(
     if element_id in session.attempted_discoveries:
         return json.dumps({"error": f"Already searched for '{element_id}' this session."})
 
-    location = await db.get_location(session.location_id)
+    location = await db_queries.get_location(session.location_id)
     if location is None:
         return json.dumps({"error": f"Current location '{session.location_id}' not found."})
 
@@ -438,7 +440,7 @@ async def discover_hidden_element(
     discover_skill = element.get("discover_skill", "perception")
     dc = element.get("dc", 13)
 
-    player = await db.get_player(session.player_id)
+    player = await db_queries.get_player(session.player_id)
     if player is None:
         return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
@@ -474,7 +476,7 @@ async def discover_hidden_element(
         response["description"] = element.get("description", "")
         loc_name = location.get("name", session.location_id)
         session.record_companion_memory(f"Discovered {element.get('description', element_id)} at {loc_name}")
-        await db.set_player_flag(session.player_id, f"{element_id}.discovered", True)
+        await db_mutations.set_player_flag(session.player_id, f"{element_id}.discovered", True)
     else:
         response["outcome"] = "not_found"
 
@@ -524,7 +526,7 @@ async def request_skill_check(
             {"error": f"Unknown difficulty: '{difficulty}'. Valid: {sorted(VALID_DIFFICULTIES - {'deadly'})}"}
         )
 
-    player = await db.get_player(session.player_id)
+    player = await db_queries.get_player(session.player_id)
     if player is None:
         return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
@@ -545,7 +547,7 @@ async def request_skill_check(
 
     # Track skill use for tier advancement
     skill_lower = skill.lower()
-    skill_adv = await db.get_single_skill_advancement(session.player_id, skill_lower)
+    skill_adv = await db_queries.get_single_skill_advancement(session.player_id, skill_lower)
 
     adv = check_resolution.record_skill_use(
         {skill_lower: skill_adv["tier"]},
@@ -553,11 +555,11 @@ async def request_skill_check(
         {skill_lower: skill_adv["use_counter"]},
         narrative_moment=skill_adv["narrative_moment_ready"],
     )
-    await db.update_skill_advancement(session.player_id, adv.skill, adv.new_tier, adv.new_use_count)
+    await db_mutations.update_skill_advancement(session.player_id, adv.skill, adv.new_tier, adv.new_use_count)
 
     if adv.advanced:
         if adv.old_tier == "expert":
-            await db.clear_narrative_moment(session.player_id, adv.skill)
+            await db_mutations.clear_narrative_moment(session.player_id, adv.skill)
         await publish_game_event(
             session.room,
             E.SKILL_TIER_ADVANCED,
@@ -613,7 +615,7 @@ async def mark_skill_breakthrough(
     if skill_lower not in VALID_SKILLS:
         return json.dumps({"error": f"Unknown skill: '{skill}'. Valid: {sorted(VALID_SKILLS)}"})
 
-    await db.mark_narrative_moment(session.player_id, skill_lower)
+    await db_mutations.mark_narrative_moment(session.player_id, skill_lower)
     logger.info("mark_skill_breakthrough: player=%s, skill=%s", session.player_id, skill_lower)
     return json.dumps({"status": "ok", "skill": skill_lower, "narrative_moment_ready": True})
 
@@ -631,7 +633,7 @@ async def request_attack(
     logger.info("request_attack called: target_id=%s, weapon_or_spell=%s", target_id, weapon_or_spell)
     session: SessionData = context.userdata
 
-    player = await db.get_player(session.player_id)
+    player = await db_queries.get_player(session.player_id)
     if player is None:
         return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
@@ -645,7 +647,7 @@ async def request_attack(
     if weapon is None:
         return json.dumps({"error": f"Weapon '{weapon_or_spell}' not found in equipment."})
 
-    target = await db.get_npc_combat_stats(target_id)
+    target = await db_queries.get_npc_combat_stats(target_id)
     if target is None:
         return json.dumps({"error": f"Target '{target_id}' not found in combat state."})
 
@@ -655,7 +657,7 @@ async def request_attack(
     result = check_resolution.resolve_attack(player, weapon, target_ac, target_hp)
 
     if result.hit:
-        await db.update_npc_hp(target_id, result.target_hp_remaining)
+        await db_mutations.update_npc_hp(target_id, result.target_hp_remaining)
 
     await publish_game_event(
         session.room,
@@ -719,7 +721,7 @@ async def request_saving_throw(
         return json.dumps({"error": "DC must be between 1 and 30."})
     session: SessionData = context.userdata
 
-    player = await db.get_player(session.player_id)
+    player = await db_queries.get_player(session.player_id)
     if player is None:
         return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
@@ -918,7 +920,7 @@ async def award_xp(
     pending_events: list[tuple[str, dict]] = []
 
     async with db.transaction() as conn:
-        player = await db.get_player(session.player_id, conn=conn, for_update=True)
+        player = await db_queries.get_player(session.player_id, conn=conn, for_update=True)
         if player is None:
             return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
@@ -927,7 +929,7 @@ async def award_xp(
 
         result = rules_engine.check_level_up(current_xp, amount, current_level)
 
-        await db.update_player_xp(session.player_id, result.new_xp, result.new_level, conn=conn)
+        await db_mutations.update_player_xp(session.player_id, result.new_xp, result.new_level, conn=conn)
 
         pending_events.append(
             (
@@ -988,7 +990,7 @@ async def award_divine_favor(
         return json.dumps({"error": "Divine favor amount must be 1-10."})
 
     async with db.transaction() as conn:
-        favor = await db.get_divine_favor(session.player_id, conn=conn)
+        favor = await db_queries.get_divine_favor(session.player_id, conn=conn)
         if favor is None or favor.get("patron", "none") == "none":
             return json.dumps({"error": "Player has no patron deity."})
 
@@ -996,7 +998,7 @@ async def award_divine_favor(
         max_level = favor.get("max", 100)
         new_level = min(current_level + amount, max_level)
 
-        await db.update_divine_favor(session.player_id, new_level, conn=conn)
+        await db_mutations.update_divine_favor(session.player_id, new_level, conn=conn)
 
     patron_id = favor["patron"]
     last_whisper_level = favor.get("last_whisper_level", 0)
@@ -1053,20 +1055,20 @@ async def update_npc_disposition(
     delta = max(-2, min(2, delta))
 
     # Cached content read — outside transaction
-    npc = await db.get_npc(npc_id)
+    npc = await db_queries.get_npc(npc_id)
     if npc is None:
         return json.dumps({"error": f"NPC '{npc_id}' not found."})
 
     pending_events: list[tuple[str, dict]] = []
 
     async with db.transaction() as conn:
-        current = await db.get_npc_disposition(npc_id, session.player_id, conn=conn, for_update=True)
+        current = await db_queries.get_npc_disposition(npc_id, session.player_id, conn=conn, for_update=True)
         if current is None:
             current = npc.get("default_disposition", "neutral")
 
         new_disposition = _clamp_disposition_shift(current, delta)
 
-        await db.set_npc_disposition(npc_id, session.player_id, new_disposition, reason, conn=conn)
+        await db_mutations.set_npc_disposition(npc_id, session.player_id, new_disposition, reason, conn=conn)
 
         pending_events.append(
             (
@@ -1119,17 +1121,17 @@ async def add_to_inventory(
     session: SessionData = context.userdata
 
     # Cached content read — outside transaction
-    item = await db.get_item(item_id)
+    item = await db_queries.get_item(item_id)
     if item is None:
         return json.dumps({"error": f"Item '{item_id}' not found."})
 
     item_name = item.get("name", item_id)
 
     async with db.transaction() as conn:
-        await db.add_inventory_item(session.player_id, item_id, quantity, conn=conn)
+        await db_mutations.add_inventory_item(session.player_id, item_id, quantity, conn=conn)
 
     # Re-fetch full inventory so client gets the complete array
-    full_inventory = await db.get_player_inventory(session.player_id)
+    full_inventory = await db_queries.get_player_inventory(session.player_id)
 
     await publish_game_event(
         session.room,
@@ -1181,20 +1183,20 @@ async def remove_from_inventory(
     session: SessionData = context.userdata
 
     # Cached content read — outside transaction
-    item = await db.get_item(item_id)
+    item = await db_queries.get_item(item_id)
     item_name = item.get("name", item_id) if item else item_id
 
     pending_events: list[tuple[str, dict]] = []
 
     async with db.transaction() as conn:
-        slot = await db.get_inventory_item(session.player_id, item_id, conn=conn, for_update=True)
+        slot = await db_queries.get_inventory_item(session.player_id, item_id, conn=conn, for_update=True)
         if slot is None:
             return json.dumps({"error": f"Item '{item_id}' not in inventory."})
 
         if slot.get("equipped", False):
             return json.dumps({"error": f"Item '{item_id}' is equipped. Unequip it first."})
 
-        await db.remove_inventory_item(session.player_id, item_id, conn=conn)
+        await db_mutations.remove_inventory_item(session.player_id, item_id, conn=conn)
 
         pending_events.append(
             (
@@ -1233,7 +1235,7 @@ async def _check_exit_requirement(requires: str, player_id: str) -> bool:
     for branch in branches:
         if branch.startswith("skill_check:"):
             continue  # LLM must resolve via request_skill_check first
-        if await db.get_player_flag(player_id, branch):
+        if await db_queries.get_player_flag(player_id, branch):
             return True
     return False
 
@@ -1256,12 +1258,14 @@ async def _apply_world_effects(
         if m:
             shorthand, delta_str = m.group(1), int(m.group(2))
             npc_id = EFFECT_NPC_MAP.get(shorthand, shorthand)
-            current = await db.get_npc_disposition(npc_id, session.player_id, conn=conn)
+            current = await db_queries.get_npc_disposition(npc_id, session.player_id, conn=conn)
             if current is None:
-                npc = await db.get_npc(npc_id)
+                npc = await db_queries.get_npc(npc_id)
                 current = npc.get("default_disposition", "neutral") if npc else "neutral"
             new_disp = _clamp_disposition_shift(current, delta_str)
-            await db.set_npc_disposition(npc_id, session.player_id, new_disp, f"world_effect: {effect_str}", conn=conn)
+            await db_mutations.set_npc_disposition(
+                npc_id, session.player_id, new_disp, f"world_effect: {effect_str}", conn=conn
+            )
             pending_events.append((E.DISPOSITION_CHANGED, {"npc_id": npc_id, "previous": current, "new": new_disp}))
             logger.info("World effect: %s disposition %s → %s", npc_id, current, new_disp)
             continue
@@ -1312,7 +1316,7 @@ async def move_player(
         return err
     session: SessionData = context.userdata
 
-    current_location = await db.get_location(session.location_id)
+    current_location = await db_queries.get_location(session.location_id)
     if current_location is None:
         return json.dumps({"error": f"Current location '{session.location_id}' not found."})
 
@@ -1355,7 +1359,7 @@ async def move_player(
     previous_location_id = session.location_id
     pending_events: list[tuple[str, dict]] = []
 
-    destination_location = await db.get_location(destination_id)
+    destination_location = await db_queries.get_location(destination_id)
 
     # Detect region boundary crossing for handoff
     current_region = current_location.get("region_type", REGION_CITY)
@@ -1366,8 +1370,8 @@ async def move_player(
     exit_connections = db.extract_exit_connections(destination_exits)
 
     async with db.transaction() as conn:
-        await db.update_player_location(session.player_id, destination_id, conn=conn)
-        await db.upsert_map_progress(session.player_id, destination_id, exit_connections, conn=conn)
+        await db_mutations.update_player_location(session.player_id, destination_id, conn=conn)
+        await db_mutations.upsert_map_progress(session.player_id, destination_id, exit_connections, conn=conn)
 
         pending_events.append(
             (
@@ -1475,7 +1479,7 @@ async def update_quest(
     session: SessionData = context.userdata
 
     # Cached content read — outside transaction
-    quest = await db.get_quest(quest_id)
+    quest = await db_queries.get_quest(quest_id)
     if quest is None:
         return json.dumps({"error": f"Quest '{quest_id}' not found."})
 
@@ -1489,7 +1493,7 @@ async def update_quest(
     pending_events: list[tuple[str, dict]] = []
 
     async with db.transaction() as conn:
-        player_quest = await db.get_player_quest(session.player_id, quest_id, conn=conn, for_update=True)
+        player_quest = await db_queries.get_player_quest(session.player_id, quest_id, conn=conn, for_update=True)
 
         if player_quest is None:
             if new_stage_id != 0:
@@ -1516,12 +1520,14 @@ async def update_quest(
 
             xp_reward = on_complete.get("xp", 0)
             if xp_reward > 0:
-                player = await db.get_player(session.player_id, conn=conn, for_update=True)
+                player = await db_queries.get_player(session.player_id, conn=conn, for_update=True)
                 if player:
                     current_xp = player.get("xp", 0)
                     current_level = player.get("level", 1)
                     level_result = rules_engine.check_level_up(current_xp, xp_reward, current_level)
-                    await db.update_player_xp(session.player_id, level_result.new_xp, level_result.new_level, conn=conn)
+                    await db_mutations.update_player_xp(
+                        session.player_id, level_result.new_xp, level_result.new_level, conn=conn
+                    )
                     rewards_applied.append({"type": "xp", "amount": xp_reward, "leveled_up": level_result.leveled_up})
                     pending_events.append(
                         (
@@ -1540,7 +1546,7 @@ async def update_quest(
                 item_id = item_reward.get("item") or item_reward.get("item_id")
                 qty = item_reward.get("quantity", 1)
                 if item_id:
-                    await db.add_inventory_item(session.player_id, item_id, qty, conn=conn)
+                    await db_mutations.add_inventory_item(session.player_id, item_id, qty, conn=conn)
                     rewards_applied.append({"type": "item", "item_id": item_id, "quantity": qty})
 
             world_effects = on_complete.get("world_effects", [])
@@ -1552,7 +1558,7 @@ async def update_quest(
             "current_stage": new_stage_id,
             "quest_name": quest.get("name", quest_id),
         }
-        await db.set_player_quest(session.player_id, quest_id, quest_data, conn=conn)
+        await db_mutations.set_player_quest(session.player_id, quest_id, quest_data, conn=conn)
 
         quest_updated_payload: dict = {
             "quest_id": quest_id,
@@ -1568,7 +1574,7 @@ async def update_quest(
     # Resolve item names for inventory events (cached reads, outside transaction)
     for reward in rewards_applied:
         if reward["type"] == "item":
-            item = await db.get_item(reward["item_id"])
+            item = await db_queries.get_item(reward["item_id"])
             item_name = item.get("name", reward["item_id"]) if item else reward["item_id"]
             pending_events.append(
                 (
@@ -1604,7 +1610,7 @@ async def update_quest(
     transition = None
     if quest.get("scene_graph"):
         scene_ids = [e["scene_id"] for e in quest["scene_graph"]]
-        scene_cache = await db.get_scenes_batch(scene_ids)
+        scene_cache = await db_queries.get_scenes_batch(scene_ids)
         transition = detect_scene_transition(scene_cache, quest, current_stage, new_stage_id)
     if transition and transition["region_changed"]:
         from livekit.agents.llm import ChatContext
@@ -1685,11 +1691,11 @@ async def record_story_moment(
     image_url = slug_asset_url(asset_id)
 
     # Enforce per-session limit
-    count = await db.count_session_story_moments(sd.session_id)
+    count = await db_queries.count_session_story_moments(sd.session_id)
     if count >= MAX_STORY_MOMENTS_PER_SESSION:
         return json.dumps({"error": f"Maximum {MAX_STORY_MOMENTS_PER_SESSION} story moments per session."})
 
-    await db.save_story_moment(
+    await db_mutations.save_story_moment(
         session_id=sd.session_id,
         player_id=sd.player_id,
         moment_key=moment_key,
@@ -1777,11 +1783,11 @@ async def start_combat(
     if session.in_combat:
         return json.dumps({"error": "Already in combat. End the current combat first."})
 
-    encounter = await db.get_encounter_template(encounter_id)
+    encounter = await db_queries.get_encounter_template(encounter_id)
     if encounter is None:
         return json.dumps({"error": f"Encounter template '{encounter_id}' not found."})
 
-    player = await db.get_player(session.player_id)
+    player = await db_queries.get_player(session.player_id)
     if player is None:
         return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
@@ -1811,7 +1817,7 @@ async def start_combat(
     comp_stats: dict = {}
     comp_attrs: dict = {}
     if session.companion_can_act and session.companion:
-        companion_npc = await db.get_npc(session.companion.id)
+        companion_npc = await db_queries.get_npc(session.companion.id)
         if companion_npc:
             comp_stats = companion_npc.get("combat_stats", {})
             comp_attrs = comp_stats.get("attributes", {"strength": 12, "dexterity": 12})
@@ -1887,7 +1893,7 @@ async def start_combat(
     )
 
     # Persist and update session
-    await db.save_combat_state(combat_id, combat_state.to_dict())
+    await db_mutations.save_combat_state(combat_id, combat_state.to_dict())
     session.combat_state = combat_state
 
     # Build initiative summary once for event + response
@@ -2022,10 +2028,10 @@ async def resolve_enemy_turn(
 
     # Update DB if target is a player
     if target.type == "player":
-        await db.update_player_hp(target.id, target.hp_current)
+        await db_mutations.update_player_hp(target.id, target.hp_current)
 
     # Persist combat state
-    await db.save_combat_state(cs.combat_id, cs.to_dict())
+    await db_mutations.save_combat_state(cs.combat_id, cs.to_dict())
 
     # Publish events
     await publish_game_event(
@@ -2110,7 +2116,7 @@ async def request_death_save(
         player_participant.is_fallen = False
         player_participant.death_save_successes = 0
         player_participant.death_save_failures = 0
-        await db.update_player_hp(session.player_id, 1)
+        await db_mutations.update_player_hp(session.player_id, 1)
         sounds.append(SOUND_DEATH_SAVE_CRITICAL)
     elif result.stabilized:
         sounds.append(SOUND_PLAYER_STABILIZED)
@@ -2122,7 +2128,7 @@ async def request_death_save(
         sounds.append(SOUND_DEATH_SAVE_FAIL)
 
     # Persist
-    await db.save_combat_state(cs.combat_id, cs.to_dict())
+    await db_mutations.save_combat_state(cs.combat_id, cs.to_dict())
 
     # Publish events
     await publish_game_event(
@@ -2201,7 +2207,7 @@ async def end_combat(
     session.combat_state = None
 
     # Delete from DB
-    await db.delete_combat_state(combat_id)
+    await db_mutations.delete_combat_state(combat_id)
 
     # Determine stinger sound
     sound_map = {

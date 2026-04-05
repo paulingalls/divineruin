@@ -78,7 +78,7 @@ class TestFullPipeline:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             with (
-                patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+                patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
                 patch(
                     "async_worker.generate_activity_narration",
                     new_callable=AsyncMock,
@@ -96,7 +96,7 @@ class TestFullPipeline:
                 patch(
                     "async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_e2e_craft.mp3"
                 ),
-                patch("async_worker.db.update_activity", side_effect=mock_update),
+                patch("async_worker.db_mutations.update_activity", side_effect=mock_update),
                 patch("async_worker.AUDIO_DIR", tmpdir),
                 patch(
                     "async_worker.generate_notification_hook",
@@ -145,7 +145,7 @@ class TestFullPipeline:
             update_calls.append((activity_id, updates))
 
         with (
-            patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
@@ -156,7 +156,7 @@ class TestFullPipeline:
                 ),
             ),
             patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_e2e_train.mp3"),
-            patch("async_worker.db.update_activity", side_effect=mock_update),
+            patch("async_worker.db_mutations.update_activity", side_effect=mock_update),
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Training complete."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
         ):
@@ -191,7 +191,7 @@ class TestFullPipeline:
             update_calls.append((activity_id, updates))
 
         with (
-            patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
@@ -202,7 +202,7 @@ class TestFullPipeline:
                 ),
             ),
             patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_e2e_errand.mp3"),
-            patch("async_worker.db.update_activity", side_effect=mock_update),
+            patch("async_worker.db_mutations.update_activity", side_effect=mock_update),
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Kael returns."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
         ):
@@ -239,7 +239,7 @@ class TestFullPipeline:
         ]
 
         with (
-            patch("async_worker.db.get_due_activities", new_callable=AsyncMock, return_value=activities),
+            patch("async_worker.db_queries.get_due_activities", new_callable=AsyncMock, return_value=activities),
             patch("async_worker._resolve_single_activity", new_callable=AsyncMock) as mock_resolve,
             patch("async_worker._backfill_progress_snippets", new_callable=AsyncMock),
             patch("async_worker.generate_world_news", new_callable=AsyncMock),

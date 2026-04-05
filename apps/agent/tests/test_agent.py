@@ -263,17 +263,21 @@ class TestDMSession:
                         with patch("agent._make_tts"):
                             with patch("agent.silero.VAD.load"):
                                 with patch("agent.MultilingualModel"):
-                                    with patch("agent.db.get_player", new_callable=AsyncMock, return_value=mock_player):
+                                    with patch(
+                                        "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
+                                    ):
                                         with patch(
-                                            "agent.db.get_last_session_summary",
+                                            "agent.db_queries.get_last_session_summary",
                                             new_callable=AsyncMock,
                                             return_value=None,
                                         ):
                                             with patch(
-                                                "agent.db.get_player_flag", new_callable=AsyncMock, return_value=False
+                                                "agent.db_queries.get_player_flag",
+                                                new_callable=AsyncMock,
+                                                return_value=False,
                                             ):
                                                 with patch(
-                                                    "agent.db.get_location",
+                                                    "agent.db_queries.get_location",
                                                     new_callable=AsyncMock,
                                                     return_value={"region_type": "city"},
                                                 ):
@@ -307,17 +311,21 @@ class TestDMSession:
                         with patch("agent._make_tts"):
                             with patch("agent.silero.VAD.load"):
                                 with patch("agent.MultilingualModel"):
-                                    with patch("agent.db.get_player", new_callable=AsyncMock, return_value=mock_player):
+                                    with patch(
+                                        "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
+                                    ):
                                         with patch(
-                                            "agent.db.get_last_session_summary",
+                                            "agent.db_queries.get_last_session_summary",
                                             new_callable=AsyncMock,
                                             return_value=None,
                                         ):
                                             with patch(
-                                                "agent.db.get_player_flag", new_callable=AsyncMock, return_value=False
+                                                "agent.db_queries.get_player_flag",
+                                                new_callable=AsyncMock,
+                                                return_value=False,
                                             ):
                                                 with patch(
-                                                    "agent.db.get_location",
+                                                    "agent.db_queries.get_location",
                                                     new_callable=AsyncMock,
                                                     return_value={"region_type": "city"},
                                                 ):
@@ -349,17 +357,21 @@ class TestDMSession:
                         with patch("agent._make_tts"):
                             with patch("agent.silero.VAD.load"):
                                 with patch("agent.MultilingualModel"):
-                                    with patch("agent.db.get_player", new_callable=AsyncMock, return_value=mock_player):
+                                    with patch(
+                                        "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
+                                    ):
                                         with patch(
-                                            "agent.db.get_last_session_summary",
+                                            "agent.db_queries.get_last_session_summary",
                                             new_callable=AsyncMock,
                                             return_value=None,
                                         ):
                                             with patch(
-                                                "agent.db.get_player_flag", new_callable=AsyncMock, return_value=False
+                                                "agent.db_queries.get_player_flag",
+                                                new_callable=AsyncMock,
+                                                return_value=False,
                                             ):
                                                 with patch(
-                                                    "agent.db.get_location",
+                                                    "agent.db_queries.get_location",
                                                     new_callable=AsyncMock,
                                                     return_value={"region_type": "city"},
                                                 ):
@@ -396,9 +408,11 @@ class TestDMSession:
                         with patch("agent._make_tts"):
                             with patch("agent.silero.VAD.load"):
                                 with patch("agent.MultilingualModel"):
-                                    with patch("agent.db.get_player", new_callable=AsyncMock, return_value=mock_player):
+                                    with patch(
+                                        "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
+                                    ):
                                         with patch(
-                                            "agent.db.get_last_session_summary",
+                                            "agent.db_queries.get_last_session_summary",
                                             new_callable=AsyncMock,
                                             return_value=None,
                                         ):
@@ -433,14 +447,16 @@ class TestDMSession:
                         with patch("agent._make_tts"):
                             with patch("agent.silero.VAD.load"):
                                 with patch("agent.MultilingualModel"):
-                                    with patch("agent.db.get_player", new_callable=AsyncMock, return_value=mock_player):
+                                    with patch(
+                                        "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
+                                    ):
                                         with patch(
-                                            "agent.db.get_last_session_summary",
+                                            "agent.db_queries.get_last_session_summary",
                                             new_callable=AsyncMock,
                                             return_value=None,
                                         ):
                                             with patch(
-                                                "agent.db.get_location",
+                                                "agent.db_queries.get_location",
                                                 new_callable=AsyncMock,
                                                 return_value={"region_type": "city"},
                                             ):
