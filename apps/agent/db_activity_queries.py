@@ -60,14 +60,34 @@ async def get_due_activities(*, conn: asyncpg.Connection | asyncpg.Pool | None =
     return [{"id": row["id"], "player_id": row["player_id"], **json.loads(row["data"])} for row in rows]
 
 
-async def count_active_activities(player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> int:
-    """Count in-progress activities for a player."""
+async def count_active_by_slot(
+    player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> dict[str, int]:
+    """Count active activities per slot: training, crafting, companion."""
     _conn = conn or await db.get_pool()
     row = await _conn.fetchrow(
-        "SELECT COUNT(*) AS cnt FROM async_activities WHERE player_id = $1 AND data->>'status' = 'in_progress'",
+        """
+        SELECT
+            COALESCE(SUM(CASE WHEN src = 'training' THEN 1 ELSE 0 END), 0) AS training,
+            COALESCE(SUM(CASE WHEN src = 'crafting' THEN 1 ELSE 0 END), 0) AS crafting,
+            COALESCE(SUM(CASE WHEN src = 'companion' THEN 1 ELSE 0 END), 0) AS companion
+        FROM (
+            SELECT data->>'activity_type' AS src
+            FROM async_activities
+            WHERE player_id = $1 AND data->>'status' = 'in_progress'
+          UNION ALL
+            SELECT 'training' AS src
+            FROM training_activities
+            WHERE player_id = $1 AND state != 'complete'
+        ) combined
+        """,
         player_id,
     )
-    return row["cnt"] if row else 0
+    return {
+        "training": row["training"] if row else 0,
+        "crafting": row["crafting"] if row else 0,
+        "companion": row["companion"] if row else 0,
+    }
 
 
 async def player_exists(player_id: str) -> bool:

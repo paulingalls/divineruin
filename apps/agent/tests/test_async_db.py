@@ -216,34 +216,34 @@ class TestUpdateActivity:
         mock_conn.execute.assert_awaited_once()
 
 
-class TestCountActiveActivities:
+class TestCountActiveBySlot:
     @pytest.mark.asyncio
-    async def test_returns_count(self):
+    async def test_returns_dict_with_three_slots(self):
         mock_pool = AsyncMock()
-        mock_pool.fetchrow = AsyncMock(return_value={"cnt": 3})
+        mock_pool.fetchrow = AsyncMock(return_value={"training": 0, "crafting": 1, "companion": 0})
 
         with patch("db.get_pool", return_value=mock_pool):
-            result = await db_activity_queries.count_active_activities("p1")
+            result = await db_activity_queries.count_active_by_slot("p1")
 
-        assert result == 3
-
-    @pytest.mark.asyncio
-    async def test_returns_zero_for_no_activities(self):
-        mock_pool = AsyncMock()
-        mock_pool.fetchrow = AsyncMock(return_value={"cnt": 0})
-
-        with patch("db.get_pool", return_value=mock_pool):
-            result = await db_activity_queries.count_active_activities("p1")
-
-        assert result == 0
+        assert result == {"training": 0, "crafting": 1, "companion": 0}
 
     @pytest.mark.asyncio
-    async def test_query_filters_in_progress(self):
+    async def test_returns_zeros_when_empty(self):
         mock_pool = AsyncMock()
-        mock_pool.fetchrow = AsyncMock(return_value={"cnt": 0})
+        mock_pool.fetchrow = AsyncMock(return_value={"training": 0, "crafting": 0, "companion": 0})
 
         with patch("db.get_pool", return_value=mock_pool):
-            await db_activity_queries.count_active_activities("p1")
+            result = await db_activity_queries.count_active_by_slot("p1")
+
+        assert result == {"training": 0, "crafting": 0, "companion": 0}
+
+    @pytest.mark.asyncio
+    async def test_query_uses_union_all(self):
+        mock_pool = AsyncMock()
+        mock_pool.fetchrow = AsyncMock(return_value={"training": 0, "crafting": 0, "companion": 0})
+
+        with patch("db.get_pool", return_value=mock_pool):
+            await db_activity_queries.count_active_by_slot("p1")
 
         call_args = mock_pool.fetchrow.call_args[0]
-        assert "data->>'status' = 'in_progress'" in call_args[0]
+        assert "UNION ALL" in call_args[0]

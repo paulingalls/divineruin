@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 import pytest
 
 from async_rules import (
-    MAX_CONCURRENT_ACTIVITIES,
     VALID_ACTIVITY_TYPES,
     VALID_ERRAND_TYPES,
     compute_resolve_time,
@@ -89,29 +88,40 @@ class TestComputeResolveTime:
 # --- validate_activity_params ---
 
 
+EMPTY_SLOTS: dict[str, int] = {"training": 0, "crafting": 0, "companion": 0}
+
+
 class TestValidateActivityParams:
     def test_valid_crafting(self):
         params = {
             "recipe_id": "iron_sword",
             "required_materials": ["iron_ingot", "leather_strip"],
         }
-        result = validate_activity_params("crafting", params, SAMPLE_PLAYER, 0)
+        result = validate_activity_params("crafting", params, SAMPLE_PLAYER, EMPTY_SLOTS)
         assert result.valid is True
         assert result.errors == []
 
     def test_invalid_activity_type(self):
-        result = validate_activity_params("fishing", {}, SAMPLE_PLAYER, 0)
+        result = validate_activity_params("fishing", {}, SAMPLE_PLAYER, EMPTY_SLOTS)
         assert result.valid is False
         assert any("Invalid activity type" in e for e in result.errors)
 
-    def test_max_concurrent_exceeded(self):
+    def test_crafting_slot_full(self):
         params = {"recipe_id": "iron_sword"}
-        result = validate_activity_params("crafting", params, SAMPLE_PLAYER, MAX_CONCURRENT_ACTIVITIES)
+        full_crafting = {**EMPTY_SLOTS, "crafting": 1}
+        result = validate_activity_params("crafting", params, SAMPLE_PLAYER, full_crafting)
         assert result.valid is False
-        assert any("concurrent" in e.lower() for e in result.errors)
+        assert any("slot" in e.lower() or "crafting" in e.lower() for e in result.errors)
+
+    def test_companion_slot_full(self):
+        params = {"errand_type": "scout", "destination": "millhaven"}
+        full_companion = {**EMPTY_SLOTS, "companion": 1}
+        result = validate_activity_params("companion_errand", params, SAMPLE_PLAYER, full_companion)
+        assert result.valid is False
+        assert any("slot" in e.lower() or "companion" in e.lower() for e in result.errors)
 
     def test_crafting_missing_recipe(self):
-        result = validate_activity_params("crafting", {}, SAMPLE_PLAYER, 0)
+        result = validate_activity_params("crafting", {}, SAMPLE_PLAYER, EMPTY_SLOTS)
         assert result.valid is False
         assert any("recipe_id" in e for e in result.errors)
 
@@ -120,24 +130,24 @@ class TestValidateActivityParams:
             "recipe_id": "iron_sword",
             "required_materials": ["iron_ingot", "mithril_dust"],
         }
-        result = validate_activity_params("crafting", params, SAMPLE_PLAYER, 0)
+        result = validate_activity_params("crafting", params, SAMPLE_PLAYER, EMPTY_SLOTS)
         assert result.valid is False
         assert any("mithril_dust" in e for e in result.errors)
 
     def test_companion_errand_valid(self):
         params = {"errand_type": "scout", "destination": "millhaven"}
-        result = validate_activity_params("companion_errand", params, SAMPLE_PLAYER, 0)
+        result = validate_activity_params("companion_errand", params, SAMPLE_PLAYER, EMPTY_SLOTS)
         assert result.valid is True
 
     def test_companion_errand_invalid_type(self):
         params = {"errand_type": "steal", "destination": "millhaven"}
-        result = validate_activity_params("companion_errand", params, SAMPLE_PLAYER, 0)
+        result = validate_activity_params("companion_errand", params, SAMPLE_PLAYER, EMPTY_SLOTS)
         assert result.valid is False
         assert any("errand type" in e.lower() for e in result.errors)
 
     def test_companion_errand_missing_destination(self):
         params = {"errand_type": "scout"}
-        result = validate_activity_params("companion_errand", params, SAMPLE_PLAYER, 0)
+        result = validate_activity_params("companion_errand", params, SAMPLE_PLAYER, EMPTY_SLOTS)
         assert result.valid is False
         assert any("destination" in e for e in result.errors)
 
@@ -147,7 +157,7 @@ class TestValidateActivityParams:
                 params = {"recipe_id": "x", "required_materials": []}
             else:
                 params = {"errand_type": "scout", "destination": "x"}
-            result = validate_activity_params(atype, params, SAMPLE_PLAYER, 0)
+            result = validate_activity_params(atype, params, SAMPLE_PLAYER, EMPTY_SLOTS)
             assert result.valid is True, f"{atype} should be valid"
 
 

@@ -74,17 +74,21 @@ def validate_activity_params(
     activity_type: str,
     parameters: dict,
     player_data: dict,
-    active_count: int,
+    slot_counts: dict[str, int],
 ) -> ValidationResult:
     """Validate activity creation parameters. Pure — no IO."""
+    from errand_rules import ActivitySlot, validate_slot_limits
+
     errors: list[str] = []
 
     if activity_type not in VALID_ACTIVITY_TYPES:
         errors.append(f"Invalid activity type: {activity_type}")
         return ValidationResult(valid=False, errors=errors)
 
-    if active_count >= MAX_CONCURRENT_ACTIVITIES:
-        errors.append(f"Maximum {MAX_CONCURRENT_ACTIVITIES} concurrent activities allowed")
+    slot_map: dict[str, ActivitySlot] = {"crafting": "crafting", "companion_errand": "companion"}
+    activity_slot: ActivitySlot = slot_map.get(activity_type, "training")
+    slot_result = validate_slot_limits(slot_counts, activity_slot)
+    errors.extend(slot_result.errors)
 
     if activity_type == "crafting":
         if not parameters.get("recipe_id"):
