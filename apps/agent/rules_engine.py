@@ -13,6 +13,82 @@ from dice import roll as dice_roll
 
 SkillTier = Literal["untrained", "trained", "expert", "master"]
 DcTier = Literal["trivial", "easy", "moderate", "hard", "very_hard", "extreme", "legendary"]
+ResourcePattern = Literal["stamina_only", "focus_only", "focus_primary", "split"]
+
+
+# --- Resource pool config ---
+
+
+@dataclass(frozen=True)
+class PoolFormula:
+    base: int  # 4, 5, 6, or 8
+    attribute: str  # "strength", "constitution", etc.
+    level_divisor: int  # 1=+level, 2=+level//2, 3=+level//3, 0=flat
+
+
+@dataclass(frozen=True)
+class PoolMaximums:
+    stamina: int | None  # None = archetype has no pool
+    focus: int | None
+    pattern: ResourcePattern
+
+
+ARCHETYPE_RESOURCE_CONFIG: dict[str, tuple[ResourcePattern, PoolFormula | None, PoolFormula | None]] = {
+    # Stamina-only
+    "warrior": ("stamina_only", PoolFormula(8, "constitution", 1), None),
+    "guardian": ("stamina_only", PoolFormula(8, "constitution", 1), None),
+    "skirmisher": ("stamina_only", PoolFormula(8, "dexterity", 1), None),
+    "rogue": ("stamina_only", PoolFormula(8, "dexterity", 1), None),
+    "spy": ("stamina_only", PoolFormula(8, "charisma", 1), None),
+    # Focus-only
+    "mage": ("focus_only", None, PoolFormula(8, "intelligence", 1)),
+    "artificer": ("focus_only", None, PoolFormula(8, "intelligence", 1)),
+    "seeker": ("focus_only", None, PoolFormula(8, "intelligence", 1)),
+    "whisper": ("focus_only", None, PoolFormula(6, "intelligence", 2)),
+    # Focus-primary
+    "druid": ("focus_primary", PoolFormula(4, "constitution", 0), PoolFormula(8, "wisdom", 1)),
+    "cleric": ("focus_primary", PoolFormula(4, "constitution", 0), PoolFormula(8, "wisdom", 1)),
+    "beastcaller": ("focus_primary", PoolFormula(4, "constitution", 0), PoolFormula(8, "wisdom", 1)),
+    "warden": ("focus_primary", PoolFormula(6, "constitution", 0), PoolFormula(8, "wisdom", 1)),
+    "paladin": ("focus_primary", PoolFormula(6, "constitution", 3), PoolFormula(6, "wisdom", 1)),
+    "oracle": ("focus_primary", PoolFormula(4, "constitution", 0), PoolFormula(8, "wisdom", 1)),
+    # Split
+    "bard": ("split", PoolFormula(5, "constitution", 2), PoolFormula(5, "charisma", 2)),
+    "diplomat": ("split", PoolFormula(5, "charisma", 2), PoolFormula(5, "charisma", 2)),
+    "marshal": ("split", PoolFormula(6, "strength", 2), PoolFormula(5, "charisma", 2)),
+}
+
+
+def _apply_pool_formula(formula: PoolFormula, level: int, attribute_modifiers: dict[str, int]) -> int:
+    """Calculate a single pool maximum from its formula."""
+    attr_mod = attribute_modifiers.get(formula.attribute, 0)
+    if formula.level_divisor == 0:
+        return formula.base + attr_mod
+    return formula.base + attr_mod + level // formula.level_divisor
+
+
+def calculate_max_pools(
+    archetype: str,
+    level: int,
+    attribute_modifiers: dict[str, int],
+) -> PoolMaximums:
+    """Calculate Stamina and Focus pool maximums for an archetype at a given level.
+
+    Args:
+        archetype: Archetype id (lowercase, e.g. "warrior").
+        level: Character level (1-20).
+        attribute_modifiers: Dict of attribute name to pre-computed modifier.
+    """
+    if archetype not in ARCHETYPE_RESOURCE_CONFIG:
+        raise ValueError(f"Unknown archetype: {archetype!r}")
+
+    pattern, stamina_formula, focus_formula = ARCHETYPE_RESOURCE_CONFIG[archetype]
+
+    stamina = _apply_pool_formula(stamina_formula, level, attribute_modifiers) if stamina_formula else None
+    focus = _apply_pool_formula(focus_formula, level, attribute_modifiers) if focus_formula else None
+
+    return PoolMaximums(stamina=stamina, focus=focus, pattern=pattern)
+
 
 # --- Constants ---
 

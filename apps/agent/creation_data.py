@@ -132,7 +132,7 @@ RACES: dict[str, RaceData] = {
 }
 
 # ---------------------------------------------------------------------------
-# Classes (17)
+# Classes (18)
 # ---------------------------------------------------------------------------
 
 _LONGSWORD = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
@@ -456,6 +456,24 @@ CLASSES: dict[str, ClassData] = {
         num_skill_choices=4,
         starting_equipment={"main_hand": _QUARTERSTAFF, "armor": _ROBES, "shield": None},
         starting_gold=25,
+    ),
+    "marshal": ClassData(
+        id="marshal",
+        name="Marshal",
+        category="support",
+        description=(
+            "The battlefield leader. You don't fight alone — you command. Every ally near you "
+            "fights better, moves smarter, and survives longer because you told them exactly "
+            "what to do."
+        ),
+        card_description="Tactical commander. Leads allies in battle through voice and presence.",
+        hit_die=10,
+        primary_attribute="charisma",
+        saving_throw_proficiencies=("charisma", "wisdom"),
+        skill_options=("intimidation", "insight", "perception", "history"),
+        num_skill_choices=4,
+        starting_equipment={"main_hand": _LONGSWORD, "armor": _CHAIN_SHIRT, "shield": _SHIELD},
+        starting_gold=15,
     ),
 }
 

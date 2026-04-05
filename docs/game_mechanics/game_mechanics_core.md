@@ -580,10 +580,10 @@ Fuels magical and mental active abilities.
 
 | Pattern | Stamina | Focus | Archetypes |
 |---|---|---|---|
-| **Stamina-only** | Full pool, grows with level | None | Warrior, Rogue (and likely Guardian, Skirmisher, Spy) |
-| **Focus-only** | None | Full pool, grows with level | Mage (and likely Artificer, Seeker) |
-| **Focus-primary** | Small flat pool (~4+CON) | Full pool, grows with level | Druid, Cleric (and likely Beastcaller, Warden, Paladin, Oracle) |
-| **Split** | Half pool, grows at half rate | Half pool, grows at half rate | Bard (and likely Diplomat, Whisper) |
+| **Stamina-only** | Full pool, grows with level | None | Warrior, Guardian, Skirmisher, Rogue, Spy |
+| **Focus-only** | None | Full pool, grows with level | Mage, Artificer, Seeker, Whisper |
+| **Focus-primary** | Small flat pool (~4+CON) | Full pool, grows with level | Druid, Cleric, Beastcaller, Warden, Paladin, Oracle |
+| **Split** | Half pool, grows at half rate | Half pool, grows at half rate | Bard, Diplomat, Marshal |
 
 ---
 
