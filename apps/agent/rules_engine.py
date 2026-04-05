@@ -241,28 +241,30 @@ SKILL_CAPABILITIES: dict[str, dict[str, str]] = {
 
 XP_FOR_LEVEL: dict[int, int] = {
     1: 0,
-    2: 300,
-    3: 900,
-    4: 2700,
-    5: 6500,
-    6: 14000,
-    7: 23000,
-    8: 34000,
-    9: 48000,
-    10: 64000,
-    11: 85000,
-    12: 100000,
-    13: 120000,
-    14: 140000,
-    15: 165000,
-    16: 195000,
-    17: 225000,
-    18: 265000,
-    19: 305000,
-    20: 355000,
+    2: 200,
+    3: 450,
+    4: 750,
+    5: 1050,
+    6: 1450,
+    7: 1900,
+    8: 2400,
+    9: 2900,
+    10: 3450,
+    11: 4050,
+    12: 4650,
+    13: 5300,
+    14: 6000,
+    15: 6750,
+    16: 7550,
+    17: 8400,
+    18: 9300,
+    19: 10250,
+    20: 11250,
 }
 
 MAX_LEVEL = 20
+ATTRIBUTE_INCREASE_LEVELS: frozenset[int] = frozenset({4, 8, 12, 16, 20})
+SPECIALIZATION_LEVEL: int = 5
 
 
 @dataclass(frozen=True)
@@ -271,6 +273,8 @@ class LevelUpResult:
     new_level: int
     leveled_up: bool
     levels_gained: int
+    attribute_points: int
+    specialization_fork: bool
 
 
 def check_level_up(current_xp: int, xp_gained: int, current_level: int) -> LevelUpResult:
@@ -283,11 +287,17 @@ def check_level_up(current_xp: int, xp_gained: int, current_level: int) -> Level
         else:
             break
 
+    gained_levels = range(current_level + 1, new_level + 1)
+    attribute_points = sum(2 for lvl in gained_levels if lvl in ATTRIBUTE_INCREASE_LEVELS)
+    specialization_fork = SPECIALIZATION_LEVEL in gained_levels
+
     return LevelUpResult(
         new_xp=new_xp,
         new_level=new_level,
         leveled_up=new_level > current_level,
         levels_gained=new_level - current_level,
+        attribute_points=attribute_points,
+        specialization_fork=specialization_fork,
     )
 
 
