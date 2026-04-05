@@ -27,6 +27,7 @@ COMBAT_UI_UPDATE = "combat_ui_update"
 # Character
 SKILL_TIER_ADVANCED = "skill_tier_advanced"
 XP_AWARDED = "xp_awarded"
+LEVEL_UP = "level_up"
 HP_CHANGED = "hp_changed"
 STATUS_EFFECT = "status_effect"
 DIVINE_FAVOR_CHANGED = "divine_favor_changed"

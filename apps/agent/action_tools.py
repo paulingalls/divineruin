@@ -15,6 +15,7 @@ import rules_engine
 from asset_utils import slug_asset_url
 from db_errors import db_tool
 from game_events import publish_game_event
+from leveling import build_level_up_payload, get_level_up_rewards
 from region_types import REGION_CITY
 from session_data import SessionData
 from tools import (
@@ -160,9 +161,15 @@ async def award_xp(
                     "new_xp": result.new_xp,
                     "new_level": result.new_level,
                     "leveled_up": result.leveled_up,
+                    "attribute_points": result.attribute_points,
+                    "specialization_fork": result.specialization_fork,
                 },
             )
         )
+
+        if result.leveled_up:
+            rewards = get_level_up_rewards(current_level, result.new_level)
+            pending_events.append((E.LEVEL_UP, build_level_up_payload(current_level, rewards)))
 
     for event_type, payload in pending_events:
         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
@@ -682,9 +689,15 @@ async def update_quest(
                                 "new_xp": level_result.new_xp,
                                 "new_level": level_result.new_level,
                                 "leveled_up": level_result.leveled_up,
+                                "attribute_points": level_result.attribute_points,
+                                "specialization_fork": level_result.specialization_fork,
                             },
                         )
                     )
+
+                    if level_result.leveled_up:
+                        quest_rewards = get_level_up_rewards(current_level, level_result.new_level)
+                        pending_events.append((E.LEVEL_UP, build_level_up_payload(current_level, quest_rewards)))
 
             for item_reward in on_complete.get("rewards", []):
                 item_id = item_reward.get("item") or item_reward.get("item_id")

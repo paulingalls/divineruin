@@ -27,6 +27,7 @@ export const COMBAT_UI_UPDATE = "combat_ui_update" as const;
 
 // Character
 export const XP_AWARDED = "xp_awarded" as const;
+export const LEVEL_UP = "level_up" as const;
 export const HP_CHANGED = "hp_changed" as const;
 export const STATUS_EFFECT = "status_effect" as const;
 export const DIVINE_FAVOR_CHANGED = "divine_favor_changed" as const;
