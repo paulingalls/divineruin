@@ -41,6 +41,40 @@ COMPANION_CONTEXT = {
             "relationship": "Kael takes the time to simply be present, sharing stories over a drink.",
         },
     },
+    "companion_lira": {
+        "name": "Lira",
+        "personality": "brilliant, curious, socially cautious, excited by discovery",
+        "speech_style": "precise and rapid when discussing findings, halting in casual talk",
+        "voice_id": "COMPANION_LIRA",
+        "errand_frames": {
+            "scout": "Lira surveys the area methodically, pausing to examine anything that glows, hums, or feels wrong.",
+            "social": "Lira listens carefully, asking pointed questions that make people reveal more than they intended.",
+            "acquire": "Lira checks every vendor for arcane reagents and forgotten texts, ignoring mundane stock entirely.",
+            "relationship": "Lira brings a small gift — a pressed flower or a copied passage — and asks earnest questions.",
+        },
+    },
+    "companion_tam": {
+        "name": "Tam",
+        "personality": "energetic, impulsive, warm-hearted, easily distracted",
+        "speech_style": "fast and enthusiastic, jumps between topics, speaks with hands",
+        "voice_id": "COMPANION_TAM",
+        "errand_frames": {
+            "scout": "Tam covers ground fast, climbing anything climbable and poking into places others would avoid.",
+            "social": "Tam charms their way into conversations easily, though sometimes says the wrong thing at the wrong time.",
+            "acquire": "Tam knows every back trail and hidden grove, but gets lost in cities and comes back with the wrong thing.",
+            "relationship": "Tam shows up with food, sits too close, and talks until the other person can't help but laugh.",
+        },
+    },
+    "companion_sable": {
+        "name": "Sable",
+        "personality": "alert, protective, primal intelligence, distrustful of strangers",
+        "speech_style": "communicates through body language, growls, and pointed looks",
+        "voice_id": "COMPANION_SABLE",
+        "errand_frames": {
+            "scout": "Sable moves low through the underbrush, nose to the ground, ears tracking every sound.",
+            "acquire": "Sable follows scent trails to find natural materials — herbs, bones, mineral deposits.",
+        },
+    },
 }
 
 # Narration prompt templates per activity type.
@@ -88,7 +122,7 @@ Errand frame: {errand_frame}
 Errand type: {errand_type} at {destination}
 Outcome: {tier}
 Information gained: {information}
-
+{risk_line}
 Write a short narration (60-120 words) of {companion_name} returning and reporting.
 Include details of what they saw, heard, or found. Stay in character.
 End with the decision point.
@@ -162,6 +196,10 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
         companion = get_companion_context(ctx.get("companion_id", "companion_kael"))
         errand_type = ctx.get("errand_type", "scout")
         errand_frame = companion.get("errand_frames", {}).get(errand_type, "")
+        risk = ctx.get("risk_outcome", "none")
+        risk_line = "Companion was injured during the errand.\n" if risk == "injured" else ""
+        if risk == "emergency":
+            risk_line = "Companion ran into serious trouble and needs rescue.\n"
         prompt = template.format(
             companion_name=companion["name"],
             companion_personality=companion["personality"],
@@ -172,6 +210,7 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
             destination=ctx.get("destination", "unknown"),
             tier=ctx.get("tier", "unknown"),
             information=outcome.get("information_gained", []),
+            risk_line=risk_line,
             decision_options=decision_text,
         )
         return prompt, [companion["voice_id"]]

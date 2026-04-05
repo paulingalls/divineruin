@@ -98,6 +98,9 @@ async def _resolve_single_activity(activity: dict) -> None:
 
         outcome_dict = asdict(outcome)
 
+        if activity_type == "companion_errand":
+            outcome_dict.setdefault("narrative_context", {})["risk_outcome"] = parameters.get("risk_outcome", "none")
+
         # Generate structured narration via LLM tool_use
         segments, narration_text, narration_summary = await generate_activity_narration(
             outcome_dict, player_data, activity
