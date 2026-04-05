@@ -81,9 +81,9 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Stamina pool (martial abilities) and Focus pool (magic/mental abilities) per character
 - Archetype resource assignments (4 patterns):
   - Stamina-only (full pool, no Focus): Warrior, Guardian, Skirmisher, Rogue, Spy
-  - Focus-only (no Stamina, full Focus pool): Mage, Artificer, Seeker
+  - Focus-only (no Stamina, full Focus pool): Mage, Artificer, Seeker, Whisper
   - Focus-primary (small flat Stamina ~4+CON, full Focus pool): Druid, Cleric, Beastcaller, Warden, Paladin, Oracle
-  - Split (half Stamina, half Focus, both grow at half rate): Bard, Diplomat
+  - Split (half Stamina, half Focus, both grow at half rate): Bard, Diplomat, Marshal
 - HP formula including CON modifier at half-rate per level
 - Recovery mechanics: Short rest (Stamina full, Focus half), Long rest (all full)
 - Narrative state indicators at resource thresholds ("winded", "concentration wavers", etc.)
@@ -98,7 +98,7 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - [ ] Long rest restores all pools to full
 - [ ] Narrative state indicators trigger at correct thresholds
 - [ ] Resource pool calculations are pure functions with no side effects
-- [ ] Tests cover all 12 archetypes and both rest types
+- [ ] Tests cover all 18 archetypes and both rest types
 
 **Key references:**
 - *Game Mechanics Core — Resource Pools*

@@ -28,7 +28,7 @@
 | Travel and Exploration (3 travel modes, encounters, navigation, exhaustion, camping) | `_combat` | **LOCKED** |
 | Gathering and Resource Discovery (skill-gated gathering, regional tables, fixed nodes, discovery) | `_combat` | **LOCKED** |
 | Character Creation (5-step flow, standard array, starting equipment, auto-derived culture) | `_core` | **LOCKED** |
-| Archetype Profiles (16 of 16) | `_archetypes` | **LOCKED** — Warrior, Mage, Druid, Cleric, Rogue, Bard, Guardian, Skirmisher, Artificer, Seeker, Beastcaller, Warden, Paladin, Oracle, Spy, Diplomat |
+| Archetype Profiles (18 of 18) | `_archetypes` | **LOCKED** — Warrior, Mage, Druid, Cleric, Rogue, Bard, Guardian, Skirmisher, Artificer, Seeker, Beastcaller, Warden, Paladin, Oracle, Spy, Whisper, Diplomat, Marshal |
 | Core + Elective Ability Model | `_archetypes` | **LOCKED** |
 | Spell Acquisition (Three-Track) | `_archetypes` | **LOCKED** |
 | Martial Mentor-Style System | `_archetypes` | **LOCKED** |
@@ -528,7 +528,7 @@ def calculate_hp(level: int, hp_base: int, hp_growth: int, con_mod: int) -> int:
 | Category | Archetypes | Base HP | Growth/Level | L1 (CON +1) | L10 (CON +1) | L20 (CON +1) |
 |---|---|---|---|---|---|---|
 | **Martial** | Warrior, Guardian, Skirmisher | 12 | 5 | 13 | 62 | 117 |
-| **Primal / Divine** | Druid, Beastcaller, Warden, Cleric, Paladin, Oracle | 10 | 4 | 11 | 50 | 96 |
+| **Primal / Divine / Marshal** | Druid, Beastcaller, Warden, Cleric, Paladin, Oracle, Marshal | 10 | 4 | 11 | 50 | 96 |
 | **Arcane / Shadow / Support** | Mage, Artificer, Seeker, Rogue, Spy, Whisper, Bard, Diplomat | 8 | 3 | 9 | 39 | 75 |
 
 ### HP Ranges at Key Levels (CON +0 to +5)
@@ -1009,8 +1009,9 @@ These are computed automatically from the player's narrative choices:
 | Arcane (Mage, Artificer, Seeker) | None (robes) | Staff OR dagger + light crossbow | Scholar's pack (backpack, ink, quill, parchment, arcane focus, rations ×3) | 10 sp |
 | Primal (Druid, Beastcaller, Warden) | Hide armor | Staff + shield (non-metal) OR scimitar | Explorer's pack + herbalism kit | 10 sp |
 | Divine (Cleric, Paladin, Oracle) | Chain shirt + shield (Cleric/Paladin) OR leather (Oracle) | Mace OR warhammer (Cleric/Paladin). Staff (Oracle) | Priest's pack (backpack, holy symbol, prayer beads, rations ×5, healer's kit) | 10 sp |
-| Shadow (Rogue, Spy) | Leather armor | Short sword + daggers ×2 OR rapier | Burglar's pack (backpack, thieves' tools, dark cloak, rations ×3) | 10 sp |
-| Support (Bard, Diplomat) | Leather armor | Rapier OR longsword (Bard). Dagger only (Diplomat) | Entertainer's pack (instrument or writing kit, fine clothes, rations ×3) | 15 sp |
+| Shadow (Rogue, Spy, Whisper) | Leather armor | Short sword + daggers ×2 OR rapier | Burglar's pack (backpack, thieves' tools, dark cloak, rations ×3) | 10 sp |
+| Support — Social (Bard, Diplomat) | Leather armor | Rapier OR longsword (Bard). Dagger only (Diplomat) | Entertainer's pack (instrument or writing kit, fine clothes, rations ×3) | 15 sp |
+| Support — Tactical (Marshal) | Chain shirt + shield | Longsword | Commander's pack (backpack, map case, signal horn, rations ×5, waterskin) | 10 sp |
 
 **Starting skills** — Already defined per archetype (3-5 skills at Trained). No additional choices.
 

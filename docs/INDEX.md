@@ -16,7 +16,7 @@ Vision, pitch, and high-level systems overview. Read first for context.
 | What It Feels Like | 51-63 | Walkthrough of a typical session |
 | The World | 67-91 | Aethos overview, Pantheon as game systems (10 gods) |
 | How It Works | 96-144 | Three-layer DM architecture, voice pipeline, tech stack |
-| Game Systems | 148-172 | 16 archetypes x 10 gods, combat, multiplayer scales |
+| Game Systems | 148-172 | 18 archetypes x 10 gods, combat, multiplayer scales |
 | Monetization | 176-190 | Subscription model, unit economics, red lines |
 | Where We Are | 194-217 | Current state, MVP to MMO path (7 steps) |
 | The Hard Problems | 220-237 | Six key technical challenges |
@@ -30,7 +30,7 @@ All player-facing systems. The largest doc — always read specific sections, no
 | Section | Lines | What's There |
 |---|---|---|
 | Character Creation | 18-73 | Voice-conversation flow: Awakening → Origins → Calling → Devotion → Identity (10-15 min) |
-| Class System | 76-193 | 16 archetypes across 6 categories x 10 gods = 160 combos |
+| Class System | 76-199 | 18 archetypes across 6 categories x 10 gods = 180 combos |
 | Progression System | 197-238 | Archetype Mastery (XP), Divine Favor (alignment), World Reputation |
 | Game Mechanics | 241-321 | d20+mod vs DC, 15 skills in 3 groups, status effects, difficulty tiers |
 | Session Structure | 325-416 | 30-90 min sessions, 5 phases, fluid entry, DM behavioral modes |
@@ -342,11 +342,11 @@ Combat resolution, status effects, death, social encounters, travel, gathering.
 
 ## game_mechanics/game_mechanics_archetypes.md (1224 lines)
 
-16 archetype profiles with abilities, specializations, and spell acquisition.
+18 archetype profiles with abilities, specializations, and spell acquisition.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Archetype Profiles | 9-415 | Overview of 16 archetypes: Martial(3), Arcane(3), Primal-Divine(5), Support(2), Shadow(2), Oracle(1) |
+| Archetype Profiles | 9-415 | Overview of 18 archetypes: Martial(3), Arcane(3), Primal(3), Divine(3), Shadow(3), Support(3) |
 | All Archetype Profiles — Complete | 417-1014 | Individual stat blocks: HP, armor, skills, passives, actives, reactions, milestones |
 | Core + Elective Ability Model | 1016-1087 | Core (always available) vs Elective (chosen at L4/L8), reaction abilities |
 | Spell Acquisition — Three Tracks | 1089-1152 | Core spells, Training study cycles, Discovery (scrolls/mentors) |
@@ -445,14 +445,20 @@ Creature stat blocks, Hollow and natural creatures, materials, encounters.
 
 ---
 
-## game_mechanics/economy_reconciliation.md (250 lines)
+## game_mechanics/game_mechanics_economy.md (~280 lines)
 
-Currency audit and pricing validation against the 1 sp = 1 day labor anchor.
+Canonical economy specification. Currency system, pricing tables, merchant formulas, quest rewards, and gaps for Phase 9.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Anchor Definition | 7-18 | 1 sp = 1 day unskilled labor, derived benchmarks |
-| Currency Notation Inconsistency | 20-63 | gp vs gc discrepancy, lore (10:1) vs GDD (100:1) mismatch |
-| Price Validation | 65-217 | 60+ items audited across 14 categories |
-| Summary of Issues Found | 219-235 | Critical notation issue, minor pricing issues |
-| Recommended Fixes | 237-end | 4 action items: GDD ratio, notation fixes |
+| Currency System | 7-12 | Three-tier decimal: cp/sp/gc at 10:1 ratios |
+| Economic Anchor | 14-22 | 1 sp = 1 day unskilled labor, wage scale benchmarks |
+| Canonical Price Tables | 26-115 | 60+ items: food, weapons, armor, gear, spell components |
+| NPC Services | 119-137 | Healing, research, identification, resurrection pricing |
+| Workspace Rental | 141-149 | Workshop/forge/lab daily rates, disposition discounts |
+| Crafting & Repair | 153-167 | Commission tiers, repair pricing by item tier |
+| Mentor Training Fees | 171-177 | Fee ranges by mentor renown, quest-gated exceptions |
+| Starting Gold | 181-185 | Per-archetype starting wealth, purchasing power analysis |
+| Merchant Pricing Formula | 189-199 | Disposition modifiers, faction reputation stacking |
+| Quest Reward Tiers | 203-210 | Tier 1/2/3 reward ranges by content difficulty |
+| Systems Not Yet Specified | 216-end | 7 systems needing design before Phase 9 implementation |

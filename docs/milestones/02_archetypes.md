@@ -2,27 +2,27 @@
 
 > Source doc: `docs/game_mechanics/game_mechanics_archetypes.md`
 
-Deepens character identity through 16 archetypes, ability acquisition, specialization progression, spell learning, and mentor-based technique training. Depends on Phase 1 (Core Systems).
+Deepens character identity through 18 archetypes, ability acquisition, specialization progression, spell learning, and mentor-based technique training. Depends on Phase 1 (Core Systems).
 
 ---
 
 ### Milestone 2.1 — Archetype Chassis
 
-**Goal:** Define the 16 archetype profiles so that character creation and leveling can reference a canonical set of HP, proficiencies, saves, resources, and starting skills for each archetype.
+**Goal:** Define the 18 archetype profiles so that character creation and leveling can reference a canonical set of HP, proficiencies, saves, resources, and starting skills for each archetype.
 
 **Inputs:** Phase 1 (Core Systems), existing `rules_engine.py`.
 
 **Deliverables:**
 - `archetypes` DB table with columns for HP category, armor proficiencies, weapon proficiencies, save proficiencies, resource type, and starting skill proficiencies
-- Content seed file `content/archetypes.json` with all 16 archetype entries
+- Content seed file `content/archetypes.json` with all 18 archetype entries
 - Migration to create and seed the `archetypes` table
 - Pure function `get_archetype_chassis(archetype_id)` in the rules engine returning the full chassis definition
 - HP computation helpers: hit die by category (Martial 12/5, Primal-Divine 10/4, Arcane-Shadow-Support 8/3)
 
 **Acceptance criteria:**
-- [ ] 16 archetypes exist in the DB after seeding: Warrior, Guardian, Skirmisher, Mage, Artificer, Seeker, Druid, Beastcaller, Warden, Cleric, Paladin, Bard, Diplomat, Rogue, Spy, Oracle
+- [ ] 18 archetypes exist in the DB after seeding: Warrior, Guardian, Skirmisher, Mage, Artificer, Seeker, Druid, Beastcaller, Warden, Cleric, Paladin, Oracle, Rogue, Spy, Whisper, Bard, Diplomat, Marshal
 - [ ] Each archetype record specifies HP category, armor proficiencies, weapon proficiencies, save proficiencies, resource type (Stamina-only, Focus-only, or both), and 3-5 starting skill proficiencies
-- [ ] `get_archetype_chassis()` returns the correct chassis for each archetype (unit tests for all 16)
+- [ ] `get_archetype_chassis()` returns the correct chassis for each archetype (unit tests for all 18)
 - [ ] HP at level 1 and per-level HP gain match the category formula for each archetype
 - [ ] Resource type assignment is correct: martial archetypes get Stamina, arcane/divine get Focus, hybrids get both
 
@@ -73,7 +73,7 @@ Deepens character identity through 16 archetypes, ability acquisition, specializ
 
 **Deliverables:**
 - `archetype_milestones` DB table: milestone_tier (Identity/Power/Mastery/Legend), level (5/10/15/20), archetype_id, granted_abilities, specialization_options (for L5)
-- Content seed for milestone abilities across all 16 archetypes
+- Content seed for milestone abilities across all 18 archetypes
 - Specialization fork data at L5: each archetype offers 2 specialization paths (e.g., Warrior picks Battle Master or Berserker)
 - Agent tool `resolve_milestone` — grants milestone abilities, triggers specialization choice at L5
 - Client: leveling screen with specialization choice UI at L5

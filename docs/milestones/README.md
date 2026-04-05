@@ -37,7 +37,7 @@ After Phase 1 completes, these groups can run in parallel:
 
 | Phase | File | Source Doc | Milestones |
 |---|---|---|---|
-| 0 | [00_doc_updates.md](00_doc_updates.md) | `economy_reconciliation.md`, `game_mechanics_decisions.md` | 4 |
+| 0 | [00_doc_updates.md](00_doc_updates.md) | `game_mechanics_economy.md`, `game_mechanics_decisions.md` | 4 |
 | 1 | [01_core_systems.md](01_core_systems.md) | `game_mechanics_core.md` | 6 |
 | 2 | [02_archetypes.md](02_archetypes.md) | `game_mechanics_archetypes.md` | 5 |
 | 3 | [03_magic.md](03_magic.md) | `game_mechanics_magic.md` | 4 |
@@ -46,7 +46,7 @@ After Phase 1 completes, these groups can run in parallel:
 | 6 | [06_npcs.md](06_npcs.md) | `game_mechanics_npcs.md` | 4 |
 | 7 | [07_bestiary.md](07_bestiary.md) | `game_mechanics_bestiary.md` | 4 |
 | 8 | [08_patrons.md](08_patrons.md) | `game_mechanics_patrons.md` | 3 |
-| 9 | [09_economy.md](09_economy.md) | `economy_reconciliation.md` | 3 |
+| 9 | [09_economy.md](09_economy.md) | `game_mechanics_economy.md` | 3 |
 
 **Total: 43 milestones across 10 phases**
 

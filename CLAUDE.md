@@ -18,7 +18,7 @@ Read specific sections via INDEX.md, not whole files.
 
 | Category | Docs |
 |---|---|
-| **Game Mechanics** (canonical specs) | `game_mechanics/game_mechanics_core.md` (1103 lines), `game_mechanics/game_mechanics_combat.md` (1060), `game_mechanics/game_mechanics_archetypes.md` (1224), `game_mechanics/game_mechanics_magic.md` (542), `game_mechanics/game_mechanics_crafting.md` (587), `game_mechanics/game_mechanics_npcs.md` (885), `game_mechanics/game_mechanics_bestiary.md` (1234), `game_mechanics/game_mechanics_patrons.md` (366), `game_mechanics/game_mechanics_decisions.md` (186), `game_mechanics/economy_reconciliation.md` (250) |
+| **Game Mechanics** (canonical specs) | `game_mechanics/game_mechanics_core.md` (1103 lines), `game_mechanics/game_mechanics_combat.md` (1060), `game_mechanics/game_mechanics_archetypes.md` (1224), `game_mechanics/game_mechanics_magic.md` (542), `game_mechanics/game_mechanics_crafting.md` (587), `game_mechanics/game_mechanics_npcs.md` (885), `game_mechanics/game_mechanics_bestiary.md` (1234), `game_mechanics/game_mechanics_patrons.md` (366), `game_mechanics/game_mechanics_decisions.md` (186), `game_mechanics/game_mechanics_economy.md` (250) |
 | **Design & Architecture** | `product_overview.md` (254), `game_design_doc.md` (1514), `technical_architecture.md` (1732), `audio_design.md` (718), `world_data_simulation.md` (948), `player_resonance_system.md` (569) |
 | **Content & Lore** | `mvp_spec.md` (968), `aethos_lore.md` (1750), `brand_spec.md` (249), `image_prompt_library.md` (379) |
 | **Project** | `milestones/README.md` (10 phase files), `cost_model.md` (276), `agent_handoffs_and_scenes.md` |
