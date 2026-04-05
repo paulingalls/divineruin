@@ -13,9 +13,10 @@ import db
 import event_types as E
 from event_bus import GameEvent
 from god_whisper_data import get_god_profile, should_trigger_whisper
-from prompts import build_full_prompt, build_system_prompt, build_warm_layer, quest_objective
 from sanitize import sanitize_for_prompt
+from system_prompts import build_system_prompt
 from tools import _disposition_rank
+from warm_prompts import build_full_prompt, build_warm_layer, quest_objective
 
 if TYPE_CHECKING:
     from livekit.agents import Agent, AgentSession

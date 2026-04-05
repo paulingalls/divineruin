@@ -2,7 +2,7 @@
 
 from base_agent import BaseGameAgent
 from dungeon_agent import DUNGEON_TOOLS, DungeonAgent
-from prompts import COMBAT_PROMPT, DUNGEON_PROMPT, VOICE_STYLE_PROMPT, build_system_prompt
+from system_prompts import COMBAT_PROMPT, DUNGEON_PROMPT, VOICE_STYLE_PROMPT, build_system_prompt
 from tools import (
     add_to_inventory,
     discover_hidden_element,

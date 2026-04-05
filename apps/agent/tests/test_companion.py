@@ -116,7 +116,7 @@ class TestKaelEntity:
 
 class TestCompanionPrompt:
     def test_system_prompt_includes_companion_when_present(self):
-        from prompts import build_system_prompt
+        from system_prompts import build_system_prompt
 
         companion = CompanionState(id="companion_kael", name="Kael")
         prompt = build_system_prompt("accord_guild_hall", companion=companion)
@@ -125,13 +125,13 @@ class TestCompanionPrompt:
         assert "warm baritone" in prompt
 
     def test_system_prompt_excludes_companion_when_none(self):
-        from prompts import build_system_prompt
+        from system_prompts import build_system_prompt
 
         prompt = build_system_prompt("accord_guild_hall", companion=None)
         assert "Companion — Kael" not in prompt
 
     def test_system_prompt_excludes_companion_when_not_present(self):
-        from prompts import build_system_prompt
+        from system_prompts import build_system_prompt
 
         companion = CompanionState(id="companion_kael", name="Kael", is_present=False)
         prompt = build_system_prompt("accord_guild_hall", companion=companion)
@@ -142,7 +142,7 @@ class TestCompanionPrompt:
     @patch("db.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db.get_location", new_callable=AsyncMock)
     async def test_warm_layer_includes_companion(self, mock_loc, mock_npcs, mock_disp, mock_quests):
-        from prompts import build_warm_layer
+        from warm_prompts import build_warm_layer
 
         mock_loc.return_value = {
             "id": "test_loc",
@@ -173,7 +173,7 @@ class TestCompanionPrompt:
     @patch("db.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db.get_location", new_callable=AsyncMock)
     async def test_warm_layer_shows_unconscious(self, mock_loc, mock_npcs, mock_disp, mock_quests):
-        from prompts import build_warm_layer
+        from warm_prompts import build_warm_layer
 
         mock_loc.return_value = {
             "id": "test_loc",
@@ -195,7 +195,7 @@ class TestCompanionPrompt:
     @patch("db.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db.get_location", new_callable=AsyncMock)
     async def test_warm_layer_no_companion_section_when_none(self, mock_loc, mock_npcs, mock_disp, mock_quests):
-        from prompts import build_warm_layer
+        from warm_prompts import build_warm_layer
 
         mock_loc.return_value = {
             "id": "test_loc",

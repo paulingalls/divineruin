@@ -17,7 +17,7 @@ from affect_analyzer import (
     engagement_level,
     format_vs_baseline,
 )
-from prompts import format_affect_context
+from warm_prompts import format_affect_context
 
 # ---------------------------------------------------------------------------
 # Question detection

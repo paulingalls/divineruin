@@ -3,7 +3,7 @@
 from typing import Any
 
 from base_agent import BaseGameAgent
-from prompts import COMBAT_SYSTEM_PROMPT
+from system_prompts import COMBAT_SYSTEM_PROMPT
 from tools import (
     end_combat,
     play_sound,

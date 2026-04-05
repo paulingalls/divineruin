@@ -13,8 +13,8 @@ from livekit.agents import llm
 from base_agent import BaseGameAgent
 from onboarding_background import OnboardingBackgroundProcess
 from onboarding_tools import advance_onboarding_beat
-from prompts import VOICE_STYLE_PROMPT
 from session_data import SessionData
+from system_prompts import VOICE_STYLE_PROMPT
 from tools import (
     discover_hidden_element,
     enter_location,

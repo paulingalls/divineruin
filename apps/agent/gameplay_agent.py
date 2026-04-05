@@ -17,10 +17,11 @@ from background_process import BackgroundProcess
 from base_agent import BaseGameAgent
 from combat_resolution import hp_threshold_status
 from game_events import publish_game_event
-from prompts import build_system_prompt, format_affect_context
 from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
 from session_data import SessionData
 from session_summary import generate_session_summary
+from system_prompts import build_system_prompt
+from warm_prompts import format_affect_context
 
 logger = logging.getLogger("divineruin.gameplay")
 

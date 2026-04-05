@@ -2,7 +2,8 @@
 
 from unittest.mock import AsyncMock, patch
 
-from prompts import build_full_prompt, build_system_prompt, build_warm_layer
+from system_prompts import build_system_prompt
+from warm_prompts import build_full_prompt, build_warm_layer
 
 SAMPLE_LOCATION = {
     "id": "accord_guild_hall",
@@ -158,14 +159,14 @@ class TestRegionTypePrompts:
         assert "travel" in prompt.lower() or "wilderness" in prompt.lower()
 
     def test_wilderness_prompt_has_no_commerce_rule(self):
-        from prompts import WILDERNESS_PROMPT
+        from system_prompts import WILDERNESS_PROMPT
 
         prompt = build_system_prompt("loc", region_type="wilderness")
         assert WILDERNESS_PROMPT in prompt
         assert "No NPC commerce" in prompt
 
     def test_dungeon_prompt_includes_corruption(self):
-        from prompts import DUNGEON_PROMPT
+        from system_prompts import DUNGEON_PROMPT
 
         prompt = build_system_prompt("loc", region_type="dungeon")
         assert DUNGEON_PROMPT in prompt
@@ -176,7 +177,7 @@ class TestRegionTypePrompts:
         assert "No social context" in prompt
 
     def test_each_region_type_has_voice_style(self):
-        from prompts import VOICE_STYLE_PROMPT
+        from system_prompts import VOICE_STYLE_PROMPT
 
         for rt in ("city", "wilderness", "dungeon"):
             prompt = build_system_prompt("loc", region_type=rt)

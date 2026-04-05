@@ -6,7 +6,7 @@ creation-specific guidance for guiding a new player through character creation.
 
 from __future__ import annotations
 
-from prompts import _AVAILABLE_CHARACTERS, _AVAILABLE_EMOTIONS
+from system_prompts import _AVAILABLE_CHARACTERS, _AVAILABLE_EMOTIONS
 
 CREATION_SYSTEM_PROMPT = f"""\
 You are the Dungeon Master for Divine Ruin: The Sundered Veil. You are guiding \

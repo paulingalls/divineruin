@@ -9,9 +9,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from prompts import build_warm_layer
 from session_data import SessionData
 from tools import update_quest
+from warm_prompts import build_warm_layer
 
 # === Centralized scene resolution (standalone scenes) ===
 

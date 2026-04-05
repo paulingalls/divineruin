@@ -475,7 +475,7 @@ class TestSessionEndingPrompt:
     """Test that system prompt includes session ending instructions."""
 
     def test_system_prompt_contains_session_ending(self):
-        from prompts import build_system_prompt
+        from system_prompts import build_system_prompt
 
         prompt = build_system_prompt("test_location")
         assert "Session Ending" in prompt

@@ -1,7 +1,7 @@
 """Tests for WildernessAgent — wilderness/travel gameplay agent."""
 
 from base_agent import BaseGameAgent
-from prompts import COMBAT_PROMPT, VOICE_STYLE_PROMPT, WILDERNESS_PROMPT, build_system_prompt
+from system_prompts import COMBAT_PROMPT, VOICE_STYLE_PROMPT, WILDERNESS_PROMPT, build_system_prompt
 from tools import (
     discover_hidden_element,
     end_combat,
