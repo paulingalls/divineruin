@@ -56,9 +56,10 @@ beforeEach(() => {
 
 describe("handleCreateActivity", () => {
   test("creates crafting activity", async () => {
-    // Inside transaction: count, material check, delete mat 1, delete mat 2, insert
+    // Inside transaction: lock, slot count, material check, delete materials, insert
     mockQueryResults = [
       [], // lock rows (FOR UPDATE) — no in-progress activities
+      [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
       [{ item_id: "iron_ingot" }, { item_id: "leather_strip" }], // material check (FOR UPDATE)
       [], // delete iron_ingot
       [], // delete leather_strip
@@ -97,8 +98,11 @@ describe("handleCreateActivity", () => {
     expect(body.error).toContain("Invalid activity type");
   });
 
-  test("rejects when too many concurrent", async () => {
-    mockQueryResults = [[{ id: "a1" }, { id: "a2" }, { id: "a3" }, { id: "a4" }]];
+  test("rejects when slot is full", async () => {
+    mockQueryResults = [
+      [], // lock rows (FOR UPDATE)
+      [{ training: 0, crafting: 1, companion: 0 }], // countActiveBySlot — crafting slot full
+    ];
 
     const req = makeRequest("POST", "/api/activities", {
       type: "crafting",
@@ -107,7 +111,7 @@ describe("handleCreateActivity", () => {
     const res = await handleCreateActivity(req, "player_1");
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("concurrent");
+    expect(body.error).toContain("Crafting slot is full");
   });
 
   test("rejects crafting without recipe_id", async () => {
@@ -134,7 +138,8 @@ describe("handleCreateActivity", () => {
 
   test("rejects missing materials", async () => {
     mockQueryResults = [
-      [{ cnt: 0 }], // count active
+      [], // lock rows (FOR UPDATE)
+      [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
       [], // batch material check — none found
     ];
 
@@ -149,9 +154,10 @@ describe("handleCreateActivity", () => {
   });
 
   test("creates training activity", async () => {
-    // Inside transaction: count, insert
+    // Inside transaction: lock, slot count, insert
     mockQueryResults = [
       [], // lock rows (FOR UPDATE) — no in-progress activities
+      [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
       [], // insert activity
     ];
 
@@ -177,9 +183,10 @@ describe("handleCreateActivity", () => {
   });
 
   test("creates companion errand", async () => {
-    // Inside transaction: count, insert
+    // Inside transaction: lock, slot count, insert
     mockQueryResults = [
       [], // lock rows (FOR UPDATE) — no in-progress activities
+      [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
       [], // insert activity
     ];
 
