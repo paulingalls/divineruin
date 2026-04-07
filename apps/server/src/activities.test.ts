@@ -56,9 +56,10 @@ beforeEach(() => {
 
 describe("handleCreateActivity", () => {
   test("creates crafting activity", async () => {
-    // Inside transaction: lock, slot count, material check, delete materials, insert
+    // Inside transaction: lock both tables, slot count, material check, delete materials, insert
     mockQueryResults = [
-      [], // lock rows (FOR UPDATE) — no in-progress activities
+      [], // lock async_activities (FOR UPDATE)
+      [], // lock training_activities (FOR UPDATE)
       [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
       [{ item_id: "iron_ingot" }, { item_id: "leather_strip" }], // material check (FOR UPDATE)
       [], // delete iron_ingot
@@ -100,7 +101,8 @@ describe("handleCreateActivity", () => {
 
   test("rejects when slot is full", async () => {
     mockQueryResults = [
-      [], // lock rows (FOR UPDATE)
+      [], // lock async_activities (FOR UPDATE)
+      [], // lock training_activities (FOR UPDATE)
       [{ training: 0, crafting: 1, companion: 0 }], // countActiveBySlot — crafting slot full
     ];
 
@@ -138,7 +140,8 @@ describe("handleCreateActivity", () => {
 
   test("rejects missing materials", async () => {
     mockQueryResults = [
-      [], // lock rows (FOR UPDATE)
+      [], // lock async_activities (FOR UPDATE)
+      [], // lock training_activities (FOR UPDATE)
       [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
       [], // batch material check — none found
     ];
@@ -153,12 +156,13 @@ describe("handleCreateActivity", () => {
     expect(body.error).toContain("Missing required material");
   });
 
-  test("creates training activity", async () => {
-    // Inside transaction: lock, slot count, insert
+  test("creates training activity in training_activities table", async () => {
+    // Inside transaction: lock async_activities, lock training_activities, slot count, insert into training_activities
     mockQueryResults = [
-      [], // lock rows (FOR UPDATE) — no in-progress activities
+      [], // lock async_activities (FOR UPDATE)
+      [], // lock training_activities (FOR UPDATE)
       [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
-      [], // insert activity
+      [], // insert into training_activities
     ];
 
     const req = makeRequest("POST", "/api/activities", {
@@ -167,8 +171,27 @@ describe("handleCreateActivity", () => {
     });
     const res = await handleCreateActivity(req, "player_1");
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { activity_id: string; status: string };
+    const body = (await res.json()) as {
+      activity_id: string;
+      status: string;
+      state: string;
+      transition_at: string;
+    };
+    expect(body.activity_id).toStartWith("train_");
     expect(body.status).toBe("in_progress");
+    expect(body.state).toBe("running_first_half");
+    expect(body.transition_at).toBeTruthy();
+  });
+
+  test("rejects unknown training program", async () => {
+    const req = makeRequest("POST", "/api/activities", {
+      type: "training",
+      parameters: { program_id: "underwater_basket_weaving" },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain("Unknown training program");
   });
 
   test("rejects training without program_id", async () => {
@@ -183,9 +206,10 @@ describe("handleCreateActivity", () => {
   });
 
   test("creates companion errand", async () => {
-    // Inside transaction: lock, slot count, insert
+    // Inside transaction: lock both tables, slot count, insert
     mockQueryResults = [
-      [], // lock rows (FOR UPDATE) — no in-progress activities
+      [], // lock async_activities (FOR UPDATE)
+      [], // lock training_activities (FOR UPDATE)
       [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
       [], // insert activity
     ];

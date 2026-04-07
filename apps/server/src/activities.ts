@@ -9,6 +9,7 @@ import {
 import { displayName } from "@divineruin/shared";
 import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts";
 import { rollErrandRisk } from "./errand_risk.ts";
+import { startTrainingCycle } from "./training_state_machine.ts";
 
 async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<SlotCounts> {
   const rows: { training: number; crafting: number; companion: number }[] = await tx`
@@ -36,6 +37,10 @@ async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<Slot
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function makeActivityId(prefix: string): string {
+  return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
 
 export async function handleCreateActivity(req: Request, playerId: string): Promise<Response> {
@@ -93,16 +98,56 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         return Response.json({ error: "Unknown training program" }, { status: 400 });
       }
 
-      durationMin = program.duration_min_seconds;
-      durationMax = program.duration_max_seconds;
-      activityParams = {
-        program_id: program.id,
-        name: program.name,
-        stat: program.stat,
-        skill: program.skill,
-        dc: program.dc,
-        mentor_id: program.mentor_id,
-      };
+      const txnResult = await sql.begin(async (tx) => {
+        await tx`
+          SELECT id FROM async_activities
+          WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
+          FOR UPDATE
+        `;
+        await tx`
+          SELECT id FROM training_activities
+          WHERE player_id = ${playerId} AND state != 'complete'
+          FOR UPDATE
+        `;
+        const slotCounts = await countActiveBySlot(playerId, tx);
+        const slotCheck = validateSlotAvailability(slotCounts, body.type);
+        if (!slotCheck.valid) {
+          return { error: slotCheck.error! } as const;
+        }
+
+        const now = new Date();
+        const cycle = startTrainingCycle(program.training_activity_type, now);
+        const activityId = makeActivityId("train");
+
+        const data = {
+          program_id: program.id,
+          program_name: program.name,
+          first_half_seconds: cycle.first_half_seconds,
+          transition_at: cycle.transition_at,
+          stat: program.stat,
+          skill: program.skill ?? null,
+          dc: program.dc,
+          mentor_id: program.mentor_id,
+        };
+
+        await tx`
+          INSERT INTO training_activities (id, player_id, activity_type, state, data)
+          VALUES (${activityId}, ${playerId}, ${program.training_activity_type}, ${cycle.state}, ${data})
+        `;
+
+        return { activityId, state: cycle.state, transitionAt: cycle.transition_at } as const;
+      });
+
+      if ("error" in txnResult) {
+        return Response.json({ error: txnResult.error }, { status: 400 });
+      }
+
+      return Response.json({
+        activity_id: txnResult.activityId,
+        status: "in_progress",
+        state: txnResult.state,
+        transition_at: txnResult.transitionAt,
+      });
     } else {
       // companion_errand
       const errandType = params.errand_type as string | undefined;
@@ -133,10 +178,14 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
 
     // Atomic transaction: check slot availability, verify+consume materials, insert activity
     const txnResult = await sql.begin(async (tx) => {
-      // Lock player's in-progress activities to prevent race conditions
       await tx`
         SELECT id FROM async_activities
         WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
+        FOR UPDATE
+      `;
+      await tx`
+        SELECT id FROM training_activities
+        WHERE player_id = ${playerId} AND state != 'complete'
         FOR UPDATE
       `;
       const slotCounts = await countActiveBySlot(playerId, tx);
@@ -167,7 +216,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       const now = new Date();
       const durationSeconds = randomInt(durationMin, durationMax);
       const resolveAt = new Date(now.getTime() + durationSeconds * 1000);
-      const activityId = `activity_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+      const activityId = makeActivityId("activity");
 
       const data = {
         status: "in_progress",

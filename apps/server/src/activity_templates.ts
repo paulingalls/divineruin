@@ -21,6 +21,7 @@ export interface CraftingRecipe extends ActivityTemplate {
 
 export interface TrainingProgram extends ActivityTemplate {
   activity_type: "training";
+  training_activity_type: import("./training_state_machine.ts").TrainingActivityType;
   stat: string;
   skill?: string;
   dc: number;
@@ -96,6 +97,7 @@ export const TRAINING_PROGRAMS: Record<string, TrainingProgram> = {
     id: "combat_basics",
     name: "Combat Fundamentals",
     activity_type: "training",
+    training_activity_type: "technique_base",
     duration_min_seconds: 14400,
     duration_max_seconds: 28800,
     required_params: [],
@@ -107,6 +109,7 @@ export const TRAINING_PROGRAMS: Record<string, TrainingProgram> = {
     id: "endurance_training",
     name: "Endurance Training",
     activity_type: "training",
+    training_activity_type: "skill_practice",
     duration_min_seconds: 14400,
     duration_max_seconds: 28800,
     required_params: [],
@@ -118,6 +121,7 @@ export const TRAINING_PROGRAMS: Record<string, TrainingProgram> = {
     id: "arcane_study",
     name: "Arcane Study",
     activity_type: "training",
+    training_activity_type: "spell_standard",
     duration_min_seconds: 21600,
     duration_max_seconds: 43200,
     required_params: [],
@@ -130,6 +134,7 @@ export const TRAINING_PROGRAMS: Record<string, TrainingProgram> = {
     id: "perception_drills",
     name: "Perception Drills",
     activity_type: "training",
+    training_activity_type: "skill_practice",
     duration_min_seconds: 10800,
     duration_max_seconds: 21600,
     required_params: [],
