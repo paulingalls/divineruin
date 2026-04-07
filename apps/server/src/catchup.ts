@@ -5,6 +5,7 @@ import {
   type DecisionOption,
   type FeedItemProgress,
 } from "@divineruin/shared";
+import { getMidpointDecision } from "./training_state_machine.ts";
 
 export interface FeedItem {
   id: string;
@@ -129,6 +130,62 @@ function computeProgress(data: Record<string, unknown>): FeedItemProgress | null
   };
 }
 
+interface TrainingRow {
+  id: string;
+  activity_type: string;
+  state: string;
+  data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+function trainingToFeedItem(row: TrainingRow): FeedItem {
+  const data =
+    typeof row.data === "string" ? (JSON.parse(row.data) as Record<string, unknown>) : row.data;
+  const programName = str(data.program_name, "Training");
+  const transitionAt = data.transition_at as string | undefined;
+
+  let type: FeedItem["type"];
+  let decisionOptions: DecisionOption[] | null = null;
+  let progress: FeedItemProgress | null = null;
+
+  if (row.state === "running_first_half" || row.state === "running_second_half") {
+    type = "in_progress";
+    const startTime = row.state === "running_first_half" ? row.created_at : row.updated_at;
+    if (startTime && transitionAt) {
+      progress = {
+        startTime,
+        resolveAtEstimate: transitionAt,
+        progressText: null,
+        percentEstimate: computePercentComplete(startTime, transitionAt),
+      };
+    }
+  } else if (row.state === "awaiting_decision") {
+    type = "pending_decision";
+    const decision = getMidpointDecision(row.activity_type);
+    decisionOptions = decision.options;
+  } else {
+    type = "resolved";
+  }
+
+  const timestamp = transitionAt ?? row.updated_at;
+  const audioUrl = typeof data.narration_audio_url === "string" ? data.narration_audio_url : null;
+
+  return {
+    id: row.id,
+    type,
+    title: programName,
+    summary: (data.narration_text as string) || programName,
+    timestamp,
+    relativeTime: getRelativeTime(timestamp),
+    hasAudio: audioUrl !== null,
+    audioUrl,
+    decisionOptions,
+    activityType: "training",
+    progress,
+  };
+}
+
 function activityToFeedItem(id: string, data: Record<string, unknown>): FeedItem {
   const status = data.status as string;
   const hasDecisions =
@@ -214,10 +271,19 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
       { id: string; data: unknown }[]
     >;
 
-    const [rows, newsRows, whisperRows] = await Promise.all([
+    const trainingPromise = sql`
+      SELECT id, activity_type, state, data, created_at, updated_at
+      FROM training_activities
+      WHERE player_id = ${playerId}
+        AND state IN ('running_first_half', 'running_second_half', 'awaiting_decision', 'complete')
+      ORDER BY created_at DESC
+    `.catch(() => [] as TrainingRow[]) as Promise<TrainingRow[]>;
+
+    const [rows, newsRows, whisperRows, trainingRows] = await Promise.all([
       activitiesPromise,
       newsPromise,
       whispersPromise,
+      trainingPromise,
     ]);
 
     const items: FeedItem[] = [];
@@ -228,6 +294,10 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
         unknown
       >;
       items.push(activityToFeedItem(row.id, data));
+    }
+
+    for (const row of trainingRows) {
+      items.push(trainingToFeedItem(row));
     }
 
     for (const row of newsRows) {
