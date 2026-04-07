@@ -18,13 +18,13 @@ from db_errors import db_tool
 from game_events import publish_game_event
 from leveling import build_level_up_payload, get_level_up_rewards
 from session_data import SessionData
-from tools import EFFECT_NPC_MAP, _validate_id
+from tool_support import EFFECT_NPC_MAP, _validate_id
 
 logger = logging.getLogger("divineruin.tools")
 
 
 def _clamp_disposition_shift(current: str, delta: int) -> str:
-    from tools import DISPOSITION_ORDER, _disposition_rank
+    from tool_support import DISPOSITION_ORDER, _disposition_rank
 
     idx = _disposition_rank(current)
     new_idx = max(0, min(len(DISPOSITION_ORDER) - 1, idx + delta))

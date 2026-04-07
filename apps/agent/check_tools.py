@@ -16,7 +16,7 @@ import rules_engine
 from db_errors import db_tool
 from game_events import publish_game_event
 from session_data import SessionData
-from tools import _cap_str, _validate_id
+from tool_support import _cap_str, _validate_id
 
 logger = logging.getLogger("divineruin.tools")
 

@@ -103,7 +103,7 @@ async def build_warm_layer(
 
     import db_content_queries
     import db_queries
-    from tools import _location_for_narration, _npc_summary, apply_time_conditions
+    from tool_support import _location_for_narration, _npc_summary, apply_time_conditions
 
     sections: list[str] = []
 

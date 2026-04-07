@@ -17,7 +17,7 @@ from db_errors import db_tool
 from game_events import publish_game_event
 from quest_tools import _clamp_disposition_shift
 from session_data import SessionData
-from tools import MAX_STORY_MOMENTS_PER_SESSION, STORY_MOMENTS, _cap_str
+from tool_support import MAX_STORY_MOMENTS_PER_SESSION, STORY_MOMENTS, _cap_str
 
 logger = logging.getLogger("divineruin.tools")
 

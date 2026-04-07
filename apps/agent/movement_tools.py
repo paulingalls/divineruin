@@ -15,7 +15,7 @@ from db_errors import db_tool
 from game_events import publish_game_event
 from region_types import REGION_CITY
 from session_data import SessionData
-from tools import LOCATION_CORRUPTION, _resolve_ambient_sounds, _validate_id
+from tool_support import LOCATION_CORRUPTION, _resolve_ambient_sounds, _validate_id
 
 logger = logging.getLogger("divineruin.tools")
 

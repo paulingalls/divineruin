@@ -17,7 +17,7 @@ from db_errors import db_tool
 from game_events import publish_game_event
 from region_types import REGION_CITY
 from session_data import CombatParticipant, CombatState, SessionData
-from tools import (
+from tool_support import (
     SOUND_ATTACK_CRITICAL,
     SOUND_ATTACK_HIT,
     SOUND_ATTACK_MISS,

@@ -16,7 +16,7 @@ from db_errors import db_tool
 from game_events import publish_game_event
 from leveling import build_level_up_payload, get_level_up_rewards
 from session_data import SessionData
-from tools import _cap_str
+from tool_support import _cap_str
 
 logger = logging.getLogger("divineruin.tools")
 

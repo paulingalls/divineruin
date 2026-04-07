@@ -14,7 +14,7 @@ import event_types as E
 from db_errors import db_tool
 from game_events import publish_game_event
 from session_data import SessionData
-from tools import _cap_str
+from tool_support import _cap_str
 
 logger = logging.getLogger("divineruin.tools")
 
