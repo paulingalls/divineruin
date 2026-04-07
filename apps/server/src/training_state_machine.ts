@@ -46,6 +46,81 @@ export const TRAINING_DURATION_CONFIG: Record<TrainingActivityType, DurationRang
   skill_practice: { first_half_min: h(3), first_half_max: h(5) },
 };
 
+// Midpoint decision config from Python TRAINING_ACTIVITY_CONFIG (training_rules.py).
+// Only id + label ported; micro_bonus is Python-side only.
+interface MidpointOption {
+  id: string;
+  label: string;
+}
+
+interface MidpointDecision {
+  prompt: string;
+  options: MidpointOption[];
+}
+
+const SPELL_RESIST_DECISION: MidpointDecision = {
+  prompt: "The magic resists. Do you push through the resistance or work around it?",
+  options: [
+    { id: "push", label: "Push through the resistance" },
+    { id: "work_around", label: "Work around it" },
+  ],
+};
+
+const TRAINING_MIDPOINT_DECISIONS: Record<TrainingActivityType, MidpointDecision> = {
+  spell_cantrip: {
+    prompt: "The gestures feel natural. Do you practice speed or precision?",
+    options: [
+      { id: "speed", label: "Practice speed" },
+      { id: "precision", label: "Practice precision" },
+    ],
+  },
+  spell_standard: {
+    prompt: "The incantation splits two ways — power or control?",
+    options: [
+      { id: "power", label: "Emphasize power" },
+      { id: "control", label: "Emphasize control" },
+    ],
+  },
+  spell_major: SPELL_RESIST_DECISION,
+  spell_supreme: SPELL_RESIST_DECISION,
+  recipe_study: {
+    prompt:
+      "You've found two approaches to the recipe — the traditional method or an experimental twist?",
+    options: [
+      { id: "traditional", label: "Follow the traditional method" },
+      { id: "experimental", label: "Try the experimental twist" },
+    ],
+  },
+  technique_base: {
+    prompt: "Your mentor demonstrates two stances. The aggressive one or the defensive one?",
+    options: [
+      { id: "aggressive", label: "The aggressive stance" },
+      { id: "defensive", label: "The defensive stance" },
+    ],
+  },
+  technique_mentor: {
+    prompt: "The footwork requires a choice — speed or stability?",
+    options: [
+      { id: "speed", label: "Speed" },
+      { id: "stability", label: "Stability" },
+    ],
+  },
+  skill_practice: {
+    prompt: "You've hit a plateau. Drill the fundamentals, or experiment with advanced technique?",
+    options: [
+      { id: "fundamentals", label: "Drill the fundamentals" },
+      { id: "advanced", label: "Experiment with advanced technique" },
+    ],
+  },
+};
+
+export function getMidpointDecision(activityType: string): MidpointDecision {
+  if (!(activityType in TRAINING_MIDPOINT_DECISIONS)) {
+    throw new Error(`Unknown training activity type: ${activityType}`);
+  }
+  return TRAINING_MIDPOINT_DECISIONS[activityType as TrainingActivityType];
+}
+
 export function startTrainingCycle(activityType: string, startTime: Date): TrainingCycleInit {
   if (!(activityType in TRAINING_DURATION_CONFIG)) {
     throw new Error(`Unknown training activity type: ${activityType}`);

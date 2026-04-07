@@ -1,5 +1,9 @@
 import { test, expect, describe } from "bun:test";
-import { startTrainingCycle, TRAINING_DURATION_CONFIG } from "./training_state_machine.ts";
+import {
+  startTrainingCycle,
+  TRAINING_DURATION_CONFIG,
+  getMidpointDecision,
+} from "./training_state_machine.ts";
 
 describe("startTrainingCycle", () => {
   const now = new Date("2026-04-07T12:00:00Z");
@@ -44,5 +48,47 @@ describe("startTrainingCycle", () => {
 
   test("throws for unknown activity type", () => {
     expect(() => startTrainingCycle("unknown_type", now)).toThrow("Unknown training activity type");
+  });
+});
+
+describe("getMidpointDecision", () => {
+  test("returns prompt and options for technique_base", () => {
+    const decision = getMidpointDecision("technique_base");
+    expect(decision.prompt).toBeTruthy();
+    expect(decision.options).toHaveLength(2);
+    expect(decision.options[0]!.id).toBe("aggressive");
+    expect(decision.options[0]!.label).toBeTruthy();
+    expect(decision.options[1]!.id).toBe("defensive");
+  });
+
+  test("returns prompt and options for skill_practice", () => {
+    const decision = getMidpointDecision("skill_practice");
+    expect(decision.options).toHaveLength(2);
+    expect(decision.options[0]!.id).toBe("fundamentals");
+    expect(decision.options[1]!.id).toBe("advanced");
+  });
+
+  test("returns prompt and options for spell_standard", () => {
+    const decision = getMidpointDecision("spell_standard");
+    expect(decision.options).toHaveLength(2);
+    expect(decision.options[0]!.id).toBe("power");
+    expect(decision.options[1]!.id).toBe("control");
+  });
+
+  test("all activity types have decisions", () => {
+    const types = Object.keys(TRAINING_DURATION_CONFIG);
+    for (const type of types) {
+      const decision = getMidpointDecision(type);
+      expect(decision.prompt.length).toBeGreaterThan(0);
+      expect(decision.options.length).toBe(2);
+      for (const opt of decision.options) {
+        expect(opt.id).toBeTruthy();
+        expect(opt.label).toBeTruthy();
+      }
+    }
+  });
+
+  test("throws for unknown activity type", () => {
+    expect(() => getMidpointDecision("unknown_type")).toThrow("Unknown training activity type");
   });
 });
