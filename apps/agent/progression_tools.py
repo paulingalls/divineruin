@@ -31,6 +31,18 @@ async def award_xp(
     """Award XP to the current player. Provide the amount and a brief reason
     (e.g. 'defeated goblin scouts', 'completed delivery quest'). Narrate
     level-ups dramatically."""
+    return await _award_xp_impl(context, amount, reason)
+
+
+async def _award_xp_impl(
+    context: RunContext[SessionData],
+    amount: int,
+    reason: str,
+    *,
+    db_mod=db,
+    mutations=db_mutations,
+    queries=db_queries,
+) -> str:
     logger.info("award_xp called: amount=%d, reason=%s", amount, reason)
     cap_err = _cap_str(reason, 256, "reason")
     if cap_err:
@@ -44,8 +56,8 @@ async def award_xp(
 
     pending_events: list[tuple[str, dict]] = []
 
-    async with db.transaction() as conn:
-        player = await db_queries.get_player(session.player_id, conn=conn, for_update=True)
+    async with db_mod.transaction() as conn:
+        player = await queries.get_player(session.player_id, conn=conn, for_update=True)
         if player is None:
             return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
@@ -54,7 +66,7 @@ async def award_xp(
 
         result = rules_engine.check_level_up(current_xp, amount, current_level)
 
-        await db_mutations.update_player_xp(session.player_id, result.new_xp, result.new_level, conn=conn)
+        await mutations.update_player_xp(session.player_id, result.new_xp, result.new_level, conn=conn)
 
         pending_events.append(
             (
@@ -111,6 +123,18 @@ async def award_divine_favor(
     Amount should be 1-10. The patron god notices the player's actions
     and their favor grows. Narrate this subtly — a warmth, a sense of
     approval — not as a game mechanic."""
+    return await _award_divine_favor_impl(context, amount, reason)
+
+
+async def _award_divine_favor_impl(
+    context: RunContext[SessionData],
+    amount: int,
+    reason: str,
+    *,
+    db_mod=db,
+    mutations=db_mutations,
+    activities=db_activity_queries,
+) -> str:
     logger.info("award_divine_favor called: amount=%d, reason=%s", amount, reason)
     cap_err = _cap_str(reason, 256, "reason")
     if cap_err:
@@ -120,8 +144,8 @@ async def award_divine_favor(
     if amount < 1 or amount > 10:
         return json.dumps({"error": "Divine favor amount must be 1-10."})
 
-    async with db.transaction() as conn:
-        favor = await db_activity_queries.get_divine_favor(session.player_id, conn=conn)
+    async with db_mod.transaction() as conn:
+        favor = await activities.get_divine_favor(session.player_id, conn=conn)
         if favor is None or favor.get("patron", "none") == "none":
             return json.dumps({"error": "Player has no patron deity."})
 
@@ -129,7 +153,7 @@ async def award_divine_favor(
         max_level = favor.get("max", 100)
         new_level = min(current_level + amount, max_level)
 
-        await db_mutations.update_divine_favor(session.player_id, new_level, conn=conn)
+        await mutations.update_divine_favor(session.player_id, new_level, conn=conn)
 
     patron_id = favor["patron"]
     last_whisper_level = favor.get("last_whisper_level", 0)

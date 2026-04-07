@@ -34,6 +34,13 @@ async def play_sound(
     sound_name: SoundName,
 ) -> str:
     """Play a sound effect on the client."""
+    return await _play_sound_impl(context, sound_name)
+
+
+async def _play_sound_impl(
+    context: RunContext[SessionData],
+    sound_name: SoundName,
+) -> str:
     logger.info("play_sound called: sound_name=%s", sound_name)
     session: SessionData = context.userdata
 
@@ -63,10 +70,15 @@ async def set_music_state(
     """Set the background music mood. Use sparingly for specific emotional
     moments the player should feel. Combat and exploration music are handled
     automatically — do not set those here."""
+    return await _set_music_state_impl(context, music_state)
+
+
+async def _set_music_state_impl(
+    context: RunContext[SessionData],
+    music_state: MusicStateName,
+) -> str:
     logger.info("set_music_state called: music_state=%s", music_state)
 
-    # Runtime safety net — Literal type handles SDK validation, but _func
-    # calls (tests, internal use) bypass that check.
     if music_state not in _VALID_MUSIC_STATES:
         return json.dumps(
             {"error": f"Invalid music state: {music_state}. Valid: {', '.join(sorted(_VALID_MUSIC_STATES))}"}
