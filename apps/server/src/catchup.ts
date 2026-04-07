@@ -194,6 +194,7 @@ function activityToFeedItem(id: string, data: Record<string, unknown>): FeedItem
     (data.decision_options as unknown[]).length > 0;
 
   const timestamp = str(data.resolve_at, str(data.start_time, new Date().toISOString()));
+  const audioUrl = typeof data.narration_audio_url === "string" ? data.narration_audio_url : null;
 
   let type: FeedItem["type"];
   if (status === "in_progress") {
@@ -211,8 +212,8 @@ function activityToFeedItem(id: string, data: Record<string, unknown>): FeedItem
     summary: (data.narration_summary as string) || activityTitle(data),
     timestamp,
     relativeTime: getRelativeTime(timestamp),
-    hasAudio: typeof data.narration_audio_url === "string",
-    audioUrl: typeof data.narration_audio_url === "string" ? data.narration_audio_url : null,
+    hasAudio: audioUrl !== null,
+    audioUrl,
     decisionOptions: hasDecisions ? (data.decision_options as DecisionOption[]) : null,
     activityType: typeof data.activity_type === "string" ? data.activity_type : null,
     progress: status === "in_progress" ? computeProgress(data) : null,
@@ -250,6 +251,7 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
       WHERE player_id = ${playerId}
         AND data->>'status' IN ('resolved', 'in_progress')
       ORDER BY created_at DESC
+      LIMIT 20
     ` as Promise<{ id: string; data: unknown }[]>;
 
     const newsPromise = sql`
@@ -276,7 +278,9 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
       FROM training_activities
       WHERE player_id = ${playerId}
         AND state IN ('running_first_half', 'running_second_half', 'awaiting_decision', 'complete')
+        AND (state != 'complete' OR updated_at > NOW() - INTERVAL '24 hours')
       ORDER BY created_at DESC
+      LIMIT 20
     `.catch(() => [] as TrainingRow[]) as Promise<TrainingRow[]>;
 
     const [rows, newsRows, whisperRows, trainingRows] = await Promise.all([
