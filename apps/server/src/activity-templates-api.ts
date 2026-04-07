@@ -1,5 +1,6 @@
 import { CRAFTING_RECIPES, TRAINING_PROGRAMS, ERRAND_TEMPLATES } from "./activity_templates.ts";
 import { sql } from "./db.ts";
+import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
 import {
   displayName,
@@ -72,10 +73,7 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
     // Build active map: template key → ActiveStatus
     const activeMap = new Map<string, ActiveStatus>();
     for (const row of activeRows) {
-      const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<
-        string,
-        unknown
-      >;
+      const data = parseJsonb(row.data);
       const key = templateKeyFromActivity(data);
       if (key) {
         const startTime = data.start_time as string;

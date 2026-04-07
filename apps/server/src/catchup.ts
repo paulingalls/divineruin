@@ -1,4 +1,5 @@
 import { sql } from "./db.ts";
+import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
 import {
   computePercentComplete,
@@ -140,8 +141,7 @@ interface TrainingRow {
 }
 
 function trainingToFeedItem(row: TrainingRow): FeedItem {
-  const data =
-    typeof row.data === "string" ? (JSON.parse(row.data) as Record<string, unknown>) : row.data;
+  const data = parseJsonb(row.data);
   const programName = str(data.program_name, "Training");
   const transitionAt = data.transition_at as string | undefined;
 
@@ -298,10 +298,7 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
     const items: FeedItem[] = [];
 
     for (const row of rows) {
-      const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<
-        string,
-        unknown
-      >;
+      const data = parseJsonb(row.data);
       items.push(activityToFeedItem(row.id, data));
     }
 
@@ -310,10 +307,7 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
     }
 
     for (const row of newsRows) {
-      const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<
-        string,
-        unknown
-      >;
+      const data = parseJsonb(row.data);
       const ts = str(data.created_at, new Date().toISOString());
       items.push({
         id: row.id,
@@ -331,10 +325,7 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
     }
 
     for (const row of whisperRows) {
-      const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<
-        string,
-        unknown
-      >;
+      const data = parseJsonb(row.data);
       const deityId = str(data.deity_id, "unknown");
       const displayName = DEITY_DISPLAY_NAMES[deityId] ?? deityId;
       const narration = str(data.narration_text, "");

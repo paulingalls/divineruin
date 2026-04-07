@@ -1,4 +1,5 @@
 import { sql } from "./db.ts";
+import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
 import {
   CRAFTING_RECIPES,
@@ -60,35 +61,8 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
 
     const params = body.parameters ?? {};
 
-    // Validate type-specific parameters before entering the transaction
-    let durationMin: number;
-    let durationMax: number;
-    let activityParams: Record<string, unknown>;
-    let materialsToConsume: string[] = [];
-
-    if (body.type === "crafting") {
-      const recipeId = params.recipe_id as string | undefined;
-      if (!recipeId) {
-        return Response.json({ error: "recipe_id is required for crafting" }, { status: 400 });
-      }
-      const recipe = CRAFTING_RECIPES[recipeId];
-      if (!recipe) {
-        return Response.json({ error: "Unknown recipe" }, { status: 400 });
-      }
-
-      durationMin = recipe.duration_min_seconds;
-      durationMax = recipe.duration_max_seconds;
-      materialsToConsume = recipe.required_materials;
-      activityParams = {
-        recipe_id: recipe.id,
-        result_item_id: recipe.result_item_id,
-        result_item_name: recipe.result_item_name,
-        required_materials: recipe.required_materials,
-        skill: recipe.skill,
-        dc: recipe.dc,
-        npc_id: recipe.npc_id,
-      };
-    } else if (body.type === "training") {
+    // Training uses its own table and transaction — handle separately and return early
+    if (body.type === "training") {
       const programId = params.program_id as string | undefined;
       if (!programId) {
         return Response.json({ error: "program_id is required for training" }, { status: 400 });
@@ -148,6 +122,36 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         state: txnResult.state,
         transition_at: txnResult.transitionAt,
       });
+    }
+
+    // Crafting and companion_errand — both go through async_activities
+    let durationMin: number;
+    let durationMax: number;
+    let activityParams: Record<string, unknown>;
+    let materialsToConsume: string[] = [];
+
+    if (body.type === "crafting") {
+      const recipeId = params.recipe_id as string | undefined;
+      if (!recipeId) {
+        return Response.json({ error: "recipe_id is required for crafting" }, { status: 400 });
+      }
+      const recipe = CRAFTING_RECIPES[recipeId];
+      if (!recipe) {
+        return Response.json({ error: "Unknown recipe" }, { status: 400 });
+      }
+
+      durationMin = recipe.duration_min_seconds;
+      durationMax = recipe.duration_max_seconds;
+      materialsToConsume = recipe.required_materials;
+      activityParams = {
+        recipe_id: recipe.id,
+        result_item_id: recipe.result_item_id,
+        result_item_name: recipe.result_item_name,
+        required_materials: recipe.required_materials,
+        skill: recipe.skill,
+        dc: recipe.dc,
+        npc_id: recipe.npc_id,
+      };
     } else {
       // companion_errand
       const errandType = params.errand_type as string | undefined;
@@ -278,10 +282,7 @@ export async function handleListActivities(req: Request, playerId: string): Prom
     }
 
     const activities = rows.map((row) => {
-      const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<
-        string,
-        unknown
-      >;
+      const data = parseJsonb(row.data);
       return { id: row.id, ...data };
     });
 
@@ -311,10 +312,7 @@ export async function handleGetActivity(
       return Response.json({ error: "Activity not found" }, { status: 404 });
     }
 
-    const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<
-      string,
-      unknown
-    >;
+    const data = parseJsonb(row.data);
     return Response.json({ id: row.id, ...data });
   } catch (err) {
     logError("[activities] get failed:", err);
@@ -336,65 +334,68 @@ export async function handleActivityDecision(
       return Response.json({ error: "decision_id is required" }, { status: 400 });
     }
 
-    const rows: { id: string; player_id: string; data: unknown }[] = await sql`
-      SELECT id, player_id, data FROM async_activities WHERE id = ${activityId}
-    `;
+    const txnResult = await sql.begin(async (tx) => {
+      const rows: { id: string; player_id: string; data: unknown }[] = await tx`
+        SELECT id, player_id, data FROM async_activities WHERE id = ${activityId} FOR UPDATE
+      `;
 
-    if (rows.length === 0) {
-      return Response.json({ error: "Activity not found" }, { status: 404 });
-    }
-
-    const row = rows[0]!;
-    if (row.player_id !== playerId) {
-      return Response.json({ error: "Activity not found" }, { status: 404 });
-    }
-
-    const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<
-      string,
-      unknown
-    >;
-    if (data.status !== "resolved") {
-      return Response.json({ error: "Activity is not resolved yet" }, { status: 400 });
-    }
-
-    const options = (data.decision_options as { id: string }[] | null) ?? [];
-    const chosen = options.find((opt) => opt.id === body.decision_id);
-    if (!chosen) {
-      return Response.json({ error: "Invalid decision" }, { status: 400 });
-    }
-
-    // Apply effects based on outcome
-    const outcome = data.outcome as Record<string, unknown> | null;
-    if (outcome && data.activity_type === "crafting") {
-      const craftedItemId = outcome.crafted_item_id as string | null;
-      if (craftedItemId && body.decision_id === "keep") {
-        await sql`
-          INSERT INTO player_inventory (player_id, item_id, data)
-          VALUES (${playerId}, ${craftedItemId}, ${{ quantity: 1, equipped: false }})
-          ON CONFLICT (player_id, item_id)
-          DO UPDATE SET data = jsonb_set(
-            player_inventory.data,
-            '{quantity}',
-            (COALESCE((player_inventory.data->>'quantity')::int, 0) + 1)::text::jsonb
-          )
-        `;
+      if (rows.length === 0) {
+        return { error: "Activity not found", httpStatus: 404 } as const;
       }
-    }
 
-    // Update status to collected
-    await sql`
-      UPDATE async_activities
-      SET data = jsonb_set(
-        jsonb_set(data, '{status}', '"collected"'),
-        '{decision}', ${JSON.stringify(body.decision_id)}::jsonb
-      )
-      WHERE id = ${activityId}
-    `;
+      const row = rows[0]!;
+      if (row.player_id !== playerId) {
+        return { error: "Activity not found", httpStatus: 404 } as const;
+      }
+
+      const data = parseJsonb(row.data);
+      if (data.status !== "resolved") {
+        return { error: "Activity is not resolved yet", httpStatus: 400 } as const;
+      }
+
+      const options = (data.decision_options as { id: string }[] | null) ?? [];
+      const chosen = options.find((opt) => opt.id === body.decision_id);
+      if (!chosen) {
+        return { error: "Invalid decision", httpStatus: 400 } as const;
+      }
+
+      const outcome = data.outcome as Record<string, unknown> | null;
+      if (outcome && data.activity_type === "crafting") {
+        const craftedItemId = outcome.crafted_item_id as string | null;
+        if (craftedItemId && body.decision_id === "keep") {
+          await tx`
+            INSERT INTO player_inventory (player_id, item_id, data)
+            VALUES (${playerId}, ${craftedItemId}, ${{ quantity: 1, equipped: false }})
+            ON CONFLICT (player_id, item_id)
+            DO UPDATE SET data = jsonb_set(
+              player_inventory.data,
+              '{quantity}',
+              (COALESCE((player_inventory.data->>'quantity')::int, 0) + 1)::text::jsonb
+            )
+          `;
+        }
+      }
+
+      await tx`
+        UPDATE async_activities
+        SET data = jsonb_set(
+          jsonb_set(data, '{status}', '"collected"'),
+          '{decision}', ${JSON.stringify(body.decision_id)}::jsonb
+        )
+        WHERE id = ${activityId}
+      `;
+
+      return { activityId, decision: body.decision_id } as const;
+    });
+
+    if ("error" in txnResult) {
+      return Response.json({ error: txnResult.error }, { status: txnResult.httpStatus });
+    }
 
     return Response.json({
-      id: activityId,
+      id: txnResult.activityId,
       status: "collected",
-      decision: body.decision_id,
+      decision: txnResult.decision,
     });
   } catch (err) {
     logError("[activities] decision failed:", err);
