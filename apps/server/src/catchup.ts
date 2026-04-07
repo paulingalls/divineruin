@@ -260,18 +260,20 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
         AND created_at > NOW() - INTERVAL '24 hours'
       ORDER BY created_at DESC
       LIMIT 5
-    `.catch(() => [] as { id: string; data: unknown }[]) as Promise<
-      { id: string; data: unknown }[]
-    >;
+    `.catch((err) => {
+      logError("[catchup] world_news query failed:", err);
+      return [] as { id: string; data: unknown }[];
+    }) as Promise<{ id: string; data: unknown }[]>;
 
     const whispersPromise = sql`
       SELECT id, data FROM god_whispers
       WHERE player_id = ${playerId}
         AND data->>'status' = 'pending'
       ORDER BY created_at DESC
-    `.catch(() => [] as { id: string; data: unknown }[]) as Promise<
-      { id: string; data: unknown }[]
-    >;
+    `.catch((err) => {
+      logError("[catchup] god_whispers query failed:", err);
+      return [] as { id: string; data: unknown }[];
+    }) as Promise<{ id: string; data: unknown }[]>;
 
     const trainingPromise = sql`
       SELECT id, activity_type, state, data, created_at, updated_at
@@ -281,7 +283,10 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
         AND (state != 'complete' OR updated_at > NOW() - INTERVAL '24 hours')
       ORDER BY created_at DESC
       LIMIT 20
-    `.catch(() => [] as TrainingRow[]) as Promise<TrainingRow[]>;
+    `.catch((err) => {
+      logError("[catchup] training_activities query failed:", err);
+      return [] as TrainingRow[];
+    }) as Promise<TrainingRow[]>;
 
     const [rows, newsRows, whisperRows, trainingRows] = await Promise.all([
       activitiesPromise,
