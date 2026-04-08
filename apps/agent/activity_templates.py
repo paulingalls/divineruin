@@ -114,6 +114,20 @@ Decision options:
 
 Use DM_NARRATOR for narration and {voice_id} for {mentor_name}'s dialogue.
 Keep it concise and in-character.""",
+    "training_completion": """You are {mentor_name}, training mentor in the world of Divine Ruin.
+Personality: {mentor_personality}
+Speech style: {mentor_speech_style}
+
+The player completed training: {training_stat}{skill_note}
+Outcome tier: {tier} (DC: {dc})
+Stat gains: {stat_gains}
+
+Write a short narration (60-120 words) of the training conclusion.
+Include physical sensory details — sweat, exertion, the moment of clarity or frustration.
+Describe the outcome: breakthrough means real progress was made, plateau means steady effort with no leap forward.
+{advancement_line}
+Use DM_NARRATOR for narration and {voice_id} for {mentor_name}'s dialogue.
+Keep it concise and in-character.""",
     "companion_errand": """You are narrating {companion_name}'s return from an errand in the world of Divine Ruin.
 Companion personality: {companion_personality}
 Speech style: {companion_speech_style}
@@ -174,22 +188,32 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
         )
         return prompt, [npc["voice_id"]]
 
-    elif activity_type == "training":
+    elif activity_type in ("training", "training_completion"):
         mentor = get_training_mentor(ctx.get("mentor_id", "guildmaster_torin"))
         skill_note = f" (skill: {ctx['training_skill']})" if ctx.get("training_skill") else ""
-        prompt = template.format(
-            mentor_name=mentor["name"],
-            mentor_personality=mentor["personality"],
-            mentor_speech_style=mentor["speech_style"],
-            voice_id=mentor["voice_id"],
-            training_stat=ctx.get("training_stat", "unknown"),
-            skill_note=skill_note,
-            tier=ctx.get("tier", "unknown"),
-            roll=ctx.get("roll", "?"),
-            dc=ctx.get("dc", "?"),
-            stat_gains=outcome.get("stat_gains", {}),
-            decision_options=decision_text,
-        )
+        format_args: dict = {
+            "mentor_name": mentor["name"],
+            "mentor_personality": mentor["personality"],
+            "mentor_speech_style": mentor["speech_style"],
+            "voice_id": mentor["voice_id"],
+            "training_stat": ctx.get("training_stat", "unknown"),
+            "skill_note": skill_note,
+            "tier": ctx.get("tier", "unknown"),
+            "stat_gains": outcome.get("stat_gains", {}),
+            "dc": ctx.get("dc", "?"),
+        }
+        if activity_type == "training":
+            format_args["roll"] = ctx.get("roll", "?")
+            format_args["decision_options"] = decision_text
+        else:
+            stat_gains = outcome.get("stat_gains", {})
+            if stat_gains.get("skill_advanced"):
+                format_args["advancement_line"] = (
+                    f"The player's skill advanced to {stat_gains['new_tier']}! Make this feel momentous.\n"
+                )
+            else:
+                format_args["advancement_line"] = ""
+        prompt = template.format(**format_args)
         return prompt, [mentor["voice_id"]]
 
     else:  # companion_errand
