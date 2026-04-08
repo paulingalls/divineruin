@@ -49,6 +49,52 @@ export const DESTINATION_DANGER_LEVELS: Record<string, DangerLevel> = {
   greyvale_ruins_entrance: "dangerous",
 };
 
+// Blocked (danger_level, errand_type) combos — port of errand_rules.py:20-25
+const BLOCKED_DANGER_COMBOS: ReadonlySet<string> = new Set([
+  "dangerous|relationship",
+  "extreme|relationship",
+  "extreme|social",
+  "extreme|acquire",
+]);
+
+// Per-companion errand restrictions — port of errand_rules.py blocked_errand_types.
+// Companions not listed have no restrictions.
+const COMPANION_BLOCKED_ERRAND_TYPES: Record<string, ReadonlySet<string>> = {
+  companion_sable: new Set(["social", "relationship"]),
+};
+
+export interface ValidationResult {
+  valid: boolean;
+  error: string | null;
+}
+
+export function validateErrandDispatch(
+  errandType: string,
+  destination: string,
+  companionId: string,
+): ValidationResult {
+  const dangerLevel = DESTINATION_DANGER_LEVELS[destination];
+  if (dangerLevel === undefined) {
+    return { valid: false, error: `Unknown destination: ${destination}` };
+  }
+
+  if (BLOCKED_DANGER_COMBOS.has(`${dangerLevel}|${errandType}`)) {
+    return {
+      valid: false,
+      error: `${errandType} errands not available at ${dangerLevel} destinations`,
+    };
+  }
+
+  if (COMPANION_BLOCKED_ERRAND_TYPES[companionId]?.has(errandType)) {
+    return {
+      valid: false,
+      error: `Companion ${companionId} cannot perform ${errandType} errands`,
+    };
+  }
+
+  return { valid: true, error: null };
+}
+
 export function rollErrandRisk(
   errandType: string,
   destination: string,

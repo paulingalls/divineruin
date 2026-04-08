@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { rollErrandRisk, DESTINATION_DANGER_LEVELS, type InjuryStatus } from "./errand_risk.ts";
+import {
+  rollErrandRisk,
+  validateErrandDispatch,
+  DESTINATION_DANGER_LEVELS,
+  type InjuryStatus,
+} from "./errand_risk.ts";
 
 describe("DESTINATION_DANGER_LEVELS", () => {
   test("millhaven is safe", () => {
@@ -85,5 +90,64 @@ describe("rollErrandRisk", () => {
     // Should behave same as default
     const result = rollErrandRisk("scout", "millhaven", "unknown_companion");
     expect(result).toBe("none");
+  });
+});
+
+describe("validateErrandDispatch", () => {
+  test("valid combo returns valid", () => {
+    const result = validateErrandDispatch("scout", "accord_market_square", "companion_kael");
+    expect(result.valid).toBe(true);
+    expect(result.error).toBeNull();
+  });
+
+  test("unknown destination is invalid", () => {
+    const result = validateErrandDispatch("scout", "nowhere_land", "companion_kael");
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("nowhere_land");
+  });
+
+  test("relationship errand at dangerous destination is blocked", () => {
+    const result = validateErrandDispatch(
+      "relationship",
+      "greyvale_ruins_entrance",
+      "companion_kael",
+    );
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("relationship");
+    expect(result.error).toContain("dangerous");
+  });
+
+  test("companion_sable cannot perform social errands", () => {
+    const result = validateErrandDispatch("social", "millhaven", "companion_sable");
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("companion_sable");
+    expect(result.error).toContain("social");
+  });
+
+  test("companion_sable cannot perform relationship errands", () => {
+    const result = validateErrandDispatch("relationship", "millhaven", "companion_sable");
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("companion_sable");
+  });
+
+  test("companion_kael can perform social errands at safe destinations", () => {
+    const result = validateErrandDispatch("social", "millhaven", "companion_kael");
+    expect(result.valid).toBe(true);
+  });
+
+  test("scout is allowed at all danger levels including dangerous", () => {
+    const result = validateErrandDispatch("scout", "greyvale_ruins_entrance", "companion_kael");
+    expect(result.valid).toBe(true);
+  });
+
+  test("dangerous|acquire is allowed (only relationship is blocked at dangerous)", () => {
+    const result = validateErrandDispatch("acquire", "greyvale_ruins_entrance", "companion_kael");
+    expect(result.valid).toBe(true);
+  });
+
+  test("unknown destination short-circuits before companion check", () => {
+    // companion_sable would also fail social, but unknown destination should win
+    const result = validateErrandDispatch("social", "nowhere_land", "companion_sable");
+    expect(result.error).toContain("nowhere_land");
   });
 });
