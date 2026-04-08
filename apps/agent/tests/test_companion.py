@@ -9,11 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import event_types as E
-from background_process import (
-    COMPANION_IDLE_SECS,
-    BackgroundProcess,
-    SpeechPriority,
-)
+from background_process import BackgroundProcess
+from bg_speech import COMPANION_IDLE_SECS, SpeechPriority
 from event_bus import GameEvent
 from session_data import (
     MAX_COMPANION_MEMORIES,
@@ -718,7 +715,7 @@ class TestDeliverSpeechUpdatesCompanionTime:
         sd = _make_session_data()
         sd.companion = CompanionState(id="companion_kael", name="Kael", last_speech_time=0)
         bg, _, _session = _make_bg(session_data=sd)
-        from background_process import PendingSpeech
+        from bg_speech import PendingSpeech
 
         bg._speech_queue = [
             PendingSpeech(priority=SpeechPriority.IMPORTANT, instructions="Use [COMPANION_KAEL, calm] tag."),

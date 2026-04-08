@@ -6,11 +6,8 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import event_types as E
-from background_process import (
-    BackgroundProcess,
-    PendingSpeech,
-    SpeechPriority,
-)
+from background_process import BackgroundProcess
+from bg_speech import PendingSpeech, SpeechPriority
 from event_bus import GameEvent
 from session_data import CombatParticipant, CombatState, CompanionState, SessionData
 

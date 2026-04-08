@@ -7,10 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 import event_types as E
-from background_process import (
-    BackgroundProcess,
-    SpeechPriority,
-)
+from background_process import BackgroundProcess
+from bg_speech import SpeechPriority
 from check_tools import _discover_hidden_element_impl
 from event_bus import GameEvent
 from movement_tools import _check_exit_requirement
