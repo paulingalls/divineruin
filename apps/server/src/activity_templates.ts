@@ -153,7 +153,7 @@ export const ERRAND_TEMPLATES: Record<string, ErrandTemplate> = {
     duration_min_seconds: 7200,
     duration_max_seconds: 14400,
     required_params: ["destination"],
-    valid_destinations: ["millhaven", "greyvale_ruins", "northern_fields", "accord_dockside"],
+    valid_destinations: ["millhaven", "greyvale_ruins_entrance", "accord_dockside"],
   },
   social: {
     id: "social",

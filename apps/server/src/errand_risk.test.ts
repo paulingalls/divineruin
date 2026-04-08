@@ -6,8 +6,8 @@ describe("DESTINATION_DANGER_LEVELS", () => {
     expect(DESTINATION_DANGER_LEVELS["millhaven"]).toBe("safe");
   });
 
-  test("greyvale_ruins is dangerous", () => {
-    expect(DESTINATION_DANGER_LEVELS["greyvale_ruins"]).toBe("dangerous");
+  test("greyvale_ruins_entrance is dangerous", () => {
+    expect(DESTINATION_DANGER_LEVELS["greyvale_ruins_entrance"]).toBe("dangerous");
   });
 
   test("accord_market_square is moderate", () => {
@@ -34,7 +34,7 @@ describe("rollErrandRisk", () => {
   test("dangerous scout can produce injured or emergency", () => {
     const results = new Set<InjuryStatus>();
     for (let i = 0; i < 500; i++) {
-      results.add(rollErrandRisk("scout", "greyvale_ruins", "companion_lira"));
+      results.add(rollErrandRisk("scout", "greyvale_ruins_entrance", "companion_lira"));
     }
     // With 25% injury + 5% emergency (no reduction for lira), 500 rolls should hit all outcomes
     expect(results.has("none")).toBe(true);
@@ -62,8 +62,10 @@ describe("rollErrandRisk", () => {
     const trials = 5000;
 
     for (let i = 0; i < trials; i++) {
-      if (rollErrandRisk("scout", "greyvale_ruins", "companion_kael") === "none") kaelNoneCount++;
-      if (rollErrandRisk("scout", "greyvale_ruins", "companion_lira") === "none") liraNoneCount++;
+      if (rollErrandRisk("scout", "greyvale_ruins_entrance", "companion_kael") === "none")
+        kaelNoneCount++;
+      if (rollErrandRisk("scout", "greyvale_ruins_entrance", "companion_lira") === "none")
+        liraNoneCount++;
     }
 
     // Kael should have more "none" outcomes (higher none rate)

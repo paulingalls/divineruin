@@ -46,8 +46,7 @@ export const DESTINATION_DANGER_LEVELS: Record<string, DangerLevel> = {
   accord_guild_hall: "safe",
   accord_market_square: "moderate",
   accord_dockside: "moderate",
-  northern_fields: "moderate",
-  greyvale_ruins: "dangerous",
+  greyvale_ruins_entrance: "dangerous",
 };
 
 export function rollErrandRisk(
