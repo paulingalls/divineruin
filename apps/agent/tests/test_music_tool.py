@@ -81,8 +81,8 @@ class TestStartCombatDifficulty:
     """Verify start_combat event payload includes difficulty field."""
 
     @pytest.mark.asyncio
-    @patch("combat_tools.publish_game_event", new_callable=AsyncMock)
-    @patch("combat_tools._publish_sounds", new_callable=AsyncMock)
+    @patch("combat_init.publish_game_event", new_callable=AsyncMock)
+    @patch("combat_init._publish_sounds", new_callable=AsyncMock)
     async def test_combat_started_includes_difficulty(self, mock_sounds, mock_event):
         mock_content = MagicMock()
         mock_content.get_encounter_template = AsyncMock(
@@ -139,8 +139,8 @@ class TestStartCombatDifficulty:
         assert payload["difficulty"] == "hard"
 
     @pytest.mark.asyncio
-    @patch("combat_tools.publish_game_event", new_callable=AsyncMock)
-    @patch("combat_tools._publish_sounds", new_callable=AsyncMock)
+    @patch("combat_init.publish_game_event", new_callable=AsyncMock)
+    @patch("combat_init._publish_sounds", new_callable=AsyncMock)
     async def test_combat_started_defaults_to_moderate(self, mock_sounds, mock_event):
         mock_content = MagicMock()
         mock_content.get_encounter_template = AsyncMock(

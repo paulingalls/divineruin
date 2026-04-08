@@ -261,8 +261,8 @@ class TestCombatRoundTrip:
             location_id="greyvale_south_road",
         )
 
-        with patch("combat_tools.publish_game_event", new_callable=AsyncMock):
-            with patch("combat_tools._publish_sounds", new_callable=AsyncMock):
+        with patch("combat_end.publish_game_event", new_callable=AsyncMock):
+            with patch("combat_end._publish_sounds", new_callable=AsyncMock):
                 result = await _end_combat_impl(ctx, "victory", mutations=mock_mutations)
 
         assert isinstance(result, tuple)
