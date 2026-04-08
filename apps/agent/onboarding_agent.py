@@ -11,21 +11,16 @@ from typing import Any
 from livekit.agents import llm
 
 from base_agent import BaseGameAgent
+from check_tools import discover_hidden_element, request_skill_check
+from environment_tools import play_sound, set_music_state
+from movement_tools import move_player
 from onboarding_background import OnboardingBackgroundProcess
 from onboarding_tools import advance_onboarding_beat
+from query_tools import query_location, query_npc
+from scene_tools import enter_location
 from session_data import SessionData
+from session_tools import record_story_moment
 from system_prompts import VOICE_STYLE_PROMPT
-from tools import (
-    discover_hidden_element,
-    enter_location,
-    move_player,
-    play_sound,
-    query_location,
-    query_npc,
-    record_story_moment,
-    request_skill_check,
-    set_music_state,
-)
 
 logger = logging.getLogger("divineruin.onboarding")
 

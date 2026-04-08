@@ -2,27 +2,18 @@
 
 from typing import Any
 
+from check_tools import discover_hidden_element, request_saving_throw, request_skill_check, roll_dice
+from combat_tools import start_combat
+from environment_tools import play_sound, set_music_state
 from gameplay_agent import GameplayAgent
+from inventory_tools import add_to_inventory
+from movement_tools import move_player
+from progression_tools import award_xp
+from query_tools import query_inventory, query_location, query_lore
+from quest_tools import update_quest
 from region_types import REGION_DUNGEON
-from tools import (
-    add_to_inventory,
-    award_xp,
-    discover_hidden_element,
-    end_session,
-    enter_location,
-    move_player,
-    play_sound,
-    query_inventory,
-    query_location,
-    query_lore,
-    record_story_moment,
-    request_saving_throw,
-    request_skill_check,
-    roll_dice,
-    set_music_state,
-    start_combat,
-    update_quest,
-)
+from scene_tools import enter_location
+from session_tools import end_session, record_story_moment
 
 DUNGEON_TOOLS = [
     enter_location,

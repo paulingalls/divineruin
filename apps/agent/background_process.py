@@ -332,7 +332,7 @@ class BackgroundProcess:
         if self._sd.last_player_speech_time <= 0:
             return
 
-        from tools import get_active_scene_for_context
+        from scene_tools import get_active_scene_for_context
 
         scene = get_active_scene_for_context(self._scene_cache, self._quest_cache, None)
         if scene is None:

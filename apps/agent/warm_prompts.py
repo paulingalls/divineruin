@@ -165,7 +165,7 @@ async def build_warm_layer(
 
     # Active scene (from quest play tree or location default)
     if scene_cache:
-        from tools import get_active_scene_for_context
+        from scene_tools import get_active_scene_for_context
 
         active_scene = get_active_scene_for_context(scene_cache, quests or [], location)
         if active_scene:
