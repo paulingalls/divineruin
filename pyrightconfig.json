@@ -1,0 +1,14 @@
+{
+  "venvPath": "apps/agent",
+  "venv": ".venv",
+  "executionEnvironments": [
+    {
+      "root": "apps/agent",
+      "pythonVersion": "3.14",
+      "extraPaths": ["apps/agent", "apps/agent/tests"]
+    }
+  ],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportUndefinedVariable": true
+}
