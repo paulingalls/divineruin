@@ -11,17 +11,10 @@ class TestCombatAgentConfig:
         assert issubclass(CombatAgent, BaseGameAgent)
 
     def test_combat_tools_are_complete(self):
-        from tools import (
-            end_combat,
-            play_sound,
-            query_inventory,
-            request_attack,
-            request_death_save,
-            request_saving_throw,
-            resolve_enemy_turn,
-            roll_dice,
-            set_music_state,
-        )
+        from check_tools import request_attack, request_saving_throw, roll_dice
+        from combat_tools import end_combat, request_death_save, resolve_enemy_turn
+        from environment_tools import play_sound, set_music_state
+        from query_tools import query_inventory
 
         expected = {
             resolve_enemy_turn,
@@ -37,14 +30,11 @@ class TestCombatAgentConfig:
         assert set(COMBAT_AGENT_TOOLS) == expected
 
     def test_combat_tools_exclude_exploration(self):
-        from tools import (
-            enter_location,
-            move_player,
-            query_location,
-            query_npc,
-            start_combat,
-            update_quest,
-        )
+        from combat_tools import start_combat
+        from movement_tools import move_player
+        from query_tools import query_location, query_npc
+        from quest_tools import update_quest
+        from scene_tools import enter_location
 
         for tool in [enter_location, move_player, query_location, query_npc, start_combat, update_quest]:
             assert tool not in COMBAT_AGENT_TOOLS

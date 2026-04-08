@@ -466,12 +466,12 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall", room=No
 
 class TestCompanionInCombat:
     @pytest.mark.asyncio
-    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
-    @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_content_queries.get_encounter_template", new_callable=AsyncMock)
+    @patch("db_content_queries.get_npc", new_callable=AsyncMock)
+    @patch("db_mutations.save_combat_state", new_callable=AsyncMock)
+    @patch("db_queries.get_player", new_callable=AsyncMock)
+    @patch("db_content_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_start_combat_includes_companion(self, mock_encounter, mock_player, mock_save, mock_get_npc):
-        from tools import start_combat
+        from combat_tools import start_combat
 
         mock_encounter.return_value = SAMPLE_ENCOUNTER
         mock_player.return_value = SAMPLE_PLAYER
@@ -496,11 +496,11 @@ class TestCompanionInCombat:
         assert kael_p.hp_max == 22
 
     @pytest.mark.asyncio
-    @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_content_queries.get_encounter_template", new_callable=AsyncMock)
+    @patch("db_mutations.save_combat_state", new_callable=AsyncMock)
+    @patch("db_queries.get_player", new_callable=AsyncMock)
+    @patch("db_content_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_start_combat_no_companion_when_absent(self, mock_encounter, mock_player, mock_save):
-        from tools import start_combat
+        from combat_tools import start_combat
 
         mock_encounter.return_value = SAMPLE_ENCOUNTER
         mock_player.return_value = SAMPLE_PLAYER
@@ -513,14 +513,14 @@ class TestCompanionInCombat:
         assert len(result["participants"]) == 2
 
     @pytest.mark.asyncio
-    @patch("tools.db_content_queries.get_npc", new_callable=AsyncMock)
-    @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_content_queries.get_encounter_template", new_callable=AsyncMock)
+    @patch("db_content_queries.get_npc", new_callable=AsyncMock)
+    @patch("db_mutations.save_combat_state", new_callable=AsyncMock)
+    @patch("db_queries.get_player", new_callable=AsyncMock)
+    @patch("db_content_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_start_combat_no_companion_when_unconscious(
         self, mock_encounter, mock_player, mock_save, mock_get_npc
     ):
-        from tools import start_combat
+        from combat_tools import start_combat
 
         mock_encounter.return_value = SAMPLE_ENCOUNTER
         mock_player.return_value = SAMPLE_PLAYER
@@ -535,9 +535,9 @@ class TestCompanionInCombat:
         assert len(result["participants"]) == 2
 
     @pytest.mark.asyncio
-    @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
+    @patch("db_mutations.save_combat_state", new_callable=AsyncMock)
     async def test_companion_ko_sets_unconscious(self, mock_save):
-        from tools import resolve_enemy_turn
+        from combat_tools import resolve_enemy_turn
 
         ctx = _make_context()
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
@@ -633,20 +633,20 @@ async def _mock_transaction():
     yield _mock_conn
 
 
-@patch("tools.db.transaction", _mock_transaction)
+@patch("db.transaction", _mock_transaction)
 class TestCompanionMemoryInTools:
     @pytest.mark.asyncio
-    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_targets_at_location", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("tools.db_mutations.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db_mutations.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_player", new_callable=AsyncMock)
+    @patch("db_queries.get_targets_at_location", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_mutations.upsert_map_progress", new_callable=AsyncMock)
+    @patch("db_mutations.update_player_location", new_callable=AsyncMock)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
     async def test_move_player_records_memory(
         self, mock_loc, mock_update, mock_upsert, mock_npcs, mock_disp, mock_targets, mock_player
     ):
-        from tools import move_player
+        from movement_tools import move_player
 
         mock_loc.side_effect = [
             {"id": "guild", "name": "Guild Hall", "exits": {"south": {"destination": "market"}}},

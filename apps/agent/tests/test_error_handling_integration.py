@@ -5,8 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from progression_tools import award_xp
 from session_data import SessionData
-from tools import award_xp, update_npc_disposition
+from session_tools import update_npc_disposition
 
 
 @pytest.mark.asyncio

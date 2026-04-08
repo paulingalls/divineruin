@@ -1,22 +1,14 @@
 """Tests for WildernessAgent — wilderness/travel gameplay agent."""
 
 from base_agent import BaseGameAgent
+from check_tools import discover_hidden_element, request_skill_check, roll_dice
+from combat_tools import end_combat, resolve_enemy_turn, start_combat
+from movement_tools import move_player
+from query_tools import query_inventory, query_location, query_lore
+from quest_tools import update_quest
+from scene_tools import enter_location
+from session_tools import record_story_moment
 from system_prompts import COMBAT_PROMPT, VOICE_STYLE_PROMPT, WILDERNESS_PROMPT, build_system_prompt
-from tools import (
-    discover_hidden_element,
-    end_combat,
-    enter_location,
-    move_player,
-    query_inventory,
-    query_location,
-    query_lore,
-    record_story_moment,
-    request_skill_check,
-    resolve_enemy_turn,
-    roll_dice,
-    start_combat,
-    update_quest,
-)
 from wilderness_agent import WILDERNESS_TOOLS, WildernessAgent
 
 

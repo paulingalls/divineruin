@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import event_types as E
+from environment_tools import set_music_state
 from session_data import SessionData
-from tools import set_music_state
 
 # _func bypasses SDK Literal validation — Any-typed ref accepts values outside MusicStateName
 _set_music: Any = set_music_state._func
@@ -82,9 +82,9 @@ class TestStartCombatDifficulty:
     @pytest.mark.asyncio
     @patch("combat_tools.publish_game_event", new_callable=AsyncMock)
     @patch("combat_tools._publish_sounds", new_callable=AsyncMock)
-    @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_content_queries.get_encounter_template", new_callable=AsyncMock)
+    @patch("db_mutations.save_combat_state", new_callable=AsyncMock)
+    @patch("db_queries.get_player", new_callable=AsyncMock)
+    @patch("db_content_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_combat_started_includes_difficulty(
         self, mock_encounter, mock_player, mock_save, mock_sounds, mock_event
     ):
@@ -114,7 +114,7 @@ class TestStartCombatDifficulty:
         ctx.userdata.combat_state = None
         ctx.userdata.companion = None
 
-        from tools import start_combat
+        from combat_tools import start_combat
 
         raw = await start_combat._func(
             ctx, encounter_id="goblin_ambush", encounter_description="Goblins jump from the bushes"
@@ -132,9 +132,9 @@ class TestStartCombatDifficulty:
     @pytest.mark.asyncio
     @patch("combat_tools.publish_game_event", new_callable=AsyncMock)
     @patch("combat_tools._publish_sounds", new_callable=AsyncMock)
-    @patch("tools.db_mutations.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db_queries.get_player", new_callable=AsyncMock)
-    @patch("tools.db_content_queries.get_encounter_template", new_callable=AsyncMock)
+    @patch("db_mutations.save_combat_state", new_callable=AsyncMock)
+    @patch("db_queries.get_player", new_callable=AsyncMock)
+    @patch("db_content_queries.get_encounter_template", new_callable=AsyncMock)
     async def test_combat_started_defaults_to_moderate(
         self, mock_encounter, mock_player, mock_save, mock_sounds, mock_event
     ):
@@ -163,7 +163,7 @@ class TestStartCombatDifficulty:
         ctx.userdata.combat_state = None
         ctx.userdata.companion = None
 
-        from tools import start_combat
+        from combat_tools import start_combat
 
         await start_combat._func(ctx, encounter_id="bar_fight", encounter_description="A bar fight breaks out")
 

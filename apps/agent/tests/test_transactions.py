@@ -6,13 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from inventory_tools import remove_from_inventory
+from movement_tools import move_player
+from progression_tools import award_xp
+from quest_tools import update_quest
 from session_data import SessionData
-from tools import (
-    award_xp,
-    move_player,
-    remove_from_inventory,
-    update_quest,
-)
 
 SAMPLE_PLAYER = {
     "player_id": "player_1",
@@ -87,7 +85,7 @@ async def _failing_transaction():
 
 class TestAwardXpRollback:
     @pytest.mark.asyncio
-    @patch("tools.db.transaction", _failing_transaction)
+    @patch("db.transaction", _failing_transaction)
     async def test_no_events_on_txn_failure(self):
         room = _make_mock_room()
         ctx = _make_context(room=room)
@@ -96,7 +94,7 @@ class TestAwardXpRollback:
         room.local_participant.publish_data.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("tools.db.transaction", _failing_transaction)
+    @patch("db.transaction", _failing_transaction)
     async def test_no_session_event_on_txn_failure(self):
         ctx = _make_context()
         with pytest.raises(RuntimeError):
@@ -109,8 +107,8 @@ class TestAwardXpRollback:
 
 class TestMovePlayerAtomicity:
     @pytest.mark.asyncio
-    @patch("tools.db.transaction", _failing_transaction)
-    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
+    @patch("db.transaction", _failing_transaction)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
     async def test_session_location_unchanged_on_db_failure(self, mock_loc):
         mock_loc.return_value = SAMPLE_LOCATION
         ctx = _make_context(location_id="accord_guild_hall")
@@ -120,8 +118,8 @@ class TestMovePlayerAtomicity:
         assert ctx.userdata.location_id == "accord_guild_hall"
 
     @pytest.mark.asyncio
-    @patch("tools.db.transaction", _failing_transaction)
-    @patch("tools.db_content_queries.get_location", new_callable=AsyncMock)
+    @patch("db.transaction", _failing_transaction)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
     async def test_no_events_on_db_failure(self, mock_loc):
         mock_loc.return_value = SAMPLE_LOCATION
         room = _make_mock_room()
@@ -136,8 +134,8 @@ class TestMovePlayerAtomicity:
 
 class TestRemoveInventoryAtomicity:
     @pytest.mark.asyncio
-    @patch("tools.db.transaction", _failing_transaction)
-    @patch("tools.db_content_queries.get_item", new_callable=AsyncMock)
+    @patch("db.transaction", _failing_transaction)
+    @patch("db_content_queries.get_item", new_callable=AsyncMock)
     async def test_no_events_on_txn_failure(self, mock_item):
         mock_item.return_value = {"id": "hp", "name": "Health Potion"}
         room = _make_mock_room()
@@ -152,8 +150,8 @@ class TestRemoveInventoryAtomicity:
 
 class TestUpdateQuestAtomicity:
     @pytest.mark.asyncio
-    @patch("tools.db.transaction", _failing_transaction)
-    @patch("tools.db_content_queries.get_quest", new_callable=AsyncMock)
+    @patch("db.transaction", _failing_transaction)
+    @patch("db_content_queries.get_quest", new_callable=AsyncMock)
     async def test_no_events_on_txn_failure(self, mock_quest):
         mock_quest.return_value = SAMPLE_QUEST
         room = _make_mock_room()
@@ -163,8 +161,8 @@ class TestUpdateQuestAtomicity:
         room.local_participant.publish_data.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("tools.db.transaction", _failing_transaction)
-    @patch("tools.db_content_queries.get_quest", new_callable=AsyncMock)
+    @patch("db.transaction", _failing_transaction)
+    @patch("db_content_queries.get_quest", new_callable=AsyncMock)
     async def test_no_session_event_on_txn_failure(self, mock_quest):
         mock_quest.return_value = SAMPLE_QUEST
         ctx = _make_context()

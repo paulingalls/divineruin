@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import event_types as E
 from db import _compute_item_image_url
 from session_data import SessionData
-from tools import record_story_moment
+from session_tools import record_story_moment
 
 # --- _compute_item_image_url ---
 
@@ -117,8 +117,8 @@ class TestRecordStoryMoment:
         result = json.loads(await record_story_moment._func(ctx, moment_key="invalid", description="test"))
         assert "error" in result
 
-    @patch("tools.db_mutations.save_story_moment", new_callable=AsyncMock)
-    @patch("tools.db_activity_queries.count_session_story_moments", new_callable=AsyncMock)
+    @patch("db_mutations.save_story_moment", new_callable=AsyncMock)
+    @patch("db_activity_queries.count_session_story_moments", new_callable=AsyncMock)
     async def test_records_combat_moment(self, mock_count, mock_save):
         mock_count.return_value = 0
         ctx = _make_context()
@@ -134,8 +134,8 @@ class TestRecordStoryMoment:
         call_kwargs = mock_save.call_args
         assert call_kwargs[1]["template_id"] == "story_combat" or call_kwargs[0][4] == "story_combat"
 
-    @patch("tools.db_mutations.save_story_moment", new_callable=AsyncMock)
-    @patch("tools.db_activity_queries.count_session_story_moments", new_callable=AsyncMock)
+    @patch("db_mutations.save_story_moment", new_callable=AsyncMock)
+    @patch("db_activity_queries.count_session_story_moments", new_callable=AsyncMock)
     async def test_records_hollow_encounter(self, mock_count, mock_save):
         mock_count.return_value = 1
         ctx = _make_context()
@@ -145,8 +145,8 @@ class TestRecordStoryMoment:
         assert result["recorded"] is True
         assert result["moment_key"] == "hollow_encounter"
 
-    @patch("tools.db_mutations.save_story_moment", new_callable=AsyncMock)
-    @patch("tools.db_activity_queries.count_session_story_moments", new_callable=AsyncMock)
+    @patch("db_mutations.save_story_moment", new_callable=AsyncMock)
+    @patch("db_activity_queries.count_session_story_moments", new_callable=AsyncMock)
     async def test_records_god_contact(self, mock_count, mock_save):
         mock_count.return_value = 2
         ctx = _make_context()
@@ -155,7 +155,7 @@ class TestRecordStoryMoment:
         )
         assert result["recorded"] is True
 
-    @patch("tools.db_activity_queries.count_session_story_moments", new_callable=AsyncMock)
+    @patch("db_activity_queries.count_session_story_moments", new_callable=AsyncMock)
     async def test_enforces_max_per_session(self, mock_count):
         mock_count.return_value = 3
         ctx = _make_context()
@@ -209,13 +209,13 @@ SAMPLE_INVENTORY = [
 ]
 
 
-@patch("tools.db.transaction", _mock_transaction)
+@patch("db.transaction", _mock_transaction)
 class TestAddToInventorySendsFullInventory:
-    @patch("tools.db_queries.get_player_inventory", new_callable=AsyncMock)
-    @patch("tools.db_mutations.add_inventory_item", new_callable=AsyncMock)
-    @patch("tools.db_content_queries.get_item", new_callable=AsyncMock)
+    @patch("db_queries.get_player_inventory", new_callable=AsyncMock)
+    @patch("db_mutations.add_inventory_item", new_callable=AsyncMock)
+    @patch("db_content_queries.get_item", new_callable=AsyncMock)
     async def test_sends_full_inventory_array(self, mock_item, mock_add, mock_inv):
-        from tools import add_to_inventory
+        from inventory_tools import add_to_inventory
 
         mock_item.return_value = SAMPLE_ITEM_NO_ART
         mock_inv.return_value = SAMPLE_INVENTORY
@@ -237,11 +237,11 @@ class TestAddToInventorySendsFullInventory:
         assert second_call["type"] == E.ITEM_ACQUIRED
         assert second_call["name"] == "Trail Rations"
 
-    @patch("tools.db_queries.get_player_inventory", new_callable=AsyncMock)
-    @patch("tools.db_mutations.add_inventory_item", new_callable=AsyncMock)
-    @patch("tools.db_content_queries.get_item", new_callable=AsyncMock)
+    @patch("db_queries.get_player_inventory", new_callable=AsyncMock)
+    @patch("db_mutations.add_inventory_item", new_callable=AsyncMock)
+    @patch("db_content_queries.get_item", new_callable=AsyncMock)
     async def test_item_acquired_includes_image_url(self, mock_item, mock_add, mock_inv):
-        from tools import add_to_inventory
+        from inventory_tools import add_to_inventory
 
         mock_item.return_value = SAMPLE_ITEM_WITH_ART
         mock_inv.return_value = SAMPLE_INVENTORY
@@ -254,11 +254,11 @@ class TestAddToInventorySendsFullInventory:
         assert "image_url" in second_call
         assert second_call["image_url"].startswith("/api/assets/images/img_")
 
-    @patch("tools.db_queries.get_player_inventory", new_callable=AsyncMock)
-    @patch("tools.db_mutations.add_inventory_item", new_callable=AsyncMock)
-    @patch("tools.db_content_queries.get_item", new_callable=AsyncMock)
+    @patch("db_queries.get_player_inventory", new_callable=AsyncMock)
+    @patch("db_mutations.add_inventory_item", new_callable=AsyncMock)
+    @patch("db_content_queries.get_item", new_callable=AsyncMock)
     async def test_item_acquired_omits_image_url_when_no_art(self, mock_item, mock_add, mock_inv):
-        from tools import add_to_inventory
+        from inventory_tools import add_to_inventory
 
         mock_item.return_value = SAMPLE_ITEM_NO_ART
         mock_inv.return_value = SAMPLE_INVENTORY
