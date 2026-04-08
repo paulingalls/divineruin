@@ -2,7 +2,9 @@
 
 from base_agent import BaseGameAgent
 from check_tools import discover_hidden_element, request_saving_throw, request_skill_check, roll_dice
-from combat_tools import end_combat, resolve_enemy_turn, start_combat
+from combat_end import end_combat
+from combat_init import start_combat
+from combat_turn import resolve_enemy_turn
 from dungeon_agent import DUNGEON_TOOLS, DungeonAgent
 from inventory_tools import add_to_inventory
 from movement_tools import move_player

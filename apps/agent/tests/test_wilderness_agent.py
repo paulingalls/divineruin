@@ -2,7 +2,9 @@
 
 from base_agent import BaseGameAgent
 from check_tools import discover_hidden_element, request_skill_check, roll_dice
-from combat_tools import end_combat, resolve_enemy_turn, start_combat
+from combat_end import end_combat
+from combat_init import start_combat
+from combat_turn import resolve_enemy_turn
 from movement_tools import move_player
 from query_tools import query_inventory, query_location, query_lore
 from quest_tools import update_quest

@@ -3,7 +3,7 @@
 from typing import Any
 
 from check_tools import discover_hidden_element, request_skill_check, roll_dice
-from combat_tools import start_combat
+from combat_init import start_combat
 from environment_tools import play_sound, set_music_state
 from gameplay_agent import GameplayAgent
 from movement_tools import move_player

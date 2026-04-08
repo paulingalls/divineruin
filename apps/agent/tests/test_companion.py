@@ -472,7 +472,7 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall", room=No
 class TestCompanionInCombat:
     @pytest.mark.asyncio
     async def test_start_combat_includes_companion(self):
-        from combat_tools import _start_combat_impl
+        from combat_init import _start_combat_impl
 
         mock_mutations = MagicMock()
         mock_mutations.save_combat_state = AsyncMock()
@@ -509,7 +509,7 @@ class TestCompanionInCombat:
 
     @pytest.mark.asyncio
     async def test_start_combat_no_companion_when_absent(self):
-        from combat_tools import _start_combat_impl
+        from combat_init import _start_combat_impl
 
         mock_mutations = MagicMock()
         mock_mutations.save_combat_state = AsyncMock()
@@ -534,7 +534,7 @@ class TestCompanionInCombat:
 
     @pytest.mark.asyncio
     async def test_start_combat_no_companion_when_unconscious(self):
-        from combat_tools import _start_combat_impl
+        from combat_init import _start_combat_impl
 
         mock_mutations = MagicMock()
         mock_mutations.save_combat_state = AsyncMock()
@@ -561,7 +561,7 @@ class TestCompanionInCombat:
 
     @pytest.mark.asyncio
     async def test_companion_ko_sets_unconscious(self):
-        from combat_tools import _resolve_enemy_turn_impl
+        from combat_turn import _resolve_enemy_turn_impl
 
         mock_mutations = MagicMock()
         mock_mutations.save_combat_state = AsyncMock()

@@ -12,7 +12,8 @@ class TestCombatAgentConfig:
 
     def test_combat_tools_are_complete(self):
         from check_tools import request_attack, request_saving_throw, roll_dice
-        from combat_tools import end_combat, request_death_save, resolve_enemy_turn
+        from combat_end import end_combat
+        from combat_turn import request_death_save, resolve_enemy_turn
         from environment_tools import play_sound, set_music_state
         from query_tools import query_inventory
 
@@ -30,7 +31,7 @@ class TestCombatAgentConfig:
         assert set(COMBAT_AGENT_TOOLS) == expected
 
     def test_combat_tools_exclude_exploration(self):
-        from combat_tools import start_combat
+        from combat_init import start_combat
         from movement_tools import move_player
         from query_tools import query_location, query_npc
         from quest_tools import update_quest

@@ -6,12 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import event_types as E
-from combat_tools import (
-    _end_combat_impl,
-    _request_death_save_impl,
-    _resolve_enemy_turn_impl,
-    _start_combat_impl,
-)
+from combat_end import _end_combat_impl
+from combat_init import _start_combat_impl
+from combat_turn import _request_death_save_impl, _resolve_enemy_turn_impl
 from session_data import CombatParticipant, CombatState, SessionData
 
 SAMPLE_PLAYER = {

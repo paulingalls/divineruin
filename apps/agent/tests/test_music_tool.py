@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import event_types as E
-from combat_tools import _start_combat_impl
+from combat_init import _start_combat_impl
 from environment_tools import set_music_state
 from session_data import SessionData
 

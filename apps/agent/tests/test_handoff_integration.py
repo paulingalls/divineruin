@@ -10,7 +10,9 @@ from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER
 from base_agent import BaseGameAgent
 from city_agent import CITY_TOOLS, CityAgent
 from combat_agent import COMBAT_AGENT_TOOLS
-from combat_tools import end_combat, request_death_save, resolve_enemy_turn, start_combat
+from combat_end import end_combat
+from combat_init import start_combat
+from combat_turn import request_death_save, resolve_enemy_turn
 from dungeon_agent import DUNGEON_TOOLS
 from movement_tools import move_player
 from progression_tools import award_xp
@@ -100,7 +102,7 @@ class TestStartCombatHandoff:
 
     @pytest.mark.asyncio
     async def test_start_combat_returns_agent_tuple(self):
-        from combat_tools import _start_combat_impl
+        from combat_init import _start_combat_impl
 
         mock_mutations = MagicMock()
         mock_mutations.save_combat_state = AsyncMock()
@@ -127,7 +129,7 @@ class TestStartCombatHandoff:
 
     @pytest.mark.asyncio
     async def test_session_data_persists_across_handoff(self):
-        from combat_tools import _start_combat_impl
+        from combat_init import _start_combat_impl
 
         mock_mutations = MagicMock()
         mock_mutations.save_combat_state = AsyncMock()
@@ -173,7 +175,7 @@ class TestCombatHandoffContext:
     @pytest.mark.asyncio
     async def test_combat_handoff_context_includes_location(self, mock_combat_agent_factory):
         """create_combat_agent receives chat_ctx with location name."""
-        from combat_tools import _start_combat_impl
+        from combat_init import _start_combat_impl
 
         mock_mutations = MagicMock()
         mock_mutations.save_combat_state = AsyncMock()
@@ -207,7 +209,7 @@ class TestCombatHandoffContext:
     @pytest.mark.asyncio
     async def test_combat_handoff_context_includes_companion(self, mock_combat_agent_factory):
         """create_combat_agent receives chat_ctx mentioning companion."""
-        from combat_tools import _start_combat_impl
+        from combat_init import _start_combat_impl
 
         mock_mutations = MagicMock()
         mock_mutations.save_combat_state = AsyncMock()
@@ -247,7 +249,7 @@ class TestEndCombatHandoff:
 
     @pytest.mark.asyncio
     async def test_end_combat_returns_city_agent(self):
-        from combat_tools import _end_combat_impl
+        from combat_end import _end_combat_impl
 
         mock_mutations = MagicMock()
         mock_mutations.delete_combat_state = AsyncMock()
@@ -288,7 +290,7 @@ class TestEndCombatHandoff:
 
     @pytest.mark.asyncio
     async def test_returned_city_agent_has_combat_summary_in_chat_ctx(self):
-        from combat_tools import _end_combat_impl
+        from combat_end import _end_combat_impl
 
         mock_mutations = MagicMock()
         mock_mutations.delete_combat_state = AsyncMock()
@@ -330,7 +332,7 @@ class TestEndCombatHandoff:
 
     @pytest.mark.asyncio
     async def test_session_data_cleared_after_combat(self):
-        from combat_tools import _end_combat_impl
+        from combat_end import _end_combat_impl
 
         mock_mutations = MagicMock()
         mock_mutations.delete_combat_state = AsyncMock()
@@ -365,7 +367,8 @@ class TestRoundTrip:
     @pytest.mark.asyncio
     async def test_full_round_trip(self):
         """Start combat -> end combat -> verify state transitions."""
-        from combat_tools import _end_combat_impl, _start_combat_impl
+        from combat_end import _end_combat_impl
+        from combat_init import _start_combat_impl
 
         mock_mutations = MagicMock()
         mock_mutations.save_combat_state = AsyncMock()
@@ -557,7 +560,7 @@ class TestDynamicEndCombat:
     @pytest.mark.asyncio
     async def test_end_combat_returns_wilderness_agent(self):
         """end_combat with pre_combat_agent_type='wilderness' returns WildernessAgent."""
-        from combat_tools import _end_combat_impl
+        from combat_end import _end_combat_impl
         from wilderness_agent import WildernessAgent
 
         mock_mutations = MagicMock()
@@ -601,7 +604,7 @@ class TestDynamicEndCombat:
     @pytest.mark.asyncio
     async def test_end_combat_returns_dungeon_agent(self):
         """end_combat with pre_combat_agent_type='dungeon' returns DungeonAgent."""
-        from combat_tools import _end_combat_impl
+        from combat_end import _end_combat_impl
         from dungeon_agent import DungeonAgent
 
         mock_mutations = MagicMock()

@@ -209,7 +209,8 @@ class TestCombatRoundTrip:
         mock_combat_agent_factory,
     ):
         """start_combat from wilderness, end_combat returns WildernessAgent."""
-        from combat_tools import _end_combat_impl, _start_combat_impl
+        from combat_end import _end_combat_impl
+        from combat_init import _start_combat_impl
 
         mock_mutations = MagicMock()
         mock_mutations.save_combat_state = AsyncMock()
