@@ -168,7 +168,9 @@ async def _move_player_impl(
 
     from scene_tools import _build_scene_context
 
-    scene = await _build_scene_context(destination_id, session, location=destination_location)
+    scene = await _build_scene_context(
+        destination_id, session, location=destination_location, content=content, queries=queries
+    )
     if "error" in scene:
         return json.dumps(scene)
 

@@ -2,7 +2,7 @@
 
 import json
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -11,10 +11,10 @@ from background_process import (
     BackgroundProcess,
     SpeechPriority,
 )
-from check_tools import discover_hidden_element
+from check_tools import _discover_hidden_element_impl
 from event_bus import GameEvent
 from movement_tools import _check_exit_requirement
-from quest_tools import _apply_world_effects, update_quest
+from quest_tools import _apply_world_effects, _update_quest_impl
 from session_data import CompanionState, SessionData
 from tool_support import EFFECT_NPC_MAP
 
@@ -25,8 +25,8 @@ _mock_conn = MagicMock(name="mock_txn_conn")
 
 
 @asynccontextmanager
-async def _mock_transaction():
-    yield _mock_conn
+async def _mock_txn(conn):
+    yield conn
 
 
 def _make_session(location_id: str = "accord_guild_hall", **kwargs: object) -> SessionData:
@@ -64,19 +64,27 @@ def _make_bg(session_data=None):
 
 class TestApplyWorldEffects:
     @pytest.mark.asyncio
-    @patch("db_content_queries.get_npc", new_callable=AsyncMock)
-    @patch("db_mutations.set_npc_disposition", new_callable=AsyncMock)
-    @patch("db_queries.get_npc_disposition", new_callable=AsyncMock)
-    async def test_disposition_effect(self, mock_get_disp, mock_set_disp, mock_npc):
-        mock_get_disp.return_value = "neutral"
-        mock_npc.return_value = {"default_disposition": "neutral"}
+    async def test_disposition_effect(self):
+        mock_queries = MagicMock()
+        mock_queries.get_npc_disposition = AsyncMock(return_value="neutral")
+        mock_mutations = MagicMock()
+        mock_mutations.set_npc_disposition = AsyncMock()
+        mock_content = MagicMock()
+        mock_content.get_npc = AsyncMock(return_value={"default_disposition": "neutral"})
         session = _make_session()
         pending: list[tuple[str, dict]] = []
 
-        await _apply_world_effects(["torin_disposition +1"], session, pending)
+        await _apply_world_effects(
+            ["torin_disposition +1"],
+            session,
+            pending,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
 
-        mock_set_disp.assert_called_once()
-        call_args = mock_set_disp.call_args
+        mock_mutations.set_npc_disposition.assert_called_once()
+        call_args = mock_mutations.set_npc_disposition.call_args
         assert call_args[0][0] == "guildmaster_torin"
         assert call_args[0][2] == "friendly"
         assert any(e[0] == E.DISPOSITION_CHANGED for e in pending)
@@ -120,23 +128,23 @@ class TestApplyWorldEffects:
     @pytest.mark.asyncio
     async def test_multiple_effects(self):
         """Test all effects from quest stage 5 on_complete."""
+        mock_queries = MagicMock()
+        mock_queries.get_npc_disposition = AsyncMock(return_value="neutral")
+        mock_mutations = MagicMock()
+        mock_mutations.set_npc_disposition = AsyncMock()
+        mock_content = MagicMock()
+        mock_content.get_npc = AsyncMock(return_value={"default_disposition": "neutral"})
         session = _make_session()
         pending: list[tuple[str, dict]] = []
 
-        with (
-            patch("db_queries.get_npc_disposition", new_callable=AsyncMock, return_value="neutral"),
-            patch("db_mutations.set_npc_disposition", new_callable=AsyncMock),
-            patch(
-                "db_content_queries.get_npc",
-                new_callable=AsyncMock,
-                return_value={"default_disposition": "neutral"},
-            ),
-        ):
-            await _apply_world_effects(
-                ["emris_disposition +4", "event:faction_interest_triggered", "event:god_whisper:player_patron"],
-                session,
-                pending,
-            )
+        await _apply_world_effects(
+            ["emris_disposition +4", "event:faction_interest_triggered", "event:god_whisper:player_patron"],
+            session,
+            pending,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
 
         event_types = [e[0] for e in pending]
         assert E.DISPOSITION_CHANGED in event_types
@@ -168,38 +176,44 @@ class TestApplyWorldEffects:
 
 class TestCheckExitRequirement:
     @pytest.mark.asyncio
-    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
-    async def test_discovered_flag_set(self, mock_flag):
-        mock_flag.return_value = True
-        result = await _check_exit_requirement("veythar_seal_mark.discovered", "player_1")
+    async def test_discovered_flag_set(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player_flag = AsyncMock(return_value=True)
+        result = await _check_exit_requirement("veythar_seal_mark.discovered", "player_1", queries=mock_queries)
         assert result is True
 
     @pytest.mark.asyncio
-    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
-    async def test_discovered_flag_not_set(self, mock_flag):
-        mock_flag.return_value = False
-        result = await _check_exit_requirement("veythar_seal_mark.discovered", "player_1")
+    async def test_discovered_flag_not_set(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player_flag = AsyncMock(return_value=False)
+        result = await _check_exit_requirement("veythar_seal_mark.discovered", "player_1", queries=mock_queries)
         assert result is False
 
     @pytest.mark.asyncio
-    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
-    async def test_or_logic_first_branch_true(self, mock_flag):
-        mock_flag.side_effect = [True]
-        result = await _check_exit_requirement("seal_a.discovered || seal_b.discovered", "player_1")
+    async def test_or_logic_first_branch_true(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player_flag = AsyncMock(side_effect=[True])
+        result = await _check_exit_requirement(
+            "seal_a.discovered || seal_b.discovered", "player_1", queries=mock_queries
+        )
         assert result is True
 
     @pytest.mark.asyncio
-    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
-    async def test_or_logic_second_branch_true(self, mock_flag):
-        mock_flag.side_effect = [False, True]
-        result = await _check_exit_requirement("seal_a.discovered || seal_b.discovered", "player_1")
+    async def test_or_logic_second_branch_true(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player_flag = AsyncMock(side_effect=[False, True])
+        result = await _check_exit_requirement(
+            "seal_a.discovered || seal_b.discovered", "player_1", queries=mock_queries
+        )
         assert result is True
 
     @pytest.mark.asyncio
-    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
-    async def test_or_logic_none_true(self, mock_flag):
-        mock_flag.return_value = False
-        result = await _check_exit_requirement("seal_a.discovered || seal_b.discovered", "player_1")
+    async def test_or_logic_none_true(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player_flag = AsyncMock(return_value=False)
+        result = await _check_exit_requirement(
+            "seal_a.discovered || seal_b.discovered", "player_1", queries=mock_queries
+        )
         assert result is False
 
     @pytest.mark.asyncio
@@ -208,41 +222,55 @@ class TestCheckExitRequirement:
         assert result is False
 
     @pytest.mark.asyncio
-    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
-    async def test_or_with_skill_check_and_discovered(self, mock_flag):
-        mock_flag.return_value = True
-        result = await _check_exit_requirement("skill_check:athletics:15 || seal.discovered", "player_1")
+    async def test_or_with_skill_check_and_discovered(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player_flag = AsyncMock(return_value=True)
+        result = await _check_exit_requirement(
+            "skill_check:athletics:15 || seal.discovered", "player_1", queries=mock_queries
+        )
         assert result is True
 
 
 # --- discover_hidden_element sets player flag ---
 
 
-@patch("db.transaction", _mock_transaction)
 class TestDiscoverSetsFlag:
     @pytest.mark.asyncio
-    @patch("db_mutations.set_player_flag", new_callable=AsyncMock)
-    @patch("db_queries.get_player", new_callable=AsyncMock)
-    @patch("db_content_queries.get_location", new_callable=AsyncMock)
-    async def test_successful_discovery_sets_flag(self, mock_loc, mock_player, mock_set_flag):
-        mock_loc.return_value = {
-            "id": "test_loc",
-            "name": "Test Location",
-            "hidden_elements": [
-                {"id": "test_seal", "discover_skill": "perception", "dc": 1, "description": "A seal mark."}
-            ],
-        }
-        mock_player.return_value = {
-            "player_id": "player_1",
-            "attributes": {"wisdom": 20},
-            "proficiencies": ["perception"],
-            "level": 10,
-        }
+    async def test_successful_discovery_sets_flag(self):
+        mock_content = MagicMock()
+        mock_content.get_location = AsyncMock(
+            return_value={
+                "id": "test_loc",
+                "name": "Test Location",
+                "hidden_elements": [
+                    {"id": "test_seal", "discover_skill": "perception", "dc": 1, "description": "A seal mark."}
+                ],
+            }
+        )
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(
+            return_value={
+                "player_id": "player_1",
+                "attributes": {"wisdom": 20},
+                "proficiencies": ["perception"],
+                "level": 10,
+            }
+        )
+        mock_mutations = MagicMock()
+        mock_mutations.set_player_flag = AsyncMock()
         ctx = _make_context(location_id="test_loc")
-        result = json.loads(await discover_hidden_element._func(ctx, element_id="test_seal"))
+        result = json.loads(
+            await _discover_hidden_element_impl(
+                ctx,
+                element_id="test_seal",
+                content=mock_content,
+                queries=mock_queries,
+                mutations=mock_mutations,
+            )
+        )
 
         if result.get("outcome") == "discovered":
-            mock_set_flag.assert_called_once_with("player_1", "test_seal.discovered", True)
+            mock_mutations.set_player_flag.assert_called_once_with("player_1", "test_seal.discovered", True)
 
 
 # --- update_quest calls _apply_world_effects ---
@@ -269,36 +297,46 @@ QUEST_WITH_EFFECTS = {
 }
 
 
-@patch("db.transaction", _mock_transaction)
 class TestUpdateQuestWorldEffects:
     @pytest.mark.asyncio
-    @patch("db_content_queries.get_npc", new_callable=AsyncMock)
-    @patch("db_mutations.set_npc_disposition", new_callable=AsyncMock)
-    @patch("db_queries.get_npc_disposition", new_callable=AsyncMock)
-    @patch("db_mutations.update_player_xp", new_callable=AsyncMock)
-    @patch("db_queries.get_player", new_callable=AsyncMock)
-    @patch("db_mutations.set_player_quest", new_callable=AsyncMock)
-    @patch("db_queries.get_player_quest", new_callable=AsyncMock)
-    @patch("db_content_queries.get_quest", new_callable=AsyncMock)
-    async def test_world_effects_applied_on_stage_advance(
-        self, mock_quest, mock_pq, mock_set, mock_player, mock_xp, mock_get_disp, mock_set_disp, mock_npc
-    ):
-        mock_quest.return_value = QUEST_WITH_EFFECTS
-        mock_pq.return_value = {"current_stage": 0}
-        mock_player.return_value = {
-            "player_id": "player_1",
-            "level": 1,
-            "xp": 0,
-        }
-        mock_get_disp.return_value = "neutral"
-        mock_npc.return_value = {"default_disposition": "neutral"}
+    async def test_world_effects_applied_on_stage_advance(self):
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(_mock_conn)
+        mock_content = MagicMock()
+        mock_content.get_quest = AsyncMock(return_value=QUEST_WITH_EFFECTS)
+        mock_content.get_npc = AsyncMock(return_value={"default_disposition": "neutral"})
+        mock_content.get_item = AsyncMock(return_value=None)
+        mock_queries = MagicMock()
+        mock_queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
+        mock_queries.get_player = AsyncMock(
+            return_value={
+                "player_id": "player_1",
+                "level": 1,
+                "xp": 0,
+            }
+        )
+        mock_queries.get_npc_disposition = AsyncMock(return_value="neutral")
+        mock_mutations = MagicMock()
+        mock_mutations.set_player_quest = AsyncMock()
+        mock_mutations.update_player_xp = AsyncMock()
+        mock_mutations.set_npc_disposition = AsyncMock()
 
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        result = json.loads(await update_quest._func(ctx, quest_id="test_quest", new_stage_id=1))
+        raw = await _update_quest_impl(
+            ctx,
+            quest_id="test_quest",
+            new_stage_id=1,
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+        assert isinstance(raw, str)
+        result = json.loads(raw)
 
         assert result["new_stage"] == 1
-        mock_set_disp.assert_called_once()
+        mock_mutations.set_npc_disposition.assert_called_once()
 
 
 # --- God whisper event triggers CRITICAL speech ---

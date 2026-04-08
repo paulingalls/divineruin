@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import event_types as E
+from combat_tools import _start_combat_impl
 from environment_tools import set_music_state
 from session_data import SessionData
 
@@ -82,42 +83,50 @@ class TestStartCombatDifficulty:
     @pytest.mark.asyncio
     @patch("combat_tools.publish_game_event", new_callable=AsyncMock)
     @patch("combat_tools._publish_sounds", new_callable=AsyncMock)
-    @patch("db_mutations.save_combat_state", new_callable=AsyncMock)
-    @patch("db_queries.get_player", new_callable=AsyncMock)
-    @patch("db_content_queries.get_encounter_template", new_callable=AsyncMock)
-    async def test_combat_started_includes_difficulty(
-        self, mock_encounter, mock_player, mock_save, mock_sounds, mock_event
-    ):
-        mock_encounter.return_value = {
-            "name": "Goblin Ambush",
-            "difficulty": "hard",
-            "enemies": [
-                {
-                    "id": "goblin_1",
-                    "name": "Goblin Scout",
-                    "hp": 7,
-                    "ac": 12,
-                    "attributes": {"dexterity": 14},
-                    "level": 1,
-                    "xp_value": 25,
-                }
-            ],
-        }
-        mock_player.return_value = {
-            "name": "Kael",
-            "hp": {"current": 25, "max": 30},
-            "ac": 15,
-            "attributes": {"dexterity": 12},
-            "level": 3,
-        }
+    async def test_combat_started_includes_difficulty(self, mock_sounds, mock_event):
+        mock_content = MagicMock()
+        mock_content.get_encounter_template = AsyncMock(
+            return_value={
+                "name": "Goblin Ambush",
+                "difficulty": "hard",
+                "enemies": [
+                    {
+                        "id": "goblin_1",
+                        "name": "Goblin Scout",
+                        "hp": 7,
+                        "ac": 12,
+                        "attributes": {"dexterity": 14},
+                        "level": 1,
+                        "xp_value": 25,
+                    }
+                ],
+            }
+        )
+        mock_content.get_npc = AsyncMock(return_value=None)
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(
+            return_value={
+                "name": "Kael",
+                "hp": {"current": 25, "max": 30},
+                "ac": 15,
+                "attributes": {"dexterity": 12},
+                "level": 3,
+            }
+        )
+        mock_mutations = MagicMock()
+        mock_mutations.save_combat_state = AsyncMock()
+
         ctx = _make_context()
         ctx.userdata.combat_state = None
         ctx.userdata.companion = None
 
-        from combat_tools import start_combat
-
-        raw = await start_combat._func(
-            ctx, encounter_id="goblin_ambush", encounter_description="Goblins jump from the bushes"
+        raw = await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_ambush",
+            encounter_description="Goblins jump from the bushes",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
         )
         _, json_str = raw
         result = json.loads(json_str)
@@ -132,40 +141,50 @@ class TestStartCombatDifficulty:
     @pytest.mark.asyncio
     @patch("combat_tools.publish_game_event", new_callable=AsyncMock)
     @patch("combat_tools._publish_sounds", new_callable=AsyncMock)
-    @patch("db_mutations.save_combat_state", new_callable=AsyncMock)
-    @patch("db_queries.get_player", new_callable=AsyncMock)
-    @patch("db_content_queries.get_encounter_template", new_callable=AsyncMock)
-    async def test_combat_started_defaults_to_moderate(
-        self, mock_encounter, mock_player, mock_save, mock_sounds, mock_event
-    ):
-        mock_encounter.return_value = {
-            "name": "Bar Fight",
-            "enemies": [
-                {
-                    "id": "thug_1",
-                    "name": "Thug",
-                    "hp": 10,
-                    "ac": 11,
-                    "attributes": {"strength": 14},
-                    "level": 1,
-                    "xp_value": 25,
-                }
-            ],
-        }
-        mock_player.return_value = {
-            "name": "Kael",
-            "hp": {"current": 25, "max": 30},
-            "ac": 15,
-            "attributes": {"dexterity": 12},
-            "level": 3,
-        }
+    async def test_combat_started_defaults_to_moderate(self, mock_sounds, mock_event):
+        mock_content = MagicMock()
+        mock_content.get_encounter_template = AsyncMock(
+            return_value={
+                "name": "Bar Fight",
+                "enemies": [
+                    {
+                        "id": "thug_1",
+                        "name": "Thug",
+                        "hp": 10,
+                        "ac": 11,
+                        "attributes": {"strength": 14},
+                        "level": 1,
+                        "xp_value": 25,
+                    }
+                ],
+            }
+        )
+        mock_content.get_npc = AsyncMock(return_value=None)
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(
+            return_value={
+                "name": "Kael",
+                "hp": {"current": 25, "max": 30},
+                "ac": 15,
+                "attributes": {"dexterity": 12},
+                "level": 3,
+            }
+        )
+        mock_mutations = MagicMock()
+        mock_mutations.save_combat_state = AsyncMock()
+
         ctx = _make_context()
         ctx.userdata.combat_state = None
         ctx.userdata.companion = None
 
-        from combat_tools import start_combat
-
-        await start_combat._func(ctx, encounter_id="bar_fight", encounter_description="A bar fight breaks out")
+        await _start_combat_impl(
+            ctx,
+            encounter_id="bar_fight",
+            encounter_description="A bar fight breaks out",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
 
         combat_started_calls = [c for c in mock_event.call_args_list if c[0][1] == E.COMBAT_STARTED]
         assert len(combat_started_calls) == 1

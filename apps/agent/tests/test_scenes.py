@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from quest_tools import update_quest
+from quest_tools import _update_quest_impl
 from session_data import SessionData
 from warm_prompts import build_warm_layer
 
@@ -331,8 +331,8 @@ _mock_conn = MagicMock(name="mock_txn_conn")
 
 
 @asynccontextmanager
-async def _mock_transaction():
-    yield _mock_conn
+async def _mock_txn(conn):
+    yield conn
 
 
 def _make_context(player_id="player_1", location_id="accord_guild_hall"):
@@ -341,14 +341,9 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall"):
     return ctx
 
 
-@patch("db.transaction", _mock_transaction)
 class TestUpdateQuestSceneHandoff:
     @pytest.mark.asyncio
-    @patch("db_content_queries.get_scenes_batch", new_callable=AsyncMock)
-    @patch("db_mutations.set_player_quest", new_callable=AsyncMock)
-    @patch("db_queries.get_player_quest", new_callable=AsyncMock)
-    @patch("db_content_queries.get_quest", new_callable=AsyncMock)
-    async def test_scene_graph_handoff(self, mock_quest, mock_pq, mock_set, mock_batch):
+    async def test_scene_graph_handoff(self):
         """Quest with scene_graph triggers handoff on region change."""
         quest = {
             "id": "graph_quest",
@@ -362,14 +357,32 @@ class TestUpdateQuestSceneHandoff:
                 {"scene_id": "scene_city", "stage_refs": [1]},
             ],
         }
-        mock_quest.return_value = quest
-        mock_pq.return_value = {"current_stage": 0}
-        mock_batch.return_value = {
-            "scene_wild": {"id": "scene_wild", "name": "Wild", "region_type": "wilderness"},
-            "scene_city": {"id": "scene_city", "name": "City", "region_type": "city"},
-        }
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(_mock_conn)
+        mock_content = MagicMock()
+        mock_content.get_quest = AsyncMock(return_value=quest)
+        mock_content.get_item = AsyncMock(return_value=None)
+        mock_content.get_scenes_batch = AsyncMock(
+            return_value={
+                "scene_wild": {"id": "scene_wild", "name": "Wild", "region_type": "wilderness"},
+                "scene_city": {"id": "scene_city", "name": "City", "region_type": "city"},
+            }
+        )
+        mock_queries = MagicMock()
+        mock_queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
+        mock_mutations = MagicMock()
+        mock_mutations.set_player_quest = AsyncMock()
+
         ctx = _make_context()
-        result = await update_quest._func(ctx, quest_id="graph_quest", new_stage_id=1)
+        result = await _update_quest_impl(
+            ctx,
+            quest_id="graph_quest",
+            new_stage_id=1,
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         assert isinstance(result, tuple), f"Expected tuple, got {type(result)}"
         agent, _json = result
         from gameplay_agent import GameplayAgent
@@ -378,10 +391,7 @@ class TestUpdateQuestSceneHandoff:
         assert agent._agent_type == "city"
 
     @pytest.mark.asyncio
-    @patch("db_mutations.set_player_quest", new_callable=AsyncMock)
-    @patch("db_queries.get_player_quest", new_callable=AsyncMock)
-    @patch("db_content_queries.get_quest", new_callable=AsyncMock)
-    async def test_no_scene_graph_returns_string(self, mock_quest, mock_pq, mock_set):
+    async def test_no_scene_graph_returns_string(self):
         """Quest without scene_graph returns plain json string."""
         quest = {
             "id": "plain",
@@ -391,8 +401,24 @@ class TestUpdateQuestSceneHandoff:
                 {"id": "s1", "objective": "B.", "on_complete": {}},
             ],
         }
-        mock_quest.return_value = quest
-        mock_pq.return_value = {"current_stage": 0}
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(_mock_conn)
+        mock_content = MagicMock()
+        mock_content.get_quest = AsyncMock(return_value=quest)
+        mock_content.get_item = AsyncMock(return_value=None)
+        mock_queries = MagicMock()
+        mock_queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
+        mock_mutations = MagicMock()
+        mock_mutations.set_player_quest = AsyncMock()
+
         ctx = _make_context()
-        result = await update_quest._func(ctx, quest_id="plain", new_stage_id=1)
+        result = await _update_quest_impl(
+            ctx,
+            quest_id="plain",
+            new_stage_id=1,
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         assert isinstance(result, str), f"Expected str, got {type(result)}"

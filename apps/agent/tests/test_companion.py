@@ -216,7 +216,7 @@ class TestKaelVoiceRateOffset:
         from voices import get_voice_config
 
         cfg = get_voice_config("COMPANION_KAEL", "neutral")
-        # neutral rate = 0.95, offset = -0.05 → 0.90
+        # neutral rate = 0.95, offset = -0.05 -> 0.90
         assert cfg.speaking_rate == pytest.approx(0.90)
         assert cfg.inworld_markup == ""  # neutral has no markup
 
@@ -458,6 +458,11 @@ KAEL_NPC = {
 }
 
 
+@asynccontextmanager
+async def _mock_txn(conn):
+    yield conn
+
+
 def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None):
     ctx = MagicMock()
     ctx.userdata = SessionData(player_id=player_id, location_id=location_id, room=room)
@@ -466,21 +471,28 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall", room=No
 
 class TestCompanionInCombat:
     @pytest.mark.asyncio
-    @patch("db_content_queries.get_npc", new_callable=AsyncMock)
-    @patch("db_mutations.save_combat_state", new_callable=AsyncMock)
-    @patch("db_queries.get_player", new_callable=AsyncMock)
-    @patch("db_content_queries.get_encounter_template", new_callable=AsyncMock)
-    async def test_start_combat_includes_companion(self, mock_encounter, mock_player, mock_save, mock_get_npc):
-        from combat_tools import start_combat
+    async def test_start_combat_includes_companion(self):
+        from combat_tools import _start_combat_impl
 
-        mock_encounter.return_value = SAMPLE_ENCOUNTER
-        mock_player.return_value = SAMPLE_PLAYER
-        mock_get_npc.return_value = KAEL_NPC
+        mock_mutations = MagicMock()
+        mock_mutations.save_combat_state = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_content = MagicMock()
+        mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
+        mock_content.get_npc = AsyncMock(return_value=KAEL_NPC)
 
         ctx = _make_context()
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
 
-        raw = await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Fight!")
+        raw = await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Fight!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         _, json_str = raw
         result = json.loads(json_str)
 
@@ -496,48 +508,63 @@ class TestCompanionInCombat:
         assert kael_p.hp_max == 22
 
     @pytest.mark.asyncio
-    @patch("db_mutations.save_combat_state", new_callable=AsyncMock)
-    @patch("db_queries.get_player", new_callable=AsyncMock)
-    @patch("db_content_queries.get_encounter_template", new_callable=AsyncMock)
-    async def test_start_combat_no_companion_when_absent(self, mock_encounter, mock_player, mock_save):
-        from combat_tools import start_combat
+    async def test_start_combat_no_companion_when_absent(self):
+        from combat_tools import _start_combat_impl
 
-        mock_encounter.return_value = SAMPLE_ENCOUNTER
-        mock_player.return_value = SAMPLE_PLAYER
+        mock_mutations = MagicMock()
+        mock_mutations.save_combat_state = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_content = MagicMock()
+        mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
         ctx = _make_context()
 
-        _, json_str = await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Fight!")
+        _, json_str = await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Fight!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         result = json.loads(json_str)
 
         assert len(result["participants"]) == 2
 
     @pytest.mark.asyncio
-    @patch("db_content_queries.get_npc", new_callable=AsyncMock)
-    @patch("db_mutations.save_combat_state", new_callable=AsyncMock)
-    @patch("db_queries.get_player", new_callable=AsyncMock)
-    @patch("db_content_queries.get_encounter_template", new_callable=AsyncMock)
-    async def test_start_combat_no_companion_when_unconscious(
-        self, mock_encounter, mock_player, mock_save, mock_get_npc
-    ):
-        from combat_tools import start_combat
+    async def test_start_combat_no_companion_when_unconscious(self):
+        from combat_tools import _start_combat_impl
 
-        mock_encounter.return_value = SAMPLE_ENCOUNTER
-        mock_player.return_value = SAMPLE_PLAYER
-        mock_get_npc.return_value = KAEL_NPC
+        mock_mutations = MagicMock()
+        mock_mutations.save_combat_state = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_content = MagicMock()
+        mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
+        mock_content.get_npc = AsyncMock(return_value=KAEL_NPC)
 
         ctx = _make_context()
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael", is_conscious=False)
 
-        _, json_str = await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Fight!")
+        _, json_str = await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Fight!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         result = json.loads(json_str)
 
         assert len(result["participants"]) == 2
 
     @pytest.mark.asyncio
-    @patch("db_mutations.save_combat_state", new_callable=AsyncMock)
-    async def test_companion_ko_sets_unconscious(self, mock_save):
-        from combat_tools import resolve_enemy_turn
+    async def test_companion_ko_sets_unconscious(self):
+        from combat_tools import _resolve_enemy_turn_impl
+
+        mock_mutations = MagicMock()
+        mock_mutations.save_combat_state = AsyncMock()
 
         ctx = _make_context()
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
@@ -575,7 +602,13 @@ class TestCompanionInCombat:
         ctx.userdata.combat_state = cs
 
         result = json.loads(
-            await resolve_enemy_turn._func(ctx, enemy_id="goblin_1", action_name="Scimitar", target_id="companion_kael")
+            await _resolve_enemy_turn_impl(
+                ctx,
+                enemy_id="goblin_1",
+                action_name="Scimitar",
+                target_id="companion_kael",
+                mutations=mock_mutations,
+            )
         )
 
         if result["hit"]:
@@ -625,55 +658,56 @@ class TestEmotionalState:
         assert sd.companion.emotional_state == "troubled"
 
 
-_mock_conn = MagicMock(name="mock_txn_conn")
-
-
-@asynccontextmanager
-async def _mock_transaction():
-    yield _mock_conn
-
-
-@patch("db.transaction", _mock_transaction)
 class TestCompanionMemoryInTools:
     @pytest.mark.asyncio
-    @patch("db_queries.get_player", new_callable=AsyncMock)
-    @patch("db_queries.get_targets_at_location", new_callable=AsyncMock)
-    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("db_mutations.upsert_map_progress", new_callable=AsyncMock)
-    @patch("db_mutations.update_player_location", new_callable=AsyncMock)
-    @patch("db_content_queries.get_location", new_callable=AsyncMock)
-    async def test_move_player_records_memory(
-        self, mock_loc, mock_update, mock_upsert, mock_npcs, mock_disp, mock_targets, mock_player
-    ):
-        from movement_tools import move_player
+    async def test_move_player_records_memory(self):
+        from movement_tools import _move_player_impl
 
-        mock_loc.side_effect = [
-            {"id": "guild", "name": "Guild Hall", "exits": {"south": {"destination": "market"}}},
-            {
-                "id": "market",
-                "name": "Market Square",
-                "description": "Busy market",
-                "atmosphere": "lively",
-                "exits": {},
-            },
-            {
-                "id": "market",
-                "name": "Market Square",
-                "description": "Busy market",
-                "atmosphere": "lively",
-                "exits": {},
-            },
-        ]
-        mock_npcs.return_value = []
-        mock_targets.return_value = []
-        mock_player.return_value = SAMPLE_PLAYER
-        mock_disp.return_value = {}
+        mock_db = MagicMock()
+        mock_conn = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.extract_exit_connections = MagicMock(return_value=[])
+        mock_mutations = MagicMock()
+        mock_mutations.update_player_location = AsyncMock()
+        mock_mutations.upsert_map_progress = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_npcs_at_location = AsyncMock(return_value=[])
+        mock_queries.get_npc_dispositions = AsyncMock(return_value={})
+        mock_queries.get_targets_at_location = AsyncMock(return_value=[])
+        mock_content = MagicMock()
+        mock_content.get_location = AsyncMock(
+            side_effect=[
+                {"id": "guild", "name": "Guild Hall", "exits": {"south": {"destination": "market"}}},
+                {
+                    "id": "market",
+                    "name": "Market Square",
+                    "description": "Busy market",
+                    "atmosphere": "lively",
+                    "exits": {},
+                },
+                {
+                    "id": "market",
+                    "name": "Market Square",
+                    "description": "Busy market",
+                    "atmosphere": "lively",
+                    "exits": {},
+                },
+            ]
+        )
 
         ctx = _make_context()
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
 
-        await move_player._func(ctx, destination_id="market")
+        with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
+            await _move_player_impl(
+                ctx,
+                destination_id="market",
+                db_mod=mock_db,
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
 
         assert any("Market Square" in m for m in ctx.userdata.companion.session_memories)
 

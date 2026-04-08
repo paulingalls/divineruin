@@ -2,12 +2,11 @@
 
 import json
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import event_types as E
 from db import _compute_item_image_url
 from session_data import SessionData
-from session_tools import record_story_moment
 
 # --- _compute_item_image_url ---
 
@@ -96,12 +95,9 @@ class TestComputeItemImageUrl:
 # --- record_story_moment ---
 
 
-_mock_conn = MagicMock(name="mock_txn_conn")
-
-
 @asynccontextmanager
-async def _mock_transaction():
-    yield _mock_conn
+async def _mock_txn(conn):
+    yield conn
 
 
 def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None, session_id="session_abc"):
@@ -113,57 +109,101 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall", room=No
 
 class TestRecordStoryMoment:
     async def test_invalid_moment_key(self):
+        from session_tools import record_story_moment
+
         ctx = _make_context()
         result = json.loads(await record_story_moment._func(ctx, moment_key="invalid", description="test"))
         assert "error" in result
 
-    @patch("db_mutations.save_story_moment", new_callable=AsyncMock)
-    @patch("db_activity_queries.count_session_story_moments", new_callable=AsyncMock)
-    async def test_records_combat_moment(self, mock_count, mock_save):
-        mock_count.return_value = 0
+    async def test_records_combat_moment(self):
+        from session_tools import _record_story_moment_impl
+
+        mock_mutations = MagicMock()
+        mock_mutations.save_story_moment = AsyncMock()
+        mock_activities = MagicMock()
+        mock_activities.count_session_story_moments = AsyncMock(return_value=0)
+
         ctx = _make_context()
         result = json.loads(
-            await record_story_moment._func(
-                ctx, moment_key="combat", description="The player struck down the hollow spider."
+            await _record_story_moment_impl(
+                ctx,
+                moment_key="combat",
+                description="The player struck down the hollow spider.",
+                mutations=mock_mutations,
+                activities=mock_activities,
             )
         )
         assert result["recorded"] is True
         assert result["moment_key"] == "combat"
         assert result["image_url"].startswith("/api/assets/images/story_")
-        mock_save.assert_called_once()
-        call_kwargs = mock_save.call_args
+        mock_mutations.save_story_moment.assert_called_once()
+        call_kwargs = mock_mutations.save_story_moment.call_args
         assert call_kwargs[1]["template_id"] == "story_combat" or call_kwargs[0][4] == "story_combat"
 
-    @patch("db_mutations.save_story_moment", new_callable=AsyncMock)
-    @patch("db_activity_queries.count_session_story_moments", new_callable=AsyncMock)
-    async def test_records_hollow_encounter(self, mock_count, mock_save):
-        mock_count.return_value = 1
+    async def test_records_hollow_encounter(self):
+        from session_tools import _record_story_moment_impl
+
+        mock_mutations = MagicMock()
+        mock_mutations.save_story_moment = AsyncMock()
+        mock_activities = MagicMock()
+        mock_activities.count_session_story_moments = AsyncMock(return_value=1)
+
         ctx = _make_context()
         result = json.loads(
-            await record_story_moment._func(ctx, moment_key="hollow_encounter", description="Teal light spread.")
+            await _record_story_moment_impl(
+                ctx,
+                moment_key="hollow_encounter",
+                description="Teal light spread.",
+                mutations=mock_mutations,
+                activities=mock_activities,
+            )
         )
         assert result["recorded"] is True
         assert result["moment_key"] == "hollow_encounter"
 
-    @patch("db_mutations.save_story_moment", new_callable=AsyncMock)
-    @patch("db_activity_queries.count_session_story_moments", new_callable=AsyncMock)
-    async def test_records_god_contact(self, mock_count, mock_save):
-        mock_count.return_value = 2
+    async def test_records_god_contact(self):
+        from session_tools import _record_story_moment_impl
+
+        mock_mutations = MagicMock()
+        mock_mutations.save_story_moment = AsyncMock()
+        mock_activities = MagicMock()
+        mock_activities.count_session_story_moments = AsyncMock(return_value=2)
+
         ctx = _make_context()
         result = json.loads(
-            await record_story_moment._func(ctx, moment_key="god_contact", description="Veythar's voice echoed.")
+            await _record_story_moment_impl(
+                ctx,
+                moment_key="god_contact",
+                description="Veythar's voice echoed.",
+                mutations=mock_mutations,
+                activities=mock_activities,
+            )
         )
         assert result["recorded"] is True
 
-    @patch("db_activity_queries.count_session_story_moments", new_callable=AsyncMock)
-    async def test_enforces_max_per_session(self, mock_count):
-        mock_count.return_value = 3
+    async def test_enforces_max_per_session(self):
+        from session_tools import _record_story_moment_impl
+
+        mock_mutations = MagicMock()
+        mock_activities = MagicMock()
+        mock_activities.count_session_story_moments = AsyncMock(return_value=3)
+
         ctx = _make_context()
-        result = json.loads(await record_story_moment._func(ctx, moment_key="combat", description="Another fight."))
+        result = json.loads(
+            await _record_story_moment_impl(
+                ctx,
+                moment_key="combat",
+                description="Another fight.",
+                mutations=mock_mutations,
+                activities=mock_activities,
+            )
+        )
         assert "error" in result
         assert "3" in result["error"]
 
     async def test_description_too_long(self):
+        from session_tools import record_story_moment
+
         ctx = _make_context()
         result = json.loads(await record_story_moment._func(ctx, moment_key="combat", description="x" * 600))
         assert "error" in result
@@ -209,19 +249,33 @@ SAMPLE_INVENTORY = [
 ]
 
 
-@patch("db.transaction", _mock_transaction)
 class TestAddToInventorySendsFullInventory:
-    @patch("db_queries.get_player_inventory", new_callable=AsyncMock)
-    @patch("db_mutations.add_inventory_item", new_callable=AsyncMock)
-    @patch("db_content_queries.get_item", new_callable=AsyncMock)
-    async def test_sends_full_inventory_array(self, mock_item, mock_add, mock_inv):
-        from inventory_tools import add_to_inventory
+    async def test_sends_full_inventory_array(self):
+        from inventory_tools import _add_to_inventory_impl
 
-        mock_item.return_value = SAMPLE_ITEM_NO_ART
-        mock_inv.return_value = SAMPLE_INVENTORY
+        mock_db = MagicMock()
+        mock_conn = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db._compute_item_image_url = _compute_item_image_url
+        mock_mutations = MagicMock()
+        mock_mutations.add_inventory_item = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player_inventory = AsyncMock(return_value=SAMPLE_INVENTORY)
+        mock_content = MagicMock()
+        mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM_NO_ART)
+
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await add_to_inventory._func(ctx, item_id="rations_basic", quantity=1, source="bought")
+        await _add_to_inventory_impl(
+            ctx,
+            item_id="rations_basic",
+            quantity=1,
+            source="bought",
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
 
         # Should have been called twice: inventory_updated + item_acquired
         assert room.local_participant.publish_data.call_count == 2
@@ -237,34 +291,64 @@ class TestAddToInventorySendsFullInventory:
         assert second_call["type"] == E.ITEM_ACQUIRED
         assert second_call["name"] == "Trail Rations"
 
-    @patch("db_queries.get_player_inventory", new_callable=AsyncMock)
-    @patch("db_mutations.add_inventory_item", new_callable=AsyncMock)
-    @patch("db_content_queries.get_item", new_callable=AsyncMock)
-    async def test_item_acquired_includes_image_url(self, mock_item, mock_add, mock_inv):
-        from inventory_tools import add_to_inventory
+    async def test_item_acquired_includes_image_url(self):
+        from inventory_tools import _add_to_inventory_impl
 
-        mock_item.return_value = SAMPLE_ITEM_WITH_ART
-        mock_inv.return_value = SAMPLE_INVENTORY
+        mock_db = MagicMock()
+        mock_conn = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db._compute_item_image_url = _compute_item_image_url
+        mock_mutations = MagicMock()
+        mock_mutations.add_inventory_item = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player_inventory = AsyncMock(return_value=SAMPLE_INVENTORY)
+        mock_content = MagicMock()
+        mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM_WITH_ART)
+
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await add_to_inventory._func(ctx, item_id="shortsword_basic", quantity=1, source="looted")
+        await _add_to_inventory_impl(
+            ctx,
+            item_id="shortsword_basic",
+            quantity=1,
+            source="looted",
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
 
         second_call = json.loads(room.local_participant.publish_data.call_args_list[1][0][0])
         assert second_call["type"] == E.ITEM_ACQUIRED
         assert "image_url" in second_call
         assert second_call["image_url"].startswith("/api/assets/images/img_")
 
-    @patch("db_queries.get_player_inventory", new_callable=AsyncMock)
-    @patch("db_mutations.add_inventory_item", new_callable=AsyncMock)
-    @patch("db_content_queries.get_item", new_callable=AsyncMock)
-    async def test_item_acquired_omits_image_url_when_no_art(self, mock_item, mock_add, mock_inv):
-        from inventory_tools import add_to_inventory
+    async def test_item_acquired_omits_image_url_when_no_art(self):
+        from inventory_tools import _add_to_inventory_impl
 
-        mock_item.return_value = SAMPLE_ITEM_NO_ART
-        mock_inv.return_value = SAMPLE_INVENTORY
+        mock_db = MagicMock()
+        mock_conn = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db._compute_item_image_url = _compute_item_image_url
+        mock_mutations = MagicMock()
+        mock_mutations.add_inventory_item = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player_inventory = AsyncMock(return_value=SAMPLE_INVENTORY)
+        mock_content = MagicMock()
+        mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM_NO_ART)
+
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await add_to_inventory._func(ctx, item_id="rations_basic", quantity=1, source="bought")
+        await _add_to_inventory_impl(
+            ctx,
+            item_id="rations_basic",
+            quantity=1,
+            source="bought",
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
 
         second_call = json.loads(room.local_participant.publish_data.call_args_list[1][0][0])
         assert second_call["type"] == E.ITEM_ACQUIRED

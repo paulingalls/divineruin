@@ -2,14 +2,14 @@
 session state unchanged on DB failure, partial rewards not applied."""
 
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from inventory_tools import remove_from_inventory
-from movement_tools import move_player
-from progression_tools import award_xp
-from quest_tools import update_quest
+from inventory_tools import _remove_from_inventory_impl
+from movement_tools import _move_player_impl
+from progression_tools import _award_xp_impl
+from quest_tools import _update_quest_impl
 from session_data import SessionData
 
 SAMPLE_PLAYER = {
@@ -80,25 +80,30 @@ async def _failing_transaction():
     yield  # pragma: no cover
 
 
+def _make_failing_db():
+    """Create a mock db module whose transaction always fails."""
+    mock_db = MagicMock()
+    mock_db.transaction = _failing_transaction
+    return mock_db
+
+
 # --- award_xp: no events on txn failure ---
 
 
 class TestAwardXpRollback:
     @pytest.mark.asyncio
-    @patch("db.transaction", _failing_transaction)
     async def test_no_events_on_txn_failure(self):
         room = _make_mock_room()
         ctx = _make_context(room=room)
         with pytest.raises(RuntimeError, match="DB connection lost"):
-            await award_xp._func(ctx, amount=50, reason="test")
+            await _award_xp_impl(ctx, amount=50, reason="test", db_mod=_make_failing_db())
         room.local_participant.publish_data.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("db.transaction", _failing_transaction)
     async def test_no_session_event_on_txn_failure(self):
         ctx = _make_context()
         with pytest.raises(RuntimeError):
-            await award_xp._func(ctx, amount=50, reason="test")
+            await _award_xp_impl(ctx, amount=50, reason="test", db_mod=_make_failing_db())
         assert len(ctx.userdata.recent_events) == 0
 
 
@@ -107,25 +112,33 @@ class TestAwardXpRollback:
 
 class TestMovePlayerAtomicity:
     @pytest.mark.asyncio
-    @patch("db.transaction", _failing_transaction)
-    @patch("db_content_queries.get_location", new_callable=AsyncMock)
-    async def test_session_location_unchanged_on_db_failure(self, mock_loc):
-        mock_loc.return_value = SAMPLE_LOCATION
+    async def test_session_location_unchanged_on_db_failure(self):
+        mock_content = MagicMock()
+        mock_content.get_location = AsyncMock(return_value=SAMPLE_LOCATION)
         ctx = _make_context(location_id="accord_guild_hall")
         with pytest.raises(RuntimeError, match="DB connection lost"):
-            await move_player._func(ctx, destination_id="accord_market_square")
+            await _move_player_impl(
+                ctx,
+                destination_id="accord_market_square",
+                db_mod=_make_failing_db(),
+                content=mock_content,
+            )
         # Session location must NOT have been updated
         assert ctx.userdata.location_id == "accord_guild_hall"
 
     @pytest.mark.asyncio
-    @patch("db.transaction", _failing_transaction)
-    @patch("db_content_queries.get_location", new_callable=AsyncMock)
-    async def test_no_events_on_db_failure(self, mock_loc):
-        mock_loc.return_value = SAMPLE_LOCATION
+    async def test_no_events_on_db_failure(self):
+        mock_content = MagicMock()
+        mock_content.get_location = AsyncMock(return_value=SAMPLE_LOCATION)
         room = _make_mock_room()
         ctx = _make_context(room=room)
         with pytest.raises(RuntimeError):
-            await move_player._func(ctx, destination_id="accord_market_square")
+            await _move_player_impl(
+                ctx,
+                destination_id="accord_market_square",
+                db_mod=_make_failing_db(),
+                content=mock_content,
+            )
         room.local_participant.publish_data.assert_not_called()
 
 
@@ -134,14 +147,18 @@ class TestMovePlayerAtomicity:
 
 class TestRemoveInventoryAtomicity:
     @pytest.mark.asyncio
-    @patch("db.transaction", _failing_transaction)
-    @patch("db_content_queries.get_item", new_callable=AsyncMock)
-    async def test_no_events_on_txn_failure(self, mock_item):
-        mock_item.return_value = {"id": "hp", "name": "Health Potion"}
+    async def test_no_events_on_txn_failure(self):
+        mock_content = MagicMock()
+        mock_content.get_item = AsyncMock(return_value={"id": "hp", "name": "Health Potion"})
         room = _make_mock_room()
         ctx = _make_context(room=room)
         with pytest.raises(RuntimeError):
-            await remove_from_inventory._func(ctx, item_id="hp")
+            await _remove_from_inventory_impl(
+                ctx,
+                item_id="hp",
+                db_mod=_make_failing_db(),
+                content=mock_content,
+            )
         room.local_participant.publish_data.assert_not_called()
 
 
@@ -150,22 +167,32 @@ class TestRemoveInventoryAtomicity:
 
 class TestUpdateQuestAtomicity:
     @pytest.mark.asyncio
-    @patch("db.transaction", _failing_transaction)
-    @patch("db_content_queries.get_quest", new_callable=AsyncMock)
-    async def test_no_events_on_txn_failure(self, mock_quest):
-        mock_quest.return_value = SAMPLE_QUEST
+    async def test_no_events_on_txn_failure(self):
+        mock_content = MagicMock()
+        mock_content.get_quest = AsyncMock(return_value=SAMPLE_QUEST)
         room = _make_mock_room()
         ctx = _make_context(room=room)
         with pytest.raises(RuntimeError):
-            await update_quest._func(ctx, quest_id="greyvale_anomaly", new_stage_id=0)
+            await _update_quest_impl(
+                ctx,
+                quest_id="greyvale_anomaly",
+                new_stage_id=0,
+                db_mod=_make_failing_db(),
+                content=mock_content,
+            )
         room.local_participant.publish_data.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("db.transaction", _failing_transaction)
-    @patch("db_content_queries.get_quest", new_callable=AsyncMock)
-    async def test_no_session_event_on_txn_failure(self, mock_quest):
-        mock_quest.return_value = SAMPLE_QUEST
+    async def test_no_session_event_on_txn_failure(self):
+        mock_content = MagicMock()
+        mock_content.get_quest = AsyncMock(return_value=SAMPLE_QUEST)
         ctx = _make_context()
         with pytest.raises(RuntimeError):
-            await update_quest._func(ctx, quest_id="greyvale_anomaly", new_stage_id=0)
+            await _update_quest_impl(
+                ctx,
+                quest_id="greyvale_anomaly",
+                new_stage_id=0,
+                db_mod=_make_failing_db(),
+                content=mock_content,
+            )
         assert len(ctx.userdata.recent_events) == 0
