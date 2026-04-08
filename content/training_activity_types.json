@@ -1,0 +1,178 @@
+[
+  {
+    "id": "spell_cantrip",
+    "first_half_min_seconds": 10800,
+    "first_half_max_seconds": 18000,
+    "second_half_min_seconds": 7200,
+    "second_half_max_seconds": 14400,
+    "midpoint_decision": {
+      "prompt": "The gestures feel natural. Do you practice speed or precision?",
+      "options": [
+        {
+          "id": "speed",
+          "label": "Practice speed",
+          "micro_bonus": { "type": "cast_speed", "value": -0.5 }
+        },
+        {
+          "id": "precision",
+          "label": "Practice precision",
+          "micro_bonus": { "type": "hit_bonus", "value": 1 }
+        }
+      ]
+    }
+  },
+  {
+    "id": "spell_standard",
+    "first_half_min_seconds": 14400,
+    "first_half_max_seconds": 21600,
+    "second_half_min_seconds": 10800,
+    "second_half_max_seconds": 18000,
+    "midpoint_decision": {
+      "prompt": "The incantation splits two ways \u2014 power or control?",
+      "options": [
+        {
+          "id": "power",
+          "label": "Emphasize power",
+          "micro_bonus": { "type": "damage_die", "value": 1 }
+        },
+        {
+          "id": "control",
+          "label": "Emphasize control",
+          "micro_bonus": { "type": "save_dc", "value": 1 }
+        }
+      ]
+    }
+  },
+  {
+    "id": "spell_major",
+    "first_half_min_seconds": 14400,
+    "first_half_max_seconds": 21600,
+    "second_half_min_seconds": 10800,
+    "second_half_max_seconds": 18000,
+    "midpoint_decision": {
+      "prompt": "The magic resists. Do you push through the resistance or work around it?",
+      "options": [
+        {
+          "id": "push",
+          "label": "Push through the resistance",
+          "micro_bonus": { "type": "fast_learn", "cycles_saved": 1, "resonance_cost": 1 }
+        },
+        {
+          "id": "work_around",
+          "label": "Work around it",
+          "micro_bonus": { "type": "safe_learn", "cycles_saved": 0, "resonance_cost": 0 }
+        }
+      ]
+    }
+  },
+  {
+    "id": "spell_supreme",
+    "first_half_min_seconds": 18000,
+    "first_half_max_seconds": 28800,
+    "second_half_min_seconds": 14400,
+    "second_half_max_seconds": 21600,
+    "midpoint_decision": {
+      "prompt": "The magic resists. Do you push through the resistance or work around it?",
+      "options": [
+        {
+          "id": "push",
+          "label": "Push through the resistance",
+          "micro_bonus": { "type": "fast_learn", "cycles_saved": 1, "resonance_cost": 1 }
+        },
+        {
+          "id": "work_around",
+          "label": "Work around it",
+          "micro_bonus": { "type": "safe_learn", "cycles_saved": 0, "resonance_cost": 0 }
+        }
+      ]
+    }
+  },
+  {
+    "id": "recipe_study",
+    "first_half_min_seconds": 10800,
+    "first_half_max_seconds": 18000,
+    "second_half_min_seconds": 7200,
+    "second_half_max_seconds": 14400,
+    "midpoint_decision": {
+      "prompt": "You've found two approaches to the recipe \u2014 the traditional method or an experimental twist?",
+      "options": [
+        {
+          "id": "traditional",
+          "label": "Follow the traditional method",
+          "micro_bonus": { "type": "quality_bonus", "value": 1 }
+        },
+        {
+          "id": "experimental",
+          "label": "Try the experimental twist",
+          "micro_bonus": { "type": "variant_chance", "value": 0.15 }
+        }
+      ]
+    }
+  },
+  {
+    "id": "technique_base",
+    "first_half_min_seconds": 14400,
+    "first_half_max_seconds": 21600,
+    "second_half_min_seconds": 10800,
+    "second_half_max_seconds": 18000,
+    "midpoint_decision": {
+      "prompt": "Your mentor demonstrates two stances. The aggressive one or the defensive one?",
+      "options": [
+        {
+          "id": "aggressive",
+          "label": "The aggressive stance",
+          "micro_bonus": { "type": "damage_bonus", "value": 1 }
+        },
+        {
+          "id": "defensive",
+          "label": "The defensive stance",
+          "micro_bonus": { "type": "ac_bonus", "value": 1 }
+        }
+      ]
+    }
+  },
+  {
+    "id": "technique_mentor",
+    "first_half_min_seconds": 18000,
+    "first_half_max_seconds": 25200,
+    "second_half_min_seconds": 14400,
+    "second_half_max_seconds": 21600,
+    "midpoint_decision": {
+      "prompt": "The footwork requires a choice \u2014 speed or stability?",
+      "options": [
+        {
+          "id": "speed",
+          "label": "Speed",
+          "micro_bonus": { "type": "range_bonus", "value": 5 }
+        },
+        {
+          "id": "stability",
+          "label": "Stability",
+          "micro_bonus": { "type": "save_advantage", "value": "moved" }
+        }
+      ]
+    }
+  },
+  {
+    "id": "skill_practice",
+    "first_half_min_seconds": 10800,
+    "first_half_max_seconds": 18000,
+    "second_half_min_seconds": 7200,
+    "second_half_max_seconds": 10800,
+    "midpoint_decision": {
+      "prompt": "You've hit a plateau. Drill the fundamentals, or experiment with advanced technique?",
+      "options": [
+        {
+          "id": "fundamentals",
+          "label": "Drill the fundamentals",
+          "micro_bonus": { "type": "fundamentals", "counter_bonus": 1 }
+        },
+        {
+          "id": "advanced",
+          "label": "Experiment with advanced technique",
+          "micro_bonus": { "type": "advanced", "next_check_advantage": true }
+        }
+      ]
+    }
+  }
+]

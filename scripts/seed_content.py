@@ -27,6 +27,8 @@ TABLE_MAP = {
     "voice_registry.json": "voice_registry",
     "inventory_pools.json": "inventory_pools",
     "level_progression.json": "level_progression",
+    "training_activity_types.json": "training_activity_types",
+    "training_programs.json": "training_programs",
 }
 
 PK_COLUMN = {

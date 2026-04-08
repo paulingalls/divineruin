@@ -1,0 +1,36 @@
+[
+  {
+    "id": "combat_basics",
+    "name": "Combat Fundamentals",
+    "training_activity_type": "technique_base",
+    "stat": "strength",
+    "dc": 13,
+    "mentor_id": "guildmaster_torin"
+  },
+  {
+    "id": "endurance_training",
+    "name": "Endurance Training",
+    "training_activity_type": "skill_practice",
+    "stat": "constitution",
+    "dc": 13,
+    "mentor_id": "guildmaster_torin"
+  },
+  {
+    "id": "arcane_study",
+    "name": "Arcane Study",
+    "training_activity_type": "spell_standard",
+    "stat": "intelligence",
+    "skill": "arcana",
+    "dc": 14,
+    "mentor_id": "scholar_emris"
+  },
+  {
+    "id": "perception_drills",
+    "name": "Perception Drills",
+    "training_activity_type": "skill_practice",
+    "stat": "wisdom",
+    "skill": "perception",
+    "dc": 12,
+    "mentor_id": "guildmaster_torin"
+  }
+]
