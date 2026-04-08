@@ -12,6 +12,7 @@ import pytest
 from training_rules import (
     TRAINING_ACTIVITY_CONFIG,
     CompletionResult,
+    DurationRange,
     MidpointDecision,
     MidpointResult,
     TrainingActivityType,
@@ -19,6 +20,7 @@ from training_rules import (
     complete_training_cycle,
     get_midpoint_decision,
     resolve_midpoint_decision,
+    set_training_activity_types,
     start_training_cycle,
     validate_training_activity_type,
 )
@@ -263,3 +265,29 @@ class TestDurationRanges:
         actual_max = dur.first_half_max + dur.second_half_max
         assert actual_min >= min_total, f"{atype} min total too low"
         assert actual_max <= max_total, f"{atype} max total too high"
+
+
+# ── Runtime-loaded config test seam ─────────────────────────────────────
+
+
+class TestTrainingConfigSeam:
+    def test_set_training_activity_types_populates_config(self) -> None:
+        from training_rules import get_activity_type_config
+
+        fixture: dict[str, tuple[DurationRange, MidpointDecision]] = {
+            "technique_base": (
+                DurationRange(14400, 21600, 10800, 18000),
+                MidpointDecision(prompt="test", options=[]),
+            ),
+        }
+        set_training_activity_types(fixture)
+
+        dur, _ = get_activity_type_config("technique_base")
+        assert dur.first_half_min == 14400
+
+    def test_get_activity_type_config_raises_on_unknown(self) -> None:
+        from training_rules import get_activity_type_config
+
+        set_training_activity_types({})
+        with pytest.raises(ValueError, match="Unknown"):
+            get_activity_type_config("nonexistent")

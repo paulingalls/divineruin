@@ -1,10 +1,14 @@
-"""Training cycle state machine — 5-state async training. Zero IO, zero async.
+"""Training cycle state machine — 5-state async training.
 
 States: initiated → running_first_half → awaiting_decision → running_second_half → complete
 
-All functions accept an optional `rng` for deterministic testing.
+All rules functions are pure/sync. Config is loaded from the DB at worker
+startup via load_training_activity_types() (async), or injected via
+set_training_activity_types() in tests.
 """
 
+import json
+import logging
 import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -87,107 +91,79 @@ class CompletionResult:
 # ── Duration config (hours → seconds) ─────────────────────────────────
 
 
-def _h(hours: int) -> int:
-    return hours * 3600
+# Module-level runtime-loaded config. Populated by load_training_activity_types()
+# at worker startup, or by set_training_activity_types() in tests.
+# TRAINING_ACTIVITY_CONFIG is kept as a live alias for backward compatibility
+# with existing test imports.
+_activity_types: dict[str, tuple[DurationRange, MidpointDecision]] = {}
+TRAINING_ACTIVITY_CONFIG = _activity_types
+
+logger = logging.getLogger("divineruin.training")
 
 
-_SPELL_RESIST_DECISION = MidpointDecision(
-    prompt="The magic resists. Do you push through the resistance or work around it?",
-    options=[
-        DecisionOption(
-            "push",
-            "Push through the resistance",
-            {"type": "fast_learn", "cycles_saved": 1, "resonance_cost": 1},
-        ),
-        DecisionOption(
-            "work_around",
-            "Work around it",
-            {"type": "safe_learn", "cycles_saved": 0, "resonance_cost": 0},
-        ),
-    ],
-)
+def parse_activity_type_row(activity_type_id: str, data: dict) -> tuple[DurationRange, MidpointDecision]:
+    """Parse a raw dict (from JSON file or DB JSONB) into the typed config tuple.
 
-# Ranges from game_mechanics_core.md lines 719-727
-TRAINING_ACTIVITY_CONFIG: dict[TrainingActivityType, tuple[DurationRange, MidpointDecision]] = {
-    "spell_cantrip": (
-        DurationRange(_h(3), _h(5), _h(2), _h(4)),
-        MidpointDecision(
-            prompt="The gestures feel natural. Do you practice speed or precision?",
-            options=[
-                DecisionOption("speed", "Practice speed", {"type": "cast_speed", "value": -0.5}),
-                DecisionOption("precision", "Practice precision", {"type": "hit_bonus", "value": 1}),
-            ],
-        ),
-    ),
-    "spell_standard": (
-        DurationRange(_h(4), _h(6), _h(3), _h(5)),
-        MidpointDecision(
-            prompt="The incantation splits two ways — power or control?",
-            options=[
-                DecisionOption("power", "Emphasize power", {"type": "damage_die", "value": 1}),
-                DecisionOption("control", "Emphasize control", {"type": "save_dc", "value": 1}),
-            ],
-        ),
-    ),
-    "spell_major": (DurationRange(_h(4), _h(6), _h(3), _h(5)), _SPELL_RESIST_DECISION),
-    "spell_supreme": (DurationRange(_h(5), _h(8), _h(4), _h(6)), _SPELL_RESIST_DECISION),
-    "recipe_study": (
-        DurationRange(_h(3), _h(5), _h(2), _h(4)),
-        MidpointDecision(
-            prompt="You've found two approaches to the recipe — the traditional method or an experimental twist?",
-            options=[
-                DecisionOption(
-                    "traditional",
-                    "Follow the traditional method",
-                    {"type": "quality_bonus", "value": 1},
-                ),
-                DecisionOption(
-                    "experimental",
-                    "Try the experimental twist",
-                    {"type": "variant_chance", "value": 0.15},
-                ),
-            ],
-        ),
-    ),
-    "technique_base": (
-        DurationRange(_h(4), _h(6), _h(3), _h(5)),
-        MidpointDecision(
-            prompt="Your mentor demonstrates two stances. The aggressive one or the defensive one?",
-            options=[
-                DecisionOption("aggressive", "The aggressive stance", {"type": "damage_bonus", "value": 1}),
-                DecisionOption("defensive", "The defensive stance", {"type": "ac_bonus", "value": 1}),
-            ],
-        ),
-    ),
-    "technique_mentor": (
-        DurationRange(_h(5), _h(7), _h(4), _h(6)),
-        MidpointDecision(
-            prompt="The footwork requires a choice — speed or stability?",
-            options=[
-                DecisionOption("speed", "Speed", {"type": "range_bonus", "value": 5}),
-                DecisionOption("stability", "Stability", {"type": "save_advantage", "value": "moved"}),
-            ],
-        ),
-    ),
-    "skill_practice": (
-        DurationRange(_h(3), _h(5), _h(2), _h(3)),
-        MidpointDecision(
-            prompt="You've hit a plateau. Drill the fundamentals, or experiment with advanced technique?",
-            options=[
-                DecisionOption(
-                    "fundamentals",
-                    "Drill the fundamentals",
-                    {"type": "fundamentals", "counter_bonus": 1},
-                ),
-                DecisionOption(
-                    "advanced",
-                    "Experiment with advanced technique",
-                    {"type": "advanced", "next_check_advantage": True},
-                ),
-            ],
-        ),
-    ),
-}
+    Shared by load_training_activity_types (DB) and tests/training_config_fixture (JSON).
+    Raises ValueError wrapping the underlying error with the row id for context.
+    """
+    try:
+        dur = DurationRange(
+            first_half_min=data["first_half_min_seconds"],
+            first_half_max=data["first_half_max_seconds"],
+            second_half_min=data["second_half_min_seconds"],
+            second_half_max=data["second_half_max_seconds"],
+        )
+        decision_raw = data["midpoint_decision"]
+        options = [
+            DecisionOption(
+                id=o["id"],
+                label=o["label"],
+                micro_bonus=o.get("micro_bonus", {}),
+            )
+            for o in decision_raw["options"]
+        ]
+        decision = MidpointDecision(prompt=decision_raw["prompt"], options=options)
+    except (KeyError, TypeError) as e:
+        raise ValueError(f"Malformed training_activity_types row {activity_type_id!r}: {e}") from e
+    return (dur, decision)
+
+
+def set_training_activity_types(
+    config: dict[str, tuple[DurationRange, MidpointDecision]],
+) -> None:
+    """Test seam: populate _activity_types directly without going through the DB."""
+    _activity_types.clear()
+    _activity_types.update(config)
+
+
+def get_activity_type_config(
+    activity_type: str,
+) -> tuple[DurationRange, MidpointDecision]:
+    """Return (duration_range, midpoint_decision) for a training activity type.
+
+    Raises ValueError if the type is not loaded.
+    """
+    if activity_type not in _activity_types:
+        raise ValueError(f"Unknown training activity type: {activity_type!r}")
+    return _activity_types[activity_type]
+
+
+async def load_training_activity_types() -> None:
+    """Load training activity type config from the DB into _activity_types.
+
+    Called from async_worker startup. Fails loud if the query errors —
+    the rules engine depends on this map being populated.
+    """
+    import db
+
+    pool = await db.get_pool()
+    rows = await pool.fetch("SELECT id, data FROM training_activity_types")
+    _activity_types.clear()
+    for row in rows:
+        data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
+        _activity_types[row["id"]] = parse_activity_type_row(row["id"], data)
+    logger.info("Loaded %d training activity types", len(_activity_types))
 
 
 # ── Public functions ───────────────────────────────────────────────────

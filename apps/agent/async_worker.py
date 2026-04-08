@@ -431,6 +431,12 @@ async def main() -> None:
     await db.get_pool()
     logger.info("Database connection established")
 
+    # Load content-backed config. Fail loud if the query fails — the rules
+    # engine depends on this map being populated before the polling loop starts.
+    from training_rules import load_training_activity_types
+
+    await load_training_activity_types()
+
     try:
         while True:
             try:
