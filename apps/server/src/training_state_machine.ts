@@ -1,12 +1,15 @@
 /**
  * Training cycle state machine — first-half init only.
  *
- * Ports the start_training_cycle logic from Python training_rules.py.
+ * Config (duration ranges + midpoint decisions) is loaded from the
+ * training_activity_types table at startup via loadTrainingActivityTypes().
  * The Python async worker handles midpoint and completion transitions;
- * the TS server only needs to create the initial state.
+ * the TS server only needs first-half init and decision option display.
  *
  * Uses `transition_at` (not `decision_at`) to match db_training.py query convention.
  */
+
+import { sql } from "./db.ts";
 
 export type TrainingActivityType =
   | "spell_cantrip"
@@ -18,9 +21,23 @@ export type TrainingActivityType =
   | "technique_mentor"
   | "skill_practice";
 
-interface DurationRange {
-  first_half_min: number; // seconds
-  first_half_max: number;
+export interface MidpointOption {
+  id: string;
+  label: string;
+}
+
+export interface MidpointDecision {
+  prompt: string;
+  options: MidpointOption[];
+}
+
+export interface ActivityTypeConfig {
+  id: string;
+  first_half_min_seconds: number;
+  first_half_max_seconds: number;
+  second_half_min_seconds: number;
+  second_half_max_seconds: number;
+  midpoint_decision: MidpointDecision;
 }
 
 export interface TrainingCycleInit {
@@ -29,107 +46,99 @@ export interface TrainingCycleInit {
   transition_at: string; // ISO 8601
 }
 
-function h(hours: number): number {
-  return hours * 3600;
+// Runtime-loaded config (populated by loadTrainingActivityTypes at startup)
+let activityTypes: ReadonlyMap<string, ActivityTypeConfig> = new Map();
+
+export function getActivityTypeConfig(id: string): ActivityTypeConfig | undefined {
+  return activityTypes.get(id);
 }
 
-// First-half duration ranges from Python TRAINING_ACTIVITY_CONFIG (training_rules.py).
-// Only first-half is needed here; second-half is handled by the Python async worker.
-export const TRAINING_DURATION_CONFIG: Record<TrainingActivityType, DurationRange> = {
-  spell_cantrip: { first_half_min: h(3), first_half_max: h(5) },
-  spell_standard: { first_half_min: h(4), first_half_max: h(6) },
-  spell_major: { first_half_min: h(4), first_half_max: h(6) },
-  spell_supreme: { first_half_min: h(5), first_half_max: h(8) },
-  recipe_study: { first_half_min: h(3), first_half_max: h(5) },
-  technique_base: { first_half_min: h(4), first_half_max: h(6) },
-  technique_mentor: { first_half_min: h(5), first_half_max: h(7) },
-  skill_practice: { first_half_min: h(3), first_half_max: h(5) },
-};
-
-// Midpoint decision config from Python TRAINING_ACTIVITY_CONFIG (training_rules.py).
-// Only id + label ported; micro_bonus is Python-side only.
-interface MidpointOption {
-  id: string;
-  label: string;
+export function setTrainingActivityTypes(map: ReadonlyMap<string, ActivityTypeConfig>): void {
+  activityTypes = map;
 }
 
-interface MidpointDecision {
-  prompt: string;
-  options: MidpointOption[];
+function requireNumber(obj: Record<string, unknown>, key: string, rowId: string): number {
+  const v = obj[key];
+  if (typeof v !== "number") {
+    throw new Error(`training_activity_types[${rowId}].${key} is not a number: ${String(v)}`);
+  }
+  return v;
 }
 
-const SPELL_RESIST_DECISION: MidpointDecision = {
-  prompt: "The magic resists. Do you push through the resistance or work around it?",
-  options: [
-    { id: "push", label: "Push through the resistance" },
-    { id: "work_around", label: "Work around it" },
-  ],
-};
+function requireString(obj: Record<string, unknown>, key: string, context: string): string {
+  const v = obj[key];
+  if (typeof v !== "string") {
+    throw new Error(`${context}.${key} is not a string: ${String(v)}`);
+  }
+  return v;
+}
 
-const TRAINING_MIDPOINT_DECISIONS: Record<TrainingActivityType, MidpointDecision> = {
-  spell_cantrip: {
-    prompt: "The gestures feel natural. Do you practice speed or precision?",
-    options: [
-      { id: "speed", label: "Practice speed" },
-      { id: "precision", label: "Practice precision" },
-    ],
-  },
-  spell_standard: {
-    prompt: "The incantation splits two ways — power or control?",
-    options: [
-      { id: "power", label: "Emphasize power" },
-      { id: "control", label: "Emphasize control" },
-    ],
-  },
-  spell_major: SPELL_RESIST_DECISION,
-  spell_supreme: SPELL_RESIST_DECISION,
-  recipe_study: {
-    prompt:
-      "You've found two approaches to the recipe — the traditional method or an experimental twist?",
-    options: [
-      { id: "traditional", label: "Follow the traditional method" },
-      { id: "experimental", label: "Try the experimental twist" },
-    ],
-  },
-  technique_base: {
-    prompt: "Your mentor demonstrates two stances. The aggressive one or the defensive one?",
-    options: [
-      { id: "aggressive", label: "The aggressive stance" },
-      { id: "defensive", label: "The defensive stance" },
-    ],
-  },
-  technique_mentor: {
-    prompt: "The footwork requires a choice — speed or stability?",
-    options: [
-      { id: "speed", label: "Speed" },
-      { id: "stability", label: "Stability" },
-    ],
-  },
-  skill_practice: {
-    prompt: "You've hit a plateau. Drill the fundamentals, or experiment with advanced technique?",
-    options: [
-      { id: "fundamentals", label: "Drill the fundamentals" },
-      { id: "advanced", label: "Experiment with advanced technique" },
-    ],
-  },
-};
+/** Parse a raw JSONB row from training_activity_types.data into the typed config. */
+function parseActivityTypeRow(id: string, raw: unknown): ActivityTypeConfig {
+  if (!raw || typeof raw !== "object") {
+    throw new Error(`training_activity_types[${id}].data is not an object`);
+  }
+  const data = raw as Record<string, unknown>;
+  const decisionRaw = data.midpoint_decision;
+  if (!decisionRaw || typeof decisionRaw !== "object") {
+    throw new Error(`training_activity_types[${id}].midpoint_decision is missing`);
+  }
+  const decision = decisionRaw as Record<string, unknown>;
+  const rawOptions = decision.options;
+  if (!Array.isArray(rawOptions)) {
+    throw new Error(`training_activity_types[${id}].midpoint_decision.options is not an array`);
+  }
+  const options = rawOptions.map((raw, i) => {
+    const o = raw as Record<string, unknown>;
+    const ctx = `training_activity_types[${id}].midpoint_decision.options[${i}]`;
+    return {
+      id: requireString(o, "id", ctx),
+      label: requireString(o, "label", ctx),
+    };
+  });
+  return {
+    id,
+    first_half_min_seconds: requireNumber(data, "first_half_min_seconds", id),
+    first_half_max_seconds: requireNumber(data, "first_half_max_seconds", id),
+    second_half_min_seconds: requireNumber(data, "second_half_min_seconds", id),
+    second_half_max_seconds: requireNumber(data, "second_half_max_seconds", id),
+    midpoint_decision: {
+      prompt: requireString(decision, "prompt", `training_activity_types[${id}].midpoint_decision`),
+      options,
+    },
+  };
+}
+
+export async function loadTrainingActivityTypes(): Promise<void> {
+  const rows = await sql<{ id: string; data: unknown }[]>`
+    SELECT id, data FROM training_activity_types
+  `;
+  const map = new Map<string, ActivityTypeConfig>();
+  for (const row of rows) {
+    map.set(row.id, parseActivityTypeRow(row.id, row.data));
+  }
+  activityTypes = map;
+  console.log(`Loaded ${map.size} training activity types`);
+}
 
 export function getMidpointDecision(activityType: string): MidpointDecision {
-  if (!(activityType in TRAINING_MIDPOINT_DECISIONS)) {
+  const config = activityTypes.get(activityType);
+  if (!config) {
     throw new Error(`Unknown training activity type: ${activityType}`);
   }
-  return TRAINING_MIDPOINT_DECISIONS[activityType as TrainingActivityType];
+  return config.midpoint_decision;
 }
 
 export function startTrainingCycle(activityType: string, startTime: Date): TrainingCycleInit {
-  if (!(activityType in TRAINING_DURATION_CONFIG)) {
+  const config = activityTypes.get(activityType);
+  if (!config) {
     throw new Error(`Unknown training activity type: ${activityType}`);
   }
-  const config = TRAINING_DURATION_CONFIG[activityType as TrainingActivityType];
 
   const firstHalf =
-    Math.floor(Math.random() * (config.first_half_max - config.first_half_min + 1)) +
-    config.first_half_min;
+    Math.floor(
+      Math.random() * (config.first_half_max_seconds - config.first_half_min_seconds + 1),
+    ) + config.first_half_min_seconds;
   const transitionAt = new Date(startTime.getTime() + firstHalf * 1000);
 
   return {

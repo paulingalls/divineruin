@@ -3,9 +3,9 @@ import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
 import {
   CRAFTING_RECIPES,
-  TRAINING_PROGRAMS,
   ERRAND_TEMPLATES,
   VALID_ACTIVITY_TYPES,
+  getTrainingProgram,
 } from "./activity_templates.ts";
 import { displayName } from "@divineruin/shared";
 import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts";
@@ -67,7 +67,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       if (!programId) {
         return Response.json({ error: "program_id is required for training" }, { status: 400 });
       }
-      const program = TRAINING_PROGRAMS[programId];
+      const program = getTrainingProgram(programId);
       if (!program) {
         return Response.json({ error: "Unknown training program" }, { status: 400 });
       }

@@ -41,6 +41,7 @@ const {
 } = await import("./activities.ts");
 
 const { setupDangerLevelFixture } = await import("./test-fixtures/danger-levels.ts");
+const { setupTrainingConfigFixture } = await import("./test-fixtures/training-config.ts");
 
 function makeRequest(method: string, path: string, body?: Record<string, unknown>): Request {
   const opts: RequestInit = { method };
@@ -55,6 +56,7 @@ beforeEach(() => {
   mockQueryResults = [];
   queryCallIndex = 0;
   setupDangerLevelFixture();
+  setupTrainingConfigFixture();
 });
 
 describe("handleCreateActivity", () => {

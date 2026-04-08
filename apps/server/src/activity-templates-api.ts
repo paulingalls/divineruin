@@ -1,4 +1,9 @@
-import { CRAFTING_RECIPES, TRAINING_PROGRAMS, ERRAND_TEMPLATES } from "./activity_templates.ts";
+import {
+  CRAFTING_RECIPES,
+  ERRAND_TEMPLATES,
+  getAllTrainingPrograms,
+} from "./activity_templates.ts";
+import { getActivityTypeConfig } from "./training_state_machine.ts";
 import { sql } from "./db.ts";
 import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
@@ -118,18 +123,28 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
       {
         type: "training",
         label: "Training",
-        items: Object.values(TRAINING_PROGRAMS).map((p) => ({
-          id: p.id,
-          name: p.name,
-          duration: formatDuration(p.duration_min_seconds, p.duration_max_seconds),
-          params: {
-            program_id: p.id,
-            stat: p.stat,
-            skill: p.skill,
-          },
-          materials: null,
-          active: activeMap.get(p.id) ?? null,
-        })),
+        items: getAllTrainingPrograms().map((p) => {
+          const activityType = getActivityTypeConfig(p.training_activity_type);
+          if (!activityType) {
+            throw new Error(
+              `Training program ${p.id} references unknown activity type ${p.training_activity_type}`,
+            );
+          }
+          const minSec = activityType.first_half_min_seconds + activityType.second_half_min_seconds;
+          const maxSec = activityType.first_half_max_seconds + activityType.second_half_max_seconds;
+          return {
+            id: p.id,
+            name: p.name,
+            duration: formatDuration(minSec, maxSec),
+            params: {
+              program_id: p.id,
+              stat: p.stat,
+              skill: p.skill,
+            },
+            materials: null,
+            active: activeMap.get(p.id) ?? null,
+          };
+        }),
       },
       {
         type: "companion_errand",

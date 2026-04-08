@@ -17,11 +17,17 @@ import { sql } from "./db.ts";
 import { handleGetActivityTemplates } from "./activity-templates-api.ts";
 import { handleStorePushToken, handleInternalPush } from "./push.ts";
 import { loadDestinationDangerLevels } from "./errand_risk.ts";
+import { loadTrainingActivityTypes } from "./training_state_machine.ts";
+import { loadTrainingPrograms } from "./activity_templates.ts";
 import { isDev } from "./env.ts";
 
-// Load location danger levels at startup. Fail loud if the query fails — the
-// errand validator depends on this map being populated before requests arrive.
-await loadDestinationDangerLevels();
+// Load content-backed config at startup. Fail loud if any query fails — the
+// request handlers depend on these maps being populated before requests arrive.
+await Promise.all([
+  loadDestinationDangerLevels(),
+  loadTrainingActivityTypes(),
+  loadTrainingPrograms(),
+]);
 
 const enableDebug =
   isDev && process.env.NODE_ENV !== "production" && Bun.env.ENABLE_DEBUG_CONSOLE === "true";

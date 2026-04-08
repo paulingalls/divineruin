@@ -18,6 +18,7 @@ void mock.module("./db.ts", () => {
 
 const { handleGetCatchUpFeed, getRelativeTime, getCompanionIdleChatter, activityToFeedItem } =
   await import("./catchup.ts");
+const { setupTrainingConfigFixture } = await import("./test-fixtures/training-config.ts");
 
 function makeRequest(method: string, path: string): Request {
   return new Request(`http://localhost${path}`, { method });
@@ -26,6 +27,7 @@ function makeRequest(method: string, path: string): Request {
 beforeEach(() => {
   mockQueryResults = [];
   queryCallIndex = 0;
+  setupTrainingConfigFixture();
 });
 
 describe("getRelativeTime", () => {
