@@ -1,14 +1,16 @@
 /**
- * Errand risk computation — pure functions, no IO.
+ * Errand risk computation — pure functions, no IO except the startup loader.
  *
  * Ports risk logic from Python errand_rules.py (lines 63-159).
  * Risk is rolled at dispatch time and stored in activity parameters
  * so the async worker only narrates the predetermined outcome.
  *
- * Danger levels are hardcoded here rather than read from locations.json.
- * locations.json uses numeric values (0=safe, 1=moderate, 2=dangerous, 3=extreme);
- * this mapping must be updated when new destinations are added.
+ * Destination danger levels are loaded from the locations table at startup
+ * via loadDestinationDangerLevels(). locations.json uses numeric values
+ * (0=safe, 1=moderate, 2=dangerous, 3=extreme).
  */
+
+import { sql } from "./db.ts";
 
 export type DangerLevel = "safe" | "moderate" | "dangerous" | "extreme";
 export type InjuryStatus = "none" | "injured" | "emergency";
@@ -39,15 +41,48 @@ const COMPANION_INJURY_REDUCTION: Record<string, number> = {
   companion_kael: 5,
 };
 
-// Hardcoded danger levels — see file header comment for numeric mapping
-export const DESTINATION_DANGER_LEVELS: Record<string, DangerLevel> = {
-  millhaven: "safe",
-  millhaven_inn: "safe",
-  accord_guild_hall: "safe",
-  accord_market_square: "moderate",
-  accord_dockside: "moderate",
-  greyvale_ruins_entrance: "dangerous",
-};
+// Runtime-loaded danger levels (populated by loadDestinationDangerLevels at startup)
+let dangerLevels: ReadonlyMap<string, DangerLevel> = new Map();
+
+export function getDangerLevel(destination: string): DangerLevel | undefined {
+  return dangerLevels.get(destination);
+}
+
+// Test seam: inject a fixture map without going through the DB
+export function setDestinationDangerLevels(map: ReadonlyMap<string, DangerLevel>): void {
+  dangerLevels = map;
+}
+
+export function numericToDangerLevel(raw: string | number | null | undefined): DangerLevel {
+  if (raw === null || raw === undefined || raw === "") return "safe";
+  switch (String(raw)) {
+    case "0":
+      return "safe";
+    case "1":
+      return "moderate";
+    case "2":
+      return "dangerous";
+    case "3":
+      return "extreme";
+    default:
+      console.warn(
+        `numericToDangerLevel: unknown danger_level value ${String(raw)}, defaulting to safe`,
+      );
+      return "safe";
+  }
+}
+
+export async function loadDestinationDangerLevels(): Promise<void> {
+  const rows = await sql<{ id: string; danger_level: string | null }[]>`
+    SELECT id, data->>'danger_level' AS danger_level FROM locations
+  `;
+  const map = new Map<string, DangerLevel>();
+  for (const row of rows) {
+    map.set(row.id, numericToDangerLevel(row.danger_level));
+  }
+  dangerLevels = map;
+  console.log(`Loaded danger levels for ${map.size} locations`);
+}
 
 // Blocked (danger_level, errand_type) combos — port of errand_rules.py:20-25
 const BLOCKED_DANGER_COMBOS: ReadonlySet<string> = new Set([
@@ -73,7 +108,7 @@ export function validateErrandDispatch(
   destination: string,
   companionId: string,
 ): ValidationResult {
-  const dangerLevel = DESTINATION_DANGER_LEVELS[destination];
+  const dangerLevel = getDangerLevel(destination);
   if (dangerLevel === undefined) {
     return { valid: false, error: `Unknown destination: ${destination}` };
   }
@@ -100,7 +135,7 @@ export function rollErrandRisk(
   destination: string,
   companionId: string,
 ): InjuryStatus {
-  const dangerLevel = DESTINATION_DANGER_LEVELS[destination] ?? "safe";
+  const dangerLevel = getDangerLevel(destination) ?? "safe";
   const key = `${dangerLevel}|${errandType}`;
   const entry = ERRAND_RISK_TABLE[key];
 

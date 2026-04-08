@@ -40,6 +40,8 @@ const {
   handleAudioFile,
 } = await import("./activities.ts");
 
+const { setupDangerLevelFixture } = await import("./test-fixtures/danger-levels.ts");
+
 function makeRequest(method: string, path: string, body?: Record<string, unknown>): Request {
   const opts: RequestInit = { method };
   if (body) {
@@ -52,6 +54,7 @@ function makeRequest(method: string, path: string, body?: Record<string, unknown
 beforeEach(() => {
   mockQueryResults = [];
   queryCallIndex = 0;
+  setupDangerLevelFixture();
 });
 
 describe("handleCreateActivity", () => {
@@ -244,6 +247,21 @@ describe("handleCreateActivity", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain("Invalid destination");
+  });
+
+  test("rejects errand when companion_sable does social", async () => {
+    const req = makeRequest("POST", "/api/activities", {
+      type: "companion_errand",
+      parameters: {
+        errand_type: "social",
+        destination: "millhaven_inn",
+        companion_id: "companion_sable",
+      },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain("companion_sable");
   });
 });
 

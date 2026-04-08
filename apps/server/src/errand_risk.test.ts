@@ -1,22 +1,36 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test, beforeEach } from "bun:test";
 import {
   rollErrandRisk,
   validateErrandDispatch,
-  DESTINATION_DANGER_LEVELS,
+  numericToDangerLevel,
   type InjuryStatus,
 } from "./errand_risk.ts";
+import { setupDangerLevelFixture } from "./test-fixtures/danger-levels.ts";
 
-describe("DESTINATION_DANGER_LEVELS", () => {
-  test("millhaven is safe", () => {
-    expect(DESTINATION_DANGER_LEVELS["millhaven"]).toBe("safe");
+beforeEach(() => {
+  setupDangerLevelFixture();
+});
+
+describe("numericToDangerLevel", () => {
+  test("converts numeric strings to danger levels", () => {
+    expect(numericToDangerLevel("0")).toBe("safe");
+    expect(numericToDangerLevel("1")).toBe("moderate");
+    expect(numericToDangerLevel("2")).toBe("dangerous");
+    expect(numericToDangerLevel("3")).toBe("extreme");
   });
 
-  test("greyvale_ruins_entrance is dangerous", () => {
-    expect(DESTINATION_DANGER_LEVELS["greyvale_ruins_entrance"]).toBe("dangerous");
+  test("null and undefined default to safe", () => {
+    expect(numericToDangerLevel(null)).toBe("safe");
+    expect(numericToDangerLevel(undefined)).toBe("safe");
   });
 
-  test("accord_market_square is moderate", () => {
-    expect(DESTINATION_DANGER_LEVELS["accord_market_square"]).toBe("moderate");
+  test("unknown values default to safe", () => {
+    expect(numericToDangerLevel("99")).toBe("safe");
+    expect(numericToDangerLevel("garbage")).toBe("safe");
+  });
+
+  test("accepts numeric input", () => {
+    expect(numericToDangerLevel(2)).toBe("dangerous");
   });
 });
 

@@ -9,7 +9,7 @@ import {
 } from "./activity_templates.ts";
 import { displayName } from "@divineruin/shared";
 import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts";
-import { rollErrandRisk } from "./errand_risk.ts";
+import { rollErrandRisk, validateErrandDispatch } from "./errand_risk.ts";
 import { startTrainingCycle } from "./training_state_machine.ts";
 
 async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<SlotCounts> {
@@ -170,9 +170,14 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         return Response.json({ error: "Invalid destination for errand type" }, { status: 400 });
       }
 
+      const companionId = (params.companion_id as string) || "companion_kael";
+      const validation = validateErrandDispatch(errandType, destination, companionId);
+      if (!validation.valid) {
+        return Response.json({ error: validation.error }, { status: 400 });
+      }
+
       durationMin = template.duration_min_seconds;
       durationMax = template.duration_max_seconds;
-      const companionId = (params.companion_id as string) || "companion_kael";
       activityParams = {
         errand_type: errandType,
         destination,

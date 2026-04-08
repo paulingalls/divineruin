@@ -16,7 +16,12 @@ import { handleGenerateImage } from "./image-gen-api.ts";
 import { sql } from "./db.ts";
 import { handleGetActivityTemplates } from "./activity-templates-api.ts";
 import { handleStorePushToken, handleInternalPush } from "./push.ts";
+import { loadDestinationDangerLevels } from "./errand_risk.ts";
 import { isDev } from "./env.ts";
+
+// Load location danger levels at startup. Fail loud if the query fails — the
+// errand validator depends on this map being populated before requests arrive.
+await loadDestinationDangerLevels();
 
 const enableDebug =
   isDev && process.env.NODE_ENV !== "production" && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
