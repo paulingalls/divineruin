@@ -20,7 +20,7 @@ from tool_support import LOCATION_CORRUPTION, _resolve_ambient_sounds, _validate
 logger = logging.getLogger("divineruin.tools")
 
 
-async def _check_exit_requirement(requires: str, player_id: str) -> bool:
+async def _check_exit_requirement(requires: str, player_id: str, *, queries=db_queries) -> bool:
     """Evaluate an exit requirement string. Supports || (OR) branches.
 
     Patterns:
@@ -31,7 +31,7 @@ async def _check_exit_requirement(requires: str, player_id: str) -> bool:
     for branch in branches:
         if branch.startswith("skill_check:"):
             continue  # LLM must resolve via request_skill_check first
-        if await db_queries.get_player_flag(player_id, branch):
+        if await queries.get_player_flag(player_id, branch):
             return True
     return False
 
@@ -45,12 +45,24 @@ async def move_player(
     """Move the player to a connected location. Provide the destination
     location ID from the current location's exits. Returns the full scene
     context for the new location."""
+    return await _move_player_impl(context, destination_id)
+
+
+async def _move_player_impl(
+    context: RunContext[SessionData],
+    destination_id: str,
+    *,
+    db_mod=db,
+    mutations=db_mutations,
+    queries=db_queries,
+    content=db_content_queries,
+) -> str | tuple:
     logger.info("move_player called: destination_id=%s", destination_id)
     if err := _validate_id(destination_id, "destination_id"):
         return err
     session: SessionData = context.userdata
 
-    current_location = await db_content_queries.get_location(session.location_id)
+    current_location = await content.get_location(session.location_id)
     if current_location is None:
         return json.dumps({"error": f"Current location '{session.location_id}' not found."})
 
@@ -75,7 +87,7 @@ async def move_player(
 
     if isinstance(exit_entry, dict) and exit_entry.get("requires"):
         requirement = exit_entry["requires"]
-        allowed = await _check_exit_requirement(requirement, session.player_id)
+        allowed = await _check_exit_requirement(requirement, session.player_id, queries=queries)
         if not allowed:
             # Return a narrative hint — do NOT expose raw flag names or DCs to the LLM
             hint = exit_entry.get(
@@ -93,7 +105,7 @@ async def move_player(
     previous_location_id = session.location_id
     pending_events: list[tuple[str, dict]] = []
 
-    destination_location = await db_content_queries.get_location(destination_id)
+    destination_location = await content.get_location(destination_id)
 
     # Detect region boundary crossing for handoff
     current_region = current_location.get("region_type", REGION_CITY)
@@ -101,11 +113,11 @@ async def move_player(
     region_change = current_region != dest_region
 
     destination_exits = destination_location.get("exits", {}) if destination_location else {}
-    exit_connections = db.extract_exit_connections(destination_exits)
+    exit_connections = db_mod.extract_exit_connections(destination_exits)
 
-    async with db.transaction() as conn:
-        await db_mutations.update_player_location(session.player_id, destination_id, conn=conn)
-        await db_mutations.upsert_map_progress(session.player_id, destination_id, exit_connections, conn=conn)
+    async with db_mod.transaction() as conn:
+        await mutations.update_player_location(session.player_id, destination_id, conn=conn)
+        await mutations.upsert_map_progress(session.player_id, destination_id, exit_connections, conn=conn)
 
         pending_events.append(
             (

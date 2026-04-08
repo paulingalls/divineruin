@@ -79,17 +79,29 @@ async def start_combat(
     participants and establishes turn order. Call this when combat begins.
     Provide the encounter template ID and a brief description of how
     combat starts."""
+    return await _start_combat_impl(context, encounter_id, encounter_description)
+
+
+async def _start_combat_impl(
+    context: RunContext[SessionData],
+    encounter_id: str,
+    encounter_description: str,
+    *,
+    mutations=db_mutations,
+    queries=db_queries,
+    content=db_content_queries,
+) -> str | tuple:
     logger.info("start_combat called: encounter_id=%s", encounter_id)
     session: SessionData = context.userdata
 
     if session.in_combat:
         return json.dumps({"error": "Already in combat. End the current combat first."})
 
-    encounter = await db_content_queries.get_encounter_template(encounter_id)
+    encounter = await content.get_encounter_template(encounter_id)
     if encounter is None:
         return json.dumps({"error": f"Encounter template '{encounter_id}' not found."})
 
-    player = await db_queries.get_player(session.player_id)
+    player = await queries.get_player(session.player_id)
     if player is None:
         return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
@@ -119,7 +131,7 @@ async def start_combat(
     comp_stats: dict = {}
     comp_attrs: dict = {}
     if session.companion_can_act and session.companion:
-        companion_npc = await db_content_queries.get_npc(session.companion.id)
+        companion_npc = await content.get_npc(session.companion.id)
         if companion_npc:
             comp_stats = companion_npc.get("combat_stats", {})
             comp_attrs = comp_stats.get("attributes", {"strength": 12, "dexterity": 12})
@@ -195,7 +207,7 @@ async def start_combat(
     )
 
     # Persist and update session
-    await db_mutations.save_combat_state(combat_id, combat_state.to_dict())
+    await mutations.save_combat_state(combat_id, combat_state.to_dict())
     session.combat_state = combat_state
 
     # Build initiative summary once for event + response
@@ -260,6 +272,17 @@ async def resolve_enemy_turn(
     """Resolve an enemy's attack against a target during combat. Provide the
     enemy's participant ID, which action from their action_pool to use, and
     the target's participant ID. Narrate the result dramatically."""
+    return await _resolve_enemy_turn_impl(context, enemy_id, action_name, target_id)
+
+
+async def _resolve_enemy_turn_impl(
+    context: RunContext[SessionData],
+    enemy_id: str,
+    action_name: str,
+    target_id: str,
+    *,
+    mutations=db_mutations,
+) -> str:
     logger.info("resolve_enemy_turn called: enemy=%s, action=%s, target=%s", enemy_id, action_name, target_id)
     session: SessionData = context.userdata
 
@@ -330,10 +353,10 @@ async def resolve_enemy_turn(
 
     # Update DB if target is a player
     if target.type == "player":
-        await db_mutations.update_player_hp(target.id, target.hp_current)
+        await mutations.update_player_hp(target.id, target.hp_current)
 
     # Persist combat state
-    await db_mutations.save_combat_state(cs.combat_id, cs.to_dict())
+    await mutations.save_combat_state(cs.combat_id, cs.to_dict())
 
     # Publish events
     await publish_game_event(
@@ -388,6 +411,14 @@ async def request_death_save(
     """Roll a death saving throw for the fallen player. Call this when the
     player is at 0 HP and it's their turn (or when prompted). Nat 20 restores
     1 HP. Three successes stabilize, three failures mean death."""
+    return await _request_death_save_impl(context)
+
+
+async def _request_death_save_impl(
+    context: RunContext[SessionData],
+    *,
+    mutations=db_mutations,
+) -> str:
     logger.info("request_death_save called")
     session: SessionData = context.userdata
 
@@ -418,7 +449,7 @@ async def request_death_save(
         player_participant.is_fallen = False
         player_participant.death_save_successes = 0
         player_participant.death_save_failures = 0
-        await db_mutations.update_player_hp(session.player_id, 1)
+        await mutations.update_player_hp(session.player_id, 1)
         sounds.append(SOUND_DEATH_SAVE_CRITICAL)
     elif result.stabilized:
         sounds.append(SOUND_PLAYER_STABILIZED)
@@ -430,7 +461,7 @@ async def request_death_save(
         sounds.append(SOUND_DEATH_SAVE_FAIL)
 
     # Persist
-    await db_mutations.save_combat_state(cs.combat_id, cs.to_dict())
+    await mutations.save_combat_state(cs.combat_id, cs.to_dict())
 
     # Publish events
     await publish_game_event(
@@ -479,6 +510,15 @@ async def end_combat(
     """End the current combat. Outcome must be 'victory', 'defeat', or 'fled'.
     On victory, calculates XP from defeated enemies (call award_xp separately
     with the returned total). Clears all combat state."""
+    return await _end_combat_impl(context, outcome)
+
+
+async def _end_combat_impl(
+    context: RunContext[SessionData],
+    outcome: str,
+    *,
+    mutations=db_mutations,
+) -> str | tuple:
     logger.info("end_combat called: outcome=%s", outcome)
     session: SessionData = context.userdata
 
@@ -509,7 +549,7 @@ async def end_combat(
     session.combat_state = None
 
     # Delete from DB
-    await db_mutations.delete_combat_state(combat_id)
+    await mutations.delete_combat_state(combat_id)
 
     # Determine stinger sound
     sound_map = {

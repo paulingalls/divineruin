@@ -66,9 +66,16 @@ def detect_scene_transition(scene_cache: dict[str, dict], quest: dict, old_stage
     }
 
 
-async def _build_scene_context(location_id: str, session: SessionData, location: dict | None = None) -> dict:
+async def _build_scene_context(
+    location_id: str,
+    session: SessionData,
+    location: dict | None = None,
+    *,
+    content=db_content_queries,
+    queries=db_queries,
+) -> dict:
     if location is None:
-        location = await db_content_queries.get_location(location_id)
+        location = await content.get_location(location_id)
     if location is None:
         return {"error": f"Location '{location_id}' not found."}
 
@@ -76,13 +83,13 @@ async def _build_scene_context(location_id: str, session: SessionData, location:
     location = _strip_hidden_dcs(location)
 
     npcs_raw, targets_raw, player = await asyncio.gather(
-        db_queries.get_npcs_at_location(location_id),
-        db_queries.get_targets_at_location(location_id),
-        db_queries.get_player(session.player_id),
+        queries.get_npcs_at_location(location_id),
+        queries.get_targets_at_location(location_id),
+        queries.get_player(session.player_id),
     )
 
     npc_ids = [npc["id"] for npc in npcs_raw]
-    dispositions = await db_queries.get_npc_dispositions(npc_ids, session.player_id) if npc_ids else {}
+    dispositions = await queries.get_npc_dispositions(npc_ids, session.player_id) if npc_ids else {}
     npcs = []
     for npc in npcs_raw:
         disposition = dispositions.get(npc["id"]) or str(npc.get("default_disposition", "neutral"))
@@ -106,12 +113,22 @@ async def enter_location(context: RunContext[SessionData], location_id: str) -> 
     combat targets, and player status. Call this when entering a new area or
     starting a session. Use the returned IDs for follow-up tools like
     query_npc (for deeper NPC interaction) or request_attack (for combat)."""
+    return await _enter_location_impl(context, location_id)
+
+
+async def _enter_location_impl(
+    context: RunContext[SessionData],
+    location_id: str,
+    *,
+    content=db_content_queries,
+    queries=db_queries,
+) -> str:
     logger.info("enter_location called: location_id=%s", location_id)
     if err := _validate_id(location_id, "location_id"):
         return err
     session: SessionData = context.userdata
 
-    result = await _build_scene_context(location_id, session)
+    result = await _build_scene_context(location_id, session, content=content, queries=queries)
     logger.info(
         "enter_location result: %d NPCs, %d targets at %s",
         len(result.get("npcs", [])),

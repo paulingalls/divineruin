@@ -33,6 +33,20 @@ async def update_npc_disposition(
     """Shift an NPC's disposition toward or away from the player.
     Delta range: -2 to +2. Positive = warmer, negative = colder.
     Scale: hostile -> wary -> neutral -> friendly -> trusted."""
+    return await _update_npc_disposition_impl(context, npc_id, delta, reason)
+
+
+async def _update_npc_disposition_impl(
+    context: RunContext[SessionData],
+    npc_id: str,
+    delta: int,
+    reason: str,
+    *,
+    db_mod=db,
+    mutations=db_mutations,
+    queries=db_queries,
+    content=db_content_queries,
+) -> str:
     logger.info("update_npc_disposition called: npc_id=%s, delta=%d, reason=%s", npc_id, delta, reason)
     cap_err = _cap_str(reason, 256, "reason")
     if cap_err:
@@ -41,21 +55,20 @@ async def update_npc_disposition(
 
     delta = max(-2, min(2, delta))
 
-    # Cached content read — outside transaction
-    npc = await db_content_queries.get_npc(npc_id)
+    npc = await content.get_npc(npc_id)
     if npc is None:
         return json.dumps({"error": f"NPC '{npc_id}' not found."})
 
     pending_events: list[tuple[str, dict]] = []
 
-    async with db.transaction() as conn:
-        current = await db_queries.get_npc_disposition(npc_id, session.player_id, conn=conn, for_update=True)
+    async with db_mod.transaction() as conn:
+        current = await queries.get_npc_disposition(npc_id, session.player_id, conn=conn, for_update=True)
         if current is None:
             current = npc.get("default_disposition", "neutral")
 
         new_disposition = _clamp_disposition_shift(current, delta)
 
-        await db_mutations.set_npc_disposition(npc_id, session.player_id, new_disposition, reason, conn=conn)
+        await mutations.set_npc_disposition(npc_id, session.player_id, new_disposition, reason, conn=conn)
 
         pending_events.append(
             (
@@ -121,6 +134,17 @@ async def record_story_moment(
     only for first combat victory, Hollow discovery, or god contact.
     moment_key must be one of: combat, hollow_encounter, god_contact.
     description is a brief (1-2 sentence) scene summary."""
+    return await _record_story_moment_impl(context, moment_key, description)
+
+
+async def _record_story_moment_impl(
+    context: RunContext[SessionData],
+    moment_key: str,
+    description: str,
+    *,
+    mutations=db_mutations,
+    activities=db_activity_queries,
+) -> str:
     logger.info("record_story_moment called: moment_key=%s", moment_key)
     if moment_key not in STORY_MOMENTS:
         return json.dumps(
@@ -134,12 +158,11 @@ async def record_story_moment(
     template_id, asset_id = STORY_MOMENTS[moment_key]
     image_url = slug_asset_url(asset_id)
 
-    # Enforce per-session limit
-    count = await db_activity_queries.count_session_story_moments(sd.session_id)
+    count = await activities.count_session_story_moments(sd.session_id)
     if count >= MAX_STORY_MOMENTS_PER_SESSION:
         return json.dumps({"error": f"Maximum {MAX_STORY_MOMENTS_PER_SESSION} story moments per session."})
 
-    await db_mutations.save_story_moment(
+    await mutations.save_story_moment(
         session_id=sd.session_id,
         player_id=sd.player_id,
         moment_key=moment_key,

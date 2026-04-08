@@ -42,6 +42,10 @@ async def _apply_world_effects(
     session: SessionData,
     pending_events: list[tuple[str, dict]],
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    *,
+    mutations=db_mutations,
+    queries=db_queries,
+    content=db_content_queries,
 ) -> None:
     """Parse and apply deterministic world_effects from quest on_complete."""
     for effect_str in effects:
@@ -49,12 +53,12 @@ async def _apply_world_effects(
         if m:
             shorthand, delta_str = m.group(1), int(m.group(2))
             npc_id = EFFECT_NPC_MAP.get(shorthand, shorthand)
-            current = await db_queries.get_npc_disposition(npc_id, session.player_id, conn=conn)
+            current = await queries.get_npc_disposition(npc_id, session.player_id, conn=conn)
             if current is None:
-                npc = await db_content_queries.get_npc(npc_id)
+                npc = await content.get_npc(npc_id)
                 current = npc.get("default_disposition", "neutral") if npc else "neutral"
             new_disp = _clamp_disposition_shift(current, delta_str)
-            await db_mutations.set_npc_disposition(
+            await mutations.set_npc_disposition(
                 npc_id, session.player_id, new_disp, f"world_effect: {effect_str}", conn=conn
             )
             pending_events.append((E.DISPOSITION_CHANGED, {"npc_id": npc_id, "previous": current, "new": new_disp}))
@@ -103,13 +107,25 @@ async def update_quest(
     """Advance a quest to a new stage. For starting a quest, use stage 0.
     Stages must advance forward — no skipping or going backward.
     Rewards from the completing stage are automatically applied."""
+    return await _update_quest_impl(context, quest_id, new_stage_id)
+
+
+async def _update_quest_impl(
+    context: RunContext[SessionData],
+    quest_id: str,
+    new_stage_id: int,
+    *,
+    db_mod=db,
+    mutations=db_mutations,
+    queries=db_queries,
+    content=db_content_queries,
+) -> str | tuple:
     logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
     if err := _validate_id(quest_id, "quest_id"):
         return err
     session: SessionData = context.userdata
 
-    # Cached content read — outside transaction
-    quest = await db_content_queries.get_quest(quest_id)
+    quest = await content.get_quest(quest_id)
     if quest is None:
         return json.dumps({"error": f"Quest '{quest_id}' not found."})
 
@@ -122,8 +138,8 @@ async def update_quest(
     rewards_applied = []
     pending_events: list[tuple[str, dict]] = []
 
-    async with db.transaction() as conn:
-        player_quest = await db_queries.get_player_quest(session.player_id, quest_id, conn=conn, for_update=True)
+    async with db_mod.transaction() as conn:
+        player_quest = await queries.get_player_quest(session.player_id, quest_id, conn=conn, for_update=True)
 
         if player_quest is None:
             if new_stage_id != 0:
@@ -150,12 +166,12 @@ async def update_quest(
 
             xp_reward = on_complete.get("xp", 0)
             if xp_reward > 0:
-                player = await db_queries.get_player(session.player_id, conn=conn, for_update=True)
+                player = await queries.get_player(session.player_id, conn=conn, for_update=True)
                 if player:
                     current_xp = player.get("xp", 0)
                     current_level = player.get("level", 1)
                     level_result = rules_engine.check_level_up(current_xp, xp_reward, current_level)
-                    await db_mutations.update_player_xp(
+                    await mutations.update_player_xp(
                         session.player_id, level_result.new_xp, level_result.new_level, conn=conn
                     )
                     rewards_applied.append({"type": "xp", "amount": xp_reward, "leveled_up": level_result.leveled_up})
@@ -182,19 +198,27 @@ async def update_quest(
                 item_id = item_reward.get("item") or item_reward.get("item_id")
                 qty = item_reward.get("quantity", 1)
                 if item_id:
-                    await db_mutations.add_inventory_item(session.player_id, item_id, qty, conn=conn)
+                    await mutations.add_inventory_item(session.player_id, item_id, qty, conn=conn)
                     rewards_applied.append({"type": "item", "item_id": item_id, "quantity": qty})
 
             world_effects = on_complete.get("world_effects", [])
             if world_effects:
-                await _apply_world_effects(world_effects, session, pending_events, conn=conn)
+                await _apply_world_effects(
+                    world_effects,
+                    session,
+                    pending_events,
+                    conn=conn,
+                    mutations=mutations,
+                    queries=queries,
+                    content=content,
+                )
 
         new_stage = stages[new_stage_id]
         quest_data = {
             "current_stage": new_stage_id,
             "quest_name": quest.get("name", quest_id),
         }
-        await db_mutations.set_player_quest(session.player_id, quest_id, quest_data, conn=conn)
+        await mutations.set_player_quest(session.player_id, quest_id, quest_data, conn=conn)
 
         quest_updated_payload: dict = {
             "quest_id": quest_id,
@@ -210,7 +234,7 @@ async def update_quest(
     # Resolve item names for inventory events (cached reads, outside transaction)
     for reward in rewards_applied:
         if reward["type"] == "item":
-            item = await db_content_queries.get_item(reward["item_id"])
+            item = await content.get_item(reward["item_id"])
             item_name = item.get("name", reward["item_id"]) if item else reward["item_id"]
             pending_events.append(
                 (
@@ -248,7 +272,7 @@ async def update_quest(
     transition = None
     if quest.get("scene_graph"):
         scene_ids = [e["scene_id"] for e in quest["scene_graph"]]
-        scene_cache = await db_content_queries.get_scenes_batch(scene_ids)
+        scene_cache = await content.get_scenes_batch(scene_ids)
         transition = detect_scene_transition(scene_cache, quest, current_stage, new_stage_id)
     if transition and transition["region_changed"]:
         from livekit.agents.llm import ChatContext

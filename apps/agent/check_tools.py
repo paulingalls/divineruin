@@ -34,6 +34,17 @@ async def discover_hidden_element(
     Call when the player investigates, searches, or examines something.
     Provide the element_id from the location's hidden_elements list.
     A skill check is rolled against the element's stored DC."""
+    return await _discover_hidden_element_impl(context, element_id)
+
+
+async def _discover_hidden_element_impl(
+    context: RunContext[SessionData],
+    element_id: str,
+    *,
+    content=db_content_queries,
+    queries=db_queries,
+    mutations=db_mutations,
+) -> str:
     logger.info("discover_hidden_element called: element_id=%s", element_id)
     if err := _validate_id(element_id, "element_id"):
         return err
@@ -42,7 +53,7 @@ async def discover_hidden_element(
     if element_id in session.attempted_discoveries:
         return json.dumps({"error": f"Already searched for '{element_id}' this session."})
 
-    location = await db_content_queries.get_location(session.location_id)
+    location = await content.get_location(session.location_id)
     if location is None:
         return json.dumps({"error": f"Current location '{session.location_id}' not found."})
 
@@ -61,7 +72,7 @@ async def discover_hidden_element(
     discover_skill = element.get("discover_skill", "perception")
     dc = element.get("dc", 13)
 
-    player = await db_queries.get_player(session.player_id)
+    player = await queries.get_player(session.player_id)
     if player is None:
         return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
@@ -97,7 +108,7 @@ async def discover_hidden_element(
         response["description"] = element.get("description", "")
         loc_name = location.get("name", session.location_id)
         session.record_companion_memory(f"Discovered {element.get('description', element_id)} at {loc_name}")
-        await db_mutations.set_player_flag(session.player_id, f"{element_id}.discovered", True)
+        await mutations.set_player_flag(session.player_id, f"{element_id}.discovered", True)
     else:
         response["outcome"] = "not_found"
 
@@ -125,6 +136,18 @@ async def request_skill_check(
     attempts something uncertain. Provide the skill name, difficulty tier
     (trivial/easy/moderate/hard/very_hard/extreme/legendary), and a brief
     description of what they're attempting."""
+    return await _request_skill_check_impl(context, skill, difficulty, context_description)
+
+
+async def _request_skill_check_impl(
+    context: RunContext[SessionData],
+    skill: str,
+    difficulty: str,
+    context_description: str,
+    *,
+    queries=db_queries,
+    mutations=db_mutations,
+) -> str:
     logger.info(
         "request_skill_check called: skill=%s, difficulty=%s, context=%s", skill, difficulty, context_description
     )
@@ -141,7 +164,7 @@ async def request_skill_check(
             {"error": f"Unknown difficulty: '{difficulty}'. Valid: {sorted(VALID_DIFFICULTIES - {'deadly'})}"}
         )
 
-    player = await db_queries.get_player(session.player_id)
+    player = await queries.get_player(session.player_id)
     if player is None:
         return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
@@ -162,7 +185,7 @@ async def request_skill_check(
 
     # Track skill use for tier advancement
     skill_lower = skill.lower()
-    skill_adv = await db_queries.get_single_skill_advancement(session.player_id, skill_lower)
+    skill_adv = await queries.get_single_skill_advancement(session.player_id, skill_lower)
 
     adv = check_resolution.record_skill_use(
         {skill_lower: skill_adv["tier"]},
@@ -170,11 +193,11 @@ async def request_skill_check(
         {skill_lower: skill_adv["use_counter"]},
         narrative_moment=skill_adv["narrative_moment_ready"],
     )
-    await db_mutations.update_skill_advancement(session.player_id, adv.skill, adv.new_tier, adv.new_use_count)
+    await mutations.update_skill_advancement(session.player_id, adv.skill, adv.new_tier, adv.new_use_count)
 
     if adv.advanced:
         if adv.old_tier == "expert":
-            await db_mutations.clear_narrative_moment(session.player_id, adv.skill)
+            await mutations.clear_narrative_moment(session.player_id, adv.skill)
         await publish_game_event(
             session.room,
             E.SKILL_TIER_ADVANCED,
@@ -224,13 +247,22 @@ async def mark_skill_breakthrough(
     moment for the specified skill. This enables Expert\u2192Master advancement
     once the use counter threshold (40) is reached. Use when the player
     performs exceptionally on a skill during a high-stakes moment."""
+    return await _mark_skill_breakthrough_impl(context, skill)
+
+
+async def _mark_skill_breakthrough_impl(
+    context: RunContext[SessionData],
+    skill: str,
+    *,
+    mutations=db_mutations,
+) -> str:
     session: SessionData = context.userdata
     skill_lower = skill.lower()
 
     if skill_lower not in VALID_SKILLS:
         return json.dumps({"error": f"Unknown skill: '{skill}'. Valid: {sorted(VALID_SKILLS)}"})
 
-    await db_mutations.mark_narrative_moment(session.player_id, skill_lower)
+    await mutations.mark_narrative_moment(session.player_id, skill_lower)
     logger.info("mark_skill_breakthrough: player=%s, skill=%s", session.player_id, skill_lower)
     return json.dumps({"status": "ok", "skill": skill_lower, "narrative_moment_ready": True})
 
@@ -245,10 +277,21 @@ async def request_attack(
     """Resolve an attack against an NPC target. Provide the target NPC ID and
     the name of the weapon or spell being used. Narrate the result using
     the narrative_hint field."""
+    return await _request_attack_impl(context, target_id, weapon_or_spell)
+
+
+async def _request_attack_impl(
+    context: RunContext[SessionData],
+    target_id: str,
+    weapon_or_spell: str,
+    *,
+    queries=db_queries,
+    mutations=db_mutations,
+) -> str:
     logger.info("request_attack called: target_id=%s, weapon_or_spell=%s", target_id, weapon_or_spell)
     session: SessionData = context.userdata
 
-    player = await db_queries.get_player(session.player_id)
+    player = await queries.get_player(session.player_id)
     if player is None:
         return json.dumps({"error": f"Player '{session.player_id}' not found."})
 
@@ -262,7 +305,7 @@ async def request_attack(
     if weapon is None:
         return json.dumps({"error": f"Weapon '{weapon_or_spell}' not found in equipment."})
 
-    target = await db_queries.get_npc_combat_stats(target_id)
+    target = await queries.get_npc_combat_stats(target_id)
     if target is None:
         return json.dumps({"error": f"Target '{target_id}' not found in combat state."})
 
@@ -272,7 +315,7 @@ async def request_attack(
     result = check_resolution.resolve_attack(player, weapon, target_ac, target_hp)
 
     if result.hit:
-        await db_mutations.update_npc_hp(target_id, result.target_hp_remaining)
+        await mutations.update_npc_hp(target_id, result.target_hp_remaining)
 
     await publish_game_event(
         session.room,
@@ -328,6 +371,17 @@ async def request_saving_throw(
     """Request a saving throw from the current player. Provide the attribute
     (strength/dexterity/constitution/intelligence/wisdom/charisma), the DC,
     and what happens on failure."""
+    return await _request_saving_throw_impl(context, save_type, dc, effect_on_fail)
+
+
+async def _request_saving_throw_impl(
+    context: RunContext[SessionData],
+    save_type: str,
+    dc: int,
+    effect_on_fail: str,
+    *,
+    queries=db_queries,
+) -> str:
     logger.info("request_saving_throw called: save_type=%s, dc=%d, effect_on_fail=%s", save_type, dc, effect_on_fail)
     cap_err = _cap_str(effect_on_fail, 256, "effect_on_fail")
     if cap_err:
@@ -336,7 +390,7 @@ async def request_saving_throw(
         return json.dumps({"error": "DC must be between 1 and 30."})
     session: SessionData = context.userdata
 
-    player = await db_queries.get_player(session.player_id)
+    player = await queries.get_player(session.player_id)
     if player is None:
         return json.dumps({"error": f"Player '{session.player_id}' not found."})
 

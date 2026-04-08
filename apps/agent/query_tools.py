@@ -22,8 +22,8 @@ from tool_support import (
 logger = logging.getLogger("divineruin.tools")
 
 
-async def _resolve_disposition(npc_id: str, player_id: str, npc: dict) -> str:
-    disposition = await db_queries.get_npc_disposition(npc_id, player_id)
+async def _resolve_disposition(npc_id: str, player_id: str, npc: dict, *, queries=db_queries) -> str:
+    disposition = await queries.get_npc_disposition(npc_id, player_id)
     if disposition is None:
         disposition = npc.get("default_disposition", "neutral")
     return disposition
@@ -34,10 +34,19 @@ async def _resolve_disposition(npc_id: str, player_id: str, npc: dict) -> str:
 async def query_location(context: RunContext[SessionData], location_id: str) -> str:
     """Get location details by ID: description, atmosphere, features, exits.
     Use for scene descriptions and navigation."""
+    return await _query_location_impl(context, location_id)
+
+
+async def _query_location_impl(
+    context: RunContext[SessionData],
+    location_id: str,
+    *,
+    content=db_content_queries,
+) -> str:
     logger.info("query_location called: location_id=%s", location_id)
     if err := _validate_id(location_id, "location_id"):
         return err
-    location = await db_content_queries.get_location(location_id)
+    location = await content.get_location(location_id)
     if location is None:
         return json.dumps({"error": f"Location '{location_id}' not found."})
 
@@ -53,15 +62,25 @@ async def query_location(context: RunContext[SessionData], location_id: str) -> 
 async def query_npc(context: RunContext[SessionData], npc_id: str) -> str:
     """Get NPC details by ID: personality, speech style, knowledge filtered by
     the player's relationship. Use to roleplay NPCs accurately."""
+    return await _query_npc_impl(context, npc_id)
+
+
+async def _query_npc_impl(
+    context: RunContext[SessionData],
+    npc_id: str,
+    *,
+    queries=db_queries,
+    content=db_content_queries,
+) -> str:
     logger.info("query_npc called: npc_id=%s", npc_id)
     if err := _validate_id(npc_id, "npc_id"):
         return err
     session: SessionData = context.userdata
-    npc = await db_content_queries.get_npc(npc_id)
+    npc = await content.get_npc(npc_id)
     if npc is None:
         return json.dumps({"error": f"NPC '{npc_id}' not found."})
 
-    disposition = await _resolve_disposition(npc_id, session.player_id, npc)
+    disposition = await _resolve_disposition(npc_id, session.player_id, npc, queries=queries)
 
     knowledge = filter_knowledge(npc.get("knowledge", {}), disposition)
     narration = _npc_for_narration(npc, disposition, knowledge)
@@ -73,8 +92,17 @@ async def query_npc(context: RunContext[SessionData], npc_id: str) -> str:
 async def query_lore(context: RunContext[SessionData], topic: str) -> str:
     """Search world lore by topic keyword. Use for history, gods, the Hollow,
     races, cultures, and world events."""
+    return await _query_lore_impl(context, topic)
+
+
+async def _query_lore_impl(
+    context: RunContext[SessionData],
+    topic: str,
+    *,
+    content=db_content_queries,
+) -> str:
     logger.info("query_lore called: topic=%s", topic)
-    entries = await db_content_queries.search_lore(topic)
+    entries = await content.search_lore(topic)
     if not entries:
         return json.dumps(
             {"note": f"No lore entries found for '{topic}'. Improvise from your general knowledge of Aethos."}
@@ -97,9 +125,17 @@ async def query_lore(context: RunContext[SessionData], topic: str) -> str:
 @db_tool
 async def query_inventory(context: RunContext[SessionData]) -> str:
     """Get the current player's inventory items. Use when they ask what they are carrying."""
+    return await _query_inventory_impl(context)
+
+
+async def _query_inventory_impl(
+    context: RunContext[SessionData],
+    *,
+    queries=db_queries,
+) -> str:
     session: SessionData = context.userdata
     logger.info("query_inventory called: player_id=%s", session.player_id)
-    items = await db_queries.get_player_inventory(session.player_id)
+    items = await queries.get_player_inventory(session.player_id)
     if not items:
         return json.dumps({"note": "This player's inventory is empty. They carry nothing of note."})
 
