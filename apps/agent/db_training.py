@@ -1,5 +1,7 @@
 """Training activity DB queries and mutations. Separate module to avoid deepening db_queries.py."""
 
+from __future__ import annotations
+
 import json
 import logging
 import uuid
