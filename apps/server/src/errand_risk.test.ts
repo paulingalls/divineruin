@@ -24,9 +24,9 @@ describe("numericToDangerLevel", () => {
     expect(numericToDangerLevel(undefined)).toBe("safe");
   });
 
-  test("unknown values default to safe", () => {
-    expect(numericToDangerLevel("99")).toBe("safe");
-    expect(numericToDangerLevel("garbage")).toBe("safe");
+  test("unknown values throw", () => {
+    expect(() => numericToDangerLevel("99")).toThrow("unknown danger_level value 99");
+    expect(() => numericToDangerLevel("garbage")).toThrow("unknown danger_level value garbage");
   });
 
   test("accepts numeric input", () => {

@@ -65,10 +65,10 @@ export function numericToDangerLevel(raw: string | number | null | undefined): D
     case "3":
       return "extreme";
     default:
-      console.warn(
-        `numericToDangerLevel: unknown danger_level value ${String(raw)}, defaulting to safe`,
-      );
-      return "safe";
+      // Fail closed: an unknown value almost always means a typo in seed data.
+      // Defaulting to "safe" would silently downgrade a dangerous destination
+      // and bypass the errand restrictions in BLOCKED_DANGER_COMBOS.
+      throw new Error(`numericToDangerLevel: unknown danger_level value ${String(raw)}`);
   }
 }
 

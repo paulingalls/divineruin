@@ -10,12 +10,11 @@ Full pipeline with mocked LLM/TTS:
 
 import random
 import tempfile
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from async_rules import compute_resolve_time, resolve_crafting
+from async_rules import resolve_crafting
 from async_worker import _resolve_single_activity, resolve_due_activities
 from dialogue_parser import Segment
 
@@ -206,31 +205,7 @@ class TestFullPipeline:
 
 
 class TestSoftTimerVariance:
-    """Verify soft timer randomization produces actual variance."""
-
-    def test_10_activities_have_variance(self):
-        """10 activities with 4-8 hour range should resolve at varied times."""
-        start = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
-        min_s, max_s = 14400, 28800  # 4-8 hours
-
-        times = []
-        for seed in range(10):
-            rng = random.Random(seed)
-            t = compute_resolve_time(min_s, max_s, start_time=start, rng=rng)
-            delta = (t - start).total_seconds()
-            times.append(delta)
-
-        # All within range
-        assert all(min_s <= t <= max_s for t in times), f"Out of range: {times}"
-
-        # Actual variance
-        assert len(set(times)) > 1, "All resolve times are identical"
-        assert min(times) != max(times), "No spread in resolve times"
-
-        # Standard deviation > 0
-        mean = sum(times) / len(times)
-        variance = sum((t - mean) ** 2 for t in times) / len(times)
-        assert variance > 0, "Zero variance in soft timer"
+    """Verify resolution outputs vary with RNG seed."""
 
     def test_crafting_outcomes_vary(self):
         """Different RNG seeds produce different crafting outcomes."""

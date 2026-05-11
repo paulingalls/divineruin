@@ -1,26 +1,14 @@
 """Pure-function async activity resolution. Zero IO, zero async.
 
 All resolution functions accept an optional `rng` for deterministic testing.
+Activity validation lives in the TS server (apps/server/src/slot_validation.ts
+and errand_risk.ts) — Python only resolves outcomes for the async worker.
 """
 
 import random
-from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass
 
 from rules_engine import attribute_modifier, dc_for_tier, skill_modifier
-
-# --- Constants ---
-
-MAX_CONCURRENT_ACTIVITIES = 4
-
-VALID_ACTIVITY_TYPES = {"crafting", "companion_errand"}
-
-VALID_ERRAND_TYPES = {"scout", "social", "acquire", "relationship"}
-
-CRAFTING_OUTCOME_TIERS = ("success", "partial", "unexpected", "failure")
-TRAINING_OUTCOME_TIERS = ("breakthrough", "plateau", "redirection")
-ERRAND_OUTCOME_TIERS = ("great_success", "success", "partial", "complication")
-
 
 # --- Outcome dataclasses ---
 
@@ -46,67 +34,6 @@ class ErrandOutcome:
     relationship_change: int
     narrative_context: dict
     decision_options: list[dict]
-
-
-@dataclass(frozen=True)
-class ValidationResult:
-    valid: bool
-    errors: list[str] = field(default_factory=list)
-
-
-# --- Core functions ---
-
-
-def compute_resolve_time(
-    min_seconds: int,
-    max_seconds: int,
-    start_time: datetime | None = None,
-    rng: random.Random | None = None,
-) -> datetime:
-    """Compute a randomized resolve time within the soft range."""
-    r = rng or random.Random()
-    duration = r.randint(min_seconds, max_seconds)
-    base = start_time or datetime.now(UTC)
-    return base + timedelta(seconds=duration)
-
-
-def validate_activity_params(
-    activity_type: str,
-    parameters: dict,
-    player_data: dict,
-    slot_counts: dict[str, int],
-) -> ValidationResult:
-    """Validate activity creation parameters. Pure — no IO."""
-    from errand_rules import ActivitySlot, validate_slot_limits
-
-    errors: list[str] = []
-
-    if activity_type not in VALID_ACTIVITY_TYPES:
-        errors.append(f"Invalid activity type: {activity_type}")
-        return ValidationResult(valid=False, errors=errors)
-
-    slot_map: dict[str, ActivitySlot] = {"crafting": "crafting", "companion_errand": "companion"}
-    activity_slot: ActivitySlot = slot_map.get(activity_type, "training")
-    slot_result = validate_slot_limits(slot_counts, activity_slot)
-    errors.extend(slot_result.errors)
-
-    if activity_type == "crafting":
-        if not parameters.get("recipe_id"):
-            errors.append("recipe_id is required for crafting")
-        required_materials = parameters.get("required_materials", [])
-        inventory = {item.get("id"): item for item in player_data.get("inventory", [])}
-        for mat_id in required_materials:
-            if mat_id not in inventory:
-                errors.append(f"Missing required material: {mat_id}")
-
-    elif activity_type == "companion_errand":
-        errand_type = parameters.get("errand_type")
-        if errand_type not in VALID_ERRAND_TYPES:
-            errors.append(f"Invalid errand type: {errand_type}")
-        if not parameters.get("destination"):
-            errors.append("destination is required for companion errands")
-
-    return ValidationResult(valid=len(errors) == 0, errors=errors)
 
 
 # --- Resolution functions ---
