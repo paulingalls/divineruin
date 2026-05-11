@@ -1,6 +1,25 @@
 # Divine Ruin — Economy & Pricing Reference
 
-> **Purpose:** Canonical economy specification. All prices validated against the economy anchor (1 sp = 1 day's unskilled labor). Source of truth for Phase 9 implementation.
+> **Purpose:** Canonical economy specification and pricing reference. This document holds the *static* economic data — currency definitions, the economic anchor, and the canonical price tables. The *dynamic* economic systems (faction pricing modifiers, merchant inventory mechanics, supply and demand, gold sinks, inflation control, player-to-player trade) live in dedicated subsystem documents under `economy/`.
+>
+> **All prices validated against the economy anchor** (1 sp = 1 day's unskilled labor). Source of truth for Phase 9 implementation.
+
+---
+
+## Subsystem Documents
+
+This document is the canonical pricing reference. The mechanical systems that operate on top of these prices are documented separately:
+
+| Document | Purpose |
+|---|---|
+| [`economy/faction_reputation_pricing.md`](economy/faction_reputation_pricing.md) | Faction reputation modifiers, faction-exclusive access, reputation through economic activity |
+| [`economy/merchant_inventory_restock.md`](economy/merchant_inventory_restock.md) | Three-tier stock model, inventory pool definitions, daily restock mechanics, merchant gold pools |
+| [`economy/supply_demand_engine.md`](economy/supply_demand_engine.md) | Event-driven price fluctuation, three-phase event lifecycle, standard economic event catalog |
+| [`economy/gold_sink_ledger.md`](economy/gold_sink_ledger.md) | Consolidated ledger of all gold sinks, magnitude analysis, gap analysis, sink design philosophy |
+| [`economy/inflation_targets_controls.md`](economy/inflation_targets_controls.md) | Wealth-by-level curves, faucet/sink ratio targets, god-agent economic intervention, seasonal events |
+| [`economy/game_mechanics_p2p_trade.md`](economy/game_mechanics_p2p_trade.md) | Phase 2+ player-to-player trade design intent, inherited constraints, open questions |
+
+The encounter role system, which governs creature loot scaling and is referenced from the economy, is documented in [`game_mechanics_encounter_roles.md`](game_mechanics_encounter_roles.md) (top-level mechanics doc, not economy-specific).
 
 ---
 
@@ -187,21 +206,32 @@ Starting wealth creates immediate pressure to earn. 10 sp buys ~10 nights common
 
 ## Merchant Pricing Formula
 
+The price a merchant offers is the product of multiple modifiers applied to the item's base price:
+
+```
+final_price = base_price × disposition_modifier × faction_modifier × event_modifier × context_modifier
+final_price = clamp(final_price, base_price × 0.5, base_price × 3.0)
+```
+
 ### Disposition Modifiers
 
 | Disposition | Price Modifier |
 |---|---|
 | Hostile | +20% |
 | Unfriendly | +10% |
-| Neutral | 1.0x (base price) |
+| Neutral | 1.0× (base price) |
 | Friendly | -10% |
 | Trusted | -20% |
 
-### Faction Reputation Modifier
+### Other Modifiers
 
-Stacks multiplicatively with disposition. Higher faction standing with a merchant's faction reduces prices across the board.
+The remaining modifiers — faction reputation, world events, regional context — and the price clamp bounds are documented in their respective subsystem docs:
 
-*TODO: Define faction reputation tiers and their specific price modifiers.*
+- **Faction reputation modifiers** → see [`economy/faction_reputation_pricing.md`](economy/faction_reputation_pricing.md)
+- **Event-driven modifiers** (Hollow incursions, plagues, festivals, etc.) → see [`economy/supply_demand_engine.md`](economy/supply_demand_engine.md)
+- **Regional/contextual modifiers** (item-specific `value_modifiers` in entity data) → see `world_data_simulation.md`
+
+The 0.5×–3.0× clamp is a hard bound on the final computed price after all modifiers stack. Rationale and stacking rules are documented in [`economy/supply_demand_engine.md`](economy/supply_demand_engine.md).
 
 ---
 
@@ -213,7 +243,7 @@ Stacks multiplicatively with disposition. Higher faction standing with a merchan
 | 2 | 100-250 sp | Mid-game quests, moderate danger |
 | 3 | 300-700 sp | Late-game quests, significant challenge |
 
-*TODO: Define XP-to-reward correlation, bonus reward conditions, and non-currency rewards (items, reputation, faction standing).*
+Quest rewards are the primary economic faucet. Per-session balance targets and faucet/sink ratios are documented in [`economy/inflation_targets_controls.md`](economy/inflation_targets_controls.md). XP-to-reward correlation, bonus reward conditions, and non-currency rewards (items, reputation, faction standing) are part of the broader progression system and remain to be specified.
 
 ---
 
@@ -221,53 +251,25 @@ Stacks multiplicatively with disposition. Higher faction standing with a merchan
 
 | Material | Price Range |
 |---|---|
-| Hollow research samples | 50-500 sp |
+| Hollow research samples (Drift residue) | 5-15 sp |
+| Hollow research samples (Rend tier) | 50-100 sp |
+| Hollow research samples (Wrack tier) | 200-500 sp |
+| Named creature fragments | 500 sp (fixed) |
 
 Tier-dependent. Scholars pay premium for rare materials. Named creature fragments at 500 sp represent endgame content.
 
+For the complete material sell value framework (hides, bones, venom, fiber, arcane components, divine materials by creature tier), see [`game_mechanics_encounter_roles.md`](game_mechanics_encounter_roles.md) — Material Sell Values section.
+
 ---
 
-## Systems Not Yet Specified
+## Currency Drops from Combat
 
-The following economy systems need mechanical design before Phase 9 implementation. The GDD (`game_design_doc.md` lines 1046-1084) describes the design philosophy for each but lacks mechanical formulas.
+Currency dropped by defeated creatures is determined by creature category, tier, and encounter role. The full framework is in [`game_mechanics_encounter_roles.md`](game_mechanics_encounter_roles.md). Summary:
 
-### Loot & Drop Tables
-- What enemies drop on defeat and at what rates
-- Loot quality scaling by enemy tier (Minion → Standard → Elite → Boss → Named)
-- Randomization rules: fixed drops vs. loot pools vs. contextual drops
-- How the DM narrates loot discovery (audio-first constraint)
+- **Beasts and constructs** drop no currency (animals don't carry coin)
+- **Humanoids** always drop currency (Tier × 1d6 sp)
+- **Hollow (Drift tier)** drop no currency (dissolve into nothing)
+- **Hollow (Rend+ tier)** sometimes drop currency (15% chance, absorbed from victims)
+- **Undead** sometimes drop currency (25% chance, grave goods)
 
-### Supply & Demand Engine
-- How regional events affect prices (Hollow incursion → healing potion prices rise)
-- Formula for price fluctuation based on simulation tick events
-- Price floor/ceiling bounds to prevent economy-breaking swings
-- How merchant inventory interacts with regional supply state
-
-### Merchant Inventory & Restock
-- What each merchant type stocks (weapons dealer vs. general store vs. alchemist)
-- Restock timing: per simulation tick? Per real-time day? On visit?
-- Inventory limits per merchant tier
-- How scarcity is narrated ("Grimjaw's sold out of healing potions — try the next town")
-
-### Player-to-Player Trade
-- Direct trade rules (in-person, same location)
-- Remote trade / auction house mechanics (if any)
-- Trade fees or taxes (faction-controlled markets?)
-- Anti-fraud / anti-exploit guardrails
-
-### Faction Reputation Pricing
-- Specific faction reputation tiers and their price modifiers
-- How faction standing is gained/lost through economic activity
-- Faction-exclusive items or services
-
-### Gold Sinks
-- Systematic list of where currency permanently leaves the economy
-- Property maintenance costs, guild upkeep, consumable costs
-- Death costs (Mortaen's domain fees escalate — see `game_mechanics_combat.md`)
-- Training and crafting material costs as sinks
-
-### Inflation Controls
-- How the world economy stays balanced with thousands of players
-- Currency generation rate vs. sink rate targets
-- God-agent economic intervention mechanics
-- Seasonal economic events and resets
+Currency drops are modified by encounter role (Minions never drop currency; Bosses drop 2× plus a tier-scaled bonus).
