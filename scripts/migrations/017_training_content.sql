@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS training_activity_types (
 
 CREATE TRIGGER update_training_activity_types_updated_at
   BEFORE UPDATE ON training_activity_types
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TABLE IF NOT EXISTS training_programs (
   id TEXT PRIMARY KEY,
@@ -23,4 +23,4 @@ CREATE TABLE IF NOT EXISTS training_programs (
 
 CREATE TRIGGER update_training_programs_updated_at
   BEFORE UPDATE ON training_programs
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();

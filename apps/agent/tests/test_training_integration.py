@@ -34,9 +34,9 @@ class TestFirstHalfToAwaitingDecision:
             "activity_type": "spell_cantrip",
             "state": "running_first_half",
             "data": {
-                "transition_at": (now + timedelta(seconds=init.first_half_seconds)).isoformat(),
                 "first_half_seconds": init.first_half_seconds,
             },
+            "transition_at": (now + timedelta(seconds=init.first_half_seconds)).isoformat(),
         }
 
         mock_get_due = AsyncMock(return_value=[activity_row])
@@ -108,11 +108,11 @@ class TestSecondHalfToComplete:
             "activity_type": "technique_base",
             "state": "running_second_half",
             "data": {
-                "transition_at": midpoint.completes_at.isoformat(),
                 "decision_id": choice_id,
                 "micro_bonus": midpoint.micro_bonus,
                 "second_half_seconds": midpoint.second_half_seconds,
             },
+            "transition_at": midpoint.completes_at.isoformat(),
         }
 
         completion = complete_training_cycle("technique_base", choice_id)

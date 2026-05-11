@@ -9,4 +9,4 @@ CREATE TABLE IF NOT EXISTS level_progression (
 CREATE TRIGGER set_level_progression_updated_at
     BEFORE UPDATE ON level_progression
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    EXECUTE FUNCTION set_updated_at();

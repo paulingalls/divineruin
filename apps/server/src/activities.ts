@@ -97,7 +97,6 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
           program_id: program.id,
           program_name: program.name,
           first_half_seconds: cycle.first_half_seconds,
-          transition_at: cycle.transition_at,
           stat: program.stat,
           skill: program.skill ?? null,
           dc: program.dc,
@@ -105,8 +104,8 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         };
 
         await tx`
-          INSERT INTO training_activities (id, player_id, activity_type, state, data)
-          VALUES (${activityId}, ${playerId}, ${program.training_activity_type}, ${cycle.state}, ${data})
+          INSERT INTO training_activities (id, player_id, activity_type, state, data, transition_at)
+          VALUES (${activityId}, ${playerId}, ${program.training_activity_type}, ${cycle.state}, ${data}, ${cycle.transition_at})
         `;
 
         return { activityId, state: cycle.state, transitionAt: cycle.transition_at } as const;

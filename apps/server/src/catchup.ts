@@ -136,6 +136,7 @@ interface TrainingRow {
   activity_type: string;
   state: string;
   data: Record<string, unknown>;
+  transition_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -143,7 +144,7 @@ interface TrainingRow {
 function trainingToFeedItem(row: TrainingRow): FeedItem {
   const data = parseJsonb(row.data);
   const programName = str(data.program_name, "Training");
-  const transitionAt = data.transition_at as string | undefined;
+  const transitionAt = row.transition_at ?? undefined;
 
   let type: FeedItem["type"];
   let decisionOptions: DecisionOption[] | null = null;
@@ -276,7 +277,7 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
     }) as Promise<{ id: string; data: unknown }[]>;
 
     const trainingPromise = sql`
-      SELECT id, activity_type, state, data, created_at, updated_at
+      SELECT id, activity_type, state, data, transition_at, created_at, updated_at
       FROM training_activities
       WHERE player_id = ${playerId}
         AND state IN ('running_first_half', 'running_second_half', 'awaiting_decision', 'complete')

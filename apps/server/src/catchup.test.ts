@@ -362,8 +362,8 @@ describe("handleGetCatchUpFeed", () => {
           data: {
             program_name: "Combat Fundamentals",
             first_half_seconds: 7200,
-            transition_at: transitionAt,
           },
+          transition_at: transitionAt,
           created_at: createdAt,
           updated_at: createdAt,
         },

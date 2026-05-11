@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("divineruin.db_training")
 
-_COLUMNS = "id, player_id, activity_type, state, data, created_at, updated_at"
+_COLUMNS = "id, player_id, activity_type, state, data, transition_at, created_at, updated_at"
 
 
 def _to_dict(row: asyncpg.Record) -> dict:
@@ -75,8 +75,8 @@ async def get_due_training_transitions(
         SELECT {_COLUMNS}
         FROM training_activities
         WHERE state IN ('running_first_half', 'running_second_half')
-          AND (data->>'transition_at')::timestamptz <= NOW()
-        ORDER BY (data->>'transition_at')::timestamptz
+          AND transition_at <= NOW()
+        ORDER BY transition_at
         """
     )
     return [_to_dict(row) for row in rows]

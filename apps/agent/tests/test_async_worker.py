@@ -404,8 +404,8 @@ SAMPLE_TRAINING_ACTIVITY = {
         "dc": 12,
         "program_name": "Perception Drills",
         "decision_id": "fundamentals",
-        "transition_at": "2026-01-01T00:00:00Z",
     },
+    "transition_at": "2026-01-01T00:00:00Z",
 }
 
 
@@ -553,8 +553,8 @@ SAMPLE_MIDPOINT_ACTIVITY = {
     "data": {
         "program_name": "Perception Drills",
         "stat": "wisdom",
-        "transition_at": "2026-01-01T00:00:00Z",
     },
+    "transition_at": "2026-01-01T00:00:00Z",
 }
 
 
