@@ -1,17 +1,47 @@
 import { sql } from "./db.ts";
+import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
 import {
   CRAFTING_RECIPES,
-  TRAINING_PROGRAMS,
   ERRAND_TEMPLATES,
   VALID_ACTIVITY_TYPES,
+  getTrainingProgram,
 } from "./activity_templates.ts";
 import { displayName } from "@divineruin/shared";
+import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts";
+import { rollErrandRisk, validateErrandDispatch } from "./errand_risk.ts";
+import { startTrainingCycle } from "./training_state_machine.ts";
 
-const MAX_CONCURRENT = 4;
+async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<SlotCounts> {
+  const rows: { training: number; crafting: number; companion: number }[] = await tx`
+    SELECT
+      COALESCE(SUM(CASE WHEN src = 'training' THEN 1 ELSE 0 END), 0)::int AS training,
+      COALESCE(SUM(CASE WHEN src = 'crafting' THEN 1 ELSE 0 END), 0)::int AS crafting,
+      COALESCE(SUM(CASE WHEN src = 'companion_errand' THEN 1 ELSE 0 END), 0)::int AS companion
+    FROM (
+      SELECT data->>'activity_type' AS src
+      FROM async_activities
+      WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
+      UNION ALL
+      SELECT 'training' AS src
+      FROM training_activities
+      WHERE player_id = ${playerId} AND state != 'complete'
+    ) combined
+  `;
+  const row = rows[0];
+  return {
+    training: row?.training ?? 0,
+    crafting: row?.crafting ?? 0,
+    companion: row?.companion ?? 0,
+  };
+}
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function makeActivityId(prefix: string): string {
+  return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
 
 export async function handleCreateActivity(req: Request, playerId: string): Promise<Response> {
@@ -31,7 +61,69 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
 
     const params = body.parameters ?? {};
 
-    // Validate type-specific parameters before entering the transaction
+    // Training uses its own table and transaction — handle separately and return early
+    if (body.type === "training") {
+      const programId = params.program_id as string | undefined;
+      if (!programId) {
+        return Response.json({ error: "program_id is required for training" }, { status: 400 });
+      }
+      const program = getTrainingProgram(programId);
+      if (!program) {
+        return Response.json({ error: "Unknown training program" }, { status: 400 });
+      }
+
+      const txnResult = await sql.begin(async (tx) => {
+        await tx`
+          SELECT id FROM async_activities
+          WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
+          FOR UPDATE
+        `;
+        await tx`
+          SELECT id FROM training_activities
+          WHERE player_id = ${playerId} AND state != 'complete'
+          FOR UPDATE
+        `;
+        const slotCounts = await countActiveBySlot(playerId, tx);
+        const slotCheck = validateSlotAvailability(slotCounts, body.type);
+        if (!slotCheck.valid) {
+          return { error: slotCheck.error! } as const;
+        }
+
+        const now = new Date();
+        const cycle = startTrainingCycle(program.training_activity_type, now);
+        const activityId = makeActivityId("train");
+
+        const data = {
+          program_id: program.id,
+          program_name: program.name,
+          first_half_seconds: cycle.first_half_seconds,
+          stat: program.stat,
+          skill: program.skill ?? null,
+          dc: program.dc,
+          mentor_id: program.mentor_id,
+        };
+
+        await tx`
+          INSERT INTO training_activities (id, player_id, activity_type, state, data, transition_at)
+          VALUES (${activityId}, ${playerId}, ${program.training_activity_type}, ${cycle.state}, ${data}, ${cycle.transition_at})
+        `;
+
+        return { activityId, state: cycle.state, transitionAt: cycle.transition_at } as const;
+      });
+
+      if ("error" in txnResult) {
+        return Response.json({ error: txnResult.error }, { status: 400 });
+      }
+
+      return Response.json({
+        activity_id: txnResult.activityId,
+        status: "in_progress",
+        state: txnResult.state,
+        transition_at: txnResult.transitionAt,
+      });
+    }
+
+    // Crafting and companion_errand — both go through async_activities
     let durationMin: number;
     let durationMax: number;
     let activityParams: Record<string, unknown>;
@@ -59,26 +151,6 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         dc: recipe.dc,
         npc_id: recipe.npc_id,
       };
-    } else if (body.type === "training") {
-      const programId = params.program_id as string | undefined;
-      if (!programId) {
-        return Response.json({ error: "program_id is required for training" }, { status: 400 });
-      }
-      const program = TRAINING_PROGRAMS[programId];
-      if (!program) {
-        return Response.json({ error: "Unknown training program" }, { status: 400 });
-      }
-
-      durationMin = program.duration_min_seconds;
-      durationMax = program.duration_max_seconds;
-      activityParams = {
-        program_id: program.id,
-        name: program.name,
-        stat: program.stat,
-        skill: program.skill,
-        dc: program.dc,
-        mentor_id: program.mentor_id,
-      };
     } else {
       // companion_errand
       const errandType = params.errand_type as string | undefined;
@@ -97,25 +169,37 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         return Response.json({ error: "Invalid destination for errand type" }, { status: 400 });
       }
 
+      const companionId = (params.companion_id as string) || "companion_kael";
+      const validation = validateErrandDispatch(errandType, destination, companionId);
+      if (!validation.valid) {
+        return Response.json({ error: validation.error }, { status: 400 });
+      }
+
       durationMin = template.duration_min_seconds;
       durationMax = template.duration_max_seconds;
       activityParams = {
         errand_type: errandType,
         destination,
+        risk_outcome: rollErrandRisk(errandType, destination, companionId),
       };
     }
 
-    // Atomic transaction: check concurrent count, verify+consume materials, insert activity
+    // Atomic transaction: check slot availability, verify+consume materials, insert activity
     const txnResult = await sql.begin(async (tx) => {
-      // Lock player's in-progress activities to prevent race conditions
-      const locked: { id: string }[] = await tx`
+      await tx`
         SELECT id FROM async_activities
         WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
         FOR UPDATE
       `;
-      const activeCount = locked.length;
-      if (activeCount >= MAX_CONCURRENT) {
-        return { error: `Maximum ${MAX_CONCURRENT} concurrent activities allowed` } as const;
+      await tx`
+        SELECT id FROM training_activities
+        WHERE player_id = ${playerId} AND state != 'complete'
+        FOR UPDATE
+      `;
+      const slotCounts = await countActiveBySlot(playerId, tx);
+      const slotCheck = validateSlotAvailability(slotCounts, body.type);
+      if (!slotCheck.valid) {
+        return { error: slotCheck.error! } as const;
       }
 
       // Verify and consume materials atomically for crafting
@@ -140,7 +224,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       const now = new Date();
       const durationSeconds = randomInt(durationMin, durationMax);
       const resolveAt = new Date(now.getTime() + durationSeconds * 1000);
-      const activityId = `activity_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+      const activityId = makeActivityId("activity");
 
       const data = {
         status: "in_progress",
@@ -202,10 +286,7 @@ export async function handleListActivities(req: Request, playerId: string): Prom
     }
 
     const activities = rows.map((row) => {
-      const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<
-        string,
-        unknown
-      >;
+      const data = parseJsonb(row.data);
       return { id: row.id, ...data };
     });
 
@@ -235,10 +316,7 @@ export async function handleGetActivity(
       return Response.json({ error: "Activity not found" }, { status: 404 });
     }
 
-    const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<
-      string,
-      unknown
-    >;
+    const data = parseJsonb(row.data);
     return Response.json({ id: row.id, ...data });
   } catch (err) {
     logError("[activities] get failed:", err);
@@ -260,65 +338,68 @@ export async function handleActivityDecision(
       return Response.json({ error: "decision_id is required" }, { status: 400 });
     }
 
-    const rows: { id: string; player_id: string; data: unknown }[] = await sql`
-      SELECT id, player_id, data FROM async_activities WHERE id = ${activityId}
-    `;
+    const txnResult = await sql.begin(async (tx) => {
+      const rows: { id: string; player_id: string; data: unknown }[] = await tx`
+        SELECT id, player_id, data FROM async_activities WHERE id = ${activityId} FOR UPDATE
+      `;
 
-    if (rows.length === 0) {
-      return Response.json({ error: "Activity not found" }, { status: 404 });
-    }
-
-    const row = rows[0]!;
-    if (row.player_id !== playerId) {
-      return Response.json({ error: "Activity not found" }, { status: 404 });
-    }
-
-    const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<
-      string,
-      unknown
-    >;
-    if (data.status !== "resolved") {
-      return Response.json({ error: "Activity is not resolved yet" }, { status: 400 });
-    }
-
-    const options = (data.decision_options as { id: string }[] | null) ?? [];
-    const chosen = options.find((opt) => opt.id === body.decision_id);
-    if (!chosen) {
-      return Response.json({ error: "Invalid decision" }, { status: 400 });
-    }
-
-    // Apply effects based on outcome
-    const outcome = data.outcome as Record<string, unknown> | null;
-    if (outcome && data.activity_type === "crafting") {
-      const craftedItemId = outcome.crafted_item_id as string | null;
-      if (craftedItemId && body.decision_id === "keep") {
-        await sql`
-          INSERT INTO player_inventory (player_id, item_id, data)
-          VALUES (${playerId}, ${craftedItemId}, ${{ quantity: 1, equipped: false }})
-          ON CONFLICT (player_id, item_id)
-          DO UPDATE SET data = jsonb_set(
-            player_inventory.data,
-            '{quantity}',
-            (COALESCE((player_inventory.data->>'quantity')::int, 0) + 1)::text::jsonb
-          )
-        `;
+      if (rows.length === 0) {
+        return { error: "Activity not found", httpStatus: 404 } as const;
       }
-    }
 
-    // Update status to collected
-    await sql`
-      UPDATE async_activities
-      SET data = jsonb_set(
-        jsonb_set(data, '{status}', '"collected"'),
-        '{decision}', ${JSON.stringify(body.decision_id)}::jsonb
-      )
-      WHERE id = ${activityId}
-    `;
+      const row = rows[0]!;
+      if (row.player_id !== playerId) {
+        return { error: "Activity not found", httpStatus: 404 } as const;
+      }
+
+      const data = parseJsonb(row.data);
+      if (data.status !== "resolved") {
+        return { error: "Activity is not resolved yet", httpStatus: 400 } as const;
+      }
+
+      const options = (data.decision_options as { id: string }[] | null) ?? [];
+      const chosen = options.find((opt) => opt.id === body.decision_id);
+      if (!chosen) {
+        return { error: "Invalid decision", httpStatus: 400 } as const;
+      }
+
+      const outcome = data.outcome as Record<string, unknown> | null;
+      if (outcome && data.activity_type === "crafting") {
+        const craftedItemId = outcome.crafted_item_id as string | null;
+        if (craftedItemId && body.decision_id === "keep") {
+          await tx`
+            INSERT INTO player_inventory (player_id, item_id, data)
+            VALUES (${playerId}, ${craftedItemId}, ${{ quantity: 1, equipped: false }})
+            ON CONFLICT (player_id, item_id)
+            DO UPDATE SET data = jsonb_set(
+              player_inventory.data,
+              '{quantity}',
+              (COALESCE((player_inventory.data->>'quantity')::int, 0) + 1)::text::jsonb
+            )
+          `;
+        }
+      }
+
+      await tx`
+        UPDATE async_activities
+        SET data = jsonb_set(
+          jsonb_set(data, '{status}', '"collected"'),
+          '{decision}', ${JSON.stringify(body.decision_id)}::jsonb
+        )
+        WHERE id = ${activityId}
+      `;
+
+      return { activityId, decision: body.decision_id } as const;
+    });
+
+    if ("error" in txnResult) {
+      return Response.json({ error: txnResult.error }, { status: txnResult.httpStatus });
+    }
 
     return Response.json({
-      id: activityId,
+      id: txnResult.activityId,
       status: "collected",
-      decision: body.decision_id,
+      decision: txnResult.decision,
     });
   } catch (err) {
     logError("[activities] decision failed:", err);

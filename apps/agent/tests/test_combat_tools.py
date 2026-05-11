@@ -6,13 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import event_types as E
+from combat_end import _end_combat_impl
+from combat_init import _start_combat_impl
+from combat_turn import _request_death_save_impl, _resolve_enemy_turn_impl
 from session_data import CombatParticipant, CombatState, SessionData
-from tools import (
-    end_combat,
-    request_death_save,
-    resolve_enemy_turn,
-    start_combat,
-)
 
 SAMPLE_PLAYER = {
     "player_id": "player_1",
@@ -135,20 +132,61 @@ def _make_combat_state(player_hp=25, player_fallen=False, enemy_hp=7, enemy_fall
     )
 
 
+def _make_start_combat_mocks():
+    """Create mock modules for start_combat DI params."""
+    mock_mutations = MagicMock()
+    mock_mutations.save_combat_state = AsyncMock()
+
+    mock_queries = MagicMock()
+    mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+
+    mock_content = MagicMock()
+    mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
+    mock_content.get_npc = AsyncMock(return_value=None)
+
+    return mock_mutations, mock_queries, mock_content
+
+
+def _make_resolve_mocks():
+    """Create mock modules for resolve_enemy_turn DI params."""
+    mock_mutations = MagicMock()
+    mock_mutations.save_combat_state = AsyncMock()
+    mock_mutations.update_player_hp = AsyncMock()
+    return mock_mutations
+
+
+def _make_death_save_mocks():
+    """Create mock modules for request_death_save DI params."""
+    mock_mutations = MagicMock()
+    mock_mutations.save_combat_state = AsyncMock()
+    mock_mutations.update_player_hp = AsyncMock()
+    return mock_mutations
+
+
+def _make_end_combat_mocks():
+    """Create mock modules for end_combat DI params."""
+    mock_mutations = MagicMock()
+    mock_mutations.delete_combat_state = AsyncMock()
+    return mock_mutations
+
+
 # --- start_combat ---
 
 
 class TestStartCombat:
     @pytest.mark.asyncio
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
-    async def test_creates_combat_state(self, mock_encounter, mock_player, mock_save):
-        mock_encounter.return_value = SAMPLE_ENCOUNTER
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_creates_combat_state(self):
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
         ctx = _make_context()
 
-        raw = await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Goblins ambush!")
+        raw = await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Goblins ambush!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         assert isinstance(raw, tuple), "start_combat success should return (CombatAgent, json_str)"
         _, json_str = raw
         result = json.loads(json_str)
@@ -159,31 +197,37 @@ class TestStartCombat:
         assert len(result["participants"]) == 2
         assert ctx.userdata.in_combat is True
         assert ctx.userdata.combat_state is not None
-        mock_save.assert_called_once()
+        mock_mutations.save_combat_state.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
-    async def test_returns_agent_tuple(self, mock_encounter, mock_player, mock_save):
-        mock_encounter.return_value = SAMPLE_ENCOUNTER
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_returns_agent_tuple(self):
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
         ctx = _make_context()
 
-        raw = await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Ambush!")
+        raw = await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Ambush!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         assert isinstance(raw, tuple)
         assert len(raw) == 2
 
     @pytest.mark.asyncio
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
-    async def test_rolls_initiative(self, mock_encounter, mock_player, mock_save):
-        mock_encounter.return_value = SAMPLE_ENCOUNTER
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_rolls_initiative(self):
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
         ctx = _make_context()
 
-        _, json_str = await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Ambush!")
+        _, json_str = await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Ambush!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         result = json.loads(json_str)
 
         for entry in result["initiative_order"]:
@@ -192,16 +236,19 @@ class TestStartCombat:
             assert entry["roll"] >= 1 and entry["roll"] <= 20
 
     @pytest.mark.asyncio
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
-    async def test_publishes_events(self, mock_encounter, mock_player, mock_save):
-        mock_encounter.return_value = SAMPLE_ENCOUNTER
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_publishes_events(self):
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
         room = _make_mock_room()
         ctx = _make_context(room=room)
 
-        await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Ambush!")
+        await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Ambush!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
 
         # Should publish combat_started and play_sound events
         assert room.local_participant.publish_data.call_count == 2
@@ -215,20 +262,24 @@ class TestStartCombat:
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        result = json.loads(
-            await start_combat._func(ctx, encounter_id="goblin_patrol", encounter_description="Another fight!")
-        )
+        raw = await _start_combat_impl(ctx, encounter_id="goblin_patrol", encounter_description="Another fight!")
+        assert isinstance(raw, str)
+        result = json.loads(raw)
 
         assert "error" in result
         assert "Already in combat" in result["error"]
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
-    async def test_error_missing_encounter(self, mock_encounter):
-        mock_encounter.return_value = None
+    async def test_error_missing_encounter(self):
+        mock_content = MagicMock()
+        mock_content.get_encounter_template = AsyncMock(return_value=None)
         ctx = _make_context()
 
-        result = json.loads(await start_combat._func(ctx, encounter_id="nonexistent", encounter_description="Nothing"))
+        raw = await _start_combat_impl(
+            ctx, encounter_id="nonexistent", encounter_description="Nothing", content=mock_content
+        )
+        assert isinstance(raw, str)
+        result = json.loads(raw)
 
         assert "error" in result
 
@@ -238,14 +289,19 @@ class TestStartCombat:
 
 class TestResolveEnemyTurn:
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_resolves_attack(self, mock_save, mock_update_hp):
+    async def test_resolves_attack(self):
+        mock_mutations = _make_resolve_mocks()
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
         result = json.loads(
-            await resolve_enemy_turn._func(ctx, enemy_id="goblin_scout_1", action_name="Scimitar", target_id="player_1")
+            await _resolve_enemy_turn_impl(
+                ctx,
+                enemy_id="goblin_scout_1",
+                action_name="Scimitar",
+                target_id="player_1",
+                mutations=mock_mutations,
+            )
         )
 
         assert "hit" in result
@@ -253,46 +309,61 @@ class TestResolveEnemyTurn:
         assert "narrative_hint" in result
         assert result["attacker"] == "Goblin Scout"
         assert result["target"] == "Kael"
-        mock_save.assert_called_once()
+        mock_mutations.save_combat_state.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_updates_player_hp(self, mock_save, mock_update_hp):
+    async def test_updates_player_hp(self):
+        mock_mutations = _make_resolve_mocks()
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
         result = json.loads(
-            await resolve_enemy_turn._func(ctx, enemy_id="goblin_scout_1", action_name="Scimitar", target_id="player_1")
+            await _resolve_enemy_turn_impl(
+                ctx,
+                enemy_id="goblin_scout_1",
+                action_name="Scimitar",
+                target_id="player_1",
+                mutations=mock_mutations,
+            )
         )
 
         if result["hit"]:
-            mock_update_hp.assert_called_once()
+            mock_mutations.update_player_hp.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_publishes_sounds(self, mock_save, mock_update_hp):
+    async def test_publishes_sounds(self):
+        mock_mutations = _make_resolve_mocks()
         room = _make_mock_room()
         ctx = _make_context(room=room)
         ctx.userdata.combat_state = _make_combat_state()
 
-        await resolve_enemy_turn._func(ctx, enemy_id="goblin_scout_1", action_name="Scimitar", target_id="player_1")
+        await _resolve_enemy_turn_impl(
+            ctx,
+            enemy_id="goblin_scout_1",
+            action_name="Scimitar",
+            target_id="player_1",
+            mutations=mock_mutations,
+        )
 
         # At minimum: dice_roll event + at least one play_sound
         assert room.local_participant.publish_data.call_count >= 2
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_triggers_heartbeat_below_50_percent(self, mock_save, mock_update_hp):
+    async def test_triggers_heartbeat_below_50_percent(self):
+        mock_mutations = _make_resolve_mocks()
         room = _make_mock_room()
         ctx = _make_context(room=room)
         # Set player HP to 10/25 = 40%, which is bloodied
         ctx.userdata.combat_state = _make_combat_state(player_hp=10)
 
         result = json.loads(
-            await resolve_enemy_turn._func(ctx, enemy_id="goblin_scout_1", action_name="Scimitar", target_id="player_1")
+            await _resolve_enemy_turn_impl(
+                ctx,
+                enemy_id="goblin_scout_1",
+                action_name="Scimitar",
+                target_id="player_1",
+                mutations=mock_mutations,
+            )
         )
 
         if result["hit"] and result["target_hp_status"] in ("bloodied", "critical"):
@@ -301,15 +372,20 @@ class TestResolveEnemyTurn:
             assert "heartbeat_low_hp" in sounds
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_sets_fallen_at_zero_hp(self, mock_save, mock_update_hp):
+    async def test_sets_fallen_at_zero_hp(self):
+        mock_mutations = _make_resolve_mocks()
         ctx = _make_context()
         # Set player HP to 1 so a hit will bring to 0
         ctx.userdata.combat_state = _make_combat_state(player_hp=1)
 
         result = json.loads(
-            await resolve_enemy_turn._func(ctx, enemy_id="goblin_scout_1", action_name="Scimitar", target_id="player_1")
+            await _resolve_enemy_turn_impl(
+                ctx,
+                enemy_id="goblin_scout_1",
+                action_name="Scimitar",
+                target_id="player_1",
+                mutations=mock_mutations,
+            )
         )
 
         if result["hit"]:
@@ -320,43 +396,61 @@ class TestResolveEnemyTurn:
         ctx = _make_context()
 
         result = json.loads(
-            await resolve_enemy_turn._func(ctx, enemy_id="goblin_scout_1", action_name="Scimitar", target_id="player_1")
+            await _resolve_enemy_turn_impl(ctx, enemy_id="goblin_scout_1", action_name="Scimitar", target_id="player_1")
         )
 
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_error_invalid_enemy(self, mock_save):
+    async def test_error_invalid_enemy(self):
+        mock_mutations = _make_resolve_mocks()
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
         result = json.loads(
-            await resolve_enemy_turn._func(ctx, enemy_id="nonexistent", action_name="Scimitar", target_id="player_1")
+            await _resolve_enemy_turn_impl(
+                ctx,
+                enemy_id="nonexistent",
+                action_name="Scimitar",
+                target_id="player_1",
+                mutations=mock_mutations,
+            )
         )
 
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_error_invalid_action(self, mock_save):
+    async def test_error_invalid_action(self):
+        mock_mutations = _make_resolve_mocks()
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
         result = json.loads(
-            await resolve_enemy_turn._func(ctx, enemy_id="goblin_scout_1", action_name="Fireball", target_id="player_1")
+            await _resolve_enemy_turn_impl(
+                ctx,
+                enemy_id="goblin_scout_1",
+                action_name="Fireball",
+                target_id="player_1",
+                mutations=mock_mutations,
+            )
         )
 
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_error_fallen_target(self, mock_save):
+    async def test_error_fallen_target(self):
+        mock_mutations = _make_resolve_mocks()
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state(player_fallen=True, player_hp=0)
 
         result = json.loads(
-            await resolve_enemy_turn._func(ctx, enemy_id="goblin_scout_1", action_name="Scimitar", target_id="player_1")
+            await _resolve_enemy_turn_impl(
+                ctx,
+                enemy_id="goblin_scout_1",
+                action_name="Scimitar",
+                target_id="player_1",
+                mutations=mock_mutations,
+            )
         )
 
         assert "error" in result
@@ -367,25 +461,24 @@ class TestResolveEnemyTurn:
 
 class TestRequestDeathSave:
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_success(self, mock_save, mock_update_hp):
+    async def test_success(self):
+        mock_mutations = _make_death_save_mocks()
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state(player_hp=0, player_fallen=True)
 
-        result = json.loads(await request_death_save._func(ctx))
+        result = json.loads(await _request_death_save_impl(ctx, mutations=mock_mutations))
 
         assert "roll" in result
         assert "success" in result
         assert "total_successes" in result
         assert "total_failures" in result
-        mock_save.assert_called_once()
+        mock_mutations.save_combat_state.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_nat_20_restores_hp(self, mock_save, mock_update_hp):
+    async def test_nat_20_restores_hp(self):
         """If we get a nat 20, player should be revived with 1 HP."""
+        mock_mutations = _make_death_save_mocks()
+
         import random
 
         for seed in range(1000):
@@ -396,7 +489,7 @@ class TestRequestDeathSave:
         else:
             pytest.skip("Could not find seed for nat 20")
 
-        with patch("rules_engine.dice_roll") as mock_dice:
+        with patch("combat_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[20], dropped=[], total=20)
@@ -404,11 +497,11 @@ class TestRequestDeathSave:
             ctx = _make_context()
             ctx.userdata.combat_state = _make_combat_state(player_hp=0, player_fallen=True)
 
-            result = json.loads(await request_death_save._func(ctx))
+            result = json.loads(await _request_death_save_impl(ctx, mutations=mock_mutations))
 
             assert result["critical_success"] is True
             assert result["revived"] is True
-            mock_update_hp.assert_called_once_with("player_1", 1)
+            mock_mutations.update_player_hp.assert_called_once_with("player_1", 1)
 
             # Player should no longer be fallen
             player = ctx.userdata.combat_state.participants[0]
@@ -416,10 +509,10 @@ class TestRequestDeathSave:
             assert player.hp_current == 1
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_nat_1_double_fail(self, mock_save, mock_update_hp):
-        with patch("rules_engine.dice_roll") as mock_dice:
+    async def test_nat_1_double_fail(self):
+        mock_mutations = _make_death_save_mocks()
+
+        with patch("combat_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[1], dropped=[], total=1)
@@ -427,16 +520,16 @@ class TestRequestDeathSave:
             ctx = _make_context()
             ctx.userdata.combat_state = _make_combat_state(player_hp=0, player_fallen=True)
 
-            result = json.loads(await request_death_save._func(ctx))
+            result = json.loads(await _request_death_save_impl(ctx, mutations=mock_mutations))
 
             assert result["critical_failure"] is True
             assert result["total_failures"] == 2
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_stabilize(self, mock_save, mock_update_hp):
-        with patch("rules_engine.dice_roll") as mock_dice:
+    async def test_stabilize(self):
+        mock_mutations = _make_death_save_mocks()
+
+        with patch("combat_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[15], dropped=[], total=15)
@@ -447,16 +540,16 @@ class TestRequestDeathSave:
             cs.participants[0].death_save_successes = 2
             ctx.userdata.combat_state = cs
 
-            result = json.loads(await request_death_save._func(ctx))
+            result = json.loads(await _request_death_save_impl(ctx, mutations=mock_mutations))
 
             assert result["stabilized"] is True
             assert result["total_successes"] == 3
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_death(self, mock_save, mock_update_hp):
-        with patch("rules_engine.dice_roll") as mock_dice:
+    async def test_death(self):
+        mock_mutations = _make_death_save_mocks()
+
+        with patch("combat_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[5], dropped=[], total=5)
@@ -466,7 +559,7 @@ class TestRequestDeathSave:
             cs.participants[0].death_save_failures = 2
             ctx.userdata.combat_state = cs
 
-            result = json.loads(await request_death_save._func(ctx))
+            result = json.loads(await _request_death_save_impl(ctx, mutations=mock_mutations))
 
             assert result["dead"] is True
             assert result["total_failures"] == 3
@@ -476,7 +569,7 @@ class TestRequestDeathSave:
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state(player_hp=25, player_fallen=False)
 
-        result = json.loads(await request_death_save._func(ctx))
+        result = json.loads(await _request_death_save_impl(ctx))
 
         assert "error" in result
         assert "not fallen" in result["error"].lower()
@@ -485,19 +578,18 @@ class TestRequestDeathSave:
     async def test_error_if_not_in_combat(self):
         ctx = _make_context()
 
-        result = json.loads(await request_death_save._func(ctx))
+        result = json.loads(await _request_death_save_impl(ctx))
 
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_hp", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    async def test_publishes_events(self, mock_save, mock_update_hp):
+    async def test_publishes_events(self):
+        mock_mutations = _make_death_save_mocks()
         room = _make_mock_room()
         ctx = _make_context(room=room)
         ctx.userdata.combat_state = _make_combat_state(player_hp=0, player_fallen=True)
 
-        await request_death_save._func(ctx)
+        await _request_death_save_impl(ctx, mutations=mock_mutations)
 
         # dice_roll event + at least one play_sound
         assert room.local_participant.publish_data.call_count >= 2
@@ -513,12 +605,12 @@ class TestRequestDeathSave:
 
 class TestEndCombat:
     @pytest.mark.asyncio
-    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
-    async def test_clears_state(self, mock_delete):
+    async def test_clears_state(self):
+        mock_mutations = _make_end_combat_mocks()
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        raw = await end_combat._func(ctx, outcome="victory")
+        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
         assert isinstance(raw, tuple), "end_combat success should return (DungeonMasterAgent, json_str)"
         _, json_str = raw
         result = json.loads(json_str)
@@ -526,75 +618,76 @@ class TestEndCombat:
         assert result["outcome"] == "victory"
         assert ctx.userdata.in_combat is False
         assert ctx.userdata.combat_state is None
-        mock_delete.assert_called_once()
+        mock_mutations.delete_combat_state.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
-    async def test_returns_city_agent(self, mock_delete):
+    async def test_returns_city_agent(self):
         from city_agent import CityAgent
 
+        mock_mutations = _make_end_combat_mocks()
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        raw = await end_combat._func(ctx, outcome="victory")
+        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
         agent_instance, _ = raw
         assert isinstance(agent_instance, CityAgent)
 
     @pytest.mark.asyncio
-    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
-    async def test_returned_agent_has_combat_summary_context(self, mock_delete):
+    async def test_returned_agent_has_combat_summary_context(self):
+        mock_mutations = _make_end_combat_mocks()
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        raw = await end_combat._func(ctx, outcome="victory")
+        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
+        assert isinstance(raw, tuple)
         agent_instance, _ = raw
         # The returned agent should have a chat_ctx with a combat summary
         items = list(agent_instance.chat_ctx.items)
         assert len(items) > 0
 
     @pytest.mark.asyncio
-    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
-    async def test_calculates_xp_on_victory(self, mock_delete):
+    async def test_calculates_xp_on_victory(self):
+        mock_mutations = _make_end_combat_mocks()
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        _, json_str = await end_combat._func(ctx, outcome="victory")
+        _, json_str = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
         result = json.loads(json_str)
 
         assert result["xp_total"] == 50
         assert "Goblin Scout" in result["defeated_enemies"]
 
     @pytest.mark.asyncio
-    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
-    async def test_no_xp_on_defeat(self, mock_delete):
+    async def test_no_xp_on_defeat(self):
+        mock_mutations = _make_end_combat_mocks()
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        _, json_str = await end_combat._func(ctx, outcome="defeat")
+        _, json_str = await _end_combat_impl(ctx, outcome="defeat", mutations=mock_mutations)
         result = json.loads(json_str)
 
         assert result["xp_total"] == 0
         assert result["defeated_enemies"] == []
 
     @pytest.mark.asyncio
-    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
-    async def test_no_xp_on_fled(self, mock_delete):
+    async def test_no_xp_on_fled(self):
+        mock_mutations = _make_end_combat_mocks()
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        _, json_str = await end_combat._func(ctx, outcome="fled")
+        _, json_str = await _end_combat_impl(ctx, outcome="fled", mutations=mock_mutations)
         result = json.loads(json_str)
 
         assert result["xp_total"] == 0
 
     @pytest.mark.asyncio
-    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
-    async def test_publishes_events(self, mock_delete):
+    async def test_publishes_events(self):
+        mock_mutations = _make_end_combat_mocks()
         room = _make_mock_room()
         ctx = _make_context(room=room)
         ctx.userdata.combat_state = _make_combat_state()
 
-        await end_combat._func(ctx, outcome="victory")
+        await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
 
         calls = [json.loads(c[0][0]) for c in room.local_participant.publish_data.call_args_list]
         types = [c["type"] for c in calls]
@@ -605,16 +698,20 @@ class TestEndCombat:
     async def test_error_if_not_in_combat(self):
         ctx = _make_context()
 
-        result = json.loads(await end_combat._func(ctx, outcome="victory"))
+        raw = await _end_combat_impl(ctx, outcome="victory")
+        assert isinstance(raw, str)
+        result = json.loads(raw)
 
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
-    async def test_error_invalid_outcome(self, mock_delete):
+    async def test_error_invalid_outcome(self):
+        mock_mutations = _make_end_combat_mocks()
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        result = json.loads(await end_combat._func(ctx, outcome="surrender"))
+        raw = await _end_combat_impl(ctx, outcome="surrender", mutations=mock_mutations)
+        assert isinstance(raw, str)
+        result = json.loads(raw)
 
         assert "error" in result

@@ -11,16 +11,18 @@ from typing import Any
 
 from livekit import agents
 
-import db
+import db_mutations
+import db_queries
 import event_types as E
 from background_process import BackgroundProcess
 from base_agent import BaseGameAgent
+from combat_resolution import hp_threshold_status
 from game_events import publish_game_event
-from prompts import build_system_prompt, format_affect_context
 from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
-from rules_engine import hp_threshold_status
 from session_data import SessionData
 from session_summary import generate_session_summary
+from system_prompts import build_system_prompt
+from warm_prompts import format_affect_context
 
 logger = logging.getLogger("divineruin.gameplay")
 
@@ -55,7 +57,7 @@ class GameplayAgent(BaseGameAgent):
 
     async def _publish_session_init(self, sd: SessionData) -> None:
         try:
-            payload = await db.get_session_init_payload(sd.player_id)
+            payload = await db_queries.get_session_init_payload(sd.player_id)
             await publish_game_event(sd.room, E.SESSION_INIT, payload, sd.event_bus)
         except Exception:
             logger.exception("Failed to publish session_init")
@@ -83,7 +85,7 @@ class GameplayAgent(BaseGameAgent):
 
         results = await asyncio.gather(
             publish_game_event(sd.room, E.SESSION_END, summary_payload, sd.event_bus),
-            db.save_session_summary(sd.player_id, sd.session_id, summary_payload),
+            db_mutations.save_session_summary(sd.player_id, sd.session_id, summary_payload),
             return_exceptions=True,
         )
         for i, result in enumerate(results):

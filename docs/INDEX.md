@@ -16,7 +16,7 @@ Vision, pitch, and high-level systems overview. Read first for context.
 | What It Feels Like | 51-63 | Walkthrough of a typical session |
 | The World | 67-91 | Aethos overview, Pantheon as game systems (10 gods) |
 | How It Works | 96-144 | Three-layer DM architecture, voice pipeline, tech stack |
-| Game Systems | 148-172 | 16 archetypes x 10 gods, combat, multiplayer scales |
+| Game Systems | 148-172 | 18 archetypes x 10 gods, combat, multiplayer scales |
 | Monetization | 176-190 | Subscription model, unit economics, red lines |
 | Where We Are | 194-217 | Current state, MVP to MMO path (7 steps) |
 | The Hard Problems | 220-237 | Six key technical challenges |
@@ -30,7 +30,7 @@ All player-facing systems. The largest doc — always read specific sections, no
 | Section | Lines | What's There |
 |---|---|---|
 | Character Creation | 18-73 | Voice-conversation flow: Awakening → Origins → Calling → Devotion → Identity (10-15 min) |
-| Class System | 76-193 | 16 archetypes across 6 categories x 10 gods = 160 combos |
+| Class System | 76-199 | 18 archetypes across 6 categories x 10 gods = 180 combos |
 | Progression System | 197-238 | Archetype Mastery (XP), Divine Favor (alignment), World Reputation |
 | Game Mechanics | 241-321 | d20+mod vs DC, 15 skills in 3 groups, status effects, difficulty tiers |
 | Session Structure | 325-416 | 30-90 min sessions, 5 phases, fluid entry, DM behavioral modes |
@@ -342,11 +342,11 @@ Combat resolution, status effects, death, social encounters, travel, gathering.
 
 ## game_mechanics/game_mechanics_archetypes.md (1224 lines)
 
-16 archetype profiles with abilities, specializations, and spell acquisition.
+18 archetype profiles with abilities, specializations, and spell acquisition.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Archetype Profiles | 9-415 | Overview of 16 archetypes: Martial(3), Arcane(3), Primal-Divine(5), Support(2), Shadow(2), Oracle(1) |
+| Archetype Profiles | 9-415 | Overview of 18 archetypes: Martial(3), Arcane(3), Primal(3), Divine(3), Shadow(3), Support(3) |
 | All Archetype Profiles — Complete | 417-1014 | Individual stat blocks: HP, armor, skills, passives, actives, reactions, milestones |
 | Core + Elective Ability Model | 1016-1087 | Core (always available) vs Elective (chosen at L4/L8), reaction abilities |
 | Spell Acquisition — Three Tracks | 1089-1152 | Core spells, Training study cycles, Discovery (scrolls/mentors) |
@@ -445,14 +445,144 @@ Creature stat blocks, Hollow and natural creatures, materials, encounters.
 
 ---
 
-## game_mechanics/economy_reconciliation.md (250 lines)
+## game_mechanics/game_mechanics_encounter_roles.md (790 lines)
 
-Currency audit and pricing validation against the 1 sp = 1 day labor anchor.
+Encounter role system: creature stat/loot/XP modifiers, encounter budget math, narration guidance. Referenced by bestiary and economy for loot scaling and currency drops.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Anchor Definition | 7-18 | 1 sp = 1 day unskilled labor, derived benchmarks |
-| Currency Notation Inconsistency | 20-63 | gp vs gc discrepancy, lore (10:1) vs GDD (100:1) mismatch |
-| Price Validation | 65-217 | 60+ items audited across 14 categories |
-| Summary of Issues Found | 219-235 | Critical notation issue, minor pricing issues |
-| Recommended Fixes | 237-end | 4 action items: GDD ratio, notation fixes |
+| Role Definitions | 11-63 | Minion/Standard/Elite/Boss/Legendary role tags and intent |
+| Combat Stat Modifiers | 65-122 | HP, attack, damage, AC, save modifiers per role |
+| Loot Modifiers | 124-183 | Material/currency drop multipliers, role-based loot rules |
+| XP Modifiers | 185-199 | XP scaling per role |
+| Encounter Budget System | 201-255 | Budget math, party-size scaling, encounter composition |
+| Worked Examples | 257-583 | Full encounter walk-throughs across regions and tiers |
+| DM Narration Guidance | 585-654 | How to voice role differences in combat |
+| Derivation Formula (Implementation Reference) | 656-768 | Algorithms for runtime stat/loot derivation |
+| Design Decisions | 770-end | Locked decisions for the role system |
+
+---
+
+## game_mechanics/game_mechanics_economy.md (276 lines)
+
+Canonical economy specification: static pricing data. Dynamic systems live in subsystem docs under `economy/`.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Subsystem Documents | 9-23 | Index of six `economy/` subsystem docs + encounter_roles link |
+| Currency System | 26-34 | Three-tier decimal: cp/sp/gc at 10:1 ratios |
+| Economic Anchor | 36-46 | 1 sp = 1 day unskilled labor, wage scale benchmarks |
+| Canonical Price Tables | 49-129 | 60+ items: food, weapons, armor, gear, spell components |
+| NPC Services | 132-148 | Healing, research, identification, resurrection pricing |
+| Workspace Rental | 152-162 | Workshop/forge/lab daily rates, disposition discounts |
+| Crafting Commissions & Repair | 165-180 | Commission tiers (smith), repair pricing by item tier |
+| Mentor Training Fees | 184-192 | Fee ranges by mentor renown, quest-gated exceptions |
+| Starting Gold | 196-203 | Per-archetype starting wealth, purchasing power analysis |
+| Merchant Pricing Formula | 207-234 | Disposition modifiers, clamp bounds, pointers to other modifiers |
+| Quest Reward Tiers | 238-246 | Tier 1/2/3 reward ranges by content difficulty |
+| Hollow Material Values | 250-261 | Drift/Rend/Wrack sample pricing, named fragments |
+| Currency Drops from Combat | 265-end | Per-category drop rules; full framework in encounter_roles |
+
+---
+
+## game_mechanics/economy/faction_reputation_pricing.md (185 lines)
+
+Faction-driven pricing layered on top of disposition. Reputation tiers, service refusal, faction-exclusive access.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Reputation Tiers and Price Modifiers | 9-20 | Reputation tier ladder mapped to price multipliers |
+| Combined Pricing Formula | 22-45 | How faction modifier composes with disposition and events |
+| Faction Service Refusal | 47-62 | When low standing blocks transactions entirely |
+| Earning Reputation Through Economic Activity | 64-100 | Reputation gains from purchases/contracts/quest completions |
+| Faction-Exclusive Access | 102-133 | Items/services gated to faction members |
+| Interaction with Other Economy Systems | 135-145 | Stacking with supply/demand, gold sinks, inventory |
+| DM Narration Guidance | 147-171 | How merchants voice reputation-driven pricing |
+| Design Decisions | 173-end | Locked decisions for faction pricing |
+
+---
+
+## game_mechanics/economy/merchant_inventory_restock.md (646 lines)
+
+Three-tier stock model, inventory pools, daily restock, merchant gold pools, voice-first communication.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Three-Tier Stock Model | 9-21 | Always-stocked / Pooled / Special tiers |
+| Inventory Pools — Definitions | 23-202 | Pool definitions per merchant role with item lists |
+| Stock Limits by Settlement | 204-235 | Hamlet/Village/Town/City/Capital caps |
+| Daily Restock Mechanics | 237-278 | Restock cadence, randomization, supply chain |
+| Merchant Gold Pool | 280-339 | What merchants can afford to buy from players |
+| Special Inventory Categories | 341-377 | Rare items, faction stock, festival inventory |
+| Voice-First Inventory Communication | 379-447 | How the DM narrates browsing without lists |
+| Implementation Reference | 449-624 | Algorithms, data shapes, restock pseudocode |
+| Design Decisions | 626-end | Locked decisions for inventory/restock |
+
+---
+
+## game_mechanics/economy/supply_demand_engine.md (597 lines)
+
+Event-driven price fluctuation, three-phase event lifecycle, standard economic event catalog.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Design Philosophy | 9-15 | Events drive prices; baseline stays stable |
+| Magnitude and Stacking Rules | 17-53 | Event modifier sizes, stacking, 0.5×–3.0× clamp |
+| Item Tag Taxonomy (Economic) | 55-81 | Tags events target (food/weapon/luxury/etc.) |
+| Event Lifecycle (Three Phases) | 83-128 | Onset → peak → resolution timing |
+| Catalog of Standard Economic Events | 130-351 | Hollow incursion, plague, festival, blockade, etc. |
+| Worked Example: Multi-Event Crisis | 353-393 | Stacking demonstration |
+| Implementation Reference | 395-524 | Event data shape, evaluation order, hooks |
+| DM Narration Patterns | 526-575 | How NPCs voice market shifts |
+| Design Decisions | 577-end | Locked decisions for supply/demand |
+
+---
+
+## game_mechanics/economy/gold_sink_ledger.md (428 lines)
+
+Consolidated ledger of all gold sinks with magnitude analysis and gap analysis.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Design Philosophy | 9-35 | Why sinks matter, what counts as a sink |
+| Categorization Framework | 37-63 | Sink categories (consumables/services/recurring/aspirational) |
+| The Complete Ledger | 65-292 | Every sink in the game with magnitudes and triggers |
+| Magnitude Analysis | 294-312 | Per-level/per-session sink expectations |
+| Gap Analysis & Proposed Additions | 314-376 | Where the economy lacks sinks; proposals |
+| Implementation Notes | 378-406 | How to wire sinks into the rules engine |
+| Design Decisions | 408-end | Locked decisions for sinks |
+
+---
+
+## game_mechanics/economy/inflation_targets_controls.md (275 lines)
+
+Wealth-by-level curves, faucet/sink ratios, god-agent economic intervention, seasonal events.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Design Philosophy | 11-24 | Inflation control as live-ops, not static design |
+| Phase 1: Per-Character Economic Curves | 26-78 | Wealth-by-level targets, faucet/sink ratios |
+| Analytics Infrastructure (Phase 1) | 80-122 | Metrics to capture for tuning |
+| Phase 2+: Global Economy Controls | 124-207 | God-agent intervention, server-wide levers |
+| Phase 2+ Inflation Control Loop | 209-234 | Closed-loop adjustment cadence |
+| What Phase 1 Needs | 236-255 | Minimum viable scope for launch |
+| Design Decisions | 257-end | Locked decisions for inflation control |
+
+---
+
+## game_mechanics/economy/game_mechanics_p2p_trade.md (226 lines)
+
+Phase 2+ player-to-player trade design intent, inherited constraints, open questions.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Design Intent | 11-19 | What P2P trade is and isn't |
+| Inherited Constraints | 21-51 | Constraints from voice-first, anti-fraud, audio HUD |
+| Direct Trade (Same Location) | 53-73 | Face-to-face trade mechanic |
+| Remote Trade | 75-100 | Trade across distance (couriers/mail) |
+| Auction House / Marketplace | 102-124 | Centralized listing model |
+| Trade Fees and Taxes | 126-144 | Fee structure as inflation control |
+| Anti-Fraud and Anti-Exploit Guardrails | 146-174 | Voice/social attack vectors and mitigations |
+| What Phase 1 Needs | 176-196 | Minimum hooks for later expansion |
+| Phase 2 Design Process | 198-208 | How design will continue post-launch |
+| Design Decisions | 210-end | Locked decisions for P2P trade |

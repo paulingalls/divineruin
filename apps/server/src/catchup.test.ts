@@ -18,6 +18,7 @@ void mock.module("./db.ts", () => {
 
 const { handleGetCatchUpFeed, getRelativeTime, getCompanionIdleChatter, activityToFeedItem } =
   await import("./catchup.ts");
+const { setupTrainingConfigFixture } = await import("./test-fixtures/training-config.ts");
 
 function makeRequest(method: string, path: string): Request {
   return new Request(`http://localhost${path}`, { method });
@@ -26,6 +27,7 @@ function makeRequest(method: string, path: string): Request {
 beforeEach(() => {
   mockQueryResults = [];
   queryCallIndex = 0;
+  setupTrainingConfigFixture();
 });
 
 describe("getRelativeTime", () => {
@@ -195,6 +197,7 @@ describe("handleGetCatchUpFeed", () => {
       ],
       [], // world_news query
       [], // god_whispers query
+      [], // training_activities query
     ];
 
     const req = makeRequest("GET", "/api/catchup");
@@ -223,6 +226,7 @@ describe("handleGetCatchUpFeed", () => {
       ],
       [], // world_news query
       [], // god_whispers query
+      [], // training_activities query
     ];
 
     const req = makeRequest("GET", "/api/catchup");
@@ -251,6 +255,7 @@ describe("handleGetCatchUpFeed", () => {
       ],
       [], // world_news query
       [], // god_whispers query
+      [], // training_activities query
     ];
 
     const req = makeRequest("GET", "/api/catchup");
@@ -262,7 +267,7 @@ describe("handleGetCatchUpFeed", () => {
   });
 
   test("returns empty feed with idle when no activities", async () => {
-    mockQueryResults = [[], [], []];
+    mockQueryResults = [[], [], [], []];
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
@@ -276,7 +281,7 @@ describe("handleGetCatchUpFeed", () => {
     // The SQL now filters to only resolved/in_progress, so collected rows
     // never arrive. Simulate DB returning nothing (as it would for a player
     // whose only activity is collected).
-    mockQueryResults = [[], [], []];
+    mockQueryResults = [[], [], [], []];
 
     const req = makeRequest("GET", "/api/catchup");
     const res = await handleGetCatchUpFeed(req, "player_1");
@@ -302,6 +307,7 @@ describe("handleGetCatchUpFeed", () => {
           },
         },
       ], // god_whispers
+      [], // training_activities
     ];
 
     const req = makeRequest("GET", "/api/catchup");
@@ -329,6 +335,7 @@ describe("handleGetCatchUpFeed", () => {
           },
         },
       ], // god_whispers
+      [], // training_activities
     ];
 
     const req = makeRequest("GET", "/api/catchup");
@@ -338,5 +345,117 @@ describe("handleGetCatchUpFeed", () => {
     const types = body.items.map((i) => i.type);
     expect(types).toContain("god_whisper");
     expect(types).not.toContain("companion_idle");
+  });
+
+  test("training in running_first_half appears as in_progress with progress", async () => {
+    const createdAt = new Date(Date.now() - 3600_000).toISOString();
+    const transitionAt = new Date(Date.now() + 3600_000).toISOString();
+    mockQueryResults = [
+      [], // async_activities
+      [], // world_news
+      [], // god_whispers
+      [
+        {
+          id: "train_abc123",
+          activity_type: "technique_base",
+          state: "running_first_half",
+          data: {
+            program_name: "Combat Fundamentals",
+            first_half_seconds: 7200,
+          },
+          transition_at: transitionAt,
+          created_at: createdAt,
+          updated_at: createdAt,
+        },
+      ],
+    ];
+
+    const req = makeRequest("GET", "/api/catchup");
+    const res = await handleGetCatchUpFeed(req, "player_1");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      items: {
+        id: string;
+        type: string;
+        title: string;
+        progress: { percentEstimate: number } | null;
+      }[];
+    };
+    const training = body.items.find((i) => i.id === "train_abc123");
+    expect(training).toBeTruthy();
+    expect(training!.type).toBe("in_progress");
+    expect(training!.title).toBe("Combat Fundamentals");
+    expect(training!.progress).not.toBeNull();
+    expect(training!.progress!.percentEstimate).toBeGreaterThan(0);
+    expect(training!.progress!.percentEstimate).toBeLessThan(100);
+  });
+
+  test("training in awaiting_decision appears as pending_decision with options", async () => {
+    mockQueryResults = [
+      [], // async_activities
+      [], // world_news
+      [], // god_whispers
+      [
+        {
+          id: "train_mid123",
+          activity_type: "technique_base",
+          state: "awaiting_decision",
+          data: { program_name: "Combat Fundamentals" },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ],
+    ];
+
+    const req = makeRequest("GET", "/api/catchup");
+    const res = await handleGetCatchUpFeed(req, "player_1");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      items: {
+        id: string;
+        type: string;
+        decisionOptions: { id: string; label: string }[] | null;
+      }[];
+    };
+    const training = body.items.find((i) => i.id === "train_mid123");
+    expect(training).toBeTruthy();
+    expect(training!.type).toBe("pending_decision");
+    expect(training!.decisionOptions).not.toBeNull();
+    expect(training!.decisionOptions).toHaveLength(2);
+    expect(training!.decisionOptions![0]!.id).toBe("aggressive");
+  });
+
+  test("training in complete appears as resolved", async () => {
+    mockQueryResults = [
+      [], // async_activities
+      [], // world_news
+      [], // god_whispers
+      [
+        {
+          id: "train_done123",
+          activity_type: "skill_practice",
+          state: "complete",
+          data: {
+            program_name: "Perception Drills",
+            narration_text: "Your senses sharpen.",
+            narration_audio_url: "/api/audio/training_done.mp3",
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ],
+    ];
+
+    const req = makeRequest("GET", "/api/catchup");
+    const res = await handleGetCatchUpFeed(req, "player_1");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      items: { id: string; type: string; hasAudio: boolean; title: string }[];
+    };
+    const training = body.items.find((i) => i.id === "train_done123");
+    expect(training).toBeTruthy();
+    expect(training!.type).toBe("resolved");
+    expect(training!.title).toBe("Perception Drills");
+    expect(training!.hasAudio).toBe(true);
   });
 });

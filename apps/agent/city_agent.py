@@ -2,32 +2,18 @@
 
 from typing import Any
 
+from check_tools import discover_hidden_element, request_attack, request_saving_throw, request_skill_check, roll_dice
+from combat_init import start_combat
+from environment_tools import play_sound, set_music_state
 from gameplay_agent import GameplayAgent
+from inventory_tools import add_to_inventory, remove_from_inventory
+from movement_tools import move_player
+from progression_tools import award_divine_favor, award_xp
+from query_tools import query_inventory, query_location, query_lore, query_npc
+from quest_tools import update_quest
 from region_types import REGION_CITY
-from tools import (
-    add_to_inventory,
-    award_divine_favor,
-    award_xp,
-    discover_hidden_element,
-    end_session,
-    enter_location,
-    move_player,
-    play_sound,
-    query_inventory,
-    query_location,
-    query_lore,
-    query_npc,
-    record_story_moment,
-    remove_from_inventory,
-    request_attack,
-    request_saving_throw,
-    request_skill_check,
-    roll_dice,
-    set_music_state,
-    start_combat,
-    update_npc_disposition,
-    update_quest,
-)
+from scene_tools import enter_location
+from session_tools import end_session, record_story_moment, update_npc_disposition
 
 CITY_TOOLS = [
     # World query

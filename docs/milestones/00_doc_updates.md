@@ -1,6 +1,6 @@
 # Phase 0: Documentation Updates
 
-> Source docs: `docs/game_mechanics/economy_reconciliation.md`, `docs/game_mechanics/game_mechanics_decisions.md`
+> Source docs: `docs/game_mechanics/game_mechanics_economy.md`, `docs/game_mechanics/game_mechanics_decisions.md`
 
 Bring all project documentation in sync with the 10 new game mechanics docs before any implementation work begins. Fix stale references, add missing indexes, correct economy inconsistencies, and ensure the knowledge system points to the right sources.
 
@@ -39,7 +39,7 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 
 **Deliverables:**
 - Section index entries for each game mechanics doc following the existing INDEX.md format (table with Section, Lines, What's There)
-- Docs to index: `game_mechanics_core.md`, `game_mechanics_combat.md`, `game_mechanics_archetypes.md`, `game_mechanics_magic.md`, `game_mechanics_crafting.md`, `game_mechanics_npcs.md`, `game_mechanics_bestiary.md`, `game_mechanics_patrons.md`, `game_mechanics_decisions.md`, `economy_reconciliation.md`
+- Docs to index: `game_mechanics_core.md`, `game_mechanics_combat.md`, `game_mechanics_archetypes.md`, `game_mechanics_magic.md`, `game_mechanics_crafting.md`, `game_mechanics_npcs.md`, `game_mechanics_bestiary.md`, `game_mechanics_patrons.md`, `game_mechanics_decisions.md`, `game_mechanics_economy.md`
 - Add `agent_handoffs_and_scenes.md` to INDEX.md if not already present
 
 **Acceptance criteria:**
@@ -56,12 +56,12 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 
 ### Milestone 0.3 — Economy Reconciliation Fixes
 
-**Goal:** Apply the currency and pricing fixes identified in `economy_reconciliation.md` to existing design docs so all docs use consistent currency notation and ratios.
+**Goal:** Apply the currency and pricing fixes identified in `game_mechanics_economy.md` to existing design docs so all docs use consistent currency notation and ratios.
 
-**Inputs:** `docs/game_mechanics/economy_reconciliation.md`, existing `game_design_doc.md` and other docs.
+**Inputs:** `docs/game_mechanics/game_mechanics_economy.md`, existing `game_design_doc.md` and other docs.
 
 **Deliverables:**
-- Fix currency notation: change all instances of "gp" to "gc" across all docs (economy_reconciliation.md identifies 4 specific locations: Half Plate, Plate, Revivify diamond, Resurrection diamond)
+- Fix currency notation: change all instances of "gp" to "gc" across all docs (game_mechanics_economy.md identifies 4 specific locations: Half Plate, Plate, Revivify diamond, Resurrection diamond)
 - Update GDD economy section: 1 gc = 10 sp (not 100 sp as currently stated)
 - Adopt economic anchor: state "1 sp = 1 day's unskilled labor" in the GDD economy section
 - Add canonical price reference table to the GDD economy section or as a standalone reference
@@ -98,7 +98,7 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 - [x] GDD Combat section references `game_mechanics_combat.md`
 - [x] GDD NPC section references `game_mechanics_npcs.md`
 - [x] GDD Async section references `game_mechanics_crafting.md` and `game_mechanics_core.md` (training)
-- [x] GDD Economy section references `economy_reconciliation.md`
+- [x] GDD Economy section references `game_mechanics_economy.md`
 - [x] GDD Death section references `game_mechanics_combat.md` (death system)
 - [x] Technical architecture Game Engine section references `game_mechanics/`
 - [x] World data NPC/content schemas reference `game_mechanics_npcs.md` and `game_mechanics_bestiary.md`

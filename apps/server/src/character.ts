@@ -1,4 +1,5 @@
 import { sql } from "./db.ts";
+import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
 
 interface CharacterRow {
@@ -34,8 +35,7 @@ export async function handleGetCharacter(_req: Request, playerId: string): Promi
     }
 
     const row = rows[0]!;
-    const data =
-      typeof row.data === "string" ? (JSON.parse(row.data) as CharacterRow["data"]) : row.data;
+    const data = parseJsonb<CharacterRow["data"]>(row.data);
 
     if (!data.name) {
       return Response.json({ error: "Character not created" }, { status: 404 });

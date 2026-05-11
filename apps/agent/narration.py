@@ -4,6 +4,8 @@ import logging
 import re
 from typing import Any
 
+from anthropic.types import ToolParam
+
 from activity_templates import build_narration_prompt
 from dialogue_parser import Segment
 from llm_config import MODEL, extract_llm_text
@@ -120,7 +122,7 @@ async def generate_notification_hook(
     return hook
 
 
-def _build_narration_tool(npc_voice_ids: list[str]) -> dict[str, Any]:
+def _build_narration_tool(npc_voice_ids: list[str]) -> ToolParam:
     """Build the tool schema for structured narration output.
 
     The character enum is constrained to DM_NARRATOR + the specific NPCs

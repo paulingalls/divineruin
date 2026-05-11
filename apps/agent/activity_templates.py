@@ -41,6 +41,40 @@ COMPANION_CONTEXT = {
             "relationship": "Kael takes the time to simply be present, sharing stories over a drink.",
         },
     },
+    "companion_lira": {
+        "name": "Lira",
+        "personality": "brilliant, curious, socially cautious, excited by discovery",
+        "speech_style": "precise and rapid when discussing findings, halting in casual talk",
+        "voice_id": "COMPANION_LIRA",
+        "errand_frames": {
+            "scout": "Lira surveys the area methodically, pausing to examine anything that glows, hums, or feels wrong.",
+            "social": "Lira listens carefully, asking pointed questions that make people reveal more than they intended.",
+            "acquire": "Lira checks every vendor for arcane reagents and forgotten texts, ignoring mundane stock entirely.",
+            "relationship": "Lira brings a small gift — a pressed flower or a copied passage — and asks earnest questions.",
+        },
+    },
+    "companion_tam": {
+        "name": "Tam",
+        "personality": "energetic, impulsive, warm-hearted, easily distracted",
+        "speech_style": "fast and enthusiastic, jumps between topics, speaks with hands",
+        "voice_id": "COMPANION_TAM",
+        "errand_frames": {
+            "scout": "Tam covers ground fast, climbing anything climbable and poking into places others would avoid.",
+            "social": "Tam charms their way into conversations easily, though sometimes says the wrong thing at the wrong time.",
+            "acquire": "Tam knows every back trail and hidden grove, but gets lost in cities and comes back with the wrong thing.",
+            "relationship": "Tam shows up with food, sits too close, and talks until the other person can't help but laugh.",
+        },
+    },
+    "companion_sable": {
+        "name": "Sable",
+        "personality": "alert, protective, primal intelligence, distrustful of strangers",
+        "speech_style": "communicates through body language, growls, and pointed looks",
+        "voice_id": "COMPANION_SABLE",
+        "errand_frames": {
+            "scout": "Sable moves low through the underbrush, nose to the ground, ears tracking every sound.",
+            "acquire": "Sable follows scent trails to find natural materials — herbs, bones, mineral deposits.",
+        },
+    },
 }
 
 # Narration prompt templates per activity type.
@@ -80,6 +114,20 @@ Decision options:
 
 Use DM_NARRATOR for narration and {voice_id} for {mentor_name}'s dialogue.
 Keep it concise and in-character.""",
+    "training_completion": """You are {mentor_name}, training mentor in the world of Divine Ruin.
+Personality: {mentor_personality}
+Speech style: {mentor_speech_style}
+
+The player completed training: {training_stat}{skill_note}
+Outcome tier: {tier} (DC: {dc})
+Stat gains: {stat_gains}
+
+Write a short narration (60-120 words) of the training conclusion.
+Include physical sensory details — sweat, exertion, the moment of clarity or frustration.
+Describe the outcome: breakthrough means real progress was made, plateau means steady effort with no leap forward.
+{advancement_line}
+Use DM_NARRATOR for narration and {voice_id} for {mentor_name}'s dialogue.
+Keep it concise and in-character.""",
     "companion_errand": """You are narrating {companion_name}'s return from an errand in the world of Divine Ruin.
 Companion personality: {companion_personality}
 Speech style: {companion_speech_style}
@@ -88,7 +136,7 @@ Errand frame: {errand_frame}
 Errand type: {errand_type} at {destination}
 Outcome: {tier}
 Information gained: {information}
-
+{risk_line}
 Write a short narration (60-120 words) of {companion_name} returning and reporting.
 Include details of what they saw, heard, or found. Stay in character.
 End with the decision point.
@@ -140,28 +188,42 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
         )
         return prompt, [npc["voice_id"]]
 
-    elif activity_type == "training":
+    elif activity_type in ("training", "training_completion"):
         mentor = get_training_mentor(ctx.get("mentor_id", "guildmaster_torin"))
         skill_note = f" (skill: {ctx['training_skill']})" if ctx.get("training_skill") else ""
-        prompt = template.format(
-            mentor_name=mentor["name"],
-            mentor_personality=mentor["personality"],
-            mentor_speech_style=mentor["speech_style"],
-            voice_id=mentor["voice_id"],
-            training_stat=ctx.get("training_stat", "unknown"),
-            skill_note=skill_note,
-            tier=ctx.get("tier", "unknown"),
-            roll=ctx.get("roll", "?"),
-            dc=ctx.get("dc", "?"),
-            stat_gains=outcome.get("stat_gains", {}),
-            decision_options=decision_text,
-        )
+        format_args: dict = {
+            "mentor_name": mentor["name"],
+            "mentor_personality": mentor["personality"],
+            "mentor_speech_style": mentor["speech_style"],
+            "voice_id": mentor["voice_id"],
+            "training_stat": ctx.get("training_stat", "unknown"),
+            "skill_note": skill_note,
+            "tier": ctx.get("tier", "unknown"),
+            "stat_gains": outcome.get("stat_gains", {}),
+            "dc": ctx.get("dc", "?"),
+        }
+        if activity_type == "training":
+            format_args["roll"] = ctx.get("roll", "?")
+            format_args["decision_options"] = decision_text
+        else:
+            stat_gains = outcome.get("stat_gains", {})
+            if stat_gains.get("skill_advanced"):
+                format_args["advancement_line"] = (
+                    f"The player's skill advanced to {stat_gains['new_tier']}! Make this feel momentous.\n"
+                )
+            else:
+                format_args["advancement_line"] = ""
+        prompt = template.format(**format_args)
         return prompt, [mentor["voice_id"]]
 
     else:  # companion_errand
         companion = get_companion_context(ctx.get("companion_id", "companion_kael"))
         errand_type = ctx.get("errand_type", "scout")
         errand_frame = companion.get("errand_frames", {}).get(errand_type, "")
+        risk = ctx.get("risk_outcome", "none")
+        risk_line = "Companion was injured during the errand.\n" if risk == "injured" else ""
+        if risk == "emergency":
+            risk_line = "Companion ran into serious trouble and needs rescue.\n"
         prompt = template.format(
             companion_name=companion["name"],
             companion_personality=companion["personality"],
@@ -172,6 +234,7 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
             destination=ctx.get("destination", "unknown"),
             tier=ctx.get("tier", "unknown"),
             information=outcome.get("information_gained", []),
+            risk_line=risk_line,
             decision_options=decision_text,
         )
         return prompt, [companion["voice_id"]]

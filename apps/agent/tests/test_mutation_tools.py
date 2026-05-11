@@ -7,21 +7,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import event_types as E
+from check_tools import _request_saving_throw_impl, roll_dice
+from inventory_tools import _add_to_inventory_impl, _remove_from_inventory_impl
+from movement_tools import _move_player_impl
+from progression_tools import _award_divine_favor_impl, _award_xp_impl
+from quest_tools import _clamp_disposition_shift, _update_quest_impl
 from session_data import SessionData
-from tools import (
-    _cap_str,
-    _clamp_disposition_shift,
-    _resolve_ambient_sounds,
-    add_to_inventory,
-    award_divine_favor,
-    award_xp,
-    move_player,
-    remove_from_inventory,
-    request_saving_throw,
-    roll_dice,
-    update_npc_disposition,
-    update_quest,
-)
+from session_tools import _update_npc_disposition_impl
+from tool_support import _cap_str, _resolve_ambient_sounds
+
+
+@asynccontextmanager
+async def _mock_txn(conn):
+    yield conn
+
 
 SAMPLE_PLAYER = {
     "player_id": "player_1",
@@ -122,14 +121,6 @@ SAMPLE_QUEST = {
 # --- Test helpers ---
 
 
-_mock_conn = MagicMock(name="mock_txn_conn")
-
-
-@asynccontextmanager
-async def _mock_transaction():
-    yield _mock_conn
-
-
 def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None):
     ctx = MagicMock()
     ctx.userdata = SessionData(player_id=player_id, location_id=location_id, room=room)
@@ -201,74 +192,106 @@ class TestResolveAmbientSounds:
 # --- award_xp ---
 
 
-@patch("tools.db.transaction", _mock_transaction)
 class TestAwardXp:
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_xp", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_awards_xp(self, mock_player, mock_update):
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_awards_xp(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_mutations = MagicMock()
+        mock_mutations.update_player_xp = AsyncMock()
         ctx = _make_context()
-        result = json.loads(await award_xp._func(ctx, amount=50, reason="defeated goblin"))
+        result = json.loads(
+            await _award_xp_impl(
+                ctx, 50, "defeated goblin", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries
+            )
+        )
         assert result["amount"] == 50
         assert result["new_xp"] == 50
         assert result["leveled_up"] is False
-        mock_update.assert_called_once_with("player_1", 50, 1, conn=_mock_conn)
+        mock_mutations.update_player_xp.assert_called_once_with("player_1", 50, 1, conn=mock_conn)
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_xp", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_level_up(self, mock_player, mock_update):
-        player = {**SAMPLE_PLAYER, "xp": 250}
-        mock_player.return_value = player
+    async def test_level_up(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "xp": 250})
+        mock_mutations = MagicMock()
+        mock_mutations.update_player_xp = AsyncMock()
         ctx = _make_context()
-        result = json.loads(await award_xp._func(ctx, amount=100, reason="quest complete"))
+        result = json.loads(
+            await _award_xp_impl(
+                ctx, 100, "quest complete", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries
+            )
+        )
         assert result["new_xp"] == 350
         assert result["new_level"] == 2
         assert result["leveled_up"] is True
-        mock_update.assert_called_once_with("player_1", 350, 2, conn=_mock_conn)
+        mock_mutations.update_player_xp.assert_called_once_with("player_1", 350, 2, conn=mock_conn)
 
     @pytest.mark.asyncio
     async def test_negative_amount(self):
         ctx = _make_context()
-        result = json.loads(await award_xp._func(ctx, amount=-10, reason="cheat"))
+        result = json.loads(
+            await _award_xp_impl(ctx, -10, "cheat", db_mod=MagicMock(), mutations=MagicMock(), queries=MagicMock())
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_zero_amount(self):
         ctx = _make_context()
-        result = json.loads(await award_xp._func(ctx, amount=0, reason="nothing"))
+        result = json.loads(
+            await _award_xp_impl(ctx, 0, "nothing", db_mod=MagicMock(), mutations=MagicMock(), queries=MagicMock())
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_missing_player(self, mock_player):
-        mock_player.return_value = None
+    async def test_missing_player(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(await award_xp._func(ctx, amount=50, reason="test"))
+        result = json.loads(
+            await _award_xp_impl(ctx, 50, "test", db_mod=mock_db, mutations=MagicMock(), queries=mock_queries)
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_xp", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_publishes_event(self, mock_player, mock_update):
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_publishes_event(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_mutations = MagicMock()
+        mock_mutations.update_player_xp = AsyncMock()
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await award_xp._func(ctx, amount=50, reason="test")
+        await _award_xp_impl(ctx, 50, "test", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries)
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == E.XP_AWARDED
         assert call_data["amount"] == 50
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_xp", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_max_level_no_level_up(self, mock_player, mock_update):
-        player = {**SAMPLE_PLAYER, "level": 20, "xp": 355000}
-        mock_player.return_value = player
+    async def test_max_level_no_level_up(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "level": 20, "xp": 355000})
+        mock_mutations = MagicMock()
+        mock_mutations.update_player_xp = AsyncMock()
         ctx = _make_context()
-        result = json.loads(await award_xp._func(ctx, amount=1000, reason="bonus"))
+        result = json.loads(
+            await _award_xp_impl(ctx, 1000, "bonus", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries)
+        )
         assert result["new_level"] == 20
         assert result["leveled_up"] is False
         assert result["new_xp"] == 356000
@@ -277,111 +300,96 @@ class TestAwardXp:
 # --- update_npc_disposition ---
 
 
-@patch("tools.db.transaction", _mock_transaction)
 class TestUpdateNpcDisposition:
-    @pytest.mark.asyncio
-    @patch("tools.db.set_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    async def test_shift_up(self, mock_npc, mock_disp, mock_set):
-        mock_npc.return_value = SAMPLE_NPC
-        mock_disp.return_value = "neutral"
-        ctx = _make_context()
-        result = json.loads(
-            await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=1, reason="helped with task")
+    def _mocks(self, *, npc=SAMPLE_NPC, disp: str | None = "neutral"):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_content = MagicMock()
+        mock_content.get_npc = AsyncMock(return_value=npc)
+        mock_queries = MagicMock()
+        mock_queries.get_npc_disposition = AsyncMock(return_value=disp)
+        mock_mutations = MagicMock()
+        mock_mutations.set_npc_disposition = AsyncMock()
+        return mock_db, mock_content, mock_queries, mock_mutations
+
+    async def _call(self, ctx, npc_id, delta, reason, mocks):
+        mock_db, mock_content, mock_queries, mock_mutations = mocks
+        return json.loads(
+            await _update_npc_disposition_impl(
+                ctx,
+                npc_id,
+                delta,
+                reason,
+                db_mod=mock_db,
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
         )
-        assert result["previous"] == "neutral"
-        assert result["new"] == "friendly"
-        mock_set.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("tools.db.set_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    async def test_shift_down(self, mock_npc, mock_disp, mock_set):
-        mock_npc.return_value = SAMPLE_NPC
-        mock_disp.return_value = "friendly"
+    async def test_shift_up(self):
+        mocks = self._mocks(disp="neutral")
         ctx = _make_context()
-        result = json.loads(
-            await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=-2, reason="insulted them")
-        )
+        result = await self._call(ctx, "guildmaster_torin", 1, "helped with task", mocks)
+        assert result["previous"] == "neutral"
+        assert result["new"] == "friendly"
+        mocks[3].set_npc_disposition.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_shift_down(self):
+        mocks = self._mocks(disp="friendly")
+        ctx = _make_context()
+        result = await self._call(ctx, "guildmaster_torin", -2, "insulted them", mocks)
         assert result["previous"] == "friendly"
         assert result["new"] == "wary"
 
     @pytest.mark.asyncio
-    @patch("tools.db.set_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    async def test_clamp_at_top(self, mock_npc, mock_disp, mock_set):
-        mock_npc.return_value = SAMPLE_NPC
-        mock_disp.return_value = "trusted"
+    async def test_clamp_at_top(self):
+        mocks = self._mocks(disp="trusted")
         ctx = _make_context()
-        result = json.loads(
-            await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=2, reason="saved their life")
-        )
+        result = await self._call(ctx, "guildmaster_torin", 2, "saved their life", mocks)
         assert result["new"] == "trusted"
 
     @pytest.mark.asyncio
-    @patch("tools.db.set_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    async def test_clamp_at_bottom(self, mock_npc, mock_disp, mock_set):
-        mock_npc.return_value = SAMPLE_NPC
-        mock_disp.return_value = "hostile"
+    async def test_clamp_at_bottom(self):
+        mocks = self._mocks(disp="hostile")
         ctx = _make_context()
-        result = json.loads(
-            await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=-1, reason="attacked them")
-        )
+        result = await self._call(ctx, "guildmaster_torin", -1, "attacked them", mocks)
         assert result["new"] == "hostile"
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    async def test_unknown_npc(self, mock_npc):
-        mock_npc.return_value = None
+    async def test_unknown_npc(self):
+        mocks = self._mocks(npc=None)
         ctx = _make_context()
-        result = json.loads(await update_npc_disposition._func(ctx, npc_id="nobody", delta=1, reason="test"))
+        result = await self._call(ctx, "nobody", 1, "test", mocks)
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.set_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    async def test_falls_back_to_default_disposition(self, mock_npc, mock_disp, mock_set):
-        mock_npc.return_value = SAMPLE_NPC
-        mock_disp.return_value = None  # no existing disposition
+    async def test_falls_back_to_default_disposition(self):
+        mocks = self._mocks(disp=None)
         ctx = _make_context()
-        result = json.loads(
-            await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=1, reason="first meeting")
-        )
+        result = await self._call(ctx, "guildmaster_torin", 1, "first meeting", mocks)
         assert result["previous"] == "neutral"
         assert result["new"] == "friendly"
 
     @pytest.mark.asyncio
-    @patch("tools.db.set_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    async def test_publishes_event(self, mock_npc, mock_disp, mock_set):
-        mock_npc.return_value = SAMPLE_NPC
-        mock_disp.return_value = "neutral"
+    async def test_publishes_event(self):
+        mocks = self._mocks(disp="neutral")
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=1, reason="helped")
+        await self._call(ctx, "guildmaster_torin", 1, "helped", mocks)
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == E.DISPOSITION_CHANGED
         assert call_data["npc_id"] == "guildmaster_torin"
 
     @pytest.mark.asyncio
-    @patch("tools.db.set_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    async def test_delta_clamped_to_range(self, mock_npc, mock_disp, mock_set):
-        mock_npc.return_value = SAMPLE_NPC
-        mock_disp.return_value = "neutral"
+    async def test_delta_clamped_to_range(self):
+        mocks = self._mocks(disp="neutral")
         ctx = _make_context()
-        result = json.loads(
-            await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=5, reason="extreme favor")
-        )
+        result = await self._call(ctx, "guildmaster_torin", 5, "extreme favor", mocks)
         # delta clamped to +2, neutral+2 = trusted
         assert result["new"] == "trusted"
 
@@ -389,40 +397,84 @@ class TestUpdateNpcDisposition:
 # --- add_to_inventory ---
 
 
-@patch("tools.db.transaction", _mock_transaction)
 class TestAddToInventory:
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_inventory", new_callable=AsyncMock)
-    @patch("tools.db.add_inventory_item", new_callable=AsyncMock)
-    @patch("tools.db.get_item", new_callable=AsyncMock)
-    async def test_adds_item(self, mock_item, mock_add, mock_inv):
-        mock_item.return_value = SAMPLE_ITEM
-        mock_inv.return_value = [SAMPLE_ITEM]
+    async def test_adds_item(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_content = MagicMock()
+        mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
+        mock_mutations = MagicMock()
+        mock_mutations.add_inventory_item = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
         ctx = _make_context()
-        result = json.loads(await add_to_inventory._func(ctx, item_id="health_potion", quantity=2, source="looted"))
+        result = json.loads(
+            await _add_to_inventory_impl(
+                ctx,
+                "health_potion",
+                2,
+                "looted",
+                db_mod=mock_db,
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
+        )
         assert result["action"] == "added"
         assert result["item_name"] == "Health Potion"
         assert result["quantity"] == 2
-        mock_add.assert_called_once_with("player_1", "health_potion", 2, conn=_mock_conn)
+        mock_mutations.add_inventory_item.assert_called_once_with("player_1", "health_potion", 2, conn=mock_conn)
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_item", new_callable=AsyncMock)
-    async def test_unknown_item(self, mock_item):
-        mock_item.return_value = None
+    async def test_unknown_item(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_content = MagicMock()
+        mock_content.get_item = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(await add_to_inventory._func(ctx, item_id="nonexistent", quantity=1, source="found"))
+        result = json.loads(
+            await _add_to_inventory_impl(
+                ctx,
+                "nonexistent",
+                1,
+                "found",
+                db_mod=mock_db,
+                mutations=MagicMock(),
+                queries=MagicMock(),
+                content=mock_content,
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_inventory", new_callable=AsyncMock)
-    @patch("tools.db.add_inventory_item", new_callable=AsyncMock)
-    @patch("tools.db.get_item", new_callable=AsyncMock)
-    async def test_publishes_event(self, mock_item, mock_add, mock_inv):
-        mock_item.return_value = SAMPLE_ITEM
-        mock_inv.return_value = [SAMPLE_ITEM]
+    async def test_publishes_event(self):
+        from db import _compute_item_image_url
+
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db._compute_item_image_url = _compute_item_image_url
+        mock_content = MagicMock()
+        mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
+        mock_mutations = MagicMock()
+        mock_mutations.add_inventory_item = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await add_to_inventory._func(ctx, item_id="health_potion", quantity=1, source="bought")
+        await _add_to_inventory_impl(
+            ctx,
+            "health_potion",
+            1,
+            "bought",
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         # Two events: inventory_updated + item_acquired
         assert room.local_participant.publish_data.call_count == 2
         first_call = json.loads(room.local_participant.publish_data.call_args_list[0][0][0])
@@ -435,54 +487,99 @@ class TestAddToInventory:
 # --- remove_from_inventory ---
 
 
-@patch("tools.db.transaction", _mock_transaction)
 class TestRemoveFromInventory:
     @pytest.mark.asyncio
-    @patch("tools.db.get_item", new_callable=AsyncMock)
-    @patch("tools.db.remove_inventory_item", new_callable=AsyncMock)
-    @patch("tools.db.get_inventory_item", new_callable=AsyncMock)
-    async def test_removes_item(self, mock_slot, mock_remove, mock_item):
-        mock_slot.return_value = {"quantity": 1, "equipped": False}
-        mock_remove.return_value = True
-        mock_item.return_value = SAMPLE_ITEM
+    async def test_removes_item(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_content = MagicMock()
+        mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
+        mock_queries = MagicMock()
+        mock_queries.get_inventory_item = AsyncMock(return_value={"quantity": 1, "equipped": False})
+        mock_mutations = MagicMock()
+        mock_mutations.remove_inventory_item = AsyncMock(return_value=True)
         ctx = _make_context()
-        result = json.loads(await remove_from_inventory._func(ctx, item_id="health_potion"))
+        result = json.loads(
+            await _remove_from_inventory_impl(
+                ctx,
+                "health_potion",
+                db_mod=mock_db,
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
+        )
         assert result["action"] == "removed"
         assert result["item_name"] == "Health Potion"
-        mock_remove.assert_called_once()
+        mock_mutations.remove_inventory_item.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_item", new_callable=AsyncMock)
-    @patch("tools.db.get_inventory_item", new_callable=AsyncMock)
-    async def test_missing_item(self, mock_slot, mock_item):
-        mock_slot.return_value = None
-        mock_item.return_value = SAMPLE_ITEM
+    async def test_missing_item(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_content = MagicMock()
+        mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
+        mock_queries = MagicMock()
+        mock_queries.get_inventory_item = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(await remove_from_inventory._func(ctx, item_id="nothing"))
+        result = json.loads(
+            await _remove_from_inventory_impl(
+                ctx,
+                "nothing",
+                db_mod=mock_db,
+                mutations=MagicMock(),
+                queries=mock_queries,
+                content=mock_content,
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_item", new_callable=AsyncMock)
-    @patch("tools.db.get_inventory_item", new_callable=AsyncMock)
-    async def test_equipped_item_blocked(self, mock_slot, mock_item):
-        mock_slot.return_value = {"quantity": 1, "equipped": True}
-        mock_item.return_value = SAMPLE_ITEM
+    async def test_equipped_item_blocked(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_content = MagicMock()
+        mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
+        mock_queries = MagicMock()
+        mock_queries.get_inventory_item = AsyncMock(return_value={"quantity": 1, "equipped": True})
         ctx = _make_context()
-        result = json.loads(await remove_from_inventory._func(ctx, item_id="longsword"))
+        result = json.loads(
+            await _remove_from_inventory_impl(
+                ctx,
+                "longsword",
+                db_mod=mock_db,
+                mutations=MagicMock(),
+                queries=mock_queries,
+                content=mock_content,
+            )
+        )
         assert "error" in result
         assert "equipped" in result["error"].lower()
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_item", new_callable=AsyncMock)
-    @patch("tools.db.remove_inventory_item", new_callable=AsyncMock)
-    @patch("tools.db.get_inventory_item", new_callable=AsyncMock)
-    async def test_publishes_event(self, mock_slot, mock_remove, mock_item):
-        mock_slot.return_value = {"quantity": 1, "equipped": False}
-        mock_remove.return_value = True
-        mock_item.return_value = SAMPLE_ITEM
+    async def test_publishes_event(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_content = MagicMock()
+        mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
+        mock_queries = MagicMock()
+        mock_queries.get_inventory_item = AsyncMock(return_value={"quantity": 1, "equipped": False})
+        mock_mutations = MagicMock()
+        mock_mutations.remove_inventory_item = AsyncMock(return_value=True)
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await remove_from_inventory._func(ctx, item_id="health_potion")
+        await _remove_from_inventory_impl(
+            ctx,
+            "health_potion",
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == E.INVENTORY_UPDATED
@@ -492,73 +589,104 @@ class TestRemoveFromInventory:
 # --- move_player ---
 
 
-@patch("tools.db.transaction", _mock_transaction)
 class TestMovePlayer:
+    def _mocks(self, *, locations=None):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        from db import extract_exit_connections
+
+        mock_db.extract_exit_connections = extract_exit_connections
+        mock_content = MagicMock()
+        if locations is not None:
+            mock_content.get_location = AsyncMock(side_effect=locations)
+        mock_queries = MagicMock()
+        mock_queries.get_npcs_at_location = AsyncMock(return_value=[])
+        mock_queries.get_npc_dispositions = AsyncMock(return_value={})
+        mock_queries.get_targets_at_location = AsyncMock(return_value=[])
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_mutations = MagicMock()
+        mock_mutations.update_player_location = AsyncMock()
+        mock_mutations.upsert_map_progress = AsyncMock()
+        return mock_db, mock_content, mock_queries, mock_mutations, mock_conn
+
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_valid_move(
-        self, mock_loc, mock_upsert_map, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
-    ):
-        mock_loc.side_effect = [SAMPLE_LOCATION, SAMPLE_DESTINATION]
-        mock_npcs.return_value = []
-        mock_disp.return_value = {}
-        mock_targets.return_value = []
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_valid_move(self):
+        mock_db, mock_content, mock_queries, mock_mutations, mock_conn = self._mocks(
+            locations=[SAMPLE_LOCATION, SAMPLE_DESTINATION]
+        )
         ctx = _make_context()
-        result = json.loads(await move_player._func(ctx, destination_id="accord_market_square"))
+        raw = await _move_player_impl(
+            ctx,
+            "accord_market_square",
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+        assert isinstance(raw, str)
+        result = json.loads(raw)
         assert result["moved"] is True
         assert result["previous_location"] == "accord_guild_hall"
         assert result["location"]["name"] == "Market Square"
-        mock_update.assert_called_once_with("player_1", "accord_market_square", conn=_mock_conn)
-        mock_upsert_map.assert_called_once_with(
-            "player_1", "accord_market_square", ["accord_guild_hall"], conn=_mock_conn
+        mock_mutations.update_player_location.assert_called_once_with(
+            "player_1", "accord_market_square", conn=mock_conn
+        )
+        mock_mutations.upsert_map_progress.assert_called_once_with(
+            "player_1", "accord_market_square", ["accord_guild_hall"], conn=mock_conn
         )
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_invalid_destination(self, mock_loc):
-        mock_loc.return_value = SAMPLE_LOCATION
+    async def test_invalid_destination(self):
+        mock_db, mock_content, mock_queries, mock_mutations, _ = self._mocks(locations=[SAMPLE_LOCATION])
         ctx = _make_context()
-        result = json.loads(await move_player._func(ctx, destination_id="nonexistent"))
+        raw = await _move_player_impl(
+            ctx,
+            "nonexistent",
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+        assert isinstance(raw, str)
+        result = json.loads(raw)
         assert "error" in result
         assert "valid_destinations" in result
 
     @pytest.mark.asyncio
-    @patch("tools._check_exit_requirement", new_callable=AsyncMock, return_value=False)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_blocked_exit(self, mock_loc, mock_check):
-        mock_loc.return_value = SAMPLE_LOCATION
+    @patch("movement_tools._check_exit_requirement", new_callable=AsyncMock, return_value=False)
+    async def test_blocked_exit(self, mock_check):
+        mock_db, mock_content, mock_queries, mock_mutations, _ = self._mocks(locations=[SAMPLE_LOCATION])
         ctx = _make_context()
-        result = json.loads(await move_player._func(ctx, destination_id="accord_temple"))
+        raw = await _move_player_impl(
+            ctx,
+            "accord_temple",
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+        assert isinstance(raw, str)
+        result = json.loads(raw)
         assert result["blocked"] is True
         assert "message" in result
         assert "requires" not in result  # raw requirement strings must not be exposed
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_publishes_event(
-        self, mock_loc, mock_upsert_map, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
-    ):
-        mock_loc.side_effect = [SAMPLE_LOCATION, SAMPLE_DESTINATION]
-        mock_npcs.return_value = []
-        mock_disp.return_value = {}
-        mock_targets.return_value = []
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_publishes_event(self):
+        mock_db, mock_content, mock_queries, mock_mutations, _ = self._mocks(
+            locations=[SAMPLE_LOCATION, SAMPLE_DESTINATION]
+        )
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await move_player._func(ctx, destination_id="accord_market_square")
+        await _move_player_impl(
+            ctx,
+            "accord_market_square",
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == E.LOCATION_CHANGED
@@ -570,78 +698,96 @@ class TestMovePlayer:
         assert call_data["ambient_sounds"] == "market_bustle"
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_session_state_updated(
-        self, mock_loc, mock_upsert_map, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
-    ):
-        mock_loc.side_effect = [SAMPLE_LOCATION, SAMPLE_DESTINATION]
-        mock_npcs.return_value = []
-        mock_disp.return_value = {}
-        mock_targets.return_value = []
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_session_state_updated(self):
+        mock_db, mock_content, mock_queries, mock_mutations, _ = self._mocks(
+            locations=[SAMPLE_LOCATION, SAMPLE_DESTINATION]
+        )
         ctx = _make_context()
-        await move_player._func(ctx, destination_id="accord_market_square")
+        await _move_player_impl(
+            ctx,
+            "accord_market_square",
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         assert ctx.userdata.location_id == "accord_market_square"
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_missing_current_location(self, mock_loc):
-        mock_loc.return_value = None
+    async def test_missing_current_location(self):
+        mock_db, mock_content, mock_queries, mock_mutations, _ = self._mocks(locations=[None])
         ctx = _make_context()
-        result = json.loads(await move_player._func(ctx, destination_id="anywhere"))
+        raw = await _move_player_impl(
+            ctx,
+            "anywhere",
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+        assert isinstance(raw, str)
+        result = json.loads(raw)
         assert "error" in result
 
 
 # --- update_quest ---
 
 
-@patch("tools.db.transaction", _mock_transaction)
 class TestUpdateQuest:
+    def _mocks(self, *, quest=SAMPLE_QUEST, player_quest=None):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_content = MagicMock()
+        mock_content.get_quest = AsyncMock(return_value=quest)
+        mock_content.get_item = AsyncMock(return_value=None)
+        mock_queries = MagicMock()
+        mock_queries.get_player_quest = AsyncMock(return_value=player_quest)
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_mutations = MagicMock()
+        mock_mutations.set_player_quest = AsyncMock()
+        mock_mutations.update_player_xp = AsyncMock()
+        mock_mutations.add_inventory_item = AsyncMock()
+        return mock_db, mock_content, mock_queries, mock_mutations, mock_conn
+
+    async def _call(self, ctx, quest_id, new_stage_id, mocks):
+        mock_db, mock_content, mock_queries, mock_mutations, _ = mocks
+        raw = await _update_quest_impl(
+            ctx,
+            quest_id,
+            new_stage_id,
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+        assert isinstance(raw, str)
+        return json.loads(raw)
+
     @pytest.mark.asyncio
-    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
-    async def test_start_quest(self, mock_quest, mock_pq, mock_set):
-        mock_quest.return_value = SAMPLE_QUEST
-        mock_pq.return_value = None
+    async def test_start_quest(self):
+        mocks = self._mocks(player_quest=None)
         ctx = _make_context()
-        result = json.loads(await update_quest._func(ctx, quest_id="greyvale_anomaly", new_stage_id=0))
+        result = await self._call(ctx, "greyvale_anomaly", 0, mocks)
         assert result["new_stage"] == 0
         assert result["quest_name"] == "The Greyvale Anomaly"
         assert result["rewards_applied"] == []
-        mock_set.assert_called_once()
+        mocks[3].set_player_quest.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
-    async def test_start_quest_wrong_stage(self, mock_quest, mock_pq):
-        mock_quest.return_value = SAMPLE_QUEST
-        mock_pq.return_value = None
+    async def test_start_quest_wrong_stage(self):
+        mocks = self._mocks(player_quest=None)
         ctx = _make_context()
-        result = json.loads(await update_quest._func(ctx, quest_id="greyvale_anomaly", new_stage_id=1))
+        result = await self._call(ctx, "greyvale_anomaly", 1, mocks)
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_item", new_callable=AsyncMock)
-    @patch("tools.db.add_inventory_item", new_callable=AsyncMock)
-    @patch("tools.db.update_player_xp", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
-    async def test_advance_with_rewards(self, mock_quest, mock_pq, mock_set, mock_player, mock_xp, mock_inv, mock_item):
-        mock_quest.return_value = SAMPLE_QUEST
-        mock_pq.return_value = {"current_stage": 1}
-        mock_player.return_value = SAMPLE_PLAYER
-        mock_item.return_value = {"id": "research_tablet", "name": "Research Tablet"}
+    async def test_advance_with_rewards(self):
+        mocks = self._mocks(player_quest={"current_stage": 1})
+        _, mock_content, _, mock_mutations, mock_conn = mocks
+        mock_content.get_item = AsyncMock(return_value={"id": "research_tablet", "name": "Research Tablet"})
         ctx = _make_context()
-        result = json.loads(await update_quest._func(ctx, quest_id="greyvale_anomaly", new_stage_id=2))
+        result = await self._call(ctx, "greyvale_anomaly", 2, mocks)
         assert result["new_stage"] == 2
         # Stage 1 on_complete: xp=100, items=[research_tablet]
         assert len(result["rewards_applied"]) == 2
@@ -651,62 +797,48 @@ class TestUpdateQuest:
         item_reward = result["rewards_applied"][1]
         assert item_reward["type"] == "item"
         assert item_reward["item_id"] == "research_tablet"
-        mock_xp.assert_called_once()
-        mock_inv.assert_called_once_with("player_1", "research_tablet", 1, conn=_mock_conn)
+        mock_mutations.update_player_xp.assert_called_once()
+        mock_mutations.add_inventory_item.assert_called_once_with("player_1", "research_tablet", 1, conn=mock_conn)
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
-    async def test_backward_blocked(self, mock_quest, mock_pq):
-        mock_quest.return_value = SAMPLE_QUEST
-        mock_pq.return_value = {"current_stage": 1}
+    async def test_backward_blocked(self):
+        mocks = self._mocks(player_quest={"current_stage": 1})
         ctx = _make_context()
-        result = json.loads(await update_quest._func(ctx, quest_id="greyvale_anomaly", new_stage_id=0))
+        result = await self._call(ctx, "greyvale_anomaly", 0, mocks)
         assert "error" in result
         assert "backward" in result["error"].lower()
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
-    async def test_skip_stage_blocked(self, mock_quest, mock_pq):
-        mock_quest.return_value = SAMPLE_QUEST
-        mock_pq.return_value = {"current_stage": 0}
+    async def test_skip_stage_blocked(self):
+        mocks = self._mocks(player_quest={"current_stage": 0})
         ctx = _make_context()
-        result = json.loads(await update_quest._func(ctx, quest_id="greyvale_anomaly", new_stage_id=2))
+        result = await self._call(ctx, "greyvale_anomaly", 2, mocks)
         assert "error" in result
         assert "skip" in result["error"].lower()
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
-    async def test_unknown_quest(self, mock_quest):
-        mock_quest.return_value = None
+    async def test_unknown_quest(self):
+        mocks = self._mocks(quest=None)
         ctx = _make_context()
-        result = json.loads(await update_quest._func(ctx, quest_id="nonexistent", new_stage_id=0))
+        result = await self._call(ctx, "nonexistent", 0, mocks)
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
-    async def test_publishes_event(self, mock_quest, mock_pq, mock_set):
-        mock_quest.return_value = SAMPLE_QUEST
-        mock_pq.return_value = None
+    async def test_publishes_event(self):
+        mocks = self._mocks(player_quest=None)
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await update_quest._func(ctx, quest_id="greyvale_anomaly", new_stage_id=0)
+        await self._call(ctx, "greyvale_anomaly", 0, mocks)
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == E.QUEST_UPDATED
         assert call_data["quest_id"] == "greyvale_anomaly"
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
-    async def test_invalid_stage_number(self, mock_quest, mock_pq):
-        mock_quest.return_value = SAMPLE_QUEST
-        mock_pq.return_value = None
+    async def test_invalid_stage_number(self):
+        mocks = self._mocks(player_quest=None)
         ctx = _make_context()
-        result = json.loads(await update_quest._func(ctx, quest_id="greyvale_anomaly", new_stage_id=99))
+        result = await self._call(ctx, "greyvale_anomaly", 99, mocks)
         assert "error" in result
 
 
@@ -721,68 +853,112 @@ SAMPLE_FAVOR = {
 }
 
 
-@patch("tools.db.transaction", _mock_transaction)
 class TestAwardDivineFavor:
     @pytest.mark.asyncio
-    @patch("tools.db.update_divine_favor", new_callable=AsyncMock)
-    @patch("tools.db.get_divine_favor", new_callable=AsyncMock)
-    async def test_awards_favor(self, mock_get, mock_update):
-        mock_get.return_value = SAMPLE_FAVOR
+    async def test_awards_favor(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_activities = MagicMock()
+        mock_activities.get_divine_favor = AsyncMock(return_value=SAMPLE_FAVOR)
+        mock_mutations = MagicMock()
+        mock_mutations.update_divine_favor = AsyncMock()
         ctx = _make_context()
-        result = json.loads(await award_divine_favor._func(ctx, amount=5, reason="honored Kaelen"))
+        result = json.loads(
+            await _award_divine_favor_impl(
+                ctx, 5, "honored Kaelen", db_mod=mock_db, mutations=mock_mutations, activities=mock_activities
+            )
+        )
         assert result["patron"] == "kaelen"
         assert result["previous_level"] == 10
         assert result["new_level"] == 15
         assert result["amount"] == 5
-        mock_update.assert_called_once_with("player_1", 15, conn=_mock_conn)
+        mock_mutations.update_divine_favor.assert_called_once_with("player_1", 15, conn=mock_conn)
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_divine_favor", new_callable=AsyncMock)
-    @patch("tools.db.get_divine_favor", new_callable=AsyncMock)
-    async def test_clamps_at_max(self, mock_get, mock_update):
-        favor = {**SAMPLE_FAVOR, "level": 95}
-        mock_get.return_value = favor
+    async def test_clamps_at_max(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_activities = MagicMock()
+        mock_activities.get_divine_favor = AsyncMock(return_value={**SAMPLE_FAVOR, "level": 95})
+        mock_mutations = MagicMock()
+        mock_mutations.update_divine_favor = AsyncMock()
         ctx = _make_context()
-        result = json.loads(await award_divine_favor._func(ctx, amount=10, reason="great deed"))
+        result = json.loads(
+            await _award_divine_favor_impl(
+                ctx, 10, "great deed", db_mod=mock_db, mutations=mock_mutations, activities=mock_activities
+            )
+        )
         assert result["new_level"] == 100
-        mock_update.assert_called_once_with("player_1", 100, conn=_mock_conn)
+        mock_mutations.update_divine_favor.assert_called_once_with("player_1", 100, conn=mock_conn)
 
     @pytest.mark.asyncio
     async def test_invalid_amount_too_low(self):
         ctx = _make_context()
-        result = json.loads(await award_divine_favor._func(ctx, amount=0, reason="test"))
+        result = json.loads(
+            await _award_divine_favor_impl(
+                ctx, 0, "test", db_mod=MagicMock(), mutations=MagicMock(), activities=MagicMock()
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_invalid_amount_too_high(self):
         ctx = _make_context()
-        result = json.loads(await award_divine_favor._func(ctx, amount=11, reason="test"))
+        result = json.loads(
+            await _award_divine_favor_impl(
+                ctx, 11, "test", db_mod=MagicMock(), mutations=MagicMock(), activities=MagicMock()
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_divine_favor", new_callable=AsyncMock)
-    async def test_no_patron(self, mock_get):
-        mock_get.return_value = {"patron": "none", "level": 0, "max": 100, "last_whisper_level": 0}
+    async def test_no_patron(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_activities = MagicMock()
+        mock_activities.get_divine_favor = AsyncMock(
+            return_value={"patron": "none", "level": 0, "max": 100, "last_whisper_level": 0}
+        )
         ctx = _make_context()
-        result = json.loads(await award_divine_favor._func(ctx, amount=5, reason="test"))
+        result = json.loads(
+            await _award_divine_favor_impl(
+                ctx, 5, "test", db_mod=mock_db, mutations=MagicMock(), activities=mock_activities
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_divine_favor", new_callable=AsyncMock)
-    async def test_no_favor_data(self, mock_get):
-        mock_get.return_value = None
+    async def test_no_favor_data(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_activities = MagicMock()
+        mock_activities.get_divine_favor = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(await award_divine_favor._func(ctx, amount=5, reason="test"))
+        result = json.loads(
+            await _award_divine_favor_impl(
+                ctx, 5, "test", db_mod=mock_db, mutations=MagicMock(), activities=mock_activities
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_divine_favor", new_callable=AsyncMock)
-    @patch("tools.db.get_divine_favor", new_callable=AsyncMock)
-    async def test_publishes_event(self, mock_get, mock_update):
-        mock_get.return_value = SAMPLE_FAVOR
+    async def test_publishes_event(self):
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_activities = MagicMock()
+        mock_activities.get_divine_favor = AsyncMock(return_value=SAMPLE_FAVOR)
+        mock_mutations = MagicMock()
+        mock_mutations.update_divine_favor = AsyncMock()
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await award_divine_favor._func(ctx, amount=5, reason="test")
+        await _award_divine_favor_impl(
+            ctx, 5, "test", db_mod=mock_db, mutations=mock_mutations, activities=mock_activities
+        )
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == E.DIVINE_FAVOR_CHANGED
@@ -798,7 +974,9 @@ class TestCapStr:
         assert _cap_str("hello", 10, "test") is None
 
     def test_returns_error_over_limit(self):
-        result = json.loads(_cap_str("x" * 300, 256, "reason"))
+        error_json = _cap_str("x" * 300, 256, "reason")
+        assert error_json is not None
+        result = json.loads(error_json)
         assert "error" in result
         assert "256" in result["error"]
 
@@ -813,28 +991,54 @@ class TestStringCaps:
     @pytest.mark.asyncio
     async def test_award_xp_reason_too_long(self):
         ctx = _make_context()
-        result = json.loads(await award_xp._func(ctx, amount=50, reason="x" * 300))
+        result = json.loads(
+            await _award_xp_impl(ctx, 50, "x" * 300, db_mod=MagicMock(), mutations=MagicMock(), queries=MagicMock())
+        )
         assert "error" in result
         assert "reason" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_award_divine_favor_reason_too_long(self):
         ctx = _make_context()
-        result = json.loads(await award_divine_favor._func(ctx, amount=5, reason="x" * 300))
+        result = json.loads(
+            await _award_divine_favor_impl(
+                ctx, 5, "x" * 300, db_mod=MagicMock(), mutations=MagicMock(), activities=MagicMock()
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_update_npc_disposition_reason_too_long(self):
         ctx = _make_context()
         result = json.loads(
-            await update_npc_disposition._func(ctx, npc_id="guildmaster_torin", delta=1, reason="x" * 300)
+            await _update_npc_disposition_impl(
+                ctx,
+                "guildmaster_torin",
+                1,
+                "x" * 300,
+                db_mod=MagicMock(),
+                mutations=MagicMock(),
+                queries=MagicMock(),
+                content=MagicMock(),
+            )
         )
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_add_to_inventory_source_too_long(self):
         ctx = _make_context()
-        result = json.loads(await add_to_inventory._func(ctx, item_id="health_potion", quantity=1, source="x" * 300))
+        result = json.loads(
+            await _add_to_inventory_impl(
+                ctx,
+                "health_potion",
+                1,
+                "x" * 300,
+                db_mod=MagicMock(),
+                mutations=MagicMock(),
+                queries=MagicMock(),
+                content=MagicMock(),
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
@@ -844,51 +1048,78 @@ class TestStringCaps:
         assert "error" in result
 
 
-@patch("tools.db.transaction", _mock_transaction)
 class TestIntegerBounds:
     @pytest.mark.asyncio
     async def test_award_xp_exceeds_max(self):
         ctx = _make_context()
-        result = json.loads(await award_xp._func(ctx, amount=10001, reason="too much"))
+        result = json.loads(
+            await _award_xp_impl(ctx, 10001, "too much", db_mod=MagicMock(), mutations=MagicMock(), queries=MagicMock())
+        )
         assert "error" in result
         assert "10000" in result["error"]
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_xp", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_award_xp_at_max_is_ok(self, mock_player, mock_update):
+    async def test_award_xp_at_max_is_ok(self):
         """10000 should be accepted (boundary value)."""
-        mock_player.return_value = SAMPLE_PLAYER
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_mutations = MagicMock()
+        mock_mutations.update_player_xp = AsyncMock()
         ctx = _make_context()
-        result = json.loads(await award_xp._func(ctx, amount=10000, reason="big reward"))
+        result = json.loads(
+            await _award_xp_impl(
+                ctx, 10000, "big reward", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries
+            )
+        )
         assert "error" not in result
         assert result["amount"] == 10000
 
     @pytest.mark.asyncio
     async def test_add_to_inventory_quantity_zero(self):
         ctx = _make_context()
-        result = json.loads(await add_to_inventory._func(ctx, item_id="health_potion", quantity=0, source="test"))
+        result = json.loads(
+            await _add_to_inventory_impl(
+                ctx,
+                "health_potion",
+                0,
+                "test",
+                db_mod=MagicMock(),
+                mutations=MagicMock(),
+                queries=MagicMock(),
+                content=MagicMock(),
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_add_to_inventory_quantity_100(self):
         ctx = _make_context()
-        result = json.loads(await add_to_inventory._func(ctx, item_id="health_potion", quantity=100, source="test"))
+        result = json.loads(
+            await _add_to_inventory_impl(
+                ctx,
+                "health_potion",
+                100,
+                "test",
+                db_mod=MagicMock(),
+                mutations=MagicMock(),
+                queries=MagicMock(),
+                content=MagicMock(),
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_saving_throw_dc_zero(self):
         ctx = _make_context()
-        result = json.loads(
-            await request_saving_throw._func(ctx, save_type="strength", dc=0, effect_on_fail="knocked prone")
-        )
+        result = json.loads(await _request_saving_throw_impl(ctx, "strength", 0, "knocked prone", queries=MagicMock()))
         assert "error" in result
         assert "DC" in result["error"] or "dc" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_saving_throw_dc_31(self):
         ctx = _make_context()
-        result = json.loads(
-            await request_saving_throw._func(ctx, save_type="dexterity", dc=31, effect_on_fail="fireball")
-        )
+        result = json.loads(await _request_saving_throw_impl(ctx, "dexterity", 31, "fireball", queries=MagicMock()))
         assert "error" in result

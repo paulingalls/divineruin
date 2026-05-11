@@ -147,9 +147,9 @@ The shared world is made possible by the separation of DM agents (per-player) fr
 
 ## Game Systems
 
-### 16 Class Archetypes × 10 Gods
+### 18 Class Archetypes × 10 Gods
 
-Six categories — Martial, Arcane, Primal, Divine, Shadow, Support — with 2-3 archetypes each. Every archetype can follow any god, creating 160 possible combinations with distinct playstyles and narrative identities. A Rogue serving the god of justice is a very different character than a Rogue serving the god of shadows.
+Six categories — Martial, Arcane, Primal, Divine, Shadow, Support — with 3 archetypes each. Every archetype can follow any god, creating 180 possible combinations with distinct playstyles and narrative identities. A Rogue serving the god of justice is a very different character than a Rogue serving the god of shadows.
 
 ### Voice-First Combat
 
@@ -243,7 +243,7 @@ What makes this worth building:
 | Document | What It Covers |
 |---|---|
 | **Aethos Lore Bible** | World history, cosmology, the pantheon, geography, peoples, cultures, the core mystery |
-| **Game Design Document** | Character creation, 16 class archetypes, progression, combat, navigation, NPCs, economy, death mechanics, the opening experience, monetization |
+| **Game Design Document** | Character creation, 18 class archetypes, progression, combat, navigation, NPCs, economy, death mechanics, the opening experience, monetization |
 | **MVP Specification** | Scoped first build: what we're building, what we're proving, playtest structure, success criteria |
 | **Technical Architecture** | Client app, voice pipeline, DM agent architecture, orchestration, multiplayer, testing strategy, latency budget |
 | **World Data & Simulation** | Content authoring format (JSON schemas), world simulation rules (4 layers), data model, god-agent integration |

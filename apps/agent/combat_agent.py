@@ -3,18 +3,12 @@
 from typing import Any
 
 from base_agent import BaseGameAgent
-from prompts import COMBAT_SYSTEM_PROMPT
-from tools import (
-    end_combat,
-    play_sound,
-    query_inventory,
-    request_attack,
-    request_death_save,
-    request_saving_throw,
-    resolve_enemy_turn,
-    roll_dice,
-    set_music_state,
-)
+from check_tools import request_attack, request_saving_throw, roll_dice
+from combat_end import end_combat
+from combat_turn import request_death_save, resolve_enemy_turn
+from environment_tools import play_sound, set_music_state
+from query_tools import query_inventory
+from system_prompts import COMBAT_SYSTEM_PROMPT
 
 COMBAT_AGENT_TOOLS = [
     resolve_enemy_turn,

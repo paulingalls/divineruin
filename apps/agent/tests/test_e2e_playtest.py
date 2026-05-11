@@ -11,7 +11,6 @@ from city_agent import CityAgent
 from dungeon_agent import DungeonAgent
 from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
 from session_data import CombatParticipant, CombatState, CompanionState, SessionData
-from tools import end_combat, move_player, start_combat
 from wilderness_agent import WildernessAgent
 
 
@@ -26,8 +25,8 @@ def _make_context(location_id: str, companion: CompanionState | None = None) -> 
 
 
 @asynccontextmanager
-async def _mock_txn():
-    yield MagicMock()
+async def _mock_txn(conn):
+    yield conn
 
 
 COMPANION = CompanionState(id="companion_kael", name="Kael")
@@ -37,24 +36,10 @@ class TestNewPlayerHandoffChain:
     """Verify the full new-player handoff chain produces correct agent types."""
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER)
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_city_to_wilderness_to_dungeon_to_city(
-        self,
-        mock_loc,
-        mock_upsert,
-        mock_update,
-        mock_npcs,
-        mock_disp,
-        mock_targets,
-        mock_player,
-    ):
-        """Simulate: CityAgent → WildernessAgent → DungeonAgent → CityAgent."""
+    async def test_city_to_wilderness_to_dungeon_to_city(self):
+        """Simulate: CityAgent -> WildernessAgent -> DungeonAgent -> CityAgent."""
+        from movement_tools import _move_player_impl
+
         locations = {
             "accord_market_square": {
                 "id": "accord_market_square",
@@ -85,14 +70,33 @@ class TestNewPlayerHandoffChain:
                 },
             },
         }
-        mock_loc.side_effect = lambda loc_id: locations.get(loc_id)
 
-        # Step 1: City → Wilderness
+        mock_db = MagicMock()
+        mock_conn = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.extract_exit_connections = MagicMock(return_value=[])
+        mock_mutations = MagicMock()
+        mock_mutations.update_player_location = AsyncMock()
+        mock_mutations.upsert_map_progress = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_targets_at_location = AsyncMock(return_value=[])
+        mock_queries.get_npc_dispositions = AsyncMock(return_value={})
+        mock_queries.get_npcs_at_location = AsyncMock(return_value=[])
+        mock_content = MagicMock()
+        mock_content.get_location = AsyncMock(side_effect=lambda loc_id: locations.get(loc_id))
+
+        # Step 1: City -> Wilderness
         ctx = _make_context("accord_market_square", companion=COMPANION)
-        with patch("tools.db.transaction", _mock_txn):
-            with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("tools.publish_game_event", new_callable=AsyncMock):
-                    result = await move_player._func(ctx, "greyvale_south_road")
+        with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
+            result = await _move_player_impl(
+                ctx,
+                "greyvale_south_road",
+                db_mod=mock_db,
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
 
         assert isinstance(result, tuple)
         agent1, _ = result
@@ -100,19 +104,24 @@ class TestNewPlayerHandoffChain:
         assert ctx.userdata.location_id == "greyvale_south_road"
         assert ctx.userdata.companion is not None
 
-        # Step 2: Wilderness → Dungeon
+        # Step 2: Wilderness -> Dungeon
         ctx.userdata.location_id = "greyvale_south_road"
-        with patch("tools.db.transaction", _mock_txn):
-            with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("tools.publish_game_event", new_callable=AsyncMock):
-                    result = await move_player._func(ctx, "greyvale_ruins_entrance")
+        with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
+            result = await _move_player_impl(
+                ctx,
+                "greyvale_ruins_entrance",
+                db_mod=mock_db,
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
 
         assert isinstance(result, tuple)
         agent2, _ = result
         assert isinstance(agent2, DungeonAgent)
         assert ctx.userdata.location_id == "greyvale_ruins_entrance"
 
-        # Step 3: Dungeon → City (back through wilderness)
+        # Step 3: Dungeon -> City (back through wilderness)
         locations["greyvale_ruins_exterior"] = {
             "id": "greyvale_ruins_exterior",
             "name": "Ruins Exterior",
@@ -122,34 +131,25 @@ class TestNewPlayerHandoffChain:
             "exits": {},
         }
         ctx.userdata.location_id = "greyvale_ruins_entrance"
-        with patch("tools.db.transaction", _mock_txn):
-            with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("tools.publish_game_event", new_callable=AsyncMock):
-                    result = await move_player._func(ctx, "accord_market_square")
+        with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
+            result = await _move_player_impl(
+                ctx,
+                "accord_market_square",
+                db_mod=mock_db,
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
 
         assert isinstance(result, tuple)
         agent3, _ = result
         assert isinstance(agent3, CityAgent)
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER)
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock, return_value={})
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_companion_persists_across_handoffs(
-        self,
-        mock_loc,
-        mock_upsert,
-        mock_update,
-        mock_npcs,
-        mock_disp,
-        mock_targets,
-        mock_player,
-    ):
+    async def test_companion_persists_across_handoffs(self):
         """Companion state survives region transitions."""
+        from movement_tools import _move_player_impl
+
         locations = {
             "accord_market_square": {
                 "id": "accord_market_square",
@@ -166,13 +166,32 @@ class TestNewPlayerHandoffChain:
                 "exits": {"north": {"destination": "accord_market_square"}},
             },
         }
-        mock_loc.side_effect = lambda loc_id: locations.get(loc_id)
+
+        mock_db = MagicMock()
+        mock_conn = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.extract_exit_connections = MagicMock(return_value=[])
+        mock_mutations = MagicMock()
+        mock_mutations.update_player_location = AsyncMock()
+        mock_mutations.upsert_map_progress = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_targets_at_location = AsyncMock(return_value=[])
+        mock_queries.get_npc_dispositions = AsyncMock(return_value={})
+        mock_queries.get_npcs_at_location = AsyncMock(return_value=[])
+        mock_content = MagicMock()
+        mock_content.get_location = AsyncMock(side_effect=lambda loc_id: locations.get(loc_id))
 
         ctx = _make_context("accord_market_square", companion=COMPANION)
-        with patch("tools.db.transaction", _mock_txn):
-            with patch("tools.db.extract_exit_connections", return_value=[]):
-                with patch("tools.publish_game_event", new_callable=AsyncMock):
-                    result = await move_player._func(ctx, "greyvale_south_road")
+        with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
+            result = await _move_player_impl(
+                ctx,
+                "greyvale_south_road",
+                db_mod=mock_db,
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
 
         agent, _ = result
         assert isinstance(agent, WildernessAgent)
@@ -185,40 +204,44 @@ class TestCombatRoundTrip:
     """Verify combat handoff and return to correct agent type."""
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    @patch("tools.db.delete_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.save_combat_state", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER)
-    @patch("tools.db.get_encounter_template", new_callable=AsyncMock)
     async def test_wilderness_combat_returns_to_wilderness(
         self,
-        mock_encounter,
-        mock_player,
-        mock_save,
-        mock_delete,
-        mock_npc,
         mock_combat_agent_factory,
     ):
         """start_combat from wilderness, end_combat returns WildernessAgent."""
-        mock_encounter.return_value = SAMPLE_ENCOUNTER
-        mock_npc.return_value = {
-            "combat_stats": {"hp": 20, "ac": 14, "level": 2, "action_pool": []},
-        }
+        from combat_end import _end_combat_impl
+        from combat_init import _start_combat_impl
+
+        mock_mutations = MagicMock()
+        mock_mutations.save_combat_state = AsyncMock()
+        mock_mutations.delete_combat_state = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_content = MagicMock()
+        mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
+        mock_content.get_npc = AsyncMock(
+            return_value={
+                "combat_stats": {"hp": 20, "ac": 14, "level": 2, "action_pool": []},
+            }
+        )
 
         # Start combat from wilderness
         ctx = _make_context("greyvale_south_road", companion=COMPANION)
         ctx.session.current_agent = MagicMock()
         ctx.session.current_agent._agent_type = REGION_WILDERNESS
 
-        raw = await start_combat._func(
+        raw = await _start_combat_impl(
             ctx,
             encounter_id="wolf_pack",
             encounter_description="Wolves!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
         )
         assert isinstance(raw, tuple)
         assert ctx.userdata.pre_combat_agent_type == REGION_WILDERNESS
 
-        # End combat — should return WildernessAgent
+        # End combat -- should return WildernessAgent
         ctx.userdata.combat_state = CombatState(
             combat_id="c1",
             participants=[
@@ -239,9 +262,9 @@ class TestCombatRoundTrip:
             location_id="greyvale_south_road",
         )
 
-        with patch("tools.publish_game_event", new_callable=AsyncMock):
-            with patch("tools._publish_sounds", new_callable=AsyncMock):
-                result = await end_combat._func(ctx, "victory")
+        with patch("combat_end.publish_game_event", new_callable=AsyncMock):
+            with patch("combat_end._publish_sounds", new_callable=AsyncMock):
+                result = await _end_combat_impl(ctx, "victory", mutations=mock_mutations)
 
         assert isinstance(result, tuple)
         agent, json_str = result
@@ -287,7 +310,7 @@ class TestOnboardingToGameplay:
     """Verify onboarding beat 5 hands off to CityAgent."""
 
     @pytest.mark.asyncio
-    @patch("onboarding_tools.db.set_player_flag", new_callable=AsyncMock)
+    @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
     async def test_beat5_returns_city_agent(self, mock_flag):
         from onboarding_tools import advance_onboarding_beat
 

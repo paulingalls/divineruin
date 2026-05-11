@@ -9,9 +9,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from prompts import build_warm_layer
+from quest_tools import _update_quest_impl
 from session_data import SessionData
-from tools import update_quest
+from warm_prompts import build_warm_layer
 
 # === Centralized scene resolution (standalone scenes) ===
 
@@ -66,14 +66,14 @@ LOCATION_NO_DEFAULT = {"id": "road"}
 
 class TestGetActiveSceneForContext:
     def test_resolves_quest_scene_via_graph(self):
-        from tools import get_active_scene_for_context
+        from scene_tools import get_active_scene_for_context
 
         result = get_active_scene_for_context(SCENE_CACHE, [QUEST_WITH_GRAPH], LOCATION_NO_DEFAULT)
         assert result is not None
         assert result["id"] == "scene_wild"
 
     def test_resolves_second_stage(self):
-        from tools import get_active_scene_for_context
+        from scene_tools import get_active_scene_for_context
 
         quest = {**QUEST_WITH_GRAPH, "current_stage": 1}
         result = get_active_scene_for_context(SCENE_CACHE, [quest], LOCATION_NO_DEFAULT)
@@ -81,39 +81,39 @@ class TestGetActiveSceneForContext:
         assert result["id"] == "scene_city"
 
     def test_falls_back_to_location_default(self):
-        from tools import get_active_scene_for_context
+        from scene_tools import get_active_scene_for_context
 
         result = get_active_scene_for_context(SCENE_CACHE, [QUEST_NO_GRAPH], LOCATION_WITH_DEFAULT)
         assert result is not None
         assert result["id"] == "scene_explore"
 
     def test_quest_takes_priority_over_location(self):
-        from tools import get_active_scene_for_context
+        from scene_tools import get_active_scene_for_context
 
         result = get_active_scene_for_context(SCENE_CACHE, [QUEST_WITH_GRAPH], LOCATION_WITH_DEFAULT)
         assert result is not None
         assert result["id"] == "scene_wild"  # quest wins
 
     def test_returns_none_when_no_scene(self):
-        from tools import get_active_scene_for_context
+        from scene_tools import get_active_scene_for_context
 
         result = get_active_scene_for_context(SCENE_CACHE, [QUEST_NO_GRAPH], LOCATION_NO_DEFAULT)
         assert result is None
 
     def test_returns_none_with_empty_cache(self):
-        from tools import get_active_scene_for_context
+        from scene_tools import get_active_scene_for_context
 
         result = get_active_scene_for_context({}, [QUEST_WITH_GRAPH], LOCATION_WITH_DEFAULT)
         assert result is None
 
     def test_returns_none_with_no_quests_no_location(self):
-        from tools import get_active_scene_for_context
+        from scene_tools import get_active_scene_for_context
 
         result = get_active_scene_for_context(SCENE_CACHE, [], LOCATION_NO_DEFAULT)
         assert result is None
 
     def test_missing_scene_id_in_cache_falls_through(self):
-        from tools import get_active_scene_for_context
+        from scene_tools import get_active_scene_for_context
 
         partial_cache = {"scene_explore": SCENE_CACHE["scene_explore"]}  # no scene_wild
         result = get_active_scene_for_context(partial_cache, [QUEST_WITH_GRAPH], LOCATION_WITH_DEFAULT)
@@ -123,7 +123,7 @@ class TestGetActiveSceneForContext:
 
 class TestDetectSceneTransition:
     def test_different_region_returns_transition(self):
-        from tools import detect_scene_transition
+        from scene_tools import detect_scene_transition
 
         result = detect_scene_transition(SCENE_CACHE, QUEST_WITH_GRAPH, 0, 1)
         assert result is not None
@@ -132,26 +132,26 @@ class TestDetectSceneTransition:
         assert result["region_changed"] is True
 
     def test_same_scene_returns_none(self):
-        from tools import detect_scene_transition
+        from scene_tools import detect_scene_transition
 
         quest = {**QUEST_WITH_GRAPH, "scene_graph": [{"scene_id": "scene_wild", "stage_refs": [0, 1]}]}
         result = detect_scene_transition(SCENE_CACHE, quest, 0, 1)
         assert result is None
 
     def test_quest_start_returns_none(self):
-        from tools import detect_scene_transition
+        from scene_tools import detect_scene_transition
 
         result = detect_scene_transition(SCENE_CACHE, QUEST_WITH_GRAPH, -1, 0)
         assert result is None
 
     def test_no_graph_returns_none(self):
-        from tools import detect_scene_transition
+        from scene_tools import detect_scene_transition
 
         result = detect_scene_transition(SCENE_CACHE, QUEST_NO_GRAPH, 0, 1)
         assert result is None
 
     def test_missing_scene_in_cache_returns_none(self):
-        from tools import detect_scene_transition
+        from scene_tools import detect_scene_transition
 
         result = detect_scene_transition({}, QUEST_WITH_GRAPH, 0, 1)
         assert result is None
@@ -282,9 +282,9 @@ SAMPLE_LOCATION = {
 
 class TestWarmLayerSceneInjection:
     @pytest.mark.asyncio
-    @patch("db.get_active_player_quests", new_callable=AsyncMock)
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
     async def test_no_scene_without_cache(self, mock_loc, mock_npcs, mock_quests):
         mock_loc.return_value = SAMPLE_LOCATION
         mock_npcs.return_value = []
@@ -293,8 +293,8 @@ class TestWarmLayerSceneInjection:
         assert "ACTIVE SCENE" not in result
 
     @pytest.mark.asyncio
-    @patch("db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("db.get_location", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
     async def test_scene_from_scene_cache_via_graph(self, mock_loc, mock_npcs):
         """When scene_cache is provided, resolves via scene_graph."""
         mock_loc.return_value = SAMPLE_LOCATION
@@ -331,8 +331,8 @@ _mock_conn = MagicMock(name="mock_txn_conn")
 
 
 @asynccontextmanager
-async def _mock_transaction():
-    yield _mock_conn
+async def _mock_txn(conn):
+    yield conn
 
 
 def _make_context(player_id="player_1", location_id="accord_guild_hall"):
@@ -341,14 +341,9 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall"):
     return ctx
 
 
-@patch("tools.db.transaction", _mock_transaction)
 class TestUpdateQuestSceneHandoff:
     @pytest.mark.asyncio
-    @patch("tools.db.get_scenes_batch", new_callable=AsyncMock)
-    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
-    async def test_scene_graph_handoff(self, mock_quest, mock_pq, mock_set, mock_batch):
+    async def test_scene_graph_handoff(self):
         """Quest with scene_graph triggers handoff on region change."""
         quest = {
             "id": "graph_quest",
@@ -362,14 +357,32 @@ class TestUpdateQuestSceneHandoff:
                 {"scene_id": "scene_city", "stage_refs": [1]},
             ],
         }
-        mock_quest.return_value = quest
-        mock_pq.return_value = {"current_stage": 0}
-        mock_batch.return_value = {
-            "scene_wild": {"id": "scene_wild", "name": "Wild", "region_type": "wilderness"},
-            "scene_city": {"id": "scene_city", "name": "City", "region_type": "city"},
-        }
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(_mock_conn)
+        mock_content = MagicMock()
+        mock_content.get_quest = AsyncMock(return_value=quest)
+        mock_content.get_item = AsyncMock(return_value=None)
+        mock_content.get_scenes_batch = AsyncMock(
+            return_value={
+                "scene_wild": {"id": "scene_wild", "name": "Wild", "region_type": "wilderness"},
+                "scene_city": {"id": "scene_city", "name": "City", "region_type": "city"},
+            }
+        )
+        mock_queries = MagicMock()
+        mock_queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
+        mock_mutations = MagicMock()
+        mock_mutations.set_player_quest = AsyncMock()
+
         ctx = _make_context()
-        result = await update_quest._func(ctx, quest_id="graph_quest", new_stage_id=1)
+        result = await _update_quest_impl(
+            ctx,
+            quest_id="graph_quest",
+            new_stage_id=1,
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         assert isinstance(result, tuple), f"Expected tuple, got {type(result)}"
         agent, _json = result
         from gameplay_agent import GameplayAgent
@@ -378,10 +391,7 @@ class TestUpdateQuestSceneHandoff:
         assert agent._agent_type == "city"
 
     @pytest.mark.asyncio
-    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
-    async def test_no_scene_graph_returns_string(self, mock_quest, mock_pq, mock_set):
+    async def test_no_scene_graph_returns_string(self):
         """Quest without scene_graph returns plain json string."""
         quest = {
             "id": "plain",
@@ -391,8 +401,24 @@ class TestUpdateQuestSceneHandoff:
                 {"id": "s1", "objective": "B.", "on_complete": {}},
             ],
         }
-        mock_quest.return_value = quest
-        mock_pq.return_value = {"current_stage": 0}
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(_mock_conn)
+        mock_content = MagicMock()
+        mock_content.get_quest = AsyncMock(return_value=quest)
+        mock_content.get_item = AsyncMock(return_value=None)
+        mock_queries = MagicMock()
+        mock_queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
+        mock_mutations = MagicMock()
+        mock_mutations.set_player_quest = AsyncMock()
+
         ctx = _make_context()
-        result = await update_quest._func(ctx, quest_id="plain", new_stage_id=1)
+        result = await _update_quest_impl(
+            ctx,
+            quest_id="plain",
+            new_stage_id=1,
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         assert isinstance(result, str), f"Expected str, got {type(result)}"

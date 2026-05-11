@@ -8,7 +8,7 @@ from livekit.agents import Agent
 from livekit.agents.llm import function_tool
 from livekit.agents.voice import RunContext
 
-import db
+import db_mutations
 from session_data import CompanionState, SessionData
 
 logger = logging.getLogger("divineruin.onboarding_tools")
@@ -45,7 +45,7 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
     if current >= 5:
         # Beat 5 complete — handoff to CityAgent
         sd.onboarding_beat = None
-        await db.set_player_flag(sd.player_id, "onboarding_beat", ONBOARDING_COMPLETE)
+        await db_mutations.set_player_flag(sd.player_id, "onboarding_beat", ONBOARDING_COMPLETE)
 
         from livekit.agents.llm import ChatContext
 
@@ -74,7 +74,7 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
     # Advance to next beat
     next_beat = current + 1
     sd.onboarding_beat = next_beat
-    await db.set_player_flag(sd.player_id, "onboarding_beat", next_beat)
+    await db_mutations.set_player_flag(sd.player_id, "onboarding_beat", next_beat)
 
     if current == 3:
         sd.companion = CompanionState(
@@ -82,7 +82,7 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
             name="Kael",
             last_speech_time=time.time(),
         )
-        await db.set_player_flag(sd.player_id, "companion_met", True)
+        await db_mutations.set_player_flag(sd.player_id, "companion_met", True)
         logger.info("Companion Kael initialized for player %s after beat 3", sd.player_id)
 
     beat_name = BEAT_NAMES.get(next_beat, "unknown")

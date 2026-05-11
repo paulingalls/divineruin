@@ -32,7 +32,7 @@ Six core questions the MVP needs to answer:
 **One wilderness zone.** The Greyvale (countryside north of the city).
 **One story arc.** 3–5 sessions, self-contained but connected to the larger mystery.
 **Subset of races.** 2–3 of the full 6.
-**Subset of classes.** 4–5 of the full 16 archetypes.
+**Subset of classes.** 4–5 of the full 18 archetypes.
 **Subset of gods.** 3–4 of the full 10.
 **Basic async.** 2–3 async activities to test the concept.
 **Solo and small group.** 1 player + AI companion, scaling to 2–4 players in wave 2.
@@ -342,7 +342,7 @@ A self-contained story in 3–5 sessions that tests all core systems while plant
 |---|---|
 | Multiple starting cultures | Only Sunward Accord for MVP. |
 | Full pantheon (10 gods) | 3–4 gods sufficient for testing. |
-| Full class roster (16 archetypes) | 4–5 archetypes sufficient for testing. |
+| Full class roster (18 archetypes) | 4–5 archetypes sufficient for testing. |
 | PvP (all forms) | Cooperative experience only for MVP. |
 | Territory control | No guild-level systems in MVP. |
 | Property system | No housing or ownership in MVP. |

@@ -1,6 +1,6 @@
 # Phase 9: Economy System
 
-> Source doc: `docs/game_mechanics/economy_reconciliation.md`
+> Source doc: `docs/game_mechanics/game_mechanics_economy.md`
 >
 > **Parallelism note:** Phase 9 can run in parallel with Phases 2-8 since it only depends on Phase 1 (Core Systems) being complete.
 
@@ -34,9 +34,9 @@ Implements the unified currency system, merchant pricing engine, and quest rewar
 - [ ] Tests verify price table completeness and conversion math
 
 **Key references:**
-- *Economy Reconciliation — Currency Tiers & Ratios*
-- *Economy Reconciliation — Economic Anchor*
-- *Economy Reconciliation — Canonical Price Tables*
+- *Game Mechanics Economy — Currency System*
+- *Game Mechanics Economy — Economic Anchor*
+- *Game Mechanics Economy — Canonical Price Tables*
 
 ---
 
@@ -65,9 +65,9 @@ Implements the unified currency system, merchant pricing engine, and quest rewar
 - [ ] Tests cover every disposition level, workspace type, and edge cases (zero base price, max modifiers)
 
 **Key references:**
-- *Economy Reconciliation — Merchant Pricing Formula*
-- *Economy Reconciliation — Disposition Modifiers*
-- *Economy Reconciliation — Workspace & Mentor Costs*
+- *Game Mechanics Economy — Merchant Pricing Formula*
+- *Game Mechanics Economy — Disposition Modifiers*
+- *Game Mechanics Economy — Workspace Rental & Mentor Training Fees*
 
 ---
 
@@ -95,6 +95,6 @@ Implements the unified currency system, merchant pricing engine, and quest rewar
 - [ ] Tests cover boundary values for each tier (min, max, just outside range)
 
 **Key references:**
-- *Economy Reconciliation — Quest Reward Tiers*
-- *Economy Reconciliation — Wealth Progression Model*
-- *Economy Reconciliation — Starting Gold Pressure*
+- *Game Mechanics Economy — Quest Reward Tiers*
+- *Game Mechanics Economy — Starting Gold*
+- *Game Mechanics Economy — Systems Not Yet Specified (Loot & Drop Tables)*

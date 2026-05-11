@@ -5,19 +5,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from session_data import SessionData
-from tools import (
-    _strip_hidden_dcs,
-    _validate_id,
-    apply_time_conditions,
-    discover_hidden_element,
-    enter_location,
-    filter_knowledge,
-    query_inventory,
-    query_location,
-    query_lore,
-    query_npc,
+from check_tools import _discover_hidden_element_impl
+from query_tools import (
+    _query_inventory_impl,
+    _query_location_impl,
+    _query_lore_impl,
+    _query_npc_impl,
 )
+from scene_tools import _enter_location_impl
+from session_data import SessionData
+from tool_support import _strip_hidden_dcs, _validate_id, apply_time_conditions, filter_knowledge
 
 # --- filter_knowledge tests ---
 
@@ -169,7 +166,7 @@ class TestStripHiddenDCs:
         assert result == location
 
 
-# --- Tool tests (mocked DB) ---
+# --- Tool tests (mocked DB via DI) ---
 
 
 def _make_context(player_id="player_1", location_id="accord_guild_hall"):
@@ -211,33 +208,35 @@ SAMPLE_NPC = {
 
 class TestQueryLocation:
     @pytest.mark.asyncio
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_returns_location(self, mock_get):
-        mock_get.return_value = SAMPLE_LOCATION
+    async def test_returns_location(self):
+        mock_content = MagicMock()
+        mock_content.get_location = AsyncMock(return_value=SAMPLE_LOCATION)
         ctx = _make_context()
-        result = json.loads(await query_location._func(ctx, location_id="accord_guild_hall"))
+        result = json.loads(await _query_location_impl(ctx, location_id="accord_guild_hall", content=mock_content))
         assert result["name"] == "Guild Hall"
         assert "dc" not in json.dumps(result["hidden_elements"])
         assert "discover_skill" not in json.dumps(result["hidden_elements"])
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_missing_location(self, mock_get):
-        mock_get.return_value = None
+    async def test_missing_location(self):
+        mock_content = MagicMock()
+        mock_content.get_location = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(await query_location._func(ctx, location_id="nonexistent"))
+        result = json.loads(await _query_location_impl(ctx, location_id="nonexistent", content=mock_content))
         assert "error" in result
 
 
 class TestQueryNpc:
     @pytest.mark.asyncio
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    async def test_returns_npc_neutral(self, mock_npc, mock_disp):
-        mock_npc.return_value = SAMPLE_NPC
-        mock_disp.return_value = None  # falls back to default_disposition
+    async def test_returns_npc_neutral(self):
+        mock_content = MagicMock()
+        mock_content.get_npc = AsyncMock(return_value=SAMPLE_NPC)
+        mock_queries = MagicMock()
+        mock_queries.get_npc_disposition = AsyncMock(return_value=None)  # falls back to default_disposition
         ctx = _make_context()
-        result = json.loads(await query_npc._func(ctx, npc_id="guildmaster_torin"))
+        result = json.loads(
+            await _query_npc_impl(ctx, npc_id="guildmaster_torin", queries=mock_queries, content=mock_content)
+        )
         assert result["name"] == "Guildmaster Torin"
         assert result["disposition"] == "neutral"
         assert "general guild operations" in result["knowledge"]
@@ -245,83 +244,89 @@ class TestQueryNpc:
         assert "secrets" not in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    async def test_friendly_reveals_more(self, mock_npc, mock_disp):
-        mock_npc.return_value = SAMPLE_NPC
-        mock_disp.return_value = "friendly"
+    async def test_friendly_reveals_more(self):
+        mock_content = MagicMock()
+        mock_content.get_npc = AsyncMock(return_value=SAMPLE_NPC)
+        mock_queries = MagicMock()
+        mock_queries.get_npc_disposition = AsyncMock(return_value="friendly")
         ctx = _make_context()
-        result = json.loads(await query_npc._func(ctx, npc_id="guildmaster_torin"))
+        result = json.loads(
+            await _query_npc_impl(ctx, npc_id="guildmaster_torin", queries=mock_queries, content=mock_content)
+        )
         assert result["disposition"] == "friendly"
         assert "he sent scouts north" in result["knowledge"]
         assert "he suspects the temple" not in result["knowledge"]
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_npc_disposition", new_callable=AsyncMock)
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    async def test_trusted_reveals_all(self, mock_npc, mock_disp):
-        mock_npc.return_value = SAMPLE_NPC
-        mock_disp.return_value = "trusted"
+    async def test_trusted_reveals_all(self):
+        mock_content = MagicMock()
+        mock_content.get_npc = AsyncMock(return_value=SAMPLE_NPC)
+        mock_queries = MagicMock()
+        mock_queries.get_npc_disposition = AsyncMock(return_value="trusted")
         ctx = _make_context()
-        result = json.loads(await query_npc._func(ctx, npc_id="guildmaster_torin"))
+        result = json.loads(
+            await _query_npc_impl(ctx, npc_id="guildmaster_torin", queries=mock_queries, content=mock_content)
+        )
         assert "he suspects the temple" in result["knowledge"]
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_npc", new_callable=AsyncMock)
-    async def test_missing_npc(self, mock_npc):
-        mock_npc.return_value = None
+    async def test_missing_npc(self):
+        mock_content = MagicMock()
+        mock_content.get_npc = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(await query_npc._func(ctx, npc_id="nobody"))
+        result = json.loads(await _query_npc_impl(ctx, npc_id="nobody", content=mock_content))
         assert "error" in result
 
 
 class TestQueryLore:
     @pytest.mark.asyncio
-    @patch("tools.db.search_lore", new_callable=AsyncMock)
-    async def test_returns_entries(self, mock_search):
-        mock_search.return_value = [
-            {"title": "The Hollow", "category": "cosmology", "content": "Bad stuff.", "tags": ["hollow"]}
-        ]
+    async def test_returns_entries(self):
+        mock_content = MagicMock()
+        mock_content.search_lore = AsyncMock(
+            return_value=[{"title": "The Hollow", "category": "cosmology", "content": "Bad stuff.", "tags": ["hollow"]}]
+        )
         ctx = _make_context()
-        result = json.loads(await query_lore._func(ctx, topic="hollow"))
+        result = json.loads(await _query_lore_impl(ctx, topic="hollow", content=mock_content))
         assert len(result["entries"]) == 1
         assert result["entries"][0]["title"] == "The Hollow"
 
     @pytest.mark.asyncio
-    @patch("tools.db.search_lore", new_callable=AsyncMock)
-    async def test_no_matches(self, mock_search):
-        mock_search.return_value = []
+    async def test_no_matches(self):
+        mock_content = MagicMock()
+        mock_content.search_lore = AsyncMock(return_value=[])
         ctx = _make_context()
-        result = json.loads(await query_lore._func(ctx, topic="nonexistent"))
+        result = json.loads(await _query_lore_impl(ctx, topic="nonexistent", content=mock_content))
         assert "note" in result
 
 
 class TestQueryInventory:
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_inventory", new_callable=AsyncMock)
-    async def test_returns_items(self, mock_inv):
-        mock_inv.return_value = [
-            {
-                "name": "Sealed Research Tablet",
-                "type": "quest_item",
-                "description": "A warm stone tablet.",
-                "rarity": "rare",
-                "effects": [],
-                "lore": "Research notes from an Aelindran outpost.",
-            }
-        ]
+    async def test_returns_items(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player_inventory = AsyncMock(
+            return_value=[
+                {
+                    "name": "Sealed Research Tablet",
+                    "type": "quest_item",
+                    "description": "A warm stone tablet.",
+                    "rarity": "rare",
+                    "effects": [],
+                    "lore": "Research notes from an Aelindran outpost.",
+                }
+            ]
+        )
         ctx = _make_context()
-        result = json.loads(await query_inventory._func(ctx))
+        result = json.loads(await _query_inventory_impl(ctx, queries=mock_queries))
         assert len(result["items"]) == 1
         assert result["items"][0]["name"] == "Sealed Research Tablet"
-        mock_inv.assert_awaited_once_with("player_1")
+        mock_queries.get_player_inventory.assert_awaited_once_with("player_1")
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_inventory", new_callable=AsyncMock)
-    async def test_empty_inventory(self, mock_inv):
-        mock_inv.return_value = []
+    async def test_empty_inventory(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player_inventory = AsyncMock(return_value=[])
         ctx = _make_context()
-        result = json.loads(await query_inventory._func(ctx))
+        result = json.loads(await _query_inventory_impl(ctx, queries=mock_queries))
         assert "note" in result
 
 
@@ -363,21 +368,32 @@ SAMPLE_PLAYER = {
 }
 
 
+def _make_scene_mocks(location=SAMPLE_LOCATION, npcs=None, dispositions=None, targets=None, player=SAMPLE_PLAYER):
+    """Create mock content and queries modules for scene/enter_location tests."""
+    mock_content = MagicMock()
+    mock_content.get_location = AsyncMock(return_value=location)
+    mock_queries = MagicMock()
+    mock_queries.get_npcs_at_location = AsyncMock(return_value=npcs if npcs is not None else [])
+    mock_queries.get_npc_dispositions = AsyncMock(return_value=dispositions if dispositions is not None else {})
+    mock_queries.get_targets_at_location = AsyncMock(return_value=targets if targets is not None else [])
+    mock_queries.get_player = AsyncMock(return_value=player)
+    return mock_content, mock_queries
+
+
 class TestEnterLocation:
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_returns_full_context(self, mock_loc, mock_npcs, mock_disp, mock_targets, mock_player):
-        mock_loc.return_value = SAMPLE_LOCATION
-        mock_npcs.return_value = [SAMPLE_NPC_RAW]
-        mock_disp.return_value = {}
-        mock_targets.return_value = [SAMPLE_TARGET]
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_returns_full_context(self):
+        mock_content, mock_queries = _make_scene_mocks(
+            location=SAMPLE_LOCATION,
+            npcs=[SAMPLE_NPC_RAW],
+            dispositions={},
+            targets=[SAMPLE_TARGET],
+            player=SAMPLE_PLAYER,
+        )
         ctx = _make_context()
-        result = json.loads(await enter_location._func(ctx, location_id="accord_guild_hall"))
+        result = json.loads(
+            await _enter_location_impl(ctx, location_id="accord_guild_hall", content=mock_content, queries=mock_queries)
+        )
 
         assert result["location"]["name"] == "Guild Hall"
         assert len(result["npcs"]) == 1
@@ -390,25 +406,25 @@ class TestEnterLocation:
         assert result["player"]["weapon"] == "Longsword"
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_missing_location(self, mock_loc):
-        mock_loc.return_value = None
+    async def test_missing_location(self):
+        mock_content = MagicMock()
+        mock_content.get_location = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(await enter_location._func(ctx, location_id="nowhere"))
+        result = json.loads(await _enter_location_impl(ctx, location_id="nowhere", content=mock_content))
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_empty_npcs_and_targets(self, mock_loc, mock_npcs, mock_targets, mock_player):
-        mock_loc.return_value = SAMPLE_LOCATION
-        mock_npcs.return_value = []
-        mock_targets.return_value = []
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_empty_npcs_and_targets(self):
+        mock_content, mock_queries = _make_scene_mocks(
+            location=SAMPLE_LOCATION,
+            npcs=[],
+            targets=[],
+            player=SAMPLE_PLAYER,
+        )
         ctx = _make_context()
-        result = json.loads(await enter_location._func(ctx, location_id="accord_guild_hall"))
+        result = json.loads(
+            await _enter_location_impl(ctx, location_id="accord_guild_hall", content=mock_content, queries=mock_queries)
+        )
 
         assert result["npcs"] == []
         assert result["targets"] == []
@@ -438,54 +454,56 @@ NIGHT_LOCATION = {
 
 class TestNightConditionsInTools:
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_build_scene_applies_night(self, mock_loc, mock_npcs, mock_disp, mock_targets, mock_player):
-        mock_loc.return_value = NIGHT_LOCATION
-        mock_npcs.return_value = []
-        mock_targets.return_value = []
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_build_scene_applies_night(self):
+        mock_content, mock_queries = _make_scene_mocks(
+            location=NIGHT_LOCATION,
+            npcs=[],
+            targets=[],
+            player=SAMPLE_PLAYER,
+        )
         ctx = _make_context()
         ctx.userdata.world_time = "night"
-        result = json.loads(await enter_location._func(ctx, location_id="accord_market_square"))
+        result = json.loads(
+            await _enter_location_impl(
+                ctx, location_id="accord_market_square", content=mock_content, queries=mock_queries
+            )
+        )
         assert result["location"]["description"] == "Dark empty market"
         assert result["location"]["atmosphere"] == "quiet, reflective"
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_build_scene_day_no_override(self, mock_loc, mock_npcs, mock_disp, mock_targets, mock_player):
-        mock_loc.return_value = NIGHT_LOCATION
-        mock_npcs.return_value = []
-        mock_targets.return_value = []
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_build_scene_day_no_override(self):
+        mock_content, mock_queries = _make_scene_mocks(
+            location=NIGHT_LOCATION,
+            npcs=[],
+            targets=[],
+            player=SAMPLE_PLAYER,
+        )
         ctx = _make_context()
         ctx.userdata.world_time = "day"
-        result = json.loads(await enter_location._func(ctx, location_id="accord_market_square"))
+        result = json.loads(
+            await _enter_location_impl(
+                ctx, location_id="accord_market_square", content=mock_content, queries=mock_queries
+            )
+        )
         assert result["location"]["description"] == "Sunny market"
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_query_location_applies_night(self, mock_loc):
-        mock_loc.return_value = NIGHT_LOCATION
+    async def test_query_location_applies_night(self):
+        mock_content = MagicMock()
+        mock_content.get_location = AsyncMock(return_value=NIGHT_LOCATION)
         ctx = _make_context()
         ctx.userdata.world_time = "night"
-        result = json.loads(await query_location._func(ctx, location_id="accord_market_square"))
+        result = json.loads(await _query_location_impl(ctx, location_id="accord_market_square", content=mock_content))
         assert result["description"] == "Dark empty market"
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_query_location_day_no_override(self, mock_loc):
-        mock_loc.return_value = NIGHT_LOCATION
+    async def test_query_location_day_no_override(self):
+        mock_content = MagicMock()
+        mock_content.get_location = AsyncMock(return_value=NIGHT_LOCATION)
         ctx = _make_context()
         ctx.userdata.world_time = "day"
-        result = json.loads(await query_location._func(ctx, location_id="accord_market_square"))
+        result = json.loads(await _query_location_impl(ctx, location_id="accord_market_square", content=mock_content))
         assert result["description"] == "Sunny market"
 
 
@@ -531,97 +549,110 @@ DISCOVER_PLAYER = {
 }
 
 
+def _make_discover_mocks(location=LOCATION_WITH_HIDDEN, player=DISCOVER_PLAYER):
+    """Create mock content, queries, and mutations for discover_hidden_element tests."""
+    mock_content = MagicMock()
+    mock_content.get_location = AsyncMock(return_value=location)
+    mock_queries = MagicMock()
+    mock_queries.get_player = AsyncMock(return_value=player)
+    mock_mutations = MagicMock()
+    mock_mutations.set_player_flag = AsyncMock()
+    return mock_content, mock_queries, mock_mutations
+
+
 class TestDiscoverHiddenElement:
     @pytest.mark.asyncio
-    @patch("tools.db.set_player_flag", new_callable=AsyncMock)
-    @patch("tools.publish_game_event", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_successful_discovery(self, mock_loc, mock_player, mock_event, mock_set_flag):
-        mock_loc.return_value = LOCATION_WITH_HIDDEN
-        mock_player.return_value = DISCOVER_PLAYER
+    @patch("check_tools.publish_game_event", new_callable=AsyncMock)
+    async def test_successful_discovery(self, mock_event):
+        mock_content, mock_queries, mock_mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
 
-        with patch("rules_engine.dice_roll") as mock_dice:
+        with patch("check_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[15], dropped=[], total=15)
-            result = json.loads(await discover_hidden_element._func(ctx, element_id="secret_door"))
+            result = json.loads(
+                await _discover_hidden_element_impl(
+                    ctx, element_id="secret_door", content=mock_content, queries=mock_queries, mutations=mock_mutations
+                )
+            )
 
         assert result["outcome"] == "discovered"
         assert "hidden passage" in result["description"]
         assert result["element_id"] == "secret_door"
-        mock_set_flag.assert_called_once_with("player_1", "secret_door.discovered", True)
+        mock_mutations.set_player_flag.assert_called_once_with("player_1", "secret_door.discovered", True)
 
     @pytest.mark.asyncio
-    @patch("tools.publish_game_event", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_failed_discovery(self, mock_loc, mock_player, mock_event):
-        mock_loc.return_value = LOCATION_WITH_HIDDEN
-        mock_player.return_value = DISCOVER_PLAYER
+    @patch("check_tools.publish_game_event", new_callable=AsyncMock)
+    async def test_failed_discovery(self, mock_event):
+        mock_content, mock_queries, mock_mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
 
-        with patch("rules_engine.dice_roll") as mock_dice:
+        with patch("check_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[3], dropped=[], total=3)
-            result = json.loads(await discover_hidden_element._func(ctx, element_id="secret_door"))
+            result = json.loads(
+                await _discover_hidden_element_impl(
+                    ctx, element_id="secret_door", content=mock_content, queries=mock_queries, mutations=mock_mutations
+                )
+            )
 
         assert result["outcome"] == "not_found"
         assert "description" not in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_invalid_element_id(self, mock_loc):
-        mock_loc.return_value = LOCATION_WITH_HIDDEN
+    async def test_invalid_element_id(self):
+        mock_content = MagicMock()
+        mock_content.get_location = AsyncMock(return_value=LOCATION_WITH_HIDDEN)
         ctx = _make_context(location_id="test_location")
-        result = json.loads(await discover_hidden_element._func(ctx, element_id="nonexistent"))
+        result = json.loads(await _discover_hidden_element_impl(ctx, element_id="nonexistent", content=mock_content))
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_location_not_found(self, mock_loc):
-        mock_loc.return_value = None
+    async def test_location_not_found(self):
+        mock_content = MagicMock()
+        mock_content.get_location = AsyncMock(return_value=None)
         ctx = _make_context(location_id="nowhere")
-        result = json.loads(await discover_hidden_element._func(ctx, element_id="secret_door"))
+        result = json.loads(await _discover_hidden_element_impl(ctx, element_id="secret_door", content=mock_content))
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.publish_game_event", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_blocks_repeated_attempt(self, mock_loc, mock_player, mock_event):
-        mock_loc.return_value = LOCATION_WITH_HIDDEN
-        mock_player.return_value = DISCOVER_PLAYER
+    @patch("check_tools.publish_game_event", new_callable=AsyncMock)
+    async def test_blocks_repeated_attempt(self, mock_event):
+        mock_content, mock_queries, mock_mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
 
-        with patch("rules_engine.dice_roll") as mock_dice:
+        with patch("check_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[3], dropped=[], total=3)
-            await discover_hidden_element._func(ctx, element_id="secret_door")
+            await _discover_hidden_element_impl(
+                ctx, element_id="secret_door", content=mock_content, queries=mock_queries, mutations=mock_mutations
+            )
 
-        result = json.loads(await discover_hidden_element._func(ctx, element_id="secret_door"))
+        result = json.loads(
+            await _discover_hidden_element_impl(
+                ctx, element_id="secret_door", content=mock_content, queries=mock_queries, mutations=mock_mutations
+            )
+        )
         assert "error" in result
         assert "Already searched" in result["error"]
 
     @pytest.mark.asyncio
-    @patch("tools.db.set_player_flag", new_callable=AsyncMock)
-    @patch("tools.publish_game_event", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_dice_roll_event_has_no_dc(self, mock_loc, mock_player, mock_event, mock_set_flag):
+    @patch("check_tools.publish_game_event", new_callable=AsyncMock)
+    async def test_dice_roll_event_has_no_dc(self, mock_event):
         """DC should not be included in the client-facing dice_roll event."""
-        mock_loc.return_value = LOCATION_WITH_HIDDEN
-        mock_player.return_value = DISCOVER_PLAYER
+        mock_content, mock_queries, mock_mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
 
-        with patch("rules_engine.dice_roll") as mock_dice:
+        with patch("check_resolution.dice_roll") as mock_dice:
             from dice import DiceResult
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[15], dropped=[], total=15)
-            await discover_hidden_element._func(ctx, element_id="secret_door")
+            await _discover_hidden_element_impl(
+                ctx, element_id="secret_door", content=mock_content, queries=mock_queries, mutations=mock_mutations
+            )
 
         event_payload = mock_event.call_args[0][2]
         assert "dc" not in event_payload
@@ -638,17 +669,25 @@ class TestValidateId:
         assert _validate_id("npc-123", "npc_id") is None
 
     def test_empty_id(self):
-        result = json.loads(_validate_id("", "location_id"))
+        error_json = _validate_id("", "location_id")
+        assert error_json is not None
+        result = json.loads(error_json)
         assert "error" in result
 
     def test_too_long_id(self):
-        result = json.loads(_validate_id("a" * 129, "location_id"))
+        error_json = _validate_id("a" * 129, "location_id")
+        assert error_json is not None
+        result = json.loads(error_json)
         assert "error" in result
 
     def test_special_characters_rejected(self):
-        result = json.loads(_validate_id("id; DROP TABLE", "location_id"))
+        error_json = _validate_id("id; DROP TABLE", "location_id")
+        assert error_json is not None
+        result = json.loads(error_json)
         assert "error" in result
 
     def test_path_traversal_rejected(self):
-        result = json.loads(_validate_id("../etc/passwd", "location_id"))
+        error_json = _validate_id("../etc/passwd", "location_id")
+        assert error_json is not None
+        result = json.loads(error_json)
         assert "error" in result

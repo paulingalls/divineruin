@@ -1,26 +1,14 @@
 """Pure-function async activity resolution. Zero IO, zero async.
 
 All resolution functions accept an optional `rng` for deterministic testing.
+Activity validation lives in the TS server (apps/server/src/slot_validation.ts
+and errand_risk.ts) — Python only resolves outcomes for the async worker.
 """
 
 import random
-from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass
 
-from rules_engine import attribute_modifier, skill_modifier
-
-# --- Constants ---
-
-MAX_CONCURRENT_ACTIVITIES = 4
-
-VALID_ACTIVITY_TYPES = {"crafting", "training", "companion_errand"}
-
-VALID_ERRAND_TYPES = {"scout", "social", "acquire", "relationship"}
-
-CRAFTING_OUTCOME_TIERS = ("success", "partial", "unexpected", "failure")
-TRAINING_OUTCOME_TIERS = ("breakthrough", "plateau", "redirection")
-ERRAND_OUTCOME_TIERS = ("great_success", "success", "partial", "complication")
-
+from rules_engine import attribute_modifier, dc_for_tier, skill_modifier
 
 # --- Outcome dataclasses ---
 
@@ -38,15 +26,6 @@ class CraftingOutcome:
 
 
 @dataclass(frozen=True)
-class TrainingOutcome:
-    tier: str  # breakthrough | plateau | redirection
-    stat_gains: dict  # e.g. {"strength": 1} or {"skill_bonus": "athletics"}
-    ability_unlocked: str | None
-    narrative_context: dict
-    decision_options: list[dict]
-
-
-@dataclass(frozen=True)
 class ErrandOutcome:
     tier: str  # great_success | success | partial | complication
     errand_type: str
@@ -55,67 +34,6 @@ class ErrandOutcome:
     relationship_change: int
     narrative_context: dict
     decision_options: list[dict]
-
-
-@dataclass(frozen=True)
-class ValidationResult:
-    valid: bool
-    errors: list[str] = field(default_factory=list)
-
-
-# --- Core functions ---
-
-
-def compute_resolve_time(
-    min_seconds: int,
-    max_seconds: int,
-    start_time: datetime | None = None,
-    rng: random.Random | None = None,
-) -> datetime:
-    """Compute a randomized resolve time within the soft range."""
-    r = rng or random.Random()
-    duration = r.randint(min_seconds, max_seconds)
-    base = start_time or datetime.now(UTC)
-    return base + timedelta(seconds=duration)
-
-
-def validate_activity_params(
-    activity_type: str,
-    parameters: dict,
-    player_data: dict,
-    active_count: int,
-) -> ValidationResult:
-    """Validate activity creation parameters. Pure — no IO."""
-    errors: list[str] = []
-
-    if activity_type not in VALID_ACTIVITY_TYPES:
-        errors.append(f"Invalid activity type: {activity_type}")
-        return ValidationResult(valid=False, errors=errors)
-
-    if active_count >= MAX_CONCURRENT_ACTIVITIES:
-        errors.append(f"Maximum {MAX_CONCURRENT_ACTIVITIES} concurrent activities allowed")
-
-    if activity_type == "crafting":
-        if not parameters.get("recipe_id"):
-            errors.append("recipe_id is required for crafting")
-        required_materials = parameters.get("required_materials", [])
-        inventory = {item.get("id"): item for item in player_data.get("inventory", [])}
-        for mat_id in required_materials:
-            if mat_id not in inventory:
-                errors.append(f"Missing required material: {mat_id}")
-
-    elif activity_type == "training":
-        if not parameters.get("program_id"):
-            errors.append("program_id is required for training")
-
-    elif activity_type == "companion_errand":
-        errand_type = parameters.get("errand_type")
-        if errand_type not in VALID_ERRAND_TYPES:
-            errors.append(f"Invalid errand type: {errand_type}")
-        if not parameters.get("destination"):
-            errors.append("destination is required for companion errands")
-
-    return ValidationResult(valid=len(errors) == 0, errors=errors)
 
 
 # --- Resolution functions ---
@@ -131,7 +49,7 @@ def resolve_crafting(
 
     # Skill check for crafting
     craft_skill = parameters.get("skill", "arcana")
-    dc = parameters.get("dc", 13)
+    dc = parameters.get("dc", dc_for_tier("moderate"))
     mod = skill_modifier(player_data, craft_skill)
     d20 = r.randint(1, 20)
     total = d20 + mod
@@ -207,73 +125,6 @@ def resolve_crafting(
         quality_bonus=quality_bonus,
         materials_consumed=materials_consumed,
         materials_returned=materials_returned,
-        narrative_context=narrative_context,
-        decision_options=decisions,
-    )
-
-
-def resolve_training(
-    player_data: dict,
-    parameters: dict,
-    rng: random.Random | None = None,
-) -> TrainingOutcome:
-    """Resolve a training activity. Determines stat gains and breakthroughs."""
-    r = rng or random.Random()
-
-    training_stat = parameters.get("stat", "strength")
-    training_skill = parameters.get("skill")
-    dc = parameters.get("dc", 13)
-
-    # Roll for training outcome
-    d20 = r.randint(1, 20)
-    base_mod = attribute_modifier(player_data.get("attributes", {}).get(training_stat, 10))
-    total = d20 + base_mod
-    margin = total - dc
-
-    stat_gains: dict = {}
-    ability_unlocked = None
-
-    if d20 == 20 or margin >= 5:
-        tier = "breakthrough"
-        stat_gains = {"skill_bonus": training_skill} if training_skill else {training_stat: 1}
-        # Small chance to unlock ability on nat 20
-        if d20 == 20 and parameters.get("potential_ability"):
-            ability_unlocked = parameters["potential_ability"]
-        decisions = [
-            {"id": "continue", "label": "Continue pushing your limits"},
-            {"id": "rest", "label": "Rest and consolidate what you've learned"},
-        ]
-    elif margin >= -2:
-        tier = "plateau"
-        stat_gains = {"skill_familiarity": training_skill} if training_skill else {"training_progress": training_stat}
-        decisions = [
-            {"id": "persist", "label": "Keep training the same way"},
-            {"id": "change_approach", "label": "Try a different approach"},
-        ]
-    else:
-        tier = "redirection"
-        # Discover something different
-        alt_stat = r.choice([s for s in ("strength", "dexterity", "wisdom", "intelligence") if s != training_stat])
-        stat_gains = {"insight": alt_stat}
-        decisions = [
-            {"id": "follow_insight", "label": f"Explore the insight about {alt_stat}"},
-            {"id": "refocus", "label": f"Refocus on {training_stat}"},
-        ]
-
-    narrative_context = {
-        "tier": tier,
-        "roll": d20,
-        "total": total,
-        "dc": dc,
-        "training_stat": training_stat,
-        "training_skill": training_skill,
-        "mentor_id": parameters.get("mentor_id", "guildmaster_torin"),
-    }
-
-    return TrainingOutcome(
-        tier=tier,
-        stat_gains=stat_gains,
-        ability_unlocked=ability_unlocked,
         narrative_context=narrative_context,
         decision_options=decisions,
     )

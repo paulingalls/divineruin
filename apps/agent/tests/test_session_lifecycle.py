@@ -11,12 +11,10 @@ from session_data import SessionData
 
 # --- Shared test helpers ---
 
-_mock_conn = MagicMock(name="mock_txn_conn")
-
 
 @asynccontextmanager
-async def _mock_transaction():
-    yield _mock_conn
+async def _mock_txn(conn):
+    yield conn
 
 
 def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None):
@@ -124,70 +122,114 @@ class TestSessionMetricsFields:
         assert sd.disconnect_time == 0.0
 
 
-@patch("tools.db.transaction", _mock_transaction)
 class TestMetricsAccumulation:
     """Mutation tools increment session metrics."""
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_player_xp", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_award_xp_tracks_metric(self, mock_player, mock_update):
-        from tools import award_xp
+    async def test_award_xp_tracks_metric(self):
+        from progression_tools import _award_xp_impl
 
-        mock_player.return_value = SAMPLE_PLAYER
+        mock_db = MagicMock()
+        mock_conn = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_mutations = MagicMock()
+        mock_mutations.update_player_xp = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+
         ctx = _make_context()
-        await award_xp._func(ctx, amount=50, reason="defeated goblin")
+        await _award_xp_impl(
+            ctx, amount=50, reason="defeated goblin", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries
+        )
         assert ctx.userdata.session_xp_earned == 50
         # Award again
-        await award_xp._func(ctx, amount=30, reason="found treasure")
+        await _award_xp_impl(
+            ctx, amount=30, reason="found treasure", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries
+        )
         assert ctx.userdata.session_xp_earned == 80
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player_inventory", new_callable=AsyncMock)
-    @patch("tools.db.add_inventory_item", new_callable=AsyncMock)
-    @patch("tools.db.get_item", new_callable=AsyncMock)
-    async def test_add_to_inventory_tracks_metric(self, mock_item, mock_add, mock_inv):
-        from tools import add_to_inventory
+    async def test_add_to_inventory_tracks_metric(self):
+        from inventory_tools import _add_to_inventory_impl
 
-        mock_item.return_value = SAMPLE_ITEM
-        mock_inv.return_value = [SAMPLE_ITEM]
+        mock_db = MagicMock()
+        mock_conn = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_mutations = MagicMock()
+        mock_mutations.add_inventory_item = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
+        mock_content = MagicMock()
+        mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
+
         ctx = _make_context()
-        await add_to_inventory._func(ctx, item_id="health_potion", quantity=2, source="looted")
+        await _add_to_inventory_impl(
+            ctx,
+            item_id="health_potion",
+            quantity=2,
+            source="looted",
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         assert ctx.userdata.session_items_found == ["Health Potion"]
 
     @pytest.mark.asyncio
-    @patch("tools.db.set_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_player_quest", new_callable=AsyncMock)
-    @patch("tools.db.get_quest", new_callable=AsyncMock)
-    async def test_update_quest_tracks_metric(self, mock_quest, mock_pq, mock_set):
-        from tools import update_quest
+    async def test_update_quest_tracks_metric(self):
+        from quest_tools import _update_quest_impl
 
-        mock_quest.return_value = SAMPLE_QUEST
-        mock_pq.return_value = None
+        mock_db = MagicMock()
+        mock_conn = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_mutations = MagicMock()
+        mock_mutations.set_player_quest = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player_quest = AsyncMock(return_value=None)
+        mock_content = MagicMock()
+        mock_content.get_quest = AsyncMock(return_value=SAMPLE_QUEST)
+
         ctx = _make_context()
-        await update_quest._func(ctx, quest_id="greyvale_anomaly", new_stage_id=0)
+        await _update_quest_impl(
+            ctx,
+            quest_id="greyvale_anomaly",
+            new_stage_id=0,
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
         assert ctx.userdata.session_quests_progressed == ["greyvale_anomaly"]
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_targets_at_location", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_dispositions", new_callable=AsyncMock)
-    @patch("tools.db.get_npcs_at_location", new_callable=AsyncMock)
-    @patch("tools.db.update_player_location", new_callable=AsyncMock)
-    @patch("tools.db.upsert_map_progress", new_callable=AsyncMock)
-    @patch("tools.db.get_location", new_callable=AsyncMock)
-    async def test_move_player_tracks_metric(
-        self, mock_loc, mock_upsert_map, mock_update, mock_npcs, mock_disp, mock_targets, mock_player
-    ):
-        from tools import move_player
+    async def test_move_player_tracks_metric(self):
+        from movement_tools import _move_player_impl
 
-        mock_loc.side_effect = [SAMPLE_LOCATION, SAMPLE_DESTINATION]
-        mock_npcs.return_value = []
-        mock_disp.return_value = {}
-        mock_targets.return_value = []
-        mock_player.return_value = SAMPLE_PLAYER
+        mock_db = MagicMock()
+        mock_conn = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.extract_exit_connections = MagicMock(return_value=[])
+        mock_mutations = MagicMock()
+        mock_mutations.update_player_location = AsyncMock()
+        mock_mutations.upsert_map_progress = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_npcs_at_location = AsyncMock(return_value=[])
+        mock_queries.get_npc_dispositions = AsyncMock(return_value={})
+        mock_queries.get_targets_at_location = AsyncMock(return_value=[])
+        mock_content = MagicMock()
+        mock_content.get_location = AsyncMock(side_effect=[SAMPLE_LOCATION, SAMPLE_DESTINATION])
+
         ctx = _make_context()
-        await move_player._func(ctx, destination_id="accord_market_square")
+        with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
+            await _move_player_impl(
+                ctx,
+                destination_id="accord_market_square",
+                db_mod=mock_db,
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
         assert ctx.userdata.session_locations_visited == ["accord_market_square"]
 
 
@@ -436,7 +478,7 @@ class TestEndSessionTool:
 
     @pytest.mark.asyncio
     async def test_sets_ending_requested(self):
-        from tools import end_session
+        from session_tools import end_session
 
         ctx = _make_context()
         ctx.userdata.session_xp_earned = 100
@@ -447,7 +489,7 @@ class TestEndSessionTool:
 
     @pytest.mark.asyncio
     async def test_returns_session_stats(self):
-        from tools import end_session
+        from session_tools import end_session
 
         ctx = _make_context()
         ctx.userdata.session_xp_earned = 75
@@ -463,7 +505,7 @@ class TestEndSessionTool:
 
     @pytest.mark.asyncio
     async def test_includes_narrative_instruction(self):
-        from tools import end_session
+        from session_tools import end_session
 
         ctx = _make_context()
         result = json.loads(await end_session._func(ctx, reason="need to go"))
@@ -475,7 +517,7 @@ class TestSessionEndingPrompt:
     """Test that system prompt includes session ending instructions."""
 
     def test_system_prompt_contains_session_ending(self):
-        from prompts import build_system_prompt
+        from system_prompts import build_system_prompt
 
         prompt = build_system_prompt("test_location")
         assert "Session Ending" in prompt
@@ -483,7 +525,7 @@ class TestSessionEndingPrompt:
 
     def test_end_session_in_city_tools(self):
         from city_agent import CITY_TOOLS
-        from tools import end_session
+        from session_tools import end_session
 
         assert end_session in CITY_TOOLS
 
@@ -616,24 +658,41 @@ class TestSessionLifecycleIntegration:
     """Integration tests for session lifecycle features working together."""
 
     @pytest.mark.asyncio
-    @patch("tools.db.transaction", _mock_transaction)
-    @patch("tools.db.update_player_xp", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    @patch("tools.db.get_player_inventory", new_callable=AsyncMock)
-    @patch("tools.db.add_inventory_item", new_callable=AsyncMock)
-    @patch("tools.db.get_item", new_callable=AsyncMock)
-    async def test_metrics_accumulate_across_tools(self, mock_item, mock_add, mock_inv, mock_player, mock_xp):
+    async def test_metrics_accumulate_across_tools(self):
         """Session metrics accumulate across multiple tool calls."""
-        from tools import add_to_inventory, award_xp
+        from inventory_tools import _add_to_inventory_impl
+        from progression_tools import _award_xp_impl
 
-        mock_player.return_value = SAMPLE_PLAYER
-        mock_item.return_value = SAMPLE_ITEM
-        mock_inv.return_value = [SAMPLE_ITEM]
+        mock_db = MagicMock()
+        mock_conn = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_mutations = MagicMock()
+        mock_mutations.update_player_xp = AsyncMock()
+        mock_mutations.add_inventory_item = AsyncMock()
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
+        mock_content = MagicMock()
+        mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
+
         ctx = _make_context()
 
-        await award_xp._func(ctx, amount=50, reason="combat")
-        await add_to_inventory._func(ctx, item_id="health_potion", quantity=1, source="loot")
-        await award_xp._func(ctx, amount=25, reason="exploration")
+        await _award_xp_impl(
+            ctx, amount=50, reason="combat", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries
+        )
+        await _add_to_inventory_impl(
+            ctx,
+            item_id="health_potion",
+            quantity=1,
+            source="loot",
+            db_mod=mock_db,
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+        await _award_xp_impl(
+            ctx, amount=25, reason="exploration", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries
+        )
 
         assert ctx.userdata.session_xp_earned == 75
         assert ctx.userdata.session_items_found == ["Health Potion"]
@@ -642,7 +701,7 @@ class TestSessionLifecycleIntegration:
     async def test_end_session_then_summary_uses_metrics(self):
         """end_session captures metrics, then summary uses them."""
         from session_summary import generate_session_summary
-        from tools import end_session
+        from session_tools import end_session
 
         ctx = _make_context()
         ctx.userdata.session_xp_earned = 200

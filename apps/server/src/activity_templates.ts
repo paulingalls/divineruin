@@ -1,4 +1,5 @@
 import type { ActivityType } from "@divineruin/shared";
+import { sql } from "./db.ts";
 
 export interface ActivityTemplate {
   id: string;
@@ -19,8 +20,11 @@ export interface CraftingRecipe extends ActivityTemplate {
   npc_id: string;
 }
 
-export interface TrainingProgram extends ActivityTemplate {
-  activity_type: "training";
+/** Training program config, loaded from training_programs table at startup. */
+export interface TrainingProgramConfig {
+  id: string;
+  name: string;
+  training_activity_type: import("./training_state_machine.ts").TrainingActivityType;
   stat: string;
   skill?: string;
   dc: number;
@@ -30,6 +34,61 @@ export interface TrainingProgram extends ActivityTemplate {
 export interface ErrandTemplate extends ActivityTemplate {
   activity_type: "companion_errand";
   valid_destinations: string[];
+}
+
+// Runtime-loaded training programs (populated by loadTrainingPrograms at startup)
+let trainingPrograms: ReadonlyMap<string, TrainingProgramConfig> = new Map();
+
+export function getTrainingProgram(id: string): TrainingProgramConfig | undefined {
+  return trainingPrograms.get(id);
+}
+
+export function getAllTrainingPrograms(): TrainingProgramConfig[] {
+  return Array.from(trainingPrograms.values());
+}
+
+export function setTrainingPrograms(map: ReadonlyMap<string, TrainingProgramConfig>): void {
+  trainingPrograms = map;
+}
+
+function parseProgramRow(id: string, raw: unknown): TrainingProgramConfig {
+  if (!raw || typeof raw !== "object") {
+    throw new Error(`training_programs[${id}].data is not an object`);
+  }
+  const data = raw as Record<string, unknown>;
+  const ctx = `training_programs[${id}]`;
+  const name = data.name;
+  const trainingActivityType = data.training_activity_type;
+  const stat = data.stat;
+  const dc = data.dc;
+  const mentorId = data.mentor_id;
+  if (typeof name !== "string") throw new Error(`${ctx}.name is not a string`);
+  if (typeof trainingActivityType !== "string")
+    throw new Error(`${ctx}.training_activity_type is not a string`);
+  if (typeof stat !== "string") throw new Error(`${ctx}.stat is not a string`);
+  if (typeof dc !== "number") throw new Error(`${ctx}.dc is not a number`);
+  if (typeof mentorId !== "string") throw new Error(`${ctx}.mentor_id is not a string`);
+  return {
+    id,
+    name,
+    training_activity_type: trainingActivityType as TrainingProgramConfig["training_activity_type"],
+    stat,
+    skill: typeof data.skill === "string" ? data.skill : undefined,
+    dc,
+    mentor_id: mentorId,
+  };
+}
+
+export async function loadTrainingPrograms(): Promise<void> {
+  const rows = await sql<{ id: string; data: unknown }[]>`
+    SELECT id, data FROM training_programs
+  `;
+  const map = new Map<string, TrainingProgramConfig>();
+  for (const row of rows) {
+    map.set(row.id, parseProgramRow(row.id, row.data));
+  }
+  trainingPrograms = map;
+  console.log(`Loaded ${map.size} training programs`);
 }
 
 export const CRAFTING_RECIPES: Record<string, CraftingRecipe> = {
@@ -91,55 +150,6 @@ export const CRAFTING_RECIPES: Record<string, CraftingRecipe> = {
   },
 };
 
-export const TRAINING_PROGRAMS: Record<string, TrainingProgram> = {
-  combat_basics: {
-    id: "combat_basics",
-    name: "Combat Fundamentals",
-    activity_type: "training",
-    duration_min_seconds: 14400,
-    duration_max_seconds: 28800,
-    required_params: [],
-    stat: "strength",
-    dc: 13,
-    mentor_id: "guildmaster_torin",
-  },
-  endurance_training: {
-    id: "endurance_training",
-    name: "Endurance Training",
-    activity_type: "training",
-    duration_min_seconds: 14400,
-    duration_max_seconds: 28800,
-    required_params: [],
-    stat: "constitution",
-    dc: 13,
-    mentor_id: "guildmaster_torin",
-  },
-  arcane_study: {
-    id: "arcane_study",
-    name: "Arcane Study",
-    activity_type: "training",
-    duration_min_seconds: 21600,
-    duration_max_seconds: 43200,
-    required_params: [],
-    stat: "intelligence",
-    skill: "arcana",
-    dc: 14,
-    mentor_id: "scholar_emris",
-  },
-  perception_drills: {
-    id: "perception_drills",
-    name: "Perception Drills",
-    activity_type: "training",
-    duration_min_seconds: 10800,
-    duration_max_seconds: 21600,
-    required_params: [],
-    stat: "wisdom",
-    skill: "perception",
-    dc: 12,
-    mentor_id: "guildmaster_torin",
-  },
-};
-
 export const ERRAND_TEMPLATES: Record<string, ErrandTemplate> = {
   scout: {
     id: "scout",
@@ -148,7 +158,7 @@ export const ERRAND_TEMPLATES: Record<string, ErrandTemplate> = {
     duration_min_seconds: 7200,
     duration_max_seconds: 14400,
     required_params: ["destination"],
-    valid_destinations: ["millhaven", "greyvale_ruins", "northern_fields", "accord_dockside"],
+    valid_destinations: ["millhaven", "greyvale_ruins_entrance", "accord_dockside"],
   },
   social: {
     id: "social",

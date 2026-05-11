@@ -2,14 +2,12 @@
 
 import time
 from contextlib import contextmanager
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import event_types as E
-from background_process import (
-    BackgroundProcess,
-    PendingSpeech,
-    SpeechPriority,
-)
+from background_process import BackgroundProcess
+from bg_speech import PendingSpeech, SpeechPriority
 from event_bus import GameEvent
 from session_data import CombatParticipant, CombatState, CompanionState, SessionData
 
@@ -17,16 +15,21 @@ from session_data import CombatParticipant, CombatState, CompanionState, Session
 @contextmanager
 def _mock_db_for_warm_layer(quests=None, location=None, npcs=None):
     """Mock the three DB calls used by _rebuild_warm_layer."""
-    with patch("background_process.db.get_active_player_quests", new_callable=AsyncMock, return_value=quests or []):
-        with patch("background_process.db.get_location", new_callable=AsyncMock, return_value=location):
-            with patch("background_process.db.get_npcs_at_location", new_callable=AsyncMock, return_value=npcs or []):
+    with patch(
+        "background_process.db_queries.get_active_player_quests", new_callable=AsyncMock, return_value=quests or []
+    ):
+        with patch("background_process.db_content_queries.get_location", new_callable=AsyncMock, return_value=location):
+            with patch(
+                "background_process.db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=npcs or []
+            ):
                 yield
 
 
-def _make_session_data(**kwargs) -> SessionData:
-    defaults = dict(player_id="player_1", location_id="accord_guild_hall", room=None)
-    defaults.update(kwargs)
-    return SessionData(**defaults)
+def _make_session_data(**kwargs: object) -> SessionData:
+    sd = SessionData(player_id="player_1", location_id="accord_guild_hall")
+    for key, value in kwargs.items():
+        setattr(sd, key, value)
+    return sd
 
 
 def _make_bg(session_data=None) -> tuple[BackgroundProcess, MagicMock, MagicMock]:
@@ -426,8 +429,9 @@ class TestGodWhisperFlow:
             with patch.dict("sys.modules", {"db": MagicMock()}):
                 import db as _db
 
-                _db.get_divine_favor = AsyncMock(return_value={"level": 25})
-                _db.mark_favor_whisper_level = AsyncMock()
+                _db_mock: Any = _db
+                _db_mock.get_divine_favor = AsyncMock(return_value={"level": 25})
+                _db_mock.mark_favor_whisper_level = AsyncMock()
                 await bg._deliver_speech()
 
         assert call_order == ["stinger", "reply"]

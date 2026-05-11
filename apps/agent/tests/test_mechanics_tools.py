@@ -1,19 +1,20 @@
 """Integration tests for mechanics tools (mocked DB + room)."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 import event_types as E
-from session_data import SessionData
-from tools import (
-    play_sound,
-    request_attack,
-    request_saving_throw,
-    request_skill_check,
+from check_tools import (
+    _mark_skill_breakthrough_impl,
+    _request_attack_impl,
+    _request_saving_throw_impl,
+    _request_skill_check_impl,
     roll_dice,
 )
+from environment_tools import play_sound
+from session_data import SessionData
 
 SAMPLE_PLAYER = {
     "player_id": "player_1",
@@ -68,57 +69,140 @@ def _make_mock_room():
 
 class TestRequestSkillCheck:
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_returns_result(self, mock_get_player):
-        mock_get_player.return_value = SAMPLE_PLAYER
+    async def test_returns_result(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_single_skill_advancement = AsyncMock(
+            return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False},
+        )
+        mock_mutations = MagicMock()
+        mock_mutations.update_skill_advancement = AsyncMock()
         ctx = _make_context()
         result = json.loads(
-            await request_skill_check._func(
-                ctx, skill="athletics", difficulty="moderate", context_description="climbing a wall"
+            await _request_skill_check_impl(
+                ctx,
+                skill="athletics",
+                difficulty="moderate",
+                context_description="climbing a wall",
+                queries=mock_queries,
+                mutations=mock_mutations,
             )
         )
         assert result["skill"] == "athletics"
-        assert result["dc"] == 13
+        assert result["dc"] == 12  # moderate = 12
         assert result["outcome"] in ("success", "failure")
         assert "narrative_hint" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_unknown_skill(self, mock_get_player):
-        mock_get_player.return_value = SAMPLE_PLAYER
+    async def test_unknown_skill(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         ctx = _make_context()
         result = json.loads(
-            await request_skill_check._func(
-                ctx, skill="flying", difficulty="moderate", context_description="trying to fly"
+            await _request_skill_check_impl(
+                ctx,
+                skill="flying",
+                difficulty="moderate",
+                context_description="trying to fly",
+                queries=mock_queries,
             )
         )
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_missing_player(self, mock_get_player):
-        mock_get_player.return_value = None
+    async def test_invalid_difficulty_returns_error(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         ctx = _make_context()
         result = json.loads(
-            await request_skill_check._func(
-                ctx, skill="athletics", difficulty="moderate", context_description="climbing"
+            await _request_skill_check_impl(
+                ctx,
+                skill="athletics",
+                difficulty="impossible",
+                context_description="climbing",
+                queries=mock_queries,
             )
         )
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_publishes_event(self, mock_get_player):
-        mock_get_player.return_value = SAMPLE_PLAYER
+    async def test_missing_player(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=None)
+        ctx = _make_context()
+        result = json.loads(
+            await _request_skill_check_impl(
+                ctx,
+                skill="athletics",
+                difficulty="moderate",
+                context_description="climbing",
+                queries=mock_queries,
+            )
+        )
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_publishes_event(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_single_skill_advancement = AsyncMock(
+            return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False},
+        )
+        mock_mutations = MagicMock()
+        mock_mutations.update_skill_advancement = AsyncMock()
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await request_skill_check._func(
-            ctx, skill="stealth", difficulty="hard", context_description="sneaking past guard"
+        await _request_skill_check_impl(
+            ctx,
+            skill="stealth",
+            difficulty="hard",
+            context_description="sneaking past guard",
+            queries=mock_queries,
+            mutations=mock_mutations,
         )
-        room.local_participant.publish_data.assert_called_once()
-        call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
+        room.local_participant.publish_data.assert_called()
+        call_data = json.loads(room.local_participant.publish_data.call_args_list[0][0][0])
         assert call_data["type"] == E.DICE_ROLL
         assert call_data["roll_type"] == "skill_check"
+
+    @pytest.mark.asyncio
+    async def test_records_skill_use(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_single_skill_advancement = AsyncMock(
+            return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False},
+        )
+        mock_mutations = MagicMock()
+        mock_mutations.update_skill_advancement = AsyncMock()
+        ctx = _make_context()
+        await _request_skill_check_impl(
+            ctx,
+            skill="athletics",
+            difficulty="moderate",
+            context_description="climbing",
+            queries=mock_queries,
+            mutations=mock_mutations,
+        )
+        mock_mutations.update_skill_advancement.assert_awaited_once()
+        call_args = mock_mutations.update_skill_advancement.call_args[0]
+        assert call_args[0] == "player_1"
+        assert call_args[1] == "athletics"
+
+    @pytest.mark.asyncio
+    async def test_mark_skill_breakthrough_sets_flag(self):
+        mock_mutations = MagicMock()
+        mock_mutations.mark_narrative_moment = AsyncMock()
+        ctx = _make_context()
+        result = json.loads(await _mark_skill_breakthrough_impl(ctx, skill="athletics", mutations=mock_mutations))
+        assert result["status"] == "ok"
+        assert result["skill"] == "athletics"
+        mock_mutations.mark_narrative_moment.assert_awaited_once_with("player_1", "athletics")
+
+    @pytest.mark.asyncio
+    async def test_mark_skill_breakthrough_invalid_skill(self):
+        ctx = _make_context()
+        result = json.loads(await _mark_skill_breakthrough_impl(ctx, skill="flying"))
+        assert "error" in result
 
 
 # --- request_attack ---
@@ -126,69 +210,111 @@ class TestRequestSkillCheck:
 
 class TestRequestAttack:
     @pytest.mark.asyncio
-    @patch("tools.db.update_npc_hp", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_combat_stats", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_returns_result(self, mock_player, mock_npc, mock_update):
-        mock_player.return_value = SAMPLE_PLAYER
-        mock_npc.return_value = SAMPLE_NPC_COMBAT
+    async def test_returns_result(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_npc_combat_stats = AsyncMock(return_value=SAMPLE_NPC_COMBAT)
+        mock_mutations = MagicMock()
+        mock_mutations.update_npc_hp = AsyncMock()
         ctx = _make_context()
-        result = json.loads(await request_attack._func(ctx, target_id="goblin_1", weapon_or_spell="Longsword"))
+        result = json.loads(
+            await _request_attack_impl(
+                ctx,
+                target_id="goblin_1",
+                weapon_or_spell="Longsword",
+                queries=mock_queries,
+                mutations=mock_mutations,
+            )
+        )
         assert "hit" in result
         assert "damage" in result
         assert "narrative_hint" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_missing_player(self, mock_player):
-        mock_player.return_value = None
+    async def test_missing_player(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(await request_attack._func(ctx, target_id="goblin_1", weapon_or_spell="Longsword"))
+        result = json.loads(
+            await _request_attack_impl(
+                ctx,
+                target_id="goblin_1",
+                weapon_or_spell="Longsword",
+                queries=mock_queries,
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_missing_weapon(self, mock_player):
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_missing_weapon(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         ctx = _make_context()
-        result = json.loads(await request_attack._func(ctx, target_id="goblin_1", weapon_or_spell="Warhammer"))
+        result = json.loads(
+            await _request_attack_impl(
+                ctx,
+                target_id="goblin_1",
+                weapon_or_spell="Warhammer",
+                queries=mock_queries,
+            )
+        )
         assert "error" in result
         assert "Warhammer" in result["error"]
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_npc_combat_stats", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_missing_target(self, mock_player, mock_npc):
-        mock_player.return_value = SAMPLE_PLAYER
-        mock_npc.return_value = None
+    async def test_missing_target(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_npc_combat_stats = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(await request_attack._func(ctx, target_id="ghost", weapon_or_spell="Longsword"))
+        result = json.loads(
+            await _request_attack_impl(
+                ctx,
+                target_id="ghost",
+                weapon_or_spell="Longsword",
+                queries=mock_queries,
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_npc_hp", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_combat_stats", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_hp_updated_on_hit(self, mock_player, mock_npc, mock_update):
-        mock_player.return_value = SAMPLE_PLAYER
-        mock_npc.return_value = SAMPLE_NPC_COMBAT
+    async def test_hp_updated_on_hit(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_npc_combat_stats = AsyncMock(return_value=SAMPLE_NPC_COMBAT)
+        mock_mutations = MagicMock()
+        mock_mutations.update_npc_hp = AsyncMock()
         ctx = _make_context()
-        result = json.loads(await request_attack._func(ctx, target_id="goblin_1", weapon_or_spell="Longsword"))
+        result = json.loads(
+            await _request_attack_impl(
+                ctx,
+                target_id="goblin_1",
+                weapon_or_spell="Longsword",
+                queries=mock_queries,
+                mutations=mock_mutations,
+            )
+        )
         if result["hit"]:
-            mock_update.assert_called_once_with("goblin_1", result["target_hp_remaining"])
+            mock_mutations.update_npc_hp.assert_called_once_with("goblin_1", result["target_hp_remaining"])
         else:
-            mock_update.assert_not_called()
+            mock_mutations.update_npc_hp.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("tools.db.update_npc_hp", new_callable=AsyncMock)
-    @patch("tools.db.get_npc_combat_stats", new_callable=AsyncMock)
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_publishes_event(self, mock_player, mock_npc, mock_update):
-        mock_player.return_value = SAMPLE_PLAYER
-        mock_npc.return_value = SAMPLE_NPC_COMBAT
+    async def test_publishes_event(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_npc_combat_stats = AsyncMock(return_value=SAMPLE_NPC_COMBAT)
+        mock_mutations = MagicMock()
+        mock_mutations.update_npc_hp = AsyncMock()
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await request_attack._func(ctx, target_id="goblin_1", weapon_or_spell="Longsword")
+        await _request_attack_impl(
+            ctx,
+            target_id="goblin_1",
+            weapon_or_spell="Longsword",
+            queries=mock_queries,
+            mutations=mock_mutations,
+        )
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == E.DICE_ROLL
@@ -200,40 +326,68 @@ class TestRequestAttack:
 
 class TestRequestSavingThrow:
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_returns_result(self, mock_player):
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_returns_result(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         ctx = _make_context()
         result = json.loads(
-            await request_saving_throw._func(ctx, save_type="dexterity", dc=15, effect_on_fail="knocked prone")
+            await _request_saving_throw_impl(
+                ctx,
+                save_type="dexterity",
+                dc=15,
+                effect_on_fail="knocked prone",
+                queries=mock_queries,
+            )
         )
         assert result["save_type"] == "dexterity"
         assert result["dc"] == 15
         assert result["outcome"] in ("success", "failure")
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_missing_player(self, mock_player):
-        mock_player.return_value = None
+    async def test_missing_player(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(await request_saving_throw._func(ctx, save_type="dexterity", dc=15, effect_on_fail="prone"))
+        result = json.loads(
+            await _request_saving_throw_impl(
+                ctx,
+                save_type="dexterity",
+                dc=15,
+                effect_on_fail="prone",
+                queries=mock_queries,
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_invalid_save_type(self, mock_player):
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_invalid_save_type(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         ctx = _make_context()
-        result = json.loads(await request_saving_throw._func(ctx, save_type="luck", dc=15, effect_on_fail="cursed"))
+        result = json.loads(
+            await _request_saving_throw_impl(
+                ctx,
+                save_type="luck",
+                dc=15,
+                effect_on_fail="cursed",
+                queries=mock_queries,
+            )
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
-    @patch("tools.db.get_player", new_callable=AsyncMock)
-    async def test_publishes_event(self, mock_player):
-        mock_player.return_value = SAMPLE_PLAYER
+    async def test_publishes_event(self):
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await request_saving_throw._func(ctx, save_type="wisdom", dc=12, effect_on_fail="frightened")
+        await _request_saving_throw_impl(
+            ctx,
+            save_type="wisdom",
+            dc=12,
+            effect_on_fail="frightened",
+            queries=mock_queries,
+        )
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == E.DICE_ROLL
@@ -275,9 +429,9 @@ class TestPlaySound:
     @pytest.mark.asyncio
     async def test_returns_confirmation(self):
         ctx = _make_context()
-        result = json.loads(await play_sound._func(ctx, sound_name="thunder"))
+        result = json.loads(await play_sound._func(ctx, sound_name="spell_cast"))
         assert result["status"] == "playing"
-        assert result["sound_name"] == "thunder"
+        assert result["sound_name"] == "spell_cast"
 
     @pytest.mark.asyncio
     async def test_publishes_event(self):

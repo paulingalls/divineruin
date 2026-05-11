@@ -177,6 +177,11 @@ The negotiator. Solves encounters through conversation, persuasion, and social l
 - *Natural god synergy:* Aelora (community builder), Valdris (arbiter of disputes)
 - *Unexpected but viable:* Syrath (manipulation), Orenthel (compassionate mediation)
 
+**Marshal**
+The tactical commander. Leads through orders, not personal combat. In voice, the Marshal is extraordinary — literally shouting commands that the rules engine translates into mechanical advantages for allies. "Kael, the one on the left — NOW!" grants an ally advantage on their attack. The Marshal's declarations enhance *everyone else's* declarations, making the entire party more effective through coordination.
+- *Natural god synergy:* Kaelen (military excellence, command), Valdris (righteous leadership, disciplined formations)
+- *Unexpected but viable:* Aelora (organizational leadership, community protection), Orenthel (inspiring hope in the ranks)
+
 ---
 
 ### Archetype Summary
@@ -188,9 +193,9 @@ The negotiator. Solves encounters through conversation, persuasion, and social l
 | **Primal** | Druid, Beastcaller, Warden | Nature magic, companions, territorial power |
 | **Divine** | Cleric, Paladin, Oracle | Healing, oaths, prophecy/fate |
 | **Shadow** | Rogue, Spy, Whisper | Stealth, infiltration, subtle magic |
-| **Support** | Bard, Diplomat | Performance, social problem-solving |
+| **Support** | Bard, Diplomat, Marshal | Performance, social problem-solving, tactical command |
 
-**Total: 16 archetypes across 6 categories, each modifiable by 10 possible divine patrons.**
+**Total: 18 archetypes across 6 categories, each modifiable by 10 possible divine patrons.**
 
 ---
 
@@ -1045,7 +1050,7 @@ A player who checks in every 30 minutes will often find nothing has resolved —
 
 ## The Economy — Currency, Trade, and Value
 
-> **Detailed specification:** See [economy_reconciliation.md](game_mechanics/economy_reconciliation.md) for the full price audit, currency anchor (1 sp = 1 day labor), and validated pricing across all categories.
+> **Detailed specification:** See [game_mechanics_economy.md](game_mechanics/game_mechanics_economy.md) for the full price audit, currency anchor (1 sp = 1 day labor), and validated pricing across all categories.
 
 ### Philosophy
 
@@ -1057,7 +1062,7 @@ A single primary currency keeps things simple: **silver pieces (sp).** The denom
 
 - **Copper pieces (cp)** — 10 cp = 1 sp. Pocket change. A meal, a drink, a night at a cheap inn.
 - **Silver pieces (sp)** — The baseline. A good weapon, a day's skilled labor, a useful potion.
-- **Gold crowns (gc)** — 1 gc = 10 sp. Significant wealth. Property, rare items, major services. Economic anchor: 1 sp = 1 day's unskilled labor (see `game_mechanics/economy_reconciliation.md`).
+- **Gold crowns (gc)** — 1 gc = 10 sp. Significant wealth. Property, rare items, major services. Economic anchor: 1 sp = 1 day's unskilled labor (see `game_mechanics/game_mechanics_economy.md`).
 
 The player doesn't need to track currency precisely. The DM narrates financial state naturally: "You've got enough coin for supplies and a comfortable room" or "That enchantment would cost more than everything in your pack." The exact numbers live on the character sheet for players who want them.
 
@@ -1511,8 +1516,8 @@ The game opens up. The DM offers paths forward. The wider world of Aethos awaits
 
 *To be developed as design continues:*
 
-- [ ] **Detailed ability design** — Specific abilities for each archetype × god combination. The skill system and status effect framework are defined; individual ability lists per class are not.
-- [ ] **The crafting system** — How crafting works mechanically, what can be made, how async timers integrate with the real-time clock. The economy section defines crafting's role; the mechanics are undesigned.
+- [x] **Detailed ability design** — Fully designed. See `game_mechanics/game_mechanics_archetypes.md` for all 18 archetype profiles with core abilities, elective pools, and progression.
+- [x] **The crafting system** — Fully designed. See `game_mechanics/game_mechanics_crafting.md` for crafting mechanics, recipes, and async timer integration.
 - [ ] **The party system** — Matchmaking, AI companion behavior in groups, party roles, group dynamics. Companion extraction from ventriloquism to independent agent is a post-MVP decision (see *Tech Architecture — Open Questions*).
 - [ ] **Onboarding flow** — The first 30 minutes from installation to first session. The Opening Experience section defines the narrative flow; the client UX for onboarding (permissions, tutorial overlays, first-time setup) is undesigned.
 - [ ] **The mystery questline** — How clues are discovered, shared, and synthesized across the player base. The seasonal arc structure outlines the macro narrative; the mechanics of collective discovery are undesigned.

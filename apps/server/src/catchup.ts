@@ -1,10 +1,12 @@
 import { sql } from "./db.ts";
+import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
 import {
   computePercentComplete,
   type DecisionOption,
   type FeedItemProgress,
 } from "@divineruin/shared";
+import { getMidpointDecision } from "./training_state_machine.ts";
 
 export interface FeedItem {
   id: string;
@@ -129,6 +131,62 @@ function computeProgress(data: Record<string, unknown>): FeedItemProgress | null
   };
 }
 
+interface TrainingRow {
+  id: string;
+  activity_type: string;
+  state: string;
+  data: Record<string, unknown>;
+  transition_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function trainingToFeedItem(row: TrainingRow): FeedItem {
+  const data = parseJsonb(row.data);
+  const programName = str(data.program_name, "Training");
+  const transitionAt = row.transition_at ?? undefined;
+
+  let type: FeedItem["type"];
+  let decisionOptions: DecisionOption[] | null = null;
+  let progress: FeedItemProgress | null = null;
+
+  if (row.state === "running_first_half" || row.state === "running_second_half") {
+    type = "in_progress";
+    const startTime = row.state === "running_first_half" ? row.created_at : row.updated_at;
+    if (startTime && transitionAt) {
+      progress = {
+        startTime,
+        resolveAtEstimate: transitionAt,
+        progressText: null,
+        percentEstimate: computePercentComplete(startTime, transitionAt),
+      };
+    }
+  } else if (row.state === "awaiting_decision") {
+    type = "pending_decision";
+    const decision = getMidpointDecision(row.activity_type);
+    decisionOptions = decision.options;
+  } else {
+    type = "resolved";
+  }
+
+  const timestamp = transitionAt ?? row.updated_at;
+  const audioUrl = typeof data.narration_audio_url === "string" ? data.narration_audio_url : null;
+
+  return {
+    id: row.id,
+    type,
+    title: programName,
+    summary: (data.narration_text as string) || programName,
+    timestamp,
+    relativeTime: getRelativeTime(timestamp),
+    hasAudio: audioUrl !== null,
+    audioUrl,
+    decisionOptions,
+    activityType: "training",
+    progress,
+  };
+}
+
 function activityToFeedItem(id: string, data: Record<string, unknown>): FeedItem {
   const status = data.status as string;
   const hasDecisions =
@@ -137,6 +195,7 @@ function activityToFeedItem(id: string, data: Record<string, unknown>): FeedItem
     (data.decision_options as unknown[]).length > 0;
 
   const timestamp = str(data.resolve_at, str(data.start_time, new Date().toISOString()));
+  const audioUrl = typeof data.narration_audio_url === "string" ? data.narration_audio_url : null;
 
   let type: FeedItem["type"];
   if (status === "in_progress") {
@@ -154,8 +213,8 @@ function activityToFeedItem(id: string, data: Record<string, unknown>): FeedItem
     summary: (data.narration_summary as string) || activityTitle(data),
     timestamp,
     relativeTime: getRelativeTime(timestamp),
-    hasAudio: typeof data.narration_audio_url === "string",
-    audioUrl: typeof data.narration_audio_url === "string" ? data.narration_audio_url : null,
+    hasAudio: audioUrl !== null,
+    audioUrl,
     decisionOptions: hasDecisions ? (data.decision_options as DecisionOption[]) : null,
     activityType: typeof data.activity_type === "string" ? data.activity_type : null,
     progress: status === "in_progress" ? computeProgress(data) : null,
@@ -193,6 +252,7 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
       WHERE player_id = ${playerId}
         AND data->>'status' IN ('resolved', 'in_progress')
       ORDER BY created_at DESC
+      LIMIT 20
     ` as Promise<{ id: string; data: unknown }[]>;
 
     const newsPromise = sql`
@@ -201,40 +261,54 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
         AND created_at > NOW() - INTERVAL '24 hours'
       ORDER BY created_at DESC
       LIMIT 5
-    `.catch(() => [] as { id: string; data: unknown }[]) as Promise<
-      { id: string; data: unknown }[]
-    >;
+    `.catch((err) => {
+      logError("[catchup] world_news query failed:", err);
+      return [] as { id: string; data: unknown }[];
+    }) as Promise<{ id: string; data: unknown }[]>;
 
     const whispersPromise = sql`
       SELECT id, data FROM god_whispers
       WHERE player_id = ${playerId}
         AND data->>'status' = 'pending'
       ORDER BY created_at DESC
-    `.catch(() => [] as { id: string; data: unknown }[]) as Promise<
-      { id: string; data: unknown }[]
-    >;
+    `.catch((err) => {
+      logError("[catchup] god_whispers query failed:", err);
+      return [] as { id: string; data: unknown }[];
+    }) as Promise<{ id: string; data: unknown }[]>;
 
-    const [rows, newsRows, whisperRows] = await Promise.all([
+    const trainingPromise = sql`
+      SELECT id, activity_type, state, data, transition_at, created_at, updated_at
+      FROM training_activities
+      WHERE player_id = ${playerId}
+        AND state IN ('running_first_half', 'running_second_half', 'awaiting_decision', 'complete')
+        AND (state != 'complete' OR updated_at > NOW() - INTERVAL '24 hours')
+      ORDER BY created_at DESC
+      LIMIT 20
+    `.catch((err) => {
+      logError("[catchup] training_activities query failed:", err);
+      return [] as TrainingRow[];
+    }) as Promise<TrainingRow[]>;
+
+    const [rows, newsRows, whisperRows, trainingRows] = await Promise.all([
       activitiesPromise,
       newsPromise,
       whispersPromise,
+      trainingPromise,
     ]);
 
     const items: FeedItem[] = [];
 
     for (const row of rows) {
-      const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<
-        string,
-        unknown
-      >;
+      const data = parseJsonb(row.data);
       items.push(activityToFeedItem(row.id, data));
     }
 
+    for (const row of trainingRows) {
+      items.push(trainingToFeedItem(row));
+    }
+
     for (const row of newsRows) {
-      const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<
-        string,
-        unknown
-      >;
+      const data = parseJsonb(row.data);
       const ts = str(data.created_at, new Date().toISOString());
       items.push({
         id: row.id,
@@ -252,10 +326,7 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
     }
 
     for (const row of whisperRows) {
-      const data = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as Record<
-        string,
-        unknown
-      >;
+      const data = parseJsonb(row.data);
       const deityId = str(data.deity_id, "unknown");
       const displayName = DEITY_DISPLAY_NAMES[deityId] ?? deityId;
       const narration = str(data.narration_text, "");

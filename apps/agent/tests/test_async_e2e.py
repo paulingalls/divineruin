@@ -10,12 +10,11 @@ Full pipeline with mocked LLM/TTS:
 
 import random
 import tempfile
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from async_rules import compute_resolve_time, resolve_crafting
+from async_rules import resolve_crafting
 from async_worker import _resolve_single_activity, resolve_due_activities
 from dialogue_parser import Segment
 
@@ -78,7 +77,7 @@ class TestFullPipeline:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             with (
-                patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+                patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
                 patch(
                     "async_worker.generate_activity_narration",
                     new_callable=AsyncMock,
@@ -96,7 +95,7 @@ class TestFullPipeline:
                 patch(
                     "async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_e2e_craft.mp3"
                 ),
-                patch("async_worker.db.update_activity", side_effect=mock_update),
+                patch("async_worker.db_mutations.update_activity", side_effect=mock_update),
                 patch("async_worker.AUDIO_DIR", tmpdir),
                 patch(
                     "async_worker.generate_notification_hook",
@@ -123,53 +122,6 @@ class TestFullPipeline:
         assert resolved["narration_audio_url"] == "/api/audio/activity_e2e_craft.mp3"
 
     @pytest.mark.asyncio
-    async def test_training_e2e(self):
-        """Full training pipeline."""
-        activity = {
-            "id": "activity_e2e_train",
-            "player_id": "player_1",
-            "status": "in_progress",
-            "activity_type": "training",
-            "parameters": {
-                "program_id": "combat_basics",
-                "stat": "strength",
-                "dc": 13,
-                "mentor_id": "guildmaster_torin",
-            },
-            "resolve_at": "2025-01-01T00:00:00Z",
-        }
-
-        update_calls = []
-
-        async def mock_update(activity_id, updates, **kwargs):
-            update_calls.append((activity_id, updates))
-
-        with (
-            patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
-            patch(
-                "async_worker.generate_activity_narration",
-                new_callable=AsyncMock,
-                return_value=(
-                    [Segment("GUILDMASTER_TORIN", "stern", "Again. Better.")],
-                    "Again. Better.",
-                    "Torin pushes the recruit harder.",
-                ),
-            ),
-            patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_e2e_train.mp3"),
-            patch("async_worker.db.update_activity", side_effect=mock_update),
-            patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Training complete."),
-            patch("async_worker.send_push_notification", new_callable=AsyncMock),
-        ):
-            await _resolve_single_activity(activity)
-
-        assert len(update_calls) == 2
-        cached = update_calls[0][1]
-        assert cached["outcome"]["tier"] in ("breakthrough", "plateau", "redirection")
-        assert "stat_gains" in cached["outcome"]
-        resolved = update_calls[1][1]
-        assert resolved["status"] == "resolved"
-
-    @pytest.mark.asyncio
     async def test_companion_errand_e2e(self):
         """Full companion errand pipeline."""
         activity = {
@@ -191,7 +143,7 @@ class TestFullPipeline:
             update_calls.append((activity_id, updates))
 
         with (
-            patch("async_worker.db.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
@@ -202,7 +154,7 @@ class TestFullPipeline:
                 ),
             ),
             patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_e2e_errand.mp3"),
-            patch("async_worker.db.update_activity", side_effect=mock_update),
+            patch("async_worker.db_mutations.update_activity", side_effect=mock_update),
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Kael returns."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
         ):
@@ -239,7 +191,9 @@ class TestFullPipeline:
         ]
 
         with (
-            patch("async_worker.db.get_due_activities", new_callable=AsyncMock, return_value=activities),
+            patch(
+                "async_worker.db_activity_queries.get_due_activities", new_callable=AsyncMock, return_value=activities
+            ),
             patch("async_worker._resolve_single_activity", new_callable=AsyncMock) as mock_resolve,
             patch("async_worker._backfill_progress_snippets", new_callable=AsyncMock),
             patch("async_worker.generate_world_news", new_callable=AsyncMock),
@@ -251,31 +205,7 @@ class TestFullPipeline:
 
 
 class TestSoftTimerVariance:
-    """Verify soft timer randomization produces actual variance."""
-
-    def test_10_activities_have_variance(self):
-        """10 activities with 4-8 hour range should resolve at varied times."""
-        start = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
-        min_s, max_s = 14400, 28800  # 4-8 hours
-
-        times = []
-        for seed in range(10):
-            rng = random.Random(seed)
-            t = compute_resolve_time(min_s, max_s, start_time=start, rng=rng)
-            delta = (t - start).total_seconds()
-            times.append(delta)
-
-        # All within range
-        assert all(min_s <= t <= max_s for t in times), f"Out of range: {times}"
-
-        # Actual variance
-        assert len(set(times)) > 1, "All resolve times are identical"
-        assert min(times) != max(times), "No spread in resolve times"
-
-        # Standard deviation > 0
-        mean = sum(times) / len(times)
-        variance = sum((t - mean) ** 2 for t in times) / len(times)
-        assert variance > 0, "Zero variance in soft timer"
+    """Verify resolution outputs vary with RNG seed."""
 
     def test_crafting_outcomes_vary(self):
         """Different RNG seeds produce different crafting outcomes."""

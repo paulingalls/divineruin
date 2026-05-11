@@ -11,7 +11,7 @@ TIMESTAMP_RE = re.compile(r"^\[\d{2}:\d{2}:\d{2}\] ")
 
 
 class TestTranscriptLogger:
-    def _make_logger(self, tmp_path: str) -> TranscriptLogger:
+    def _make_logger(self, tmp_path: str) -> tuple[TranscriptLogger, str]:
         log_path = os.path.join(tmp_path, "test_transcript.log")
         return TranscriptLogger(room=None, event_bus=None, log_path=log_path), log_path
 

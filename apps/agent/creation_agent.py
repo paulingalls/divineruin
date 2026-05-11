@@ -10,8 +10,8 @@ from base_agent import BaseGameAgent
 from card_tap_handler import CardTapHandler
 from creation_prompts import CREATION_SYSTEM_PROMPT
 from creation_tools import finalize_character, push_cards_to_client, push_creation_cards, set_creation_choice
+from environment_tools import play_sound, set_music_state
 from session_data import SessionData
-from tools import play_sound, set_music_state
 
 logger = logging.getLogger("divineruin.creation_agent")
 
@@ -40,6 +40,7 @@ class CreationAgent(BaseGameAgent):
         logger.info("CreationAgent entered session for player %s", sd.player_id)
 
         # Start listening for card taps from client
+        assert sd.room is not None  # room is set before agent enters
         self._card_tap = CardTapHandler(room=sd.room, session=self.session, userdata=sd)
         self._card_tap.start()
 

@@ -21,7 +21,6 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.CAMERA",
@@ -74,6 +73,6 @@
         "projectId": "132df1ee-041d-4289-a374-f56152c971e0"
       }
     },
-    "owner": "paulingalls94"
+    "owner": "pi-innovations-llc"
   }
 }

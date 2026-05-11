@@ -4,7 +4,9 @@ import json
 
 import pytest
 
-from creation_data import CLASSES, DEITIES, RACES
+from creation_classes import CLASSES
+from creation_deities import DEITIES
+from creation_races import RACES
 from creation_rules import (
     BASE_ATTRIBUTE,
     CULTURE_START_LOCATIONS,
@@ -363,8 +365,8 @@ class TestDataIntegrity:
     def test_six_races(self):
         assert len(RACES) == 6
 
-    def test_seventeen_classes(self):
-        assert len(CLASSES) == 17
+    def test_eighteen_classes(self):
+        assert len(CLASSES) == 18
 
     def test_eleven_deities(self):
         # 10 gods + "none"

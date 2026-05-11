@@ -3,16 +3,12 @@
     "id": "accord_market_square",
     "name": "Market Square",
     "tier": 1,
+    "danger_level": 1,
     "district": "accord_central",
     "region": "sunward_coast",
     "region_type": "city",
     "default_scene": "scene_accord_market_exploration",
-    "tags": [
-      "market",
-      "social",
-      "commerce",
-      "starting_area"
-    ],
+    "tags": ["market", "social", "commerce", "starting_area"],
     "description": "The sound hits you first \u2014 a rolling wave of voices, cart wheels, and harbor bells. The market square of the Accord of Tides is a crossroads of the southern world. Vendors call prices in three languages. The smell of fried fish and foreign spices mingles in the salt air. Somewhere nearby, a street musician is losing a competition with the gulls.",
     "atmosphere": "bustling, warm, alive",
     "key_features": [
@@ -49,9 +45,7 @@
       "time_night": {
         "description_override": "The market square is emptied out. Lanterns swing on their chains. The fountain burbles to no one. A pair of city guards walk their circuit, boots echoing on wet stone.",
         "atmosphere": "quiet, reflective, distant harbor sounds",
-        "npcs_remove": [
-          "market_vendors_tier2"
-        ],
+        "npcs_remove": ["market_vendors_tier2"],
         "danger_level": 0
       },
       "quest:greyvale_anomaly:stage >= 1": {
@@ -67,15 +61,11 @@
     "id": "millhaven",
     "name": "Millhaven",
     "tier": 1,
+    "danger_level": 0,
     "district": "millhaven_town",
     "region": "greyvale",
     "region_type": "city",
-    "tags": [
-      "town",
-      "farming",
-      "threatened",
-      "quest_hub"
-    ],
+    "tags": ["town", "farming", "threatened", "quest_hub"],
     "description": "Millhaven used to be a quiet farming town. You can hear what it should sound like \u2014 wind through barley, a mill wheel turning, children somewhere. But there's a tension underneath. Conversations drop to whispers when strangers arrive. The mill wheel needs oiling and no one's bothered. Dogs bark at the northern tree line for no visible reason.",
     "atmosphere": "pastoral unease, normality fraying at the edges",
     "key_features": [
@@ -109,9 +99,7 @@
       },
       "quest:greyvale_anomaly:stage >= 3": {
         "atmosphere": "openly frightened, people preparing to evacuate",
-        "key_features_add": [
-          "townsfolk packing carts and arguing about whether to flee south"
-        ]
+        "key_features_add": ["townsfolk packing carts and arguing about whether to flee south"]
       }
     },
     "ambient_sounds": "rural_town_uneasy"
@@ -120,15 +108,11 @@
     "id": "greyvale_ruins_entrance",
     "name": "Greyvale Ruins \u2014 Entrance Hall",
     "tier": 1,
+    "danger_level": 2,
     "district": "greyvale_ruins",
     "region": "greyvale",
     "region_type": "dungeon",
-    "tags": [
-      "dungeon",
-      "ancient",
-      "aelindran",
-      "mystery"
-    ],
+    "tags": ["dungeon", "ancient", "aelindran", "mystery"],
     "description": "The stairs descend into stone that predates everything above it. The air changes \u2014 cool, still, tasting of dust and something faintly metallic. Your footsteps echo in a way that suggests a large space ahead. Light from above fades quickly. Then you hear it \u2014 a low, almost subliminal hum, as if the stone itself is vibrating at a frequency just below hearing.",
     "atmosphere": "ancient, hushed, subtly wrong",
     "key_features": [
@@ -174,12 +158,7 @@
     "district": "greyvale_north",
     "region": "greyvale",
     "region_type": "dungeon",
-    "tags": [
-      "combat",
-      "hollow",
-      "dangerous",
-      "corruption"
-    ],
+    "tags": ["combat", "hollow", "dangerous", "corruption"],
     "description": "You know you've arrived because the world stops. The birdsong cuts off mid-phrase. The wind dies. The grass beneath your feet is grey and brittle, crumbling at the edges like ash. And then you hear it \u2014 not a sound, exactly. An absence shaped like sound. A pressure in your ears that has no source. Something is here. Something that doesn't belong in any world you understand.",
     "atmosphere": "deeply wrong, alien silence, sensory inversion",
     "key_features": [
@@ -207,16 +186,12 @@
     "id": "accord_guild_hall",
     "name": "Guild Hall",
     "tier": 1,
+    "danger_level": 0,
     "district": "accord_central",
     "region": "sunward_coast",
     "region_type": "city",
     "default_scene": "scene_accord_guild_exploration",
-    "tags": [
-      "guild",
-      "social",
-      "quest_hub",
-      "official"
-    ],
+    "tags": ["guild", "social", "quest_hub", "official"],
     "description": "Heavy oak doors open onto a hall that smells of lamp oil, leather, and old paper. A long counter runs the length of the far wall, clerks behind it processing bounty claims and contract disputes. Notice boards flank both sides, layered deep with postings. Somewhere upstairs, raised voices argue strategy.",
     "atmosphere": "busy, purposeful, undercurrent of worry",
     "key_features": [
@@ -244,12 +219,7 @@
     "district": "accord_central",
     "region": "sunward_coast",
     "region_type": "city",
-    "tags": [
-      "religious",
-      "social",
-      "divine",
-      "services"
-    ],
+    "tags": ["religious", "social", "divine", "services"],
     "description": "A wide avenue lined with temples to the four gods. Incense drifts from open doorways. Acolytes sweep steps in the early light. The architecture shifts every few dozen paces \u2014 Veythar's sharp angles giving way to Kaelen's flowing curves, then Aelora's open arches, then Syrath's shadowed alcoves.",
     "atmosphere": "reverent, multi-faith, quietly competitive",
     "key_features": [
@@ -274,15 +244,11 @@
     "id": "accord_dockside",
     "name": "Dockside Quarter",
     "tier": 1,
+    "danger_level": 1,
     "district": "accord_dockside",
     "region": "sunward_coast",
     "region_type": "city",
-    "tags": [
-      "harbor",
-      "commerce",
-      "rough",
-      "cosmopolitan"
-    ],
+    "tags": ["harbor", "commerce", "rough", "cosmopolitan"],
     "description": "Salt spray and tar. Ropes creak against wooden hulls. The dockside quarter is where the Accord's real business happens \u2014 cargo manifests, contraband, and rumors from every port on the Sunward Coast. Warehouses line the waterfront, and between them, scholars' workshops where the Aelindran diaspora study recovered artifacts.",
     "atmosphere": "rough, industrious, cosmopolitan",
     "key_features": [
@@ -311,12 +277,7 @@
     "district": "accord_central",
     "region": "sunward_coast",
     "region_type": "city",
-    "tags": [
-      "tavern",
-      "social",
-      "rest",
-      "information"
-    ],
+    "tags": ["tavern", "social", "rest", "information"],
     "description": "Warmth hits you first \u2014 a wall of heat from the massive stone hearth that gives this place its name. Then the noise: conversations layered over each other, tankards clinking, a bard in the corner working through something melancholy. The room is wood-dark and lamp-lit, smelling of stew and spilled ale.",
     "atmosphere": "warm, convivial, safe harbor",
     "key_features": [
@@ -344,12 +305,7 @@
     "district": "greyvale_ruins",
     "region": "greyvale",
     "region_type": "wilderness",
-    "tags": [
-      "ruins",
-      "outdoor",
-      "ancient",
-      "aelindran"
-    ],
+    "tags": ["ruins", "outdoor", "ancient", "aelindran"],
     "description": "Broken stone walls rise from the hillside like teeth from a jaw. Whatever stood here once was large \u2014 the footprint covers the entire hilltop. Most of it has been reclaimed by scrub and wildflowers. But the stairs going down are clear of growth, as if the earth itself refuses to cover them.",
     "atmosphere": "melancholy, wind-swept, ancient presence",
     "key_features": [
@@ -374,13 +330,7 @@
     "district": "greyvale_ruins",
     "region": "greyvale",
     "region_type": "dungeon",
-    "tags": [
-      "dungeon",
-      "ancient",
-      "aelindran",
-      "dangerous",
-      "sealed"
-    ],
+    "tags": ["dungeon", "ancient", "aelindran", "dangerous", "sealed"],
     "description": "Past the sealed door, the hum becomes a chord. The chamber is circular, walls covered in Aelindran notation so dense it looks like texture. In the center, a pedestal holds nothing \u2014 but the air above it shimmers, and the notation on the walls pulses faintly in response to your presence.",
     "atmosphere": "charged, alien, watching",
     "key_features": [
@@ -402,12 +352,7 @@
     "district": "greyvale_wilds",
     "region": "greyvale",
     "region_type": "wilderness",
-    "tags": [
-      "wilderness",
-      "forest",
-      "dangerous",
-      "hollow_adjacent"
-    ],
+    "tags": ["wilderness", "forest", "dangerous", "hollow_adjacent"],
     "description": "The forest goes wrong here. You notice it in the silence first \u2014 no birdsong, no insect hum. The wind moves the branches but stops at a boundary you can feel in your chest. Everything past the tree line has a stillness that doesn't belong to nature.",
     "atmosphere": "tense, unnaturally quiet, watchful",
     "exits": {
@@ -438,11 +383,7 @@
     "district": "greyvale_road",
     "region": "greyvale",
     "region_type": "wilderness",
-    "tags": [
-      "road",
-      "travel",
-      "connecting"
-    ],
+    "tags": ["road", "travel", "connecting"],
     "description": "Birdsong follows you out of the city, fading as the road narrows between barley fields. Cart ruts deepen in the mud. The pastoral quiet should be comforting, but the farms thin out too quickly heading north, and the last farmhouse you pass has its shutters closed in broad daylight.",
     "atmosphere": "open, pastoral, increasingly uneasy heading north",
     "exits": {
@@ -463,12 +404,7 @@
     "district": "millhaven_town",
     "region": "greyvale",
     "region_type": "city",
-    "tags": [
-      "inn",
-      "rest",
-      "social",
-      "information"
-    ],
+    "tags": ["inn", "rest", "social", "information"],
     "description": "The door scrapes against a warped floor. Inside, lamplight catches dust motes and the smell of old ale soaks into everything. A handful of locals nurse drinks at separate tables, conversations held low. The innkeeper watches the door like she's been counting who comes and who doesn't come back.",
     "atmosphere": "dim, worried, half-empty",
     "exits": {
@@ -486,11 +422,7 @@
     "district": "accord_central",
     "region": "sunward_coast",
     "region_type": "city",
-    "tags": [
-      "residential",
-      "private",
-      "guild"
-    ],
+    "tags": ["residential", "private", "guild"],
     "description": "Papers cover every surface \u2014 reports, maps, requisition forms stacked in towers that lean dangerously. The smell of ink and lamp oil hangs thick. Through the floorboards, you can hear the muffled business of the guild hall below. Torin's desk faces the door. Old habit.",
     "atmosphere": "spare, functional, papers everywhere",
     "exits": {
@@ -507,11 +439,7 @@
     "district": "millhaven_town",
     "region": "greyvale",
     "region_type": "city",
-    "tags": [
-      "residential",
-      "private",
-      "farming"
-    ],
+    "tags": ["residential", "private", "farming"],
     "description": "Floorboards creak under your weight. A low fire crackles in the hearth, throwing warmth across a room that smells of dried herbs and bread cooling on a shelf. Everything here is worn but cared for \u2014 mended curtains, a swept floor, a chair with one leg shorter than the others.",
     "atmosphere": "worn, warm, stubbornly maintained",
     "exits": {
@@ -528,12 +456,7 @@
     "district": "accord_dockside",
     "region": "sunward_coast",
     "region_type": "city",
-    "tags": [
-      "residential",
-      "private",
-      "academic",
-      "aelindran"
-    ],
+    "tags": ["residential", "private", "academic", "aelindran"],
     "description": "Parchment and books compete for every inch of space. The smell of old paper and salt air mixes where a window faces the harbor. Diagrams cover the walls \u2014 Aelindran notation, star charts, something that might be a map of places that don't exist anymore. A half-eaten meal sits forgotten on a stack of journals.",
     "atmosphere": "cluttered, ink-stained, obsessive",
     "exits": {
@@ -550,12 +473,7 @@
     "district": "accord_central",
     "region": "sunward_coast",
     "region_type": "city",
-    "tags": [
-      "forge",
-      "crafting",
-      "commerce",
-      "fire"
-    ],
+    "tags": ["forge", "crafting", "commerce", "fire"],
     "description": "Heat rolls out the open door in waves. Inside, the air shimmers. The forge takes up the back wall \u2014 a massive stone hearth fed by bellows that wheeze like something alive. Hammers hang from pegs, smallest to largest, each worn smooth. The smell is hot metal, coal smoke, and sweat. Every surface is scorched or scarred.",
     "atmosphere": "intense, industrious, fire-lit",
     "key_features": [
@@ -583,11 +501,7 @@
     "district": "accord_central",
     "region": "sunward_coast",
     "region_type": "city",
-    "tags": [
-      "residential",
-      "private",
-      "dwarf"
-    ],
+    "tags": ["residential", "private", "dwarf"],
     "description": "A room behind and above the forge, reached by a narrow stone stair. Small, tidy in a way that suggests military habit. A cot bolted to the wall, a chest with three locks, and a shelf of metalworking texts. The heat from the forge below keeps it warm year-round. Through the floorboards, the faint tick of cooling metal.",
     "atmosphere": "spare, warm, private",
     "exits": {

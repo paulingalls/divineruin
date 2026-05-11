@@ -1,0 +1,202 @@
+[
+  {
+    "id": "level_1",
+    "level": 1,
+    "proficiency_bonus": 1,
+    "attribute_points": 0,
+    "specialization_fork": false,
+    "milestone_type": null,
+    "milestone_description": null,
+    "notable": "Character creation. Core spells/abilities known"
+  },
+  {
+    "id": "level_2",
+    "level": 2,
+    "proficiency_bonus": 1,
+    "attribute_points": 0,
+    "specialization_fork": false,
+    "milestone_type": null,
+    "milestone_description": null,
+    "notable": "First training cycles available"
+  },
+  {
+    "id": "level_3",
+    "level": 3,
+    "proficiency_bonus": 1,
+    "attribute_points": 0,
+    "specialization_fork": false,
+    "milestone_type": "passive_upgrade",
+    "milestone_description": "New passive or ability upgrade. Companion gains new passive",
+    "notable": "Companion gains new passive"
+  },
+  {
+    "id": "level_4",
+    "level": 4,
+    "proficiency_bonus": 1,
+    "attribute_points": 2,
+    "specialization_fork": false,
+    "milestone_type": "elective_techniques",
+    "milestone_description": "L4 Elective techniques — martials choose from pool of 4. Standard spells unlock",
+    "notable": "First martial elective choice"
+  },
+  {
+    "id": "level_5",
+    "level": 5,
+    "proficiency_bonus": 1,
+    "attribute_points": 0,
+    "specialization_fork": true,
+    "milestone_type": "specialization",
+    "milestone_description": "SPECIALIZATION — choose 1 of 2 paths. Major power spike. Identity-defining fork",
+    "notable": "Major power spike. Identity-defining fork"
+  },
+  {
+    "id": "level_6",
+    "level": 6,
+    "proficiency_bonus": 1,
+    "attribute_points": 0,
+    "specialization_fork": false,
+    "milestone_type": "specialization_ability",
+    "milestone_description": "Specialization ability unlocked",
+    "notable": null
+  },
+  {
+    "id": "level_7",
+    "level": 7,
+    "proficiency_bonus": 2,
+    "attribute_points": 0,
+    "specialization_fork": false,
+    "milestone_type": "proficiency_increase",
+    "milestone_description": "Proficiency bonus increases to +2. Major spells unlock",
+    "notable": "Proficiency increase"
+  },
+  {
+    "id": "level_8",
+    "level": 8,
+    "proficiency_bonus": 2,
+    "attribute_points": 2,
+    "specialization_fork": false,
+    "milestone_type": "elective_techniques",
+    "milestone_description": "L8 Elective techniques — martials choose from pool of 4",
+    "notable": "Second martial elective choice"
+  },
+  {
+    "id": "level_9",
+    "level": 9,
+    "proficiency_bonus": 2,
+    "attribute_points": 0,
+    "specialization_fork": false,
+    "milestone_type": "passive_upgrade",
+    "milestone_description": "New passive or ability upgrade",
+    "notable": null
+  },
+  {
+    "id": "level_10",
+    "level": 10,
+    "proficiency_bonus": 2,
+    "attribute_points": 0,
+    "specialization_fork": false,
+    "milestone_type": "archetype_milestone",
+    "milestone_description": "ARCHETYPE MILESTONE — major new ability. Extra Attack for Warrior, Skirmisher, Paladin. Companion major upgrade",
+    "notable": "Companion major upgrade"
+  },
+  {
+    "id": "level_11",
+    "level": 11,
+    "proficiency_bonus": 2,
+    "attribute_points": 0,
+    "specialization_fork": false,
+    "milestone_type": "specialization_ability",
+    "milestone_description": "Specialization ability. Cantrip damage scales to 3d6",
+    "notable": "Cantrip damage scales to 3d6"
+  },
+  {
+    "id": "level_12",
+    "level": 12,
+    "proficiency_bonus": 2,
+    "attribute_points": 2,
+    "specialization_fork": false,
+    "milestone_type": null,
+    "milestone_description": null,
+    "notable": null
+  },
+  {
+    "id": "level_13",
+    "level": 13,
+    "proficiency_bonus": 2,
+    "attribute_points": 0,
+    "specialization_fork": false,
+    "milestone_type": "passive_upgrade",
+    "milestone_description": "New passive or ability upgrade. Supreme spells unlock",
+    "notable": null
+  },
+  {
+    "id": "level_14",
+    "level": 14,
+    "proficiency_bonus": 3,
+    "attribute_points": 0,
+    "specialization_fork": false,
+    "milestone_type": "proficiency_increase",
+    "milestone_description": "Proficiency bonus increases to +3",
+    "notable": "Proficiency increase"
+  },
+  {
+    "id": "level_15",
+    "level": 15,
+    "proficiency_bonus": 3,
+    "attribute_points": 0,
+    "specialization_fork": false,
+    "milestone_type": "archetype_milestone",
+    "milestone_description": "ARCHETYPE MILESTONE — capstone ability preview. Companion capstone ability",
+    "notable": "Companion capstone ability"
+  },
+  {
+    "id": "level_16",
+    "level": 16,
+    "proficiency_bonus": 3,
+    "attribute_points": 2,
+    "specialization_fork": false,
+    "milestone_type": null,
+    "milestone_description": null,
+    "notable": null
+  },
+  {
+    "id": "level_17",
+    "level": 17,
+    "proficiency_bonus": 3,
+    "attribute_points": 0,
+    "specialization_fork": false,
+    "milestone_type": "specialization_ability",
+    "milestone_description": "Specialization ability. Cantrip damage scales to 4d6",
+    "notable": "Cantrip damage scales to 4d6"
+  },
+  {
+    "id": "level_18",
+    "level": 18,
+    "proficiency_bonus": 3,
+    "attribute_points": 0,
+    "specialization_fork": false,
+    "milestone_type": null,
+    "milestone_description": null,
+    "notable": null
+  },
+  {
+    "id": "level_19",
+    "level": 19,
+    "proficiency_bonus": 3,
+    "attribute_points": 0,
+    "specialization_fork": false,
+    "milestone_type": null,
+    "milestone_description": null,
+    "notable": null
+  },
+  {
+    "id": "level_20",
+    "level": 20,
+    "proficiency_bonus": 3,
+    "attribute_points": 2,
+    "specialization_fork": false,
+    "milestone_type": "archetype_capstone",
+    "milestone_description": "ARCHETYPE CAPSTONE — defining ultimate ability. Companion legendary. Total attribute points: +10 from levels",
+    "notable": "Companion legendary"
+  }
+]

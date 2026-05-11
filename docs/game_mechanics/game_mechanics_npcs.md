@@ -677,8 +677,8 @@ Each companion archetype complements a different set of player archetypes. The a
 |---|---|---|---|
 | **Kael** | Martial frontline | Mages, Seekers, Bards, Diplomats, Oracles | Magic, investigation, social skills |
 | **Lira** | Arcane investigation | Warriors, Guardians, Skirmishers, Rogues | Frontline combat, physical skills |
-| **Tam** | Primal scout | Clerics, Artificers, Druids, Paladins | Reckless initiative, scouting, speed |
-| **Sable** | Perception/sensing | Spies, Beastcallers, Wardens, Whispers | Voice (Sable is non-verbal), direct combat |
+| **Tam** | Primal scout | Clerics, Artificers, Druids, Paladins, Marshals | Reckless initiative, scouting, speed |
+| **Sable** | Perception/sensing | Spies, Whispers, Beastcallers, Wardens | Voice (Sable is non-verbal), direct combat |
 
 ---
 
@@ -831,18 +831,18 @@ def assign_companion(player) -> str:
     arcane_archetypes = ["mage", "artificer", "seeker"]
     primal_archetypes = ["druid", "beastcaller", "warden"]
     divine_archetypes = ["cleric", "paladin", "oracle"]
-    shadow_archetypes = ["rogue", "spy"]
-    support_archetypes = ["bard", "diplomat"]
+    shadow_archetypes = ["rogue", "spy", "whisper"]
+    support_archetypes = ["bard", "diplomat", "marshal"]
     
     archetype = player.archetype.lower()
     
-    if archetype in arcane_archetypes + support_archetypes:
+    if archetype in arcane_archetypes + ["bard", "diplomat"]:
         return "kael"      # Needs frontline
-    elif archetype in martial_archetypes + shadow_archetypes[:1]:  # Rogue
+    elif archetype in martial_archetypes + ["rogue"]:
         return "lira"      # Needs magic and investigation
-    elif archetype in divine_archetypes + primal_archetypes[:1]:   # Druid
+    elif archetype in divine_archetypes + ["druid", "marshal"]:
         return "tam"       # Needs speed and recklessness
-    elif archetype in shadow_archetypes[1:] + primal_archetypes[1:]:  # Spy, Beastcaller, Warden
+    elif archetype in ["spy", "whisper", "beastcaller", "warden"]:
         return "sable"     # Needs perception and a non-verbal companion
     
     return "kael"  # Default fallback

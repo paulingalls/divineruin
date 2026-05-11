@@ -1731,7 +1731,7 @@ If the Architects are watching, they've given no sign. And if they have opinions
 *Resolved by recent design work:*
 
 - [x] **The Factions** — Faction schemas designed with reputation tiers, relationships, and world_state tracking. See *World Data & Simulation — Faction Schema*. Four factions scoped for MVP.
-- [x] **Character Classes & Progression** — 16 archetypes across 6 categories, each modifiable by 10 divine patrons. Progression via XP, divine favor, and world reputation. See *Game Design Document — Class System* and *Progression System*.
+- [x] **Character Classes & Progression** — 18 archetypes across 6 categories, each modifiable by 10 divine patrons. Progression via XP, divine favor, and world reputation. See *Game Design Document — Class System* and *Progression System*.
 - [x] **The Greyvale and MVP locations** — The Greyvale, Millhaven, and the Greyvale Ruins are now documented in the Sunward Coast geography section above and detailed in the *MVP Specification*.
 - [x] **Companion characters** — Four companion archetypes designed with backstories that connect to the central mystery. Shadow-foxes established as a creature type. See *Game Design Document — The Companion*.
 

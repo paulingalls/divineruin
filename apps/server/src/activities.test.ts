@@ -40,6 +40,9 @@ const {
   handleAudioFile,
 } = await import("./activities.ts");
 
+const { setupDangerLevelFixture } = await import("./test-fixtures/danger-levels.ts");
+const { setupTrainingConfigFixture } = await import("./test-fixtures/training-config.ts");
+
 function makeRequest(method: string, path: string, body?: Record<string, unknown>): Request {
   const opts: RequestInit = { method };
   if (body) {
@@ -52,13 +55,17 @@ function makeRequest(method: string, path: string, body?: Record<string, unknown
 beforeEach(() => {
   mockQueryResults = [];
   queryCallIndex = 0;
+  setupDangerLevelFixture();
+  setupTrainingConfigFixture();
 });
 
 describe("handleCreateActivity", () => {
   test("creates crafting activity", async () => {
-    // Inside transaction: count, material check, delete mat 1, delete mat 2, insert
+    // Inside transaction: lock both tables, slot count, material check, delete materials, insert
     mockQueryResults = [
-      [], // lock rows (FOR UPDATE) — no in-progress activities
+      [], // lock async_activities (FOR UPDATE)
+      [], // lock training_activities (FOR UPDATE)
+      [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
       [{ item_id: "iron_ingot" }, { item_id: "leather_strip" }], // material check (FOR UPDATE)
       [], // delete iron_ingot
       [], // delete leather_strip
@@ -97,8 +104,12 @@ describe("handleCreateActivity", () => {
     expect(body.error).toContain("Invalid activity type");
   });
 
-  test("rejects when too many concurrent", async () => {
-    mockQueryResults = [[{ id: "a1" }, { id: "a2" }, { id: "a3" }, { id: "a4" }]];
+  test("rejects when slot is full", async () => {
+    mockQueryResults = [
+      [], // lock async_activities (FOR UPDATE)
+      [], // lock training_activities (FOR UPDATE)
+      [{ training: 0, crafting: 1, companion: 0 }], // countActiveBySlot — crafting slot full
+    ];
 
     const req = makeRequest("POST", "/api/activities", {
       type: "crafting",
@@ -107,7 +118,7 @@ describe("handleCreateActivity", () => {
     const res = await handleCreateActivity(req, "player_1");
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("concurrent");
+    expect(body.error).toContain("Crafting slot is full");
   });
 
   test("rejects crafting without recipe_id", async () => {
@@ -134,7 +145,9 @@ describe("handleCreateActivity", () => {
 
   test("rejects missing materials", async () => {
     mockQueryResults = [
-      [{ cnt: 0 }], // count active
+      [], // lock async_activities (FOR UPDATE)
+      [], // lock training_activities (FOR UPDATE)
+      [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
       [], // batch material check — none found
     ];
 
@@ -148,11 +161,13 @@ describe("handleCreateActivity", () => {
     expect(body.error).toContain("Missing required material");
   });
 
-  test("creates training activity", async () => {
-    // Inside transaction: count, insert
+  test("creates training activity in training_activities table", async () => {
+    // Inside transaction: lock async_activities, lock training_activities, slot count, insert into training_activities
     mockQueryResults = [
-      [], // lock rows (FOR UPDATE) — no in-progress activities
-      [], // insert activity
+      [], // lock async_activities (FOR UPDATE)
+      [], // lock training_activities (FOR UPDATE)
+      [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
+      [], // insert into training_activities
     ];
 
     const req = makeRequest("POST", "/api/activities", {
@@ -161,8 +176,27 @@ describe("handleCreateActivity", () => {
     });
     const res = await handleCreateActivity(req, "player_1");
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { activity_id: string; status: string };
+    const body = (await res.json()) as {
+      activity_id: string;
+      status: string;
+      state: string;
+      transition_at: string;
+    };
+    expect(body.activity_id).toStartWith("train_");
     expect(body.status).toBe("in_progress");
+    expect(body.state).toBe("running_first_half");
+    expect(body.transition_at).toBeTruthy();
+  });
+
+  test("rejects unknown training program", async () => {
+    const req = makeRequest("POST", "/api/activities", {
+      type: "training",
+      parameters: { program_id: "underwater_basket_weaving" },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain("Unknown training program");
   });
 
   test("rejects training without program_id", async () => {
@@ -177,9 +211,11 @@ describe("handleCreateActivity", () => {
   });
 
   test("creates companion errand", async () => {
-    // Inside transaction: count, insert
+    // Inside transaction: lock both tables, slot count, insert
     mockQueryResults = [
-      [], // lock rows (FOR UPDATE) — no in-progress activities
+      [], // lock async_activities (FOR UPDATE)
+      [], // lock training_activities (FOR UPDATE)
+      [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
       [], // insert activity
     ];
 
@@ -213,6 +249,21 @@ describe("handleCreateActivity", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain("Invalid destination");
+  });
+
+  test("rejects errand when companion_sable does social", async () => {
+    const req = makeRequest("POST", "/api/activities", {
+      type: "companion_errand",
+      parameters: {
+        errand_type: "social",
+        destination: "millhaven_inn",
+        companion_id: "companion_sable",
+      },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain("companion_sable");
   });
 });
 

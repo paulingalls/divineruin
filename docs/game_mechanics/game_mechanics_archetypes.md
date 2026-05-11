@@ -12,7 +12,7 @@
 
 Every archetype is defined by seven mechanical components:
 
-1. **HP Category** — Martial (12/5), Primal-Divine (10/4), Arcane-Shadow-Support (8/3)
+1. **HP Category** — Martial (12/5), Primal-Divine + Marshal (10/4), Arcane-Shadow-Support (8/3)
 2. **Armor & Weapon Proficiency** — What gear can be used without disadvantage
 3. **Starting Skill Proficiencies** — 3–5 skills begin at Trained
 4. **Passive Abilities** — Always-on, no resource cost, checked automatically by rules engine
@@ -414,9 +414,9 @@ Bards are the only archetype that can choose electives from **any** source catal
 
 ---
 
-## All Archetype Profiles — Complete (16 of 16)
+## All Archetype Profiles — Complete (18 of 18)
 
-> All 16 archetypes are now fully detailed below. The first 6 (Warrior through Bard) are above. The remaining 10 follow.
+> All 18 archetypes are now fully detailed below. The first 6 (Warrior through Bard) are above. The remaining 12 follow.
 
 ---
 
@@ -938,6 +938,64 @@ Bards are the only archetype that can choose electives from **any** source catal
 
 ---
 
+### Whisper (Shadow — Arcane Hybrid)
+
+> *The shadow-magic hybrid. Your spells don't burn — they suggest, misdirect, and erase. The most dangerous magic is the kind no one knows was cast.*
+
+**HP:** 8 base / 3 per level | **Armor:** Light only | **Weapons:** Light weapons, hand crossbow
+**Starting Skills (5):** Arcana, Deception, Stealth, Insight, Investigation
+**Resource:** Focus — `6 + INT mod + floor(level/2)`. Note: INT, not CHA — the Whisper's magic is precision, not personality.
+**Recovery:** Half on short rest, full on long rest
+**Save Proficiencies:** INT, WIS
+**Ability model:** 5 core spells/abilities + elective spells from a curated Shadow-magic catalog. Hybrid caster: fewer raw damage spells than Mage, but unique mind-affecting and perception-altering magic no other archetype accesses.
+**Magic source:** Arcane (shadow-aspected). Resonance rate: Focus cost × 0.5 (between standard Arcane 0.6× and Divine 0.3× — subtle magic disturbs the Veil less than raw force)
+
+#### Passive Abilities
+
+| Level | Name | Effect |
+|---|---|---|
+| 1 | Subtle Casting | Whisper spells have no visible or audible signature. No one knows you cast unless they pass Arcana check vs your spell DC. Guards don't react. NPCs don't flinch. The magic is invisible |
+| 3 | Thought Reader | Advantage on Insight checks. When you succeed Insight by 5+, DM reveals one surface thought (not deep secrets — what the NPC is thinking *right now*) |
+| 9 | Mind Veil | Immune to magical truth detection (Zone of Truth, Detect Thoughts). Your mental state is a closed book. When scried on, the scryer sees what you want them to see |
+
+#### Core Abilities (every Whisper)
+
+| Level | Name | Cost | Type | Effect |
+|---|---|---|---|---|
+| 1 | Suggestion | 2 Focus | Active | Plant a reasonable suggestion in one creature's mind. WIS save. If the suggestion doesn't endanger them, disadvantage on the save. Lasts 1 hour. The target believes it was their own idea |
+| 1 | Mind Spike | 0 (cantrip) | Cantrip | 1d6 psychic damage + you know target's location for 1 round (can't hide from you). Scales with level. No visible effect — the target feels a headache, nothing more |
+| 2 | Fog of Mind | 3 Focus | Active | Target forgets the last 30 seconds. WIS save. On fail: their last action, last thing they saw, or last thing someone said is gone. On success: they feel disoriented but remember. Maximum 1 minute of memory erasure at L10+ |
+| 6 | Redirect Attention | 3 Focus | Active | Up to 3 creatures ignore you or one designated person for 1 minute. WIS save. They aren't invisible — the targets simply don't consider them important. Walking past guards, sitting at a restricted table, eavesdropping in plain sight |
+
+#### Core Reactions
+
+| Level | Name | Cost | Trigger |
+|---|---|---|---|
+| 1 | Thought Shield | 1 Focus | Targeted by psychic damage or mind-reading: halve the damage or block the read. Auto-reaction, no action needed |
+| 5 | Implant Doubt | 2 Focus | Enemy succeeds an attack or ability: WIS save or they hesitate — reroll with disadvantage. The Whisper plants a seed of uncertainty: "Did I aim right? Was that the best move?" |
+
+#### Elective Spells — Shadow-Magic Catalog
+
+Whisper draws from a unique catalog unavailable to other archetypes. These spells are subtle, mind-affecting, and leave no trace.
+
+| Level | Elective Spells | Max Tier | Available Pool |
+|---|---|---|---|
+| 1 | 1 | Minor | Silent Image, Disguise Self, Sleep, Detect Thoughts |
+| 4 | 2 | Standard | Invisibility, Modify Memory (limited: 1 minute), Fear (targeted), Crown of Madness |
+| 7 | 3 | Major | Mass Suggestion, Mislead, Feeblemind, Phantasmal Landscape |
+| 13 | 4 | Supreme | Dominate Mind (single target, 1 hour, contested INT), Mass Invisibility, Memory Palace (rewrite 1 hour of target's memory permanently) |
+
+#### Milestones
+
+| Level | Name | Effect |
+|---|---|---|
+| 5 | Specialization | **Mesmerist** (crowd control, mass suggestion, emotional manipulation — the puppet master of groups) or **Phantasm** (illusion specialist, false realities, misdirection — the one who makes you see things that aren't there) |
+| 10 | Unseen Hand | Suggestion can now target 3 creatures simultaneously. Redirect Attention is permanent until you dismiss it or leave the area |
+| 15 | Deep Erasure | Fog of Mind can erase up to 1 hour of memory. The target can't be made to remember even with magic below Supreme tier |
+| 20 | Ghost in the Machine | Once per session: retroactively declare you influenced an NPC's past decision. DM reinterprets a previous NPC action as having been shaped by your subtle magic. The negotiation that went your way? You were in their head. The guard who left the gate open? Your doing. Reality bends to accommodate your claim |
+
+---
+
 ### Diplomat (Support — Social-Martial Hybrid)
 
 > *The negotiator. Solves encounters with words. May never swing a sword and still be the most valuable party member.*
@@ -1009,6 +1067,81 @@ Bards are the only archetype that can choose electives from **any** source catal
 | 10 | Voice of Authority | De-escalate works on groups (up to 6). Persuasion in formal settings auto-succeeds DC ≤ 15 |
 | 15 | Kingmaker | Faction rep gains doubled. Disposition improvements are 2 steps instead of 1 |
 | 20 | Words That Shape the World | Once per session: deliver a speech (actually speak it). Every NPC who hears: WIS save or disposition permanently Friendly. No limit. The speech that ends a war |
+
+
+---
+
+### Marshal (Support — Tactical Commander)
+
+> *The battlefield leader. You don't fight — you command. Every ally near you fights better, moves smarter, and survives longer because you told them exactly what to do.*
+
+**HP:** 10 base / 4 per level | **Armor:** Medium, shields | **Weapons:** Martial melee, simple ranged
+**Starting Skills (4):** Intimidation, Insight, Perception, History
+**Resource:** Split — Focus: `5 + CHA mod + floor(level/2)`. Stamina: `6 + STR mod + floor(level/2)`. Uses CHA for commands, STR for physical presence.
+**Recovery:** Focus: half on short rest, full on long rest. Stamina: 2/round, full on short rest
+**Save Proficiencies:** CHA, WIS
+**Ability model:** Core command abilities + 2 elective technique pools (L4 and L8). Limited tactical-magic electives from curated list. The Marshal's power is in making others stronger, not in personal combat.
+**Magic source:** Limited tactical-magic (Divine-adjacent, Resonance rate: Focus cost × 0.3 — commands carry divine authority)
+
+#### Passive Abilities
+
+| Level | Name | Effect |
+|---|---|---|
+| 1 | Tactical Awareness | At the start of combat, DM reveals enemy count, approximate threat tier, and one tactical detail (which enemy is the leader, which is weakest, or environmental advantage). The Marshal reads the battlefield before anyone acts |
+| 3 | Commanding Presence | Allies within 30 ft gain +1 to initiative rolls. The Marshal sets the tempo for the party |
+| 9 | Battlefield Reading | Once per encounter, ask the DM one tactical question and receive a truthful answer: "Which enemy is about to use a special ability?" / "Is there a flanking route?" / "What's the biggest threat to our healer?" |
+
+#### Core Abilities (every Marshal)
+
+| Level | Name | Cost | Type | Effect |
+|---|---|---|---|---|
+| 1 | Direct Strike | 2 Focus | Active | Name an ally and a target. That ally's next attack against that target has advantage and deals +1d4 damage. In voice play: "Kael, the one on the left — now!" |
+| 1 | Reposition | 2 Stam | Active | Command an ally to move 15 ft without provoking reactions. Declared during your phase, resolved immediately. "Fall back to the doorway!" |
+| 1 | Rally | 3 Focus | Active | All allies within 30 ft gain temporary HP equal to your CHA mod + level. Lasts until next rest. "Hold the line! We've got this!" |
+| 2 | Coordinated Assault | 4 Focus | Active | Choose 2 allies. Both gain advantage on their next attack this phase. If both hit the same target: bonus 1d6 damage each. The Marshal turns two separate attacks into a pincer |
+
+#### Core Reactions
+
+| Level | Name | Cost | Trigger |
+|---|---|---|---|
+| 1 | Interceding Order | 2 Focus | Ally is about to be hit: command them to dodge. Ally gains +2 AC against that attack. "Duck!" |
+| 5 | Countermand | 3 Focus | Enemy uses a command/leadership ability (Hollowed Knight's Command Lesser, bandit captain's Rally): contested CHA. Success: enemy's command fails. The Marshal's voice overrides |
+
+#### Elective Technique — Level 4 (choose 1 of 4)
+
+| Name | Cost | Effect |
+|---|---|---|
+| Overwatch | 3 Focus | Designate an area (15 ft). Any ally in that area: +2 AC and advantage on saves until your next turn. "Stay behind that wall — I've got you covered" |
+| Exploit Opening | 2 Stam | When an ally crits: grant a different ally an immediate free attack against the same target. "Now — while it's staggered!" |
+| War Cry | 3 Stam | All enemies within 30 ft: WIS save or Frightened 1 round. Shared with Warrior, but the Marshal version also grants allies +1 to attacks for that round |
+| Field Medic Order | 3 Focus | Command an ally to use a healing item or ability as a declaration enhancer (they can attack AND heal in the same phase). "Drink the potion — I'll cover you" |
+
+#### Elective Technique — Level 8 (choose 1 of 4)
+
+| Name | Cost | Effect |
+|---|---|---|
+| Grand Stratagem | 5 Focus | Declare a tactical plan. For 3 rounds: all allies within 30 ft gain +2 to attacks and +1 AC. Requires 1 round of setup (the Marshal spends their declaration explaining the plan). "Listen carefully — on my signal..." |
+| Sacrifice Play | 4 Stam | Command an ally to take a risky action with guaranteed payoff: ally takes 2d6 damage but their next attack automatically crits. "Take the hit — make it count!" |
+| Inspire Defiance | 4 Focus | All allies within 30 ft: advantage on saves vs Fear, Charm, and Stun for 2 rounds. "They want us afraid? Show them what afraid looks like" |
+| Tactical Withdrawal | 4 Focus | All allies disengage simultaneously without provoking reactions. The entire party repositions. "Fall back — now, together!" |
+
+#### Limited Tactical-Magic Elective Spells
+
+| Level | Elective Spells | Max Tier | Available Pool |
+|---|---|---|---|
+| 3 | 1 | Minor | Bless, Shield of Faith, Heroism, Command |
+| 5 | 2 | Standard | + Aid, Beacon of Hope, Warding Bond |
+| 9 | 3 | Major | + Crusader's Mantle, Aura of Vitality, Mass Heal |
+| 15 | 4 | Major | **No Supreme access** — Marshal peak is Major tier (same as Diplomat) |
+
+#### Milestones
+
+| Level | Name | Effect |
+|---|---|---|
+| 5 | Specialization | **Warlord** (aggressive tactics: bonus damage on coordinated attacks, Direct Strike improves to +1d8, "press the advantage" philosophy) or **Sentinel** (defensive tactics: Overwatch base ability, Rally grants resistance to one damage type, "hold the line" philosophy) |
+| 10 | Supreme Commander | Direct Strike and Coordinated Assault range extends to 60 ft. Can command allies you can hear but can't see (shouting orders around corners, through walls) |
+| 15 | Legendary Tactician | Once per encounter: declare a target. All allies' attacks against that target have advantage for 1 round. "Everything we have — that one — NOW" |
+| 20 | Unbreakable Formation | While you are conscious and can speak: no ally within 30 ft can be reduced below 1 HP. Each time this triggers, you take 1d8 psychic damage (the strain of holding everyone together through sheer will). The party cannot fall while the Marshal stands |
 
 
 ---
