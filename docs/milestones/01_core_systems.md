@@ -92,13 +92,13 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Pure function: `get_narrative_state(current_pools, max_pools)` → narrative indicator string
 
 **Acceptance criteria:**
-- [ ] Each archetype correctly assigned to Stamina-only, Focus-only, Focus-primary, or Split
-- [ ] HP formula uses CON modifier at half-rate per level and produces correct values L1-20
-- [ ] Short rest restores Stamina to full and Focus to 50%
-- [ ] Long rest restores all pools to full
-- [ ] Narrative state indicators trigger at correct thresholds
-- [ ] Resource pool calculations are pure functions with no side effects
-- [ ] Tests cover all 18 archetypes and both rest types
+- [x] Each archetype correctly assigned to Stamina-only, Focus-only, Focus-primary, or Split
+- [x] HP formula uses CON modifier at half-rate per level and produces correct values L1-20
+- [x] Short rest restores Stamina to full and Focus to 50%
+- [x] Long rest restores all pools to full
+- [x] Narrative state indicators trigger at correct thresholds
+- [x] Resource pool calculations are pure functions with no side effects
+- [x] Tests cover all 18 archetypes and both rest types
 
 **Key references:**
 - *Game Mechanics Core — Resource Pools*
@@ -125,14 +125,14 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Agent tool: `apply_level_up(character_id)` → applies rewards, emits narration event
 
 **Acceptance criteria:**
-- [ ] `XP_FOR_LEVEL` updated from D&D 5e values to canonical scale
-- [ ] XP thresholds produce correct levels for all 20 levels
-- [ ] Attribute increase events fire at levels 4, 8, 12, 16, 20 with +2 points each
-- [ ] Specialization fork at L4/L5 is flagged in level-up rewards
-- [ ] Unified progression table covers all 20 levels with correct HP gains, attribute points, and milestones
-- [ ] Level-up triggers a narration event that the DM agent can consume
-- [ ] DB migration creates progression table with correct schema
-- [ ] Tests cover level boundaries, multi-level jumps, and milestone triggers
+- [x] `XP_FOR_LEVEL` updated from D&D 5e values to canonical scale
+- [x] XP thresholds produce correct levels for all 20 levels
+- [x] Attribute increase events fire at levels 4, 8, 12, 16, 20 with +2 points each
+- [x] Specialization fork at L4/L5 is flagged in level-up rewards
+- [x] Unified progression table covers all 20 levels with correct HP gains, attribute points, and milestones
+- [x] Level-up triggers a narration event that the DM agent can consume
+- [x] DB migration creates progression table with correct schema
+- [x] Tests cover level boundaries, multi-level jumps, and milestone triggers
 
 **Key references:**
 - *Game Mechanics Core — Experience & Leveling*
@@ -162,13 +162,13 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Integration with skill use counters from M1.2 (skill practice increments the same counter)
 
 **Acceptance criteria:**
-- [ ] Training cycle advances through all states: initiated → first_half → midpoint → second_half → complete
-- [ ] Each activity type has defined duration ranges and micro-bonus options
-- [ ] Midpoint decision is mandatory — cycle cannot advance without it
-- [ ] Skill practice training increments the same use counter as session use (M1.2 hybrid advancement)
-- [ ] DB migration creates `training_activities` table with correct schema
-- [ ] Client training panel shows progress, prompts midpoint decisions, and notifies on completion
-- [ ] Tests cover full cycle for each activity type, including midpoint decision branches
+- [x] Training cycle advances through all states: initiated → first_half → midpoint → second_half → complete
+- [x] Each activity type has defined duration ranges and micro-bonus options
+- [x] Midpoint decision is mandatory — cycle cannot advance without it
+- [x] Skill practice training increments the same use counter as session use (M1.2 hybrid advancement)
+- [x] DB migration creates `training_activities` table with correct schema
+- [x] Client training panel shows progress, prompts midpoint decisions, and notifies on completion
+- [x] Tests cover full cycle for each activity type, including midpoint decision branches
 
 **Key references:**
 - *Game Mechanics Core — Async Training System*
@@ -188,19 +188,19 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Risk-based return mechanics per destination safety: Safe (no injury), Moderate (10% injured), Dangerous (25% injured, 5% emergency), Extreme (40% injured, 15% emergency)
 - Return narration scenes pre-rendered for Catch-Up feed
 - Async concurrency: 3 independent slots — Training + Crafting + Companion errand. Artificer exception: can use Training slot for crafting (2 crafting + 1 errand)
-- DB migration: `companion_errands` table (type, destination, duration, risk_level, return_narration)
+- Errands persist in the existing `async_activities` table alongside crafting (shared schema: both are async background work returning narration + decision options)
 - Agent tool: `dispatch_companion_errand(companion_id, errand_type, destination)` → creates errand record
 - Agent tool: `resolve_companion_errand(errand_id)` → generates return narration
 - Integration with Catch-Up feed for return scene delivery
 
 **Acceptance criteria:**
-- [ ] All 4 errand types defined with duration ranges, risk levels, and possible outcomes
-- [ ] Risk-based return produces correct outcome distribution per risk level
-- [ ] Return narration is pre-rendered and stored for Catch-Up feed delivery
-- [ ] Concurrency enforced: 3 independent slots (Training + Crafting + Companion). Artificer can craft in Training slot
-- [ ] Cannot dispatch errand if companion errand slot is full
-- [ ] DB migration creates `companion_errands` table with correct schema
-- [ ] Tests cover all errand types, risk outcomes, and concurrency limits
+- [x] All 4 errand types defined with duration ranges, risk levels, and possible outcomes
+- [x] Risk-based return produces correct outcome distribution per risk level
+- [x] Return narration is pre-rendered and stored for Catch-Up feed delivery
+- [x] Concurrency enforced: 3 independent slots (Training + Crafting + Companion). Artificer can craft in Training slot
+- [x] Cannot dispatch errand if companion errand slot is full
+- [x] Errands persist in `async_activities` (shared with crafting — no separate table)
+- [x] Tests cover all errand types, risk outcomes, and concurrency limits
 
 **Key references:**
 - *Game Mechanics Core — Companion Errands*
