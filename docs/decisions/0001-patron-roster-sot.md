@@ -70,7 +70,7 @@ roster (existing 4 patrons did not have them in gods.json).
 | `voice_emotion` | `GodWhisperProfile.voice_emotion` | `GodWhisperProfile.voice_emotion` |
 | `speaking_style` | `GodWhisperProfile.speaking_style` | `GodWhisperProfile.speaking_style` |
 | `stinger_sound` | `GodWhisperProfile.stinger_sound` | `GodWhisperProfile.stinger_sound` |
-| `personality_prompt` | `GodWhisperProfile.personality_prompt` — verbatim (these are tuned LLM prompts; do not rewrite) | `GodWhisperProfile.personality_prompt` |
+| `personality_prompt` | `GodWhisperProfile.personality_prompt` — embedded `<short_name>, <title>` aligned to canonical (see Note below) | `GodWhisperProfile.personality_prompt` |
 
 Note: `god_whisper_data.GOD_WHISPER_PROFILES` previously used inconsistent titles in
 its `display_name` field (e.g. "Veythar, the Unbound" vs the canonical "the Lorekeeper").
@@ -155,9 +155,11 @@ must immediately rework.
 - The `none` (Unbound) entry remains hand-written in `creation_deities.py`. The
   alternative — a `"is_unbound": true` row in gods.json — would mean the seeder has
   to skip a row, which is a worse trade than one synthesized constant.
-- `personality_prompt` strings keep their currently-inconsistent embedded titles
-  (e.g. "Veythar, the Unbound" inside the prompt body). Aligning these is a content
-  rewrite, not roster alignment, and would risk re-tuning prompt behavior.
+- (Initially scoped as out: `personality_prompt` title alignment.) Closed in the
+  reviewer-fix commit on this story: 10 personality_prompt strings now embed
+  the canonical `<short_name>, <title>` from gods.json, and the regression test
+  `test_personality_prompt_embeds_canonical_short_name_and_title` pins the
+  invariant. The audio path can no longer pronounce stale titles.
 
 ## Out of scope (do not author in this story)
 
@@ -165,7 +167,6 @@ must immediately rework.
 - Layer 2 Resonance modifiers (also blocked on Phase 3).
 - Layer 3 tier ability rosters and recharge rules.
 - Layer 4 archetype × patron synergy matrix.
-- Rewriting `personality_prompt` strings to align embedded titles.
 - `favor_actions` / `whisper_themes` content for the 6 missing patrons.
 
 All of the above are future Phase 8 work and will be authored against the slots
