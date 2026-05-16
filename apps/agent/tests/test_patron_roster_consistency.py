@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from creation_deities import DEITIES
 from god_whisper_data import GOD_WHISPER_PROFILES
 
@@ -49,19 +51,20 @@ def test_god_whisper_profiles_has_all_ten_patrons():
 
 
 def test_short_name_agrees_across_all_three_surfaces():
-    """All 3 surfaces must report the same primary name for each patron.
+    """All 3 surfaces must carry the same authored short_name for each patron.
 
     Primary name = bare name, e.g. "Veythar" — not the full "Veythar, the Lorekeeper".
+    Each surface reads short_name as an authored field; no derivation by string split.
     """
     for patron_id in EXPECTED_PATRON_IDS:
         gods_short = GODS_BY_ID[patron_id]["short_name"]
         deity_short = DEITIES[patron_id].name
-        whisper_short = GOD_WHISPER_PROFILES[patron_id].display_name.split(",")[0].strip()
+        whisper_short = GOD_WHISPER_PROFILES[patron_id].short_name
 
         assert gods_short == deity_short == whisper_short, (
             f"Name mismatch for {patron_id}: "
             f"gods.json={gods_short!r}, DEITIES.name={deity_short!r}, "
-            f"GOD_WHISPER_PROFILES.display_name={whisper_short!r}"
+            f"GOD_WHISPER_PROFILES.short_name={whisper_short!r}"
         )
 
 
@@ -73,6 +76,53 @@ def test_gods_json_name_matches_creation_deities_full_title():
         assert actual == expected, (
             f"Title mismatch for {patron_id}: gods.json name={actual!r}, expected from DEITIES={expected!r}"
         )
+
+
+def test_personality_prompt_embeds_canonical_short_name_and_title():
+    """Every whisper personality_prompt must embed the canonical short_name AND
+    title so the LLM pronounces the same identity the HUD shows. Audio-first
+    invariant — drift here ships into the voice path.
+    """
+    for entry in GODS_ENTRIES:
+        short_name = entry["short_name"]
+        title = entry["title"]
+        prompt = entry["whisper_profile"]["personality_prompt"]
+        assert short_name in prompt, (
+            f"{entry['god_id']}: personality_prompt missing canonical short_name {short_name!r}: {prompt[:120]!r}"
+        )
+        assert title in prompt, (
+            f"{entry['god_id']}: personality_prompt missing canonical title {title!r}: {prompt[:120]!r}"
+        )
+
+
+def test_gods_json_does_not_contain_unbound_entry():
+    """Unbound (god_id='none') must not appear in gods.json — it is synthesized
+    in creation_deities so it doesn't seed god_agent_state. ADR 0001 invariant."""
+    assert "none" not in GODS_BY_ID, "content/gods.json must not contain god_id='none' — see ADR 0001"
+
+
+def test_load_deities_rejects_none_god_id_in_gods_json(tmp_path, monkeypatch):
+    """If a future change adds god_id='none' to gods.json, _load_deities raises."""
+    import creation_deities as cd
+
+    poisoned = [
+        *GODS_ENTRIES,
+        {
+            "god_id": "none",
+            "short_name": "Bogus",
+            "title": "the Forbidden",
+            "domain": "x",
+            "description": "x",
+            "card_description": "x",
+            "synergy_classes": [],
+        },
+    ]
+    poisoned_path = tmp_path / "gods.json"
+    poisoned_path.write_text(json.dumps(poisoned))
+    monkeypatch.setattr(cd, "_GODS_JSON_PATH", poisoned_path)
+
+    with pytest.raises(ValueError, match="god_id='none'"):
+        cd._load_deities()
 
 
 def test_layer_2_through_4_placeholders_exist_and_are_null():

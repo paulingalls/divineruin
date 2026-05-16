@@ -52,11 +52,10 @@ fields are added as `null` placeholders; future Phase 8 sprints populate them.
 | --- | --- | --- |
 | `god_id` (string, required) | Canonical patron ID | All three surfaces |
 | `name` (string, required) | "<Bare name>, <title>" — title taken from `creation_deities.DeityData.title` (player-facing authority) | gods.json itself; `GodWhisperProfile.display_name` |
-| `short_name` (string, required) **NEW** | Bare name (e.g. "Veythar") — split out so the consistency test does not need to parse | Consistency test; `DeityData.name` |
+| `short_name` (string, required) **NEW** | Bare name (e.g. "Veythar") — authored on every surface (gods.json, `DeityData.name`, `GodWhisperProfile.short_name`); consistency test reads it directly | All three surfaces |
 | `title` (string, required) **NEW** | e.g. "the Lorekeeper" — from `creation_deities.DeityData.title` | `DeityData.title` |
 | `domain` (string, required) | Domain string | `DeityData.domain` |
-| `description` (string, required) **NEW** | Long audio-first personality sketch | `DeityData.description` (existing `personality` field is shorter; keep both) |
-| `personality` (string, required) | Short personality summary (existing field in 4 patrons) | gods.json consumers (DB) |
+| `description` (string, required) **NEW** | Long audio-first personality sketch — canonical personality source | `DeityData.description` |
 | `card_description` (string, required) **NEW** | One-line card text from `creation_deities.DeityData.card_description` | `DeityData.card_description` |
 | `synergy_classes` (string[], required) **NEW** | Coarse Layer-4 hint, from `creation_deities.DeityData.synergy_classes` | `DeityData.synergy_classes` |
 
@@ -76,9 +75,14 @@ roster (existing 4 patrons did not have them in gods.json).
 Note: `god_whisper_data.GOD_WHISPER_PROFILES` previously used inconsistent titles in
 its `display_name` field (e.g. "Veythar, the Unbound" vs the canonical "the Lorekeeper").
 After this ADR, `display_name` is derived from `gods.json/name` so titles align
-automatically. The `personality_prompt` strings are kept verbatim because they are
-tuned LLM prompts; aligning their embedded titles is a separate content task and
-out of scope for this story.
+automatically. The `personality_prompt` strings have also been aligned to use the
+canonical titles (Lorekeeper / Veilwatcher / Wildmother / Threshold / Tidecaller /
+Dawnbringer / Fatespinner), since the whisper LLM literally pronounces the embedded
+title and an audio-first project cannot ship stale name strings into the voice path.
+
+The redundant short `personality` field (a near-paraphrase of `description` in the
+4 pre-existing patrons) has been dropped from `gods.json`. `description` is the
+canonical personality source and `DeityData.description` is the only consumer.
 
 ### Existing gods.json fields (preserved for the 4 patrons; required as placeholders for the new 6)
 

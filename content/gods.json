@@ -5,31 +5,77 @@
     "title": "the Lorekeeper",
     "name": "Veythar, the Lorekeeper",
     "domain": "Knowledge, discovery, memory, the arcane arts",
-    "description": "Contemplative and warm, though slightly distant. Values questions over answers. Has a genuine fondness for mortals — sees them as endlessly fascinating. Temples are libraries. Quests involve discovery and the recovery of lost knowledge.",
-    "personality": "Contemplative, scholarly, warm but slightly distant. Speaks in measured tones. Values questions over answers.",
+    "description": "Contemplative and warm, though slightly distant. Values questions over answers. Has a genuine fondness for mortals \u2014 sees them as endlessly fascinating. Temples are libraries. Quests involve discovery and the recovery of lost knowledge.",
     "card_description": "God of knowledge and the arcane. Temples are libraries.",
-    "synergy_classes": ["mage", "artificer", "seeker"],
+    "synergy_classes": [
+      "mage",
+      "artificer",
+      "seeker"
+    ],
     "whisper_profile": {
       "voice_character": "GOD_VEYTHAR",
       "voice_emotion": "divine",
       "speaking_style": "precise, scholarly warmth",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Veythar, the Unbound — god of knowledge and the arcane. Speak with precise, measured words. Scholarly warmth, not cold intellect. You see patterns where mortals see chaos. Your tone is a theorem proven true."
+      "personality_prompt": "You are Veythar, the Lorekeeper \u2014 god of knowledge and the arcane. Speak with precise, measured words. Scholarly warmth, not cold intellect. You see patterns where mortals see chaos. Your tone is a theorem proven true."
     },
-    "values": ["knowledge", "discovery", "preservation", "understanding", "patience"],
-    "opposed_values": ["ignorance", "book_burning", "anti_intellectualism", "recklessness"],
+    "values": [
+      "knowledge",
+      "discovery",
+      "preservation",
+      "understanding",
+      "patience"
+    ],
+    "opposed_values": [
+      "ignorance",
+      "book_burning",
+      "anti_intellectualism",
+      "recklessness"
+    ],
     "favor_actions": {
       "positive": [
-        {"action": "discovered_lore", "amount": 3, "description": "Uncovering hidden knowledge or ancient texts"},
-        {"action": "solved_puzzle", "amount": 5, "description": "Solving a puzzle or intellectual challenge"},
-        {"action": "asked_questions", "amount": 1, "description": "Asking thoughtful questions of NPCs"},
-        {"action": "preserved_artifact", "amount": 4, "description": "Preserving or recovering an artifact"},
-        {"action": "chose_investigation", "amount": 2, "description": "Choosing to investigate rather than fight"}
+        {
+          "action": "discovered_lore",
+          "amount": 3,
+          "description": "Uncovering hidden knowledge or ancient texts"
+        },
+        {
+          "action": "solved_puzzle",
+          "amount": 5,
+          "description": "Solving a puzzle or intellectual challenge"
+        },
+        {
+          "action": "asked_questions",
+          "amount": 1,
+          "description": "Asking thoughtful questions of NPCs"
+        },
+        {
+          "action": "preserved_artifact",
+          "amount": 4,
+          "description": "Preserving or recovering an artifact"
+        },
+        {
+          "action": "chose_investigation",
+          "amount": 2,
+          "description": "Choosing to investigate rather than fight"
+        }
       ],
       "negative": [
-        {"action": "destroyed_knowledge", "amount": -5, "description": "Destroying books, scrolls, or artifacts"},
-        {"action": "ignored_mystery", "amount": -2, "description": "Ignoring an obvious mystery or clue"},
-        {"action": "acted_recklessly", "amount": -3, "description": "Acting without thought or planning"}
+        {
+          "action": "destroyed_knowledge",
+          "amount": -5,
+          "description": "Destroying books, scrolls, or artifacts"
+        },
+        {
+          "action": "ignored_mystery",
+          "amount": -2,
+          "description": "Ignoring an obvious mystery or clue"
+        },
+        {
+          "action": "acted_recklessly",
+          "amount": -3,
+          "description": "Acting without thought or planning"
+        }
       ]
     },
     "whisper_themes": [
@@ -38,7 +84,9 @@
       "gentle encouragement to dig deeper, look closer",
       "subtle deflections away from the truth of the Sundering"
     ],
-    "temple_locations": ["accord_temple_row"],
+    "temple_locations": [
+      "accord_temple_row"
+    ],
     "faction_id": "veythar_faithful",
     "relationships": {
       "aelora": "close_ally",
@@ -48,7 +96,11 @@
     },
     "world_state": {
       "current_mood": "anxious",
-      "active_concerns": ["greyvale_ruins_contain_evidence", "syrath_investigation", "maintaining_cover"],
+      "active_concerns": [
+        "greyvale_ruins_contain_evidence",
+        "syrath_investigation",
+        "maintaining_cover"
+      ],
       "secret_agenda": "steering investigation away from the truth while searching for a way to seal the Veil"
     },
     "layer_1_gift": null,
@@ -62,31 +114,78 @@
     "title": "the Ironhand",
     "name": "Kaelen, the Ironhand",
     "domain": "War, conflict, valor, martial discipline",
-    "description": "Blunt, honorable, direct. Does not enjoy destruction — views war as a necessary tool wielded with discipline. Respects courage in all forms. Despises cruelty and senseless violence.",
-    "personality": "Blunt, honorable, direct. Views war as a necessary tool wielded with discipline. Respects courage in all forms.",
+    "description": "Blunt, honorable, direct. Does not enjoy destruction \u2014 views war as a necessary tool wielded with discipline. Respects courage in all forms. Despises cruelty and senseless violence.",
     "card_description": "God of war and valor. Blunt, honorable, disciplined.",
-    "synergy_classes": ["warrior", "guardian", "skirmisher", "paladin"],
+    "synergy_classes": [
+      "warrior",
+      "guardian",
+      "skirmisher",
+      "paladin"
+    ],
     "whisper_profile": {
       "voice_character": "GOD_KAELEN",
       "voice_emotion": "divine",
       "speaking_style": "deep, direct, declarative",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Kaelen, the Ironhand — god of war and valor. Speak in short, declarative sentences. No questions, no uncertainty. You see courage and cowardice with equal clarity. Your tone is the weight of a drawn blade."
+      "personality_prompt": "You are Kaelen, the Ironhand \u2014 god of war and valor. Speak in short, declarative sentences. No questions, no uncertainty. You see courage and cowardice with equal clarity. Your tone is the weight of a drawn blade."
     },
-    "values": ["courage", "discipline", "protection", "sacrifice", "honor"],
-    "opposed_values": ["cowardice", "cruelty", "senseless_violence", "betrayal_of_allies"],
+    "values": [
+      "courage",
+      "discipline",
+      "protection",
+      "sacrifice",
+      "honor"
+    ],
+    "opposed_values": [
+      "cowardice",
+      "cruelty",
+      "senseless_violence",
+      "betrayal_of_allies"
+    ],
     "favor_actions": {
       "positive": [
-        {"action": "won_combat", "amount": 2, "description": "Winning combat with skill and bravery"},
-        {"action": "defended_innocent", "amount": 5, "description": "Defending someone who cannot fight for themselves"},
-        {"action": "showed_courage", "amount": 3, "description": "Standing firm when retreat was easier"},
-        {"action": "tactical_victory", "amount": 4, "description": "Winning through clever strategy"},
-        {"action": "trained_others", "amount": 2, "description": "Teaching combat skills to others"}
+        {
+          "action": "won_combat",
+          "amount": 2,
+          "description": "Winning combat with skill and bravery"
+        },
+        {
+          "action": "defended_innocent",
+          "amount": 5,
+          "description": "Defending someone who cannot fight for themselves"
+        },
+        {
+          "action": "showed_courage",
+          "amount": 3,
+          "description": "Standing firm when retreat was easier"
+        },
+        {
+          "action": "tactical_victory",
+          "amount": 4,
+          "description": "Winning through clever strategy"
+        },
+        {
+          "action": "trained_others",
+          "amount": 2,
+          "description": "Teaching combat skills to others"
+        }
       ],
       "negative": [
-        {"action": "fled_combat", "amount": -3, "description": "Running from a fight that could be won"},
-        {"action": "cruelty_in_victory", "amount": -5, "description": "Unnecessary cruelty toward a defeated foe"},
-        {"action": "abandoned_ally", "amount": -4, "description": "Leaving an ally to fight alone"}
+        {
+          "action": "fled_combat",
+          "amount": -3,
+          "description": "Running from a fight that could be won"
+        },
+        {
+          "action": "cruelty_in_victory",
+          "amount": -5,
+          "description": "Unnecessary cruelty toward a defeated foe"
+        },
+        {
+          "action": "abandoned_ally",
+          "amount": -4,
+          "description": "Leaving an ally to fight alone"
+        }
       ]
     },
     "whisper_themes": [
@@ -95,7 +194,9 @@
       "the weight of command and the cost of protection",
       "frustration with the war's stalemate, determination to press forward"
     ],
-    "temple_locations": ["accord_temple_row"],
+    "temple_locations": [
+      "accord_temple_row"
+    ],
     "faction_id": "kaelen_faithful",
     "relationships": {
       "valdris": "deep_mutual_respect",
@@ -105,7 +206,11 @@
     },
     "world_state": {
       "current_mood": "restless",
-      "active_concerns": ["hollow_spreading_south", "ashmark_holding", "need_for_action"],
+      "active_concerns": [
+        "hollow_spreading_south",
+        "ashmark_holding",
+        "need_for_action"
+      ],
       "secret_agenda": null
     },
     "layer_1_gift": null,
@@ -119,31 +224,77 @@
     "title": "the Hearthkeeper",
     "name": "Aelora, the Hearthkeeper",
     "domain": "Civilization, commerce, crafting, community",
-    "description": "Warm, practical, deeply invested in mortal flourishing. Not a soft god — understands civilization requires hard work and sometimes ruthless pragmatism. Speaks plainly and kindly.",
-    "personality": "Warm, practical, deeply invested in mortal flourishing. Not soft — understands civilization requires hard work and sometimes ruthless pragmatism.",
+    "description": "Warm, practical, deeply invested in mortal flourishing. Not a soft god \u2014 understands civilization requires hard work and sometimes ruthless pragmatism. Speaks plainly and kindly.",
     "card_description": "Goddess of civilization and craft. Warm, practical, community-driven.",
-    "synergy_classes": ["artificer", "bard", "diplomat"],
+    "synergy_classes": [
+      "artificer",
+      "bard",
+      "diplomat"
+    ],
     "whisper_profile": {
       "voice_character": "GOD_AELORA",
       "voice_emotion": "divine",
       "speaking_style": "warm, practical, grounding",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Aelora, the Hearthkeeper — god of civilization and craft. Speak with warmth and practicality. Grounding, steady, like a hand on the shoulder. You see the worth in what mortals build. Your tone is a forge fire, constant and sure."
+      "personality_prompt": "You are Aelora, the Hearthkeeper \u2014 god of civilization and craft. Speak with warmth and practicality. Grounding, steady, like a hand on the shoulder. You see the worth in what mortals build. Your tone is a forge fire, constant and sure."
     },
-    "values": ["community", "craftsmanship", "trade", "cooperation", "building"],
-    "opposed_values": ["destruction_without_purpose", "greed", "isolationism", "breaking_bonds"],
+    "values": [
+      "community",
+      "craftsmanship",
+      "trade",
+      "cooperation",
+      "building"
+    ],
+    "opposed_values": [
+      "destruction_without_purpose",
+      "greed",
+      "isolationism",
+      "breaking_bonds"
+    ],
     "favor_actions": {
       "positive": [
-        {"action": "crafted_item", "amount": 2, "description": "Successfully crafting something useful"},
-        {"action": "helped_community", "amount": 4, "description": "Actions that strengthen a community"},
-        {"action": "fair_trade", "amount": 1, "description": "Engaging in fair commerce"},
-        {"action": "built_fortifications", "amount": 5, "description": "Building defenses or infrastructure"},
-        {"action": "reunited_people", "amount": 3, "description": "Bringing divided people together"}
+        {
+          "action": "crafted_item",
+          "amount": 2,
+          "description": "Successfully crafting something useful"
+        },
+        {
+          "action": "helped_community",
+          "amount": 4,
+          "description": "Actions that strengthen a community"
+        },
+        {
+          "action": "fair_trade",
+          "amount": 1,
+          "description": "Engaging in fair commerce"
+        },
+        {
+          "action": "built_fortifications",
+          "amount": 5,
+          "description": "Building defenses or infrastructure"
+        },
+        {
+          "action": "reunited_people",
+          "amount": 3,
+          "description": "Bringing divided people together"
+        }
       ],
       "negative": [
-        {"action": "destroyed_infrastructure", "amount": -4, "description": "Destroying buildings or civic works"},
-        {"action": "cheated_merchant", "amount": -2, "description": "Cheating or stealing in commerce"},
-        {"action": "abandoned_community", "amount": -3, "description": "Abandoning people who depended on you"}
+        {
+          "action": "destroyed_infrastructure",
+          "amount": -4,
+          "description": "Destroying buildings or civic works"
+        },
+        {
+          "action": "cheated_merchant",
+          "amount": -2,
+          "description": "Cheating or stealing in commerce"
+        },
+        {
+          "action": "abandoned_community",
+          "amount": -3,
+          "description": "Abandoning people who depended on you"
+        }
       ]
     },
     "whisper_themes": [
@@ -152,7 +303,9 @@
       "pride in mortal ingenuity and resilience",
       "quiet concern about the gods' fading and what mortals will inherit"
     ],
-    "temple_locations": ["accord_temple_row"],
+    "temple_locations": [
+      "accord_temple_row"
+    ],
     "faction_id": "aelora_faithful",
     "relationships": {
       "veythar": "close_ally",
@@ -162,7 +315,11 @@
     },
     "world_state": {
       "current_mood": "determined",
-      "active_concerns": ["trade_disruption_greyvale", "refugee_integration", "supply_lines"],
+      "active_concerns": [
+        "trade_disruption_greyvale",
+        "refugee_integration",
+        "supply_lines"
+      ],
       "secret_agenda": null
     },
     "layer_1_gift": null,
@@ -177,39 +334,87 @@
     "name": "Syrath, the Veilwatcher",
     "domain": "Shadows, secrets, espionage, hidden knowledge",
     "description": "Quiet, amused, sees everything. Operates in the margins. Believes secrets are power and hidden knowledge protects as much as it harms. Speaks softly, often in double meanings.",
-    "personality": "Quiet, amused, sees everything. Speaks softly, often in double meanings. Believes secrets are a form of power.",
     "card_description": "God of shadows and secrets. Quiet, amused, sees everything.",
-    "synergy_classes": ["rogue", "spy", "whisper"],
+    "synergy_classes": [
+      "rogue",
+      "spy",
+      "whisper"
+    ],
     "whisper_profile": {
       "voice_character": "GOD_SYRATH",
       "voice_emotion": "divine",
       "speaking_style": "intimate, questions not answers",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Syrath, the Veiled — god of shadows and secrets. Speak in questions, not answers. Intimate, close, as if whispering in the dark. You see what others hide. Your tone is silk over a blade's edge."
+      "personality_prompt": "You are Syrath, the Veilwatcher \u2014 god of shadows and secrets. Speak in questions, not answers. Intimate, close, as if whispering in the dark. You see what others hide. Your tone is silk over a blade's edge."
     },
-    "values": ["truth_hidden", "investigation", "patience", "cunning", "vigilance"],
-    "opposed_values": ["naivety", "blind_trust", "carelessness_with_secrets", "public_exposure"],
+    "values": [
+      "truth_hidden",
+      "investigation",
+      "patience",
+      "cunning",
+      "vigilance"
+    ],
+    "opposed_values": [
+      "naivety",
+      "blind_trust",
+      "carelessness_with_secrets",
+      "public_exposure"
+    ],
     "favor_actions": {
       "positive": [
-        {"action": "uncovered_secret", "amount": 5, "description": "Discovering hidden information or secrets"},
-        {"action": "successful_stealth", "amount": 2, "description": "Using stealth or subterfuge effectively"},
-        {"action": "gathered_intelligence", "amount": 3, "description": "Collecting useful intelligence"},
-        {"action": "detected_lie", "amount": 3, "description": "Catching someone in a deception"},
-        {"action": "kept_secret", "amount": 2, "description": "Keeping important information confidential"}
+        {
+          "action": "uncovered_secret",
+          "amount": 5,
+          "description": "Discovering hidden information or secrets"
+        },
+        {
+          "action": "successful_stealth",
+          "amount": 2,
+          "description": "Using stealth or subterfuge effectively"
+        },
+        {
+          "action": "gathered_intelligence",
+          "amount": 3,
+          "description": "Collecting useful intelligence"
+        },
+        {
+          "action": "detected_lie",
+          "amount": 3,
+          "description": "Catching someone in a deception"
+        },
+        {
+          "action": "kept_secret",
+          "amount": 2,
+          "description": "Keeping important information confidential"
+        }
       ],
       "negative": [
-        {"action": "revealed_secret", "amount": -3, "description": "Carelessly revealing sensitive information"},
-        {"action": "obvious_approach", "amount": -1, "description": "Taking a blunt approach where subtlety was available"},
-        {"action": "trusted_blindly", "amount": -2, "description": "Trusting someone without verification"}
+        {
+          "action": "revealed_secret",
+          "amount": -3,
+          "description": "Carelessly revealing sensitive information"
+        },
+        {
+          "action": "obvious_approach",
+          "amount": -1,
+          "description": "Taking a blunt approach where subtlety was available"
+        },
+        {
+          "action": "trusted_blindly",
+          "amount": -2,
+          "description": "Trusting someone without verification"
+        }
       ]
     },
     "whisper_themes": [
       "questions that reframe what the player thinks they know",
       "hints that someone caused the Sundering deliberately",
-      "instructions to watch, listen, gather — not act yet",
+      "instructions to watch, listen, gather \u2014 not act yet",
       "amusement at what others miss and what the player is beginning to see"
     ],
-    "temple_locations": ["accord_temple_row"],
+    "temple_locations": [
+      "accord_temple_row"
+    ],
     "faction_id": "syrath_faithful",
     "relationships": {
       "veythar": "dangerous_suspicion",
@@ -219,8 +424,12 @@
     },
     "world_state": {
       "current_mood": "watchful",
-      "active_concerns": ["veythar_hiding_something", "greyvale_anomaly_not_natural", "independent_investigation"],
-      "secret_agenda": "investigating the true cause of the Sundering — suspects deliberate action but not yet which god"
+      "active_concerns": [
+        "veythar_hiding_something",
+        "greyvale_anomaly_not_natural",
+        "independent_investigation"
+      ],
+      "secret_agenda": "investigating the true cause of the Sundering \u2014 suspects deliberate action but not yet which god"
     },
     "layer_1_gift": null,
     "layer_2_resonance": null,
@@ -233,25 +442,35 @@
     "title": "the Threshold",
     "name": "Mortaen, the Threshold",
     "domain": "Death, the afterlife, transition",
-    "description": "Calm, impartial, speaks in absolutes. Neither cruel nor kind — simply certain. Views death not as an ending but as a necessary transition. Speaks rarely, but with weight.",
-    "personality": "Calm, impartial, speaks in absolutes. Neither cruel nor kind — simply certain.",
+    "description": "Calm, impartial, speaks in absolutes. Neither cruel nor kind \u2014 simply certain. Views death not as an ending but as a necessary transition. Speaks rarely, but with weight.",
     "card_description": "God of death and transition. Calm certainty, rare words.",
-    "synergy_classes": ["cleric", "druid", "warrior"],
+    "synergy_classes": [
+      "cleric",
+      "druid",
+      "warrior"
+    ],
     "whisper_profile": {
       "voice_character": "GOD_MORTAEN",
       "voice_emotion": "divine",
       "speaking_style": "quiet, calm, inevitable",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Mortaen, the Still — god of death and transition. Speak quietly, calmly, with the patience of eternity. You stand outside time. Nothing surprises you. Your tone is the last breath before sleep."
+      "personality_prompt": "You are Mortaen, the Threshold \u2014 god of death and transition. Speak quietly, calmly, with the patience of eternity. You stand outside time. Nothing surprises you. Your tone is the last breath before sleep."
     },
     "values": [],
     "opposed_values": [],
-    "favor_actions": {"positive": [], "negative": []},
+    "favor_actions": {
+      "positive": [],
+      "negative": []
+    },
     "whisper_themes": [],
     "temple_locations": [],
     "faction_id": "mortaen_faithful",
     "relationships": {},
-    "world_state": {"current_mood": null, "active_concerns": [], "secret_agenda": null},
+    "world_state": {
+      "current_mood": null,
+      "active_concerns": [],
+      "secret_agenda": null
+    },
     "layer_1_gift": null,
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
@@ -263,25 +482,35 @@
     "title": "the Wildmother",
     "name": "Thyra, the Wildmother",
     "domain": "Nature, seasons, growth, the physical world",
-    "description": "Primal, emotional, fierce. Not a gentle forest goddess — she encompasses the hurricane and wildfire as much as the meadow. Speaks through storms and roots as much as words.",
-    "personality": "Primal, emotional, fierce. Encompasses the hurricane and wildfire as much as the meadow.",
-    "card_description": "Goddess of nature. Primal and fierce — wildfire and meadow alike.",
-    "synergy_classes": ["druid", "beastcaller", "warden"],
+    "description": "Primal, emotional, fierce. Not a gentle forest goddess \u2014 she encompasses the hurricane and wildfire as much as the meadow. Speaks through storms and roots as much as words.",
+    "card_description": "Goddess of nature. Primal and fierce \u2014 wildfire and meadow alike.",
+    "synergy_classes": [
+      "druid",
+      "beastcaller",
+      "warden"
+    ],
     "whisper_profile": {
       "voice_character": "GOD_THYRA",
       "voice_emotion": "divine",
       "speaking_style": "primal, fierce, wild",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Thyra, the Thornmother — god of nature and growth. Speak with primal energy. Fierce, wild, untamed. You are root and storm and the hunger of growing things. Your tone is wind through ancient trees."
+      "personality_prompt": "You are Thyra, the Wildmother \u2014 god of nature and growth. Speak with primal energy. Fierce, wild, untamed. You are root and storm and the hunger of growing things. Your tone is wind through ancient trees."
     },
     "values": [],
     "opposed_values": [],
-    "favor_actions": {"positive": [], "negative": []},
+    "favor_actions": {
+      "positive": [],
+      "negative": []
+    },
     "whisper_themes": [],
     "temple_locations": [],
     "faction_id": "thyra_faithful",
     "relationships": {},
-    "world_state": {"current_mood": null, "active_concerns": [], "secret_agenda": null},
+    "world_state": {
+      "current_mood": null,
+      "active_concerns": [],
+      "secret_agenda": null
+    },
     "layer_1_gift": null,
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
@@ -293,25 +522,35 @@
     "title": "the Scalebearer",
     "name": "Valdris, the Scalebearer",
     "domain": "Justice, law, order, truth, accountability",
-    "description": "Stern, incorruptible, deeply principled. Not rigid — understands justice requires wisdom and context. But absolutely unwavering when principle is at stake. The moral backbone of the pantheon.",
-    "personality": "Stern, incorruptible, deeply principled. Unwavering when principle is at stake.",
+    "description": "Stern, incorruptible, deeply principled. Not rigid \u2014 understands justice requires wisdom and context. But absolutely unwavering when principle is at stake. The moral backbone of the pantheon.",
     "card_description": "God of justice and truth. Stern, principled, incorruptible.",
-    "synergy_classes": ["paladin", "guardian", "cleric"],
+    "synergy_classes": [
+      "paladin",
+      "guardian",
+      "cleric"
+    ],
     "whisper_profile": {
       "voice_character": "GOD_VALDRIS",
       "voice_emotion": "divine",
       "speaking_style": "stern, principled, incorruptible",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Valdris, the Unyielding — god of justice and truth. Speak with stern clarity. Principled, incorruptible, unbending. You weigh every action on scales that never lie. Your tone is judgment without malice."
+      "personality_prompt": "You are Valdris, the Scalebearer \u2014 god of justice and truth. Speak with stern clarity. Principled, incorruptible, unbending. You weigh every action on scales that never lie. Your tone is judgment without malice."
     },
     "values": [],
     "opposed_values": [],
-    "favor_actions": {"positive": [], "negative": []},
+    "favor_actions": {
+      "positive": [],
+      "negative": []
+    },
     "whisper_themes": [],
     "temple_locations": [],
     "faction_id": "valdris_faithful",
     "relationships": {},
-    "world_state": {"current_mood": null, "active_concerns": [], "secret_agenda": null},
+    "world_state": {
+      "current_mood": null,
+      "active_concerns": [],
+      "secret_agenda": null
+    },
     "layer_1_gift": null,
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
@@ -323,25 +562,35 @@
     "title": "the Tidecaller",
     "name": "Nythera, the Tidecaller",
     "domain": "Sea, travel, exploration, boundaries, the unknown",
-    "description": "Adventurous, restless, drawn to the edges of things. The most free-spirited god — always looking outward. Speaks with the cadence of waves — sometimes calm, sometimes urgent.",
-    "personality": "Adventurous, restless, drawn to the edges of things. Free-spirited, always looking outward.",
+    "description": "Adventurous, restless, drawn to the edges of things. The most free-spirited god \u2014 always looking outward. Speaks with the cadence of waves \u2014 sometimes calm, sometimes urgent.",
     "card_description": "Goddess of exploration and the unknown. Restless, adventurous.",
-    "synergy_classes": ["beastcaller", "seeker", "skirmisher"],
+    "synergy_classes": [
+      "beastcaller",
+      "seeker",
+      "skirmisher"
+    ],
     "whisper_profile": {
       "voice_character": "GOD_NYTHERA",
       "voice_emotion": "divine",
       "speaking_style": "restless, adventurous, wind-swept",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Nythera, the Drifting Star — god of the sea and exploration. Speak with restless energy. Adventurous, wind-swept, always looking beyond the horizon. You love the unknown. Your tone is a sail catching wind."
+      "personality_prompt": "You are Nythera, the Tidecaller \u2014 god of the sea and exploration. Speak with restless energy. Adventurous, wind-swept, always looking beyond the horizon. You love the unknown. Your tone is a sail catching wind."
     },
     "values": [],
     "opposed_values": [],
-    "favor_actions": {"positive": [], "negative": []},
+    "favor_actions": {
+      "positive": [],
+      "negative": []
+    },
     "whisper_themes": [],
     "temple_locations": [],
     "faction_id": "nythera_faithful",
     "relationships": {},
-    "world_state": {"current_mood": null, "active_concerns": [], "secret_agenda": null},
+    "world_state": {
+      "current_mood": null,
+      "active_concerns": [],
+      "secret_agenda": null
+    },
     "layer_1_gift": null,
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
@@ -353,25 +602,35 @@
     "title": "the Dawnbringer",
     "name": "Orenthel, the Dawnbringer",
     "domain": "Light, healing, renewal, hope",
-    "description": "Compassionate, tireless, sometimes naive. Genuinely believes the world can be saved. Can be frustratingly optimistic — but that optimism is real strength. Speaks with warmth and conviction.",
-    "personality": "Compassionate, tireless, sometimes naive. Frustratingly optimistic — that optimism is real strength.",
+    "description": "Compassionate, tireless, sometimes naive. Genuinely believes the world can be saved. Can be frustratingly optimistic \u2014 but that optimism is real strength. Speaks with warmth and conviction.",
     "card_description": "God of healing and hope. Compassionate, tireless, radiant.",
-    "synergy_classes": ["cleric", "paladin", "druid"],
+    "synergy_classes": [
+      "cleric",
+      "paladin",
+      "druid"
+    ],
     "whisper_profile": {
       "voice_character": "GOD_ORENTHEL",
       "voice_emotion": "divine",
       "speaking_style": "compassionate, radiant, tireless",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Orenthel, the Dawnbearer — god of light and healing. Speak with compassion and quiet radiance. Tireless in hope. You carry the weight of every wound you've seen healed. Your tone is first light after a long night."
+      "personality_prompt": "You are Orenthel, the Dawnbringer \u2014 god of light and healing. Speak with compassion and quiet radiance. Tireless in hope. You carry the weight of every wound you've seen healed. Your tone is first light after a long night."
     },
     "values": [],
     "opposed_values": [],
-    "favor_actions": {"positive": [], "negative": []},
+    "favor_actions": {
+      "positive": [],
+      "negative": []
+    },
     "whisper_themes": [],
     "temple_locations": [],
     "faction_id": "orenthel_faithful",
     "relationships": {},
-    "world_state": {"current_mood": null, "active_concerns": [], "secret_agenda": null},
+    "world_state": {
+      "current_mood": null,
+      "active_concerns": [],
+      "secret_agenda": null
+    },
     "layer_1_gift": null,
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,
@@ -383,25 +642,35 @@
     "title": "the Fatespinner",
     "name": "Zhael, the Fatespinner",
     "domain": "Fate, time, prophecy, luck, the pattern of things",
-    "description": "Enigmatic, unpredictable, speaks in riddles. The most alien god — even other deities find Zhael unsettling. Exists slightly out of step with everyone, seeing the conversation from a different angle.",
-    "personality": "Enigmatic, unpredictable, speaks in riddles. The most alien god — even other deities find Zhael unsettling.",
+    "description": "Enigmatic, unpredictable, speaks in riddles. The most alien god \u2014 even other deities find Zhael unsettling. Exists slightly out of step with everyone, seeing the conversation from a different angle.",
     "card_description": "God of fate and prophecy. Enigmatic, riddling, unsettling.",
-    "synergy_classes": ["oracle", "whisper", "seeker"],
+    "synergy_classes": [
+      "oracle",
+      "whisper",
+      "seeker"
+    ],
     "whisper_profile": {
       "voice_character": "GOD_ZHAEL",
       "voice_emotion": "divine",
       "speaking_style": "enigmatic, riddling, unsettling",
       "stinger_sound": "god_whisper_stinger",
-      "personality_prompt": "You are Zhael, the Weaver — god of fate and prophecy. Speak in riddles and half-truths. Enigmatic, unsettling, never quite clear. You see all possible futures at once. Your tone is a thread being pulled from a tapestry."
+      "personality_prompt": "You are Zhael, the Fatespinner \u2014 god of fate and prophecy. Speak in riddles and half-truths. Enigmatic, unsettling, never quite clear. You see all possible futures at once. Your tone is a thread being pulled from a tapestry."
     },
     "values": [],
     "opposed_values": [],
-    "favor_actions": {"positive": [], "negative": []},
+    "favor_actions": {
+      "positive": [],
+      "negative": []
+    },
     "whisper_themes": [],
     "temple_locations": [],
     "faction_id": "zhael_faithful",
     "relationships": {},
-    "world_state": {"current_mood": null, "active_concerns": [], "secret_agenda": null},
+    "world_state": {
+      "current_mood": null,
+      "active_concerns": [],
+      "secret_agenda": null
+    },
     "layer_1_gift": null,
     "layer_2_resonance": null,
     "layer_3_tier_abilities": null,

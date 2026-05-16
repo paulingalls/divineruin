@@ -13,6 +13,8 @@ from pathlib import Path
 
 _GODS_JSON_PATH = Path(__file__).resolve().parents[2] / "content" / "gods.json"
 
+UNBOUND_ID = "none"
+
 
 @dataclass(frozen=True)
 class DeityData:
@@ -26,7 +28,7 @@ class DeityData:
 
 
 _UNBOUND = DeityData(
-    id="none",
+    id=UNBOUND_ID,
     name="No Patron",
     title="the Unsworn",
     domain="Independence",
@@ -42,6 +44,13 @@ _UNBOUND = DeityData(
 
 def _load_deities() -> dict[str, DeityData]:
     entries = json.loads(_GODS_JSON_PATH.read_text())
+    for entry in entries:
+        if entry["god_id"] == UNBOUND_ID:
+            raise ValueError(
+                f"content/gods.json must not contain god_id={UNBOUND_ID!r} — Unbound "
+                "is synthesized in creation_deities and must not seed god_agent_state "
+                "(see ADR 0001)"
+            )
     deities: dict[str, DeityData] = {
         entry["god_id"]: DeityData(
             id=entry["god_id"],
@@ -54,7 +63,7 @@ def _load_deities() -> dict[str, DeityData]:
         )
         for entry in entries
     }
-    deities["none"] = _UNBOUND
+    deities[UNBOUND_ID] = _UNBOUND
     return deities
 
 

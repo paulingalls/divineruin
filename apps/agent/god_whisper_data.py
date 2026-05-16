@@ -17,6 +17,7 @@ _GODS_JSON_PATH = Path(__file__).resolve().parents[2] / "content" / "gods.json"
 class GodWhisperProfile:
     deity_id: str
     display_name: str
+    short_name: str
     voice_character: str
     voice_emotion: str
     speaking_style: str
@@ -34,6 +35,7 @@ def _load_profiles() -> dict[str, GodWhisperProfile]:
         entry["god_id"]: GodWhisperProfile(
             deity_id=entry["god_id"],
             display_name=entry["name"],
+            short_name=entry["short_name"],
             voice_character=entry["whisper_profile"]["voice_character"],
             voice_emotion=entry["whisper_profile"]["voice_emotion"],
             speaking_style=entry["whisper_profile"]["speaking_style"],
@@ -49,6 +51,7 @@ GOD_WHISPER_PROFILES: dict[str, GodWhisperProfile] = _load_profiles()
 _DEFAULT_PROFILE = GodWhisperProfile(
     deity_id="unknown",
     display_name="Unknown Presence",
+    short_name="Unknown",
     voice_character="DM_NARRATOR",
     voice_emotion="divine",
     speaking_style="ancient, vast, weary",
