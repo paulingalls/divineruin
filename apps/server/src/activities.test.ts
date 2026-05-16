@@ -14,7 +14,7 @@ void mock.module("./db.ts", () => {
   const mockSql = Object.assign(mockTaggedTemplate, {
     close: () => Promise.resolve(),
     begin: async (fn: (tx: typeof mockTaggedTemplate) => Promise<unknown>) => {
-      return fn(mockSql as typeof mockTaggedTemplate);
+      return fn(mockSql);
     },
   });
   // Support sql(values) call form for IN expressions (distinct from tagged template calls)
