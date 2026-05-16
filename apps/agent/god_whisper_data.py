@@ -1,11 +1,16 @@
 """God whisper personality data, profiles, and favor thresholds.
 
-Pure data module — no IO, no async.
+Profiles sourced from `content/gods.json` (`whisper_profile` block per patron)
+per ADR 0001. No IO, no async beyond a one-shot file read at module import.
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
+
+_GODS_JSON_PATH = Path(__file__).resolve().parents[2] / "content" / "gods.json"
 
 
 @dataclass(frozen=True)
@@ -22,144 +27,24 @@ class GodWhisperProfile:
 FAVOR_WHISPER_THRESHOLD = 25
 FAVOR_WHISPER_COOLDOWN = 25
 
-GOD_WHISPER_PROFILES: dict[str, GodWhisperProfile] = {
-    "kaelen": GodWhisperProfile(
-        deity_id="kaelen",
-        display_name="Kaelen, the Ironhand",
-        voice_character="GOD_KAELEN",
-        voice_emotion="divine",
-        speaking_style="deep, direct, declarative",
-        stinger_sound="god_whisper_stinger",
-        personality_prompt=(
-            "You are Kaelen, the Ironhand — god of war and valor. "
-            "Speak in short, declarative sentences. No questions, no uncertainty. "
-            "You see courage and cowardice with equal clarity. "
-            "Your tone is the weight of a drawn blade."
-        ),
-    ),
-    "syrath": GodWhisperProfile(
-        deity_id="syrath",
-        display_name="Syrath, the Veiled",
-        voice_character="GOD_SYRATH",
-        voice_emotion="divine",
-        speaking_style="intimate, questions not answers",
-        stinger_sound="god_whisper_stinger",
-        personality_prompt=(
-            "You are Syrath, the Veiled — god of shadows and secrets. "
-            "Speak in questions, not answers. Intimate, close, as if whispering in the dark. "
-            "You see what others hide. Your tone is silk over a blade's edge."
-        ),
-    ),
-    "veythar": GodWhisperProfile(
-        deity_id="veythar",
-        display_name="Veythar, the Unbound",
-        voice_character="GOD_VEYTHAR",
-        voice_emotion="divine",
-        speaking_style="precise, scholarly warmth",
-        stinger_sound="god_whisper_stinger",
-        personality_prompt=(
-            "You are Veythar, the Unbound — god of knowledge and the arcane. "
-            "Speak with precise, measured words. Scholarly warmth, not cold intellect. "
-            "You see patterns where mortals see chaos. Your tone is a theorem proven true."
-        ),
-    ),
-    "mortaen": GodWhisperProfile(
-        deity_id="mortaen",
-        display_name="Mortaen, the Still",
-        voice_character="GOD_MORTAEN",
-        voice_emotion="divine",
-        speaking_style="quiet, calm, inevitable",
-        stinger_sound="god_whisper_stinger",
-        personality_prompt=(
-            "You are Mortaen, the Still — god of death and transition. "
-            "Speak quietly, calmly, with the patience of eternity. "
-            "You stand outside time. Nothing surprises you. "
-            "Your tone is the last breath before sleep."
-        ),
-    ),
-    "thyra": GodWhisperProfile(
-        deity_id="thyra",
-        display_name="Thyra, the Thornmother",
-        voice_character="GOD_THYRA",
-        voice_emotion="divine",
-        speaking_style="primal, fierce, wild",
-        stinger_sound="god_whisper_stinger",
-        personality_prompt=(
-            "You are Thyra, the Thornmother — god of nature and growth. "
-            "Speak with primal energy. Fierce, wild, untamed. "
-            "You are root and storm and the hunger of growing things. "
-            "Your tone is wind through ancient trees."
-        ),
-    ),
-    "aelora": GodWhisperProfile(
-        deity_id="aelora",
-        display_name="Aelora, the Hearthkeeper",
-        voice_character="GOD_AELORA",
-        voice_emotion="divine",
-        speaking_style="warm, practical, grounding",
-        stinger_sound="god_whisper_stinger",
-        personality_prompt=(
-            "You are Aelora, the Hearthkeeper — god of civilization and craft. "
-            "Speak with warmth and practicality. Grounding, steady, like a hand on the shoulder. "
-            "You see the worth in what mortals build. Your tone is a forge fire, constant and sure."
-        ),
-    ),
-    "valdris": GodWhisperProfile(
-        deity_id="valdris",
-        display_name="Valdris, the Unyielding",
-        voice_character="GOD_VALDRIS",
-        voice_emotion="divine",
-        speaking_style="stern, principled, incorruptible",
-        stinger_sound="god_whisper_stinger",
-        personality_prompt=(
-            "You are Valdris, the Unyielding — god of justice and truth. "
-            "Speak with stern clarity. Principled, incorruptible, unbending. "
-            "You weigh every action on scales that never lie. "
-            "Your tone is judgment without malice."
-        ),
-    ),
-    "nythera": GodWhisperProfile(
-        deity_id="nythera",
-        display_name="Nythera, the Drifting Star",
-        voice_character="GOD_NYTHERA",
-        voice_emotion="divine",
-        speaking_style="restless, adventurous, wind-swept",
-        stinger_sound="god_whisper_stinger",
-        personality_prompt=(
-            "You are Nythera, the Drifting Star — god of the sea and exploration. "
-            "Speak with restless energy. Adventurous, wind-swept, always looking beyond the horizon. "
-            "You love the unknown. Your tone is a sail catching wind."
-        ),
-    ),
-    "orenthel": GodWhisperProfile(
-        deity_id="orenthel",
-        display_name="Orenthel, the Dawnbearer",
-        voice_character="GOD_ORENTHEL",
-        voice_emotion="divine",
-        speaking_style="compassionate, radiant, tireless",
-        stinger_sound="god_whisper_stinger",
-        personality_prompt=(
-            "You are Orenthel, the Dawnbearer — god of light and healing. "
-            "Speak with compassion and quiet radiance. Tireless in hope. "
-            "You carry the weight of every wound you've seen healed. "
-            "Your tone is first light after a long night."
-        ),
-    ),
-    "zhael": GodWhisperProfile(
-        deity_id="zhael",
-        display_name="Zhael, the Weaver",
-        voice_character="GOD_ZHAEL",
-        voice_emotion="divine",
-        speaking_style="enigmatic, riddling, unsettling",
-        stinger_sound="god_whisper_stinger",
-        personality_prompt=(
-            "You are Zhael, the Weaver — god of fate and prophecy. "
-            "Speak in riddles and half-truths. Enigmatic, unsettling, never quite clear. "
-            "You see all possible futures at once. "
-            "Your tone is a thread being pulled from a tapestry."
-        ),
-    ),
-}
+
+def _load_profiles() -> dict[str, GodWhisperProfile]:
+    entries = json.loads(_GODS_JSON_PATH.read_text())
+    return {
+        entry["god_id"]: GodWhisperProfile(
+            deity_id=entry["god_id"],
+            display_name=entry["name"],
+            voice_character=entry["whisper_profile"]["voice_character"],
+            voice_emotion=entry["whisper_profile"]["voice_emotion"],
+            speaking_style=entry["whisper_profile"]["speaking_style"],
+            stinger_sound=entry["whisper_profile"]["stinger_sound"],
+            personality_prompt=entry["whisper_profile"]["personality_prompt"],
+        )
+        for entry in entries
+    }
+
+
+GOD_WHISPER_PROFILES: dict[str, GodWhisperProfile] = _load_profiles()
 
 _DEFAULT_PROFILE = GodWhisperProfile(
     deity_id="unknown",
