@@ -16,12 +16,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from training_rules import CompletionResult
 
-import check_resolution
 import db
 import db_activity_queries
 import db_mutations
 import db_queries
 import db_training
+import skill_persistence
 from async_rules import resolve_companion_errand, resolve_crafting
 from dialogue_parser import Segment
 from llm_config import AUDIO_DIR, audio_url_for
@@ -45,35 +45,22 @@ async def apply_skill_practice_advancement(
 ) -> dict | None:
     """Increment the skill_advancement counter from a skill_practice training completion.
 
-    Reads and writes the same `skill_advancement` row (keyed by player_id + skill)
-    that the session-use path in `check_tools._request_skill_check_impl` mutates —
-    this is the M1.2 hybrid-counter contract: both code paths share one row.
+    Delegates to `skill_persistence.apply_skill_use_with_persistence` —
+    the single function both this path and the session-use path
+    (`check_tools._request_skill_check_impl`) call, enforcing the M1.2
+    hybrid-counter contract by construction.
 
     Returns advancement info dict (advanced, new_tier) or None when no advancement.
     """
-    skill_key = training_skill.lower()
-    skill_adv = await queries.get_single_skill_advancement(player_id, skill_key)
-    tiers = {skill_key: skill_adv["tier"]}
-    counters = {skill_key: skill_adv["use_counter"]}
-    narrative = skill_adv["narrative_moment_ready"]
-
-    adv = None
-    for _ in range(counter_increment):
-        adv = check_resolution.record_skill_use(
-            tiers,
-            training_skill,
-            counters,
-            narrative_moment=narrative,
-        )
-        tiers[skill_key] = adv.new_tier
-        counters[skill_key] = adv.new_use_count
-
+    adv = await skill_persistence.apply_skill_use_with_persistence(
+        player_id,
+        training_skill,
+        counter_increment,
+        queries=queries,
+        mutations=mutations,
+    )
     if adv is None:
         return None
-
-    await mutations.update_skill_advancement(player_id, adv.skill, adv.new_tier, adv.new_use_count)
-    if adv.advanced and adv.old_tier == "expert":
-        await mutations.clear_narrative_moment(player_id, adv.skill)
     return {"advanced": adv.advanced, "new_tier": adv.new_tier}
 
 

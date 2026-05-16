@@ -42,6 +42,14 @@ class TestCheckLevelUp:
         assert result.new_level == 20
         assert result.leveled_up is False
 
+    def test_calculate_level_from_total_xp_workaround(self):
+        # Audit phase-1-characters.md M1.4: no standalone calculate_level(total_xp)
+        # function ships. Recovering level from total XP alone uses the
+        # check_level_up(0, total_xp, 1) call shape. This test pins that contract.
+        assert check_level_up(0, 11250, 1).new_level == 20
+        assert check_level_up(0, 1050, 1).new_level == 5
+        assert check_level_up(0, 0, 1).new_level == 1
+
     def test_xp_table_is_monotonic(self):
         for lvl in range(2, 21):
             assert XP_FOR_LEVEL[lvl] > XP_FOR_LEVEL[lvl - 1]

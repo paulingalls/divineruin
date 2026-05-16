@@ -125,6 +125,45 @@ class TestHybridCounterSharedRow:
         assert store[(player_id, skill)]["tier"] == "trained"
 
     @pytest.mark.asyncio
+    async def test_both_paths_call_shared_persistence_helper(self, monkeypatch) -> None:
+        """M1.2 contract enforced by construction: both call sites route through
+        apply_skill_use_with_persistence (single source of truth)."""
+        import skill_persistence
+
+        real_fn = skill_persistence.apply_skill_use_with_persistence
+        calls = []
+
+        async def spy(player_id, skill, counter_increment=1, **kw):
+            calls.append((player_id, skill, counter_increment))
+            return await real_fn(player_id, skill, counter_increment, **kw)
+
+        monkeypatch.setattr("skill_persistence.apply_skill_use_with_persistence", spy)
+        # Re-patch the module-level references in callers (they imported the module,
+        # so module-attr lookup resolves the spy automatically).
+
+        _, queries, mutations = _shared_skill_advancement_store()
+        ctx = _make_context(player_id="player_1", room=_make_mock_room())
+        await _request_skill_check_impl(
+            ctx,
+            skill="athletics",
+            difficulty="moderate",
+            context_description="x",
+            queries=queries,
+            mutations=mutations,
+        )
+        await apply_skill_practice_advancement(
+            "player_1",
+            "athletics",
+            counter_increment=2,
+            queries=queries,
+            mutations=mutations,
+        )
+
+        assert len(calls) == 2
+        assert calls[0][2] == 1  # session-use defaults to 1
+        assert calls[1][2] == 2  # training passed 2
+
+    @pytest.mark.asyncio
     async def test_different_skills_use_different_rows(self) -> None:
         """Sanity: different skills key to different rows; the hybrid claim is per-(player, skill)."""
         store, queries, mutations = _shared_skill_advancement_store()

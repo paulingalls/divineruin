@@ -13,6 +13,7 @@ import db_queries
 import dice
 import event_types as E
 import rules_engine
+import skill_persistence
 from db_errors import db_tool
 from game_events import publish_game_event
 from session_data import SessionData
@@ -183,21 +184,12 @@ async def _request_skill_check_impl(
         event_bus=session.event_bus,
     )
 
-    # Track skill use for tier advancement
-    skill_lower = skill.lower()
-    skill_adv = await queries.get_single_skill_advancement(session.player_id, skill_lower)
-
-    adv = check_resolution.record_skill_use(
-        {skill_lower: skill_adv["tier"]},
-        skill_lower,
-        {skill_lower: skill_adv["use_counter"]},
-        narrative_moment=skill_adv["narrative_moment_ready"],
+    # Track skill use for tier advancement (shared helper enforces M1.2 contract)
+    adv = await skill_persistence.apply_skill_use_with_persistence(
+        session.player_id, skill, counter_increment=1, queries=queries, mutations=mutations
     )
-    await mutations.update_skill_advancement(session.player_id, adv.skill, adv.new_tier, adv.new_use_count)
 
-    if adv.advanced:
-        if adv.old_tier == "expert":
-            await mutations.clear_narrative_moment(session.player_id, adv.skill)
+    if adv is not None and adv.advanced:
         await publish_game_event(
             session.room,
             E.SKILL_TIER_ADVANCED,
@@ -219,7 +211,7 @@ async def _request_skill_check_impl(
         "narrative_hint": result.narrative_hint,
         "context": context_description,
     }
-    if adv.advanced:
+    if adv is not None and adv.advanced:
         response["advancement"] = {
             "old_tier": adv.old_tier,
             "new_tier": adv.new_tier,
