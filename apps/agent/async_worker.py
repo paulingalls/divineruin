@@ -35,6 +35,48 @@ logger = logging.getLogger("divineruin.async_worker")
 POLL_INTERVAL = 300  # 5 minutes
 
 
+async def apply_skill_practice_advancement(
+    player_id: str,
+    training_skill: str,
+    counter_increment: int,
+    *,
+    queries=db_queries,
+    mutations=db_mutations,
+) -> dict | None:
+    """Increment the skill_advancement counter from a skill_practice training completion.
+
+    Reads and writes the same `skill_advancement` row (keyed by player_id + skill)
+    that the session-use path in `check_tools._request_skill_check_impl` mutates —
+    this is the M1.2 hybrid-counter contract: both code paths share one row.
+
+    Returns advancement info dict (advanced, new_tier) or None when no advancement.
+    """
+    skill_key = training_skill.lower()
+    skill_adv = await queries.get_single_skill_advancement(player_id, skill_key)
+    tiers = {skill_key: skill_adv["tier"]}
+    counters = {skill_key: skill_adv["use_counter"]}
+    narrative = skill_adv["narrative_moment_ready"]
+
+    adv = None
+    for _ in range(counter_increment):
+        adv = check_resolution.record_skill_use(
+            tiers,
+            training_skill,
+            counters,
+            narrative_moment=narrative,
+        )
+        tiers[skill_key] = adv.new_tier
+        counters[skill_key] = adv.new_use_count
+
+    if adv is None:
+        return None
+
+    await mutations.update_skill_advancement(player_id, adv.skill, adv.new_tier, adv.new_use_count)
+    if adv.advanced and adv.old_tier == "expert":
+        await mutations.clear_narrative_moment(player_id, adv.skill)
+    return {"advanced": adv.advanced, "new_tier": adv.new_tier}
+
+
 async def resolve_due_activities() -> int:
     """Find and resolve all due activities. Returns count resolved."""
     due = await db_activity_queries.get_due_activities()
@@ -286,32 +328,14 @@ async def advance_training_cycles() -> int:
                 else:
                     adv_info: dict | None = None
 
-                    # Skill practice: increment the skill use counter (hybrid advancement)
+                    # Skill practice: increment the skill use counter (hybrid advancement —
+                    # shares the skill_advancement row with the session-use path in check_tools).
                     if activity_type == "skill_practice" and completion.counter_increment > 0:
                         training_skill = data.get("skill")
                         if training_skill:
-                            skill_key = training_skill.lower()
-                            skill_adv = await db_queries.get_single_skill_advancement(player_id, skill_key)
-                            tiers = {skill_key: skill_adv["tier"]}
-                            counters = {skill_key: skill_adv["use_counter"]}
-                            narrative = skill_adv["narrative_moment_ready"]
-                            adv = None
-                            for _ in range(completion.counter_increment):
-                                adv = check_resolution.record_skill_use(
-                                    tiers,
-                                    training_skill,
-                                    counters,
-                                    narrative_moment=narrative,
-                                )
-                                tiers[skill_key] = adv.new_tier
-                                counters[skill_key] = adv.new_use_count
-                            if adv is not None:
-                                await db_mutations.update_skill_advancement(
-                                    player_id, adv.skill, adv.new_tier, adv.new_use_count
-                                )
-                                if adv.advanced and adv.old_tier == "expert":
-                                    await db_mutations.clear_narrative_moment(player_id, adv.skill)
-                                adv_info = {"advanced": adv.advanced, "new_tier": adv.new_tier}
+                            adv_info = await apply_skill_practice_advancement(
+                                player_id, training_skill, completion.counter_increment
+                            )
                         else:
                             logger.warning("Training %s is skill_practice but missing 'skill' in data", activity_id)
 
