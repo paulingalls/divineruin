@@ -63,3 +63,5 @@ assets/images/img_*.png
 
 # Claude Code
 .claude/
+.agents/
+skills-lock.json
