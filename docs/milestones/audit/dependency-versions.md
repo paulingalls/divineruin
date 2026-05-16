@@ -2,7 +2,7 @@
 
 Sprint-001 / Milestone 1 companion audit. Pinned versions vs upstream stable.
 
-- Audit date: 2026-05-15. Snapshot — packages added to manifests after this date (e.g., `testcontainers`, `docker` landed 2026-05-16) are out of scope and not listed below.
+- Audit date: 2026-05-15. Snapshot — packages added to manifests after this date are out of scope and not listed below. Sprint-001 Wave 2 / 2.5 added `testcontainers>=4.14.2`, `docker>=7.1.0`, and `pytest-cov>=6.0` to `apps/agent/pyproject.toml` on 2026-05-16; sprint-002's dep audit should include them.
 - Inputs read: `apps/agent/pyproject.toml` (+ `uv.lock`), `apps/server/package.json`, `apps/mobile/package.json`, root `package.json`, root `bun.lock`.
 - "Current" = version resolved by the lockfile when available; otherwise the manifest pin.
 - "Latest stable" = `info.version` from `pypi.org/pypi/<pkg>/json` or `dist-tags.latest` from `registry.npmjs.org/<pkg>/latest`.
