@@ -1,0 +1,5 @@
+appId: com.divineruin.app
+---
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
