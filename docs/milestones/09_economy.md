@@ -6,6 +6,16 @@
 
 Implements the unified currency system, merchant pricing engine, and quest reward calibration to ensure a coherent in-game economy anchored to player effort.
 
+## Audit Cross-Ref (Sprint-003)
+
+<!-- see audit/phase-encounter-roles.md -->
+
+`game_mechanics_encounter_roles.md` §Loot Modifiers (Currency Drop Rules + Material Sell Values + Boss bonus loot, file:line 124-183) falls under Phase 09 ownership but is **currently unowned** by any milestone here — the existing 21-item milestone scope predates the encounter_roles doc. The audit recommends a **new milestone M9.4 "Loot-side Economy"** covering: `calculate_currency_drop(role, tier, biome)`, role-keyed material sell tables, Boss-bonus loot rules, and tier×biome currency yield matrix.
+
+**Capstone decision `m9-4-loot-economy-status`:** flagged but **deferred to the Phase 09 rewrite** in `execution_plan.json §Milestone 6` (which already plans to expand 09 from 21 items to 60-100 covering all 6 economy/ subsystem docs). The encounter_roles loot-side subsection will be authored as part of that rewrite alongside `econ_supply_demand`, `econ_faction_pricing`, `econ_restock`, `econ_gold_sink`, `econ_inflation`, `econ_p2p_trade`. No standalone M9.4 is created in this file; the loot-side overlay is one of the subsystem sections the Phase 09 rewrite will add.
+
+See `audit/phase-encounter-roles.md` for the full encounter_roles section map.
+
 ---
 
 ### Milestone 9.1 — Currency System & Price Tables

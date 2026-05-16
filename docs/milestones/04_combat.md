@@ -4,6 +4,38 @@
 
 Redesigns the existing basic combat state machine into a 4-beat phase-based system with no turn order or grids, adds action economy, status conditions, death mechanics, dramatic dice, and non-combat encounter resolution. Depends on Phase 1 (Core Systems) and Phase 2 (Archetypes).
 
+## Audit Status (Sprint-003)
+
+<!-- see audit/phase-4-combat.md and audit/phase-encounter-roles.md -->
+
+**Status: DEFERRED / NOT_STARTED.** Combat is the largest aspirational surface in the project. Shipped: turn-based free-form LLM tool loop in `apps/agent/combat_agent.py:26-44` driving `apps/agent/session_data.py:46-52` (`round_number`, `current_turn_index`, `initiative_order`) plus core math (`calculate_ac`, `resolve_attack`, `resolve_saving_throw`, death save mechanic). NOT shipped: 4-beat phase machine, condition system, dramatic-dice flag, social/travel/gathering, Mortaen scene wiring.
+
+| Milestone | Confirmed | Partial | Divergent | Aspirational |
+| --- | --- | --- | --- | --- |
+| M4.1 — Phase-Based Combat Redesign (11) | 2 | 3 | 2 | 4 |
+| M4.2 — Action Economy & Declarations (11) | 4 | 4 | 0 | 3 |
+| M4.3 — Status Conditions (10) | 0 | 0 | 0 | 10 |
+| M4.4 — Death, Dying & Resurrection (12) | 2 | 2 | 1 | 7 |
+| M4.5 — Dramatic Dice System (9) | 0 | 0 | 0 | 9 |
+| M4.6 — Social, Travel & Gathering (12) | 0 | 0 | 0 | 12 |
+
+**Material gaps (cross-cutting):**
+- Combat is **turn-based**, not phase-based with 4 beats. State lives in `combat_instances` (single `data JSONB`, PostgreSQL) — not spec's `combat_encounters` with phase columns in Redis.
+- No condition system at all: no `character_conditions` table, no `apply_condition`/`tick_conditions`/`get_condition_effects`. `apps/agent/fatigue_narration.py:29-36` is narrative-cue only.
+- No dramatic-dice flag on any roll result packet (`AttackResult`, `SavingThrowResult`, `DeathSaveResult`, `CheckResult` all lack `dramatic`).
+- No social/travel/gathering systems shipped. `apps/agent/wilderness_agent.py:36-52` is a 52-line stub.
+- NPC disposition system exists but uses `"wary"` where spec uses `"unfriendly"` (`apps/agent/tool_support.py:76-83` vs `gm_combat:L671`) — spec/code naming divergence.
+- Mortaen mechanic surface entirely aspirational: no `death_counter`, no `determine_death_cost`, no Mortaen scene wiring.
+
+**encounter_roles primary ownership (capstone decision `m4-7-overlay-status`):** Phase 04 owns the encounter_roles overlay per `execution_plan.json §Milestone 3`. The audit recommends a **new milestone M4.7 "Encounter Role Overlay"** (Minion / Standard / Elite / Boss / Named) — not yet authored as a numbered section below; scope lives in `audit/phase-encounter-roles.md`.
+
+**Cross-refs:**
+- **M7.1 (Bestiary)** must extend stat block schema with optional `role` field and Boss-only `signature_ability`/`legendary_actions[]` fields.
+- **M7.4 (Encounter Builder)** `build_encounter` signature is in flux: spec uses `(tier, combatant_count, environment)`; encounter_roles work needs `(tier, budget_points, environment)`. Final choice deferred to the M4.7/M7.4 implementation sprint (decision `m7-4-build-encounter-signature` recorded).
+- **Phase 09 Economy** owns currency drops and material sell values from encounter_roles §Loot Modifiers; see `09_economy.md` Sprint-003 cross-ref.
+
+See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
+
 ---
 
 ### Milestone 4.1 — Phase-Based Combat Redesign (4 Beats)

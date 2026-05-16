@@ -1,6 +1,6 @@
 # Milestone Audit — Findings Index
 
-Read-only audit of `docs/milestones/` against shipped code and current spec docs. Sprint-001 covered Phases 0 + 1; Sprint-002 covered Phases 2 + 3 + 8 (Group A). Findings are consolidated into the milestone files by each sprint's capstone story.
+Read-only audit of `docs/milestones/` against shipped code and current spec docs. Sprint-001 covered Phases 0 + 1; Sprint-002 covered Phases 2 + 3 + 8 (Group A); Sprint-003 covered Phases 4 + 7 + encounter_roles overlay (Group B). Findings are consolidated into the milestone files by each sprint's capstone story.
 
 Bias is toward unchecking when evidence is weak — Honesty over optimistic tracking.
 
@@ -25,6 +25,16 @@ Bias is toward unchecking when evidence is weak — Honesty over optimistic trac
 | [phase-8-patrons.md](./phase-8-patrons.md) | M8.1 profiles + favor + M8.2 tier abilities + M8.3 synergies + Unbound | 0 | — | 33 | 1 unverified |
 
 Sprint-002 headline: Group A is **almost entirely unshipped**. Phase 3 Magic is fully NOT_SHIPPED (blocks Phase 8 Layer 2). Phase 8 Patrons has only a thin `divine_favor` integer + god-whisper layer. Phase 2 Archetypes has HP scaling + resource-type assignment confirmed; everything else (DB tables, content seeds, agent tools, mobile UI) is aspirational.
+
+## Sprint-003 findings files (Phases 4 + 7 + encounter_roles — Group B)
+
+| File | Scope | Confirmed | Partial | Divergent | Aspirational / NOT_SHIPPED |
+| --- | --- | --- | --- | --- | --- |
+| [phase-4-combat.md](./phase-4-combat.md) | M4.1 phase combat + M4.2 action economy + M4.3 conditions + M4.4 death + M4.5 dramatic dice + M4.6 social/travel/gathering | 8 | 9 | 3 | 45 |
+| [phase-7-bestiary.md](./phase-7-bestiary.md) | M7.1 stat block schema + M7.2 regional catalog + M7.3 Hollow special mechanics + M7.4 loot/harvesting/encounter builder | 0 | 1 | — | 40 NOT_SHIPPED |
+| [phase-encounter-roles.md](./phase-encounter-roles.md) | 790L gm_encounter_roles overlay; ownership map across phases 04 (primary) / 07 / 09 | 0 | 1 | — | 30 NOT_SHIPPED |
+
+Sprint-003 headline: Group B is **almost entirely unshipped**. Phase 4 ships core combat math (AC, attack roll, damage doubling, death save) + a turn-based LLM tool loop — but the spec's 4-beat phase machine, full condition system, dramatic-dice flag, social/travel/gathering, and Mortaen scene wiring are aspirational. Phase 7 is unshipped at every layer (no `content/creatures.json`, no schema, no agent tools). encounter_roles overlay (added after the original milestones) is 0% built across all 9 spec sections.
 
 ## Material gaps surfaced (capstone annotations)
 
@@ -75,9 +85,51 @@ These were captured as "Audit Status (Sprint-002)" blocks at the top of `02_arch
 - 4-layer architecture not encoded. Favor is a single-integer 0-100 scale, not tiered. Alignment evaluation is LLM-driven (`award_divine_favor`), not rules-engine-driven (`evaluate_patron_alignment`).
 - Layer 4 synergy in `DeityData.synergy_classes` is a flat tuple — needs (11 × 18) matrix with Natural/Divine/Unexpected tagging.
 
-## Sprint-003 follow-up candidates
+## Sprint-003 capstone annotations (Phases 4 + 7 + encounter_roles)
 
-Sprint-002 carry-forwards (still open):
+These were captured as "Audit Status (Sprint-003)" blocks at the top of `04_combat.md`, `07_bestiary.md`, and `09_economy.md` (cross-ref) with `<!-- see audit/<file> -->` pointers. No M4.x / M7.x acceptance boxes were unchecked because all were already `[ ]` — the milestone-level status was re-flagged as DEFERRED / NOT_STARTED in each file.
+
+**Phase 4 — Combat (Group B)**
+- M4.1: Turn-based free-form LLM tool loop shipped (`combat_agent.py:26-44`, `session_data.py:46-52`); 4-beat phase machine + Redis state + `advance_combat_phase` aspirational. Initiative (d20+DEX) confirmed. State persistence in `combat_instances` JSONB diverges from spec's `combat_encounters` schema.
+- M4.2: Core math confirmed — `calculate_ac`, `resolve_attack` (with crit doubling), proficiency bonus. Weapon damage tops at 1d8 (spec calls for 1d12); damage adds no attribute modifier (spec calls for it). 6 declaration types + enhancers absent.
+- M4.3: Entire condition system aspirational — no `character_conditions` table, no apply/tick/remove. `fatigue_narration` is dead-end narrative cue code.
+- M4.4: Death save mechanic confirmed (3 success/3 fail, d20 no modifier). Mortaen scene, cost engine, anchor points, Hollowed death, instant death, party wipe, companion auto-stabilize all aspirational.
+- M4.5: Entirely aspirational. No `evaluate_dramatic_context`, no `dramatic` flag on any roll result.
+- M4.6: All aspirational. NPC disposition infrastructure exists (5-tier `["hostile","wary","neutral","friendly","trusted"]`) but unused; naming divergences flagged (wary↔unfriendly, Fast/Normal/Careful↔Compressed/Scenic/Dangerous).
+- **M4.7 proposed (capstone decision `m4-7-overlay-status`)**: new milestone for the encounter_roles overlay (Minion/Standard/Elite/Boss/Named) with stat-modifier table, Elite enhancement, Boss signature/legendary, encounter budget points, role-derivation functions. Author in a future sprint.
+
+**Phase 7 — Bestiary (Group B)**
+- M7.1-M7.4: ALL NOT_SHIPPED (40/40 acceptance items). `content/creatures.json` does not exist; no schema validators; no agent tools.
+- Only shipped artifact: `content/encounter_templates.json` (6 templates) with flat enemy schema divergent from the M7.1 universal stat block.
+- **M7.2 region-count gap (decision `m7-2-creature-count-gap`)**: narrow milestone text to "19+ natural creatures" (path b) — spec authors 19, milestone claims 38+; Ashmark Soldier and Cult Acolyte missing stat blocks despite lore references.
+- **M7.1 schema must extend** with optional `role` field and Boss-only `signature_ability` + `legendary_actions[]` for M4.7 alignment.
+- **M7.4 `build_encounter` signature (decision `m7-4-build-encounter-signature`)**: capstone records both `(tier, combatant_count, environment)` and `(tier, budget_points, environment)` shapes; final choice deferred to the M4.7/M7.4 implementation sprint.
+- M7.3 blocked on Phase 3 Resonance NOT_SHIPPED (sprint-002 carryover).
+
+**encounter_roles overlay (Group B, primary owner Phase 04)**
+- 0% built across all 9 spec sections (Role Definitions, Combat Stat Modifiers, Loot Modifiers + Currency Drops + Material Sell Values, XP Modifiers, Encounter Budget System, Worked Examples, DM Narration Guidance, Derivation Formula, Design Decisions 73-81).
+- `EncounterRole` enum, role modifier tables, Boss signature/legendary action handlers, encounter budget calculator, material sell-value lookup — all aspirational.
+- Phase 04 primary; Phase 07 cross-refs schema; Phase 09 owns currency drops + material sell values (deferred to Phase 09 rewrite per decision `m9-4-loot-economy-status`).
+
+## Sprint-spec-cleanup punch list
+
+Out-of-scope-but-real findings surfaced by audits that don't fit any active milestone — collected here so they don't drift between sprints. Add new items at the bottom.
+
+- **Stale `gp` references** in `game_mechanics_magic.md:423` (Revivify diamond "50 gp") and `:432` (Resurrection diamond "500 gp"). Original M0.3 gp→gc cleanup missed these two. Plus a third instance at `economy/game_mechanics_p2p_trade.md:160`. (sprint-001 phase-0 audit; reaffirmed sprint-002 phase-3 audit; concern `027196d5b06f`)
+- **`INDEX.md` line ranges off** for `game_mechanics_archetypes.md` (~133 lines drift; file is 1357L, INDEX claims 1224L). (sprint-001 phase-0)
+- **`game_mechanics/` docs unlisted in CLAUDE.md** Knowledge System section — reachable only transitively via `INDEX.md`. Remediation: add a bullet under CLAUDE.md "Knowledge System" naming `docs/game_mechanics/` + `docs/game_mechanics/economy/` as the source-of-truth for mechanics specs, with `docs/INDEX.md` as the entry-point. (sprint-001 phase-0)
+
+## Sprint-004 follow-up candidates
+
+Sprint-003 carry-forwards (still open):
+
+- Author **M4.7 "Encounter Role Overlay"** as a numbered milestone in `04_combat.md` (capstone surfaced; not yet authored in the file's milestone list). Scope: `EncounterRole` enum, role modifier table, Elite/Boss enhancement rules, encounter budget points, role-derivation functions.
+- Pair **M4.7 + M7.4** implementation in a single sprint so the `build_encounter` signature choice can be resolved with full context (decision `m7-4-build-encounter-signature` is deferred).
+- Reconcile **M7.2 milestone text** to "19+ natural creatures" + add Ashmark Soldier / Cult Acolyte stat blocks to spec OR remove them from lore prompts.
+- Reconcile **disposition tier naming** (`wary` in code vs `unfriendly` in spec) and **travel-mode naming** (Fast/Normal/Careful in spec vs Compressed/Scenic/Dangerous narrative text) before Phase 4 social/travel work.
+- Cross-cut prerequisite: Phase 3 Magic (Resonance system) before M7.3 Hollow creature mechanics can ship.
+
+Sprint-001/002 carry-forwards (still open):
 
 - Resolve surviving `gp` references in `game_mechanics_magic.md` (M0.3 cleanup); update `INDEX.md` line ranges for archetypes.
 - Decide M1.4 spec vs code: either rename the fork to L5-only and split HP from the unified table, or update code to match (add `specialization_fork` to L4, fold HP into `LEVEL_PROGRESSION`).
@@ -95,4 +147,4 @@ New from sprint-002 audits:
 
 ## Method
 
-Per execution_plan.json (§Milestone 1 for sprint-001; §Milestone 2 for sprint-002): for items with action verbs (add/implement/create), grep for the named symbol or file in `apps/agent/`, `apps/server/`, `packages/shared/src/entities/`, `content/`. For doc items, confirm the referenced doc/section exists and reflects the change. For spec sections without a milestone item, mark NEW with rationale. Output: table per phase with item → evidence → status (confirmed / partial / aspirational / divergent / NOT_SHIPPED).
+Per execution_plan.json (§Milestone 1 for sprint-001; §Milestone 2 for sprint-002; §Milestone 3 for sprint-003): for items with action verbs (add/implement/create), grep for the named symbol or file in `apps/agent/`, `apps/server/`, `packages/shared/src/entities/`, `content/`. For doc items, confirm the referenced doc/section exists and reflects the change. For spec sections without a milestone item, mark NEW with rationale. Output: table per phase with item → evidence → status (confirmed / partial / aspirational / divergent / NOT_SHIPPED).
