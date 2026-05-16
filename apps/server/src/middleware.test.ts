@@ -1,10 +1,9 @@
-import { test, expect, describe, beforeEach } from "bun:test";
+import { test, expect, describe, beforeEach, afterEach } from "bun:test";
 import {
   handlePreflight,
   withCors,
   checkRateLimit,
   _resetRateLimits,
-  _setRateLimitBypassForTesting,
   verifyInternalSecret,
   _setInternalSecretForTesting,
 } from "./middleware.ts";
@@ -46,8 +45,17 @@ describe("Security Headers", () => {
 });
 
 describe("Rate Limiting", () => {
+  let savedBypass: string | undefined;
+
   beforeEach(() => {
     _resetRateLimits();
+    savedBypass = process.env.RATE_LIMIT_BYPASS;
+    delete process.env.RATE_LIMIT_BYPASS;
+  });
+
+  afterEach(() => {
+    if (savedBypass !== undefined) process.env.RATE_LIMIT_BYPASS = savedBypass;
+    else delete process.env.RATE_LIMIT_BYPASS;
   });
 
   test("allows requests under the limit", () => {
@@ -108,15 +116,54 @@ describe("Rate Limiting", () => {
   });
 
   test("bypass flag returns null even past the limit", () => {
-    _setRateLimitBypassForTesting(true);
-    try {
-      for (let i = 0; i < 50; i++) {
-        const result = checkRateLimit("127.0.0.1", "/api/auth/verify-code");
-        expect(result).toBeNull();
-      }
-    } finally {
-      _setRateLimitBypassForTesting(false);
+    process.env.RATE_LIMIT_BYPASS = "1";
+    for (let i = 0; i < 50; i++) {
+      const result = checkRateLimit("127.0.0.1", "/api/auth/verify-code");
+      expect(result).toBeNull();
     }
+  });
+
+  test("RATE_LIMIT_BYPASS is read dynamically per request (no stale import-time value)", () => {
+    // Module was imported with bypass deleted in beforeEach — under the old
+    // import-time read, this latched `false` and `process.env` flips below
+    // would have no effect.
+    //
+    // Phase 1: env unset → bypass disabled → limit enforced.
+    for (let i = 0; i < 5; i++) {
+      checkRateLimit("4.4.4.4", "/api/auth/verify-code");
+    }
+    const blocked = checkRateLimit("4.4.4.4", "/api/auth/verify-code");
+    expect(blocked).not.toBeNull();
+    expect(blocked!.status).toBe(429);
+
+    // Phase 2: env now set (simulating Playwright webServer.env applying
+    // after the server module loaded) → bypass enabled.
+    _resetRateLimits();
+    process.env.RATE_LIMIT_BYPASS = "1";
+    for (let i = 0; i < 50; i++) {
+      const result = checkRateLimit("4.4.4.4", "/api/auth/verify-code");
+      expect(result).toBeNull();
+    }
+
+    // Phase 3: env unset again → bypass disabled.
+    _resetRateLimits();
+    delete process.env.RATE_LIMIT_BYPASS;
+    for (let i = 0; i < 5; i++) {
+      checkRateLimit("4.4.4.4", "/api/auth/verify-code");
+    }
+    const blockedAgain = checkRateLimit("4.4.4.4", "/api/auth/verify-code");
+    expect(blockedAgain).not.toBeNull();
+    expect(blockedAgain!.status).toBe(429);
+  });
+
+  test("RATE_LIMIT_BYPASS only bypasses for the literal value '1'", () => {
+    process.env.RATE_LIMIT_BYPASS = "true";
+    for (let i = 0; i < 5; i++) {
+      checkRateLimit("5.5.5.5", "/api/auth/verify-code");
+    }
+    const blocked = checkRateLimit("5.5.5.5", "/api/auth/verify-code");
+    expect(blocked).not.toBeNull();
+    expect(blocked!.status).toBe(429);
   });
 });
 

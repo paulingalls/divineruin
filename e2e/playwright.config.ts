@@ -7,7 +7,11 @@ export default defineConfig({
   testDir: "./specs",
   testMatch: "*.e2e.ts",
   fullyParallel: false,
-  workers: 3,
+  // workers=4 was previously 429-failing because middleware latched
+  // RATE_LIMIT_BYPASS at import time before Playwright's webServer.env
+  // applied. Now that checkRateLimit re-reads the env per request
+  // (apps/server/src/middleware.ts), workers=4 is green.
+  workers: 4,
   retries: CI ? 2 : 0,
   timeout: 30_000,
   reporter: CI ? [["html"], ["github"]] : [["html"], ["list"]],

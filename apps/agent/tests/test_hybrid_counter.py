@@ -8,13 +8,32 @@ If a future refactor splits one path onto a different row, this test breaks.
 """
 
 import json
+import types
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+import async_worker
+import check_tools
+import skill_persistence
 from async_worker import apply_skill_practice_advancement
 from check_tools import _request_skill_check_impl
 from tests.test_mechanics_tools import SAMPLE_PLAYER, _make_context, _make_mock_room
+
+
+def _install_helper_spy(monkeypatch, spy, real_fn, modules) -> None:
+    """Replace every binding of `real_fn` in `modules` with `spy`.
+
+    Catches both module-attr callers (`mod.real_fn(...)`) and from-import
+    callers (`from mod import real_fn; real_fn(...)`): the source module's
+    attribute is patched, *and* every caller-module attribute that currently
+    points at `real_fn` is rebound to `spy`. Identity comparison (`is`) finds
+    aliases too (`from mod import real_fn as alias`).
+    """
+    for module in modules:
+        for name, value in list(vars(module).items()):
+            if value is real_fn:
+                monkeypatch.setattr(module, name, spy)
 
 
 def _shared_skill_advancement_store():
@@ -127,19 +146,23 @@ class TestHybridCounterSharedRow:
     @pytest.mark.asyncio
     async def test_both_paths_call_shared_persistence_helper(self, monkeypatch) -> None:
         """M1.2 contract enforced by construction: both call sites route through
-        apply_skill_use_with_persistence (single source of truth)."""
-        import skill_persistence
+        apply_skill_use_with_persistence (single source of truth).
 
+        The spy is installed on the source module *and* on every caller module
+        that has rebound the helper into its own namespace (i.e. via
+        `from skill_persistence import apply_skill_use_with_persistence`).
+        Without that defensive rebind, a future from-import refactor would
+        capture the original function reference at import time and silently
+        bypass a module-attr-only patch.
+        """
+        calls: list[tuple[str, str, int]] = []
         real_fn = skill_persistence.apply_skill_use_with_persistence
-        calls = []
 
         async def spy(player_id, skill, counter_increment=1, **kw):
             calls.append((player_id, skill, counter_increment))
             return await real_fn(player_id, skill, counter_increment, **kw)
 
-        monkeypatch.setattr("skill_persistence.apply_skill_use_with_persistence", spy)
-        # Re-patch the module-level references in callers (they imported the module,
-        # so module-attr lookup resolves the spy automatically).
+        _install_helper_spy(monkeypatch, spy, real_fn, [skill_persistence, check_tools, async_worker])
 
         _, queries, mutations = _shared_skill_advancement_store()
         ctx = _make_context(player_id="player_1", room=_make_mock_room())
@@ -162,6 +185,36 @@ class TestHybridCounterSharedRow:
         assert len(calls) == 2
         assert calls[0][2] == 1  # session-use defaults to 1
         assert calls[1][2] == 2  # training passed 2
+
+    @pytest.mark.asyncio
+    async def test_spy_install_catches_from_import_caller(self, monkeypatch) -> None:
+        """Meta-test: a hypothetical caller that captured the helper via
+        `from skill_persistence import apply_skill_use_with_persistence` would
+        evade a module-attr-only patch. Verify `_install_helper_spy` defensively
+        rebinds the symbol in caller namespaces so the spy still fires.
+        """
+        real_fn = skill_persistence.apply_skill_use_with_persistence
+
+        # Simulate a from-import caller: a module whose own namespace binds the
+        # original function object directly (the result of `from X import Y`).
+        fake_caller = types.ModuleType("fake_caller_from_import")
+        setattr(fake_caller, real_fn.__name__, real_fn)
+
+        calls: list[tuple[str, str, int]] = []
+
+        async def spy(player_id, skill, counter_increment=1, **kw):
+            calls.append((player_id, skill, counter_increment))
+            return await real_fn(player_id, skill, counter_increment, **kw)
+
+        _install_helper_spy(monkeypatch, spy, real_fn, [skill_persistence, fake_caller])
+
+        rebound = getattr(fake_caller, real_fn.__name__)
+        assert rebound is spy
+
+        _, queries, mutations = _shared_skill_advancement_store()
+        await rebound("player_1", "athletics", 1, queries=queries, mutations=mutations)
+        assert len(calls) == 1
+        assert calls[0] == ("player_1", "athletics", 1)
 
     @pytest.mark.asyncio
     async def test_different_skills_use_different_rows(self) -> None:
