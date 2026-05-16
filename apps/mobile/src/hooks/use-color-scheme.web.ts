@@ -8,7 +8,8 @@ export function useColorScheme() {
   const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
-    setHasHydrated(true); // eslint-disable-line react-hooks/set-state-in-effect -- hydration flag for SSR
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR hydration flag requires client-only effect
+    setHasHydrated(true);
   }, []);
 
   const colorScheme = useRNColorScheme();

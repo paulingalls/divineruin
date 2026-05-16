@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { StyleSheet, View, type ImageStyle, type StyleProp, type ViewStyle } from "react-native";
+import { StyleSheet, View, type ImageStyle, type StyleProp } from "react-native";
 
 import { BrandColors } from "@/constants/theme";
 
@@ -19,11 +19,7 @@ export function CachedImage({
   if (!uri) {
     return (
       <View
-        style={[
-          styles.placeholder,
-          { backgroundColor: placeholderColor, borderRadius } as ViewStyle,
-          style as StyleProp<ViewStyle>,
-        ]}
+        style={[styles.placeholder, { backgroundColor: placeholderColor, borderRadius }, style]}
       />
     );
   }
@@ -31,7 +27,7 @@ export function CachedImage({
   return (
     <Image
       source={{ uri }}
-      style={[{ borderRadius } as ImageStyle, style]}
+      style={[{ borderRadius }, style]}
       contentFit="cover"
       transition={300}
       cachePolicy="memory-disk"

@@ -41,8 +41,8 @@ export async function registerForPushNotifications(): Promise<string | null> {
     });
   }
 
-  const extra = Constants.expoConfig?.extra as Record<string, Record<string, string>> | undefined;
-  const projectId = extra?.eas.projectId;
+  const extra = Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined;
+  const projectId = extra?.eas?.projectId;
   if (!projectId) {
     console.warn(
       "[notifications] No EAS projectId found — run 'eas init' to configure push notifications",

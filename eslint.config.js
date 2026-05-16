@@ -40,11 +40,28 @@ export default tseslint.config(
     rules: reactHooks.configs.recommended.rules,
   },
 
-  // React Native requires require() for static assets
+  // React Native requires require() for static assets.
   {
     files: ["apps/mobile/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+
+  // Reanimated/Gesture files: react-hooks 7.x doesn't understand SharedValue
+  // .value mutations or .current access inside Gesture.* worklet callbacks —
+  // see facebook/react issues #34775, #29641, #35158. Scope kept narrow so
+  // the new rules still apply to non-reanimated mobile code.
+  {
+    files: [
+      "apps/mobile/src/components/hud/panel-shell.tsx",
+      "apps/mobile/src/components/hud/panels/map-panel.tsx",
+      "apps/mobile/src/components/activity-launcher.tsx",
+    ],
+    rules: {
+      "react-hooks/immutability": "off",
+      "react-hooks/refs": "off",
+      "react-hooks/set-state-in-effect": "off",
     },
   },
 
