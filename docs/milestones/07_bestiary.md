@@ -4,6 +4,29 @@
 
 Defines the full creature catalog, from stat block schema through regional creatures, Hollow special mechanics, and the encounter builder. Provides the DM agent with a complete library of adversaries and the tools to assemble balanced encounters.
 
+## Audit Status (Sprint-003)
+
+<!-- see audit/phase-7-bestiary.md and audit/phase-encounter-roles.md -->
+
+**Status: DEFERRED / NOT_STARTED.** Phase 7 is unshipped at the data and schema layers. There is no `content/creatures.json`, no `creatures` DB table, no `validate_creature_stat_block`, no agent tool family for creatures/loot/harvesting/encounter generation. The only shipped artifact is `content/encounter_templates.json` (6 hand-authored encounters consumed by `apps/agent/db_content_queries.py:146 get_encounter_template()` and `apps/agent/combat_init.py:27 start_combat()`), using a flat enemy schema that is NOT the M7.1 universal stat block (no `hollow` nested fields, no `behavior`, no `narration`, no `audio` sub-objects, no `loot`, no `passives/actives/reactions`, no `category`, no `tier`, no `save_proficiencies`).
+
+| Section | Confirmed | Partial | NOT_SHIPPED |
+| --- | --- | --- | --- |
+| M7.1 — Creature Stat Block Schema | 0 | 0 | 9 |
+| M7.2 — Regional Creature Catalog | 0 | 1 | 10 |
+| M7.3 — Hollow Creatures (Special Mechanics) | 0 | 0 | 10 |
+| M7.4 — Loot, Harvesting & Encounter Builder | 0 | 0 | 11 |
+
+**Material gaps:**
+- **M7.1 schema extensions needed for encounter_roles:** the spec's universal stat block must add optional `role` field (Minion/Standard/Elite/Boss/Named) and Boss-only `signature_ability` + `legendary_actions[]` fields when M4.7 (Encounter Role Overlay) lands. The audit recommends authoring these schema slots in M7.1 so M4.7 has a typed home for role data.
+- **M7.2 region-count gap (capstone decision `m7-2-creature-count-gap`):** milestone text claims "38+ natural creatures" and "humanoid enemies including Ashmark Soldier, Cult Acolyte." The spec authors **19 natural creatures** (4 Greyvale + 2 Thornveld + 2 Drathian Steppe + 3 Keldaran + 2 Sunward + 2 Underground + 4 Multi-Region) and does NOT include Ashmark Soldier or Cult Acolyte stat blocks. **Resolution:** narrow milestone text to "19+ natural creatures" (path b — match milestone to spec). Ashmark Soldier and Cult Acolyte stay referenced in lore/prompts only (`docs/world_data_simulation.md`, `apps/agent/creation_prompts.py`) until a future spec change adds them.
+- **M7.3 fully blocked on Phase 3** (Resonance NOT_SHIPPED per `sprint-002 audit/phase-3-magic.md`); `apply_corruption_aura` and `resolve_resonance_on_death` symbols absent.
+- **M7.4 `build_encounter` signature in flux (decision `m7-4-build-encounter-signature`):** spec uses `(tier, combatant_count, environment)`; encounter_roles work needs `(tier, budget_points, environment)`. Capstone records both forms; final choice deferred to the implementation sprint that ships M4.7 + M7.4 together. `start_combat(context, encounter_id, …)` at `apps/agent/combat_init.py:27` consumes pre-authored templates — it does not generate or compose creatures.
+
+**encounter_roles cross-ref:** Phase 04 is primary owner per `04_combat.md` Sprint-003 status. Phase 07 cross-refs Role Definitions (creature roles in bestiary) and Worked Example stat blocks. The encounter_templates.json `role` strings on NPCs (`content/npcs.json`) are narrative-only ("guild hall master") and do NOT carry the M4.7 EncounterRole enum.
+
+See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
+
 ---
 
 ### Milestone 7.1 — Creature Stat Block Schema
