@@ -1,0 +1,6 @@
+# Minimal launch smoke test. Replace `launchApp` block with real
+# flows when a built app + simulator is available on the developer machine.
+appId: com.divineruin.app
+---
+- launchApp
+- waitForAnimationToEnd
