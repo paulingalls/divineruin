@@ -7,9 +7,7 @@ export default defineConfig({
   testDir: "./specs",
   testMatch: "*.e2e.ts",
   fullyParallel: false,
-  // workers=4 breaks the auth fixture (pg Pool contention on parallel
-  // accounts/players cleanup); 2 is the highest tested-stable value.
-  workers: 2,
+  workers: 3,
   retries: CI ? 2 : 0,
   timeout: 30_000,
   reporter: CI ? [["html"], ["github"]] : [["html"], ["list"]],
@@ -40,6 +38,7 @@ export default defineConfig({
           process.env.JWT_SECRET ??
           "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
         NODE_ENV: "development",
+        RATE_LIMIT_BYPASS: "1",
       },
     },
     {

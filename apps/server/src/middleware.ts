@@ -89,7 +89,13 @@ let purgeInterval: ReturnType<typeof setInterval> | null = setInterval(() => {
   }
 }, 5 * 60_000);
 
+let rateLimitBypass = process.env.RATE_LIMIT_BYPASS === "1";
+if (rateLimitBypass && process.env.NODE_ENV === "production") {
+  throw new Error("[security] RATE_LIMIT_BYPASS must not be set in production.");
+}
+
 export function checkRateLimit(ip: string, path: string): Response | null {
+  if (rateLimitBypass) return null;
   const limit = RATE_LIMITS[path] ?? DEFAULT_RATE_LIMIT;
   const key = `${ip}:${path}`;
   const now = Date.now();
@@ -123,4 +129,8 @@ export function _resetRateLimits(): void {
     clearInterval(purgeInterval);
     purgeInterval = null;
   }
+}
+
+export function _setRateLimitBypassForTesting(value: boolean): void {
+  rateLimitBypass = value;
 }
