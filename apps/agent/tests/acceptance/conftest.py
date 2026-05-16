@@ -10,14 +10,27 @@ from __future__ import annotations
 from collections.abc import Iterator
 from datetime import timedelta
 
+import docker
 import pytest
+from docker.errors import DockerException
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.wait_strategies import LogMessageWaitStrategy
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Apply the `acceptance` marker to every test under tests/acceptance/."""
+    for item in items:
+        item.add_marker(pytest.mark.acceptance)
 
 
 @pytest.fixture(scope="session")
 def livekit_server() -> Iterator[dict[str, str]]:
     """Start a LiveKit dev server in Docker for the test session."""
+    try:
+        docker.from_env().ping()
+    except DockerException as exc:
+        pytest.skip(f"Docker unavailable — acceptance tests require Docker ({exc})")
+
     container = (
         DockerContainer("livekit/livekit-server:v1.11.0")
         .with_command("--dev --bind 0.0.0.0")

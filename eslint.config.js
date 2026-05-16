@@ -14,6 +14,7 @@ export default tseslint.config(
       "**/metro.config.js",
       "apps/agent/",
       "e2e/",
+      ".claude/worktrees/",
     ],
   },
 

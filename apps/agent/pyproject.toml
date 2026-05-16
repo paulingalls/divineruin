@@ -16,6 +16,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "docker>=7.1.0",
     "pillow>=12.1.1",
     "pyright>=1.1",
     "pytest>=8.0",
@@ -30,6 +31,9 @@ pythonpath = [".", "tests"]
 filterwarnings = [
     "error::RuntimeWarning",
     "error::pytest.PytestUnraisableExceptionWarning",
+]
+markers = [
+    "acceptance: requires Docker (livekit dev-server testcontainer)",
 ]
 
 [tool.ruff]
