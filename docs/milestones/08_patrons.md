@@ -6,6 +6,39 @@ Implements the divine patron system: 10 gods with 4-layer mechanical architectur
 
 ---
 
+## Audit Status (Sprint-002)
+
+Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) and shipped code. **Full audit:** `docs/milestones/audit/phase-8-patrons.md` <!-- see audit/phase-8-patrons.md -->.
+
+### Coverage matrix
+
+| Milestone | Confirmed | Aspirational | Unverified |
+| --- | --- | --- | --- |
+| M8.1 — Patron Profiles & Divine Favor (11 criteria) | 0 | 10 | 1 |
+| M8.2 — Patron Abilities by Tier (11 criteria) | 0 | 11 | 0 |
+| M8.3 — Archetype Synergies & Unbound Path (12 criteria) | 0 | 12 | 0 |
+
+**Headline:** The patron system is almost entirely aspirational. What exists today: a thin `divine_favor` numeric score (0-100) + a `patron_id` per player, plus a god-whisper voice/personality layer for the 10 deities. The 4-layer architecture (Divine Gift / Resonance Modifier / Favor Abilities / Archetype Resonance) is not encoded outside markdown. All M8.x acceptance boxes were already `[ ]` — no checkmarks to revert. Milestone-level status is **DEFERRED / NOT_STARTED**. Unbound Path is **selectable** (only mechanical step done — see M8.1 row marked `unverified`).
+
+### Material gaps
+
+- **`content/gods.json` is 60% incomplete.** 4 of 10 patrons present (veythar, kaelen, aelora, syrath). Missing 6: thyra, orenthel, valdris, mortaen, nythera, zhael. Existing 4 entries have personality + favor_actions + whisper_themes + world_state but **zero** mechanical layer fields (no `layer_1/2/3/4` keys). Roster of 10 exists in `apps/agent/creation_deities.py:DEITIES` and `god_whisper_data.py:GOD_WHISPER_PROFILES` — identity/personality recoverable, but mechanical layers need authoring from scratch. <!-- see audit/phase-8-patrons.md -->
+- **Favor model is single-integer, not tiered.** `players.data->'divine_favor'.level` is 0-100. Spec needs Acknowledged/Devoted/Exalted tier thresholds + bidirectional transitions + decay. Today `award_divine_favor(amount, reason)` only accepts positive deltas (1-10); no decay coroutine exists. <!-- see audit/phase-8-patrons.md -->
+- **Alignment evaluation is LLM-driven, not rules-engine-driven.** Spec promises `evaluate_patron_alignment(player_actions, patron_values) -> favor_delta` as deterministic. Today the LLM calls `award_divine_favor(amount, reason)` with a freeform judgement. `content/gods.json` already encodes `favor_actions.positive[]` and `favor_actions.negative[]` per patron — currently unused. <!-- see audit/phase-8-patrons.md -->
+- **No 15-30 minute simulation heartbeat for favor.** `apps/agent/async_worker.py:400` `check_god_whisper_triggers` polls FAVOR_WHISPER threshold for whispers — that's not patron alignment evaluation.
+- **Layer 4 synergy is too coarse.** `creation_deities.DeityData.synergy_classes` is a flat tuple per deity (e.g., `kaelen → (warrior, guardian, skirmisher, paladin)`) — no Natural/Divine/Unexpected categorisation, no per-pairing mechanical bonus. Needs an (11 × 18) archetype × patron matrix.
+- **Unbound Path mechanics: 1 done, 4 missing.** Selectable ✓; Veil Clarity ✗, voluntary +3 Resonance push ✗, Veil Mastery + Self-Reliance milestones ✗, universal Layer 4 +1 when alone ✗. Even constants "Self-Reliant"/"Self-Forged"/"Sovereign" appear nowhere in code.
+- **Spec hint not in milestone**: Veythar's "Post-reveal: divine filter degrades from 0.3× to 0.7×" (spec L47) describes an endgame state transition on a Layer 2 modifier. Capstone may want to flag as NEW or defer.
+
+### Cross-doc dependencies
+
+- **Patrons ↔ Magic Resonance (Phase 3) — Layer 2 modifiers — BLOCKED.** Every patron's Layer 2 modifier (Veythar +2 Flickering dice, Kaelen -1 Resonance on combat spells, Orenthel 0 Resonance on healing, etc.) requires a working Resonance system. Phase 3 is NOT_SHIPPED per `audit/phase-3-magic.md`. **M8.1 Layer 2 acceptance cannot be satisfied until Phase 3 lands.**
+- **Patrons ↔ Archetypes (Phase 2) — Layer 4 synergies — FORWARD DEP.** M8.3's archetype × patron matrix needs the 18 archetypes' canonical IDs (already in `apps/agent/rules_engine.py:30 ARCHETYPE_RESOURCE_CONFIG`) AND per-archetype detail encoding from Phase 2. Sprint-001 confirmed the 18 IDs; per-archetype technique/spell surfaces are still partial. See `audit/phase-2-archetypes.md`.
+- **Patrons ↔ Unbound Veil Mastery ↔ Hollow Echo.** Unbound's Sovereign-tier "Veil Mastery" ("treat any Hollow Echo result as Nothing stirs") requires a Hollow Echo table. Hollow Echo is implied by Phase 3.
+- **Patrons ↔ god-whisper system.** Existing god-whisper generator operates on raw `divine_favor.level` integer. Any tier restructuring (M8.1 acceptance #5) must preserve the whisper trigger — keyed off `level`, not `tier`. Within-phase consistency concern, not a blocker.
+
+---
+
 ### Milestone 8.1 — Patron Profiles & Divine Favor
 
 **Goal:** Define the 10 divine patron profiles with their 4-layer mechanical architecture and implement the divine favor tracking system that evaluates player behavior against patron values on a simulation heartbeat.

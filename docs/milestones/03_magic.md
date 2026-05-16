@@ -6,6 +6,48 @@ Implements the three-source Resonance magic system, Hollow Echo dangers, the ful
 
 ---
 
+## Audit Status (Sprint-002)
+
+Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) and shipped code. **Full audit:** `docs/milestones/audit/phase-3-magic.md` <!-- see audit/phase-3-magic.md -->.
+
+### Coverage matrix
+
+| Milestone | Confirmed | Aspirational | NOT_SHIPPED |
+| --- | --- | --- | --- |
+| M3.1 — Resonance System (8 criteria) | 0 | 0 | 8 |
+| M3.2 — Hollow Echo & Veil Wards (9 criteria) | 0 | 0 | 9 |
+| M3.3 — Spell Catalog (8 criteria) | 0 | 0 | 8 |
+| M3.4 — Concentration & Racial Resonance (9 criteria) | 0 | 0 | 9 |
+
+**Headline:** The entire Magic system M3.1-M3.4 is unshipped. No Resonance state, no spell catalog, no concentration, no racial Resonance bonuses, no Hollow Echo table, no Veil Ward mechanics exist in code. The only Resonance-adjacent references are flavor strings inside skill-ability descriptions (`apps/agent/rules_engine.py:175-200`) and one async training activity slug `spell_cantrip`. All M3.x acceptance boxes were already `[ ]` — no checkmarks to revert. Milestone-level status is **DEFERRED / NOT_STARTED**.
+
+### Material gaps
+
+- **`content/spells.json` does not exist.** Spec is internally consistent at 87 spells (Arcane 30 = 5+6+6+6+7; Divine 28 = 4+6+6+6+6; Primal 29 = 5+6+6+6+6 — match the headline at `magic.md:541`). Implementer has a well-defined data shape. <!-- see audit/phase-3-magic.md -->
+- **`request_attack(target_id, weapon_or_spell)` at `apps/agent/combat_tools.py:275` is NOT a spell-cast tool.** It accepts an arbitrary string token and looks it up in the player's inventory; no catalog validation, no Focus / Resonance / concentration interaction. Capstone explicitly does not count this toward any M3.3 bullet. <!-- see audit/phase-3-magic.md -->
+- **`RaceData` schema gap.** `apps/agent/creation_races.py:8-15` `RaceData` has only `id/name/description/card_description/attribute_bonuses` — no Resonance fields. When M3.4 ships, either extend `RaceData` or seed via a separate `racial_resonance_bonuses` content file (per the milestone). Thessyn's 10+ session counter and Vaelti's 1-round advance warning need state plumbing the character record does not currently expose. <!-- see audit/phase-3-magic.md -->
+- **Spec/milestone divergence — Draethar Inner Fire cost.** Spec (`magic.md:264`): "reduce current Resonance by 3, take 1d6 fire damage (self-inflicted, cannot be reduced), 1/encounter". Milestone deliverable text (`03_magic.md:129` original): "HP or Focus" cost. Capstone recommends tightening milestone text to match spec (fire-damage cost is more specific and aligned with the "Inner Fire" theme).
+- **Stale `gp` references in source spec.** Carried over from sprint-001 Phase 0 audit (`docs/milestones/audit/phase-0.md`). `magic.md:423` Revivify "Diamond (50 gp, consumed)" and `magic.md:432` Resurrection "Diamond (500 gp, consumed)" need migration to M0.3 economy units. These are M0.3 cleanup targets — flagged here for the spec-cleanup punch list, not edited in this story.
+- **NEW spec content not covered by any M3.x bullet** (milestone undercommits):
+  - Bard 0.4× multiplier (`magic.md:88-90`) — milestone names only Arcane/Divine/Primal.
+  - Veythar post-reveal 0.7× compromised filter (`magic.md:59, 120`) — endgame state transition; cross-doc dep with patrons.
+  - Cantrip generates 0 Resonance (`magic.md:112-113`) — early-return rule.
+  - Full Resonance reset on short or long rest (`magic.md:131`) — milestone only mentions per-round decay.
+  - Veil Fracture event at 15+ (`magic.md:134`) — narrative-scale consequence.
+  - Resonance Sensing tiers for Non-Elari via Arcana ladder (`magic.md:280-293`) — Untrained/Trained/Expert/Master.
+  - Druid preparation constraint ("only change spell preparation in natural terrain", `magic.md:458`).
+  - Veil Ward per-archetype sources table (`magic.md:204-210`) — Cleric/Druid/Artificer/Paladin/Sacred sites with distinct costs, levels, durations.
+
+### Cross-doc dependencies
+
+- **Magic ↔ Archetype spell slots** — Per-archetype source bindings (Mage/Artificer/Seeker = Arcane; Cleric/Paladin/Oracle = Divine; Druid/Beastcaller/Warden = Primal; Bard = cross-source) at `magic.md:39, 57, 86, 90` are presumed to live with archetypes. Veil Ward archetype sources at `magic.md:204-210` are the other cross-cutting dep. See `audit/phase-2-archetypes.md`.
+- **Magic ↔ Patron Layer 2 Resonance modifiers** — Veythar post-reveal 0.7× shift is the named example. Patron-driven Resonance modifications are Layer 2 patron mechanics. M3.x has no current hook for patron-side overrides — expose either a `patron_modifier` parameter on `calculate_resonance_generated` or a lookup helper. See `audit/phase-8-patrons.md`.
+- **Magic ↔ Race tables** — `creation_races.py:RACES` has no Resonance fields; M3.4 calls for a separate `racial_resonance_bonuses` table.
+- **Magic ↔ Skills (Arcana / Theology / Naturalist)** — `magic.md:280-293` defines a 4-tier Arcana sensing ladder; `apps/agent/rules_engine.py:175-200` already encodes ability narration strings, but mechanical effects aren't wired. M3.1 API shape should reserve a read-only `get_resonance_state` hook for the Arcana ladder.
+- **Magic ↔ Cost model** — Stale `gp` refs at `magic.md:423, 432` are M0.3 cleanup carry-forward.
+
+---
+
 ### Milestone 3.1 — Resonance System
 
 **Goal:** Implement the Resonance accumulation and decay system so that casting spells generates source-specific Resonance that escalates through defined states, creating a risk-reward tension for casters.

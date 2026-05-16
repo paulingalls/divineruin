@@ -6,6 +6,40 @@ Deepens character identity through 18 archetypes, ability acquisition, specializ
 
 ---
 
+## Audit Status (Sprint-002)
+
+Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (1357L) and shipped code. **Full audit:** `docs/milestones/audit/phase-2-archetypes.md` <!-- see audit/phase-2-archetypes.md -->.
+
+### Coverage matrix
+
+| Milestone | Confirmed | Partial | Aspirational | Divergent |
+| --- | --- | --- | --- | --- |
+| M2.1 — Archetype Chassis | 1 (HP scaling + creation classes) | 1 (chassis scattered across 2 modules) | 3 (DB table, content seed, `get_archetype_chassis`) | 0 |
+| M2.2 — Ability System | 0 | 1 (L4/L8 milestone markers in `LEVEL_PROGRESSION`) | 7 (both DB tables, content seed, electives, reactions, agent tool, swap logic) | 0 |
+| M2.3 — Specialization & Milestones | 1 (L5 fork flag + narrations) | 1 (narrative-only Extra Attack / capstone) | 4 (DB table, content seed, `resolve_milestone`, mobile UI) | 1 (L4 fork — Sprint-001) |
+| M2.4 — Spell Acquisition | 0 | 1 (training activity types) | 8 (both DB tables, core spells, scroll/mentor/discovery, prep rules, tier gates, 2 tools) | 1 (durations are seconds, not "cycles") |
+| M2.5 — Martial Mentor System | 0 | 1 (generic state machine + 2 mentor NPC stubs) | 6 (mentor_variants table, variant data, attribution, multi-session loop, agent integration, tests) | 0 |
+
+### Material gaps
+
+**All milestone items above are unchecked-by-default (`[ ]`). Audit confirms ZERO acceptance criteria are met in shipped code; every checkbox stays unchecked.** Key spec-vs-code findings consolidated below — full per-item evidence in `audit/phase-2-archetypes.md`:
+
+- **M2.1**: DB table, `content/archetypes.json`, `get_archetype_chassis()` are aspirational. 18 archetypes live in `apps/agent/{hp_scaling,rules_engine,creation_classes}.py` (Sprint-001 finding, still true). Stale `ClassData.hit_die` field diverges from `ARCHETYPE_HP_CONFIG` — capstone recommends dropping or documenting as cosmetic. <!-- see audit/phase-2-archetypes.md -->
+- **M2.2**: Entire ability system aspirational. Only L4/L8 milestone *markers* exist. Sprint-001 carryover: `validateSlotAvailability` Artificer dead-code exception needs reconciliation (wire or remove). <!-- see audit/phase-2-archetypes.md -->
+- **M2.3**: L5 `specialization_fork=True` flag + narration confirmed; per-archetype option pairs (Battle Master / Berserker etc.), `resolve_milestone` tool, and mobile UI all aspirational. **Do NOT re-litigate L4/L5 fork wording — Sprint-001 documented this divergence; decide reword vs extend.** <!-- see audit/phase-2-archetypes.md and audit/phase-1-characters.md -->
+- **M2.4**: Spell system aspirational. Training infra exists but uses real-time seconds, not the spec's discrete "cycles". `spell_minor` tier missing from `content/training_activity_types.json`. **NEW deliverable suggested**: per-archetype elective spell progression tables (slot+cantrip counts per level for all 13 caster/hybrid archetypes) are unimplemented and not currently named in M2.4 acceptance. <!-- see audit/phase-2-archetypes.md -->
+- **M2.5**: Mentor system aspirational. 2 mentor NPC personality stubs + generic training state machine exist but are not bound to abilities or variants. **NEW deliverables suggested**: per-variant character-sheet attribution display (spec L1339-1347); "one variant per technique, swap requires re-training" rule (spec L1354). <!-- see audit/phase-2-archetypes.md -->
+
+### Cross-doc dependencies
+
+- **M2.4 spell acquisition ↔ Phase 3 Magic** — `character_spells.spell_id` foreign key needs the Arcane/Divine/Primal catalogs from `game_mechanics_magic.md`. See `audit/phase-3-magic.md`.
+- **M2.3 L5 specialization options ↔ Phase 8 Patrons** — Cleric Domain Specialization (archetypes spec L265) and Paladin Oath Specialization (L817) are patron-driven; Oracle's "dual allegiance" (L833) is patron-system territory. See `audit/phase-8-patrons.md`.
+- **M2.5 mentors ↔ Phase 6 NPCs** — "Valid mentor NPC relationship" precondition depends on Phase 6 disposition system. Cultural attribution (Drathian Clans / Keldaran Holds / Thornwardens / Tidecallers — spec L1313) depends on Phase 5/6 region+culture content.
+- **M2.2 reaction abilities ↔ Combat phase** — Combat-window enforcement is Phase 4 territory.
+- **M2.5 ↔ Async activity system** — `apps/server/src/training_state_machine.ts` is the extension point for the multi-session mentor loop.
+
+---
+
 ### Milestone 2.1 — Archetype Chassis
 
 **Goal:** Define the 18 archetype profiles so that character creation and leveling can reference a canonical set of HP, proficiencies, saves, resources, and starting skills for each archetype.
