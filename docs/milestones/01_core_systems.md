@@ -120,9 +120,9 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Attribute increases at levels 4, 8, 12, 16, 20 (+2 points each)
 - Level-up event emitter: triggers narration events via DM agent
 - DB migration: unified progression table (level → HP gain, attribute points, milestones, spell tier access, technique slots)
-- Pure function: `calculate_level(total_xp)` → level
+- Pure function: `calculate_level(total_xp)` → level <!-- see audit/phase-1-characters.md#m1.4 — no standalone calculate_level function; workaround is check_level_up(0, total_xp, 1) -->
 - Pure function: `get_level_up_rewards(from_level, to_level)` → list of rewards and milestones
-- Agent tool: `apply_level_up(character_id)` → applies rewards, emits narration event
+- Agent tool: `apply_level_up(character_id)` → applies rewards, emits narration event <!-- see audit/phase-1-characters.md#m1.4 — no standalone @function_tool of that name; level-up rewards are emitted as a side effect of award_xp via build_level_up_payload + LEVEL_UP event publish -->
 
 **Acceptance criteria:**
 - [x] `XP_FOR_LEVEL` updated from D&D 5e values to canonical scale <!-- evidence: apps/agent/rules_engine.py:236-257 -->
@@ -156,8 +156,8 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
   - Skill practice: 5–8 hrs, Crafting: 7–11 hrs, Companion errand: 7–13 hrs
 - Midpoint decision system: player chooses direction at cycle midpoint
 - DB migration: `training_activities` table (type, target, cycle_number, first_half_duration, second_half_duration, state, decision_made, micro_bonus)
-- Agent tool: `initiate_training_cycle(character_id, activity_type, target)` → creates training record
-- Agent tool: `resolve_training_midpoint(training_id, decision)` → advances to second half
+- Agent tool: `initiate_training_cycle(character_id, activity_type, target)` → creates training record <!-- see audit/phase-1-async.md#m1.5 — no @function_tool of this name; cycle initiation is HTTP-only (POST /api/activities type=training) -->
+- Agent tool: `resolve_training_midpoint(training_id, decision)` → advances to second half <!-- see audit/phase-1-async.md#m1.5 — no @function_tool; midpoint resolution is HTTP-only (POST /api/activities/{id}/decide) -->
 - Client component: training panel with progress bar, midpoint decision prompts, completion notifications
 - Integration with skill use counters from M1.2 (skill practice increments the same counter)
 
@@ -189,8 +189,8 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Return narration scenes pre-rendered for Catch-Up feed
 - Async concurrency: 3 independent slots — Training + Crafting + Companion errand. Artificer exception: can use Training slot for crafting (2 crafting + 1 errand)
 - Errands persist in the existing `async_activities` table alongside crafting (shared schema: both are async background work returning narration + decision options)
-- Agent tool: `dispatch_companion_errand(companion_id, errand_type, destination)` → creates errand record
-- Agent tool: `resolve_companion_errand(errand_id)` → generates return narration
+- Agent tool: `dispatch_companion_errand(companion_id, errand_type, destination)` → creates errand record <!-- see audit/phase-1-async.md#m1.6 — no @function_tool; dispatch is HTTP-only (POST /api/activities type=companion_errand). DM agent cannot dispatch an errand directly -->
+- Agent tool: `resolve_companion_errand(errand_id)` → generates return narration <!-- see audit/phase-1-async.md#m1.6 — resolve_companion_errand exists as a pure function in async_rules.py:133 but is NOT exposed as a @function_tool; invoked only by the async worker -->
 - Integration with Catch-Up feed for return scene delivery
 
 **Acceptance criteria:**
