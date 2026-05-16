@@ -89,13 +89,16 @@ let purgeInterval: ReturnType<typeof setInterval> | null = setInterval(() => {
   }
 }, 5 * 60_000);
 
-let rateLimitBypass = process.env.RATE_LIMIT_BYPASS === "1";
-if (rateLimitBypass && process.env.NODE_ENV === "production") {
+// Fail fast at boot if bypass is set in production. NODE_ENV is fixed by the
+// deploy environment, so a one-time check is sufficient; RATE_LIMIT_BYPASS,
+// however, is read per-request below so env applied to a spawned process
+// (e.g. Playwright webServer.env) is honored regardless of import order.
+if (process.env.RATE_LIMIT_BYPASS === "1" && process.env.NODE_ENV === "production") {
   throw new Error("[security] RATE_LIMIT_BYPASS must not be set in production.");
 }
 
 export function checkRateLimit(ip: string, path: string): Response | null {
-  if (rateLimitBypass) return null;
+  if (process.env.RATE_LIMIT_BYPASS === "1") return null;
   const limit = RATE_LIMITS[path] ?? DEFAULT_RATE_LIMIT;
   const key = `${ip}:${path}`;
   const now = Date.now();
@@ -129,9 +132,4 @@ export function _resetRateLimits(): void {
     clearInterval(purgeInterval);
     purgeInterval = null;
   }
-}
-
-/** Toggle rate-limit bypass (for testing). */
-export function _setRateLimitBypassForTesting(value: boolean): void {
-  rateLimitBypass = value;
 }
