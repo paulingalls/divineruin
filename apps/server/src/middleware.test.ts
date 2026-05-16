@@ -4,6 +4,7 @@ import {
   withCors,
   checkRateLimit,
   _resetRateLimits,
+  _setRateLimitBypassForTesting,
   verifyInternalSecret,
   _setInternalSecretForTesting,
 } from "./middleware.ts";
@@ -104,6 +105,18 @@ describe("Rate Limiting", () => {
     _resetRateLimits();
     const result = checkRateLimit("127.0.0.1", "/api/livekit/token");
     expect(result).toBeNull();
+  });
+
+  test("bypass flag returns null even past the limit", () => {
+    _setRateLimitBypassForTesting(true);
+    try {
+      for (let i = 0; i < 50; i++) {
+        const result = checkRateLimit("127.0.0.1", "/api/auth/verify-code");
+        expect(result).toBeNull();
+      }
+    } finally {
+      _setRateLimitBypassForTesting(false);
+    }
   });
 });
 
