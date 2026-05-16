@@ -2,7 +2,7 @@
 
 Sprint-001 / Milestone 1 companion audit. Pinned versions vs upstream stable.
 
-- Audit date: 2026-05-15
+- Audit date: 2026-05-15. Snapshot — packages added to manifests after this date (e.g., `testcontainers`, `docker` landed 2026-05-16) are out of scope and not listed below.
 - Inputs read: `apps/agent/pyproject.toml` (+ `uv.lock`), `apps/server/package.json`, `apps/mobile/package.json`, root `package.json`, root `bun.lock`.
 - "Current" = version resolved by the lockfile when available; otherwise the manifest pin.
 - "Latest stable" = `info.version` from `pypi.org/pypi/<pkg>/json` or `dist-tags.latest` from `registry.npmjs.org/<pkg>/latest`.
@@ -24,9 +24,9 @@ These surface first because they either unblock other upgrades, fix a latent iss
 | `ruff` (agent) | 0.15.7 | 0.15.13 | **next sprint** | Six patch releases of lint/format fixes. May surface a few new lints — run `lint:python:fix` after bump. |
 | `pyright` (agent) | 1.1.408 | 1.1.409 | **next sprint** | Patch. Trivial. |
 | `pillow` (agent) | 12.1.1 | 12.2.0 | **next sprint** | Minor, used only for asset utilities. No API breakage expected. |
-| `livekit-client` (mobile) | 2.18.x | 2.19.0 | **next sprint** | Minor. Pair with `@livekit/react-native` 2.10.x bump below to keep client+native aligned. |
-| `@livekit/react-native` (mobile) | 2.9.6 | 2.10.3 | **next sprint** | Minor. Verify against `@livekit/react-native-webrtc` 144 (already current). |
-| `@livekit/protocol` (server) | 1.44.1 | 1.45.8 | **next sprint** | Minor — protocol additions, no breaking removals; safe with current `livekit-server-sdk` ^2.15. |
+| `livekit-client` (mobile) | ^2.18.0 | 2.19.0 | **next sprint** | Minor. Pair with `@livekit/react-native` 2.10.x bump below to keep client+native aligned. |
+| `@livekit/react-native` (mobile) | ^2.9.6 | 2.10.3 | **next sprint** | Minor. Verify against `@livekit/react-native-webrtc` 144 (already current). |
+| `@livekit/protocol` (server) | ^1.44.1 | 1.45.8 | **next sprint** | Minor — protocol additions, no breaking removals; safe with current `livekit-server-sdk` ^2.15. |
 
 ## Python (apps/agent/pyproject.toml)
 
