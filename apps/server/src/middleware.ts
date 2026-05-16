@@ -131,6 +131,7 @@ export function _resetRateLimits(): void {
   }
 }
 
+/** Toggle rate-limit bypass (for testing). */
 export function _setRateLimitBypassForTesting(value: boolean): void {
   rateLimitBypass = value;
 }
