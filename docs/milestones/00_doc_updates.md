@@ -20,10 +20,10 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 - Verify all file paths referenced in CLAUDE.md actually exist
 
 **Acceptance criteria:**
-- [x] Every file path referenced in CLAUDE.md exists on disk
-- [x] `game_mechanics/` docs are listed in the Key docs or Knowledge System section
-- [x] No phantom references to non-existent memory digest files
-- [x] Knowledge System tiers accurately reflect the doc hierarchy: CLAUDE.md → INDEX.md → docs/ and game_mechanics/
+- [x] Every file path referenced in CLAUDE.md exists on disk <!-- evidence: docs/INDEX.md, docs/cost_model.md, docs/technical_architecture.md, docs/world_data_simulation.md, docs/milestones/README.md, .env.example all present; no memory/* refs -->
+- [ ] `game_mechanics/` docs are listed in the Key docs or Knowledge System section <!-- see audit/phase-0.md#m0.1 — game_mechanics docs reachable only transitively via INDEX.md, not listed in CLAUDE.md Knowledge System section -->
+- [x] No phantom references to non-existent memory digest files <!-- evidence: grep memory/ in CLAUDE.md returns zero hits -->
+- [x] Knowledge System tiers accurately reflect the doc hierarchy: CLAUDE.md → INDEX.md → docs/ and game_mechanics/ <!-- evidence: CLAUDE.md L7-9 "Always start at docs/INDEX.md" -->
 
 **Key references:**
 - *Current CLAUDE.md — Knowledge System section (lines 8-35)*
@@ -43,10 +43,10 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 - Add `agent_handoffs_and_scenes.md` to INDEX.md if not already present
 
 **Acceptance criteria:**
-- [x] All 10 game mechanics docs have section indexes in INDEX.md
-- [x] Each index entry has accurate line ranges (verified against actual file content)
-- [x] Index entries follow the existing format: `## filename.md (~N lines)` with description and table
-- [x] `agent_handoffs_and_scenes.md` is indexed
+- [x] All 10 game mechanics docs have section indexes in INDEX.md <!-- evidence: INDEX.md L300-485 covers all 10 (plus encounter_roles as bonus) -->
+- [ ] Each index entry has accurate line ranges (verified against actual file content) <!-- see audit/phase-0.md#m0.2 — 9/10 docs match within 1 line; game_mechanics_archetypes.md ranges are ~133 lines low (file is 1357 lines, INDEX claims 1224) -->
+- [x] Index entries follow the existing format: `## filename.md (~N lines)` with description and table <!-- evidence: spot-checked at INDEX.md:300,325,343,466 -->
+- [x] `agent_handoffs_and_scenes.md` is indexed <!-- evidence: INDEX.md:278 -->
 
 **Key references:**
 - *Existing INDEX.md format (any existing entry as template)*
@@ -67,11 +67,11 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 - Add canonical price reference table to the GDD economy section or as a standalone reference
 
 **Acceptance criteria:**
-- [x] Zero instances of "gp" remain across all docs — all replaced with "gc"
-- [x] GDD economy section states 1 gc = 10 sp
-- [x] Economic anchor (1 sp = 1 day unskilled labor) is stated in the GDD
-- [x] Canonical price reference table exists with at least 14 item categories
-- [x] No contradictory currency ratios remain across docs
+- [ ] Zero instances of "gp" remain across all docs — all replaced with "gc" <!-- see audit/phase-0.md#m0.3 — 3 unintended gp refs remain: game_mechanics_magic.md:423,432 (Revivify/Resurrection diamond components, explicitly named M0.3 targets) and economy/game_mechanics_p2p_trade.md:160 -->
+- [x] GDD economy section states 1 gc = 10 sp <!-- evidence: game_design_doc.md:1065 -->
+- [x] Economic anchor (1 sp = 1 day unskilled labor) is stated in the GDD <!-- evidence: game_design_doc.md:1053,1065 -->
+- [x] Canonical price reference table exists with at least 14 item categories <!-- evidence: game_mechanics_economy.md §§Canonical Price Tables → Currency Drops from Combat (14 categories) -->
+- [ ] No contradictory currency ratios remain across docs <!-- see audit/phase-0.md#m0.3 — ratio (1 gc = 10 sp) consistent everywhere, but surviving gp refs in magic_doc create a soft notation contradiction -->
 
 **Key references:**
 - *Economy Reconciliation Doc — Currency Notation Fixes*
@@ -94,16 +94,16 @@ Bring all project documentation in sync with the 10 new game mechanics docs befo
 - Format: brief note at the top of each section, e.g., "> For detailed mechanics, see `game_mechanics/game_mechanics_combat.md`"
 
 **Acceptance criteria:**
-- [x] GDD Game Mechanics section references `game_mechanics_core.md`
-- [x] GDD Combat section references `game_mechanics_combat.md`
-- [x] GDD NPC section references `game_mechanics_npcs.md`
-- [x] GDD Async section references `game_mechanics_crafting.md` and `game_mechanics_core.md` (training)
-- [x] GDD Economy section references `game_mechanics_economy.md`
-- [x] GDD Death section references `game_mechanics_combat.md` (death system)
-- [x] Technical architecture Game Engine section references `game_mechanics/`
-- [x] World data NPC/content schemas reference `game_mechanics_npcs.md` and `game_mechanics_bestiary.md`
-- [x] Cross-references use consistent format across all docs
-- [x] No existing content is deleted — only cross-reference notes added
+- [x] GDD Game Mechanics section references `game_mechanics_core.md` <!-- evidence: game_design_doc.md:248 -->
+- [x] GDD Combat section references `game_mechanics_combat.md` <!-- evidence: game_design_doc.md:444 -->
+- [x] GDD NPC section references `game_mechanics_npcs.md` <!-- evidence: game_design_doc.md:625 -->
+- [x] GDD Async section references `game_mechanics_crafting.md` and `game_mechanics_core.md` (training) <!-- evidence: game_design_doc.md:873 -->
+- [x] GDD Economy section references `game_mechanics_economy.md` <!-- evidence: game_design_doc.md:1053 -->
+- [x] GDD Death section references `game_mechanics_combat.md` (death system) <!-- evidence: game_design_doc.md:1101 -->
+- [x] Technical architecture Game Engine section references `game_mechanics/` <!-- evidence: technical_architecture.md:1040 -->
+- [x] World data NPC/content schemas reference `game_mechanics_npcs.md` and `game_mechanics_bestiary.md` <!-- evidence: world_data_simulation.md:13; bonus mvp_spec.md:28 -->
+- [x] Cross-references use consistent format across all docs <!-- evidence: all 7 banners use `> **Detailed specification(s):** See …` pattern -->
+- [ ] No existing content is deleted — only cross-reference notes added <!-- see audit/phase-0.md#m0.4 — cannot verify positively without pre-M0.4 baseline; spot-checked sections retain original prose -->
 
 **Key references:**
 - *Game Design Doc — all mechanical sections*

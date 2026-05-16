@@ -23,13 +23,13 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Tests for every DC threshold and edge case
 
 **Acceptance criteria:**
-- [x] `resolve_check` is a pure function with no side effects or DB calls
-- [x] Modifier math matches `(attr - 10) // 2` for all attribute values 1-30
-- [x] Auto-fail triggers correctly at DC 24+ for below Expert and DC 28+ for below Master
-- [x] Proficiency bonus returns correct value for all 20 levels
-- [x] Result packet includes margin, success/fail flag, critical flag, and narrative cue
-- [x] All DC scale constants are defined and tested
-- [x] 100% test coverage on resolution logic
+- [x] `resolve_check` is a pure function with no side effects or DB calls <!-- evidence: apps/agent/check_resolution.py:117 -->
+- [x] Modifier math matches `(attr - 10) // 2` for all attribute values 1-30 <!-- evidence: apps/agent/rules_engine.py:301 attribute_modifier -->
+- [x] Auto-fail triggers correctly at DC 24+ for below Expert and DC 28+ for below Master <!-- evidence: apps/agent/check_resolution.py:106 _check_auto_fail -->
+- [x] Proficiency bonus returns correct value for all 20 levels <!-- evidence: apps/agent/rules_engine.py:136 proficiency_bonus -->
+- [x] Result packet includes margin, success/fail flag, critical flag, and narrative cue <!-- evidence: apps/agent/check_resolution.py:27 CheckResult -->
+- [x] All DC scale constants are defined and tested <!-- evidence: apps/agent/rules_engine.py:115 DC_TIERS -->
+- [x] 100% test coverage on resolution logic <!-- evidence: pytest-cov measurement (Wave 2.5) — check_resolution.py 99%, rules_engine.py 79% (gap is pool/leveling helpers). Resolution-specific 99%. See audit/phase-1-rules-engine.md#m1.1 -->
 
 **Key references:**
 - *Game Mechanics Core — d20 Resolution*
@@ -56,13 +56,13 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Pure function: `check_skill_capabilities(character_id, skill_id)` → available capabilities at current tier
 
 **Acceptance criteria:**
-- [x] All 20 skills defined with category, tier thresholds, and unlock descriptions
-- [x] `record_skill_use` increments counter and triggers tier advancement at correct thresholds
-- [x] Expert→Master requires 40 uses AND a narrative moment flag
-- [x] `check_skill_capabilities` returns correct capabilities for each tier
-- [x] Hybrid counter: both session use and Training increments share the same counter
-- [x] DB migration creates `skill_advancement` table with correct schema
-- [x] Tests cover all tier transitions including edge cases (counter at threshold - 1, at threshold)
+- [x] All 20 skills defined with category, tier thresholds, and unlock descriptions <!-- evidence: apps/agent/rules_engine.py:89 SKILLS, :147 ADVANCEMENT_THRESHOLDS, :153 SKILL_CAPABILITIES -->
+- [x] `record_skill_use` increments counter and triggers tier advancement at correct thresholds <!-- evidence: apps/agent/check_resolution.py:358 -->
+- [x] Expert→Master requires 40 uses AND a narrative moment flag <!-- evidence: apps/agent/check_resolution.py:381-389 -->
+- [x] `check_skill_capabilities` returns correct capabilities for each tier <!-- evidence: apps/agent/check_resolution.py:411 -->
+- [x] Hybrid counter: both session use and Training increments share the same counter <!-- evidence: pinned by tests/test_hybrid_counter.py (Wave 2.5); both check_tools._request_skill_check_impl and async_worker.apply_skill_practice_advancement read/write the same skill_advancement row keyed by (player_id, skill_id). See audit/phase-1-rules-engine.md#m1.2 -->
+- [x] DB migration creates `skill_advancement` table with correct schema <!-- evidence: scripts/migrations/014_skill_advancement.sql — note player_id vs spec's character_id (semantic equivalent) -->
+- [x] Tests cover all tier transitions including edge cases (counter at threshold - 1, at threshold) <!-- evidence: apps/agent/tests/test_rules_skills.py TestRecordSkillUse -->
 
 **Key references:**
 - *Game Mechanics Core — Skill Tiers*
@@ -92,13 +92,13 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Pure function: `get_narrative_state(current_pools, max_pools)` → narrative indicator string
 
 **Acceptance criteria:**
-- [x] Each archetype correctly assigned to Stamina-only, Focus-only, Focus-primary, or Split
-- [x] HP formula uses CON modifier at half-rate per level and produces correct values L1-20
-- [x] Short rest restores Stamina to full and Focus to 50%
-- [x] Long rest restores all pools to full
-- [x] Narrative state indicators trigger at correct thresholds
-- [x] Resource pool calculations are pure functions with no side effects
-- [x] Tests cover all 18 archetypes and both rest types
+- [x] Each archetype correctly assigned to Stamina-only, Focus-only, Focus-primary, or Split <!-- evidence: apps/agent/rules_engine.py:30 ARCHETYPE_RESOURCE_CONFIG (18 entries, 4 patterns); all 18 verified — see audit/phase-1-characters.md §M1.3 Archetype Patterns -->
+- [x] HP formula uses CON modifier at half-rate per level and produces correct values L1-20 <!-- evidence: apps/agent/hp_scaling.py:41 calculate_hp -->
+- [x] Short rest restores Stamina to full and Focus to 50% <!-- evidence: apps/agent/rest_mechanics.py:8 apply_short_rest -->
+- [x] Long rest restores all pools to full <!-- evidence: apps/agent/rest_mechanics.py:20 apply_long_rest -->
+- [x] Narrative state indicators trigger at correct thresholds <!-- evidence: apps/agent/fatigue_narration.py:39 get_pool_state, :53 get_pool_narrative -->
+- [x] Resource pool calculations are pure functions with no side effects <!-- evidence: apps/agent/rules_engine.py:56 _apply_pool_formula, :64 calculate_max_pools — zero IO, zero async -->
+- [x] Tests cover all 18 archetypes and both rest types <!-- evidence: apps/agent/tests/test_rules_pools.py parameterized L336-358 + test_rest_mechanics.py -->
 
 **Key references:**
 - *Game Mechanics Core — Resource Pools*
@@ -125,14 +125,14 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Agent tool: `apply_level_up(character_id)` → applies rewards, emits narration event
 
 **Acceptance criteria:**
-- [x] `XP_FOR_LEVEL` updated from D&D 5e values to canonical scale
-- [x] XP thresholds produce correct levels for all 20 levels
-- [x] Attribute increase events fire at levels 4, 8, 12, 16, 20 with +2 points each
-- [x] Specialization fork at L4/L5 is flagged in level-up rewards
-- [x] Unified progression table covers all 20 levels with correct HP gains, attribute points, and milestones
-- [x] Level-up triggers a narration event that the DM agent can consume
-- [x] DB migration creates progression table with correct schema
-- [x] Tests cover level boundaries, multi-level jumps, and milestone triggers
+- [x] `XP_FOR_LEVEL` updated from D&D 5e values to canonical scale <!-- evidence: apps/agent/rules_engine.py:236-257 -->
+- [x] XP thresholds produce correct levels for all 20 levels <!-- evidence: apps/agent/rules_engine.py:274 check_level_up; note: no standalone calculate_level(total_xp), use check_level_up(0, total_xp, 1) — see audit/phase-1-characters.md -->
+- [x] Attribute increase events fire at levels 4, 8, 12, 16, 20 with +2 points each <!-- evidence: apps/agent/rules_engine.py:260 ATTRIBUTE_INCREASE_LEVELS, apps/agent/leveling.py:48 LEVEL_PROGRESSION -->
+- [ ] Specialization fork at L4/L5 is flagged in level-up rewards <!-- see audit/phase-1-characters.md#m1.4 — only L5 carries specialization_fork=True; L4 emits elective_techniques milestone but is NOT flagged as a fork. Diverges from spec wording -->
+- [ ] Unified progression table covers all 20 levels with correct HP gains, attribute points, and milestones <!-- see audit/phase-1-characters.md#m1.4 — LEVEL_PROGRESSION unifies attribute_points + milestones + proficiency + fork; HP gain lives separately in apps/agent/hp_scaling.py ARCHETYPE_HP_CONFIG. Acceptance text names HP as a unified-table field but it's split -->
+- [x] Level-up triggers a narration event that the DM agent can consume <!-- evidence: apps/agent/event_types.py:30 LEVEL_UP; apps/agent/progression_tools.py:88 publish; :325 get_milestone_narration. Note: no standalone apply_level_up agent tool — emitted by award_xp/complete_quest paths. See audit/phase-1-characters.md -->
+- [x] DB migration creates progression table with correct schema <!-- evidence: scripts/migrations/015_progression_table.sql + content/level_progression.json -->
+- [x] Tests cover level boundaries, multi-level jumps, and milestone triggers <!-- evidence: apps/agent/tests/test_rules_leveling.py + test_leveling.py -->
 
 **Key references:**
 - *Game Mechanics Core — Experience & Leveling*
@@ -162,13 +162,13 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Integration with skill use counters from M1.2 (skill practice increments the same counter)
 
 **Acceptance criteria:**
-- [x] Training cycle advances through all states: initiated → first_half → midpoint → second_half → complete
-- [x] Each activity type has defined duration ranges and micro-bonus options
-- [x] Midpoint decision is mandatory — cycle cannot advance without it
-- [x] Skill practice training increments the same use counter as session use (M1.2 hybrid advancement)
-- [x] DB migration creates `training_activities` table with correct schema
-- [x] Client training panel shows progress, prompts midpoint decisions, and notifies on completion
-- [x] Tests cover full cycle for each activity type, including midpoint decision branches
+- [x] Training cycle advances through all states: initiated → first_half → midpoint → second_half → complete <!-- evidence: apps/agent/training_rules.py:32 TrainingState; apps/agent/async_worker.py:222 advance_training_cycles -->
+- [x] Each activity type has defined duration ranges and micro-bonus options <!-- evidence: 8 types in apps/agent/training_rules.py:21 TrainingActivityType; loaded from training_activity_types JSONB (training_rules.py:152); seed scripts/migrations/017_training_content.sql -->
+- [x] Midpoint decision is mandatory — cycle cannot advance without it <!-- evidence: awaiting_decision is terminal in async_worker (never auto-advances); resolve_midpoint_decision raises ValueError on invalid id -->
+- [x] Skill practice training increments the same use counter as session use (M1.2 hybrid advancement) <!-- evidence: apps/agent/async_worker.apply_skill_practice_advancement (Wave 2.5 extraction); pinned by apps/agent/tests/test_hybrid_counter.py -->
+- [x] DB migration creates `training_activities` table with correct schema <!-- evidence: scripts/migrations/016_training_activities.sql — note: behavioral fields flattened into data JSONB rather than typed columns the spec named (semantically equivalent) -->
+- [x] Client training panel shows progress, prompts midpoint decisions, and notifies on completion <!-- evidence: delivered as feed integration (apps/server/src/catchup.ts:144 trainingToFeedItem) + activity-launcher.tsx + push notifications. NOT a stand-alone panel; reads via Catch-Up feed. See audit/phase-1-async.md -->
+- [x] Tests cover full cycle for each activity type, including midpoint decision branches <!-- evidence: apps/agent/tests/test_training_integration.py, test_training_rules.py, test_async_worker.py -->
 
 **Key references:**
 - *Game Mechanics Core — Async Training System*
@@ -194,13 +194,13 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - Integration with Catch-Up feed for return scene delivery
 
 **Acceptance criteria:**
-- [x] All 4 errand types defined with duration ranges, risk levels, and possible outcomes
-- [x] Risk-based return produces correct outcome distribution per risk level
-- [x] Return narration is pre-rendered and stored for Catch-Up feed delivery
-- [x] Concurrency enforced: 3 independent slots (Training + Crafting + Companion). Artificer can craft in Training slot
-- [x] Cannot dispatch errand if companion errand slot is full
-- [x] Errands persist in `async_activities` (shared with crafting — no separate table)
-- [x] Tests cover all errand types, risk outcomes, and concurrency limits
+- [ ] All 4 errand types defined with duration ranges, risk levels, and possible outcomes <!-- see audit/phase-1-async.md#m1.6 — types + outcomes defined (apps/server/src/activity_templates.ts:153 ERRAND_TEMPLATES), but ALL 4 shipped duration ranges diverge from spec (scout 2-4 vs spec 4-8; social 1-3 vs 3-6; acquire 2-4 vs 4-10; relationship 3-6 vs 2-4). Compound check fails on durations -->
+- [ ] Risk-based return produces correct outcome distribution per risk level <!-- see audit/phase-1-async.md#m1.6 — apps/server/src/errand_risk.ts:24 ERRAND_RISK_TABLE only populates `scout` at spec values; `acquire` reduced; `social`/`relationship` always 0/0. Spec's per-danger-level percentages NOT applied across all errands -->
+- [x] Return narration is pre-rendered and stored for Catch-Up feed delivery <!-- evidence: apps/agent/async_worker.py resolves errands offline (resolve_companion_errand:100), writes narration_text/summary/audio_url; catchup.ts:190 activityToFeedItem -->
+- [ ] Concurrency enforced: 3 independent slots (Training + Crafting + Companion). Artificer can craft in Training slot <!-- see audit/phase-1-async.md#m1.6 — 3-slot cap is enforced (slot_validation.ts:37). BUT the Artificer exception is DEAD CODE: validator accepts archetype + hasPortableLab params and is unit-tested, but both call sites in activities.ts (L87, L200) pass neither. A live Artificer with Portable Lab cannot benefit from the exception -->
+- [x] Cannot dispatch errand if companion errand slot is full <!-- evidence: apps/server/src/slot_validation.ts:61 + activities.ts:202 (400 on validation failure) -->
+- [x] Errands persist in `async_activities` (shared with crafting — no separate table) <!-- evidence: apps/server/src/activities.ts:244; schema scripts/migrations/005_async_activities.sql. Training uses separate training_activities (mig 016) — by design -->
+- [x] Tests cover all errand types, risk outcomes, and concurrency limits <!-- evidence: apps/agent/tests/test_errand_integration.py, test_async_e2e.py, apps/server/src/errand_risk.test.ts, slot_validation.test.ts -->
 
 **Key references:**
 - *Game Mechanics Core — Companion Errands*
