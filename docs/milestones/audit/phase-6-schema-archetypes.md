@@ -87,8 +87,8 @@ The 12 archetypes enumerated in 06_npcs.md M6.1 L16-23, with Merchant expanded t
 Content / data gaps that block M6.1 from leaving DESIGNED/NOT_SHIPPED state:
 
 1. **`content/role_archetypes.json`** — does not exist. Spec defines 12 (plus 2 NEW — Quest Giver function-overlay and Shipwright role) archetypes with per-archetype combat stats, services, inventory pool, knowledge domains, disposition baseline, and per-subtype Merchant data. None seeded.
-2. **`role_archetypes` DB table** — no migration creates it. The 17 shipped migrations cover initial schema, indexes, async activities, auth, push tokens, world news, scenes, training, progression — no archetype store.
-3. **`npc_stat_blocks` DB table** — no migration creates it. Generic `npcs (id, data JSONB)` table from migration 001 is the only NPC store; CreatureStatBlock base type referenced by spec (npcs.md:18) is also unshipped (Phase 7 surface).
+2. **`role_archetypes` DB table** — no migration creates it. Migrations inventory (`ls scripts/migrations/`): `001_initial_schema`, `002_add_indexes`, `003_player_map_progress`, `004_auth_tables`, `005_async_activities`, `006_world_news`, `007_push_tokens`, `008_add_foreign_keys`, `009_god_whispers`, `010_generated_assets`, `011_auth_code_attempts`, `012_story_moments`, `013_scenes_table`, `014_skill_advancement`, `015_progression_table`, `016_training_activities`, `017_training_content`. None reference archetypes.
+3. **`npc_stat_blocks` DB table** — no migration creates it (same 17-file inventory above). Generic `npcs (id, data JSONB)` table from migration 001 is the only NPC store; CreatureStatBlock base type referenced by spec (npcs.md:18) is also unshipped (Phase 7 surface).
 4. **`content/npcs.json` schema-expansion** — 14 legacy entries need `services`, `price_modifier`, `mentor`, `role_archetype` fields backfilled (some may be `null`/`None` for non-economic NPCs). No Tier-2 entries.
 5. **Combat stat blocks for Guard / Soldier / Assassin / Mage / Priest / Blacksmith (Militia) / Innkeeper bouncer (Guard)** — all reference combat data that lives in a CreatureStatBlock shape (`game_mechanics_bestiary.md`, Phase 7). M6.1 archetype templates cannot land complete combat-stat coverage until Phase 7's creature schema lands.
 6. **Pricing tables** (Lodging, Healing, Research, Commission) — embedded in spec, not seeded as queryable data. Either become per-archetype `services[]` entries or live as a separate `pricing_tables.json`; design unspecified.
@@ -112,3 +112,31 @@ Content / data gaps that block M6.1 from leaving DESIGNED/NOT_SHIPPED state:
 - **`temple_warden_selene` role** in `content/npcs.json` is `"temple row representative, divine liaison"` — narrative description, not a structured archetype role. Once M6.1 ships, existing NPCs should bind to archetype IDs (`role_archetype: "healer_temple"`) and keep narrative role strings as `role` (display field).
 - **`grimjaw_blacksmith`** entry exists in BOTH `content/npcs.json` (full NPC) AND `apps/agent/activity_templates.py:5-11` CRAFTING_NPCS (narration shim). When M6.1 ships, the narration shim should derive its data from the NPC record + archetype template, not duplicate it. Append to audit/README Sprint-spec-cleanup punch-list.
 - **`apps/agent/activity_templates.py` TRAINING_MENTORS and CRAFTING_NPCS dicts** carry archetype-like narration metadata (`personality`, `speech_style`, `voice_id`) but at the NPC level, not the archetype level. M6.3 mentor-registry work will overlap — coordinate the consolidation when both M6.1 and M6.3 land.
+
+**Hand-off:** every bullet above is consumed by story-005 (sprint-005 capstone), which adds the Sprint-005 section + Sprint-spec-cleanup punch list to `docs/milestones/audit/README.md` per sprint.json's story-005 `file_domain`. This audit file is the source-of-truth for capstone consolidation.
+
+## Verification reproducibility
+
+The NOT_SHIPPED claims above rest on negative-grep evidence. Re-run these from the repo root to verify the audit didn't go stale (run as of commit b33a50d / migrations 001-017):
+
+```bash
+# 1. No archetype instantiator anywhere
+grep -rn 'create_npc_from_archetype\|from_archetype\|role_archetype' apps/ packages/
+
+# 2. No archetype tables in migrations
+grep -l 'npc_stat_blocks\|role_archetypes' scripts/migrations/*.sql
+
+# 3. Schema-expansion fields absent from TS interface
+grep -nE '\b(services|price_modifier|mentor|role_archetype)\b' packages/shared/src/entities/npc.ts
+
+# 4. No Tier-2 (template-generated) NPCs in seed data
+grep '"tier": 2' content/npcs.json
+
+# 5. No Merchant role in any seeded NPC
+python3 -c "import json; print([e['role'] for e in json.load(open('content/npcs.json')) if 'merchant' in e['role'].lower()])"
+
+# 6. No Python NPCStatBlock class
+grep -n 'class NPCStatBlock\|class NpcStatBlock' apps/agent/*.py
+```
+
+Each command exits with empty / 0-result output as of this audit. A non-empty result means a downstream story (or the M6.1 implementation) has landed code that this audit's NOT_SHIPPED verdicts should be re-evaluated against.
