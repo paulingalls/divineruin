@@ -178,6 +178,32 @@ See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
 - *Game Mechanics Crafting — Experimentation*
 - *Game Mechanics Crafting — Bonus Properties & Flaws*
 
+### Audit Status (Sprint-004)
+
+<!-- see audit/phase-5-quality.md -->
+
+**Status: DEFERRED / NOT_STARTED.** The 4-tier spec quality model (`Exceptional` at DC+10 / `Success` at DC / `Partial` at DC-5..DC-1 / `Failure` below DC-5) and the Experimentation system are unshipped. `async_rules.resolve_crafting()` at `apps/agent/async_rules.py:34-129` returns a 4-tier outcome (`success` / `partial` / `unexpected` / `failure`) but the band thresholds diverge: code's `success` fires at `margin>=5` OR `d20==20`, lumping spec's Exceptional and Success together; code's `unexpected` has no spec mapping; code returns half the materials on failure (spec: "materials consumed, nothing produced"). No per-category bonus-property or flaw tables. No `apply_quality_outcome`, `resolve_experimentation`, or `experiment_with_materials` symbols. No `known_recipes` table to receive the experimentation "teaches the recipe" mutation.
+
+| Section | BUILT | DESIGNED | NOT_SHIPPED |
+| --- | --- | --- | --- |
+| M5.3 — Quality Outcomes & Experimentation (10) | 0 | 4 | 6 |
+
+**Material gaps:**
+- Per-category bonus-property and flaw tables — do not exist; spec names the shape but the implementer must author the per-category content (weapons/armor/consumables/tools/ammunition/enchantments).
+- `known_recipes` / `player_known_recipes` table — does not exist (gated by M5.1).
+- No tracked "failed combination" memory; spec says repeat experiments with the same materials should not retry.
+- Hidden Crafting skill counter (spec's `+1 on failure` consolation reward) has no destination.
+
+**Cross-doc deps:**
+- M5.3 ↔ M5.2 (intra-Phase-5): quality bands consumed by the M5.2 resolver; when M5.3 ships, `async_rules.resolve_crafting` must re-align to spec bands.
+- M5.3 → M5.1 (intra-Phase-5): Experimentation's "teaches the recipe" side effect writes to `player_known_recipes` (M5.1 deliverable).
+- M5.3 ↔ M5.4 (intra-Phase-5): Master tier's Masterwork declaration triggered here, gated by M5.4 catalog work.
+- M5.3 → `game_mechanics_archetypes.md` Artificer: Tool Expertise + safe Hollow-material handling cross-references Phase 2.
+
+**Spec/milestone conflict to record:** `async_rules.resolve_crafting` returns half materials on Failure (`async_rules.py:84-86`); spec at `game_mechanics_crafting.md:106` is explicit "Materials consumed. Nothing produced." Tracked in `audit/README.md` Sprint-spec-cleanup.
+
+See `audit/phase-5-quality.md` for the full coverage matrix.
+
 ---
 
 ### Milestone 5.4 — Durability & Item Catalog
