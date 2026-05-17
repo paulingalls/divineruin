@@ -6,7 +6,11 @@ const CI = !!process.env.CI;
 export default defineConfig({
   testDir: "./specs",
   testMatch: "*.e2e.ts",
-  fullyParallel: false,
+  // Distribute tests across workers (not just files). Safe because the
+  // testUser fixture is worker-scoped (each worker gets its own account, see
+  // e2e/fixtures/auth.ts ~L131), and Playwright still runs tests serially
+  // within a worker — so worker-shared state isn't concurrent-mutated.
+  fullyParallel: true,
   // workers=4 was previously 429-failing because middleware latched
   // RATE_LIMIT_BYPASS at import time before Playwright's webServer.env
   // applied. Now that checkRateLimit re-reads the env per request

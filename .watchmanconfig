@@ -1,16 +1,19 @@
 {
   "ignore_dirs": [
     ".git",
-    "apps/agent/.venv",
-    "apps/agent/__pycache__",
-    "apps/agent/.pytest_cache",
-    "apps/agent/tests/__pycache__",
+    ".idea",
+    ".claude",
+    "memory",
+    "test-results",
+    "apps/agent",
+    "apps/server",
     "apps/mobile/ios/Pods",
     "apps/mobile/ios/build",
-    "e2e/node_modules",
-    "e2e/test-results",
-    "e2e/playwright-report",
-    "test-results",
-    ".idea"
+    "assets",
+    "content",
+    "docs",
+    "e2e",
+    "playtest",
+    "scripts"
   ]
 }

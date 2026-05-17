@@ -10,32 +10,96 @@ EXTERNAL_API_VARS=(
   INWORLD_API_KEY INWORLD_WORKSPACE_ID
 )
 
-echo "Running pre-push test suite..."
+# BASH_TEST=1 stubs the git diff source (env var instead of `git`) and the
+# heavy test runners (single `echo TESTS_RAN` marker). Used by the harness
+# at .githooks/test-pre-push.sh — see that file for the contract.
+if [ "${BASH_TEST:-}" = "1" ]; then
+  _get_diff() { printf '%s\n' "${BASH_TEST_DIFF:-}"; }
+  _run_tests() { echo "TESTS_RAN"; }
+else
+  _get_diff() { git diff --name-only "$1" "$2"; }
+  _run_tests() {
+    echo "Running pre-push test suite..."
 
-# TypeScript tests — clean env for external services
-echo "  Bun tests (server, clean env)..."
-(
-  for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done
-  bun test --cwd apps/server
-)
+    # Validate the hook's own docs-only-skip logic before relying on it.
+    # The harness uses BASH_TEST=1 in sub-shells, so it can't recurse here.
+    echo "  Pre-push hook self-test..."
+    bash "$(dirname "$0")/test-pre-push.sh"
 
-echo "  Bun tests (mobile)..."
-bun test --cwd apps/mobile
+    echo "  Bun tests (server, clean env)..."
+    (
+      for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done
+      bun test --cwd apps/server
+    )
 
-# Python tests — also strip DATABASE_URL/REDIS_URL since agent tests
-# are pure unit tests with no service containers.
-echo "  Python tests (agent, clean env)..."
-(
-  for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done
-  unset DATABASE_URL REDIS_URL
-  bun run test:python
-)
+    echo "  Bun tests (mobile)..."
+    bun test --cwd apps/mobile
 
-# E2E tests — run locally with Playwright (fast: ~80s).
-# Requires local Postgres + Redis. Playwright starts API + Expo servers
-# automatically via webServer config (reuses existing if already running).
-# CI uses Docker via act; local dev runs directly for speed.
-echo "  E2E tests (local Playwright)..."
-cd e2e && bunx playwright test --reporter=list && cd ..
+    echo "  Python tests (agent, clean env)..."
+    (
+      for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done
+      unset DATABASE_URL REDIS_URL
+      bun run test:python
+    )
 
-echo "All tests passed."
+    # E2E tests — run locally with Playwright (fast: ~80s).
+    # Requires local Postgres + Redis. Playwright starts API + Expo servers
+    # automatically via webServer config (reuses existing if already running).
+    # CI uses Docker via act; local dev runs directly for speed.
+    echo "  E2E tests (local Playwright)..."
+    (cd e2e && bunx playwright test --reporter=list)
+
+    echo "All tests passed."
+  }
+fi
+
+# --- Docs-only short-circuit ---
+# Read pushed-ref list from stdin (pre-push hook protocol: one line per ref
+# as `local_ref local_sha remote_ref remote_sha`) and skip the test suite
+# when every changed file matches a docs-only pattern. Any error → fall
+# through to the full suite (fail-safe).
+ZERO_SHA="0000000000000000000000000000000000000000"
+DOCS_ONLY=true
+CHANGED=""
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ -z "${local_sha:-}" ] || [ "${local_sha}" = "${ZERO_SHA}" ]; then
+    continue  # branch deletion or empty line
+  fi
+  if [ "${remote_sha:-}" = "${ZERO_SHA}" ] || [ -z "${remote_sha:-}" ]; then
+    # New branch: diff against the merge-base with origin/main.
+    if ! BASE=$(git merge-base "${local_sha}" origin/main 2>/dev/null); then
+      DOCS_ONLY=false
+      break
+    fi
+  else
+    BASE="${remote_sha}"
+  fi
+  if ! REF_CHANGED=$(_get_diff "${BASE}" "${local_sha}"); then
+    DOCS_ONLY=false
+    break
+  fi
+  CHANGED="${CHANGED}${CHANGED:+$'\n'}${REF_CHANGED}"
+done
+
+# Empty stdin (no refs to consider) → run tests (safe fallback).
+if [ -z "$CHANGED" ]; then
+  DOCS_ONLY=false
+fi
+
+if [ "$DOCS_ONLY" = true ]; then
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    case "$f" in
+      *.md|docs/*|.claude/*|memory/*) ;;
+      *) DOCS_ONLY=false; break ;;
+    esac
+  done <<< "$CHANGED"
+fi
+
+if [ "$DOCS_ONLY" = true ]; then
+  echo "Docs-only push — skipping test suites."
+  exit 0
+fi
+
+_run_tests
