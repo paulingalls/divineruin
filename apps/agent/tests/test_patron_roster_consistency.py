@@ -103,6 +103,7 @@ def test_gods_json_does_not_contain_unbound_entry():
 
 def test_load_deities_rejects_none_god_id_in_gods_json(tmp_path, monkeypatch):
     """If a future change adds god_id='none' to gods.json, _load_deities raises."""
+    import _gods_content
     import creation_deities as cd
 
     poisoned = [
@@ -119,10 +120,14 @@ def test_load_deities_rejects_none_god_id_in_gods_json(tmp_path, monkeypatch):
     ]
     poisoned_path = tmp_path / "gods.json"
     poisoned_path.write_text(json.dumps(poisoned))
-    monkeypatch.setattr(cd, "_GODS_JSON_PATH", poisoned_path)
-
-    with pytest.raises(ValueError, match="god_id='none'"):
-        cd._load_deities()
+    monkeypatch.setattr(_gods_content, "_GODS_JSON_PATH", poisoned_path)
+    _gods_content.load_gods.cache_clear()
+    try:
+        with pytest.raises(ValueError, match="god_id='none'"):
+            cd._load_deities()
+    finally:
+        # monkeypatch reverts the path, but the cached poisoned value would leak.
+        _gods_content.load_gods.cache_clear()
 
 
 def test_layer_2_through_4_placeholders_exist_and_are_null():
