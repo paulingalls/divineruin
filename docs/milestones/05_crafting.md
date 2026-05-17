@@ -44,6 +44,31 @@ Implements the full crafting pipeline from recipe acquisition through workspace 
 - *Game Mechanics Crafting — Recipe Acquisition Tracks*
 - *Game Mechanics Crafting — Material Requirements & Substitution*
 
+### Audit Status (Sprint-004)
+
+<!-- see audit/phase-5-recipes-resolution.md -->
+
+**Status: DEFERRED / NOT_STARTED.** Full M5.1 pipeline (recipe slots, three-track acquisition, materials catalog) is unshipped. What exists: a 4-recipe TS-source-of-truth map in `apps/server/src/activity_templates.ts:94-130` (`iron_sword`, `healing_poultice`, `ward_stone`, `reinforced_shield`) with a minimal `CraftingRecipe` interface missing 11 of 13 spec fields; bare item-id string-arrays for materials; zero crafting-related DB migrations; no `content/recipes.json` (4 of 70+ target entries ≈ 5%); 1 of ~40 spec material types present in `content/items.json`.
+
+| Section | BUILT | DESIGNED | NOT_SHIPPED |
+| --- | --- | --- | --- |
+| M5.1 — Recipe & Material System (10) | 0 | 2 | 8 |
+
+**Material gaps:**
+- `content/recipes.json` does not exist; 4 server-side recipes ≈ 5% of 70+ target.
+- `content/materials_catalog.json` (or migration-seeded table) does not exist; 1 of ~40 spec material types present in `content/items.json`.
+- `recipe_slots`, `player_known_recipes`, `materials_catalog` tables — none of 17 migrations create them.
+- No schematic item type (`type: "schematic"` count = 0); Discovery acquisition track cannot fire.
+
+**Cross-doc deps:**
+- M5.1 → Phase 1 M1.2 (skill tiers): slot capacity and tier gating read player Crafting tier (registered at `apps/agent/rules_engine.py:102`).
+- M5.1 → Phase 1 M1.5 (async training): the Training acquisition track consumes async cycles via `content/training_activity_types.json:recipe_study`; per-tier cycle-cost mapping is the M5.1 adapter.
+- M5.1 → M5.4 catalog: recipes name material ids that must resolve against the items catalog.
+
+**Spec/milestone conflict to record:** Untrained recipe slots — milestone bullet says "Untrained: 0"; spec at `game_mechanics_crafting.md:158` says "Untrained 3". Tracked in `audit/README.md` Sprint-spec-cleanup.
+
+See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
+
 ---
 
 ### Milestone 5.2 — Workspace & Crafting Resolution
@@ -89,6 +114,31 @@ Implements the full crafting pipeline from recipe acquisition through workspace 
 - *Game Mechanics Crafting — Workspace Types & Access*
 - *Game Mechanics Crafting — Three-Check Resolution*
 - *Game Mechanics Crafting — NPC Rental Costs*
+
+### Audit Status (Sprint-004)
+
+<!-- see audit/phase-5-recipes-resolution.md -->
+
+**Status: DEFERRED / NOT_STARTED.** No `Workspace` enum, no workspace types, no rental cost table, no three-check gate. `async_rules.resolve_crafting()` at `apps/agent/async_rules.py:34-129` runs the d20 skill roll with no pre-flight checks — server-side validation at `apps/server/src/activities.ts:137-146` is recipe-id existence only. Roll formula `d20 + skill_modifier vs dc` matches spec; `async_rules.resolve_crafting` falls back to `"arcana"` when no skill is named (`async_rules.py:47`, spec calls for `"crafting"`). The 4 shipped recipes use mixed skills (`athletics`, `medicine`, `arcana`); 0 of the 4 use the registered `"crafting"` skill.
+
+| Section | BUILT | DESIGNED | NOT_SHIPPED |
+| --- | --- | --- | --- |
+| M5.2 — Workspace & Crafting Resolution (11) | 0 | 2 | 9 |
+
+**Material gaps:**
+- No `Workspace` enum, `workspace_required` field, or per-tier workspace-vs-recipe gate.
+- No `workspace_rentals` migration; cannot track active rentals or daily costs.
+- No rental cost table (2sp/5sp/10sp/12sp values absent from code and content).
+
+**Cross-doc deps:**
+- M5.2 → existing NPC disposition system: rental gating reads NPC disposition (state exists; rental-price-modifier function is the M5.2 add).
+- M5.2 → Phase 6 NPCs / settlement templates: Settlement Workspace Availability matrix requires settlement-size inspection.
+- M5.2 → M5.4 (intra-Phase-5): Artificer Portable Lab is itself a Master-tier recipe in the catalog; workspace-type abstraction must exist for the item to grant it.
+- M5.2 → M5.3 (intra-Phase-5): quality bands consumed by the resolver; when M5.3 ships, the M5.2 resolver must re-align to spec bands.
+
+**Spec/milestone conflict to record:** Rental disposition modifiers — milestone bullet says "discount for friendly, surcharge for hostile"; spec at `game_mechanics_crafting.md:204-207` gates rental at neutral-or-better (refusal at unfriendly, no surcharge defined). Tracked in `audit/README.md` Sprint-spec-cleanup.
+
+See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
 
 ---
 
