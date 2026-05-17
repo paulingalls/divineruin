@@ -61,8 +61,8 @@ Builds the NPC mechanical layer: stat block schemas, settlement population templ
 - M6.1 → Phase 9 Economy: `price_modifier` and per-Merchant-subtype price ranges feed Phase 9's faction-rep pricing engine.
 
 **Spec/milestone conflicts to record:**
-- **Quest Giver** archetype (gm_npcs L190-206) is NEW vs milestone's 12 — spec explicitly notes "Not a standalone role." Treat as `quest_giver?: bool` flag or function overlay. Tracked in `audit/README.md` Sprint-spec-cleanup.
-- **Shipwright** archetype (gm_npcs L370-375) is NEW vs milestone's 12 — milestone undercounts by 1. Tracked in `audit/README.md` Sprint-spec-cleanup.
+- **Quest Giver** archetype (gm_npcs L190-206) is NEW vs milestone's 12 — spec explicitly notes "Not a standalone role." Treat as `quest_giver?: bool` flag or function overlay. Tracked in `audit/README.md` Sprint-005 capstone annotations.
+- **Shipwright** archetype (gm_npcs L370-375) is NEW vs milestone's 12 — milestone undercounts by 1. Tracked in `audit/README.md` Sprint-005 capstone annotations.
 
 See `audit/phase-6-schema-archetypes.md` for the full coverage matrix.
 
