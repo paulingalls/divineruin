@@ -21,6 +21,11 @@ else
   _run_tests() {
     echo "Running pre-push test suite..."
 
+    # Validate the hook's own docs-only-skip logic before relying on it.
+    # The harness uses BASH_TEST=1 in sub-shells, so it can't recurse here.
+    echo "  Pre-push hook self-test..."
+    bash "$(dirname "$0")/test-pre-push.sh"
+
     echo "  Bun tests (server, clean env)..."
     (
       for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done
