@@ -57,7 +57,7 @@ Object storage solves all five at once. LFS would solve only the first.
 
 | Path | Consumer | Current backend | Reference |
 |---|---|---|---|
-| `assets/images/locations/<id>.png` | `LocationArtEntry.bundled` via `require()` | Metro bundler — packaged into Expo build | `apps/mobile/src/constants/location-art-registry.ts:13-25` |
+| `assets/images/locations/<id>.png` | `LocationArtEntry.bundled` via `require()` | Metro bundler — packaged into Expo build | `apps/mobile/src/constants/location-art-registry.ts` (type at L7-10, registry map from L13) |
 | `assets/images/marketing/*.png` | Marketing/onboarding screens (TBD) | Metro bundler | (audit during execution plan) |
 | `assets/sounds/*.mp3` | `sound-registry.ts`, `music-registry.ts`, `soundscape-registry.ts` | Metro bundler | `apps/mobile/src/audio/*.ts` |
 | `assets/images/{icon,splash,favicon,grain,android-icon-*}.png` | OS app shell | Metro / Expo build manifest | `app.json` |
