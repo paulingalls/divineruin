@@ -8,11 +8,11 @@ Sprint-005 / Milestone 5 (story-004). Read-only audit of `docs/milestones/06_npc
 | --- | --- | --- | --- |
 | M6.4 — Companion Profiles, Scaling, Relationship (9 acceptance items) | 1 | 3 | 5 |
 | Companion profile coverage (4 archetype rows) | 0 | 1 | 3 |
-| Relationship tier coverage (5 named tiers) | 0 | 0 | 5 |
+| Relationship tier coverage (5 named tiers — orthogonal view, see disclaimer below table) | 0 | 0 | 5 |
 | Generation surfaces (4 functions/tables) | 0 | 0 | 4 |
 | Hostile encounter templates (4 rows; cross-ref story-002) | 0 | 0 | 4 |
 
-**Headline finding:** M6.4 is the richest partial-implementation surface in sprint-005. **One acceptance bullet is genuinely BUILT** (negative-condition: "Relationship tier does NOT affect combat stats" — combat code reads `combat_stats` from content, independent of `CompanionState.relationship_tier`). **Three are DESIGNED** (4-archetype-profile coverage — Kael ships partial in `content/npcs.json:147-223`; 5-relationship-tier coverage — int tracker in `apps/agent/session_data.py:22` + system-prompt display in `apps/agent/warm_prompts.py:180`; companion-stat-block-validates-as-NPC — Kael's entry uses the NPC schema, but only because M6.4 fields aren't there to validate per story-001 finding). **Five are NOT_SHIPPED** (per-companion ability count, HP scaling function, hostile encounter integration, scaling+transition tests, `content/companions.json`).
+**Headline finding:** M6.4 is the richest partial-implementation surface in sprint-005. **One acceptance bullet is genuinely BUILT** — bullet 5, "Relationship tier does NOT affect combat stats or ability availability" — a negative-condition acceptance honored by absence of coupling code in combat surfaces. **Three are DESIGNED**: bullet 1 (4 companion combat profiles — Kael partial in `content/npcs.json:147-223`, Lira/Tam/Sable narration shims only), bullet 4 (5 relationship tiers — int tracker at `apps/agent/session_data.py:22` + system-prompt display at `apps/agent/warm_prompts.py:180` + errand bonus at `apps/agent/async_rules.py:143-147`; named-tier semantics + narrative gates absent), bullet 7 (companion stat blocks validate-as-NPC — Kael's entry uses the NPC schema, but only because the M6.4 ability-bucket fields aren't there to validate per story-001 finding). **Five are NOT_SHIPPED**: bullets 2, 3, 6, 8, 9 (per-companion typed ability count, HP scaling function, hostile encounter integration, scaling+tier tests, `content/companions.json`).
 
 What ships beyond what the milestone enumerates: `CompanionState` dataclass with `is_present/is_conscious/emotional_state/relationship_tier/session_memories/last_speech_time` (`apps/agent/session_data.py:15-24`); companion-in-combat as a `CombatParticipant` (`apps/agent/combat_init.py` + tests at `apps/agent/tests/test_companion.py:471-505`); idle-speech LLM generation (`apps/agent/companion_idle.py`); 4 narration shims in `apps/agent/activity_templates.py:31-78` `COMPANION_CONTEXT` (Kael/Lira/Tam/Sable personality+speech+voice+errand frames); relationship_tier used as +1/+4 errand-success bonus at `apps/agent/async_rules.py:143-147`. All NEW vs milestone — flagged for capstone.
 
@@ -82,7 +82,7 @@ Honesty note on Kael's `action_pool`: `content/npcs.json:147-223` ships Kael wit
 | Bonded | 11-20 sessions | Companion's loyalty triggers in pivotal moments; unique tactical advice | None. | NOT_SHIPPED |
 | Legendary | 20+ sessions | Companion's growth arc completes; legacy unlocks | None. | NOT_SHIPPED |
 
-The `relationship_tier: int` tracker + warm_prompts display + errand-bonus reads (`async_rules.py:143-147`) are shipped INFRASTRUCTURE that none of the 5 named tiers individually satisfies. Each named tier is NOT_SHIPPED at its semantic level. Recorded once at the row level above; not double-counted in the M6.4 acceptance table (bullet 4 captures the DESIGNED partial-infrastructure verdict for the section as a whole).
+The `relationship_tier: int` tracker + warm_prompts display + errand-bonus reads (`async_rules.py:143-147`) are shipped INFRASTRUCTURE that none of the 5 named tiers individually satisfies. **This table and the M6.4 acceptance row 4 are orthogonal views, not additive.** Row 4 (DESIGNED) captures partial infrastructure that applies to all 5 tiers; this 5-row table captures the per-tier named-semantics gap (NOT_SHIPPED individually). Capstone consumer: do not sum 5+1 or treat them as separate findings — the per-tier rows are the breakdown of why row 4 is DESIGNED and not BUILT.
 
 ## Generation surfaces
 
