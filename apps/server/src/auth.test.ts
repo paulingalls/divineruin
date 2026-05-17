@@ -1,7 +1,11 @@
-import { test, expect, describe, mock, beforeEach } from "bun:test";
+import { test, expect, describe, mock, beforeEach, afterEach } from "bun:test";
 
 // Set JWT_SECRET before importing auth module
 process.env.JWT_SECRET = "48d10d0851017d6e6d6f40ae66e6e15071a7caa782cb343c5c8dad7d4ffb310c";
+// RESEND_API_KEY is set so the `if (RESEND_API_KEY)` branch in handleRequestCode is exercised;
+// the IS_TEST_ENV guard in auth.ts must still skip the outbound fetch (verified below).
+process.env.RESEND_API_KEY = "test_key_must_not_leak_to_resend";
+process.env.RESEND_FROM_EMAIL = "test-sender@example.com";
 
 // Mock the database with a call-sequence approach
 let mockCallHandler: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown[]>;
@@ -48,8 +52,19 @@ function getReq(path: string, headers?: Record<string, string>): Request {
   });
 }
 
+// Default global fetch spy: catches any inadvertent outbound HTTP from tests.
+// Tests can read `currentFetchSpy.mock.calls` to assert on fetch behavior.
+const ORIGINAL_FETCH = globalThis.fetch;
+let currentFetchSpy = mock(() => Promise.resolve(new Response(null, { status: 200 })));
+
 beforeEach(() => {
+  currentFetchSpy = mock(() => Promise.resolve(new Response(null, { status: 200 })));
+  globalThis.fetch = currentFetchSpy as unknown as typeof fetch;
   setMockResults();
+});
+
+afterEach(() => {
+  globalThis.fetch = ORIGINAL_FETCH;
 });
 
 // --- JWT ---
@@ -133,6 +148,43 @@ describe("handleRequestCode", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { ok: boolean };
     expect(body.ok).toBe(true);
+  });
+
+  // Resolves concern 763274472fc8 (live Resend leak in tests).
+  test("does NOT call api.resend.com under bun:test even with RESEND_API_KEY set", async () => {
+    setMockResults([], [{ id: "acc-uuid-resend-guard" }], [], []);
+    const res = await handleRequestCode(
+      jsonReq("/api/auth/request-code", { email: "resend-guard@example.com" }),
+    );
+    expect(res.status).toBe(200);
+    const fetchCalls = currentFetchSpy.mock.calls as unknown as [string, ...unknown[]][];
+    const resendCalls = fetchCalls.filter(
+      (call) => typeof call[0] === "string" && call[0].includes("api.resend.com"),
+    );
+    expect(resendCalls.length).toBe(0);
+  });
+
+  // Resolves concern 15cb783cf387: AC2 positive side — the dev-code log fallback
+  // still fires under test env when the Resend branch is guarded.
+  test("logs DEV CODE fallback under bun:test instead of calling Resend", async () => {
+    setMockResults([], [{ id: "acc-uuid-devlog" }], [], []);
+    const logSpy = mock(() => {});
+    const originalLog = console.log;
+    console.log = logSpy;
+    try {
+      const res = await handleRequestCode(
+        jsonReq("/api/auth/request-code", { email: "devlog@example.com" }),
+      );
+      expect(res.status).toBe(200);
+    } finally {
+      console.log = originalLog;
+    }
+    const logCalls = logSpy.mock.calls as unknown as [string, ...unknown[]][];
+    const devCodeLogs = logCalls.filter(
+      (call) =>
+        typeof call[0] === "string" && call[0].includes("[auth] DEV CODE for devlog@example.com:"),
+    );
+    expect(devCodeLogs.length).toBe(1);
   });
 });
 

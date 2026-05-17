@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { sql } from "./db.ts";
+import { IS_TEST_ENV } from "./env.ts";
 import { parseJsonBody } from "./middleware.ts";
 
 const JWT_SECRET_HEX = Bun.env.JWT_SECRET ?? "";
@@ -102,7 +103,7 @@ export async function handleRequestCode(req: Request): Promise<Response> {
   `;
 
   // Send email via Resend
-  if (RESEND_API_KEY) {
+  if (RESEND_API_KEY && !IS_TEST_ENV) {
     try {
       await fetch("https://api.resend.com/emails", {
         method: "POST",
