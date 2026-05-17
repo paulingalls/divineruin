@@ -200,7 +200,7 @@ See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
 - M5.3 ↔ M5.4 (intra-Phase-5): Master tier's Masterwork declaration triggered here, gated by M5.4 catalog work.
 - M5.3 → `game_mechanics_archetypes.md` Artificer: Tool Expertise + safe Hollow-material handling cross-references Phase 2.
 
-**Spec/milestone conflict to record:** `async_rules.resolve_crafting` returns half materials on Failure (`async_rules.py:84-86`); spec at `game_mechanics_crafting.md:106` is explicit "Materials consumed. Nothing produced." Tracked in `audit/README.md` Sprint-spec-cleanup.
+**Spec/milestone conflict to record:** `async_rules.resolve_crafting` returns half materials on Failure (`async_rules.py:88-91`); spec at `game_mechanics_crafting.md:106` is explicit "Materials consumed. Nothing produced." Tracked in `audit/README.md` Sprint-spec-cleanup.
 
 See `audit/phase-5-quality.md` for the full coverage matrix.
 

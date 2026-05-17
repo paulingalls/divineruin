@@ -1,6 +1,6 @@
 # Milestone Audit — Findings Index
 
-Read-only audit of `docs/milestones/` against shipped code and current spec docs. Sprint-001 covered Phases 0 + 1; Sprint-002 covered Phases 2 + 3 + 8 (Group A); Sprint-003 covered Phases 4 + 7 + encounter_roles overlay (Group B). Findings are consolidated into the milestone files by each sprint's capstone story.
+Read-only audit of `docs/milestones/` against shipped code and current spec docs. Sprint-001 covered Phases 0 + 1; Sprint-002 covered Phases 2 + 3 + 8 (Group A); Sprint-003 covered Phases 4 + 7 + encounter_roles overlay (Group B); Sprint-004 covered Phase 5 Crafting (M5.1-M5.4). Findings are consolidated into the milestone files by each sprint's capstone story.
 
 Bias is toward unchecking when evidence is weak — Honesty over optimistic tracking.
 
@@ -35,6 +35,27 @@ Sprint-002 headline: Group A is **almost entirely unshipped**. Phase 3 Magic is 
 | [phase-encounter-roles.md](./phase-encounter-roles.md) | 790L gm_encounter_roles overlay; ownership map across phases 04 (primary) / 07 / 09 | 0 | 1 | — | 30 NOT_SHIPPED |
 
 Sprint-003 headline: Group B is **almost entirely unshipped**. Phase 4 ships core combat math (AC, attack roll, damage doubling, death save) + a turn-based LLM tool loop — but the spec's 4-beat phase machine, full condition system, dramatic-dice flag, social/travel/gathering, and Mortaen scene wiring are aspirational. Phase 7 is unshipped at every layer (no `content/creatures.json`, no schema, no agent tools). encounter_roles overlay (added after the original milestones) is 0% built across all 9 spec sections.
+
+## Sprint-004 findings files (Phase 5 — Crafting)
+
+| File | Scope | BUILT | DESIGNED | NOT_SHIPPED |
+| --- | --- | --- | --- | --- |
+| [phase-5-recipes-resolution.md](./phase-5-recipes-resolution.md) | M5.1 recipe & material system + M5.2 workspace & crafting resolution | 0 | 4 | 17 |
+| [phase-5-quality.md](./phase-5-quality.md) | M5.3 quality outcomes & experimentation | 0 | 4 | 6 |
+| [phase-5-durability.md](./phase-5-durability.md) | M5.4 durability & item catalog | 0 | 4 | 9 |
+
+Sprint-004 headline: Phase 5 is **almost entirely unshipped**. A 4-recipe TS source-of-truth in `apps/server/src/activity_templates.ts:94-130` and a divergent 4-tier resolver in `apps/agent/async_rules.py:34-129` exist; everything else (recipe slots, three-track acquisition, materials catalog, workspace types, three-check pipeline, spec-aligned quality bands, bonus/flaw tables, experimentation, durability system, magic-item content + tier gating) is aspirational. The `Item` interface ships ~13 fields but is missing damage_dice, AC, durability, attunement, audio_cue, and a Rare/Legendary tier widening. No crafting-related DB migrations among the 17 in `scripts/migrations/`.
+
+### Status legend (Sprint-004)
+
+Sprint-004 audits use **BUILT / DESIGNED / NOT_SHIPPED** in place of Sprint-002/003's **confirmed / aspirational (and unverified)**. The mapping is:
+- `BUILT` ↔ `confirmed` (code present and matches spec)
+- `DESIGNED` ↔ `aspirational` + `unverified` (spec is well-defined and partial code exists, but the symbol/feature is missing, renamed, or diverges from spec)
+- `NOT_SHIPPED` is unchanged across all sprints
+
+### Audit Status block layout (Sprint-004)
+
+Sprint-004 evolves the in-milestone block layout: per-milestone H3 blocks (`### Audit Status (Sprint-004)`) placed after each milestone's `**Key references:**` section, rather than a single per-phase H2 block at file top (Sprint-002/003 convention). The per-milestone layout makes the audit context discoverable next to the milestone definition it describes; the H3 level avoids the H2-inside-H3 outline inversion that would otherwise absorb subsequent milestone content. The substring grep `## Audit Status` still matches both `##` and `### Audit Status` lines.
 
 ## Material gaps surfaced (capstone annotations)
 
@@ -111,6 +132,16 @@ These were captured as "Audit Status (Sprint-003)" blocks at the top of `04_comb
 - `EncounterRole` enum, role modifier tables, Boss signature/legendary action handlers, encounter budget calculator, material sell-value lookup — all aspirational.
 - Phase 04 primary; Phase 07 cross-refs schema; Phase 09 owns currency drops + material sell values (deferred to Phase 09 rewrite per decision `m9-4-loot-economy-status`).
 
+## Sprint-004 capstone annotations (Phase 5 — Crafting)
+
+These were captured as "Audit Status (Sprint-004)" H3 blocks under each milestone in `05_crafting.md` with `<!-- see audit/phase-5-<file>.md -->` pointers. No M5.x acceptance boxes were unchecked because all were already `[ ]` — the milestone-level status was re-flagged as DEFERRED / NOT_STARTED in each block.
+
+**Phase 5 — Crafting (Group C — solo)**
+- M5.1: Recipe schema is 4 fields of 13 (TS-only `CraftingRecipe`; no Python class). `content/recipes.json` doesn't exist (4 server recipes ≈ 5% of 70+ target). `recipe_slots` / `player_known_recipes` / `materials_catalog` / `recipes` migrations: none of 17 created. Discovery acquisition track cannot fire (no schematic item type). Spec/milestone conflict: Untrained slot capacity 0 (milestone) vs 3 (spec).
+- M5.2: No `Workspace` enum / rental cost table / three-check gate. `async_rules.resolve_crafting()` runs the d20 roll with zero pre-flight checks; server validation is recipe-id existence only. Roll formula matches spec, but `craft_skill` falls back to `"arcana"` (spec: `"crafting"`) and 0 of 4 shipped recipes use the registered `"crafting"` skill. Spec/milestone conflict: rental disposition surcharge for hostile (milestone) vs neutral-or-better gate with refusal at unfriendly (spec).
+- M5.3: 4-tier resolver shipped but bands diverge (code's `success` lumps spec's Exceptional+Success; code's `unexpected` has no spec mapping). No per-category bonus-property or flaw tables. No `apply_quality_outcome` / `resolve_experimentation` / `experiment_with_materials` symbols. Spec/milestone conflict: code returns half materials on Failure (`async_rules.py:84-86`); spec is explicit "Materials consumed. Nothing produced."
+- M5.4: Entire durability system unshipped. `Item` interface missing 7+ fields (damage_dice, AC, properties, durability, attunement, audio_cue, magic-tier gate). `content/items.json` ~34% catalog coverage by count, ~0% by structured fields. Spec/milestone conflicts: repair-pricing axis (spec: rarity-tier; milestone: durability-tier + damage-level); Legendary "Thornridge's Stand" `Cannot be crafted` quest-only exception breaks the magic-item crafting-tier gate; `Item.tier: 1 | 2` is undersized (need 1-4).
+
 ## Sprint-spec-cleanup punch list
 
 Out-of-scope-but-real findings surfaced by audits that don't fit any active milestone — collected here so they don't drift between sprints. Add new items at the bottom.
@@ -118,8 +149,16 @@ Out-of-scope-but-real findings surfaced by audits that don't fit any active mile
 - **Stale `gp` references** in `game_mechanics_magic.md:423` (Revivify diamond "50 gp") and `:432` (Resurrection diamond "500 gp"). Original M0.3 gp→gc cleanup missed these two. Plus a third instance at `economy/game_mechanics_p2p_trade.md:160`. (sprint-001 phase-0 audit; reaffirmed sprint-002 phase-3 audit; concern `027196d5b06f`)
 - **`INDEX.md` line ranges off** for `game_mechanics_archetypes.md` (~133 lines drift; file is 1357L, INDEX claims 1224L). (sprint-001 phase-0)
 - **`game_mechanics/` docs unlisted in CLAUDE.md** Knowledge System section — reachable only transitively via `INDEX.md`. Remediation: add a bullet under CLAUDE.md "Knowledge System" naming `docs/game_mechanics/` + `docs/game_mechanics/economy/` as the source-of-truth for mechanics specs, with `docs/INDEX.md` as the entry-point. (sprint-001 phase-0)
+- **`async_rules.resolve_crafting` default skill** — defaults `craft_skill` to `"arcana"` (`async_rules.py:47`) rather than `"crafting"` (registered at `rules_engine.py:102`). The 4 shipped recipes use `"athletics"` / `"medicine"` / `"arcana"` — 0 use `"crafting"`. Once M5.1 schema lands, recipes should reference the registered skill. (sprint-004 phase-5-recipes-resolution)
+- **`async_rules.resolve_crafting` half-materials-on-failure conflict** — `async_rules.py:88-91` returns half the materials when Failure tier fires; spec at `game_mechanics_crafting.md:106` is explicit "Materials consumed. Nothing produced." Resolve when M5.3 (Quality Outcomes) ships. (sprint-004 phase-5-recipes-resolution + phase-5-quality)
+- **M5.1 spec/milestone conflict: Untrained recipe slots** — milestone bullet says "Untrained: 0"; spec at `game_mechanics_crafting.md:158` says "Untrained 3". Capstone needs customer resolution. (sprint-004 phase-5-recipes-resolution)
+- **M5.2 spec/milestone conflict: rental disposition modifiers** — milestone bullet says "discount for friendly, surcharge for hostile"; spec at `game_mechanics_crafting.md:204-207` gates rental at neutral-or-better (refusal at unfriendly, no surcharge defined). (sprint-004 phase-5-recipes-resolution)
+- **M5.4 repair-pricing axis conflict** — spec at `game_mechanics_crafting.md:542-549` keys repair cost on item-rarity-tier (Common/Uncommon/Rare/Legendary); milestone acceptance bullet 4 says "scales with durability tier and current damage level". Different axes — spec or milestone must win. (sprint-004 phase-5-durability)
+- **`Item.tier: 1 | 2` undersized** — TS type at `packages/shared/src/entities/item.ts:13` accepts only `1 | 2`; spec defines 4 rarity tiers (1=Common through 4=Legendary). Mechanical breakage when a Rare-tier item lands with `tier: 3`. Widen to `1 | 2 | 3 | 4`. (sprint-004 phase-5-durability)
+- **`audio_cue?: string` missing from `Item` interface** — spec magic items carry explicit "Audio:" descriptions (e.g., Blade of the Ashmark "Soft radiant hum when drawn"). CLAUDE.md audio-first invariant should be enforced at the schema layer. (sprint-004 phase-5-durability)
+- **Legendary Thornridge's Stand quest-only exception** — `game_mechanics_crafting.md:516` carries "Cannot be crafted"; milestone acceptance bullet 9 assumes all Magic items are gated by crafting tier. Add a `quest_only: bool` field OR record a documented exception list. (sprint-004 phase-5-durability)
 
-## Sprint-004 follow-up candidates
+## Sprint-005 follow-up candidates
 
 Sprint-003 carry-forwards (still open):
 
@@ -143,7 +182,18 @@ New from sprint-002 audits:
 - **Phase 3 capstone work** (largest, blocks Phase 8 Layer 2): ship the entire Resonance system + Hollow Echo + Veil Ward + spell catalog + concentration + racial Resonance. Decide on spec-superset deliverables (Bard 0.4× multiplier, Veythar post-reveal 0.7×, cantrip 0-Resonance, rest reset, Veil Fracture event, Arcana sensing ladder, Druid prep constraint, per-archetype Veil Ward sources).
 - **Phase 8 capstone work**: complete `content/gods.json` (6 missing patrons + Layer 1-4 fields for all 10); add tier model + thresholds + decay; ship `evaluate_patron_alignment` / `get_patron_tier` / `activate_patron_ability` / `check_patron_tier` / `get_archetype_synergy` / `apply_unbound_resonance_push` / `query_patron_synergy`; create `patron_ability_unlock` + `archetype_synergy` migrations; build Unbound mechanics (Veil Clarity, voluntary +3 push, Veil Mastery, Self-Reliance milestones).
 - **Spec/milestone divergences to reconcile** (capstone choices): M3.4 Draethar Inner Fire cost (spec: fire damage; milestone: HP or Focus — recommend tightening milestone to spec); M2.3 L4/L5 fork wording (Sprint-001 finding still open); M2.4 training durations (seconds vs cycles).
-- **Workers=4 e2e investigation** (debt 40ce8a9d3fcc): rate-limit bypass works at workers=3 but workers=4 still 429s. Determine whether `reuseExistingServer` masks a fresh server respawn OR a second bottleneck appears past workers=3.
+
+New from sprint-004 audits:
+
+- **Phase 5 capstone work** (largest single phase audited): the entire crafting pipeline is unshipped. Break it down by milestone:
+  - **M5.1**: recipe schema (13 fields) + `content/recipes.json` (70+ entries) + `recipes` / `recipe_slots` / `player_known_recipes` / `materials_catalog` migrations + `MaterialReq` shape + 3 acquisition tracks (Recipe Slots / Training / Discovery) + per-tier slot caps + pure functions `validate_recipe_slot_capacity` + `check_material_requirements` + agent tools `learn_recipe` + `query_recipe_requirements`.
+  - **M5.2**: 4 workspace types + 4 access methods + NPC disposition-modifier rental pricing + `workspace_rentals` migration + three-check gate pipeline (knowledge / skill-tier / workspace) + pure functions `validate_recipe_knowledge` + `validate_workspace_tier` + `resolve_crafting_check` + agent tools `query_available_workspaces` + `start_crafting_project`.
+  - **M5.3**: spec-aligned 4-tier quality bands (Exceptional / Success / Partial / Failure) + per-category bonus-property and flaw tables + Experimentation mechanic (DC+4) + pure functions `apply_quality_outcome` + `resolve_experimentation` + agent tool `experiment_with_materials`.
+  - **M5.4**: durability system (4 tiers + hit-depletion + Hollow 2× corrosion) + repair pricing + 6 Rare + 4 Legendary magic items + magic-item-tier gating + `items_catalog` migration + `Item` schema additions (durability, damage_dice, AC, properties, attunement, audio_cue, widen tier to 1-4) + pure functions `apply_durability_damage` + `check_item_condition` + `calculate_repair_cost`.
+- **Re-align `async_rules.resolve_crafting`** to spec when M5.3 ships: rename tiers to `Exceptional` / `Success` / `Partial` / `Failure`; fix Failure to consume all materials (not half); replace `quality_bonus: int` with a structured bonus-property payload; drop the spec-less `unexpected` tier.
+- **Widen `Item.tier` union** from `1 | 2` to `1 | 2 | 3 | 4` (mechanical blocker — TS type error on any Rare/Legendary item).
+- **Add `audio_cue?: string` field** to the `Item` interface so spec magic-item audio cues live in the schema (audio-first invariant).
+- **Decouple `CRAFTING_RECIPES.npc_id` hard-binding** (`activity_templates.ts:105` uses `"grimjaw_blacksmith"` across all recipes) — workspace model separates NPC-as-renter from NPC-as-narrator.
 
 ## Method
 
