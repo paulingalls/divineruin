@@ -249,3 +249,37 @@ See `audit/phase-5-quality.md` for the full coverage matrix.
 - *Game Mechanics Crafting — Durability System*
 - *Game Mechanics Crafting — Item Catalog*
 - *Game Mechanics Crafting — Magic Item Tiers*
+
+### Audit Status (Sprint-004)
+
+<!-- see audit/phase-5-durability.md -->
+
+**Status: DEFERRED / NOT_STARTED.** The durability system (4 tiers, hit-depletion, Hollow double-corrosion, repair pricing) is entirely unshipped. No `Durability` enum, no `apply_durability_damage` / `check_item_condition` / `calculate_repair_cost` functions, no `durability` column on items, no per-item HP tracking. The `Item` interface at `packages/shared/src/entities/item.ts:9-25` carries 13 fields but is **missing** damage_dice, AC, properties, durability, attunement, audio_cue, and magic-item-tier gating. `content/items.json` covers ~34% of the spec catalog by count (29 / 85) and ~0% by structured-field coverage (0 entries with durability / AC / damage_dice / properties array). No `items_catalog` migration.
+
+| Section | BUILT | DESIGNED | NOT_SHIPPED |
+| --- | --- | --- | --- |
+| M5.4 — Durability & Item Catalog (13) | 0 | 4 | 9 |
+
+**Material gaps:**
+- `Item.durability_tier` + `Item.current_hits` — do not exist; backfill across 29 items.json entries required.
+- `Item.damage_dice` + `Item.properties` for weapons — do not exist; spec authors 15 weapon entries.
+- `Item.ac` + armor properties — do not exist; spec authors 10 armor entries.
+- Magic-item content — 6 spec Rare + 4 spec Legendary unique items absent from items.json.
+- `audio_cue?: string` field missing — spec magic items carry explicit Audio: lines per audio-first invariant.
+- `Item.tier: 1 | 2` is undersized — spec defines 4 rarity tiers; widen to `1 | 2 | 3 | 4`.
+
+**Cross-doc deps:**
+- M5.4 → M5.1 (intra-Phase-5): magic items name crafting recipes; recipes (M5.1) and magic items (M5.4) cross-reference by id.
+- M5.4 → M5.3 (intra-Phase-5): Masterwork declaration is a Master-tier quality outcome producing a Masterwork-durability-tier item.
+- M5.4 → M5.2 (intra-Phase-5): repair pricing routes through NPC blacksmith rental.
+- M5.4 → Phase 4 Combat: hit-depletion fires on per-encounter / per-damage-taken / per-shield-reaction events.
+- M5.4 → Phase 3 Magic: caster-only attunement (Veil-Sight Lens, Ring of Resonance Dampening) requires attunement + caster-class gating.
+- M5.4 → CLAUDE.md audio-first invariant: magic-item audio cues belong at the schema layer.
+
+**Spec/milestone conflicts to record:**
+- **Repair-pricing axis** — spec keys cost on item-rarity-tier (Common/Uncommon/Rare/Legendary at `game_mechanics_crafting.md:542-549`); milestone acceptance bullet 4 says "scales with durability tier and current damage level" — different axes (rarity vs durability vs damage-level).
+- **Legendary exception** — Thornridge's Stand carries "Cannot be crafted" (quest-only), breaking the milestone's "Magic items gated by crafting tier" gate.
+
+Both tracked in `audit/README.md` Sprint-spec-cleanup.
+
+See `audit/phase-5-durability.md` for the full coverage matrix.
