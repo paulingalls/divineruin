@@ -163,6 +163,29 @@ describe("handleRequestCode", () => {
     );
     expect(resendCalls.length).toBe(0);
   });
+
+  // Resolves concern 15cb783cf387: AC2 positive side — the dev-code log fallback
+  // still fires under test env when the Resend branch is guarded.
+  test("logs DEV CODE fallback under bun:test instead of calling Resend", async () => {
+    setMockResults([], [{ id: "acc-uuid-devlog" }], [], []);
+    const logSpy = mock(() => {});
+    const originalLog = console.log;
+    console.log = logSpy;
+    try {
+      const res = await handleRequestCode(
+        jsonReq("/api/auth/request-code", { email: "devlog@example.com" }),
+      );
+      expect(res.status).toBe(200);
+    } finally {
+      console.log = originalLog;
+    }
+    const logCalls = logSpy.mock.calls as unknown as [string, ...unknown[]][];
+    const devCodeLogs = logCalls.filter(
+      (call) =>
+        typeof call[0] === "string" && call[0].includes("[auth] DEV CODE for devlog@example.com:"),
+    );
+    expect(devCodeLogs.length).toBe(1);
+  });
 });
 
 // --- handleVerifyCode ---
