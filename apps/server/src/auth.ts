@@ -122,7 +122,7 @@ export async function handleRequestCode(req: Request): Promise<Response> {
     } catch (e) {
       console.error("[auth] Failed to send email:", e instanceof Error ? e.message : e);
     }
-  } else if (process.env.NODE_ENV !== "production") {
+  } else if (Bun.env.NODE_ENV !== "production") {
     console.log(`[auth] DEV CODE for ${rawEmail}: ${code}`);
   }
 

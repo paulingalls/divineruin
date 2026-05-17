@@ -56,7 +56,12 @@ export async function sendPushNotification(
     data: data ?? {},
   }));
 
-  if (IS_TEST_ENV) return;
+  if (IS_TEST_ENV) {
+    console.log(
+      `[push] WOULD-SEND ${messages.length} message(s) to ${rows.length} recipient(s): "${title}"`,
+    );
+    return;
+  }
 
   try {
     const res = await fetch(EXPO_PUSH_URL, {
