@@ -44,6 +44,31 @@ Implements the full crafting pipeline from recipe acquisition through workspace 
 - *Game Mechanics Crafting — Recipe Acquisition Tracks*
 - *Game Mechanics Crafting — Material Requirements & Substitution*
 
+### Audit Status (Sprint-004)
+
+<!-- see audit/phase-5-recipes-resolution.md -->
+
+**Status: DEFERRED / NOT_STARTED.** Full M5.1 pipeline (recipe slots, three-track acquisition, materials catalog) is unshipped. What exists: a 4-recipe TS-source-of-truth map in `apps/server/src/activity_templates.ts:94-130` (`iron_sword`, `healing_poultice`, `ward_stone`, `reinforced_shield`) with a minimal `CraftingRecipe` interface missing 11 of 13 spec fields; bare item-id string-arrays for materials; zero crafting-related DB migrations; no `content/recipes.json` (4 of 70+ target entries ≈ 5%); 1 of ~40 spec material types present in `content/items.json`.
+
+| Section | BUILT | DESIGNED | NOT_SHIPPED |
+| --- | --- | --- | --- |
+| M5.1 — Recipe & Material System (10) | 0 | 2 | 8 |
+
+**Material gaps:**
+- `content/recipes.json` does not exist; 4 server-side recipes ≈ 5% of 70+ target.
+- `content/materials_catalog.json` (or migration-seeded table) does not exist; 1 of ~40 spec material types present in `content/items.json`.
+- `recipe_slots`, `player_known_recipes`, `materials_catalog` tables — none of 17 migrations create them.
+- No schematic item type (`type: "schematic"` count = 0); Discovery acquisition track cannot fire.
+
+**Cross-doc deps:**
+- M5.1 → Phase 1 M1.2 (skill tiers): slot capacity and tier gating read player Crafting tier (registered at `apps/agent/rules_engine.py:102`).
+- M5.1 → Phase 1 M1.5 (async training): the Training acquisition track consumes async cycles via `content/training_activity_types.json:recipe_study`; per-tier cycle-cost mapping is the M5.1 adapter.
+- M5.1 → M5.4 catalog: recipes name material ids that must resolve against the items catalog.
+
+**Spec/milestone conflict to record:** Untrained recipe slots — milestone bullet says "Untrained: 0"; spec at `game_mechanics_crafting.md:158` says "Untrained 3". Tracked in `audit/README.md` Sprint-spec-cleanup.
+
+See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
+
 ---
 
 ### Milestone 5.2 — Workspace & Crafting Resolution
@@ -90,6 +115,31 @@ Implements the full crafting pipeline from recipe acquisition through workspace 
 - *Game Mechanics Crafting — Three-Check Resolution*
 - *Game Mechanics Crafting — NPC Rental Costs*
 
+### Audit Status (Sprint-004)
+
+<!-- see audit/phase-5-recipes-resolution.md -->
+
+**Status: DEFERRED / NOT_STARTED.** No `Workspace` enum, no workspace types, no rental cost table, no three-check gate. `async_rules.resolve_crafting()` at `apps/agent/async_rules.py:34-129` runs the d20 skill roll with no pre-flight checks — server-side validation at `apps/server/src/activities.ts:137-146` is recipe-id existence only. Roll formula `d20 + skill_modifier vs dc` matches spec; `async_rules.resolve_crafting` falls back to `"arcana"` when no skill is named (`async_rules.py:47`, spec calls for `"crafting"`). The 4 shipped recipes use mixed skills (`athletics`, `medicine`, `arcana`); 0 of the 4 use the registered `"crafting"` skill.
+
+| Section | BUILT | DESIGNED | NOT_SHIPPED |
+| --- | --- | --- | --- |
+| M5.2 — Workspace & Crafting Resolution (11) | 0 | 2 | 9 |
+
+**Material gaps:**
+- No `Workspace` enum, `workspace_required` field, or per-tier workspace-vs-recipe gate.
+- No `workspace_rentals` migration; cannot track active rentals or daily costs.
+- No rental cost table (2sp/5sp/10sp/12sp values absent from code and content).
+
+**Cross-doc deps:**
+- M5.2 → existing NPC disposition system: rental gating reads NPC disposition (state exists; rental-price-modifier function is the M5.2 add).
+- M5.2 → Phase 6 NPCs / settlement templates: Settlement Workspace Availability matrix requires settlement-size inspection.
+- M5.2 → M5.4 (intra-Phase-5): Artificer Portable Lab is itself a Master-tier recipe in the catalog; workspace-type abstraction must exist for the item to grant it.
+- M5.2 → M5.3 (intra-Phase-5): quality bands consumed by the resolver; when M5.3 ships, the M5.2 resolver must re-align to spec bands.
+
+**Spec/milestone conflict to record:** Rental disposition modifiers — milestone bullet says "discount for friendly, surcharge for hostile"; spec at `game_mechanics_crafting.md:204-207` gates rental at neutral-or-better (refusal at unfriendly, no surcharge defined). Tracked in `audit/README.md` Sprint-spec-cleanup.
+
+See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
+
 ---
 
 ### Milestone 5.3 — Quality Outcomes & Experimentation
@@ -127,6 +177,32 @@ Implements the full crafting pipeline from recipe acquisition through workspace 
 - *Game Mechanics Crafting — Quality Outcomes*
 - *Game Mechanics Crafting — Experimentation*
 - *Game Mechanics Crafting — Bonus Properties & Flaws*
+
+### Audit Status (Sprint-004)
+
+<!-- see audit/phase-5-quality.md -->
+
+**Status: DEFERRED / NOT_STARTED.** The 4-tier spec quality model (`Exceptional` at DC+10 / `Success` at DC / `Partial` at DC-5..DC-1 / `Failure` below DC-5) and the Experimentation system are unshipped. `async_rules.resolve_crafting()` at `apps/agent/async_rules.py:34-129` returns a 4-tier outcome (`success` / `partial` / `unexpected` / `failure`) but the band thresholds diverge: code's `success` fires at `margin>=5` OR `d20==20`, lumping spec's Exceptional and Success together; code's `unexpected` has no spec mapping; code returns half the materials on failure (spec: "materials consumed, nothing produced"). No per-category bonus-property or flaw tables. No `apply_quality_outcome`, `resolve_experimentation`, or `experiment_with_materials` symbols. No `known_recipes` table to receive the experimentation "teaches the recipe" mutation.
+
+| Section | BUILT | DESIGNED | NOT_SHIPPED |
+| --- | --- | --- | --- |
+| M5.3 — Quality Outcomes & Experimentation (10) | 0 | 4 | 6 |
+
+**Material gaps:**
+- Per-category bonus-property and flaw tables — do not exist; spec names the shape but the implementer must author the per-category content (weapons/armor/consumables/tools/ammunition/enchantments).
+- `known_recipes` / `player_known_recipes` table — does not exist (gated by M5.1).
+- No tracked "failed combination" memory; spec says repeat experiments with the same materials should not retry.
+- Hidden Crafting skill counter (spec's `+1 on failure` consolation reward) has no destination.
+
+**Cross-doc deps:**
+- M5.3 ↔ M5.2 (intra-Phase-5): quality bands consumed by the M5.2 resolver; when M5.3 ships, `async_rules.resolve_crafting` must re-align to spec bands.
+- M5.3 → M5.1 (intra-Phase-5): Experimentation's "teaches the recipe" side effect writes to `player_known_recipes` (M5.1 deliverable).
+- M5.3 ↔ M5.4 (intra-Phase-5): Master tier's Masterwork declaration triggered here, gated by M5.4 catalog work.
+- M5.3 → `game_mechanics_archetypes.md` Artificer: Tool Expertise + safe Hollow-material handling cross-references Phase 2.
+
+**Spec/milestone conflict to record:** `async_rules.resolve_crafting` returns half materials on Failure (`async_rules.py:88-91`); spec at `game_mechanics_crafting.md:106` is explicit "Materials consumed. Nothing produced." Tracked in `audit/README.md` Sprint-spec-cleanup.
+
+See `audit/phase-5-quality.md` for the full coverage matrix.
 
 ---
 
@@ -173,3 +249,37 @@ Implements the full crafting pipeline from recipe acquisition through workspace 
 - *Game Mechanics Crafting — Durability System*
 - *Game Mechanics Crafting — Item Catalog*
 - *Game Mechanics Crafting — Magic Item Tiers*
+
+### Audit Status (Sprint-004)
+
+<!-- see audit/phase-5-durability.md -->
+
+**Status: DEFERRED / NOT_STARTED.** The durability system (4 tiers, hit-depletion, Hollow double-corrosion, repair pricing) is entirely unshipped. No `Durability` enum, no `apply_durability_damage` / `check_item_condition` / `calculate_repair_cost` functions, no `durability` column on items, no per-item HP tracking. The `Item` interface at `packages/shared/src/entities/item.ts:9-25` carries 13 fields but is **missing** damage_dice, AC, properties, durability, attunement, audio_cue, and magic-item-tier gating. `content/items.json` covers ~34% of the spec catalog by count (29 / 85) and ~0% by structured-field coverage (0 entries with durability / AC / damage_dice / properties array). No `items_catalog` migration.
+
+| Section | BUILT | DESIGNED | NOT_SHIPPED |
+| --- | --- | --- | --- |
+| M5.4 — Durability & Item Catalog (13) | 0 | 4 | 9 |
+
+**Material gaps:**
+- `Item.durability_tier` + `Item.current_hits` — do not exist; backfill across 29 items.json entries required.
+- `Item.damage_dice` + `Item.properties` for weapons — do not exist; spec authors 15 weapon entries.
+- `Item.ac` + armor properties — do not exist; spec authors 10 armor entries.
+- Magic-item content — 6 spec Rare + 4 spec Legendary unique items absent from items.json.
+- `audio_cue?: string` field missing — spec magic items carry explicit Audio: lines per audio-first invariant.
+- `Item.tier: 1 | 2` is undersized — spec defines 4 rarity tiers; widen to `1 | 2 | 3 | 4`.
+
+**Cross-doc deps:**
+- M5.4 → M5.1 (intra-Phase-5): magic items name crafting recipes; recipes (M5.1) and magic items (M5.4) cross-reference by id.
+- M5.4 → M5.3 (intra-Phase-5): Masterwork declaration is a Master-tier quality outcome producing a Masterwork-durability-tier item.
+- M5.4 → M5.2 (intra-Phase-5): repair pricing routes through NPC blacksmith rental.
+- M5.4 → Phase 4 Combat: hit-depletion fires on per-encounter / per-damage-taken / per-shield-reaction events.
+- M5.4 → Phase 3 Magic: caster-only attunement (Veil-Sight Lens, Ring of Resonance Dampening) requires attunement + caster-class gating.
+- M5.4 → CLAUDE.md audio-first invariant: magic-item audio cues belong at the schema layer.
+
+**Spec/milestone conflicts to record:**
+- **Repair-pricing axis** — spec keys cost on item-rarity-tier (Common/Uncommon/Rare/Legendary at `game_mechanics_crafting.md:542-549`); milestone acceptance bullet 4 says "scales with durability tier and current damage level" — different axes (rarity vs durability vs damage-level).
+- **Legendary exception** — Thornridge's Stand carries "Cannot be crafted" (quest-only), breaking the milestone's "Magic items gated by crafting tier" gate.
+
+Both tracked in `audit/README.md` Sprint-spec-cleanup.
+
+See `audit/phase-5-durability.md` for the full coverage matrix.
