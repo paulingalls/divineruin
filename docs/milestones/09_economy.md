@@ -33,10 +33,12 @@ See `audit/README.md` Sprint-006 section for the per-story headline summary + ca
 | M9.7 — Supply & Demand Engine (NEW) | economy/supply_demand_engine.md | 0 | 4 | 39 | phase-9-supply-demand.md |
 | M9.8 — Gold Sink Ledger (NEW) | economy/gold_sink_ledger.md | 0 | 3 | 57 | phase-9-gold-sink.md |
 | M9.9 — Inflation Targets & Controls (NEW) | economy/inflation_targets_controls.md | 0 | 3 | 60 | phase-9-inflation.md |
-| M9.10 — P2P Trade Infrastructure (NEW [Phase 2+]) | economy/game_mechanics_p2p_trade.md (Phase 1 supporting infrastructure only) | 0 | 3 | 41 | phase-9-p2p-trade.md |
+| M9.10 — P2P Trade Infrastructure (NEW [Phase 2+]) | economy/game_mechanics_p2p_trade.md (Phase 1 supporting infrastructure only; tally below covers full audit incl. Phase 2+ deferred content) | 0 | 3 | 41 | phase-9-p2p-trade.md |
 | **Total** | | **0** | **28** | **298** | |
 
 **Note on tallies:** counts reflect acceptance items in each audit's Summary table at sprint-006 verification SHAs. They mix code-shippable items, content-authoring items, and design-decision encodings. See audit files for per-section breakdowns.
+
+**Two denominators to keep distinct:** This milestone file's acceptance criteria ("~80 ACs") count milestone-checkbox items deliverable-by-deliverable in M9.1-M9.10. The Coverage Summary's "326 items" count rows in the 7 audit Summary tables (which include audit-specific subdivisions like 9 design decisions per spec doc + per-event-tag breakdowns). Don't mix the two — `~80 ACs to ship` vs `326 audit-row datapoints` are different surfaces. The audit row totals overstate ship-side work because they include capstone-routed decisions + spec-internal subdivisions that aren't separate development items.
 
 ---
 
@@ -462,7 +464,7 @@ What does NOT ship: 0 faucet_event_log; 0 wealth_curve constants; 0 aggregate me
 
 > **Phase scope:** Player-to-player trade is **Phase 2+ deferred**. Phase 1 is single-player, so trade mechanics do not exist yet. This milestone scopes only the **Phase 1 supporting-infrastructure items** spec L178-194 says should ship now to avoid expensive Phase 2 retrofitting.
 
-**Goal (Phase 1 only):** Ship 4 supporting-infrastructure items so Phase 2+ trade design has the substrate ready.
+**Goal (Phase 1 only):** Ship 4 supporting-infrastructure items so Phase 2+ trade design has the substrate ready. (The Coverage Summary tally of 0/3/41 for M9.10 covers the **full audit** including Phase 2+ deferred trade flows; the Phase 1 ship-scope is the 4 items listed under "Deliverables (Phase 1)" below — 2 DESIGNED↔aspirational, 2 NOT_SHIPPED per audit honesty notes.)
 
 **Inputs:** M9.1 (currency), M9.8 (sink_event_log — transfer is a special event type), M9.9 (faucet_event_log), Phase 6 M6.1 (NPC schema + Location schema for settlement-aware queries).
 
