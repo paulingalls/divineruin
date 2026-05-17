@@ -11,13 +11,13 @@ Verified-at: 434df7da37adaf5ea67bb2aa63d6d01cdfdd6338
 | Magnitude & Stacking (0.5×–3.0× clamp + multiplicative stacking) | 0 | 0 | 2 |
 | Item Tag Taxonomy (11 economic tags + tag inheritance) | 0 | 1 | 1 |
 | Event Lifecycle (3 phases: Active / Recovery / Resolved) | 0 | 0 | 3 |
-| Standard Event Catalog (16 events: 6 demand + 5 supply + 4 surplus + 1 embargo) | 0 | 1 | 15 |
+| Standard Event Catalog (15 events: 6 demand + 5 supply incl. embargo + 4 surplus) | 0 | 1 | 15 |
 | Worked Example (multi-event crisis pricing) | 0 | 0 | 1 |
 | Implementation Reference (event-instance schema + `compute_item_price` + simulation tick + Redis price cache) | 0 | 2 | 4 |
 | DM Narration Patterns | 0 | 0 | 4 |
 | Design Decisions 96-104 (9 design decisions) | 0 | 0 | 9 |
 
-**Headline finding:** The supply & demand engine is **entirely NOT_SHIPPED at the mechanical layer**. What ships is the **event-logging substrate**: a `world_events_log` table (`scripts/migrations/001_initial_schema.sql:184-189`) with indexes (`scripts/migrations/002_add_indexes.sql:9-10`), an `events` table for event content (`001:48-54`), 8 records in `content/events.json` (4 `scripted`, 3 `world_event`, 1 `god_whisper` — none typed `economic`), `apps/agent/db_mutations.py:228` writing to world_events_log, and `apps/agent/world_news.py:39-83` reading recent events to generate **post-event narrative news summaries** for the catch-up feed. The substrate exists. The supply/demand engine *on top of it* — event templates with `active_multipliers`, three-phase lifecycle (`phase: active|recovery|resolved`), economic-tag-based item matching, multiplicative stacking with 0.5×–3.0× clamp, `compute_item_price`, `economy_simulation_tick`, recovery decay math, Redis 60s price cache — is **0% shipped**. Zero of 16 spec event types exist as content records, zero of 9 design decisions are encoded, zero of the four DM narration patterns are scaffolded as templates.
+**Headline finding:** The supply & demand engine is **entirely NOT_SHIPPED at the mechanical layer**. What ships is the **event-logging substrate**: a `world_events_log` table (`scripts/migrations/001_initial_schema.sql:184-189`) with indexes (`scripts/migrations/002_add_indexes.sql:9-10`), an `events` table for event content (`001:48-54`), 8 records in `content/events.json` (4 `scripted`, 3 `world_event`, 1 `god_whisper` — none typed `economic`), `apps/agent/db_mutations.py:228` writing to world_events_log, and `apps/agent/world_news.py:39-83` reading recent events to generate **post-event narrative news summaries** for the catch-up feed. The substrate exists. The supply/demand engine *on top of it* — event templates with `active_multipliers`, three-phase lifecycle (`phase: active|recovery|resolved`), economic-tag-based item matching, multiplicative stacking with 0.5×–3.0× clamp, `compute_item_price`, `economy_simulation_tick`, recovery decay math, Redis 60s price cache — is **0% shipped**. Zero of 15 spec event types exist as content records, zero of 9 design decisions are encoded, zero of the four DM narration patterns are scaffolded as templates.
 
 **Honesty note 1 — Event substrate vs supply/demand engine.** The `world_events_log` table + `world_news.py` shipping is **real infrastructure**, but it serves the narrative news-feed use case (player catches up on what happened while offline), not the spec's price-impact use case. The spec needs event records with `event_template`, `phase`, `phase_started_at`, `active_duration_seconds`, `recovery_duration_seconds`, `affected_regions`, `active_multipliers` (`supply_demand_engine.md:399-421`); the shipped table has `id`, `event_id`, `timestamp`, `data JSONB`. The JSONB blob could theoretically carry the spec schema, but no code reads it that way — `world_news.py:52-55` extracts only `type` and `description` from the JSONB blob. The substrate is generalizable, but the spec schema is unshipped on top of it.
 
@@ -40,7 +40,7 @@ Spec sections under §Supply & Demand Engine mapped to existing `09_economy.md` 
 | Event Lifecycle — Phase 1: Active (supply_demand_engine.md:87-93) | NEW | Three-phase model not in existing milestone. **Capstone should add.** |
 | Event Lifecycle — Phase 2: Recovery + linear decay (supply_demand_engine.md:95-114) | NEW | Includes recovery duration formula (`half active, min 2 days`) and `recovery_multiplier` linear-decay equation. **Capstone should add.** |
 | Event Lifecycle — Phase 3: Resolved (supply_demand_engine.md:116-122) | NEW | **Capstone should add.** |
-| Standard Event Catalog (supply_demand_engine.md:130-349) | NEW | 16 events across 4 categories (Demand-Driven: 6, Supply-Driven: 4, Surplus: 4 — with embargo counted as supply). **Capstone should add as a single subsystem subsection or split per category.** |
+| Standard Event Catalog (supply_demand_engine.md:130-349) | NEW | 15 events across 3 categories (Demand-Driven: 6, Supply-Driven: 5 incl. Faction Embargo, Surplus: 4). **Capstone should add as a single subsystem subsection or split per category.** |
 | Worked Example: Multi-Event Crisis (supply_demand_engine.md:353-391) | NEW | Illustrative only, but the example's price math is the canonical validation case. **Capstone should preserve as a regression-test anchor when M9.x compute_item_price lands.** |
 | Implementation Reference — event-instance schema (supply_demand_engine.md:399-421) | NEW | Defines the JSONB shape that should live in `world_events_log.data` for economic events. **Capstone should add.** |
 | Implementation Reference — `compute_item_price` (supply_demand_engine.md:425-484) | M9.2 — merchant pricing function | Function signature `compute_item_price(item, merchant, player) -> int`. Matches M9.2 deliverable. |
@@ -71,7 +71,7 @@ Spec sections under §Supply & Demand Engine mapped to existing `09_economy.md` 
 | Phase 2: Recovery — linear decay from active multiplier toward 1.0× over recovery duration (half active, min 2 days) | No `compute_recovery_multipliers` function. `grep -rnE 'def.*recovery\|recovery_progress\|recovery_multiplier\|recovery_duration' apps/agent/` → 0 matches. Linear decay equation (`active_multiplier + (1.0 - active_multiplier) × recovery_progress`) is unencoded. | None | NOT_SHIPPED |
 | Phase 3: Resolved — historical log, no mechanical effect | No phase enum, no transition. `world_events_log` retains all rows (it's an append-only log) which satisfies the "historical reference" requirement structurally — but the **phase semantics that would make a row "Resolved" instead of "Active"** are not represented anywhere. | None | NOT_SHIPPED |
 
-## Audit Status (Sprint-006) — Standard Event Catalog (16 events)
+## Audit Status (Sprint-006) — Standard Event Catalog (15 events)
 
 | Item (verbatim) | Evidence | Tests | Status |
 | --- | --- | --- | --- |
@@ -130,7 +130,7 @@ This audit story is doc-only and does not own M9.x deliverables directly — the
 - 0.5×–3.0× price clamp: **NOT_SHIPPED** (no clamp function)
 - 11 economic tags on items: **DESIGNED↔aspirational** (Item.tags exists; `healing` shipped, 10 others absent)
 - 3-phase event lifecycle (Active/Recovery/Resolved): **NOT_SHIPPED**
-- 16 standard event content records: **NOT_SHIPPED** (substrate BUILT, content typed as scripted/world_event not economic)
+- 15 standard event content records: **NOT_SHIPPED** (substrate BUILT, content typed as scripted/world_event not economic)
 - `compute_item_price` + `compute_recovery_multipliers` + `economy_simulation_tick`: **NOT_SHIPPED**
 - Redis price cache (60s TTL, region-keyed): **DESIGNED↔aspirational** (Bun.redis ships; specific cache contract not encoded)
 - DM narration templates (4 patterns): **NOT_SHIPPED**
@@ -141,7 +141,7 @@ Routed to `audit/README.md` Sprint-006 section by capstone (story-008) per wisdo
 
 1. **Add 11 economic tags + tag-inheritance as a new M9.x subsection** (cross-ref Item schema). The taxonomy is sufficiently distinct from narrative tags that a separate `economic_tags: string[]` field on Item is worth proposing rather than overloading `tags`.
 2. **Add three-phase event lifecycle as a new M9.x subsection** (Active/Recovery/Resolved + linear decay + half-duration min-2-day recovery).
-3. **Add 16 standard event content records as a new M9.x subsection** — 6 demand + 5 supply + 4 surplus + Faction Embargo (sometimes counted under supply). Distinct from `world_events_log` substrate; this is content-authoring work.
+3. **Add 15 standard event content records as a new M9.x subsection** — 6 demand-driven + 5 supply-driven (Trade Route Disrupted, Mine Closure, Forest Corruption, Drought, Faction Embargo) + 4 surplus. Distinct from `world_events_log` substrate; this is content-authoring work.
 4. **Add `compute_item_price` + `economy_simulation_tick` + Redis price cache as M9.x — split or combine with M9.2** (the existing merchant pricing engine milestone names the function but not the tick or cache).
 5. **Add DM narration patterns as a new M9.x subsection** OR cross-ref a `content/narration_templates` milestone (current narration shims live in `apps/agent/activity_templates.py`).
 6. **Decisions 96-104 are NOT extracted to `game_mechanics_decisions.md`** despite spec L579 claiming they are. The decisions file ends at Decision 72. Capstone should either extract 96-104 (preserving the spec→decisions ID continuity) or fix the spec's misleading claim. Note the gap: spec uses 96-104, but the decisions log's next free number is 73 — renumbering may be required.
