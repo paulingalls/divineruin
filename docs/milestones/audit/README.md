@@ -1,6 +1,6 @@
 # Milestone Audit — Findings Index
 
-Read-only audit of `docs/milestones/` against shipped code and current spec docs. Sprint-001 covered Phases 0 + 1; Sprint-002 covered Phases 2 + 3 + 8 (Group A); Sprint-003 covered Phases 4 + 7 + encounter_roles overlay (Group B); Sprint-004 covered Phase 5 Crafting (M5.1-M5.4). Findings are consolidated into the milestone files by each sprint's capstone story.
+Read-only audit of `docs/milestones/` against shipped code and current spec docs. Sprint-001 covered Phases 0 + 1; Sprint-002 covered Phases 2 + 3 + 8 (Group A); Sprint-003 covered Phases 4 + 7 + encounter_roles overlay (Group B); Sprint-004 covered Phase 5 Crafting (M5.1-M5.4); Sprint-005 covered Phase 6 NPCs (M6.1-M6.4). Findings are consolidated into the milestone files by each sprint's capstone story.
 
 Bias is toward unchecking when evidence is weak — Honesty over optimistic tracking.
 
@@ -56,6 +56,25 @@ Sprint-004 audits use **BUILT / DESIGNED / NOT_SHIPPED** in place of Sprint-002/
 ### Audit Status block layout (Sprint-004)
 
 Sprint-004 evolves the in-milestone block layout: per-milestone H3 blocks (`### Audit Status (Sprint-004)`) placed after each milestone's `**Key references:**` section, rather than a single per-phase H2 block at file top (Sprint-002/003 convention). The per-milestone layout makes the audit context discoverable next to the milestone definition it describes; the H3 level avoids the H2-inside-H3 outline inversion that would otherwise absorb subsequent milestone content. The substring grep `## Audit Status` still matches both `##` and `### Audit Status` lines.
+
+## Sprint-005 findings files (Phase 6 — NPCs)
+
+| File | Scope | BUILT | DESIGNED | NOT_SHIPPED |
+| --- | --- | --- | --- | --- |
+| [phase-6-schema-archetypes.md](./phase-6-schema-archetypes.md) | M6.1 NPC stat block schema + 12 role archetype templates | 1 | 1 | 6 |
+| [phase-6-settlements.md](./phase-6-settlements.md) | M6.2 settlement templates + NPC population + 4 hostile encounters | 0 | 0 | 8 |
+| [phase-6-mentors.md](./phase-6-mentors.md) | M6.3 mentor registry + training (Warrior 16 + Rogue 6 + others) | 0 | 2 | 7 |
+| [phase-6-companions.md](./phase-6-companions.md) | M6.4 companion profiles + scaling + 5 relationship tiers | 1 | 3 | 5 |
+
+Sprint-005 headline: Phase 6 is **mostly unshipped at the mechanical layer** (2 BUILT / 6 DESIGNED / 26 NOT_SHIPPED across 34 acceptance items) — but the narrative + companion-presence infrastructure underneath it is real. What ships: NPC schema covers narrative/social/disposition (`packages/shared/src/entities/npc.ts:17-39`); `filter_knowledge` enforces disposition-gated knowledge at `apps/agent/tool_support.py:86-105`; CompanionState + companion-in-combat as `CombatParticipant` + idle speech + 4 companion narration shims ship for the presence layer; async training state machine + 4 programs + 8 activity types (including `technique_mentor`) ship as M6.3 infrastructure (variant binding does not). What does NOT ship: 12 role archetype templates, 5 settlement tiers, 8 personality traits, the mentor-variant registry, 3 of 4 companion combat profiles, HP scaling, the 4 hostile encounter templates as content, `content/companions.json`, all 5 deliverable rules-engine functions / agent tools across the 4 milestones. Compound dep: M6.3 ability-link (acceptance bullet 8) is structurally NOT_SHIPPED because M2.5 itself is 0/1/6 per sprint-002 audit.
+
+### Status legend (Sprint-005)
+
+Sprint-005 audits reuse the **BUILT / DESIGNED / NOT_SHIPPED** legend Sprint-004 introduced. The cross-sprint mapping (also documented in the Sprint-004 §Status legend above) is: `BUILT` ↔ Sprint-002/003 `confirmed`; `DESIGNED` ↔ Sprint-002/003 `aspirational` + `unverified`; `NOT_SHIPPED` is unchanged across all sprints. Future audit retros should refer to this consolidated mapping rather than rediscover the bridge each sprint.
+
+### Audit Status block layout (Sprint-005)
+
+Sprint-005 inherits Sprint-004's per-milestone H3 layout — `### Audit Status (Sprint-005)` blocks placed after each milestone's `**Key references:**` section in `docs/milestones/06_npcs.md` (M6.1-M6.4). The substring grep `## Audit Status` matches `##` and `### Audit Status` lines across both sprints.
 
 ## Material gaps surfaced (capstone annotations)
 
@@ -142,6 +161,44 @@ These were captured as "Audit Status (Sprint-004)" H3 blocks under each mileston
 - M5.3: 4-tier resolver shipped but bands diverge (code's `success` lumps spec's Exceptional+Success; code's `unexpected` has no spec mapping). No per-category bonus-property or flaw tables. No `apply_quality_outcome` / `resolve_experimentation` / `experiment_with_materials` symbols. Spec/milestone conflict: code returns half materials on Failure (`async_rules.py:88-91`); spec is explicit "Materials consumed. Nothing produced."
 - M5.4: Entire durability system unshipped. `Item` interface missing 7+ fields (damage_dice, AC, properties, durability, attunement, audio_cue, magic-tier gate). `content/items.json` ~34% catalog coverage by count, ~0% by structured fields. Spec/milestone conflicts: repair-pricing axis (spec: rarity-tier; milestone: durability-tier + damage-level); Legendary "Thornridge's Stand" `Cannot be crafted` quest-only exception breaks the magic-item crafting-tier gate; `Item.tier: 1 | 2` is undersized (need 1-4).
 
+## Sprint-005 capstone annotations (Phase 6 — NPCs)
+
+These were captured as "Audit Status (Sprint-005)" H3 blocks under each milestone in `06_npcs.md` with `<!-- see audit/phase-6-<file>.md -->` pointers. No M6.x acceptance boxes were unchecked because all were already `[ ]` — the milestone-level status was re-flagged as DESIGNED / NOT_STARTED / PARTIAL in each block.
+
+**Phase 6 schema + archetypes (M6.1)**
+- **Quest Giver archetype is NEW vs milestone's 12** — spec L190-206 explicitly notes "Not a standalone role — a function layered onto any NPC role." Either treat as `quest_giver?: bool` flag or add a function-overlay deliverable. (sprint-005 phase-6-schema-archetypes)
+- **Shipwright archetype is NEW vs milestone's 12** — spec L370-375 ships the 13th archetype; milestone undercounts by 1. (sprint-005 phase-6-schema-archetypes)
+- **CreatureStatBlock base type unshipped** — spec L18 has NPCStatBlock inherit from CreatureStatBlock; the base type is Phase 7 territory and not shipped. M6.1 either inlines combat fields or waits on Phase 7. (sprint-005 phase-6-schema-archetypes)
+- **`tier: 1|2` vs spec `npc_tier: int` naming** — shipped TS uses `tier`; spec uses `npc_tier`. Pick one when M6.1 schema lands. (sprint-005 phase-6-schema-archetypes)
+- **`age?: string` vs spec `age_range: str` enum** — TS shipped a free-form field; spec wants a constrained enum (`"young" | "middle" | "elder"`). (sprint-005 phase-6-schema-archetypes)
+
+**Phase 6 settlements (M6.2)**
+- **Capital tier has zero in-world examples** — spec L556 explicitly states "None currently exist — the Sundering destroyed the great cities"; milestone L54-55 wants "full role coverage with named authored NPCs." Capital is post-launch content or the milestone should drop it from "5 tiers." (sprint-005 phase-6-settlements)
+- **Hamlet role-count divergence** — milestone L52 says "1 innkeeper, 1 merchant, 1 healer (partial)"; spec L562-578 says 0-1 innkeeper, 0 merchants, 0 healers (herbalist at best). Milestone overcounts vs spec. (sprint-005 phase-6-settlements)
+- **`region_type` vs `settlement_tier` orthogonality** — `content/locations.json` already uses `region_type` ∈ {city, wilderness, dungeon}; M6.2 introduces `settlement_tier` (Hamlet→Capital) as a parallel axis. NOT the same thing. (sprint-005 phase-6-settlements)
+- **`hollow_patrol_greyvale` name collision** — shipped encounter is name-adjacent to spec's Ashmark Patrol but Hollow-themed (composition is Hollow creatures, not Ashmark soldiers). M6.2 should add Ashmark Patrol as a new template. (sprint-005 phase-6-settlements)
+- **Settlement role-distribution table has no Capital column** — spec L560-578 covers Hamlet/Village/Town/City only despite Capital being a defined tier. (sprint-005 phase-6-settlements)
+- **Reputation-aware encounter selection** — Ashmark Patrol's allied/hostile flip by Thornwatch standing (spec L613) is NEW vs milestone — reputation-aware encounter behavior is not in the acceptance list. (sprint-005 phase-6-settlements)
+
+**Phase 6 mentor registry (M6.3)**
+- **Warrior mentor count undercount** — milestone says "8+ mentors"; spec ships 16 variants across 8 techniques. Real coverage target is 16. (sprint-005 phase-6-mentors)
+- **Guardian/Skirmisher/Spy/Bard at 1 per archetype** — milestone L97 wants "at least 2"; spec ships exactly 1 representative per archetype. Trim milestone target or extend spec. (sprint-005 phase-6-mentors)
+- **Diplomat archetype NEW** — spec section heading L508 enumerates "Guardian, Skirmisher, Spy, Bard, Diplomat Mentors"; milestone drops Diplomat. (sprint-005 phase-6-mentors)
+- **`culture` field NEW vs milestone deliverables** — mentor schema spec L390 carries `culture: str` field; milestone L88 enumerates the other 6 schema fields but omits culture. (sprint-005 phase-6-mentors)
+- **`seeker_emris` vs `scholar_emris` name disambiguation** — spec L505 names "Seeker-Agent Emris" (Rogue L8 Exploit Weakness mentor); shipped NPC id is `scholar_emris` ("Emris of the Diaspora"). Same character per role match; M6.3 needs to record the alias or rename. (sprint-005 phase-6-mentors)
+- **`training_programs.mentor_id` field already binds to non-spec mentors** — `content/training_programs.json` ships 4 entries with `mentor_id` field but only references `guildmaster_torin` and `scholar_emris` for stat-training programs, not technique variants. M6.3 should reuse this binding pattern at the variant level or document why technique-mentor training diverges. (sprint-005 phase-6-mentors)
+- **`training_activities.data JSONB` variant_id placement decision** — table ships per-player cycle state with a JSONB extension slot; M6.3 implementation must choose typed `variant_id` column vs JSONB namespace. (sprint-005 phase-6-mentors)
+
+**Phase 6 companions (M6.4)**
+- **CompanionState infrastructure NEW vs M6.4 deliverables** — `CompanionState` (`apps/agent/session_data.py:15-24`) ships id/is_present/is_conscious/emotional_state/relationship_tier/session_memories/last_speech_time; `companion_idle.py` ships LLM idle speech; `activity_templates.py:31-78` `COMPANION_CONTEXT` ships 4 narration shims (Kael/Lira/Tam/Sable). M6.4 deliverables don't enumerate this presence layer. Promote to M6.4 or split into a new M6.5 Companion Presence Layer. (sprint-005 phase-6-companions)
+- **Errand-bonus relationship_tier coupling** at `apps/agent/async_rules.py:143-147` (`relationship_bonus = min(relationship_tier, 4)`) is NEW out-of-combat mechanic not in M6.4 — doesn't violate bullet 5's negative-condition (relationship doesn't affect combat) but is undocumented. (sprint-005 phase-6-companions)
+- **Companion Assignment Logic** (spec L823-849) NEW vs milestone — archetype-complement assignment rule (Mages get Kael, Warriors get Lira) is not in M6.4 deliverables. (sprint-005 phase-6-companions)
+- **Companion Progression Milestones** (spec L851-863) NEW vs milestone — per-session milestone framework overlaps M6.4's "5 tiers with narrative gates" with specific session-count anchors. (sprint-005 phase-6-companions)
+- **Kael action_pool flat-list vs typed-bucket schema divergence** — `content/npcs.json:147-223` ships `combat_stats.action_pool` as a flat list of 2 untyped entries (Longsword + Defensive Stance); spec wants typed attacks/passives/actives/reactions buckets. NPC schema split decision needed (extend NPC schema vs separate `Companion` interface). (sprint-005 phase-6-companions)
+- **Defensive Stance vs spec Shield Bash** — Kael's shipped 2nd action is "Defensive Stance" (grants +2 AC); spec attack #2 is Shield Bash (1d4+STR bludgeoning, stun on save fail). Different mechanic, different name. (sprint-005 phase-6-companions)
+- **Sable non-verbal TTS handling** — spec L786-789 explicitly notes Sable "communicates through body language, growls, and pointed looks"; voice-registry decision needed (suppress TTS vs growl sound effects). (sprint-005 phase-6-companions)
+- **CompanionState in-memory only** — no per-session persistence for relationship_tier, session_memories. M6.4 deliverable L129 calls for `companions` + `companion_relationships` tables; migration design needed. (sprint-005 phase-6-companions)
+
 ## Sprint-spec-cleanup punch list
 
 Out-of-scope-but-real findings surfaced by audits that don't fit any active milestone — collected here so they don't drift between sprints. Add new items at the bottom.
@@ -194,6 +251,20 @@ New from sprint-004 audits:
 - **Widen `Item.tier` union** from `1 | 2` to `1 | 2 | 3 | 4` (mechanical blocker — TS type error on any Rare/Legendary item).
 - **Add `audio_cue?: string` field** to the `Item` interface so spec magic-item audio cues live in the schema (audio-first invariant).
 - **Decouple `CRAFTING_RECIPES.npc_id` hard-binding** (`activity_templates.ts:105` uses `"grimjaw_blacksmith"` across all recipes) — workspace model separates NPC-as-renter from NPC-as-narrator.
+
+New from sprint-005 audits:
+
+- **Phase 6 capstone work** (mechanical layer mostly unshipped, presence layer real): break down by milestone:
+  - **M6.1**: NPC schema extension (`services[]` + `price_modifier` + `mentor{}` + `role_archetype` fields) + `content/role_archetypes.json` (12 archetypes plus Quest Giver function-overlay + Shipwright) + `npc_stat_blocks` and `role_archetypes` migrations + pure function `create_npc_from_archetype` + migrate 14 NPCs in `content/npcs.json` to expanded schema + reconcile NPCStatBlock-from-CreatureStatBlock inheritance (Phase 7 dep — inline vs wait).
+  - **M6.2**: `settlement_tier` and `personality` fields on Location + `content/settlement_templates.json` (4 active tiers × 17 roles × 8 personality traits) + `settlement_templates` migration + rules engine `generate_settlement_npcs` + `instantiate_npc_from_template` + agent tool `get_settlement_npc_population` + 4 hostile encounter templates (Bandit Ambush / Ashmark Patrol / Cult Cell / Hollow-Corrupted Settlement) in `content/encounter_templates.json` + faction-rep encounter-selection gating.
+  - **M6.3**: mentor-variant registry (Warrior 16 + Rogue 6 + Guardian/Skirmisher/Spy/Bard/Diplomat representative variants) + `content/mentor_variants.json` + `mentor_registry` migration + `mentor{}` field on NPC schema (M6.1 dep) + `variant_id` dimension on `training_activities.data JSONB` (or typed column) + pure function `check_mentor_requirements` + agent tools `check_mentor_requirements` + `enroll_mentor_training` + 21+ mentor NPCs seeded in `content/npcs.json` + M2.5 ability symbols (compound dep — Cleaving Blow / Precision Strike / etc. must ship via M2.5 first).
+  - **M6.4**: typed ability buckets on companion stat block (attacks/passives/actives/reactions; either extend NPC schema or split `Companion` interface) + 6 missing Kael abilities (Shield Bash + Protective Instinct + Veteran's Resilience + Hold the Line + Second Wind + Intercept) + full profiles for Lira/Tam/Sable + pure functions `scale_companion_stats_to_player_level` (75% HP) + `query_companion_relationship` + named relationship-tier enum + narrative-gate registry + `companions` + `companion_relationships` migrations + `content/companions.json` + companion ability execution in `apps/agent/combat_turn.py` + Sable non-verbal TTS handling.
+- **Promote CompanionState presence layer or split as M6.5** — `apps/agent/session_data.py:15-24` ships id/is_present/is_conscious/emotional_state/relationship_tier/session_memories/last_speech_time; `companion_idle.py` ships LLM idle speech; 4 companion narration shims at `apps/agent/activity_templates.py:31-78`. Beyond M6.4's enumerated deliverables — promote to M6.4 or create M6.5 Companion Presence Layer.
+- **Document errand-bonus relationship_tier coupling** at `apps/agent/async_rules.py:143-147` — out-of-combat coupling between `relationship_tier` and errand success not in M6.4 deliverables; document or move to a separate mechanic.
+- **Reconcile spec/milestone divergences in 06_npcs.md** (capstone choices): Quest Giver function-overlay vs 13th archetype; Shipwright (13th spec archetype not in milestone's 12); Hamlet role-count divergence (milestone overcounts); Capital tier aspirational status; Guardian/Skirmisher/Spy/Bard 1-vs-2 mentor target; Diplomat archetype NEW; `culture` field NEW; Warrior mentor count (milestone "8+" vs spec 16); naming choices (`tier` vs `npc_tier`, `age` vs `age_range`).
+- **Rename or alias `scholar_emris` ↔ `seeker_emris`** when M6.3 lands — `content/npcs.json` ships `scholar_emris` (Aelindran scholar) which matches spec L505 "Seeker-Agent Emris" Rogue L8 mentor. Same character per role.
+- **Rename or coexist `hollow_patrol_greyvale` with new Ashmark Patrol** — shipped encounter is Hollow-themed; spec's Ashmark Patrol is humanoid-faction. M6.2 should add Ashmark Patrol as a new template.
+- **Decide `region_type` vs `settlement_tier` orthogonality** — `content/locations.json` already uses `region_type` ∈ {city, wilderness, dungeon}; M6.2 must add `settlement_tier` as parallel axis without collapsing.
 
 ## Method
 
