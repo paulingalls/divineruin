@@ -6,11 +6,9 @@ per ADR 0001. No IO, no async beyond a one-shot file read at module import.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
-from pathlib import Path
 
-_GODS_JSON_PATH = Path(__file__).resolve().parents[2] / "content" / "gods.json"
+from _gods_content import load_gods
 
 
 @dataclass(frozen=True)
@@ -30,7 +28,7 @@ FAVOR_WHISPER_COOLDOWN = 25
 
 
 def _load_profiles() -> dict[str, GodWhisperProfile]:
-    entries = json.loads(_GODS_JSON_PATH.read_text())
+    entries = load_gods()
     return {
         entry["god_id"]: GodWhisperProfile(
             deity_id=entry["god_id"],
