@@ -1,5 +1,5 @@
 import { sql } from "./db.ts";
-import { logError } from "./env.ts";
+import { IS_TEST_ENV, logError } from "./env.ts";
 import { parseJsonBody, verifyInternalSecret } from "./middleware.ts";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
@@ -55,6 +55,13 @@ export async function sendPushNotification(
     body,
     data: data ?? {},
   }));
+
+  if (IS_TEST_ENV) {
+    console.log(
+      `[push] WOULD-SEND ${messages.length} message(s) to ${rows.length} recipient(s): "${title}"`,
+    );
+    return;
+  }
 
   try {
     const res = await fetch(EXPO_PUSH_URL, {

@@ -29,8 +29,7 @@ await Promise.all([
   loadTrainingPrograms(),
 ]);
 
-const enableDebug =
-  isDev && process.env.NODE_ENV !== "production" && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
+const enableDebug = isDev && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
 
 const CHARACTER_RE = /^\/api\/character\/([a-zA-Z0-9_-]+)$/;
 const ACTIVITY_ID_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)$/;

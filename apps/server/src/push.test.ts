@@ -1,7 +1,10 @@
-import { test, expect, describe, mock, beforeEach } from "bun:test";
+import { test, expect, describe, mock, beforeEach, afterEach } from "bun:test";
 
 import { _setInternalSecretForTesting } from "./middleware.ts";
 _setInternalSecretForTesting("test-secret");
+
+const ORIGINAL_FETCH = globalThis.fetch;
+let currentFetchSpy = mock(() => Promise.resolve(new Response(null, { status: 200 })));
 
 let mockQueryResults: unknown[][] = [];
 let queryCallIndex = 0;
@@ -40,6 +43,12 @@ function makeRequest(
 beforeEach(() => {
   mockQueryResults = [];
   queryCallIndex = 0;
+  currentFetchSpy = mock(() => Promise.resolve(new Response(null, { status: 200 })));
+  globalThis.fetch = currentFetchSpy as unknown as typeof fetch;
+});
+
+afterEach(() => {
+  globalThis.fetch = ORIGINAL_FETCH;
 });
 
 describe("handleStorePushToken", () => {
@@ -103,6 +112,31 @@ describe("handleInternalPush", () => {
     );
     const res = await handleInternalPush(req);
     expect(res.status).toBe(200);
+  });
+
+  // Resolves concern 7339e3923409 (push.ts had the same live-API leak as Resend).
+  test("does NOT call exp.host under bun:test even with valid push tokens", async () => {
+    mockQueryResults = [
+      [{ token: "ExponentPushToken[abc123]" }], // SELECT tokens
+    ];
+
+    const req = makeRequest(
+      "POST",
+      "/api/internal/push",
+      {
+        player_id: "player_1",
+        title: "Test",
+        body: "Test body",
+      },
+      secretHeaders,
+    );
+    const res = await handleInternalPush(req);
+    expect(res.status).toBe(200);
+    const fetchCalls = currentFetchSpy.mock.calls as unknown as [string, ...unknown[]][];
+    const expoCalls = fetchCalls.filter(
+      (call) => typeof call[0] === "string" && call[0].includes("exp.host"),
+    );
+    expect(expoCalls.length).toBe(0);
   });
 
   test("rejects missing required fields", async () => {

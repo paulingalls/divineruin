@@ -7,11 +7,9 @@ of a patron, not one of them, and does not seed the `god_agent_state` table.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
-from pathlib import Path
 
-_GODS_JSON_PATH = Path(__file__).resolve().parents[2] / "content" / "gods.json"
+from _gods_content import load_gods
 
 UNBOUND_ID = "none"
 
@@ -43,7 +41,7 @@ _UNBOUND = DeityData(
 
 
 def _load_deities() -> dict[str, DeityData]:
-    entries = json.loads(_GODS_JSON_PATH.read_text())
+    entries = load_gods()
     for entry in entries:
         if entry["god_id"] == UNBOUND_ID:
             raise ValueError(

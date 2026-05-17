@@ -8,14 +8,12 @@ This test guards against drift between gods.json, `creation_deities.DEITIES`, an
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
+from _gods_content import load_gods
 from creation_deities import DEITIES
 from god_whisper_data import GOD_WHISPER_PROFILES
-
-GODS_JSON_PATH = Path(__file__).resolve().parents[3] / "content" / "gods.json"
 
 EXPECTED_PATRON_IDS = frozenset(
     {
@@ -33,7 +31,7 @@ EXPECTED_PATRON_IDS = frozenset(
 )
 
 
-GODS_ENTRIES: list[dict] = json.loads(GODS_JSON_PATH.read_text())
+GODS_ENTRIES: list[dict] = load_gods()
 GODS_BY_ID: dict[str, dict] = {entry["god_id"]: entry for entry in GODS_ENTRIES}
 
 
@@ -103,6 +101,7 @@ def test_gods_json_does_not_contain_unbound_entry():
 
 def test_load_deities_rejects_none_god_id_in_gods_json(tmp_path, monkeypatch):
     """If a future change adds god_id='none' to gods.json, _load_deities raises."""
+    import _gods_content
     import creation_deities as cd
 
     poisoned = [
@@ -119,10 +118,14 @@ def test_load_deities_rejects_none_god_id_in_gods_json(tmp_path, monkeypatch):
     ]
     poisoned_path = tmp_path / "gods.json"
     poisoned_path.write_text(json.dumps(poisoned))
-    monkeypatch.setattr(cd, "_GODS_JSON_PATH", poisoned_path)
-
-    with pytest.raises(ValueError, match="god_id='none'"):
-        cd._load_deities()
+    monkeypatch.setattr(_gods_content, "_GODS_JSON_PATH", poisoned_path)
+    _gods_content.load_gods.cache_clear()
+    try:
+        with pytest.raises(ValueError, match="god_id='none'"):
+            cd._load_deities()
+    finally:
+        # monkeypatch reverts the path, but the cached poisoned value would leak.
+        _gods_content.load_gods.cache_clear()
 
 
 def test_layer_2_through_4_placeholders_exist_and_are_null():

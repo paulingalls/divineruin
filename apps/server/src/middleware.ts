@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "crypto";
 
 let _internalSecret = Bun.env.INTERNAL_SECRET ?? "";
-if (!_internalSecret && process.env.NODE_ENV === "production") {
+if (!_internalSecret && Bun.env.NODE_ENV === "production") {
   throw new Error("[security] INTERNAL_SECRET must be set in production.");
 }
 
@@ -17,7 +17,7 @@ export function _setInternalSecretForTesting(secret: string): void {
   _internalSecret = secret;
 }
 
-if (!Bun.env.CORS_ORIGIN && process.env.NODE_ENV === "production") {
+if (!Bun.env.CORS_ORIGIN && Bun.env.NODE_ENV === "production") {
   throw new Error("[security] CORS_ORIGIN must be set in production.");
 }
 const CORS_ORIGIN = Bun.env.CORS_ORIGIN ?? "*";
@@ -93,7 +93,7 @@ let purgeInterval: ReturnType<typeof setInterval> | null = setInterval(() => {
 // deploy environment, so a one-time check is sufficient; RATE_LIMIT_BYPASS,
 // however, is read per-request below so env applied to a spawned process
 // (e.g. Playwright webServer.env) is honored regardless of import order.
-if (process.env.RATE_LIMIT_BYPASS === "1" && process.env.NODE_ENV === "production") {
+if (process.env.RATE_LIMIT_BYPASS === "1" && Bun.env.NODE_ENV === "production") {
   throw new Error("[security] RATE_LIMIT_BYPASS must not be set in production.");
 }
 
