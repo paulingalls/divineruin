@@ -8,14 +8,12 @@ This test guards against drift between gods.json, `creation_deities.DEITIES`, an
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
+from _gods_content import load_gods
 from creation_deities import DEITIES
 from god_whisper_data import GOD_WHISPER_PROFILES
-
-GODS_JSON_PATH = Path(__file__).resolve().parents[3] / "content" / "gods.json"
 
 EXPECTED_PATRON_IDS = frozenset(
     {
@@ -33,7 +31,7 @@ EXPECTED_PATRON_IDS = frozenset(
 )
 
 
-GODS_ENTRIES: list[dict] = json.loads(GODS_JSON_PATH.read_text())
+GODS_ENTRIES: list[dict] = load_gods()
 GODS_BY_ID: dict[str, dict] = {entry["god_id"]: entry for entry in GODS_ENTRIES}
 
 
