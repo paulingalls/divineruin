@@ -1,8 +1,11 @@
 """Tests for XP thresholds and level-up mechanics."""
 
+import pytest
+
 from rules_engine import (
     XP_FOR_LEVEL,
     check_level_up,
+    level_for_xp,
 )
 
 # --- check_level_up ---
@@ -41,14 +44,6 @@ class TestCheckLevelUp:
         assert result.new_xp == 61250
         assert result.new_level == 20
         assert result.leveled_up is False
-
-    def test_calculate_level_from_total_xp_workaround(self):
-        # Audit phase-1-characters.md M1.4: no standalone calculate_level(total_xp)
-        # function ships. Recovering level from total XP alone uses the
-        # check_level_up(0, total_xp, 1) call shape. This test pins that contract.
-        assert check_level_up(0, 11250, 1).new_level == 20
-        assert check_level_up(0, 1050, 1).new_level == 5
-        assert check_level_up(0, 0, 1).new_level == 1
 
     def test_xp_table_is_monotonic(self):
         for lvl in range(2, 21):
@@ -167,3 +162,49 @@ class TestLevelUpE2E:
         assert result.attribute_points == 2  # from L4
         assert result.specialization_fork is True  # from L5
         assert result.levels_gained == 4
+
+
+# --- level_for_xp ---
+
+
+class TestLevelForXp:
+    """Canonical XP -> level lookup. Reference impl: game_mechanics_core.md L678."""
+
+    def test_zero_xp_returns_level_1(self):
+        assert level_for_xp(0) == 1
+
+    @pytest.mark.parametrize("level", list(range(1, 21)))
+    def test_each_threshold_returns_exact_level(self, level: int):
+        assert level_for_xp(XP_FOR_LEVEL[level]) == level
+
+    @pytest.mark.parametrize("level", list(range(2, 21)))
+    def test_one_below_threshold_returns_prior_level(self, level: int):
+        assert level_for_xp(XP_FOR_LEVEL[level] - 1) == level - 1
+
+    def test_interior_xp_returns_floor_level(self):
+        # Mid-band XP (between thresholds 5 and 6) returns level 5
+        assert level_for_xp(XP_FOR_LEVEL[5] + 100) == 5
+
+    def test_caps_at_max_level(self):
+        assert level_for_xp(XP_FOR_LEVEL[20] + 50000) == 20
+
+    @pytest.mark.parametrize("level", list(range(1, 21)))
+    def test_check_level_up_agrees_with_level_for_xp(self, level: int):
+        # Pins the consolidation contract: both paths walk the same XP_FOR_LEVEL table
+        total_xp = XP_FOR_LEVEL[level]
+        assert check_level_up(0, total_xp, 1).new_level == level_for_xp(total_xp)
+
+    def test_check_level_up_never_demotes_when_db_state_inconsistent(self):
+        # Pins the max() no-regression invariant in check_level_up. If current_level is
+        # higher than XP supports (manual god-mode set, partial DB write, etc.),
+        # awarding more XP must not demote the character — original walker only moved up.
+        result = check_level_up(current_xp=0, xp_gained=100, current_level=10)
+        assert result.new_level == 10
+        assert result.leveled_up is False
+        assert result.levels_gained == 0
+
+    def test_check_level_up_never_demotes_on_negative_xp(self):
+        # max() also guards against negative xp_gained reducing level.
+        result = check_level_up(current_xp=1050, xp_gained=-500, current_level=5)
+        assert result.new_level == 5
+        assert result.leveled_up is False
