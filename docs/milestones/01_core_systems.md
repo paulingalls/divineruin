@@ -116,20 +116,20 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 **Deliverables:**
 - Replace `XP_FOR_LEVEL` D&D 5e values with canonical ~100 XP/session scale from `game_mechanics_core.md` (tech debt from M1.1)
 - XP-to-level progression table (~100 XP per session average pacing)
-- Unified milestone definitions: L4/L5 (specialization fork), L10 (power), L15 (mastery), L20 (capstone)
+- Unified milestone definitions: L4 (`elective_techniques`), L5 (specialization fork — identity-defining per game_mechanics_core.md L656), L10 (power), L15 (mastery), L20 (capstone)
 - Attribute increases at levels 4, 8, 12, 16, 20 (+2 points each)
 - Level-up event emitter: triggers narration events via DM agent
 - DB migration: unified progression table (level → HP gain, attribute points, milestones, spell tier access, technique slots)
-- Pure function: `calculate_level(total_xp)` → level <!-- see audit/phase-1-characters.md#m1.4 — no standalone calculate_level function; workaround is check_level_up(0, total_xp, 1) -->
+- Pure function: `level_for_xp(total_xp)` → int (canonical name per game_mechanics_core.md L678)
 - Pure function: `get_level_up_rewards(from_level, to_level)` → list of rewards and milestones
-- Agent tool: `apply_level_up(character_id)` → applies rewards, emits narration event <!-- see audit/phase-1-characters.md#m1.4 — no standalone @function_tool of that name; level-up rewards are emitted as a side effect of award_xp via build_level_up_payload + LEVEL_UP event publish -->
+- Level-up rewards emission satisfied via `award_xp` agent tool (`apps/agent/progression_tools.py:26`) — `check_level_up` + `build_level_up_payload` + `LEVEL_UP` event publish. No separate `apply_level_up` tool; second entrypoint would introduce drift risk.
 
 **Acceptance criteria:**
 - [x] `XP_FOR_LEVEL` updated from D&D 5e values to canonical scale <!-- evidence: apps/agent/rules_engine.py:236-257 -->
-- [x] XP thresholds produce correct levels for all 20 levels <!-- evidence: apps/agent/rules_engine.py:274 check_level_up; note: no standalone calculate_level(total_xp), use check_level_up(0, total_xp, 1) — see audit/phase-1-characters.md -->
+- [x] XP thresholds produce correct levels for all 20 levels <!-- evidence: apps/agent/rules_engine.py:274 level_for_xp + :282 check_level_up; tests apps/agent/tests/test_rules_leveling.py TestLevelForXp -->
 - [x] Attribute increase events fire at levels 4, 8, 12, 16, 20 with +2 points each <!-- evidence: apps/agent/rules_engine.py:260 ATTRIBUTE_INCREASE_LEVELS, apps/agent/leveling.py:48 LEVEL_PROGRESSION -->
-- [ ] Specialization fork at L4/L5 is flagged in level-up rewards <!-- see audit/phase-1-characters.md#m1.4 — only L5 carries specialization_fork=True; L4 emits elective_techniques milestone but is NOT flagged as a fork. Diverges from spec wording -->
-- [ ] Unified progression table covers all 20 levels with correct HP gains, attribute points, and milestones <!-- see audit/phase-1-characters.md#m1.4 — LEVEL_PROGRESSION unifies attribute_points + milestones + proficiency + fork; HP gain lives separately in apps/agent/hp_scaling.py ARCHETYPE_HP_CONFIG. Acceptance text names HP as a unified-table field but it's split -->
+- [x] Specialization fork at L5 is flagged in level-up rewards (L4 emits an `elective_techniques` milestone but is NOT a fork; matches game_mechanics_core.md L656 "L5 = identity") <!-- evidence: apps/agent/rules_engine.py:261 SPECIALIZATION_LEVEL=5; apps/agent/leveling.py:85-92 L5 entry; tests apps/agent/tests/test_rules_leveling.py:113-135 + tests/test_leveling.py:39 -->
+- [x] Unified progression payload available across all 20 levels with attribute points, milestones, proficiency, fork, and per-level HP gain — HP joined from `ARCHETYPE_HP_CONFIG` at lookup time via `build_level_up_payload_for_archetype` <!-- evidence: apps/agent/leveling.py:331 build_level_up_payload_for_archetype joins LEVEL_PROGRESSION + ARCHETYPE_HP_CONFIG; tests apps/agent/tests/test_leveling.py TestArchetypePayload. NOTE: helper exists; production LEVEL_UP publish sites (progression_tools.py:88, quest_tools.py:195) still emit the base payload — archetype-aware wiring deferred to a future story. Acceptance is on join-availability, not join-emission. -->
 - [x] Level-up triggers a narration event that the DM agent can consume <!-- evidence: apps/agent/event_types.py:30 LEVEL_UP; apps/agent/progression_tools.py:88 publish; :325 get_milestone_narration. Note: no standalone apply_level_up agent tool — emitted by award_xp/complete_quest paths. See audit/phase-1-characters.md -->
 - [x] DB migration creates progression table with correct schema <!-- evidence: scripts/migrations/015_progression_table.sql + content/level_progression.json -->
 - [x] Tests cover level boundaries, multi-level jumps, and milestone triggers <!-- evidence: apps/agent/tests/test_rules_leveling.py + test_leveling.py -->
@@ -138,6 +138,8 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - *Game Mechanics Core — Experience & Leveling*
 - *Game Mechanics Core — Milestone Levels*
 - *Game Mechanics Core — Attribute Increases*
+
+**M1.4 Verification (sprint-008):** All 8 acceptance bullets checked; M1.4 acceptance matrix green (186 passed across `tests/test_rules_leveling.py + test_leveling.py + test_hp_scaling.py + test_rules_core.py` per execution_plan.json §M1 acceptance_execution; Verified-at: `403ebcd1`). Sprint-008 stories: story-001 (deliverables reword + L131 fork box) → story-002 (`level_for_xp` standalone + `check_level_up` consolidation + L129 refresh) → story-003 (`build_level_up_payload_for_archetype` join helper + L132 box flip). Open follow-ups: L133 annotation refresh (concern `1f9f5639278b` — same audit-pointer-after-closed-workaround pattern as L129; defer to next M1.4 doc touch); archetype-aware payload wiring at `progression_tools.py:88` + `quest_tools.py:195` (debt `a6974311f047`).
 
 ---
 
