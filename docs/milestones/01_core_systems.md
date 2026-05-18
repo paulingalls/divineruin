@@ -126,7 +126,7 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 
 **Acceptance criteria:**
 - [x] `XP_FOR_LEVEL` updated from D&D 5e values to canonical scale <!-- evidence: apps/agent/rules_engine.py:236-257 -->
-- [x] XP thresholds produce correct levels for all 20 levels <!-- evidence: apps/agent/rules_engine.py:274 check_level_up; note: no standalone calculate_level(total_xp), use check_level_up(0, total_xp, 1) — see audit/phase-1-characters.md -->
+- [x] XP thresholds produce correct levels for all 20 levels <!-- evidence: apps/agent/rules_engine.py:274 level_for_xp + :282 check_level_up; tests apps/agent/tests/test_rules_leveling.py TestLevelForXp -->
 - [x] Attribute increase events fire at levels 4, 8, 12, 16, 20 with +2 points each <!-- evidence: apps/agent/rules_engine.py:260 ATTRIBUTE_INCREASE_LEVELS, apps/agent/leveling.py:48 LEVEL_PROGRESSION -->
 - [x] Specialization fork at L5 is flagged in level-up rewards (L4 emits an `elective_techniques` milestone but is NOT a fork; matches game_mechanics_core.md L656 "L5 = identity") <!-- evidence: apps/agent/rules_engine.py:261 SPECIALIZATION_LEVEL=5; apps/agent/leveling.py:85-92 L5 entry; tests apps/agent/tests/test_rules_leveling.py:113-135 + tests/test_leveling.py:39 -->
 - [ ] Unified progression table covers all 20 levels with correct HP gains, attribute points, and milestones <!-- see audit/phase-1-characters.md#m1.4 — LEVEL_PROGRESSION unifies attribute_points + milestones + proficiency + fork; HP gain lives separately in apps/agent/hp_scaling.py ARCHETYPE_HP_CONFIG. Acceptance text names HP as a unified-table field but it's split -->
