@@ -37,18 +37,18 @@ After Phase 1 completes, these groups can run in parallel:
 
 | Phase | File | Source Doc | Milestones |
 |---|---|---|---|
-| 0 | [00_doc_updates.md](00_doc_updates.md) | `game_mechanics_economy.md`, `game_mechanics_decisions.md` | 4 |
-| 1 | [01_core_systems.md](01_core_systems.md) | `game_mechanics_core.md` | 6 |
-| 2 | [02_archetypes.md](02_archetypes.md) | `game_mechanics_archetypes.md` | 5 |
-| 3 | [03_magic.md](03_magic.md) | `game_mechanics_magic.md` | 4 |
-| 4 | [04_combat.md](04_combat.md) | `game_mechanics_combat.md` | 6 |
-| 5 | [05_crafting.md](05_crafting.md) | `game_mechanics_crafting.md` | 4 |
-| 6 | [06_npcs.md](06_npcs.md) | `game_mechanics_npcs.md` | 4 |
-| 7 | [07_bestiary.md](07_bestiary.md) | `game_mechanics_bestiary.md` | 4 |
-| 8 | [08_patrons.md](08_patrons.md) | `game_mechanics_patrons.md` | 3 |
-| 9 | [09_economy.md](09_economy.md) | `game_mechanics_economy.md` | 3 |
+| 0 | [00_doc_updates.md](00_doc_updates.md) | `../game_mechanics/game_mechanics_economy.md`, `../game_mechanics/game_mechanics_decisions.md` | 4 |
+| 1 | [01_core_systems.md](01_core_systems.md) | `../game_mechanics/game_mechanics_core.md` | 6 |
+| 2 | [02_archetypes.md](02_archetypes.md) | `../game_mechanics/game_mechanics_archetypes.md` | 5 |
+| 3 | [03_magic.md](03_magic.md) | `../game_mechanics/game_mechanics_magic.md` | 4 |
+| 4 | [04_combat.md](04_combat.md) | `../game_mechanics/game_mechanics_combat.md`, `../game_mechanics/game_mechanics_encounter_roles.md` | 6 |
+| 5 | [05_crafting.md](05_crafting.md) | `../game_mechanics/game_mechanics_crafting.md` | 4 |
+| 6 | [06_npcs.md](06_npcs.md) | `../game_mechanics/game_mechanics_npcs.md` | 4 |
+| 7 | [07_bestiary.md](07_bestiary.md) | `../game_mechanics/game_mechanics_bestiary.md`, `../game_mechanics/game_mechanics_encounter_roles.md` | 4 |
+| 8 | [08_patrons.md](08_patrons.md) | `../game_mechanics/game_mechanics_patrons.md` | 3 |
+| 9 | [09_economy.md](09_economy.md) | `../game_mechanics/game_mechanics_economy.md` + 6 subsystem docs in `../game_mechanics/economy/` (`supply_demand_engine.md`, `faction_reputation_pricing.md`, `merchant_inventory_restock.md`, `gold_sink_ledger.md`, `inflation_targets_controls.md`, `game_mechanics_p2p_trade.md`) | 10 |
 
-**Total: 43 milestones across 10 phases**
+**Total: 50 milestones across 10 phases**
 
 ## Existing Infrastructure (Inputs)
 
