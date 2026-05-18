@@ -2,7 +2,7 @@
 
 > **Claude Code directive:** This is the canonical record of all locked design decisions. Every numbered decision represents a deliberate choice with documented reasoning. When questioning why a system works a certain way, check here first.
 >
-> **How to use:** Decisions are numbered sequentially (1-57) in the order they were made. Each includes the reasoning that led to the choice. Grouped by system area for readability, but the number reflects chronological design order.
+> **How to use:** Decisions are numbered sequentially (1-128) in the order they were made. Each includes the reasoning that led to the choice. Grouped by system area for readability, but the number reflects chronological design order.
 
 ---
 
@@ -184,3 +184,141 @@
 
 72. **1 gc = 10 sp (not 100 sp), matching the lore bible's Sun/Mark ratio.** Reason: the lore bible defines 10 Marks (silver) = 1 Sun (gold). The GDD originally said 1 gc = 100 sp, creating an incompatibility. Adopting 1 gc = 10 sp keeps a clean decimal system (10 cp = 1 sp, 10 sp = 1 gc), matches the lore's established ratio, and makes "gold crown" prices intuitive: Half Plate at 50 gc = 500 sp (~1.4 years' unskilled labor) is appropriate for rare military armor. Plate at 100 gc = 1,000 sp (~2.7 years) is appropriate for the most expensive mundane item. Revivify diamond at 50 gc = 500 sp is appropriate for a death-prevention component. The GDD's economy section needs to be updated to match. All "gp" notation in mechanics docs has been corrected to "gc."
 
+
+## Encounter Roles (Decisions 73-81)
+
+73. **Encounter roles are modifiers on base stat blocks, not separate creature entries.** Reason: the bestiary should contain one canonical entry per creature. Roles (Minion/Standard/Elite/Boss/Named) are a *presentation layer* applied by the encounter builder, not a data layer. This keeps the bestiary clean, avoids stat block proliferation, and means adding a new creature automatically gives the encounter builder five usable variants without additional authoring. Named creatures are exempt — their bespoke stat blocks already define their identity.
+
+74. **Minions lose all active abilities.** Reason: Minions exist to create threat through numbers with minimal tactical overhead. If Minions have special abilities, the DM must track ability uses across potentially 6-10 creatures per fight — that's too much state for the rules engine and too much narration for a voice-first game. Minions attack. That's it. Their danger comes from Pack Tactics, flanking, and action economy pressure.
+
+75. **Elites get enhanced existing abilities; Bosses get one new signature ability.** Reason: the hybrid model. Elites are recognizably the same creature, just better — the player's knowledge of the base creature transfers. Bosses are tactically distinct — the signature forces the player to adapt. Authoring new abilities per creature per role would be unsustainable at scale; limiting it to one signature per Boss keeps the authoring burden manageable while ensuring Boss fights feel unique.
+
+76. **Boss legendary action is 1 per round, not per turn.** Reason: in a solo-player game with one companion, "per turn" and "per round" are nearly equivalent (only 2-3 turns per round). 1 per round gives the Boss one extra action — enough to create tactical pressure without overwhelming a single player. In multiplayer (Phase 2+), this may need re-evaluation as more turns per round dilute the Boss's relative action economy.
+
+77. **Harvesting is auto-success if skill requirement is met.** Reason: the gate is investment (Training in the right skill), not luck. A player who invested in Survival: Expert should reliably harvest Expert-tier materials. Adding a roll creates a double gate — you need the skill AND a good roll — which punishes the player's investment rather than rewarding it. The drama is in the fight, not the looting.
+
+78. **Material sell values are always lower than crafting value.** Reason: the economy must incentivize the crafting loop. If selling raw materials is more profitable than crafting, the Artificer archetype loses economic identity and the async crafting system becomes irrelevant. Sell values are the floor; crafting is the multiplier. This also creates natural market dynamics — players with Crafting skill extract more value from the same materials.
+
+79. **Minions never drop currency.** Reason: currency drops from Minions would create a farming exploit — throw yourself at the largest possible Minion swarms for maximum coin per encounter. By restricting currency to Standard and above, the economy rewards *harder* fights, not *bigger* ones. This aligns with the GDD's philosophy that engagement, not grind, drives income.
+
+80. **Boss bonus loot is context-driven, not creature-driven.** Reason: a bandit captain in a mountain pass should drop something different from a bandit captain in a harbor. Context loot connects the encounter to the story — a letter, a key, a badge, a map fragment. This gives the DM (or the quest author) a loot slot that serves narrative, not just economy. It also makes Boss encounters memorable beyond their mechanics.
+
+81. **The encounter budget system uses fractional points with Minions at 0.5.** Reason: Minions should be cheap enough to field in large numbers (that's their purpose) but not free (that would create infinite swarms). At 0.5, a Standard encounter budget of 3.0 supports up to 6 Minions — enough for a cinematic swarm — while a tighter budget of 2.0 limits Minion groups to 4, keeping early-game encounters manageable.
+
+---
+
+## Faction Reputation Pricing (Decisions 82-86)
+
+82. **Faction price modifiers are smaller than disposition modifiers.** Reason: disposition represents a personal relationship — a merchant who trusts you gives you a better deal because they know and like you. Faction reputation is institutional policy — the merchant follows the rules their organization sets. Personal relationships should always be more impactful than bureaucratic standing because this is a game about human connection, not organizational management. The multiplicative stacking ensures both matter without either dominating.
+
+83. **Economic activity grants reputation only through meaningful contributions, not purchase volume.** Reason: if buying rations shifted reputation, the system collapses into "spend money to get discounts to spend less money" — a pure economic loop with no narrative content. By limiting reputation-granting actions to meaningful contributions (selling rare materials, donating, fulfilling bounties), the system ties economic behavior to story. You earn the Thornwatch's respect by supplying what they need, not by shopping at their stores.
+
+84. **Economic reputation gains cap at Trusted (+15), not Honored (+25).** Reason: Honored represents deep narrative commitment — command authority, classified intelligence, the faction treats you as one of their own. That level of trust cannot be purchased. It requires quest completion, difficult choices, and demonstrated loyalty. Allowing economic activity to reach Honored would cheapen the narrative weight of the highest tier and create a pay-to-win dynamic. The cap at Trusted means economic contributions *supplement* the relationship but can never *replace* it.
+
+85. **Faction-exclusive items use a tiered access framework, not exhaustive catalogs.** Reason: exhaustive per-faction catalogs would be enormous and would lock content design too early. The framework defines the *pattern* (what each tier unlocks categorically) while leaving specific items to faction content authoring. This means new factions can be added without modifying the economy system — they just populate their tier slots. The Thornwatch and Merchant Guild examples demonstrate the pattern; other factions follow the same structure.
+
+86. **Detection gates negative reputation from economic activity.** Reason: if every negative economic action automatically triggered reputation loss, stealth-oriented archetypes (Spy, Rogue) would be disproportionately punished for their core gameplay loop. By gating negative consequences behind detection, the system creates risk-reward tension: selling stolen Thornwatch goods is profitable but dangerous. Getting caught is devastating. This makes the Spy's Deception skill economically valuable — they can play both sides if they're skilled enough — while ensuring consequences exist for those who aren't.
+
+---
+
+## Merchant Inventory & Restock (Decisions 87-95)
+
+87. **Three-tier stock model balances frictionless basics with meaningful scarcity.** Reason: an inventory system where every item can deplete creates frustration without gameplay value (running out of torches isn't a meaningful choice — it's just annoying). An inventory system where nothing depletes destroys the geography of trade. The three-tier model resolves this: trivial supplies are always available, quality goods can run out (creating real choices), and unique items create destination-driven gameplay. This mirrors real-world retail patterns players intuitively understand.
+
+88. **Restock cadence is once per in-game day at dawn.** Reason: predictability matters. Players need to be able to plan around restock — "we'll rest in town tonight, the smith will have new stock in the morning." Probabilistic per-tick restock would create unpredictable patterns that players can't reason about. Daily cycles also give the world a natural rhythm and integrate cleanly with the existing time-driven simulation layer (no new infrastructure needed).
+
+89. **Merchant gold pools are finite and scale with settlement size.** Reason: this creates economic geography. Small settlements can't afford big-ticket items, which drives players toward cities for high-value sales. Without this, settlement size becomes economically irrelevant — every shop is an infinite gold sink. The finite pool also creates interesting decisions: "do I sell the masterwork blade to the village smith for what he can afford, or carry it to the city for full price?" This is real gameplay. The implementation cost is modest — each merchant tracks one number that resets daily.
+
+90. **Merchant gold pools restock daily at dawn, parallel to inventory.** Reason: consistency. Players already learn "restock happens at dawn" for inventory; extending the same rule to gold means one mental model, not two. This also prevents the edge case where a merchant has plenty of inventory but no gold to buy from the player (or vice versa) for asymmetric durations.
+
+91. **Buyback limits prevent farming exploits.** Reason: without limits, a player could clear a bandit camp and unload twelve short swords on the village blacksmith for full price — far more than the in-world economy of a village should support. The buyback limit (3 same items per day for common weapons) reflects the reality that a village smith doesn't need twelve short swords. Beyond the limit, the merchant offers reduced prices, providing economic friction without hard refusal. This is an exploit-prevention mechanism that emerges naturally from the worldbuilding.
+
+92. **Always-stocked items are limited to truly trivial supplies.** Reason: every item moved into Tier 1 (infinite stock) is one less point of friction in the economy. The line is drawn at items where running out creates frustration without gameplay (torches, rations). Quality items, even common ones (healing potions, basic weapons), are Tier 2 because their availability creates meaningful choices. The catalog of Tier 1 items is intentionally short and unlikely to grow.
+
+93. **Consignment is a Friendly+ relationship feature, not a default option.** Reason: consignment requires the merchant to trust the player will return for payment, and trust the player won't dispute the eventual sale price. That trust requires existing relationship investment. Making consignment available only at Friendly+ disposition reinforces the relationship-investment loop (merchant likes you → unlocks consignment → enables high-value sales in small settlements → strengthens relationship). It also creates narrative content — "I'll hold onto this for you, Marn. Bring me your business when you can. We'll work out a fair price when it sells."
+
+94. **Shop entry narration uses 3-4 highlights, not full inventory listing.** Reason: voice-first design. A complete inventory recitation would take 30+ seconds and overwhelm the player with information they'll forget. Highlights focus the player's attention on what's interesting (Tier 2 changes, Tier 3 presence) and lets them ask specific questions about the rest. This mirrors real shopping — you walk in, scan the highlights, ask about specifics.
+
+95. **Settlement personality stacks multiplicatively on size.** Reason: the personality system already exists (`game_mechanics_npcs.md`) — leveraging it for inventory creates richer worldbuilding without new infrastructure. A Struggling Village feels meaningfully different from a Prosperous Village even though both are Villages. The multiplicative stacking ensures personality matters at every settlement size — a Struggling City is still richer than a Struggling Village, but both feel poorer than their Prosperous counterparts.
+
+---
+
+## Supply & Demand Engine (Decisions 96-104)
+
+96. **Hard price bounds clamp final prices to [0.5×, 3.0×] of base.** Reason: without bounds, multiplicative stacking can produce pathological prices (5+ events stacked = 7-10× base, breaks player ability to transact). The 0.5× floor preserves crafting/trading economics; the 3.0× ceiling preserves player ability to buy critical items even in the worst crises. Bounds are a safety net, not a target — most events stay well within them.
+
+97. **Event modifiers stack multiplicatively, not additively.** Reason: events represent independent market pressures. A Hollow incursion creates demand pressure; a trade route disruption creates supply pressure; a refugee influx adds population pressure. All three are real and all three should compound. Additive stacking would understate the impact of confluence — three separate crises wouldn't feel like a real disaster. Multiplicative stacking with a 3.0× clamp captures both the compounding and the protective ceiling.
+
+98. **Item granularity is tag-based, not category-based.** Reason: the item schema already supports tags. A Hollow incursion specifically demands `anti-hollow` items, not all weapons — Hollow-Ward Amulets and blessed weapons see massive demand spikes, while a regular dagger is barely affected. Tag-based targeting also lets us layer events naturally (Hollow Incursion affects `anti-hollow` and `healing` and `divine`, each at different multipliers) without artificial categorization. Tags also handle multi-attribute items naturally — a blessed sword is both `weapons` and `divine`, and gets the highest applicable event modifier.
+
+99. **Tag matching is once-per-event, not stacking across tags within an event.** Reason: if a Hollow Incursion event boosts both `anti-hollow` (2.0×) and `divine` (1.4×), and an item has both tags, applying both would yield 2.8× — which over-counts the same demand pressure. Instead, the event's strongest applicable tag wins for that item. This ensures multiple events compound (independent pressures), but redundant tag effects within a single event don't double-count.
+
+100. **Events have three phases (Active / Recovery / Resolved) with linear recovery decay.** Reason: binary on-off events create jarring "prices snap to normal the moment you kill the boss" moments. Real economies recover gradually — supply chains rebuild, fear subsides, surpluses get absorbed. The recovery phase makes the world feel responsive but realistic. Linear decay is mathematically simple and produces intuitive narration ("prices are coming back down"). The three-phase model adds minimal state (one extra field per event instance) for significant narrative gain.
+
+101. **Recovery duration is half active duration, minimum 2 in-game days.** Reason: recovery shouldn't be instantaneous (defeats the purpose) or longer than the original crisis (would feel disproportionate). Half-duration with a 2-day floor produces good results across the range — a 14-day Hollow incursion has a 7-day recovery; a 1-day festival has a 2-day recovery. Players experience meaningful but bounded recovery periods.
+
+102. **Player intervention can resolve events early; time-based resolution is the fallback.** Reason: agency matters. The player should be able to *cause* recovery by acting (defeating the Hollow boss, clearing the bandit camp, completing the plague-cure quest). But events shouldn't be permanent if the player ignores them — the world keeps moving, threats burn out or get resolved by NPC factions over time. Active duration is a maximum; resolution conditions can end events sooner. This balances agency with world-as-living-system.
+
+103. **DM narrates causes; character sheet shows numbers.** Reason: voice-first design. The DM never says "healing potions are 1.95× their normal price due to active Hollow Incursion (1.5×) and Disease Outbreak (1.3×) events." The DM says "the alchemists are running low — the incursion's been brutal on supplies." The character sheet shows the actual price (39 sp instead of 25 sp). Players learn to read the world's narrative state and connect it to mechanical impact, which is a core gameplay loop in a voice-first RPG.
+
+104. **Event narration should reference player intervention for resolved events.** Reason: making the player's actions narratively visible is critical for agency. When prices come back down because the player solved the underlying crisis, the merchant should mention it. "Heard about what you did at the breach — caravans are running again." This creates the closed loop: player acts → world changes → merchant notices → player feels their impact. Without this narration, recovery feels like passive time-passing rather than earned consequence.
+
+---
+
+## Gold Sinks & Economy Balance (Decisions 105-113)
+
+105. **Gold sinks fall into eight categories with distinct design intents.** Reason: the categorization (Maintenance/Subsistence/Combat/Progression/Crafting/Service/Lifestyle/Endgame) ensures each sink serves a clear purpose and that the sink ecosystem is balanced. Without categorization, sinks tend to cluster in one area (combat consumables, for example) leaving other player activities economically inert. The category framework also makes gap analysis easier — if no Lifestyle sinks exist, that's a clear design issue.
+
+106. **All forced sinks must have player-agency mitigations.** Reason: forced sinks the player can't avoid become punitive taxation. Item repair is forced (durability is real) but mitigated by Crafting skill (self-repair). Death is forced (combat happens) but mitigated by archetype choice (divine archetypes self-resurrect) and gameplay (avoid dying). Subsistence is forced (you must rest) but mitigated by camping (free, riskier). Every "forced" sink in the ledger has at least one mitigation path, preserving player choice.
+
+107. **Mortaen's death costs are non-monetary; gold sinks for death come from spell components and NPC services.** Reason: the death system's narrative weight comes from attribute loss, item loss, and memory fragments — things the player can't simply spend gold to recover. Making death a *gold* sink would convert a profound narrative system into an economic transaction. Keep them separate: Mortaen's domain extracts narrative cost; resurrection magic extracts gold cost. Both can apply to the same death (you spend 50 gc on Revivify *and* still see Mortaen if it doesn't take effect in time).
+
+108. **Endgame sinks must absorb wealth at high magnitudes (1,000+ sp).** Reason: at high levels, players accumulate wealth faster than mid-game sinks can absorb. Without endgame sinks, gold becomes meaningless to high-level players. Resurrection services (1,000+ sp), legendary repair (200+ sp), faction investments (100+ sp minimum), and property maintenance (Phase 2+) all serve as wealth absorbers for the post-mid-game economy. The 3.0× price ceiling from the supply/demand engine ensures these costs don't escape into pathological territory.
+
+109. **Lifestyle sinks reward wealth without granting mechanical advantage.** Reason: the player should be able to spend money on status, identity, and roleplay without affecting combat balance. Fine clothing, jewelry, and exotic goods absorb wealth from rich players who don't need more combat gear. The reward is narrative — NPCs notice the player is well-dressed, the DM describes their entrance with weight, certain social interactions become easier. This separates "I have the best gear" (combat power) from "I am rich" (status and roleplay), which lets both be progression axes without one dominating.
+
+110. **Travel tolls must always have a free alternative.** Reason: tolls are a useful sink and worldbuilding tool, but pure taxation violates the design philosophy. Every toll point in the world should have an alternative: longer routes, faction relationship that waives the toll, or a skill check (Survival, Stealth) to bypass. This preserves player agency — the toll becomes "the convenient option" rather than "the only option."
+
+111. **Bribery is a real social mechanic, not just a thematic option.** Reason: in a world with corrupt officials, desperate guards, and grey morality, players should be able to use gold to influence outcomes. The skill-check alternative remains (Persuasion, Deception, Intimidation), but bribery offers a wealth-conversion path: spend money to skip a check. This makes gold relevant to social play, not just combat/crafting/services. The refusal mechanic (NPC declines, minor disposition penalty) ensures bribery isn't risk-free — corrupt NPCs accept; honorable ones don't.
+
+112. **Companion equipment maintenance is half player gear cost.** Reason: companions in combat take damage and use equipment, but charging full repair cost would double the maintenance burden on the player. Halving it acknowledges that companions use simpler gear (Kael's longsword is functional, not masterwork) while still creating a real sink. This also opens companion gear upgrades as a meaningful gold sink — the player can invest in better companion equipment for tactical benefit.
+
+113. **Sink event logging is required infrastructure for inflation control.** Reason: without per-sink tracking, balance analysis is impossible. The aggregated sink data feeds inflation control (Decisions 114-121), live balance monitoring, and narrative systems (god-agent attention to player spending patterns). The implementation cost is minor (one log entry per sink event); the analytical value is significant.
+
+---
+
+## Inflation Targets & Controls (Decisions 114-121)
+
+114. **Inflation control is a Phase 2+ primary concern; Phase 1 implements the data infrastructure only.** Reason: in a single-player game, "inflation" is just per-character economic balance, which is handled by the wealth-by-level curves and per-session targets. Building a full automated inflation control system for single-player is over-engineering. But the *data infrastructure* (per-event logging, aggregate metrics) must exist in Phase 1 because retrofitting it into a live multiplayer service is enormously expensive. Build the foundation now, activate the controls later.
+
+115. **The wealth-by-level curve has three phases — steep growth (1-9), moderate growth (10-15), plateau (16-20).** Reason: players need to feel wealth accumulation early to be invested in the economy. Mid-game requires harder choices as sinks scale up. Endgame requires sinks that absorb excess wealth so gold remains meaningful. The three-phase curve captures all three needs. Specific numbers will need playtesting validation, but the curve shape is the design intent.
+
+116. **Target per-session balance is net positive 50-150 sp.** Reason: this produces a satisfying wealth growth experience without trivializing the economy. Net negative sessions feel punitive; net positive 500+ sessions feel like the system is breaking. The 50-150 sp range gives the player visible progression while preserving meaningful spending decisions. Outliers in either direction are acceptable but shouldn't be the norm.
+
+117. **Long-term faucet/sink ratio target is 1.0 with controlled variance.** Reason: zero growth (perfect 1.0) would mean players never feel they're getting richer over time, which kills the sense of progression. Runaway growth (significantly above 1.0) creates classic MMO inflation. The target ratio of 1.0 with widening acceptable variance over shorter windows (1.4 at 24h, 1.05 at 90d) acknowledges that short-term swings are normal while long-term drift is the real problem.
+
+118. **God-agent economic intervention is the primary Phase 2+ control mechanism.** Reason: macroeconomic adjustments expressed as authored content (god actions, seasonal events) are narratively elegant and player-visible. Players experience the world responding to their collective behavior, not "the developers nerfed quest rewards." This converts a backend balance problem into a worldbuilding feature. Manual parameter tuning remains as a fallback for cases the narrative systems can't handle, but it's the lever of last resort.
+
+119. **Seasonal economic events are authored content with calendar triggers, not procedural.** Reason: seasonal events should feel cultural and intentional — Lantern Festival is a real festival that real NPCs celebrate, not a random discount event. Procedural generation would make seasons feel artificial. Authored content gives each season a distinct character that players can learn, anticipate, and engage with. The cost is that seasonal content must be authored and rotated, but this is a content-team responsibility, not engineering complexity.
+
+120. **The player must never see the inflation control system directly.** Reason: economic dashboards, "inflation indicators," or any UI that exposes the macro-economic state would break the worldbuilding. The player should experience economic shifts as Mortaen's tribute demands, Aelindra's blessings, the approach of Forge Day, the deepening of the Long Dark — narrative phenomena, not statistical readouts. This is voice-first design extended to the economy: the world responds, the DM narrates, the player feels.
+
+121. **Wealth variance from player choice is not a bug.** Reason: hoarders, spenders, and crafters will naturally land at different wealth levels. The curve targets are *typical experience targets*, not constraints. The economy should produce different experiences for different play styles — that's a feature. Inflation controls target *aggregate* drift, not individual deviation. A player choosing to hoard wealth shouldn't be penalized; they just have nothing exciting to spend it on until endgame sinks unlock.
+
+---
+
+## Player-to-Player Trade (Decisions 122-128)
+
+122. **Player-to-player trade is Phase 2+ deferred; Phase 1 implements supporting infrastructure only.** Reason: Phase 1 is single-player; P2P trade is meaningless without other players. But the architectural foundations (item provenance, atomic transaction primitives, settlement-aware APIs, transaction logging) must exist in Phase 1 to avoid expensive retrofitting at Phase 2 launch. Build the bones now, the muscle later.
+
+123. **P2P trade must obey the same world rules as merchant trade.** Reason: a parallel P2P economy that bypasses faction reputation, supply/demand, and gold sinks would undermine the entire economic design. P2P trade in Thornwatch territory is witnessed by Thornwatch authority. P2P trade of faction-restricted items carries reputation risk. P2P trade includes its own sinks (fees, taxes, transport). The world's economic rules apply uniformly regardless of who the other party is.
+
+124. **P2P trade is voice-first; no menu-driven trade interfaces.** Reason: this is the core design pillar of the game extended consistently to trade. Players negotiate verbally, the DM facilitates, the character sheet shows current state. Auction houses (if they exist at all) are queried verbally and listings are placed verbally with a faction agent — they're not menu interfaces.
+
+125. **Item provenance must be tracked from Phase 1.** Reason: provenance enables audit, anti-fraud, narrative ("where did you get this?"), and stolen-goods enforcement. Adding provenance retroactively to a multiplayer service requires migrating every existing item — vastly more expensive than building it in from the start. Phase 1 logs the trail; Phase 2+ uses it.
+
+126. **Atomic transaction primitives are required infrastructure.** Reason: in Phase 1 they prevent edge cases (inventory full mid-transaction, partial loot drops). In Phase 2+ they prevent fraud and griefing. The cost is small — design the API once with atomicity in mind. The retrofit cost is enormous.
+
+127. **Auction house design is genuinely uncertain and worth real debate at Phase 2 planning.** Reason: auction houses are a common MMO feature but they fundamentally reshape economies in ways that may conflict with our design goals (regional economic identity, voice-first interaction, narrative-rich trade). The decision shouldn't be made now. The constraints document captures the tradeoffs; the actual choice happens at Phase 2 design time with full context.
+
+128. **Direct trade in non-faction territory carries no fee.** Reason: face-to-face trade between players adventuring together (a party splitting loot, friends gifting items) should be the most frictionless interaction. Imposing fees on every social trade would discourage the cooperative gameplay we want to enable. Faction territory adds taxes; lawless territory has none. This also creates a smuggling/frontier-market vector for legitimate gameplay.
