@@ -139,6 +139,8 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - *Game Mechanics Core — Milestone Levels*
 - *Game Mechanics Core — Attribute Increases*
 
+**M1.4 Verification (sprint-008):** All 8 acceptance bullets checked; M1.4 acceptance matrix green (186 passed across `tests/test_rules_leveling.py + test_leveling.py + test_hp_scaling.py + test_rules_core.py` per execution_plan.json §M1 acceptance_execution; Verified-at: `403ebcd1`). Sprint-008 stories: story-001 (deliverables reword + L131 fork box) → story-002 (`level_for_xp` standalone + `check_level_up` consolidation + L129 refresh) → story-003 (`build_level_up_payload_for_archetype` join helper + L132 box flip). Open follow-ups: L133 annotation refresh (concern `1f9f5639278b` — same audit-pointer-after-closed-workaround pattern as L129; defer to next M1.4 doc touch); archetype-aware payload wiring at `progression_tools.py:88` + `quest_tools.py:195` (debt `a6974311f047`).
+
 ---
 
 ### Milestone 1.5 — Async Training System
