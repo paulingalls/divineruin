@@ -6,32 +6,76 @@ These milestones define the deep game mechanics implementation, building on the 
 
 ## Dependency Graph
 
+Primary spine (top-down):
+
 ```
-Phase 0: Doc Updates ─────────────────────────────── (no deps, do first)
-    │
-Phase 1: Core Systems ──────────────────────────────── (foundation for all)
-    │           │            │           │
-    ▼           ▼            ▼           ▼
-Phase 2:    Phase 5:     Phase 9:    Phase 6:
-Archetypes  Crafting     Economy     NPCs
-    │  ╲                              │
-    ▼   ╲                             ▼
-Phase 3:  ╲──────────► Phase 4: ◄── Phase 7:
-Magic                   Combat      Bestiary
-    │                      │
-    ▼                      ▼
-Phase 8:              (Integration)
-Patrons
+    Phase 0: Doc Updates ──────────────────── (no deps, do first)
+        │
+        ▼
+    Phase 1: Core Systems ─────────────────── (foundation for all)
+        │           │            │
+        ▼           ▼            ▼
+    Phase 2:    Phase 5:     Phase 6:
+    Archetypes  Crafting     NPCs
+        │  ╲                     │
+        ▼   ╲                    ▼
+    Phase 3:  ╲              Phase 7:
+    Magic      ╲             Bestiary
+        │       ╲                │
+        ▼        ▼               │
+    Phase 8:  Phase 4:           │   (Phase 4 owns
+    Patrons   Combat ──────────► │    game_mechanics_encounter_roles.md;
+                 │                │    Phase 7 consumes role classifications)
+                 ▼   ▼   ▼   ▼
+                 Phase 9: Economy
+                 (integration sink — see cross-edges below)
+```
+
+Cross-phase edges discovered during sprints 2-6 audits:
+
+```
+    Phase 4 → Phase 9   M9.4 loot/currency drops need M4.7 encounter_roles
+                        (phase-encounter-roles.md, phase-9-economy.md)
+    Phase 5 → Phase 9   workspace rental + commission/repair tiers depend
+                        on Phase 5 crafting framework (phase-9-economy.md)
+    Phase 6 → Phase 9   M6.1 role archetypes gate M9.6 merchant→pool
+                        bindings; M6.3 mentor registry gates mentor fees
+                        (phase-9-restock.md, phase-9-economy.md)
+    Phase 7 → Phase 9   creature stat blocks + category tagging gate
+                        material sell values (phase-9-economy.md)
+    Phase 3 → Phase 8   Layer-2 Resonance modifiers in M8.1 need a
+                        Resonance hook in Phase 3 magic.calculate_resonance
+                        (phase-3-magic.md, phase-8-patrons.md)
+    Phase 2 → Phase 6   M6.3 mentor training BLOCKS on Phase 2 M2.5
+                        martial mentor system
+                        (phase-2-archetypes.md, phase-6-mentors.md)
+    Phase 4 → Phase 6   M6.4 companion combat profiles BLOCK on Phase 4
+                        combat integration (phase-4-combat.md, phase-6-companions.md)
 ```
 
 ## Parallelism Guide
 
-After Phase 1 completes, these groups can run in parallel:
-- **Group A:** Phase 2 (Archetypes) → Phase 3 (Magic) → Phase 8 (Patrons)
-- **Group B:** Phase 4 (Combat) → Phase 7 (Bestiary)
-- **Group C:** Phase 5 (Crafting) — independent after Phase 1
-- **Group D:** Phase 6 (NPCs) — independent after Phase 1
-- **Group E:** Phase 9 (Economy) — independent after Phase 1
+After Phase 1 completes. (Arrows within a group mean serial chain;
+groups run in parallel with each other.)
+
+- **Group A (Archetypes spine):** Phase 2 → Phase 3 → Phase 8
+- **Group B (Encounter spine):** Phase 4 + Phase 7
+  (both consume `game_mechanics_encounter_roles.md`; Phase 4 owns the doc, Phase 7 cross-refs — coordinate edits)
+- **Group C (Independent leaf):** Phase 5 (Crafting) — no upstream blockers beyond Phase 1
+- **Group D (NPCs spine):** Phase 6 — M6.1, M6.2 start after Phase 1; M6.3 mentor
+  training BLOCKS on Phase 2 M2.5 (martial mentor system); M6.4 companion
+  combat profiles BLOCK on Phase 4 (combat integration)
+
+**Phase 9 (Economy) is the integration sink** — it can begin substrate
+work after Phase 1, but key milestones BLOCK until upstream phases land:
+
+- M9.4 loot/currency drops → requires Phase 4 (encounter_roles) + Phase 7 (creature roles)
+- M9.x commission/workspace/repair pricing → requires Phase 5
+- M9.6 merchant inventory pools → requires Phase 6 M6.1 role archetypes
+- M9.x NPC service + mentor fees → requires Phase 6 M6.3 mentor registry
+
+Plan Phase 9 work *last* in the integration window, not in parallel
+with its upstream dependencies.
 
 ## Phase Files
 
