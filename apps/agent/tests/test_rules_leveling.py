@@ -187,3 +187,24 @@ class TestLevelForXp:
 
     def test_caps_at_max_level(self):
         assert level_for_xp(XP_FOR_LEVEL[20] + 50000) == 20
+
+    @pytest.mark.parametrize("level", list(range(1, 21)))
+    def test_check_level_up_agrees_with_level_for_xp(self, level: int):
+        # Pins the consolidation contract: both paths walk the same XP_FOR_LEVEL table
+        total_xp = XP_FOR_LEVEL[level]
+        assert check_level_up(0, total_xp, 1).new_level == level_for_xp(total_xp)
+
+    def test_check_level_up_never_demotes_when_db_state_inconsistent(self):
+        # Pins the max() no-regression invariant in check_level_up. If current_level is
+        # higher than XP supports (manual god-mode set, partial DB write, etc.),
+        # awarding more XP must not demote the character — original walker only moved up.
+        result = check_level_up(current_xp=0, xp_gained=100, current_level=10)
+        assert result.new_level == 10
+        assert result.leveled_up is False
+        assert result.levels_gained == 0
+
+    def test_check_level_up_never_demotes_on_negative_xp(self):
+        # max() also guards against negative xp_gained reducing level.
+        result = check_level_up(current_xp=1050, xp_gained=-500, current_level=5)
+        assert result.new_level == 5
+        assert result.leveled_up is False

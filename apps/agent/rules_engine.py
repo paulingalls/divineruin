@@ -281,13 +281,8 @@ def level_for_xp(total_xp: int) -> int:
 
 def check_level_up(current_xp: int, xp_gained: int, current_level: int) -> LevelUpResult:
     new_xp = current_xp + xp_gained
-    new_level = current_level
-
-    for lvl in range(current_level + 1, MAX_LEVEL + 1):
-        if new_xp >= XP_FOR_LEVEL[lvl]:
-            new_level = lvl
-        else:
-            break
+    # max() prevents level regression — level_for_xp alone could return < current_level on bad inputs.
+    new_level = max(current_level, level_for_xp(new_xp))
 
     gained_levels = range(current_level + 1, new_level + 1)
     attribute_points = sum(2 for lvl in gained_levels if lvl in ATTRIBUTE_INCREASE_LEVELS)
