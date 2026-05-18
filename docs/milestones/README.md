@@ -94,6 +94,28 @@ with its upstream dependencies.
 
 **Total: 50 milestones across 10 phases**
 
+## Audit Completion
+
+These milestone docs reflect a full audit pass completed during
+sprints 001–006 against the canonical `game_mechanics/` source docs
+and the runtime codebase:
+
+| Audit Sprint | Execution-plan M# | Scope |
+|---|---|---|
+| sprint-001 | M1 | Phases 0–1 (Doc Updates + Core Systems) — verify shipped coverage |
+| sprint-002 | M2 | Group A: Phases 2 (Archetypes), 3 (Magic), 8 (Patrons) |
+| sprint-003 | M3 | Group B: Phases 4 (Combat), 7 (Bestiary), integrate `encounter_roles.md` |
+| sprint-004 | M4 | Phase 5 (Crafting) |
+| sprint-005 | M5 | Phase 6 (NPCs) |
+| sprint-006 | M6 | Phase 9 (Economy) — absorbed 6 subsystem docs |
+
+Phase counts, source-doc paths, and the dep graph above were last
+reconciled with the audit corpus during sprint-007 (M7). Per-phase
+audit findings live in [`audit/`](audit/); the
+[`audit/README.md`](audit/README.md) index also carries the
+**Sprint-spec-cleanup punch list** — out-of-scope-but-real gaps that
+don't fit any active milestone.
+
 ## Existing Infrastructure (Inputs)
 
 These systems are already built and available as inputs for all milestones:
