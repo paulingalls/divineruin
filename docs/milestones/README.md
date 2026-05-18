@@ -46,6 +46,11 @@ Cross-phase edges discovered during sprints 2-6 audits:
     Phase 3 → Phase 8   Layer-2 Resonance modifiers in M8.1 need a
                         Resonance hook in Phase 3 magic.calculate_resonance
                         (phase-3-magic.md, phase-8-patrons.md)
+    Phase 2 → Phase 6   M6.3 mentor training BLOCKS on Phase 2 M2.5
+                        martial mentor system
+                        (phase-2-archetypes.md, phase-6-mentors.md)
+    Phase 4 → Phase 6   M6.4 companion combat profiles BLOCK on Phase 4
+                        combat integration (phase-4-combat.md, phase-6-companions.md)
 ```
 
 ## Parallelism Guide
