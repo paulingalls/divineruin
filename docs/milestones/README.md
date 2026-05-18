@@ -26,9 +26,10 @@ Primary spine (top-down):
     Phase 8:  Phase 4:           │   (Phase 4 owns
     Patrons   Combat ──────────► │    game_mechanics_encounter_roles.md;
                  │                │    Phase 7 consumes role classifications)
-                 ▼   ▼   ▼   ▼
+                 ▼
                  Phase 9: Economy
-                 (integration sink — see cross-edges below)
+                 (integration sink — fan-in from Phases 4/5/6/7
+                  shown in cross-edges block below)
 ```
 
 Cross-phase edges discovered during sprints 2-6 audits:
@@ -59,7 +60,7 @@ After Phase 1 completes. (Arrows within a group mean serial chain;
 groups run in parallel with each other.)
 
 - **Group A (Archetypes spine):** Phase 2 → Phase 3 → Phase 8
-- **Group B (Encounter spine):** Phase 4 + Phase 7
+- **Group B (Encounter spine):** Phase 4 and Phase 7
   (both consume `game_mechanics_encounter_roles.md`; Phase 4 owns the doc, Phase 7 cross-refs — coordinate edits)
 - **Group C (Independent leaf):** Phase 5 (Crafting) — no upstream blockers beyond Phase 1
 - **Group D (NPCs spine):** Phase 6 — M6.1, M6.2 start after Phase 1; M6.3 mentor
