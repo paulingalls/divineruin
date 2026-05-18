@@ -316,6 +316,8 @@ Out-of-scope-but-real findings surfaced by audits that don't fit any active mile
 - **`Location.settlement_id` field** (cross-cuts M9.6 + M9.10) — enables "same settlement" O(1) query. Decide between (a) tag locations with settlement_id string OR (b) introduce typed `Settlement` entity (heavier; supports M9.6 spec gap directly). (sprint-006 phase-9-restock + phase-9-p2p-trade)
 - **NPC.faction is the merchant→faction binding** — already on schema (`Npc.faction: string` BUILT per phase-6 audit); spec L48 implies merchant→faction binding. Capstone should clarify whether NPC.faction is the canonical binding or whether a separate `NPC.affiliations` field is needed. (sprint-006 phase-9-faction-pricing)
 - **`appreciated_gifts: string[]` field on Npc schema** — low-cost addition that enables NPC gift system (Gap 5 of gold_sink_ledger.md). Bundle with M9.5 faction-pricing schema decisions. (sprint-006 phase-9-gold-sink)
+- **`Item.tier` field name collision (sprint-004 + sprint-006)** — sprint-004 punch-list calls for widening `Item.tier: 1|2` to `1|2|3|4` (rarity Common/Uncommon/Rare/Legendary); sprint-006 M9.6 introduces Tier 1/2/3 (stock availability — always/limited/unique). Both compete for the same field name. Capstone proposal: rename one (e.g. `Item.rarity_tier` + `Item.stock_tier`, OR move stock tier to pool entries). (sprint-006 cross-cuts sprint-004 phase-5-durability)
+- **`content/events.json` `market_disruption` entry id is misleading** — id reads economic; type is `scripted` (narrative beat "The Wounded Rider"). When M9.7 economic events land with `type: "economic"`, decide whether to rename this entry to disambiguate or upgrade its type. (sprint-006 phase-9-supply-demand)
 
 ## Sprint-005 follow-up candidates
 
@@ -370,7 +372,7 @@ New from sprint-005 audits:
 
 ## Sprint-006 follow-up candidates
 
-Phase 9 capstone work (largest single phase audited; 328 acceptance items across 7 spec docs, ~95% NOT_SHIPPED). Break down by milestone:
+Phase 9 capstone work (largest single phase audited; 326 acceptance items across 7 spec docs, ~91% NOT_SHIPPED — see Sprint-006 findings section for the per-file table). Break down by milestone:
 
 - **M9.1 + M9.2**: currency model (cp/sp/gc enum + `convert_currency`) + 14 canonical price tables + 11 NPC services + 4 workspaces + 3 commission tiers + 4 repair tiers + 5 mentor fee bands + 4 Hollow material tiers + `calculate_price` pure function (5-modifier composition with 0.5×–3.0× clamp) + `Npc.disposition_modifiers` field-rename/extend decision + agent tool `get_merchant_price`. Diplomat starting_gold reconciliation (25 vs 15).
 - **M9.3**: tier classification on quests + `validate_quest_reward` + wealth simulation + `content/quests.json` reward calibration.
