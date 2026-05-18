@@ -271,6 +271,14 @@ class LevelUpResult:
     specialization_fork: bool
 
 
+def level_for_xp(total_xp: int) -> int:
+    """Level for cumulative XP. Walks high-to-low so first threshold met wins. Ref: game_mechanics_core.md L678."""
+    for lvl in range(MAX_LEVEL, 0, -1):
+        if total_xp >= XP_FOR_LEVEL[lvl]:
+            return lvl
+    return 1
+
+
 def check_level_up(current_xp: int, xp_gained: int, current_level: int) -> LevelUpResult:
     new_xp = current_xp + xp_gained
     new_level = current_level
