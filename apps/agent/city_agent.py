@@ -41,7 +41,8 @@ CITY_TOOLS = [
     update_npc_disposition,
     record_story_moment,
     end_session,
-    # Training (M1.5)
+    # Training (M1.5) — cities only. Mentors live in cities today; wilderness/dungeon agents
+    # intentionally omit. Revisit if hunter/ranger mentor systems land.
     query_training_programs,
     initiate_training_cycle,
     resolve_training_midpoint,
