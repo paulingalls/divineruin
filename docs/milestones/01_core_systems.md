@@ -158,8 +158,8 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
   - Skill practice: 5–8 hrs, Crafting: 7–11 hrs, Companion errand: 7–13 hrs
 - Midpoint decision system: player chooses direction at cycle midpoint
 - DB migration: `training_activities` table (type, target, cycle_number, first_half_duration, second_half_duration, state, decision_made, micro_bonus)
-- Agent tool: `initiate_training_cycle(character_id, activity_type, target)` → creates training record <!-- see audit/phase-1-async.md#m1.5 — no @function_tool of this name; cycle initiation is HTTP-only (POST /api/activities type=training) -->
-- Agent tool: `resolve_training_midpoint(training_id, decision)` → advances to second half <!-- see audit/phase-1-async.md#m1.5 — no @function_tool; midpoint resolution is HTTP-only (POST /api/activities/{id}/decide) -->
+- Agent tool: `initiate_training_cycle(program_id)` → creates training record for the current player on a named program (program lookup resolves to activity_type + stat + skill + dc + mentor_id, parallel to HTTP `POST /api/activities` type=training). Paired with `query_training_programs()` so the DM can list available programs. <!-- evidence: apps/agent/training_tools.py initiate_training_cycle + query_training_programs; sprint-009 story-002 reworded the signature from (character_id, activity_type, target) per execution_plan.json §M-2 deep-dive (program_id is HTTP parity) -->
+- Agent tool: `resolve_training_midpoint(training_id, decision)` → advances to second half <!-- see audit/phase-1-async.md#m1.5 — sprint-009 story-003 will register this @function_tool -->
 - Client component: training panel with progress bar, midpoint decision prompts, completion notifications
 - Integration with skill use counters from M1.2 (skill practice increments the same counter)
 
