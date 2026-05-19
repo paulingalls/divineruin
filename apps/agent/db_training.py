@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 import asyncpg
@@ -90,20 +91,22 @@ async def create_training_activity(
     state: TrainingState,
     data: dict,
     *,
+    transition_at: datetime | None = None,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> str:
     _conn = conn or await db.get_pool()
     activity_id = f"train_{uuid.uuid4().hex[:12]}"
     await _conn.execute(
         """
-        INSERT INTO training_activities (id, player_id, activity_type, state, data)
-        VALUES ($1, $2, $3, $4, $5::jsonb)
+        INSERT INTO training_activities (id, player_id, activity_type, state, data, transition_at)
+        VALUES ($1, $2, $3, $4, $5::jsonb, $6)
         """,
         activity_id,
         player_id,
         activity_type,
         state,
         json.dumps(data),
+        transition_at,
     )
     return activity_id
 
