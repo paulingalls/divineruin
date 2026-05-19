@@ -172,7 +172,7 @@ class TestInitiateTrainingCycle:
                 now_fn=lambda: FIXED_NOW,
             )
         )
-        assert "error" in result
+        assert result["code"] == "INVALID_PROGRAM_ID"
         assert "program_id" in result["error"]
         mock_content.get_training_program.assert_not_awaited()
         mock_training.create_training_activity.assert_not_awaited()
@@ -195,7 +195,7 @@ class TestInitiateTrainingCycle:
                 now_fn=lambda: FIXED_NOW,
             )
         )
-        assert result == {"error": "Unknown training program: nonexistent"}
+        assert result == {"error": "Unknown training program: nonexistent", "code": "UNKNOWN_PROGRAM"}
         mock_training.create_training_activity.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -221,7 +221,7 @@ class TestInitiateTrainingCycle:
                 now_fn=lambda: FIXED_NOW,
             )
         )
-        assert result == {"error": "A training cycle is already in progress."}
+        assert result == {"error": "A training cycle is already in progress.", "code": "TRAINING_SLOT_FULL"}
         mock_training.get_player_training_activities.assert_awaited_once_with("player_1", state=None, conn=mock_conn)
         mock_training.create_training_activity.assert_not_awaited()
 
@@ -272,7 +272,7 @@ class TestInitiateTrainingCycle:
                 now_fn=lambda: FIXED_NOW,
             )
         )
-        assert "error" in result
+        assert result["code"] == "UNKNOWN_ACTIVITY_TYPE"
         assert "totally_bogus" in result["error"]
         mock_training.create_training_activity.assert_not_awaited()
 
