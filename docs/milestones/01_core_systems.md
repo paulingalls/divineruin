@@ -157,9 +157,9 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
   - Recipe study: 5–9 hrs, Technique training (base): 7–11 hrs, Technique training (mentor variant): 9–13 hrs
   - Skill practice: 5–8 hrs, Crafting: 7–11 hrs, Companion errand: 7–13 hrs
 - Midpoint decision system: player chooses direction at cycle midpoint
-- DB migration: `training_activities` table (type, target, cycle_number, first_half_duration, second_half_duration, state, decision_made, micro_bonus)
+- DB migration: `training_activities` table — shipped as JSONB-flattened schema per `scripts/migrations/016_training_activities.sql`; semantically equivalent to the spec's explicit columns per `audit/phase-1-async.md` §M1.5 L23, no migration required.
 - Agent tool: `initiate_training_cycle(program_id)` → creates training record for the current player on a named program (program lookup resolves to activity_type + stat + skill + dc + mentor_id, parallel to HTTP `POST /api/activities` type=training). Paired with `query_training_programs()` so the DM can list available programs. <!-- evidence: apps/agent/training_tools.py initiate_training_cycle + query_training_programs; sprint-009 story-002 reworded the signature from (character_id, activity_type, target) per execution_plan.json §M-2 deep-dive (program_id is HTTP parity) -->
-- Agent tool: `resolve_training_midpoint(training_id, decision)` → advances to second half <!-- see audit/phase-1-async.md#m1.5 — sprint-009 story-003 will register this @function_tool -->
+- Agent tool: `resolve_training_midpoint(training_id, decision)` → advances to second half <!-- evidence: apps/agent/training_tools.py resolve_training_midpoint; sprint-009 story-003 shipped the tool, story-004 registered in CityAgent.CITY_TOOLS. Resource-row template (validate-id → for-update → ownership → state → rules → update). -->
 - Client component: training panel with progress bar, midpoint decision prompts, completion notifications
 - Integration with skill use counters from M1.2 (skill practice increments the same counter)
 

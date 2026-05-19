@@ -14,6 +14,7 @@ from quest_tools import update_quest
 from region_types import REGION_CITY
 from scene_tools import enter_location
 from session_tools import end_session, record_story_moment, update_npc_disposition
+from training_tools import initiate_training_cycle, query_training_programs, resolve_training_midpoint
 
 CITY_TOOLS = [
     # World query
@@ -40,6 +41,10 @@ CITY_TOOLS = [
     update_npc_disposition,
     record_story_moment,
     end_session,
+    # Training (M1.5)
+    query_training_programs,
+    initiate_training_cycle,
+    resolve_training_midpoint,
     # Combat handoff
     start_combat,
 ]

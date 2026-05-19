@@ -551,3 +551,23 @@ class TestResolveTrainingMidpoint:
         kwargs = mock_training.update_training_activity.await_args.kwargs
         assert kwargs["transition_at"] is not None
         assert kwargs["transition_at"] == FIXED_NOW + timedelta(seconds=4 * 3600)
+
+
+# --- CityAgent registration (story-004) ---
+
+
+class TestCityAgentRegistration:
+    """Pin the wiring of the 3 training tools into CityAgent.CITY_TOOLS by
+    construction. Resolves story-003 close-reviewer concern 835b595b50d4."""
+
+    def test_all_three_training_tools_in_city_tools(self):
+        from city_agent import CITY_TOOLS
+        from training_tools import (
+            initiate_training_cycle,
+            query_training_programs,
+            resolve_training_midpoint,
+        )
+
+        assert query_training_programs in CITY_TOOLS
+        assert initiate_training_cycle in CITY_TOOLS
+        assert resolve_training_midpoint in CITY_TOOLS
