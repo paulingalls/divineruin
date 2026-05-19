@@ -1,10 +1,12 @@
 """Training-cycle agent tools (M1.5).
 
 Module conventions (within this module only — other agent tools still
-return code-less `{"error": ...}`; story-003+ harmonizes across tools)
+return code-less `{"error": ...}`; a follow-up cross-cutting migration
+will move to LiveKit's `ToolError` exception pattern across all tools)
 -----------------------------------------------------------------------
 * Error JSON shape — every error return is `{"error": <human prose>, "code": <machine slug>}`.
-  Slugs: `INVALID_PROGRAM_ID`, `UNKNOWN_PROGRAM`, `UNKNOWN_ACTIVITY_TYPE`, `TRAINING_SLOT_FULL`.
+  Slugs (initiate): `INVALID_PROGRAM_ID`, `UNKNOWN_PROGRAM`, `UNKNOWN_ACTIVITY_TYPE`, `TRAINING_SLOT_FULL`.
+  Slugs (resolve): `INVALID_TRAINING_ID`, `UNKNOWN_TRAINING`, `TRAINING_NOT_OWNED`, `TRAINING_WRONG_STATE`, `INVALID_DECISION`.
   Switch on `code` from callers, render `error` to the DM.
 * `_*_impl` helpers expose `db_mod=`, `db_training_mod=`, `db_content_mod=`, `rules_mod=`,
   `now_fn=` keyword arguments. These are TEST-ONLY injection seams; production callers
@@ -25,11 +27,12 @@ import db_training
 from db_errors import db_tool
 from session_data import SessionData
 from tool_support import _validate_id
-from training_rules import TrainingState, start_training_cycle
+from training_rules import TrainingState, resolve_midpoint_decision, start_training_cycle
 
 logger = logging.getLogger("divineruin.tools")
 
 _TERMINAL_STATE: TrainingState = "complete"
+_AWAITING_DECISION_STATE: TrainingState = "awaiting_decision"
 
 
 def _error_json(code: str, message: str) -> str:
@@ -139,6 +142,100 @@ async def _initiate_training_cycle_impl(
             "first_half_seconds": cycle.first_half_seconds,
             "decision_at": cycle.decision_at.isoformat(),
             "program_name": program["name"],
+        }
+    )
+
+
+@function_tool()
+@db_tool
+async def resolve_training_midpoint(
+    context: RunContext[SessionData],
+    training_id: str,
+    decision_id: str,
+) -> str:
+    """Resolve the midpoint decision for the player's awaiting-decision
+    training cycle. Advances state from 'awaiting_decision' to
+    'running_second_half' and writes the second-half completion time so
+    the worker can finish the cycle.
+
+    Use only after the player has audibly chosen one of the midpoint
+    options surfaced by the prior midpoint prompt. If the training is
+    not theirs, already past the midpoint, or not yet at the midpoint,
+    this returns an error.
+
+    Args:
+        training_id: The activity_id returned by initiate_training_cycle
+            (or surfaced by the catch-up feed).
+        decision_id: The option id the player chose.
+    """
+    return await _resolve_training_midpoint_impl(context, training_id, decision_id)
+
+
+async def _resolve_training_midpoint_impl(
+    context: RunContext[SessionData],
+    training_id: str,
+    decision_id: str,
+    *,
+    db_mod=db,
+    db_training_mod=db_training,
+    rules_mod=None,
+    now_fn=None,
+) -> str:
+    context.disallow_interruptions()
+    validation_err = _validate_id(training_id, "training_id")
+    if validation_err is not None:
+        return _error_json("INVALID_TRAINING_ID", json.loads(validation_err)["error"])
+    session: SessionData = context.userdata
+    player_id = session.player_id
+    logger.info(
+        "resolve_training_midpoint called: player_id=%s training_id=%s decision_id=%s",
+        player_id,
+        training_id,
+        decision_id,
+    )
+
+    async with db_mod.transaction() as conn:
+        row = await db_training_mod.get_training_activity(training_id, conn=conn, for_update=True)
+        if row is None:
+            return _error_json("UNKNOWN_TRAINING", f"Unknown training: {training_id}")
+        if row["player_id"] != player_id:
+            return _error_json(
+                "TRAINING_NOT_OWNED",
+                f"Training {training_id} does not belong to this player.",
+            )
+        if row["state"] != _AWAITING_DECISION_STATE:
+            return _error_json(
+                "TRAINING_WRONG_STATE",
+                f"Training {training_id} is in state '{row['state']}', not '{_AWAITING_DECISION_STATE}'.",
+            )
+
+        now = (now_fn or _default_now)()
+        resolve_fn = rules_mod or resolve_midpoint_decision
+        try:
+            result = resolve_fn(row["activity_type"], decision_id, now)
+        except ValueError as e:
+            return _error_json("INVALID_DECISION", str(e))
+
+        data_updates = {
+            "decision_id": decision_id,
+            "second_half_seconds": result.second_half_seconds,
+            "micro_bonus": result.micro_bonus,
+        }
+        await db_training_mod.update_training_activity(
+            training_id,
+            state=result.state,
+            data_updates=data_updates,
+            transition_at=result.completes_at,
+            conn=conn,
+        )
+
+    return json.dumps(
+        {
+            "activity_id": training_id,
+            "state": result.state,
+            "second_half_seconds": result.second_half_seconds,
+            "completes_at": result.completes_at.isoformat(),
+            "decision_id": decision_id,
         }
     )
 

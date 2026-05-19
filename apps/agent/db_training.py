@@ -116,18 +116,35 @@ async def update_training_activity(
     state: TrainingState,
     data_updates: dict,
     *,
+    transition_at: datetime | None = None,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
     _conn = conn or await db.get_pool()
-    await _conn.execute(
-        """
-        UPDATE training_activities
-        SET state = $2,
-            data = data || $3::jsonb,
-            updated_at = NOW()
-        WHERE id = $1
-        """,
-        activity_id,
-        state,
-        json.dumps(data_updates),
-    )
+    if transition_at is None:
+        await _conn.execute(
+            """
+            UPDATE training_activities
+            SET state = $2,
+                data = data || $3::jsonb,
+                updated_at = NOW()
+            WHERE id = $1
+            """,
+            activity_id,
+            state,
+            json.dumps(data_updates),
+        )
+    else:
+        await _conn.execute(
+            """
+            UPDATE training_activities
+            SET state = $2,
+                data = data || $3::jsonb,
+                transition_at = $4,
+                updated_at = NOW()
+            WHERE id = $1
+            """,
+            activity_id,
+            state,
+            json.dumps(data_updates),
+            transition_at,
+        )
