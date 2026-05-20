@@ -14,9 +14,9 @@ import event_types as E
 import rules_engine
 from db_errors import db_tool
 from game_events import publish_game_event
-from leveling import build_level_up_payload, get_level_up_rewards
+from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from session_data import SessionData
-from tool_support import _cap_str
+from tool_support import _cap_str, con_mod_for_player
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -85,7 +85,9 @@ async def _award_xp_impl(
 
         if result.leveled_up:
             rewards = get_level_up_rewards(current_level, result.new_level)
-            pending_events.append((E.LEVEL_UP, build_level_up_payload(current_level, rewards)))
+            con_mod = con_mod_for_player(player)
+            payload = build_level_up_payload_for_archetype(current_level, rewards, player["class"], con_mod=con_mod)
+            pending_events.append((E.LEVEL_UP, payload))
 
     for event_type, payload in pending_events:
         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
