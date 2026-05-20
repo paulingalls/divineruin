@@ -3,7 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sample_fixtures import GUILD_PLAYER, level_up_payload, make_context, make_mock_room, mock_txn
+from sample_fixtures import GUILD_PLAYER, level_up_payload, make_context, make_db_mod, make_mock_room
 
 from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from progression_tools import _award_xp_impl
@@ -13,9 +13,7 @@ async def _award_crossing_threshold(player):
     """Award 100 XP to a level-1 player at xp 250, crossing into level 2,
     and return the published LEVEL_UP payload."""
     room = make_mock_room()
-    mock_conn = MagicMock()
-    mock_db = MagicMock()
-    mock_db.transaction = lambda: mock_txn(mock_conn)
+    mock_db, _ = make_db_mod()
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value={**player, "xp": 250})
     mutations = MagicMock()

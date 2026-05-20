@@ -2,15 +2,25 @@
 
 import json
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import event_types as E
 from session_data import SessionData
 
+FIXED_NOW = datetime(2026, 5, 19, 12, 0, 0, tzinfo=UTC)
+
 
 @asynccontextmanager
 async def mock_txn(conn):
     yield conn
+
+
+def make_db_mod():
+    mock_conn = MagicMock()
+    mock_db = MagicMock()
+    mock_db.transaction = lambda: mock_txn(mock_conn)
+    return mock_db, mock_conn
 
 
 def level_up_payload(room):
