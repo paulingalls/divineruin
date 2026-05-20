@@ -184,6 +184,29 @@ class TestRegionTypePrompts:
             assert VOICE_STYLE_PROMPT in prompt, f"{rt} prompt missing VOICE_STYLE_PROMPT"
 
 
+class TestTrainingDiscoveryPrompt:
+    """Training tools are cities-only (mentors live in cities), so the
+    discovery hint appears only in the city prompt branch."""
+
+    def test_city_prompt_includes_training_discovery(self):
+        from system_prompts import TRAINING_PROMPT
+
+        prompt = build_system_prompt("loc", region_type="city")
+        assert TRAINING_PROMPT in prompt
+        assert "query_training_programs" in prompt
+
+    def test_wilderness_prompt_omits_training_discovery(self):
+        from system_prompts import TRAINING_PROMPT
+
+        prompt = build_system_prompt("loc", region_type="wilderness")
+        assert TRAINING_PROMPT not in prompt
+        assert "query_training_programs" not in prompt
+
+    def test_dungeon_prompt_omits_training_discovery(self):
+        prompt = build_system_prompt("loc", region_type="dungeon")
+        assert "query_training_programs" not in prompt
+
+
 class TestRegionTypeWarmLayer:
     """Warm layer adjusts sections by region_type."""
 
