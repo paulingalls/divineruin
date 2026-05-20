@@ -26,6 +26,18 @@ else
     echo "  Pre-push hook self-test..."
     bash "$(dirname "$0")/test-pre-push.sh"
 
+    # Acceptance tests require Docker — hard gate (no silent skip on pre-push).
+    echo "  Acceptance prerequisite: Docker..."
+    if ! docker info >/dev/null 2>&1; then
+      echo "ERROR: Docker must be running for pre-push acceptance tests." >&2
+      exit 1
+    fi
+    # Run acceptance in the background so it overlaps the unit + E2E steps.
+    ( REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true bun run test:acceptance ) &
+    acc_pid=$!
+    # If a foreground step fails under `set -e`, kill the orphaned acceptance job.
+    trap '[ -n "${acc_pid:-}" ] && kill "$acc_pid" 2>/dev/null' EXIT
+
     echo "  Bun tests (server, clean env)..."
     (
       for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done
@@ -48,6 +60,14 @@ else
     # CI uses Docker via act; local dev runs directly for speed.
     echo "  E2E tests (local Playwright)..."
     (cd e2e && bunx playwright test --reporter=list)
+
+    # Propagate the backgrounded acceptance result.
+    echo "  Acceptance tests (waiting)..."
+    if ! wait "$acc_pid"; then
+      echo "ERROR: acceptance tests failed." >&2
+      exit 1
+    fi
+    trap - EXIT  # acceptance reaped; no orphan to clean up
 
     echo "All tests passed."
   }

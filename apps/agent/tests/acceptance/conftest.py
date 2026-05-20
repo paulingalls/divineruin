@@ -1,23 +1,32 @@
-"""LiveKit testcontainers fixture for acceptance tests.
+"""LiveKit acceptance fixture — reuses a persistent docker-managed dev server.
 
-Spins a livekit/livekit-server dev container per test session so data-channel
-acceptance tests can run against a real LiveKit server without shared-credential
-/ shared-state risk in CI.
+The container is named and left running across runs (no testcontainers ryuk
+reaper), so repeated local pushes skip the boot cost. Set REQUIRE_DOCKER=1 to
+hard-fail when Docker is down (pre-push gate); otherwise tests skip cleanly.
+Set ACCEPTANCE_NO_REUSE=1 to tear the container down after the session.
 """
 
 from __future__ import annotations
 
+import os
+import time
 from collections.abc import Iterator
-from datetime import timedelta
 from pathlib import Path
 
 import docker
+import httpx
 import pytest
+from acceptance._livekit import (
+    CONTAINER_NAME,
+    IMAGE,
+    PORT,
+    _ensure_livekit_container,
+    _handle_docker_unavailable,
+)
 from docker.errors import DockerException
-from testcontainers.core.container import DockerContainer
-from testcontainers.core.wait_strategies import LogMessageWaitStrategy
 
 _ACCEPTANCE_DIR = Path(__file__).parent
+_READINESS_BUDGET_S = 60.0
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
@@ -31,29 +40,43 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
             item.add_marker(pytest.mark.acceptance)
 
 
+def _wait_ready(http_url: str) -> None:
+    """Poll until the LiveKit server answers HTTP healthily (<500), within budget."""
+    deadline = time.monotonic() + _READINESS_BUDGET_S
+    last: str | None = None
+    while time.monotonic() < deadline:
+        try:
+            response = httpx.get(http_url, timeout=2.0)
+            if response.status_code < 500:
+                return
+            last = f"HTTP {response.status_code}"
+        except httpx.HTTPError as exc:
+            last = str(exc)
+        time.sleep(0.5)
+    raise RuntimeError(f"LiveKit server not ready within {_READINESS_BUDGET_S}s: {last}")
+
+
 @pytest.fixture(scope="session")
 def livekit_server() -> Iterator[dict[str, str]]:
-    """Start a LiveKit dev server in Docker for the test session."""
+    """Reuse or boot a persistent LiveKit dev server in Docker for the session."""
+    require_docker = os.environ.get("REQUIRE_DOCKER") == "1"
     try:
-        docker.from_env().ping()
+        client = docker.from_env()
+        client.ping()
     except DockerException as exc:
-        pytest.skip(f"Docker unavailable — acceptance tests require Docker ({exc})")
+        _handle_docker_unavailable(exc, require_docker=require_docker)
+        return
 
-    container = (
-        DockerContainer("livekit/livekit-server:v1.11.0")
-        .with_command("--dev --bind 0.0.0.0")
-        .with_exposed_ports(7880)
-        .waiting_for(LogMessageWaitStrategy("starting LiveKit server").with_startup_timeout(timedelta(seconds=30)))
-    )
+    container, host_port = _ensure_livekit_container(client, name=CONTAINER_NAME, image=IMAGE, port=PORT)
+    http_url = f"http://127.0.0.1:{host_port}"
+    _wait_ready(http_url)
     try:
-        container.start()
-        host = container.get_container_host_ip()
-        port = container.get_exposed_port(7880)
         yield {
-            "ws_url": f"ws://{host}:{port}",
-            "http_url": f"http://{host}:{port}",
+            "ws_url": f"ws://127.0.0.1:{host_port}",
+            "http_url": http_url,
             "api_key": "devkey",
             "api_secret": "secret",
         }
     finally:
-        container.stop()
+        if os.environ.get("ACCEPTANCE_NO_REUSE") == "1":
+            container.remove(force=True)
