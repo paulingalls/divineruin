@@ -6,9 +6,13 @@ import { sessionStore } from "@/stores/session-store";
 
 type State = "idle" | "playing" | "crossfading" | "fadingOut";
 
-const CROSSFADE_MS = 2500;
-const FADE_OUT_MS = 1000;
 const TICK_MS = 33; // ~30fps
+
+const DEFAULT_TIMINGS = {
+  crossfadeMs: 2500,
+  fadeOutMs: 1000,
+};
+let timings = { ...DEFAULT_TIMINGS };
 
 let state: State = "idle";
 let currentTag = "";
@@ -95,7 +99,7 @@ export function transitionToSoundscape(tag: string): void {
       stopTextures();
       return;
     }
-    fadeOutSoundscape(CROSSFADE_MS);
+    fadeOutSoundscape(timings.crossfadeMs);
     stopTextures();
     return;
   }
@@ -110,7 +114,7 @@ export function transitionToSoundscape(tag: string): void {
     clearFadeInterval();
     fadeInterval = setInterval(() => {
       elapsed += TICK_MS;
-      const progress = Math.min(elapsed / CROSSFADE_MS, 1);
+      const progress = Math.min(elapsed / timings.crossfadeMs, 1);
       if (activePlayer) activePlayer.volume = targetVolume() * progress;
       if (progress >= 1) clearFadeInterval();
     }, TICK_MS);
@@ -128,7 +132,7 @@ export function transitionToSoundscape(tag: string): void {
   clearFadeInterval();
   fadeInterval = setInterval(() => {
     elapsed += TICK_MS;
-    const progress = Math.min(elapsed / CROSSFADE_MS, 1);
+    const progress = Math.min(elapsed / timings.crossfadeMs, 1);
     const vol = targetVolume();
     oldPlayer.volume = oldVol * (1 - progress);
     if (crossfadePlayer) crossfadePlayer.volume = vol * progress;
@@ -144,7 +148,7 @@ export function transitionToSoundscape(tag: string): void {
   startTextures(tag);
 }
 
-export function fadeOutSoundscape(durationMs: number = FADE_OUT_MS): void {
+export function fadeOutSoundscape(durationMs: number = timings.fadeOutMs): void {
   if (!activePlayer || state === "idle") {
     state = "idle";
     return;
@@ -271,7 +275,7 @@ export function stopSoundscapeEngine(): void {
   clearDuckInterval();
 
   if (activePlayer) {
-    fadeOutSoundscape(FADE_OUT_MS);
+    fadeOutSoundscape(timings.fadeOutMs);
   } else {
     clearFadeInterval();
     state = "idle";
@@ -284,8 +288,14 @@ export function _getState(): State {
   return state;
 }
 
+/** For testing — shrink fade durations so timers complete in ~1 tick. */
+export function _setDurationsForTesting(overrides: Partial<typeof DEFAULT_TIMINGS>): void {
+  timings = { ...timings, ...overrides };
+}
+
 /** For testing — resets all state without fade. */
 export function _resetForTesting(): void {
+  timings = { ...DEFAULT_TIMINGS };
   clearFadeInterval();
   clearDuckInterval();
   releasePlayer(activePlayer);

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import timedelta
+from pathlib import Path
 
 import docker
 import pytest
@@ -16,11 +17,18 @@ from docker.errors import DockerException
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.wait_strategies import LogMessageWaitStrategy
 
+_ACCEPTANCE_DIR = Path(__file__).parent
+
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-    """Apply the `acceptance` marker to every test under tests/acceptance/."""
+    """Apply the `acceptance` marker only to tests under tests/acceptance/.
+
+    A subdir conftest's collection hook still receives the *full* item list,
+    so it must filter by path — otherwise it marks the entire suite.
+    """
     for item in items:
-        item.add_marker(pytest.mark.acceptance)
+        if _ACCEPTANCE_DIR in item.path.parents:
+            item.add_marker(pytest.mark.acceptance)
 
 
 @pytest.fixture(scope="session")
