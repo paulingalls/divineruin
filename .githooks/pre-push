@@ -35,6 +35,8 @@ else
     # Run acceptance in the background so it overlaps the unit + E2E steps.
     ( REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true bun run test:acceptance ) &
     acc_pid=$!
+    # If a foreground step fails under `set -e`, kill the orphaned acceptance job.
+    trap '[ -n "${acc_pid:-}" ] && kill "$acc_pid" 2>/dev/null' EXIT
 
     echo "  Bun tests (server, clean env)..."
     (
@@ -65,6 +67,7 @@ else
       echo "ERROR: acceptance tests failed." >&2
       exit 1
     fi
+    trap - EXIT  # acceptance reaped; no orphan to clean up
 
     echo "All tests passed."
   }

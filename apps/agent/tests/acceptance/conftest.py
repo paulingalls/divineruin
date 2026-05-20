@@ -41,17 +41,19 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
 
 def _wait_ready(http_url: str) -> None:
-    """Poll until the LiveKit server answers HTTP, within the readiness budget."""
+    """Poll until the LiveKit server answers HTTP healthily (<500), within budget."""
     deadline = time.monotonic() + _READINESS_BUDGET_S
-    last_exc: Exception | None = None
+    last: str | None = None
     while time.monotonic() < deadline:
         try:
-            httpx.get(http_url, timeout=2.0)
-            return
+            response = httpx.get(http_url, timeout=2.0)
+            if response.status_code < 500:
+                return
+            last = f"HTTP {response.status_code}"
         except httpx.HTTPError as exc:
-            last_exc = exc
-            time.sleep(0.5)
-    raise RuntimeError(f"LiveKit server not ready within {_READINESS_BUDGET_S}s: {last_exc}")
+            last = str(exc)
+        time.sleep(0.5)
+    raise RuntimeError(f"LiveKit server not ready within {_READINESS_BUDGET_S}s: {last}")
 
 
 @pytest.fixture(scope="session")
