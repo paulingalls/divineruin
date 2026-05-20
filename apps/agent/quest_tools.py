@@ -16,9 +16,9 @@ import event_types as E
 import rules_engine
 from db_errors import db_tool
 from game_events import publish_game_event
-from leveling import build_level_up_payload, get_level_up_rewards
+from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from session_data import SessionData
-from tool_support import EFFECT_NPC_MAP, _validate_id
+from tool_support import EFFECT_NPC_MAP, _validate_id, con_mod_for_player
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -192,7 +192,11 @@ async def _update_quest_impl(
 
                     if level_result.leveled_up:
                         quest_rewards = get_level_up_rewards(current_level, level_result.new_level)
-                        pending_events.append((E.LEVEL_UP, build_level_up_payload(current_level, quest_rewards)))
+                        con_mod = con_mod_for_player(player)
+                        level_up_payload = build_level_up_payload_for_archetype(
+                            current_level, quest_rewards, player["class"], con_mod=con_mod
+                        )
+                        pending_events.append((E.LEVEL_UP, level_up_payload))
 
             for item_reward in on_complete.get("rewards", []):
                 item_id = item_reward.get("item") or item_reward.get("item_id")

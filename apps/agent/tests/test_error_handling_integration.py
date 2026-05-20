@@ -131,8 +131,10 @@ async def test_successful_mutation_after_error():
         mock_txn.return_value.__aenter__.return_value = mock_conn
         mock_get.return_value = {
             "player_id": "test_player",
+            "class": "warrior",
             "xp": 100,
             "level": 1,
+            "attributes": {"constitution": 10},
         }
 
         result2 = await award_xp(context, amount=100, reason="test")
