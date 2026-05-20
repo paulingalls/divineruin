@@ -33,10 +33,13 @@ import {
   _getState,
   _getMusicState,
   _resetForTesting,
+  _setDurationsForTesting,
 } from "@/audio/music-player";
 
 beforeEach(() => {
   _resetForTesting();
+  // Collapse fades to ~1 tick so tests don't sleep out real fade durations.
+  _setDurationsForTesting({ crossfadeMs: 1, fadeInMs: 1, fadeOutMs: 1 });
   mockPlayers.length = 0;
   sessionStore.getState().reset();
 });
@@ -82,8 +85,8 @@ test("crossfade between states creates new player, releases old", async () => {
   expect(_getState()).toBe("crossfading");
   expect(mockPlayers.length).toBe(2);
 
-  // Wait for crossfade to complete (4s + margin for timer jitter)
-  await new Promise((r) => setTimeout(r, 4500));
+  // Let the (test-shrunk) crossfade complete in one tick.
+  await new Promise((r) => setTimeout(r, 50));
   expect(_getState()).toBe("playing");
   expect(mockPlayers[0].removed).toBe(true);
 });
@@ -139,7 +142,7 @@ test("rapid transitions don't leak players", async () => {
   expect(mockPlayers.length).toBe(3);
   expect(mockPlayers[0].removed).toBe(true); // force-completed first crossfade
 
-  await new Promise((r) => setTimeout(r, 4500));
+  await new Promise((r) => setTimeout(r, 50));
   expect(_getState()).toBe("playing");
 });
 
