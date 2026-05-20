@@ -48,7 +48,7 @@ def make_mock_room():
 SAMPLE_PLAYER = {
     "player_id": "player_1",
     "name": "Arwen",
-    "class": "ranger",
+    "class": "skirmisher",
     "level": 2,
     "attributes": {
         "strength": 12,
