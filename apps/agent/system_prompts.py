@@ -368,6 +368,18 @@ usual. Old instincts from the caravan keep him checking corners.\
 """
 
 
+TRAINING_PROMPT = """\
+
+## Training and Mentors
+
+When the player asks about learning, training, improving a skill, or finding a \
+mentor, call query_training_programs to see what this settlement offers — don't \
+guess at program names. To start a cycle, call initiate_training_cycle with a \
+program id from that list; at the midpoint, resolve_training_midpoint records the \
+player's choice. Mentors live in cities, so this only comes up in settlements.\
+"""
+
+
 def build_system_prompt(
     location_id: str,
     companion: CompanionState | None = None,
@@ -393,7 +405,12 @@ def build_system_prompt(
         )
     else:
         parts = (
-            SYSTEM_PROMPT + PLAYER_AWARENESS_PROMPT + NAVIGATION_PROMPT + STORY_MOMENT_PROMPT + SESSION_ENDING_PROMPT
+            SYSTEM_PROMPT
+            + PLAYER_AWARENESS_PROMPT
+            + NAVIGATION_PROMPT
+            + TRAINING_PROMPT
+            + STORY_MOMENT_PROMPT
+            + SESSION_ENDING_PROMPT
         )
     if companion is not None and companion.is_present:
         parts += COMPANION_PROMPT

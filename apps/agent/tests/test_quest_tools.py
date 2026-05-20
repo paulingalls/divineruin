@@ -3,7 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sample_fixtures import GUILD_PLAYER, level_up_payload, make_context, make_mock_room, mock_txn
+from sample_fixtures import GUILD_PLAYER, level_up_payload, make_context, make_db_mod, make_mock_room
 
 from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from quest_tools import _update_quest_impl
@@ -29,9 +29,7 @@ async def test_quest_level_up_payload_carries_archetype_hp_gains():
         "attributes": {**GUILD_PLAYER["attributes"], "constitution": 14},
     }
     room = make_mock_room()
-    mock_conn = MagicMock()
-    mock_db = MagicMock()
-    mock_db.transaction = lambda: mock_txn(mock_conn)
+    mock_db, _ = make_db_mod()
     content = MagicMock()
     content.get_quest = AsyncMock(return_value=QUEST)
     content.get_item = AsyncMock(return_value=None)
