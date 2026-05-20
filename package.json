@@ -23,6 +23,8 @@
     "lint:fix": "bunx eslint --fix . && bunx prettier --write 'apps/**/*.{ts,tsx}' 'packages/**/*.ts' && bun run lint:python:fix",
     "test": "bun test --cwd apps/server && bun test --cwd apps/mobile",
     "test:python": "cd apps/agent && uv run pytest tests/ -q -m \"not acceptance\" -n 4",
+    "test:acceptance": "cd apps/agent && TESTCONTAINERS_RYUK_DISABLED=true uv run pytest tests/acceptance -m acceptance -q",
+    "test:acceptance:clean": "docker rm -f divineruin-livekit-acceptance 2>/dev/null || true",
     "test:all": "bun run scripts/test-all.ts",
     "prepare": "git config core.hooksPath .githooks"
   },

@@ -1,29 +1,46 @@
-// Runs the bun and python test suites concurrently and aggregates their
-// exit codes. Exits non-zero if either lane fails (safe for pre-commit / CI).
-// Output is captured per lane and printed on completion to keep the two
-// streams from interleaving.
+// Runs the test suites concurrently and aggregates their exit codes. Exits
+// non-zero if any lane fails (safe for pre-commit / CI). Output is captured
+// per lane and printed on completion to keep the streams from interleaving.
+//
+// The acceptance lane needs Docker. REQUIRE_DOCKER=1 forces it to run (the
+// lane's pytest fixture hard-fails if Docker is down); otherwise it is skipped
+// cleanly when Docker isn't available, so `bun run test:all` stays usable
+// without Docker.
 
-type Lane = { name: string; cmd: string[] };
+type Lane = { name: string; cmd: string[]; optional?: boolean };
+type Result = { name: string; stdout: string; stderr: string; exitCode: number; skipped?: boolean };
+
+const requireDocker = process.env.REQUIRE_DOCKER === "1";
 
 const lanes: Lane[] = [
   { name: "bun (server + mobile)", cmd: ["bun", "run", "test"] },
   { name: "python", cmd: ["bun", "run", "test:python"] },
+  { name: "acceptance (livekit)", cmd: ["bun", "run", "test:acceptance"], optional: true },
 ];
 
-const results = await Promise.all(
-  lanes.map(async (lane) => {
-    const proc = Bun.spawn(lane.cmd, { stdout: "pipe", stderr: "pipe" });
-    const [stdout, stderr, exitCode] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-      proc.exited,
-    ]);
-    return { name: lane.name, stdout, stderr, exitCode };
-  }),
-);
+async function dockerAvailable(): Promise<boolean> {
+  const proc = Bun.spawn(["docker", "info"], { stdout: "ignore", stderr: "ignore" });
+  return (await proc.exited) === 0;
+}
+
+async function runLane(lane: Lane): Promise<Result> {
+  if (lane.optional && !requireDocker && !(await dockerAvailable())) {
+    return { name: lane.name, stdout: "", stderr: "", exitCode: 0, skipped: true };
+  }
+  const proc = Bun.spawn(lane.cmd, { stdout: "pipe", stderr: "pipe" });
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+  return { name: lane.name, stdout, stderr, exitCode };
+}
+
+const results = await Promise.all(lanes.map(runLane));
 
 for (const r of results) {
-  console.log(`\n===== ${r.name} [${r.exitCode === 0 ? "PASS" : "FAIL"}] =====`);
+  const status = r.skipped ? "SKIPPED (no docker)" : r.exitCode === 0 ? "PASS" : "FAIL";
+  console.log(`\n===== ${r.name} [${status}] =====`);
   if (r.stdout.trim()) console.log(r.stdout.trimEnd());
   if (r.stderr.trim()) console.error(r.stderr.trimEnd());
 }
