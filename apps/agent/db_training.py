@@ -22,7 +22,11 @@ _COLUMNS = "id, player_id, activity_type, state, data, transition_at, created_at
 
 def _to_dict(row: asyncpg.Record) -> dict:
     r = dict(row)
-    r["data"] = row["data"]  # asyncpg returns JSONB as dict
+    # No JSONB codec is registered on the pool, so asyncpg hands back the
+    # `data` column as a raw JSON string. Deserialize here so every consumer
+    # (e.g. async_worker.advance_training_cycles) gets a real dict to index.
+    raw = row["data"]
+    r["data"] = json.loads(raw) if isinstance(raw, str) else raw
     return r
 
 
