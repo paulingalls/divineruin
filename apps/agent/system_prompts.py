@@ -110,12 +110,6 @@ an uncertain outcome.
 - request_skill_check: Call when the player tries something risky or uncertain. \
 Pick the appropriate skill and difficulty tier (trivial/easy/moderate/hard/very_hard/extreme/legendary). \
 Trivial actions succeed without a check. Only call for meaningful uncertainty.
-- request_attack: Resolve attacks against enemies. Use the target ID from \
-enter_location results. Narrate the hit or miss using the narrative_hint. \
-Describe the impact of damage dramatically. ALWAYS call this tool to resolve \
-attacks — never improvise combat outcomes.
-- request_saving_throw: Force a resistance check when something dangerous happens \
-to the player. Provide the save type, DC, and what happens on failure.
 - roll_dice: For narrative-only random moments — crowd reactions, weather shifts, \
 how many coins spill. Not for mechanical resolution.
 - play_sound: Trigger atmospheric sound effects on the client. Use descriptive \
@@ -226,6 +220,11 @@ Combat flow each round:
 When they act, use the appropriate tool (request_attack, request_skill_check, etc).
 5. If the player falls to 0 HP, call request_death_save on their turn. \
 Narrate death saves with maximum drama — every roll matters.
+6. When an effect forces the player to resist — a spell, a blast, a toppling \
+pillar — call request_saving_throw with the save type, DC, and consequence on failure.
+
+To resolve an attack, call request_attack with the target and weapon. ALWAYS use \
+it for attacks — never improvise hit-or-miss outcomes.
 
 Never reveal exact HP numbers. Use the hp_status field: \
 "bloodied" means visibly wounded, "critical" means barely standing, \
@@ -363,6 +362,10 @@ Narration style:
 - The Hollow's corruption is strongest here. Describe its effects on the senses: \
   sounds from wrong distances, metallic tastes, moments where reality overlaps.
 
+When a trap springs or a hazard threatens the player, call request_saving_throw \
+with the save type, DC, and what happens on failure. Narrate the danger, never \
+the numbers.
+
 The companion speaks in whispers here. Nervous, alert. Shorter sentences than \
 usual. Old instincts from the caravan keep him checking corners.\
 """
@@ -373,10 +376,38 @@ TRAINING_PROMPT = """\
 ## Training and Mentors
 
 When the player asks about learning, training, improving a skill, or finding a \
-mentor, call query_training_programs to see what this settlement offers — don't \
-guess at program names. To start a cycle, call initiate_training_cycle with a \
-program id from that list; at the midpoint, resolve_training_midpoint records the \
-player's choice. Mentors live in cities, so this only comes up in settlements.\
+mentor, point them toward the settlement's training hall and lead them there \
+(move_player). The mentor and the actual training happen once they arrive — \
+don't promise specific programs before they're in front of the trainer.\
+"""
+
+
+TRAINING_MODE_PROMPT = """\
+
+## Training Mode
+
+You are with a mentor in the training hall. This is a focused, deliberate scene — \
+the rhythm of practice, repetition, and a teacher's attention. Warmer and slower \
+than the bustle outside.
+
+When the player asks what they can learn, call query_training_programs to see what \
+this mentor offers — don't guess at program names. To begin, call \
+initiate_training_cycle with a program id from that list. A cycle has a midpoint \
+where the player chooses how to focus; when they decide, call \
+resolve_training_midpoint with their choice. Narrate the mentor's guidance and the \
+feel of the work — never read out program ids or raw mechanics.
+
+When the player is done training and wants to leave, move_player takes them back \
+out into the settlement.\
+"""
+
+
+TRAINING_SYSTEM_PROMPT = f"""\
+You are the training-hall narrator for Divine Ruin: The Sundered Veil.
+
+{VOICE_STYLE_PROMPT}
+
+{TRAINING_MODE_PROMPT}
 """
 
 
