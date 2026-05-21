@@ -52,3 +52,30 @@ async def seed_player(
 async def clear_training_activities(conn: asyncpg.Connection | asyncpg.Pool, player_id: str = "player_1") -> None:
     """Drop any training rows so each scenario starts from an empty slot."""
     await conn.execute("DELETE FROM training_activities WHERE player_id = $1", player_id)
+
+
+async def seed_training_activity(
+    conn: asyncpg.Connection | asyncpg.Pool,
+    *,
+    activity_id: str,
+    player_id: str = "player_1",
+    activity_type: str = "technique_base",
+    state: str = "running_first_half",
+    data: dict | None = None,
+) -> str:
+    """Insert a training_activities row in a given state (for resolve / slot-conflict
+    scenarios that need a pre-existing cycle)."""
+    payload = data if data is not None else {"program_id": "combat_basics", "program_name": "Combat Fundamentals"}
+    await conn.execute(
+        """
+        INSERT INTO training_activities (id, player_id, activity_type, state, data)
+        VALUES ($1, $2, $3, $4, $5::jsonb)
+        ON CONFLICT (id) DO UPDATE SET state = $4, data = $5::jsonb
+        """,
+        activity_id,
+        player_id,
+        activity_type,
+        state,
+        json.dumps(payload),
+    )
+    return activity_id
