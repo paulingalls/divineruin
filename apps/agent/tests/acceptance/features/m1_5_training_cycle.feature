@@ -8,7 +8,8 @@ Feature: M1.5 training cycle — DM training agent end-to-end
 
   Scenario: Player initiates a training cycle
     Given a player at the training hall with no active training
-    When the player says "I want to start training in combat fundamentals"
+    When the player says "What can I learn here? I'm interested in combat fundamentals"
+    And the player says "Yes, let's begin the Combat Fundamentals training now"
     Then the agent calls the "initiate_training_cycle" tool
     And the agent narrates that the training has begun
 
