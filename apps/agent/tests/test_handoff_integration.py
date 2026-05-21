@@ -8,6 +8,7 @@ import pytest
 from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER
 
 from base_agent import BaseGameAgent
+from check_tools import request_attack, request_saving_throw
 from city_agent import CITY_TOOLS, CityAgent
 from combat_agent import COMBAT_AGENT_TOOLS
 from combat_end import end_combat
@@ -72,6 +73,12 @@ class TestToolIsolation:
         assert resolve_enemy_turn not in CITY_TOOLS
         assert request_death_save not in CITY_TOOLS
         assert end_combat not in CITY_TOOLS
+
+    def test_city_does_not_have_danger_mechanics(self):
+        """A peaceful settlement escalates violence via start_combat and leaves
+        hazard saves to dungeon/combat — so neither lives in the city baseline."""
+        assert request_attack not in CITY_TOOLS
+        assert request_saving_throw not in CITY_TOOLS
 
     def test_city_has_exploration_tools(self):
         """CityAgent should have exploration and mutation tools."""
