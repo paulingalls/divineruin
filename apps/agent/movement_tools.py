@@ -190,6 +190,10 @@ async def _move_player_impl(
     from training_agent import TrainingAgent, create_training_agent
 
     dest_is_training = bool(destination_location and destination_location.get("agent_context") == "training")
+    # Only region and training agents own move_player, so current_agent is one of
+    # those here — combat can't reach this path (CombatAgent has no move_player; it
+    # exits via end_combat). If move_player is ever added to a combat-like agent,
+    # revisit so an in-progress activity isn't abandoned by an incidental move.
     current_is_training = isinstance(context.session.current_agent, TrainingAgent)
     activity_change = dest_is_training != current_is_training
 
