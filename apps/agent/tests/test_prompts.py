@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from system_prompts import build_system_prompt
-from warm_prompts import build_full_prompt, build_warm_layer
+from warm_prompts import build_full_prompt, build_warm_layer, format_training_section
 
 SAMPLE_LOCATION = {
     "id": "accord_guild_hall",
@@ -42,6 +42,69 @@ SAMPLE_QUEST = {
         {"id": 1, "objective": "Find the source of the anomaly."},
     ],
 }
+
+
+SAMPLE_AWAITING_TRAINING = {
+    "id": "train_mid01",
+    "activity_type": "technique_base",
+    "state": "awaiting_decision",
+    "data": {
+        "program_name": "Combat Fundamentals",
+        "decision_prompt": "Refine your stance: aggressive or defensive?",
+        "decision_options": [
+            {"id": "aggressive", "label": "Aggressive stance"},
+            {"id": "defensive", "label": "Defensive stance"},
+        ],
+    },
+}
+
+SAMPLE_RUNNING_TRAINING = {
+    "id": "train_run02",
+    "activity_type": "spell_standard",
+    "state": "running_first_half",
+    "data": {"program_name": "Firebolt Study"},
+}
+
+SAMPLE_COMPLETE_TRAINING = {
+    "id": "train_done03",
+    "activity_type": "skill_practice",
+    "state": "complete",
+    "data": {"program_name": "Stealth Drills"},
+}
+
+
+class TestFormatTrainingSection:
+    def test_empty_returns_none(self):
+        assert format_training_section([]) is None
+
+    def test_awaiting_decision_names_id_state_program_prompt_options(self):
+        section = format_training_section([SAMPLE_AWAITING_TRAINING])
+        assert section is not None
+        assert section.startswith("ACTIVE TRAINING")
+        # The training_id must be unambiguous so the DM can pass it to
+        # resolve_training_midpoint.
+        assert "train_mid01" in section
+        assert "awaiting_decision" in section
+        assert "Combat Fundamentals" in section
+        assert "aggressive or defensive" in section
+        assert "Aggressive stance" in section
+        assert "aggressive" in section
+        assert "Defensive stance" in section
+        assert "defensive" in section
+
+    def test_running_cycle_has_id_and_state_but_no_options(self):
+        section = format_training_section([SAMPLE_RUNNING_TRAINING])
+        assert section is not None
+        assert "train_run02" in section
+        assert "running_first_half" in section
+        assert "Firebolt Study" in section
+        assert "Options:" not in section
+
+    def test_multiple_active_cycles_all_listed(self):
+        section = format_training_section([SAMPLE_AWAITING_TRAINING, SAMPLE_RUNNING_TRAINING])
+        assert section is not None
+        assert "train_mid01" in section
+        assert "train_run02" in section
 
 
 class TestBuildWarmLayer:
@@ -93,6 +156,29 @@ class TestBuildWarmLayer:
         result = await build_warm_layer("accord_guild_hall", "player_1", "night")
         assert "dim and quiet" in result
         assert "hushed" in result
+
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
+    async def test_active_training_section_appears(self, mock_loc, mock_npcs, mock_disp, mock_quests):
+        mock_loc.return_value = SAMPLE_LOCATION
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening", training=[SAMPLE_AWAITING_TRAINING])
+        assert "ACTIVE TRAINING" in result
+        assert "train_mid01" in result
+
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
+    async def test_completed_training_omitted(self, mock_loc, mock_npcs, mock_disp, mock_quests):
+        mock_loc.return_value = SAMPLE_LOCATION
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening", training=[SAMPLE_COMPLETE_TRAINING])
+        assert "ACTIVE TRAINING" not in result
 
 
 class TestBuildWarmLayerExits:

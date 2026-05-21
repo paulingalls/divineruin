@@ -31,6 +31,8 @@ from pytest_bdd import given, parsers, scenarios, then, when
 import db
 from session_data import SessionData
 from training_agent import create_training_agent
+from training_rules import get_midpoint_decision
+from warm_prompts import format_training_section
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("ANTHROPIC_API_KEY"),
@@ -96,19 +98,31 @@ def _given_awaiting_midpoint(harness: SimpleNamespace) -> None:
         pool = await db.get_pool()
         await seed_player(pool, player_id="player_1")
         await clear_training_activities(pool, "player_1")
-        await seed_training_activity(pool, activity_id="train_mid01", state="awaiting_decision")
-        # The mentor already knows which cycle is mid-decision; carry the id +
-        # options into context the way the warm prompt / notification does — STATE
-        # only, no tool instruction (the standing prompt already says to resolve at
-        # the midpoint), so the assertion tests the agent's own tool choice.
+        # Build the awaiting_decision payload exactly as async_worker does at the
+        # midpoint transition, from the REAL activity-type config — so the seed
+        # mirrors production content rather than hand-authored prose.
+        decision = get_midpoint_decision("technique_base")
+        cycle_data = {
+            "program_id": "combat_basics",
+            "program_name": "Combat Fundamentals",
+            "decision_prompt": decision.prompt,
+            "decision_options": [{"id": o.id, "label": o.label} for o in decision.options],
+        }
+        await seed_training_activity(pool, activity_id="train_mid01", state="awaiting_decision", data=cycle_data)
+        # Carry the cycle id + options into context the way the production warm-prompt
+        # layer does — by formatting through the SAME helper, so this scenario drives
+        # the real surface (format drift fails here, not just a unit test). STATE only,
+        # no tool instruction, so the assertion tests the agent's own tool choice.
+        row = {
+            "id": "train_mid01",
+            "activity_type": "technique_base",
+            "state": "awaiting_decision",
+            "data": cycle_data,
+        }
+        training_block = format_training_section([row])
+        assert training_block is not None  # awaiting_decision row always yields a block
         ctx = ChatContext()
-        ctx.add_message(
-            role="system",
-            content=(
-                "The player has an active Combat Fundamentals training cycle (id: train_mid01) "
-                "paused at its midpoint, awaiting a stance choice between 'aggressive' and 'defensive'."
-            ),
-        )
+        ctx.add_message(role="system", content=training_block)
         await _start_training_session(harness, chat_ctx=ctx)
 
     harness.run_sync(_setup())
