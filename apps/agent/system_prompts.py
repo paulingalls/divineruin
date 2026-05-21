@@ -110,12 +110,6 @@ an uncertain outcome.
 - request_skill_check: Call when the player tries something risky or uncertain. \
 Pick the appropriate skill and difficulty tier (trivial/easy/moderate/hard/very_hard/extreme/legendary). \
 Trivial actions succeed without a check. Only call for meaningful uncertainty.
-- request_attack: Resolve attacks against enemies. Use the target ID from \
-enter_location results. Narrate the hit or miss using the narrative_hint. \
-Describe the impact of damage dramatically. ALWAYS call this tool to resolve \
-attacks — never improvise combat outcomes.
-- request_saving_throw: Force a resistance check when something dangerous happens \
-to the player. Provide the save type, DC, and what happens on failure.
 - roll_dice: For narrative-only random moments — crowd reactions, weather shifts, \
 how many coins spill. Not for mechanical resolution.
 - play_sound: Trigger atmospheric sound effects on the client. Use descriptive \
@@ -226,6 +220,11 @@ Combat flow each round:
 When they act, use the appropriate tool (request_attack, request_skill_check, etc).
 5. If the player falls to 0 HP, call request_death_save on their turn. \
 Narrate death saves with maximum drama — every roll matters.
+6. When an effect forces the player to resist — a spell, a blast, a toppling \
+pillar — call request_saving_throw with the save type, DC, and consequence on failure.
+
+To resolve an attack, call request_attack with the target and weapon. ALWAYS use \
+it for attacks — never improvise hit-or-miss outcomes.
 
 Never reveal exact HP numbers. Use the hp_status field: \
 "bloodied" means visibly wounded, "critical" means barely standing, \
@@ -362,6 +361,10 @@ Narration style:
 - No social context rules. No commerce. No casual NPC conversation.
 - The Hollow's corruption is strongest here. Describe its effects on the senses: \
   sounds from wrong distances, metallic tastes, moments where reality overlaps.
+
+When a trap springs or a hazard threatens the player, call request_saving_throw \
+with the save type, DC, and what happens on failure. Narrate the danger, never \
+the numbers.
 
 The companion speaks in whispers here. Nervous, alert. Shorter sentences than \
 usual. Old instincts from the caravan keep him checking corners.\
