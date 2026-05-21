@@ -3,6 +3,9 @@ import {
   rollErrandRisk,
   validateErrandDispatch,
   numericToDangerLevel,
+  setDestinationDangerLevels,
+  ERRAND_RISK_TABLE,
+  BLOCKED_DANGER_COMBOS,
   type InjuryStatus,
 } from "./errand_risk.ts";
 import { setupDangerLevelFixture } from "./test-fixtures/danger-levels.ts";
@@ -107,6 +110,48 @@ describe("rollErrandRisk", () => {
   });
 });
 
+describe("ERRAND_RISK_TABLE matches the spec matrix", () => {
+  // game_mechanics_core.md §Companion Risk L887-892. Cells marked None are
+  // explicit 0/0 entries; cells marked N/A are absent from the table and
+  // enforced by BLOCKED_DANGER_COMBOS instead. Deterministic — pins exact
+  // percentages, unlike statistical roll sampling.
+  const specCells: Record<string, { injuryPct: number; emergencyPct: number }> = {
+    "safe|scout": { injuryPct: 0, emergencyPct: 0 },
+    "safe|social": { injuryPct: 0, emergencyPct: 0 },
+    "safe|acquire": { injuryPct: 0, emergencyPct: 0 },
+    "safe|relationship": { injuryPct: 0, emergencyPct: 0 },
+    "moderate|scout": { injuryPct: 10, emergencyPct: 0 },
+    "moderate|social": { injuryPct: 0, emergencyPct: 0 },
+    "moderate|acquire": { injuryPct: 10, emergencyPct: 0 },
+    "moderate|relationship": { injuryPct: 0, emergencyPct: 0 },
+    "dangerous|scout": { injuryPct: 25, emergencyPct: 5 },
+    "dangerous|social": { injuryPct: 0, emergencyPct: 0 },
+    "dangerous|acquire": { injuryPct: 20, emergencyPct: 0 },
+    "extreme|scout": { injuryPct: 40, emergencyPct: 15 },
+  };
+
+  test("every populated cell matches spec exactly", () => {
+    for (const [key, entry] of Object.entries(specCells)) {
+      expect(ERRAND_RISK_TABLE[key]).toEqual(entry);
+    }
+  });
+
+  test("table has no cells beyond the spec (N/A cells stay absent)", () => {
+    expect(new Set(Object.keys(ERRAND_RISK_TABLE))).toEqual(new Set(Object.keys(specCells)));
+  });
+
+  test("BLOCKED_DANGER_COMBOS equals the spec N/A cells", () => {
+    expect(BLOCKED_DANGER_COMBOS).toEqual(
+      new Set([
+        "dangerous|relationship",
+        "extreme|relationship",
+        "extreme|social",
+        "extreme|acquire",
+      ]),
+    );
+  });
+});
+
 describe("validateErrandDispatch", () => {
   test("valid combo returns valid", () => {
     const result = validateErrandDispatch("scout", "accord_market_square", "companion_kael");
@@ -129,6 +174,19 @@ describe("validateErrandDispatch", () => {
     expect(result.valid).toBe(false);
     expect(result.error).toContain("relationship");
     expect(result.error).toContain("dangerous");
+  });
+
+  test("extreme destinations block social, acquire, and relationship (spec N/A cells)", () => {
+    // Content has no danger_level=3 location yet, but the spec (L892) marks
+    // social/acquire/relationship as N/A at extreme; pin BLOCKED_DANGER_COMBOS
+    // against a synthetic extreme destination. Scout remains allowed.
+    setDestinationDangerLevels(new Map([["deep_hollow", "extreme"]]));
+    for (const errandType of ["social", "acquire", "relationship"]) {
+      const result = validateErrandDispatch(errandType, "deep_hollow", "companion_kael");
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("extreme");
+    }
+    expect(validateErrandDispatch("scout", "deep_hollow", "companion_kael").valid).toBe(true);
   });
 
   test("companion_sable cannot perform social errands", () => {

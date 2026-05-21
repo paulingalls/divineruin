@@ -1,7 +1,9 @@
 /**
  * Errand risk computation — pure functions, no IO except the startup loader.
  *
- * Ports risk logic from Python errand_rules.py (lines 63-159).
+ * The TS server is the sole authority for errand risk (the Python agent's
+ * async_rules.py only narrates the stored outcome). Tables track
+ * game_mechanics_core.md §Companion Risk (L887-892).
  * Risk is rolled at dispatch time and stored in activity parameters
  * so the async worker only narrates the predetermined outcome.
  *
@@ -16,12 +18,14 @@ export type DangerLevel = "safe" | "moderate" | "dangerous" | "extreme";
 export type InjuryStatus = "none" | "injured" | "emergency";
 
 interface RiskEntry {
-  injuryPct: number;
-  emergencyPct: number;
+  readonly injuryPct: number;
+  readonly emergencyPct: number;
 }
 
-// Matches Python ERRAND_RISK_TABLE (errand_rules.py lines 63-76)
-const ERRAND_RISK_TABLE: Record<string, RiskEntry> = {
+// Spec matrix — game_mechanics_core.md §Companion Risk L887-892. Cells absent
+// here are N/A and blocked via BLOCKED_DANGER_COMBOS. Exported readonly for
+// conformance tests; do not mutate.
+export const ERRAND_RISK_TABLE: Readonly<Record<string, RiskEntry>> = {
   "safe|scout": { injuryPct: 0, emergencyPct: 0 },
   "safe|social": { injuryPct: 0, emergencyPct: 0 },
   "safe|acquire": { injuryPct: 0, emergencyPct: 0 },
@@ -36,7 +40,7 @@ const ERRAND_RISK_TABLE: Record<string, RiskEntry> = {
   "extreme|scout": { injuryPct: 40, emergencyPct: 15 },
 };
 
-// Injury risk reduction per companion (errand_rules.py lines 78-118)
+// Injury risk reduction per companion (e.g. Kael's veteran survival instincts)
 const COMPANION_INJURY_REDUCTION: Record<string, number> = {
   companion_kael: 5,
 };
@@ -84,15 +88,15 @@ export async function loadDestinationDangerLevels(): Promise<void> {
   console.log(`Loaded danger levels for ${map.size} locations`);
 }
 
-// Blocked (danger_level, errand_type) combos — port of errand_rules.py:20-25
-const BLOCKED_DANGER_COMBOS: ReadonlySet<string> = new Set([
+// Blocked (danger_level, errand_type) combos — the spec's N/A cells (L887-892)
+export const BLOCKED_DANGER_COMBOS: ReadonlySet<string> = new Set([
   "dangerous|relationship",
   "extreme|relationship",
   "extreme|social",
   "extreme|acquire",
 ]);
 
-// Per-companion errand restrictions — port of errand_rules.py blocked_errand_types.
+// Per-companion errand restrictions (e.g. Sable can't do social/relationship errands).
 // Companions not listed have no restrictions.
 const COMPANION_BLOCKED_ERRAND_TYPES: Record<string, ReadonlySet<string>> = {
   companion_sable: new Set(["social", "relationship"]),
