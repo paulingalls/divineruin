@@ -2,6 +2,8 @@
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from system_prompts import build_system_prompt
 from warm_prompts import build_full_prompt, build_warm_layer
 
@@ -182,6 +184,64 @@ class TestRegionTypePrompts:
         for rt in ("city", "wilderness", "dungeon"):
             prompt = build_system_prompt("loc", region_type=rt)
             assert VOICE_STYLE_PROMPT in prompt, f"{rt} prompt missing VOICE_STYLE_PROMPT"
+
+
+class TestPromptToolConsistency:
+    """A gameplay agent's assembled prompt must name the danger mechanics only when
+    the agent actually holds them — otherwise the DM is told to call an absent tool
+    (concern b1591cb23262). Enforced by construction so the next prompt edit can't
+    silently reintroduce the drift (concern df5cc73b2473)."""
+
+    @pytest.mark.parametrize("danger_tool_name", ["request_attack", "request_saving_throw"])
+    def test_danger_tool_named_iff_in_toolset(self, danger_tool_name):
+        from check_tools import request_attack, request_saving_throw
+        from city_agent import CITY_TOOLS
+        from combat_agent import COMBAT_AGENT_TOOLS
+        from dungeon_agent import DUNGEON_TOOLS
+        from system_prompts import COMBAT_SYSTEM_PROMPT, TRAINING_SYSTEM_PROMPT
+        from training_agent import TRAINING_TOOLS
+        from wilderness_agent import WILDERNESS_TOOLS
+
+        tool_obj = {"request_attack": request_attack, "request_saving_throw": request_saving_throw}[danger_tool_name]
+        agents = {
+            "city": (build_system_prompt("loc", region_type="city"), CITY_TOOLS),
+            "wilderness": (build_system_prompt("loc", region_type="wilderness"), WILDERNESS_TOOLS),
+            "dungeon": (build_system_prompt("loc", region_type="dungeon"), DUNGEON_TOOLS),
+            "combat": (COMBAT_SYSTEM_PROMPT, COMBAT_AGENT_TOOLS),
+            "training": (TRAINING_SYSTEM_PROMPT, TRAINING_TOOLS),
+        }
+        for name, (prompt, tools) in agents.items():
+            named = danger_tool_name in prompt
+            has_tool = tool_obj in tools
+            assert named == has_tool, (
+                f"{name} agent: prompt names {danger_tool_name}={named} but has the tool={has_tool}"
+            )
+
+
+class TestTrainingDiscoveryPrompt:
+    """Training is a cities-only activity reached via the training hall. The city
+    prompt carries a referral (lead the player to the hall), and the actual
+    training tools live in TrainingAgent — so the city prompt must NOT name them."""
+
+    def test_city_prompt_refers_to_the_training_hall(self):
+        from system_prompts import TRAINING_PROMPT
+
+        prompt = build_system_prompt("loc", region_type="city")
+        assert TRAINING_PROMPT in prompt
+        assert "training hall" in prompt
+        # City no longer holds the training tools — the prompt must not name them.
+        assert "query_training_programs" not in prompt
+
+    def test_wilderness_prompt_omits_training_referral(self):
+        from system_prompts import TRAINING_PROMPT
+
+        prompt = build_system_prompt("loc", region_type="wilderness")
+        assert TRAINING_PROMPT not in prompt
+        assert "query_training_programs" not in prompt
+
+    def test_dungeon_prompt_omits_training_referral(self):
+        prompt = build_system_prompt("loc", region_type="dungeon")
+        assert "query_training_programs" not in prompt
 
 
 class TestRegionTypeWarmLayer:

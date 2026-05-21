@@ -225,3 +225,164 @@ class TestCreateAndRetrieve:
 
         assert activity_id.startswith("train_")
         mock_pool.execute.assert_called_once()
+
+
+# --- M1.5 capstone (sprint-009 story-005) ---
+
+
+class TestFullCycleViaFunctionTools:
+    """M1.5 capstone — stitches the full state machine across two @function_tool
+    calls and a simulated worker advance:
+
+        initiate_training_cycle (@function_tool)
+           → running_first_half (row created with transition_at)
+        async_worker.advance_training_cycles (simulated)
+           → awaiting_decision (decision options injected)
+        resolve_training_midpoint (@function_tool)
+           → running_second_half (transition_at advances to completes_at)
+
+    Mocked at the DB layer (honest about test fidelity). The real-LLM +
+    real-Postgres acceptance harness lands in sprint-009 story-008.
+    """
+
+    @pytest.mark.asyncio
+    async def test_full_cycle_via_function_tools(self) -> None:
+        import json
+        from contextlib import asynccontextmanager
+        from unittest.mock import MagicMock
+
+        from session_data import SessionData
+        from training_rules import MidpointResult, TrainingCycleInit
+        from training_tools import _initiate_training_cycle_impl, _resolve_training_midpoint_impl
+
+        @asynccontextmanager
+        async def _mock_txn(conn):
+            yield conn
+
+        fixed_start = datetime(2026, 5, 19, 12, 0, 0, tzinfo=UTC)
+        first_half_seconds = 6 * 3600
+        second_half_seconds = 5 * 3600
+
+        combat_basics = {
+            "id": "combat_basics",
+            "name": "Combat Fundamentals",
+            "training_activity_type": "technique_base",
+            "stat": "strength",
+            "dc": 13,
+            "mentor_id": "guildmaster_torin",
+        }
+
+        ctx = MagicMock()
+        ctx.userdata = SessionData(player_id="player_1", location_id="accord_guild_hall", room=None)
+
+        mock_conn = MagicMock()
+        mock_db = MagicMock()
+        mock_db.transaction = lambda: _mock_txn(mock_conn)
+
+        # In-memory training_activities store mimicking db_training.* surface.
+        rows: dict[str, dict] = {}
+
+        async def create_training_activity(*, player_id, activity_type, state, data, transition_at, conn):
+            activity_id = f"train_{len(rows) + 1:03d}"
+            rows[activity_id] = {
+                "id": activity_id,
+                "player_id": player_id,
+                "activity_type": activity_type,
+                "state": state,
+                "data": data,
+                "transition_at": transition_at,
+            }
+            return activity_id
+
+        async def get_training_activity(activity_id, *, conn=None, for_update=False):
+            return rows.get(activity_id)
+
+        async def get_player_training_activities(player_id, state=None, *, conn=None, limit=50):
+            return [r for r in rows.values() if r["player_id"] == player_id and (state is None or r["state"] == state)]
+
+        async def update_training_activity(activity_id, *, state, data_updates, transition_at=None, conn=None):
+            row = rows[activity_id]
+            row["state"] = state
+            row["data"] = {**row["data"], **data_updates}
+            if transition_at is not None:
+                row["transition_at"] = transition_at
+
+        mock_content = MagicMock()
+        mock_content.get_training_program = AsyncMock(return_value=combat_basics)
+        mock_training = MagicMock()
+        mock_training.create_training_activity = AsyncMock(side_effect=create_training_activity)
+        mock_training.get_training_activity = AsyncMock(side_effect=get_training_activity)
+        mock_training.get_player_training_activities = AsyncMock(side_effect=get_player_training_activities)
+        mock_training.update_training_activity = AsyncMock(side_effect=update_training_activity)
+
+        initiate_cycle = TrainingCycleInit(
+            state="running_first_half",
+            first_half_seconds=first_half_seconds,
+            decision_at=fixed_start + timedelta(seconds=first_half_seconds),
+        )
+        init_result = json.loads(
+            await _initiate_training_cycle_impl(
+                ctx,
+                "combat_basics",
+                db_mod=mock_db,
+                db_training_mod=mock_training,
+                db_content_mod=mock_content,
+                rules_mod=lambda _a, _t: initiate_cycle,
+                now_fn=lambda: fixed_start,
+            )
+        )
+        activity_id = init_result["activity_id"]
+        assert init_result["state"] == "running_first_half"
+        assert init_result["first_half_seconds"] == first_half_seconds
+        assert rows[activity_id]["transition_at"] == fixed_start + timedelta(seconds=first_half_seconds)
+        assert rows[activity_id]["data"]["program_id"] == "combat_basics"
+
+        # Simulate the worker's running_first_half → awaiting_decision transition.
+        # Mirrors apps/agent/async_worker.advance_training_cycles L274-285: worker
+        # writes decision_presented/decision_prompt/decision_options and flips
+        # state. The capstone cares about the state-machine handoff into
+        # resolve_training_midpoint, not the worker's narration side effects.
+        rows[activity_id]["state"] = "awaiting_decision"
+        rows[activity_id]["data"] = {
+            **rows[activity_id]["data"],
+            "decision_presented": True,
+            "decision_prompt": "Fundamentals or advanced?",
+            "decision_options": [
+                {"id": "fundamentals", "label": "Fundamentals"},
+                {"id": "advanced", "label": "Advanced"},
+            ],
+        }
+
+        decision_time = fixed_start + timedelta(seconds=first_half_seconds)
+        resolve_data = MidpointResult(
+            state="running_second_half",
+            second_half_seconds=second_half_seconds,
+            completes_at=decision_time + timedelta(seconds=second_half_seconds),
+            micro_bonus={"type": "fundamentals"},
+            decision_id="fundamentals",
+        )
+        resolve_result = json.loads(
+            await _resolve_training_midpoint_impl(
+                ctx,
+                activity_id,
+                "fundamentals",
+                db_mod=mock_db,
+                db_training_mod=mock_training,
+                rules_mod=lambda _a, _d, _t: resolve_data,
+                now_fn=lambda: decision_time,
+            )
+        )
+        assert resolve_result["state"] == "running_second_half"
+        assert resolve_result["decision_id"] == "fundamentals"
+        assert resolve_result["second_half_seconds"] == second_half_seconds
+
+        final_row = rows[activity_id]
+        assert final_row["state"] == "running_second_half"
+        assert final_row["transition_at"] == decision_time + timedelta(seconds=second_half_seconds), (
+            "Worker-advance contract: transition_at must equal MidpointResult.completes_at"
+        )
+        assert final_row["data"]["decision_id"] == "fundamentals"
+        assert final_row["data"]["second_half_seconds"] == second_half_seconds
+        assert final_row["data"]["program_id"] == "combat_basics", (
+            "data JSONB merge must preserve initial program_id across the worker advance + resolve"
+        )

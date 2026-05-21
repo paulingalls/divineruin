@@ -1,10 +1,27 @@
 """Tests for game state mutation tools (mocked DB + room)."""
 
 import json
-from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sample_fixtures import (
+    GUILD_PLAYER as SAMPLE_PLAYER,
+)
+from sample_fixtures import (
+    SAMPLE_DESTINATION,
+    SAMPLE_ITEM,
+    SAMPLE_LOCATION,
+    SAMPLE_NPC,
+)
+from sample_fixtures import (
+    make_context as _make_context,
+)
+from sample_fixtures import (
+    make_mock_room as _make_mock_room,
+)
+from sample_fixtures import (
+    mock_txn as _mock_txn,
+)
 
 import event_types as E
 from check_tools import _request_saving_throw_impl, roll_dice
@@ -12,88 +29,8 @@ from inventory_tools import _add_to_inventory_impl, _remove_from_inventory_impl
 from movement_tools import _move_player_impl
 from progression_tools import _award_divine_favor_impl, _award_xp_impl
 from quest_tools import _clamp_disposition_shift, _update_quest_impl
-from session_data import SessionData
 from session_tools import _update_npc_disposition_impl
 from tool_support import _cap_str, _resolve_ambient_sounds
-
-
-@asynccontextmanager
-async def _mock_txn(conn):
-    yield conn
-
-
-SAMPLE_PLAYER = {
-    "player_id": "player_1",
-    "name": "Kael",
-    "class": "warrior",
-    "level": 1,
-    "xp": 0,
-    "attributes": {
-        "strength": 14,
-        "dexterity": 12,
-        "constitution": 13,
-        "intelligence": 10,
-        "wisdom": 11,
-        "charisma": 8,
-    },
-    "proficiencies": ["athletics", "stealth", "perception"],
-    "saving_throw_proficiencies": ["strength", "constitution"],
-    "equipment": {
-        "main_hand": {
-            "name": "Longsword",
-            "damage": "1d8",
-            "damage_type": "slashing",
-            "properties": [],
-        }
-    },
-    "hp": {"current": 25, "max": 25},
-    "ac": 14,
-}
-
-SAMPLE_NPC = {
-    "id": "guildmaster_torin",
-    "name": "Guildmaster Torin",
-    "role": "guild hall master",
-    "default_disposition": "neutral",
-    "voice_notes": "deep baritone",
-}
-
-SAMPLE_ITEM = {
-    "id": "health_potion",
-    "name": "Health Potion",
-    "type": "consumable",
-    "description": "A glowing red vial.",
-    "rarity": "common",
-}
-
-SAMPLE_LOCATION = {
-    "id": "accord_guild_hall",
-    "name": "Guild Hall",
-    "description": "Heavy oak doors open onto a hall.",
-    "atmosphere": "busy, purposeful",
-    "key_features": ["the main counter"],
-    "hidden_elements": [],
-    "exits": {
-        "south": {"destination": "accord_market_square"},
-        "east": {"destination": "accord_temple", "requires": "temple_key"},
-    },
-    "tags": ["guild"],
-    "conditions": {},
-}
-
-SAMPLE_DESTINATION = {
-    "id": "accord_market_square",
-    "name": "Market Square",
-    "description": "A bustling open-air market.",
-    "atmosphere": "noisy, chaotic",
-    "ambient_sounds": "market_bustle",
-    "ambient_sounds_night": "harbor_quiet",
-    "key_features": ["merchant stalls"],
-    "hidden_elements": [],
-    "exits": {"north": {"destination": "accord_guild_hall"}},
-    "tags": ["market"],
-    "conditions": {},
-}
 
 SAMPLE_QUEST = {
     "id": "greyvale_anomaly",
@@ -116,22 +53,6 @@ SAMPLE_QUEST = {
         },
     ],
 }
-
-
-# --- Test helpers ---
-
-
-def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None):
-    ctx = MagicMock()
-    ctx.userdata = SessionData(player_id=player_id, location_id=location_id, room=room)
-    return ctx
-
-
-def _make_mock_room():
-    room = MagicMock()
-    room.local_participant = MagicMock()
-    room.local_participant.publish_data = AsyncMock()
-    return room
 
 
 # --- _clamp_disposition_shift ---

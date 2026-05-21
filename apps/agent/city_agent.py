@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from check_tools import discover_hidden_element, request_attack, request_saving_throw, request_skill_check, roll_dice
+from check_tools import discover_hidden_element, request_skill_check, roll_dice
 from combat_init import start_combat
 from environment_tools import play_sound, set_music_state
 from gameplay_agent import GameplayAgent
@@ -25,8 +25,6 @@ CITY_TOOLS = [
     discover_hidden_element,
     # Mechanics
     request_skill_check,
-    request_attack,
-    request_saving_throw,
     roll_dice,
     play_sound,
     set_music_state,
@@ -40,6 +38,9 @@ CITY_TOOLS = [
     update_npc_disposition,
     record_story_moment,
     end_session,
+    # Training lives in TrainingAgent (reached by moving into a training-context
+    # location) — keeps City under Anthropic's 20-strict-tool limit. See
+    # docs/decisions/0004-agent-tool-scaling.md.
     # Combat handoff
     start_combat,
 ]

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 import asyncpg
@@ -21,7 +22,11 @@ _COLUMNS = "id, player_id, activity_type, state, data, transition_at, created_at
 
 def _to_dict(row: asyncpg.Record) -> dict:
     r = dict(row)
-    r["data"] = row["data"]  # asyncpg returns JSONB as dict
+    # No JSONB codec is registered on the pool, so asyncpg hands back the
+    # `data` column as a raw JSON string. Deserialize here so every consumer
+    # (e.g. async_worker.advance_training_cycles) gets a real dict to index.
+    raw = row["data"]
+    r["data"] = json.loads(raw) if isinstance(raw, str) else raw
     return r
 
 
@@ -90,20 +95,22 @@ async def create_training_activity(
     state: TrainingState,
     data: dict,
     *,
+    transition_at: datetime | None = None,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> str:
     _conn = conn or await db.get_pool()
     activity_id = f"train_{uuid.uuid4().hex[:12]}"
     await _conn.execute(
         """
-        INSERT INTO training_activities (id, player_id, activity_type, state, data)
-        VALUES ($1, $2, $3, $4, $5::jsonb)
+        INSERT INTO training_activities (id, player_id, activity_type, state, data, transition_at)
+        VALUES ($1, $2, $3, $4, $5::jsonb, $6)
         """,
         activity_id,
         player_id,
         activity_type,
         state,
         json.dumps(data),
+        transition_at,
     )
     return activity_id
 
@@ -113,18 +120,35 @@ async def update_training_activity(
     state: TrainingState,
     data_updates: dict,
     *,
+    transition_at: datetime | None = None,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
     _conn = conn or await db.get_pool()
-    await _conn.execute(
-        """
-        UPDATE training_activities
-        SET state = $2,
-            data = data || $3::jsonb,
-            updated_at = NOW()
-        WHERE id = $1
-        """,
-        activity_id,
-        state,
-        json.dumps(data_updates),
-    )
+    if transition_at is None:
+        await _conn.execute(
+            """
+            UPDATE training_activities
+            SET state = $2,
+                data = data || $3::jsonb,
+                updated_at = NOW()
+            WHERE id = $1
+            """,
+            activity_id,
+            state,
+            json.dumps(data_updates),
+        )
+    else:
+        await _conn.execute(
+            """
+            UPDATE training_activities
+            SET state = $2,
+                data = data || $3::jsonb,
+                transition_at = $4,
+                updated_at = NOW()
+            WHERE id = $1
+            """,
+            activity_id,
+            state,
+            json.dumps(data_updates),
+            transition_at,
+        )
