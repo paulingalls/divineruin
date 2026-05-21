@@ -67,7 +67,10 @@ describe("validateSlotAvailability", () => {
     expect(result).toEqual({ valid: false, error: "Invalid activity type: unknown" });
   });
 
-  // Artificer exception tests
+  // Artificer exception tests — these pin the validator's Phase-5-INTENDED
+  // behavior. Production call sites do not pass archetype/hasPortableLab yet;
+  // the exception is deferred to Phase 5 (see ADR 0005), so this branch is not
+  // reachable from the live API until then.
   test("Artificer with portable_lab can craft when crafting slot full but training slot empty", () => {
     const result = validateSlotAvailability(
       { training: 0, crafting: 1, companion: 0 },

@@ -59,6 +59,10 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       return Response.json({ error: "Invalid activity type" }, { status: 400 });
     }
 
+    // Capture into a const so the narrowed string type survives into the
+    // sql.begin() async closures below (TS widens body.type back to
+    // string | undefined across the closure boundary otherwise).
+    const activityType = body.type;
     const params = body.parameters ?? {};
 
     // Training uses its own table and transaction — handle separately and return early
@@ -84,7 +88,9 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
           FOR UPDATE
         `;
         const slotCounts = await countActiveBySlot(playerId, tx);
-        const slotCheck = validateSlotAvailability(slotCounts, body.type);
+        // archetype/hasPortableLab intentionally omitted: the Artificer
+        // training-slot exception is deferred to Phase 5 (see ADR 0005).
+        const slotCheck = validateSlotAvailability(slotCounts, activityType);
         if (!slotCheck.valid) {
           return { error: slotCheck.error! } as const;
         }
@@ -197,7 +203,9 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         FOR UPDATE
       `;
       const slotCounts = await countActiveBySlot(playerId, tx);
-      const slotCheck = validateSlotAvailability(slotCounts, body.type);
+      // archetype/hasPortableLab intentionally omitted: the Artificer
+      // crafting-on-training-slot exception is deferred to Phase 5 (see ADR 0005).
+      const slotCheck = validateSlotAvailability(slotCounts, activityType);
       if (!slotCheck.valid) {
         return { error: slotCheck.error! } as const;
       }
@@ -228,7 +236,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
 
       const data = {
         status: "in_progress",
-        activity_type: body.type,
+        activity_type: activityType,
         start_time: now.toISOString(),
         duration_min_seconds: durationMin,
         duration_max_seconds: durationMax,
