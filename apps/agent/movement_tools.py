@@ -184,7 +184,16 @@ async def _move_player_impl(
     )
     json_str = json.dumps(result)
 
-    if region_change:
+    # Hand off when the destination needs a different agent than the current one.
+    # That's a region crossing OR an activity-context change (entering/leaving a
+    # training-context location), since training is its own focused agent.
+    from training_agent import TrainingAgent, create_training_agent
+
+    dest_is_training = bool(destination_location and destination_location.get("agent_context") == "training")
+    current_is_training = isinstance(context.session.current_agent, TrainingAgent)
+    activity_change = dest_is_training != current_is_training
+
+    if region_change or activity_change:
         from livekit.agents.llm import ChatContext
 
         from gameplay_agent import create_gameplay_agent
@@ -192,9 +201,10 @@ async def _move_player_impl(
         dest_name = destination_location.get("name", destination_id) if destination_location else destination_id
         atmosphere = destination_location.get("atmosphere", "") if destination_location else ""
 
-        parts = [
-            f"The player has arrived at {dest_name} ({dest_region} region).",
-        ]
+        if dest_is_training:
+            parts = [f"The player has entered the training hall at {dest_name}."]
+        else:
+            parts = [f"The player has arrived at {dest_name} ({dest_region} region)."]
         if atmosphere:
             parts.append(f"The atmosphere is {atmosphere}.")
         if session.companion and session.companion.is_present:
@@ -206,6 +216,8 @@ async def _move_player_impl(
 
         summary_ctx = ChatContext()
         summary_ctx.add_message(role="system", content=" ".join(parts))
+        if dest_is_training:
+            return create_training_agent(chat_ctx=summary_ctx), json_str
         return create_gameplay_agent(
             dest_region, destination_id, companion=session.companion, chat_ctx=summary_ctx
         ), json_str

@@ -14,7 +14,6 @@ from quest_tools import update_quest
 from region_types import REGION_CITY
 from scene_tools import enter_location
 from session_tools import end_session, record_story_moment, update_npc_disposition
-from training_tools import initiate_training_cycle, query_training_programs, resolve_training_midpoint
 
 CITY_TOOLS = [
     # World query
@@ -39,11 +38,9 @@ CITY_TOOLS = [
     update_npc_disposition,
     record_story_moment,
     end_session,
-    # Training (M1.5) — cities only. Mentors live in cities today; wilderness/dungeon agents
-    # intentionally omit. Revisit if hunter/ranger mentor systems land.
-    query_training_programs,
-    initiate_training_cycle,
-    resolve_training_midpoint,
+    # Training lives in TrainingAgent (reached by moving into a training-context
+    # location) — keeps City under Anthropic's 20-strict-tool limit. See
+    # docs/decisions/0004-agent-tool-scaling.md.
     # Combat handoff
     start_combat,
 ]

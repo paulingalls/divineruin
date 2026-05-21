@@ -185,24 +185,27 @@ class TestRegionTypePrompts:
 
 
 class TestTrainingDiscoveryPrompt:
-    """Training tools are cities-only (mentors live in cities), so the
-    discovery hint appears only in the city prompt branch."""
+    """Training is a cities-only activity reached via the training hall. The city
+    prompt carries a referral (lead the player to the hall), and the actual
+    training tools live in TrainingAgent — so the city prompt must NOT name them."""
 
-    def test_city_prompt_includes_training_discovery(self):
+    def test_city_prompt_refers_to_the_training_hall(self):
         from system_prompts import TRAINING_PROMPT
 
         prompt = build_system_prompt("loc", region_type="city")
         assert TRAINING_PROMPT in prompt
-        assert "query_training_programs" in prompt
+        assert "training hall" in prompt
+        # City no longer holds the training tools — the prompt must not name them.
+        assert "query_training_programs" not in prompt
 
-    def test_wilderness_prompt_omits_training_discovery(self):
+    def test_wilderness_prompt_omits_training_referral(self):
         from system_prompts import TRAINING_PROMPT
 
         prompt = build_system_prompt("loc", region_type="wilderness")
         assert TRAINING_PROMPT not in prompt
         assert "query_training_programs" not in prompt
 
-    def test_dungeon_prompt_omits_training_discovery(self):
+    def test_dungeon_prompt_omits_training_referral(self):
         prompt = build_system_prompt("loc", region_type="dungeon")
         assert "query_training_programs" not in prompt
 
