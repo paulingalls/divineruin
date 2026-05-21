@@ -86,6 +86,31 @@ CORRUPTION_GUIDANCE: dict[int, str] = {
 }
 
 
+def format_training_section(active_cycles: list[dict]) -> str | None:
+    """Render the ACTIVE TRAINING warm-layer block, or None when there are none.
+
+    Input is training rows already filtered to non-complete cycles. Surfaces each
+    cycle's id (so the DM can pass it to resolve_training_midpoint) plus its state;
+    awaiting_decision cycles also surface the midpoint prompt and options.
+    """
+    if not active_cycles:
+        return None
+    lines = ["ACTIVE TRAINING"]
+    for cycle in active_cycles:
+        data = cycle.get("data") or {}
+        program = data.get("program_name") or cycle.get("activity_type", "training")
+        lines.append(f"- {program} (id: {cycle['id']}) — {cycle['state']}")
+        if cycle["state"] == "awaiting_decision":
+            prompt = data.get("decision_prompt")
+            if prompt:
+                lines.append(f"  Midpoint decision needed: {prompt}")
+            options = data.get("decision_options") or []
+            if options:
+                rendered = ", ".join(f"{o['label']} ({o['id']})" for o in options)
+                lines.append(f"  Options: {rendered}")
+    return "\n".join(lines)
+
+
 async def build_warm_layer(
     location_id: str,
     player_id: str,
@@ -98,6 +123,7 @@ async def build_warm_layer(
     npcs_raw: list[dict] | None = None,
     region_type: str = REGION_CITY,
     scene_cache: dict[str, dict] | None = None,
+    training: list[dict] | None = None,
 ) -> str:
     import asyncio
 
@@ -162,6 +188,12 @@ async def build_warm_layer(
             objective = quest_objective(q)
             quest_lines.append(f"- {q['quest_name']}: {objective}")
         sections.append("ACTIVE QUESTS\n" + "\n".join(quest_lines))
+
+    # Active training cycles (surfaces the cycle id so the DM can resolve midpoints)
+    if training:
+        training_section = format_training_section([t for t in training if t.get("state") != "complete"])
+        if training_section:
+            sections.append(training_section)
 
     # Active scene (from quest play tree or location default)
     if scene_cache:
