@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from check_tools import discover_hidden_element, request_attack, request_saving_throw, request_skill_check, roll_dice
+from check_tools import discover_hidden_element, request_skill_check, roll_dice
 from combat_init import start_combat
 from environment_tools import play_sound, set_music_state
 from gameplay_agent import GameplayAgent
@@ -26,8 +26,6 @@ CITY_TOOLS = [
     discover_hidden_element,
     # Mechanics
     request_skill_check,
-    request_attack,
-    request_saving_throw,
     roll_dice,
     play_sound,
     set_music_state,
