@@ -21,6 +21,6 @@ Feature: M1.5 training cycle — DM training agent end-to-end
 
   Scenario: Player cannot start a second cycle while one is in progress
     Given a player at the training hall with a cycle already in progress
-    When the player says "I want to start training in combat fundamentals"
+    When the player says "Let's begin the Combat Fundamentals training right now"
     Then the agent calls the "initiate_training_cycle" tool
     And the agent narrates that a cycle is already in progress
