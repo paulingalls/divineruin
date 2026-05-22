@@ -1,7 +1,7 @@
 """pytest-bdd step defs for the M1.5 training-cycle acceptance scenarios.
 
-Drives the real TrainingAgent (Haiku) + a real Postgres testcontainer via the
-LiveKit test framework. Training tools live in TrainingAgent (story-011), reached
+Drives the real DispatchAgent (Haiku) + a real Postgres testcontainer via the
+LiveKit test framework. Training tools live in DispatchAgent, reached
 when the player enters the training hall. Skips entirely without ANTHROPIC_API_KEY
 (the pre-sprint-close / test-creation schedule in ADR 0003).
 
@@ -29,8 +29,8 @@ from livekit.plugins import anthropic
 from pytest_bdd import given, parsers, scenarios, then, when
 
 import db
+from dispatch_agent import create_dispatch_agent
 from session_data import SessionData
-from training_agent import create_training_agent
 from training_rules import get_midpoint_decision
 from warm_prompts import format_training_section
 
@@ -76,7 +76,7 @@ async def _start_training_session(harness: SimpleNamespace, chat_ctx: ChatContex
         llm=anthropic.LLM(model=_AGENT_MODEL, caching="ephemeral"),
         userdata=session_data,
     )
-    await session.start(create_training_agent(chat_ctx=chat_ctx))
+    await session.start(create_dispatch_agent(chat_ctx=chat_ctx))
     harness.state["session"] = session
     harness.state["judge_llm"] = anthropic.LLM(model=_AGENT_MODEL)
 

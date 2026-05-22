@@ -35,7 +35,7 @@ CITY_TOOLS = [
     update_npc_disposition,
     record_story_moment,
     end_session,
-    # Training lives in TrainingAgent (reached by moving into a training-context
+    # Training lives in DispatchAgent (reached by moving into a training-context
     # location) — keeps City under Anthropic's strict-tool ceiling
     # (llm_config.MAX_STRICT_TOOLS). See docs/decisions/0004-agent-tool-scaling.md.
     # Combat handoff

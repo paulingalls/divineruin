@@ -283,9 +283,9 @@ class TestPromptToolConsistency:
         from check_tools import request_attack, request_saving_throw
         from city_agent import CITY_TOOLS
         from combat_agent import COMBAT_AGENT_TOOLS
+        from dispatch_agent import DISPATCH_TOOLS
         from dungeon_agent import DUNGEON_TOOLS
-        from system_prompts import COMBAT_SYSTEM_PROMPT, TRAINING_SYSTEM_PROMPT
-        from training_agent import TRAINING_TOOLS
+        from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
         from wilderness_agent import WILDERNESS_TOOLS
 
         tool_obj = {"request_attack": request_attack, "request_saving_throw": request_saving_throw}[danger_tool_name]
@@ -294,7 +294,7 @@ class TestPromptToolConsistency:
             "wilderness": (build_system_prompt("loc", region_type="wilderness"), WILDERNESS_TOOLS),
             "dungeon": (build_system_prompt("loc", region_type="dungeon"), DUNGEON_TOOLS),
             "combat": (COMBAT_SYSTEM_PROMPT, COMBAT_AGENT_TOOLS),
-            "training": (TRAINING_SYSTEM_PROMPT, TRAINING_TOOLS),
+            "training": (DISPATCH_SYSTEM_PROMPT, DISPATCH_TOOLS),
         }
         for name, (prompt, tools) in agents.items():
             named = danger_tool_name in prompt
@@ -308,11 +308,11 @@ class TestPromptToolConsistency:
         it (no absent-tool instruction), and no prompt may name a removed query_* tool."""
         from city_agent import CITY_TOOLS
         from combat_agent import COMBAT_AGENT_TOOLS
+        from dispatch_agent import DISPATCH_TOOLS
         from dungeon_agent import DUNGEON_TOOLS
         from onboarding_agent import ONBOARDING_SYSTEM_PROMPT, ONBOARDING_TOOLS
         from query_tools import query_info
-        from system_prompts import COMBAT_SYSTEM_PROMPT, TRAINING_SYSTEM_PROMPT
-        from training_agent import TRAINING_TOOLS
+        from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
         from wilderness_agent import WILDERNESS_TOOLS
 
         agents = {
@@ -320,7 +320,7 @@ class TestPromptToolConsistency:
             "wilderness": (build_system_prompt("loc", region_type="wilderness"), WILDERNESS_TOOLS),
             "dungeon": (build_system_prompt("loc", region_type="dungeon"), DUNGEON_TOOLS),
             "combat": (COMBAT_SYSTEM_PROMPT, COMBAT_AGENT_TOOLS),
-            "training": (TRAINING_SYSTEM_PROMPT, TRAINING_TOOLS),
+            "training": (DISPATCH_SYSTEM_PROMPT, DISPATCH_TOOLS),
             "onboarding": (ONBOARDING_SYSTEM_PROMPT, ONBOARDING_TOOLS),
         }
         for name, (prompt, tools) in agents.items():
@@ -333,7 +333,7 @@ class TestPromptToolConsistency:
 class TestTrainingDiscoveryPrompt:
     """Training is a cities-only activity reached via the training hall. The city
     prompt carries a referral (lead the player to the hall), and the actual
-    training tools live in TrainingAgent — so the city prompt must NOT name them."""
+    training tools live in DispatchAgent — so the city prompt must NOT name them."""
 
     def test_city_prompt_refers_to_the_training_hall(self):
         from system_prompts import TRAINING_PROMPT

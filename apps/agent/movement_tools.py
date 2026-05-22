@@ -176,16 +176,16 @@ async def _move_player_impl(
     json_str = json.dumps(result)
 
     # Hand off when the destination needs a different agent than the current one.
-    # That's a region crossing OR an activity-context change (entering/leaving a
-    # training-context location), since training is its own focused agent.
-    from training_agent import TrainingAgent, create_training_agent
+    # That's a region crossing OR an activity-context change (entering/leaving an
+    # activity-context location), since dispatch activities get their own focused agent.
+    from dispatch_agent import DispatchAgent, create_dispatch_agent
 
     dest_is_training = bool(destination_location and destination_location.get("agent_context") == "training")
-    # Only region and training agents own move_player, so current_agent is one of
+    # Only region and dispatch agents own move_player, so current_agent is one of
     # those here — combat can't reach this path (CombatAgent has no move_player; it
     # exits via end_combat). If move_player is ever added to a combat-like agent,
     # revisit so an in-progress activity isn't abandoned by an incidental move.
-    current_is_training = isinstance(context.session.current_agent, TrainingAgent)
+    current_is_training = isinstance(context.session.current_agent, DispatchAgent)
     activity_change = dest_is_training != current_is_training
 
     if region_change or activity_change:
@@ -212,7 +212,7 @@ async def _move_player_impl(
         summary_ctx = ChatContext()
         summary_ctx.add_message(role="system", content=" ".join(parts))
         if dest_is_training:
-            return create_training_agent(chat_ctx=summary_ctx), json_str
+            return create_dispatch_agent(chat_ctx=summary_ctx), json_str
         return create_gameplay_agent(
             dest_region, destination_id, companion=session.companion, chat_ctx=summary_ctx
         ), json_str
