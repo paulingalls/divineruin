@@ -1,8 +1,9 @@
 """Tests for TrainingAgent + the move_player activity handoff into/out of it.
 
-TrainingAgent exists so CityAgent stays under Anthropic's 20-strict-tool limit
-(docs/decisions/0004-agent-tool-scaling.md). Players reach it by moving into a
-training-context location; moving out re-resolves to the region agent.
+TrainingAgent exists so CityAgent stays under Anthropic's strict-tool ceiling
+(llm_config.MAX_STRICT_TOOLS; docs/decisions/0004-agent-tool-scaling.md). Players
+reach it by moving into a training-context location; moving out re-resolves to
+the region agent.
 """
 
 from __future__ import annotations
@@ -79,15 +80,11 @@ class TestTrainingAgentRegistration:
 
 class TestCityToolBudget:
     def test_training_tools_left_city(self):
+        # Extracting these tools is what keeps City at or under the strict-tool
+        # ceiling (the count pin lives in test_strict_tool_budget.py).
         assert query_training_programs not in CITY_TOOLS
         assert initiate_training_cycle not in CITY_TOOLS
         assert resolve_training_midpoint not in CITY_TOOLS
-
-    def test_city_within_strict_tool_limit(self):
-        # Anthropic rejects >20 strict tools; the effective count the LLM sees is
-        # CITY_TOOLS (no extra framework strict tools — confirmed by the original
-        # 25-tool 400). Keep City at or under the cap.
-        assert len(CITY_TOOLS) <= 20
 
 
 class TestMovePlayerActivityHandoff:
