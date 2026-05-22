@@ -1,12 +1,9 @@
 import { describe, expect, test, beforeEach } from "bun:test";
 import {
-  rollErrandRisk,
   validateErrandDispatch,
   numericToDangerLevel,
   setDestinationDangerLevels,
-  ERRAND_RISK_TABLE,
   BLOCKED_DANGER_COMBOS,
-  type InjuryStatus,
 } from "./errand_risk.ts";
 import { setupDangerLevelFixture } from "./test-fixtures/danger-levels.ts";
 
@@ -37,109 +34,11 @@ describe("numericToDangerLevel", () => {
   });
 });
 
-describe("rollErrandRisk", () => {
-  test("safe destination always returns none", () => {
-    const results = new Set<InjuryStatus>();
-    for (let i = 0; i < 100; i++) {
-      results.add(rollErrandRisk("scout", "millhaven", "companion_kael"));
-    }
-    expect(results.size).toBe(1);
-    expect(results.has("none")).toBe(true);
-  });
-
-  test("safe destination with any errand type returns none", () => {
-    for (const errandType of ["scout", "social", "acquire", "relationship"] as const) {
-      expect(rollErrandRisk(errandType, "millhaven", "companion_kael")).toBe("none");
-    }
-  });
-
-  test("dangerous scout can produce injured or emergency", () => {
-    const results = new Set<InjuryStatus>();
-    for (let i = 0; i < 500; i++) {
-      results.add(rollErrandRisk("scout", "greyvale_ruins_entrance", "companion_lira"));
-    }
-    // With 25% injury + 5% emergency (no reduction for lira), 500 rolls should hit all outcomes
-    expect(results.has("none")).toBe(true);
-    expect(results.has("injured")).toBe(true);
-    expect(results.has("emergency")).toBe(true);
-  });
-
-  test("moderate scout can produce injured but not emergency", () => {
-    // moderate/scout: 10% injury, 0% emergency
-    const results = new Set<InjuryStatus>();
-    for (let i = 0; i < 500; i++) {
-      results.add(rollErrandRisk("scout", "accord_market_square", "companion_kael"));
-    }
-    expect(results.has("none")).toBe(true);
-    expect(results.has("injured")).toBe(true);
-    expect(results.has("emergency")).toBe(false);
-  });
-
-  test("companion_kael reduces injury chance by 5%", () => {
-    // dangerous/scout base: 25% injury, 5% emergency
-    // With kael (-5%): 20% injury, 5% emergency → 75% none
-    // Without kael (lira, 0% reduction): 25% injury, 5% emergency → 70% none
-    let kaelNoneCount = 0;
-    let liraNoneCount = 0;
-    const trials = 5000;
-
-    for (let i = 0; i < trials; i++) {
-      if (rollErrandRisk("scout", "greyvale_ruins_entrance", "companion_kael") === "none")
-        kaelNoneCount++;
-      if (rollErrandRisk("scout", "greyvale_ruins_entrance", "companion_lira") === "none")
-        liraNoneCount++;
-    }
-
-    // Kael should have more "none" outcomes (higher none rate)
-    const kaelNoneRate = kaelNoneCount / trials;
-    const liraNoneRate = liraNoneCount / trials;
-    expect(kaelNoneRate).toBeGreaterThan(liraNoneRate - 0.05);
-    // Kael none rate should be around 75% (±5% for randomness)
-    expect(kaelNoneRate).toBeGreaterThan(0.65);
-    expect(kaelNoneRate).toBeLessThan(0.85);
-  });
-
-  test("unknown destination defaults to safe (returns none)", () => {
-    expect(rollErrandRisk("scout", "unknown_place", "companion_kael")).toBe("none");
-  });
-
-  test("unknown companion gets no injury reduction", () => {
-    // Should behave same as default
-    const result = rollErrandRisk("scout", "millhaven", "unknown_companion");
-    expect(result).toBe("none");
-  });
-});
-
-describe("ERRAND_RISK_TABLE matches the spec matrix", () => {
-  // game_mechanics_core.md §Companion Risk L887-892. Cells marked None are
-  // explicit 0/0 entries; cells marked N/A are absent from the table and
-  // enforced by BLOCKED_DANGER_COMBOS instead. Deterministic — pins exact
-  // percentages, unlike statistical roll sampling.
-  const specCells: Record<string, { injuryPct: number; emergencyPct: number }> = {
-    "safe|scout": { injuryPct: 0, emergencyPct: 0 },
-    "safe|social": { injuryPct: 0, emergencyPct: 0 },
-    "safe|acquire": { injuryPct: 0, emergencyPct: 0 },
-    "safe|relationship": { injuryPct: 0, emergencyPct: 0 },
-    "moderate|scout": { injuryPct: 10, emergencyPct: 0 },
-    "moderate|social": { injuryPct: 0, emergencyPct: 0 },
-    "moderate|acquire": { injuryPct: 10, emergencyPct: 0 },
-    "moderate|relationship": { injuryPct: 0, emergencyPct: 0 },
-    "dangerous|scout": { injuryPct: 25, emergencyPct: 5 },
-    "dangerous|social": { injuryPct: 0, emergencyPct: 0 },
-    "dangerous|acquire": { injuryPct: 20, emergencyPct: 0 },
-    "extreme|scout": { injuryPct: 40, emergencyPct: 15 },
-  };
-
-  test("every populated cell matches spec exactly", () => {
-    for (const [key, entry] of Object.entries(specCells)) {
-      expect(ERRAND_RISK_TABLE[key]).toEqual(entry);
-    }
-  });
-
-  test("table has no cells beyond the spec (N/A cells stay absent)", () => {
-    expect(new Set(Object.keys(ERRAND_RISK_TABLE))).toEqual(new Set(Object.keys(specCells)));
-  });
-
+describe("BLOCKED_DANGER_COMBOS conformance", () => {
+  // game_mechanics_core.md §Companion Risk L887-892 marks these cells N/A. Risk
+  // is now rolled in the Python worker (ADR 0006); the risk table moved to
+  // apps/agent/errand_risk.py with its own conformance pin. TS keeps only this
+  // dispatch-time blocked-combo gate, conformance-pinned to the same spec.
   test("BLOCKED_DANGER_COMBOS equals the spec N/A cells", () => {
     expect(BLOCKED_DANGER_COMBOS).toEqual(
       new Set([

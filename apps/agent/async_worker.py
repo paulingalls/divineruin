@@ -18,12 +18,14 @@ if TYPE_CHECKING:
 
 import db
 import db_activity_queries
+import db_content_queries
 import db_mutations
 import db_queries
 import db_training
 import skill_persistence
 from async_rules import resolve_companion_errand, resolve_crafting
 from dialogue_parser import Segment
+from errand_risk import numeric_to_danger, roll_errand_risk
 from llm_config import AUDIO_DIR, audio_url_for
 from narration import generate_activity_narration, generate_notification_hook, generate_progress_snippets
 from push import send_push_notification
@@ -134,7 +136,16 @@ async def _resolve_single_activity(activity: dict) -> None:
         outcome_dict = asdict(outcome)
 
         if activity_type == "companion_errand":
-            outcome_dict.setdefault("narrative_context", {})["risk_outcome"] = parameters.get("risk_outcome", "none")
+            # Risk is rolled here (sole authority), not at dispatch — nothing reads
+            # it before resolution, so the timing is behaviorally identical (ADR 0006).
+            location = await db_content_queries.get_location(parameters.get("destination", ""))
+            danger = numeric_to_danger(location.get("danger_level") if location else None)
+            risk = roll_errand_risk(
+                parameters.get("errand_type", "scout"),
+                danger,
+                companion_data.get("id", ""),
+            )
+            outcome_dict.setdefault("narrative_context", {})["risk_outcome"] = risk
 
         # Generate structured narration via LLM tool_use
         segments, narration_text, narration_summary = await generate_activity_narration(

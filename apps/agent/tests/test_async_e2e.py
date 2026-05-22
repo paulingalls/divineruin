@@ -145,6 +145,9 @@ class TestFullPipeline:
         with (
             patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
+                "async_worker.db_content_queries.get_location", new_callable=AsyncMock, return_value={"danger_level": 0}
+            ),
+            patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
                 return_value=(
