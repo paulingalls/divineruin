@@ -289,6 +289,73 @@ class TestCachedContentQueries:
         call_args = mock_pool.fetch.call_args[0]
         assert call_args[1] == "%100\\%\\_done%"
 
+    @pytest.mark.asyncio
+    async def test_get_errand_template_returns_cached_data(self):
+        """get_errand_template should return cached template if available."""
+        cached_data = {"id": "scout", "name": "Scouting Mission", "duration_min_seconds": 14400}
+
+        with patch("db._cache_get", new_callable=AsyncMock) as mock_cache_get:
+            mock_cache_get.return_value = json.dumps(cached_data)
+
+            result = await db_content_queries.get_errand_template("scout")
+
+        assert result == cached_data
+        mock_cache_get.assert_awaited_once_with("errand_template:scout")
+
+    @pytest.mark.asyncio
+    async def test_get_errand_template_queries_db_on_cache_miss(self):
+        """get_errand_template should query DB and cache result on miss."""
+        template = {
+            "id": "scout",
+            "name": "Scouting Mission",
+            "duration_min_seconds": 14400,
+            "duration_max_seconds": 28800,
+            "valid_destinations": ["millhaven"],
+            "blocked_companions": [],
+        }
+        mock_pool = AsyncMock()
+        mock_pool.fetchrow = AsyncMock(return_value={"data": json.dumps(template)})
+
+        with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
+            with patch("db._cache_set", new_callable=AsyncMock) as mock_cache_set:
+                with patch("db.get_pool", return_value=mock_pool):
+                    result = await db_content_queries.get_errand_template("scout")
+
+        assert result == template
+        mock_pool.fetchrow.assert_awaited_once_with("SELECT data FROM errand_templates WHERE id = $1", "scout")
+        mock_cache_set.assert_awaited_once_with("errand_template:scout", json.dumps(template))
+
+    @pytest.mark.asyncio
+    async def test_get_errand_template_returns_none_if_not_found(self):
+        """get_errand_template should return None for an unknown errand type."""
+        mock_pool = AsyncMock()
+        mock_pool.fetchrow = AsyncMock(return_value=None)
+
+        with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
+            with patch("db.get_pool", return_value=mock_pool):
+                result = await db_content_queries.get_errand_template("nonexistent")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_list_errand_templates_queries_db_on_cache_miss(self):
+        """list_errand_templates should query DB and cache the full list on miss."""
+        templates = [
+            {"id": "acquire", "name": "Acquire Supplies"},
+            {"id": "scout", "name": "Scouting Mission"},
+        ]
+        mock_pool = AsyncMock()
+        mock_pool.fetch = AsyncMock(return_value=[{"data": json.dumps(t)} for t in templates])
+
+        with patch("db._cache_get", new_callable=AsyncMock, return_value=None):
+            with patch("db._cache_set", new_callable=AsyncMock) as mock_cache_set:
+                with patch("db.get_pool", return_value=mock_pool):
+                    result = await db_content_queries.list_errand_templates()
+
+        assert result == templates
+        mock_pool.fetch.assert_awaited_once_with("SELECT data FROM errand_templates ORDER BY id")
+        mock_cache_set.assert_awaited_once_with("errand_templates:all", json.dumps(templates))
+
 
 class TestTransactionContext:
     """Test transaction context manager."""

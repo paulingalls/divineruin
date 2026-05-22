@@ -3,9 +3,9 @@ import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
 import {
   CRAFTING_RECIPES,
-  ERRAND_TEMPLATES,
   VALID_ACTIVITY_TYPES,
   getTrainingProgram,
+  getErrandTemplate,
 } from "./activity_templates.ts";
 import { displayName } from "@divineruin/shared";
 import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts";
@@ -164,7 +164,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       if (!errandType) {
         return Response.json({ error: "errand_type is required" }, { status: 400 });
       }
-      const template = ERRAND_TEMPLATES[errandType];
+      const template = getErrandTemplate(errandType);
       if (!template) {
         return Response.json({ error: "Unknown errand type" }, { status: 400 });
       }
