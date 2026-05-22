@@ -4,6 +4,7 @@ from typing import Any
 
 from check_tools import discover_hidden_element, request_skill_check, roll_dice
 from combat_init import start_combat
+from dispatch_tools import enter_dispatch
 from environment_tools import play_sound, set_music_state
 from gameplay_agent import GameplayAgent
 from movement_tools import move_player
@@ -23,6 +24,7 @@ WILDERNESS_TOOLS = [
     update_quest,
     roll_dice,
     start_combat,
+    enter_dispatch,
     award_xp,
     record_story_moment,
     play_sound,

@@ -4,6 +4,7 @@ from typing import Any
 
 from check_tools import discover_hidden_element, request_skill_check, roll_dice
 from combat_init import start_combat
+from dispatch_tools import enter_dispatch
 from environment_tools import play_sound, set_music_state
 from gameplay_agent import GameplayAgent
 from inventory_tools import add_to_inventory, remove_from_inventory
@@ -35,9 +36,10 @@ CITY_TOOLS = [
     update_npc_disposition,
     record_story_moment,
     end_session,
-    # Training lives in TrainingAgent (reached by moving into a training-context
-    # location) — keeps City under Anthropic's strict-tool ceiling
-    # (llm_config.MAX_STRICT_TOOLS). See docs/decisions/0004-agent-tool-scaling.md.
+    # Activity dispatch lives in DispatchAgent (reached by enter_dispatch intent
+    # handoff, or by moving into an activity-context location) — keeps City under
+    # MAX_STRICT_TOOLS. See docs/decisions/0004-agent-tool-scaling.md.
+    enter_dispatch,
     # Combat handoff
     start_combat,
 ]

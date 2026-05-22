@@ -81,6 +81,21 @@ generic item grants. Revisit if a real commerce mechanic lands.
 - Per-context agents need their system prompts to name only the tools they hold
   (see the prompt-tool drift fix, concern `b1591cb23262`).
 
+## Addendum (2026-05-22, sprint-010 stories 010 + 008)
+
+The decomposition held and the budget loosened:
+- **story-010** consolidated the four `query_*` read tools into one parameterized
+  `query_info(kind, target_id?)`, dropping every query-holding agent's count (City
+  20 → 17) — the first application of the deferred "consolidate a tool family"
+  idea below, and the headroom that unblocked story-008.
+- **story-008** generalized TrainingAgent into **DispatchAgent** (owns all
+  async-activity dispatch — training now, errands next) and added a second way to
+  reach it: an **intent handoff** (`enter_dispatch`) callable from any region agent,
+  alongside the original location handoff. The trigger extends from location-only to
+  **location + intent**; the goal (per-activity agents under the strict-tool ceiling
+  via the combat-style return-to-caller handoff) is unchanged. `enter_dispatch` spent
+  one of City's freed slots (City → 18).
+
 ## Deferred — check-family consolidation
 
 `request_skill_check` / `request_saving_throw` / `request_attack` /

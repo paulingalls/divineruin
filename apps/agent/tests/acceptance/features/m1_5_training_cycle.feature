@@ -1,8 +1,8 @@
 Feature: M1.5 training cycle — DM training agent end-to-end
 
-  Drives the real TrainingAgent (Haiku, production gameplay model) against a real
+  Drives the real DispatchAgent (Haiku, production gameplay model) against a real
   Postgres testcontainer via the LiveKit test framework. Training tools live in
-  TrainingAgent (story-011), reached when the player enters the training hall.
+  DispatchAgent, reached when the player enters the training hall.
   Runs only when ANTHROPIC_API_KEY is set (pre-sprint-close / test-creation
   schedule — see ADR 0003).
 

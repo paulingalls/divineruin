@@ -269,6 +269,6 @@ class TestInitiateTrainingCycle:
         assert kwargs["transition_at"] == FIXED_NOW + timedelta(seconds=5 * 3600)
 
 
-# Training-tool registration moved to TrainingAgent in story-011 (CityAgent
+# Training-tool registration moved to DispatchAgent in story-011 (CityAgent
 # decomposition). The wiring is now pinned by tests/test_training_agent.py
-# (TestTrainingAgentRegistration + TestCityToolBudget).
+# (TestDispatchAgentRegistration + TestCityToolBudget).

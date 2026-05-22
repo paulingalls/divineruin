@@ -1,6 +1,6 @@
-"""Tests for TrainingAgent + the move_player activity handoff into/out of it.
+"""Tests for DispatchAgent + the move_player activity handoff into/out of it.
 
-TrainingAgent exists so CityAgent stays under Anthropic's strict-tool ceiling
+DispatchAgent exists so CityAgent stays under Anthropic's strict-tool ceiling
 (llm_config.MAX_STRICT_TOOLS; docs/decisions/0004-agent-tool-scaling.md). Players
 reach it by moving into a training-context location; moving out re-resolves to
 the region agent.
@@ -14,9 +14,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from city_agent import CITY_TOOLS, CityAgent
+from dispatch_agent import DISPATCH_TOOLS, DispatchAgent
 from movement_tools import _move_player_impl
 from session_data import SessionData
-from training_agent import TRAINING_TOOLS, TrainingAgent
 from training_tools import initiate_training_cycle, query_training_programs, resolve_training_midpoint
 from wilderness_agent import WildernessAgent
 
@@ -67,15 +67,15 @@ def _move_mocks(current_loc: dict, dest_loc: dict):
     return mock_db, mock_mutations, mock_queries, mock_content
 
 
-class TestTrainingAgentRegistration:
+class TestDispatchAgentRegistration:
     def test_registers_the_training_tools(self):
-        assert query_training_programs in TRAINING_TOOLS
-        assert initiate_training_cycle in TRAINING_TOOLS
-        assert resolve_training_midpoint in TRAINING_TOOLS
+        assert query_training_programs in DISPATCH_TOOLS
+        assert initiate_training_cycle in DISPATCH_TOOLS
+        assert resolve_training_midpoint in DISPATCH_TOOLS
 
     def test_can_be_constructed(self):
-        agent = TrainingAgent()
-        assert isinstance(agent, TrainingAgent)
+        agent = DispatchAgent()
+        assert isinstance(agent, DispatchAgent)
 
 
 class TestCityToolBudget:
@@ -102,12 +102,12 @@ class TestMovePlayerActivityHandoff:
                 content=mock_content,
             )
         assert isinstance(result, tuple), "entering a training location should hand off"
-        assert isinstance(result[0], TrainingAgent)
+        assert isinstance(result[0], DispatchAgent)
 
     @pytest.mark.asyncio
     async def test_out_of_training_location_returns_region_agent(self):
         mock_db, mock_mutations, mock_queries, mock_content = _move_mocks(_TRAINING_LOC, _CITY_LOC)
-        ctx = _make_context("accord_training_hall", current_agent=MagicMock(spec=TrainingAgent))
+        ctx = _make_context("accord_training_hall", current_agent=MagicMock(spec=DispatchAgent))
         with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
             result = await _move_player_impl(
                 ctx,
@@ -136,7 +136,7 @@ class TestMovePlayerActivityHandoff:
             "exits": {},
         }
         mock_db, mock_mutations, mock_queries, mock_content = _move_mocks(training_with_wild_exit, wilderness)
-        ctx = _make_context("accord_training_hall", current_agent=MagicMock(spec=TrainingAgent))
+        ctx = _make_context("accord_training_hall", current_agent=MagicMock(spec=DispatchAgent))
         with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
             result = await _move_player_impl(
                 ctx,
