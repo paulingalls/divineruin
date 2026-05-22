@@ -12,7 +12,7 @@ import os
 import re
 from typing import Literal
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db_mutations
@@ -152,37 +152,33 @@ async def set_creation_choice(
         value: ID for race/class/deity, free text for name/backstory.
     """
     if category not in VALID_CHOICE_CATEGORIES:
-        return json.dumps({"error": f"Invalid category: {category}."})
+        raise ToolError(f"Invalid category: {category}.")
 
     sd: SessionData = context.userdata
     cs = sd.creation_state
     if cs is None or cs.phase == "complete":
-        return json.dumps({"error": "Not in creation mode."})
+        raise ToolError("Not in creation mode.")
 
     # Validate ID-based choices
     if category == "race":
         if value not in RACES:
-            return json.dumps({"error": f"Unknown race: {_safe_id_snippet(value)}. Valid: {', '.join(RACES.keys())}"})
+            raise ToolError(f"Unknown race: {_safe_id_snippet(value)}. Valid: {', '.join(RACES.keys())}")
         cs.race = value
         cs.phase = "calling"
     elif category == "class":
         if value not in CLASSES:
-            return json.dumps(
-                {"error": f"Unknown class: {_safe_id_snippet(value)}. Valid: {', '.join(CLASSES.keys())}"}
-            )
+            raise ToolError(f"Unknown class: {_safe_id_snippet(value)}. Valid: {', '.join(CLASSES.keys())}")
         cs.class_choice = value
         cs.phase = "devotion"
     elif category == "deity":
         if value not in DEITIES:
-            return json.dumps(
-                {"error": f"Unknown deity: {_safe_id_snippet(value)}. Valid: {', '.join(DEITIES.keys())}"}
-            )
+            raise ToolError(f"Unknown deity: {_safe_id_snippet(value)}. Valid: {', '.join(DEITIES.keys())}")
         cs.deity = value
         cs.phase = "identity"
     elif category == "name":
         sanitized = _sanitize_name(value)
         if not sanitized:
-            return json.dumps({"error": "Name cannot be empty."})
+            raise ToolError("Name cannot be empty.")
         cs.name = sanitized
     elif category == "backstory":
         cs.backstory = _sanitize_backstory(value) if value else ""
@@ -242,7 +238,7 @@ async def finalize_character(context: RunContext) -> str | tuple:
     sd: SessionData = context.userdata
     cs = sd.creation_state
     if cs is None or cs.phase == "complete":
-        return json.dumps({"error": "Not in creation mode."})
+        raise ToolError("Not in creation mode.")
 
     # Validate all required fields
     missing = []
@@ -253,13 +249,13 @@ async def finalize_character(context: RunContext) -> str | tuple:
     if cs.name is None:
         missing.append("name")
     if missing:
-        return json.dumps({"error": f"Missing required choices: {', '.join(missing)}"})
+        raise ToolError(f"Missing required choices: {', '.join(missing)}")
 
     # Deity can be None (deferred) or "none" (explicitly no patron)
     deity_id = cs.deity
 
     if not cs.name or not cs.race or not cs.class_choice:
-        return json.dumps({"error": "Missing required choices: name, race, or class"})
+        raise ToolError("Missing required choices: name, race, or class")
 
     try:
         character_data = build_character_data(
@@ -269,16 +265,16 @@ async def finalize_character(context: RunContext) -> str | tuple:
             deity_id=deity_id,
             backstory=cs.backstory or "",
         )
-    except ValueError:
+    except ValueError as e:
         logger.exception("Invalid character data for %s", sd.player_id)
-        return json.dumps({"error": "Invalid character data. Please check your choices."})
+        raise ToolError("Invalid character data. Please check your choices.") from e
 
     # Persist to DB
     try:
         await db_mutations.create_player(sd.player_id, None, character_data)
-    except Exception:
+    except Exception as e:
         logger.exception("Failed to create player %s", sd.player_id)
-        return json.dumps({"error": "Failed to save character. Please try again."})
+        raise ToolError("Failed to save character. Please try again.") from e
 
     # Update session state
     sd.location_id = character_data["location_id"]

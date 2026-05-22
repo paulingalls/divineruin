@@ -154,8 +154,11 @@ class TestMovePlayerActivityHandoff:
 
     @pytest.mark.asyncio
     async def test_same_context_city_move_does_not_hand_off(self):
+        # Current location must expose an exit to the destination, else move_player
+        # raises ToolError before the handoff logic runs.
+        current_city = {**_CITY_LOC, "exits": {"east": {"destination": "accord_market_square"}}}
         other_city = {**_CITY_LOC, "id": "accord_market_square", "name": "Market Square"}
-        mock_db, mock_mutations, mock_queries, mock_content = _move_mocks(_CITY_LOC, other_city)
+        mock_db, mock_mutations, mock_queries, mock_content = _move_mocks(current_city, other_city)
         ctx = _make_context("accord_guild_hall", current_agent=None)
         with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
             result = await _move_player_impl(

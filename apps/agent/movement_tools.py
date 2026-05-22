@@ -3,7 +3,7 @@
 import json
 import logging
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db
@@ -58,13 +58,12 @@ async def _move_player_impl(
     content=db_content_queries,
 ) -> str | tuple:
     logger.info("move_player called: destination_id=%s", destination_id)
-    if err := _validate_id(destination_id, "destination_id"):
-        return err
+    _validate_id(destination_id, "destination_id")
     session: SessionData = context.userdata
 
     current_location = await content.get_location(session.location_id)
     if current_location is None:
-        return json.dumps({"error": f"Current location '{session.location_id}' not found."})
+        raise ToolError(f"Current location '{session.location_id}' not found.")
 
     exits = current_location.get("exits", {})
     exit_entry = None
@@ -78,12 +77,7 @@ async def _move_player_impl(
 
     if exit_entry is None:
         valid = [e.get("destination") if isinstance(e, dict) else e for e in exits.values()]
-        return json.dumps(
-            {
-                "error": f"No exit to '{destination_id}' from current location.",
-                "valid_destinations": valid,
-            }
-        )
+        raise ToolError(f"No exit to '{destination_id}' from current location. Valid destinations: {valid}.")
 
     if isinstance(exit_entry, dict) and exit_entry.get("requires"):
         requirement = exit_entry["requires"]
@@ -171,9 +165,6 @@ async def _move_player_impl(
     scene = await _build_scene_context(
         destination_id, session, location=destination_location, content=content, queries=queries
     )
-    if "error" in scene:
-        return json.dumps(scene)
-
     result = {"moved": True, "previous_location": previous_location_id, **scene}
     logger.info(
         "move_player result: %s → %s, %d NPCs, %d targets",

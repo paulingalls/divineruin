@@ -5,7 +5,7 @@ import logging
 import time
 
 from livekit.agents import Agent
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db_mutations
@@ -38,7 +38,7 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
     sd: SessionData = context.userdata
 
     if sd.onboarding_beat is None:
-        return json.dumps({"error": "Not in onboarding mode."})
+        raise ToolError("Not in onboarding mode.")
 
     current = sd.onboarding_beat
 

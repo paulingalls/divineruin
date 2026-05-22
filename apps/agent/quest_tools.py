@@ -5,7 +5,7 @@ import logging
 import re
 
 import asyncpg
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db
@@ -121,19 +121,16 @@ async def _update_quest_impl(
     content=db_content_queries,
 ) -> str | tuple:
     logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
-    if err := _validate_id(quest_id, "quest_id"):
-        return err
+    _validate_id(quest_id, "quest_id")
     session: SessionData = context.userdata
 
     quest = await content.get_quest(quest_id)
     if quest is None:
-        return json.dumps({"error": f"Quest '{quest_id}' not found."})
+        raise ToolError(f"Quest '{quest_id}' not found.")
 
     stages = quest.get("stages", [])
     if new_stage_id < 0 or new_stage_id >= len(stages):
-        return json.dumps(
-            {"error": f"Invalid stage {new_stage_id} for quest '{quest_id}'. Valid: 0-{len(stages) - 1}."}
-        )
+        raise ToolError(f"Invalid stage {new_stage_id} for quest '{quest_id}'. Valid: 0-{len(stages) - 1}.")
 
     rewards_applied = []
     pending_events: list[tuple[str, dict]] = []
@@ -143,21 +140,17 @@ async def _update_quest_impl(
 
         if player_quest is None:
             if new_stage_id != 0:
-                return json.dumps({"error": "Must start quest at stage 0."})
+                raise ToolError("Must start quest at stage 0.")
             current_stage = -1
         else:
             current_stage = player_quest.get("current_stage", -1)
 
         if new_stage_id <= current_stage:
-            return json.dumps(
-                {"error": f"Cannot go backward. Current stage: {current_stage}, requested: {new_stage_id}."}
-            )
+            raise ToolError(f"Cannot go backward. Current stage: {current_stage}, requested: {new_stage_id}.")
 
         if new_stage_id > current_stage + 1:
-            return json.dumps(
-                {
-                    "error": f"Cannot skip stages. Current: {current_stage}, requested: {new_stage_id}, next valid: {current_stage + 1}."
-                }
+            raise ToolError(
+                f"Cannot skip stages. Current: {current_stage}, requested: {new_stage_id}, next valid: {current_stage + 1}."
             )
 
         if current_stage >= 0:

@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from livekit.agents.llm import ToolError
 
 import event_types as E
 from check_tools import (
@@ -98,7 +99,7 @@ class TestRequestSkillCheck:
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _request_skill_check_impl(
                 ctx,
                 skill="flying",
@@ -106,15 +107,13 @@ class TestRequestSkillCheck:
                 context_description="trying to fly",
                 queries=mock_queries,
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_invalid_difficulty_returns_error(self):
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _request_skill_check_impl(
                 ctx,
                 skill="athletics",
@@ -122,15 +121,13 @@ class TestRequestSkillCheck:
                 context_description="climbing",
                 queries=mock_queries,
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_missing_player(self):
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _request_skill_check_impl(
                 ctx,
                 skill="athletics",
@@ -138,8 +135,6 @@ class TestRequestSkillCheck:
                 context_description="climbing",
                 queries=mock_queries,
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_publishes_event(self):
@@ -201,8 +196,8 @@ class TestRequestSkillCheck:
     @pytest.mark.asyncio
     async def test_mark_skill_breakthrough_invalid_skill(self):
         ctx = _make_context()
-        result = json.loads(await _mark_skill_breakthrough_impl(ctx, skill="flying"))
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await _mark_skill_breakthrough_impl(ctx, skill="flying")
 
 
 # --- request_attack ---
@@ -235,31 +230,26 @@ class TestRequestAttack:
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _request_attack_impl(
                 ctx,
                 target_id="goblin_1",
                 weapon_or_spell="Longsword",
                 queries=mock_queries,
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_missing_weapon(self):
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError, match="Warhammer"):
             await _request_attack_impl(
                 ctx,
                 target_id="goblin_1",
                 weapon_or_spell="Warhammer",
                 queries=mock_queries,
             )
-        )
-        assert "error" in result
-        assert "Warhammer" in result["error"]
 
     @pytest.mark.asyncio
     async def test_missing_target(self):
@@ -267,15 +257,13 @@ class TestRequestAttack:
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_npc_combat_stats = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _request_attack_impl(
                 ctx,
                 target_id="ghost",
                 weapon_or_spell="Longsword",
                 queries=mock_queries,
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_hp_updated_on_hit(self):
@@ -348,7 +336,7 @@ class TestRequestSavingThrow:
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _request_saving_throw_impl(
                 ctx,
                 save_type="dexterity",
@@ -356,15 +344,13 @@ class TestRequestSavingThrow:
                 effect_on_fail="prone",
                 queries=mock_queries,
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_invalid_save_type(self):
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _request_saving_throw_impl(
                 ctx,
                 save_type="luck",
@@ -372,8 +358,6 @@ class TestRequestSavingThrow:
                 effect_on_fail="cursed",
                 queries=mock_queries,
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_publishes_event(self):
@@ -409,8 +393,8 @@ class TestRollDice:
     @pytest.mark.asyncio
     async def test_invalid_notation(self):
         ctx = _make_context()
-        result = json.loads(await roll_dice._func(ctx, notation="banana"))
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await roll_dice._func(ctx, notation="banana")
 
     @pytest.mark.asyncio
     async def test_publishes_event(self):
