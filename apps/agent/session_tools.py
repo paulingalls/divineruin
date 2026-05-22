@@ -3,7 +3,7 @@
 import json
 import logging
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db
@@ -48,16 +48,14 @@ async def _update_npc_disposition_impl(
     content=db_content_queries,
 ) -> str:
     logger.info("update_npc_disposition called: npc_id=%s, delta=%d, reason=%s", npc_id, delta, reason)
-    cap_err = _cap_str(reason, 256, "reason")
-    if cap_err:
-        return cap_err
+    _cap_str(reason, 256, "reason")
     session: SessionData = context.userdata
 
     delta = max(-2, min(2, delta))
 
     npc = await content.get_npc(npc_id)
     if npc is None:
-        return json.dumps({"error": f"NPC '{npc_id}' not found."})
+        raise ToolError(f"NPC '{npc_id}' not found.")
 
     pending_events: list[tuple[str, dict]] = []
 
@@ -147,12 +145,8 @@ async def _record_story_moment_impl(
 ) -> str:
     logger.info("record_story_moment called: moment_key=%s", moment_key)
     if moment_key not in STORY_MOMENTS:
-        return json.dumps(
-            {"error": f"Invalid moment_key: '{moment_key}'. Must be one of: {', '.join(sorted(STORY_MOMENTS))}"}
-        )
-    cap_err = _cap_str(description, 512, "description")
-    if cap_err:
-        return cap_err
+        raise ToolError(f"Invalid moment_key: '{moment_key}'. Must be one of: {', '.join(sorted(STORY_MOMENTS))}")
+    _cap_str(description, 512, "description")
 
     sd: SessionData = context.userdata
     template_id, asset_id = STORY_MOMENTS[moment_key]
@@ -160,7 +154,7 @@ async def _record_story_moment_impl(
 
     count = await activities.count_session_story_moments(sd.session_id)
     if count >= MAX_STORY_MOMENTS_PER_SESSION:
-        return json.dumps({"error": f"Maximum {MAX_STORY_MOMENTS_PER_SESSION} story moments per session."})
+        raise ToolError(f"Maximum {MAX_STORY_MOMENTS_PER_SESSION} story moments per session.")
 
     await mutations.save_story_moment(
         session_id=sd.session_id,

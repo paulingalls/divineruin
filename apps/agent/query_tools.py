@@ -3,7 +3,7 @@
 import json
 import logging
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db_content_queries
@@ -44,11 +44,10 @@ async def _query_location_impl(
     content=db_content_queries,
 ) -> str:
     logger.info("query_location called: location_id=%s", location_id)
-    if err := _validate_id(location_id, "location_id"):
-        return err
+    _validate_id(location_id, "location_id")
     location = await content.get_location(location_id)
     if location is None:
-        return json.dumps({"error": f"Location '{location_id}' not found."})
+        raise ToolError(f"Location '{location_id}' not found.")
 
     session: SessionData = context.userdata
     location = apply_time_conditions(location, session.world_time)
@@ -73,12 +72,11 @@ async def _query_npc_impl(
     content=db_content_queries,
 ) -> str:
     logger.info("query_npc called: npc_id=%s", npc_id)
-    if err := _validate_id(npc_id, "npc_id"):
-        return err
+    _validate_id(npc_id, "npc_id")
     session: SessionData = context.userdata
     npc = await content.get_npc(npc_id)
     if npc is None:
-        return json.dumps({"error": f"NPC '{npc_id}' not found."})
+        raise ToolError(f"NPC '{npc_id}' not found.")
 
     disposition = await _resolve_disposition(npc_id, session.player_id, npc, queries=queries)
 

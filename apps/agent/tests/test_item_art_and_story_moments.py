@@ -4,6 +4,9 @@ import json
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+from livekit.agents.llm import ToolError
+
 import event_types as E
 from db import _compute_item_image_url
 from session_data import SessionData
@@ -112,8 +115,8 @@ class TestRecordStoryMoment:
         from session_tools import record_story_moment
 
         ctx = _make_context()
-        result = json.loads(await record_story_moment._func(ctx, moment_key="invalid", description="test"))
-        assert "error" in result
+        with pytest.raises(ToolError, match="Invalid moment_key"):
+            await record_story_moment._func(ctx, moment_key="invalid", description="test")
 
     async def test_records_combat_moment(self):
         from session_tools import _record_story_moment_impl
@@ -189,7 +192,7 @@ class TestRecordStoryMoment:
         mock_activities.count_session_story_moments = AsyncMock(return_value=3)
 
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError, match="Maximum 3 story moments"):
             await _record_story_moment_impl(
                 ctx,
                 moment_key="combat",
@@ -197,16 +200,13 @@ class TestRecordStoryMoment:
                 mutations=mock_mutations,
                 activities=mock_activities,
             )
-        )
-        assert "error" in result
-        assert "3" in result["error"]
 
     async def test_description_too_long(self):
         from session_tools import record_story_moment
 
         ctx = _make_context()
-        result = json.loads(await record_story_moment._func(ctx, moment_key="combat", description="x" * 600))
-        assert "error" in result
+        with pytest.raises(ToolError, match="exceeds maximum length"):
+            await record_story_moment._func(ctx, moment_key="combat", description="x" * 600)
 
 
 # --- add_to_inventory sends full inventory + item_acquired ---

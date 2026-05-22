@@ -3,7 +3,7 @@
 import json
 import logging
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import combat_resolution
@@ -40,13 +40,11 @@ async def _end_combat_impl(
     logger.info("end_combat called: outcome=%s", outcome)
     session: SessionData = context.userdata
 
-    cs, err = _require_combat(session)
-    if err:
-        return err
+    cs = _require_combat(session)
 
     valid_outcomes = ("victory", "defeat", "fled")
     if outcome.lower() not in valid_outcomes:
-        return json.dumps({"error": f"Invalid outcome. Must be one of: {valid_outcomes}"})
+        raise ToolError(f"Invalid outcome. Must be one of: {valid_outcomes}")
 
     outcome = outcome.lower()
 

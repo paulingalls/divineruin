@@ -5,6 +5,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from livekit.agents.llm import ToolError
 
 import event_types as E
 from combat_init import _start_combat_impl
@@ -59,22 +60,20 @@ class TestSetMusicState:
     @pytest.mark.asyncio
     async def test_combat_standard_returns_error(self):
         ctx = _make_context()
-        result = json.loads(await _set_music(ctx, music_state="combat_standard"))
-        assert "error" in result
-        assert "combat_standard" in result["error"]
+        with pytest.raises(ToolError, match="combat_standard"):
+            await _set_music(ctx, music_state="combat_standard")
 
     @pytest.mark.asyncio
     async def test_exploration_returns_error(self):
         ctx = _make_context()
-        result = json.loads(await _set_music(ctx, music_state="exploration"))
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await _set_music(ctx, music_state="exploration")
 
     @pytest.mark.asyncio
     async def test_invalid_state_returns_error(self):
         ctx = _make_context()
-        result = json.loads(await _set_music(ctx, music_state="party_time"))
-        assert "error" in result
-        assert "party_time" in result["error"]
+        with pytest.raises(ToolError, match="party_time"):
+            await _set_music(ctx, music_state="party_time")
 
 
 class TestStartCombatDifficulty:

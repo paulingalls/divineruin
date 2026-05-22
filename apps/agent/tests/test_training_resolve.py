@@ -5,6 +5,7 @@ from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from livekit.agents.llm import ToolError
 from sample_fixtures import FIXED_NOW, make_context, make_db_mod
 
 from training_rules import MidpointResult
@@ -86,7 +87,7 @@ class TestResolveTrainingMidpoint:
         mock_training = MagicMock()
         mock_training.get_training_activity = AsyncMock()
         mock_training.update_training_activity = AsyncMock()
-        result = json.loads(
+        with pytest.raises(ToolError, match="training_id"):
             await _resolve_training_midpoint_impl(
                 ctx,
                 "bad id!! spaces",
@@ -95,9 +96,6 @@ class TestResolveTrainingMidpoint:
                 db_training_mod=mock_training,
                 now_fn=lambda: FIXED_NOW,
             )
-        )
-        assert result["code"] == "INVALID_TRAINING_ID"
-        assert "training_id" in result["error"]
         mock_training.get_training_activity.assert_not_awaited()
         mock_training.update_training_activity.assert_not_awaited()
 
@@ -108,7 +106,7 @@ class TestResolveTrainingMidpoint:
         mock_training = MagicMock()
         mock_training.get_training_activity = AsyncMock(return_value=None)
         mock_training.update_training_activity = AsyncMock()
-        result = json.loads(
+        with pytest.raises(ToolError, match="Unknown training: train_missing"):
             await _resolve_training_midpoint_impl(
                 ctx,
                 "train_missing",
@@ -117,8 +115,6 @@ class TestResolveTrainingMidpoint:
                 db_training_mod=mock_training,
                 now_fn=lambda: FIXED_NOW,
             )
-        )
-        assert result == {"error": "Unknown training: train_missing", "code": "UNKNOWN_TRAINING"}
         mock_training.update_training_activity.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -128,7 +124,7 @@ class TestResolveTrainingMidpoint:
         mock_training = MagicMock()
         mock_training.get_training_activity = AsyncMock(return_value=SAMPLE_AWAITING_ROW)
         mock_training.update_training_activity = AsyncMock()
-        result = json.loads(
+        with pytest.raises(ToolError, match="does not belong"):
             await _resolve_training_midpoint_impl(
                 ctx,
                 "train_abc123",
@@ -137,8 +133,6 @@ class TestResolveTrainingMidpoint:
                 db_training_mod=mock_training,
                 now_fn=lambda: FIXED_NOW,
             )
-        )
-        assert result["code"] == "TRAINING_NOT_OWNED"
         mock_training.update_training_activity.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -150,7 +144,7 @@ class TestResolveTrainingMidpoint:
             return_value={**SAMPLE_AWAITING_ROW, "state": "running_first_half"}
         )
         mock_training.update_training_activity = AsyncMock()
-        result = json.loads(
+        with pytest.raises(ToolError, match="running_first_half"):
             await _resolve_training_midpoint_impl(
                 ctx,
                 "train_abc123",
@@ -159,9 +153,6 @@ class TestResolveTrainingMidpoint:
                 db_training_mod=mock_training,
                 now_fn=lambda: FIXED_NOW,
             )
-        )
-        assert result["code"] == "TRAINING_WRONG_STATE"
-        assert "running_first_half" in result["error"]
         mock_training.update_training_activity.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -174,7 +165,7 @@ class TestResolveTrainingMidpoint:
             return_value={**SAMPLE_AWAITING_ROW, "state": "running_second_half"}
         )
         mock_training.update_training_activity = AsyncMock()
-        result = json.loads(
+        with pytest.raises(ToolError, match="running_second_half"):
             await _resolve_training_midpoint_impl(
                 ctx,
                 "train_abc123",
@@ -183,8 +174,6 @@ class TestResolveTrainingMidpoint:
                 db_training_mod=mock_training,
                 now_fn=lambda: FIXED_NOW,
             )
-        )
-        assert result["code"] == "TRAINING_WRONG_STATE"
         mock_training.update_training_activity.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -194,7 +183,7 @@ class TestResolveTrainingMidpoint:
         mock_training = MagicMock()
         mock_training.get_training_activity = AsyncMock(return_value={**SAMPLE_AWAITING_ROW, "state": "complete"})
         mock_training.update_training_activity = AsyncMock()
-        result = json.loads(
+        with pytest.raises(ToolError, match="awaiting_decision"):
             await _resolve_training_midpoint_impl(
                 ctx,
                 "train_abc123",
@@ -203,8 +192,6 @@ class TestResolveTrainingMidpoint:
                 db_training_mod=mock_training,
                 now_fn=lambda: FIXED_NOW,
             )
-        )
-        assert result["code"] == "TRAINING_WRONG_STATE"
         mock_training.update_training_activity.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -214,7 +201,7 @@ class TestResolveTrainingMidpoint:
         mock_training = MagicMock()
         mock_training.get_training_activity = AsyncMock(return_value=SAMPLE_AWAITING_ROW)
         mock_training.update_training_activity = AsyncMock()
-        result = json.loads(
+        with pytest.raises(ToolError, match="bogus_decision"):
             await _resolve_training_midpoint_impl(
                 ctx,
                 "train_abc123",
@@ -226,9 +213,6 @@ class TestResolveTrainingMidpoint:
                 ),
                 now_fn=lambda: FIXED_NOW,
             )
-        )
-        assert result["code"] == "INVALID_DECISION"
-        assert "bogus_decision" in result["error"]
         mock_training.update_training_activity.assert_not_awaited()
 
     @pytest.mark.asyncio

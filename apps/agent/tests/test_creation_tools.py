@@ -6,6 +6,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from livekit.agents.llm import ToolError
 
 import event_types as E
 from asset_utils import compute_asset_id
@@ -91,8 +92,8 @@ class TestSetCreationChoice:
 
     async def test_set_race_invalid(self):
         ctx = _make_context()
-        result = json.loads(await _set_choice(ctx, category="race", value="invalid_race"))
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await _set_choice(ctx, category="race", value="invalid_race")
         assert ctx.userdata.creation_state.race is None
 
     async def test_set_class_valid(self):
@@ -103,8 +104,8 @@ class TestSetCreationChoice:
 
     async def test_set_class_invalid(self):
         ctx = _make_context()
-        result = json.loads(await _set_choice(ctx, category="class", value="invalid_class"))
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await _set_choice(ctx, category="class", value="invalid_class")
 
     async def test_set_deity_valid(self):
         ctx = _make_context()
@@ -120,8 +121,8 @@ class TestSetCreationChoice:
 
     async def test_set_deity_invalid(self):
         ctx = _make_context()
-        result = json.loads(await _set_choice(ctx, category="deity", value="fake_god"))
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await _set_choice(ctx, category="deity", value="fake_god")
 
     async def test_set_name(self):
         ctx = _make_context()
@@ -136,8 +137,8 @@ class TestSetCreationChoice:
 
     async def test_set_empty_name_rejected(self):
         ctx = _make_context()
-        result = json.loads(await _set_choice(ctx, category="name", value=""))
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await _set_choice(ctx, category="name", value="")
 
     async def test_set_backstory(self):
         ctx = _make_context()
@@ -147,14 +148,14 @@ class TestSetCreationChoice:
 
     async def test_invalid_category(self):
         ctx = _make_context()
-        result = json.loads(await _set_choice(ctx, category="invalid", value="test"))
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await _set_choice(ctx, category="invalid", value="test")
 
     async def test_not_in_creation_mode(self):
         ctx = _make_context()
         ctx.userdata.creation_state = None
-        result = json.loads(await _set_choice(ctx, category="race", value="human"))
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await _set_choice(ctx, category="race", value="human")
 
     async def test_phase_advances_on_race(self):
         ctx = _make_context(CreationState(phase="awakening"))
@@ -191,27 +192,24 @@ class TestSetCreationChoice:
 class TestFinalizeCharacter:
     async def test_missing_race_returns_error(self):
         ctx = _make_context(CreationState(class_choice="warrior", name="Aric"))
-        result = json.loads(await _finalize(ctx))
-        assert "error" in result
-        assert "race" in result["error"]
+        with pytest.raises(ToolError, match="race"):
+            await _finalize(ctx)
 
     async def test_missing_class_returns_error(self):
         ctx = _make_context(CreationState(race="human", name="Aric"))
-        result = json.loads(await _finalize(ctx))
-        assert "error" in result
-        assert "class" in result["error"]
+        with pytest.raises(ToolError, match="class"):
+            await _finalize(ctx)
 
     async def test_missing_name_returns_error(self):
         ctx = _make_context(CreationState(race="human", class_choice="warrior"))
-        result = json.loads(await _finalize(ctx))
-        assert "error" in result
-        assert "name" in result["error"]
+        with pytest.raises(ToolError, match="name"):
+            await _finalize(ctx)
 
     async def test_not_in_creation_mode(self):
         ctx = _make_context()
         ctx.userdata.creation_state = None
-        result = json.loads(await _finalize(ctx))
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await _finalize(ctx)
 
     @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
@@ -342,8 +340,8 @@ class TestFinalizeCharacter:
             name="Aric",
         )
         ctx = _make_context(cs)
-        result = json.loads(await _finalize(ctx))
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await _finalize(ctx)
 
 
 class TestFullCreationFlow:

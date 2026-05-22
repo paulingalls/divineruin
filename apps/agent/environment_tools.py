@@ -4,7 +4,7 @@ import json
 import logging
 from typing import Literal
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import event_types as E
@@ -80,9 +80,7 @@ async def _set_music_state_impl(
     logger.info("set_music_state called: music_state=%s", music_state)
 
     if music_state not in _VALID_MUSIC_STATES:
-        return json.dumps(
-            {"error": f"Invalid music state: {music_state}. Valid: {', '.join(sorted(_VALID_MUSIC_STATES))}"}
-        )
+        raise ToolError(f"Invalid music state: {music_state}. Valid: {', '.join(sorted(_VALID_MUSIC_STATES))}")
 
     session: SessionData = context.userdata
 
