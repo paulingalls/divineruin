@@ -14,7 +14,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from city_agent import CITY_TOOLS, CityAgent
-from llm_config import MAX_STRICT_TOOLS
 from movement_tools import _move_player_impl
 from session_data import SessionData
 from training_agent import TRAINING_TOOLS, TrainingAgent
@@ -81,15 +80,11 @@ class TestTrainingAgentRegistration:
 
 class TestCityToolBudget:
     def test_training_tools_left_city(self):
+        # Extracting these tools is what keeps City at or under the strict-tool
+        # ceiling (the count pin lives in test_strict_tool_budget.py).
         assert query_training_programs not in CITY_TOOLS
         assert initiate_training_cycle not in CITY_TOOLS
         assert resolve_training_midpoint not in CITY_TOOLS
-
-    def test_city_within_strict_tool_limit(self):
-        # Extracting TrainingAgent is what keeps City at or under the ceiling:
-        # the effective count the LLM sees is CITY_TOOLS (no extra framework
-        # strict tools — confirmed by the original 25-tool 400).
-        assert len(CITY_TOOLS) <= MAX_STRICT_TOOLS
 
 
 class TestMovePlayerActivityHandoff:
