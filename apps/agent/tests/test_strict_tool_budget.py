@@ -30,3 +30,11 @@ AGENT_TOOL_LISTS = [
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_agent_within_strict_tool_limit(name, tools):
     assert len(tools) <= MAX_STRICT_TOOLS, f"{name} has {len(tools)} strict tools (ceiling {MAX_STRICT_TOOLS})"
+
+
+def test_city_freed_headroom_after_query_consolidation():
+    # story-010 collapsed query_location/npc/lore/inventory into one query_info,
+    # dropping City from 20 (at ceiling) to 17 — headroom for story-008's
+    # enter_dispatch intent tool without breaching MAX_STRICT_TOOLS.
+    assert len(CITY_TOOLS) == 17
+    assert len(CITY_TOOLS) < MAX_STRICT_TOOLS
