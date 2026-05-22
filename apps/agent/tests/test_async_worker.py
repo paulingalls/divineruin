@@ -172,7 +172,9 @@ class TestResolveSingleActivity:
         with (
             patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=player_with_companion),
             patch(
-                "async_worker.db_content_queries.get_location", new_callable=AsyncMock, return_value={"danger_level": 0}
+                "errand_resolution.db_content_queries.get_location",
+                new_callable=AsyncMock,
+                return_value={"danger_level": 0},
             ),
             patch(
                 "async_worker.generate_activity_narration",
@@ -211,9 +213,11 @@ class TestResolveSingleActivity:
         with (
             patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=player_with_companion),
             patch(
-                "async_worker.db_content_queries.get_location", new_callable=AsyncMock, return_value={"danger_level": 2}
+                "errand_resolution.db_content_queries.get_location",
+                new_callable=AsyncMock,
+                return_value={"danger_level": 2},
             ),
-            patch("async_worker.roll_errand_risk", MagicMock(return_value="injured")) as mock_roll,
+            patch("errand_risk.roll_errand_risk", MagicMock(return_value="injured")) as mock_roll,
             patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
@@ -247,8 +251,8 @@ class TestResolveSingleActivity:
 
         with (
             patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=player_with_companion),
-            patch("async_worker.db_content_queries.get_location", new_callable=AsyncMock, return_value=None),
-            patch("async_worker.roll_errand_risk", MagicMock(return_value="none")) as mock_roll,
+            patch("errand_resolution.db_content_queries.get_location", new_callable=AsyncMock, return_value=None),
+            patch("errand_risk.roll_errand_risk", MagicMock(return_value="none")) as mock_roll,
             patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
