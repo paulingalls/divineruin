@@ -11,9 +11,12 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+import threading
 import time
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 import asyncpg
 import docker
@@ -133,6 +136,41 @@ def migrated_db(postgres_container: str) -> str:
     """Apply migrations + content seed once per session; return the DSN."""
     asyncio.run(_apply_migrations_and_seed(postgres_container))
     return postgres_container
+
+
+@pytest.fixture
+def harness(migrated_db: str) -> Iterator[SimpleNamespace]:
+    """Drive async agent/worker work from sync pytest-bdd steps.
+
+    pytest-bdd 8.1 does not await async step functions (decision
+    bdd-async-step-pattern), so steps stay sync and push coroutines onto a
+    per-scenario event loop running forever on a background thread —
+    session.start() spawns background tasks that must outlive each discrete
+    when/then step. Points db.get_pool() at the migrated testcontainer.
+    """
+    import db
+
+    loop = asyncio.new_event_loop()
+    thread = threading.Thread(target=loop.run_forever, daemon=True)
+    thread.start()
+
+    def run_sync(coro: Any) -> Any:
+        return asyncio.run_coroutine_threadsafe(coro, loop).result()
+
+    os.environ["DATABASE_URL"] = migrated_db
+    run_sync(db.close_all())
+
+    h = SimpleNamespace(run_sync=run_sync, state={})
+    try:
+        yield h
+    finally:
+        session = h.state.get("session")
+        if session is not None:
+            run_sync(session.aclose())
+        run_sync(db.close_all())
+        loop.call_soon_threadsafe(loop.stop)
+        thread.join()
+        loop.close()
 
 
 @pytest.fixture

@@ -15,9 +15,7 @@ thread rather than one run_until_complete per step.
 
 from __future__ import annotations
 
-import asyncio
 import os
-import threading
 from types import SimpleNamespace
 from typing import Any
 
@@ -44,30 +42,8 @@ _AGENT_MODEL = "claude-haiku-4-5-20251001"
 
 scenarios("features/m1_5_training_cycle.feature")
 
-
-@pytest.fixture
-def harness(migrated_db: str):
-    loop = asyncio.new_event_loop()
-    thread = threading.Thread(target=loop.run_forever, daemon=True)
-    thread.start()
-
-    def run_sync(coro: Any) -> Any:
-        return asyncio.run_coroutine_threadsafe(coro, loop).result()
-
-    os.environ["DATABASE_URL"] = migrated_db
-    run_sync(db.close_all())
-
-    h = SimpleNamespace(run_sync=run_sync, state={})
-    try:
-        yield h
-    finally:
-        session = h.state.get("session")
-        if session is not None:
-            run_sync(session.aclose())
-        run_sync(db.close_all())
-        loop.call_soon_threadsafe(loop.stop)
-        thread.join()
-        loop.close()
+# The `harness` fixture (per-scenario event loop on a background thread + run_sync)
+# lives in conftest.py, shared with the M1.6 errand acceptance test.
 
 
 async def _start_training_session(harness: SimpleNamespace, chat_ctx: ChatContext | None = None) -> None:
