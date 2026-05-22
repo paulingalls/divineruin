@@ -14,6 +14,7 @@
  */
 
 import { sql } from "./db.ts";
+import { getErrandTemplate } from "./activity_templates.ts";
 
 export type DangerLevel = "safe" | "moderate" | "dangerous" | "extreme";
 
@@ -68,11 +69,8 @@ export const BLOCKED_DANGER_COMBOS: ReadonlySet<string> = new Set([
   "extreme|acquire",
 ]);
 
-// Per-companion errand restrictions (e.g. Sable can't do social/relationship errands).
-// Companions not listed have no restrictions.
-const COMPANION_BLOCKED_ERRAND_TYPES: Record<string, ReadonlySet<string>> = {
-  companion_sable: new Set(["social", "relationship"]),
-};
+// Per-companion errand restrictions now live in the shared errand_templates
+// content (each template's blocked_companions list), loaded into getErrandTemplate.
 
 export interface ValidationResult {
   valid: boolean;
@@ -96,7 +94,7 @@ export function validateErrandDispatch(
     };
   }
 
-  if (COMPANION_BLOCKED_ERRAND_TYPES[companionId]?.has(errandType)) {
+  if (getErrandTemplate(errandType)?.blocked_companions.includes(companionId)) {
     return {
       valid: false,
       error: `Companion ${companionId} cannot perform ${errandType} errands`,

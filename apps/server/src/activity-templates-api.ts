@@ -1,6 +1,6 @@
 import {
   CRAFTING_RECIPES,
-  ERRAND_TEMPLATES,
+  getAllErrandTemplates,
   getAllTrainingPrograms,
 } from "./activity_templates.ts";
 import { getActivityTypeConfig } from "./training_state_machine.ts";
@@ -149,7 +149,7 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
       {
         type: "companion_errand",
         label: "Companion Errands",
-        items: Object.values(ERRAND_TEMPLATES).map((e) => ({
+        items: getAllErrandTemplates().map((e) => ({
           id: e.id,
           name: e.name,
           duration: formatDuration(e.duration_min_seconds, e.duration_max_seconds),

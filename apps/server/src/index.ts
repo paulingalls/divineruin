@@ -18,7 +18,7 @@ import { handleGetActivityTemplates } from "./activity-templates-api.ts";
 import { handleStorePushToken, handleInternalPush } from "./push.ts";
 import { loadDestinationDangerLevels } from "./errand_risk.ts";
 import { loadTrainingActivityTypes } from "./training_state_machine.ts";
-import { loadTrainingPrograms } from "./activity_templates.ts";
+import { loadTrainingPrograms, loadErrandTemplates } from "./activity_templates.ts";
 import { isDev } from "./env.ts";
 
 // Load content-backed config at startup. Fail loud if any query fails — the
@@ -27,6 +27,7 @@ await Promise.all([
   loadDestinationDangerLevels(),
   loadTrainingActivityTypes(),
   loadTrainingPrograms(),
+  loadErrandTemplates(),
 ]);
 
 const enableDebug = isDev && Bun.env.ENABLE_DEBUG_CONSOLE === "true";

@@ -6,9 +6,11 @@ import {
   BLOCKED_DANGER_COMBOS,
 } from "./errand_risk.ts";
 import { setupDangerLevelFixture } from "./test-fixtures/danger-levels.ts";
+import { setupErrandTemplatesFixture } from "./test-fixtures/errand-templates.ts";
 
 beforeEach(() => {
   setupDangerLevelFixture();
+  setupErrandTemplatesFixture();
 });
 
 describe("numericToDangerLevel", () => {
