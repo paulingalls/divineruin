@@ -15,7 +15,6 @@ from livekit.agents.llm import ChatContext, function_tool
 from livekit.agents.voice import RunContext
 
 import db_content_queries
-from region_types import REGION_CITY
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -33,7 +32,13 @@ async def _enter_dispatch_impl(context: RunContext[SessionData]) -> str | tuple:
     from dispatch_agent import create_dispatch_agent
 
     session: SessionData = context.userdata
-    session.pre_dispatch_agent_type = getattr(context.session.current_agent, "_agent_type", REGION_CITY)
+    # Store the caller's region so conclude_dispatch returns there. If the caller
+    # has no _agent_type (a non-region agent), derive the region from the current
+    # location rather than defaulting to City — so a non-city hall routes back right.
+    agent_type = getattr(context.session.current_agent, "_agent_type", None)
+    if not agent_type:
+        agent_type = await db_content_queries.get_location_region_type(session.location_id)
+    session.pre_dispatch_agent_type = agent_type
     logger.info("enter_dispatch: from %s", session.pre_dispatch_agent_type)
 
     parts = ["The player turns to a deliberate between-adventure activity (training, or managing companions)."]

@@ -41,6 +41,12 @@ describe("BLOCKED_DANGER_COMBOS conformance", () => {
   // is now rolled in the Python worker (ADR 0006); the risk table moved to
   // apps/agent/errand_risk.py with its own conformance pin. TS keeps only this
   // dispatch-time blocked-combo gate, conformance-pinned to the same spec.
+  //
+  // This literal is the spec REGRESSION PIN (the markdown table is the human
+  // oracle). Cross-language drift between this Set and the Python frozenset is
+  // separately guarded by apps/agent/tests/test_errand_risk_conformance.py, which
+  // parses this source and asserts py == ts — so the two pins cannot silently
+  // diverge from each other.
   test("BLOCKED_DANGER_COMBOS equals the spec N/A cells", () => {
     expect(BLOCKED_DANGER_COMBOS).toEqual(
       new Set([

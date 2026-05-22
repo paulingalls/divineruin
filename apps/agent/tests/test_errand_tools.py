@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
-from sample_fixtures import FIXED_NOW, make_context
+from sample_fixtures import FIXED_NOW, make_context, make_db_mod
 
 from errand_tools import _dispatch_companion_errand_impl, _resolve_companion_errand_impl
 
@@ -242,6 +242,7 @@ class TestResolveCompanionErrand:
             await _resolve_companion_errand_impl(
                 ctx,
                 "activity_err123",
+                db_mod=make_db_mod()[0],
                 activity_mod=activity_mod,
                 queries_mod=queries_mod,
                 mutations_mod=mutations_mod,
@@ -270,6 +271,7 @@ class TestResolveCompanionErrand:
         await _resolve_companion_errand_impl(
             ctx,
             "activity_err123",
+            db_mod=make_db_mod()[0],
             activity_mod=activity_mod,
             queries_mod=queries_mod,
             mutations_mod=mutations_mod,
@@ -281,6 +283,36 @@ class TestResolveCompanionErrand:
         assert _id == "activity_err123"
         assert updates["status"] == "resolved"
         assert updates["outcome"]["tier"] == "success"
+
+    @pytest.mark.asyncio
+    async def test_locks_row_for_update_and_threads_conn(self):
+        """Resource-row template: the row is fetched FOR UPDATE inside a transaction
+        and the write is threaded through the same connection (concern 6b223681ec4f)."""
+        ctx = make_context()
+        mock_db, mock_conn = make_db_mod()
+        activity_mod = MagicMock()
+        activity_mod.get_activity = AsyncMock(return_value=_due_activity())
+        queries_mod = MagicMock()
+        queries_mod.get_player = AsyncMock(
+            return_value={"player_id": "player_1", "companion": {"id": "companion_kael"}}
+        )
+        mutations_mod = MagicMock()
+        mutations_mod.update_activity = AsyncMock()
+
+        await _resolve_companion_errand_impl(
+            ctx,
+            "activity_err123",
+            db_mod=mock_db,
+            activity_mod=activity_mod,
+            queries_mod=queries_mod,
+            mutations_mod=mutations_mod,
+            resolve_fn=_fake_resolve,
+            now_fn=_resolve_now,
+        )
+        get_kwargs = activity_mod.get_activity.await_args.kwargs
+        assert get_kwargs.get("for_update") is True
+        assert get_kwargs.get("conn") is mock_conn
+        assert mutations_mod.update_activity.await_args.kwargs.get("conn") is mock_conn
 
     @pytest.mark.asyncio
     async def test_already_resolved_returns_cached_no_reroll(self):
@@ -300,6 +332,7 @@ class TestResolveCompanionErrand:
             await _resolve_companion_errand_impl(
                 ctx,
                 "activity_err123",
+                db_mod=make_db_mod()[0],
                 activity_mod=activity_mod,
                 queries_mod=queries_mod,
                 mutations_mod=mutations_mod,
@@ -326,6 +359,7 @@ class TestResolveCompanionErrand:
             await _resolve_companion_errand_impl(
                 ctx,
                 "activity_err123",
+                db_mod=make_db_mod()[0],
                 activity_mod=activity_mod,
                 queries_mod=MagicMock(),
                 mutations_mod=mutations_mod,
@@ -342,7 +376,7 @@ class TestResolveCompanionErrand:
         activity_mod.get_activity = AsyncMock(return_value=None)
         with pytest.raises(ToolError):
             await _resolve_companion_errand_impl(
-                ctx, "activity_missing", activity_mod=activity_mod, queries_mod=MagicMock()
+                ctx, "activity_missing", db_mod=make_db_mod()[0], activity_mod=activity_mod, queries_mod=MagicMock()
             )
 
     @pytest.mark.asyncio
@@ -354,7 +388,7 @@ class TestResolveCompanionErrand:
         )
         with pytest.raises(ToolError):
             await _resolve_companion_errand_impl(
-                ctx, "activity_err123", activity_mod=activity_mod, queries_mod=MagicMock()
+                ctx, "activity_err123", db_mod=make_db_mod()[0], activity_mod=activity_mod, queries_mod=MagicMock()
             )
 
 

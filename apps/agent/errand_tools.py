@@ -19,6 +19,7 @@ from datetime import UTC, datetime, timedelta
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import db
 import db_activity_queries
 import db_content_queries
 import db_mutations
@@ -30,7 +31,12 @@ from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
 
-_COMPANION_SLOT_CAP = 1  # 3-independent-slot model: 1 companion errand at a time.
+# Companion-slot cap for the agent's dispatch-time pre-check. Mirrors the
+# companion slot of the LOCKED 3-independent-slot model whose authoritative
+# validator lives in apps/server/src/slot_validation.ts (1 companion errand at a
+# time). Kept as a local constant — a single LOCKED-spec integer — rather than a
+# shared source; if the slot model ever changes, update both deliberately.
+_COMPANION_SLOT_CAP = 1
 
 
 @function_tool()
@@ -157,6 +163,7 @@ async def _resolve_companion_errand_impl(
     context: RunContext[SessionData],
     errand_id: str,
     *,
+    db_mod=db,
     activity_mod=db_activity_queries,
     queries_mod=db_queries,
     mutations_mod=db_mutations,
@@ -169,42 +176,46 @@ async def _resolve_companion_errand_impl(
     player_id = session.player_id
     logger.info("resolve_companion_errand: player=%s errand=%s", player_id, errand_id)
 
-    activity = await activity_mod.get_activity(errand_id)
-    if activity is None:
-        raise ToolError(f"Unknown errand: {errand_id}")
-    if activity["player_id"] != player_id:
-        raise ToolError(f"Errand {errand_id} does not belong to this player.")
+    # Resource-row template: lock the row FOR UPDATE so the read→roll→write is
+    # atomic — two concurrent resolves (or one racing the worker) can't both roll
+    # before the status persists (ADR 0006: risk rolls once, at resolution).
+    async with db_mod.transaction() as conn:
+        activity = await activity_mod.get_activity(errand_id, conn=conn, for_update=True)
+        if activity is None:
+            raise ToolError(f"Unknown errand: {errand_id}")
+        if activity["player_id"] != player_id:
+            raise ToolError(f"Errand {errand_id} does not belong to this player.")
 
-    # Return the canonical persisted outcome if the worker (or a prior resolve)
-    # already resolved this row — never re-roll, or the DM's account would
-    # diverge from the worker's push (ADR 0006: risk rolls once, at resolution).
-    cached = activity.get("outcome")
-    if cached is not None:
-        return json.dumps(cached)
+        # Already resolved (worker or a prior resolve) — return the canonical
+        # persisted outcome, never re-roll, so the DM's account matches the push.
+        cached = activity.get("outcome")
+        if cached is not None:
+            return json.dumps(cached)
 
-    # Time gate: the companion is still out until resolve_at passes. The worker
-    # uses the same resolve_at <= NOW() gate, so resolving early here would both
-    # contradict the elapsed-time fiction and race the worker.
-    now = (now_fn or _default_now)()
-    resolve_at = activity.get("resolve_at")
-    if resolve_at is not None and now < datetime.fromisoformat(resolve_at):
-        raise ToolError(f"The companion is still out on errand {errand_id}; ask again later.")
+        # Time gate: the companion is still out until resolve_at passes (the worker
+        # uses the same resolve_at <= NOW() gate).
+        now = (now_fn or _default_now)()
+        resolve_at = activity.get("resolve_at")
+        if resolve_at is not None and now < datetime.fromisoformat(resolve_at):
+            raise ToolError(f"The companion is still out on errand {errand_id}; ask again later.")
 
-    player = await queries_mod.get_player(player_id) or {}
-    companion_data = player.get("companion", {})
-    outcome = await resolve_fn(companion_data, activity.get("parameters", {}))
+        # Only load the player once we're committed to resolving.
+        player = await queries_mod.get_player(player_id) or {}
+        companion_data = player.get("companion", {})
+        outcome = await resolve_fn(companion_data, activity.get("parameters", {}))
 
-    # Persist the outcome and mark resolved so the worker skips this row
-    # (get_due_activities filters on status='in_progress') — the DM's account
-    # and any later worker pass now read the same single rolled outcome.
-    await mutations_mod.update_activity(
-        errand_id,
-        {
-            "status": "resolved",
-            "outcome": outcome,
-            "decision_options": outcome.get("decision_options", []),
-        },
-    )
+        # Persist + mark resolved within the lock so the worker skips this row
+        # (get_due_activities filters status='in_progress').
+        await mutations_mod.update_activity(
+            errand_id,
+            {
+                "status": "resolved",
+                "outcome": outcome,
+                "decision_options": outcome.get("decision_options", []),
+            },
+            conn=conn,
+        )
+
     return json.dumps(outcome)
 
 
