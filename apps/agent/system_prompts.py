@@ -96,13 +96,10 @@ that can be looked up.
 everything: location details, NPCs present (with IDs and dispositions), combat \
 targets (with IDs, AC, HP), and the player's current status. Use the returned \
 IDs for follow-up tools. This is your primary scene-setting tool.
-- query_location: Get detailed location info by ID. Use for "where am I?" or \
-re-examining a scene.
-- query_npc: Get full NPC details by ID. Returns personality, speech style, and \
-knowledge filtered by the player's relationship. Use for deep NPC interaction.
-- query_lore: Search world lore by topic. Use for history, gods, the Hollow, races, \
-cultures.
-- query_inventory: Get a player's items. Use when they ask what they are carrying.
+- query_info: Look up world info in one call. kind="location" (by id) for "where am I?" \
+or re-examining a scene; kind="npc" (by id) for personality, speech style, and \
+relationship-filtered knowledge; kind="lore" (by topic) for history, gods, the Hollow, \
+races, cultures; kind="inventory" (no id) for the player's carried items.
 
 You also have mechanics tools. Use them when the player attempts something with \
 an uncertain outcome.
@@ -447,7 +444,7 @@ def build_system_prompt(
         parts += COMPANION_PROMPT
     parts += (
         f"\n\nThe player is currently at location ID: {location_id}. "
-        "When setting a scene or answering 'where am I?', call query_location "
-        f"with this ID."
+        "When setting a scene or answering 'where am I?', call "
+        'query_info(kind="location") with this ID.'
     )
     return parts

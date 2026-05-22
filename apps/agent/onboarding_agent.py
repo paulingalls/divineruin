@@ -16,7 +16,7 @@ from environment_tools import play_sound, set_music_state
 from movement_tools import move_player
 from onboarding_background import OnboardingBackgroundProcess
 from onboarding_tools import advance_onboarding_beat
-from query_tools import query_location, query_npc
+from query_tools import query_info
 from scene_tools import enter_location
 from session_data import SessionData
 from session_tools import record_story_moment
@@ -26,8 +26,7 @@ logger = logging.getLogger("divineruin.onboarding")
 
 ONBOARDING_TOOLS = [
     enter_location,
-    query_location,
-    query_npc,
+    query_info,
     move_player,
     request_skill_check,
     play_sound,
@@ -93,7 +92,7 @@ The player arrives at their chosen location (guild hall or tavern). Introduce \
 the NPC there — Guildmaster Torin at the guild hall, or the tavern keep at the \
 Hearthstone. Through natural conversation, deliver the Greyvale quest hook: \
 Hollow creatures spotted near the old ruins, Millhaven is worried, someone \
-needs to investigate. Use enter_location and query_npc for context.
+needs to investigate. Use enter_location and query_info for context.
 **Complete when:** The player has heard the Greyvale quest hook (accepted or \
 not). Call advance_onboarding_beat (this hands off to open-world gameplay).
 

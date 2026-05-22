@@ -12,7 +12,7 @@ from base_agent import BaseGameAgent
 from check_tools import roll_dice
 from environment_tools import play_sound, set_music_state
 from movement_tools import move_player
-from query_tools import query_location, query_lore, query_npc
+from query_tools import query_info
 from session_tools import end_session
 from system_prompts import TRAINING_SYSTEM_PROMPT
 from training_tools import initiate_training_cycle, query_training_programs, resolve_training_midpoint
@@ -24,9 +24,7 @@ TRAINING_TOOLS = [
     resolve_training_midpoint,
     # Navigation / queries — enough to talk to the mentor and leave
     move_player,
-    query_location,
-    query_npc,
-    query_lore,
+    query_info,
     roll_dice,
     play_sound,
     set_music_state,

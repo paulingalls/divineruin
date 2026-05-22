@@ -8,6 +8,7 @@ from livekit.agents.llm import ToolError
 
 from check_tools import _discover_hidden_element_impl
 from query_tools import (
+    _query_info_impl,
     _query_inventory_impl,
     _query_location_impl,
     _query_lore_impl,
@@ -329,6 +330,49 @@ class TestQueryInventory:
         ctx = _make_context()
         result = json.loads(await _query_inventory_impl(ctx, queries=mock_queries))
         assert "note" in result
+
+
+class TestQueryInfo:
+    """query_info dispatches by kind to the unchanged per-kind impls."""
+
+    @pytest.mark.asyncio
+    async def test_routes_location(self):
+        ctx = _make_context()
+        with patch("query_tools._query_location_impl", new_callable=AsyncMock, return_value='{"k":"loc"}') as m:
+            result = await _query_info_impl(ctx, "location", "accord_guild_hall")
+        m.assert_awaited_once_with(ctx, "accord_guild_hall")
+        assert result == '{"k":"loc"}'
+
+    @pytest.mark.asyncio
+    async def test_routes_npc(self):
+        ctx = _make_context()
+        with patch("query_tools._query_npc_impl", new_callable=AsyncMock, return_value='{"k":"npc"}') as m:
+            result = await _query_info_impl(ctx, "npc", "guildmaster_torin")
+        m.assert_awaited_once_with(ctx, "guildmaster_torin")
+        assert result == '{"k":"npc"}'
+
+    @pytest.mark.asyncio
+    async def test_routes_lore_with_topic(self):
+        ctx = _make_context()
+        with patch("query_tools._query_lore_impl", new_callable=AsyncMock, return_value='{"k":"lore"}') as m:
+            result = await _query_info_impl(ctx, "lore", "the Hollow")
+        m.assert_awaited_once_with(ctx, "the Hollow")
+        assert result == '{"k":"lore"}'
+
+    @pytest.mark.asyncio
+    async def test_routes_inventory_without_target(self):
+        ctx = _make_context()
+        with patch("query_tools._query_inventory_impl", new_callable=AsyncMock, return_value='{"k":"inv"}') as m:
+            result = await _query_info_impl(ctx, "inventory", None)
+        m.assert_awaited_once_with(ctx)
+        assert result == '{"k":"inv"}'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("kind", ["location", "npc", "lore"])
+    async def test_missing_target_id_raises(self, kind):
+        ctx = _make_context()
+        with pytest.raises(ToolError):
+            await _query_info_impl(ctx, kind, None)
 
 
 # --- enter_location tests ---

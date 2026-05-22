@@ -15,7 +15,7 @@ class TestCombatAgentConfig:
         from combat_end import end_combat
         from combat_turn import request_death_save, resolve_enemy_turn
         from environment_tools import play_sound, set_music_state
-        from query_tools import query_inventory
+        from query_tools import query_info
 
         expected = {
             resolve_enemy_turn,
@@ -26,18 +26,17 @@ class TestCombatAgentConfig:
             roll_dice,
             play_sound,
             set_music_state,
-            query_inventory,
+            query_info,
         }
         assert set(COMBAT_AGENT_TOOLS) == expected
 
     def test_combat_tools_exclude_exploration(self):
         from combat_init import start_combat
         from movement_tools import move_player
-        from query_tools import query_location, query_npc
         from quest_tools import update_quest
         from scene_tools import enter_location
 
-        for tool in [enter_location, move_player, query_location, query_npc, start_combat, update_quest]:
+        for tool in [enter_location, move_player, start_combat, update_quest]:
             assert tool not in COMBAT_AGENT_TOOLS
 
 
