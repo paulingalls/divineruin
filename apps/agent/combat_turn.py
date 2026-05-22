@@ -3,7 +3,7 @@
 import json
 import logging
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution
@@ -55,17 +55,15 @@ async def _resolve_enemy_turn_impl(
     logger.info("resolve_enemy_turn called: enemy=%s, action=%s, target=%s", enemy_id, action_name, target_id)
     session: SessionData = context.userdata
 
-    cs, err = _require_combat(session)
-    if err:
-        return err
+    cs = _require_combat(session)
 
     enemy = cs.get_participant(enemy_id)
     if enemy is None:
-        return json.dumps({"error": f"Enemy '{enemy_id}' not found in combat."})
+        raise ToolError(f"Enemy '{enemy_id}' not found in combat.")
     if enemy.type not in ("enemy", "companion"):
-        return json.dumps({"error": f"'{enemy_id}' is not an enemy or companion."})
+        raise ToolError(f"'{enemy_id}' is not an enemy or companion.")
     if enemy.is_fallen:
-        return json.dumps({"error": f"'{enemy.name}' has fallen and cannot act."})
+        raise ToolError(f"'{enemy.name}' has fallen and cannot act.")
 
     # Find action
     action = None
@@ -75,13 +73,13 @@ async def _resolve_enemy_turn_impl(
             break
     if action is None:
         available = [a.get("name") for a in enemy.action_pool]
-        return json.dumps({"error": f"Action '{action_name}' not found. Available: {available}"})
+        raise ToolError(f"Action '{action_name}' not found. Available: {available}")
 
     target = cs.get_participant(target_id)
     if target is None:
-        return json.dumps({"error": f"Target '{target_id}' not found in combat."})
+        raise ToolError(f"Target '{target_id}' not found in combat.")
     if target.is_fallen:
-        return json.dumps({"error": f"Target '{target.name}' has already fallen."})
+        raise ToolError(f"Target '{target.name}' has already fallen.")
 
     # Build attacker data from participant's stored attributes
     attacker_data = {
@@ -191,15 +189,13 @@ async def _request_death_save_impl(
     logger.info("request_death_save called")
     session: SessionData = context.userdata
 
-    cs, err = _require_combat(session)
-    if err:
-        return err
+    cs = _require_combat(session)
 
     player_participant = cs.get_participant(session.player_id)
     if player_participant is None:
-        return json.dumps({"error": "Player not found in combat."})
+        raise ToolError("Player not found in combat.")
     if not player_participant.is_fallen:
-        return json.dumps({"error": "Player has not fallen. Death saves only apply at 0 HP."})
+        raise ToolError("Player has not fallen. Death saves only apply at 0 HP.")
 
     result = combat_resolution.resolve_death_save(
         player_participant.death_save_successes,

@@ -4,7 +4,7 @@ import json
 import logging
 import uuid
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import combat_resolution
@@ -49,15 +49,15 @@ async def _start_combat_impl(
     session: SessionData = context.userdata
 
     if session.in_combat:
-        return json.dumps({"error": "Already in combat. End the current combat first."})
+        raise ToolError("Already in combat. End the current combat first.")
 
     encounter = await content.get_encounter_template(encounter_id)
     if encounter is None:
-        return json.dumps({"error": f"Encounter template '{encounter_id}' not found."})
+        raise ToolError(f"Encounter template '{encounter_id}' not found.")
 
     player = await queries.get_player(session.player_id)
     if player is None:
-        return json.dumps({"error": f"Player '{session.player_id}' not found."})
+        raise ToolError(f"Player '{session.player_id}' not found.")
 
     # Build participant dicts for initiative rolling
     player_hp = player.get("hp", {})

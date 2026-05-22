@@ -1,6 +1,6 @@
 """Tests for the async background worker."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -172,6 +172,11 @@ class TestResolveSingleActivity:
         with (
             patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=player_with_companion),
             patch(
+                "errand_resolution.db_content_queries.get_location",
+                new_callable=AsyncMock,
+                return_value={"danger_level": 0},
+            ),
+            patch(
                 "async_worker.generate_activity_narration",
                 new_callable=AsyncMock,
                 return_value=(
@@ -191,6 +196,80 @@ class TestResolveSingleActivity:
         assert resolve_call[0][1]["status"] == "resolved"
         cache_call = mock_update.call_args_list[0]
         assert cache_call[0][1]["outcome"]["errand_type"] == "scout"
+        # Risk is rolled at resolution; safe destination -> "none".
+        assert cache_call[0][1]["outcome"]["narrative_context"]["risk_outcome"] == "none"
+
+    @pytest.mark.asyncio
+    async def test_companion_errand_rolls_risk_at_resolution(self):
+        # No risk_outcome in params: the worker rolls it at resolution from the
+        # destination's danger level (dangerous), not from a pre-stored value.
+        activity = {
+            **SAMPLE_ACTIVITY,
+            "activity_type": "companion_errand",
+            "parameters": {"errand_type": "scout", "destination": "greyvale_ruins_entrance", "dc": 12},
+        }
+        player_with_companion = {**SAMPLE_PLAYER, "companion": {"id": "companion_kael", "name": "Kael"}}
+
+        with (
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=player_with_companion),
+            patch(
+                "errand_resolution.db_content_queries.get_location",
+                new_callable=AsyncMock,
+                return_value={"danger_level": 2},
+            ),
+            patch("errand_risk.roll_errand_risk", MagicMock(return_value="injured")) as mock_roll,
+            patch(
+                "async_worker.generate_activity_narration",
+                new_callable=AsyncMock,
+                return_value=([Segment("COMPANION_KAEL", "neutral", "x")], "x", "x"),
+            ),
+            patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="a.mp3"),
+            patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="x"),
+            patch("async_worker.send_push_notification", new_callable=AsyncMock),
+        ):
+            await _resolve_single_activity(activity)
+
+        # Rolled with the resolved danger level + companion, not a stored value.
+        assert mock_roll.call_count == 1
+        kwargs = mock_roll.call_args.kwargs
+        args = mock_roll.call_args.args
+        called = {**dict(zip(("errand_type", "danger_level", "companion_id"), args, strict=False)), **kwargs}
+        assert called["errand_type"] == "scout"
+        assert called["danger_level"] == "dangerous"
+        assert called["companion_id"] == "companion_kael"
+        assert mock_update.call_args_list[0][0][1]["outcome"]["narrative_context"]["risk_outcome"] == "injured"
+
+    @pytest.mark.asyncio
+    async def test_companion_errand_missing_location_defaults_safe(self):
+        activity = {
+            **SAMPLE_ACTIVITY,
+            "activity_type": "companion_errand",
+            "parameters": {"errand_type": "scout", "destination": "nowhere", "dc": 12},
+        }
+        player_with_companion = {**SAMPLE_PLAYER, "companion": {"id": "companion_kael", "name": "Kael"}}
+
+        with (
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=player_with_companion),
+            patch("errand_resolution.db_content_queries.get_location", new_callable=AsyncMock, return_value=None),
+            patch("errand_risk.roll_errand_risk", MagicMock(return_value="none")) as mock_roll,
+            patch(
+                "async_worker.generate_activity_narration",
+                new_callable=AsyncMock,
+                return_value=([Segment("COMPANION_KAEL", "neutral", "x")], "x", "x"),
+            ),
+            patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="a.mp3"),
+            patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock),
+            patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="x"),
+            patch("async_worker.send_push_notification", new_callable=AsyncMock),
+        ):
+            await _resolve_single_activity(activity)
+
+        # Missing/unresolvable destination defaults to "safe" (not a crash).
+        args = mock_roll.call_args.args
+        kwargs = mock_roll.call_args.kwargs
+        called = {**dict(zip(("errand_type", "danger_level", "companion_id"), args, strict=False)), **kwargs}
+        assert called["danger_level"] == "safe"
 
     @pytest.mark.asyncio
     async def test_does_not_update_on_narration_failure(self):

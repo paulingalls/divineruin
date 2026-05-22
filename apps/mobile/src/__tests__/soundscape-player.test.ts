@@ -30,10 +30,13 @@ import {
   setDucking,
   _getState,
   _resetForTesting,
+  _setDurationsForTesting,
 } from "@/audio/soundscape-player";
 
 beforeEach(() => {
   _resetForTesting();
+  // Collapse fades to ~1 tick so tests don't sleep out real fade durations.
+  _setDurationsForTesting({ crossfadeMs: 1, fadeOutMs: 1 });
   mockPlayers.length = 0;
   sessionStore.getState().reset();
 });
@@ -65,16 +68,16 @@ test("crossfade creates second player and releases old one after fade", async ()
   expect(_getState()).toBe("crossfading");
   expect(mockPlayers.length).toBe(2);
 
-  // Wait for crossfade to complete (2.5s + margin)
-  await new Promise((r) => setTimeout(r, 2700));
+  // Let the (test-shrunk) crossfade complete in one tick.
+  await new Promise((r) => setTimeout(r, 50));
   expect(_getState()).toBe("playing");
   expect(mockPlayers[0].removed).toBe(true); // old player released
 });
 
 test("fadeOutSoundscape transitions to idle", async () => {
   transitionToSoundscape("market_bustle");
-  fadeOutSoundscape(100);
-  await new Promise((r) => setTimeout(r, 200));
+  fadeOutSoundscape();
+  await new Promise((r) => setTimeout(r, 50));
   expect(_getState()).toBe("idle");
   expect(mockPlayers[0].removed).toBe(true);
 });
@@ -99,7 +102,7 @@ test("rapid transitions don't leak players", async () => {
   expect(mockPlayers.length).toBe(3);
   expect(mockPlayers[0].removed).toBe(true); // force-completed first crossfade
 
-  await new Promise((r) => setTimeout(r, 3000));
+  await new Promise((r) => setTimeout(r, 50));
   expect(_getState()).toBe("playing");
 });
 

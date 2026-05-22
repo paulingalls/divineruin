@@ -2,8 +2,9 @@
 
 import json
 import logging
+from typing import Literal
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db_content_queries
@@ -31,10 +32,35 @@ async def _resolve_disposition(npc_id: str, player_id: str, npc: dict, *, querie
 
 @function_tool()
 @db_tool
-async def query_location(context: RunContext[SessionData], location_id: str) -> str:
-    """Get location details by ID: description, atmosphere, features, exits.
-    Use for scene descriptions and navigation."""
-    return await _query_location_impl(context, location_id)
+async def query_info(
+    context: RunContext[SessionData],
+    kind: Literal["location", "npc", "lore", "inventory"],
+    target_id: str | None = None,
+) -> str:
+    """Look up world info in one call. Set kind and (for most kinds) target_id:
+    - kind="location", target_id=<location id>: scene details, atmosphere, exits.
+    - kind="npc", target_id=<npc id>: personality, speech style, relationship-filtered knowledge.
+    - kind="lore", target_id=<topic keyword>: history, gods, the Hollow, races, cultures.
+    - kind="inventory": the current player's carried items (no target_id needed)."""
+    return await _query_info_impl(context, kind, target_id)
+
+
+async def _query_info_impl(
+    context: RunContext[SessionData],
+    kind: str,
+    target_id: str | None = None,
+) -> str:
+    if kind == "inventory":
+        return await _query_inventory_impl(context)
+    if target_id is None:
+        raise ToolError(f"query_info(kind={kind!r}) requires target_id.")
+    if kind == "location":
+        return await _query_location_impl(context, target_id)
+    if kind == "npc":
+        return await _query_npc_impl(context, target_id)
+    if kind == "lore":
+        return await _query_lore_impl(context, target_id)
+    raise ToolError(f"Unknown query_info kind: {kind!r}.")
 
 
 async def _query_location_impl(
@@ -43,26 +69,17 @@ async def _query_location_impl(
     *,
     content=db_content_queries,
 ) -> str:
-    logger.info("query_location called: location_id=%s", location_id)
-    if err := _validate_id(location_id, "location_id"):
-        return err
+    logger.info("query_info[location] called: location_id=%s", location_id)
+    _validate_id(location_id, "location_id")
     location = await content.get_location(location_id)
     if location is None:
-        return json.dumps({"error": f"Location '{location_id}' not found."})
+        raise ToolError(f"Location '{location_id}' not found.")
 
     session: SessionData = context.userdata
     location = apply_time_conditions(location, session.world_time)
     location = _strip_hidden_dcs(location)
     narration = _location_for_narration(location)
     return json.dumps(narration)
-
-
-@function_tool()
-@db_tool
-async def query_npc(context: RunContext[SessionData], npc_id: str) -> str:
-    """Get NPC details by ID: personality, speech style, knowledge filtered by
-    the player's relationship. Use to roleplay NPCs accurately."""
-    return await _query_npc_impl(context, npc_id)
 
 
 async def _query_npc_impl(
@@ -72,13 +89,12 @@ async def _query_npc_impl(
     queries=db_queries,
     content=db_content_queries,
 ) -> str:
-    logger.info("query_npc called: npc_id=%s", npc_id)
-    if err := _validate_id(npc_id, "npc_id"):
-        return err
+    logger.info("query_info[npc] called: npc_id=%s", npc_id)
+    _validate_id(npc_id, "npc_id")
     session: SessionData = context.userdata
     npc = await content.get_npc(npc_id)
     if npc is None:
-        return json.dumps({"error": f"NPC '{npc_id}' not found."})
+        raise ToolError(f"NPC '{npc_id}' not found.")
 
     disposition = await _resolve_disposition(npc_id, session.player_id, npc, queries=queries)
 
@@ -87,21 +103,13 @@ async def _query_npc_impl(
     return json.dumps(narration)
 
 
-@function_tool()
-@db_tool
-async def query_lore(context: RunContext[SessionData], topic: str) -> str:
-    """Search world lore by topic keyword. Use for history, gods, the Hollow,
-    races, cultures, and world events."""
-    return await _query_lore_impl(context, topic)
-
-
 async def _query_lore_impl(
     context: RunContext[SessionData],
     topic: str,
     *,
     content=db_content_queries,
 ) -> str:
-    logger.info("query_lore called: topic=%s", topic)
+    logger.info("query_info[lore] called: topic=%s", topic)
     entries = await content.search_lore(topic)
     if not entries:
         return json.dumps(
@@ -121,20 +129,13 @@ async def _query_lore_impl(
     return json.dumps({"entries": results})
 
 
-@function_tool()
-@db_tool
-async def query_inventory(context: RunContext[SessionData]) -> str:
-    """Get the current player's inventory items. Use when they ask what they are carrying."""
-    return await _query_inventory_impl(context)
-
-
 async def _query_inventory_impl(
     context: RunContext[SessionData],
     *,
     queries=db_queries,
 ) -> str:
     session: SessionData = context.userdata
-    logger.info("query_inventory called: player_id=%s", session.player_id)
+    logger.info("query_info[inventory] called: player_id=%s", session.player_id)
     items = await queries.get_player_inventory(session.player_id)
     if not items:
         return json.dumps({"note": "This player's inventory is empty. They carry nothing of note."})

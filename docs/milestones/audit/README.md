@@ -115,10 +115,10 @@ These were unchecked in `00_doc_updates.md` / `01_core_systems.md` with `<!-- se
 - M0.4 "no existing content deleted" cannot be verified positively without a pre-M0.4 baseline.
 
 **Phase 1 leveling (M1.4)**
-- Specialization fork: only L5 carries `specialization_fork=True`; L4 emits `elective_techniques` milestone but is NOT flagged as a fork. Spec wording says "L4/L5".
+- Specialization fork: only L5 carries `specialization_fork=True`; L4 emits `elective_techniques` milestone but is NOT flagged as a fork. Spec was reworded to L5-only by sprint-008 per `game_mechanics_core.md L656` "L5 = identity".
 - "Unified" progression table covers attribute points + milestones + proficiency + fork in `leveling.py:LEVEL_PROGRESSION`, but HP gain lives separately in `hp_scaling.py:ARCHETYPE_HP_CONFIG`. Acceptance text names HP as a unified-table field.
-- No standalone `apply_level_up(character_id)` agent tool. Level-up is folded into `award_xp` via `check_level_up` + `LEVEL_UP` event; AC narration is satisfied; the named tool deliverable is aspirational.
-- No standalone `calculate_level(total_xp)` function; available via `check_level_up(0, total_xp, 1)` workaround (untested).
+- `apply_level_up` deliverable struck by sprint-008. Level-up is emitted by `award_xp` / `complete_quest` via `check_level_up` + `LEVEL_UP` event; AC narration satisfied. See `01_core_systems.md §M1.4 Verification footer`.
+- `level_for_xp(total_xp) -> int` shipped at `apps/agent/rules_engine.py:274` (sprint-008 story-002). Canonical implementation; `check_level_up` now delegates via `max(current_level, level_for_xp(new_xp))`.
 - 18 archetypes encoded in `apps/agent/rules_engine.py` + `hp_scaling.py`, not in `content/archetypes/` (no such directory).
 
 **Phase 1 async (M1.5/M1.6)**
@@ -332,7 +332,7 @@ Sprint-003 carry-forwards (still open):
 Sprint-001/002 carry-forwards (still open):
 
 - Resolve surviving `gp` references in `game_mechanics_magic.md` (M0.3 cleanup); update `INDEX.md` line ranges for archetypes.
-- Decide M1.4 spec vs code: either rename the fork to L5-only and split HP from the unified table, or update code to match (add `specialization_fork` to L4, fold HP into `LEVEL_PROGRESSION`).
+- ~~Decide M1.4 spec vs code: either rename the fork to L5-only and split HP from the unified table, or update code to match (add `specialization_fork` to L4, fold HP into `LEVEL_PROGRESSION`).~~ **Settled by sprint-008**: spec reworded to L5-only fork (L4=`elective_techniques`); HP kept in `ARCHETYPE_HP_CONFIG` with `build_level_up_payload_for_archetype` as the join helper.
 - Decide M1.6 spec vs code: either reduce duration spec to match shipped values, OR widen the shipped risk table to cover all 4 errand types at all danger levels.
 - Fix the Artificer slot dead code: pass `archetype` + `hasPortableLab` from `activities.ts` call sites OR remove the unused validator params.
 - Add the 4 missing agent tools (initiate_training_cycle, resolve_training_midpoint, dispatch_companion_errand, resolve_companion_errand) OR formally remove them from the deliverable list.
@@ -342,7 +342,7 @@ New from sprint-002 audits:
 - **Phase 2 capstone work** (large): seed `archetypes` DB table + `content/archetypes.json`; implement `get_archetype_chassis`; ship `archetype_abilities` + `character_abilities` tables + `request_ability_activation` agent tool; encode L4/L8 elective pools; build `resolve_milestone` + mobile L5 fork UI; ship spell tracks (M2.4) — note training durations need conversion from seconds to discrete cycles; ship mentor-variant system (M2.5).
 - **Phase 3 capstone work** (largest, blocks Phase 8 Layer 2): ship the entire Resonance system + Hollow Echo + Veil Ward + spell catalog + concentration + racial Resonance. Decide on spec-superset deliverables (Bard 0.4× multiplier, Veythar post-reveal 0.7×, cantrip 0-Resonance, rest reset, Veil Fracture event, Arcana sensing ladder, Druid prep constraint, per-archetype Veil Ward sources).
 - **Phase 8 capstone work**: complete `content/gods.json` (6 missing patrons + Layer 1-4 fields for all 10); add tier model + thresholds + decay; ship `evaluate_patron_alignment` / `get_patron_tier` / `activate_patron_ability` / `check_patron_tier` / `get_archetype_synergy` / `apply_unbound_resonance_push` / `query_patron_synergy`; create `patron_ability_unlock` + `archetype_synergy` migrations; build Unbound mechanics (Veil Clarity, voluntary +3 push, Veil Mastery, Self-Reliance milestones).
-- **Spec/milestone divergences to reconcile** (capstone choices): M3.4 Draethar Inner Fire cost (spec: fire damage; milestone: HP or Focus — recommend tightening milestone to spec); M2.3 L4/L5 fork wording (Sprint-001 finding still open); M2.4 training durations (seconds vs cycles).
+- **Spec/milestone divergences to reconcile** (capstone choices): M3.4 Draethar Inner Fire cost (spec: fire damage; milestone: HP or Focus — recommend tightening milestone to spec); ~~M2.3 L4/L5 fork wording (Sprint-001 finding still open)~~ **settled by sprint-008** (L5-only fork; L4=`elective_techniques`); M2.4 training durations (seconds vs cycles).
 
 New from sprint-004 audits:
 

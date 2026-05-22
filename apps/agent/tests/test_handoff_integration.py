@@ -8,6 +8,7 @@ import pytest
 from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER
 
 from base_agent import BaseGameAgent
+from check_tools import request_attack, request_saving_throw
 from city_agent import CITY_TOOLS, CityAgent
 from combat_agent import COMBAT_AGENT_TOOLS
 from combat_end import end_combat
@@ -16,7 +17,7 @@ from combat_turn import request_death_save, resolve_enemy_turn
 from dungeon_agent import DUNGEON_TOOLS
 from movement_tools import move_player
 from progression_tools import award_xp
-from query_tools import query_location, query_npc
+from query_tools import query_info
 from quest_tools import update_quest
 from scene_tools import enter_location
 from session_data import CombatParticipant, CombatState, CompanionState, SessionData
@@ -73,12 +74,17 @@ class TestToolIsolation:
         assert request_death_save not in CITY_TOOLS
         assert end_combat not in CITY_TOOLS
 
+    def test_city_does_not_have_danger_mechanics(self):
+        """A peaceful settlement escalates violence via start_combat and leaves
+        hazard saves to dungeon/combat — so neither lives in the city baseline."""
+        assert request_attack not in CITY_TOOLS
+        assert request_saving_throw not in CITY_TOOLS
+
     def test_city_has_exploration_tools(self):
         """CityAgent should have exploration and mutation tools."""
         assert enter_location in CITY_TOOLS
         assert move_player in CITY_TOOLS
-        assert query_location in CITY_TOOLS
-        assert query_npc in CITY_TOOLS
+        assert query_info in CITY_TOOLS
         assert update_quest in CITY_TOOLS
 
     def test_combat_agent_has_combat_tools(self):
@@ -91,8 +97,6 @@ class TestToolIsolation:
         """CombatAgent should NOT have exploration tools."""
         assert enter_location not in COMBAT_AGENT_TOOLS
         assert move_player not in COMBAT_AGENT_TOOLS
-        assert query_location not in COMBAT_AGENT_TOOLS
-        assert query_npc not in COMBAT_AGENT_TOOLS
         assert start_combat not in COMBAT_AGENT_TOOLS
         assert update_quest not in COMBAT_AGENT_TOOLS
 

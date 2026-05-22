@@ -1,7 +1,8 @@
 """Shared helpers for combat tool modules."""
 
-import json
 import logging
+
+from livekit.agents.llm import ToolError
 
 import combat_resolution
 import event_types as E
@@ -24,11 +25,11 @@ def _participant_summary(p: CombatParticipant) -> dict:
     }
 
 
-def _require_combat(session: SessionData) -> tuple[CombatState, str | None]:
-    """Return (combat_state, None) if in combat, or (None, error_json) if not."""
+def _require_combat(session: SessionData) -> CombatState:
+    """Return the combat state, or raise ToolError if not in combat (ADR 0002)."""
     if session.combat_state is None:
-        return None, json.dumps({"error": "Not in combat."})  # type: ignore[return-value]
-    return session.combat_state, None
+        raise ToolError("Not in combat.")
+    return session.combat_state
 
 
 async def _publish_sounds(session: SessionData, sounds: list[str]) -> None:

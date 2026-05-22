@@ -3,7 +3,7 @@
 import json
 import logging
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db
@@ -58,13 +58,12 @@ async def _move_player_impl(
     content=db_content_queries,
 ) -> str | tuple:
     logger.info("move_player called: destination_id=%s", destination_id)
-    if err := _validate_id(destination_id, "destination_id"):
-        return err
+    _validate_id(destination_id, "destination_id")
     session: SessionData = context.userdata
 
     current_location = await content.get_location(session.location_id)
     if current_location is None:
-        return json.dumps({"error": f"Current location '{session.location_id}' not found."})
+        raise ToolError(f"Current location '{session.location_id}' not found.")
 
     exits = current_location.get("exits", {})
     exit_entry = None
@@ -78,12 +77,7 @@ async def _move_player_impl(
 
     if exit_entry is None:
         valid = [e.get("destination") if isinstance(e, dict) else e for e in exits.values()]
-        return json.dumps(
-            {
-                "error": f"No exit to '{destination_id}' from current location.",
-                "valid_destinations": valid,
-            }
-        )
+        raise ToolError(f"No exit to '{destination_id}' from current location. Valid destinations: {valid}.")
 
     if isinstance(exit_entry, dict) and exit_entry.get("requires"):
         requirement = exit_entry["requires"]
@@ -171,9 +165,6 @@ async def _move_player_impl(
     scene = await _build_scene_context(
         destination_id, session, location=destination_location, content=content, queries=queries
     )
-    if "error" in scene:
-        return json.dumps(scene)
-
     result = {"moved": True, "previous_location": previous_location_id, **scene}
     logger.info(
         "move_player result: %s → %s, %d NPCs, %d targets",
@@ -184,7 +175,20 @@ async def _move_player_impl(
     )
     json_str = json.dumps(result)
 
-    if region_change:
+    # Hand off when the destination needs a different agent than the current one.
+    # That's a region crossing OR an activity-context change (entering/leaving an
+    # activity-context location), since dispatch activities get their own focused agent.
+    from dispatch_agent import DispatchAgent, create_dispatch_agent
+
+    dest_is_training = bool(destination_location and destination_location.get("agent_context") == "training")
+    # Only region and dispatch agents own move_player, so current_agent is one of
+    # those here — combat can't reach this path (CombatAgent has no move_player; it
+    # exits via end_combat). If move_player is ever added to a combat-like agent,
+    # revisit so an in-progress activity isn't abandoned by an incidental move.
+    current_is_training = isinstance(context.session.current_agent, DispatchAgent)
+    activity_change = dest_is_training != current_is_training
+
+    if region_change or activity_change:
         from livekit.agents.llm import ChatContext
 
         from gameplay_agent import create_gameplay_agent
@@ -192,9 +196,10 @@ async def _move_player_impl(
         dest_name = destination_location.get("name", destination_id) if destination_location else destination_id
         atmosphere = destination_location.get("atmosphere", "") if destination_location else ""
 
-        parts = [
-            f"The player has arrived at {dest_name} ({dest_region} region).",
-        ]
+        if dest_is_training:
+            parts = [f"The player has entered the training hall at {dest_name}."]
+        else:
+            parts = [f"The player has arrived at {dest_name} ({dest_region} region)."]
         if atmosphere:
             parts.append(f"The atmosphere is {atmosphere}.")
         if session.companion and session.companion.is_present:
@@ -206,6 +211,8 @@ async def _move_player_impl(
 
         summary_ctx = ChatContext()
         summary_ctx.add_message(role="system", content=" ".join(parts))
+        if dest_is_training:
+            return create_dispatch_agent(chat_ctx=summary_ctx), json_str
         return create_gameplay_agent(
             dest_region, destination_id, companion=session.companion, chat_ctx=summary_ctx
         ), json_str

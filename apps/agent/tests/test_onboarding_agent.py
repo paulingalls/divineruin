@@ -92,8 +92,7 @@ class TestOnboardingAgentClass:
 
         tool_names = {t.__name__ for t in ONBOARDING_TOOLS}
         assert "enter_location" in tool_names
-        assert "query_location" in tool_names
-        assert "query_npc" in tool_names
+        assert "query_info" in tool_names
         assert "move_player" in tool_names
         assert "play_sound" in tool_names
 

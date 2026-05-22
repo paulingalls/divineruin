@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from livekit.agents.llm import ToolError
 
 import event_types as E
 from combat_end import _end_combat_impl
@@ -262,12 +263,8 @@ class TestStartCombat:
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        raw = await _start_combat_impl(ctx, encounter_id="goblin_patrol", encounter_description="Another fight!")
-        assert isinstance(raw, str)
-        result = json.loads(raw)
-
-        assert "error" in result
-        assert "Already in combat" in result["error"]
+        with pytest.raises(ToolError, match="Already in combat"):
+            await _start_combat_impl(ctx, encounter_id="goblin_patrol", encounter_description="Another fight!")
 
     @pytest.mark.asyncio
     async def test_error_missing_encounter(self):
@@ -275,13 +272,10 @@ class TestStartCombat:
         mock_content.get_encounter_template = AsyncMock(return_value=None)
         ctx = _make_context()
 
-        raw = await _start_combat_impl(
-            ctx, encounter_id="nonexistent", encounter_description="Nothing", content=mock_content
-        )
-        assert isinstance(raw, str)
-        result = json.loads(raw)
-
-        assert "error" in result
+        with pytest.raises(ToolError, match="not found"):
+            await _start_combat_impl(
+                ctx, encounter_id="nonexistent", encounter_description="Nothing", content=mock_content
+            )
 
 
 # --- resolve_enemy_turn ---
@@ -395,11 +389,8 @@ class TestResolveEnemyTurn:
     async def test_error_not_in_combat(self):
         ctx = _make_context()
 
-        result = json.loads(
+        with pytest.raises(ToolError, match="Not in combat"):
             await _resolve_enemy_turn_impl(ctx, enemy_id="goblin_scout_1", action_name="Scimitar", target_id="player_1")
-        )
-
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_error_invalid_enemy(self):
@@ -407,7 +398,7 @@ class TestResolveEnemyTurn:
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        result = json.loads(
+        with pytest.raises(ToolError, match="not found in combat"):
             await _resolve_enemy_turn_impl(
                 ctx,
                 enemy_id="nonexistent",
@@ -415,9 +406,6 @@ class TestResolveEnemyTurn:
                 target_id="player_1",
                 mutations=mock_mutations,
             )
-        )
-
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_error_invalid_action(self):
@@ -425,7 +413,7 @@ class TestResolveEnemyTurn:
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        result = json.loads(
+        with pytest.raises(ToolError, match="not found"):
             await _resolve_enemy_turn_impl(
                 ctx,
                 enemy_id="goblin_scout_1",
@@ -433,9 +421,6 @@ class TestResolveEnemyTurn:
                 target_id="player_1",
                 mutations=mock_mutations,
             )
-        )
-
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_error_fallen_target(self):
@@ -443,7 +428,7 @@ class TestResolveEnemyTurn:
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state(player_fallen=True, player_hp=0)
 
-        result = json.loads(
+        with pytest.raises(ToolError, match="already fallen"):
             await _resolve_enemy_turn_impl(
                 ctx,
                 enemy_id="goblin_scout_1",
@@ -451,9 +436,6 @@ class TestResolveEnemyTurn:
                 target_id="player_1",
                 mutations=mock_mutations,
             )
-        )
-
-        assert "error" in result
 
 
 # --- request_death_save ---
@@ -569,18 +551,15 @@ class TestRequestDeathSave:
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state(player_hp=25, player_fallen=False)
 
-        result = json.loads(await _request_death_save_impl(ctx))
-
-        assert "error" in result
-        assert "not fallen" in result["error"].lower()
+        with pytest.raises(ToolError, match="not fallen"):
+            await _request_death_save_impl(ctx)
 
     @pytest.mark.asyncio
     async def test_error_if_not_in_combat(self):
         ctx = _make_context()
 
-        result = json.loads(await _request_death_save_impl(ctx))
-
-        assert "error" in result
+        with pytest.raises(ToolError, match="Not in combat"):
+            await _request_death_save_impl(ctx)
 
     @pytest.mark.asyncio
     async def test_publishes_events(self):
@@ -698,11 +677,8 @@ class TestEndCombat:
     async def test_error_if_not_in_combat(self):
         ctx = _make_context()
 
-        raw = await _end_combat_impl(ctx, outcome="victory")
-        assert isinstance(raw, str)
-        result = json.loads(raw)
-
-        assert "error" in result
+        with pytest.raises(ToolError, match="Not in combat"):
+            await _end_combat_impl(ctx, outcome="victory")
 
     @pytest.mark.asyncio
     async def test_error_invalid_outcome(self):
@@ -710,8 +686,5 @@ class TestEndCombat:
         ctx = _make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        raw = await _end_combat_impl(ctx, outcome="surrender", mutations=mock_mutations)
-        assert isinstance(raw, str)
-        result = json.loads(raw)
-
-        assert "error" in result
+        with pytest.raises(ToolError, match="Invalid outcome"):
+            await _end_combat_impl(ctx, outcome="surrender", mutations=mock_mutations)

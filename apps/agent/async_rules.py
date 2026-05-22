@@ -1,8 +1,9 @@
 """Pure-function async activity resolution. Zero IO, zero async.
 
 All resolution functions accept an optional `rng` for deterministic testing.
-Activity validation lives in the TS server (apps/server/src/slot_validation.ts
-and errand_risk.ts) — Python only resolves outcomes for the async worker.
+Slot/dispatch validation lives in the TS server (apps/server/src/slot_validation.ts,
+errand_risk.ts). Errand risk is rolled at resolution by the async worker via
+errand_risk.py (ADR 0006); these functions compute the skill-check outcome only.
 """
 
 import random

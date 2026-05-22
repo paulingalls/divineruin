@@ -1,4 +1,4 @@
-"""Cached content lookup queries (locations, NPCs, items, lore, quests, scenes, encounters).
+"""Cached content lookup queries (locations, NPCs, items, lore, quests, scenes, encounters, training programs, errand templates).
 
 All functions use db._cache_get() / db._cache_set() for Redis caching.
 No conn parameter — these read from the pool and cache layer.
@@ -157,3 +157,61 @@ async def get_encounter_template(encounter_id: str) -> dict | None:
     data = json.loads(row["data"])
     await db._cache_set(cache_key, json.dumps(data))
     return data
+
+
+async def get_training_program(program_id: str) -> dict | None:
+    cache_key = f"training_program:{program_id}"
+    cached = await db._cache_get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
+    pool = await db.get_pool()
+    row = await pool.fetchrow("SELECT data FROM training_programs WHERE id = $1", program_id)
+    if row is None:
+        return None
+
+    data = json.loads(row["data"])
+    await db._cache_set(cache_key, json.dumps(data))
+    return data
+
+
+async def list_training_programs() -> list[dict]:
+    cache_key = "training_programs:all"
+    cached = await db._cache_get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
+    pool = await db.get_pool()
+    rows = await pool.fetch("SELECT data FROM training_programs ORDER BY id")
+    programs = [json.loads(r["data"]) for r in rows]
+    await db._cache_set(cache_key, json.dumps(programs))
+    return programs
+
+
+async def get_errand_template(errand_type: str) -> dict | None:
+    cache_key = f"errand_template:{errand_type}"
+    cached = await db._cache_get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
+    pool = await db.get_pool()
+    row = await pool.fetchrow("SELECT data FROM errand_templates WHERE id = $1", errand_type)
+    if row is None:
+        return None
+
+    data = json.loads(row["data"])
+    await db._cache_set(cache_key, json.dumps(data))
+    return data
+
+
+async def list_errand_templates() -> list[dict]:
+    cache_key = "errand_templates:all"
+    cached = await db._cache_get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
+    pool = await db.get_pool()
+    rows = await pool.fetch("SELECT data FROM errand_templates ORDER BY id")
+    templates = [json.loads(r["data"]) for r in rows]
+    await db._cache_set(cache_key, json.dumps(templates))
+    return templates

@@ -11,6 +11,7 @@ import db_activity_queries
 import db_content_queries
 import db_mutations
 import db_queries
+import db_training
 import event_types as E
 from bg_event_handlers import handle_events
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
@@ -237,10 +238,11 @@ class BackgroundProcess:
 
     async def _rebuild_warm_layer(self) -> None:
         try:
-            quests, location, npcs_raw = await asyncio.gather(
+            quests, location, npcs_raw, training = await asyncio.gather(
                 db_queries.get_active_player_quests(self._sd.player_id),
                 db_content_queries.get_location(self._sd.location_id),
                 db_queries.get_npcs_at_location(self._sd.location_id),
+                db_training.get_player_training_activities(self._sd.player_id, state=None),
             )
             self._quest_cache = quests
 
@@ -288,6 +290,7 @@ class BackgroundProcess:
                 npcs_raw=npcs_raw,
                 region_type=region_type,
                 scene_cache=self._scene_cache or None,
+                training=training or None,
             )
         except Exception:
             logger.warning("Warm layer build failed", exc_info=True)

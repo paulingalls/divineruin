@@ -22,8 +22,9 @@ import db_mutations
 import db_queries
 import db_training
 import skill_persistence
-from async_rules import resolve_companion_errand, resolve_crafting
+from async_rules import resolve_crafting
 from dialogue_parser import Segment
+from errand_resolution import resolve_errand_outcome
 from llm_config import AUDIO_DIR, audio_url_for
 from narration import generate_activity_narration, generate_notification_hook, generate_progress_snippets
 from push import send_push_notification
@@ -123,18 +124,16 @@ async def _resolve_single_activity(activity: dict) -> None:
 
         # Compute outcome using rules engine
         if activity_type == "crafting":
-            outcome = resolve_crafting(player_data, parameters)
+            outcome_dict = asdict(resolve_crafting(player_data, parameters))
         elif activity_type == "companion_errand":
+            # resolve_errand_outcome rolls the injury risk at resolution (sole
+            # authority, ADR 0006) — nothing reads it before then, so the timing
+            # is behaviorally identical to a dispatch-time roll.
             companion_data = player_data.get("companion", {})
-            outcome = resolve_companion_errand(companion_data, parameters)
+            outcome_dict = await resolve_errand_outcome(companion_data, parameters)
         else:
             logger.error("Unknown activity type: %s", activity_type)
             return
-
-        outcome_dict = asdict(outcome)
-
-        if activity_type == "companion_errand":
-            outcome_dict.setdefault("narrative_context", {})["risk_outcome"] = parameters.get("risk_outcome", "none")
 
         # Generate structured narration via LLM tool_use
         segments, narration_text, narration_summary = await generate_activity_narration(

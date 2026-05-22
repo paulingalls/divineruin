@@ -90,6 +90,7 @@ class SessionData:
     creation_state: CreationState | None = None
     onboarding_beat: int | None = None
     pre_combat_agent_type: str | None = None
+    pre_dispatch_agent_type: str | None = None
 
     # Cached data for hot context (updated by background process, read by voice loop)
     cached_location_name: str = ""

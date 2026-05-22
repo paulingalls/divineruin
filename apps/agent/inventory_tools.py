@@ -3,7 +3,7 @@
 import json
 import logging
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db
@@ -45,16 +45,14 @@ async def _add_to_inventory_impl(
     content=db_content_queries,
 ) -> str:
     logger.info("add_to_inventory called: item_id=%s, quantity=%d, source=%s", item_id, quantity, source)
-    cap_err = _cap_str(source, 256, "source")
-    if cap_err:
-        return cap_err
+    _cap_str(source, 256, "source")
     if quantity < 1 or quantity > 99:
-        return json.dumps({"error": "Quantity must be between 1 and 99."})
+        raise ToolError("Quantity must be between 1 and 99.")
     session: SessionData = context.userdata
 
     item = await content.get_item(item_id)
     if item is None:
-        return json.dumps({"error": f"Item '{item_id}' not found."})
+        raise ToolError(f"Item '{item_id}' not found.")
 
     item_name = item.get("name", item_id)
 
@@ -131,10 +129,10 @@ async def _remove_from_inventory_impl(
     async with db_mod.transaction() as conn:
         slot = await queries.get_inventory_item(session.player_id, item_id, conn=conn, for_update=True)
         if slot is None:
-            return json.dumps({"error": f"Item '{item_id}' not in inventory."})
+            raise ToolError(f"Item '{item_id}' not in inventory.")
 
         if slot.get("equipped", False):
-            return json.dumps({"error": f"Item '{item_id}' is equipped. Unequip it first."})
+            raise ToolError(f"Item '{item_id}' is equipped. Unequip it first.")
 
         await mutations.remove_inventory_item(session.player_id, item_id, conn=conn)
 

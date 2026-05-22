@@ -3,7 +3,7 @@
 import json
 import logging
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution
@@ -47,16 +47,15 @@ async def _discover_hidden_element_impl(
     mutations=db_mutations,
 ) -> str:
     logger.info("discover_hidden_element called: element_id=%s", element_id)
-    if err := _validate_id(element_id, "element_id"):
-        return err
+    _validate_id(element_id, "element_id")
     session: SessionData = context.userdata
 
     if element_id in session.attempted_discoveries:
-        return json.dumps({"error": f"Already searched for '{element_id}' this session."})
+        raise ToolError(f"Already searched for '{element_id}' this session.")
 
     location = await content.get_location(session.location_id)
     if location is None:
-        return json.dumps({"error": f"Current location '{session.location_id}' not found."})
+        raise ToolError(f"Current location '{session.location_id}' not found.")
 
     hidden = location.get("hidden_elements", [])
     element = None
@@ -66,7 +65,7 @@ async def _discover_hidden_element_impl(
             break
 
     if element is None:
-        return json.dumps({"error": f"No hidden element '{element_id}' at current location."})
+        raise ToolError(f"No hidden element '{element_id}' at current location.")
 
     session.attempted_discoveries.add(element_id)
 
@@ -75,7 +74,7 @@ async def _discover_hidden_element_impl(
 
     player = await queries.get_player(session.player_id)
     if player is None:
-        return json.dumps({"error": f"Player '{session.player_id}' not found."})
+        raise ToolError(f"Player '{session.player_id}' not found.")
 
     result = check_resolution.resolve_skill_check_dc(player, discover_skill, dc)
 
@@ -152,22 +151,18 @@ async def _request_skill_check_impl(
     logger.info(
         "request_skill_check called: skill=%s, difficulty=%s, context=%s", skill, difficulty, context_description
     )
-    cap_err = _cap_str(context_description, 500, "context_description")
-    if cap_err:
-        return cap_err
+    _cap_str(context_description, 500, "context_description")
     session: SessionData = context.userdata
 
     if skill.lower() not in VALID_SKILLS:
-        return json.dumps({"error": f"Unknown skill: '{skill}'. Valid: {sorted(VALID_SKILLS)}"})
+        raise ToolError(f"Unknown skill: '{skill}'. Valid: {sorted(VALID_SKILLS)}")
 
     if difficulty.lower() not in VALID_DIFFICULTIES:
-        return json.dumps(
-            {"error": f"Unknown difficulty: '{difficulty}'. Valid: {sorted(VALID_DIFFICULTIES - {'deadly'})}"}
-        )
+        raise ToolError(f"Unknown difficulty: '{difficulty}'. Valid: {sorted(VALID_DIFFICULTIES - {'deadly'})}")
 
     player = await queries.get_player(session.player_id)
     if player is None:
-        return json.dumps({"error": f"Player '{session.player_id}' not found."})
+        raise ToolError(f"Player '{session.player_id}' not found.")
 
     result = check_resolution.resolve_skill_check(player, skill, difficulty)
 
@@ -252,7 +247,7 @@ async def _mark_skill_breakthrough_impl(
     skill_lower = skill.lower()
 
     if skill_lower not in VALID_SKILLS:
-        return json.dumps({"error": f"Unknown skill: '{skill}'. Valid: {sorted(VALID_SKILLS)}"})
+        raise ToolError(f"Unknown skill: '{skill}'. Valid: {sorted(VALID_SKILLS)}")
 
     await mutations.mark_narrative_moment(session.player_id, skill_lower)
     logger.info("mark_skill_breakthrough: player=%s, skill=%s", session.player_id, skill_lower)
@@ -285,7 +280,7 @@ async def _request_attack_impl(
 
     player = await queries.get_player(session.player_id)
     if player is None:
-        return json.dumps({"error": f"Player '{session.player_id}' not found."})
+        raise ToolError(f"Player '{session.player_id}' not found.")
 
     equipment = player.get("equipment", {})
     weapon = None
@@ -295,11 +290,11 @@ async def _request_attack_impl(
             break
 
     if weapon is None:
-        return json.dumps({"error": f"Weapon '{weapon_or_spell}' not found in equipment."})
+        raise ToolError(f"Weapon '{weapon_or_spell}' not found in equipment.")
 
     target = await queries.get_npc_combat_stats(target_id)
     if target is None:
-        return json.dumps({"error": f"Target '{target_id}' not found in combat state."})
+        raise ToolError(f"Target '{target_id}' not found in combat state.")
 
     target_ac = target.get("ac", 10)
     target_hp = target.get("hp", {}).get("current", 0)
@@ -375,21 +370,19 @@ async def _request_saving_throw_impl(
     queries=db_queries,
 ) -> str:
     logger.info("request_saving_throw called: save_type=%s, dc=%d, effect_on_fail=%s", save_type, dc, effect_on_fail)
-    cap_err = _cap_str(effect_on_fail, 256, "effect_on_fail")
-    if cap_err:
-        return cap_err
+    _cap_str(effect_on_fail, 256, "effect_on_fail")
     if dc < 1 or dc > 30:
-        return json.dumps({"error": "DC must be between 1 and 30."})
+        raise ToolError("DC must be between 1 and 30.")
     session: SessionData = context.userdata
 
     player = await queries.get_player(session.player_id)
     if player is None:
-        return json.dumps({"error": f"Player '{session.player_id}' not found."})
+        raise ToolError(f"Player '{session.player_id}' not found.")
 
     try:
         result = check_resolution.resolve_saving_throw(player, save_type, dc, effect_on_fail)
     except ValueError as e:
-        return json.dumps({"error": str(e)})
+        raise ToolError(str(e)) from e
 
     await publish_game_event(
         session.room,
@@ -438,16 +431,14 @@ async def roll_dice(
     """Roll dice using standard notation (e.g. 2d6, 1d20+3). Use for
     narrative-only random moments like determining weather or crowd size."""
     logger.info("roll_dice called: notation=%s", notation)
-    cap_err = _cap_str(notation, 50, "notation")
-    if cap_err:
-        return cap_err
+    _cap_str(notation, 50, "notation")
     session: SessionData = context.userdata
 
     try:
         result = dice.roll(notation)
     except ValueError as e:
         logger.warning("roll_dice invalid notation: %s", notation)
-        return json.dumps({"error": str(e)})
+        raise ToolError(str(e)) from e
 
     await publish_game_event(
         session.room,

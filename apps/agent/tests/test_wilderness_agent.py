@@ -6,7 +6,7 @@ from combat_end import end_combat
 from combat_init import start_combat
 from combat_turn import resolve_enemy_turn
 from movement_tools import move_player
-from query_tools import query_inventory, query_location, query_lore
+from query_tools import query_info
 from quest_tools import update_quest
 from scene_tools import enter_location
 from session_tools import record_story_moment
@@ -25,7 +25,7 @@ class TestWildernessAgentConfig:
 class TestWildernessAgentTools:
     def test_has_exploration_tools(self):
         assert enter_location in WILDERNESS_TOOLS
-        assert query_location in WILDERNESS_TOOLS
+        assert query_info in WILDERNESS_TOOLS
         assert move_player in WILDERNESS_TOOLS
         assert discover_hidden_element in WILDERNESS_TOOLS
 
@@ -34,8 +34,6 @@ class TestWildernessAgentTools:
 
     def test_has_utility_tools(self):
         assert roll_dice in WILDERNESS_TOOLS
-        assert query_inventory in WILDERNESS_TOOLS
-        assert query_lore in WILDERNESS_TOOLS
         assert record_story_moment in WILDERNESS_TOOLS
         assert request_skill_check in WILDERNESS_TOOLS
         assert update_quest in WILDERNESS_TOOLS

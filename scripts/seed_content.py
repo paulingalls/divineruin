@@ -29,6 +29,7 @@ TABLE_MAP = {
     "level_progression.json": "level_progression",
     "training_activity_types.json": "training_activity_types",
     "training_programs.json": "training_programs",
+    "errand_templates.json": "errand_templates",
 }
 
 PK_COLUMN = {

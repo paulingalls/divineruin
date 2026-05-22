@@ -3,7 +3,7 @@
 import json
 import logging
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db
@@ -14,9 +14,9 @@ import event_types as E
 import rules_engine
 from db_errors import db_tool
 from game_events import publish_game_event
-from leveling import build_level_up_payload, get_level_up_rewards
+from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from session_data import SessionData
-from tool_support import _cap_str
+from tool_support import _cap_str, con_mod_for_player
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -44,22 +44,20 @@ async def _award_xp_impl(
     queries=db_queries,
 ) -> str:
     logger.info("award_xp called: amount=%d, reason=%s", amount, reason)
-    cap_err = _cap_str(reason, 256, "reason")
-    if cap_err:
-        return cap_err
+    _cap_str(reason, 256, "reason")
     session: SessionData = context.userdata
 
     if amount <= 0:
-        return json.dumps({"error": "XP amount must be positive."})
+        raise ToolError("XP amount must be positive.")
     if amount > 10000:
-        return json.dumps({"error": "XP amount must not exceed 10000."})
+        raise ToolError("XP amount must not exceed 10000.")
 
     pending_events: list[tuple[str, dict]] = []
 
     async with db_mod.transaction() as conn:
         player = await queries.get_player(session.player_id, conn=conn, for_update=True)
         if player is None:
-            return json.dumps({"error": f"Player '{session.player_id}' not found."})
+            raise ToolError(f"Player '{session.player_id}' not found.")
 
         current_xp = player.get("xp", 0)
         current_level = player.get("level", 1)
@@ -85,7 +83,9 @@ async def _award_xp_impl(
 
         if result.leveled_up:
             rewards = get_level_up_rewards(current_level, result.new_level)
-            pending_events.append((E.LEVEL_UP, build_level_up_payload(current_level, rewards)))
+            con_mod = con_mod_for_player(player)
+            payload = build_level_up_payload_for_archetype(current_level, rewards, player["class"], con_mod=con_mod)
+            pending_events.append((E.LEVEL_UP, payload))
 
     for event_type, payload in pending_events:
         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
@@ -136,18 +136,16 @@ async def _award_divine_favor_impl(
     activities=db_activity_queries,
 ) -> str:
     logger.info("award_divine_favor called: amount=%d, reason=%s", amount, reason)
-    cap_err = _cap_str(reason, 256, "reason")
-    if cap_err:
-        return cap_err
+    _cap_str(reason, 256, "reason")
     session: SessionData = context.userdata
 
     if amount < 1 or amount > 10:
-        return json.dumps({"error": "Divine favor amount must be 1-10."})
+        raise ToolError("Divine favor amount must be 1-10.")
 
     async with db_mod.transaction() as conn:
         favor = await activities.get_divine_favor(session.player_id, conn=conn)
         if favor is None or favor.get("patron", "none") == "none":
-            return json.dumps({"error": "Player has no patron deity."})
+            raise ToolError("Player has no patron deity.")
 
         current_level = favor.get("level", 0)
         max_level = favor.get("max", 100)

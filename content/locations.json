@@ -202,6 +202,9 @@
     "exits": {
       "south": {
         "destination": "accord_market_square"
+      },
+      "north": {
+        "destination": "accord_training_hall"
       }
     },
     "conditions": {
@@ -211,6 +214,31 @@
       }
     },
     "ambient_sounds": "guild_hall_bustle"
+  },
+  {
+    "id": "accord_training_hall",
+    "name": "Training Hall",
+    "tier": 1,
+    "danger_level": 0,
+    "district": "accord_central",
+    "region": "sunward_coast",
+    "region_type": "city",
+    "agent_context": "training",
+    "default_scene": "scene_accord_guild_exploration",
+    "tags": ["guild", "training", "mentor"],
+    "description": "Off the guild hall's north stair, a long room of worn floorboards and chalk-scuffed practice circles. Wooden weapons rest in racks along one wall; the air carries sweat, oiled leather, and the steady thock of a training dummy somewhere out of sight. A mentor watches from a stool, unhurried.",
+    "atmosphere": "focused, patient, the quiet of deliberate work",
+    "key_features": [
+      "chalk practice circles worn into the floor",
+      "racks of blunted practice weapons",
+      "a mentor who measures you with a glance"
+    ],
+    "exits": {
+      "south": {
+        "destination": "accord_guild_hall"
+      }
+    },
+    "ambient_sounds": "training_hall_practice"
   },
   {
     "id": "accord_temple_row",

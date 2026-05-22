@@ -5,7 +5,7 @@ import logging
 import re
 
 import asyncpg
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db
@@ -16,9 +16,9 @@ import event_types as E
 import rules_engine
 from db_errors import db_tool
 from game_events import publish_game_event
-from leveling import build_level_up_payload, get_level_up_rewards
+from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from session_data import SessionData
-from tool_support import EFFECT_NPC_MAP, _validate_id
+from tool_support import EFFECT_NPC_MAP, _validate_id, con_mod_for_player
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -121,19 +121,16 @@ async def _update_quest_impl(
     content=db_content_queries,
 ) -> str | tuple:
     logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
-    if err := _validate_id(quest_id, "quest_id"):
-        return err
+    _validate_id(quest_id, "quest_id")
     session: SessionData = context.userdata
 
     quest = await content.get_quest(quest_id)
     if quest is None:
-        return json.dumps({"error": f"Quest '{quest_id}' not found."})
+        raise ToolError(f"Quest '{quest_id}' not found.")
 
     stages = quest.get("stages", [])
     if new_stage_id < 0 or new_stage_id >= len(stages):
-        return json.dumps(
-            {"error": f"Invalid stage {new_stage_id} for quest '{quest_id}'. Valid: 0-{len(stages) - 1}."}
-        )
+        raise ToolError(f"Invalid stage {new_stage_id} for quest '{quest_id}'. Valid: 0-{len(stages) - 1}.")
 
     rewards_applied = []
     pending_events: list[tuple[str, dict]] = []
@@ -143,21 +140,17 @@ async def _update_quest_impl(
 
         if player_quest is None:
             if new_stage_id != 0:
-                return json.dumps({"error": "Must start quest at stage 0."})
+                raise ToolError("Must start quest at stage 0.")
             current_stage = -1
         else:
             current_stage = player_quest.get("current_stage", -1)
 
         if new_stage_id <= current_stage:
-            return json.dumps(
-                {"error": f"Cannot go backward. Current stage: {current_stage}, requested: {new_stage_id}."}
-            )
+            raise ToolError(f"Cannot go backward. Current stage: {current_stage}, requested: {new_stage_id}.")
 
         if new_stage_id > current_stage + 1:
-            return json.dumps(
-                {
-                    "error": f"Cannot skip stages. Current: {current_stage}, requested: {new_stage_id}, next valid: {current_stage + 1}."
-                }
+            raise ToolError(
+                f"Cannot skip stages. Current: {current_stage}, requested: {new_stage_id}, next valid: {current_stage + 1}."
             )
 
         if current_stage >= 0:
@@ -192,7 +185,11 @@ async def _update_quest_impl(
 
                     if level_result.leveled_up:
                         quest_rewards = get_level_up_rewards(current_level, level_result.new_level)
-                        pending_events.append((E.LEVEL_UP, build_level_up_payload(current_level, quest_rewards)))
+                        con_mod = con_mod_for_player(player)
+                        level_up_payload = build_level_up_payload_for_archetype(
+                            current_level, quest_rewards, player["class"], con_mod=con_mod
+                        )
+                        pending_events.append((E.LEVEL_UP, level_up_payload))
 
             for item_reward in on_complete.get("rewards", []):
                 item_id = item_reward.get("item") or item_reward.get("item_id")

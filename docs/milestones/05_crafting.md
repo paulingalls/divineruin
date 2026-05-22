@@ -84,6 +84,7 @@ See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
   - NPC rental: Workshop 2sp/day, Forge 5sp/day, Laboratory 10sp/day, Combined 12sp/day
   - Reputation standing: Trusted disposition with settlement grants free access
   - Artificer Portable Lab: class feature, counts as Workshop + basic Laboratory
+- **Deferred from Phase 1 (ADR 0005):** the async-activity Artificer training-slot exception. When the Portable Lab item/recipe lands here, also (a) fix `apps/server/src/activities.ts:countActiveBySlot` so a crafting-on-training-slot consumes the training slot (debt `95de7fa141df`), and (b) wire the crafting create path to load player class + portable-lab ownership and pass `archetype`/`hasPortableLab` to `validateSlotAvailability`. The validator seam + its unit tests already exist (`apps/server/src/slot_validation.ts`).
 - NPC disposition modifiers on rental price (friendly = discount, hostile = surcharge or refusal)
 - Three-check resolution pipeline:
   1. Recipe Knowledge check: does the character know this recipe?
@@ -104,6 +105,7 @@ See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
 - [ ] Disposition modifiers correctly adjust rental prices (discount for friendly, surcharge for hostile)
 - [ ] Trusted reputation grants free workspace access at that settlement
 - [ ] Artificer Portable Lab functions as Workshop + basic Laboratory
+- [ ] Artificer async training-slot exception wired + slot accounting consumes the training slot (deferred from M1.6 per ADR 0005; debt `95de7fa141df`)
 - [ ] Three-check pipeline gates crafting roll: all three must pass before rolling
 - [ ] Crafting roll uses `d20 + skill modifier` vs `crafting_dc`
 - [ ] DB migration creates `workspace_rentals` table with correct schema

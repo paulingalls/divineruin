@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db_content_queries
@@ -77,7 +77,7 @@ async def _build_scene_context(
     if location is None:
         location = await content.get_location(location_id)
     if location is None:
-        return {"error": f"Location '{location_id}' not found."}
+        raise ToolError(f"Location '{location_id}' not found.")
 
     location = apply_time_conditions(location, session.world_time)
     location = _strip_hidden_dcs(location)
@@ -112,7 +112,7 @@ async def enter_location(context: RunContext[SessionData], location_id: str) -> 
     """Get everything about a location in one call: scene details, NPCs present,
     combat targets, and player status. Call this when entering a new area or
     starting a session. Use the returned IDs for follow-up tools like
-    query_npc (for deeper NPC interaction) or request_attack (for combat)."""
+    query_info(kind="npc") (for deeper NPC interaction) or request_attack (for combat)."""
     return await _enter_location_impl(context, location_id)
 
 
@@ -124,8 +124,7 @@ async def _enter_location_impl(
     queries=db_queries,
 ) -> str:
     logger.info("enter_location called: location_id=%s", location_id)
-    if err := _validate_id(location_id, "location_id"):
-        return err
+    _validate_id(location_id, "location_id")
     session: SessionData = context.userdata
 
     result = await _build_scene_context(location_id, session, content=content, queries=queries)

@@ -1,6 +1,7 @@
 """Tests for HP scaling — archetype-based HP formula."""
 
 import pytest
+from sample_fixtures import GUILD_PLAYER, SAMPLE_PLAYER
 
 from hp_scaling import (
     ARCHETYPE_HP_CONFIG,
@@ -9,6 +10,15 @@ from hp_scaling import (
     calculate_max_hp,
 )
 from rules_engine import ARCHETYPE_RESOURCE_CONFIG
+
+
+class TestSampleFixtureArchetypes:
+    """Shared player fixtures must carry a valid archetype, or any HP/leveling
+    test that reuses them raises ValueError in calculate_max_hp."""
+
+    @pytest.mark.parametrize("player", [SAMPLE_PLAYER, GUILD_PLAYER], ids=["sample", "guild"])
+    def test_class_is_a_known_archetype(self, player):
+        assert player["class"] in ARCHETYPE_HP_CONFIG
 
 
 class TestHPConfig:

@@ -1,9 +1,12 @@
 /**
- * Errand risk computation — pure functions, no IO except the startup loader.
+ * Errand dispatch validation — pure functions, no IO except the startup loader.
  *
- * Ports risk logic from Python errand_rules.py (lines 63-159).
- * Risk is rolled at dispatch time and stored in activity parameters
- * so the async worker only narrates the predetermined outcome.
+ * The TS server is the dispatch-time authority for errand danger levels and the
+ * blocked-combo gate. It no longer rolls risk: the Python async worker rolls the
+ * injury outcome at resolution (apps/agent/errand_risk.py, ADR 0006), since
+ * nothing reads the outcome before then. BLOCKED_DANGER_COMBOS tracks
+ * game_mechanics_core.md §Companion Risk (L887-892) — the same spec the Python
+ * risk table conformance-pins against.
  *
  * Destination danger levels are loaded from the locations table at startup
  * via loadDestinationDangerLevels(). locations.json uses numeric values
@@ -11,35 +14,9 @@
  */
 
 import { sql } from "./db.ts";
+import { getErrandTemplate } from "./activity_templates.ts";
 
 export type DangerLevel = "safe" | "moderate" | "dangerous" | "extreme";
-export type InjuryStatus = "none" | "injured" | "emergency";
-
-interface RiskEntry {
-  injuryPct: number;
-  emergencyPct: number;
-}
-
-// Matches Python ERRAND_RISK_TABLE (errand_rules.py lines 63-76)
-const ERRAND_RISK_TABLE: Record<string, RiskEntry> = {
-  "safe|scout": { injuryPct: 0, emergencyPct: 0 },
-  "safe|social": { injuryPct: 0, emergencyPct: 0 },
-  "safe|acquire": { injuryPct: 0, emergencyPct: 0 },
-  "safe|relationship": { injuryPct: 0, emergencyPct: 0 },
-  "moderate|scout": { injuryPct: 10, emergencyPct: 0 },
-  "moderate|social": { injuryPct: 0, emergencyPct: 0 },
-  "moderate|acquire": { injuryPct: 10, emergencyPct: 0 },
-  "moderate|relationship": { injuryPct: 0, emergencyPct: 0 },
-  "dangerous|scout": { injuryPct: 25, emergencyPct: 5 },
-  "dangerous|social": { injuryPct: 0, emergencyPct: 0 },
-  "dangerous|acquire": { injuryPct: 20, emergencyPct: 0 },
-  "extreme|scout": { injuryPct: 40, emergencyPct: 15 },
-};
-
-// Injury risk reduction per companion (errand_rules.py lines 78-118)
-const COMPANION_INJURY_REDUCTION: Record<string, number> = {
-  companion_kael: 5,
-};
 
 // Runtime-loaded danger levels (populated by loadDestinationDangerLevels at startup)
 let dangerLevels: ReadonlyMap<string, DangerLevel> = new Map();
@@ -84,19 +61,16 @@ export async function loadDestinationDangerLevels(): Promise<void> {
   console.log(`Loaded danger levels for ${map.size} locations`);
 }
 
-// Blocked (danger_level, errand_type) combos — port of errand_rules.py:20-25
-const BLOCKED_DANGER_COMBOS: ReadonlySet<string> = new Set([
+// Blocked (danger_level, errand_type) combos — the spec's N/A cells (L887-892)
+export const BLOCKED_DANGER_COMBOS: ReadonlySet<string> = new Set([
   "dangerous|relationship",
   "extreme|relationship",
   "extreme|social",
   "extreme|acquire",
 ]);
 
-// Per-companion errand restrictions — port of errand_rules.py blocked_errand_types.
-// Companions not listed have no restrictions.
-const COMPANION_BLOCKED_ERRAND_TYPES: Record<string, ReadonlySet<string>> = {
-  companion_sable: new Set(["social", "relationship"]),
-};
+// Per-companion errand restrictions now live in the shared errand_templates
+// content (each template's blocked_companions list), loaded into getErrandTemplate.
 
 export interface ValidationResult {
   valid: boolean;
@@ -120,7 +94,7 @@ export function validateErrandDispatch(
     };
   }
 
-  if (COMPANION_BLOCKED_ERRAND_TYPES[companionId]?.has(errandType)) {
+  if (getErrandTemplate(errandType)?.blocked_companions.includes(companionId)) {
     return {
       valid: false,
       error: `Companion ${companionId} cannot perform ${errandType} errands`,
@@ -128,30 +102,4 @@ export function validateErrandDispatch(
   }
 
   return { valid: true, error: null };
-}
-
-export function rollErrandRisk(
-  errandType: string,
-  destination: string,
-  companionId: string,
-): InjuryStatus {
-  const dangerLevel = getDangerLevel(destination) ?? "safe";
-  const key = `${dangerLevel}|${errandType}`;
-  const entry = ERRAND_RISK_TABLE[key];
-
-  if (!entry || (entry.injuryPct === 0 && entry.emergencyPct === 0)) {
-    return "none";
-  }
-
-  const roll = Math.floor(Math.random() * 100) + 1;
-  const reduction = COMPANION_INJURY_REDUCTION[companionId] ?? 0;
-  const effectiveInjury = Math.max(0, entry.injuryPct - reduction);
-
-  if (roll <= entry.emergencyPct) {
-    return "emergency";
-  }
-  if (roll <= entry.emergencyPct + effectiveInjury) {
-    return "injured";
-  }
-  return "none";
 }

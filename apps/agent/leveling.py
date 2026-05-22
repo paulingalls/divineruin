@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import Literal
 
+from hp_scaling import calculate_max_hp
 from rules_engine import proficiency_bonus
 
 # --- Type aliases ---
@@ -325,3 +326,21 @@ def build_level_up_payload(from_level: int, rewards: LevelUpRewards) -> dict:
 def get_milestone_narration(level: int) -> str | None:
     """Get a narration template for a milestone level, or None if no milestone."""
     return _MILESTONE_NARRATIONS.get(level)
+
+
+def build_level_up_payload_for_archetype(
+    from_level: int,
+    rewards: LevelUpRewards,
+    archetype: str,
+    con_mod: int = 0,
+) -> dict:
+    """Level-up payload + per-level hp_gains deltas from calculate_max_hp(archetype, level, con_mod). Ref: game_mechanics_core.md L632."""
+    payload = build_level_up_payload(from_level, rewards)
+    hp_gains = [
+        {
+            "level": lvl,
+            "hp_gain": calculate_max_hp(archetype, lvl, con_mod) - calculate_max_hp(archetype, lvl - 1, con_mod),
+        }
+        for lvl in range(from_level + 1, rewards.to_level + 1)
+    ]
+    return {**payload, "hp_gains": hp_gains}

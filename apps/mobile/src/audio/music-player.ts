@@ -5,13 +5,17 @@ import { sessionStore } from "@/stores/session-store";
 
 type PlayerState = "idle" | "playing" | "crossfading" | "fadingOut";
 
-const CROSSFADE_MS = 4000;
-const FADE_IN_MS = 3000;
-const FADE_OUT_MS = 2000;
 const TICK_MS = 33;
 const DUCK_MULTIPLIER = 0.3;
-const EXPLORATION_DELAY_MS = 5000;
-const POST_COMBAT_SILENCE_MS = 3000;
+
+const DEFAULT_TIMINGS = {
+  crossfadeMs: 4000,
+  fadeInMs: 3000,
+  fadeOutMs: 2000,
+  explorationDelayMs: 5000,
+  postCombatSilenceMs: 3000,
+};
+let timings = { ...DEFAULT_TIMINGS };
 
 let state: PlayerState = "idle";
 let currentMusicState: MusicState = "silence";
@@ -162,13 +166,13 @@ export function transitionToMusic(newState: MusicState): void {
 
   if (newState === "silence") {
     previousMusicState = currentMusicState;
-    fadeOutCurrent(FADE_OUT_MS);
+    fadeOutCurrent(timings.fadeOutMs);
     return;
   }
 
   const entry = lookupMusic(newState);
   if (!entry) {
-    fadeOutCurrent(FADE_OUT_MS);
+    fadeOutCurrent(timings.fadeOutMs);
     return;
   }
 
@@ -187,7 +191,7 @@ export function transitionToMusic(newState: MusicState): void {
     clearFadeInterval();
     fadeInterval = setInterval(() => {
       elapsed += TICK_MS;
-      const progress = Math.min(elapsed / FADE_IN_MS, 1);
+      const progress = Math.min(elapsed / timings.fadeInMs, 1);
       if (activePlayer) activePlayer.volume = targetVolume() * progress;
       if (progress >= 1) clearFadeInterval();
     }, TICK_MS);
@@ -202,7 +206,7 @@ export function transitionToMusic(newState: MusicState): void {
     clearFadeInterval();
     fadeInterval = setInterval(() => {
       elapsed += TICK_MS;
-      const progress = Math.min(elapsed / CROSSFADE_MS, 1);
+      const progress = Math.min(elapsed / timings.crossfadeMs, 1);
       const vol = targetVolume();
       oldPlayer.volume = oldVol * (1 - progress);
       if (crossfadePlayer) crossfadePlayer.volume = vol * progress;
@@ -285,7 +289,7 @@ function inferExplorationState(): void {
       if (!sessionStore.getState().inCombat && !agentOverride) {
         transitionToMusic("exploration");
       }
-    }, EXPLORATION_DELAY_MS);
+    }, timings.explorationDelayMs);
     return;
   }
 
@@ -331,7 +335,7 @@ export function startMusicEngine(): void {
           if (!sessionStore.getState().inCombat) {
             inferExplorationState();
           }
-        }, POST_COMBAT_SILENCE_MS);
+        }, timings.postCombatSilenceMs);
       }
       return;
     }
@@ -385,7 +389,7 @@ export function stopMusicEngine(): void {
   clearDuckInterval();
 
   if (activePlayer) {
-    fadeOutCurrent(FADE_OUT_MS);
+    fadeOutCurrent(timings.fadeOutMs);
   } else {
     clearFadeInterval();
     state = "idle";
@@ -403,8 +407,14 @@ export function _getMusicState(): MusicState {
   return currentMusicState;
 }
 
+/** For testing — shrink fade/delay durations so timers complete in ~1 tick. */
+export function _setDurationsForTesting(overrides: Partial<typeof DEFAULT_TIMINGS>): void {
+  timings = { ...timings, ...overrides };
+}
+
 /** For testing — resets all state without fade. */
 export function _resetForTesting(): void {
+  timings = { ...DEFAULT_TIMINGS };
   clearFadeInterval();
   clearDuckInterval();
   clearOneShotTimer();
