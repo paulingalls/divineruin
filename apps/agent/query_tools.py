@@ -69,7 +69,7 @@ async def _query_location_impl(
     *,
     content=db_content_queries,
 ) -> str:
-    logger.info("query_location called: location_id=%s", location_id)
+    logger.info("query_info[location] called: location_id=%s", location_id)
     _validate_id(location_id, "location_id")
     location = await content.get_location(location_id)
     if location is None:
@@ -89,7 +89,7 @@ async def _query_npc_impl(
     queries=db_queries,
     content=db_content_queries,
 ) -> str:
-    logger.info("query_npc called: npc_id=%s", npc_id)
+    logger.info("query_info[npc] called: npc_id=%s", npc_id)
     _validate_id(npc_id, "npc_id")
     session: SessionData = context.userdata
     npc = await content.get_npc(npc_id)
@@ -109,7 +109,7 @@ async def _query_lore_impl(
     *,
     content=db_content_queries,
 ) -> str:
-    logger.info("query_lore called: topic=%s", topic)
+    logger.info("query_info[lore] called: topic=%s", topic)
     entries = await content.search_lore(topic)
     if not entries:
         return json.dumps(
@@ -135,7 +135,7 @@ async def _query_inventory_impl(
     queries=db_queries,
 ) -> str:
     session: SessionData = context.userdata
-    logger.info("query_inventory called: player_id=%s", session.player_id)
+    logger.info("query_info[inventory] called: player_id=%s", session.player_id)
     items = await queries.get_player_inventory(session.player_id)
     if not items:
         return json.dumps({"note": "This player's inventory is empty. They carry nothing of note."})
