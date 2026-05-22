@@ -43,6 +43,21 @@ class TestEnterDispatch:
         await _enter_dispatch_impl(ctx)
         assert ctx.userdata.pre_dispatch_agent_type == "wilderness"
 
+    @pytest.mark.asyncio
+    async def test_derives_region_from_location_when_caller_lacks_agent_type(self):
+        # A non-region caller (no _agent_type) must NOT default to City — derive the
+        # return region from the current location so a non-city hall routes back right.
+        ctx = _ctx(location_id="greyvale_ruins_entrance")
+        ctx.session.current_agent._agent_type = None
+        with patch(
+            "dispatch_tools.db_content_queries.get_location_region_type",
+            new_callable=AsyncMock,
+            return_value="dungeon",
+        ) as m:
+            await _enter_dispatch_impl(ctx)
+        m.assert_awaited_once_with("greyvale_ruins_entrance")
+        assert ctx.userdata.pre_dispatch_agent_type == "dungeon"
+
 
 class TestConcludeDispatch:
     @pytest.mark.asyncio
