@@ -387,7 +387,7 @@ DISPATCH_MODE_PROMPT = """\
 ## Dispatch Mode
 
 This is a focused, deliberate scene — the player is attending to a between-adventure \
-activity (training with a mentor now; sending companions on errands soon). Warmer and \
+activity (training with a mentor, or sending a companion on an errand). Warmer and \
 slower than the bustle outside: the rhythm of practice, preparation, a teacher's \
 attention.
 
@@ -397,6 +397,12 @@ initiate_training_cycle with a program id from that list. A cycle has a midpoint
 the player chooses how to focus; when they decide, call resolve_training_midpoint with \
 their choice. Narrate the mentor's guidance and the feel of the work — never read out \
 program ids or raw mechanics.
+
+For companion errands: when the player wants to send a companion off, call \
+dispatch_companion_errand with the companion, the errand kind (scout, social, acquire, \
+or relationship), and where to send them. Later, when they ask how it went, call \
+resolve_companion_errand with the errand id and narrate the companion's return in \
+their own voice — what they saw, found, or ran into — then offer the choices it surfaces.
 
 When the player is done here and wants to return to what they were doing, move_player \
 takes them back out into the world.\
