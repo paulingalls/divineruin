@@ -1,0 +1,39 @@
+[
+  {
+    "id": "scout",
+    "name": "Scouting Mission",
+    "duration_min_seconds": 14400,
+    "duration_max_seconds": 28800,
+    "valid_destinations": ["millhaven", "greyvale_ruins_entrance", "accord_dockside"],
+    "blocked_companions": []
+  },
+  {
+    "id": "social",
+    "name": "Social Inquiry",
+    "duration_min_seconds": 10800,
+    "duration_max_seconds": 21600,
+    "valid_destinations": [
+      "millhaven_inn",
+      "accord_guild_hall",
+      "accord_market_square",
+      "accord_dockside"
+    ],
+    "blocked_companions": ["companion_sable"]
+  },
+  {
+    "id": "acquire",
+    "name": "Acquire Supplies",
+    "duration_min_seconds": 14400,
+    "duration_max_seconds": 36000,
+    "valid_destinations": ["accord_market_square", "accord_dockside", "millhaven"],
+    "blocked_companions": []
+  },
+  {
+    "id": "relationship",
+    "name": "Build Relationship",
+    "duration_min_seconds": 7200,
+    "duration_max_seconds": 14400,
+    "valid_destinations": ["millhaven", "millhaven_inn", "accord_guild_hall", "accord_dockside"],
+    "blocked_companions": ["companion_sable"]
+  }
+]
