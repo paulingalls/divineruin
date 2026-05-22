@@ -8,12 +8,12 @@ raise LiveKit ToolError (ADR 0002). The _*_impl seams take injected mods.
 
 import json
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context
+from sample_fixtures import FIXED_NOW, make_context
 
 from errand_tools import _dispatch_companion_errand_impl, _resolve_companion_errand_impl
 
@@ -78,6 +78,7 @@ class TestDispatchCompanionErrand:
                 content_mod=_content(SCOUT_TEMPLATE, {"danger_level": 0}),
                 activity_mod=_activity(0),
                 mutations_mod=mutations,
+                now_fn=lambda: FIXED_NOW,
                 rng=random.Random(1),
             )
         )
@@ -93,9 +94,12 @@ class TestDispatchCompanionErrand:
         assert data["status"] == "in_progress"
         assert data["activity_type"] == "companion_errand"
         assert data["parameters"] == {"errand_type": "scout", "destination": "millhaven"}
-        # Duration sampled from the template's spec range.
-        assert 14400 <= data["duration_min_seconds"] == 14400
+        # Template's spec range is recorded on the row.
+        assert data["duration_min_seconds"] == 14400
         assert data["duration_max_seconds"] == 28800
+        # The sampled resolve_at duration falls within that range.
+        sampled = datetime.fromisoformat(data["resolve_at"]) - FIXED_NOW
+        assert timedelta(seconds=14400) <= sampled <= timedelta(seconds=28800)
 
     @pytest.mark.asyncio
     async def test_full_companion_slot_raises_no_row(self):
