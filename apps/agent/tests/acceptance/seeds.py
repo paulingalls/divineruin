@@ -35,9 +35,16 @@ async def seed_player(
     player_id: str = "player_1",
     class_: str = "skirmisher",
     location_id: str = "accord_guild_hall",
+    companion: dict | None = None,
 ) -> str:
-    """Upsert a player row with a valid archetype and starting location."""
+    """Upsert a player row with a valid archetype and starting location.
+
+    Pass `companion` to attach a companion block (the errand resolve path reads
+    `player_data["companion"]`, and the DM needs the companion id to dispatch).
+    """
     data = {**_DEFAULT_PLAYER, "player_id": player_id, "class": class_, "location_id": location_id}
+    if companion is not None:
+        data["companion"] = companion
     await conn.execute(
         """
         INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)
@@ -52,6 +59,49 @@ async def seed_player(
 async def clear_training_activities(conn: asyncpg.Connection | asyncpg.Pool, player_id: str = "player_1") -> None:
     """Drop any training rows so each scenario starts from an empty slot."""
     await conn.execute("DELETE FROM training_activities WHERE player_id = $1", player_id)
+
+
+async def clear_async_activities(conn: asyncpg.Connection | asyncpg.Pool, player_id: str = "player_1") -> None:
+    """Drop any async_activities (crafting/companion_errand) so the companion slot starts empty."""
+    await conn.execute("DELETE FROM async_activities WHERE player_id = $1", player_id)
+
+
+async def seed_async_activity(
+    conn: asyncpg.Connection | asyncpg.Pool,
+    *,
+    activity_id: str,
+    player_id: str = "player_1",
+    errand_type: str = "scout",
+    destination: str = "millhaven",
+    status: str = "in_progress",
+    resolve_at: str | None = None,
+) -> str:
+    """Insert a companion_errand async_activities row, mirroring the dispatch tool's
+    data shape (errand_tools._dispatch_companion_errand_impl) field-for-field so the
+    async worker treats it identically to a tool-dispatched errand."""
+    data = {
+        "status": status,
+        "activity_type": "companion_errand",
+        "start_time": "2026-01-01T00:00:00+00:00",
+        "duration_min_seconds": 14400,
+        "duration_max_seconds": 28800,
+        "resolve_at": resolve_at or "2026-01-01T01:00:00+00:00",
+        "parameters": {"errand_type": errand_type, "destination": destination},
+        "outcome": None,
+        "narration_text": None,
+        "narration_audio_url": None,
+        "decision_options": None,
+    }
+    await conn.execute(
+        """
+        INSERT INTO async_activities (id, player_id, data) VALUES ($1, $2, $3::jsonb)
+        ON CONFLICT (id) DO UPDATE SET data = $3::jsonb
+        """,
+        activity_id,
+        player_id,
+        json.dumps(data),
+    )
+    return activity_id
 
 
 async def seed_training_activity(
