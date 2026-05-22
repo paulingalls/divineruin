@@ -15,6 +15,7 @@ from base_agent import BaseGameAgent
 from check_tools import roll_dice
 from dispatch_tools import conclude_dispatch
 from environment_tools import play_sound, set_music_state
+from errand_tools import dispatch_companion_errand, resolve_companion_errand
 from movement_tools import move_player
 from query_tools import query_info
 from session_tools import end_session
@@ -22,10 +23,13 @@ from system_prompts import DISPATCH_SYSTEM_PROMPT
 from training_tools import initiate_training_cycle, query_training_programs, resolve_training_midpoint
 
 DISPATCH_TOOLS = [
-    # Training (the first async activity; errands join in story-009)
+    # Training (the first async activity)
     query_training_programs,
     initiate_training_cycle,
     resolve_training_midpoint,
+    # Companion errands (the third async activity)
+    dispatch_companion_errand,
+    resolve_companion_errand,
     # Navigation / queries — enough to talk to the mentor and leave
     move_player,
     query_info,
