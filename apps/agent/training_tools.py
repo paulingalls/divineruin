@@ -1,24 +1,17 @@
 """Training-cycle agent tools (M1.5).
 
-Module conventions (within this module only — other agent tools still
-return code-less `{"error": ...}`; a follow-up cross-cutting migration
-will move to LiveKit's `ToolError` exception pattern across all tools)
------------------------------------------------------------------------
-* Error JSON shape — every error return is `{"error": <human prose>, "code": <machine slug>}`.
-  Slugs (initiate): `INVALID_PROGRAM_ID`, `UNKNOWN_PROGRAM`, `UNKNOWN_ACTIVITY_TYPE`, `TRAINING_SLOT_FULL`.
-  Slugs (resolve): `INVALID_TRAINING_ID`, `UNKNOWN_TRAINING`, `TRAINING_NOT_OWNED`, `TRAINING_WRONG_STATE`, `INVALID_DECISION`.
-  Switch on `code` from callers, render `error` to the DM.
-* `_*_impl` helpers expose `db_mod=`, `db_training_mod=`, `db_content_mod=`, `rules_mod=`,
-  `now_fn=` keyword arguments. These are TEST-ONLY injection seams; production callers
-  use the `@function_tool` wrappers which always pass module defaults. Do not call the
-  `_impl` directly from production code.
+Errors raise LiveKit `ToolError` (ADR 0002) — the framework surfaces the message
+to the LLM. `_*_impl` helpers expose `db_mod=`, `db_training_mod=`, `db_content_mod=`,
+`rules_mod=`, `now_fn=` keyword arguments — TEST-ONLY injection seams; production
+callers use the `@function_tool` wrappers. Do not call the `_impl` directly from
+production code.
 """
 
 import json
 import logging
 from datetime import UTC, datetime
 
-from livekit.agents.llm import function_tool
+from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db
@@ -33,11 +26,6 @@ logger = logging.getLogger("divineruin.tools")
 
 _TERMINAL_STATE: TrainingState = "complete"
 _AWAITING_DECISION_STATE: TrainingState = "awaiting_decision"
-
-
-def _error_json(code: str, message: str) -> str:
-    """Build the canonical error JSON shape for training_tools."""
-    return json.dumps({"error": message, "code": code})
 
 
 @function_tool()
@@ -94,28 +82,26 @@ async def _initiate_training_cycle_impl(
     now_fn=None,
 ) -> str:
     context.disallow_interruptions()
-    validation_err = _validate_id(program_id, "program_id")
-    if validation_err is not None:
-        return _error_json("INVALID_PROGRAM_ID", json.loads(validation_err)["error"])
+    _validate_id(program_id, "program_id")
     session: SessionData = context.userdata
     player_id = session.player_id
     logger.info("initiate_training_cycle called: player_id=%s program_id=%s", player_id, program_id)
 
     program = await db_content_mod.get_training_program(program_id)
     if program is None:
-        return _error_json("UNKNOWN_PROGRAM", f"Unknown training program: {program_id}")
+        raise ToolError(f"Unknown training program: {program_id}")
 
     now = (now_fn or _default_now)()
     start_fn = rules_mod or start_training_cycle
     try:
         cycle = start_fn(program["training_activity_type"], now)
     except ValueError as e:
-        return _error_json("UNKNOWN_ACTIVITY_TYPE", str(e))
+        raise ToolError(str(e)) from e
 
     async with db_mod.transaction() as conn:
         existing_rows = await db_training_mod.get_player_training_activities(player_id, state=None, conn=conn)
         if any(row["state"] != _TERMINAL_STATE for row in existing_rows):
-            return _error_json("TRAINING_SLOT_FULL", "A training cycle is already in progress.")
+            raise ToolError("A training cycle is already in progress.")
 
         data = {
             "program_id": program["id"],
@@ -182,9 +168,7 @@ async def _resolve_training_midpoint_impl(
     now_fn=None,
 ) -> str:
     context.disallow_interruptions()
-    validation_err = _validate_id(training_id, "training_id")
-    if validation_err is not None:
-        return _error_json("INVALID_TRAINING_ID", json.loads(validation_err)["error"])
+    _validate_id(training_id, "training_id")
     session: SessionData = context.userdata
     player_id = session.player_id
     logger.info(
@@ -197,24 +181,18 @@ async def _resolve_training_midpoint_impl(
     async with db_mod.transaction() as conn:
         row = await db_training_mod.get_training_activity(training_id, conn=conn, for_update=True)
         if row is None:
-            return _error_json("UNKNOWN_TRAINING", f"Unknown training: {training_id}")
+            raise ToolError(f"Unknown training: {training_id}")
         if row["player_id"] != player_id:
-            return _error_json(
-                "TRAINING_NOT_OWNED",
-                f"Training {training_id} does not belong to this player.",
-            )
+            raise ToolError(f"Training {training_id} does not belong to this player.")
         if row["state"] != _AWAITING_DECISION_STATE:
-            return _error_json(
-                "TRAINING_WRONG_STATE",
-                f"Training {training_id} is in state '{row['state']}', not '{_AWAITING_DECISION_STATE}'.",
-            )
+            raise ToolError(f"Training {training_id} is in state '{row['state']}', not '{_AWAITING_DECISION_STATE}'.")
 
         now = (now_fn or _default_now)()
         resolve_fn = rules_mod or resolve_midpoint_decision
         try:
             result = resolve_fn(row["activity_type"], decision_id, now)
         except ValueError as e:
-            return _error_json("INVALID_DECISION", str(e))
+            raise ToolError(str(e)) from e
 
         data_updates = {
             "decision_id": decision_id,

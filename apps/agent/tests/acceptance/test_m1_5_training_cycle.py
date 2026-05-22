@@ -1,7 +1,7 @@
 """pytest-bdd step defs for the M1.5 training-cycle acceptance scenarios.
 
-Drives the real TrainingAgent (Haiku) + a real Postgres testcontainer via the
-LiveKit test framework. Training tools live in TrainingAgent (story-011), reached
+Drives the real DispatchAgent (Haiku) + a real Postgres testcontainer via the
+LiveKit test framework. Training tools live in DispatchAgent, reached
 when the player enters the training hall. Skips entirely without ANTHROPIC_API_KEY
 (the pre-sprint-close / test-creation schedule in ADR 0003).
 
@@ -15,9 +15,7 @@ thread rather than one run_until_complete per step.
 
 from __future__ import annotations
 
-import asyncio
 import os
-import threading
 from types import SimpleNamespace
 from typing import Any
 
@@ -29,8 +27,10 @@ from livekit.plugins import anthropic
 from pytest_bdd import given, parsers, scenarios, then, when
 
 import db
+from dispatch_agent import create_dispatch_agent
 from session_data import SessionData
-from training_agent import create_training_agent
+from training_rules import get_midpoint_decision
+from warm_prompts import format_training_section
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("ANTHROPIC_API_KEY"),
@@ -42,30 +42,8 @@ _AGENT_MODEL = "claude-haiku-4-5-20251001"
 
 scenarios("features/m1_5_training_cycle.feature")
 
-
-@pytest.fixture
-def harness(migrated_db: str):
-    loop = asyncio.new_event_loop()
-    thread = threading.Thread(target=loop.run_forever, daemon=True)
-    thread.start()
-
-    def run_sync(coro: Any) -> Any:
-        return asyncio.run_coroutine_threadsafe(coro, loop).result()
-
-    os.environ["DATABASE_URL"] = migrated_db
-    run_sync(db.close_all())
-
-    h = SimpleNamespace(run_sync=run_sync, state={})
-    try:
-        yield h
-    finally:
-        session = h.state.get("session")
-        if session is not None:
-            run_sync(session.aclose())
-        run_sync(db.close_all())
-        loop.call_soon_threadsafe(loop.stop)
-        thread.join()
-        loop.close()
+# The `harness` fixture (per-scenario event loop on a background thread + run_sync)
+# lives in conftest.py, shared with the M1.6 errand acceptance test.
 
 
 async def _start_training_session(harness: SimpleNamespace, chat_ctx: ChatContext | None = None) -> None:
@@ -74,7 +52,7 @@ async def _start_training_session(harness: SimpleNamespace, chat_ctx: ChatContex
         llm=anthropic.LLM(model=_AGENT_MODEL, caching="ephemeral"),
         userdata=session_data,
     )
-    await session.start(create_training_agent(chat_ctx=chat_ctx))
+    await session.start(create_dispatch_agent(chat_ctx=chat_ctx))
     harness.state["session"] = session
     harness.state["judge_llm"] = anthropic.LLM(model=_AGENT_MODEL)
 
@@ -96,19 +74,31 @@ def _given_awaiting_midpoint(harness: SimpleNamespace) -> None:
         pool = await db.get_pool()
         await seed_player(pool, player_id="player_1")
         await clear_training_activities(pool, "player_1")
-        await seed_training_activity(pool, activity_id="train_mid01", state="awaiting_decision")
-        # The mentor already knows which cycle is mid-decision; carry the id +
-        # options into context the way the warm prompt / notification does — STATE
-        # only, no tool instruction (the standing prompt already says to resolve at
-        # the midpoint), so the assertion tests the agent's own tool choice.
+        # Build the awaiting_decision payload exactly as async_worker does at the
+        # midpoint transition, from the REAL activity-type config — so the seed
+        # mirrors production content rather than hand-authored prose.
+        decision = get_midpoint_decision("technique_base")
+        cycle_data = {
+            "program_id": "combat_basics",
+            "program_name": "Combat Fundamentals",
+            "decision_prompt": decision.prompt,
+            "decision_options": [{"id": o.id, "label": o.label} for o in decision.options],
+        }
+        await seed_training_activity(pool, activity_id="train_mid01", state="awaiting_decision", data=cycle_data)
+        # Carry the cycle id + options into context the way the production warm-prompt
+        # layer does — by formatting through the SAME helper, so this scenario drives
+        # the real surface (format drift fails here, not just a unit test). STATE only,
+        # no tool instruction, so the assertion tests the agent's own tool choice.
+        row = {
+            "id": "train_mid01",
+            "activity_type": "technique_base",
+            "state": "awaiting_decision",
+            "data": cycle_data,
+        }
+        training_block = format_training_section([row])
+        assert training_block is not None  # awaiting_decision row always yields a block
         ctx = ChatContext()
-        ctx.add_message(
-            role="system",
-            content=(
-                "The player has an active Combat Fundamentals training cycle (id: train_mid01) "
-                "paused at its midpoint, awaiting a stance choice between 'aggressive' and 'defensive'."
-            ),
-        )
+        ctx.add_message(role="system", content=training_block)
         await _start_training_session(harness, chat_ctx=ctx)
 
     harness.run_sync(_setup())

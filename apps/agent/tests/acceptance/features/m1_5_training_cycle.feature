@@ -1,8 +1,8 @@
 Feature: M1.5 training cycle — DM training agent end-to-end
 
-  Drives the real TrainingAgent (Haiku, production gameplay model) against a real
+  Drives the real DispatchAgent (Haiku, production gameplay model) against a real
   Postgres testcontainer via the LiveKit test framework. Training tools live in
-  TrainingAgent (story-011), reached when the player enters the training hall.
+  DispatchAgent, reached when the player enters the training hall.
   Runs only when ANTHROPIC_API_KEY is set (pre-sprint-close / test-creation
   schedule — see ADR 0003).
 
@@ -21,6 +21,6 @@ Feature: M1.5 training cycle — DM training agent end-to-end
 
   Scenario: Player cannot start a second cycle while one is in progress
     Given a player at the training hall with a cycle already in progress
-    When the player says "I want to start training in combat fundamentals"
+    When the player says "Let's begin the Combat Fundamentals training right now"
     Then the agent calls the "initiate_training_cycle" tool
     And the agent narrates that a cycle is already in progress

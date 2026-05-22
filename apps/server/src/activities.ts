@@ -3,13 +3,13 @@ import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
 import {
   CRAFTING_RECIPES,
-  ERRAND_TEMPLATES,
   VALID_ACTIVITY_TYPES,
   getTrainingProgram,
+  getErrandTemplate,
 } from "./activity_templates.ts";
 import { displayName } from "@divineruin/shared";
 import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts";
-import { rollErrandRisk, validateErrandDispatch } from "./errand_risk.ts";
+import { validateErrandDispatch } from "./errand_risk.ts";
 import { startTrainingCycle } from "./training_state_machine.ts";
 
 async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<SlotCounts> {
@@ -59,6 +59,10 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       return Response.json({ error: "Invalid activity type" }, { status: 400 });
     }
 
+    // Capture into a const so the narrowed string type survives into the
+    // sql.begin() async closures below (TS widens body.type back to
+    // string | undefined across the closure boundary otherwise).
+    const activityType = body.type;
     const params = body.parameters ?? {};
 
     // Training uses its own table and transaction — handle separately and return early
@@ -84,7 +88,9 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
           FOR UPDATE
         `;
         const slotCounts = await countActiveBySlot(playerId, tx);
-        const slotCheck = validateSlotAvailability(slotCounts, body.type);
+        // archetype/hasPortableLab intentionally omitted: the Artificer
+        // training-slot exception is deferred to Phase 5 (see ADR 0005).
+        const slotCheck = validateSlotAvailability(slotCounts, activityType);
         if (!slotCheck.valid) {
           return { error: slotCheck.error! } as const;
         }
@@ -158,7 +164,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       if (!errandType) {
         return Response.json({ error: "errand_type is required" }, { status: 400 });
       }
-      const template = ERRAND_TEMPLATES[errandType];
+      const template = getErrandTemplate(errandType);
       if (!template) {
         return Response.json({ error: "Unknown errand type" }, { status: 400 });
       }
@@ -177,10 +183,10 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
 
       durationMin = template.duration_min_seconds;
       durationMax = template.duration_max_seconds;
+      // Risk is rolled by the Python worker at resolution (ADR 0006), not here.
       activityParams = {
         errand_type: errandType,
         destination,
-        risk_outcome: rollErrandRisk(errandType, destination, companionId),
       };
     }
 
@@ -197,7 +203,9 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         FOR UPDATE
       `;
       const slotCounts = await countActiveBySlot(playerId, tx);
-      const slotCheck = validateSlotAvailability(slotCounts, body.type);
+      // archetype/hasPortableLab intentionally omitted: the Artificer
+      // crafting-on-training-slot exception is deferred to Phase 5 (see ADR 0005).
+      const slotCheck = validateSlotAvailability(slotCounts, activityType);
       if (!slotCheck.valid) {
         return { error: slotCheck.error! } as const;
       }
@@ -228,7 +236,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
 
       const data = {
         status: "in_progress",
-        activity_type: body.type,
+        activity_type: activityType,
         start_time: now.toISOString(),
         duration_min_seconds: durationMin,
         duration_max_seconds: durationMax,

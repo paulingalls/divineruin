@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from livekit.agents.llm import ToolError
 
 from progression_tools import award_xp
 from session_data import SessionData
@@ -26,13 +27,8 @@ async def test_award_xp_connection_error_returns_json_error():
     with patch("db.transaction") as mock_txn:
         mock_txn.side_effect = ConnectionError("Database unreachable")
 
-        result = await award_xp(context, amount=100, reason="test")
-        data = json.loads(result)
-
-        assert data["success"] is False
-        assert "error" in data
-        assert "trouble accessing" in data["error"].lower()
-        assert "guidance" in data
+        with pytest.raises(ToolError, match="trouble accessing"):
+            await award_xp(context, amount=100, reason="test")
 
 
 @pytest.mark.asyncio
@@ -56,12 +52,8 @@ async def test_update_disposition_timeout_returns_json_error():
         mock_get_npc.return_value = {"id": "torin", "name": "Torin", "default_disposition": "neutral"}
         mock_txn.side_effect = TimeoutError("Query took too long")
 
-        result = await update_npc_disposition(context, npc_id="torin", delta=1, reason="test")
-        data = json.loads(result)
-
-        assert data["success"] is False
-        assert "error" in data
-        assert "longer than expected" in data["error"].lower()
+        with pytest.raises(ToolError, match="longer than expected"):
+            await update_npc_disposition(context, npc_id="torin", delta=1, reason="test")
 
 
 @pytest.mark.asyncio
@@ -91,11 +83,8 @@ async def test_transaction_rollback_prevents_partial_state():
         }
         mock_conn.execute.side_effect = ConnectionError("DB write failed")
 
-        result = await award_xp(context, amount=50, reason="test")
-        data = json.loads(result)
-
-        # Should get error response
-        assert data["success"] is False
+        with pytest.raises(ToolError):
+            await award_xp(context, amount=50, reason="test")
 
         # Session should not have recorded event (rollback)
         assert len(session.recent_events) == initial_events
@@ -116,9 +105,8 @@ async def test_successful_mutation_after_error():
     # First call fails
     with patch("db.transaction") as mock_txn:
         mock_txn.side_effect = ConnectionError("Temporary failure")
-        result1 = await award_xp(context, amount=100, reason="test")
-        data1 = json.loads(result1)
-        assert data1["success"] is False
+        with pytest.raises(ToolError):
+            await award_xp(context, amount=100, reason="test")
 
     # Second call succeeds (mocked)
     with (

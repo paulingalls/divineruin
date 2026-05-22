@@ -5,6 +5,7 @@ from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from livekit.agents.llm import ToolError
 from sample_fixtures import FIXED_NOW, make_context, make_db_mod
 
 from training_rules import TrainingCycleInit
@@ -137,7 +138,7 @@ class TestInitiateTrainingCycle:
         mock_content.get_training_program = AsyncMock()
         mock_training = MagicMock()
         mock_training.create_training_activity = AsyncMock()
-        result = json.loads(
+        with pytest.raises(ToolError, match="program_id"):
             await _initiate_training_cycle_impl(
                 ctx,
                 "bad id!! has spaces",
@@ -146,9 +147,6 @@ class TestInitiateTrainingCycle:
                 db_content_mod=mock_content,
                 now_fn=lambda: FIXED_NOW,
             )
-        )
-        assert result["code"] == "INVALID_PROGRAM_ID"
-        assert "program_id" in result["error"]
         mock_content.get_training_program.assert_not_awaited()
         mock_training.create_training_activity.assert_not_awaited()
 
@@ -160,7 +158,7 @@ class TestInitiateTrainingCycle:
         mock_content.get_training_program = AsyncMock(return_value=None)
         mock_training = MagicMock()
         mock_training.create_training_activity = AsyncMock()
-        result = json.loads(
+        with pytest.raises(ToolError, match="Unknown training program: nonexistent"):
             await _initiate_training_cycle_impl(
                 ctx,
                 "nonexistent",
@@ -169,8 +167,6 @@ class TestInitiateTrainingCycle:
                 db_content_mod=mock_content,
                 now_fn=lambda: FIXED_NOW,
             )
-        )
-        assert result == {"error": "Unknown training program: nonexistent", "code": "UNKNOWN_PROGRAM"}
         mock_training.create_training_activity.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -185,7 +181,7 @@ class TestInitiateTrainingCycle:
         )
         mock_training.create_training_activity = AsyncMock()
         cycle = _make_cycle()
-        result = json.loads(
+        with pytest.raises(ToolError, match="already in progress"):
             await _initiate_training_cycle_impl(
                 ctx,
                 "combat_basics",
@@ -195,8 +191,6 @@ class TestInitiateTrainingCycle:
                 rules_mod=_stub_rules_factory(cycle),
                 now_fn=lambda: FIXED_NOW,
             )
-        )
-        assert result == {"error": "A training cycle is already in progress.", "code": "TRAINING_SLOT_FULL"}
         mock_training.get_player_training_activities.assert_awaited_once_with("player_1", state=None, conn=mock_conn)
         mock_training.create_training_activity.assert_not_awaited()
 
@@ -236,7 +230,7 @@ class TestInitiateTrainingCycle:
         )
         mock_training = MagicMock()
         mock_training.create_training_activity = AsyncMock()
-        result = json.loads(
+        with pytest.raises(ToolError, match="totally_bogus"):
             await _initiate_training_cycle_impl(
                 ctx,
                 "combat_basics",
@@ -246,9 +240,6 @@ class TestInitiateTrainingCycle:
                 rules_mod=_stub_rules_raises(),
                 now_fn=lambda: FIXED_NOW,
             )
-        )
-        assert result["code"] == "UNKNOWN_ACTIVITY_TYPE"
-        assert "totally_bogus" in result["error"]
         mock_training.create_training_activity.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -278,6 +269,6 @@ class TestInitiateTrainingCycle:
         assert kwargs["transition_at"] == FIXED_NOW + timedelta(seconds=5 * 3600)
 
 
-# Training-tool registration moved to TrainingAgent in story-011 (CityAgent
+# Training-tool registration moved to DispatchAgent in story-011 (CityAgent
 # decomposition). The wiring is now pinned by tests/test_training_agent.py
-# (TestTrainingAgentRegistration + TestCityToolBudget).
+# (TestDispatchAgentRegistration + TestCityToolBudget).

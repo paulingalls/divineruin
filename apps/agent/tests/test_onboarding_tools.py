@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from livekit.agents.llm import ToolError
 
 from session_data import CompanionState, SessionData
 
@@ -127,11 +128,8 @@ class TestAdvanceOnboardingBeat:
         ctx = _make_context(onboarding_beat=1)
         ctx.userdata.onboarding_beat = None
 
-        raw = await advance_onboarding_beat._func(ctx)
-        assert isinstance(raw, str)
-        result = json.loads(raw)
-
-        assert "error" in result
+        with pytest.raises(ToolError, match="Not in onboarding mode"):
+            await advance_onboarding_beat._func(ctx)
 
     @pytest.mark.asyncio
     @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)

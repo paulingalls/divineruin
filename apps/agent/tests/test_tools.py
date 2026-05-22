@@ -4,9 +4,11 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from livekit.agents.llm import ToolError
 
 from check_tools import _discover_hidden_element_impl
 from query_tools import (
+    _query_info_impl,
     _query_inventory_impl,
     _query_location_impl,
     _query_lore_impl,
@@ -222,8 +224,8 @@ class TestQueryLocation:
         mock_content = MagicMock()
         mock_content.get_location = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(await _query_location_impl(ctx, location_id="nonexistent", content=mock_content))
-        assert "error" in result
+        with pytest.raises(ToolError, match="not found"):
+            await _query_location_impl(ctx, location_id="nonexistent", content=mock_content)
 
 
 class TestQueryNpc:
@@ -274,8 +276,8 @@ class TestQueryNpc:
         mock_content = MagicMock()
         mock_content.get_npc = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(await _query_npc_impl(ctx, npc_id="nobody", content=mock_content))
-        assert "error" in result
+        with pytest.raises(ToolError, match="not found"):
+            await _query_npc_impl(ctx, npc_id="nobody", content=mock_content)
 
 
 class TestQueryLore:
@@ -328,6 +330,49 @@ class TestQueryInventory:
         ctx = _make_context()
         result = json.loads(await _query_inventory_impl(ctx, queries=mock_queries))
         assert "note" in result
+
+
+class TestQueryInfo:
+    """query_info dispatches by kind to the unchanged per-kind impls."""
+
+    @pytest.mark.asyncio
+    async def test_routes_location(self):
+        ctx = _make_context()
+        with patch("query_tools._query_location_impl", new_callable=AsyncMock, return_value='{"k":"loc"}') as m:
+            result = await _query_info_impl(ctx, "location", "accord_guild_hall")
+        m.assert_awaited_once_with(ctx, "accord_guild_hall")
+        assert result == '{"k":"loc"}'
+
+    @pytest.mark.asyncio
+    async def test_routes_npc(self):
+        ctx = _make_context()
+        with patch("query_tools._query_npc_impl", new_callable=AsyncMock, return_value='{"k":"npc"}') as m:
+            result = await _query_info_impl(ctx, "npc", "guildmaster_torin")
+        m.assert_awaited_once_with(ctx, "guildmaster_torin")
+        assert result == '{"k":"npc"}'
+
+    @pytest.mark.asyncio
+    async def test_routes_lore_with_topic(self):
+        ctx = _make_context()
+        with patch("query_tools._query_lore_impl", new_callable=AsyncMock, return_value='{"k":"lore"}') as m:
+            result = await _query_info_impl(ctx, "lore", "the Hollow")
+        m.assert_awaited_once_with(ctx, "the Hollow")
+        assert result == '{"k":"lore"}'
+
+    @pytest.mark.asyncio
+    async def test_routes_inventory_without_target(self):
+        ctx = _make_context()
+        with patch("query_tools._query_inventory_impl", new_callable=AsyncMock, return_value='{"k":"inv"}') as m:
+            result = await _query_info_impl(ctx, "inventory", None)
+        m.assert_awaited_once_with(ctx)
+        assert result == '{"k":"inv"}'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("kind", ["location", "npc", "lore"])
+    async def test_missing_target_id_raises(self, kind):
+        ctx = _make_context()
+        with pytest.raises(ToolError):
+            await _query_info_impl(ctx, kind, None)
 
 
 # --- enter_location tests ---
@@ -410,8 +455,8 @@ class TestEnterLocation:
         mock_content = MagicMock()
         mock_content.get_location = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(await _enter_location_impl(ctx, location_id="nowhere", content=mock_content))
-        assert "error" in result
+        with pytest.raises(ToolError, match="not found"):
+            await _enter_location_impl(ctx, location_id="nowhere", content=mock_content)
 
     @pytest.mark.asyncio
     async def test_empty_npcs_and_targets(self):
@@ -606,16 +651,16 @@ class TestDiscoverHiddenElement:
         mock_content = MagicMock()
         mock_content.get_location = AsyncMock(return_value=LOCATION_WITH_HIDDEN)
         ctx = _make_context(location_id="test_location")
-        result = json.loads(await _discover_hidden_element_impl(ctx, element_id="nonexistent", content=mock_content))
-        assert "error" in result
+        with pytest.raises(ToolError, match="No hidden element"):
+            await _discover_hidden_element_impl(ctx, element_id="nonexistent", content=mock_content)
 
     @pytest.mark.asyncio
     async def test_location_not_found(self):
         mock_content = MagicMock()
         mock_content.get_location = AsyncMock(return_value=None)
         ctx = _make_context(location_id="nowhere")
-        result = json.loads(await _discover_hidden_element_impl(ctx, element_id="secret_door", content=mock_content))
-        assert "error" in result
+        with pytest.raises(ToolError, match="not found"):
+            await _discover_hidden_element_impl(ctx, element_id="secret_door", content=mock_content)
 
     @pytest.mark.asyncio
     @patch("check_tools.publish_game_event", new_callable=AsyncMock)
@@ -631,13 +676,10 @@ class TestDiscoverHiddenElement:
                 ctx, element_id="secret_door", content=mock_content, queries=mock_queries, mutations=mock_mutations
             )
 
-        result = json.loads(
+        with pytest.raises(ToolError, match="Already searched"):
             await _discover_hidden_element_impl(
                 ctx, element_id="secret_door", content=mock_content, queries=mock_queries, mutations=mock_mutations
             )
-        )
-        assert "error" in result
-        assert "Already searched" in result["error"]
 
     @pytest.mark.asyncio
     @patch("check_tools.publish_game_event", new_callable=AsyncMock)
@@ -669,25 +711,17 @@ class TestValidateId:
         assert _validate_id("npc-123", "npc_id") is None
 
     def test_empty_id(self):
-        error_json = _validate_id("", "location_id")
-        assert error_json is not None
-        result = json.loads(error_json)
-        assert "error" in result
+        with pytest.raises(ToolError, match="Invalid location_id"):
+            _validate_id("", "location_id")
 
     def test_too_long_id(self):
-        error_json = _validate_id("a" * 129, "location_id")
-        assert error_json is not None
-        result = json.loads(error_json)
-        assert "error" in result
+        with pytest.raises(ToolError, match="Invalid location_id"):
+            _validate_id("a" * 129, "location_id")
 
     def test_special_characters_rejected(self):
-        error_json = _validate_id("id; DROP TABLE", "location_id")
-        assert error_json is not None
-        result = json.loads(error_json)
-        assert "error" in result
+        with pytest.raises(ToolError, match="Invalid location_id"):
+            _validate_id("id; DROP TABLE", "location_id")
 
     def test_path_traversal_rejected(self):
-        error_json = _validate_id("../etc/passwd", "location_id")
-        assert error_json is not None
-        result = json.loads(error_json)
-        assert "error" in result
+        with pytest.raises(ToolError, match="Invalid location_id"):
+            _validate_id("../etc/passwd", "location_id")

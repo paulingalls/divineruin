@@ -1,9 +1,12 @@
 /**
- * Per-slot activity validation — pure functions, no IO.
+ * Per-slot activity validation — pure functions, no IO. Slot logic is
+ * TS-authoritative (the Python agent does not validate slots).
  *
- * Mirrors Python errand_rules.validate_slot_limits() with the 3-independent-slot model:
- *   training (1 max), crafting (1 max), companion (1 max)
- * Artificer exception: can use training slot for crafting when portable_lab equipped.
+ * 3-independent-slot model: training (1 max), crafting (1 max), companion (1 max).
+ * The Artificer exception (use the training slot for crafting when a Portable Lab
+ * is equipped) is implemented here but NOT wired from production yet — deferred to
+ * Phase 5 (see ADR 0005). The archetype/hasPortableLab params + their unit tests
+ * are the Phase-5-ready seam.
  */
 
 import type { ActivityType } from "@divineruin/shared";

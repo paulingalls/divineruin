@@ -1,14 +1,16 @@
 import { describe, expect, test, beforeEach } from "bun:test";
 import {
-  rollErrandRisk,
   validateErrandDispatch,
   numericToDangerLevel,
-  type InjuryStatus,
+  setDestinationDangerLevels,
+  BLOCKED_DANGER_COMBOS,
 } from "./errand_risk.ts";
 import { setupDangerLevelFixture } from "./test-fixtures/danger-levels.ts";
+import { setupErrandTemplatesFixture } from "./test-fixtures/errand-templates.ts";
 
 beforeEach(() => {
   setupDangerLevelFixture();
+  setupErrandTemplatesFixture();
 });
 
 describe("numericToDangerLevel", () => {
@@ -34,76 +36,20 @@ describe("numericToDangerLevel", () => {
   });
 });
 
-describe("rollErrandRisk", () => {
-  test("safe destination always returns none", () => {
-    const results = new Set<InjuryStatus>();
-    for (let i = 0; i < 100; i++) {
-      results.add(rollErrandRisk("scout", "millhaven", "companion_kael"));
-    }
-    expect(results.size).toBe(1);
-    expect(results.has("none")).toBe(true);
-  });
-
-  test("safe destination with any errand type returns none", () => {
-    for (const errandType of ["scout", "social", "acquire", "relationship"] as const) {
-      expect(rollErrandRisk(errandType, "millhaven", "companion_kael")).toBe("none");
-    }
-  });
-
-  test("dangerous scout can produce injured or emergency", () => {
-    const results = new Set<InjuryStatus>();
-    for (let i = 0; i < 500; i++) {
-      results.add(rollErrandRisk("scout", "greyvale_ruins_entrance", "companion_lira"));
-    }
-    // With 25% injury + 5% emergency (no reduction for lira), 500 rolls should hit all outcomes
-    expect(results.has("none")).toBe(true);
-    expect(results.has("injured")).toBe(true);
-    expect(results.has("emergency")).toBe(true);
-  });
-
-  test("moderate scout can produce injured but not emergency", () => {
-    // moderate/scout: 10% injury, 0% emergency
-    const results = new Set<InjuryStatus>();
-    for (let i = 0; i < 500; i++) {
-      results.add(rollErrandRisk("scout", "accord_market_square", "companion_kael"));
-    }
-    expect(results.has("none")).toBe(true);
-    expect(results.has("injured")).toBe(true);
-    expect(results.has("emergency")).toBe(false);
-  });
-
-  test("companion_kael reduces injury chance by 5%", () => {
-    // dangerous/scout base: 25% injury, 5% emergency
-    // With kael (-5%): 20% injury, 5% emergency → 75% none
-    // Without kael (lira, 0% reduction): 25% injury, 5% emergency → 70% none
-    let kaelNoneCount = 0;
-    let liraNoneCount = 0;
-    const trials = 5000;
-
-    for (let i = 0; i < trials; i++) {
-      if (rollErrandRisk("scout", "greyvale_ruins_entrance", "companion_kael") === "none")
-        kaelNoneCount++;
-      if (rollErrandRisk("scout", "greyvale_ruins_entrance", "companion_lira") === "none")
-        liraNoneCount++;
-    }
-
-    // Kael should have more "none" outcomes (higher none rate)
-    const kaelNoneRate = kaelNoneCount / trials;
-    const liraNoneRate = liraNoneCount / trials;
-    expect(kaelNoneRate).toBeGreaterThan(liraNoneRate - 0.05);
-    // Kael none rate should be around 75% (±5% for randomness)
-    expect(kaelNoneRate).toBeGreaterThan(0.65);
-    expect(kaelNoneRate).toBeLessThan(0.85);
-  });
-
-  test("unknown destination defaults to safe (returns none)", () => {
-    expect(rollErrandRisk("scout", "unknown_place", "companion_kael")).toBe("none");
-  });
-
-  test("unknown companion gets no injury reduction", () => {
-    // Should behave same as default
-    const result = rollErrandRisk("scout", "millhaven", "unknown_companion");
-    expect(result).toBe("none");
+describe("BLOCKED_DANGER_COMBOS conformance", () => {
+  // game_mechanics_core.md §Companion Risk L887-892 marks these cells N/A. Risk
+  // is now rolled in the Python worker (ADR 0006); the risk table moved to
+  // apps/agent/errand_risk.py with its own conformance pin. TS keeps only this
+  // dispatch-time blocked-combo gate, conformance-pinned to the same spec.
+  test("BLOCKED_DANGER_COMBOS equals the spec N/A cells", () => {
+    expect(BLOCKED_DANGER_COMBOS).toEqual(
+      new Set([
+        "dangerous|relationship",
+        "extreme|relationship",
+        "extreme|social",
+        "extreme|acquire",
+      ]),
+    );
   });
 });
 
@@ -129,6 +75,19 @@ describe("validateErrandDispatch", () => {
     expect(result.valid).toBe(false);
     expect(result.error).toContain("relationship");
     expect(result.error).toContain("dangerous");
+  });
+
+  test("extreme destinations block social, acquire, and relationship (spec N/A cells)", () => {
+    // Content has no danger_level=3 location yet, but the spec (L892) marks
+    // social/acquire/relationship as N/A at extreme; pin BLOCKED_DANGER_COMBOS
+    // against a synthetic extreme destination. Scout remains allowed.
+    setDestinationDangerLevels(new Map([["deep_hollow", "extreme"]]));
+    for (const errandType of ["social", "acquire", "relationship"]) {
+      const result = validateErrandDispatch(errandType, "deep_hollow", "companion_kael");
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("extreme");
+    }
+    expect(validateErrandDispatch("scout", "deep_hollow", "companion_kael").valid).toBe(true);
   });
 
   test("companion_sable cannot perform social errands", () => {

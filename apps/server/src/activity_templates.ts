@@ -34,6 +34,7 @@ export interface TrainingProgramConfig {
 export interface ErrandTemplate extends ActivityTemplate {
   activity_type: "companion_errand";
   valid_destinations: string[];
+  blocked_companions: string[];
 }
 
 // Runtime-loaded training programs (populated by loadTrainingPrograms at startup)
@@ -150,48 +151,63 @@ export const CRAFTING_RECIPES: Record<string, CraftingRecipe> = {
   },
 };
 
-export const ERRAND_TEMPLATES: Record<string, ErrandTemplate> = {
-  scout: {
-    id: "scout",
-    name: "Scouting Mission",
+// Runtime-loaded errand templates (populated by loadErrandTemplates at startup)
+let errandTemplates: ReadonlyMap<string, ErrandTemplate> = new Map();
+
+export function getErrandTemplate(id: string): ErrandTemplate | undefined {
+  return errandTemplates.get(id);
+}
+
+export function getAllErrandTemplates(): ErrandTemplate[] {
+  return Array.from(errandTemplates.values());
+}
+
+export function setErrandTemplates(map: ReadonlyMap<string, ErrandTemplate>): void {
+  errandTemplates = map;
+}
+
+function parseErrandRow(id: string, raw: unknown): ErrandTemplate {
+  if (!raw || typeof raw !== "object") {
+    throw new Error(`errand_templates[${id}].data is not an object`);
+  }
+  const data = raw as Record<string, unknown>;
+  const ctx = `errand_templates[${id}]`;
+  const name = data.name;
+  const durationMin = data.duration_min_seconds;
+  const durationMax = data.duration_max_seconds;
+  const validDestinations = data.valid_destinations;
+  const blockedCompanions = data.blocked_companions;
+  if (typeof name !== "string") throw new Error(`${ctx}.name is not a string`);
+  if (typeof durationMin !== "number")
+    throw new Error(`${ctx}.duration_min_seconds is not a number`);
+  if (typeof durationMax !== "number")
+    throw new Error(`${ctx}.duration_max_seconds is not a number`);
+  if (!Array.isArray(validDestinations))
+    throw new Error(`${ctx}.valid_destinations is not an array`);
+  if (!Array.isArray(blockedCompanions))
+    throw new Error(`${ctx}.blocked_companions is not an array`);
+  return {
+    id,
+    name,
     activity_type: "companion_errand",
-    duration_min_seconds: 7200,
-    duration_max_seconds: 14400,
+    duration_min_seconds: durationMin,
+    duration_max_seconds: durationMax,
     required_params: ["destination"],
-    valid_destinations: ["millhaven", "greyvale_ruins_entrance", "accord_dockside"],
-  },
-  social: {
-    id: "social",
-    name: "Social Inquiry",
-    activity_type: "companion_errand",
-    duration_min_seconds: 3600,
-    duration_max_seconds: 10800,
-    required_params: ["destination"],
-    valid_destinations: [
-      "millhaven_inn",
-      "accord_guild_hall",
-      "accord_market_square",
-      "accord_dockside",
-    ],
-  },
-  acquire: {
-    id: "acquire",
-    name: "Acquire Supplies",
-    activity_type: "companion_errand",
-    duration_min_seconds: 7200,
-    duration_max_seconds: 14400,
-    required_params: ["destination"],
-    valid_destinations: ["accord_market_square", "accord_dockside", "millhaven"],
-  },
-  relationship: {
-    id: "relationship",
-    name: "Build Relationship",
-    activity_type: "companion_errand",
-    duration_min_seconds: 10800,
-    duration_max_seconds: 21600,
-    required_params: ["destination"],
-    valid_destinations: ["millhaven", "millhaven_inn", "accord_guild_hall", "accord_dockside"],
-  },
-};
+    valid_destinations: validDestinations as string[],
+    blocked_companions: blockedCompanions as string[],
+  };
+}
+
+export async function loadErrandTemplates(): Promise<void> {
+  const rows = await sql<{ id: string; data: unknown }[]>`
+    SELECT id, data FROM errand_templates
+  `;
+  const map = new Map<string, ErrandTemplate>();
+  for (const row of rows) {
+    map.set(row.id, parseErrandRow(row.id, row.data));
+  }
+  errandTemplates = map;
+  console.log(`Loaded ${map.size} errand templates`);
+}
 
 export const VALID_ACTIVITY_TYPES = new Set(["crafting", "training", "companion_errand"]);

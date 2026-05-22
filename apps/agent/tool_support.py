@@ -4,8 +4,9 @@ Pure functions and constants only — no DB imports, no async IO.
 Domain tool modules import from here instead of tools.py.
 """
 
-import json
 import re
+
+from livekit.agents.llm import ToolError
 
 import rules_engine
 
@@ -68,18 +69,16 @@ EFFECT_NPC_MAP: dict[str, str] = {
 }
 
 
-def _validate_id(value: str, label: str) -> str | None:
-    """Return an error JSON string if the ID is invalid, else None."""
+def _validate_id(value: str, label: str) -> None:
+    """Raise ToolError if the ID is invalid (canonical agent-tool error shape, ADR 0002)."""
     if not value or len(value) > 128 or not _ID_RE.match(value):
-        return json.dumps({"error": f"Invalid {label}: '{value[:64]}'"})
-    return None
+        raise ToolError(f"Invalid {label}: '{value[:64]}'")
 
 
-def _cap_str(value: str, max_len: int, name: str) -> str | None:
-    """Return an error JSON string if value exceeds max_len, else None."""
+def _cap_str(value: str, max_len: int, name: str) -> None:
+    """Raise ToolError if value exceeds max_len (canonical agent-tool error shape, ADR 0002)."""
     if len(value) > max_len:
-        return json.dumps({"error": f"{name} exceeds maximum length of {max_len} characters."})
-    return None
+        raise ToolError(f"{name} exceeds maximum length of {max_len} characters.")
 
 
 DISPOSITION_ORDER = ["hostile", "wary", "neutral", "friendly", "trusted"]

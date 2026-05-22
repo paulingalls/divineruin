@@ -7,6 +7,8 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any, TypeVar
 
+from livekit.agents.llm import ToolError
+
 logger = logging.getLogger("divineruin.db_errors")
 
 T = TypeVar("T")
@@ -126,10 +128,11 @@ async def with_db_error_handling(
 
 def db_tool(func: Callable[..., Any]) -> Callable[..., Any]:
     """
-    Decorator for tool functions that handles database errors and returns error JSON.
+    Decorator for tool functions that handles database errors by raising ToolError.
 
-    Wraps the tool function to catch DatabaseError exceptions and return
-    a standardized error response that the LLM can communicate to the player.
+    Wraps the tool function to catch DatabaseError/Timeout/Connection exceptions and
+    re-raise them as ToolError (ADR 0002) so the framework surfaces the user-facing
+    message to the LLM, which communicates it to the player in character.
 
     Usage:
         @db_tool
@@ -149,29 +152,12 @@ def db_tool(func: Callable[..., Any]) -> Callable[..., Any]:
                 e,
                 e.user_message,
             )
-            return _error_response(e.user_message, e.operation)
+            raise ToolError(e.user_message) from e
         except TimeoutError as e:
             logger.error("Database timeout in %s: %s", func.__name__, e, exc_info=True)
-            err = DatabaseTimeoutError(func.__name__, e)
-            return _error_response(err.user_message, err.operation)
+            raise ToolError(DatabaseTimeoutError(func.__name__, e).user_message) from e
         except ConnectionError as e:
             logger.error("Database connection error in %s: %s", func.__name__, e, exc_info=True)
-            err = DatabaseConnectionError(func.__name__, e)
-            return _error_response(err.user_message, err.operation)
+            raise ToolError(DatabaseConnectionError(func.__name__, e).user_message) from e
 
     return wrapper
-
-
-def _error_response(message: str, operation: str) -> str:
-    """Create a standardized error response for the LLM."""
-    import json
-
-    return json.dumps(
-        {
-            "success": False,
-            "error": message,
-            "operation": operation,
-            "guidance": "Communicate this error to the player naturally, in character. "
-            "Do not expose technical details. Offer to try again or suggest an alternative.",
-        }
-    )

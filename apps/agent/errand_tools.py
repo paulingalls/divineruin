@@ -1,0 +1,212 @@
+"""Companion-errand agent tools on DispatchAgent (story-009).
+
+`dispatch_companion_errand` validates and creates an async_activities row; the
+async worker resolves it later (risk rolled at resolution, ADR 0006).
+`resolve_companion_errand` computes the outcome on demand via the shared
+errand_resolution helper, returning the same shape the worker produces.
+
+Errors raise LiveKit `ToolError` (ADR 0002). The `_*_impl` helpers expose
+`*_mod=` / `now_fn=` / `rng=` keyword seams for TEST-ONLY injection; production
+callers use the `@function_tool` wrappers. Errand durations / valid_destinations /
+blocked_companions come from the shared errand_templates content (story-011).
+"""
+
+import json
+import logging
+import random
+from datetime import UTC, datetime, timedelta
+
+from livekit.agents.llm import ToolError, function_tool
+from livekit.agents.voice import RunContext
+
+import db_activity_queries
+import db_content_queries
+import db_mutations
+import db_queries
+import errand_risk
+from errand_resolution import resolve_errand_outcome
+from session_data import SessionData
+from tool_support import _validate_id
+
+logger = logging.getLogger("divineruin.tools")
+
+_COMPANION_SLOT_CAP = 1  # 3-independent-slot model: 1 companion errand at a time.
+
+
+@function_tool()
+async def dispatch_companion_errand(
+    context: RunContext[SessionData],
+    companion_id: str,
+    errand_type: str,
+    destination: str,
+) -> str:
+    """Send a companion on an errand. Use only after the player has audibly chosen
+    a companion, an errand kind, and where to send them.
+
+    Errand kinds: scout (investigate a place), social (gather gossip/leads),
+    acquire (find a resource/item), relationship (visit an NPC). The companion
+    returns later with a narrated result — call resolve_companion_errand then.
+
+    Returns an error if the errand kind is unknown, the destination isn't valid
+    for that kind, the companion can't perform it, the destination is too
+    dangerous for that errand, or the companion is already on an errand.
+
+    Args:
+        companion_id: The companion to send (e.g. companion_kael).
+        errand_type: scout | social | acquire | relationship.
+        destination: A location id valid for this errand kind.
+    """
+    return await _dispatch_companion_errand_impl(context, companion_id, errand_type, destination)
+
+
+async def _dispatch_companion_errand_impl(
+    context: RunContext[SessionData],
+    companion_id: str,
+    errand_type: str,
+    destination: str,
+    *,
+    content_mod=db_content_queries,
+    activity_mod=db_activity_queries,
+    mutations_mod=db_mutations,
+    risk_mod=errand_risk,
+    now_fn=None,
+    rng: random.Random | None = None,
+) -> str:
+    context.disallow_interruptions()
+    _validate_id(companion_id, "companion_id")
+    _validate_id(errand_type, "errand_type")
+    _validate_id(destination, "destination")
+    session: SessionData = context.userdata
+    player_id = session.player_id
+    logger.info(
+        "dispatch_companion_errand: player=%s companion=%s errand=%s dest=%s",
+        player_id,
+        companion_id,
+        errand_type,
+        destination,
+    )
+
+    template = await content_mod.get_errand_template(errand_type)
+    if template is None:
+        raise ToolError(f"Unknown errand kind: {errand_type}")
+    if destination not in template["valid_destinations"]:
+        raise ToolError(f"{destination} is not a valid destination for a {errand_type} errand.")
+    if companion_id in template["blocked_companions"]:
+        raise ToolError(f"{companion_id} cannot perform {errand_type} errands.")
+
+    location = await content_mod.get_location(destination)
+    try:
+        danger = risk_mod.numeric_to_danger(location.get("danger_level") if location else None)
+    except ValueError as e:
+        # Malformed seed danger_level — fail clean to the LLM, not a raw ValueError.
+        raise ToolError(f"{destination} has an invalid danger level; cannot dispatch there.") from e
+    if risk_mod.is_blocked_combo(danger, errand_type):
+        raise ToolError(f"{errand_type} errands are not available at {danger} destinations.")
+
+    slot_counts = await activity_mod.count_active_by_slot(player_id)
+    if slot_counts["companion"] >= _COMPANION_SLOT_CAP:
+        raise ToolError("Your companion is already on an errand. Wait for them to return first.")
+
+    now = (now_fn or _default_now)()
+    duration_seconds = (rng or random.Random()).randint(
+        template["duration_min_seconds"], template["duration_max_seconds"]
+    )
+    resolve_at = now + timedelta(seconds=duration_seconds)
+
+    data = {
+        "status": "in_progress",
+        "activity_type": "companion_errand",
+        "start_time": now.isoformat(),
+        "duration_min_seconds": template["duration_min_seconds"],
+        "duration_max_seconds": template["duration_max_seconds"],
+        "resolve_at": resolve_at.isoformat(),
+        "parameters": {"errand_type": errand_type, "destination": destination},
+        "outcome": None,
+        "narration_text": None,
+        "narration_audio_url": None,
+        "decision_options": None,
+    }
+    activity_id = await mutations_mod.create_async_activity(player_id, data)
+
+    return json.dumps(
+        {
+            "activity_id": activity_id,
+            "resolve_at_estimate": resolve_at.isoformat(),
+            "errand_type": errand_type,
+            "destination": destination,
+        }
+    )
+
+
+@function_tool()
+async def resolve_companion_errand(
+    context: RunContext[SessionData],
+    errand_id: str,
+) -> str:
+    """Resolve a companion's errand and report what happened. Use when the player
+    asks how the errand went (after enough time has passed). Returns the outcome
+    tier, narration context, and the decision options to offer the player.
+
+    Args:
+        errand_id: The activity_id returned by dispatch_companion_errand.
+    """
+    return await _resolve_companion_errand_impl(context, errand_id)
+
+
+async def _resolve_companion_errand_impl(
+    context: RunContext[SessionData],
+    errand_id: str,
+    *,
+    activity_mod=db_activity_queries,
+    queries_mod=db_queries,
+    mutations_mod=db_mutations,
+    resolve_fn=resolve_errand_outcome,
+    now_fn=None,
+) -> str:
+    context.disallow_interruptions()
+    _validate_id(errand_id, "errand_id")
+    session: SessionData = context.userdata
+    player_id = session.player_id
+    logger.info("resolve_companion_errand: player=%s errand=%s", player_id, errand_id)
+
+    activity = await activity_mod.get_activity(errand_id)
+    if activity is None:
+        raise ToolError(f"Unknown errand: {errand_id}")
+    if activity["player_id"] != player_id:
+        raise ToolError(f"Errand {errand_id} does not belong to this player.")
+
+    # Return the canonical persisted outcome if the worker (or a prior resolve)
+    # already resolved this row — never re-roll, or the DM's account would
+    # diverge from the worker's push (ADR 0006: risk rolls once, at resolution).
+    cached = activity.get("outcome")
+    if cached is not None:
+        return json.dumps(cached)
+
+    # Time gate: the companion is still out until resolve_at passes. The worker
+    # uses the same resolve_at <= NOW() gate, so resolving early here would both
+    # contradict the elapsed-time fiction and race the worker.
+    now = (now_fn or _default_now)()
+    resolve_at = activity.get("resolve_at")
+    if resolve_at is not None and now < datetime.fromisoformat(resolve_at):
+        raise ToolError(f"The companion is still out on errand {errand_id}; ask again later.")
+
+    player = await queries_mod.get_player(player_id) or {}
+    companion_data = player.get("companion", {})
+    outcome = await resolve_fn(companion_data, activity.get("parameters", {}))
+
+    # Persist the outcome and mark resolved so the worker skips this row
+    # (get_due_activities filters on status='in_progress') — the DM's account
+    # and any later worker pass now read the same single rolled outcome.
+    await mutations_mod.update_activity(
+        errand_id,
+        {
+            "status": "resolved",
+            "outcome": outcome,
+            "decision_options": outcome.get("decision_options", []),
+        },
+    )
+    return json.dumps(outcome)
+
+
+def _default_now() -> datetime:
+    return datetime.now(UTC)

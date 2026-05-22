@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import pytest
+from livekit.agents.llm import ToolError
 
 from db_errors import (
     DatabaseConnectionError,
@@ -144,14 +145,8 @@ class TestDbToolDecorator:
         async def failing_tool():
             raise DatabaseConnectionError("get_player", ConnectionError("Connection refused"))
 
-        result = await failing_tool()
-        data = json.loads(result)
-
-        assert data["success"] is False
-        assert "error" in data
-        assert "trouble accessing" in data["error"].lower()
-        assert data["operation"] == "get_player"
-        assert "guidance" in data
+        with pytest.raises(ToolError, match="trouble accessing"):
+            await failing_tool()
 
     @pytest.mark.asyncio
     async def test_not_found_error_formatted(self):
@@ -159,12 +154,8 @@ class TestDbToolDecorator:
         async def missing_data_tool():
             raise DatabaseNotFoundError("get_npc", "NPC", "ghost")
 
-        result = await missing_data_tool()
-        data = json.loads(result)
-
-        assert data["success"] is False
-        assert "can't find" in data["error"].lower()
-        assert data["operation"] == "get_npc"
+        with pytest.raises(ToolError, match="can't find"):
+            await missing_data_tool()
 
     @pytest.mark.asyncio
     async def test_timeout_error_formatted(self):
@@ -172,11 +163,8 @@ class TestDbToolDecorator:
         async def slow_tool():
             raise DatabaseTimeoutError("complex_query", TimeoutError("Too slow"))
 
-        result = await slow_tool()
-        data = json.loads(result)
-
-        assert data["success"] is False
-        assert "longer than expected" in data["error"].lower()
+        with pytest.raises(ToolError, match="longer than expected"):
+            await slow_tool()
 
     @pytest.mark.asyncio
     async def test_decorator_preserves_function_metadata(self):

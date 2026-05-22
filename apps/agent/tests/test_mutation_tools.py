@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from livekit.agents.llm import ToolError
 from sample_fixtures import (
     GUILD_PLAYER as SAMPLE_PLAYER,
 )
@@ -157,18 +158,14 @@ class TestAwardXp:
     @pytest.mark.asyncio
     async def test_negative_amount(self):
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _award_xp_impl(ctx, -10, "cheat", db_mod=MagicMock(), mutations=MagicMock(), queries=MagicMock())
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_zero_amount(self):
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _award_xp_impl(ctx, 0, "nothing", db_mod=MagicMock(), mutations=MagicMock(), queries=MagicMock())
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_missing_player(self):
@@ -178,10 +175,8 @@ class TestAwardXp:
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _award_xp_impl(ctx, 50, "test", db_mod=mock_db, mutations=MagicMock(), queries=mock_queries)
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_publishes_event(self):
@@ -284,8 +279,8 @@ class TestUpdateNpcDisposition:
     async def test_unknown_npc(self):
         mocks = self._mocks(npc=None)
         ctx = _make_context()
-        result = await self._call(ctx, "nobody", 1, "test", mocks)
-        assert "error" in result
+        with pytest.raises(ToolError, match="not found"):
+            await self._call(ctx, "nobody", 1, "test", mocks)
 
     @pytest.mark.asyncio
     async def test_falls_back_to_default_disposition(self):
@@ -356,7 +351,7 @@ class TestAddToInventory:
         mock_content = MagicMock()
         mock_content.get_item = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _add_to_inventory_impl(
                 ctx,
                 "nonexistent",
@@ -367,8 +362,6 @@ class TestAddToInventory:
                 queries=MagicMock(),
                 content=mock_content,
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_publishes_event(self):
@@ -445,7 +438,7 @@ class TestRemoveFromInventory:
         mock_queries = MagicMock()
         mock_queries.get_inventory_item = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _remove_from_inventory_impl(
                 ctx,
                 "nothing",
@@ -454,8 +447,6 @@ class TestRemoveFromInventory:
                 queries=mock_queries,
                 content=mock_content,
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_equipped_item_blocked(self):
@@ -467,7 +458,7 @@ class TestRemoveFromInventory:
         mock_queries = MagicMock()
         mock_queries.get_inventory_item = AsyncMock(return_value={"quantity": 1, "equipped": True})
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError, match="equipped"):
             await _remove_from_inventory_impl(
                 ctx,
                 "longsword",
@@ -476,9 +467,6 @@ class TestRemoveFromInventory:
                 queries=mock_queries,
                 content=mock_content,
             )
-        )
-        assert "error" in result
-        assert "equipped" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_publishes_event(self):
@@ -561,18 +549,15 @@ class TestMovePlayer:
     async def test_invalid_destination(self):
         mock_db, mock_content, mock_queries, mock_mutations, _ = self._mocks(locations=[SAMPLE_LOCATION])
         ctx = _make_context()
-        raw = await _move_player_impl(
-            ctx,
-            "nonexistent",
-            db_mod=mock_db,
-            mutations=mock_mutations,
-            queries=mock_queries,
-            content=mock_content,
-        )
-        assert isinstance(raw, str)
-        result = json.loads(raw)
-        assert "error" in result
-        assert "valid_destinations" in result
+        with pytest.raises(ToolError, match="No exit"):
+            await _move_player_impl(
+                ctx,
+                "nonexistent",
+                db_mod=mock_db,
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
 
     @pytest.mark.asyncio
     @patch("movement_tools._check_exit_requirement", new_callable=AsyncMock, return_value=False)
@@ -638,17 +623,15 @@ class TestMovePlayer:
     async def test_missing_current_location(self):
         mock_db, mock_content, mock_queries, mock_mutations, _ = self._mocks(locations=[None])
         ctx = _make_context()
-        raw = await _move_player_impl(
-            ctx,
-            "anywhere",
-            db_mod=mock_db,
-            mutations=mock_mutations,
-            queries=mock_queries,
-            content=mock_content,
-        )
-        assert isinstance(raw, str)
-        result = json.loads(raw)
-        assert "error" in result
+        with pytest.raises(ToolError, match="Current location"):
+            await _move_player_impl(
+                ctx,
+                "anywhere",
+                db_mod=mock_db,
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
 
 
 # --- update_quest ---
@@ -699,8 +682,8 @@ class TestUpdateQuest:
     async def test_start_quest_wrong_stage(self):
         mocks = self._mocks(player_quest=None)
         ctx = _make_context()
-        result = await self._call(ctx, "greyvale_anomaly", 1, mocks)
-        assert "error" in result
+        with pytest.raises(ToolError, match="Must start quest at stage 0"):
+            await self._call(ctx, "greyvale_anomaly", 1, mocks)
 
     @pytest.mark.asyncio
     async def test_advance_with_rewards(self):
@@ -725,24 +708,22 @@ class TestUpdateQuest:
     async def test_backward_blocked(self):
         mocks = self._mocks(player_quest={"current_stage": 1})
         ctx = _make_context()
-        result = await self._call(ctx, "greyvale_anomaly", 0, mocks)
-        assert "error" in result
-        assert "backward" in result["error"].lower()
+        with pytest.raises(ToolError, match="backward"):
+            await self._call(ctx, "greyvale_anomaly", 0, mocks)
 
     @pytest.mark.asyncio
     async def test_skip_stage_blocked(self):
         mocks = self._mocks(player_quest={"current_stage": 0})
         ctx = _make_context()
-        result = await self._call(ctx, "greyvale_anomaly", 2, mocks)
-        assert "error" in result
-        assert "skip" in result["error"].lower()
+        with pytest.raises(ToolError, match="skip"):
+            await self._call(ctx, "greyvale_anomaly", 2, mocks)
 
     @pytest.mark.asyncio
     async def test_unknown_quest(self):
         mocks = self._mocks(quest=None)
         ctx = _make_context()
-        result = await self._call(ctx, "nonexistent", 0, mocks)
-        assert "error" in result
+        with pytest.raises(ToolError, match="not found"):
+            await self._call(ctx, "nonexistent", 0, mocks)
 
     @pytest.mark.asyncio
     async def test_publishes_event(self):
@@ -759,8 +740,8 @@ class TestUpdateQuest:
     async def test_invalid_stage_number(self):
         mocks = self._mocks(player_quest=None)
         ctx = _make_context()
-        result = await self._call(ctx, "greyvale_anomaly", 99, mocks)
-        assert "error" in result
+        with pytest.raises(ToolError, match="Invalid stage"):
+            await self._call(ctx, "greyvale_anomaly", 99, mocks)
 
 
 # --- award_divine_favor ---
@@ -817,22 +798,18 @@ class TestAwardDivineFavor:
     @pytest.mark.asyncio
     async def test_invalid_amount_too_low(self):
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _award_divine_favor_impl(
                 ctx, 0, "test", db_mod=MagicMock(), mutations=MagicMock(), activities=MagicMock()
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_invalid_amount_too_high(self):
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _award_divine_favor_impl(
                 ctx, 11, "test", db_mod=MagicMock(), mutations=MagicMock(), activities=MagicMock()
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_no_patron(self):
@@ -844,12 +821,10 @@ class TestAwardDivineFavor:
             return_value={"patron": "none", "level": 0, "max": 100, "last_whisper_level": 0}
         )
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _award_divine_favor_impl(
                 ctx, 5, "test", db_mod=mock_db, mutations=MagicMock(), activities=mock_activities
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_no_favor_data(self):
@@ -859,12 +834,10 @@ class TestAwardDivineFavor:
         mock_activities = MagicMock()
         mock_activities.get_divine_favor = AsyncMock(return_value=None)
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _award_divine_favor_impl(
                 ctx, 5, "test", db_mod=mock_db, mutations=MagicMock(), activities=mock_activities
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_publishes_event(self):
@@ -895,11 +868,8 @@ class TestCapStr:
         assert _cap_str("hello", 10, "test") is None
 
     def test_returns_error_over_limit(self):
-        error_json = _cap_str("x" * 300, 256, "reason")
-        assert error_json is not None
-        result = json.loads(error_json)
-        assert "error" in result
-        assert "256" in result["error"]
+        with pytest.raises(ToolError, match="256"):
+            _cap_str("x" * 300, 256, "reason")
 
     def test_exact_boundary_is_ok(self):
         assert _cap_str("x" * 256, 256, "reason") is None
@@ -912,26 +882,21 @@ class TestStringCaps:
     @pytest.mark.asyncio
     async def test_award_xp_reason_too_long(self):
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError, match="reason"):
             await _award_xp_impl(ctx, 50, "x" * 300, db_mod=MagicMock(), mutations=MagicMock(), queries=MagicMock())
-        )
-        assert "error" in result
-        assert "reason" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_award_divine_favor_reason_too_long(self):
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _award_divine_favor_impl(
                 ctx, 5, "x" * 300, db_mod=MagicMock(), mutations=MagicMock(), activities=MagicMock()
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_update_npc_disposition_reason_too_long(self):
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _update_npc_disposition_impl(
                 ctx,
                 "guildmaster_torin",
@@ -942,13 +907,11 @@ class TestStringCaps:
                 queries=MagicMock(),
                 content=MagicMock(),
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_add_to_inventory_source_too_long(self):
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _add_to_inventory_impl(
                 ctx,
                 "health_potion",
@@ -959,25 +922,20 @@ class TestStringCaps:
                 queries=MagicMock(),
                 content=MagicMock(),
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_roll_dice_notation_too_long(self):
         ctx = _make_context()
-        result = json.loads(await roll_dice._func(ctx, notation="x" * 60))
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await roll_dice._func(ctx, notation="x" * 60)
 
 
 class TestIntegerBounds:
     @pytest.mark.asyncio
     async def test_award_xp_exceeds_max(self):
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError, match="10000"):
             await _award_xp_impl(ctx, 10001, "too much", db_mod=MagicMock(), mutations=MagicMock(), queries=MagicMock())
-        )
-        assert "error" in result
-        assert "10000" in result["error"]
 
     @pytest.mark.asyncio
     async def test_award_xp_at_max_is_ok(self):
@@ -1001,7 +959,7 @@ class TestIntegerBounds:
     @pytest.mark.asyncio
     async def test_add_to_inventory_quantity_zero(self):
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _add_to_inventory_impl(
                 ctx,
                 "health_potion",
@@ -1012,13 +970,11 @@ class TestIntegerBounds:
                 queries=MagicMock(),
                 content=MagicMock(),
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_add_to_inventory_quantity_100(self):
         ctx = _make_context()
-        result = json.loads(
+        with pytest.raises(ToolError):
             await _add_to_inventory_impl(
                 ctx,
                 "health_potion",
@@ -1029,18 +985,15 @@ class TestIntegerBounds:
                 queries=MagicMock(),
                 content=MagicMock(),
             )
-        )
-        assert "error" in result
 
     @pytest.mark.asyncio
     async def test_saving_throw_dc_zero(self):
         ctx = _make_context()
-        result = json.loads(await _request_saving_throw_impl(ctx, "strength", 0, "knocked prone", queries=MagicMock()))
-        assert "error" in result
-        assert "DC" in result["error"] or "dc" in result["error"].lower()
+        with pytest.raises(ToolError, match="DC"):
+            await _request_saving_throw_impl(ctx, "strength", 0, "knocked prone", queries=MagicMock())
 
     @pytest.mark.asyncio
     async def test_saving_throw_dc_31(self):
         ctx = _make_context()
-        result = json.loads(await _request_saving_throw_impl(ctx, "dexterity", 31, "fireball", queries=MagicMock()))
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await _request_saving_throw_impl(ctx, "dexterity", 31, "fireball", queries=MagicMock())

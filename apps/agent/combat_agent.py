@@ -7,7 +7,7 @@ from check_tools import request_attack, request_saving_throw, roll_dice
 from combat_end import end_combat
 from combat_turn import request_death_save, resolve_enemy_turn
 from environment_tools import play_sound, set_music_state
-from query_tools import query_inventory
+from query_tools import query_info
 from system_prompts import COMBAT_SYSTEM_PROMPT
 
 COMBAT_AGENT_TOOLS = [
@@ -19,7 +19,7 @@ COMBAT_AGENT_TOOLS = [
     roll_dice,
     play_sound,
     set_music_state,
-    query_inventory,
+    query_info,
 ]
 
 
