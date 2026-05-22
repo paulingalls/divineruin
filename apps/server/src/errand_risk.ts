@@ -1,11 +1,12 @@
 /**
- * Errand risk computation — pure functions, no IO except the startup loader.
+ * Errand dispatch validation — pure functions, no IO except the startup loader.
  *
- * The TS server is the sole authority for errand risk (the Python agent's
- * async_rules.py only narrates the stored outcome). Tables track
- * game_mechanics_core.md §Companion Risk (L887-892).
- * Risk is rolled at dispatch time and stored in activity parameters
- * so the async worker only narrates the predetermined outcome.
+ * The TS server is the dispatch-time authority for errand danger levels and the
+ * blocked-combo gate. It no longer rolls risk: the Python async worker rolls the
+ * injury outcome at resolution (apps/agent/errand_risk.py, ADR 0006), since
+ * nothing reads the outcome before then. BLOCKED_DANGER_COMBOS tracks
+ * game_mechanics_core.md §Companion Risk (L887-892) — the same spec the Python
+ * risk table conformance-pins against.
  *
  * Destination danger levels are loaded from the locations table at startup
  * via loadDestinationDangerLevels(). locations.json uses numeric values
@@ -15,35 +16,6 @@
 import { sql } from "./db.ts";
 
 export type DangerLevel = "safe" | "moderate" | "dangerous" | "extreme";
-export type InjuryStatus = "none" | "injured" | "emergency";
-
-interface RiskEntry {
-  readonly injuryPct: number;
-  readonly emergencyPct: number;
-}
-
-// Spec matrix — game_mechanics_core.md §Companion Risk L887-892. Cells absent
-// here are N/A and blocked via BLOCKED_DANGER_COMBOS. Exported readonly for
-// conformance tests; do not mutate.
-export const ERRAND_RISK_TABLE: Readonly<Record<string, RiskEntry>> = {
-  "safe|scout": { injuryPct: 0, emergencyPct: 0 },
-  "safe|social": { injuryPct: 0, emergencyPct: 0 },
-  "safe|acquire": { injuryPct: 0, emergencyPct: 0 },
-  "safe|relationship": { injuryPct: 0, emergencyPct: 0 },
-  "moderate|scout": { injuryPct: 10, emergencyPct: 0 },
-  "moderate|social": { injuryPct: 0, emergencyPct: 0 },
-  "moderate|acquire": { injuryPct: 10, emergencyPct: 0 },
-  "moderate|relationship": { injuryPct: 0, emergencyPct: 0 },
-  "dangerous|scout": { injuryPct: 25, emergencyPct: 5 },
-  "dangerous|social": { injuryPct: 0, emergencyPct: 0 },
-  "dangerous|acquire": { injuryPct: 20, emergencyPct: 0 },
-  "extreme|scout": { injuryPct: 40, emergencyPct: 15 },
-};
-
-// Injury risk reduction per companion (e.g. Kael's veteran survival instincts)
-const COMPANION_INJURY_REDUCTION: Record<string, number> = {
-  companion_kael: 5,
-};
 
 // Runtime-loaded danger levels (populated by loadDestinationDangerLevels at startup)
 let dangerLevels: ReadonlyMap<string, DangerLevel> = new Map();
@@ -132,30 +104,4 @@ export function validateErrandDispatch(
   }
 
   return { valid: true, error: null };
-}
-
-export function rollErrandRisk(
-  errandType: string,
-  destination: string,
-  companionId: string,
-): InjuryStatus {
-  const dangerLevel = getDangerLevel(destination) ?? "safe";
-  const key = `${dangerLevel}|${errandType}`;
-  const entry = ERRAND_RISK_TABLE[key];
-
-  if (!entry || (entry.injuryPct === 0 && entry.emergencyPct === 0)) {
-    return "none";
-  }
-
-  const roll = Math.floor(Math.random() * 100) + 1;
-  const reduction = COMPANION_INJURY_REDUCTION[companionId] ?? 0;
-  const effectiveInjury = Math.max(0, entry.injuryPct - reduction);
-
-  if (roll <= entry.emergencyPct) {
-    return "emergency";
-  }
-  if (roll <= entry.emergencyPct + effectiveInjury) {
-    return "injured";
-  }
-  return "none";
 }

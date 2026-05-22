@@ -9,7 +9,7 @@ import {
 } from "./activity_templates.ts";
 import { displayName } from "@divineruin/shared";
 import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts";
-import { rollErrandRisk, validateErrandDispatch } from "./errand_risk.ts";
+import { validateErrandDispatch } from "./errand_risk.ts";
 import { startTrainingCycle } from "./training_state_machine.ts";
 
 async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<SlotCounts> {
@@ -183,10 +183,10 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
 
       durationMin = template.duration_min_seconds;
       durationMax = template.duration_max_seconds;
+      // Risk is rolled by the Python worker at resolution (ADR 0006), not here.
       activityParams = {
         errand_type: errandType,
         destination,
-        risk_outcome: rollErrandRisk(errandType, destination, companionId),
       };
     }
 
