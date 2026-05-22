@@ -8,7 +8,7 @@ from combat_turn import resolve_enemy_turn
 from dungeon_agent import DUNGEON_TOOLS, DungeonAgent
 from inventory_tools import add_to_inventory
 from movement_tools import move_player
-from query_tools import query_inventory, query_location, query_lore
+from query_tools import query_info
 from quest_tools import update_quest
 from scene_tools import enter_location
 from session_tools import record_story_moment
@@ -26,7 +26,7 @@ class TestDungeonAgentConfig:
 class TestDungeonAgentTools:
     def test_has_exploration_tools(self):
         assert enter_location in DUNGEON_TOOLS
-        assert query_location in DUNGEON_TOOLS
+        assert query_info in DUNGEON_TOOLS
         assert move_player in DUNGEON_TOOLS
         assert discover_hidden_element in DUNGEON_TOOLS
         assert request_skill_check in DUNGEON_TOOLS
@@ -36,12 +36,11 @@ class TestDungeonAgentTools:
         assert start_combat in DUNGEON_TOOLS
 
     def test_has_inventory_tools(self):
-        assert query_inventory in DUNGEON_TOOLS
+        assert query_info in DUNGEON_TOOLS
         assert add_to_inventory in DUNGEON_TOOLS
 
     def test_has_utility_tools(self):
         assert roll_dice in DUNGEON_TOOLS
-        assert query_lore in DUNGEON_TOOLS
         assert record_story_moment in DUNGEON_TOOLS
         assert update_quest in DUNGEON_TOOLS
 

@@ -9,7 +9,7 @@ from gameplay_agent import GameplayAgent
 from inventory_tools import add_to_inventory, remove_from_inventory
 from movement_tools import move_player
 from progression_tools import award_divine_favor, award_xp
-from query_tools import query_inventory, query_location, query_lore, query_npc
+from query_tools import query_info
 from quest_tools import update_quest
 from region_types import REGION_CITY
 from scene_tools import enter_location
@@ -18,10 +18,7 @@ from session_tools import end_session, record_story_moment, update_npc_dispositi
 CITY_TOOLS = [
     # World query
     enter_location,
-    query_location,
-    query_npc,
-    query_lore,
-    query_inventory,
+    query_info,
     discover_hidden_element,
     # Mechanics
     request_skill_check,
