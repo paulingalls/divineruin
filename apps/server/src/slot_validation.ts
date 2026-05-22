@@ -1,6 +1,9 @@
 /**
- * Per-slot activity validation — pure functions, no IO. Slot logic is
- * TS-authoritative (the Python agent does not validate slots).
+ * Per-slot activity validation — pure functions, no IO. This is the AUTHORITATIVE
+ * full slot model (3 slots + the Artificer exception). The Python agent does a
+ * narrow companion-slot pre-check at dispatch (errand_tools._COMPANION_SLOT_CAP)
+ * but does not reimplement the full model — dual validation, TS remains the source
+ * of truth for slot counts + the Artificer exception.
  *
  * 3-independent-slot model: training (1 max), crafting (1 max), companion (1 max).
  * The Artificer exception (use the training slot for crafting when a Portable Lab

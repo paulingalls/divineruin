@@ -31,7 +31,12 @@ from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
 
-_COMPANION_SLOT_CAP = 1  # 3-independent-slot model: 1 companion errand at a time.
+# Companion-slot cap for the agent's dispatch-time pre-check. Mirrors the
+# companion slot of the LOCKED 3-independent-slot model whose authoritative
+# validator lives in apps/server/src/slot_validation.ts (1 companion errand at a
+# time). Kept as a local constant — a single LOCKED-spec integer — rather than a
+# shared source; if the slot model ever changes, update both deliberately.
+_COMPANION_SLOT_CAP = 1
 
 
 @function_tool()
