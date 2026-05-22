@@ -39,8 +39,8 @@ CITY_TOOLS = [
     record_story_moment,
     end_session,
     # Training lives in TrainingAgent (reached by moving into a training-context
-    # location) — keeps City under Anthropic's 20-strict-tool limit. See
-    # docs/decisions/0004-agent-tool-scaling.md.
+    # location) — keeps City under Anthropic's strict-tool ceiling
+    # (llm_config.MAX_STRICT_TOOLS). See docs/decisions/0004-agent-tool-scaling.md.
     # Combat handoff
     start_combat,
 ]

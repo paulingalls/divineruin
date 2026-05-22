@@ -2,8 +2,8 @@
 
 Players reach it by moving into a training-context location (move_player hands
 off, mirroring the combat/region handoff); moving back out re-resolves to the
-region agent. Splitting training out keeps CityAgent under Anthropic's 20-strict-
-tool limit (see docs/decisions/0004-agent-tool-scaling.md).
+region agent. Splitting training out keeps CityAgent under Anthropic's strict-tool
+ceiling (llm_config.MAX_STRICT_TOOLS; see docs/decisions/0004-agent-tool-scaling.md).
 """
 
 from typing import Any

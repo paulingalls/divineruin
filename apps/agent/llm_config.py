@@ -12,6 +12,12 @@ if TYPE_CHECKING:
 
 MODEL = "claude-haiku-4-5-20251001"
 
+# Anthropic's strict-tool ceiling. Verbatim from the API 400 our acceptance
+# harness captured (ADR 0004): "The maximum number of strict tools supported
+# is 20". livekit-plugins-anthropic defaults _strict_tool_schema=True, so every
+# registered @function_tool counts. Pin each agent's tool list against this.
+MAX_STRICT_TOOLS = 20
+
 AUDIO_DIR = os.environ.get(
     "ASYNC_AUDIO_DIR",
     os.path.join(os.path.dirname(__file__), "..", "server", "audio"),
