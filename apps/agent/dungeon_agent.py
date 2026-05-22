@@ -4,6 +4,7 @@ from typing import Any
 
 from check_tools import discover_hidden_element, request_saving_throw, request_skill_check, roll_dice
 from combat_init import start_combat
+from dispatch_tools import enter_dispatch
 from environment_tools import play_sound, set_music_state
 from gameplay_agent import GameplayAgent
 from inventory_tools import add_to_inventory
@@ -24,6 +25,7 @@ DUNGEON_TOOLS = [
     discover_hidden_element,
     update_quest,
     start_combat,
+    enter_dispatch,
     award_xp,
     roll_dice,
     add_to_inventory,

@@ -33,8 +33,8 @@ def test_agent_within_strict_tool_limit(name, tools):
 
 
 def test_city_freed_headroom_after_query_consolidation():
-    # story-010 collapsed query_location/npc/lore/inventory into one query_info,
-    # dropping City from 20 (at ceiling) to 17 — headroom for story-008's
-    # enter_dispatch intent tool without breaching MAX_STRICT_TOOLS.
-    assert len(CITY_TOOLS) == 17
+    # story-010 collapsed the 4 query_* tools into one query_info, dropping City
+    # from 20 (at ceiling) to 17; story-008 then spent one freed slot on the
+    # enter_dispatch intent tool (City==18), still with headroom under the ceiling.
+    assert len(CITY_TOOLS) == 18
     assert len(CITY_TOOLS) < MAX_STRICT_TOOLS

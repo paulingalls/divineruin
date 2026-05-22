@@ -13,6 +13,7 @@ from typing import Any
 
 from base_agent import BaseGameAgent
 from check_tools import roll_dice
+from dispatch_tools import conclude_dispatch
 from environment_tools import play_sound, set_music_state
 from movement_tools import move_player
 from query_tools import query_info
@@ -32,6 +33,8 @@ DISPATCH_TOOLS = [
     play_sound,
     set_music_state,
     end_session,
+    # Return to ordinary play (the intent-route exit; location route uses move_player)
+    conclude_dispatch,
 ]
 
 
