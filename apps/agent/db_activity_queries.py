@@ -74,7 +74,7 @@ async def count_active_by_slot(
         FROM (
             SELECT data->>'activity_type' AS src
             FROM async_activities
-            WHERE player_id = $1 AND data->>'status' = 'in_progress'
+            WHERE player_id = $1 AND data->>'status' IN ('in_progress', 'resolving')
           UNION ALL
             SELECT 'training' AS src
             FROM training_activities

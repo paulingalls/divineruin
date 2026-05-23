@@ -63,7 +63,7 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
 
     const activePromise = sql`
       SELECT data FROM async_activities
-      WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
+      WHERE player_id = ${playerId} AND data->>'status' IN ('in_progress', 'resolving')
       LIMIT 50
     ` as Promise<{ data: unknown }[]>;
 

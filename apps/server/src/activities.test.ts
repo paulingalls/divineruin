@@ -123,6 +123,26 @@ describe("handleCreateActivity", () => {
     expect(body.error).toContain("Crafting slot is full");
   });
 
+  test("rejects when companion slot is held by a 'resolving' row (story-004)", async () => {
+    // The worker has CAS-claimed the row (status='resolving'). Without the
+    // status filter widening, the slot would falsely show 0 and let a second
+    // errand dispatch through, breaking the 1-companion cap.
+    mockQueryResults = [
+      [], // lock async_activities (FOR UPDATE)
+      [], // lock training_activities (FOR UPDATE)
+      [{ training: 0, crafting: 0, companion: 1 }], // 'resolving' row counts toward companion slot
+    ];
+
+    const req = makeRequest("POST", "/api/activities", {
+      type: "companion_errand",
+      parameters: { errand_type: "scout", destination: "millhaven" },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error.toLowerCase()).toMatch(/companion/);
+  });
+
   test("rejects crafting without recipe_id", async () => {
     const req = makeRequest("POST", "/api/activities", {
       type: "crafting",

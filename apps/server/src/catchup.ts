@@ -197,8 +197,12 @@ function activityToFeedItem(id: string, data: Record<string, unknown>): FeedItem
   const timestamp = str(data.resolve_at, str(data.start_time, new Date().toISOString()));
   const audioUrl = typeof data.narration_audio_url === "string" ? data.narration_audio_url : null;
 
+  // 'resolving' is a transient worker-claim state — surface it as in_progress
+  // so the HUD keeps showing the row while the LLM+TTS finish (10-30s window).
+  const isInFlight = status === "in_progress" || status === "resolving";
+
   let type: FeedItem["type"];
-  if (status === "in_progress") {
+  if (isInFlight) {
     type = "in_progress";
   } else if (hasDecisions) {
     type = "pending_decision";
@@ -217,7 +221,7 @@ function activityToFeedItem(id: string, data: Record<string, unknown>): FeedItem
     audioUrl,
     decisionOptions: hasDecisions ? (data.decision_options as DecisionOption[]) : null,
     activityType: typeof data.activity_type === "string" ? data.activity_type : null,
-    progress: status === "in_progress" ? computeProgress(data) : null,
+    progress: isInFlight ? computeProgress(data) : null,
   };
 }
 
@@ -250,7 +254,7 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
     const activitiesPromise = sql`
       SELECT id, data FROM async_activities
       WHERE player_id = ${playerId}
-        AND data->>'status' IN ('resolved', 'in_progress')
+        AND data->>'status' IN ('resolved', 'in_progress', 'resolving')
       ORDER BY created_at DESC
       LIMIT 20
     ` as Promise<{ id: string; data: unknown }[]>;

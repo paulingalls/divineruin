@@ -12,6 +12,19 @@ import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts"
 import { validateErrandDispatch } from "./errand_risk.ts";
 import { startTrainingCycle } from "./training_state_machine.ts";
 
+/**
+ * Normalize the worker-internal 'resolving' transient state to 'in_progress'
+ * on the way out to clients. Mobile/typed consumers only know in_progress and
+ * resolved; the 'resolving' claim is a server-internal CAS marker that should
+ * never escape the API boundary.
+ */
+function normalizeActivityStatus<T extends Record<string, unknown>>(activity: T): T {
+  if (activity.status === "resolving") {
+    return { ...activity, status: "in_progress" };
+  }
+  return activity;
+}
+
 async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<SlotCounts> {
   const rows: { training: number; crafting: number; companion: number }[] = await tx`
     SELECT
@@ -21,7 +34,7 @@ async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<Slot
     FROM (
       SELECT data->>'activity_type' AS src
       FROM async_activities
-      WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
+      WHERE player_id = ${playerId} AND data->>'status' IN ('in_progress', 'resolving')
       UNION ALL
       SELECT 'training' AS src
       FROM training_activities
@@ -277,7 +290,16 @@ export async function handleListActivities(req: Request, playerId: string): Prom
     const statusFilter = url.searchParams.get("status");
 
     let rows: { id: string; data: unknown }[];
-    if (statusFilter) {
+    if (statusFilter === "in_progress") {
+      // Widen to also match worker-claimed rows so clients polling for
+      // in_progress don't miss activities mid-resolution.
+      rows = await sql`
+        SELECT id, data FROM async_activities
+        WHERE player_id = ${playerId} AND data->>'status' IN ('in_progress', 'resolving')
+        ORDER BY created_at DESC
+        LIMIT 100
+      `;
+    } else if (statusFilter) {
       rows = await sql`
         SELECT id, data FROM async_activities
         WHERE player_id = ${playerId} AND data->>'status' = ${statusFilter}
@@ -295,7 +317,7 @@ export async function handleListActivities(req: Request, playerId: string): Prom
 
     const activities = rows.map((row) => {
       const data = parseJsonb(row.data);
-      return { id: row.id, ...data };
+      return normalizeActivityStatus({ id: row.id, ...data });
     });
 
     return Response.json({ activities });
@@ -325,7 +347,7 @@ export async function handleGetActivity(
     }
 
     const data = parseJsonb(row.data);
-    return Response.json({ id: row.id, ...data });
+    return Response.json(normalizeActivityStatus({ id: row.id, ...data }));
   } catch (err) {
     logError("[activities] get failed:", err);
     return Response.json({ error: "Internal server error" }, { status: 500 });
