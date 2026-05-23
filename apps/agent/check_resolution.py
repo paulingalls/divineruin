@@ -96,6 +96,23 @@ class SkillCapabilities:
     master_unlock: str | None
 
 
+@dataclass(frozen=True)
+class D20CheckCore:
+    """Internal d20+mod-vs-DC outcome shared by resolve_check (skill side)
+    and resolve_saving_throw. NOT part of the public API — callers should
+    consume CheckResult / SkillCheckResult / SavingThrowResult instead.
+
+    Centralizes the success rule (nat-20 auto-success, nat-1 auto-fail,
+    else total >= dc) so the two call-sites can't drift independently.
+    """
+
+    roll: int
+    total: int
+    success: bool
+    margin: int
+    narrative_hint: str
+
+
 # --- Tier gating ---
 
 _TIER_RANK: dict[str, int] = {tier: i for i, tier in enumerate(SKILL_TIER_ORDER)}
@@ -112,6 +129,36 @@ def _check_auto_fail(dc: int, skill_tier: SkillTier) -> bool:
 
 
 # --- Check resolution ---
+
+
+def _roll_d20_check(
+    mod: int,
+    dc: int,
+    rng: random.Random | None = None,
+) -> D20CheckCore:
+    """Roll a d20, apply the success rule, and compute narrative_hint.
+
+    Single source of truth for the d20+mod-vs-DC contract used by both
+    skill checks (resolve_check) and saving throws (resolve_saving_throw).
+    Returns the raw outcome; per-side wrapping (auto_fail / critical flags /
+    effect_applied / skill or save_type) happens in the calling function.
+    """
+    result = dice_roll("d20", rng=rng)
+    d20 = result.total
+    total = d20 + mod
+    if d20 == 20:
+        success = True
+    elif d20 == 1:
+        success = False
+    else:
+        success = total >= dc
+    return D20CheckCore(
+        roll=d20,
+        total=total,
+        success=success,
+        margin=total - dc,
+        narrative_hint=narrative_hint(d20, total, dc),
+    )
 
 
 def resolve_check(
@@ -152,28 +199,19 @@ def resolve_check(
             narrative_hint="This task is beyond your current ability",
         )
 
-    result = dice_roll("d20", rng=rng)
-    d20 = result.total
-    total = d20 + total_mod
-
-    if d20 == 20:
-        success = True
-    elif d20 == 1:
-        success = False
-    else:
-        success = total >= dc
+    core = _roll_d20_check(total_mod, dc, rng=rng)
 
     return CheckResult(
-        roll=d20,
+        roll=core.roll,
         modifier=total_mod,
-        total=total,
+        total=core.total,
         dc=dc,
-        success=success,
+        success=core.success,
         auto_fail=False,
-        margin=total - dc,
-        critical_success=d20 == 20,
-        critical_failure=d20 == 1,
-        narrative_hint=narrative_hint(d20, total, dc),
+        margin=core.margin,
+        critical_success=core.roll == 20,
+        critical_failure=core.roll == 1,
+        narrative_hint=core.narrative_hint,
     )
 
 
@@ -328,27 +366,18 @@ def resolve_saving_throw(
         level = player_data.get("level", 1)
         mod += proficiency_bonus(level)
 
-    result = dice_roll("d20", rng=rng)
-    d20 = result.total
-    total = d20 + mod
-
-    if d20 == 20:
-        success = True
-    elif d20 == 1:
-        success = False
-    else:
-        success = total >= dc
+    core = _roll_d20_check(mod, dc, rng=rng)
 
     return SavingThrowResult(
         save_type=save_lower,
-        roll=d20,
+        roll=core.roll,
         modifier=mod,
-        total=total,
+        total=core.total,
         dc=dc,
-        success=success,
-        margin=total - dc,
-        effect_applied=None if success else effect_on_fail,
-        narrative_hint=narrative_hint(d20, total, dc),
+        success=core.success,
+        margin=core.margin,
+        effect_applied=None if core.success else effect_on_fail,
+        narrative_hint=core.narrative_hint,
     )
 
 
