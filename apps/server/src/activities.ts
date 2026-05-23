@@ -225,23 +225,50 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         return { error: slotCheck.error! } as const;
       }
 
-      // Verify and consume materials atomically for crafting
+      // Verify and consume materials atomically for crafting. materialsToConsume
+      // is the recipe's material-id list flattened by quantity, so tally it into
+      // required counts and check/decrement owned quantities — a recipe needing
+      // 2 iron_ingot must not be craftable with 1 (debt 2f7e39e1806a).
       if (materialsToConsume.length > 0) {
-        const ownedRows: { item_id: string }[] = await tx`
-          SELECT item_id FROM player_inventory
-          WHERE player_id = ${playerId} AND item_id IN ${sql(materialsToConsume)}
+        const required: Record<string, number> = {};
+        for (const matId of materialsToConsume) {
+          required[matId] = (required[matId] ?? 0) + 1;
+        }
+        const requiredIds = Object.keys(required);
+        const ownedRows: { item_id: string; quantity: number }[] = await tx`
+          SELECT item_id, COALESCE((data->>'quantity')::int, 1) AS quantity
+          FROM player_inventory
+          WHERE player_id = ${playerId} AND item_id IN ${sql(requiredIds)}
           FOR UPDATE
         `;
-        const ownedSet = new Set(ownedRows.map((r) => r.item_id));
-        for (const matId of materialsToConsume) {
-          if (!ownedSet.has(matId)) {
-            return { error: `Missing required material: ${displayName(matId)}` } as const;
+        const owned: Record<string, number> = {};
+        for (const row of ownedRows) {
+          owned[row.item_id] = row.quantity;
+        }
+        for (const [matId, need] of Object.entries(required)) {
+          const have = owned[matId] ?? 0;
+          if (have < need) {
+            return {
+              error: `Insufficient material: ${displayName(matId)} (need ${need}, have ${have})`,
+            } as const;
           }
         }
-        await tx`
-          DELETE FROM player_inventory
-          WHERE player_id = ${playerId} AND item_id IN ${sql(materialsToConsume)}
-        `;
+        // Consume by decrementing each stack; delete rows that hit zero.
+        for (const [matId, need] of Object.entries(required)) {
+          const remaining = (owned[matId] ?? 0) - need;
+          if (remaining > 0) {
+            await tx`
+              UPDATE player_inventory
+              SET data = jsonb_set(data, '{quantity}', ${remaining}::text::jsonb)
+              WHERE player_id = ${playerId} AND item_id = ${matId}
+            `;
+          } else {
+            await tx`
+              DELETE FROM player_inventory
+              WHERE player_id = ${playerId} AND item_id = ${matId}
+            `;
+          }
+        }
       }
 
       const now = new Date();

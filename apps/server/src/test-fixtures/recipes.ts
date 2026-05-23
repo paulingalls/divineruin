@@ -53,6 +53,16 @@ const TEST_RECIPES: Recipe[] = [
     async_cycles: 0,
     materials: [{ material_id: "herb_bundle", quantity: 1, tier_minimum: 1, substitutable: true }],
   }),
+  recipe({
+    id: "reinforced_shield",
+    name: "Reinforced Shield",
+    category: "armor",
+    crafting_dc: 14,
+    materials: [
+      { material_id: "iron_ingot", quantity: 2, tier_minimum: 1, substitutable: false },
+      { material_id: "leather_strip", quantity: 1, tier_minimum: 1, substitutable: true },
+    ],
+  }),
 ];
 
 export function setupRecipesFixture(): void {
