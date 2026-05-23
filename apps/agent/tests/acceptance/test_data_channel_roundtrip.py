@@ -43,6 +43,11 @@ async def test_session_init_event_round_trips(
     publisher, subscriber, _room_name = async_room_pair
 
     queue: asyncio.Queue = asyncio.Queue()
+    # The unregister callable is intentionally discarded — the async_room_pair
+    # fixture's aclose_room(subscriber) on teardown detaches the listener with
+    # the room disconnect. If a future test adds a second collector against the
+    # same subscriber, bind the returned callable via pytest's addfinalizer to
+    # avoid leaking listeners across the (then-shared) subscriber lifetime.
     register_data_packet_collector(subscriber, topic="game_events", queue=queue)
 
     # Both sides must see each other before publishing. Publisher-only wait is
