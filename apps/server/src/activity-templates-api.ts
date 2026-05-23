@@ -1,8 +1,5 @@
-import {
-  CRAFTING_RECIPES,
-  getAllErrandTemplates,
-  getAllTrainingPrograms,
-} from "./activity_templates.ts";
+import { getAllErrandTemplates, getAllTrainingPrograms } from "./activity_templates.ts";
+import { listRecipes, craftingDurationSeconds } from "./recipes.ts";
 import { getActivityTypeConfig } from "./training_state_machine.ts";
 import { sql } from "./db.ts";
 import { parseJsonb } from "./parse-jsonb.ts";
@@ -22,15 +19,6 @@ function formatDuration(minSec: number, maxSec: number): string {
   return `${minH}-${maxH}h`;
 }
 
-/** Aggregate ["iron_ingot", "iron_ingot", "leather_strip"] → { iron_ingot: 2, leather_strip: 1 } */
-function countMaterials(materials: string[]): Record<string, number> {
-  const counts: Record<string, number> = {};
-  for (const m of materials) {
-    counts[m] = (counts[m] ?? 0) + 1;
-  }
-  return counts;
-}
-
 /** Map template key (recipe_id, program_id, errand_type) from in-progress activity data. */
 function templateKeyFromActivity(data: Record<string, unknown>): string | null {
   const params = (data.parameters ?? {}) as Record<string, unknown>;
@@ -45,9 +33,9 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
   try {
     // Run inventory + active activity queries in parallel
     const allMaterialIds = new Set<string>();
-    for (const recipe of Object.values(CRAFTING_RECIPES)) {
-      for (const m of recipe.required_materials) {
-        allMaterialIds.add(m);
+    for (const recipe of listRecipes()) {
+      for (const m of recipe.materials) {
+        allMaterialIds.add(m.material_id);
       }
     }
 
@@ -95,25 +83,21 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
       {
         type: "crafting",
         label: "Crafting",
-        items: Object.values(CRAFTING_RECIPES).map((r) => {
-          const counts = countMaterials(r.required_materials);
-          const materials: MaterialRequirement[] = Object.entries(counts).map(
-            ([itemId, required]) => ({
-              itemId,
-              name: displayName(itemId),
-              required,
-              owned: owned[itemId] ?? 0,
-            }),
-          );
+        items: listRecipes().map((r) => {
+          const materials: MaterialRequirement[] = r.materials.map((m) => ({
+            itemId: m.material_id,
+            name: displayName(m.material_id),
+            required: m.quantity,
+            owned: owned[m.material_id] ?? 0,
+          }));
+          const duration = craftingDurationSeconds(r);
           return {
             id: r.id,
             name: r.name,
-            duration: formatDuration(r.duration_min_seconds, r.duration_max_seconds),
+            duration: formatDuration(duration.min, duration.max),
             params: {
               recipe_id: r.id,
-              required_materials: r.required_materials,
-              skill: r.skill,
-              dc: r.dc,
+              dc: r.crafting_dc,
             },
             materials,
             active: activeMap.get(r.id) ?? null,

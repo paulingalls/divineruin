@@ -2,11 +2,11 @@ import { sql } from "./db.ts";
 import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
 import {
-  CRAFTING_RECIPES,
   VALID_ACTIVITY_TYPES,
   getTrainingProgram,
   getErrandTemplate,
 } from "./activity_templates.ts";
+import { getRecipe, recipeMaterialIds, craftingDurationSeconds } from "./recipes.ts";
 import { displayName } from "@divineruin/shared";
 import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts";
 import { validateErrandDispatch } from "./errand_risk.ts";
@@ -153,22 +153,24 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       if (!recipeId) {
         return Response.json({ error: "recipe_id is required for crafting" }, { status: 400 });
       }
-      const recipe = CRAFTING_RECIPES[recipeId];
+      const recipe = getRecipe(recipeId);
       if (!recipe) {
         return Response.json({ error: "Unknown recipe" }, { status: 400 });
       }
 
-      durationMin = recipe.duration_min_seconds;
-      durationMax = recipe.duration_max_seconds;
-      materialsToConsume = recipe.required_materials;
+      const duration = craftingDurationSeconds(recipe);
+      durationMin = duration.min;
+      durationMax = duration.max;
+      materialsToConsume = recipeMaterialIds(recipe);
+      // skill/npc_id are intentionally omitted — the resolver defaults them
+      // (arcana / grimjaw_blacksmith). Per-recipe skill+NPC were dropped from the
+      // M5.1 Recipe schema; revisit in M5.2 (decision crafting-check-skill).
       activityParams = {
         recipe_id: recipe.id,
-        result_item_id: recipe.result_item_id,
-        result_item_name: recipe.result_item_name,
-        required_materials: recipe.required_materials,
-        skill: recipe.skill,
-        dc: recipe.dc,
-        npc_id: recipe.npc_id,
+        result_item_id: recipe.output_item,
+        result_item_name: recipe.name,
+        required_materials: materialsToConsume,
+        dc: recipe.crafting_dc,
       };
     } else {
       // companion_errand
@@ -223,23 +225,50 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         return { error: slotCheck.error! } as const;
       }
 
-      // Verify and consume materials atomically for crafting
+      // Verify and consume materials atomically for crafting. materialsToConsume
+      // is the recipe's material-id list flattened by quantity, so tally it into
+      // required counts and check/decrement owned quantities — a recipe needing
+      // 2 iron_ingot must not be craftable with 1 (debt 2f7e39e1806a).
       if (materialsToConsume.length > 0) {
-        const ownedRows: { item_id: string }[] = await tx`
-          SELECT item_id FROM player_inventory
-          WHERE player_id = ${playerId} AND item_id IN ${sql(materialsToConsume)}
+        const required: Record<string, number> = {};
+        for (const matId of materialsToConsume) {
+          required[matId] = (required[matId] ?? 0) + 1;
+        }
+        const requiredIds = Object.keys(required);
+        const ownedRows: { item_id: string; quantity: number }[] = await tx`
+          SELECT item_id, COALESCE((data->>'quantity')::int, 1) AS quantity
+          FROM player_inventory
+          WHERE player_id = ${playerId} AND item_id IN ${sql(requiredIds)}
           FOR UPDATE
         `;
-        const ownedSet = new Set(ownedRows.map((r) => r.item_id));
-        for (const matId of materialsToConsume) {
-          if (!ownedSet.has(matId)) {
-            return { error: `Missing required material: ${displayName(matId)}` } as const;
+        const owned: Record<string, number> = {};
+        for (const row of ownedRows) {
+          owned[row.item_id] = row.quantity;
+        }
+        for (const [matId, need] of Object.entries(required)) {
+          const have = owned[matId] ?? 0;
+          if (have < need) {
+            return {
+              error: `Insufficient material: ${displayName(matId)} (need ${need}, have ${have})`,
+            } as const;
           }
         }
-        await tx`
-          DELETE FROM player_inventory
-          WHERE player_id = ${playerId} AND item_id IN ${sql(materialsToConsume)}
-        `;
+        // Consume by decrementing each stack; delete rows that hit zero.
+        for (const [matId, need] of Object.entries(required)) {
+          const remaining = (owned[matId] ?? 0) - need;
+          if (remaining > 0) {
+            await tx`
+              UPDATE player_inventory
+              SET data = jsonb_set(data, '{quantity}', ${remaining}::text::jsonb)
+              WHERE player_id = ${playerId} AND item_id = ${matId}
+            `;
+          } else {
+            await tx`
+              DELETE FROM player_inventory
+              WHERE player_id = ${playerId} AND item_id = ${matId}
+            `;
+          }
+        }
       }
 
       const now = new Date();
