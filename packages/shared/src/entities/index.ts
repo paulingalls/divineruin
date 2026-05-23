@@ -4,6 +4,8 @@ export type { Npc, NpcKnowledge, NpcQuestKnowledge, NpcSchedule } from "./npc";
 
 export type { Item, ItemEffect, ItemArtTemplate } from "./item";
 
+export type { Recipe, MaterialReq } from "./recipe";
+
 export type {
   Quest,
   QuestStage,
