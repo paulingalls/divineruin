@@ -2,11 +2,11 @@ import { sql } from "./db.ts";
 import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
 import {
-  CRAFTING_RECIPES,
   VALID_ACTIVITY_TYPES,
   getTrainingProgram,
   getErrandTemplate,
 } from "./activity_templates.ts";
+import { getRecipe, recipeMaterialIds, craftingDurationSeconds } from "./recipes.ts";
 import { displayName } from "@divineruin/shared";
 import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts";
 import { validateErrandDispatch } from "./errand_risk.ts";
@@ -153,22 +153,24 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       if (!recipeId) {
         return Response.json({ error: "recipe_id is required for crafting" }, { status: 400 });
       }
-      const recipe = CRAFTING_RECIPES[recipeId];
+      const recipe = getRecipe(recipeId);
       if (!recipe) {
         return Response.json({ error: "Unknown recipe" }, { status: 400 });
       }
 
-      durationMin = recipe.duration_min_seconds;
-      durationMax = recipe.duration_max_seconds;
-      materialsToConsume = recipe.required_materials;
+      const duration = craftingDurationSeconds(recipe);
+      durationMin = duration.min;
+      durationMax = duration.max;
+      materialsToConsume = recipeMaterialIds(recipe);
+      // skill/npc_id are intentionally omitted — the resolver defaults them
+      // (arcana / grimjaw_blacksmith). Per-recipe skill+NPC were dropped from the
+      // M5.1 Recipe schema; revisit in M5.2 (decision crafting-check-skill).
       activityParams = {
         recipe_id: recipe.id,
-        result_item_id: recipe.result_item_id,
-        result_item_name: recipe.result_item_name,
-        required_materials: recipe.required_materials,
-        skill: recipe.skill,
-        dc: recipe.dc,
-        npc_id: recipe.npc_id,
+        result_item_id: recipe.output_item,
+        result_item_name: recipe.name,
+        required_materials: materialsToConsume,
+        dc: recipe.crafting_dc,
       };
     } else {
       // companion_errand

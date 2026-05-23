@@ -43,6 +43,7 @@ const {
 const { setupDangerLevelFixture } = await import("./test-fixtures/danger-levels.ts");
 const { setupTrainingConfigFixture } = await import("./test-fixtures/training-config.ts");
 const { setupErrandTemplatesFixture } = await import("./test-fixtures/errand-templates.ts");
+const { setupRecipesFixture } = await import("./test-fixtures/recipes.ts");
 
 function makeRequest(method: string, path: string, body?: Record<string, unknown>): Request {
   const opts: RequestInit = { method };
@@ -59,6 +60,7 @@ beforeEach(() => {
   setupDangerLevelFixture();
   setupTrainingConfigFixture();
   setupErrandTemplatesFixture();
+  setupRecipesFixture();
 });
 
 describe("handleCreateActivity", () => {

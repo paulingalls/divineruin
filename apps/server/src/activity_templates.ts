@@ -10,16 +10,6 @@ export interface ActivityTemplate {
   required_params: string[];
 }
 
-export interface CraftingRecipe extends ActivityTemplate {
-  activity_type: "crafting";
-  required_materials: string[];
-  result_item_id: string;
-  result_item_name: string;
-  skill: string;
-  dc: number;
-  npc_id: string;
-}
-
 /** Training program config, loaded from training_programs table at startup. */
 export interface TrainingProgramConfig {
   id: string;
@@ -91,65 +81,6 @@ export async function loadTrainingPrograms(): Promise<void> {
   trainingPrograms = map;
   console.log(`Loaded ${map.size} training programs`);
 }
-
-export const CRAFTING_RECIPES: Record<string, CraftingRecipe> = {
-  iron_sword: {
-    id: "iron_sword",
-    name: "Iron Sword",
-    activity_type: "crafting",
-    duration_min_seconds: 14400,
-    duration_max_seconds: 28800,
-    required_params: [],
-    required_materials: ["iron_ingot", "leather_strip"],
-    result_item_id: "iron_sword",
-    result_item_name: "Iron Sword",
-    skill: "athletics",
-    dc: 13,
-    npc_id: "grimjaw_blacksmith",
-  },
-  healing_poultice: {
-    id: "healing_poultice",
-    name: "Healing Poultice",
-    activity_type: "crafting",
-    duration_min_seconds: 7200,
-    duration_max_seconds: 14400,
-    required_params: [],
-    required_materials: ["herb_bundle"],
-    result_item_id: "healing_poultice",
-    result_item_name: "Healing Poultice",
-    skill: "medicine",
-    dc: 11,
-    npc_id: "grimjaw_blacksmith",
-  },
-  ward_stone: {
-    id: "ward_stone",
-    name: "Ward Stone",
-    activity_type: "crafting",
-    duration_min_seconds: 21600,
-    duration_max_seconds: 43200,
-    required_params: [],
-    required_materials: ["hollow_shard", "iron_ingot"],
-    result_item_id: "ward_stone",
-    result_item_name: "Ward Stone",
-    skill: "arcana",
-    dc: 15,
-    npc_id: "grimjaw_blacksmith",
-  },
-  reinforced_shield: {
-    id: "reinforced_shield",
-    name: "Reinforced Shield",
-    activity_type: "crafting",
-    duration_min_seconds: 14400,
-    duration_max_seconds: 28800,
-    required_params: [],
-    required_materials: ["iron_ingot", "iron_ingot", "leather_strip"],
-    result_item_id: "reinforced_shield",
-    result_item_name: "Reinforced Shield",
-    skill: "athletics",
-    dc: 14,
-    npc_id: "grimjaw_blacksmith",
-  },
-};
 
 // Runtime-loaded errand templates (populated by loadErrandTemplates at startup)
 let errandTemplates: ReadonlyMap<string, ErrandTemplate> = new Map();

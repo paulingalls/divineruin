@@ -24,6 +24,19 @@ const WORKSPACES = new Set<Recipe["workspace_required"]>([
 ]);
 const MATERIAL_TIERS = new Set<MaterialReq["tier_minimum"]>([1, 2, 3, 4]);
 
+/**
+ * Validate a count field is a real integer in [min, ∞). Count fields feed
+ * Array(n).fill (recipeMaterialIds) and arithmetic; a float, negative, NaN, or
+ * Infinity row would throw RangeError or silently corrupt downstream — so the
+ * fail-loud parser rejects them at the boundary rather than at craft time.
+ */
+function requireIntAtLeast(value: unknown, min: number, ctx: string): number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < min) {
+    throw new Error(`${ctx} ${String(value)} is not an integer >= ${min}`);
+  }
+  return value;
+}
+
 // Runtime-loaded recipes (populated by loadRecipes at startup).
 let recipes: ReadonlyMap<string, Recipe> = new Map();
 
@@ -39,13 +52,31 @@ export function setRecipes(map: ReadonlyMap<string, Recipe>): void {
   recipes = map;
 }
 
+// Real-world async wait derived from async_cycles (the spec's crafting-duration
+// field): 4h per cycle, with a 15-min floor for instant (0-cycle) field recipes.
+// max = 2*min preserves the ~2x spread of the old hand-tuned durations.
+const CRAFT_CYCLE_SECONDS = 14400; // 4h
+const CRAFT_FLOOR_SECONDS = 900; // 15min
+
+/** Flatten a recipe's MaterialReq[] into a material-id list, repeated by quantity. */
+export function recipeMaterialIds(recipe: Recipe): string[] {
+  return recipe.materials.flatMap((m) => Array<string>(m.quantity).fill(m.material_id));
+}
+
+/** Crafting-activity real-world wait window (seconds) from the recipe's async_cycles. */
+export function craftingDurationSeconds(recipe: Recipe): { min: number; max: number } {
+  const min =
+    recipe.async_cycles > 0 ? recipe.async_cycles * CRAFT_CYCLE_SECONDS : CRAFT_FLOOR_SECONDS;
+  return { min, max: min * 2 };
+}
+
 function parseMaterialReq(raw: unknown, ctx: string): MaterialReq {
   if (!raw || typeof raw !== "object") throw new Error(`${ctx} is not an object`);
   const m = raw as Record<string, unknown>;
   if (typeof m.material_id !== "string" || m.material_id.length === 0) {
     throw new Error(`${ctx}.material_id is not a non-empty string`);
   }
-  if (typeof m.quantity !== "number") throw new Error(`${ctx}.quantity is not a number`);
+  const quantity = requireIntAtLeast(m.quantity, 1, `${ctx}.quantity`);
   if (typeof m.tier_minimum !== "number" || !MATERIAL_TIERS.has(m.tier_minimum as 1 | 2 | 3 | 4)) {
     throw new Error(`${ctx}.tier_minimum ${String(m.tier_minimum)} is not 1-4`);
   }
@@ -54,7 +85,7 @@ function parseMaterialReq(raw: unknown, ctx: string): MaterialReq {
   }
   return {
     material_id: m.material_id,
-    quantity: m.quantity,
+    quantity,
     tier_minimum: m.tier_minimum as MaterialReq["tier_minimum"],
     substitutable: m.substitutable,
   };
@@ -101,16 +132,14 @@ export function parseRecipeRow(id: string, raw: unknown): Recipe {
   ) {
     throw new Error(`${ctx}.workspace_required ${String(data.workspace_required)} is invalid`);
   }
-  if (typeof data.crafting_dc !== "number") throw new Error(`${ctx}.crafting_dc is not a number`);
+  const craftingDc = requireIntAtLeast(data.crafting_dc, 1, `${ctx}.crafting_dc`);
   if (typeof data.time !== "string") throw new Error(`${ctx}.time is not a string`);
-  if (typeof data.async_cycles !== "number") throw new Error(`${ctx}.async_cycles is not a number`);
+  const asyncCycles = requireIntAtLeast(data.async_cycles, 0, `${ctx}.async_cycles`);
   if (typeof data.output_item !== "string" || data.output_item.length === 0) {
     throw new Error(`${ctx}.output_item is not a non-empty string`);
   }
-  if (typeof data.output_quantity !== "number") {
-    throw new Error(`${ctx}.output_quantity is not a number`);
-  }
-  if (typeof data.study_cost !== "number") throw new Error(`${ctx}.study_cost is not a number`);
+  const outputQuantity = requireIntAtLeast(data.output_quantity, 1, `${ctx}.output_quantity`);
+  const studyCost = requireIntAtLeast(data.study_cost, 0, `${ctx}.study_cost`);
   if (!Array.isArray(data.discovery_sources)) {
     throw new Error(`${ctx}.discovery_sources is not an array`);
   }
@@ -138,12 +167,12 @@ export function parseRecipeRow(id: string, raw: unknown): Recipe {
     optional_materials: optionalMaterials,
     tainted_materials: data.tainted_materials,
     workspace_required: data.workspace_required as Recipe["workspace_required"],
-    crafting_dc: data.crafting_dc,
+    crafting_dc: craftingDc,
     time: data.time,
-    async_cycles: data.async_cycles,
+    async_cycles: asyncCycles,
     output_item: data.output_item,
-    output_quantity: data.output_quantity,
-    study_cost: data.study_cost,
+    output_quantity: outputQuantity,
+    study_cost: studyCost,
     discovery_sources: discoverySources,
     narration_cues: narrationCues,
   };
