@@ -14,7 +14,7 @@ type Result = { name: string; stdout: string; stderr: string; exitCode: number }
 const HEARTBEAT_MS = 15_000;
 
 const lanes: Lane[] = [
-  { name: "bun (server + mobile)", cmd: ["bun", "run", "test"] },
+  { name: "bun (shared + server + mobile)", cmd: ["bun", "run", "test"] },
   { name: "python", cmd: ["bun", "run", "test:python"] },
 ];
 
