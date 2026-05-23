@@ -7,6 +7,8 @@ from test_rules_core import SAMPLE_PLAYER
 
 from check_resolution import (
     CheckResult,
+    D20CheckCore,
+    _roll_d20_check,
     attack_modifier,
     resolve_attack,
     resolve_check,
@@ -463,3 +465,76 @@ class TestResolveSavingThrow:
         result = resolve_saving_throw(SAMPLE_PLAYER, "charisma", 10, "effect", rng=rng)
         # CHA -1, no prof
         assert result.modifier == -1
+
+
+# --- _roll_d20_check primitive (story-003 chokepoint extraction) ---
+
+
+class TestRollD20Check:
+    """The d20+mod-vs-DC primitive shared by resolve_check (skill) and
+    resolve_saving_throw. Both used to hand-roll identical logic — this
+    class pins the success rule + return shape so future drift is caught."""
+
+    def test_returns_d20_check_core(self):
+        rng = random.Random(42)
+        result = _roll_d20_check(5, 12, rng=rng)
+        assert isinstance(result, D20CheckCore)
+
+    def test_normal_roll_success_when_total_ge_dc(self):
+        # Find a seed where d20 + 5 >= 12 and not nat-20 (to test the
+        # non-critical success path).
+        for seed in range(1000):
+            rng = random.Random(seed)
+            roll = rng.randint(1, 20)
+            if 2 <= roll <= 19 and roll + 5 >= 12:
+                rng = random.Random(seed)
+                result = _roll_d20_check(5, 12, rng=rng)
+                assert result.roll == roll
+                assert result.total == roll + 5
+                assert result.success is True
+                assert result.margin == roll + 5 - 12
+                # narrative_hint is non-empty per rules_engine.narrative_hint
+                assert result.narrative_hint != ""
+                return
+        pytest.fail("Could not find seed for normal success roll")
+
+    def test_normal_roll_failure_when_total_lt_dc(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            roll = rng.randint(1, 20)
+            if 2 <= roll <= 19 and roll + 0 < 12:
+                rng = random.Random(seed)
+                result = _roll_d20_check(0, 12, rng=rng)
+                assert result.roll == roll
+                assert result.total == roll
+                assert result.success is False
+                assert result.margin == roll - 12
+                return
+        pytest.fail("Could not find seed for normal failure roll")
+
+    def test_nat_20_always_succeeds(self):
+        # Even with a wildly impossible DC and zero mod, nat-20 wins.
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 20:
+                rng = random.Random(seed)
+                result = _roll_d20_check(0, 100, rng=rng)
+                assert result.roll == 20
+                assert result.success is True
+                # margin still reflects raw arithmetic, success is rule-based
+                assert result.margin == 20 - 100
+                return
+        pytest.fail("Could not find seed for nat-20")
+
+    def test_nat_1_always_fails(self):
+        # Even with a huge positive mod, nat-1 still fails.
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 1:
+                rng = random.Random(seed)
+                result = _roll_d20_check(50, 5, rng=rng)
+                assert result.roll == 1
+                assert result.success is False
+                assert result.total == 51
+                return
+        pytest.fail("Could not find seed for nat-1")
