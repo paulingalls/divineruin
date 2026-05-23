@@ -370,6 +370,43 @@ class TestResolveCompanionErrand:
         mutations_mod.update_activity.assert_not_awaited()
 
     @pytest.mark.asyncio
+    async def test_raises_when_status_resolving(self):
+        """If the worker has already CAS-claimed the row (status='resolving'),
+        the tool path must fail closed with a clear ToolError so the player
+        retries instead of double-rolling."""
+        ctx = make_context()
+        activity_mod = MagicMock()
+        resolving_activity = {
+            "id": "activity_err123",
+            "player_id": "player_1",
+            "activity_type": "companion_errand",
+            "status": "resolving",
+            "resolve_at": "2026-05-22T00:00:00+00:00",
+            "outcome": None,
+            "parameters": {"errand_type": "scout", "destination": "millhaven", "dc": 12},
+        }
+        activity_mod.get_activity = AsyncMock(return_value=resolving_activity)
+        queries_mod = MagicMock()
+        queries_mod.get_player = AsyncMock()
+        mutations_mod = MagicMock()
+        mutations_mod.update_activity = AsyncMock()
+        resolve_fn = AsyncMock()
+
+        with pytest.raises(ToolError, match="currently being resolved"):
+            await _resolve_companion_errand_impl(
+                ctx,
+                "activity_err123",
+                db_mod=make_db_mod()[0],
+                activity_mod=activity_mod,
+                queries_mod=queries_mod,
+                mutations_mod=mutations_mod,
+                resolve_fn=resolve_fn,
+                now_fn=_resolve_now,
+            )
+        resolve_fn.assert_not_awaited()
+        mutations_mod.update_activity.assert_not_awaited()
+
+    @pytest.mark.asyncio
     async def test_unknown_errand_raises(self):
         ctx = make_context()
         activity_mod = MagicMock()

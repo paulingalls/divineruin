@@ -123,6 +123,26 @@ describe("handleCreateActivity", () => {
     expect(body.error).toContain("Crafting slot is full");
   });
 
+  test("rejects when companion slot is held by a 'resolving' row (story-004)", async () => {
+    // The worker has CAS-claimed the row (status='resolving'). Without the
+    // status filter widening, the slot would falsely show 0 and let a second
+    // errand dispatch through, breaking the 1-companion cap.
+    mockQueryResults = [
+      [], // lock async_activities (FOR UPDATE)
+      [], // lock training_activities (FOR UPDATE)
+      [{ training: 0, crafting: 0, companion: 1 }], // 'resolving' row counts toward companion slot
+    ];
+
+    const req = makeRequest("POST", "/api/activities", {
+      type: "companion_errand",
+      parameters: { errand_type: "scout", destination: "millhaven" },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error.toLowerCase()).toMatch(/companion/);
+  });
+
   test("rejects crafting without recipe_id", async () => {
     const req = makeRequest("POST", "/api/activities", {
       type: "crafting",
@@ -305,6 +325,26 @@ describe("handleListActivities", () => {
     const body = (await res.json()) as { activities: unknown[] };
     expect(body.activities).toEqual([]);
   });
+
+  // sprint-011 story-004: worker-internal 'resolving' state must normalize to
+  // 'in_progress' on the wire so typed mobile clients never see the transient
+  // value. Defense-in-depth at the API egress boundary. Closes 3f87f654ba6c.
+  test("normalizes 'resolving' status to 'in_progress' on the wire", async () => {
+    mockQueryResults = [
+      [
+        { id: "act_1", data: { status: "resolving", activity_type: "crafting" } },
+        { id: "act_2", data: { status: "in_progress", activity_type: "training" } },
+      ],
+    ];
+
+    const req = makeRequest("GET", "/api/activities");
+    const res = await handleListActivities(req, "player_1");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { activities: { id: string; status: string }[] };
+    expect(body.activities.length).toBe(2);
+    expect(body.activities[0]!.status).toBe("in_progress");
+    expect(body.activities[1]!.status).toBe("in_progress");
+  });
 });
 
 describe("handleGetActivity", () => {
@@ -341,6 +381,24 @@ describe("handleGetActivity", () => {
     const req = makeRequest("GET", "/api/activities/act_1");
     const res = await handleGetActivity(req, "player_1", "act_1");
     expect(res.status).toBe(404);
+  });
+
+  test("normalizes 'resolving' status to 'in_progress' on the wire", async () => {
+    mockQueryResults = [
+      [
+        {
+          id: "act_1",
+          player_id: "player_1",
+          data: { status: "resolving", activity_type: "crafting" },
+        },
+      ],
+    ];
+
+    const req = makeRequest("GET", "/api/activities/act_1");
+    const res = await handleGetActivity(req, "player_1", "act_1");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { status: string };
+    expect(body.status).toBe("in_progress");
   });
 });
 

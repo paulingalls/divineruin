@@ -47,6 +47,9 @@ else
     echo "  Bun tests (mobile)..."
     bun test --cwd apps/mobile
 
+    echo "  Bun tests (shared)..."
+    bun test --cwd packages/shared
+
     echo "  Python tests (agent, clean env)..."
     (
       for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done
