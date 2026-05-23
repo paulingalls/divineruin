@@ -325,6 +325,26 @@ describe("handleListActivities", () => {
     const body = (await res.json()) as { activities: unknown[] };
     expect(body.activities).toEqual([]);
   });
+
+  // sprint-011 story-004: worker-internal 'resolving' state must normalize to
+  // 'in_progress' on the wire so typed mobile clients never see the transient
+  // value. Defense-in-depth at the API egress boundary. Closes 3f87f654ba6c.
+  test("normalizes 'resolving' status to 'in_progress' on the wire", async () => {
+    mockQueryResults = [
+      [
+        { id: "act_1", data: { status: "resolving", activity_type: "crafting" } },
+        { id: "act_2", data: { status: "in_progress", activity_type: "training" } },
+      ],
+    ];
+
+    const req = makeRequest("GET", "/api/activities");
+    const res = await handleListActivities(req, "player_1");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { activities: { id: string; status: string }[] };
+    expect(body.activities.length).toBe(2);
+    expect(body.activities[0]!.status).toBe("in_progress");
+    expect(body.activities[1]!.status).toBe("in_progress");
+  });
 });
 
 describe("handleGetActivity", () => {
@@ -361,6 +381,24 @@ describe("handleGetActivity", () => {
     const req = makeRequest("GET", "/api/activities/act_1");
     const res = await handleGetActivity(req, "player_1", "act_1");
     expect(res.status).toBe(404);
+  });
+
+  test("normalizes 'resolving' status to 'in_progress' on the wire", async () => {
+    mockQueryResults = [
+      [
+        {
+          id: "act_1",
+          player_id: "player_1",
+          data: { status: "resolving", activity_type: "crafting" },
+        },
+      ],
+    ];
+
+    const req = makeRequest("GET", "/api/activities/act_1");
+    const res = await handleGetActivity(req, "player_1", "act_1");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { status: string };
+    expect(body.status).toBe("in_progress");
   });
 });
 
