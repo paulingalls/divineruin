@@ -1,0 +1,23 @@
+appId: com.divineruin.app
+---
+# Auth-form exercise — REQUIRES apps/server reachable from the device.
+# The email->code phase transition only happens on a 2xx from
+# /auth/request-code, so without the backend the final extendedWaitUntil
+# times out and the flow fails. Gated behind REQUIRE_BACKEND=1 in
+# scripts/maestro-acceptance.ts.
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Listen to the dark"
+    timeout: 15000
+- tapOn:
+    id: "email-input"
+- inputText: "acceptance@divineruin.test"
+- tapOn:
+    text: "SEND CODE"
+# Wait for the code-input testID rather than the "000000" placeholder text —
+# RN does not consistently expose placeholders as visible text on iOS Maestro.
+- extendedWaitUntil:
+    visible:
+      id: "code-input"
+    timeout: 10000
