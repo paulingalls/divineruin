@@ -118,6 +118,7 @@ export default function AuthScreen() {
               <>
                 <ThemedText style={styles.label}>Enter your email</ThemedText>
                 <TextInput
+                  testID="email-input"
                   style={styles.input}
                   value={email}
                   onChangeText={setEmail}
@@ -148,6 +149,7 @@ export default function AuthScreen() {
                   Sent to {email.trim().toLowerCase()}
                 </ThemedText>
                 <TextInput
+                  testID="code-input"
                   style={styles.input}
                   value={code}
                   onChangeText={setCode}

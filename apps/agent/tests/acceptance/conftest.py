@@ -189,3 +189,54 @@ async def reset_db_pool(migrated_db: str) -> AsyncIterator[str]:
             os.environ.pop("DATABASE_URL", None)
         else:
             os.environ["DATABASE_URL"] = prior
+
+
+@pytest.fixture
+async def async_room_pair(
+    livekit_server: dict[str, str],
+) -> AsyncIterator[tuple[Any, Any, str]]:
+    """Yield two connected `rtc.Room`s sharing a per-test room name.
+
+    Identities are fixed (`acceptance-publisher`, `acceptance-subscriber`) so
+    tests can assert on `participant.identity` deterministically. Room name is
+    uuid-suffixed so back-to-back tests can run against the reused persistent
+    LiveKit container without participant collisions.
+    """
+    from uuid import uuid4
+
+    from acceptance._livekit_client import (
+        aclose_room,
+        connect_room,
+        mint_access_token,
+    )
+
+    room_name = f"dr-acceptance-{uuid4().hex[:8]}"
+    publisher_token = mint_access_token(
+        api_key=livekit_server["api_key"],
+        api_secret=livekit_server["api_secret"],
+        room_name=room_name,
+        identity="acceptance-publisher",
+    )
+    subscriber_token = mint_access_token(
+        api_key=livekit_server["api_key"],
+        api_secret=livekit_server["api_secret"],
+        room_name=room_name,
+        identity="acceptance-subscriber",
+    )
+    publisher = await connect_room(livekit_server["ws_url"], publisher_token)
+    try:
+        subscriber = await connect_room(livekit_server["ws_url"], subscriber_token)
+    except BaseException:
+        # If the second connect fails, the publisher is already holding a slot
+        # on the reused persistent container — clean it up before propagating.
+        await aclose_room(publisher)
+        raise
+    try:
+        yield publisher, subscriber, room_name
+    finally:
+        # Nested try/finally guarantees both aclose calls run even if the first
+        # raises — otherwise a publisher-disconnect error would leak subscriber.
+        try:
+            await aclose_room(publisher)
+        finally:
+            await aclose_room(subscriber)

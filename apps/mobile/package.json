@@ -8,7 +8,7 @@
     "ios": "expo run:ios --port 8082",
     "web": "expo start --web",
     "prebuild:clean": "expo prebuild --clean",
-    "test:e2e:mobile": "maestro test .maestro/"
+    "test:e2e:mobile": "bun run ../../scripts/maestro-acceptance.ts"
   },
   "dependencies": {
     "@divineruin/shared": "workspace:*",
