@@ -151,6 +151,27 @@ describe("activityToFeedItem", () => {
     expect(item.summary).toBe("Grimjaw forged the blade true. You claimed it.");
   });
 
+  test("'resolving' status renders as in-flight (story-004)", () => {
+    // While the worker's CAS claim is held, the row's status is 'resolving'
+    // for 10-30s. The HUD must keep showing it as in_progress (not as a
+    // mis-rendered 'resolved' card with empty fields).
+    const start = new Date(Date.now() - 3600_000).toISOString();
+    const resolve = new Date(Date.now() + 3600_000).toISOString();
+    const data = {
+      status: "resolving",
+      activity_type: "companion_errand",
+      parameters: { errand_type: "scout", destination: "millhaven" },
+      start_time: start,
+      resolve_at: resolve,
+    };
+
+    const item = activityToFeedItem("act_resolving", data);
+    expect(item.type).toBe("in_progress");
+    expect(item.audioUrl).toBeNull();
+    expect(item.decisionOptions).toBeNull();
+    expect(item.progress).not.toBeNull();
+  });
+
   test("falls back to title when no narration_summary", () => {
     const data = {
       status: "resolved",

@@ -192,6 +192,14 @@ async def _resolve_companion_errand_impl(
         if cached is not None:
             return json.dumps(cached)
 
+        # The worker has claimed this row and is generating the canonical
+        # narration. Fail closed so we never roll a divergent outcome — the
+        # player simply retries in a moment.
+        if activity.get("status") == "resolving":
+            raise ToolError(
+                f"Errand {errand_id} is currently being resolved by the background worker; ask again in a moment."
+            )
+
         # Time gate: the companion is still out until resolve_at passes (the worker
         # uses the same resolve_at <= NOW() gate).
         now = (now_fn or _default_now)()

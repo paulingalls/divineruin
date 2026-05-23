@@ -1,5 +1,6 @@
 """Tests for the async background worker."""
 
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,6 +13,12 @@ from async_worker import (
 )
 from dialogue_parser import Segment
 from training_rules import CompletionResult
+
+
+@asynccontextmanager
+async def _mock_txn(conn):
+    yield conn
+
 
 SAMPLE_ACTIVITY = {
     "id": "activity_abc123",
@@ -103,10 +110,37 @@ class TestResolveDueActivities:
         assert count == 1  # Only act_2 succeeded
 
 
+def _patch_claim_stack(activity_dict: dict, claim_returns: bool = True):
+    """Build the patch stack covering the new claim/transaction lifecycle.
+
+    Returns a list of patch context managers the caller wraps with `with`
+    alongside its own LLM/TTS mocks.
+    """
+    mock_conn = MagicMock()
+    txn_patch = patch("async_worker.db.transaction", lambda: _mock_txn(mock_conn))
+    get_activity_patch = patch(
+        "async_worker.db_activity_queries.get_activity",
+        new_callable=AsyncMock,
+        return_value=activity_dict,
+    )
+    claim_patch = patch(
+        "async_worker.claim_resolving",
+        new_callable=AsyncMock,
+        return_value=claim_returns,
+    )
+    revert_patch = patch("async_worker.revert_claim_safe", new_callable=AsyncMock)
+    return mock_conn, txn_patch, get_activity_patch, claim_patch, revert_patch
+
+
 class TestResolveSingleActivity:
     @pytest.mark.asyncio
     async def test_crafting_resolution(self):
+        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(SAMPLE_ACTIVITY)
         with (
+            txn_p,
+            get_p,
+            claim_p as mock_claim,
+            revert_p as mock_revert,
             patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
                 "async_worker.generate_activity_narration",
@@ -119,13 +153,16 @@ class TestResolveSingleActivity:
             ),
             patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.mark_resolved", new_callable=AsyncMock) as mock_mark,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Blade ready."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
         ):
             await _resolve_single_activity(SAMPLE_ACTIVITY)
 
-        assert mock_update.await_count == 2
-        # First call: cache outcome + narration
+        mock_claim.assert_awaited_once()
+        mock_revert.assert_not_awaited()
+        # update_activity is the cache write only; mark_resolved is the terminal write.
+        mock_update.assert_awaited_once()
         cache_call = mock_update.call_args_list[0]
         assert cache_call[0][0] == "activity_abc123"
         cached = cache_call[0][1]
@@ -135,9 +172,11 @@ class TestResolveSingleActivity:
         assert isinstance(cached["narration_segments"], list)
         assert cached["narration_segments"][0]["character"] == "GRIMJAW_BLACKSMITH"
         assert "decision_options" in cached
-        # Second call: mark resolved with audio
-        resolve_call = mock_update.call_args_list[1]
-        resolved = resolve_call[0][1]
+        # mark_resolved (not update_activity) writes the terminal state — strips resolving_at.
+        mock_mark.assert_awaited_once()
+        resolved_args = mock_mark.call_args[0]
+        assert resolved_args[0] == "activity_abc123"
+        resolved = resolved_args[1]
         assert resolved["status"] == "resolved"
         assert resolved["narration_audio_url"] == "/api/audio/activity_abc123.mp3"
 
@@ -169,7 +208,12 @@ class TestResolveSingleActivity:
             },
         }
 
+        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(activity)
         with (
+            txn_p,
+            get_p,
+            claim_p,
+            revert_p,
             patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=player_with_companion),
             patch(
                 "errand_resolution.db_content_queries.get_location",
@@ -187,13 +231,15 @@ class TestResolveSingleActivity:
             ),
             patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.mark_resolved", new_callable=AsyncMock) as mock_mark,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Kael returns."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
         ):
             await _resolve_single_activity(activity)
 
-        resolve_call = mock_update.call_args_list[1]
-        assert resolve_call[0][1]["status"] == "resolved"
+        # mark_resolved (not update_activity) writes the terminal state — strips resolving_at.
+        mock_mark.assert_awaited_once()
+        assert mock_mark.call_args[0][1]["status"] == "resolved"
         cache_call = mock_update.call_args_list[0]
         assert cache_call[0][1]["outcome"]["errand_type"] == "scout"
         # Risk is rolled at resolution; safe destination -> "none".
@@ -210,7 +256,12 @@ class TestResolveSingleActivity:
         }
         player_with_companion = {**SAMPLE_PLAYER, "companion": {"id": "companion_kael", "name": "Kael"}}
 
+        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(activity)
         with (
+            txn_p,
+            get_p,
+            claim_p,
+            revert_p,
             patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=player_with_companion),
             patch(
                 "errand_resolution.db_content_queries.get_location",
@@ -225,6 +276,7 @@ class TestResolveSingleActivity:
             ),
             patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="a.mp3"),
             patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.mark_resolved", new_callable=AsyncMock),
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="x"),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
         ):
@@ -249,7 +301,12 @@ class TestResolveSingleActivity:
         }
         player_with_companion = {**SAMPLE_PLAYER, "companion": {"id": "companion_kael", "name": "Kael"}}
 
+        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(activity)
         with (
+            txn_p,
+            get_p,
+            claim_p,
+            revert_p,
             patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=player_with_companion),
             patch("errand_resolution.db_content_queries.get_location", new_callable=AsyncMock, return_value=None),
             patch("errand_risk.roll_errand_risk", MagicMock(return_value="none")) as mock_roll,
@@ -260,6 +317,7 @@ class TestResolveSingleActivity:
             ),
             patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="a.mp3"),
             patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock),
+            patch("async_worker.mark_resolved", new_callable=AsyncMock),
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="x"),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
         ):
@@ -273,8 +331,13 @@ class TestResolveSingleActivity:
 
     @pytest.mark.asyncio
     async def test_does_not_update_on_narration_failure(self):
-        """If narration fails, the activity stays in_progress for retry."""
+        """If narration fails, the activity is reverted resolving -> in_progress for retry."""
+        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(SAMPLE_ACTIVITY)
         with (
+            txn_p,
+            get_p,
+            claim_p,
+            revert_p as mock_revert,
             patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
                 "async_worker.generate_activity_narration", new_callable=AsyncMock, side_effect=RuntimeError("LLM down")
@@ -284,12 +347,20 @@ class TestResolveSingleActivity:
             with pytest.raises(RuntimeError):
                 await _resolve_single_activity(SAMPLE_ACTIVITY)
 
+        # No cache or resolved write — LLM blew up before either.
         mock_update.assert_not_awaited()
+        # Claim must be reverted so the next tick retries.
+        mock_revert.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_caches_narration_on_tts_failure(self):
-        """If TTS fails, outcome and narration are cached but status stays in_progress."""
+        """If TTS fails, narration is cached, claim is reverted to in_progress."""
+        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(SAMPLE_ACTIVITY)
         with (
+            txn_p,
+            get_p,
+            claim_p,
+            revert_p as mock_revert,
             patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
                 "async_worker.generate_activity_narration",
@@ -314,11 +385,18 @@ class TestResolveSingleActivity:
         assert cached["narration_summary"] == "Summary."
         assert isinstance(cached["narration_segments"], list)
         assert "status" not in cached
+        # Claim is reverted so the next tick retries TTS with the cached narration.
+        mock_revert.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_handles_missing_player_data(self):
         """Should still work with empty player data."""
+        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(SAMPLE_ACTIVITY)
         with (
+            txn_p,
+            get_p,
+            claim_p,
+            revert_p,
             patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=None),
             patch(
                 "async_worker.generate_activity_narration",
@@ -331,14 +409,220 @@ class TestResolveSingleActivity:
             ),
             patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_abc123.mp3"),
             patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker.mark_resolved", new_callable=AsyncMock) as mock_mark,
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Update."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
         ):
             await _resolve_single_activity(SAMPLE_ACTIVITY)
 
-        assert mock_update.await_count == 2
-        resolve_call = mock_update.call_args_list[1]
-        assert resolve_call[0][1]["status"] == "resolved"
+        # cache write via update_activity (1) + terminal write via mark_resolved (1)
+        mock_update.assert_awaited_once()
+        mock_mark.assert_awaited_once()
+        assert mock_mark.call_args[0][1]["status"] == "resolved"
+
+    @pytest.mark.asyncio
+    async def test_skips_when_row_vanished_inside_lock(self):
+        """Row deleted between get_due_activities and FOR-UPDATE lock — return cleanly,
+        never attempt to claim, never run LLM/TTS, never revert.
+
+        Covers the `if fresh is None: return` branch in _resolve_single_activity.
+        """
+        mock_conn = MagicMock()
+        with (
+            patch("async_worker.db.transaction", lambda: _mock_txn(mock_conn)),
+            patch(
+                "async_worker.db_activity_queries.get_activity",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch("async_worker.claim_resolving", new_callable=AsyncMock) as mock_claim,
+            patch("async_worker.revert_claim_safe", new_callable=AsyncMock) as mock_revert,
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock) as mock_player,
+            patch("async_worker.generate_activity_narration", new_callable=AsyncMock) as mock_narration,
+            patch("async_worker.synthesize_segments", new_callable=AsyncMock) as mock_tts,
+            patch("async_worker.mark_resolved", new_callable=AsyncMock) as mock_mark,
+        ):
+            await _resolve_single_activity(SAMPLE_ACTIVITY)
+
+        mock_claim.assert_not_awaited()
+        mock_player.assert_not_awaited()
+        mock_narration.assert_not_awaited()
+        mock_tts.assert_not_awaited()
+        mock_mark.assert_not_awaited()
+        mock_revert.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_cancelled_error_propagates_without_revert(self):
+        """CancelledError during work phase (e.g. shutdown) must re-raise unhandled,
+        not open a new revert txn that could hang during shutdown. The
+        stale-resolving sweep on next boot recovers the row."""
+        import asyncio
+
+        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(SAMPLE_ACTIVITY)
+        with (
+            txn_p,
+            get_p,
+            claim_p,
+            revert_p as mock_revert,
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+            patch(
+                "async_worker.generate_activity_narration",
+                new_callable=AsyncMock,
+                side_effect=asyncio.CancelledError(),
+            ),
+        ):
+            with pytest.raises(asyncio.CancelledError):
+                await _resolve_single_activity(SAMPLE_ACTIVITY)
+
+        mock_revert.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_skips_when_already_resolving(self):
+        """If another path already claimed (claim_resolving returns False),
+        the worker logs and returns without calling LLM/TTS or updating."""
+        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(SAMPLE_ACTIVITY, claim_returns=False)
+        with (
+            txn_p,
+            get_p,
+            claim_p,
+            revert_p as mock_revert,
+            patch("async_worker.db_queries.get_player", new_callable=AsyncMock) as mock_player,
+            patch("async_worker.generate_activity_narration", new_callable=AsyncMock) as mock_narration,
+            patch("async_worker.synthesize_segments", new_callable=AsyncMock) as mock_tts,
+            patch("async_worker.db_mutations.update_activity", new_callable=AsyncMock) as mock_update,
+        ):
+            # Should return cleanly without raising.
+            await _resolve_single_activity(SAMPLE_ACTIVITY)
+
+        mock_player.assert_not_awaited()
+        mock_narration.assert_not_awaited()
+        mock_tts.assert_not_awaited()
+        mock_update.assert_not_awaited()
+        # Nothing to revert — we never owned the claim.
+        mock_revert.assert_not_awaited()
+
+
+# --- async_worker_claim helpers ---
+
+
+class TestClaimResolving:
+    @pytest.mark.asyncio
+    async def test_claims_when_status_in_progress(self):
+        """CAS succeeds when row is in_progress; returns True and stamps resolving_at."""
+        from async_worker_claim import claim_resolving
+
+        mock_conn = MagicMock()
+        mock_conn.fetchval = AsyncMock(return_value="activity_abc")
+        ok = await claim_resolving("activity_abc", mock_conn)
+        assert ok is True
+        sql = mock_conn.fetchval.call_args[0][0]
+        assert "data->>'status' = 'in_progress'" in sql
+        assert "resolving" in sql
+        assert "resolving_at" in sql
+        assert "NOW()" in sql
+        assert "RETURNING id" in sql
+
+    @pytest.mark.asyncio
+    async def test_fails_when_status_already_resolving(self):
+        """No row matches the in_progress predicate -> RETURNING yields None -> False."""
+        from async_worker_claim import claim_resolving
+
+        mock_conn = MagicMock()
+        mock_conn.fetchval = AsyncMock(return_value=None)
+        ok = await claim_resolving("activity_abc", mock_conn)
+        assert ok is False
+
+    @pytest.mark.asyncio
+    async def test_fails_when_status_resolved(self):
+        """Row in terminal state: CAS predicate fails -> RETURNING yields None -> False."""
+        from async_worker_claim import claim_resolving
+
+        mock_conn = MagicMock()
+        mock_conn.fetchval = AsyncMock(return_value=None)
+        ok = await claim_resolving("activity_abc", mock_conn)
+        assert ok is False
+
+
+class TestMarkResolved:
+    @pytest.mark.asyncio
+    async def test_strips_resolving_at_and_merges_updates(self):
+        """Terminal write must strip transient resolving_at + merge new fields in
+        one statement, so resolved rows don't carry an orphan timestamp."""
+        from async_worker_claim import mark_resolved
+
+        mock_conn = MagicMock()
+        mock_conn.execute = AsyncMock()
+        await mark_resolved(
+            "activity_abc",
+            {"status": "resolved", "narration_audio_url": "/audio/a.mp3"},
+            mock_conn,
+        )
+        sql = mock_conn.execute.call_args[0][0]
+        # Strip resolving_at then merge the updates jsonb — one write, no orphan field.
+        assert "data - 'resolving_at'" in sql
+        assert "|| $2::jsonb" in sql
+        payload = mock_conn.execute.call_args[0][2]
+        import json as _json
+
+        parsed = _json.loads(payload)
+        assert parsed["status"] == "resolved"
+        assert parsed["narration_audio_url"] == "/audio/a.mp3"
+
+
+class TestRevertClaim:
+    @pytest.mark.asyncio
+    async def test_reverts_resolving_to_in_progress(self):
+        from async_worker_claim import revert_claim
+
+        mock_conn = MagicMock()
+        mock_conn.execute = AsyncMock()
+        await revert_claim("activity_abc", mock_conn)
+        sql = mock_conn.execute.call_args[0][0]
+        # WHERE-guarded: only flips rows that are currently 'resolving'.
+        assert "data->>'status' = 'resolving'" in sql
+        # Strips resolving_at and sets status back to in_progress.
+        assert "'resolving_at'" in sql
+        assert '"status": "in_progress"' in sql
+
+    @pytest.mark.asyncio
+    async def test_no_op_when_not_resolving(self):
+        """WHERE guard prevents the UPDATE; we just await execute and move on."""
+        from async_worker_claim import revert_claim
+
+        mock_conn = MagicMock()
+        mock_conn.execute = AsyncMock(return_value="UPDATE 0")
+        # Must not raise even if zero rows match.
+        await revert_claim("activity_abc", mock_conn)
+        mock_conn.execute.assert_awaited_once()
+
+
+class TestResetStaleResolving:
+    @pytest.mark.asyncio
+    async def test_resets_rows_past_threshold(self):
+        """Rows with status='resolving' AND resolving_at older than threshold get reset."""
+        import async_worker_claim
+
+        mock_pool = AsyncMock()
+        mock_pool.fetch = AsyncMock(return_value=[{"id": "stale_1"}, {"id": "stale_2"}])
+        with patch.object(async_worker_claim.db, "get_pool", return_value=mock_pool):
+            count = await async_worker_claim.reset_stale_resolving(threshold_seconds=900)
+        assert count == 2
+        sql = mock_pool.fetch.call_args[0][0]
+        assert "data->>'status' = 'resolving'" in sql
+        assert "resolving_at" in sql
+        # Threshold parameterized via $1, not string-interpolated.
+        assert "$1" in sql
+
+    @pytest.mark.asyncio
+    async def test_fresh_resolving_rows_not_reset(self):
+        """If no rows are past threshold, nothing returns -> count 0."""
+        import async_worker_claim
+
+        mock_pool = AsyncMock()
+        mock_pool.fetch = AsyncMock(return_value=[])
+        with patch.object(async_worker_claim.db, "get_pool", return_value=mock_pool):
+            count = await async_worker_claim.reset_stale_resolving(threshold_seconds=900)
+        assert count == 0
 
 
 # --- check_god_whisper_triggers ---

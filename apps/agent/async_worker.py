@@ -23,6 +23,8 @@ import db_queries
 import db_training
 import skill_persistence
 from async_rules import resolve_crafting
+from async_worker_claim import claim_resolving, mark_resolved, reset_stale_resolving, revert_claim_safe
+from async_worker_config import POLL_INTERVAL
 from dialogue_parser import Segment
 from errand_resolution import resolve_errand_outcome
 from llm_config import AUDIO_DIR, audio_url_for
@@ -32,8 +34,6 @@ from tts_prerender import synthesize_segments
 from world_news import generate_world_news
 
 logger = logging.getLogger("divineruin.async_worker")
-
-POLL_INTERVAL = 300  # 5 minutes
 
 
 async def apply_skill_practice_advancement(
@@ -67,6 +67,11 @@ async def apply_skill_practice_advancement(
 
 async def resolve_due_activities() -> int:
     """Find and resolve all due activities. Returns count resolved."""
+    # Recover presumed-dead 'resolving' claims before fetching the due list.
+    try:
+        await reset_stale_resolving()
+    except Exception:
+        logger.warning("Stale-resolving reset failed; continuing tick", exc_info=True)
     due = await db_activity_queries.get_due_activities()
     if not due:
         # Backfill progress snippets for in-progress activities even when none are due
@@ -100,76 +105,98 @@ async def resolve_due_activities() -> int:
     return resolved_count
 
 
+async def _resolve_one_outcome(activity: dict, player_data: dict) -> dict | None:
+    """Compute the rules-engine outcome for an activity. Returns None for
+    unknown types (caller reverts the claim and skips)."""
+    activity_type = activity.get("activity_type", "crafting")
+    parameters = activity.get("parameters", {})
+    if activity_type == "crafting":
+        return asdict(resolve_crafting(player_data, parameters))
+    if activity_type == "companion_errand":
+        # ADR 0006: errand_resolution is the sole risk roll site.
+        return await resolve_errand_outcome(player_data.get("companion", {}), parameters)
+    logger.error("Unknown activity type: %s", activity_type)
+    return None
+
+
 async def _resolve_single_activity(activity: dict) -> None:
-    """Resolve a single activity: compute outcome, generate narration, render audio."""
+    """Resolve one activity: CAS-claim, do LLM+TTS outside the lock, finalize.
+
+    On exception in the work phase, revert the claim so the next tick retries
+    (cached narration short-circuits the LLM if we got past it).
+    """
     activity_id = activity["id"]
     player_id = activity["player_id"]
     activity_type = activity.get("activity_type", "crafting")
-    parameters = activity.get("parameters", {})
-
     logger.info("Resolving activity %s (type=%s, player=%s)", activity_id, activity_type, player_id)
 
-    # Check for cached narration from a previous partial resolve (e.g. TTS failed)
-    cached_outcome = activity.get("outcome")
-    cached_segments = activity.get("narration_segments")
-
-    if cached_outcome and cached_segments:
-        logger.info("Using cached narration for %s (TTS retry)", activity_id)
-        outcome_dict = cached_outcome
-        narration_text = activity.get("narration_text", "")
-        segments = [Segment(**s) for s in cached_segments]
-    else:
-        # Load player data
-        player_data = await db_queries.get_player(player_id) or {}
-
-        # Compute outcome using rules engine
-        if activity_type == "crafting":
-            outcome_dict = asdict(resolve_crafting(player_data, parameters))
-        elif activity_type == "companion_errand":
-            # resolve_errand_outcome rolls the injury risk at resolution (sole
-            # authority, ADR 0006) — nothing reads it before then, so the timing
-            # is behaviorally identical to a dispatch-time roll.
-            companion_data = player_data.get("companion", {})
-            outcome_dict = await resolve_errand_outcome(companion_data, parameters)
-        else:
-            logger.error("Unknown activity type: %s", activity_type)
+    # Step A: atomic CAS claim inside FOR-UPDATE.
+    async with db.transaction() as conn:
+        fresh = await db_activity_queries.get_activity(activity_id, conn=conn, for_update=True)
+        if fresh is None:
+            logger.warning("Activity %s vanished before claim; skipping", activity_id)
             return
+        if not await claim_resolving(activity_id, conn):
+            logger.info("Activity %s skipping; another path already claimed it", activity_id)
+            return
+        # Use the freshly-fetched row — it has the latest cached narration if a
+        # prior tick got partway before TTS failed.
+        activity = {**activity, **fresh}
 
-        # Generate structured narration via LLM tool_use
-        segments, narration_text, narration_summary = await generate_activity_narration(
-            outcome_dict, player_data, activity
-        )
+    try:
+        # Step B: outcome + narration + cache (no lock held — can be slow).
+        cached_outcome = activity.get("outcome")
+        cached_segments = activity.get("narration_segments")
+        if cached_outcome and cached_segments:
+            logger.info("Using cached narration for %s (TTS retry)", activity_id)
+            outcome_dict = cached_outcome
+            narration_text = activity.get("narration_text", "")
+            segments = [Segment(**s) for s in cached_segments]
+        else:
+            player_data = await db_queries.get_player(player_id) or {}
+            outcome_dict = await _resolve_one_outcome(activity, player_data)
+            if outcome_dict is None:
+                await revert_claim_safe(activity_id)
+                return
+            segments, narration_text, narration_summary = await generate_activity_narration(
+                outcome_dict, player_data, activity
+            )
+            await db_mutations.update_activity(
+                activity_id,
+                {
+                    "outcome": outcome_dict,
+                    "narration_text": narration_text,
+                    "narration_summary": narration_summary,
+                    "narration_segments": [asdict(s) for s in segments],
+                    "decision_options": outcome_dict.get("decision_options", []),
+                },
+            )
 
-        # Cache everything so retries skip the LLM call
-        await db_mutations.update_activity(
-            activity_id,
-            {
-                "outcome": outcome_dict,
-                "narration_text": narration_text,
-                "narration_summary": narration_summary,
-                "narration_segments": [asdict(s) for s in segments],
-                "decision_options": outcome_dict.get("decision_options", []),
-            },
-        )
+        # Step C: pre-render audio.
+        audio_filename = f"{activity_id}.mp3"
+        await synthesize_segments(segments, os.path.join(AUDIO_DIR, audio_filename))
+        audio_url = audio_url_for(audio_filename)
 
-    # Pre-render audio from structured segments
-    audio_filename = f"{activity_id}.mp3"
-    audio_path = os.path.join(AUDIO_DIR, audio_filename)
-    await synthesize_segments(segments, audio_path)
-    audio_url = audio_url_for(audio_filename)
-
-    # Mark fully resolved
-    await db_mutations.update_activity(
-        activity_id,
-        {
-            "status": "resolved",
-            "narration_audio_url": audio_url,
-        },
-    )
+        # Step D: terminal transition resolving -> resolved. Uses `mark_resolved`
+        # (not `update_activity`) so the transient `resolving_at` field is stripped
+        # in the same write — resolved rows don't carry an orphaned timestamp.
+        async with db.transaction() as conn:
+            await mark_resolved(
+                activity_id,
+                {"status": "resolved", "narration_audio_url": audio_url},
+                conn,
+            )
+    except asyncio.CancelledError:
+        # Shutdown signal — don't open a new txn to revert (could hang). The
+        # next worker boot's `reset_stale_resolving` sweep will recover the row.
+        raise
+    except Exception:
+        await revert_claim_safe(activity_id)
+        raise
 
     logger.info("Activity %s resolved: tier=%s", activity_id, outcome_dict.get("tier"))
 
-    # Send push notification
+    # Push notification (failure non-fatal, no revert).
     try:
         narration_hook = await generate_notification_hook(narration_text, activity_type)
         await send_push_notification(player_id, activity_title(activity_type, activity), narration_hook)
