@@ -1,11 +1,11 @@
 """Tests for item art URLs and story moment tool (Milestone 10.4)."""
 
 import json
-from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
+from sample_fixtures import mock_txn
 
 import event_types as E
 from db import _compute_item_image_url
@@ -96,11 +96,6 @@ class TestComputeItemImageUrl:
 
 
 # --- record_story_moment ---
-
-
-@asynccontextmanager
-async def _mock_txn(conn):
-    yield conn
 
 
 def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None, session_id="session_abc"):
@@ -255,7 +250,7 @@ class TestAddToInventorySendsFullInventory:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db._compute_item_image_url = _compute_item_image_url
         mock_mutations = MagicMock()
         mock_mutations.add_inventory_item = AsyncMock()
@@ -296,7 +291,7 @@ class TestAddToInventorySendsFullInventory:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db._compute_item_image_url = _compute_item_image_url
         mock_mutations = MagicMock()
         mock_mutations.add_inventory_item = AsyncMock()
@@ -328,7 +323,7 @@ class TestAddToInventorySendsFullInventory:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db._compute_item_image_url = _compute_item_image_url
         mock_mutations = MagicMock()
         mock_mutations.add_inventory_item = AsyncMock()

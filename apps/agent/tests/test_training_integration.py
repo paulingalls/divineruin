@@ -248,16 +248,13 @@ class TestFullCycleViaFunctionTools:
     @pytest.mark.asyncio
     async def test_full_cycle_via_function_tools(self) -> None:
         import json
-        from contextlib import asynccontextmanager
         from unittest.mock import MagicMock
+
+        from sample_fixtures import mock_txn
 
         from session_data import SessionData
         from training_rules import MidpointResult, TrainingCycleInit
         from training_tools import _initiate_training_cycle_impl, _resolve_training_midpoint_impl
-
-        @asynccontextmanager
-        async def _mock_txn(conn):
-            yield conn
 
         fixed_start = datetime(2026, 5, 19, 12, 0, 0, tzinfo=UTC)
         first_half_seconds = 6 * 3600
@@ -277,7 +274,7 @@ class TestFullCycleViaFunctionTools:
 
         mock_conn = MagicMock()
         mock_db = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
 
         # In-memory training_activities store mimicking db_training.* surface.
         rows: dict[str, dict] = {}

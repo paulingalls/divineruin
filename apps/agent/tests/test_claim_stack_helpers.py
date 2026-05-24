@@ -6,7 +6,8 @@ caller depends on, so a future edit can't silently change a target or default.
 """
 
 import pytest
-from claim_stack_helpers import mock_txn, patch_claim_stack
+from claim_stack_helpers import patch_claim_stack
+from sample_fixtures import mock_txn
 
 import async_worker
 

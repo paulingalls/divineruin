@@ -3,7 +3,8 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from claim_stack_helpers import mock_txn, patch_claim_stack
+from claim_stack_helpers import patch_claim_stack
+from sample_fixtures import mock_txn
 
 from async_worker import (
     _resolve_single_activity,

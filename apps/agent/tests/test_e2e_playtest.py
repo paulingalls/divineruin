@@ -1,11 +1,10 @@
 """E2E integration tests for H.8 — verify the full handoff chain."""
 
 import json
-from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER
+from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, mock_txn
 
 from city_agent import CityAgent
 from dungeon_agent import DungeonAgent
@@ -22,11 +21,6 @@ def _make_context(location_id: str, companion: CompanionState | None = None) -> 
     ctx.session = MagicMock()
     ctx.session.current_agent = None
     return ctx
-
-
-@asynccontextmanager
-async def _mock_txn(conn):
-    yield conn
 
 
 COMPANION = CompanionState(id="companion_kael", name="Kael")
@@ -73,7 +67,7 @@ class TestNewPlayerHandoffChain:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db.extract_exit_connections = MagicMock(return_value=[])
         mock_mutations = MagicMock()
         mock_mutations.update_player_location = AsyncMock()
@@ -169,7 +163,7 @@ class TestNewPlayerHandoffChain:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db.extract_exit_connections = MagicMock(return_value=[])
         mock_mutations = MagicMock()
         mock_mutations.update_player_location = AsyncMock()

@@ -4,18 +4,14 @@ test_async_worker.py and test_async_e2e.py both mock the same claim/transaction
 lifecycle that _resolve_single_activity drives: a db.transaction yielding a mock
 conn, a get_activity FOR-UPDATE re-fetch, claim_resolving, and revert_claim_safe.
 Extracted here to kill the duplicated copies before a third lands (concern
-d55602722fee). Flat-module convention matches sample_fixtures.py /
-training_config_fixture.py — importable as `from claim_stack_helpers import ...`.
+d55602722fee). The db.transaction() stub itself is the canonical mock_txn in
+sample_fixtures.py (reused here); this module owns only the CAS-specific stack.
+Flat-module convention matches sample_fixtures.py / training_config_fixture.py.
 """
 
-from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
-
-@asynccontextmanager
-async def mock_txn(conn):
-    """db.transaction() stand-in: yields the provided mock connection."""
-    yield conn
+from sample_fixtures import mock_txn
 
 
 def patch_claim_stack(activity_dict: dict, claim_returns: bool = True):
