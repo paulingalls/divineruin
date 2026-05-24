@@ -1,4 +1,4 @@
-import type { Recipe, MaterialReq } from "@divineruin/shared";
+import type { Recipe, MaterialReq, QualityBand } from "@divineruin/shared";
 import { sql } from "./db.ts";
 
 // DB-loaded recipe content (M5.1). Mirrors the training-programs loader in
@@ -23,6 +23,9 @@ const WORKSPACES = new Set<Recipe["workspace_required"]>([
   "laboratory",
 ]);
 const MATERIAL_TIERS = new Set<MaterialReq["tier_minimum"]>([1, 2, 3, 4]);
+// Canonical narration quality bands (crafting-narration-bands). The loader fails
+// loud on any other band key so a content typo can't silently miss at runtime.
+const QUALITY_BANDS = new Set<QualityBand>(["exceptional", "success", "partial", "failure"]);
 
 /**
  * Validate a count field is a real integer in [min, ∞). Count fields feed
@@ -152,10 +155,27 @@ export function parseRecipeRow(id: string, raw: unknown): Recipe {
   }
   const cuesRaw = data.narration_cues as Record<string, unknown>;
   if (Object.keys(cuesRaw).length === 0) throw new Error(`${ctx}.narration_cues is empty`);
-  const narrationCues: Record<string, string> = {};
+  const narrationCues: Partial<Record<QualityBand, string>> = {};
   for (const [band, cue] of Object.entries(cuesRaw)) {
+    if (!QUALITY_BANDS.has(band as QualityBand)) {
+      throw new Error(`${ctx}.narration_cues[${band}] is not a canonical quality band`);
+    }
     if (typeof cue !== "string") throw new Error(`${ctx}.narration_cues[${band}] is not a string`);
-    narrationCues[band] = cue;
+    narrationCues[band as QualityBand] = cue;
+  }
+  // crafting-narration-bands: a recipe carries {success, failure} (2) or all 4.
+  // success+failure are always required so a resolved success/failure outcome
+  // never finds undefined; exceptional+partial are all-or-nothing. Enforced here
+  // at the per-turn DB boundary (not just the content test) so a non-seed row
+  // (migration, manual fix, future tool) can't silently miss at narration time.
+  if (!("success" in narrationCues) || !("failure" in narrationCues)) {
+    throw new Error(`${ctx}.narration_cues must include both success and failure bands`);
+  }
+  const bandCount = Object.keys(narrationCues).length;
+  if (bandCount !== 2 && bandCount !== 4) {
+    throw new Error(
+      `${ctx}.narration_cues has ${bandCount} bands; expected 2 (success/failure) or all 4`,
+    );
   }
 
   return {

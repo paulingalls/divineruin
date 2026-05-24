@@ -27,7 +27,7 @@ function recipe(overrides: Partial<Recipe> & Pick<Recipe, "id">): Recipe {
     output_quantity: 1,
     study_cost: 2,
     discovery_sources: ["grimjaw_blacksmith"],
-    narration_cues: { success: "Done." },
+    narration_cues: { success: "Done.", failure: "Ruined." },
     ...overrides,
   };
 }

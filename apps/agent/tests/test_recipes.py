@@ -219,6 +219,39 @@ class TestParseRecipeRow:
         with pytest.raises(ValueError, match=r"narration_cues"):
             recipes.parse_recipe_row("x", {**VALID_RECIPE_DATA, "narration_cues": {"success": 1}})
 
+    def test_rejects_non_canonical_narration_band(self):
+        # Canonical bands are exceptional|success|partial|failure (crafting-narration-bands);
+        # a typo'd band must fail loud at the load boundary, not silently miss at runtime.
+        with pytest.raises(ValueError, match=r"narration_cues\[glorious\]"):
+            recipes.parse_recipe_row("x", {**VALID_RECIPE_DATA, "narration_cues": {"glorious": "shine"}})
+
+    def test_rejects_narration_cues_missing_success_or_failure(self):
+        # crafting-narration-bands: success+failure always required so a resolved
+        # outcome never finds a missing cue at narration time.
+        with pytest.raises(ValueError, match=r"must include both success and failure"):
+            recipes.parse_recipe_row("x", {**VALID_RECIPE_DATA, "narration_cues": {"success": "ok", "partial": "meh"}})
+        with pytest.raises(ValueError, match=r"must include both success and failure"):
+            recipes.parse_recipe_row(
+                "x", {**VALID_RECIPE_DATA, "narration_cues": {"exceptional": "wow", "failure": "no"}}
+            )
+
+    def test_rejects_three_band_narration_cues(self):
+        with pytest.raises(ValueError, match=r"expected 2 .* or all 4"):
+            recipes.parse_recipe_row(
+                "x",
+                {**VALID_RECIPE_DATA, "narration_cues": {"success": "ok", "failure": "no", "partial": "meh"}},
+            )
+
+    def test_accepts_all_four_canonical_bands(self):
+        parsed = recipes.parse_recipe_row(
+            "x",
+            {
+                **VALID_RECIPE_DATA,
+                "narration_cues": {"exceptional": "wow", "success": "ok", "partial": "meh", "failure": "no"},
+            },
+        )
+        assert set(parsed["narration_cues"]) == {"exceptional", "success", "partial", "failure"}
+
     def test_rejects_non_string_discovery_source(self):
         with pytest.raises(ValueError, match=r"discovery_sources"):
             recipes.parse_recipe_row("x", {**VALID_RECIPE_DATA, "discovery_sources": ["ok", 7]})
