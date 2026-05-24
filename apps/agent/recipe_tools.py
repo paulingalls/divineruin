@@ -21,6 +21,7 @@ from livekit.agents.voice import RunContext
 import db
 import db_mutations
 import db_queries
+import recipe_slots
 import recipes
 from db_errors import db_tool
 from recipe_validation import validate_recipe_slot_capacity
@@ -59,6 +60,7 @@ async def _learn_recipe_impl(
     queries_mod=db_queries,
     mutations_mod=db_mutations,
     recipes_mod=recipes,
+    slots_mod=recipe_slots,
 ) -> str:
     context.disallow_interruptions()
     _validate_id(recipe_id, "recipe_id")
@@ -67,6 +69,14 @@ async def _learn_recipe_impl(
     player_id = context.userdata.player_id
     logger.info("learn_recipe: player=%s recipe=%s via=%s", player_id, recipe_id, learned_via)
 
+    # Cached reference reads — done BEFORE opening the txn so they don't acquire a
+    # second pooled connection while this learn holds one (pool max_size=5; a
+    # nested acquire under cold-cache concurrency could exhaust the pool).
+    recipe = await recipes_mod.get_recipe(recipe_id)
+    if recipe is None:
+        raise ToolError(f"Unknown recipe: {recipe_id}")
+    slots = await slots_mod.get_recipe_slots()
+
     async with db_mod.transaction() as conn:
         # Lock the player row so a concurrent learn can't pass the same slot
         # check before this one's write lands (count→insert stays atomic).
@@ -74,14 +84,16 @@ async def _learn_recipe_impl(
         if not player:
             raise ToolError(f"Unknown player: {player_id}")
 
-        recipe = await recipes_mod.get_recipe(recipe_id)
-        if recipe is None:
-            raise ToolError(f"Unknown recipe: {recipe_id}")
-
         crafting_tier = (await queries_mod.get_single_skill_advancement(player_id, "crafting", conn=conn))["tier"]
         known_count = await queries_mod.count_player_known_recipes(player_id, conn=conn)
 
-        capacity = validate_recipe_slot_capacity(crafting_tier, known_count, recipe["tier"])
+        # A missing/partial recipe_slots row for a real crafting tier is a content
+        # bug; surface it as ToolError so the tool keeps its ADR-0002 error shape
+        # instead of leaking a raw ValueError/KeyError to the agent.
+        try:
+            capacity = validate_recipe_slot_capacity(crafting_tier, known_count, recipe["tier"], slots)
+        except (ValueError, KeyError) as exc:
+            raise ToolError(f"Recipe slot configuration error for crafting tier {crafting_tier!r}: {exc}") from exc
         if not capacity.allowed:
             raise ToolError(capacity.reason)
 

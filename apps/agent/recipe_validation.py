@@ -12,26 +12,9 @@ from dataclasses import dataclass
 # Recipe.tier vocabulary (basic|trained|expert|master) — distinct from the
 # crafting SKILL tier (untrained|trained|expert|master); the overlapping words
 # 'trained'/'expert' span two enums (concern 3c2fa065a7cd). Untrained crafters
-# cap at 'basic'.
+# cap at 'basic'. This is genuine ordering logic, not DB data — the slot caps it
+# compares against come from the recipe_slots table (see below).
 RECIPE_TIER_ORDER = ["basic", "trained", "expert", "master"]
-
-# Mirror the migration-019 recipe_slots seed + decision d25e04f066a3
-# (Untrained=3, adopting the spec over the milestone-doc's 0). None = unlimited
-# (Master). MAX_RECIPE_TIER is the highest Recipe.tier learnable at each crafting
-# tier. Kept in code (like rules_engine.SKILL_TIER_BONUS) for pure-fn determinism;
-# the calling tool does not re-read recipe_slots.
-KNOWN_RECIPE_SLOTS: dict[str, int | None] = {
-    "untrained": 3,
-    "trained": 8,
-    "expert": 15,
-    "master": None,
-}
-MAX_RECIPE_TIER: dict[str, str] = {
-    "untrained": "basic",
-    "trained": "trained",
-    "expert": "expert",
-    "master": "master",
-}
 
 
 @dataclass(frozen=True)
@@ -46,23 +29,32 @@ class MaterialCheckResult:
     reason: str  # "" when satisfied
 
 
-def validate_recipe_slot_capacity(crafting_tier: str, known_count: int, recipe_tier: str) -> SlotCapacityResult:
+def validate_recipe_slot_capacity(
+    crafting_tier: str, known_count: int, recipe_tier: str, slots: dict[str, dict]
+) -> SlotCapacityResult:
     """Can a crafter at `crafting_tier` holding `known_count` recipes learn one of
     `recipe_tier`? Enforces both tier-eligibility (recipe_tier <= the tier's max)
-    and capacity (known_count < the tier's slot cap; Master = unlimited)."""
-    if crafting_tier not in KNOWN_RECIPE_SLOTS:
+    and capacity (known_count < the tier's slot cap; Master = unlimited).
+
+    `slots` is the recipe_slots reference data, loaded from the DB by the caller
+    (recipe_slots.get_recipe_slots): crafting_tier -> {"max_recipe_tier": str,
+    "known_recipe_slots": int | None}. Passing it in keeps this function pure and
+    keeps the caps in one place (the DB), mirroring how check_material_requirements
+    takes its catalog arg — no second hardcoded copy lives here (concern d125d022f084).
+    """
+    if crafting_tier not in slots:
         raise ValueError(f"crafting_tier {crafting_tier!r} is not a valid crafting tier")
     if recipe_tier not in RECIPE_TIER_ORDER:
         raise ValueError(f"recipe_tier {recipe_tier!r} is not a valid recipe tier")
 
-    max_tier = MAX_RECIPE_TIER[crafting_tier]
+    max_tier = slots[crafting_tier]["max_recipe_tier"]
     if RECIPE_TIER_ORDER.index(recipe_tier) > RECIPE_TIER_ORDER.index(max_tier):
         return SlotCapacityResult(
             False,
             f"{crafting_tier} crafters can learn up to {max_tier} recipes; {recipe_tier} is too advanced",
         )
 
-    cap = KNOWN_RECIPE_SLOTS[crafting_tier]
+    cap = slots[crafting_tier]["known_recipe_slots"]
     if cap is not None and known_count >= cap:
         return SlotCapacityResult(False, f"recipe slots full: {known_count}/{cap} for {crafting_tier} crafters")
     return SlotCapacityResult(True, "")

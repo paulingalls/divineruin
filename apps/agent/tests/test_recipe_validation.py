@@ -9,47 +9,59 @@ import pytest
 
 import recipe_validation as rv
 
+# Slot caps as the DB loader (recipe_slots.get_recipe_slots) returns them, mirroring
+# the migration-019 recipe_slots seed. The validator is pure: the caller loads this
+# from the recipe_slots table and injects it, just as check_material_requirements
+# takes its catalog arg — no second hardcoded copy lives in recipe_validation.
+SLOTS = {
+    "untrained": {"max_recipe_tier": "basic", "known_recipe_slots": 3},
+    "trained": {"max_recipe_tier": "trained", "known_recipe_slots": 8},
+    "expert": {"max_recipe_tier": "expert", "known_recipe_slots": 15},
+    "master": {"max_recipe_tier": "master", "known_recipe_slots": None},
+}
+
 
 class TestValidateRecipeSlotCapacity:
     def test_untrained_allows_basic_under_cap(self):
         # Untrained: cap 3, max recipe tier 'basic'.
-        result = rv.validate_recipe_slot_capacity("untrained", 2, "basic")
+        result = rv.validate_recipe_slot_capacity("untrained", 2, "basic", SLOTS)
         assert result.allowed is True
         assert result.reason == ""
 
     def test_untrained_rejects_at_cap(self):
-        result = rv.validate_recipe_slot_capacity("untrained", 3, "basic")
+        result = rv.validate_recipe_slot_capacity("untrained", 3, "basic", SLOTS)
         assert result.allowed is False
         assert "3" in result.reason  # cap surfaced
 
     def test_untrained_rejects_recipe_tier_above_max(self):
         # Untrained may only learn 'basic'; a 'trained' recipe is ineligible even with slots.
-        result = rv.validate_recipe_slot_capacity("untrained", 0, "trained")
+        result = rv.validate_recipe_slot_capacity("untrained", 0, "trained", SLOTS)
         assert result.allowed is False
         assert "trained" in result.reason
 
     def test_trained_cap_is_eight(self):
-        assert rv.validate_recipe_slot_capacity("trained", 7, "trained").allowed is True
-        assert rv.validate_recipe_slot_capacity("trained", 8, "trained").allowed is False
+        assert rv.validate_recipe_slot_capacity("trained", 7, "trained", SLOTS).allowed is True
+        assert rv.validate_recipe_slot_capacity("trained", 8, "trained", SLOTS).allowed is False
 
     def test_expert_cap_is_fifteen(self):
-        assert rv.validate_recipe_slot_capacity("expert", 14, "expert").allowed is True
-        assert rv.validate_recipe_slot_capacity("expert", 15, "expert").allowed is False
+        assert rv.validate_recipe_slot_capacity("expert", 14, "expert", SLOTS).allowed is True
+        assert rv.validate_recipe_slot_capacity("expert", 15, "expert", SLOTS).allowed is False
 
     def test_master_is_unlimited(self):
         # Master cap is null in the seed — never rejected on capacity.
-        assert rv.validate_recipe_slot_capacity("master", 9999, "master").allowed is True
+        assert rv.validate_recipe_slot_capacity("master", 9999, "master", SLOTS).allowed is True
 
     def test_higher_crafting_tier_may_learn_lower_recipe_tier(self):
-        assert rv.validate_recipe_slot_capacity("expert", 0, "basic").allowed is True
+        assert rv.validate_recipe_slot_capacity("expert", 0, "basic", SLOTS).allowed is True
 
-    def test_rejects_unknown_crafting_tier(self):
+    def test_rejects_crafting_tier_absent_from_slots(self):
+        # The injected slots mapping is the source of truth; an unknown tier fails loud.
         with pytest.raises(ValueError, match="crafting_tier"):
-            rv.validate_recipe_slot_capacity("grandmaster", 0, "basic")
+            rv.validate_recipe_slot_capacity("grandmaster", 0, "basic", SLOTS)
 
     def test_rejects_unknown_recipe_tier(self):
         with pytest.raises(ValueError, match="recipe_tier"):
-            rv.validate_recipe_slot_capacity("expert", 0, "legendary")
+            rv.validate_recipe_slot_capacity("expert", 0, "legendary", SLOTS)
 
 
 # catalog: material_id -> {category, tier}
