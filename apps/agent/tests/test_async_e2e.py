@@ -10,39 +10,14 @@ Full pipeline with mocked LLM/TTS:
 
 import random
 import tempfile
-from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from claim_stack_helpers import patch_claim_stack
 
 from async_rules import resolve_crafting
 from async_worker import _resolve_single_activity, resolve_due_activities
 from dialogue_parser import Segment
-
-
-@asynccontextmanager
-async def _mock_txn(conn):
-    yield conn
-
-
-def _claim_stack(activity_dict: dict):
-    """Patches for the CAS claim lifecycle (story-004). Returns 4-tuple of
-    patch context managers covering: db.transaction (yields mock conn),
-    get_activity FOR-UPDATE re-fetch, claim_resolving=True, revert_claim noop."""
-    mock_conn = MagicMock()
-    # mark_resolved awaits conn.execute — must be an AsyncMock on the txn conn.
-    mock_conn.execute = AsyncMock()
-    return (
-        patch("async_worker.db.transaction", lambda: _mock_txn(mock_conn)),
-        patch(
-            "async_worker.db_activity_queries.get_activity",
-            new_callable=AsyncMock,
-            return_value=activity_dict,
-        ),
-        patch("async_worker.claim_resolving", new_callable=AsyncMock, return_value=True),
-        patch("async_worker.revert_claim_safe", new_callable=AsyncMock),
-    )
-
 
 SAMPLE_PLAYER = {
     "name": "Aldric",
@@ -104,7 +79,7 @@ class TestFullPipeline:
         async def mock_mark_resolved(activity_id, updates, _conn):
             update_calls.append((activity_id, updates))
 
-        txn_p, get_p, claim_p, revert_p = _claim_stack(activity)
+        _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(activity)
         with tempfile.TemporaryDirectory() as tmpdir:
             with (
                 txn_p,
@@ -180,7 +155,7 @@ class TestFullPipeline:
         async def mock_mark_resolved(activity_id, updates, _conn):
             update_calls.append((activity_id, updates))
 
-        txn_p, get_p, claim_p, revert_p = _claim_stack(activity)
+        _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(activity)
         with (
             txn_p,
             get_p,

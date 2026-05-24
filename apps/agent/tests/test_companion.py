@@ -2,11 +2,11 @@
 
 import json
 import time
-from contextlib import asynccontextmanager
 from dataclasses import asdict
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sample_fixtures import mock_txn
 
 import event_types as E
 from background_process import BackgroundProcess
@@ -455,11 +455,6 @@ KAEL_NPC = {
 }
 
 
-@asynccontextmanager
-async def _mock_txn(conn):
-    yield conn
-
-
 def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None):
     ctx = MagicMock()
     ctx.userdata = SessionData(player_id=player_id, location_id=location_id, room=room)
@@ -662,7 +657,7 @@ class TestCompanionMemoryInTools:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db.extract_exit_connections = MagicMock(return_value=[])
         mock_mutations = MagicMock()
         mock_mutations.update_player_location = AsyncMock()

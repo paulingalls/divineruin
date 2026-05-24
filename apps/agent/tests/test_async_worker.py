@@ -1,9 +1,10 @@
 """Tests for the async background worker."""
 
-from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from claim_stack_helpers import patch_claim_stack
+from sample_fixtures import mock_txn
 
 from async_worker import (
     _resolve_single_activity,
@@ -13,12 +14,6 @@ from async_worker import (
 )
 from dialogue_parser import Segment
 from training_rules import CompletionResult
-
-
-@asynccontextmanager
-async def _mock_txn(conn):
-    yield conn
-
 
 SAMPLE_ACTIVITY = {
     "id": "activity_abc123",
@@ -110,32 +105,10 @@ class TestResolveDueActivities:
         assert count == 1  # Only act_2 succeeded
 
 
-def _patch_claim_stack(activity_dict: dict, claim_returns: bool = True):
-    """Build the patch stack covering the new claim/transaction lifecycle.
-
-    Returns a list of patch context managers the caller wraps with `with`
-    alongside its own LLM/TTS mocks.
-    """
-    mock_conn = MagicMock()
-    txn_patch = patch("async_worker.db.transaction", lambda: _mock_txn(mock_conn))
-    get_activity_patch = patch(
-        "async_worker.db_activity_queries.get_activity",
-        new_callable=AsyncMock,
-        return_value=activity_dict,
-    )
-    claim_patch = patch(
-        "async_worker.claim_resolving",
-        new_callable=AsyncMock,
-        return_value=claim_returns,
-    )
-    revert_patch = patch("async_worker.revert_claim_safe", new_callable=AsyncMock)
-    return mock_conn, txn_patch, get_activity_patch, claim_patch, revert_patch
-
-
 class TestResolveSingleActivity:
     @pytest.mark.asyncio
     async def test_crafting_resolution(self):
-        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(SAMPLE_ACTIVITY)
+        _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(SAMPLE_ACTIVITY)
         with (
             txn_p,
             get_p,
@@ -208,7 +181,7 @@ class TestResolveSingleActivity:
             },
         }
 
-        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(activity)
+        _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(activity)
         with (
             txn_p,
             get_p,
@@ -256,7 +229,7 @@ class TestResolveSingleActivity:
         }
         player_with_companion = {**SAMPLE_PLAYER, "companion": {"id": "companion_kael", "name": "Kael"}}
 
-        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(activity)
+        _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(activity)
         with (
             txn_p,
             get_p,
@@ -301,7 +274,7 @@ class TestResolveSingleActivity:
         }
         player_with_companion = {**SAMPLE_PLAYER, "companion": {"id": "companion_kael", "name": "Kael"}}
 
-        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(activity)
+        _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(activity)
         with (
             txn_p,
             get_p,
@@ -332,7 +305,7 @@ class TestResolveSingleActivity:
     @pytest.mark.asyncio
     async def test_does_not_update_on_narration_failure(self):
         """If narration fails, the activity is reverted resolving -> in_progress for retry."""
-        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(SAMPLE_ACTIVITY)
+        _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(SAMPLE_ACTIVITY)
         with (
             txn_p,
             get_p,
@@ -355,7 +328,7 @@ class TestResolveSingleActivity:
     @pytest.mark.asyncio
     async def test_caches_narration_on_tts_failure(self):
         """If TTS fails, narration is cached, claim is reverted to in_progress."""
-        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(SAMPLE_ACTIVITY)
+        _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(SAMPLE_ACTIVITY)
         with (
             txn_p,
             get_p,
@@ -391,7 +364,7 @@ class TestResolveSingleActivity:
     @pytest.mark.asyncio
     async def test_handles_missing_player_data(self):
         """Should still work with empty player data."""
-        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(SAMPLE_ACTIVITY)
+        _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(SAMPLE_ACTIVITY)
         with (
             txn_p,
             get_p,
@@ -429,7 +402,7 @@ class TestResolveSingleActivity:
         """
         mock_conn = MagicMock()
         with (
-            patch("async_worker.db.transaction", lambda: _mock_txn(mock_conn)),
+            patch("async_worker.db.transaction", lambda: mock_txn(mock_conn)),
             patch(
                 "async_worker.db_activity_queries.get_activity",
                 new_callable=AsyncMock,
@@ -458,7 +431,7 @@ class TestResolveSingleActivity:
         stale-resolving sweep on next boot recovers the row."""
         import asyncio
 
-        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(SAMPLE_ACTIVITY)
+        _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(SAMPLE_ACTIVITY)
         with (
             txn_p,
             get_p,
@@ -480,7 +453,7 @@ class TestResolveSingleActivity:
     async def test_skips_when_already_resolving(self):
         """If another path already claimed (claim_resolving returns False),
         the worker logs and returns without calling LLM/TTS or updating."""
-        _conn, txn_p, get_p, claim_p, revert_p = _patch_claim_stack(SAMPLE_ACTIVITY, claim_returns=False)
+        _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(SAMPLE_ACTIVITY, claim_returns=False)
         with (
             txn_p,
             get_p,
