@@ -18,6 +18,7 @@ from environment_tools import play_sound, set_music_state
 from errand_tools import dispatch_companion_errand, resolve_companion_errand
 from movement_tools import move_player
 from query_tools import query_info
+from recipe_tools import learn_recipe, query_recipe_requirements
 from session_tools import end_session
 from system_prompts import DISPATCH_SYSTEM_PROMPT
 from training_tools import initiate_training_cycle, query_training_programs, resolve_training_midpoint
@@ -30,6 +31,9 @@ DISPATCH_TOOLS = [
     # Companion errands (the third async activity)
     dispatch_companion_errand,
     resolve_companion_errand,
+    # Recipe acquisition (M5.1 crafting)
+    query_recipe_requirements,
+    learn_recipe,
     # Navigation / queries — enough to talk to the mentor and leave
     move_player,
     query_info,
