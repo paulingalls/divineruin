@@ -105,7 +105,7 @@ describe("Recipe — spec §Recipe Schema 114-141 (16 fields, all required)", ()
       output_quantity: 2,
       study_cost: 1,
       discovery_sources: ["experimentation"],
-      narration_cues: { success: "Clean linen, tightly wound." },
+      narration_cues: { success: "Clean linen, tightly wound.", failure: "The wrap unravels." },
     };
     expect(bandage.optional_materials).toEqual([]);
     expect(bandage.workspace_required).toBe("field");

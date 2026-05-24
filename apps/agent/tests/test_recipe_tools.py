@@ -57,6 +57,21 @@ def _mutations(inserted=True):
     return m
 
 
+# Slot caps as recipe_slots.get_recipe_slots returns them (DB-loaded, migration 019).
+SLOTS = {
+    "untrained": {"max_recipe_tier": "basic", "known_recipe_slots": 3},
+    "trained": {"max_recipe_tier": "trained", "known_recipe_slots": 8},
+    "expert": {"max_recipe_tier": "expert", "known_recipe_slots": 15},
+    "master": {"max_recipe_tier": "master", "known_recipe_slots": None},
+}
+
+
+def _slots(slots=SLOTS):
+    s = MagicMock()
+    s.get_recipe_slots = AsyncMock(return_value=slots)
+    return s
+
+
 class TestLearnRecipe:
     @pytest.mark.asyncio
     async def test_happy_path_locks_player_and_writes(self):
@@ -73,6 +88,7 @@ class TestLearnRecipe:
                 queries_mod=queries,
                 mutations_mod=mutations,
                 recipes_mod=_recipes(),
+                slots_mod=_slots(),
             )
         )
         # Player row locked FOR UPDATE on the txn conn (serializes per-player learns).
@@ -97,6 +113,7 @@ class TestLearnRecipe:
             queries_mod=_queries(),
             mutations_mod=_mutations(),
             recipes_mod=_recipes(),
+            slots_mod=_slots(),
         )
         ctx.disallow_interruptions.assert_called_once()
 
@@ -113,6 +130,7 @@ class TestLearnRecipe:
                 queries_mod=_queries(),
                 mutations_mod=_mutations(),
                 recipes_mod=_recipes(),
+                slots_mod=_slots(),
             )
 
     @pytest.mark.asyncio
@@ -143,6 +161,7 @@ class TestLearnRecipe:
                 queries_mod=_queries(player={}),
                 mutations_mod=_mutations(),
                 recipes_mod=_recipes(),
+                slots_mod=_slots(),
             )
 
     @pytest.mark.asyncio
@@ -160,6 +179,7 @@ class TestLearnRecipe:
                 queries_mod=_queries(tier="trained", known=8),
                 mutations_mod=mutations,
                 recipes_mod=_recipes(),
+                slots_mod=_slots(),
             )
         mutations.add_player_known_recipe.assert_not_awaited()
 
@@ -177,7 +197,30 @@ class TestLearnRecipe:
                 queries_mod=_queries(tier="untrained", known=0),
                 mutations_mod=_mutations(),
                 recipes_mod=_recipes(),
+                slots_mod=_slots(),
             )
+
+    @pytest.mark.asyncio
+    async def test_missing_slots_row_raises_tool_error_not_value_error(self):
+        # A recipe_slots table missing the crafter's tier row is a content bug;
+        # the validator would raise ValueError, but the tool must keep its
+        # ADR-0002 ToolError shape rather than leaking a raw ValueError.
+        ctx = make_context()
+        db_mod, _ = make_db_mod()
+        mutations = _mutations()
+        slots_missing_trained = {k: v for k, v in SLOTS.items() if k != "trained"}
+        with pytest.raises(ToolError, match="configuration error"):
+            await _learn_recipe_impl(
+                ctx,
+                "iron_sword",
+                "npc_teaching",
+                db_mod=db_mod,
+                queries_mod=_queries(tier="trained", known=0),
+                mutations_mod=mutations,
+                recipes_mod=_recipes(),
+                slots_mod=_slots(slots_missing_trained),
+            )
+        mutations.add_player_known_recipe.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_already_known_raises(self):
@@ -192,6 +235,7 @@ class TestLearnRecipe:
                 queries_mod=_queries(known=2),
                 mutations_mod=_mutations(inserted=False),
                 recipes_mod=_recipes(),
+                slots_mod=_slots(),
             )
 
 

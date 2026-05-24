@@ -5,6 +5,11 @@
 // widening. Downstream stories (002 content, 003/005 loaders, 006 validation) build on
 // this shape; keep it in lockstep with the spec's 16 fields.
 
+// Canonical crafting-outcome quality bands (crafting-narration-bands). A recipe's
+// narration_cues is keyed by these; loaders fail loud on any other key. Recipes
+// carry 2 (success/failure) or all 4.
+export type QualityBand = "exceptional" | "success" | "partial" | "failure";
+
 export interface MaterialReq {
   material_id: string;
   quantity: number;
@@ -38,5 +43,5 @@ export interface Recipe {
   discovery_sources: string[]; // where the recipe can be found, e.g. "blacksmith_npc"
 
   // Narrative
-  narration_cues: Record<string, string>; // per-outcome DM narration cue, keyed by quality band
+  narration_cues: Partial<Record<QualityBand, string>>; // per-outcome DM narration cue, keyed by quality band
 }

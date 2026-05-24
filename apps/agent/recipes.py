@@ -22,6 +22,9 @@ _CATEGORIES = {"weapon", "armor", "consumable", "tool", "enchantment", "ammuniti
 _TIERS = {"basic", "trained", "expert", "master"}
 _WORKSPACES = {"field", "workshop", "forge", "laboratory"}
 _MATERIAL_TIERS = {1, 2, 3, 4}
+# Canonical narration quality bands (crafting-narration-bands). Mirrors the TS
+# QUALITY_BANDS set; a content typo for a band key fails loud at the load boundary.
+_QUALITY_BANDS = {"exceptional", "success", "partial", "failure"}
 
 
 def _require_int_at_least(value: object, min_: int, ctx: str) -> int:
@@ -63,10 +66,11 @@ def parse_recipe_row(recipe_id: str, raw: object) -> dict:
     single recipe in isolation — material_id->catalog referential integrity is a
     cross-entity check owned by the TS content-validation test.
 
-    Like the TS parser, narration_cues band keys are NOT enum-validated here
-    (concern 31c6bd30ca97, deferred for both languages); only that the dict is
-    non-empty with string values. The crafting-narration-bands decision records
-    the canonical band vocabulary for future drift-catching.
+    Like the TS parser, narration_cues is validated against the canonical band
+    set (exceptional|success|partial|failure, per crafting-narration-bands):
+    every key a canonical band with a string value, and the set is exactly
+    {success, failure} (2) or all 4 — success+failure always present so a
+    resolved outcome never finds a missing cue.
     """
     ctx = f"recipes[{recipe_id}]"
     if not isinstance(raw, dict):
@@ -123,9 +127,20 @@ def parse_recipe_row(recipe_id: str, raw: object) -> dict:
         raise ValueError(f"{ctx}.narration_cues is not a non-empty object")
     narration_cues = {}
     for band, cue in cues_raw.items():
+        if band not in _QUALITY_BANDS:
+            raise ValueError(f"{ctx}.narration_cues[{band}] is not a canonical quality band")
         if not isinstance(cue, str):
             raise ValueError(f"{ctx}.narration_cues[{band}] is not a string")
         narration_cues[band] = cue
+    # crafting-narration-bands: a recipe carries {success, failure} (2) or all 4.
+    # success+failure are always required so a resolved success/failure outcome
+    # never finds a missing cue; exceptional+partial are all-or-nothing. Enforced
+    # here at the per-turn DB boundary (not just the TS content test) so a non-seed
+    # row (migration, manual fix, future tool) can't silently miss at narration time.
+    if "success" not in narration_cues or "failure" not in narration_cues:
+        raise ValueError(f"{ctx}.narration_cues must include both success and failure bands")
+    if len(narration_cues) not in (2, 4):
+        raise ValueError(f"{ctx}.narration_cues has {len(narration_cues)} bands; expected 2 (success/failure) or all 4")
 
     return {
         "id": recipe_id,

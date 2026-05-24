@@ -33,7 +33,7 @@ function validRecipeData(): Record<string, unknown> {
     output_quantity: 1,
     study_cost: 4,
     discovery_sources: ["grimjaw_blacksmith"],
-    narration_cues: { success: "A fine longsword." },
+    narration_cues: { success: "A fine longsword.", failure: "The blade cracks." },
   };
 }
 
@@ -137,6 +137,49 @@ describe("parseRecipeRow — fail-loud validation", () => {
     expect(() =>
       parseRecipeRow("x", { ...validRecipeData(), narration_cues: { success: 7 } }),
     ).toThrow();
+  });
+
+  test("throws when a narration_cues key is not a canonical quality band", () => {
+    // Canonical bands are exceptional|success|partial|failure (crafting-narration-bands).
+    // A typo'd band must fail loud at the load boundary, not silently miss at runtime.
+    expect(() =>
+      parseRecipeRow("x", { ...validRecipeData(), narration_cues: { glorious: "shine" } }),
+    ).toThrow(/narration_cues\[glorious\]/);
+  });
+
+  test("throws when narration_cues omits success or failure", () => {
+    // crafting-narration-bands: success+failure are always required so a resolved
+    // outcome never finds a missing cue at narration time.
+    expect(() =>
+      parseRecipeRow("x", {
+        ...validRecipeData(),
+        narration_cues: { success: "ok", partial: "meh" },
+      }),
+    ).toThrow(/must include both success and failure/);
+    expect(() =>
+      parseRecipeRow("x", {
+        ...validRecipeData(),
+        narration_cues: { exceptional: "wow", failure: "no" },
+      }),
+    ).toThrow(/must include both success and failure/);
+  });
+
+  test("throws on a 3-band narration_cues (must be 2 or all 4)", () => {
+    expect(() =>
+      parseRecipeRow("x", {
+        ...validRecipeData(),
+        narration_cues: { success: "ok", failure: "no", partial: "meh" },
+      }),
+    ).toThrow(/expected 2 .* or all 4/);
+  });
+
+  test("accepts all 4 canonical bands", () => {
+    expect(() =>
+      parseRecipeRow("x", {
+        ...validRecipeData(),
+        narration_cues: { exceptional: "wow", success: "ok", partial: "meh", failure: "no" },
+      }),
+    ).not.toThrow();
   });
 });
 
