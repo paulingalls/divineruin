@@ -5,8 +5,10 @@ db.get_pool. The agent reads recipes from the DB (constraint 8508fdb1abc3) the
 same way the TS server does (apps/server/src/recipes.ts) — recipe:<id> and
 recipes:all cache keys, fail-loud parse via parse_recipe_row.
 
-There is no real-DB pytest harness in the agent suite; these are unit tests with
-a mocked pool, exactly like every other db_content_queries accessor.
+These are unit tests with a mocked pool, like every other db_content_queries
+accessor. The real-DB load path (migration 019 + seed_content -> recipes table,
+parsed by get_recipe/list_recipes) is exercised end-to-end against a
+testcontainer in tests/acceptance/test_recipe_loading.py (AC4).
 """
 
 import json
