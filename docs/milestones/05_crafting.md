@@ -28,16 +28,16 @@ Implements the full crafting pipeline from recipe acquisition through workspace 
 - Pure function: `check_material_requirements(inventory, recipe)` → met/unmet materials list with substitution options
 
 **Acceptance criteria:**
-- [ ] Recipe schema includes all fields: id, name, category, tier, materials, workspace, DC, time, cycles, output, study_cost, discovery_sources, narration_cues
-- [ ] Material requirements support quantity, tier minimum, and substitutable flag
-- [ ] Recipe Slots acquisition respects tier-limited capacity based on skill tier
-- [ ] Training acquisition requires correct number of async cycles (1-6) to complete
-- [ ] Discovery acquisition grants recipe immediately upon schematic find
-- [ ] `validate_recipe_slot_capacity` correctly enforces limits per skill tier
-- [ ] `check_material_requirements` identifies met/unmet materials and suggests valid substitutions
-- [ ] DB migrations create all four tables with correct schemas
-- [ ] `content/recipes.json` contains 70+ recipes across categories
-- [ ] Tests cover all three acquisition tracks, slot limits at every skill tier, and material substitution logic
+- [x] Recipe schema includes all fields: id, name, category, tier, materials, workspace, DC, time, cycles, output, study_cost, discovery_sources, narration_cues
+- [x] Material requirements support quantity, tier minimum, and substitutable flag
+- [x] Recipe Slots acquisition respects tier-limited capacity based on skill tier
+- [x] Training acquisition requires correct number of async cycles (1-6) to complete
+- [x] Discovery acquisition grants recipe immediately (learn_recipe `learned_via=discovery`); the in-world schematic-item find that triggers it is M5.4 content
+- [x] `validate_recipe_slot_capacity` correctly enforces limits per skill tier
+- [x] `check_material_requirements` identifies met/unmet materials and suggests valid substitutions
+- [x] DB migrations create all four tables with correct schemas
+- [x] `content/recipes.json` contains 70+ recipes across categories
+- [x] Tests cover all three acquisition tracks, slot limits at every skill tier, and material substitution logic
 
 **Key references:**
 - *Game Mechanics Crafting — Recipe Schema*
@@ -68,6 +68,22 @@ Implements the full crafting pipeline from recipe acquisition through workspace 
 **Spec/milestone conflict to record:** Untrained recipe slots — milestone bullet says "Untrained: 0"; spec at `game_mechanics_crafting.md:158` says "Untrained 3". Tracked in `audit/README.md` Sprint-spec-cleanup.
 
 See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
+
+### CAPSTONE — M5.1 shipped (sprint-012, story-007)
+
+<!-- capstone-footer: grep "CAPSTONE — M5.1" -->
+
+**Status: SHIPPED.** All 10 M5.1 acceptance criteria above are met end-to-end.
+
+- **Story chain:** story-001 (migration 019 + shared Recipe/MaterialReq types) → 002 (73 recipes + 49 materials JSON + content guard) → 003 (TS DB loader) → 004 (killed hardcoded CRAFTING_RECIPES const) → 005 (Python accessors) → 006 (recipe_validation + learn_recipe/query_recipe_requirements tools) → 008 (player_known_recipes CASCADE FK, migration 020) → **007 (this capstone)**.
+- **Capstone proof:** `apps/agent/tests/acceptance/test_story_007_capstone.py` proves the DB-loaded recipe flow composes across both surfaces against one seeded testcontainer — message_event (Python `learn_recipe` + `query_recipe_requirements`) and http_websocket (a spawned Bun `src/index.ts` serving `GET /api/activity-templates` + `POST /api/activities` crafting). Cross-language seam assertion: the recipe parsed straight from the testcontainer `recipes` row (cache-bypassed, so the seam can't false-green off a sibling test's Redis entry) is identical (name, dc, materials, output) to what the TS REST surface exposes for the same id. 4/4 capstone tests green via `bun run test:acceptance`.
+- **Also landed in story-007:** slot caps loaded from the `recipe_slots` DB table (no hardcoded Python copy — concern `d125d022f084`); `narration_cues` typed to canonical `QualityBand`s with fail-loud loaders in both languages (concern `31c6bd30ca97`, constraint `crafting-narration-bands`).
+- **Verified-at:** M1 `b6ef618` (slot DB-load), M2 `bb71ccc` (narration bands); capstone commit + final close SHA recorded at sprint-close.
+
+**Open follow-ups:**
+- **Try-2 dated gate (keep + bind to M5.2):** `check_material_requirements` (`recipe_validation.py`) and `get_recipe_study_cycles` (`training_rules.py`) are forward-laid M5.2 primitives with no production caller yet (concerns `06364bdcb14b`, `47dd7b5d1320`; debt `55d8dcd38fc0`). **Delete both if M5.2/sprint-013 does not wire them into the craft-consume and recipe_study-learn paths — re-evaluate at sprint-013 close.**
+- `check_material_requirements` is greedy per-requirement; M5.2 craft-consume owns the real allocate-then-deduct pass (debt `cdce6c6a776d`).
+- Systemic player CASCADE-FK backfill for the other post-008 per-player tables (debt `ac2ad5230209`).
 
 ---
 

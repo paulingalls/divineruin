@@ -1,0 +1,492 @@
+[
+  {
+    "id": "iron_ore",
+    "name": "Iron Ore",
+    "category": "metal",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Mined from hill and cave seams across Greyvale.",
+    "weight": 2.0,
+    "description": "Heavy rust-streaked rock that clinks dully in the pack."
+  },
+  {
+    "id": "iron_ingot",
+    "name": "Iron Ingot",
+    "category": "metal",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Smelted from iron ore at any forge or bought from smiths.",
+    "weight": 1.5,
+    "description": "A cooled bar of grey iron, faintly warm at the core."
+  },
+  {
+    "id": "copper_ingot",
+    "name": "Copper Ingot",
+    "category": "metal",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Smelted from copper found in shallow river veins.",
+    "weight": 1.2,
+    "description": "Soft ruddy metal that takes a wire's bend without a sound."
+  },
+  {
+    "id": "keldaran_steel",
+    "name": "Keldaran Steel",
+    "category": "metal",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Folded by the smiths of Keldaran hold; traded in city markets.",
+    "weight": 1.0,
+    "description": "Dense blue-grey steel that rings true when struck."
+  },
+  {
+    "id": "forged_steel",
+    "name": "Keldaran Forged Steel",
+    "category": "metal",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Salvaged from the plating of shattered War Golems (Crafting: Expert).",
+    "weight": 1.5,
+    "description": "Plate steel still humming with the old forge-songs of the constructs."
+  },
+  {
+    "id": "oak_wood",
+    "name": "Oak Wood",
+    "category": "wood",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Felled in the temperate woods around the river settlements.",
+    "weight": 1.5,
+    "description": "Pale close-grained timber that smells of sap and rain."
+  },
+  {
+    "id": "pine_wood",
+    "name": "Pine Wood",
+    "category": "wood",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Cut from the upland conifer slopes.",
+    "weight": 1.0,
+    "description": "Light resin-sticky wood that splits with a clean crack."
+  },
+  {
+    "id": "quality_wood",
+    "name": "Seasoned Hardwood",
+    "category": "wood",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Aged and selected by carpenters for bows and hafts.",
+    "weight": 1.0,
+    "description": "Springy dark wood that flexes without a creak."
+  },
+  {
+    "id": "thornveld_ironwood",
+    "name": "Thornveld Ironwood",
+    "category": "wood",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Harvested from the petrified groves of the Thornveld.",
+    "weight": 1.8,
+    "description": "Wood gone hard as stone, ringing faintly under the axe."
+  },
+  {
+    "id": "medicinal_herb",
+    "name": "Medicinal Herb",
+    "category": "herb",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Foraged in meadows and forest verges.",
+    "weight": 0.1,
+    "description": "A bitter green sprig that stings the nose when crushed."
+  },
+  {
+    "id": "herb_bundle",
+    "name": "Herb Bundle",
+    "category": "herb",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Gathered and tied by field healers and herbalists.",
+    "weight": 0.3,
+    "description": "A fragrant fist of dried stalks bound in twine."
+  },
+  {
+    "id": "sageroot",
+    "name": "Sageroot",
+    "category": "herb",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Dug from shaded streambanks; prized by alchemists.",
+    "weight": 0.1,
+    "description": "A pale root that hums with a clean medicinal sharpness."
+  },
+  {
+    "id": "nightshade",
+    "name": "Nightshade",
+    "category": "herb",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Picked from shadowed hollows; handled with care.",
+    "weight": 0.1,
+    "description": "Dark glossy berries that weep a sour, oily juice."
+  },
+  {
+    "id": "wolf_pelt",
+    "name": "Wolf Pelt",
+    "category": "hide",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Skinned from wolves felled on the trails.",
+    "weight": 1.0,
+    "description": "Coarse grey fur still carrying the cold of the wild."
+  },
+  {
+    "id": "boar_hide",
+    "name": "Boar Hide",
+    "category": "hide",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Taken from wild boar in the lowland brush.",
+    "weight": 1.2,
+    "description": "Thick bristled hide that thuds when slapped flat."
+  },
+  {
+    "id": "leather_strip",
+    "name": "Leather Strip",
+    "category": "hide",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Cut and cured from common hides by tanners.",
+    "weight": 0.2,
+    "description": "A supple band of tanned leather, oiled and quiet."
+  },
+  {
+    "id": "quality_leather",
+    "name": "Quality Leather",
+    "category": "hide",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Cured from stalker and bison hides for grips and cases.",
+    "weight": 0.5,
+    "description": "Fine dark leather that creaks softly and holds its shape."
+  },
+  {
+    "id": "troll_hide",
+    "name": "Troll Hide",
+    "category": "hide",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Stripped from cave trolls; slow to stop knitting itself shut.",
+    "weight": 2.0,
+    "description": "Rubbery green hide that twitches faintly long after the kill."
+  },
+  {
+    "id": "wyrm_scales",
+    "name": "Wyrm Scales",
+    "category": "scale",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Pried from cave wyrms (1d6 per kill).",
+    "weight": 0.4,
+    "description": "Overlapping plates that chime like coins when shaken."
+  },
+  {
+    "id": "cave_wyrm_scales",
+    "name": "Greater Wyrm Scales",
+    "category": "scale",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Cut from the flanks of deep-cave wyrms.",
+    "weight": 0.6,
+    "description": "Dark iridescent scales that drink the torchlight."
+  },
+  {
+    "id": "animal_bone",
+    "name": "Animal Bone",
+    "category": "bone",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Salvaged from butchered beasts.",
+    "weight": 0.3,
+    "description": "A dry knuckle of bone that knocks hollow."
+  },
+  {
+    "id": "troll_bone",
+    "name": "Troll Bone",
+    "category": "bone",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Broken from the dense skeleton of a cave troll.",
+    "weight": 0.8,
+    "description": "Bone heavy as stone, marrow still faintly warm."
+  },
+  {
+    "id": "wyrm_teeth",
+    "name": "Wyrm Teeth",
+    "category": "bone",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Drawn from the jaws of a slain wyrm.",
+    "weight": 0.2,
+    "description": "Curved fangs that hiss against the whetstone."
+  },
+  {
+    "id": "venom_sac",
+    "name": "Venom Sac",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Extracted from giant spiders, rock vipers, and cave wyrms.",
+    "weight": 0.2,
+    "description": "A taut translucent bladder sloshing with cloudy poison."
+  },
+  {
+    "id": "dire_bear_heart",
+    "name": "Dire Bear Heart",
+    "category": "monster_part",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Cut from a slain dire bear; potent in restorative brews.",
+    "weight": 1.0,
+    "description": "A fist of dark muscle that still gives a slow, heavy beat."
+  },
+  {
+    "id": "thunderbird_feather",
+    "name": "Thunderbird Feather",
+    "category": "monster_part",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Pulled from a downed thunderbird on the storm peaks.",
+    "weight": 0.1,
+    "description": "A long feather that crackles and lifts the hairs of the arm."
+  },
+  {
+    "id": "storm_crystal",
+    "name": "Storm Crystal",
+    "category": "monster_part",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Grown in the gland of a thunderbird or tidecaller eel.",
+    "weight": 0.2,
+    "description": "A jagged shard that ticks with caged lightning."
+  },
+  {
+    "id": "thunderbird_oil",
+    "name": "Thunderbird Oil",
+    "category": "oil",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Rendered from thunderbird fat; volatile and prized.",
+    "weight": 0.3,
+    "description": "A clear oil that snaps with tiny sparks when poured."
+  },
+  {
+    "id": "drift_residue",
+    "name": "Drift Residue",
+    "category": "hollow_residue",
+    "tier": 1,
+    "rarity": "uncommon",
+    "source": "Scraped from the dissolving form of a slain Shadeling.",
+    "weight": 0.1,
+    "description": "A smear of grey ash that drifts upward against the wind."
+  },
+  {
+    "id": "rend_shard",
+    "name": "Rend Shard",
+    "category": "hollow_residue",
+    "tier": 2,
+    "rarity": "rare",
+    "source": "Recovered from a Mawling; must be purified before safe use.",
+    "weight": 0.2,
+    "description": "A torn sliver that hums wrong, like a note held too long."
+  },
+  {
+    "id": "spatial_residue",
+    "name": "Spatial Residue",
+    "category": "hollow_residue",
+    "tier": 2,
+    "rarity": "rare",
+    "source": "Condensed from a Hollow Weaver's unraveling; purify first.",
+    "weight": 0.1,
+    "description": "A bead of nothing that the eye keeps sliding off of."
+  },
+  {
+    "id": "hollow_shard",
+    "name": "Hollow Shard",
+    "category": "hollow_residue",
+    "tier": 2,
+    "rarity": "rare",
+    "source": "Splintered from Hollow-touched creatures and warded ruins.",
+    "weight": 0.2,
+    "description": "A cold black flake that drinks the warmth from a closed fist."
+  },
+  {
+    "id": "wrack_core",
+    "name": "Wrack Core",
+    "category": "hollow_residue",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Cut from a Hollowed Knight or Veilrender; purify before use.",
+    "weight": 0.5,
+    "description": "A dense knot of corruption that pulses like a slow heart."
+  },
+  {
+    "id": "veil_shard",
+    "name": "Veil Shard",
+    "category": "hollow_residue",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Shed by a Veilrender as the Veil tears.",
+    "weight": 0.2,
+    "description": "A glassy splinter that shows a wrong sky when held to the eye."
+  },
+  {
+    "id": "veilrender_carapace",
+    "name": "Veilrender Carapace",
+    "category": "hollow_residue",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Plated shell harvested from a Veilrender.",
+    "weight": 1.5,
+    "description": "Chitin scored with seams that whisper when the wind crosses them."
+  },
+  {
+    "id": "named_fragment",
+    "name": "Named Fragment",
+    "category": "hollow_residue",
+    "tier": 4,
+    "rarity": "legendary",
+    "source": "Left behind by a Choir, a Still, or the Architect.",
+    "weight": 0.3,
+    "description": "A shard that murmurs a name you almost remember."
+  },
+  {
+    "id": "arcane_dust",
+    "name": "Arcane Dust",
+    "category": "arcane",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Ground from spent foci and reagents by enchanters.",
+    "weight": 0.1,
+    "description": "Silver powder that glows faintly when breath stirs it."
+  },
+  {
+    "id": "golem_core",
+    "name": "Golem Core",
+    "category": "arcane",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Extracted from a War Golem's chest (Crafting: Expert).",
+    "weight": 1.0,
+    "description": "A caged crystal heart that ticks with borrowed will."
+  },
+  {
+    "id": "power_crystal",
+    "name": "Power Crystal",
+    "category": "arcane",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Drawn from a War Golem's reservoir (Arcana: Expert).",
+    "weight": 0.4,
+    "description": "A crystal that warms the palm and hums a single low note."
+  },
+  {
+    "id": "divine_material",
+    "name": "Divine Material",
+    "category": "arcane",
+    "tier": 4,
+    "rarity": "legendary",
+    "source": "Granted by temples or recovered from sanctified ruins.",
+    "weight": 0.2,
+    "description": "A mote of light that rests cool and weightless in the hand."
+  },
+  {
+    "id": "plant_fiber",
+    "name": "Plant Fiber",
+    "category": "fiber",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Stripped from reeds, flax, and bark.",
+    "weight": 0.2,
+    "description": "Tough green strands that squeak when twisted into cord."
+  },
+  {
+    "id": "spider_silk",
+    "name": "Spider Silk",
+    "category": "fiber",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Reeled from giant spider webs in the deep woods.",
+    "weight": 0.1,
+    "description": "Thread light as breath and stronger than it has any right to be."
+  },
+  {
+    "id": "cave_gemstone",
+    "name": "Cave Gemstone",
+    "category": "gem",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Found in cave wyrm nests (1d4 with Investigation: Trained).",
+    "weight": 0.1,
+    "description": "A rough crystal that throws back the torch in a dozen colors."
+  },
+  {
+    "id": "blessed_oil",
+    "name": "Blessed Oil",
+    "category": "oil",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Consecrated at temples; the standard purifying agent.",
+    "weight": 0.2,
+    "description": "A golden oil that warms the skin and smells of incense."
+  },
+  {
+    "id": "animal_fat",
+    "name": "Animal Fat",
+    "category": "oil",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Rendered from butchered game.",
+    "weight": 0.3,
+    "description": "A pale tallow that softens to grease in a warm hand."
+  },
+  {
+    "id": "alchemical_reagent",
+    "name": "Alchemical Reagent",
+    "category": "reagent",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Bought from alchemists; the workhorse of the laboratory.",
+    "weight": 0.1,
+    "description": "A vial of restless liquid that fizzes against the glass."
+  },
+  {
+    "id": "crystal_flask",
+    "name": "Crystal Flask",
+    "category": "reagent",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Blown by glassworkers; reusable vessel for potions.",
+    "weight": 0.2,
+    "description": "A clear flask that rings a high clean note when tapped."
+  },
+  {
+    "id": "enchanted_stone",
+    "name": "Enchanted Stone",
+    "category": "stone",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Recovered from War Golems and Deepstone Guardians.",
+    "weight": 1.0,
+    "description": "A grey stone that holds a faint warmth and a fainter pulse."
+  },
+  {
+    "id": "whetstone",
+    "name": "Whetstone",
+    "category": "stone",
+    "tier": 1,
+    "rarity": "common",
+    "source": "Bought cheap from any general store (1 sp).",
+    "weight": 0.3,
+    "description": "A worn grey block that hisses when steel is drawn across it."
+  }
+]

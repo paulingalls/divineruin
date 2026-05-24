@@ -163,7 +163,54 @@ async def load_training_activity_types() -> None:
     for row in rows:
         data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
         _activity_types[row["id"]] = parse_activity_type_row(row["id"], data)
+        if row["id"] == "recipe_study":
+            set_recipe_study_cycles(parse_recipe_study_cycles(data))
     logger.info("Loaded %d training activity types", len(_activity_types))
+
+
+# ── recipe_study async-cycle coupling (M5.1) ──────────────────────────
+#
+# The async cost to LEARN a recipe via recipe_study scales with the recipe's
+# tier (spec §Recipe Acquisition: Basic 1 / Trained 2 / Expert 4 / Master 6).
+# The policy lives in the recipe_study entry's tier_cycles map (separate from
+# the generic duration/decision tuple). recipe.study_cost is the per-recipe
+# value and equals this by content convention, but consumers resolve here
+# (single source of truth, assumption 0fa7c3e953bd).
+
+_RECIPE_STUDY_TIERS = ("basic", "trained", "expert", "master")
+_recipe_study_cycles: dict[str, int] = {}
+
+
+def parse_recipe_study_cycles(data: dict) -> dict[str, int]:
+    """Validate a recipe_study config's tier_cycles map: one int >= 1 per recipe
+    tier. Fails loud (ValueError) on a missing map, missing tier, or non-positive
+    / bool value."""
+    raw = data.get("tier_cycles")
+    if not isinstance(raw, dict):
+        raise ValueError("recipe_study config missing tier_cycles map")
+    cycles: dict[str, int] = {}
+    for tier in _RECIPE_STUDY_TIERS:
+        value = raw.get(tier)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise ValueError(f"recipe_study.tier_cycles[{tier}] must be an int >= 1, got {value!r}")
+        cycles[tier] = value
+    return cycles
+
+
+def set_recipe_study_cycles(cycles: dict[str, int]) -> None:
+    """Test/loader seam: populate the recipe-study cycle-by-tier map directly."""
+    _recipe_study_cycles.clear()
+    _recipe_study_cycles.update(cycles)
+
+
+def get_recipe_study_cycles(recipe_tier: str) -> int:
+    """Async training cycles to learn a recipe of `recipe_tier` via recipe_study.
+
+    Resolves from the loaded recipe_study tier_cycles policy (NOT recipe.study_cost).
+    """
+    if recipe_tier not in _recipe_study_cycles:
+        raise ValueError(f"recipe_study cycles unavailable for recipe tier {recipe_tier!r}")
+    return _recipe_study_cycles[recipe_tier]
 
 
 # ── Public functions ───────────────────────────────────────────────────

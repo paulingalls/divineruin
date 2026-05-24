@@ -3,8 +3,13 @@ import { test, expect, describe, mock, beforeEach } from "bun:test";
 // Shared mock state: tests set this array before calling handlers
 let mockQueryResults: unknown[][] = [];
 let queryCallIndex = 0;
+// Captured SQL: [joined-template-text, ...interpolated-values] per query, in
+// call order. Lets tests assert which statement ran (UPDATE vs DELETE) and the
+// values bound to it, instead of trusting the positional result stubs alone.
+let capturedQueries: { sql: string; values: unknown[] }[] = [];
 
-function mockTaggedTemplate(_strings: TemplateStringsArray, ..._values: unknown[]) {
+function mockTaggedTemplate(strings: TemplateStringsArray, ...values: unknown[]) {
+  capturedQueries.push({ sql: strings.join(" "), values });
   const result = mockQueryResults[queryCallIndex] ?? [];
   queryCallIndex++;
   return Promise.resolve(result);
@@ -43,6 +48,7 @@ const {
 const { setupDangerLevelFixture } = await import("./test-fixtures/danger-levels.ts");
 const { setupTrainingConfigFixture } = await import("./test-fixtures/training-config.ts");
 const { setupErrandTemplatesFixture } = await import("./test-fixtures/errand-templates.ts");
+const { setupRecipesFixture } = await import("./test-fixtures/recipes.ts");
 
 function makeRequest(method: string, path: string, body?: Record<string, unknown>): Request {
   const opts: RequestInit = { method };
@@ -56,21 +62,28 @@ function makeRequest(method: string, path: string, body?: Record<string, unknown
 beforeEach(() => {
   mockQueryResults = [];
   queryCallIndex = 0;
+  capturedQueries = [];
   setupDangerLevelFixture();
   setupTrainingConfigFixture();
   setupErrandTemplatesFixture();
+  setupRecipesFixture();
 });
 
 describe("handleCreateActivity", () => {
   test("creates crafting activity", async () => {
     // Inside transaction: lock both tables, slot count, material check, delete materials, insert
+    // iron_sword needs 1 iron_ingot + 1 leather_strip; player owns exactly 1 each,
+    // so both stacks deplete to 0 and are deleted.
     mockQueryResults = [
       [], // lock async_activities (FOR UPDATE)
       [], // lock training_activities (FOR UPDATE)
       [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
-      [{ item_id: "iron_ingot" }, { item_id: "leather_strip" }], // material check (FOR UPDATE)
-      [], // delete iron_ingot
-      [], // delete leather_strip
+      [
+        { item_id: "iron_ingot", quantity: 1 },
+        { item_id: "leather_strip", quantity: 1 },
+      ], // material check (FOR UPDATE, with quantities)
+      [], // delete iron_ingot (depleted)
+      [], // delete leather_strip (depleted)
       [], // insert activity
     ];
 
@@ -170,7 +183,7 @@ describe("handleCreateActivity", () => {
       [], // lock async_activities (FOR UPDATE)
       [], // lock training_activities (FOR UPDATE)
       [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
-      [], // batch material check — none found
+      [], // material check — none owned
     ];
 
     const req = makeRequest("POST", "/api/activities", {
@@ -180,7 +193,75 @@ describe("handleCreateActivity", () => {
     const res = await handleCreateActivity(req, "player_1");
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("Missing required material");
+    expect(body.error).toContain("Insufficient material");
+  });
+
+  test("rejects when owned quantity is below the required quantity", async () => {
+    // reinforced_shield needs 2 iron_ingot; player owns only 1.
+    mockQueryResults = [
+      [], // lock async_activities (FOR UPDATE)
+      [], // lock training_activities (FOR UPDATE)
+      [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
+      [
+        { item_id: "iron_ingot", quantity: 1 },
+        { item_id: "leather_strip", quantity: 1 },
+      ], // material check (with quantities)
+    ];
+
+    const req = makeRequest("POST", "/api/activities", {
+      type: "crafting",
+      parameters: { recipe_id: "reinforced_shield" },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain("Insufficient material");
+  });
+
+  test("consumes materials by quantity — decrements a surplus stack, deletes a depleted one", async () => {
+    // reinforced_shield needs 2 iron_ingot + 1 leather_strip; player owns 3 iron, 1 leather.
+    // iron: 3-2=1 remaining -> UPDATE; leather: 1-1=0 -> DELETE.
+    mockQueryResults = [
+      [], // lock async_activities (FOR UPDATE)
+      [], // lock training_activities (FOR UPDATE)
+      [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
+      [
+        { item_id: "iron_ingot", quantity: 3 },
+        { item_id: "leather_strip", quantity: 1 },
+      ], // material check
+      [], // UPDATE iron_ingot -> quantity 1
+      [], // DELETE leather_strip (depleted)
+      [], // insert activity
+    ];
+
+    const req = makeRequest("POST", "/api/activities", {
+      type: "crafting",
+      parameters: { recipe_id: "reinforced_shield" },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { status: string };
+    expect(body.status).toBe("in_progress");
+
+    // Assert the actual mutation shape, not just the result-stub count: the
+    // surplus iron stack must be UPDATEd to remaining=1, and the depleted
+    // leather stack must be DELETEd. Without this, the positional mock would
+    // false-green even if UPDATE/DELETE were swapped or remaining miscomputed.
+    const ironUpdate = capturedQueries.find(
+      (q) => q.sql.includes("UPDATE player_inventory") && q.values.includes("iron_ingot"),
+    );
+    expect(ironUpdate).toBeDefined();
+    expect(ironUpdate!.sql).toContain("jsonb_set");
+    expect(ironUpdate!.values).toContain(1); // remaining = 3 - 2
+    const leatherDelete = capturedQueries.find(
+      (q) => q.sql.includes("DELETE FROM player_inventory") && q.values.includes("leather_strip"),
+    );
+    expect(leatherDelete).toBeDefined();
+    // The depleted stack must NOT be UPDATEd (no zero-quantity ghost row left behind).
+    const leatherUpdate = capturedQueries.find(
+      (q) => q.sql.includes("UPDATE player_inventory") && q.values.includes("leather_strip"),
+    );
+    expect(leatherUpdate).toBeUndefined();
   });
 
   test("creates training activity in training_activities table", async () => {

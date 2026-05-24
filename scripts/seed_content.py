@@ -30,6 +30,8 @@ TABLE_MAP = {
     "training_activity_types.json": "training_activity_types",
     "training_programs.json": "training_programs",
     "errand_templates.json": "errand_templates",
+    "recipes.json": "recipes",
+    "materials_catalog.json": "materials_catalog",
 }
 
 PK_COLUMN = {
