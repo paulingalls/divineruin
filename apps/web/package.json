@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --hot src/server.ts",
+    "build": "bun run scripts/prerender.ts",
     "start": "NODE_ENV=production bun src/server.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
