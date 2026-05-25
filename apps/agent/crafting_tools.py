@@ -3,8 +3,9 @@
 `query_available_workspaces` (read-only) reports the workspaces a player can use at
 their current location plus rental base prices. `rent_workspace` (mutating) prices a
 rental by the NPC's disposition, debits the player's gold (interim 10sp=1gp until the
-economy milestone), and writes a workspace_rentals row. `start_crafting_project` (added
-in the next slice) runs the five-check pre-flight and creates the crafting activity.
+economy milestone), and writes a workspace_rentals row. `start_crafting_project` runs
+the five-check pre-flight, then allocates+consumes materials and creates the in_progress
+crafting activity (the outcome is rolled later at resolution, not here).
 
 Errors raise LiveKit `ToolError` (ADR 0002). The `_*_impl` helpers expose `*_mod=` /
 `now_fn=` keyword seams for TEST-ONLY injection; production callers use the
@@ -15,15 +16,21 @@ settlement templates (concern c5c5871115dc).
 
 import json
 import logging
+import random
 from datetime import UTC, datetime, timedelta
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db
+import db_activity_queries
 import db_content_queries
 import db_mutations
 import db_queries
+import materials
+import preflight_pipeline
+import recipe_validation
+import recipes
 import workspace
 from db_errors import db_tool
 from session_data import SessionData
@@ -31,6 +38,11 @@ from tool_support import _validate_id
 from workspace import WorkspaceType
 
 logger = logging.getLogger("divineruin.crafting_tools")
+
+# LOCKED 3-independent-slot model (slot_validation.ts): one concurrent crafting project.
+_CRAFTING_SLOT_CAP = 1
+_SECONDS_PER_CYCLE = 14400  # 4h per async cycle; mirrors recipes.ts craftingDurationSeconds
+_FIELD_CRAFT_FLOOR_SECONDS = 900  # 15-min floor for 0-cycle (field) recipes
 
 
 def _default_now() -> datetime:
@@ -150,5 +162,119 @@ async def _rent_workspace_impl(
             "workspace_type": wtype.value,
             "price_sp": quote.price_sp,
             "expires_at": expires_at.isoformat(),
+        }
+    )
+
+
+@function_tool()
+async def start_crafting_project(context: RunContext[SessionData], recipe_id: str) -> str:
+    """Begin crafting a recipe the player knows. Runs the five pre-flight checks
+    (Knowledge, Skill Tier, Workspace, Materials, Tainted-Expert); if all pass,
+    consumes the materials and starts the crafting project. The result is rolled
+    later when the project finishes (it takes real time).
+
+    Args:
+        recipe_id: The recipe to craft (the player must already know it).
+    """
+    return await _start_crafting_project_impl(context, recipe_id)
+
+
+async def _start_crafting_project_impl(
+    context: RunContext[SessionData],
+    recipe_id: str,
+    *,
+    db_mod=db,
+    queries_mod=db_queries,
+    mutations_mod=db_mutations,
+    activity_mod=db_activity_queries,
+    recipes_mod=recipes,
+    materials_mod=materials,
+    preflight_mod=preflight_pipeline,
+    validation_mod=recipe_validation,
+    now_fn=None,
+    rng=None,
+) -> str:
+    context.disallow_interruptions()
+    _validate_id(recipe_id, "recipe_id")
+    player_id = context.userdata.player_id
+    location_id = context.userdata.location_id
+
+    # Cached reference reads BEFORE the txn (pool-exhaustion guard, like learn_recipe).
+    recipe = await recipes_mod.get_recipe(recipe_id)
+    if recipe is None:
+        raise ToolError(f"Unknown recipe: {recipe_id}")
+    catalog = await materials_mod.get_materials_catalog()
+
+    async with db_mod.transaction() as conn:
+        player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
+        if not player:
+            raise ToolError(f"Unknown player: {player_id}")
+
+        slot_counts = await activity_mod.count_active_by_slot(player_id, conn=conn)
+        if slot_counts["crafting"] >= _CRAFTING_SLOT_CAP:
+            raise ToolError("You already have a crafting project underway. Wait for it to finish first.")
+
+        # Gather the five-check pre-flight inputs (materials locked FOR UPDATE so the
+        # allocate→consume below can't race a concurrent craft on the same stacks).
+        known = await queries_mod.get_player_known_recipe_ids(player_id, conn=conn)
+        crafting_tier = (await queries_mod.get_single_skill_advancement(player_id, "crafting", conn=conn))["tier"]
+        accessible = await queries_mod.get_accessible_workspaces(player_id, location_id, conn=conn)
+        available = await queries_mod.get_player_materials(player_id, conn=conn, for_update=True)
+
+        # A non-canonical crafting/recipe tier makes run_preflight Check 2 raise a raw
+        # ValueError (DB-validated at write boundaries, so a content/migration bug, not
+        # user input); surface it as ToolError to keep the tool's ADR-0002 error shape
+        # (mirrors learn_recipe's validate_recipe_slot_capacity wrap + rent_workspace).
+        try:
+            result = preflight_mod.run_preflight(recipe, known, crafting_tier, accessible, available, catalog)
+        except ValueError as exc:
+            raise ToolError(f"Cannot craft {recipe['name']}: invalid tier configuration ({exc})") from exc
+        if not result.passed:
+            raise ToolError(f"Cannot craft {recipe['name']}: {result.reason}")
+
+        # Authoritative disjoint allocation (allocate-then-deduct). The greedy pre-flight
+        # Check 4 can pass where a real allocation can't (overlapping substitutable pools);
+        # surface that as a clear error rather than over-consuming.
+        alloc = validation_mod.allocate_materials(recipe["materials"], available, catalog)
+        if not alloc.satisfied:
+            raise ToolError(f"Cannot craft {recipe['name']}: {alloc.reason}")
+        await mutations_mod.consume_player_materials(player_id, alloc.by_id, conn=conn)
+
+        cycles = recipe["async_cycles"]
+        min_seconds = cycles * _SECONDS_PER_CYCLE if cycles > 0 else _FIELD_CRAFT_FLOOR_SECONDS
+        max_seconds = min_seconds * 2
+        now = (now_fn or _default_now)()
+        resolve_at = now + timedelta(seconds=(rng or random.Random()).randint(min_seconds, max_seconds))
+
+        # Parameters shape is byte-identical to the TS create path (activities.ts) so
+        # async_worker / resolve_crafting reads it the same regardless of entry point.
+        data = {
+            "status": "in_progress",
+            "activity_type": "crafting",
+            "start_time": now.isoformat(),
+            "duration_min_seconds": min_seconds,
+            "duration_max_seconds": max_seconds,
+            "resolve_at": resolve_at.isoformat(),
+            "parameters": {
+                "recipe_id": recipe_id,
+                "result_item_id": recipe["output_item"],
+                "result_item_name": recipe["name"],
+                "required_materials": alloc.flat,
+                "dc": recipe["crafting_dc"],
+            },
+            "outcome": None,
+            "narration_text": None,
+            "narration_audio_url": None,
+            "decision_options": None,
+        }
+        activity_id = await mutations_mod.create_async_activity(player_id, data, conn=conn)
+
+    logger.info("start_crafting_project: player=%s recipe=%s activity=%s", player_id, recipe_id, activity_id)
+    return json.dumps(
+        {
+            "activity_id": activity_id,
+            "recipe_id": recipe_id,
+            "result_item_name": recipe["name"],
+            "resolve_at_estimate": resolve_at.isoformat(),
         }
     )

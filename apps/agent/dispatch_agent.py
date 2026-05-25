@@ -13,6 +13,7 @@ from typing import Any
 
 from base_agent import BaseGameAgent
 from check_tools import roll_dice
+from crafting_tools import query_available_workspaces, rent_workspace, start_crafting_project
 from dispatch_tools import conclude_dispatch
 from environment_tools import play_sound, set_music_state
 from errand_tools import dispatch_companion_errand, resolve_companion_errand
@@ -34,6 +35,13 @@ DISPATCH_TOOLS = [
     # Recipe acquisition (M5.1 crafting)
     query_recipe_requirements,
     learn_recipe,
+    # Crafting workspaces + projects (M5.2). NOTE: the Artificer Portable-Lab
+    # training-slot exception (ADR 0005) is the TS REST path's (story-006); this
+    # agent tool uses the plain crafting-slot cap, so the two entry points diverge
+    # on Artificer slot rules until that wiring lands.
+    query_available_workspaces,
+    rent_workspace,
+    start_crafting_project,
     # Navigation / queries — enough to talk to the mentor and leave
     move_player,
     query_info,
