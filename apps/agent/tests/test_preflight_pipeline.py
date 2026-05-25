@@ -9,6 +9,8 @@ are passed directly.
 import pytest
 
 import preflight_pipeline as pf
+from recipe_validation import RECIPE_TIER_ORDER
+from rules_engine import SKILL_TIER_ORDER
 
 # materials catalog: material_id -> {category, tier} (mirrors test_recipe_validation).
 CATALOG = {
@@ -43,6 +45,20 @@ def _run(**overrides):
     }
     args.update(overrides)
     return pf.run_preflight(**args)
+
+
+def test_skill_and_recipe_tier_orders_are_index_aligned():
+    # Check 2 compares SKILL_TIER_ORDER.index(crafting_tier) against
+    # RECIPE_TIER_ORDER.index(recipe.tier) — that only gates correctly if the two
+    # lists stay positionally aligned (untrained↔basic, trained↔trained, …). This
+    # pins the correspondence so reordering or extending either list fails loud
+    # here rather than silently mis-gating crafting.
+    assert list(zip(SKILL_TIER_ORDER, RECIPE_TIER_ORDER, strict=True)) == [
+        ("untrained", "basic"),
+        ("trained", "trained"),
+        ("expert", "expert"),
+        ("master", "master"),
+    ]
 
 
 class TestKnowledgeGate:
