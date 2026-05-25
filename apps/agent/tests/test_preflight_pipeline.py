@@ -82,8 +82,55 @@ class TestSkillTierGate:
             _run(recipe=_recipe(tier="legendary"))
 
 
+class TestWorkspaceGate:
+    def test_accessible_workspace_passes(self):
+        assert _run(accessible_workspaces={"field", "forge"}).passed is True
+
+    def test_inaccessible_workspace_fails(self):
+        # Player has only field/workshop; the recipe needs a forge.
+        result = _run(accessible_workspaces={"field", "workshop"})
+        assert result.passed is False
+        assert result.failed_check == "workspace"
+
+    def test_lab_does_not_satisfy_a_forge_recipe(self):
+        # Exact-type access, not rank >=: a laboratory is not a forge.
+        result = _run(accessible_workspaces={"field", "laboratory"})
+        assert result.passed is False
+        assert result.failed_check == "workspace"
+
+    def test_unknown_recipe_workspace_fails_loud(self):
+        with pytest.raises(ValueError):
+            _run(recipe=_recipe(workspace_required="smithy"))
+
+
+class TestMaterialsGate:
+    def test_sufficient_materials_pass(self):
+        assert _run(available_materials={"iron_ingot": 2}).passed is True
+
+    def test_insufficient_materials_fail(self):
+        result = _run(available_materials={"iron_ingot": 1})
+        assert result.passed is False
+        assert result.failed_check == "materials"
+
+    def test_substitutable_material_satisfies(self):
+        # A substitutable metal req is met by a same-category, tier-sufficient sub.
+        recipe = _recipe(
+            materials=[{"material_id": "iron_ingot", "quantity": 2, "tier_minimum": 1, "substitutable": True}]
+        )
+        # No iron on hand, but 2 steel (metal, tier 2 >= 1) substitutes.
+        assert _run(recipe=recipe, available_materials={"steel_ingot": 2}).passed is True
+
+
 class TestGateOrdering:
     def test_knowledge_checked_before_skill_tier(self):
         # Unknown recipe AND tier too low → the FIRST failure (knowledge) wins.
         result = _run(known_recipe_ids=set(), crafting_tier="untrained")
         assert result.failed_check == "knowledge"
+
+    def test_skill_tier_checked_before_workspace(self):
+        result = _run(crafting_tier="untrained", accessible_workspaces={"field"})
+        assert result.failed_check == "skill_tier"
+
+    def test_workspace_checked_before_materials(self):
+        result = _run(accessible_workspaces={"field"}, available_materials={})
+        assert result.failed_check == "workspace"

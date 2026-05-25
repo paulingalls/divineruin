@@ -12,8 +12,9 @@ the canonical tier orders + check_material_requirements rather than re-deriving 
 
 from dataclasses import dataclass
 
-from recipe_validation import RECIPE_TIER_ORDER
+from recipe_validation import RECIPE_TIER_ORDER, check_material_requirements
 from rules_engine import SKILL_TIER_ORDER
+from workspace import WorkspaceType
 
 
 @dataclass(frozen=True)
@@ -52,5 +53,19 @@ def run_preflight(
         raise ValueError(f"recipe tier {recipe_tier!r} is not a valid recipe tier")
     if SKILL_TIER_ORDER.index(crafting_tier) < RECIPE_TIER_ORDER.index(recipe_tier):
         return PreflightResult(False, "skill_tier", f"{crafting_tier} crafting cannot make a {recipe_tier} recipe")
+
+    # Check 3: Workspace — the recipe's required workspace must be accessible.
+    # Convert via WorkspaceType first so an unknown workspace fails loud (parity
+    # with Check 2) rather than silently failing the gate. Exact-type access, NOT
+    # rank >= — a laboratory must not satisfy a forge recipe (workspace-check3-access).
+    required_workspace = WorkspaceType(recipe["workspace_required"])
+    if required_workspace not in accessible_workspaces:
+        return PreflightResult(False, "workspace", f"no access to a {required_workspace} workspace")
+
+    # Check 4: Materials — the recipe's requirements must be satisfiable from the
+    # player's holdings (reuses the M5.1 substitution-aware primitive).
+    material_check = check_material_requirements(recipe["materials"], available_materials, materials_catalog)
+    if not material_check.satisfied:
+        return PreflightResult(False, "materials", material_check.reason)
 
     return PreflightResult(True, None, "")
