@@ -1,16 +1,32 @@
 import { serve, file, Glob } from "bun";
 import { join } from "node:path";
+import { cacheControlFor } from "./cache-policy.ts";
 
 const isDev = process.env.NODE_ENV !== "production";
 const port = Number(process.env.PORT ?? 8083);
 const DIST = join(import.meta.dir, "..", "dist");
 
 if (isDev) {
-  // HTML import: Bun's bundler scans index.html for <script>/<link> tags,
-  // bundles src/client.tsx + src/styles.css on the fly with HMR, and serves the
-  // result (empty #root, client-rendered). Dynamically imported inside the dev
-  // branch so the dev-bundler HTML construct never loads in the prod process.
-  const { default: index } = await import("../index.html");
+  // Canonical index.html deliberately omits the fonts.css <link> so the prod
+  // build (prerender.ts) keeps the woff2 as separately-served files rather than
+  // letting Bun inline them as base64. For dev we want the real brand fonts, and
+  // inlining is fine here (no CWV budget), so generate a dev-only index that
+  // links fonts.css relatively — Bun then bundles + inlines the woff2 on the fly.
+  const devIndexPath = join(import.meta.dir, "..", "index.dev.html");
+  const canonical = await file(join(import.meta.dir, "..", "index.html")).text();
+  await Bun.write(
+    devIndexPath,
+    canonical.replace(
+      "</head>",
+      '  <link rel="stylesheet" href="./src/fonts/fonts.css" />\n  </head>',
+    ),
+  );
+
+  // HTML import: Bun's bundler scans the dev index for <script>/<link> tags,
+  // bundles src/client.tsx + the CSS (incl. inlined fonts) on the fly with HMR.
+  // Dynamically imported inside the dev branch so the dev-bundler HTML construct
+  // never loads in the prod process.
+  const { default: index } = await import("../index.dev.html");
   const server = serve({
     port,
     // console: true streams the browser console to this terminal.
@@ -38,6 +54,8 @@ if (isDev) {
     throw new Error("prod serve: dist/index.html missing — run `bun run build` first");
   }
 
+  // Cache-Control policy (immutable vs revalidate) lives in cache-policy.ts so it
+  // is unit-testable without standing up the server.
   const byPath = new Map<string, Served>();
   for await (const rel of new Glob("**/*").scan(DIST)) {
     const path = join(DIST, rel);
@@ -45,7 +63,7 @@ if (isDev) {
     byPath.set("/" + rel, {
       path,
       etag: `"${Bun.hash(bytes).toString(16)}"`,
-      cacheControl: rel === "index.html" ? "no-cache" : "public, max-age=31536000, immutable",
+      cacheControl: cacheControlFor(rel),
     });
   }
 
