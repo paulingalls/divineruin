@@ -14,6 +14,7 @@ import json
 import re
 from pathlib import Path
 
+import pytest
 from acceptance.seeds import seed_player
 
 import db
@@ -42,15 +43,25 @@ def _runbook_reset_sql() -> str:
     return resets[0].strip()
 
 
-async def test_runbook_reset_clears_poisoned_cache(reset_db_pool: str) -> None:
+# The two states an operator finds a stuck activity in:
+#   - "resolving" + resolving_at: a worker crashed mid-claim (recovered by the
+#     stale sweep, but its cache may be poisoned).
+#   - "in_progress" without resolving_at, resolve_attempts past the threshold: the
+#     warned retry loop — revert_claim left it in_progress and stripped resolving_at.
+# The reset must work on both; JSONB key-strip is a no-op on an already-absent key.
+@pytest.mark.parametrize(
+    "status,include_resolving_at",
+    [("resolving", True), ("in_progress", False)],
+    ids=["mid-claim-resolving", "warned-loop-in-progress"],
+)
+async def test_runbook_reset_clears_poisoned_cache(reset_db_pool: str, status: str, include_resolving_at: bool) -> None:
     pool = await db.get_pool()
     await seed_player(pool, player_id="player_stuck")
     activity_id = "activity_stuck"
     poisoned = {
-        "status": "resolving",
+        "status": status,
         "activity_type": "crafting",
         "resolve_attempts": 7,
-        "resolving_at": "2026-01-01T00:00:00+00:00",
         "outcome": {"tier": "failure"},
         "narration_text": "poisoned",
         "narration_summary": "poisoned",
@@ -58,6 +69,8 @@ async def test_runbook_reset_clears_poisoned_cache(reset_db_pool: str) -> None:
         "decision_options": [],
         "parameters": {"recipe_id": "wooden_club"},
     }
+    if include_resolving_at:
+        poisoned["resolving_at"] = "2026-01-01T00:00:00+00:00"
     await pool.execute(
         "INSERT INTO async_activities (id, player_id, data) VALUES ($1, $2, $3::jsonb) "
         "ON CONFLICT (id) DO UPDATE SET data = $3::jsonb",
