@@ -9,6 +9,7 @@ errand_risk.py (ADR 0006); these functions compute the skill-check outcome only.
 import random
 from dataclasses import dataclass
 
+from crafting_gates import tainted_blocks_crafter, workspace_accessible
 from rules_engine import attribute_modifier, dc_for_tier, skill_modifier
 
 # --- Outcome dataclasses ---
@@ -43,10 +44,72 @@ class ErrandOutcome:
 def resolve_crafting(
     player_data: dict,
     parameters: dict,
+    *,
+    workspace_access: list[str] | None = None,
+    crafting_tier: str | None = None,
     rng: random.Random | None = None,
 ) -> CraftingOutcome:
-    """Resolve a crafting activity. Skill check determines outcome tier."""
+    """Resolve a crafting activity: re-check the workspace-access and tainted-Expert
+    gates, then roll d20+mod vs DC.
+
+    The gates were already run at creation for the agent tool path, but the live REST
+    create path skips pre-flight (concern 2b76f2452f23), so resolution is the chokepoint
+    that catches an insufficient workspace or a sub-Expert working tainted materials. A
+    gate FAILURE is a `failure` outcome (materials consumed, no item) — not an exception.
+
+    `workspace_access` (the player's accessible workspaces, captured at creation) and
+    `crafting_tier` are REQUIRED: the worker threads them from the activity parameters,
+    and they fail loud (ValueError) if absent rather than silently defaulting, so a
+    miswired producer surfaces immediately instead of mis-gating the craft.
+    """
+    if workspace_access is None:
+        raise ValueError("resolve_crafting requires workspace_access captured at creation")
+    if crafting_tier is None:
+        raise ValueError("resolve_crafting requires crafting_tier captured at creation")
+
     r = rng or random.Random()
+
+    required_materials = parameters.get("required_materials", [])
+    recipe_id = parameters.get("recipe_id", "unknown")
+    result_item_id = parameters.get("result_item_id", recipe_id)
+    result_item_name = parameters.get("result_item_name", "crafted item")
+
+    workspace_required = parameters.get("workspace_required")
+    if workspace_required is None:
+        raise ValueError("resolve_crafting requires parameters['workspace_required'] captured at creation")
+    if "tainted_materials" not in parameters:
+        raise ValueError("resolve_crafting requires parameters['tainted_materials'] captured at creation")
+    tainted_materials = parameters["tainted_materials"]
+
+    # Resolution-time gates (story-005). Evaluated BEFORE the roll so a gate failure
+    # consumes no rng (deterministic regardless of seed). Materials were deducted at
+    # creation, so a gate failure consumes them and returns no item — the spec's
+    # failure tier. The gates reuse the same predicates as the pre-flight pipeline.
+    gate = None
+    gate_reason = ""
+    if not workspace_accessible(workspace_required, workspace_access):
+        gate, gate_reason = "workspace", f"no access to a {workspace_required} workspace"
+    elif tainted_blocks_crafter(crafting_tier, tainted_materials):
+        gate, gate_reason = "tainted_expert", f"{crafting_tier} crafting cannot safely work tainted materials"
+    if gate is not None:
+        return CraftingOutcome(
+            tier="failure",
+            crafted_item_id=None,
+            crafted_item_name=None,
+            quality_bonus=0,
+            materials_consumed=list(required_materials),
+            materials_returned=[],
+            narrative_context={
+                "tier": "failure",
+                "gate": gate,
+                "gate_reason": gate_reason,
+                "recipe_name": result_item_name,
+            },
+            decision_options=[
+                {"id": "retry", "label": "Set the work aside for now"},
+                {"id": "abandon", "label": "Walk away from the bench"},
+            ],
+        )
 
     # Skill check for crafting
     craft_skill = parameters.get("skill", "arcana")
@@ -55,11 +118,6 @@ def resolve_crafting(
     d20 = r.randint(1, 20)
     total = d20 + mod
     margin = total - dc
-
-    required_materials = parameters.get("required_materials", [])
-    recipe_id = parameters.get("recipe_id", "unknown")
-    result_item_id = parameters.get("result_item_id", recipe_id)
-    result_item_name = parameters.get("result_item_name", "crafted item")
 
     if d20 == 20 or margin >= 5:
         tier = "success"

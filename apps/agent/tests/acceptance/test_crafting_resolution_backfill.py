@@ -19,15 +19,35 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from acceptance.seeds import seed_player
 
 import db
 
 _MIGRATION = Path(__file__).parents[4] / "scripts" / "migrations" / "023_backfill_crafting_resolution_params.sql"
 
+# IDs this module inserts. The acceptance testcontainer is session-shared, so these
+# rows must be torn down — in particular the MINIMAL recipe rows (they lack the full
+# recipe shape and would make a later module's Bun server choke in loadRecipes()).
+_TEST_RECIPE_IDS = ("forge_sword", "tainted_field_brew")
+_TEST_ACTIVITY_IDS = ("act_forge", "act_tainted", "act_unskilled", "act_done", "act_errand")
+_TEST_PLAYER_IDS = ("player_forge", "player_tainted", "player_unskilled", "player_terminal")
+
 
 def _migration_sql() -> str:
     return _MIGRATION.read_text()
+
+
+@pytest.fixture(autouse=True)
+async def _cleanup_seeded_rows(reset_db_pool: str):
+    """Delete this module's rows from the shared container after each test so the
+    partial recipe rows don't leak into other acceptance modules (e.g. the capstone
+    Bun server's loadRecipes). Players cascade to skill_advancement (migration 021)."""
+    yield
+    pool = await db.get_pool()
+    await pool.execute("DELETE FROM async_activities WHERE id = ANY($1)", list(_TEST_ACTIVITY_IDS))
+    await pool.execute("DELETE FROM recipes WHERE id = ANY($1)", list(_TEST_RECIPE_IDS))
+    await pool.execute("DELETE FROM players WHERE player_id = ANY($1)", list(_TEST_PLAYER_IDS))
 
 
 async def _seed_recipe(pool, recipe_id: str, *, workspace_required: str, tainted: bool) -> None:

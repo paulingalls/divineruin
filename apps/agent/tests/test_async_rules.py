@@ -44,6 +44,19 @@ SAMPLE_COMPANION = {
 # --- resolve_crafting ---
 
 
+def _resolve_craft(params, *, workspace_access=None, crafting_tier="expert", rng=None, player=None):
+    """resolve_crafting with gate-PASSING defaults so the roll-focused tests exercise
+    the d20 path. The forge recipe in PARAMS is satisfied by ["field", "forge"] access
+    and an Expert (non-tainted) crafter. Gate-failure tests override these."""
+    return resolve_crafting(
+        player or SAMPLE_PLAYER,
+        params,
+        workspace_access=["field", "forge"] if workspace_access is None else workspace_access,
+        crafting_tier=crafting_tier,
+        rng=rng,
+    )
+
+
 class TestResolveCrafting:
     PARAMS = {
         "recipe_id": "iron_sword",
@@ -52,6 +65,8 @@ class TestResolveCrafting:
         "required_materials": ["iron_ingot", "leather_strip"],
         "skill": "arcana",
         "dc": 13,
+        "workspace_required": "forge",
+        "tainted_materials": False,
     }
 
     def test_success_on_high_roll(self):
@@ -61,7 +76,7 @@ class TestResolveCrafting:
             d20 = rng.randint(1, 20)
             if d20 == 20:
                 rng = random.Random(seed)
-                result = resolve_crafting(SAMPLE_PLAYER, self.PARAMS, rng=rng)
+                result = _resolve_craft(self.PARAMS, rng=rng)
                 assert result.tier == "success"
                 assert result.crafted_item_id == "iron_sword"
                 assert result.crafted_item_name == "Iron Sword"
@@ -75,7 +90,7 @@ class TestResolveCrafting:
             rng = random.Random(seed)
             if rng.randint(1, 20) == 1:
                 rng = random.Random(seed)
-                result = resolve_crafting(SAMPLE_PLAYER, self.PARAMS, rng=rng)
+                result = _resolve_craft(self.PARAMS, rng=rng)
                 assert result.tier == "failure"
                 assert result.crafted_item_id is None
                 assert len(result.materials_returned) > 0
@@ -86,15 +101,13 @@ class TestResolveCrafting:
         """Run many seeds, verify we can reach different outcome tiers."""
         tiers_seen = set()
         for seed in range(500):
-            rng = random.Random(seed)
-            result = resolve_crafting(SAMPLE_PLAYER, self.PARAMS, rng=rng)
+            result = _resolve_craft(self.PARAMS, rng=random.Random(seed))
             tiers_seen.add(result.tier)
         # Should reach at least 3 of 4 tiers
         assert len(tiers_seen) >= 3
 
     def test_narrative_context_populated(self):
-        rng = random.Random(42)
-        result = resolve_crafting(SAMPLE_PLAYER, self.PARAMS, rng=rng)
+        result = _resolve_craft(self.PARAMS, rng=random.Random(42))
         ctx = result.narrative_context
         assert "tier" in ctx
         assert "roll" in ctx
@@ -103,18 +116,76 @@ class TestResolveCrafting:
         assert ctx["npc_id"] == "grimjaw_blacksmith"
 
     def test_deterministic_with_rng(self):
-        r1 = resolve_crafting(SAMPLE_PLAYER, self.PARAMS, rng=random.Random(42))
-        r2 = resolve_crafting(SAMPLE_PLAYER, self.PARAMS, rng=random.Random(42))
+        r1 = _resolve_craft(self.PARAMS, rng=random.Random(42))
+        r2 = _resolve_craft(self.PARAMS, rng=random.Random(42))
         assert r1.tier == r2.tier
         assert r1.quality_bonus == r2.quality_bonus
 
     def test_decision_options_always_present(self):
         for seed in range(20):
-            result = resolve_crafting(SAMPLE_PLAYER, self.PARAMS, rng=random.Random(seed))
+            result = _resolve_craft(self.PARAMS, rng=random.Random(seed))
             assert len(result.decision_options) >= 2
             for opt in result.decision_options:
                 assert "id" in opt
                 assert "label" in opt
+
+    # --- story-005: fail-loud on absent gate inputs ---
+
+    def test_absent_workspace_access_raises(self):
+        with pytest.raises(ValueError, match="workspace_access"):
+            resolve_crafting(SAMPLE_PLAYER, self.PARAMS, crafting_tier="expert", rng=random.Random(1))
+
+    def test_absent_crafting_tier_raises(self):
+        with pytest.raises(ValueError, match="crafting_tier"):
+            resolve_crafting(SAMPLE_PLAYER, self.PARAMS, workspace_access=["field", "forge"], rng=random.Random(1))
+
+    def test_missing_workspace_required_param_raises(self):
+        params = {k: v for k, v in self.PARAMS.items() if k != "workspace_required"}
+        with pytest.raises(ValueError, match="workspace_required"):
+            _resolve_craft(params, rng=random.Random(1))
+
+    def test_missing_tainted_param_raises(self):
+        params = {k: v for k, v in self.PARAMS.items() if k != "tainted_materials"}
+        with pytest.raises(ValueError, match="tainted_materials"):
+            _resolve_craft(params, rng=random.Random(1))
+
+    # --- story-005: resolution-time gate failures (failure outcome, not a raise) ---
+
+    def test_workspace_gate_failure_returns_failure_outcome(self):
+        # Forge recipe, but the player only has field access -> gate fails.
+        result = _resolve_craft(self.PARAMS, workspace_access=["field"], rng=random.Random(1))
+        assert result.tier == "failure"
+        assert result.crafted_item_id is None
+        assert result.materials_consumed == ["iron_ingot", "leather_strip"]
+        assert result.materials_returned == []
+        assert result.narrative_context["gate"] == "workspace"
+        assert len(result.decision_options) >= 2
+
+    def test_tainted_gate_failure_returns_failure_outcome(self):
+        params = {**self.PARAMS, "tainted_materials": True}
+        # Sub-Expert crafter working tainted materials -> gate fails.
+        result = _resolve_craft(params, crafting_tier="trained", rng=random.Random(1))
+        assert result.tier == "failure"
+        assert result.crafted_item_id is None
+        assert result.materials_consumed == ["iron_ingot", "leather_strip"]
+        assert result.materials_returned == []
+        assert result.narrative_context["gate"] == "tainted_expert"
+
+    def test_tainted_expert_proceeds_past_gate(self):
+        # Tainted materials + Expert crafter: gate passes, the roll runs and can succeed.
+        params = {**self.PARAMS, "tainted_materials": True}
+        tiers_seen = set()
+        for seed in range(200):
+            result = _resolve_craft(params, crafting_tier="expert", rng=random.Random(seed))
+            tiers_seen.add(result.tier)
+        assert "success" in tiers_seen  # the roll path was reached, not gate-blocked
+
+    def test_gate_failure_is_rng_independent(self):
+        # A gate failure consumes no rng, so every seed yields the same failure outcome.
+        outcomes = {
+            _resolve_craft(self.PARAMS, workspace_access=["field"], rng=random.Random(seed)).tier for seed in range(50)
+        }
+        assert outcomes == {"failure"}
 
 
 # --- resolve_companion_errand ---
