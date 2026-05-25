@@ -1,6 +1,7 @@
 import { serve, file, Glob } from "bun";
 import { join } from "node:path";
 import { cacheControlFor } from "./cache-policy.ts";
+import { injectDevFontLink } from "./dev-index.ts";
 
 const isDev = process.env.NODE_ENV !== "production";
 const port = Number(process.env.PORT ?? 8083);
@@ -14,13 +15,7 @@ if (isDev) {
   // links fonts.css relatively — Bun then bundles + inlines the woff2 on the fly.
   const devIndexPath = join(import.meta.dir, "..", "index.dev.html");
   const canonical = await file(join(import.meta.dir, "..", "index.html")).text();
-  await Bun.write(
-    devIndexPath,
-    canonical.replace(
-      "</head>",
-      '  <link rel="stylesheet" href="./src/fonts/fonts.css" />\n  </head>',
-    ),
-  );
+  await Bun.write(devIndexPath, injectDevFontLink(canonical));
 
   // HTML import: Bun's bundler scans the dev index for <script>/<link> tags,
   // bundles src/client.tsx + the CSS (incl. inlined fonts) on the fly with HMR.
