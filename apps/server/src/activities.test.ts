@@ -426,6 +426,42 @@ describe("handleListActivities", () => {
     expect(body.activities[0]!.status).toBe("in_progress");
     expect(body.activities[1]!.status).toBe("in_progress");
   });
+
+  // Worker-internal bookkeeping (resolving_at, resolve_attempts) must not leak to
+  // clients on non-terminal rows. Closes 06edbc8f3eef.
+  test("strips worker-internal fields on the wire", async () => {
+    mockQueryResults = [
+      [
+        {
+          id: "act_1",
+          data: {
+            status: "resolving",
+            activity_type: "crafting",
+            resolving_at: "2026-01-01T00:00:00Z",
+            resolve_attempts: 4,
+            // Worker's cached TTS breakdown — not stripped by mark_resolved, leaks
+            // verbatim on resolved rows unless stripped at egress.
+            narration_segments: [{ character: "Narrator", emotion: "calm", text: "hi" }],
+            resolve_at: "2026-01-01T01:00:00Z",
+            narration_text: "You forged a blade.",
+            narration_summary: "Forged a blade.",
+          },
+        },
+      ],
+    ];
+
+    const req = makeRequest("GET", "/api/activities");
+    const res = await handleListActivities(req, "player_1");
+    const body = (await res.json()) as { activities: Record<string, unknown>[] };
+    expect(body.activities[0]!.resolving_at).toBeUndefined();
+    expect(body.activities[0]!.resolve_attempts).toBeUndefined();
+    expect(body.activities[0]!.narration_segments).toBeUndefined();
+    // Client-facing fields survive the strip.
+    expect(body.activities[0]!.status).toBe("in_progress");
+    expect(body.activities[0]!.resolve_at).toBe("2026-01-01T01:00:00Z");
+    expect(body.activities[0]!.narration_text).toBe("You forged a blade.");
+    expect(body.activities[0]!.narration_summary).toBe("Forged a blade.");
+  });
 });
 
 describe("handleGetActivity", () => {
@@ -480,6 +516,34 @@ describe("handleGetActivity", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { status: string };
     expect(body.status).toBe("in_progress");
+  });
+
+  test("strips worker-internal fields on the wire", async () => {
+    mockQueryResults = [
+      [
+        {
+          id: "act_1",
+          player_id: "player_1",
+          data: {
+            status: "resolving",
+            activity_type: "crafting",
+            resolving_at: "2026-01-01T00:00:00Z",
+            resolve_attempts: 4,
+            narration_segments: [{ character: "Narrator", emotion: "calm", text: "hi" }],
+            narration_text: "You forged a blade.",
+          },
+        },
+      ],
+    ];
+
+    const req = makeRequest("GET", "/api/activities/act_1");
+    const res = await handleGetActivity(req, "player_1", "act_1");
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.resolving_at).toBeUndefined();
+    expect(body.resolve_attempts).toBeUndefined();
+    expect(body.narration_segments).toBeUndefined();
+    expect(body.status).toBe("in_progress");
+    expect(body.narration_text).toBe("You forged a blade.");
   });
 });
 
