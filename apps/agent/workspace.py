@@ -9,7 +9,7 @@ args so they stay exhaustively unit-testable. Consumed by the three-check pipeli
 """
 
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 
 from tool_support import DISPOSITION_TIERS
 
@@ -93,3 +93,67 @@ def compute_rental_price(base_price_sp: int, disposition: str) -> RentalQuote:
     if rank < DISPOSITION_TIERS["neutral"]:
         return RentalQuote(False, 0.0, f"NPC refuses to rent at {key} disposition (below neutral)")
     return RentalQuote(True, base_price_sp * _RENTAL_MULTIPLIER.get(key, 1.0), "")
+
+
+class Availability(IntEnum):
+    """How likely a settlement of a given size is to offer a workspace (spec
+    §Settlement Workspace Availability). Ordered so downstream gates can ask
+    e.g. `>= SOMETIMES`; NEVER means the workspace is absent at that size."""
+
+    NEVER = 0
+    RARELY = 1
+    SOMETIMES = 2
+    USUALLY = 3
+    ALWAYS = 4
+
+
+class SettlementSize(StrEnum):
+    HAMLET = "hamlet"
+    VILLAGE = "village"
+    TOWN = "town"
+    CITY = "city"
+    KELDARAN_HOLD = "keldaran_hold"
+
+
+# Settlement workspace availability (spec §Settlement Workspace Availability).
+# Field is omitted here — it is ALWAYS available everywhere (see the guard in
+# settlement_workspace_availability), so only the three rentable workspaces vary
+# by settlement size. This encodes the spec table 1:1.
+_SETTLEMENT_AVAILABILITY: dict[SettlementSize, dict[WorkspaceType, Availability]] = {
+    SettlementSize.HAMLET: {
+        WorkspaceType.WORKSHOP: Availability.SOMETIMES,
+        WorkspaceType.FORGE: Availability.NEVER,
+        WorkspaceType.LABORATORY: Availability.NEVER,
+    },
+    SettlementSize.VILLAGE: {
+        WorkspaceType.WORKSHOP: Availability.USUALLY,
+        WorkspaceType.FORGE: Availability.RARELY,
+        WorkspaceType.LABORATORY: Availability.NEVER,
+    },
+    SettlementSize.TOWN: {
+        WorkspaceType.WORKSHOP: Availability.ALWAYS,
+        WorkspaceType.FORGE: Availability.USUALLY,
+        WorkspaceType.LABORATORY: Availability.RARELY,
+    },
+    SettlementSize.CITY: {
+        WorkspaceType.WORKSHOP: Availability.ALWAYS,
+        WorkspaceType.FORGE: Availability.ALWAYS,
+        WorkspaceType.LABORATORY: Availability.USUALLY,
+    },
+    SettlementSize.KELDARAN_HOLD: {
+        WorkspaceType.WORKSHOP: Availability.ALWAYS,
+        WorkspaceType.FORGE: Availability.ALWAYS,
+        WorkspaceType.LABORATORY: Availability.SOMETIMES,
+    },
+}
+
+
+def settlement_workspace_availability(size: SettlementSize, workspace_type: WorkspaceType) -> Availability:
+    """How likely a `size` settlement is to offer `workspace_type` (spec matrix).
+
+    Field is always available everywhere (the universal floor); the other three
+    workspaces follow the per-size table. This is a total lookup over the four
+    members for each size, so no KeyError is possible for valid enum inputs."""
+    if workspace_type is WorkspaceType.FIELD:
+        return Availability.ALWAYS
+    return _SETTLEMENT_AVAILABILITY[size][workspace_type]

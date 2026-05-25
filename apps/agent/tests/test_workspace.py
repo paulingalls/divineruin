@@ -99,3 +99,65 @@ class TestRentalPricing:
     def test_unknown_disposition_fails_loud(self):
         with pytest.raises(ValueError):
             ws.compute_rental_price(5, "ecstatic")
+
+
+class TestSettlementAvailability:
+    def test_availability_levels_are_ordered(self):
+        assert (
+            ws.Availability.NEVER
+            < ws.Availability.RARELY
+            < ws.Availability.SOMETIMES
+            < ws.Availability.USUALLY
+            < ws.Availability.ALWAYS
+        )
+
+    def test_all_five_settlement_sizes_present(self):
+        assert {s.value for s in ws.SettlementSize} == {
+            "hamlet",
+            "village",
+            "town",
+            "city",
+            "keldaran_hold",
+        }
+
+    @pytest.mark.parametrize("size", list(ws.SettlementSize))
+    def test_field_always_available_everywhere(self, size):
+        # Field is the universal floor — every settlement, always.
+        assert ws.settlement_workspace_availability(size, ws.WorkspaceType.FIELD) == ws.Availability.ALWAYS
+
+    def test_hamlet_has_no_forge_or_laboratory(self):
+        A = ws.Availability
+        assert ws.settlement_workspace_availability(ws.SettlementSize.HAMLET, ws.WorkspaceType.WORKSHOP) == A.SOMETIMES
+        assert ws.settlement_workspace_availability(ws.SettlementSize.HAMLET, ws.WorkspaceType.FORGE) == A.NEVER
+        assert ws.settlement_workspace_availability(ws.SettlementSize.HAMLET, ws.WorkspaceType.LABORATORY) == A.NEVER
+
+    def test_village_matrix(self):
+        A = ws.Availability
+        S = ws.SettlementSize
+        assert ws.settlement_workspace_availability(S.VILLAGE, ws.WorkspaceType.WORKSHOP) == A.USUALLY
+        assert ws.settlement_workspace_availability(S.VILLAGE, ws.WorkspaceType.FORGE) == A.RARELY
+        assert ws.settlement_workspace_availability(S.VILLAGE, ws.WorkspaceType.LABORATORY) == A.NEVER
+
+    def test_town_matrix(self):
+        A = ws.Availability
+        S = ws.SettlementSize
+        assert ws.settlement_workspace_availability(S.TOWN, ws.WorkspaceType.WORKSHOP) == A.ALWAYS
+        assert ws.settlement_workspace_availability(S.TOWN, ws.WorkspaceType.FORGE) == A.USUALLY
+        assert ws.settlement_workspace_availability(S.TOWN, ws.WorkspaceType.LABORATORY) == A.RARELY
+
+    def test_city_has_all_workspaces(self):
+        A = ws.Availability
+        S = ws.SettlementSize
+        assert ws.settlement_workspace_availability(S.CITY, ws.WorkspaceType.WORKSHOP) == A.ALWAYS
+        assert ws.settlement_workspace_availability(S.CITY, ws.WorkspaceType.FORGE) == A.ALWAYS
+        assert ws.settlement_workspace_availability(S.CITY, ws.WorkspaceType.LABORATORY) == A.USUALLY
+
+    def test_keldaran_hold_forges_renowned_lab_limited(self):
+        A = ws.Availability
+        S = ws.SettlementSize
+        assert ws.settlement_workspace_availability(S.KELDARAN_HOLD, ws.WorkspaceType.FORGE) == A.ALWAYS
+        assert ws.settlement_workspace_availability(S.KELDARAN_HOLD, ws.WorkspaceType.LABORATORY) == A.SOMETIMES
+
+    def test_settlement_size_rejects_unknown_string(self):
+        with pytest.raises(ValueError):
+            ws.SettlementSize("metropolis")
