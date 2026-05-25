@@ -1,5 +1,6 @@
 import type { Recipe, MaterialReq, QualityBand } from "@divineruin/shared";
 import { sql } from "./db.ts";
+import { WORKSPACE_TYPES } from "./workspace.ts";
 
 // DB-loaded recipe content (M5.1). Mirrors the training-programs loader in
 // activity_templates.ts: content/recipes.json -> recipes table, loaded at
@@ -16,12 +17,6 @@ const RECIPE_CATEGORIES = new Set<Recipe["category"]>([
   "ammunition",
 ]);
 const RECIPE_TIERS = new Set<Recipe["tier"]>(["basic", "trained", "expert", "master"]);
-const WORKSPACES = new Set<Recipe["workspace_required"]>([
-  "field",
-  "workshop",
-  "forge",
-  "laboratory",
-]);
 const MATERIAL_TIERS = new Set<MaterialReq["tier_minimum"]>([1, 2, 3, 4]);
 // Canonical narration quality bands (crafting-narration-bands). The loader fails
 // loud on any other band key so a content typo can't silently miss at runtime.
@@ -131,7 +126,7 @@ export function parseRecipeRow(id: string, raw: unknown): Recipe {
   }
   if (
     typeof data.workspace_required !== "string" ||
-    !WORKSPACES.has(data.workspace_required as Recipe["workspace_required"])
+    !WORKSPACE_TYPES.has(data.workspace_required as Recipe["workspace_required"])
   ) {
     throw new Error(`${ctx}.workspace_required ${String(data.workspace_required)} is invalid`);
   }
