@@ -60,6 +60,21 @@ def validate_recipe_slot_capacity(
     return SlotCapacityResult(True, "")
 
 
+def _eligible_substitute_ids(named: str, tier_minimum: int, catalog: dict[str, dict]) -> list[str]:
+    """Catalog ids that may substitute for `named`: same category, tier >= tier_minimum,
+    and not the named material itself. Shared by check_material_requirements (the greedy
+    gate) and allocate_materials (the disjoint consume) so the eligibility rule lives in
+    one place. Unordered — callers impose any ordering they need."""
+    req_category = catalog.get(named, {}).get("category")
+    if req_category is None:
+        return []
+    return [
+        cid
+        for cid, meta in catalog.items()
+        if cid != named and meta.get("category") == req_category and meta.get("tier", 0) >= tier_minimum
+    ]
+
+
 def check_material_requirements(
     required: list[dict], available: dict[str, int], catalog: dict[str, dict]
 ) -> MaterialCheckResult:
@@ -88,18 +103,10 @@ def check_material_requirements(
         tier_minimum = req["tier_minimum"]
         substitutable = req["substitutable"]
 
-        # The named material always counts.
+        # The named material always counts, plus eligible substitutes when allowed.
         candidate_ids = {material_id}
         if substitutable:
-            req_category = catalog.get(material_id, {}).get("category")
-            if req_category is not None:
-                for cat_id, meta in catalog.items():
-                    if (
-                        cat_id != material_id
-                        and meta.get("category") == req_category
-                        and meta.get("tier", 0) >= tier_minimum
-                    ):
-                        candidate_ids.add(cat_id)
+            candidate_ids.update(_eligible_substitute_ids(material_id, tier_minimum, catalog))
 
         on_hand = sum(available.get(cid, 0) for cid in candidate_ids)
         if on_hand < need:
@@ -109,3 +116,69 @@ def check_material_requirements(
                 + ("; substitutes below tier minimum or wrong category" if substitutable else ""),
             )
     return MaterialCheckResult(True, "")
+
+
+@dataclass(frozen=True)
+class MaterialAllocation:
+    satisfied: bool
+    reason: str  # "" when satisfied
+    flat: list[str]  # allocated unit ids repeated by quantity (recipeMaterialIds shape)
+    by_id: dict[str, int]  # material_id -> units to deduct
+
+
+def _candidate_ids(req: dict, catalog: dict[str, dict]) -> list[str]:
+    """Eligible material ids for `req`, NAMED-FIRST then substitutes of the same
+    category meeting tier_minimum, ordered (tier asc, id) so the cheapest acceptable
+    substitute is spent first and higher-tier materials are preserved."""
+    named = req["material_id"]
+    candidates = [named]
+    if req["substitutable"]:
+        subs = _eligible_substitute_ids(named, req["tier_minimum"], catalog)
+        # cheapest acceptable substitute first (tier asc, id) so higher-tier mats are preserved.
+        subs.sort(key=lambda cid: (catalog[cid].get("tier", 0), cid))
+        candidates.extend(subs)
+    return candidates
+
+
+def allocate_materials(required: list[dict], available: dict[str, int], catalog: dict[str, dict]) -> MaterialAllocation:
+    """Pick a concrete DISJOINT allocation of `available` units satisfying every
+    requirement, for the craft-consume path. Unlike check_material_requirements
+    (greedy per-requirement — counts shared substitutable units toward multiple
+    reqs), this spends each unit once: it processes requirements most-constrained-
+    first (non-substitutable before substitutable, then fewest candidate pools) so a
+    flexible req can't starve a stricter one, and deducts from a working copy of
+    `available`. Returns the deduction map + the flat unit list to store as the
+    activity's required_materials. Unmet -> satisfied=False (resolves debt cdce6c6a776d:
+    a recipe that passes the greedy pre-flight gate can still fail here when no single
+    allocation covers all requirements — the caller surfaces that as a clear error).
+
+    LIMITATION (greedy, not complete matching): most-constrained-first + named-first is
+    a heuristic, not full bipartite matching. With several substitutable requirements
+    over deeply overlapping pools, a fixed-priority pass can in principle consume a unit
+    a later requirement uniquely needs and report unsatisfiable when a valid disjoint
+    allocation exists (false negative -> a craftable recipe rejected). Sound for realistic
+    recipe sizes (few requirements, small same-category pools); the failure mode degrades
+    to a clear ToolError, never a silent over-consume. If recipes grow complex enough to
+    hit it, replace this with a max-flow / augmenting-path matcher."""
+    remaining = dict(available)
+    by_id: dict[str, int] = {}
+    # Most-constrained-first: False (non-substitutable) sorts before True; then fewer
+    # eligible pools first. Keeps a substitutable req from eating a unit a stricter
+    # req needs.
+    ordered = sorted(required, key=lambda r: (r["substitutable"], len(_candidate_ids(r, catalog))))
+    for req in ordered:
+        need = req["quantity"]
+        for cid in _candidate_ids(req, catalog):
+            if need == 0:
+                break
+            take = min(need, remaining.get(cid, 0))
+            if take > 0:
+                by_id[cid] = by_id.get(cid, 0) + take
+                remaining[cid] -= take
+                need -= take
+        if need > 0:
+            return MaterialAllocation(
+                False, f"cannot allocate {req['quantity']}x {req['material_id']} from inventory", [], {}
+            )
+    flat = [cid for cid, qty in by_id.items() for _ in range(qty)]
+    return MaterialAllocation(True, "", flat, by_id)

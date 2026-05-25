@@ -62,6 +62,12 @@ RENTAL_BASE_PRICE_SP: dict[WorkspaceType, int] = {
 # recipe ever *requires* "combined" — so it lives as its own price constant.
 COMBINED_FORGE_LAB_RENTAL_SP = 12
 
+# Interim silver-to-gold conversion for debiting a rental against a player's gold
+# balance (D&D-standard 10 sp = 1 gp). The economy milestone formalizes currency
+# sub-units (cp/sp/gp) and reconciles any fractional gold this produces; until then
+# rent_workspace debits price_sp / SILVER_PER_GOLD (decision rental-currency-debit).
+SILVER_PER_GOLD = 10
+
 # Disposition price multipliers (spec §Rental rules: Friendly 80%, Trusted 60%);
 # Neutral-and-up not listed here pays full price. Below Neutral the NPC refuses
 # outright — no rental, no surcharge (adopted over the milestone's hostile-
