@@ -246,8 +246,14 @@ async def _start_crafting_project_impl(
         now = (now_fn or _default_now)()
         resolve_at = now + timedelta(seconds=(rng or random.Random()).randint(min_seconds, max_seconds))
 
-        # Parameters shape is byte-identical to the TS create path (activities.ts) so
-        # async_worker / resolve_crafting reads it the same regardless of entry point.
+        # Shared parameters shape so async_worker / resolve_crafting reads it the same
+        # regardless of entry point. The first five keys match the TS create path
+        # (activities.ts). workspace_required/workspace_access/crafting_tier/
+        # tainted_materials are the story-005 resolution gate inputs: resolve_crafting
+        # re-checks workspace access + tainted-Expert at completion. The TS path does
+        # NOT capture these yet — Slice 2 adds them in activities.ts to re-converge the
+        # two entry points. resolve_crafting reads them via .get(), so the lag is
+        # additive-safe. workspace_access is sorted so the stored JSONB is deterministic.
         data = {
             "status": "in_progress",
             "activity_type": "crafting",
@@ -261,6 +267,10 @@ async def _start_crafting_project_impl(
                 "result_item_name": recipe["name"],
                 "required_materials": alloc.flat,
                 "dc": recipe["crafting_dc"],
+                "workspace_required": recipe["workspace_required"],
+                "workspace_access": sorted(accessible),
+                "crafting_tier": crafting_tier,
+                "tainted_materials": recipe["tainted_materials"],
             },
             "outcome": None,
             "narration_text": None,
