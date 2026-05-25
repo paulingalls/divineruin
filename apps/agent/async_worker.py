@@ -181,10 +181,21 @@ async def _resolve_single_activity(activity: dict) -> None:
         # (not `update_activity`) so the transient `resolving_at` field is stripped
         # in the same write — resolved rows don't carry an orphaned timestamp.
         async with db.transaction() as conn:
-            await mark_resolved(
+            applied = await mark_resolved(
                 activity_id,
                 {"status": "resolved", "narration_audio_url": audio_url},
                 conn,
+            )
+        if not applied:
+            # The stale-recovery sweep reverted this row to in_progress while we
+            # rendered (work outran STALE_RESOLVING_THRESHOLD). The CAS guard kept
+            # us from clobbering it; the next tick re-resolves from cached narration.
+            # This is the designed self-healing path — INFO (matches
+            # reset_stale_resolving), not WARNING, so a slow-TTS provider doesn't
+            # emit alert-grade noise for activities that resolve fine next tick.
+            logger.info(
+                "Activity %s no longer 'resolving' at terminal write; skipping mark (will retry)",
+                activity_id,
             )
     except asyncio.CancelledError:
         # Shutdown signal — don't open a new txn to revert (could hang). The

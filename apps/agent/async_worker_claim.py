@@ -30,6 +30,13 @@ logger = logging.getLogger("divineruin.async_worker_claim")
 # tuning POLL_INTERVAL automatically updates the threshold.
 STALE_RESOLVING_THRESHOLD_SECONDS = 3 * POLL_INTERVAL
 
+# After this many revert_claim cycles on one activity, log a warning. revert_claim
+# preserves the cached outcome/segments, so a persistently failing TTS (e.g.
+# poisoned cached segments) would otherwise loop silently forever — each tick
+# reclaims, reuses cache, fails, reverts. The counter surfaces the stuck loop for
+# ops (a terminal 'failed' circuit-breaker is deferred; see debt).
+RESOLVE_ATTEMPT_WARN_THRESHOLD = 5
+
 
 async def claim_resolving(activity_id: str, conn: asyncpg.Connection) -> bool:
     """Atomically transition status in_progress -> resolving, stamping NOW().
@@ -61,22 +68,31 @@ async def claim_resolving(activity_id: str, conn: asyncpg.Connection) -> bool:
     return returned is not None
 
 
-async def mark_resolved(activity_id: str, updates: dict, conn: asyncpg.Connection) -> None:
-    """Terminal transition resolving -> resolved.
+async def mark_resolved(activity_id: str, updates: dict, conn: asyncpg.Connection) -> bool:
+    """Terminal transition resolving -> resolved. Returns True if it applied.
 
     Merges `updates` (e.g. status='resolved' + narration_audio_url) AND strips
-    the transient `resolving_at` field in one statement, so resolved rows don't
-    carry an orphaned timestamp forever. Caller holds the row's FOR UPDATE lock.
+    the transient `resolving_at` + `resolve_attempts` fields in one statement, so
+    resolved rows don't carry orphaned internal bookkeeping forever (it would
+    otherwise leak verbatim through the raw `...data` egress in GET /activities).
+
+    CAS-guarded on `status='resolving'`: Step D in async_worker re-opens a fresh
+    txn (Step A's FOR UPDATE lock is gone), so between claim and terminal write the
+    stale-recovery sweep could have reverted the row to in_progress. The guard
+    makes this write a no-op (returns False) in that case rather than clobbering a
+    row another tick now owns. Mirrors claim_resolving's RETURNING-id CAS shape.
     """
-    await conn.execute(
+    returned = await conn.fetchval(
         """
         UPDATE async_activities
-        SET data = (data - 'resolving_at') || $2::jsonb
-        WHERE id = $1
+        SET data = (data - 'resolving_at' - 'resolve_attempts') || $2::jsonb
+        WHERE id = $1 AND data->>'status' = 'resolving'
+        RETURNING id
         """,
         activity_id,
         json.dumps(updates),
     )
+    return returned is not None
 
 
 async def revert_claim(activity_id: str, conn: asyncpg.Connection) -> None:
@@ -90,15 +106,33 @@ async def revert_claim(activity_id: str, conn: asyncpg.Connection) -> None:
     `narration_text` so the retry tick short-circuits the LLM call (TTS-retry
     fast path). Operator-driven resets that need a clean retry (e.g. recovering
     from a poisoned outcome) must clear those fields separately.
+
+    Increments a `resolve_attempts` counter in the same write and warns once it
+    crosses RESOLVE_ATTEMPT_WARN_THRESHOLD — a stuck retry loop (cache preserved,
+    TTS failing every tick) is otherwise silent. fetchval RETURNs the new count;
+    None means the row wasn't 'resolving' (no-op, already advanced).
     """
-    await conn.execute(
+    attempts = await conn.fetchval(
         """
         UPDATE async_activities
-        SET data = (data - 'resolving_at') || '{"status": "in_progress"}'::jsonb
+        SET data = jsonb_set(
+            (data - 'resolving_at') || '{"status": "in_progress"}'::jsonb,
+            '{resolve_attempts}',
+            to_jsonb(COALESCE((data->>'resolve_attempts')::int, 0) + 1)
+        )
         WHERE id = $1 AND data->>'status' = 'resolving'
+        RETURNING (data->>'resolve_attempts')::int
         """,
         activity_id,
     )
+    if attempts is not None and attempts >= RESOLVE_ATTEMPT_WARN_THRESHOLD:
+        logger.warning(
+            "Activity %s reverted %d times (>= %d) — resolution may be persistently "
+            "failing; a manual reset clearing cached outcome/segments may be needed",
+            activity_id,
+            attempts,
+            RESOLVE_ATTEMPT_WARN_THRESHOLD,
+        )
 
 
 async def revert_claim_safe(activity_id: str) -> None:
