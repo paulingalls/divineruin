@@ -134,3 +134,43 @@ class TestGateOrdering:
     def test_workspace_checked_before_materials(self):
         result = _run(accessible_workspaces={"field"}, available_materials={})
         assert result.failed_check == "workspace"
+
+    def test_materials_checked_before_tainted(self):
+        # Tainted recipe + sub-Expert crafter + missing materials → materials wins
+        # (Check 4 precedes Check 5).
+        result = _run(
+            recipe=_recipe(tainted_materials=True),
+            crafting_tier="trained",
+            available_materials={},
+        )
+        assert result.failed_check == "materials"
+
+    def test_all_gates_fail_reports_knowledge_first(self):
+        result = _run(
+            known_recipe_ids=set(),
+            crafting_tier="untrained",
+            accessible_workspaces=set(),
+            available_materials={},
+            recipe=_recipe(tainted_materials=True),
+        )
+        assert result.failed_check == "knowledge"
+
+
+class TestTaintedExpertGate:
+    def test_tainted_recipe_passes_for_expert(self):
+        assert _run(recipe=_recipe(tainted_materials=True), crafting_tier="expert").passed is True
+
+    def test_tainted_recipe_passes_for_master(self):
+        assert _run(recipe=_recipe(tainted_materials=True), crafting_tier="master").passed is True
+
+    @pytest.mark.parametrize("tier", ["untrained", "trained"])
+    def test_tainted_recipe_refuses_below_expert(self, tier):
+        # A sub-Expert crafter cannot work tainted materials. Use a basic recipe so
+        # the skill-tier gate (Check 2) passes and Check 5 is the one that fires.
+        result = _run(recipe=_recipe(tier="basic", tainted_materials=True), crafting_tier=tier)
+        assert result.passed is False
+        assert result.failed_check == "tainted_expert"
+
+    def test_untainted_recipe_unaffected(self):
+        # A plain untainted basic recipe by an untrained crafter passes Check 5.
+        assert _run(recipe=_recipe(tier="basic", tainted_materials=False), crafting_tier="untrained").passed is True

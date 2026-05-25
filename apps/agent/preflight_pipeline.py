@@ -68,4 +68,11 @@ def run_preflight(
     if not material_check.satisfied:
         return PreflightResult(False, "materials", material_check.reason)
 
+    # Check 5: Tainted-Expert — working tainted (Hollow-touched) materials requires
+    # at least Expert crafting; a lesser crafter is refused (spec Resolution Flow).
+    if recipe["tainted_materials"] and SKILL_TIER_ORDER.index(crafting_tier) < SKILL_TIER_ORDER.index("expert"):
+        return PreflightResult(
+            False, "tainted_expert", f"{crafting_tier} crafting cannot safely work tainted materials"
+        )
+
     return PreflightResult(True, None, "")
