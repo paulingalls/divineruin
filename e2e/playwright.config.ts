@@ -60,5 +60,19 @@ export default defineConfig({
         EXPO_PUBLIC_API_URL: "http://localhost:3001",
       },
     },
+    {
+      // Marketing site (apps/web): build the prerendered dist, then serve it via
+      // the production static branch. The web specs use absolute :8085 URLs
+      // (the global baseURL above is the mobile app on :8082).
+      command: "bun run --cwd apps/web build && bun run --cwd apps/web start",
+      cwd: "../",
+      port: 8085,
+      timeout: 120_000,
+      reuseExistingServer: !CI,
+      env: {
+        NODE_ENV: "production",
+        PORT: "8085",
+      },
+    },
   ],
 });
