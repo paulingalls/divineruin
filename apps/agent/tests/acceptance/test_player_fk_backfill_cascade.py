@@ -13,25 +13,21 @@ from __future__ import annotations
 
 import db
 
-# table -> INSERT (columns, values) seeding one row for `player_id`. Every column
-# the table requires NOT NULL (beyond defaults) is supplied.
-_SEED_ROWS: dict[str, tuple[str, list]] = {
-    "player_inventory": ("(player_id, item_id, data) VALUES ($1, 'oak_wood', '{}'::jsonb)", []),
-    "player_quests": ("(player_id, quest_id, data) VALUES ($1, 'q1', '{}'::jsonb)", []),
-    "player_reputation": ("(player_id, faction_id, data) VALUES ($1, 'accord', '{}'::jsonb)", []),
-    "npc_dispositions": ("(npc_id, player_id, data) VALUES ('npc1', $1, '{}'::jsonb)", []),
-    "session_summaries": ("(player_id, session_id, data) VALUES ($1, 's1', '{}'::jsonb)", []),
-    "player_map_progress": ("(player_id, location_id, data) VALUES ($1, 'loc1', '{}'::jsonb)", []),
-    "god_whispers": ("(id, player_id, data) VALUES ('w1', $1, '{}'::jsonb)", []),
+# table -> INSERT (columns) VALUES clause seeding one row for `player_id` ($1).
+# Every NOT NULL column the table requires (beyond defaults) is supplied.
+_SEED_ROWS: dict[str, str] = {
+    "player_inventory": "(player_id, item_id, data) VALUES ($1, 'oak_wood', '{}'::jsonb)",
+    "player_quests": "(player_id, quest_id, data) VALUES ($1, 'q1', '{}'::jsonb)",
+    "player_reputation": "(player_id, faction_id, data) VALUES ($1, 'accord', '{}'::jsonb)",
+    "npc_dispositions": "(npc_id, player_id, data) VALUES ('npc1', $1, '{}'::jsonb)",
+    "session_summaries": "(player_id, session_id, data) VALUES ($1, 's1', '{}'::jsonb)",
+    "player_map_progress": "(player_id, location_id, data) VALUES ($1, 'loc1', '{}'::jsonb)",
+    "god_whispers": "(id, player_id, data) VALUES ('w1', $1, '{}'::jsonb)",
     "story_moments": (
-        "(id, session_id, player_id, moment_key, description, template_id) VALUES ('m1', 's1', $1, 'k1', 'desc', 't1')",
-        [],
+        "(id, session_id, player_id, moment_key, description, template_id) VALUES ('m1', 's1', $1, 'k1', 'desc', 't1')"
     ),
-    "skill_advancement": ("(player_id, skill_id) VALUES ($1, 'crafting')", []),
-    "training_activities": (
-        "(id, player_id, activity_type, state) VALUES ('t1', $1, 'technique_base', 'initiated')",
-        [],
-    ),
+    "skill_advancement": "(player_id, skill_id) VALUES ($1, 'crafting')",
+    "training_activities": "(id, player_id, activity_type, state) VALUES ('t1', $1, 'technique_base', 'initiated')",
 }
 
 
@@ -48,7 +44,7 @@ async def test_deleting_player_cascades_to_all_backfilled_tables(reset_db_pool: 
         player_id,
     )
 
-    for table, (clause, _) in _SEED_ROWS.items():
+    for table, clause in _SEED_ROWS.items():
         await pool.execute(f"INSERT INTO {table} {clause}", player_id)
         assert await _row_count(pool, table, player_id) == 1, f"seed failed for {table}"
 
