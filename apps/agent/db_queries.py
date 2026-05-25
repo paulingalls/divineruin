@@ -12,6 +12,7 @@ import asyncpg
 import db
 import db_activity_queries
 import db_content_queries
+from workspace import WorkspaceType
 
 logger = logging.getLogger("divineruin.db")
 
@@ -181,6 +182,54 @@ async def count_player_known_recipes(player_id: str, *, conn: asyncpg.Connection
     _conn = conn or await db.get_pool()
     count = await _conn.fetchval("SELECT COUNT(*) FROM player_known_recipes WHERE player_id = $1", player_id)
     return count or 0
+
+
+async def get_player_known_recipe_ids(
+    player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> set[str]:
+    """The set of recipe_ids a player knows — the pre-flight Check 1 (Knowledge) input."""
+    _conn = conn or await db.get_pool()
+    rows = await _conn.fetch("SELECT recipe_id FROM player_known_recipes WHERE player_id = $1", player_id)
+    return {row["recipe_id"] for row in rows}
+
+
+async def get_player_materials(
+    player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None, for_update: bool = False
+) -> dict[str, int]:
+    """Return {material_id: quantity} for a player's inventory — the pre-flight Check 4
+    + craft-consume input. Reads player_inventory DIRECTLY (mirrors the TS consume path
+    activities.ts), NOT via get_player_inventory's items JOIN — that JOIN drops material
+    rows whose item_id is a materials_catalog id with no items-table row."""
+    _conn = conn or await db.get_pool()
+    sql = "SELECT item_id, COALESCE((data->>'quantity')::int, 1) AS quantity FROM player_inventory WHERE player_id = $1"
+    if for_update:
+        sql += " FOR UPDATE"
+    rows = await _conn.fetch(sql, player_id)
+    return {row["item_id"]: row["quantity"] for row in rows}
+
+
+async def get_accessible_workspaces(
+    player_id: str, location_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> set[str]:
+    """The workspace types a player can use at location_id right now — pre-flight Check 3.
+    Always includes 'field' (the universal floor); adds each active (unexpired or standing)
+    location-bound rental's workspace_type. Python mirror of the TS accessibleWorkspaceTier
+    (apps/server/src/workspace.ts); converts via WorkspaceType to fail loud on a typo'd type."""
+    _conn = conn or await db.get_pool()
+    rows = await _conn.fetch(
+        """
+        SELECT workspace_type FROM workspace_rentals
+        WHERE player_id = $1
+          AND location_id = $2
+          AND (expires_at IS NULL OR expires_at > NOW())
+        """,
+        player_id,
+        location_id,
+    )
+    accessible = {WorkspaceType.FIELD.value}
+    for row in rows:
+        accessible.add(WorkspaceType(row["workspace_type"]).value)
+    return accessible
 
 
 async def get_inventory_item(
