@@ -47,3 +47,55 @@ class TestWorkspaceType:
         # workspace raises rather than silently mis-gating Check 3.
         with pytest.raises(ValueError):
             ws.WorkspaceType("smithy")
+
+
+class TestRentalPricing:
+    def test_base_prices_match_spec(self):
+        # Spec §Workspace Access rental table: per calendar day, in silver.
+        assert ws.RENTAL_BASE_PRICE_SP[ws.WorkspaceType.WORKSHOP] == 2
+        assert ws.RENTAL_BASE_PRICE_SP[ws.WorkspaceType.FORGE] == 5
+        assert ws.RENTAL_BASE_PRICE_SP[ws.WorkspaceType.LABORATORY] == 10
+        assert ws.COMBINED_FORGE_LAB_RENTAL_SP == 12
+
+    def test_field_has_no_rental_price(self):
+        # Field is free and always available — never rented.
+        assert ws.WorkspaceType.FIELD not in ws.RENTAL_BASE_PRICE_SP
+
+    def test_neutral_pays_full_price(self):
+        quote = ws.compute_rental_price(5, "neutral")
+        assert quote.available is True
+        assert quote.price_sp == pytest.approx(5.0)
+        assert quote.reason == ""
+
+    def test_friendly_pays_80_percent(self):
+        quote = ws.compute_rental_price(5, "friendly")
+        assert quote.available is True
+        assert quote.price_sp == pytest.approx(4.0)
+
+    def test_trusted_pays_60_percent(self):
+        # 12sp combined bundle at Trusted: 12 * 0.6 = 7.2.
+        quote = ws.compute_rental_price(ws.COMBINED_FORGE_LAB_RENTAL_SP, "trusted")
+        assert quote.available is True
+        assert quote.price_sp == pytest.approx(7.2)
+
+    def test_cautious_alias_pays_full_price(self):
+        # 'cautious' is a neutral alias (tool_support.DISPOSITION_TIERS).
+        quote = ws.compute_rental_price(10, "cautious")
+        assert quote.available is True
+        assert quote.price_sp == pytest.approx(10.0)
+
+    @pytest.mark.parametrize("disposition", ["wary", "hostile"])
+    def test_below_neutral_refuses_no_surcharge(self, disposition):
+        # Adopt spec: below Neutral the NPC refuses outright — no rental, no
+        # surcharge (not the milestone's hostile-surcharge wording).
+        quote = ws.compute_rental_price(5, disposition)
+        assert quote.available is False
+        assert quote.price_sp == 0.0
+        assert quote.reason  # explains the refusal
+
+    def test_case_insensitive_disposition(self):
+        assert ws.compute_rental_price(5, "FRIENDLY").price_sp == pytest.approx(4.0)
+
+    def test_unknown_disposition_fails_loud(self):
+        with pytest.raises(ValueError):
+            ws.compute_rental_price(5, "ecstatic")
