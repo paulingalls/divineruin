@@ -12,17 +12,31 @@ import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts"
 import { validateErrandDispatch } from "./errand_risk.ts";
 import { startTrainingCycle } from "./training_state_machine.ts";
 
+// Worker-internal bookkeeping kept in async_activities.data that must never reach
+// clients. resolving_at/resolve_attempts are the transient CAS markers that
+// mark_resolved strips in SQL on the terminal write, but they're present during the
+// in_progress/resolving retry window. narration_segments is the worker's cached
+// per-character TTS breakdown (dialogue_parser.Segment: character/emotion/text); it
+// is NOT stripped by mark_resolved, so it persists verbatim on resolved rows — the
+// client only needs narration_audio_url + narration_text. Add any future worker-only
+// field here (concern 06edbc8f3eef).
+const INTERNAL_ONLY_FIELDS = ["resolving_at", "resolve_attempts", "narration_segments"] as const;
+
 /**
- * Normalize the worker-internal 'resolving' transient state to 'in_progress'
- * on the way out to clients. Mobile/typed consumers only know in_progress and
- * resolved; the 'resolving' claim is a server-internal CAS marker that should
- * never escape the API boundary.
+ * Sanitize an async-activity row on the way out to clients: normalize the
+ * worker-internal 'resolving' transient state to 'in_progress' (typed consumers
+ * only know in_progress/resolved), and drop worker-internal bookkeeping fields.
+ * Defense-in-depth at the API egress boundary.
  */
 function normalizeActivityStatus<T extends Record<string, unknown>>(activity: T): T {
-  if (activity.status === "resolving") {
-    return { ...activity, status: "in_progress" };
+  const sanitized: Record<string, unknown> = { ...activity };
+  if (sanitized.status === "resolving") {
+    sanitized.status = "in_progress";
   }
-  return activity;
+  for (const field of INTERNAL_ONLY_FIELDS) {
+    delete sanitized[field];
+  }
+  return sanitized as T;
 }
 
 async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<SlotCounts> {
