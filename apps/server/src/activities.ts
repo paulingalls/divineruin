@@ -10,6 +10,7 @@ import { getRecipe, recipeMaterialIds, craftingDurationSeconds } from "./recipes
 import { displayName } from "@divineruin/shared";
 import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts";
 import { validateErrandDispatch } from "./errand_risk.ts";
+import { accessibleWorkspaceTier } from "./workspace.ts";
 import { startTrainingCycle } from "./training_state_machine.ts";
 
 // Worker-internal bookkeeping kept in async_activities.data that must never reach
@@ -176,6 +177,25 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       durationMin = duration.min;
       durationMax = duration.max;
       materialsToConsume = recipeMaterialIds(recipe);
+
+      // Capture the resolution gate inputs (story-005) so resolve_crafting can
+      // re-check workspace access + tainted-Expert at completion — the live REST
+      // path skips pre-flight, so these are its only gate evidence. Snapshot reads
+      // outside the txn (parity with the in-memory recipe fetch); mirrors the
+      // Python producer (crafting_tools.py) for a byte-identical parameters shape.
+      // workspace_access is sorted so the stored JSONB is deterministic.
+      const playerRows = await sql<{ location_id: string | null }[]>`
+        SELECT data->>'location_id' AS location_id FROM players WHERE player_id = ${playerId}
+      `;
+      const locationId = playerRows[0]?.location_id ?? "unknown";
+      const workspaceAccess = [...(await accessibleWorkspaceTier(playerId, locationId))].sort();
+      // Mirror Python get_single_skill_advancement: default to "untrained" when
+      // the player has no crafting skill_advancement row.
+      const skillRows = await sql<{ tier: string }[]>`
+        SELECT tier FROM skill_advancement WHERE player_id = ${playerId} AND skill_id = 'crafting'
+      `;
+      const craftingTier = skillRows[0]?.tier ?? "untrained";
+
       // skill/npc_id are intentionally omitted — the resolver defaults them
       // (arcana / grimjaw_blacksmith). Per-recipe skill+NPC were dropped from the
       // M5.1 Recipe schema; revisit in M5.2 (decision crafting-check-skill).
@@ -185,6 +205,10 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         result_item_name: recipe.name,
         required_materials: materialsToConsume,
         dc: recipe.crafting_dc,
+        workspace_required: recipe.workspace_required,
+        workspace_access: workspaceAccess,
+        crafting_tier: craftingTier,
+        tainted_materials: recipe.tainted_materials,
       };
     } else {
       // companion_errand

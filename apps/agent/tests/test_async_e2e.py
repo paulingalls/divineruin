@@ -67,6 +67,11 @@ class TestFullPipeline:
                 "skill": "arcana",
                 "dc": 13,
                 "npc_id": "grimjaw_blacksmith",
+                # story-005 resolution gate inputs (captured at creation).
+                "workspace_required": "forge",
+                "workspace_access": ["field", "forge"],
+                "crafting_tier": "expert",
+                "tainted_materials": False,
             },
             "resolve_at": "2025-01-01T00:00:00Z",
         }
@@ -240,10 +245,18 @@ class TestSoftTimerVariance:
             "required_materials": ["iron_ingot"],
             "skill": "arcana",
             "dc": 13,
+            "workspace_required": "forge",
+            "tainted_materials": False,
         }
         tiers = set()
         for seed in range(100):
-            result = resolve_crafting(SAMPLE_PLAYER, params, rng=random.Random(seed))
+            result = resolve_crafting(
+                SAMPLE_PLAYER,
+                params,
+                workspace_access=["field", "forge"],
+                crafting_tier="expert",
+                rng=random.Random(seed),
+            )
             tiers.add(result.tier)
 
         assert len(tiers) >= 3, f"Only got {len(tiers)} tiers: {tiers}"

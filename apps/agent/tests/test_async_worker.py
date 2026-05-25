@@ -7,6 +7,7 @@ from claim_stack_helpers import patch_claim_stack
 from sample_fixtures import mock_txn
 
 from async_worker import (
+    _resolve_one_outcome,
     _resolve_single_activity,
     advance_training_cycles,
     build_training_completion_outcome,
@@ -28,6 +29,11 @@ SAMPLE_ACTIVITY = {
         "skill": "arcana",
         "dc": 13,
         "npc_id": "grimjaw_blacksmith",
+        # story-005 resolution gate inputs (captured at creation).
+        "workspace_required": "forge",
+        "workspace_access": ["field", "forge"],
+        "crafting_tier": "expert",
+        "tainted_materials": False,
     },
     "resolve_at": "2026-01-01T00:00:00Z",
 }
@@ -473,6 +479,37 @@ class TestResolveSingleActivity:
         mock_update.assert_not_awaited()
         # Nothing to revert — we never owned the claim.
         mock_revert.assert_not_awaited()
+
+
+class TestResolveOneOutcomeGates:
+    """story-005: the resolution gates must produce a failure OUTCOME (not raise) so
+    the worker doesn't revert-and-reraise into an infinite retry loop; but ABSENT
+    captured gate params must fail loud."""
+
+    @pytest.mark.asyncio
+    async def test_crafting_gate_failure_resolves_to_failure_without_raise(self):
+        activity = {
+            **SAMPLE_ACTIVITY,
+            "parameters": {
+                **SAMPLE_ACTIVITY["parameters"],
+                "tainted_materials": True,
+                "crafting_tier": "trained",  # sub-Expert working tainted -> gate fails
+            },
+        }
+        outcome = await _resolve_one_outcome(activity, SAMPLE_PLAYER)
+        assert outcome is not None
+        assert outcome["tier"] == "failure"
+        assert outcome["narrative_context"]["gate"] == "tainted_expert"
+
+    @pytest.mark.asyncio
+    async def test_crafting_absent_gate_param_raises(self):
+        # A pre-backfill in-flight row missing a captured gate param must fail loud.
+        activity = {
+            **SAMPLE_ACTIVITY,
+            "parameters": {k: v for k, v in SAMPLE_ACTIVITY["parameters"].items() if k != "workspace_access"},
+        }
+        with pytest.raises(ValueError, match="workspace_access"):
+            await _resolve_one_outcome(activity, SAMPLE_PLAYER)
 
 
 # --- async_worker_claim helpers ---

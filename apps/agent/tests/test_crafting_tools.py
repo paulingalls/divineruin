@@ -104,6 +104,14 @@ class TestStartCraftingProject:
             "result_item_name": "Iron Sword",
             "required_materials": ["iron_ingot", "iron_ingot"],
             "dc": 12,
+            # Resolution gate inputs captured at creation (story-005): the worker
+            # passes these to resolve_crafting so it can re-check workspace access +
+            # tainted-Expert. workspace_access is the player's accessible set sorted
+            # for deterministic JSONB; crafting_tier/tainted_materials feed the gates.
+            "workspace_required": "forge",
+            "workspace_access": ["field", "forge"],
+            "crafting_tier": "expert",
+            "tainted_materials": False,
         }
         # async_cycles=0 -> 900s floor, max 2x
         assert data["duration_min_seconds"] == 900
