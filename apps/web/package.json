@@ -11,6 +11,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@divineruin/design-tokens": "workspace:*",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
