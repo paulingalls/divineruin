@@ -17,9 +17,10 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
       - run: bun run typecheck
+      - run: bun run typecheck:web
       - run: bunx eslint --max-warnings 0 .
       - run: cd e2e && bun install && bunx eslint --max-warnings 0 .
-      - run: bunx prettier --check 'apps/**/*.{ts,tsx}' 'packages/**/*.ts'
+      - run: bunx prettier --check 'apps/**/*.{ts,tsx}' 'apps/web/**/*.{html,css}' 'packages/**/*.ts'
 
   test-bun:
     runs-on: ubuntu-latest
@@ -58,6 +59,7 @@ jobs:
       - run: cd scripts && uv sync && uv run python seed_content.py
       - run: bun test --cwd apps/server
       - run: bun test --cwd apps/mobile
+      - run: bun test --cwd apps/web
 
   lint-python:
     runs-on: ubuntu-latest

@@ -40,6 +40,13 @@ export default tseslint.config(
     rules: reactHooks.configs.recommended.rules,
   },
 
+  // React hooks for the web marketing app
+  {
+    files: ["apps/web/**/*.{ts,tsx}"],
+    plugins: { "react-hooks": reactHooks },
+    rules: reactHooks.configs.recommended.rules,
+  },
+
   // React Native requires require() for static assets.
   {
     files: ["apps/mobile/**/*.{ts,tsx}"],
