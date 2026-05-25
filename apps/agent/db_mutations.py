@@ -3,6 +3,7 @@
 import json
 import logging
 import uuid
+from datetime import datetime
 
 import asyncpg
 
@@ -333,17 +334,108 @@ async def save_session_summary(
     )
 
 
-async def create_async_activity(player_id: str, activity_data: dict) -> str:
-    """Create a new async activity. Returns the activity ID."""
+async def create_async_activity(
+    player_id: str, activity_data: dict, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> str:
+    """Create a new async activity. Returns the activity ID.
+
+    Accepts an optional conn so a caller can create the activity inside the same
+    transaction as a preceding write (e.g. start_crafting_project consuming
+    materials + creating the crafting activity atomically). Default opens the pool,
+    preserving the existing errand caller's behavior."""
     activity_id = f"activity_{uuid.uuid4().hex[:12]}"
-    pool = await db.get_pool()
-    await pool.execute(
+    _conn = conn or await db.get_pool()
+    await _conn.execute(
         "INSERT INTO async_activities (id, player_id, data) VALUES ($1, $2, $3::jsonb)",
         activity_id,
         player_id,
         json.dumps(activity_data),
     )
     return activity_id
+
+
+async def create_workspace_rental(
+    player_id: str,
+    location_id: str,
+    workspace_type: str,
+    source: str,
+    expires_at: datetime | None,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> str:
+    """Create a workspace_rentals row (the rental write path). Returns the rental id.
+
+    `source` is the acquisition track ('rental'/'standing'/'portable'); `expires_at`
+    is a datetime (timed rental) or None (standing/permanent access)."""
+    _conn = conn or await db.get_pool()
+    rental_id = f"rent_{uuid.uuid4().hex[:12]}"
+    await _conn.execute(
+        """
+        INSERT INTO workspace_rentals (id, player_id, location_id, workspace_type, source, expires_at)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        """,
+        rental_id,
+        player_id,
+        location_id,
+        workspace_type,
+        source,
+        expires_at,
+    )
+    return rental_id
+
+
+async def consume_player_materials(
+    player_id: str, allocation: dict[str, int], *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    """Deduct an allocation ({material_id: quantity}) from a player's inventory,
+    mirroring the TS consume path (activities.ts): decrement the stack, or delete
+    the row when fully consumed. Run inside the caller's locked transaction (the
+    caller holds the inventory rows FOR UPDATE) so concurrent crafts can't double-spend.
+
+    Precondition: the allocation must already be validated against held quantities
+    (recipe_validation.allocate_materials, under the same lock). This fails fast on a
+    short stack rather than silently DELETEing it — a negative remaining means the
+    allocation lied, which is a bug, not a routine empty-out."""
+    _conn = conn or await db.get_pool()
+    for material_id, qty in allocation.items():
+        current = await _conn.fetchval(
+            "SELECT COALESCE((data->>'quantity')::int, 1) FROM player_inventory WHERE player_id = $1 AND item_id = $2",
+            player_id,
+            material_id,
+        )
+        remaining = (current or 0) - qty
+        if remaining < 0:
+            raise ValueError(
+                f"consume_player_materials: allocation exceeds held quantity for "
+                f"{material_id} (have {current or 0}, need {qty}) — allocation not validated under lock"
+            )
+        if remaining > 0:
+            await _conn.execute(
+                "UPDATE player_inventory SET data = jsonb_set(data, '{quantity}', $3::jsonb) "
+                "WHERE player_id = $1 AND item_id = $2",
+                player_id,
+                material_id,
+                json.dumps(remaining),
+            )
+        else:
+            await _conn.execute(
+                "DELETE FROM player_inventory WHERE player_id = $1 AND item_id = $2",
+                player_id,
+                material_id,
+            )
+
+
+async def update_player_gold(
+    player_id: str, new_gold: float, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    """Set a player's gold balance (mirrors update_player_xp). The caller computes
+    new_gold and enforces sufficiency — e.g. rent_workspace debits the rental price."""
+    _conn = conn or await db.get_pool()
+    await _conn.execute(
+        "UPDATE players SET data = jsonb_set(data, '{gold}', $2::jsonb) WHERE player_id = $1",
+        player_id,
+        json.dumps(new_gold),
+    )
 
 
 async def update_activity(
