@@ -586,3 +586,21 @@ Phase 2+ player-to-player trade design intent, inherited constraints, open quest
 | What Phase 1 Needs | 176-196 | Minimum hooks for later expansion |
 | Phase 2 Design Process | 198-208 | How design will continue post-launch |
 | Design Decisions | 210-end | Locked decisions for P2P trade |
+
+---
+
+# Operations
+
+Operational procedures and (future) deployment/infra docs live under `docs/ops/`.
+
+## ops/async-activity-reset.md (72 lines)
+
+Runbook: reset a stuck async-activity resolution — when the worker loops replaying a poisoned narration cache past the revert-attempt threshold. Verified by `apps/agent/tests/acceptance/test_ops_async_reset_runbook.py`.
+
+| Section | Lines | What's There |
+|---|---|---|
+| When to use | 1-21 | The "reverted N times" worker warning + why the cache traps the retry |
+| Find stuck activities | 23-31 | Detection query (resolve_attempts >= threshold) |
+| Reset one activity | 33-49 | The cache-clearing UPDATE that forces a clean re-resolution |
+| Verify recovery | 51-63 | Confirm resolved + the warning stops |
+| Notes | 65-end | Link to the verifying test + the deferred circuit-breaker |
