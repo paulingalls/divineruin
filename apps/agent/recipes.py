@@ -15,12 +15,16 @@ import json
 import logging
 
 import db
+from workspace import WorkspaceType
 
 logger = logging.getLogger("divineruin.recipes")
 
 _CATEGORIES = {"weapon", "armor", "consumable", "tool", "enchantment", "ammunition"}
 _TIERS = {"basic", "trained", "expert", "master"}
-_WORKSPACES = {"field", "workshop", "forge", "laboratory"}
+# Single source of truth for the workspace vocabulary is WorkspaceType (workspace.py);
+# derive the load-time validation set from it so a fifth workspace can't drift in here
+# without the enum (wisdom bb73edd9b94d: kill drift at source).
+_WORKSPACES = {w.value for w in WorkspaceType}
 _MATERIAL_TIERS = {1, 2, 3, 4}
 # Canonical narration quality bands (crafting-narration-bands). Mirrors the TS
 # QUALITY_BANDS set; a content typo for a band key fails loud at the load boundary.
