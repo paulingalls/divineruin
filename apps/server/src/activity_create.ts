@@ -40,6 +40,25 @@ async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<Slot
   };
 }
 
+// Lock every slot-consuming row for this player before counting. The lock
+// predicate MUST match countActiveBySlot's status filter (in_progress +
+// resolving): a row flipping in_progress->resolving concurrently (the Python
+// worker's CAS claim) would otherwise be counted-but-unlocked, letting two
+// creates both pass the slot check (debt d80282969804). Kept adjacent to
+// countActiveBySlot so the two predicates can't silently drift apart.
+async function lockPlayerSlotRows(playerId: string, tx: typeof sql): Promise<void> {
+  await tx`
+    SELECT id FROM async_activities
+    WHERE player_id = ${playerId} AND data->>'status' IN ('in_progress', 'resolving')
+    FOR UPDATE
+  `;
+  await tx`
+    SELECT id FROM training_activities
+    WHERE player_id = ${playerId} AND state != 'complete'
+    FOR UPDATE
+  `;
+}
+
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -81,16 +100,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       }
 
       const txnResult = await sql.begin(async (tx) => {
-        await tx`
-          SELECT id FROM async_activities
-          WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
-          FOR UPDATE
-        `;
-        await tx`
-          SELECT id FROM training_activities
-          WHERE player_id = ${playerId} AND state != 'complete'
-          FOR UPDATE
-        `;
+        await lockPlayerSlotRows(playerId, tx);
         const slotCounts = await countActiveBySlot(playerId, tx);
         // archetype/hasPortableLab intentionally omitted: the Artificer
         // training-slot exception is deferred to Phase 5 (see ADR 0005).
@@ -252,16 +262,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
 
     // Atomic transaction: check slot availability, verify+consume materials, insert activity
     const txnResult = await sql.begin(async (tx) => {
-      await tx`
-        SELECT id FROM async_activities
-        WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
-        FOR UPDATE
-      `;
-      await tx`
-        SELECT id FROM training_activities
-        WHERE player_id = ${playerId} AND state != 'complete'
-        FOR UPDATE
-      `;
+      await lockPlayerSlotRows(playerId, tx);
       const slotCounts = await countActiveBySlot(playerId, tx);
       // Artificer Portable-Lab exception (story-006, ADR 0005): an Artificer who owns
       // a Portable Lab may craft on the training slot when the crafting slot is full.

@@ -162,6 +162,36 @@ describe("handleCreateActivity", () => {
     expect(body.error).toContain("Crafting slot is full");
   });
 
+  test("locks async_activities for both in_progress AND resolving rows (debt d80282969804)", async () => {
+    // The slot-count txn lock must cover the SAME statuses countActiveBySlot counts
+    // (in_progress + resolving). Locking only in_progress leaves a row flipping to
+    // 'resolving' concurrently counted-but-unlocked, so two creates could both pass
+    // the slot check. Assert the lock predicate matches the count predicate.
+    setQueryStubs([
+      playerWarrior,
+      forgeRental,
+      skillExpert,
+      slotsEmpty,
+      {
+        match: "AS quantity",
+        result: [
+          { item_id: "iron_ingot", quantity: 1 },
+          { item_id: "leather_strip", quantity: 1 },
+        ],
+      },
+    ]);
+    const req = makeRequest("POST", "/api/activities", {
+      type: "crafting",
+      parameters: { recipe_id: "iron_sword" },
+    });
+    await handleCreateActivity(req, "player_1");
+    const lock = getCapturedQueries().find(
+      (q) => q.sql.includes("FROM async_activities") && q.sql.includes("FOR UPDATE"),
+    );
+    expect(lock).toBeDefined();
+    expect(lock!.sql).toContain("IN ('in_progress', 'resolving')");
+  });
+
   test("rejects when companion slot is held by a 'resolving' row (story-004)", async () => {
     // The worker has CAS-claimed the row (status='resolving'). Without the
     // status filter widening, the slot would falsely show 0 and let a second
