@@ -15,8 +15,9 @@ from workspace import WorkspaceType
 def workspace_accessible(workspace_required: str, accessible_workspaces: Iterable[str]) -> bool:
     """True if the recipe's required workspace is among the accessible ones.
 
-    Exact-type access — a laboratory does NOT satisfy a forge recipe even though
-    they share an advanced rank (workspace-check3-access). `workspace_required`
+    Exact-type access — a laboratory does NOT satisfy a forge recipe; they are
+    parallel specializations, not a subsuming hierarchy (workspace-check3-access).
+    `workspace_required`
     converts via WorkspaceType first, so an unknown workspace fails loud
     (ValueError) rather than silently failing the gate; the accessible strings are
     compared as-is (WorkspaceType is a StrEnum, so member == value).

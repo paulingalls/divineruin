@@ -20,27 +20,6 @@ class TestWorkspaceType:
         for value in ("field", "workshop", "forge", "laboratory"):
             assert ws.WorkspaceType(value).value == value
 
-    def test_field_is_the_floor(self):
-        # Field is always available and ranks below every other workspace.
-        field = ws.workspace_rank(ws.WorkspaceType.FIELD)
-        assert field < ws.workspace_rank(ws.WorkspaceType.WORKSHOP)
-        assert field < ws.workspace_rank(ws.WorkspaceType.FORGE)
-        assert field < ws.workspace_rank(ws.WorkspaceType.LABORATORY)
-
-    def test_advanced_workspaces_rank_above_workshop(self):
-        # Forge and Laboratory are the advanced (Expert-tier) workspaces; both
-        # rank above Workshop, which ranks above Field.
-        workshop = ws.workspace_rank(ws.WorkspaceType.WORKSHOP)
-        assert ws.workspace_rank(ws.WorkspaceType.FORGE) > workshop
-        assert ws.workspace_rank(ws.WorkspaceType.LABORATORY) > workshop
-
-    def test_forge_and_laboratory_are_parallel_not_subsuming(self):
-        # Forge and Laboratory are co-equal specializations: a forge cannot brew
-        # potions, a lab cannot smith metal. Equal rank documents that neither
-        # subsumes the other — Check 3 (story-003) gates on exact-type access,
-        # not rank >=.
-        assert ws.workspace_rank(ws.WorkspaceType.FORGE) == ws.workspace_rank(ws.WorkspaceType.LABORATORY)
-
     def test_workspace_type_rejects_unknown_string(self):
         # The fail-loud boundary: downstream code converts a raw DB string
         # (recipe.workspace_required) via WorkspaceType(value); an unknown
