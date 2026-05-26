@@ -1,0 +1,117 @@
+/* Premise section + scroll-reveal gate. Theme tokens only (web-section-conventions);
+   color-mix for tints. */
+
+.premise {
+  padding: var(--space-2xl) var(--space-lg);
+  background: var(--color-void);
+}
+
+.premise__inner {
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+}
+
+.premise__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+  margin-bottom: var(--space-lg);
+}
+
+.premise__eyebrow-num {
+  color: var(--color-hollow);
+}
+
+.premise__title {
+  margin: 0 0 var(--space-lg);
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(32px, 5vw, 60px);
+  line-height: 1.05;
+  color: var(--color-parchment);
+}
+
+.premise__title em {
+  font-style: italic;
+  color: var(--color-bone);
+}
+
+.premise__lede {
+  max-width: 60ch;
+  margin: 0 0 var(--space-2xl);
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--text-body-lg-size);
+  line-height: var(--text-body-lg-line-height);
+  color: var(--color-bone);
+}
+
+.premise__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 780px;
+}
+
+.premise__item {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: var(--space-md);
+  align-items: baseline;
+  padding: var(--space-lg) 0;
+  border-top: 1px solid var(--color-charcoal);
+}
+
+.premise__item:last-child {
+  border-bottom: 1px solid var(--color-charcoal);
+}
+
+.premise__num {
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  letter-spacing: 0.2em;
+  color: var(--color-hollow);
+}
+
+.premise__label {
+  margin-bottom: var(--space-xs);
+  font-family: var(--font-display);
+  font-size: var(--text-h2-size);
+  color: var(--color-parchment);
+}
+
+.premise__desc {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  color: var(--color-ash);
+}
+
+/* Reveal gate. Default (no-JS / not armed / no IntersectionObserver): visible.
+   Armed (post-hydration, JS + IO): hide until each card scrolls into view. */
+.premise--armed .premise__item {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 600ms ease,
+    transform 600ms ease;
+}
+
+.premise--armed .premise__item.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+/* Reduced motion: reveal() reveals all cards at once (no observer), so they're
+   visible; drop the transition so there's no animation. */
+@media (prefers-reduced-motion: reduce) {
+  .premise--armed .premise__item {
+    transition: none;
+  }
+}

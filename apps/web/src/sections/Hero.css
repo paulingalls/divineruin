@@ -7,10 +7,9 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   min-height: 100vh;
-  padding: var(--space-2xl) var(--space-lg);
+  padding: var(--space-xl) var(--space-lg);
   background: var(--color-void);
   text-align: center;
 }
@@ -68,15 +67,19 @@
   }
 }
 
-/* Content sits above the backdrop and is constrained to a readable measure. */
+/* Content sits above the backdrop and is constrained to a readable measure,
+   filling the space between the top + bottom meta rows. */
 .hero__content {
   position: relative;
   z-index: 1;
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: var(--space-md);
   max-width: var(--max-content-width);
+  margin: 0 auto;
 }
 
 .hero__headline {
@@ -154,11 +157,83 @@
   box-shadow: 0 0 24px -8px var(--color-hollow-faint);
 }
 
-/* Honor reduced-motion: freeze the rift pulse but keep the rift (and all content)
-   fully visible — motion is removed, information is not. */
+/* Secondary "Enter Aethos" — quiet, borderless, brightens on hover. */
+.hero__cta--ghost {
+  border-color: transparent;
+  color: var(--color-ash);
+}
+
+.hero__cta--ghost:hover {
+  color: var(--color-parchment);
+}
+
+/* Top + bottom meta bars — small mono labels framing the hero. */
+.hero__meta,
+.hero__footer-meta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  font-family: var(--font-system);
+  font-size: var(--text-caption-size);
+  letter-spacing: 0.2em;
+  color: var(--color-ash);
+  text-align: left;
+}
+
+.hero__meta-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* Pulsing "live" dot in the playtest-status label. */
+.hero__live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-hollow);
+  box-shadow: 0 0 8px var(--color-hollow);
+  animation: hero-live-pulse 2s ease-in-out infinite;
+}
+
+@keyframes hero-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.hero__footer-scroll {
+  text-align: right;
+}
+
+.hero__footer-value {
+  margin-top: var(--space-half);
+  color: var(--color-bone);
+  letter-spacing: 0.15em;
+}
+
+.hero__footer-arrows {
+  margin-top: var(--space-half);
+  color: var(--color-hollow);
+  letter-spacing: 0.3em;
+}
+
+/* Honor reduced-motion: freeze the rift pulse and the live-dot pulse but keep the
+   rift, the dot, and all content fully visible — motion is removed, information is
+   not. */
 @media (prefers-reduced-motion: reduce) {
   .hero__backdrop::before {
     animation: none;
     opacity: 0.35;
+  }
+  .hero__live-dot {
+    animation: none;
   }
 }

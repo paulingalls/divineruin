@@ -19,6 +19,11 @@ test("renders a labelled play control in the paused state", () => {
   expect(html).not.toContain("❚❚");
 });
 
+test("renders the session sample title (verbatim mockup copy)", () => {
+  const html = renderToStaticMarkup(<AudioDemo />);
+  expect(html).toContain("Hear a session — “The Greyvale Road”");
+});
+
 test("renders a lazy audio element pointing at the served sample", () => {
   const html = renderToStaticMarkup(<AudioDemo />);
   // preload="none" => the 1.3MB body isn't fetched until the user hits play
