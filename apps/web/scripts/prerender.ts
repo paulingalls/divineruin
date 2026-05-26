@@ -10,7 +10,7 @@ const ROOT_DIV = /<div id="root">\s*<\/div>/;
 const FONTS_SRC = join(APP_DIR, "src", "fonts");
 // Above-the-fold faces to preload (display + body, regular weight). Kept small —
 // over-preloading competes with the LCP image/markup for bandwidth.
-const FONT_PRELOADS = ["cormorant-garamond-300.woff2", "crimson-pro-400.woff2"];
+export const FONT_PRELOADS = ["cormorant-garamond-300.woff2", "crimson-pro-400.woff2"];
 
 // The self-hosted fonts deliberately bypass Bun's bundler (which inlines CSS
 // url() as base64). We copy src/fonts/ verbatim into dist/fonts/ and inject the
