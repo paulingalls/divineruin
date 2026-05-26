@@ -152,6 +152,26 @@ async def clear_narrative_moment(
     )
 
 
+async def increment_crafting_skill_counter(
+    player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    """Atomically +1 the player's hidden Crafting skill counter (story-006).
+
+    Single UPSERT — no read-compute-write — so concurrent crafting Failures can't
+    lose an increment. Spec failure consolation reward, game_mechanics_crafting.md:106.
+    """
+    _conn = conn or await db.get_pool()
+    await _conn.execute(
+        """
+        INSERT INTO player_crafting_skill_counter (player_id, counter, updated_at)
+        VALUES ($1, 1, NOW())
+        ON CONFLICT (player_id)
+        DO UPDATE SET counter = player_crafting_skill_counter.counter + 1, updated_at = NOW()
+        """,
+        player_id,
+    )
+
+
 async def add_inventory_item(
     player_id: str, item_id: str, quantity: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> None:

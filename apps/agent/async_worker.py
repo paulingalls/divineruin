@@ -142,6 +142,12 @@ async def _resolve_single_activity(activity: dict) -> None:
                     "decision_options": outcome_dict.get("decision_options", []),
                 },
             )
+            # story-006: a crafting Failure grants +1 toward the hidden Crafting skill
+            # counter (spec consolation reward, game_mechanics_crafting.md:106). Lives in
+            # the non-cached branch and after the outcome is cached, so a cached-narration
+            # TTS retry re-enters above and never double-increments.
+            if activity_type == "crafting" and outcome_dict.get("tier") == "failure":
+                await db_mutations.increment_crafting_skill_counter(player_id)
 
         # Step C: pre-render audio.
         audio_filename = f"{activity_id}.mp3"
