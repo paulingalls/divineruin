@@ -101,4 +101,29 @@ describe("accessibleWorkspaceTier", () => {
     expect(lastQueryValues).toContain("player-42");
     expect(lastQueryValues).toContain("greyvale_hamlet");
   });
+
+  // story-006: a Portable Lab grants Workshop + basic Laboratory anywhere (it does
+  // NOT grant Forge), independent of location-bound rentals.
+  test("a Portable Lab grants workshop + laboratory (not forge)", async () => {
+    setMockResults([]);
+    const tiers = await accessibleWorkspaceTier("player-1", "anywhere", { hasPortableLab: true });
+    expect(tiers).toEqual(new Set(["field", "workshop", "laboratory"]));
+  });
+
+  test("hasPortableLab false / omitted leaves access rental-only", async () => {
+    setMockResults([]);
+    expect(
+      await accessibleWorkspaceTier("player-1", "anywhere", { hasPortableLab: false }),
+    ).toEqual(new Set(["field"]));
+    setMockResults([]);
+    expect(await accessibleWorkspaceTier("player-1", "anywhere")).toEqual(new Set(["field"]));
+  });
+
+  test("the Portable Lab grant merges with active rentals", async () => {
+    setMockResults([{ workspace_type: "forge" }]);
+    const tiers = await accessibleWorkspaceTier("player-1", "ashmark_city", {
+      hasPortableLab: true,
+    });
+    expect(tiers).toEqual(new Set(["field", "forge", "workshop", "laboratory"]));
+  });
 });

@@ -42,12 +42,18 @@ export function parseWorkspaceType(raw: unknown, ctx: string): WorkspaceType {
  *
  * `locationId` is passed in because a player's current location is agent session
  * state, not a server-queryable column; the crafting gate (story-006) supplies
- * it from the request. The single location filter is the seam a later portable-
- * lab grant (source = 'portable', location-agnostic) extends.
+ * it from the request.
+ *
+ * `opts.hasPortableLab` (story-006): an Artificer's Portable Lab grants Workshop +
+ * basic Laboratory ANYWHERE — the location-agnostic `source = 'portable'` grant the
+ * single-location rental filter was built to extend. It does NOT grant Forge. The
+ * caller reads ownership once (player_inventory) and passes it here AND to the slot
+ * validator, so the inventory row is read a single time.
  */
 export async function accessibleWorkspaceTier(
   playerId: string,
   locationId: string,
+  opts?: { hasPortableLab?: boolean },
 ): Promise<Set<WorkspaceType>> {
   const rows = await sql<{ workspace_type: unknown }[]>`
     SELECT workspace_type FROM workspace_rentals
@@ -59,6 +65,10 @@ export async function accessibleWorkspaceTier(
   const tiers = new Set<WorkspaceType>([FIELD]);
   for (const row of rows) {
     tiers.add(parseWorkspaceType(row.workspace_type, "workspace_rentals.workspace_type"));
+  }
+  if (opts?.hasPortableLab) {
+    tiers.add("workshop");
+    tiers.add("laboratory");
   }
   return tiers;
 }
