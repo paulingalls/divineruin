@@ -53,6 +53,26 @@ SAMPLE_PLAYER = {
     "proficiencies": ["athletics", "arcana"],
 }
 
+# story-003: the worker's crafting branch now delegates to crafting_resolution, which
+# fetches the recipe category + that category's quality_outcomes row before calling the
+# pure resolver. Stub both DB accessors so the worker tests exercise the real resolver
+# (gates, bands) without a database. Gate/band assertions still come from the real
+# resolve_crafting; only the table fetch is mocked.
+_WEAPON_QUALITY = {
+    "id": "weapon",
+    "bonus_properties": [{"id": "keen_edge", "name": "Keen Edge", "description": "It hums when it cuts."}],
+    "flaws": [{"id": "dull_bite", "name": "Dull Bite", "description": "The edge drags."}],
+}
+
+
+@pytest.fixture(autouse=True)
+def _stub_crafting_quality_tables():
+    with (
+        patch("crafting_resolution.get_recipe", new_callable=AsyncMock, return_value={"category": "weapon"}),
+        patch("crafting_resolution.get_quality_outcomes", new_callable=AsyncMock, return_value=_WEAPON_QUALITY),
+    ):
+        yield
+
 
 class TestResolveDueActivities:
     @pytest.mark.asyncio

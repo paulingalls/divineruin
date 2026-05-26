@@ -92,6 +92,18 @@ class TestFullPipeline:
                 claim_p,
                 revert_p,
                 patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+                # story-003: the crafting branch delegates to crafting_resolution, which
+                # fetches the recipe category + quality tables. Stub both (no DB in this test).
+                patch("crafting_resolution.get_recipe", new_callable=AsyncMock, return_value={"category": "weapon"}),
+                patch(
+                    "crafting_resolution.get_quality_outcomes",
+                    new_callable=AsyncMock,
+                    return_value={
+                        "id": "weapon",
+                        "bonus_properties": [{"id": "keen_edge", "name": "Keen Edge", "description": "It hums."}],
+                        "flaws": [{"id": "dull_bite", "name": "Dull Bite", "description": "It drags."}],
+                    },
+                ),
                 patch(
                     "async_worker.generate_activity_narration",
                     new_callable=AsyncMock,
@@ -129,7 +141,7 @@ class TestFullPipeline:
         assert any("GRIMJAW" in seg["character"].upper() for seg in cached["narration_segments"])
         assert cached["narration_summary"] is not None
         assert isinstance(cached["narration_segments"], list)
-        assert cached["outcome"]["tier"] in ("success", "partial", "unexpected", "failure")
+        assert cached["outcome"]["tier"] in ("exceptional", "success", "partial", "failure")
         assert len(cached["decision_options"]) >= 2
         # Second call: mark resolved with audio
         _, resolved = update_calls[1]
@@ -298,7 +310,8 @@ class TestCostVerification:
                 "dc": 13,
                 "skill": "athletics",
                 "recipe_name": "Iron Sword",
-                "quality_bonus": 2,
+                "bonus_property": None,
+                "flaw": None,
                 "npc_id": "grimjaw_blacksmith",
             },
             "decision_options": [

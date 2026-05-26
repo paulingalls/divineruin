@@ -22,9 +22,9 @@ import db_mutations
 import db_queries
 import db_training
 import skill_persistence
-from async_rules import resolve_crafting
 from async_worker_claim import claim_resolving, mark_resolved, reset_stale_resolving, revert_claim_safe
 from async_worker_config import POLL_INTERVAL
+from crafting_resolution import resolve_crafting_outcome
 from dialogue_parser import Segment
 from errand_resolution import resolve_errand_outcome
 from llm_config import AUDIO_DIR, audio_url_for
@@ -111,16 +111,11 @@ async def _resolve_one_outcome(activity: dict, player_data: dict) -> dict | None
     activity_type = activity.get("activity_type", "crafting")
     parameters = activity.get("parameters", {})
     if activity_type == "crafting":
-        # workspace_access + crafting_tier were captured at creation (story-005); the
-        # gates re-run at resolution. Absent -> resolve_crafting raises (fail-loud).
-        return asdict(
-            resolve_crafting(
-                player_data,
-                parameters,
-                workspace_access=parameters.get("workspace_access"),
-                crafting_tier=parameters.get("crafting_tier"),
-            )
-        )
+        # crafting_resolution fetches the recipe category + quality tables and threads
+        # them into the pure resolver (which still re-runs the workspace/tainted gates and
+        # fails loud on absent gate inputs). Extracted from this over-cap module (story-003);
+        # the full async_worker SRP split (debt f3194b59b4ab) stays deferred by decision.
+        return await resolve_crafting_outcome(activity, player_data)
     if activity_type == "companion_errand":
         # ADR 0006: errand_resolution is the sole risk roll site.
         return await resolve_errand_outcome(player_data.get("companion", {}), parameters)
