@@ -300,19 +300,15 @@ def resolve_attack(
     rng: random.Random | None = None,
 ) -> AttackResult:
     atk_mod = attack_modifier(attacker_data, weapon)
-    hit_roll = dice_roll("d20", rng=rng)
-    d20 = hit_roll.total
-    attack_total = d20 + atk_mod
-
+    # Attack uses the same d20+mod-vs-target rule as skill checks/saves: nat-20
+    # always hits, nat-1 always misses, else total >= AC. Route through the shared
+    # primitive (target_ac is the attack-side DC) so the rule can't drift; attack
+    # vocab (hit/critical) and the crit-doubles-damage side-effect stay here.
+    core = _roll_d20_check(mod=atk_mod, dc=target_ac, rng=rng)
+    d20 = core.roll
+    attack_total = core.total
+    hit = core.success
     critical = d20 == 20
-    auto_miss = d20 == 1
-
-    if auto_miss:
-        hit = False
-    elif critical:
-        hit = True
-    else:
-        hit = attack_total >= target_ac
 
     damage = 0
     damage_type = weapon.get("damage_type", "bludgeoning")
@@ -338,7 +334,7 @@ def resolve_attack(
         critical=critical,
         target_hp_remaining=new_hp,
         target_killed=new_hp == 0 and hit,
-        narrative_hint=narrative_hint(d20, attack_total, target_ac),
+        narrative_hint=core.narrative_hint,
     )
 
 
