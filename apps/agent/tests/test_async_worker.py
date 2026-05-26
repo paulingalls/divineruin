@@ -9,10 +9,9 @@ from sample_fixtures import mock_txn
 from async_worker import (
     _resolve_one_outcome,
     _resolve_single_activity,
-    advance_training_cycles,
-    build_training_completion_outcome,
     resolve_due_activities,
 )
+from async_worker_training import advance_training_cycles, build_training_completion_outcome
 from dialogue_parser import Segment
 from training_rules import CompletionResult
 
@@ -854,30 +853,34 @@ class TestAdvanceTrainingCyclesNarration:
 
         with (
             patch(
-                "async_worker.db_training.get_due_training_transitions",
+                "async_worker_training.db_training.get_due_training_transitions",
                 new_callable=AsyncMock,
                 return_value=[SAMPLE_TRAINING_ACTIVITY],
             ),
-            patch("async_worker.db_training.update_training_activity", new_callable=AsyncMock) as mock_update,
-            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+            patch("async_worker_training.db_training.update_training_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker_training.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
-                "async_worker.db_queries.get_single_skill_advancement",
+                "async_worker_training.db_queries.get_single_skill_advancement",
                 new_callable=AsyncMock,
                 return_value={"tier": "novice", "use_counter": 3, "narrative_moment_ready": False},
             ),
-            patch("async_worker.db_mutations.update_skill_advancement", new_callable=AsyncMock),
+            patch("async_worker_training.db_mutations.update_skill_advancement", new_callable=AsyncMock),
             patch(
-                "async_worker.generate_activity_narration",
+                "async_worker_training.generate_activity_narration",
                 new_callable=AsyncMock,
                 return_value=(mock_segments, "You've pushed through.", "Training complete."),
             ) as mock_narration,
             patch(
-                "async_worker.synthesize_segments",
+                "async_worker_training.synthesize_segments",
                 new_callable=AsyncMock,
                 return_value="train_abc123.mp3",
             ) as mock_tts,
-            patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Training done."),
-            patch("async_worker.send_push_notification", new_callable=AsyncMock),
+            patch(
+                "async_worker_training.generate_notification_hook",
+                new_callable=AsyncMock,
+                return_value="Training done.",
+            ),
+            patch("async_worker_training.send_push_notification", new_callable=AsyncMock),
         ):
             count = await advance_training_cycles()
 
@@ -913,20 +916,20 @@ class TestAdvanceTrainingCyclesNarration:
         """If narration generation fails, training stays in running_second_half."""
         with (
             patch(
-                "async_worker.db_training.get_due_training_transitions",
+                "async_worker_training.db_training.get_due_training_transitions",
                 new_callable=AsyncMock,
                 return_value=[SAMPLE_TRAINING_ACTIVITY],
             ),
-            patch("async_worker.db_training.update_training_activity", new_callable=AsyncMock) as mock_update,
-            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+            patch("async_worker_training.db_training.update_training_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker_training.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
-                "async_worker.db_queries.get_single_skill_advancement",
+                "async_worker_training.db_queries.get_single_skill_advancement",
                 new_callable=AsyncMock,
                 return_value={"tier": "novice", "use_counter": 3, "narrative_moment_ready": False},
             ),
-            patch("async_worker.db_mutations.update_skill_advancement", new_callable=AsyncMock),
+            patch("async_worker_training.db_mutations.update_skill_advancement", new_callable=AsyncMock),
             patch(
-                "async_worker.generate_activity_narration",
+                "async_worker_training.generate_activity_narration",
                 new_callable=AsyncMock,
                 side_effect=RuntimeError("LLM down"),
             ),
@@ -944,25 +947,25 @@ class TestAdvanceTrainingCyclesNarration:
 
         with (
             patch(
-                "async_worker.db_training.get_due_training_transitions",
+                "async_worker_training.db_training.get_due_training_transitions",
                 new_callable=AsyncMock,
                 return_value=[SAMPLE_TRAINING_ACTIVITY],
             ),
-            patch("async_worker.db_training.update_training_activity", new_callable=AsyncMock) as mock_update,
-            patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+            patch("async_worker_training.db_training.update_training_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker_training.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
-                "async_worker.db_queries.get_single_skill_advancement",
+                "async_worker_training.db_queries.get_single_skill_advancement",
                 new_callable=AsyncMock,
                 return_value={"tier": "novice", "use_counter": 3, "narrative_moment_ready": False},
             ),
-            patch("async_worker.db_mutations.update_skill_advancement", new_callable=AsyncMock),
+            patch("async_worker_training.db_mutations.update_skill_advancement", new_callable=AsyncMock),
             patch(
-                "async_worker.generate_activity_narration",
+                "async_worker_training.generate_activity_narration",
                 new_callable=AsyncMock,
                 return_value=(mock_segments, "Well done.", "Summary."),
             ),
             patch(
-                "async_worker.synthesize_segments",
+                "async_worker_training.synthesize_segments",
                 new_callable=AsyncMock,
                 side_effect=RuntimeError("TTS down"),
             ),
@@ -1001,12 +1004,12 @@ class TestTrainingPushNotifications:
         """Midpoint notification title should include the program name."""
         with (
             patch(
-                "async_worker.db_training.get_due_training_transitions",
+                "async_worker_training.db_training.get_due_training_transitions",
                 new_callable=AsyncMock,
                 return_value=[SAMPLE_MIDPOINT_ACTIVITY],
             ),
-            patch("async_worker.db_training.update_training_activity", new_callable=AsyncMock),
-            patch("async_worker.send_push_notification", new_callable=AsyncMock) as mock_push,
+            patch("async_worker_training.db_training.update_training_activity", new_callable=AsyncMock),
+            patch("async_worker_training.send_push_notification", new_callable=AsyncMock) as mock_push,
         ):
             await advance_training_cycles()
 
