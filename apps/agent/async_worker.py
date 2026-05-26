@@ -111,7 +111,16 @@ async def _resolve_one_outcome(activity: dict, player_data: dict) -> dict | None
     activity_type = activity.get("activity_type", "crafting")
     parameters = activity.get("parameters", {})
     if activity_type == "crafting":
-        return asdict(resolve_crafting(player_data, parameters))
+        # workspace_access + crafting_tier were captured at creation (story-005); the
+        # gates re-run at resolution. Absent -> resolve_crafting raises (fail-loud).
+        return asdict(
+            resolve_crafting(
+                player_data,
+                parameters,
+                workspace_access=parameters.get("workspace_access"),
+                crafting_tier=parameters.get("crafting_tier"),
+            )
+        )
     if activity_type == "companion_errand":
         # ADR 0006: errand_resolution is the sole risk roll site.
         return await resolve_errand_outcome(player_data.get("companion", {}), parameters)

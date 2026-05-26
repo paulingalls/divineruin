@@ -15,13 +15,19 @@ import json
 import logging
 
 import db
+from materials import MATERIAL_TIERS
+from workspace import WorkspaceType
 
 logger = logging.getLogger("divineruin.recipes")
 
 _CATEGORIES = {"weapon", "armor", "consumable", "tool", "enchantment", "ammunition"}
 _TIERS = {"basic", "trained", "expert", "master"}
-_WORKSPACES = {"field", "workshop", "forge", "laboratory"}
-_MATERIAL_TIERS = {1, 2, 3, 4}
+# Single source of truth for the workspace vocabulary is WorkspaceType (workspace.py);
+# derive the load-time validation set from it so a fifth workspace can't drift in here
+# without the enum (wisdom bb73edd9b94d: kill drift at source).
+_WORKSPACES = {w.value for w in WorkspaceType}
+# tier_minimum shares the canonical material tier scale (materials.MATERIAL_TIERS) so
+# the two parsers can't drift (wisdom bb73edd9b94d: single source of truth).
 # Canonical narration quality bands (crafting-narration-bands). Mirrors the TS
 # QUALITY_BANDS set; a content typo for a band key fails loud at the load boundary.
 _QUALITY_BANDS = {"exceptional", "success", "partial", "failure"}
@@ -44,7 +50,7 @@ def _parse_material_req(raw: object, ctx: str) -> dict:
         raise ValueError(f"{ctx}.material_id is not a non-empty string")
     quantity = _require_int_at_least(raw.get("quantity"), 1, f"{ctx}.quantity")
     tier_minimum = raw.get("tier_minimum")
-    if isinstance(tier_minimum, bool) or not isinstance(tier_minimum, int) or tier_minimum not in _MATERIAL_TIERS:
+    if isinstance(tier_minimum, bool) or not isinstance(tier_minimum, int) or tier_minimum not in MATERIAL_TIERS:
         raise ValueError(f"{ctx}.tier_minimum {tier_minimum!r} is not 1-4")
     substitutable = raw.get("substitutable")
     if not isinstance(substitutable, bool):

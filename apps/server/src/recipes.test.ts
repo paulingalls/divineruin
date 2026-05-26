@@ -260,3 +260,41 @@ describe("parseRecipeRow accepts all shipped content (closes AC4 / concern 55289
     expect(raw.length).toBeGreaterThanOrEqual(70);
   });
 });
+
+// Content-parity guard (retro-try-wait-window-parity): assert each SHIPPED recipe's
+// wait window lands in the band intended for its tier, so a recipe authored with the
+// wrong async_cycles — especially a non-basic recipe that silently floors to the 15-min
+// CRAFT_FLOOR — is caught here rather than discovered in play. The async_cycles->duration
+// FUNCTION is pinned above; this pins the CONTENT against that function.
+describe("craftingDurationSeconds — content wait-window parity", () => {
+  // min seconds expected per tier (max is always 2x min). expert spans 3-4 cycles.
+  const EXACT_MIN: Record<string, number> = {
+    basic: 900, // field-craft floor, fast by design
+    trained: 14400, // 1 cycle
+    master: 86400, // 6 cycles
+  };
+  const EXPERT_MIN_RANGE = { lo: 43200, hi: 57600 }; // 3-4 cycles
+
+  test("every shipped recipe's duration matches its tier band (no floor-to-900s drift)", async () => {
+    const RECIPES_PATH = new URL("../../../content/recipes.json", import.meta.url);
+    const raw = (await Bun.file(RECIPES_PATH).json()) as Array<{ id: string; tier: string }>;
+    for (const entry of raw) {
+      const recipe = parseRecipeRow(entry.id, entry);
+      const { min, max } = craftingDurationSeconds(recipe);
+      expect(max).toBe(min * 2);
+      // A non-basic recipe must never floor to the 15-min CRAFT_FLOOR — that's the drift.
+      if (recipe.tier !== "basic") {
+        expect(min).toBeGreaterThan(900);
+      }
+      if (recipe.tier === "expert") {
+        expect(min).toBeGreaterThanOrEqual(EXPERT_MIN_RANGE.lo);
+        expect(min).toBeLessThanOrEqual(EXPERT_MIN_RANGE.hi);
+      } else {
+        const expectedMin = EXACT_MIN[recipe.tier];
+        if (expectedMin === undefined)
+          throw new Error(`no wait-window band for tier ${recipe.tier}`);
+        expect(min).toBe(expectedMin);
+      }
+    }
+  });
+});

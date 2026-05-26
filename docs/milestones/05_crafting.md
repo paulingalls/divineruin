@@ -62,7 +62,7 @@ Implements the full crafting pipeline from recipe acquisition through workspace 
 
 **Cross-doc deps:**
 - M5.1 → Phase 1 M1.2 (skill tiers): slot capacity and tier gating read player Crafting tier (registered at `apps/agent/rules_engine.py:102`).
-- M5.1 → Phase 1 M1.5 (async training): the Training acquisition track consumes async cycles via `content/training_activity_types.json:recipe_study`; per-tier cycle-cost mapping is the M5.1 adapter.
+- M5.1 → Phase 1 M1.5 (async training): the Training acquisition track consumes async cycles via the `recipe_study` training activity type. (The per-tier `tier_cycles` cost-mapping adapter — `get_recipe_study_cycles`/`parse_recipe_study_cycles` — was forward-laid but never wired to a production learn path; it and its `tier_cycles` content map were deleted at sprint-013 close per the delete-if-unwired gate. Re-derive the cost mapping when the recipe_study-learn path is actually built.)
 - M5.1 → M5.4 catalog: recipes name material ids that must resolve against the items catalog.
 
 **Spec/milestone conflict to record:** Untrained recipe slots — milestone bullet says "Untrained: 0"; spec at `game_mechanics_crafting.md:158` says "Untrained 3". Tracked in `audit/README.md` Sprint-spec-cleanup.
@@ -81,7 +81,7 @@ See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
 - **Verified-at:** M1 `b6ef618` (slot DB-load), M2 `bb71ccc` (narration bands); capstone commit + final close SHA recorded at sprint-close.
 
 **Open follow-ups:**
-- **Try-2 dated gate (keep + bind to M5.2):** `check_material_requirements` (`recipe_validation.py`) and `get_recipe_study_cycles` (`training_rules.py`) are forward-laid M5.2 primitives with no production caller yet (concerns `06364bdcb14b`, `47dd7b5d1320`; debt `55d8dcd38fc0`). **Delete both if M5.2/sprint-013 does not wire them into the craft-consume and recipe_study-learn paths — re-evaluate at sprint-013 close.**
+- **Try-2 dated gate (RESOLVED at sprint-013 close):** `check_material_requirements` (`recipe_validation.py`) **was wired** — it is now the pre-flight pipeline's Check 4 (`preflight_pipeline.py:65`), so it stays. `get_recipe_study_cycles` (`training_rules.py`) was **not** wired to any recipe_study-learn path and was **deleted** (with `set_/parse_recipe_study_cycles`, the `_recipe_study_cycles` map, and the `tier_cycles` content field) per the delete-if-unwired gate. Closes concerns `06364bdcb14b`, `47dd7b5d1320`; debt `55d8dcd38fc0`.
 - `check_material_requirements` is greedy per-requirement; M5.2 craft-consume owns the real allocate-then-deduct pass (debt `cdce6c6a776d`).
 - Systemic player CASCADE-FK backfill for the other post-008 per-player tables (debt `ac2ad5230209`).
 
@@ -115,18 +115,18 @@ See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
 - Agent tool: `start_crafting_project(character_id, recipe_id, workspace_id)` → runs three-check pipeline, rolls if valid
 
 **Acceptance criteria:**
-- [ ] All 4 workspace types defined with supported recipe categories
-- [ ] Field workspace is always available but restricted to basic recipes
-- [ ] NPC rental costs match spec: Workshop 2sp, Forge 5sp, Lab 10sp, Combined 12sp per day
-- [ ] Disposition modifiers correctly adjust rental prices (discount for friendly, surcharge for hostile)
-- [ ] Trusted reputation grants free workspace access at that settlement
-- [ ] Artificer Portable Lab functions as Workshop + basic Laboratory
-- [ ] Artificer async training-slot exception wired + slot accounting consumes the training slot (deferred from M1.6 per ADR 0005; debt `95de7fa141df`)
-- [ ] Three-check pipeline gates crafting roll: all three must pass before rolling
-- [ ] Crafting roll uses `d20 + skill modifier` vs `crafting_dc`
-- [ ] DB migration creates `workspace_rentals` table with correct schema
-- [ ] `start_crafting_project` fails gracefully with clear reason when any check fails
-- [ ] Tests cover all workspace types, access methods, disposition modifiers, and three-check pipeline
+- [x] All 4 workspace types defined with supported recipe categories
+- [x] Field workspace is always available but restricted to basic recipes
+- [x] NPC rental costs match spec: Workshop 2sp, Forge 5sp, Lab 10sp, Combined 12sp per day
+- [x] Disposition modifiers correctly adjust rental prices (shipped spec-aligned: Friendly 0.8x / Trusted 0.6x discount, refusal below Neutral; no hostile surcharge per spec — the milestone's "surcharge" wording is the tracked spec-cleanup conflict)
+- [ ] Trusted reputation grants free workspace access at that settlement — **DEFERRED to Phase 6** (settlement-availability matrix + NPC-vendor validation; concerns `c5c5871115dc`, `bec87679b223`)
+- [x] Artificer Portable Lab functions as Workshop + basic Laboratory
+- [x] Artificer async training-slot exception wired + slot accounting consumes the training slot (deferred from M1.6 per ADR 0005; debt `95de7fa141df`)
+- [x] Three-check pipeline gates crafting roll: all three must pass before rolling (shipped as a five-check pre-flight pipeline — Knowledge/Tier/Workspace/Materials/Tainted-Expert)
+- [x] Crafting roll uses `d20 + skill modifier` vs `crafting_dc` (roll deferred to resolution — `resolve_crafting`, story-005)
+- [x] DB migration creates `workspace_rentals` table with correct schema (migration 022)
+- [x] `start_crafting_project` fails gracefully with clear reason when any check fails
+- [x] Tests cover all workspace types, access methods, disposition modifiers, and three-check pipeline
 
 **Key references:**
 - *Game Mechanics Crafting — Workspace Types & Access*
@@ -157,6 +157,23 @@ See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
 **Spec/milestone conflict to record:** Rental disposition modifiers — milestone bullet says "discount for friendly, surcharge for hostile"; spec at `game_mechanics_crafting.md:204-207` gates rental at neutral-or-better (refusal at unfriendly, no surcharge defined). Tracked in `audit/README.md` Sprint-spec-cleanup.
 
 See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
+
+### CAPSTONE — M5.2 shipped (sprint-013, story-007)
+
+<!-- capstone-footer: grep "CAPSTONE — M5.2" -->
+
+**Status: SHIPPED.** 10 of 11 M5.2 acceptance criteria are met end-to-end; the one open criterion (Trusted-reputation free workspace access) is deferred to Phase 6 with the settlement-availability matrix.
+
+- **Story chain:** story-001 (Python workspace substrate — `WorkspaceType` + ordering, `compute_rental_price` disposition pricing, settlement-availability matrix) → 002 (migration 022 `workspace_rentals` + TS `accessibleWorkspaceTier`; consolidated the workspace vocab to one SSOT per language) → 003 (five-check pre-flight pipeline — Knowledge/Tier/Workspace/Materials/Tainted-Expert, pure, first-fail ordering; `preflight_pipeline.py`) → 004 (`materials.py` catalog accessor, read+write DB producers, `allocate_materials` disjoint allocate-then-deduct, and the agent tools `query_available_workspaces` / `rent_workspace` / `start_crafting_project`) → 005 (`resolve_crafting` honors workspace access + tainted-Expert gate at resolution; migration 023 backfills in-flight rows) → 006 (REST workspace gate before material consume + Artificer Portable-Lab training-slot exception with COALESCE slot accounting, debt `95de7fa141df`) → **007 (this capstone)**.
+- **Capstone proof:** `apps/agent/tests/acceptance/test_m52_workspace_resolution_capstone.py` closes the real-DB workspace-lookup lane ADR 0003 deferred (concern `939df378f3b7`): the mocked `apps/server/workspace.test.ts` cannot exercise `accessibleWorkspaceTier`'s `expires_at > NOW()` SQL predicate, so the capstone drives it against a real testcontainer over both surfaces — http_websocket (REST crafting create gate) and message_event (Python `query_available_workspaces`). Expired forge rental → access denied (REST 400 before consume + no row; tool omits forge); same rental active or standing → access granted (REST 200; tool lists forge). Both surfaces are predicate-load-bearing (mutation-verified). 4/4 green via `bun run test:acceptance`.
+- **Also landed in story-007 (adopted cleanups):** deleted the dead `recipe_study_cycles` vertical (delete-if-unwired gate); split `activities.ts` (582L, over cap) into `activity_create.ts` + `activities.ts` per the new `file-size-touch-split` convention, with a SQL-match-keyed mock harness replacing positional indexing (concern `109567241849`); widened the slot-check FOR-UPDATE lock to `in_progress`+`resolving` to match `countActiveBySlot` (debt `d80282969804`); routed `resolve_attack` through the `_roll_d20_check` primitive (debt `a51be5428cc4`).
+- **Verified-at:** capstone proof `22580b0`; final close SHA recorded at sprint-close.
+
+**Open follow-ups:**
+- **M5.4 cross-language Artificer convergence:** the Portable-Lab slot exception is wired on the TS REST path only; the Python agent path (`crafting_tools.py` slot cap + `count_active_by_slot`, which reads `activity_type` not `data.slot`) is still unaware — a lab Artificer gets asymmetric REST-vs-voice gates until M5.4 makes the Portable Lab obtainable (risk `b335bb95acbd`; concerns `0c38eb0f5b2c`, `7fa70fc60c03`).
+- **Phase 6:** Trusted-reputation free access + settlement-availability matrix + `rent_workspace` NPC-vendor/co-location validation (concerns `c5c5871115dc`, `bec87679b223`).
+- **Economy milestone:** `rent_workspace` debits gold at interim 10sp=1gp (fractional gold); reconcile when currency sub-units are formalized (concern `67c8f2962302`).
+- **M5.3 kickoff:** DM dispatch tools at 17/20 `MAX_STRICT_TOOLS`; the M5.3 crafting surface will breach 20 and force the location+intent sub-agent split (concern `99c31a6db9b3`).
 
 ---
 

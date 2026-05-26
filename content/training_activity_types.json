@@ -93,7 +93,6 @@
     "first_half_max_seconds": 18000,
     "second_half_min_seconds": 7200,
     "second_half_max_seconds": 14400,
-    "tier_cycles": { "basic": 1, "trained": 2, "expert": 4, "master": 6 },
     "midpoint_decision": {
       "prompt": "You've found two approaches to the recipe \u2014 the traditional method or an experimental twist?",
       "options": [

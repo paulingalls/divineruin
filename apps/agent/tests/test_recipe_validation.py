@@ -128,3 +128,67 @@ class TestCheckMaterialRequirements:
     def test_empty_requirements_satisfied(self):
         result = rv.check_material_requirements([], {}, CATALOG)
         assert result.satisfied is True
+
+
+class TestAllocateMaterials:
+    """allocate_materials picks a real DISJOINT allocation (resolves debt cdce6c6a776d:
+    the greedy check_material_requirements counts shared substitutable units toward
+    multiple requirements; the consume path needs concrete, non-overlapping units)."""
+
+    def test_named_material_only(self):
+        result = rv.allocate_materials([_req("iron_ingot", 2, 1, False)], {"iron_ingot": 2}, CATALOG)
+        assert result.satisfied is True
+        assert result.by_id == {"iron_ingot": 2}
+        assert sorted(result.flat) == ["iron_ingot", "iron_ingot"]
+
+    def test_named_preferred_over_substitute(self):
+        # iron present and named — it is spent before any substitute.
+        result = rv.allocate_materials([_req("iron_ingot", 1, 1, True)], {"iron_ingot": 1, "steel_ingot": 1}, CATALOG)
+        assert result.satisfied is True
+        assert result.by_id == {"iron_ingot": 1}
+
+    def test_substitute_when_named_absent(self):
+        result = rv.allocate_materials([_req("iron_ingot", 2, 1, True)], {"steel_ingot": 2}, CATALOG)
+        assert result.satisfied is True
+        assert result.by_id == {"steel_ingot": 2}
+
+    def test_below_tier_substitute_rejected(self):
+        # steel needs metal tier>=2; only tin (metal tier 1) on hand.
+        result = rv.allocate_materials([_req("steel_ingot", 1, 2, True)], {"tin_ingot": 5}, CATALOG)
+        assert result.satisfied is False
+        assert "steel_ingot" in result.reason
+
+    def test_overlapping_pool_allocates_disjoint_units(self):
+        # Two substitutable metal reqs (2 each); 2 iron + 2 steel must split disjointly.
+        reqs = [_req("iron_ingot", 2, 1, True), _req("iron_ingot", 2, 1, True)]
+        result = rv.allocate_materials(reqs, {"iron_ingot": 2, "steel_ingot": 2}, CATALOG)
+        assert result.satisfied is True
+        assert result.by_id == {"iron_ingot": 2, "steel_ingot": 2}
+        assert len(result.flat) == 4
+
+    def test_overlapping_pool_insufficient_fails_where_greedy_would_pass(self):
+        # THE crux: 2 metal reqs (2 each = 4 needed) but only 3 metal units on hand.
+        # Greedy check_material_requirements passes each req (sees 3>=2); a real
+        # disjoint allocation cannot cover 4 from 3, so allocate must FAIL.
+        reqs = [_req("iron_ingot", 2, 1, True), _req("iron_ingot", 2, 1, True)]
+        available = {"iron_ingot": 2, "steel_ingot": 1}
+        assert rv.check_material_requirements(reqs, available, CATALOG).satisfied is True
+        result = rv.allocate_materials(reqs, available, CATALOG)
+        assert result.satisfied is False
+
+    def test_most_constrained_first_does_not_starve_non_substitutable(self):
+        # A non-sub iron req + a sub metal req; only 1 iron + 1 steel. The non-sub req
+        # must claim the iron first, leaving steel for the substitutable req.
+        reqs = [_req("iron_ingot", 1, 1, True), _req("iron_ingot", 1, 1, False)]
+        result = rv.allocate_materials(reqs, {"iron_ingot": 1, "steel_ingot": 1}, CATALOG)
+        assert result.satisfied is True
+        assert result.by_id == {"iron_ingot": 1, "steel_ingot": 1}
+
+    def test_flat_repeats_by_quantity(self):
+        result = rv.allocate_materials([_req("iron_ingot", 3, 1, False)], {"iron_ingot": 3}, CATALOG)
+        assert result.flat == ["iron_ingot", "iron_ingot", "iron_ingot"]
+
+    def test_empty_requirements_satisfied(self):
+        result = rv.allocate_materials([], {}, CATALOG)
+        assert result.satisfied is True
+        assert result.flat == []
