@@ -37,13 +37,9 @@ void mock.module("./db.ts", () => {
   return { sql: proxy };
 });
 
-const {
-  handleCreateActivity,
-  handleListActivities,
-  handleGetActivity,
-  handleActivityDecision,
-  handleAudioFile,
-} = await import("./activities.ts");
+const { handleCreateActivity } = await import("./activity_create.ts");
+const { handleListActivities, handleGetActivity, handleActivityDecision, handleAudioFile } =
+  await import("./activities.ts");
 
 const { setupDangerLevelFixture } = await import("./test-fixtures/danger-levels.ts");
 const { setupTrainingConfigFixture } = await import("./test-fixtures/training-config.ts");
