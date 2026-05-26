@@ -6,15 +6,17 @@ const { getDefaultConfig } = require('expo/metro-config');
 const config = getDefaultConfig(__dirname);
 
 // Override Expo's auto-discovered watchFolders to drop apps/server (mobile
-// never imports from it; only packages/shared). Keep root node_modules in
-// watchFolders because Metro queries watchman to enumerate the haste/module
-// map; removing it breaks resolution despite Node-style resolution walking
-// parents. NOTE: this list is explicit, not auto-discovered — a new workspace
-// (e.g. apps/audio) that mobile starts importing from must be added here.
+// never imports from it; only packages/shared and packages/design-tokens).
+// Keep root node_modules in watchFolders because Metro queries watchman to
+// enumerate the haste/module map; removing it breaks resolution despite
+// Node-style resolution walking parents. NOTE: this list is explicit, not
+// auto-discovered — a new workspace (e.g. apps/audio) that mobile starts
+// importing from must be added here.
 const repoRoot = path.resolve(__dirname, '../..');
 config.watchFolders = [
   __dirname,
   path.join(repoRoot, 'packages/shared'),
+  path.join(repoRoot, 'packages/design-tokens'),
   path.join(repoRoot, 'node_modules'),
 ];
 

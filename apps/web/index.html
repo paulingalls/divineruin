@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Divine Ruin — The Sundered Veil</title>
+    <!-- theme.css (token vars) is bundled by Bun. The self-hosted fonts.css link
+         + font preloads are injected post-build (prerender.ts) / by the dev server
+         so the woff2 stay separately served, not Bun-inlined as base64. -->
+    <link rel="stylesheet" href="./src/theme.css" />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/client.tsx"></script>
+  </body>
+</html>

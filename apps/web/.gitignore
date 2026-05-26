@@ -1,0 +1,6 @@
+# Production build output (prerendered dist served by `bun run start`).
+dist/
+
+# Dev-only index generated at `bun run dev` startup (canonical index.html + the
+# fonts.css link Bun inlines for dev). Never committed; regenerated each run.
+index.dev.html

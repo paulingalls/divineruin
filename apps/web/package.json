@@ -1,0 +1,23 @@
+{
+  "name": "divineruin-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/server.ts",
+    "build": "bun run scripts/prerender.ts",
+    "start": "NODE_ENV=production bun src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@divineruin/design-tokens": "workspace:*",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.13",
+    "@types/react": "~19.2.2",
+    "@types/react-dom": "~19.2.1"
+  }
+}

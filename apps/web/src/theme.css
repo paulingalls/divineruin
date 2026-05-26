@@ -1,0 +1,61 @@
+/* GENERATED from @divineruin/design-tokens — edit the package, then
+   regenerate with `bun run scripts/gen-theme.ts`. Do not edit by hand. */
+:root {
+  /* Palette */
+  --color-void: #0a0a0b;
+  --color-ink: #141417;
+  --color-charcoal: #1e1e23;
+  --color-slate: #2a2a32;
+  --color-ash: #6b6b78;
+  --color-bone: #b8b5ad;
+  --color-parchment: #d4d0c8;
+  --color-hollow-faint: #134e4a;
+  --color-hollow-muted: #1a8a7a;
+  --color-hollow: #2dd4bf;
+  --color-hollow-glow: #5eead4;
+  --color-night-tint: #0a0a2a;
+  --color-ember-faint: #7c2d12;
+  --color-ember: #c2410c;
+  --color-divine-faint: #92702a;
+  --color-divine: #c9a84c;
+  /* Font families */
+  --font-display: "Cormorant Garamond", serif;
+  --font-body: "Crimson Pro", serif;
+  --font-system: "IBM Plex Mono", monospace;
+  /* Type scale */
+  --text-display-size: 62px;
+  --text-display-line-height: 68px;
+  --text-h1-size: 36px;
+  --text-h1-line-height: 46px;
+  --text-h2-size: 29px;
+  --text-h2-line-height: 39px;
+  --text-body-lg-size: 24px;
+  --text-body-lg-line-height: 36px;
+  --text-body-size: 20px;
+  --text-body-line-height: 29px;
+  --text-system-size: 14px;
+  --text-system-line-height: 21px;
+  --text-caption-size: 13px;
+  --text-caption-line-height: 18px;
+  /* Spacing */
+  --space-half: 2px;
+  --space-one: 4px;
+  --space-two: 8px;
+  --space-three: 16px;
+  --space-four: 24px;
+  --space-five: 32px;
+  --space-six: 64px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-icon: 27px;
+  /* Layout */
+  --max-content-width: 800px;
+}
