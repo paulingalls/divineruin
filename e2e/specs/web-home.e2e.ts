@@ -7,20 +7,20 @@ import { test, expect } from "@playwright/test";
 const WEB = "http://localhost:8085";
 
 test.describe("Marketing home page (apps/web)", () => {
-  test("prerenders the hero into the served HTML (no JS executed)", async ({
-    request,
-  }) => {
+  test("prerenders the hero into the served HTML (no JS executed)", async ({ request }) => {
     const res = await request.get(`${WEB}/`);
     expect(res.status()).toBe(200);
     const body = await res.text();
     // Real content lives *immediately inside* #root in the raw response —
-    // SEO-visible, not an empty client-rendered shell. The chrome (story-003)
-    // mounts <nav> first, then the hero <main><h1>Divine Ruin</h1>. Anchoring
-    // on #root → <nav> → <main><h1> proves the markup is nested in #root and
-    // prerendered (not a client-only shell), so an empty-root regression (or a
-    // stray "Divine Ruin" in <title>/the footer) can't satisfy this vacuously.
+    // SEO-visible, not an empty client-rendered shell. The chrome mounts <nav>
+    // first, then the hero <header class="hero"> with its <h1>Divine<br/>Ruin</h1>
+    // (story-005 mounts the real Hero, replacing the M1 placeholder <main>).
+    // Anchoring on #root → <nav> → <header class="hero"> → <h1> proves the markup
+    // is nested in #root and prerendered (not a client-only shell), so an
+    // empty-root regression (or a stray "Divine Ruin" in <title>/the footer)
+    // can't satisfy this vacuously.
     expect(body).toMatch(
-      /<div id="root"><nav[\s\S]*?<main><h1>Divine Ruin<\/h1>/s,
+      /<div id="root"><nav[\s\S]*?<header[^>]*class="hero"[\s\S]*?<h1[^>]*>Divine<br\/?><em>Ruin<\/em>/s,
     );
   });
 
@@ -36,14 +36,10 @@ test.describe("Marketing home page (apps/web)", () => {
     await page.goto(`${WEB}/`);
 
     // Hero is visible (rendered) and the page reached an interactive state.
-    await expect(
-      page.getByRole("heading", { name: "Divine Ruin" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Divine Ruin" })).toBeVisible();
     await page.waitForLoadState("networkidle");
 
-    const hydrationErrors = consoleErrors.filter((e) =>
-      /hydrat|did not match/i.test(e),
-    );
+    const hydrationErrors = consoleErrors.filter((e) => /hydrat|did not match/i.test(e));
     expect(hydrationErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
     expect(consoleErrors).toEqual([]);
