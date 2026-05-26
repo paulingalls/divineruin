@@ -8,6 +8,7 @@ import { renderAppHTML } from "../src/entry-server.tsx";
 const APP_DIR = join(import.meta.dir, "..");
 const ROOT_DIV = /<div id="root">\s*<\/div>/;
 const FONTS_SRC = join(APP_DIR, "src", "fonts");
+const AUDIO_SRC = join(APP_DIR, "src", "audio");
 // Above-the-fold faces to preload (display + body, regular weight). Kept small —
 // over-preloading competes with the LCP image/markup for bandwidth.
 export const FONT_PRELOADS = ["cormorant-garamond-300.woff2", "crimson-pro-400.woff2"];
@@ -23,12 +24,42 @@ function fontHeadTags(): string {
   return `${preloads}\n    <link rel="stylesheet" href="/fonts/fonts.css" />`;
 }
 
-async function copyFonts(outdir: string): Promise<void> {
-  const dest = join(outdir, "fonts");
-  for await (const rel of new Glob("*").scan(FONTS_SRC)) {
-    if (rel.endsWith(".test.ts")) continue; // ship fonts + fonts.css, not the test
-    await Bun.write(join(dest, rel), Bun.file(join(FONTS_SRC, rel)));
+// Copy every matching file from a non-bundled static source dir verbatim into
+// dist/<subdir>/ — the bypass-the-bundler path the prod server Glob-serves.
+// Fails loud (throws) if zero files are copied: an empty/missing source dir
+// otherwise leaves the build green while the served path 404s at runtime, a
+// silent regression only the e2e would catch. `skip` filters dev-only entries.
+async function copyStaticDir(
+  src: string,
+  outdir: string,
+  subdir: string,
+  skip: (rel: string) => boolean = () => false,
+): Promise<void> {
+  const dest = join(outdir, subdir);
+  let copied = 0;
+  for await (const rel of new Glob("*").scan(src)) {
+    if (skip(rel)) continue;
+    await Bun.write(join(dest, rel), Bun.file(join(src, rel)));
+    copied++;
   }
+  if (copied === 0) {
+    throw new Error(`prerender: no files copied from ${src} — dist/${subdir} would 404 at runtime`);
+  }
+}
+
+function copyFonts(outdir: string): Promise<void> {
+  // ship fonts + fonts.css, not the test
+  return copyStaticDir(FONTS_SRC, outdir, "fonts", (rel) => rel.endsWith(".test.ts"));
+}
+
+// AudioDemo references its sample by the served path "/audio/dm-sample.mp3" (a
+// string, not a JS import), so Bun never bundles it. Copy src/audio/ verbatim
+// into dist/audio/ — same bypass-the-bundler approach as the fonts — so the
+// prod server (server.ts Glob-serves dist/**) can serve it. It's lazy
+// (preload="none"), so unlike the fonts it gets no <head> preload, only the
+// on-play fetch.
+function copyAudio(outdir: string): Promise<void> {
+  return copyStaticDir(AUDIO_SRC, outdir, "audio");
 }
 
 // Build-time SSG. Bun bundles index.html (hashed JS/CSS, script/link rewrites)
@@ -68,6 +99,7 @@ export async function buildSite(outdir = join(APP_DIR, "dist")): Promise<string>
     .replace("</head>", () => `    ${fontHeadTags()}\n  </head>`);
   await Bun.write(indexPath, html);
   await copyFonts(outdir);
+  await copyAudio(outdir);
   return html;
 }
 
