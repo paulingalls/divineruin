@@ -14,6 +14,8 @@ echo "  TypeScript typecheck (root)..."
 bun run typecheck
 echo "  TypeScript typecheck (mobile)..."
 bun run typecheck:mobile
+echo "  TypeScript typecheck (server)..."
+bun run typecheck:server
 
 # ESLint
 echo "  ESLint..."

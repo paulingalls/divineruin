@@ -17,6 +17,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
       - run: bun run typecheck
+      - run: bun run typecheck:server
       - run: bunx eslint --max-warnings 0 .
       - run: cd e2e && bun install && bunx eslint --max-warnings 0 .
       - run: bunx prettier --check 'apps/**/*.{ts,tsx}' 'packages/**/*.ts'
