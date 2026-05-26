@@ -73,3 +73,27 @@ h1 {
   font-size: var(--text-system-size);
   text-decoration: none;
 }
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  align-items: center;
+  padding: var(--space-2xl) var(--space-lg);
+  border-top: 1px solid var(--color-slate);
+  color: var(--color-ash);
+  text-align: center;
+}
+
+.footer__brand {
+  color: var(--color-bone);
+  font-family: var(--font-display);
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line-height);
+}
+
+.footer__tagline {
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  line-height: var(--text-system-line-height);
+}
