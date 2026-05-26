@@ -1,0 +1,112 @@
+/* AudioDemo card + waveform. Consumes theme.css tokens directly (no hardcoded
+   colour values — tints derive from --color-hollow via color-mix, matching Hero
+   and the web-section-conventions decision). */
+
+.audio-demo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+  padding: var(--space-lg);
+  border: 1px solid var(--color-charcoal);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-ink) 60%, transparent);
+  transition: border-color 200ms ease;
+}
+
+.audio-demo:hover {
+  border-color: var(--color-hollow-muted);
+}
+
+/* Circular play control — mirrors the Hero CTA's hollow treatment. */
+.audio-demo__play {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--color-hollow-muted);
+  background: color-mix(in srgb, var(--color-hollow) 4%, transparent);
+  color: var(--color-hollow);
+  cursor: pointer;
+  transition:
+    background 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.audio-demo__play:hover {
+  background: color-mix(in srgb, var(--color-hollow) 10%, transparent);
+  box-shadow: 0 0 20px -4px var(--color-hollow-faint);
+}
+
+.audio-demo__icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.audio-demo__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+  flex: 1;
+}
+
+.audio-demo__title {
+  font-family: var(--font-body);
+  font-size: var(--text-body-size);
+  color: var(--color-parchment);
+}
+
+/* Waveform: thin hollow bars (per brand spec), heights from inline style. */
+.audio-demo__waveform {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+}
+
+.audio-demo__bar {
+  width: 3px;
+  border-radius: 1px;
+  background: var(--color-slate);
+  /* Pulse scales from the baseline so bars rise like a real meter, not a
+     centered shimmer (default transform-origin is the bar's center). */
+  transform-origin: bottom;
+  transition: background 150ms ease;
+}
+
+/* Playing: bars light up hollow and pulse in a staggered wave. */
+.audio-demo--playing .audio-demo__bar {
+  background: var(--color-hollow);
+  animation: audio-demo-pulse 1.1s ease-in-out infinite;
+}
+
+/* Stagger each bar so the wave appears to travel across the track. */
+.audio-demo--playing .audio-demo__bar:nth-child(3n) {
+  animation-delay: 0.15s;
+}
+.audio-demo--playing .audio-demo__bar:nth-child(3n + 1) {
+  animation-delay: 0.3s;
+}
+
+@keyframes audio-demo-pulse {
+  0%,
+  100% {
+    transform: scaleY(0.6);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* Reduced motion: keep the "on" colour (state still conveyed) but stop the
+   pulsing — motion removed, information preserved. */
+@media (prefers-reduced-motion: reduce) {
+  .audio-demo--playing .audio-demo__bar {
+    animation: none;
+  }
+}
