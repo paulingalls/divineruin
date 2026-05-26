@@ -3,8 +3,8 @@ import { handleLivekitToken } from "./livekit.ts";
 import { handleGetCharacter } from "./character.ts";
 import { handleRequestCode, handleVerifyCode, handleGetMe, requireAuth } from "./auth.ts";
 import { handlePreflight, withCors, checkRateLimit } from "./middleware.ts";
+import { handleCreateActivity } from "./activity_create.ts";
 import {
-  handleCreateActivity,
   handleListActivities,
   handleGetActivity,
   handleActivityDecision,
