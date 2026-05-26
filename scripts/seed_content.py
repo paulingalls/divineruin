@@ -32,6 +32,7 @@ TABLE_MAP = {
     "errand_templates.json": "errand_templates",
     "recipes.json": "recipes",
     "materials_catalog.json": "materials_catalog",
+    "quality_outcomes.json": "quality_outcomes",
 }
 
 PK_COLUMN = {

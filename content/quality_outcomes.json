@@ -1,0 +1,284 @@
+[
+  {
+    "id": "weapon",
+    "bonus_properties": [
+      {
+        "id": "keen_edge",
+        "name": "Keen Edge",
+        "description": "The blade hums a low note when it cuts the air."
+      },
+      {
+        "id": "balanced_heft",
+        "name": "Balanced Heft",
+        "description": "It sits in the hand like it was poured to fit your grip."
+      },
+      {
+        "id": "bright_ring",
+        "name": "Bright Ring",
+        "description": "Every parry answers with a clear, singing chime."
+      },
+      {
+        "id": "true_temper",
+        "name": "True Temper",
+        "description": "The steel takes a strike and gives back not a single shiver."
+      }
+    ],
+    "flaws": [
+      {
+        "id": "dull_bite",
+        "name": "Dull Bite",
+        "description": "The edge drags where it should slice; you feel it catch."
+      },
+      {
+        "id": "loose_tang",
+        "name": "Loose Tang",
+        "description": "A faint rattle in the hilt with every swing."
+      },
+      {
+        "id": "off_balance",
+        "name": "Off Balance",
+        "description": "It pulls forward, fighting your wrist on the return."
+      },
+      {
+        "id": "brittle_spine",
+        "name": "Brittle Spine",
+        "description": "A hairline creak runs the length when it bears weight."
+      }
+    ]
+  },
+  {
+    "id": "armor",
+    "bonus_properties": [
+      {
+        "id": "snug_fit",
+        "name": "Snug Fit",
+        "description": "The plates settle without a clatter, quiet as a held breath."
+      },
+      {
+        "id": "deep_weave",
+        "name": "Deep Weave",
+        "description": "Blows land with a dull, distant thud you barely feel."
+      },
+      {
+        "id": "light_carry",
+        "name": "Light Carry",
+        "description": "It rides the shoulders so easily you forget the weight."
+      },
+      {
+        "id": "storm_shed",
+        "name": "Storm Shed",
+        "description": "Rain beads and runs off with a soft hiss."
+      }
+    ],
+    "flaws": [
+      {
+        "id": "pinch_seam",
+        "name": "Pinch Seam",
+        "description": "A seam bites at the shoulder with each step."
+      },
+      {
+        "id": "loud_plate",
+        "name": "Loud Plate",
+        "description": "It announces every movement with a tinny clank."
+      },
+      {
+        "id": "thin_guard",
+        "name": "Thin Guard",
+        "description": "One section gives a hollow ring when struck."
+      },
+      {
+        "id": "stiff_joint",
+        "name": "Stiff Joint",
+        "description": "An elbow plate grinds and resists when you reach."
+      }
+    ]
+  },
+  {
+    "id": "consumable",
+    "bonus_properties": [
+      {
+        "id": "clean_draught",
+        "name": "Clean Draught",
+        "description": "It goes down cool and bright, no bitter aftertaste."
+      },
+      {
+        "id": "potent_brew",
+        "name": "Potent Brew",
+        "description": "Warmth blooms through you the instant it touches your tongue."
+      },
+      {
+        "id": "lasting_savor",
+        "name": "Lasting Savor",
+        "description": "The effect lingers a beat longer than you expect."
+      },
+      {
+        "id": "settled_mix",
+        "name": "Settled Mix",
+        "description": "Perfectly blended — not a single grain settles at the bottom."
+      }
+    ],
+    "flaws": [
+      {
+        "id": "acrid_tang",
+        "name": "Acrid Tang",
+        "description": "It scorches the throat going down."
+      },
+      {
+        "id": "cloudy_settle",
+        "name": "Cloudy Settle",
+        "description": "A gritty sediment swirls at the bottom of the vial."
+      },
+      {
+        "id": "quick_fade",
+        "name": "Quick Fade",
+        "description": "The warmth drains away almost as fast as it came."
+      },
+      {
+        "id": "sour_note",
+        "name": "Sour Note",
+        "description": "A faint reek of spoilage clings to the cork."
+      }
+    ]
+  },
+  {
+    "id": "tool",
+    "bonus_properties": [
+      {
+        "id": "sure_grip",
+        "name": "Sure Grip",
+        "description": "The handle never slips, even when your palms are slick."
+      },
+      {
+        "id": "smooth_action",
+        "name": "Smooth Action",
+        "description": "Every joint moves with an oiled, silent ease."
+      },
+      {
+        "id": "true_set",
+        "name": "True Set",
+        "description": "It bites and holds on the first try, no fumbling."
+      },
+      {
+        "id": "worn_warmth",
+        "name": "Worn Warmth",
+        "description": "It feels broken-in already, like an old friend's hand."
+      }
+    ],
+    "flaws": [
+      {
+        "id": "slick_handle",
+        "name": "Slick Handle",
+        "description": "The grip turns in your hand at the worst moment."
+      },
+      {
+        "id": "gritty_joint",
+        "name": "Gritty Joint",
+        "description": "A grinding catch fights you every other stroke."
+      },
+      {
+        "id": "soft_head",
+        "name": "Soft Head",
+        "description": "The working edge dents and rounds far too soon."
+      },
+      {
+        "id": "loose_pin",
+        "name": "Loose Pin",
+        "description": "A pin works its way out with a thin, steady tick."
+      }
+    ]
+  },
+  {
+    "id": "enchantment",
+    "bonus_properties": [
+      {
+        "id": "steady_glow",
+        "name": "Steady Glow",
+        "description": "The ward holds a calm, unwavering hum beneath the surface."
+      },
+      {
+        "id": "deep_root",
+        "name": "Deep Root",
+        "description": "The magic settles in like it grew there, patient and sure."
+      },
+      {
+        "id": "clear_tone",
+        "name": "Clear Tone",
+        "description": "A single pure chime rings out when the power wakes."
+      },
+      {
+        "id": "warm_pulse",
+        "name": "Warm Pulse",
+        "description": "It answers your touch with a gentle, living warmth."
+      }
+    ],
+    "flaws": [
+      {
+        "id": "flicker_fault",
+        "name": "Flicker Fault",
+        "description": "The enchantment stutters, dimming and flaring at random."
+      },
+      {
+        "id": "cold_bleed",
+        "name": "Cold Bleed",
+        "description": "A faint chill leaks from it, raising the hair on your arm."
+      },
+      {
+        "id": "discordant_hum",
+        "name": "Discordant Hum",
+        "description": "An off-key drone scrapes at the edge of hearing."
+      },
+      {
+        "id": "shallow_bind",
+        "name": "Shallow Bind",
+        "description": "The magic sits loose on the surface, ready to slough away."
+      }
+    ]
+  },
+  {
+    "id": "ammunition",
+    "bonus_properties": [
+      {
+        "id": "true_flight",
+        "name": "True Flight",
+        "description": "It leaves the string with a clean, whistling line."
+      },
+      {
+        "id": "deep_bite",
+        "name": "Deep Bite",
+        "description": "It strikes home with a solid, satisfying thunk."
+      },
+      {
+        "id": "matched_set",
+        "name": "Matched Set",
+        "description": "Each one flies the same, drawn from a flawless batch."
+      },
+      {
+        "id": "keen_point",
+        "name": "Keen Point",
+        "description": "The tip splits the air with a high, thin hiss."
+      }
+    ],
+    "flaws": [
+      {
+        "id": "warped_shaft",
+        "name": "Warped Shaft",
+        "description": "It wobbles off-line with an audible flutter."
+      },
+      {
+        "id": "loose_fletch",
+        "name": "Loose Fletch",
+        "description": "A feather peels back mid-flight with a tearing buzz."
+      },
+      {
+        "id": "soft_tip",
+        "name": "Soft Tip",
+        "description": "The point crumples on impact instead of biting."
+      },
+      {
+        "id": "uneven_weight",
+        "name": "Uneven Weight",
+        "description": "It drops early, pulled down by a heavy, ill-cast head."
+      }
+    ]
+  }
+]
