@@ -34,3 +34,42 @@ h1 {
   line-height: var(--text-display-line-height);
   font-weight: 300;
 }
+
+/* Sticky (not fixed) so it sits in normal flow above the hero and never clips
+   it; transitions to a denser, bordered look once scrolled past the threshold
+   (NavBar toggles .navbar--scrolled post-hydration). */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition:
+    background 200ms ease,
+    border-color 200ms ease;
+}
+
+.navbar--scrolled {
+  background: var(--color-ink);
+  border-bottom-color: var(--color-slate);
+}
+
+.navbar__brand {
+  color: var(--color-hollow);
+  font-family: var(--font-display);
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line-height);
+  text-decoration: none;
+}
+
+.navbar__cta {
+  color: var(--color-bone);
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  text-decoration: none;
+}
