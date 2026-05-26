@@ -1,0 +1,164 @@
+/* Hero section + cinematic backdrop. Consumes the generated theme.css tokens
+   (--color-*, --font-*) directly — no --accent alias layer, so there's a single
+   source of truth and nothing to drift from the drift-guarded theme.css. */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-2xl) var(--space-lg);
+  background: var(--color-void);
+  text-align: center;
+}
+
+/* Full-bleed decorative layer behind the content. */
+.hero__backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* The "rift" — a slow vertical scar of accent glow down the centre. */
+.hero__backdrop::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -10%;
+  width: 1px;
+  height: 120%;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--color-hollow-faint) 30%,
+    var(--color-hollow-muted) 50%,
+    var(--color-hollow-faint) 70%,
+    transparent
+  );
+  opacity: 0.35;
+  filter: blur(0.6px);
+  animation: hero-rift-pulse 8s ease-in-out infinite;
+}
+
+/* The "bloom" — a faint radial glow behind the headline. */
+.hero__backdrop::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  transform: translate(-50%, -50%);
+  width: min(1100px, 90vw);
+  height: 700px;
+  background: radial-gradient(ellipse, var(--color-hollow-faint) 0%, transparent 60%);
+  opacity: 0.18;
+  filter: blur(40px);
+}
+
+@keyframes hero-rift-pulse {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Content sits above the backdrop and is constrained to a readable measure. */
+.hero__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  max-width: var(--max-content-width);
+}
+
+.hero__headline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 300;
+  /* Cinematic responsive display sizing — component-level presentation, larger
+     than the --text-display token's default for the page's hero moment. */
+  font-size: clamp(56px, 11vw, 168px);
+  line-height: 0.92;
+  letter-spacing: 0.01em;
+  color: var(--color-parchment);
+}
+
+.hero__headline em {
+  font-style: italic;
+  color: var(--color-bone);
+}
+
+.hero__subhead {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(20px, 2.4vw, 28px);
+  letter-spacing: 0.18em;
+  text-transform: lowercase;
+  color: var(--color-ash);
+}
+
+.hero__pitch {
+  margin: var(--space-md) 0 0;
+  max-width: 38ch;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--text-body-lg-size);
+  line-height: var(--text-body-lg-line-height);
+  color: var(--color-bone);
+}
+
+.hero__cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  justify-content: center;
+  margin-top: var(--space-lg);
+}
+
+.hero__cta {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 22px;
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid var(--color-charcoal);
+  color: var(--color-parchment);
+  transition:
+    border-color 200ms ease,
+    color 200ms ease,
+    background 200ms ease;
+}
+
+.hero__cta--accent {
+  border-color: var(--color-hollow-muted);
+  color: var(--color-hollow);
+  background: color-mix(in srgb, var(--color-hollow) 4%, transparent);
+}
+
+.hero__cta--accent:hover {
+  border-color: var(--color-hollow);
+  background: color-mix(in srgb, var(--color-hollow) 8%, transparent);
+  box-shadow: 0 0 24px -8px var(--color-hollow-faint);
+}
+
+/* Honor reduced-motion: freeze the rift pulse but keep the rift (and all content)
+   fully visible — motion is removed, information is not. */
+@media (prefers-reduced-motion: reduce) {
+  .hero__backdrop::before {
+    animation: none;
+    opacity: 0.35;
+  }
+}
