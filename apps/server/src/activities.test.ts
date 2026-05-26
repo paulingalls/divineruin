@@ -75,7 +75,8 @@ describe("handleCreateActivity", () => {
     // iron_sword needs 1 iron_ingot + 1 leather_strip; player owns exactly 1 each,
     // so both stacks deplete to 0 and are deleted.
     mockQueryResults = [
-      [{ location_id: "millhaven" }], // player location (story-005 gate capture)
+      [{ location_id: "millhaven", class: "warrior" }], // player location + class
+      [], // portable-lab ownership (none)
       [{ workspace_type: "forge" }], // accessibleWorkspaceTier
       [{ tier: "expert" }], // skill_advancement crafting tier
       [], // lock async_activities (FOR UPDATE)
@@ -104,13 +105,17 @@ describe("handleCreateActivity", () => {
     expect(body.activity_id).toStartWith("activity_");
     expect(body.status).toBe("in_progress");
     expect(body.resolve_at_estimate).toBeTruthy();
+    // A normal craft stamps its natural slot so countActiveBySlot buckets it as crafting.
+    const insert = capturedQueries.find((q) => q.sql.includes("INSERT INTO async_activities"));
+    expect((insert!.values[2] as { slot: string }).slot).toBe("crafting");
   });
 
   test("captures resolution gate params on crafting create (story-005)", async () => {
     // The reads (player location, accessible workspaces, crafting tier) happen
     // before the txn, so they lead the query sequence.
     mockQueryResults = [
-      [{ location_id: "millhaven" }], // player location
+      [{ location_id: "millhaven", class: "warrior" }], // player location + class
+      [], // portable-lab ownership (none)
       [{ workspace_type: "forge" }], // accessibleWorkspaceTier -> {field, forge}
       [{ tier: "expert" }], // skill_advancement crafting tier
       [], // lock async_activities (FOR UPDATE)
@@ -147,7 +152,8 @@ describe("handleCreateActivity", () => {
     // healing_poultice is a FIELD recipe, so field-only access passes the story-006
     // workspace gate while still exercising the unrented/untrained capture defaults.
     mockQueryResults = [
-      [], // player location -> undefined -> "unknown"
+      [], // player location -> undefined -> "unknown", class undefined
+      [], // portable-lab ownership (none)
       [], // accessibleWorkspaceTier: no rentals -> {field}
       [], // skill_advancement: no row -> "untrained"
       [], // lock async_activities
@@ -191,7 +197,8 @@ describe("handleCreateActivity", () => {
 
   test("rejects when slot is full", async () => {
     mockQueryResults = [
-      [{ location_id: "millhaven" }], // player location (story-005 gate capture)
+      [{ location_id: "millhaven", class: "warrior" }], // player location + class
+      [], // portable-lab ownership (none)
       [{ workspace_type: "forge" }], // accessibleWorkspaceTier
       [{ tier: "expert" }], // skill_advancement crafting tier
       [], // lock async_activities (FOR UPDATE)
@@ -256,6 +263,7 @@ describe("handleCreateActivity", () => {
     // The gate must reject BEFORE the txn — before any material check / consume / insert.
     mockQueryResults = [
       [{ location_id: "millhaven", class: "warrior" }], // player location + class
+      [], // portable-lab ownership (none)
       [], // accessibleWorkspaceTier: no rentals -> field only
       // skill read + txn never reached — the workspace gate short-circuits first.
     ];
@@ -267,14 +275,86 @@ describe("handleCreateActivity", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain("no access to a forge workspace");
-    // Nothing was consumed or inserted.
-    expect(capturedQueries.some((q) => q.sql.includes("player_inventory"))).toBe(false);
+    // Rejected before the txn: no FOR UPDATE locks (activity/material), no material
+    // consumption, no insert. (The lab-ownership SELECT is a pre-txn read and is fine.)
+    expect(capturedQueries.some((q) => q.sql.includes("FOR UPDATE"))).toBe(false);
     expect(capturedQueries.some((q) => q.sql.includes("INSERT INTO async_activities"))).toBe(false);
+  });
+
+  // story-006 AC#1/#2: the Artificer Portable-Lab slot exception, wired from the REST
+  // path. healing_poultice is a field recipe so the workspace gate always passes,
+  // isolating the slot logic.
+  test("Artificer with a Portable Lab crafts on the training slot when crafting is full (AC#1)", async () => {
+    mockQueryResults = [
+      [{ location_id: "millhaven", class: "artificer" }], // player location + class
+      [{ owned: 1 }], // owns a Portable Lab
+      [], // accessibleWorkspaceTier rentals (lab grants workshop/lab; field recipe anyway)
+      [], // skill_advancement -> untrained
+      [], // lock async_activities
+      [], // lock training_activities
+      [{ training: 0, crafting: 1, companion: 0 }], // crafting slot full, training empty
+      [{ item_id: "herb_bundle", quantity: 1 }], // material check
+      [], // delete herb_bundle
+      [], // insert activity
+    ];
+    const req = makeRequest("POST", "/api/activities", {
+      type: "crafting",
+      parameters: { recipe_id: "healing_poultice" },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(200);
+    const insert = capturedQueries.find((q) => q.sql.includes("INSERT INTO async_activities"));
+    expect(insert).toBeDefined();
+    // The borrowed-training-slot craft must STAMP slot='training' so countActiveBySlot
+    // buckets it toward training, not crafting — otherwise the Artificer could stack a
+    // 2nd craft AND a training activity over capacity (ADR 0005, debt 95de7fa141df).
+    const data = insert!.values[2] as { activity_type: string; slot: string };
+    expect(data.activity_type).toBe("crafting");
+    expect(data.slot).toBe("training");
+  });
+
+  test("non-Artificer with a full crafting slot is rejected (AC#2)", async () => {
+    mockQueryResults = [
+      [{ location_id: "millhaven", class: "warrior" }],
+      [], // no lab
+      [], // workspace (field recipe)
+      [], // skill
+      [], // lock async_activities
+      [], // lock training_activities
+      [{ training: 0, crafting: 1, companion: 0 }], // crafting full
+    ];
+    const req = makeRequest("POST", "/api/activities", {
+      type: "crafting",
+      parameters: { recipe_id: "healing_poultice" },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toContain("Crafting slot is full");
+  });
+
+  test("Artificer WITHOUT a Portable Lab with a full crafting slot is rejected (AC#2)", async () => {
+    mockQueryResults = [
+      [{ location_id: "millhaven", class: "artificer" }],
+      [], // no lab — the exception does not apply
+      [], // workspace (field recipe)
+      [], // skill
+      [], // lock async_activities
+      [], // lock training_activities
+      [{ training: 0, crafting: 1, companion: 0 }], // crafting full
+    ];
+    const req = makeRequest("POST", "/api/activities", {
+      type: "crafting",
+      parameters: { recipe_id: "healing_poultice" },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toContain("Crafting slot is full");
   });
 
   test("rejects missing materials", async () => {
     mockQueryResults = [
-      [{ location_id: "millhaven" }], // player location (story-005 gate capture)
+      [{ location_id: "millhaven", class: "warrior" }], // player location + class
+      [], // portable-lab ownership (none)
       [{ workspace_type: "forge" }], // accessibleWorkspaceTier
       [{ tier: "expert" }], // skill_advancement crafting tier
       [], // lock async_activities (FOR UPDATE)
@@ -296,7 +376,8 @@ describe("handleCreateActivity", () => {
   test("rejects when owned quantity is below the required quantity", async () => {
     // reinforced_shield needs 2 iron_ingot; player owns only 1.
     mockQueryResults = [
-      [{ location_id: "millhaven" }], // player location (story-005 gate capture)
+      [{ location_id: "millhaven", class: "warrior" }], // player location + class
+      [], // portable-lab ownership (none)
       [{ workspace_type: "forge" }], // accessibleWorkspaceTier
       [{ tier: "expert" }], // skill_advancement crafting tier
       [], // lock async_activities (FOR UPDATE)
@@ -322,7 +403,8 @@ describe("handleCreateActivity", () => {
     // reinforced_shield needs 2 iron_ingot + 1 leather_strip; player owns 3 iron, 1 leather.
     // iron: 3-2=1 remaining -> UPDATE; leather: 1-1=0 -> DELETE.
     mockQueryResults = [
-      [{ location_id: "millhaven" }], // player location (story-005 gate capture)
+      [{ location_id: "millhaven", class: "warrior" }], // player location + class
+      [], // portable-lab ownership (none)
       [{ workspace_type: "forge" }], // accessibleWorkspaceTier
       [{ tier: "expert" }], // skill_advancement crafting tier
       [], // lock async_activities (FOR UPDATE)
@@ -433,6 +515,10 @@ describe("handleCreateActivity", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { activity_id: string; status: string };
     expect(body.status).toBe("in_progress");
+    // Errands stamp slot='companion' (the ActivitySlot value, not 'companion_errand');
+    // countActiveBySlot's companion bucket matches both forms.
+    const insert = capturedQueries.find((q) => q.sql.includes("INSERT INTO async_activities"));
+    expect((insert!.values[2] as { slot: string }).slot).toBe("companion");
   });
 
   test("rejects errand without errand_type", async () => {
