@@ -15,10 +15,12 @@ test.describe("Marketing chrome (apps/web)", () => {
     // Chrome is SEO-visible in the raw response, not injected only after
     // hydration. NavBar starts unscrolled (the scrolled state is a
     // post-hydration, client-only concern), so the prerendered markup must
-    // carry plain `class="navbar"` and never the scrolled modifier.
-    expect(body).toContain('<nav class="navbar">');
+    // carry plain `class="navbar"` and never the scrolled modifier. Matched
+    // with a regex (like web-home.e2e.ts) so adding an attribute to <nav>/
+    // <footer> later doesn't break a test that should only care about class.
+    expect(body).toMatch(/<nav\b[^>]*\bclass="navbar"/);
     expect(body).not.toContain("navbar--scrolled");
-    expect(body).toContain('<footer class="footer">');
+    expect(body).toMatch(/<footer\b[^>]*\bclass="footer"/);
   });
 
   test("NavBar gains the scrolled state once scrolled past 40px", async ({
