@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Divine Ruin — The Sundered Veil</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  /* Initial state to prevent FOUC */
+  html, body { background: #0A0A0B; color: #B8B5AD; }
+  #root { min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<template id="__bundler_thumbnail" data-bg-color="#0A0A0B">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <!-- Vertical rift glow -->
+    <defs>
+      <linearGradient id="rift" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#134E4A" stop-opacity="0" />
+        <stop offset="30%" stop-color="#1A8A7A" stop-opacity="0.7" />
+        <stop offset="50%" stop-color="#2DD4BF" stop-opacity="1" />
+        <stop offset="70%" stop-color="#1A8A7A" stop-opacity="0.7" />
+        <stop offset="100%" stop-color="#134E4A" stop-opacity="0" />
+      </linearGradient>
+      <radialGradient id="bloom" cx="50%" cy="50%" r="40%">
+        <stop offset="0%" stop-color="#134E4A" stop-opacity="0.35" />
+        <stop offset="100%" stop-color="#134E4A" stop-opacity="0" />
+      </radialGradient>
+    </defs>
+    <rect width="1200" height="800" fill="#0A0A0B" />
+    <ellipse cx="600" cy="400" rx="500" ry="300" fill="url(#bloom)" />
+    <rect x="598" y="80" width="4" height="640" fill="url(#rift)" />
+    <text x="600" y="380" text-anchor="middle"
+      font-family="Cormorant Garamond, Georgia, serif" font-weight="300"
+      font-size="120" fill="#D4D0C8" letter-spacing="6">DIVINE</text>
+    <text x="600" y="500" text-anchor="middle"
+      font-family="Cormorant Garamond, Georgia, serif" font-weight="300"
+      font-style="italic" font-size="120" fill="#B8B5AD" letter-spacing="6">Ruin</text>
+    <text x="600" y="600" text-anchor="middle"
+      font-family="IBM Plex Mono, monospace" font-size="22"
+      fill="#6B6B78" letter-spacing="10">THE SUNDERED VEIL</text>
+  </svg>
+</template>
+
+<script>
+  // Silence benign ResizeObserver loop warnings (browser quirk fired by the preview host).
+  (function(){
+    const swallow = (msg) => msg && String(msg).includes('ResizeObserver loop');
+    window.addEventListener('error', (e) => {
+      if (swallow(e.message)) { e.stopImmediatePropagation(); e.preventDefault(); return false; }
+    }, true);
+    const origErr = window.onerror;
+    window.onerror = function(msg, src, ln, col, err) {
+      if (swallow(msg)) return true;
+      return origErr ? origErr.apply(this, arguments) : false;
+    };
+    const origConsoleError = console.error;
+    console.error = function(...args) {
+      if (args.length && swallow(args[0])) return;
+      return origConsoleError.apply(this, args);
+    };
+  })();
+</script>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="hero.jsx"></script>
+<script type="text/babel" src="sections-1.jsx"></script>
+<script type="text/babel" src="sections-2.jsx"></script>
+<script type="text/babel" src="app.jsx"></script>
+</body>
+</html>

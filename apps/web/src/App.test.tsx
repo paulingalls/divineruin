@@ -2,20 +2,25 @@ import { test, expect } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { App } from "./App.tsx";
 
-test("App renders the hero heading", () => {
+// The shared App is prerendered (entry-server) and hydrated (client), so this
+// renders it with no DOM and asserts the above-fold sections compose in order
+// under the NavBar/Footer chrome. Live behavior (scroll reveal, audio playback)
+// is covered by e2e/specs/web-above-fold.e2e.ts on the served build.
+
+test("composes the chrome + above-fold sections in order", () => {
   const html = renderToStaticMarkup(<App />);
-  expect(html).toContain("Divine Ruin");
+  // NavBar -> Hero (header.hero) -> AudioDemo (.audio-demo) -> Premise
+  // (#premise) -> Footer, in document order.
+  expect(html).toMatch(
+    /<nav[\s\S]*?<header[^>]*class="hero"[\s\S]*?class="audio-demo"[\s\S]*?id="premise"[\s\S]*?<footer/,
+  );
 });
 
-test("App invites visitors to the waitlist", () => {
+test("renders the hero headline as the page's heading", () => {
   const html = renderToStaticMarkup(<App />);
-  expect(html).toContain("waitlist");
+  expect(html).toMatch(/<h1[^>]*>Divine<br\/?><em>Ruin<\/em>/);
 });
 
-test("App mounts the NavBar and Footer chrome around the hero", () => {
-  const html = renderToStaticMarkup(<App />);
-  expect(html).toContain("<nav");
-  expect(html).toContain("<footer");
-  // The hero <main> still sits between the chrome.
-  expect(html).toMatch(/<nav[\s\S]*<main>[\s\S]*<\/main>[\s\S]*<footer/);
+test("renders hydration-safe markup (no window/DOM access during render)", () => {
+  expect(() => renderToStaticMarkup(<App />)).not.toThrow();
 });

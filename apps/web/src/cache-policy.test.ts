@@ -19,3 +19,11 @@ test("stable-named hand-authored files revalidate (index.html, fonts.css)", () =
   expect(cacheControlFor("index.html")).toBe("no-cache");
   expect(cacheControlFor("fonts/fonts.css")).toBe("no-cache");
 });
+
+test("the audio sample revalidates (stable name, lazily fetched)", () => {
+  // dm-sample.mp3 keeps its name across rebuilds (not content-hashed), so an
+  // in-place swap must not stay behind a 1y immutable cache. Unlike the woff2
+  // (fetched on every page load), the audio is preload="none" — only fetched on
+  // play — so revalidating it costs nothing at page load.
+  expect(cacheControlFor("audio/dm-sample.mp3")).toBe("no-cache");
+});
