@@ -7,29 +7,42 @@ import { Hero } from "./Hero.tsx";
 // (SEO/LCP — content visible without JS) and proves Hero is hydration-safe (a
 // window/Date access during render would throw here). Live styling + the
 // reduced-motion backdrop are CSS-only and covered by the story-005 capstone E2E.
+// Copy is verbatim from the mockup source (docs/mockups/source/hero.jsx).
 
 test("renders the brand headline with the italic 'Ruin' display treatment", () => {
   const html = renderToStaticMarkup(<Hero />);
-  // DOM text is the SEO-stable brand "Divine Ruin"; the <em> carries the mockup's
-  // italic styling on "Ruin" without changing the heading's text content.
+  // Headline is "Divine" then a break then italic "Ruin", per the mockup.
   expect(html).toContain("<h1");
-  expect(html).toMatch(/Divine\s*<em>Ruin<\/em>/);
+  expect(html).toMatch(/Divine<br\/?><em>Ruin<\/em>/);
 });
 
-test("renders the subhead and pitch copy", () => {
+test("renders the eyebrow meta — setting line and playtest status", () => {
+  const html = renderToStaticMarkup(<Hero />);
+  expect(html).toContain("Aethos · Year 30 of the Sundered Veil");
+  expect(html).toContain("Pre-alpha · Closed playtest");
+});
+
+test("renders the subhead and the real pitch copy", () => {
   const html = renderToStaticMarkup(<Hero />);
   expect(html).toContain("the sundered veil");
-  expect(html).toContain("An audio-first AI tabletop RPG. Speak, and the world answers.");
+  expect(html).toContain(
+    "A fantasy RPG you play with your voice. A world tended by ten gods, threatened by something that should not exist, and narrated to you — in real time — by an AI Dungeon Master who voices every character, remembers every choice, and never reads from a script.",
+  );
 });
 
-test("renders the primary waitlist CTA pointing at the in-page target", () => {
+test("renders both CTAs with the mockup labels and functional targets", () => {
   const html = renderToStaticMarkup(<Hero />);
-  expect(html).toMatch(/<a[^>]+href="#waitlist"[^>]*>Join the waitlist<\/a>/);
+  // Primary -> #waitlist (lands M5; shared tracked anchor). Secondary "Enter
+  // Aethos" -> #premise, a functional scroll-to-content anchor in M3.
+  expect(html).toMatch(/<a[^>]+href="#waitlist"[^>]*>[\s\S]*?Request Early Access/);
+  expect(html).toMatch(/<a[^>]+href="#premise"[^>]*>[\s\S]*?Enter Aethos/);
 });
 
-test("does not render the deferred 'Watch cinematic' CTA (scope guard)", () => {
+test("renders the bottom meta — voice-first / headphones / scroll cue", () => {
   const html = renderToStaticMarkup(<Hero />);
-  expect(html.toLowerCase()).not.toContain("cinematic");
+  expect(html).toContain("A voice-first audio RPG");
+  expect(html).toContain("Headphones recommended");
+  expect(html).toContain("Scroll");
 });
 
 test("renders hydration-safe markup (no window access during render)", () => {

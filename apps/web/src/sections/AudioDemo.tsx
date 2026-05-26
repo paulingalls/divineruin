@@ -53,7 +53,7 @@ export function AudioDemo() {
         </span>
       </button>
       <div className="audio-demo__info">
-        <span className="audio-demo__title">Hear the Dungeon Master</span>
+        <span className="audio-demo__title">Hear a session — “The Greyvale Road”</span>
         <div className="audio-demo__waveform" aria-hidden="true">
           {WAVEFORM_BARS.map((height, i) => (
             <span
