@@ -1,10 +1,6 @@
-/* Minimal theme stub. The shared design-tokens package (Milestone 2) replaces
-   these placeholder values with the real palette/type scale as CSS variables. */
-:root {
-  --color-bg: #0a0a0b;
-  --color-fg: #f5f5f4;
-  --color-accent: #2dd4bf;
-}
+/* App styles. The palette, type scale, and font stacks come from theme.css
+   (generated from @divineruin/design-tokens) and fonts.css (self-hosted faces);
+   this file only consumes those custom properties. */
 
 * {
   margin: 0;
@@ -12,23 +8,92 @@
 }
 
 body {
-  background: var(--color-bg);
-  color: var(--color-fg);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--color-void);
+  color: var(--color-bone);
+  font-family: var(--font-body);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
   min-height: 100vh;
 }
 
 main {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-md);
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  padding: 2rem;
+  padding: var(--space-2xl);
   text-align: center;
 }
 
 h1 {
-  color: var(--color-accent);
+  color: var(--color-hollow);
+  font-family: var(--font-display);
+  font-size: var(--text-display-size);
+  line-height: var(--text-display-line-height);
+  font-weight: 300;
+}
+
+/* Sticky (not fixed) so it sits in normal flow above the hero and never clips
+   it; transitions to a denser, bordered look once scrolled past the threshold
+   (NavBar toggles .navbar--scrolled post-hydration). */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition:
+    background 200ms ease,
+    border-color 200ms ease;
+}
+
+.navbar--scrolled {
+  background: var(--color-ink);
+  border-bottom-color: var(--color-slate);
+}
+
+.navbar__brand {
+  color: var(--color-hollow);
+  font-family: var(--font-display);
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line-height);
+  text-decoration: none;
+}
+
+.navbar__cta {
+  color: var(--color-bone);
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  text-decoration: none;
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  align-items: center;
+  padding: var(--space-2xl) var(--space-lg);
+  border-top: 1px solid var(--color-slate);
+  color: var(--color-ash);
+  text-align: center;
+}
+
+.footer__brand {
+  color: var(--color-bone);
+  font-family: var(--font-display);
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line-height);
+}
+
+.footer__tagline {
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  line-height: var(--text-system-line-height);
 }

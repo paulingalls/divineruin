@@ -14,11 +14,14 @@ test.describe("Marketing home page (apps/web)", () => {
     expect(res.status()).toBe(200);
     const body = await res.text();
     // Real content lives *immediately inside* #root in the raw response —
-    // SEO-visible, not an empty client-rendered shell. Anchoring on the
-    // prerendered <main><h1>Divine Ruin</h1> proves the markup is nested in
-    // #root, so an empty-root regression (or a stray "Divine Ruin" in <title>/
-    // a footer) can't satisfy this vacuously.
-    expect(body).toMatch(/<div id="root"><main>.*?<h1>Divine Ruin<\/h1>/s);
+    // SEO-visible, not an empty client-rendered shell. The chrome (story-003)
+    // mounts <nav> first, then the hero <main><h1>Divine Ruin</h1>. Anchoring
+    // on #root → <nav> → <main><h1> proves the markup is nested in #root and
+    // prerendered (not a client-only shell), so an empty-root regression (or a
+    // stray "Divine Ruin" in <title>/the footer) can't satisfy this vacuously.
+    expect(body).toMatch(
+      /<div id="root"><nav[\s\S]*?<main><h1>Divine Ruin<\/h1>/s,
+    );
   });
 
   test("hydrates cleanly with no console errors", async ({ page }) => {
