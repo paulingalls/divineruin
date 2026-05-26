@@ -9,9 +9,18 @@ const APP_DIR = join(import.meta.dir, "..");
 const ROOT_DIV = /<div id="root">\s*<\/div>/;
 const FONTS_SRC = join(APP_DIR, "src", "fonts");
 const AUDIO_SRC = join(APP_DIR, "src", "audio");
-// Above-the-fold faces to preload (display + body, regular weight). Kept small —
-// over-preloading competes with the LCP image/markup for bandwidth.
-export const FONT_PRELOADS = ["cormorant-garamond-300.woff2", "crimson-pro-400.woff2"];
+// Above-the-fold faces the Hero applies, preloaded so the LCP text doesn't FOUT:
+// the headline "Divine" (Cormorant Garamond 300) + its italic <em> "Ruin" (the
+// largest glyphs, CG 300 italic) + the italic subhead "the sundered veil" (CG
+// 300 italic — same face, already in the set) + the pitch (Crimson Pro 300).
+// Kept small — the mono framing chrome (meta/cta/footer) is deliberately not
+// preloaded, as over-preloading competes with the LCP markup for bandwidth.
+// prerender.test.ts pins this list to the faces Hero.css actually applies.
+export const FONT_PRELOADS = [
+  "cormorant-garamond-300.woff2",
+  "cormorant-garamond-300-italic.woff2",
+  "crimson-pro-300.woff2",
+];
 
 // The self-hosted fonts deliberately bypass Bun's bundler (which inlines CSS
 // url() as base64). We copy src/fonts/ verbatim into dist/fonts/ and inject the

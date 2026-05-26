@@ -14,13 +14,17 @@ test.describe("Marketing theme + fonts (apps/web)", () => {
     const res = await request.get(`${WEB}/`);
     expect(res.status()).toBe(200);
     const body = await res.text();
-    // The two above-the-fold faces (display@300, body@400) are <link rel=preload>ed
-    // so the LCP text doesn't wait on the JS/CSS bundle. Regex-matched to stay
-    // robust to attribute ordering.
+    // The hero's above-the-fold faces are <link rel=preload>ed so the LCP text
+    // doesn't wait on the JS/CSS bundle: the headline (Cormorant Garamond 300) +
+    // its italic <em> "Ruin" (CG 300 italic) + the pitch (Crimson Pro 300).
+    // Regex-matched to stay robust to attribute ordering.
     expect(body).toMatch(
       /<link[^>]+rel="preload"[^>]+href="\/fonts\/cormorant-garamond-300\.woff2"/,
     );
-    expect(body).toMatch(/<link[^>]+rel="preload"[^>]+href="\/fonts\/crimson-pro-400\.woff2"/);
+    expect(body).toMatch(
+      /<link[^>]+rel="preload"[^>]+href="\/fonts\/cormorant-garamond-300-italic\.woff2"/,
+    );
+    expect(body).toMatch(/<link[^>]+rel="preload"[^>]+href="\/fonts\/crimson-pro-300\.woff2"/);
     expect(body).toMatch(/<link[^>]+rel="stylesheet"[^>]+href="\/fonts\/fonts\.css"/);
   });
 
