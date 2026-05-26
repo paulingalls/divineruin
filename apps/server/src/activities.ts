@@ -21,7 +21,15 @@ import { startTrainingCycle } from "./training_state_machine.ts";
 // is NOT stripped by mark_resolved, so it persists verbatim on resolved rows — the
 // client only needs narration_audio_url + narration_text. Add any future worker-only
 // field here (concern 06edbc8f3eef).
-const INTERNAL_ONLY_FIELDS = ["resolving_at", "resolve_attempts", "narration_segments"] as const;
+// 'slot' is the internal slot-accounting marker (the slot the activity consumes;
+// stamped 'training' for an Artificer borrowed-slot craft). countActiveBySlot reads it
+// from the DB; clients have no use for it and key off activity_type.
+const INTERNAL_ONLY_FIELDS = [
+  "resolving_at",
+  "resolve_attempts",
+  "narration_segments",
+  "slot",
+] as const;
 
 /**
  * Sanitize an async-activity row on the way out to clients: normalize the
@@ -45,9 +53,13 @@ async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<Slot
     SELECT
       COALESCE(SUM(CASE WHEN src = 'training' THEN 1 ELSE 0 END), 0)::int AS training,
       COALESCE(SUM(CASE WHEN src = 'crafting' THEN 1 ELSE 0 END), 0)::int AS crafting,
-      COALESCE(SUM(CASE WHEN src = 'companion_errand' THEN 1 ELSE 0 END), 0)::int AS companion
+      COALESCE(SUM(CASE WHEN src IN ('companion', 'companion_errand') THEN 1 ELSE 0 END), 0)::int AS companion
     FROM (
-      SELECT data->>'activity_type' AS src
+      -- Bucket by the slot actually consumed. The Artificer Portable-Lab exception
+      -- stamps data.slot='training' on a craft that borrows the training slot, so it
+      -- must count toward training, not crafting (ADR 0005, debt 95de7fa141df).
+      -- COALESCE to activity_type keeps pre-stamp legacy rows behaving unchanged.
+      SELECT COALESCE(data->>'slot', data->>'activity_type') AS src
       FROM async_activities
       WHERE player_id = ${playerId} AND data->>'status' IN ('in_progress', 'resolving')
       UNION ALL
@@ -162,6 +174,10 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
     let durationMax: number;
     let activityParams: Record<string, unknown>;
     let materialsToConsume: string[] = [];
+    // Slot-validation inputs for the Artificer exception (story-006); set in the
+    // crafting branch, read at the shared validateSlotAvailability call in the txn.
+    let archetype: string | undefined;
+    let hasPortableLab = false;
 
     if (body.type === "crafting") {
       const recipeId = params.recipe_id as string | undefined;
@@ -184,11 +200,38 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       // outside the txn (parity with the in-memory recipe fetch); mirrors the
       // Python producer (crafting_tools.py) for a byte-identical parameters shape.
       // workspace_access is sorted so the stored JSONB is deterministic.
-      const playerRows = await sql<{ location_id: string | null }[]>`
-        SELECT data->>'location_id' AS location_id FROM players WHERE player_id = ${playerId}
+      const playerRows = await sql<{ location_id: string | null; class: string | null }[]>`
+        SELECT data->>'location_id' AS location_id, data->>'class' AS class
+        FROM players WHERE player_id = ${playerId}
       `;
       const locationId = playerRows[0]?.location_id ?? "unknown";
-      const workspaceAccess = [...(await accessibleWorkspaceTier(playerId, locationId))].sort();
+      archetype = playerRows[0]?.class ?? undefined;
+
+      // Artificer Portable-Lab ownership (story-006): ONE inventory read, used for both
+      // the workspace grant (accessibleWorkspaceTier) and the slot exception
+      // (validateSlotAvailability). A real source — false until the lab becomes craftable
+      // (M5.4); honest wiring of ADR 0005's seam, not a hardcoded false.
+      const labRows = await sql<{ owned: number }[]>`
+        SELECT 1 AS owned FROM player_inventory
+        WHERE player_id = ${playerId} AND item_id = 'artificers_portable_lab'
+          AND COALESCE((data->>'quantity')::int, 1) >= 1
+        LIMIT 1
+      `;
+      hasPortableLab = labRows.length > 0;
+      const workspaceAccess = [
+        ...(await accessibleWorkspaceTier(playerId, locationId, { hasPortableLab })),
+      ].sort();
+
+      // Workspace gate (story-006, AC#3): reject before the txn — before any material
+      // consumption — when the recipe's required workspace is not accessible. Exact-type
+      // membership, matching the agent-tool pre-flight Check 3 (crafting_gates.workspace_accessible).
+      if (!workspaceAccess.includes(recipe.workspace_required)) {
+        return Response.json(
+          { error: `no access to a ${recipe.workspace_required} workspace` },
+          { status: 400 },
+        );
+      }
+
       // Mirror Python get_single_skill_advancement: default to "untrained" when
       // the player has no crafting skill_advancement row.
       const skillRows = await sql<{ tier: string }[]>`
@@ -256,9 +299,14 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         FOR UPDATE
       `;
       const slotCounts = await countActiveBySlot(playerId, tx);
-      // archetype/hasPortableLab intentionally omitted: the Artificer
-      // crafting-on-training-slot exception is deferred to Phase 5 (see ADR 0005).
-      const slotCheck = validateSlotAvailability(slotCounts, activityType);
+      // Artificer Portable-Lab exception (story-006, ADR 0005): an Artificer who owns
+      // a Portable Lab may craft on the training slot when the crafting slot is full.
+      const slotCheck = validateSlotAvailability(
+        slotCounts,
+        activityType,
+        archetype,
+        hasPortableLab,
+      );
       if (!slotCheck.valid) {
         return { error: slotCheck.error! } as const;
       }
@@ -317,6 +365,13 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       const data = {
         status: "in_progress",
         activity_type: activityType,
+        // The slot actually consumed. Normally === activityType's natural slot, but
+        // the Artificer Portable-Lab exception borrows the training slot for a craft
+        // (slotCheck.slot === "training"). countActiveBySlot buckets by this field
+        // (COALESCE to activity_type for legacy rows) so a borrowed-slot craft
+        // consumes the training slot and blocks a later training activity (ADR 0005,
+        // debt 95de7fa141df).
+        slot: slotCheck.slot,
         start_time: now.toISOString(),
         duration_min_seconds: durationMin,
         duration_max_seconds: durationMax,
