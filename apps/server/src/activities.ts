@@ -189,6 +189,17 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       `;
       const locationId = playerRows[0]?.location_id ?? "unknown";
       const workspaceAccess = [...(await accessibleWorkspaceTier(playerId, locationId))].sort();
+
+      // Workspace gate (story-006, AC#3): reject before the txn — before any material
+      // consumption — when the recipe's required workspace is not accessible. Exact-type
+      // membership, matching the agent-tool pre-flight Check 3 (crafting_gates.workspace_accessible).
+      if (!workspaceAccess.includes(recipe.workspace_required)) {
+        return Response.json(
+          { error: `no access to a ${recipe.workspace_required} workspace` },
+          { status: 400 },
+        );
+      }
+
       // Mirror Python get_single_skill_advancement: default to "untrained" when
       // the player has no crafting skill_advancement row.
       const skillRows = await sql<{ tier: string }[]>`

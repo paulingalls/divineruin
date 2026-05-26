@@ -144,6 +144,8 @@ describe("handleCreateActivity", () => {
   });
 
   test("defaults workspace_access to ['field'] and crafting_tier to 'untrained' when unrented/untrained (story-005)", async () => {
+    // healing_poultice is a FIELD recipe, so field-only access passes the story-006
+    // workspace gate while still exercising the unrented/untrained capture defaults.
     mockQueryResults = [
       [], // player location -> undefined -> "unknown"
       [], // accessibleWorkspaceTier: no rentals -> {field}
@@ -151,18 +153,14 @@ describe("handleCreateActivity", () => {
       [], // lock async_activities
       [], // lock training_activities
       [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
-      [
-        { item_id: "iron_ingot", quantity: 1 },
-        { item_id: "leather_strip", quantity: 1 },
-      ], // material check
-      [], // delete iron_ingot
-      [], // delete leather_strip
+      [{ item_id: "herb_bundle", quantity: 1 }], // material check
+      [], // delete herb_bundle (depleted)
       [], // insert activity
     ];
 
     const req = makeRequest("POST", "/api/activities", {
       type: "crafting",
-      parameters: { recipe_id: "iron_sword" },
+      parameters: { recipe_id: "healing_poultice" },
     });
     const res = await handleCreateActivity(req, "player_1");
     expect(res.status).toBe(200);
@@ -251,6 +249,27 @@ describe("handleCreateActivity", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain("Unknown recipe");
+  });
+
+  test("rejects crafting when the required workspace is inaccessible (story-006)", async () => {
+    // iron_sword requires a forge; the player has only Field access (no rentals).
+    // The gate must reject BEFORE the txn — before any material check / consume / insert.
+    mockQueryResults = [
+      [{ location_id: "millhaven", class: "warrior" }], // player location + class
+      [], // accessibleWorkspaceTier: no rentals -> field only
+      // skill read + txn never reached — the workspace gate short-circuits first.
+    ];
+    const req = makeRequest("POST", "/api/activities", {
+      type: "crafting",
+      parameters: { recipe_id: "iron_sword" },
+    });
+    const res = await handleCreateActivity(req, "player_1");
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain("no access to a forge workspace");
+    // Nothing was consumed or inserted.
+    expect(capturedQueries.some((q) => q.sql.includes("player_inventory"))).toBe(false);
+    expect(capturedQueries.some((q) => q.sql.includes("INSERT INTO async_activities"))).toBe(false);
   });
 
   test("rejects missing materials", async () => {
