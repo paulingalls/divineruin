@@ -24,9 +24,12 @@ const playerWarrior = {
 };
 const forgeRental = { match: "FROM workspace_rentals", result: [{ workspace_type: "forge" }] };
 const skillExpert = { match: "FROM skill_advancement", result: [{ tier: "expert" }] };
-const slotsEmpty = { match: "AS training", result: [{ training: 0, crafting: 0, companion: 0 }] };
+// Match on load-bearing SQL, not cosmetic aliases: countActiveBySlot is the only
+// query bucketing on `data->>'slot'`, and the material check the only one with an
+// `item_id IN` clause — renaming an `AS` alias can't silently unmatch these.
+const slotsEmpty = { match: "data->>'slot'", result: [{ training: 0, crafting: 0, companion: 0 }] };
 const slotsCraftingFull = {
-  match: "AS training",
+  match: "data->>'slot'",
   result: [{ training: 0, crafting: 1, companion: 0 }],
 };
 
@@ -48,7 +51,7 @@ describe("handleCreateActivity", () => {
       skillExpert,
       slotsEmpty,
       {
-        match: "AS quantity",
+        match: "item_id IN",
         result: [
           { item_id: "iron_ingot", quantity: 1 },
           { item_id: "leather_strip", quantity: 1 },
@@ -82,7 +85,7 @@ describe("handleCreateActivity", () => {
       skillExpert,
       slotsEmpty,
       {
-        match: "AS quantity",
+        match: "item_id IN",
         result: [
           { item_id: "iron_ingot", quantity: 1 },
           { item_id: "leather_strip", quantity: 1 },
@@ -115,7 +118,7 @@ describe("handleCreateActivity", () => {
     // rentals (field only), untrained.
     setQueryStubs([
       slotsEmpty,
-      { match: "AS quantity", result: [{ item_id: "herb_bundle", quantity: 1 }] },
+      { match: "item_id IN", result: [{ item_id: "herb_bundle", quantity: 1 }] },
     ]);
 
     const req = makeRequest("POST", "/api/activities", {
@@ -173,7 +176,7 @@ describe("handleCreateActivity", () => {
       skillExpert,
       slotsEmpty,
       {
-        match: "AS quantity",
+        match: "item_id IN",
         result: [
           { item_id: "iron_ingot", quantity: 1 },
           { item_id: "leather_strip", quantity: 1 },
@@ -196,7 +199,9 @@ describe("handleCreateActivity", () => {
     // The worker has CAS-claimed the row (status='resolving'). Without the
     // status filter widening, the slot would falsely show 0 and let a second
     // errand dispatch through, breaking the 1-companion cap.
-    setQueryStubs([{ match: "AS training", result: [{ training: 0, crafting: 0, companion: 1 }] }]);
+    setQueryStubs([
+      { match: "data->>'slot'", result: [{ training: 0, crafting: 0, companion: 1 }] },
+    ]);
 
     const req = makeRequest("POST", "/api/activities", {
       type: "companion_errand",
@@ -258,7 +263,7 @@ describe("handleCreateActivity", () => {
       { match: "FROM players", result: [{ location_id: "millhaven", class: "artificer" }] },
       { match: "artificers_portable_lab", result: [{ owned: 1 }] }, // owns a Portable Lab
       slotsCraftingFull, // crafting slot full, training empty
-      { match: "AS quantity", result: [{ item_id: "herb_bundle", quantity: 1 }] },
+      { match: "item_id IN", result: [{ item_id: "herb_bundle", quantity: 1 }] },
     ]);
     const req = makeRequest("POST", "/api/activities", {
       type: "crafting",
@@ -324,7 +329,7 @@ describe("handleCreateActivity", () => {
       skillExpert,
       slotsEmpty,
       {
-        match: "AS quantity",
+        match: "item_id IN",
         result: [
           { item_id: "iron_ingot", quantity: 1 },
           { item_id: "leather_strip", quantity: 1 },
@@ -351,7 +356,7 @@ describe("handleCreateActivity", () => {
       skillExpert,
       slotsEmpty,
       {
-        match: "AS quantity",
+        match: "item_id IN",
         result: [
           { item_id: "iron_ingot", quantity: 3 },
           { item_id: "leather_strip", quantity: 1 },
