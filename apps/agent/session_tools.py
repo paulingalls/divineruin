@@ -10,6 +10,7 @@ import db
 import db_activity_queries
 import db_content_queries
 import db_mutations
+import db_mutations_divine
 import db_queries
 import event_types as E
 from asset_utils import slug_asset_url
@@ -140,7 +141,7 @@ async def _record_story_moment_impl(
     moment_key: str,
     description: str,
     *,
-    mutations=db_mutations,
+    mutations=db_mutations_divine,
     activities=db_activity_queries,
 ) -> str:
     logger.info("record_story_moment called: moment_key=%s", moment_key)

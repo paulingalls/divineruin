@@ -703,7 +703,7 @@ class TestResetStaleResolving:
 
 class TestCheckGodWhisperTriggers:
     @pytest.mark.asyncio
-    @patch("async_worker.db_mutations.mark_favor_whisper_level", new_callable=AsyncMock)
+    @patch("async_worker.db_mutations_divine.mark_favor_whisper_level", new_callable=AsyncMock)
     @patch("god_whisper_generator.generate_god_whisper", new_callable=AsyncMock, return_value="whisper_1")
     @patch("async_worker.db_activity_queries.get_pending_god_whispers", new_callable=AsyncMock, return_value=[])
     @patch("async_worker.db.get_pool")

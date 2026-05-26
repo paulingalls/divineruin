@@ -15,6 +15,7 @@ from dataclasses import asdict
 import db
 import db_activity_queries
 import db_mutations
+import db_mutations_divine
 import db_queries
 from async_worker_claim import claim_resolving, mark_resolved, reset_stale_resolving, revert_claim_safe
 from async_worker_config import POLL_INTERVAL
@@ -264,7 +265,7 @@ async def check_god_whisper_triggers() -> int:
         patron_id = favor.get("patron", "none")
         try:
             await generate_god_whisper(player_id, patron_id)
-            await db_mutations.mark_favor_whisper_level(player_id, level)
+            await db_mutations_divine.mark_favor_whisper_level(player_id, level)
             count += 1
         except Exception:
             logger.exception("Failed to generate god whisper for %s", player_id)

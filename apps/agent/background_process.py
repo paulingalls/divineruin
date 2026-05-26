@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import db_activity_queries
 import db_content_queries
-import db_mutations
+import db_mutations_divine
 import db_queries
 import db_training
 import event_types as E
@@ -228,7 +228,7 @@ class BackgroundProcess:
                 try:
                     favor = await db_activity_queries.get_divine_favor(self._sd.player_id)
                     if favor:
-                        await db_mutations.mark_favor_whisper_level(self._sd.player_id, favor.get("level", 0))
+                        await db_mutations_divine.mark_favor_whisper_level(self._sd.player_id, favor.get("level", 0))
                 except Exception:
                     logger.warning("Failed to mark favor whisper level", exc_info=True)
             if "COMPANION_KAEL" in top.instructions and self._sd.companion:
