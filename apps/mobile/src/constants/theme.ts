@@ -65,9 +65,12 @@ export const FontFamilies = {
 // Web applies the token's weight/italic intent as CSS; native ignores them (the
 // postscript font name already encodes weight/style). Built from FontTokens so the
 // weight/italic source of truth stays single — no hardcoded duplication of the tokens.
-const fontStyleFor = (role: FontRole): TextStyle => {
+// `os` defaults to the runtime Platform.OS so the FontStyles build below is
+// unchanged (byte-identical), but is injectable so tests can exercise the web
+// branch — test-preload.ts pins Platform.OS to "ios", which never reaches it.
+export const fontStyleFor = (role: FontRole, os: typeof Platform.OS = Platform.OS): TextStyle => {
   const token = FontTokens[role];
-  if (Platform.OS !== "web") return { fontFamily: FontFamilies[role] };
+  if (os !== "web") return { fontFamily: FontFamilies[role] };
   return {
     fontFamily: FontFamilies[role],
     fontWeight: token.weight,
