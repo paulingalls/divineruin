@@ -43,10 +43,10 @@ export function Hero() {
           <a className="hero__cta hero__cta--accent" href="#waitlist">
             Request Early Access
           </a>
-          {/* Secondary "Enter Aethos" scrolls into the content. The mockup targets
-              #world (an M4 section); we point at #premise so it's functional in
-              M3, to repoint when World lands. */}
-          <a className="hero__cta hero__cta--ghost" href="#premise">
+          {/* Secondary "Enter Aethos" scrolls into the content — targets #world, the
+              World section (Milestone 4). Re-pointed from the M3 #premise placeholder
+              now that the World section lands id="world". */}
+          <a className="hero__cta hero__cta--ghost" href="#world">
             Enter Aethos ↓
           </a>
         </div>

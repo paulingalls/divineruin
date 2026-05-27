@@ -16,6 +16,16 @@ test("composes the chrome + above-fold sections in order", () => {
   );
 });
 
+test("composes the Milestone 4 world sections in mockup order after Premise", () => {
+  const html = renderToStaticMarkup(<App />);
+  // Premise -> Session -> World -> Races -> Pantheon -> Classes -> Tech -> Footer,
+  // in document order (the story-006 capstone mount). Locks the section sequence so a
+  // mis-ordered or dropped mount fails here, not just in the cross-cutting E2E.
+  expect(html).toMatch(
+    /id="premise"[\s\S]*?id="session"[\s\S]*?id="world"[\s\S]*?id="races"[\s\S]*?id="pantheon"[\s\S]*?id="classes"[\s\S]*?id="tech"[\s\S]*?<footer/,
+  );
+});
+
 test("renders the hero headline as the page's heading", () => {
   const html = renderToStaticMarkup(<App />);
   expect(html).toMatch(/<h1[^>]*>Divine<br\/?><em>Ruin<\/em>/);
