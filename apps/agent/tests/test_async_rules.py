@@ -3,6 +3,7 @@
 import random
 
 import pytest
+from dice_seeds import seed_for_d20 as _seed_for_d20
 
 from async_rules import (
     resolve_companion_errand,
@@ -57,15 +58,6 @@ QUALITY_TABLES = {
         {"id": "loose_tang", "name": "Loose Tang", "description": "A faint rattle in the hilt."},
     ],
 }
-
-
-def _seed_for_d20(target: int) -> int:
-    """A seed whose first randint(1,20) equals target. resolve_crafting's first rng
-    draw is the d20 (gates consume no rng), so this fixes the band deterministically."""
-    for seed in range(2000):
-        if random.Random(seed).randint(1, 20) == target:
-            return seed
-    raise AssertionError(f"no seed for d20={target}")
 
 
 def _resolve_craft(
