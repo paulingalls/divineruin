@@ -16,6 +16,9 @@ const ALLOWED_DURABILITY_TIERS = new Set<NonNullable<Item["durability_tier"]>>([
   "masterwork",
 ]);
 const ATTUNEMENT_KINDS = new Set(["none", "required", "class"]);
+// Item types that degrade in combat/use — must carry durability_tier (spec
+// §Durability). Weapons additionally need damage_dice, armor/shield need ac.
+const EQUIPPABLE_TYPES = new Set(["weapon", "armor", "shield", "tool"]);
 
 // Runtime-loaded items (populated by loadItems at startup).
 let items: ReadonlyMap<string, Item> = new Map();
@@ -192,6 +195,20 @@ export function parseItemRow(id: string, raw: unknown): Item {
       if (typeof v !== "string") throw new Error(`${ctx}.art_template.vars[${k}] is not a string`);
     }
     item.art_template = { template_id: at.template_id, vars: vars as Record<string, string> };
+  }
+
+  // Per-type structured-field requirements (story-002 c4): the degradable/equippable
+  // types must carry the fields the durability + combat systems read. Enforced here
+  // at the load boundary so a magic weapon without damage_dice or an armor without
+  // ac can't reach the agent silently.
+  if (EQUIPPABLE_TYPES.has(item.type) && item.durability_tier === undefined) {
+    throw new Error(`${ctx}.durability_tier is required for ${item.type} (equippable)`);
+  }
+  if (item.type === "weapon" && item.damage_dice === undefined) {
+    throw new Error(`${ctx}.damage_dice is required for a weapon`);
+  }
+  if ((item.type === "armor" || item.type === "shield") && item.ac === undefined) {
+    throw new Error(`${ctx}.ac is required for ${item.type}`);
   }
 
   return item;

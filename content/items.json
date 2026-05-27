@@ -2,11 +2,16 @@
   {
     "id": "veythar_sealed_artifact",
     "name": "Sealed Research Tablet",
-    "tier": 1,
+    "tier": 3,
     "type": "quest_item",
     "rarity": "rare",
     "description": "A smooth stone tablet the size of your palm. It's warm to the touch and covered in precise, tiny notation that shifts when you're not looking directly at it. A seal mark on the reverse — not a temple seal. Something personal.",
-    "tags": ["aelindran", "veythar", "mystery", "quest"],
+    "tags": [
+      "aelindran",
+      "veythar",
+      "mystery",
+      "quest"
+    ],
     "weight": 0.5,
     "effects": [
       {
@@ -18,7 +23,9 @@
     "value_base": 0,
     "value_modifiers": {},
     "lore": "Research notes from an Aelindran outpost that was sealed long before the Sundering. The notation system is non-standard — personal, not academic. Whoever wrote this didn't want it found in the official archives.",
-    "found_in": ["greyvale_ruins_entrance"],
+    "found_in": [
+      "greyvale_ruins_entrance"
+    ],
     "art_template": {
       "template_id": "item_quest",
       "vars": {
@@ -34,7 +41,12 @@
     "type": "material",
     "rarity": "uncommon",
     "description": "A shard of something that might be bone. It's cold — not room-temperature cold, actively cold, as if it's drawing heat from the air around it. It makes a sound like a tuning fork when struck, but the pitch is wrong. Not a frequency you've heard before.",
-    "tags": ["hollow", "material", "unsettling", "crafting"],
+    "tags": [
+      "hollow",
+      "material",
+      "unsettling",
+      "crafting"
+    ],
     "weight": 0.3,
     "effects": [
       {
@@ -48,7 +60,9 @@
       "npc:scholar_emris": 3.0
     },
     "lore": "Salvaged from a Hollow creature after combat. Scholars in the Accord would pay well for a sample — intact Hollow material is rare this far south.",
-    "found_in": ["hollow_incursion_site"],
+    "found_in": [
+      "hollow_incursion_site"
+    ],
     "art_template": {
       "template_id": "item_corrupted_artifact",
       "vars": {
@@ -60,11 +74,16 @@
   {
     "id": "ruins_journal_fragment",
     "name": "Torn Journal Page",
-    "tier": 1,
+    "tier": 3,
     "type": "quest_item",
     "rarity": "rare",
     "description": "A torn page of densely written notation on thin, age-darkened vellum. The handwriting is precise but hurried. Some phrases are legible: 'resonance thinning,' 'controlled aperture,' 'acceptable threshold.' The notation system isn't standard academic — it's personal, idiosyncratic.",
-    "tags": ["aelindran", "veythar", "quest", "journal"],
+    "tags": [
+      "aelindran",
+      "veythar",
+      "quest",
+      "journal"
+    ],
     "weight": 0.1,
     "effects": [],
     "value_base": 0,
@@ -72,7 +91,9 @@
       "npc:scholar_emris": 100.0
     },
     "lore": "A fragment from a research journal found in the Greyvale Ruins. The notation matches no known academic standard — whoever wrote this used a personal system, suggesting secrecy or extreme specialization.",
-    "found_in": ["greyvale_ruins_entrance"],
+    "found_in": [
+      "greyvale_ruins_entrance"
+    ],
     "art_template": {
       "template_id": "item_quest",
       "vars": {
@@ -88,13 +109,19 @@
     "type": "quest_item",
     "rarity": "common",
     "description": "A formal contract bearing the Accord Guild's seal. It authorizes the bearer to investigate reports of Hollow activity in the Greyvale region. Torin's signature is at the bottom — heavy-handed, impatient.",
-    "tags": ["guild", "quest", "document"],
+    "tags": [
+      "guild",
+      "quest",
+      "document"
+    ],
     "weight": 0.1,
     "effects": [],
     "value_base": 0,
     "value_modifiers": {},
     "lore": "An official guild contract. Having one opens doors that a stranger's word alone wouldn't.",
-    "found_in": ["accord_guild_hall"]
+    "found_in": [
+      "accord_guild_hall"
+    ]
   },
   {
     "id": "healing_potion",
@@ -103,7 +130,11 @@
     "type": "consumable",
     "rarity": "common",
     "description": "A small clay vial sealed with wax. The liquid inside is faintly warm and smells of copper and something sweet you can't name.",
-    "tags": ["healing", "consumable", "potion"],
+    "tags": [
+      "healing",
+      "consumable",
+      "potion"
+    ],
     "weight": 0.3,
     "effects": [
       {
@@ -115,7 +146,10 @@
     "value_base": 50,
     "value_modifiers": {},
     "lore": "Standard healing draught, brewed by temple herbalists. The recipe hasn't changed in centuries.",
-    "found_in": ["accord_market_square", "millhaven_inn"],
+    "found_in": [
+      "accord_market_square",
+      "millhaven_inn"
+    ],
     "art_template": {
       "template_id": "item_quest",
       "vars": {
@@ -131,7 +165,11 @@
     "type": "accessory",
     "rarity": "uncommon",
     "description": "A small carved bone pendant on a leather cord. It's warm to the touch, always, regardless of temperature. When Hollow creatures are near, it vibrates faintly against your chest.",
-    "tags": ["hollow", "protection", "accessory"],
+    "tags": [
+      "hollow",
+      "protection",
+      "accessory"
+    ],
     "weight": 0.1,
     "effects": [
       {
@@ -143,7 +181,9 @@
     "value_base": 75,
     "value_modifiers": {},
     "lore": "Carved from the rib bone of a creature that survived exposure to the Hollow. Elder Yanna's grandmother made these — most people thought she was superstitious. Most people were wrong.",
-    "found_in": ["millhaven"],
+    "found_in": [
+      "millhaven"
+    ],
     "art_template": {
       "template_id": "item_quest",
       "vars": {
@@ -159,7 +199,11 @@
     "type": "consumable",
     "rarity": "common",
     "description": "A cloth bundle of dried meat, hard bread, and a small flask of clear spirits. Simple food, given with gratitude.",
-    "tags": ["food", "consumable", "gift"],
+    "tags": [
+      "food",
+      "consumable",
+      "gift"
+    ],
     "weight": 1.0,
     "effects": [
       {
@@ -170,16 +214,24 @@
     "value_base": 5,
     "value_modifiers": {},
     "lore": "Provisions from Millhaven's stores. Not fancy, but given freely — which in a town this scared means something.",
-    "found_in": ["millhaven"]
+    "found_in": [
+      "millhaven"
+    ]
   },
   {
     "id": "aldric_strange_stone",
     "name": "Humming Stone",
-    "tier": 1,
+    "tier": 3,
     "type": "quest_item",
     "rarity": "rare",
     "description": "A smooth, palm-sized stone that is always warm. Hold it near a flame and it hums — a low, steady note that you feel in your teeth more than hear. The surface has a faint iridescence, like oil on water, and when you're not looking directly at it, shapes seem to move beneath the surface.",
-    "tags": ["aelindran", "veythar", "mystery", "veil-touched", "quest"],
+    "tags": [
+      "aelindran",
+      "veythar",
+      "mystery",
+      "veil-touched",
+      "quest"
+    ],
     "weight": 0.3,
     "effects": [
       {
@@ -198,7 +250,9 @@
       "faction:aelindran_diaspora": 10.0
     },
     "lore": "A fragment of an Attenuation Sphere — one of Veythar's artifacts for weakening the Veil. Aldric found it in the Greyvale Ruins and it partially opened his mind to the Veil. The stone is still active, which is why the Hollow corruption in the Greyvale is spreading.",
-    "found_in": ["millhaven"],
+    "found_in": [
+      "millhaven"
+    ],
     "art_template": {
       "template_id": "item_corrupted_artifact",
       "vars": {
@@ -214,24 +268,42 @@
     "type": "weapon",
     "rarity": "common",
     "description": "A simple blade, well-balanced and sharp enough. Nothing fancy — the kind of sword that does its job without complaining about it.",
-    "tags": ["weapon", "melee", "basic"],
+    "tags": [
+      "weapon",
+      "melee",
+      "basic"
+    ],
     "weight": 2.0,
     "effects": [
       {
         "type": "weapon",
         "damage": "1d6",
         "damage_type": "piercing",
-        "properties": ["light", "finesse"]
+        "properties": [
+          "light",
+          "finesse"
+        ]
       }
     ],
     "value_base": 100,
     "value_modifiers": {},
     "lore": "Standard-issue for guild recruits and city guards.",
-    "found_in": ["accord_market_square", "accord_forge"],
+    "found_in": [
+      "accord_market_square",
+      "accord_forge"
+    ],
     "art_template": {
       "template_id": "item_weapon",
-      "vars": { "weapon_type": "shortsword" }
-    }
+      "vars": {
+        "weapon_type": "shortsword"
+      }
+    },
+    "damage_dice": "1d6",
+    "properties": [
+      "light",
+      "finesse"
+    ],
+    "durability_tier": "standard"
   },
   {
     "id": "longsword_guild",
@@ -240,24 +312,39 @@
     "type": "weapon",
     "rarity": "common",
     "description": "A well-made longsword bearing a small guild mark near the crossguard. Heavier than it looks, balanced for someone who means business.",
-    "tags": ["weapon", "melee", "guild"],
+    "tags": [
+      "weapon",
+      "melee",
+      "guild"
+    ],
     "weight": 3.0,
     "effects": [
       {
         "type": "weapon",
         "damage": "1d8",
         "damage_type": "slashing",
-        "properties": ["versatile"]
+        "properties": [
+          "versatile"
+        ]
       }
     ],
     "value_base": 200,
     "value_modifiers": {},
     "lore": "Grimjaw's standard work. Functional, reliable, and as honest as the dwarf who forged it.",
-    "found_in": ["accord_forge"],
+    "found_in": [
+      "accord_forge"
+    ],
     "art_template": {
       "template_id": "item_weapon",
-      "vars": { "weapon_type": "longsword with a small guild mark near the crossguard" }
-    }
+      "vars": {
+        "weapon_type": "longsword with a small guild mark near the crossguard"
+      }
+    },
+    "damage_dice": "1d8",
+    "properties": [
+      "versatile"
+    ],
+    "durability_tier": "standard"
   },
   {
     "id": "dagger_balanced",
@@ -266,24 +353,45 @@
     "type": "weapon",
     "rarity": "common",
     "description": "Light and well-weighted, suitable for close quarters or throwing. The edge catches lamplight.",
-    "tags": ["weapon", "melee", "ranged", "basic"],
+    "tags": [
+      "weapon",
+      "melee",
+      "ranged",
+      "basic"
+    ],
     "weight": 1.0,
     "effects": [
       {
         "type": "weapon",
         "damage": "1d4",
         "damage_type": "piercing",
-        "properties": ["light", "finesse", "thrown"]
+        "properties": [
+          "light",
+          "finesse",
+          "thrown"
+        ]
       }
     ],
     "value_base": 50,
     "value_modifiers": {},
     "lore": "A simple dagger. Every adventurer carries one.",
-    "found_in": ["accord_market_square", "accord_forge"],
+    "found_in": [
+      "accord_market_square",
+      "accord_forge"
+    ],
     "art_template": {
       "template_id": "item_weapon",
-      "vars": { "weapon_type": "balanced throwing dagger" }
-    }
+      "vars": {
+        "weapon_type": "balanced throwing dagger"
+      }
+    },
+    "damage_dice": "1d4",
+    "properties": [
+      "light",
+      "finesse",
+      "thrown"
+    ],
+    "durability_tier": "standard"
   },
   {
     "id": "leather_armor_basic",
@@ -292,26 +400,39 @@
     "type": "armor",
     "rarity": "common",
     "description": "Cured leather, stiffened and shaped to cover the torso. Smells of tanning oil and honest work. Won't stop a heavy blow, but it's quiet and doesn't slow you down.",
-    "tags": ["armor", "light", "basic"],
+    "tags": [
+      "armor",
+      "light",
+      "basic"
+    ],
     "weight": 10.0,
     "effects": [
       {
         "type": "armor",
         "ac_bonus": 11,
-        "properties": ["light"]
+        "properties": [
+          "light"
+        ]
       }
     ],
     "value_base": 150,
     "value_modifiers": {},
     "lore": "Standard light armor. Preferred by scouts, rogues, and anyone who values mobility.",
-    "found_in": ["accord_market_square"],
+    "found_in": [
+      "accord_market_square"
+    ],
     "art_template": {
       "template_id": "item_quest",
       "vars": {
         "item_description": "a suit of cured leather armor",
         "item_features": "the stiffened leather panels, stitching, and oil-darkened surface"
       }
-    }
+    },
+    "ac": 11,
+    "armor_properties": [
+      "light"
+    ],
+    "durability_tier": "standard"
   },
   {
     "id": "chain_shirt",
@@ -320,26 +441,39 @@
     "type": "armor",
     "rarity": "common",
     "description": "Interlocking metal rings woven into a shirt. Heavier than leather, quieter than plate. Grimjaw's work — each link is even and tight.",
-    "tags": ["armor", "medium", "metal"],
+    "tags": [
+      "armor",
+      "medium",
+      "metal"
+    ],
     "weight": 20.0,
     "effects": [
       {
         "type": "armor",
         "ac_bonus": 13,
-        "properties": ["medium"]
+        "properties": [
+          "medium"
+        ]
       }
     ],
     "value_base": 350,
     "value_modifiers": {},
     "lore": "Grimjaw's chain work. He considers it beneath him but it pays the bills.",
-    "found_in": ["accord_forge"],
+    "found_in": [
+      "accord_forge"
+    ],
     "art_template": {
       "template_id": "item_quest",
       "vars": {
         "item_description": "a shirt of interlocking metal chain rings",
         "item_features": "the tight even links, metal sheen, and compact folded form"
       }
-    }
+    },
+    "ac": 13,
+    "armor_properties": [
+      "medium"
+    ],
+    "durability_tier": "standard"
   },
   {
     "id": "shield_iron",
@@ -348,7 +482,10 @@
     "type": "armor",
     "rarity": "common",
     "description": "A round shield with an iron boss and wooden body. Dented from the proving rack. Solid.",
-    "tags": ["shield", "basic"],
+    "tags": [
+      "shield",
+      "basic"
+    ],
     "weight": 6.0,
     "effects": [
       {
@@ -360,14 +497,19 @@
     "value_base": 120,
     "value_modifiers": {},
     "lore": "A reliable shield. Not decorative, not special. Just good work.",
-    "found_in": ["accord_forge"],
+    "found_in": [
+      "accord_forge"
+    ],
     "art_template": {
       "template_id": "item_quest",
       "vars": {
         "item_description": "a round shield with an iron boss and wooden body",
         "item_features": "the iron boss, dented rim, and grain of the wooden body"
       }
-    }
+    },
+    "ac": 2,
+    "armor_properties": [],
+    "durability_tier": "standard"
   },
   {
     "id": "rations_basic",
@@ -376,13 +518,19 @@
     "type": "consumable",
     "rarity": "common",
     "description": "Dried meat, hard biscuit, a handful of nuts. Tastes like nothing but keeps you walking.",
-    "tags": ["food", "consumable", "basic"],
+    "tags": [
+      "food",
+      "consumable",
+      "basic"
+    ],
     "weight": 0.5,
     "effects": [],
     "value_base": 5,
     "value_modifiers": {},
     "lore": "Standard travel food. Sold by every merchant on the coast.",
-    "found_in": ["accord_market_square"]
+    "found_in": [
+      "accord_market_square"
+    ]
   },
   {
     "id": "rope_hemp",
@@ -391,13 +539,19 @@
     "type": "equipment",
     "rarity": "common",
     "description": "Fifty feet of coiled hemp rope. Smells of tar and the harbor.",
-    "tags": ["equipment", "utility", "basic"],
+    "tags": [
+      "equipment",
+      "utility",
+      "basic"
+    ],
     "weight": 5.0,
     "effects": [],
     "value_base": 10,
     "value_modifiers": {},
     "lore": "Always carry rope. Everyone who forgot wishes they hadn't.",
-    "found_in": ["accord_market_square"]
+    "found_in": [
+      "accord_market_square"
+    ]
   },
   {
     "id": "torch_bundle",
@@ -406,7 +560,11 @@
     "type": "equipment",
     "rarity": "common",
     "description": "Three torches wrapped in oilcloth. Each burns for about an hour.",
-    "tags": ["equipment", "light", "basic"],
+    "tags": [
+      "equipment",
+      "light",
+      "basic"
+    ],
     "weight": 3.0,
     "effects": [
       {
@@ -418,7 +576,10 @@
     "value_base": 3,
     "value_modifiers": {},
     "lore": "Fire keeps the dark honest.",
-    "found_in": ["accord_market_square", "millhaven"]
+    "found_in": [
+      "accord_market_square",
+      "millhaven"
+    ]
   },
   {
     "id": "waterskin",
@@ -427,13 +588,19 @@
     "type": "equipment",
     "rarity": "common",
     "description": "A leather waterskin, stoppered and full. The water tastes faintly of leather and salt.",
-    "tags": ["equipment", "basic", "water"],
+    "tags": [
+      "equipment",
+      "basic",
+      "water"
+    ],
     "weight": 2.5,
     "effects": [],
     "value_base": 8,
     "value_modifiers": {},
     "lore": "Fresh water. Underrated until you don't have it.",
-    "found_in": ["accord_market_square"]
+    "found_in": [
+      "accord_market_square"
+    ]
   },
   {
     "id": "antidote_basic",
@@ -442,7 +609,11 @@
     "type": "consumable",
     "rarity": "common",
     "description": "A small vial of murky green liquid. Tastes like chewed grass and regret. Works fast.",
-    "tags": ["consumable", "healing", "antidote"],
+    "tags": [
+      "consumable",
+      "healing",
+      "antidote"
+    ],
     "weight": 0.2,
     "effects": [
       {
@@ -453,7 +624,9 @@
     "value_base": 30,
     "value_modifiers": {},
     "lore": "Temple-brewed. Herbalists stock them, and experienced travelers never travel without one.",
-    "found_in": ["accord_temple_row"]
+    "found_in": [
+      "accord_temple_row"
+    ]
   },
   {
     "id": "holy_water",
@@ -462,7 +635,11 @@
     "type": "consumable",
     "rarity": "uncommon",
     "description": "A small crystal vial of water blessed by temple clergy. It catches light in a way plain water doesn't and is faintly warm to the touch.",
-    "tags": ["consumable", "holy", "anti-hollow"],
+    "tags": [
+      "consumable",
+      "holy",
+      "anti-hollow"
+    ],
     "weight": 0.3,
     "effects": [
       {
@@ -476,7 +653,9 @@
     "value_base": 75,
     "value_modifiers": {},
     "lore": "Water blessed through a ritual older than the temples themselves. Effective against Hollow creatures — one of the few things that is.",
-    "found_in": ["accord_temple_row"],
+    "found_in": [
+      "accord_temple_row"
+    ],
     "art_template": {
       "template_id": "item_quest",
       "vars": {
@@ -492,7 +671,11 @@
     "type": "consumable",
     "rarity": "uncommon",
     "description": "A small tin of pale ointment that smells of clean linen and something floral. Applied to skin, it absorbs quickly and leaves warmth behind.",
-    "tags": ["consumable", "healing", "restoration"],
+    "tags": [
+      "consumable",
+      "healing",
+      "restoration"
+    ],
     "weight": 0.2,
     "effects": [
       {
@@ -504,7 +687,9 @@
     "value_base": 60,
     "value_modifiers": {},
     "lore": "Temple-made restorative. Useful for burns, minor corruption exposure, and the general wear of adventuring.",
-    "found_in": ["accord_temple_row"]
+    "found_in": [
+      "accord_temple_row"
+    ]
   },
   {
     "id": "hunting_bow",
@@ -513,25 +698,43 @@
     "type": "weapon",
     "rarity": "common",
     "description": "A short recurve bow of yew and sinew. Light enough for a day's carry, strong enough to drop a deer at forty paces. The grip is worn smooth by someone else's hands.",
-    "tags": ["weapon", "ranged", "basic"],
+    "tags": [
+      "weapon",
+      "ranged",
+      "basic"
+    ],
     "weight": 2.0,
     "effects": [
       {
         "type": "weapon",
         "damage": "1d6",
         "damage_type": "piercing",
-        "properties": ["ranged", "two-handed"],
+        "properties": [
+          "ranged",
+          "two-handed"
+        ],
         "range": "80/320"
       }
     ],
     "value_base": 125,
     "value_modifiers": {},
     "lore": "A practical hunting bow. Not a war weapon — but most things you'll fight don't know the difference.",
-    "found_in": ["accord_market_square", "accord_forge"],
+    "found_in": [
+      "accord_market_square",
+      "accord_forge"
+    ],
     "art_template": {
       "template_id": "item_weapon",
-      "vars": { "weapon_type": "short recurve hunting bow with a worn leather grip" }
-    }
+      "vars": {
+        "weapon_type": "short recurve hunting bow with a worn leather grip"
+      }
+    },
+    "damage_dice": "1d6",
+    "properties": [
+      "ranged",
+      "two-handed"
+    ],
+    "durability_tier": "standard"
   },
   {
     "id": "quarterstaff_oak",
@@ -540,25 +743,41 @@
     "type": "weapon",
     "rarity": "common",
     "description": "A length of seasoned oak, iron-shod at both ends. Simple. Effective. The weapon of someone who learned to fight before they learned to kill.",
-    "tags": ["weapon", "melee", "caster", "basic"],
+    "tags": [
+      "weapon",
+      "melee",
+      "caster",
+      "basic"
+    ],
     "weight": 4.0,
     "effects": [
       {
         "type": "weapon",
         "damage": "1d6",
         "damage_type": "bludgeoning",
-        "properties": ["versatile"],
+        "properties": [
+          "versatile"
+        ],
         "versatile_damage": "1d8"
       }
     ],
     "value_base": 20,
     "value_modifiers": {},
     "lore": "The oldest weapon. Druids, wanderers, and anyone too poor for steel. Don't underestimate it.",
-    "found_in": ["accord_market_square"],
+    "found_in": [
+      "accord_market_square"
+    ],
     "art_template": {
       "template_id": "item_weapon",
-      "vars": { "weapon_type": "iron-shod oak quarterstaff" }
-    }
+      "vars": {
+        "weapon_type": "iron-shod oak quarterstaff"
+      }
+    },
+    "damage_dice": "1d6",
+    "properties": [
+      "versatile"
+    ],
+    "durability_tier": "standard"
   },
   {
     "id": "war_mace",
@@ -567,7 +786,12 @@
     "type": "weapon",
     "rarity": "common",
     "description": "A flanged steel mace with a leather-wrapped handle. Heavy in the hand, heavier on impact. The flanges are sharp enough to catch in armor and pull.",
-    "tags": ["weapon", "melee", "blunt", "holy"],
+    "tags": [
+      "weapon",
+      "melee",
+      "blunt",
+      "holy"
+    ],
     "weight": 4.0,
     "effects": [
       {
@@ -580,11 +804,19 @@
     "value_base": 150,
     "value_modifiers": {},
     "lore": "Standard for temple wardens and paladins. Grimjaw forges them without complaint — 'Steel doesn't care about your god. It cares about your wrist.'",
-    "found_in": ["accord_forge", "accord_temple_row"],
+    "found_in": [
+      "accord_forge",
+      "accord_temple_row"
+    ],
     "art_template": {
       "template_id": "item_weapon",
-      "vars": { "weapon_type": "flanged steel war mace with leather-wrapped handle" }
-    }
+      "vars": {
+        "weapon_type": "flanged steel war mace with leather-wrapped handle"
+      }
+    },
+    "damage_dice": "1d6",
+    "properties": [],
+    "durability_tier": "standard"
   },
   {
     "id": "scale_mail",
@@ -593,26 +825,41 @@
     "type": "armor",
     "rarity": "common",
     "description": "Overlapping steel scales riveted to a leather backing. Noisy, heavy, and reassuring. You feel the weight settle on your shoulders like a promise.",
-    "tags": ["armor", "heavy", "metal"],
+    "tags": [
+      "armor",
+      "heavy",
+      "metal"
+    ],
     "weight": 45.0,
     "effects": [
       {
         "type": "armor",
         "ac_bonus": 14,
-        "properties": ["heavy", "stealth_disadvantage"]
+        "properties": [
+          "heavy",
+          "stealth_disadvantage"
+        ]
       }
     ],
     "value_base": 500,
     "value_modifiers": {},
     "lore": "Grimjaw's heavy work. He takes visible pride in scale — 'Every plate has to sit right, or the whole thing fails. Like people.'",
-    "found_in": ["accord_forge"],
+    "found_in": [
+      "accord_forge"
+    ],
     "art_template": {
       "template_id": "item_quest",
       "vars": {
         "item_description": "a coat of overlapping steel scales riveted to leather backing",
         "item_features": "the layered steel scales, leather straps, and rivet heads catching light"
       }
-    }
+    },
+    "ac": 14,
+    "armor_properties": [
+      "heavy",
+      "stealth_disadvantage"
+    ],
+    "durability_tier": "standard"
   },
   {
     "id": "travelers_cloak",
@@ -621,42 +868,66 @@
     "type": "armor",
     "rarity": "uncommon",
     "description": "A heavy wool cloak, dark grey, with a deep hood and an inner pocket sewn shut with precise stitches. It's warmer than it should be and seems to drink shadow.",
-    "tags": ["armor", "cloak", "stealth"],
+    "tags": [
+      "armor",
+      "cloak",
+      "stealth"
+    ],
     "weight": 2.0,
     "effects": [
       {
         "type": "armor",
         "ac_bonus": 0,
-        "properties": ["stealth_advantage_dim_light", "cold_resistance"]
+        "properties": [
+          "stealth_advantage_dim_light",
+          "cold_resistance"
+        ]
       }
     ],
     "value_base": 200,
     "value_modifiers": {},
     "lore": "Bryn sold it from under the bar without explanation. It smells faintly of foreign smoke and old secrets. She didn't say where she got it. You didn't ask.",
-    "found_in": ["accord_hearthstone_tavern"],
+    "found_in": [
+      "accord_hearthstone_tavern"
+    ],
     "art_template": {
       "template_id": "item_quest",
       "vars": {
         "item_description": "a heavy dark wool cloak with a deep hood",
         "item_features": "the dense weave, deep hood shadow, and folds that seem to absorb light"
       }
-    }
+    },
+    "ac": 0,
+    "armor_properties": [
+      "stealth_advantage_dim_light",
+      "cold_resistance"
+    ],
+    "durability_tier": "standard"
   },
   {
     "id": "hollow_edge_blade",
     "name": "Hollow-Edge Blade",
-    "tier": 1,
+    "tier": 3,
     "type": "weapon",
     "rarity": "rare",
     "description": "A short blade forged from an alloy of steel and processed Hollow-bone. The edge has a faint teal sheen that shifts when you move it. It's lighter than it should be and hums — not audibly, but in your wrist, in your teeth. It wants to cut.",
-    "tags": ["weapon", "melee", "hollow", "experimental", "grimjaw"],
+    "tags": [
+      "weapon",
+      "melee",
+      "hollow",
+      "experimental",
+      "grimjaw"
+    ],
     "weight": 2.0,
     "effects": [
       {
         "type": "weapon",
         "damage": "1d8",
         "damage_type": "slashing",
-        "properties": ["light", "finesse"],
+        "properties": [
+          "light",
+          "finesse"
+        ],
         "bonus_damage": "1d4",
         "bonus_damage_type": "necrotic",
         "bonus_condition": "vs_hollow"
@@ -669,23 +940,37 @@
     "value_base": 0,
     "value_modifiers": {},
     "lore": "Grimjaw told Torin the first batch failed. He kept this one. It works — too well. The Hollow material makes it effective against the creatures it came from, but something about the alloy feels alive. He'll only give it to someone he trusts to use it right.",
-    "found_in": ["accord_forge"],
+    "found_in": [
+      "accord_forge"
+    ],
     "art_template": {
       "template_id": "item_corrupted_artifact",
       "vars": {
         "item_description": "a short blade with a faint teal sheen along the edge",
         "item_features": "the dark steel-and-bone alloy, the shifting teal edge, and runes etched into the fuller"
       }
-    }
+    },
+    "damage_dice": "1d8",
+    "properties": [
+      "light",
+      "finesse"
+    ],
+    "durability_tier": "reinforced"
   },
   {
     "id": "aelindran_focus_crystal",
     "name": "Aelindran Focus Crystal",
-    "tier": 1,
+    "tier": 3,
     "type": "accessory",
     "rarity": "rare",
     "description": "A faceted crystal the size of a walnut, mounted in a tarnished silver cage on a fine chain. It's old — centuries old. When you hold it, you feel a faint pressure behind your eyes, like the beginning of a memory that isn't yours.",
-    "tags": ["aelindran", "caster", "focus", "accessory", "veil-touched"],
+    "tags": [
+      "aelindran",
+      "caster",
+      "focus",
+      "accessory",
+      "veil-touched"
+    ],
     "weight": 0.2,
     "effects": [
       {
@@ -704,7 +989,9 @@
       "faction:aelindran_diaspora": 5.0
     },
     "lore": "Found on the remains of an Aelindran researcher in the inner ruins. The silver cage is engraved with Veythar's personal notation — the same system as the journal pages. Whoever carried this was part of the secret project.",
-    "found_in": ["greyvale_ruins_inner"],
+    "found_in": [
+      "greyvale_ruins_inner"
+    ],
     "art_template": {
       "template_id": "item_quest",
       "vars": {
@@ -720,7 +1007,12 @@
     "type": "accessory",
     "rarity": "uncommon",
     "description": "A plain iron band, cold to the touch. The inside is engraved with tiny script you can't read. When you put it on, the world looks slightly different — edges sharper, shadows deeper. Something about it makes you notice things you'd normally miss.",
-    "tags": ["accessory", "ring", "veil-touched", "perception"],
+    "tags": [
+      "accessory",
+      "ring",
+      "veil-touched",
+      "perception"
+    ],
     "weight": 0.1,
     "effects": [
       {
@@ -740,7 +1032,9 @@
       "faction:aelindran_diaspora": 3.0
     },
     "lore": "Recovered from a skeleton in the Greyvale Ruins. The researcher died at their desk — quill still in hand, notes scattered. The ring was the only thing of value left. It's been near the Veil for a long time, and it shows.",
-    "found_in": ["greyvale_ruins_entrance"],
+    "found_in": [
+      "greyvale_ruins_entrance"
+    ],
     "art_template": {
       "template_id": "item_quest",
       "vars": {

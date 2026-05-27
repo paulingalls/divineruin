@@ -15,7 +15,7 @@ import { parseItemRow } from "./items.ts";
 const ITEMS_PATH = new URL("../../../content/items.json", import.meta.url);
 
 // Floor for content/items.json size — currently 29 entries. Catches silent
-// attrition from bad merges/rebases. Rises to 85+ in Commit 4.
+// attrition from bad merges/rebases. Raise as the catalog grows.
 const MIN_ITEM_COUNT = 28;
 
 async function loadItemsJson(): Promise<Record<string, unknown>[]> {
@@ -43,6 +43,26 @@ describe("content/items.json — parseItemRow conformance", () => {
     expect(parsed.id).toBe("shortsword_basic");
     expect(parsed.type).toBe("weapon");
     expect([1, 2, 3, 4]).toContain(parsed.tier);
+  });
+
+  test("every weapon has damage_dice, every armor/shield has ac, every equippable has durability_tier", async () => {
+    const items = await loadItemsJson();
+    const EQUIPPABLE = new Set(["weapon", "armor", "shield", "tool"]);
+    for (const item of items) {
+      const parsed = parseItemRow(item.id as string, item);
+      if (parsed.type === "weapon") {
+        expect(parsed.damage_dice, `${parsed.id} weapon missing damage_dice`).toBeDefined();
+      }
+      if (parsed.type === "armor" || parsed.type === "shield") {
+        expect(parsed.ac, `${parsed.id} armor/shield missing ac`).toBeDefined();
+      }
+      if (EQUIPPABLE.has(parsed.type)) {
+        expect(
+          parsed.durability_tier,
+          `${parsed.id} equippable missing durability_tier`,
+        ).toBeDefined();
+      }
+    }
   });
 });
 
@@ -91,7 +111,7 @@ describe("parseItemRow — fail-loud validation", () => {
   test("accepts the 4 valid durability tiers", () => {
     for (const t of ["fragile", "standard", "reinforced", "masterwork"]) {
       expect(() =>
-        parseItemRow("x", { ...base, type: "weapon", durability_tier: t }),
+        parseItemRow("x", { ...base, type: "weapon", damage_dice: "1d6", durability_tier: t }),
       ).not.toThrow();
     }
   });
@@ -127,5 +147,32 @@ describe("parseItemRow — fail-loud validation", () => {
         art_template: { template_id: "t", vars: { a: 1 } },
       }),
     ).toThrow(/art_template\.vars/);
+  });
+
+  test("requires damage_dice on a weapon", () => {
+    expect(() =>
+      parseItemRow("x", { ...base, type: "weapon", durability_tier: "standard" }),
+    ).toThrow(/damage_dice/);
+  });
+
+  test("requires ac on armor and shield", () => {
+    expect(() =>
+      parseItemRow("x", { ...base, type: "armor", durability_tier: "standard" }),
+    ).toThrow(/\bac\b/);
+    expect(() =>
+      parseItemRow("x", { ...base, type: "shield", durability_tier: "standard" }),
+    ).toThrow(/\bac\b/);
+  });
+
+  test("requires durability_tier on equippable types", () => {
+    expect(() => parseItemRow("x", { ...base, type: "weapon", damage_dice: "1d6" })).toThrow(
+      /durability_tier/,
+    );
+    expect(() => parseItemRow("x", { ...base, type: "tool" })).toThrow(/durability_tier/);
+  });
+
+  test("does not require structured fields on non-equippable types", () => {
+    expect(() => parseItemRow("x", { ...base, type: "consumable" })).not.toThrow();
+    expect(() => parseItemRow("x", { ...base, type: "material" })).not.toThrow();
   });
 });
