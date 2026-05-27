@@ -3,7 +3,7 @@ import { join } from "node:path";
 import prettier from "prettier";
 import {
   BrandColors,
-  FontTokens,
+  FONT_FALLBACKS,
   MaxContentWidth,
   Radius,
   Spacing,
@@ -20,7 +20,6 @@ const css = generateThemeCss();
 // double-quoted font stacks) so the file passes prettier --check; assert
 // against those forms while staying tied to the token values.
 const canonHex = (v: string) => v.toLowerCase();
-const canonFont = (v: string) => v.replaceAll("'", '"');
 
 test("defines a --color- custom property for every BrandColors entry", () => {
   for (const [key, value] of Object.entries(BrandColors)) {
@@ -28,10 +27,15 @@ test("defines a --color- custom property for every BrandColors entry", () => {
   }
 });
 
-test("defines the three brand font-family stacks from FontTokens", () => {
-  expect(css).toContain(`--font-display: ${canonFont(FontTokens.display.web)};`);
-  expect(css).toContain(`--font-body: ${canonFont(FontTokens.body.web)};`);
-  expect(css).toContain(`--font-system: ${canonFont(FontTokens.system.web)};`);
+// gen-theme is the SOLE owner of --font-*: it emits each stack WITH the
+// metric-adjusted CLS fallback family (fonts.css no longer redefines them on
+// :root). This assertion migrated from fonts.test.ts when that block was deleted.
+test("defines the three brand font-family stacks incl. their CLS fallback", () => {
+  for (const fb of FONT_FALLBACKS) {
+    expect(css).toContain(
+      `--font-${fb.role}: "${fb.family}", "${fb.fallbackName}", ${fb.generic};`,
+    );
+  }
 });
 
 test("defines size + line-height for every TypeScaleTokens role", () => {
