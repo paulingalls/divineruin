@@ -245,6 +245,27 @@ class TestStartCombat:
             assert entry["roll"] >= 1 and entry["roll"] <= 20
 
     @pytest.mark.asyncio
+    async def test_resets_stale_weapon_durability_flags(self):
+        # A weapon swing outside combat must not leak into this encounter's
+        # end-of-combat durability accrual (concern c3c95fd3af40).
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+        ctx = _make_context()
+        ctx.userdata.weapon_used_this_encounter = True
+        ctx.userdata.weapon_crit_vs_heavy = True
+
+        await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Ambush!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+
+        assert ctx.userdata.weapon_used_this_encounter is False
+        assert ctx.userdata.weapon_crit_vs_heavy is False
+
+    @pytest.mark.asyncio
     async def test_publishes_events(self):
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
         room = _make_mock_room()

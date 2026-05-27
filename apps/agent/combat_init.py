@@ -164,6 +164,11 @@ async def _start_combat_impl(
     await mutations.save_combat_state(combat_id, combat_state.to_dict())
     session.combat_state = combat_state
 
+    # Reset per-encounter weapon durability flags so each encounter is self-contained
+    # (a swing outside combat won't leak into this encounter's end-of-combat accrual).
+    session.weapon_used_this_encounter = False
+    session.weapon_crit_vs_heavy = False
+
     # Build initiative summary once for event + response
     initiative_summary = [
         {"id": e.participant_id, "name": e.name, "roll": e.roll, "total": e.total} for e in initiative_entries

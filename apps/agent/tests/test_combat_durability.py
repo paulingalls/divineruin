@@ -346,3 +346,75 @@ async def test_request_attack_no_crit_flag_on_normal_hit():
 async def test_request_attack_no_crit_flag_on_crit_against_light_target():
     session = await _run_request_attack(hit=True, critical=True, target_ac=13)
     assert session.weapon_crit_vs_heavy is False
+
+
+# --- weapon per-encounter accrual + flag reset in end_combat -----------------
+
+import combat_end  # noqa: E402
+
+
+async def _run_end_combat(ctx, inventory, *, outcome="victory"):
+    mutations = AsyncMock()
+    queries = AsyncMock()
+    queries.get_player_inventory = AsyncMock(return_value=inventory)
+    with patch.object(
+        combat_end,
+        "_accrue_durability",
+        AsyncMock(return_value={"broken": False, "penalty": {}, "current_hits": 9}),
+    ) as accrue:
+        await combat_end._end_combat_impl(ctx, outcome, mutations=mutations, queries=queries)
+    return accrue
+
+
+async def test_end_combat_accrues_one_weapon_hit_per_encounter():
+    ctx = _combat_ctx(corruption_level=0)
+    ctx.userdata.weapon_used_this_encounter = True
+    weapon = _inv_item("longsword_guild", "weapon", current_hits=10)
+    accrue = await _run_end_combat(ctx, [weapon])
+    accrue.assert_awaited_once()
+    assert accrue.await_args is not None
+    assert accrue.await_args.args[2]["id"] == "longsword_guild" and accrue.await_args.args[3] == 1
+    assert accrue.await_args.kwargs["is_hollow_zone"] is False
+
+
+async def test_end_combat_crit_vs_heavy_accrues_two_weapon_hits():
+    ctx = _combat_ctx()
+    ctx.userdata.weapon_used_this_encounter = True
+    ctx.userdata.weapon_crit_vs_heavy = True
+    weapon = _inv_item("longsword_guild", "weapon", current_hits=10)
+    accrue = await _run_end_combat(ctx, [weapon])
+    assert accrue.await_args is not None
+    assert accrue.await_args.args[3] == 2
+
+
+async def test_end_combat_hollow_zone_doubles_via_flag():
+    ctx = _combat_ctx(corruption_level=2)
+    ctx.userdata.weapon_used_this_encounter = True
+    weapon = _inv_item("longsword_guild", "weapon", current_hits=10)
+    accrue = await _run_end_combat(ctx, [weapon])
+    assert accrue.await_args is not None
+    assert accrue.await_args.kwargs["is_hollow_zone"] is True
+
+
+async def test_end_combat_no_weapon_used_skips_accrual():
+    ctx = _combat_ctx()
+    # weapon_used_this_encounter stays False
+    accrue = await _run_end_combat(ctx, [_inv_item("longsword_guild", "weapon", current_hits=10)])
+    accrue.assert_not_awaited()
+
+
+async def test_end_combat_resets_weapon_flags():
+    ctx = _combat_ctx()
+    ctx.userdata.weapon_used_this_encounter = True
+    ctx.userdata.weapon_crit_vs_heavy = True
+    await _run_end_combat(ctx, [_inv_item("longsword_guild", "weapon", current_hits=10)])
+    assert ctx.userdata.weapon_used_this_encounter is False
+    assert ctx.userdata.weapon_crit_vs_heavy is False
+
+
+async def test_end_combat_resets_flags_even_when_no_weapon_equipped():
+    ctx = _combat_ctx()
+    ctx.userdata.weapon_used_this_encounter = True
+    accrue = await _run_end_combat(ctx, [])  # no weapon in inventory
+    accrue.assert_not_awaited()
+    assert ctx.userdata.weapon_used_this_encounter is False
