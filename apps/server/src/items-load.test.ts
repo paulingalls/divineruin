@@ -1,205 +1,195 @@
 import { test, expect, describe } from "bun:test";
+import { parseItemRow } from "./items.ts";
 
-// Capstone test for M5.0 (sprint-011 story-002): load content/items.json and
-// prove every entry conforms to the widened Item interface from
-// @divineruin/shared. Catches future drift between the TS contract and the
-// JSON content — without this, a malformed entry would only fail at agent
-// runtime (Python .get() returning None). See plan:
-// /Users/paulingalls/.claude/plans/async-scribbling-valley.md
+// Drives the production fail-loud parseItemRow (apps/server/src/items.ts) over
+// content/items.json, proving every entry conforms to the widened Item interface
+// from @divineruin/shared. parseItemRow is the real load boundary (loadItems calls
+// it at startup); this test exercises it against the canonical content + pins its
+// fail-loud behavior on malformed rows (debt aa78e26e81a8 — extracted from the
+// former inline validator into the production loader, mirroring recipes.ts).
 //
-// Pattern: inline strict if/throw validation in the production-loader style
-// of apps/server/src/activity_templates.ts:55-81 (parseProgramRow). Items are
-// loaded as `unknown[]` and narrowed per-element so the defensive checks are
-// real — casting to Item[] would let TS pre-narrow the type and turn the
-// validation into a no-op. Helper extraction belongs at the production
-// boundary (debt aa78e26e81a8 → M5.4).
+// Per-type structured-field REQUIREMENTS (weapon->damage_dice, armor->ac,
+// equippable->durability_tier) tighten in Commit 4 alongside the content that
+// satisfies them; Commit 2 validates those fields' shape only when present.
 
 const ITEMS_PATH = new URL("../../../content/items.json", import.meta.url);
 
-// The 9 truly-required fields (per plan-reviewer concern e1ff500a86ad).
-// `subtype, description, value_modifiers, lore, found_in` are originals-but-
-// optional and walked separately.
-const REQUIRED_FIELDS = [
-  "id",
-  "name",
-  "tier",
-  "type",
-  "rarity",
-  "tags",
-  "weight",
-  "effects",
-  "value_base",
-] as const;
+// Floor for content/items.json size — 90 entries after the M5.4 catalog
+// expansion (story-002). Catches silent attrition from bad merges/rebases.
+const MIN_ITEM_COUNT = 85;
 
-const ALLOWED_TIERS = new Set([1, 2, 3, 4]);
-const ALLOWED_DURABILITY_TIERS = new Set(["fragile", "standard", "reinforced", "masterwork"]);
-
-async function loadItems(): Promise<unknown[]> {
+async function loadItemsJson(): Promise<Record<string, unknown>[]> {
   const raw: unknown = await Bun.file(ITEMS_PATH).json();
   if (!Array.isArray(raw)) throw new Error("content/items.json is not an array");
-  return raw as unknown[];
+  return raw as Record<string, unknown>[];
 }
 
-function asRecord(entry: unknown, ctx: string): Record<string, unknown> {
-  if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
-    throw new Error(`${ctx} is not an object`);
-  }
-  return entry as Record<string, unknown>;
-}
-
-// Floor for content/items.json size — currently 29 entries. Catches silent
-// attrition from bad merges/rebases (a `length > 0` smoke would tolerate a
-// drop from 29 to 3). One-entry tolerance leaves room for an intentional
-// edit without forcing this constant to move on every legitimate change.
-const MIN_ITEM_COUNT = 28;
-
-describe("content/items.json — M5.0 widening conformance", () => {
-  test("all entries have the 9 truly-required fields with correct types", async () => {
-    const items = await loadItems();
+describe("content/items.json — parseItemRow conformance", () => {
+  test("every entry parses via the production parseItemRow loader", async () => {
+    const items = await loadItemsJson();
     expect(items.length).toBeGreaterThanOrEqual(MIN_ITEM_COUNT);
-    for (let i = 0; i < items.length; i++) {
-      const ctx = `items.json[${i}]`;
-      const item = asRecord(items[i], ctx);
-      for (const field of REQUIRED_FIELDS) {
-        if (!(field in item)) throw new Error(`${ctx}.${field} is missing`);
-      }
-      const idCtx = typeof item.id === "string" ? `items.json[${item.id}]` : ctx;
-      if (typeof item.id !== "string") throw new Error(`${ctx}.id is not a string`);
-      if (typeof item.name !== "string") throw new Error(`${idCtx}.name is not a string`);
-      if (typeof item.tier !== "number") throw new Error(`${idCtx}.tier is not a number`);
-      if (typeof item.type !== "string") throw new Error(`${idCtx}.type is not a string`);
-      if (typeof item.rarity !== "string") throw new Error(`${idCtx}.rarity is not a string`);
-      if (!Array.isArray(item.tags)) throw new Error(`${idCtx}.tags is not an array`);
-      for (const tag of item.tags) {
-        if (typeof tag !== "string") throw new Error(`${idCtx}.tags contains a non-string entry`);
-      }
-      if (typeof item.weight !== "number") throw new Error(`${idCtx}.weight is not a number`);
-      if (!Array.isArray(item.effects)) throw new Error(`${idCtx}.effects is not an array`);
-      for (let j = 0; j < item.effects.length; j++) {
-        const effect = asRecord(item.effects[j], `${idCtx}.effects[${j}]`);
-        // ItemEffect.type is the only required field (per packages/shared Item.ts).
-        if (typeof effect.type !== "string")
-          throw new Error(`${idCtx}.effects[${j}].type is not a string`);
-        if (effect.target !== undefined && typeof effect.target !== "string")
-          throw new Error(`${idCtx}.effects[${j}].target is not a string`);
-        if (
-          effect.value !== undefined &&
-          typeof effect.value !== "number" &&
-          typeof effect.value !== "string"
-        )
-          throw new Error(`${idCtx}.effects[${j}].value is not number or string`);
-        if (effect.trigger !== undefined && typeof effect.trigger !== "string")
-          throw new Error(`${idCtx}.effects[${j}].trigger is not a string`);
-        if (effect.description !== undefined && typeof effect.description !== "string")
-          throw new Error(`${idCtx}.effects[${j}].description is not a string`);
-      }
-      if (typeof item.value_base !== "number")
-        throw new Error(`${idCtx}.value_base is not a number`);
+    for (const item of items) {
+      const id = typeof item.id === "string" ? item.id : "<no-id>";
+      // Throws with an items[<id>].<field> context on any malformed entry.
+      expect(() => parseItemRow(id, item)).not.toThrow();
     }
   });
 
-  test("optional fields (when present) match the widened Item shape", async () => {
-    const items = await loadItems();
-    for (let i = 0; i < items.length; i++) {
-      const item = asRecord(items[i], `items.json[${i}]`);
-      const ctx = typeof item.id === "string" ? `items.json[${item.id}]` : `items.json[${i}]`;
+  test("parsed items round-trip their id and core fields", async () => {
+    const items = await loadItemsJson();
+    const sample = items.find((i) => i.id === "shortsword_basic");
+    expect(sample).toBeDefined();
+    const parsed = parseItemRow(sample!.id as string, sample!);
+    expect(parsed.id).toBe("shortsword_basic");
+    expect(parsed.type).toBe("weapon");
+    expect([1, 2, 3, 4]).toContain(parsed.tier);
+  });
 
-      // Original optionals (pre-M5.0)
-      if (item.subtype !== undefined && typeof item.subtype !== "string") {
-        throw new Error(`${ctx}.subtype is not a string`);
-      }
-      if (item.description !== undefined && typeof item.description !== "string") {
-        throw new Error(`${ctx}.description is not a string`);
-      }
-      if (item.lore !== undefined && typeof item.lore !== "string") {
-        throw new Error(`${ctx}.lore is not a string`);
-      }
-      if (item.found_in !== undefined) {
-        if (!Array.isArray(item.found_in)) {
-          throw new Error(`${ctx}.found_in is not an array`);
-        }
-        for (const loc of item.found_in) {
-          if (typeof loc !== "string")
-            throw new Error(`${ctx}.found_in contains a non-string entry`);
-        }
-      }
-      if (item.value_modifiers !== undefined) {
-        const vm = asRecord(item.value_modifiers, `${ctx}.value_modifiers`);
-        for (const [k, v] of Object.entries(vm)) {
-          if (typeof v !== "number")
-            throw new Error(`${ctx}.value_modifiers[${k}] is not a number`);
-        }
-      }
+  test("has 6 Rare + 4 Legendary magic items, each with an audio_cue; Thornridge is quest_only", async () => {
+    const items = await loadItemsJson();
+    const magic = items
+      .map((i) => parseItemRow(i.id as string, i))
+      .filter((i) => i.tags.includes("magic"));
+    expect(magic.filter((m) => m.rarity === "rare")).toHaveLength(6);
+    expect(magic.filter((m) => m.rarity === "legendary")).toHaveLength(4);
+    for (const m of magic) {
+      expect(
+        m.audio_cue,
+        `magic item ${m.id} missing audio_cue (audio-first invariant)`,
+      ).toBeTruthy();
+    }
+    const thornridge = magic.find((m) => m.id === "thornridges_stand");
+    expect(thornridge?.quest_only).toBe(true);
+  });
 
-      // M5.0 new optionals
-      if (
-        item.durability_tier !== undefined &&
-        (typeof item.durability_tier !== "string" ||
-          !ALLOWED_DURABILITY_TIERS.has(item.durability_tier))
-      ) {
-        throw new Error(
-          `${ctx}.durability_tier is not one of fragile|standard|reinforced|masterwork`,
-        );
+  test("every weapon has damage_dice, every armor/shield has ac, every equippable has durability_tier", async () => {
+    const items = await loadItemsJson();
+    const EQUIPPABLE = new Set(["weapon", "armor", "shield", "tool"]);
+    for (const item of items) {
+      const parsed = parseItemRow(item.id as string, item);
+      if (parsed.type === "weapon") {
+        expect(parsed.damage_dice, `${parsed.id} weapon missing damage_dice`).toBeDefined();
       }
-      if (item.current_hits !== undefined && typeof item.current_hits !== "number") {
-        throw new Error(`${ctx}.current_hits is not a number`);
+      if (parsed.type === "armor" || parsed.type === "shield") {
+        expect(parsed.ac, `${parsed.id} armor/shield missing ac`).toBeDefined();
       }
-      if (item.damage_dice !== undefined && typeof item.damage_dice !== "string") {
-        throw new Error(`${ctx}.damage_dice is not a string`);
-      }
-      if (item.properties !== undefined) {
-        if (!Array.isArray(item.properties)) throw new Error(`${ctx}.properties is not an array`);
-        for (const p of item.properties) {
-          if (typeof p !== "string")
-            throw new Error(`${ctx}.properties contains a non-string entry`);
-        }
-      }
-      if (item.ac !== undefined && typeof item.ac !== "number") {
-        throw new Error(`${ctx}.ac is not a number`);
-      }
-      if (item.armor_properties !== undefined) {
-        if (!Array.isArray(item.armor_properties))
-          throw new Error(`${ctx}.armor_properties is not an array`);
-        for (const p of item.armor_properties) {
-          if (typeof p !== "string")
-            throw new Error(`${ctx}.armor_properties contains a non-string entry`);
-        }
-      }
-      if (item.audio_cue !== undefined && typeof item.audio_cue !== "string") {
-        throw new Error(`${ctx}.audio_cue is not a string`);
-      }
-      if (
-        item.attunement !== undefined &&
-        typeof item.attunement !== "boolean" &&
-        typeof item.attunement !== "string"
-      ) {
-        throw new Error(`${ctx}.attunement is not boolean or string`);
-      }
-      if (item.quest_only !== undefined && typeof item.quest_only !== "boolean") {
-        throw new Error(`${ctx}.quest_only is not a boolean`);
-      }
-      if (item.art_template !== undefined) {
-        const at = asRecord(item.art_template, `${ctx}.art_template`);
-        if (typeof at.template_id !== "string") {
-          throw new Error(`${ctx}.art_template.template_id is not a string`);
-        }
-        const vars = asRecord(at.vars, `${ctx}.art_template.vars`);
-        for (const [k, v] of Object.entries(vars)) {
-          if (typeof v !== "string")
-            throw new Error(`${ctx}.art_template.vars[${k}] is not a string`);
-        }
+      if (EQUIPPABLE.has(parsed.type)) {
+        expect(
+          parsed.durability_tier,
+          `${parsed.id} equippable missing durability_tier`,
+        ).toBeDefined();
       }
     }
   });
+});
 
-  test("all entries carry a tier within the widened 1|2|3|4 union", async () => {
-    const items = await loadItems();
-    for (let i = 0; i < items.length; i++) {
-      const item = asRecord(items[i], `items.json[${i}]`);
-      const ctx = typeof item.id === "string" ? `items.json[${item.id}]` : `items.json[${i}]`;
-      if (typeof item.tier !== "number" || !ALLOWED_TIERS.has(item.tier)) {
-        throw new Error(`${ctx}.tier=${String(item.tier)} is outside 1|2|3|4`);
-      }
+describe("parseItemRow — fail-loud validation", () => {
+  const base = {
+    id: "test_item",
+    name: "Test Item",
+    tier: 1,
+    type: "material",
+    rarity: "common",
+    tags: ["test"],
+    weight: 1,
+    effects: [],
+    value_base: 0,
+  };
+
+  test("accepts a minimal valid row", () => {
+    expect(() => parseItemRow("test_item", base)).not.toThrow();
+  });
+
+  test("rejects a non-object row", () => {
+    expect(() => parseItemRow("x", null)).toThrow(/data is not an object/);
+    expect(() => parseItemRow("x", [])).toThrow(/data is not an object/);
+  });
+
+  test("rejects a missing required field", () => {
+    const { name: _omit, ...noName } = base;
+    expect(() => parseItemRow("x", noName)).toThrow(/name/);
+  });
+
+  test("rejects a tier outside 1|2|3|4", () => {
+    expect(() => parseItemRow("x", { ...base, tier: 5 })).toThrow(/tier/);
+    expect(() => parseItemRow("x", { ...base, tier: 0 })).toThrow(/tier/);
+  });
+
+  test("rejects an unknown rarity", () => {
+    expect(() => parseItemRow("x", { ...base, rarity: "mythic" })).toThrow(/rarity/);
+  });
+
+  test("rejects an unknown durability_tier when present", () => {
+    expect(() => parseItemRow("x", { ...base, durability_tier: "reinforce" })).toThrow(
+      /durability_tier/,
+    );
+  });
+
+  test("accepts the 4 valid durability tiers", () => {
+    for (const t of ["fragile", "standard", "reinforced", "masterwork"]) {
+      expect(() =>
+        parseItemRow("x", { ...base, type: "weapon", damage_dice: "1d6", durability_tier: t }),
+      ).not.toThrow();
     }
+  });
+
+  test("rejects an effect missing its type", () => {
+    expect(() => parseItemRow("x", { ...base, effects: [{ target: "self" }] })).toThrow(
+      /effects\[0\]\.type/,
+    );
+  });
+
+  test("rejects a malformed attunement union", () => {
+    expect(() => parseItemRow("x", { ...base, attunement: { kind: "sometimes" } })).toThrow(
+      /attunement/,
+    );
+    expect(() => parseItemRow("x", { ...base, attunement: { kind: "class" } })).toThrow(
+      /attunement\.class/,
+    );
+    expect(() => parseItemRow("x", { ...base, attunement: true })).toThrow(/attunement/);
+  });
+
+  test("accepts the 3 attunement variants", () => {
+    expect(() => parseItemRow("x", { ...base, attunement: { kind: "none" } })).not.toThrow();
+    expect(() => parseItemRow("x", { ...base, attunement: { kind: "required" } })).not.toThrow();
+    expect(() =>
+      parseItemRow("x", { ...base, attunement: { kind: "class", class: "caster" } }),
+    ).not.toThrow();
+  });
+
+  test("validates art_template.vars are strings", () => {
+    expect(() =>
+      parseItemRow("x", {
+        ...base,
+        art_template: { template_id: "t", vars: { a: 1 } },
+      }),
+    ).toThrow(/art_template\.vars/);
+  });
+
+  test("requires damage_dice on a weapon", () => {
+    expect(() =>
+      parseItemRow("x", { ...base, type: "weapon", durability_tier: "standard" }),
+    ).toThrow(/damage_dice/);
+  });
+
+  test("requires ac on armor and shield", () => {
+    expect(() =>
+      parseItemRow("x", { ...base, type: "armor", durability_tier: "standard" }),
+    ).toThrow(/\bac\b/);
+    expect(() =>
+      parseItemRow("x", { ...base, type: "shield", durability_tier: "standard" }),
+    ).toThrow(/\bac\b/);
+  });
+
+  test("requires durability_tier on equippable types", () => {
+    expect(() => parseItemRow("x", { ...base, type: "weapon", damage_dice: "1d6" })).toThrow(
+      /durability_tier/,
+    );
+    expect(() => parseItemRow("x", { ...base, type: "tool" })).toThrow(/durability_tier/);
+  });
+
+  test("does not require structured fields on non-equippable types", () => {
+    expect(() => parseItemRow("x", { ...base, type: "consumable" })).not.toThrow();
+    expect(() => parseItemRow("x", { ...base, type: "material" })).not.toThrow();
   });
 });

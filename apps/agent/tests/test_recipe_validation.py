@@ -192,3 +192,84 @@ class TestAllocateMaterials:
         result = rv.allocate_materials([], {}, CATALOG)
         assert result.satisfied is True
         assert result.flat == []
+
+
+class TestValidateMagicItemCraftTier:
+    """Magic-item craft-tier gate (story-002, M5.4). Rare items require an
+    Expert+ recipe, Legendary require Master; common/uncommon are unconstrained.
+    Pure ordering logic over RECIPE_TIER_ORDER, mirroring validate_recipe_slot_capacity.
+    The gate is keyed on the RECIPE tier vocab (basic/trained/expert/master), not
+    the crafting-skill vocab. Consumed by the content-invariant test that joins
+    magic items to their recipes (story-002 Commit 4)."""
+
+    def test_rare_allows_expert_recipe(self):
+        assert rv.validate_magic_item_craft_tier("rare", "expert").allowed is True
+
+    def test_rare_allows_master_recipe(self):
+        assert rv.validate_magic_item_craft_tier("rare", "master").allowed is True
+
+    def test_rare_refuses_trained_recipe(self):
+        result = rv.validate_magic_item_craft_tier("rare", "trained")
+        assert result.allowed is False
+        assert "expert" in result.reason.lower()
+
+    def test_rare_refuses_basic_recipe(self):
+        assert rv.validate_magic_item_craft_tier("rare", "basic").allowed is False
+
+    def test_legendary_requires_master(self):
+        assert rv.validate_magic_item_craft_tier("legendary", "master").allowed is True
+        assert rv.validate_magic_item_craft_tier("legendary", "expert").allowed is False
+
+    def test_common_and_uncommon_are_unconstrained(self):
+        for rarity in ("common", "uncommon"):
+            for tier in ("basic", "trained", "expert", "master"):
+                assert rv.validate_magic_item_craft_tier(rarity, tier).allowed is True
+
+    def test_unknown_rarity_fails_loud(self):
+        with pytest.raises(ValueError):
+            rv.validate_magic_item_craft_tier("mythic", "expert")
+
+    def test_unknown_recipe_tier_fails_loud(self):
+        with pytest.raises(ValueError):
+            rv.validate_magic_item_craft_tier("rare", "untrained")
+
+
+class TestMagicItemContentInvariant:
+    """Content invariant (story-002 c4d): every craftable Rare/Legendary item in
+    content/items.json — i.e. one whose id matches a recipe's output_item — must be
+    produced by a recipe whose tier satisfies validate_magic_item_craft_tier (Rare ->
+    Expert+, Legendary -> Master). This is the gate's production consumer, joining the
+    catalog to recipes. Non-craftable magic items (the unique named finds with no
+    recipe) are intentionally exempt (decision 396b3afd71d2 / concern 12c946b6ffec).
+
+    HONESTY: the live joins today are all pre-existing craftable rares — the 10 named
+    M5.4 magic items have no recipes yet, so the gate is not exercised over them (debt
+    ee6a0bc84153 / concern c70b7db13b1e: add their recipes or align ids to cover them)."""
+
+    @staticmethod
+    def _load(name: str):
+        import json
+        from pathlib import Path
+
+        content = Path(__file__).resolve().parents[3] / "content" / name
+        return json.loads(content.read_text())
+
+    def test_craftable_magic_items_satisfy_tier_gate(self):
+        items = self._load("items.json")
+        recipes = self._load("recipes.json")
+        by_output = {r["output_item"]: r for r in recipes}
+
+        checked = 0
+        for it in items:
+            if it["rarity"] in ("rare", "legendary") and it["id"] in by_output:
+                recipe = by_output[it["id"]]
+                result = rv.validate_magic_item_craft_tier(it["rarity"], recipe["tier"])
+                assert result.allowed, (
+                    f"{it['id']} ({it['rarity']}) is craftable at {recipe['tier']} "
+                    f"but violates the magic-tier gate: {result.reason}"
+                )
+                checked += 1
+
+        # Non-vacuous: at least one craftable Rare/Legendary item must be covered,
+        # else the join silently asserts nothing (e.g. a future id-divergence regression).
+        assert checked > 0, "no craftable Rare/Legendary item joined a recipe — gate untested"
