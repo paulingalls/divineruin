@@ -63,9 +63,18 @@ const webWebServer = {
   // (the global baseURL below is the mobile app on :8082).
   command: "bun run --cwd apps/web build && bun run --cwd apps/web start",
   cwd: "../",
-  port: 8085,
-  timeout: 120_000,
-  reuseExistingServer: !CI,
+  // Wait on an HTTP probe of the served page, not a bare TCP port: the command
+  // prerenders the dist (`build`) BEFORE the server binds (`start`), and under
+  // the pre-push gate's concurrent load (Docker acceptance + unit lanes) that
+  // build is CPU-starved. A `port` probe can race the build; `url` polls for a
+  // real 200 from the prod server, so Playwright only starts specs once dist is
+  // actually served. timeout gives the build headroom under contention.
+  url: "http://localhost:8085/",
+  timeout: 180_000,
+  // Never reuse an existing :8085 server. A leftover/half-dead server from a
+  // killed run would serve stale (or empty) dist and silently fail the content
+  // assertions; always build fresh and fail loud on a real port conflict.
+  reuseExistingServer: false,
   env: {
     NODE_ENV: "production",
     PORT: "8085",
