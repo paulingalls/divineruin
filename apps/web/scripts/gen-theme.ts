@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import {
   BrandColors,
-  FontTokens,
+  FONT_FALLBACKS,
   MaxContentWidth,
   Radius,
   Spacing,
@@ -16,11 +16,10 @@ import {
 
 const kebab = (s: string) => s.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 
-// Emit prettier's canonical CSS forms so the generated file passes `prettier
-// --check` and the on-disk drift guard simultaneously: hex lowercased, and
-// font-family stacks double-quoted (the tokens carry single quotes).
+// Emit prettier's canonical CSS form so the generated file passes `prettier
+// --check` and the on-disk drift guard simultaneously: hex lowercased. Font
+// stacks are emitted directly from FONT_FALLBACKS (already double-quoted).
 const hex = (v: string) => v.toLowerCase();
-const fontStack = (v: string) => v.replaceAll("'", '"');
 
 export function generateThemeCss(): string {
   const lines: string[] = [];
@@ -33,10 +32,13 @@ export function generateThemeCss(): string {
     lines.push(`  --color-${kebab(key)}: ${hex(value)};`);
   }
 
-  lines.push("  /* Font families */");
-  lines.push(`  --font-display: ${fontStack(FontTokens.display.web)};`);
-  lines.push(`  --font-body: ${fontStack(FontTokens.body.web)};`);
-  lines.push(`  --font-system: ${fontStack(FontTokens.system.web)};`);
+  // gen-theme is the sole owner of --font-*: each stack carries the brand family,
+  // its metric-adjusted CLS fallback family, then the generic. fonts.css defines
+  // those @font-face fallbacks but no longer redefines --font-* on :root.
+  lines.push("  /* Font families (incl. metric-adjusted CLS fallback) */");
+  for (const fb of FONT_FALLBACKS) {
+    lines.push(`  --font-${fb.role}: "${fb.family}", "${fb.fallbackName}", ${fb.generic};`);
+  }
 
   lines.push("  /* Type scale */");
   for (const [role, t] of Object.entries(TypeScaleTokens)) {

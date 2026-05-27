@@ -18,10 +18,10 @@
   --color-ember: #c2410c;
   --color-divine-faint: #92702a;
   --color-divine: #c9a84c;
-  /* Font families */
-  --font-display: "Cormorant Garamond", serif;
-  --font-body: "Crimson Pro", serif;
-  --font-system: "IBM Plex Mono", monospace;
+  /* Font families (incl. metric-adjusted CLS fallback) */
+  --font-display: "Cormorant Garamond", "Cormorant Garamond Fallback", serif;
+  --font-body: "Crimson Pro", "Crimson Pro Fallback", serif;
+  --font-system: "IBM Plex Mono", "IBM Plex Mono Fallback", monospace;
   /* Type scale */
   --text-display-size: 62px;
   --text-display-line-height: 68px;

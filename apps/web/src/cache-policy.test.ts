@@ -13,7 +13,7 @@ test("the woff2 brand faces stay immutable (content-stable, bandwidth-heavy)", (
   expect(cacheControlFor("fonts/crimson-pro-400.woff2")).toBe(IMMUTABLE);
 });
 
-test("stable-named hand-authored files revalidate (index.html, fonts.css)", () => {
+test("stable-named files revalidate (index.html, fonts.css)", () => {
   // Both keep their filename across rebuilds, so an edit must not be masked by a
   // 1y immutable cache — they must revalidate via ETag/304.
   expect(cacheControlFor("index.html")).toBe("no-cache");
