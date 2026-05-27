@@ -136,24 +136,3 @@
   line-height: var(--text-body-line-height);
   color: var(--color-ash);
 }
-
-/* Reveal gate. Default (no-JS / not armed / no IntersectionObserver): visible.
-   Armed (post-hydration, JS + IO): hide each card until it scrolls into view. */
-.races--armed .races__card {
-  opacity: 0;
-  transform: translateY(16px);
-  transition:
-    opacity 600ms ease,
-    transform 600ms ease;
-}
-
-.races--armed .races__card.is-revealed {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .races--armed .races__card {
-    transition: none;
-  }
-}

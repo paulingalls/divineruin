@@ -1,6 +1,5 @@
 import "./Races.css";
-import { useEffect, useRef } from "react";
-import { reveal, defaultRevealEnv } from "../lib/reveal.ts";
+import { useReveal } from "../lib/useReveal.ts";
 
 export interface Race {
   name: string;
@@ -53,17 +52,10 @@ export const RACES: readonly Race[] = [
 // "04 / The Peoples" section: the six playable races as a card grid. The DM opens your
 // story by asking what your hands feel like, not by showing a menu. Progressive
 // enhancement matches the sibling sections: all cards are in the prerendered HTML and
-// visible by default; only post-hydration (JS + IO) does the section arm and reveal them.
+// visible by default; only post-hydration (via useReveal) does the section arm and reveal
+// its `.reveal-item` cards on scroll.
 export function Races() {
-  const sectionRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const section = sectionRef.current;
-    const env = defaultRevealEnv();
-    if (!section || !env.IntersectionObserver) return;
-    section.classList.add("races--armed");
-    return reveal(section.querySelectorAll(".races__card"), env);
-  }, []);
+  const sectionRef = useReveal<HTMLElement>();
 
   return (
     <section className="races" id="races" ref={sectionRef}>
@@ -84,7 +76,7 @@ export function Races() {
 
         <div className="races__grid">
           {RACES.map((r, i) => (
-            <article className="races__card" key={r.name}>
+            <article className="races__card reveal-item" key={r.name}>
               <div className="races__num">{String(i + 1).padStart(2, "0")} / 06</div>
               <h3 className="races__name">{r.name}</h3>
               <p className="races__sense">“{r.sense}”</p>

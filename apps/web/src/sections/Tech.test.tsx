@@ -25,7 +25,7 @@ test("renders every partner's role and name", () => {
 
 test("renders one item per partner", () => {
   const html = renderToStaticMarkup(<Tech />);
-  const items = html.match(/class="tech__item"/g) ?? [];
+  const items = html.match(/class="tech__item reveal-item"/g) ?? [];
   expect(items.length).toBe(TECH_PARTNERS.length);
   expect(items.length).toBe(4);
 });
@@ -42,10 +42,10 @@ test("renders the four expected partners in order", () => {
 
 test("starts unarmed — reveal gate is post-hydration only (matches SSR)", () => {
   const html = renderToStaticMarkup(<Tech />);
-  expect(html).not.toContain("tech--armed");
+  expect(html).not.toContain("reveal-armed");
 });
 
-test("REVEALED_CLASS matches the literal the reveal CSS keys off", () => {
+test("REVEALED_CLASS matches the literal the reveal-gate CSS keys off", () => {
   expect(REVEALED_CLASS).toBe("is-revealed");
 });
 

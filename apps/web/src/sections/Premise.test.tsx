@@ -5,8 +5,9 @@ import { REVEALED_CLASS } from "../lib/reveal.ts";
 
 // No-DOM unit pattern (NavBar/Hero/AudioDemo): renderToStaticMarkup proves the
 // copy is in the prerendered HTML (SEO / visible without JS) and that render is
-// hydration-safe. The scroll-reveal interaction (armed -> IntersectionObserver ->
-// cards gain is-revealed) is DOM behavior, covered by the story-005 capstone E2E.
+// hydration-safe. The scroll-reveal interaction (useReveal arms reveal-armed ->
+// IntersectionObserver -> cards gain is-revealed) is DOM behavior, covered by the
+// web-world / web-above-fold E2E.
 
 test("renders the eyebrow, title, and lede", () => {
   const html = renderToStaticMarkup(<Premise />);
@@ -24,20 +25,20 @@ test("renders every premise item's number, label, and description", () => {
   }
 });
 
-test("renders one card per premise item", () => {
+test("renders one reveal-item card per premise item", () => {
   const html = renderToStaticMarkup(<Premise />);
-  const cards = html.match(/class="premise__item"/g) ?? [];
+  const cards = html.match(/\bpremise__item reveal-item\b/g) ?? [];
   expect(cards.length).toBe(PREMISE_ITEMS.length);
 });
 
 test("starts unarmed — reveal gate is post-hydration only (matches SSR)", () => {
   const html = renderToStaticMarkup(<Premise />);
-  expect(html).not.toContain("premise--armed");
+  expect(html).not.toContain("reveal-armed");
 });
 
-test("REVEALED_CLASS matches the literal the reveal CSS keys off", () => {
-  // Guards the CSS<->helper coupling: Premise.css hides un-revealed cards and
-  // reveals .is-revealed ones; reveal() adds exactly REVEALED_CLASS.
+test("REVEALED_CLASS matches the literal the reveal-gate CSS keys off", () => {
+  // Guards the CSS<->helper coupling: reveal-gate.css hides un-revealed
+  // .reveal-item cards and reveals .is-revealed ones; reveal() adds REVEALED_CLASS.
   expect(REVEALED_CLASS).toBe("is-revealed");
 });
 

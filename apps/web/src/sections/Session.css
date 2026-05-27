@@ -100,26 +100,3 @@
   font-style: italic;
   color: var(--color-parchment);
 }
-
-/* Reveal gate. Default (no-JS / not armed / no IntersectionObserver): visible.
-   Armed (post-hydration, JS + IO): hide until each line scrolls into view. */
-.session--armed .session__line {
-  opacity: 0;
-  transform: translateY(16px);
-  transition:
-    opacity 600ms ease,
-    transform 600ms ease;
-}
-
-.session--armed .session__line.is-revealed {
-  opacity: 1;
-  transform: none;
-}
-
-/* Reduced motion: reveal() reveals all lines at once (no observer), so they're
-   visible; drop the transition so there's no animation. */
-@media (prefers-reduced-motion: reduce) {
-  .session--armed .session__line {
-    transition: none;
-  }
-}

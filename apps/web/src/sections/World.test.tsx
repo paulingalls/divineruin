@@ -70,7 +70,7 @@ test("renders every meta entry's term and value", () => {
 test("renders one card per item (timeline 5, places 6, tiers 4)", () => {
   const html = renderToStaticMarkup(<World />);
   const tlEvents = html.match(/class="world__tl-event[^"]*"/g) ?? [];
-  const places = html.match(/class="world__place"/g) ?? [];
+  const places = html.match(/class="world__place reveal-item"/g) ?? [];
   // Each tier <li> carries a unique world__tx--N modifier; matching the bare
   // world__tx prefix would also catch world__tx-meta/-name/-desc/-quote inner nodes.
   const tiers = html.match(/world__tx--\d/g) ?? [];
@@ -110,10 +110,10 @@ test("placeStatusVariant maps every actual mockup status to its variant", () => 
 
 test("starts unarmed — reveal gate is post-hydration only (matches SSR)", () => {
   const html = renderToStaticMarkup(<World />);
-  expect(html).not.toContain("world--armed");
+  expect(html).not.toContain("reveal-armed");
 });
 
-test("REVEALED_CLASS matches the literal the reveal CSS keys off", () => {
+test("REVEALED_CLASS matches the literal the reveal-gate CSS keys off", () => {
   expect(REVEALED_CLASS).toBe("is-revealed");
 });
 

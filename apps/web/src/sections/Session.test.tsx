@@ -5,8 +5,9 @@ import { REVEALED_CLASS } from "../lib/reveal.ts";
 
 // No-DOM unit pattern (NavBar/Hero/AudioDemo/Premise): renderToStaticMarkup proves the
 // copy is in the prerendered HTML (SEO / visible without JS) and that render is
-// hydration-safe. The scroll-reveal interaction (armed -> IntersectionObserver ->
-// lines gain is-revealed) is DOM behavior, covered by the story-006 capstone E2E.
+// hydration-safe. The scroll-reveal interaction (useReveal arms reveal-armed ->
+// IntersectionObserver -> lines gain is-revealed) is DOM behavior, covered by the
+// web-world / web-above-fold E2E.
 
 const ALLOWED_VARIANTS = new Set(["", "player", "combat", "god"]);
 
@@ -33,12 +34,12 @@ test("renders one transcript row per line", () => {
 
 test("starts unarmed — reveal gate is post-hydration only (matches SSR)", () => {
   const html = renderToStaticMarkup(<Session />);
-  expect(html).not.toContain("session--armed");
+  expect(html).not.toContain("reveal-armed");
 });
 
-test("REVEALED_CLASS matches the literal the reveal CSS keys off", () => {
-  // Guards the CSS<->helper coupling: Session.css hides un-revealed lines and
-  // reveals .is-revealed ones; reveal() adds exactly REVEALED_CLASS.
+test("REVEALED_CLASS matches the literal the reveal-gate CSS keys off", () => {
+  // Guards the CSS<->helper coupling: reveal-gate.css hides un-revealed
+  // .reveal-item lines and reveals .is-revealed ones; reveal() adds REVEALED_CLASS.
   expect(REVEALED_CLASS).toBe("is-revealed");
 });
 

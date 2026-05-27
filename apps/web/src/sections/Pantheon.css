@@ -155,24 +155,3 @@
   letter-spacing: 0.02em;
   color: var(--color-divine);
 }
-
-/* Reveal gate. Default (no-JS / not armed / no IntersectionObserver): visible.
-   Armed (post-hydration, JS + IO): hide each card until it scrolls into view. */
-.pantheon--armed .pantheon__card {
-  opacity: 0;
-  transform: translateY(16px);
-  transition:
-    opacity 600ms ease,
-    transform 600ms ease;
-}
-
-.pantheon--armed .pantheon__card.is-revealed {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pantheon--armed .pantheon__card {
-    transition: none;
-  }
-}

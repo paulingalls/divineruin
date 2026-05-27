@@ -1,6 +1,5 @@
 import "./Classes.css";
-import { useEffect, useRef } from "react";
-import { reveal, defaultRevealEnv } from "../lib/reveal.ts";
+import { useReveal } from "../lib/useReveal.ts";
 
 // The headline figures, kept as one consistent constant: total = archetypes * gods.
 export const CLASSES_STAT = {
@@ -12,17 +11,9 @@ export const CLASSES_STAT = {
 // "06 / The Build" section: the "big number" pitch — 18 archetypes × 10 patrons = 180 ways to
 // play, because your patron rewrites your spellbook and quest log. Progressive enhancement
 // matches the sibling sections: the stat is in the prerendered HTML and visible by default;
-// only post-hydration (JS + IO) does the section arm and reveal it on scroll.
+// only post-hydration (via useReveal) does the section arm and reveal its `.reveal-item` stat.
 export function Classes() {
-  const sectionRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const section = sectionRef.current;
-    const env = defaultRevealEnv();
-    if (!section || !env.IntersectionObserver) return;
-    section.classList.add("classes--armed");
-    return reveal(section.querySelectorAll(".classes__stat"), env);
-  }, []);
+  const sectionRef = useReveal<HTMLElement>();
 
   return (
     <section className="classes" id="classes" ref={sectionRef}>
@@ -33,7 +24,7 @@ export function Classes() {
         <h2 className="classes__title">
           Eighteen archetypes. <em>Ten patrons.</em>
         </h2>
-        <div className="classes__stat">
+        <div className="classes__stat reveal-item">
           <div className="classes__big-num">{CLASSES_STAT.total}</div>
           <p className="classes__equation">
             <span className="classes__acc">{CLASSES_STAT.archetypes}</span> archetypes ×{" "}
