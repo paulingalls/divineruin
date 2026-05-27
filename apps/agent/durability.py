@@ -13,8 +13,8 @@ catalog/template data; `current_hits` is per-instance player state stored on the
 inventory item (decision durability-current-hits-storage — no new table). Every
 function reads and returns plain dicts/ints and never mutates its input in place.
 
-Spec sources: game_mechanics_crafting.md §Durability System (519-540), §Repair
-Pricing (542-549). Conflicts resolved this story (recorded as decisions):
+Spec sources: docs/game_mechanics/game_mechanics_crafting.md §Durability System
+(519-540), §Repair Pricing (542-549). Conflicts resolved this story (decisions):
 - durability-repair-pricing-axis: repair cost keys on item RARITY, not durability.
 - durability-repair-skill-tier: fragile->untrained ... masterwork->master.
 - durability-broken-penalties: weapon -2 attack / armor|shield -2 AC / tool unusable.
