@@ -192,3 +192,43 @@ class TestAllocateMaterials:
         result = rv.allocate_materials([], {}, CATALOG)
         assert result.satisfied is True
         assert result.flat == []
+
+
+class TestValidateMagicItemCraftTier:
+    """Magic-item craft-tier gate (story-002, M5.4). Rare items require an
+    Expert+ recipe, Legendary require Master; common/uncommon are unconstrained.
+    Pure ordering logic over RECIPE_TIER_ORDER, mirroring validate_recipe_slot_capacity.
+    The gate is keyed on the RECIPE tier vocab (basic/trained/expert/master), not
+    the crafting-skill vocab. Consumed by the content-invariant test that joins
+    magic items to their recipes (story-002 Commit 4)."""
+
+    def test_rare_allows_expert_recipe(self):
+        assert rv.validate_magic_item_craft_tier("rare", "expert").allowed is True
+
+    def test_rare_allows_master_recipe(self):
+        assert rv.validate_magic_item_craft_tier("rare", "master").allowed is True
+
+    def test_rare_refuses_trained_recipe(self):
+        result = rv.validate_magic_item_craft_tier("rare", "trained")
+        assert result.allowed is False
+        assert "expert" in result.reason.lower()
+
+    def test_rare_refuses_basic_recipe(self):
+        assert rv.validate_magic_item_craft_tier("rare", "basic").allowed is False
+
+    def test_legendary_requires_master(self):
+        assert rv.validate_magic_item_craft_tier("legendary", "master").allowed is True
+        assert rv.validate_magic_item_craft_tier("legendary", "expert").allowed is False
+
+    def test_common_and_uncommon_are_unconstrained(self):
+        for rarity in ("common", "uncommon"):
+            for tier in ("basic", "trained", "expert", "master"):
+                assert rv.validate_magic_item_craft_tier(rarity, tier).allowed is True
+
+    def test_unknown_rarity_fails_loud(self):
+        with pytest.raises(ValueError):
+            rv.validate_magic_item_craft_tier("mythic", "expert")
+
+    def test_unknown_recipe_tier_fails_loud(self):
+        with pytest.raises(ValueError):
+            rv.validate_magic_item_craft_tier("rare", "untrained")
