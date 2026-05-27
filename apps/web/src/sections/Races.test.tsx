@@ -28,7 +28,7 @@ test("renders every race's name, sense, tagline, and flavor", () => {
 
 test("renders one card per race", () => {
   const html = renderToStaticMarkup(<Races />);
-  const cards = html.match(/class="races__card"/g) ?? [];
+  const cards = html.match(/class="races__card reveal-item"/g) ?? [];
   expect(cards.length).toBe(RACES.length);
   expect(cards.length).toBe(6);
 });
@@ -52,10 +52,10 @@ test("renders the six expected peoples in order", () => {
 
 test("starts unarmed — reveal gate is post-hydration only (matches SSR)", () => {
   const html = renderToStaticMarkup(<Races />);
-  expect(html).not.toContain("races--armed");
+  expect(html).not.toContain("reveal-armed");
 });
 
-test("REVEALED_CLASS matches the literal the reveal CSS keys off", () => {
+test("REVEALED_CLASS matches the literal the reveal-gate CSS keys off", () => {
   expect(REVEALED_CLASS).toBe("is-revealed");
 });
 
