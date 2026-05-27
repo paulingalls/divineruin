@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildSite, FONT_PRELOADS } from "./prerender.ts";
 import { META_DESCRIPTION, SITE_TITLE } from "../src/lib/seo.ts";
+import { shippedFontFiles } from "@divineruin/design-tokens";
 
 // Build once into a pid-scoped temp dir so the test never races with or
 // clobbers the real apps/web/dist artifact, then assert on the returned HTML.
@@ -120,4 +121,22 @@ test("FONT_PRELOADS matches the above-fold faces Hero + AudioDemo apply", async 
   for (const face of FONT_PRELOADS) {
     expect(await Bun.file(join(FONTS, face)).exists()).toBe(true);
   }
+});
+
+// Single-source guard: every preloaded face must come from the design-tokens ship
+// manifest (the same SHIP_FACES gen-fonts/gen-fonts-css derive from), so the list
+// can't drift to a filename that isn't subset/served. Pairs with the throwing
+// preloadFile() in prerender.ts that derives these names from the manifest.
+test("FONT_PRELOADS is drawn entirely from the design-tokens ship manifest", () => {
+  const shipped = shippedFontFiles();
+  for (const face of FONT_PRELOADS) {
+    expect(shipped).toContain(face);
+  }
+});
+
+// Budget guard (AC#3): the mono framing chrome (meta/cta/footer, --font-system =
+// IBM Plex Mono) is small, below-LCP, and deliberately NOT preloaded — preloading
+// it would compete with the above-fold serif faces for bandwidth.
+test("FONT_PRELOADS does not over-preload the mono chrome", () => {
+  expect(FONT_PRELOADS.some((f) => f.startsWith("ibm-plex-mono"))).toBe(false);
 });
