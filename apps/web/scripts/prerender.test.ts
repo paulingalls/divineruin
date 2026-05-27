@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildSite, FONT_PRELOADS } from "./prerender.ts";
 import { META_DESCRIPTION, SITE_TITLE } from "../src/lib/seo.ts";
+import { shippedFontFiles } from "@divineruin/design-tokens";
 
 // Build once into a pid-scoped temp dir so the test never races with or
 // clobbers the real apps/web/dist artifact, then assert on the returned HTML.
@@ -59,15 +60,17 @@ test("robots.txt + sitemap.xml carry the default production origin", async () =>
   expect(sitemap).toContain("<loc>https://divineruin.com/</loc>");
 });
 
-// Pins FONT_PRELOADS to the faces the Hero (the mounted above-fold LCP element)
-// actually applies, using the families theme.css declares. The preload list is
-// hand-maintained, so without this a weight/style change in Hero.css would
-// silently leave an above-fold face unpreloaded (FOUT on the LCP text). The
-// previous guard read the placeholder styles.css h1/body rules; the live
-// above-fold styling now lives in Hero.css, so the guard reads there.
-test("FONT_PRELOADS matches the above-fold faces the Hero applies", async () => {
+// Pins FONT_PRELOADS to the faces the above-fold sections actually apply, using
+// the families theme.css declares. The preload set is derived from the ship
+// manifest, but WHICH faces are above the fold is prerender's call, so without
+// this a weight/style change in Hero.css or AudioDemo.css would silently leave an
+// above-fold face unpreloaded (FOUT on the LCP / first-card text). Hero is the LCP
+// element; AudioDemo is the second section, also above the fold — its title is
+// --font-body, so the guard reads both CSS files (not Hero alone).
+test("FONT_PRELOADS matches the above-fold faces Hero + AudioDemo apply", async () => {
   const SRC = join(import.meta.dir, "..", "src");
   const hero = await Bun.file(join(SRC, "sections", "Hero.css")).text();
+  const audioDemo = await Bun.file(join(SRC, "sections", "AudioDemo.css")).text();
   const theme = await Bun.file(join(SRC, "theme.css")).text();
 
   const block = (css: string, selector: string): string =>
@@ -100,6 +103,12 @@ test("FONT_PRELOADS matches the above-fold faces the Hero applies", async () => 
   if (isItalic(hero, "\\.hero__headline em")) faces.push(`${display}-${headW}-italic.woff2`);
   if (isItalic(hero, "\\.hero__subhead")) faces.push(`${display}-${subW}-italic.woff2`);
   faces.push(`${body}-${pitchW}.woff2`);
+  // AudioDemo (second section, above the fold): its title is --font-body. If it
+  // declares no weight it inherits 400, whose face ships but isn't otherwise
+  // preloaded — an above-fold FOUT the Hero-only guard missed. Pin the title to a
+  // preloaded weight (300) so this derives a face already in the set.
+  const titleW = weight(audioDemo, "\\.audio-demo__title");
+  faces.push(`${body}-${titleW}.woff2`);
   const expected = [...new Set(faces)];
 
   expect(FONT_PRELOADS).toEqual(expected);
@@ -112,4 +121,22 @@ test("FONT_PRELOADS matches the above-fold faces the Hero applies", async () => 
   for (const face of FONT_PRELOADS) {
     expect(await Bun.file(join(FONTS, face)).exists()).toBe(true);
   }
+});
+
+// Single-source guard: every preloaded face must come from the design-tokens ship
+// manifest (the same SHIP_FACES gen-fonts/gen-fonts-css derive from), so the list
+// can't drift to a filename that isn't subset/served. Pairs with the throwing
+// preloadFile() in prerender.ts that derives these names from the manifest.
+test("FONT_PRELOADS is drawn entirely from the design-tokens ship manifest", () => {
+  const shipped = shippedFontFiles();
+  for (const face of FONT_PRELOADS) {
+    expect(shipped).toContain(face);
+  }
+});
+
+// Budget guard (AC#3): the mono framing chrome (meta/cta/footer, --font-system =
+// IBM Plex Mono) is small, below-LCP, and deliberately NOT preloaded — preloading
+// it would compete with the above-fold serif faces for bandwidth.
+test("FONT_PRELOADS does not over-preload the mono chrome", () => {
+  expect(FONT_PRELOADS.some((f) => f.startsWith("ibm-plex-mono"))).toBe(false);
 });

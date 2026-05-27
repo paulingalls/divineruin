@@ -57,6 +57,11 @@
 
 .audio-demo__title {
   font-family: var(--font-body);
+  /* Pinned to 300 (not the inherited default 400): this title is above the fold,
+     and Crimson Pro 300 is already preloaded for the Hero pitch, so the title
+     renders in a preloaded face with no extra preload (no FOUT, minimal budget).
+     Matches the light 300-weight body aesthetic. prerender.test.ts guards this. */
+  font-weight: 300;
   font-size: var(--text-body-size);
   color: var(--color-parchment);
 }

@@ -1,5 +1,6 @@
 import { Glob } from "bun";
 import { join } from "node:path";
+import { SHIP_FACES } from "@divineruin/design-tokens";
 import { renderAppHTML } from "../src/entry-server.tsx";
 import { buildMetaTags } from "../src/lib/seo.ts";
 import { buildRobotsTxt, buildSitemapXml } from "../src/lib/crawl.ts";
@@ -17,17 +18,33 @@ const ROOT_DIV = /<div id="root">\s*<\/div>/;
 const FONTS_SRC = join(APP_DIR, "src", "fonts");
 const AUDIO_SRC = join(APP_DIR, "src", "audio");
 const PUBLIC_SRC = join(APP_DIR, "public");
-// Above-the-fold faces the Hero applies, preloaded so the LCP text doesn't FOUT:
-// the headline "Divine" (Cormorant Garamond 300) + its italic <em> "Ruin" (the
-// largest glyphs, CG 300 italic) + the italic subhead "the sundered veil" (CG
-// 300 italic — same face, already in the set) + the pitch (Crimson Pro 300).
-// Kept small — the mono framing chrome (meta/cta/footer) is deliberately not
-// preloaded, as over-preloading competes with the LCP markup for bandwidth.
-// prerender.test.ts pins this list to the faces Hero.css actually applies.
+// Resolve an above-the-fold face to its shipped woff2 from the single ship
+// manifest (SHIP_FACES) — no hand-copied filename. Throws if the face isn't in
+// the ship set, so a typo or a manifest change can't silently preload a 404
+// (which would unpreload the LCP font). The same SHIP_FACES gen-fonts subsets and
+// gen-fonts-css emits @font-face for, so the preload set can't drift from them.
+function preloadFile(family: string, weight: 300 | 400, style: "normal" | "italic"): string {
+  const face = SHIP_FACES.find(
+    (f) => f.family === family && f.weight === weight && f.style === style,
+  );
+  if (!face) {
+    throw new Error(`prerender: above-fold face ${family} ${weight} ${style} not in SHIP_FACES`);
+  }
+  return face.file;
+}
+
+// Above-the-fold faces, resolved to their shipped filenames. WHICH faces are
+// above the fold is prerender's call (the Hero LCP markup + the AudioDemo title):
+// the headline "Divine" (Cormorant Garamond 300) + its italic <em> "Ruin" + the
+// italic subhead "the sundered veil" (CG 300 italic, same face) + the pitch and
+// the AudioDemo title (both Crimson Pro 300). Kept small — the mono framing chrome
+// (meta/cta/footer) is deliberately not preloaded, as over-preloading competes
+// with the LCP markup for bandwidth. prerender.test.ts pins this list to the faces
+// Hero.css + AudioDemo.css actually apply, and to the ship manifest.
 export const FONT_PRELOADS = [
-  "cormorant-garamond-300.woff2",
-  "cormorant-garamond-300-italic.woff2",
-  "crimson-pro-300.woff2",
+  preloadFile("Cormorant Garamond", 300, "normal"),
+  preloadFile("Cormorant Garamond", 300, "italic"),
+  preloadFile("Crimson Pro", 300, "normal"),
 ];
 
 // The self-hosted fonts deliberately bypass Bun's bundler (which inlines CSS
