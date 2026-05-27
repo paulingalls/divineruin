@@ -1,6 +1,7 @@
 import { serve } from "bun";
 import { handleLivekitToken } from "./livekit.ts";
 import { handleGetCharacter } from "./character.ts";
+import { handleRepairQuote } from "./repair.ts";
 import { handleRequestCode, handleVerifyCode, handleGetMe, requireAuth } from "./auth.ts";
 import { handlePreflight, withCors, checkRateLimit } from "./middleware.ts";
 import { handleCreateActivity } from "./activity_create.ts";
@@ -37,6 +38,7 @@ await Promise.all([
 const enableDebug = isDev && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
 
 const CHARACTER_RE = /^\/api\/character\/([a-zA-Z0-9_-]+)$/;
+const REPAIR_RE = /^\/api\/repair\/([a-zA-Z0-9_-]+)$/;
 const ACTIVITY_ID_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)$/;
 const ACTIVITY_DECIDE_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)\/decide$/;
 const AUDIO_FILE_RE = /^\/api\/audio\/([a-zA-Z0-9_.-]+)$/;
@@ -86,6 +88,17 @@ const server = serve({
         const auth = await requireAuth(req);
         if (auth instanceof Response) return withCors(auth);
         return withCors(await handleGetCharacter(req, auth.playerId));
+      }
+    }
+
+    // --- Repair quote (NPC blacksmith) ---
+
+    if (path.startsWith("/api/repair/") && req.method === "GET") {
+      const repairMatch = path.match(REPAIR_RE);
+      if (repairMatch) {
+        const auth = await requireAuth(req);
+        if (auth instanceof Response) return withCors(auth);
+        return withCors(await handleRepairQuote(req, auth.playerId, repairMatch[1]!));
       }
     }
 
