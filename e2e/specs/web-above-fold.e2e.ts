@@ -33,6 +33,32 @@ test.describe("Above-the-fold sections (apps/web)", () => {
     expect(res.headers()["content-type"] ?? "").toContain("audio");
   });
 
+  test("preloads the AudioDemo above-fold title face (no late font swap)", async ({
+    request,
+    page,
+  }) => {
+    // The AudioDemo title is above the fold and renders in --font-body (Crimson
+    // Pro). story-004 pinned it to weight 300 — already preloaded for the Hero
+    // pitch — so it shows in its final face with no FOUT. Prove both halves on the
+    // served build: (1) the served HTML carries the crimson-pro-300 preload link
+    // — the half that actually rules out an unpreloaded above-fold face — and
+    // (2) the rendered title computes to weight 300, i.e. the CSS pin is applied
+    // in a real browser at the served path (so (1) preloads the weight the title
+    // truly uses). Note (2) reads computed CSS, which resolves to 300 in fallback
+    // too; it confirms the pin landed, not the absence of a swap — (1) owns that.
+    const res = await request.get(`${WEB}/`);
+    expect(res.status()).toBe(200);
+    const body = await res.text();
+    expect(body).toMatch(
+      /<link[^>]+rel="preload"[^>]+href="\/fonts\/crimson-pro-300\.woff2"/,
+    );
+
+    await page.goto(`${WEB}/`);
+    const title = page.locator(".audio-demo__title");
+    await expect(title).toBeVisible();
+    await expect(title).toHaveCSS("font-weight", "300");
+  });
+
   test("AudioDemo toggles playback on interaction", async ({ page }) => {
     await page.goto(`${WEB}/`);
     const player = page.locator(".audio-demo");
