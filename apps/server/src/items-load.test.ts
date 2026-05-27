@@ -14,9 +14,9 @@ import { parseItemRow } from "./items.ts";
 
 const ITEMS_PATH = new URL("../../../content/items.json", import.meta.url);
 
-// Floor for content/items.json size — currently 29 entries. Catches silent
-// attrition from bad merges/rebases. Raise as the catalog grows.
-const MIN_ITEM_COUNT = 28;
+// Floor for content/items.json size — 90 entries after the M5.4 catalog
+// expansion (story-002). Catches silent attrition from bad merges/rebases.
+const MIN_ITEM_COUNT = 85;
 
 async function loadItemsJson(): Promise<Record<string, unknown>[]> {
   const raw: unknown = await Bun.file(ITEMS_PATH).json();
@@ -43,6 +43,23 @@ describe("content/items.json — parseItemRow conformance", () => {
     expect(parsed.id).toBe("shortsword_basic");
     expect(parsed.type).toBe("weapon");
     expect([1, 2, 3, 4]).toContain(parsed.tier);
+  });
+
+  test("has 6 Rare + 4 Legendary magic items, each with an audio_cue; Thornridge is quest_only", async () => {
+    const items = await loadItemsJson();
+    const magic = items
+      .map((i) => parseItemRow(i.id as string, i))
+      .filter((i) => i.tags.includes("magic"));
+    expect(magic.filter((m) => m.rarity === "rare")).toHaveLength(6);
+    expect(magic.filter((m) => m.rarity === "legendary")).toHaveLength(4);
+    for (const m of magic) {
+      expect(
+        m.audio_cue,
+        `magic item ${m.id} missing audio_cue (audio-first invariant)`,
+      ).toBeTruthy();
+    }
+    const thornridge = magic.find((m) => m.id === "thornridges_stand");
+    expect(thornridge?.quest_only).toBe(true);
   });
 
   test("every weapon has damage_dice, every armor/shield has ac, every equippable has durability_tier", async () => {

@@ -2305,5 +2305,304 @@
       "kind": "class",
       "class": "caster"
     }
+  },
+  {
+    "id": "blade_of_the_ashmark",
+    "name": "Blade of the Ashmark",
+    "tier": 3,
+    "type": "weapon",
+    "subtype": "longsword",
+    "rarity": "rare",
+    "description": "A longsword of Keldaran steel quenched in blessed oil. It rings softly when drawn and chimes louder as the Hollow draws near.",
+    "tags": [
+      "magic",
+      "rare",
+      "weapon"
+    ],
+    "weight": 3,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d8",
+        "damage_type": "slashing",
+        "properties": [
+          "versatile"
+        ],
+        "versatile_damage": "1d10",
+        "bonus": "+1 attack/damage",
+        "bonus_damage": "1d6 radiant",
+        "bonus_condition": "vs_hollow"
+      }
+    ],
+    "value_base": 500,
+    "audio_cue": "Soft radiant hum when drawn; blade chime intensifies near Hollow.",
+    "attunement": {
+      "kind": "required"
+    },
+    "damage_dice": "1d8",
+    "properties": [
+      "versatile"
+    ],
+    "durability_tier": "reinforced"
+  },
+  {
+    "id": "thornveld_guardian_shield",
+    "name": "Thornveld Guardian Shield",
+    "tier": 3,
+    "type": "shield",
+    "subtype": "shield",
+    "rarity": "rare",
+    "description": "A shield carved from living Thornveld ironwood that still creaks and settles as if growing. Bark-warm to the touch.",
+    "tags": [
+      "magic",
+      "rare",
+      "shield"
+    ],
+    "weight": 6,
+    "effects": [
+      {
+        "type": "shield",
+        "ac_bonus": 2,
+        "properties": [],
+        "description": "Once/long rest: Bark Skin reaction without Focus. +1 AC in natural terrain."
+      }
+    ],
+    "value_base": 500,
+    "audio_cue": "Low woody groan when raised; a rustle of leaves in natural terrain.",
+    "attunement": {
+      "kind": "required"
+    },
+    "ac": 2,
+    "armor_properties": [],
+    "durability_tier": "reinforced"
+  },
+  {
+    "id": "cloak_steppe_winds",
+    "name": "Cloak of the Steppe Winds",
+    "tier": 3,
+    "type": "wondrous",
+    "subtype": "cloak",
+    "rarity": "rare",
+    "description": "A cloak woven from steppe grass and razorwing feathers that lifts and ripples as though wind always finds it.",
+    "tags": [
+      "magic",
+      "rare",
+      "wondrous"
+    ],
+    "weight": 1,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "+10 ft speed; advantage vs prone/push; once/long rest Disengage as a free action."
+      }
+    ],
+    "value_base": 450,
+    "audio_cue": "A constant soft rush of wind, like a held breath let slowly out.",
+    "attunement": {
+      "kind": "required"
+    }
+  },
+  {
+    "id": "veil_sight_lens",
+    "name": "Veil-Sight Lens",
+    "tier": 3,
+    "type": "wondrous",
+    "subtype": "lens",
+    "rarity": "rare",
+    "description": "A monocle of Veil shard set in Keldaran silver. The glass shows what the eye refuses.",
+    "tags": [
+      "magic",
+      "rare",
+      "wondrous"
+    ],
+    "weight": 0.1,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "See invisible within 30 ft; advantage to disbelieve illusions; sense Resonance."
+      }
+    ],
+    "value_base": 450,
+    "audio_cue": "A faint crystalline ring when raised to the eye.",
+    "attunement": {
+      "kind": "class",
+      "class": "caster"
+    }
+  },
+  {
+    "id": "ring_resonance_dampening",
+    "name": "Ring of Resonance Dampening",
+    "tier": 3,
+    "type": "wondrous",
+    "subtype": "ring",
+    "rarity": "rare",
+    "description": "A plain iron ring threaded with spatial residue, always warm to the touch.",
+    "tags": [
+      "magic",
+      "rare",
+      "wondrous"
+    ],
+    "weight": 0.05,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Wearer's spells generate -1 Resonance (min 0); Hollow Echo +2; absorbs 3 Resonance then cracks."
+      }
+    ],
+    "value_base": 450,
+    "audio_cue": "A low steady drone felt in the bones, not heard.",
+    "attunement": {
+      "kind": "class",
+      "class": "caster"
+    }
+  },
+  {
+    "id": "potion_veil_walking",
+    "name": "Potion of Veil Walking",
+    "tier": 3,
+    "type": "consumable",
+    "subtype": "potion",
+    "rarity": "rare",
+    "description": "An iridescent liquid that smells of ozone and tastes of nothing at all.",
+    "tags": [
+      "magic",
+      "rare",
+      "consumable"
+    ],
+    "weight": 0.3,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Incorporeal 1 minute; move through solids; immune to physical damage; generates 3 Resonance."
+      }
+    ],
+    "value_base": 400,
+    "audio_cue": "A faint tearing whisper as it goes down."
+  },
+  {
+    "id": "architects_edge",
+    "name": "Architect's Edge",
+    "tier": 4,
+    "type": "weapon",
+    "subtype": "any melee",
+    "rarity": "legendary",
+    "description": "A blade of living stone taken from the Architect's construction zone. It shifts shape slowly between battles, still learning what it is.",
+    "tags": [
+      "magic",
+      "legendary",
+      "weapon"
+    ],
+    "weight": 3,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d8",
+        "damage_type": "slashing",
+        "properties": [
+          "versatile"
+        ],
+        "versatile_damage": "1d10",
+        "bonus": "+2 attack/damage",
+        "description": "Once/combat: reshape a 10 ft wall/floor/barrier within 30 ft for 1 minute."
+      }
+    ],
+    "value_base": 2000,
+    "audio_cue": "A grinding stone-on-stone murmur; the edge resettles with a click.",
+    "attunement": {
+      "kind": "required"
+    },
+    "damage_dice": "1d8",
+    "properties": [
+      "versatile"
+    ],
+    "durability_tier": "masterwork"
+  },
+  {
+    "id": "choirs_silence",
+    "name": "Choir's Silence",
+    "tier": 4,
+    "type": "wondrous",
+    "subtype": "amulet",
+    "rarity": "legendary",
+    "description": "A crystal pendant holding a single perfect note — the last sound the Choir made before it died.",
+    "tags": [
+      "magic",
+      "legendary",
+      "wondrous"
+    ],
+    "weight": 0.5,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Immune to psychic damage, Charmed, Frightened; once/long rest 30 ft Silence for 10 min."
+      }
+    ],
+    "value_base": 2000,
+    "audio_cue": "A faint trapped chord, heard only when the wearer is alone.",
+    "attunement": {
+      "kind": "required"
+    }
+  },
+  {
+    "id": "stillheart",
+    "name": "Stillheart",
+    "tier": 4,
+    "type": "wondrous",
+    "subtype": "ring",
+    "rarity": "legendary",
+    "description": "A ring carved from a shard of the Still's false paradise. Warm. Comforting. Slightly too comforting.",
+    "tags": [
+      "magic",
+      "legendary",
+      "wondrous"
+    ],
+    "weight": 0.05,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Advantage on WIS saves; immune to Charmed; once/long rest 15 ft aura of calm. Drawback: weekly WIS DC 15 or lose a long rest's benefit."
+      }
+    ],
+    "value_base": 2000,
+    "audio_cue": "A soft, coaxing whisper at the edge of rest: 'Stay. Rest.'",
+    "attunement": {
+      "kind": "required"
+    }
+  },
+  {
+    "id": "thornridges_stand",
+    "name": "Thornridge's Stand",
+    "tier": 4,
+    "type": "shield",
+    "subtype": "tower shield",
+    "rarity": "legendary",
+    "description": "A battered tower shield from the ruins of Greyhaven, bearing the names of seven soldiers. It steadies the arm and the nerve.",
+    "tags": [
+      "magic",
+      "legendary",
+      "shield"
+    ],
+    "weight": 8,
+    "effects": [
+      {
+        "type": "shield",
+        "ac_bonus": 2,
+        "properties": [
+          "enhanced_shield_bonus"
+        ],
+        "description": "Intercept range 15 ft; once/long rest Last Wall — full cover to allies, you take all their damage, can't drop below 1 HP for 1 round."
+      }
+    ],
+    "value_base": 2000,
+    "audio_cue": "It whispers seven names when the bearer is afraid.",
+    "attunement": {
+      "kind": "required"
+    },
+    "ac": 2,
+    "armor_properties": [
+      "enhanced_shield_bonus"
+    ],
+    "quest_only": true,
+    "durability_tier": "masterwork"
   }
 ]
