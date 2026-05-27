@@ -141,6 +141,12 @@ export const FontTokens = {
 
 export type FontRole = keyof typeof FontTokens;
 
+// Web ship manifest (which self-hosted woff2 faces apps/web ships + their
+// CLS-fallback tuning). Separate module so this web-only build data stays out of
+// the cross-target FontTokens identity test and off mobile's import path.
+export { SHIP_FACES, FONT_FALLBACKS, shippedFontFiles } from "./fonts";
+export type { ShipFace, FallbackFace } from "./fonts";
+
 // --- Type Scale Tokens ---
 //
 // Size/lineHeight numbers + the font role and color each text style uses. No
