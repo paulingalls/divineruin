@@ -20,10 +20,27 @@ This module's pure helpers (combat_resolution) are fixture-free unit tests; the
 async accrual/wiring tests inject AsyncMock mutations/queries (test_combat_tools style).
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 import combat_resolution
+import combat_support
 import event_types as E
+from session_data import SessionData
+
+
+def _inv_item(item_id, item_type, *, tier="standard", equipped=True, current_hits=None, name=None):
+    """Build a get_player_inventory-shaped item dict (catalog fields top-level,
+    per-instance state under slot_info)."""
+    slot = {"quantity": 1, "equipped": equipped}
+    if current_hits is not None:
+        slot["current_hits"] = current_hits
+    item = {"id": item_id, "type": item_type, "durability_tier": tier, "slot_info": slot}
+    if name is not None:
+        item["name"] = name
+    return item
+
 
 # --- event constant ----------------------------------------------------------
 
@@ -60,3 +77,95 @@ def test_is_heavily_armored_threshold(target_ac, expected):
 )
 def test_is_hollow_zone_threshold(corruption_level, expected):
     assert combat_resolution.is_hollow_zone(corruption_level) is expected
+
+
+# --- _find_equipped ----------------------------------------------------------
+
+
+def test_find_equipped_matches_type_and_equipped_flag():
+    inv = [
+        _inv_item("leather_armor_basic", "armor", equipped=False),  # unequipped
+        _inv_item("longsword_guild", "weapon", equipped=True),  # wrong type
+        _inv_item("plate_armor", "armor", equipped=True),  # the match
+    ]
+    found = combat_support._find_equipped(inv, "armor")
+    assert found is not None and found["id"] == "plate_armor"
+
+
+def test_find_equipped_returns_none_when_no_match():
+    inv = [_inv_item("longsword_guild", "weapon", equipped=True)]
+    assert combat_support._find_equipped(inv, "shield") is None
+
+
+def test_find_equipped_filters_by_name():
+    inv = [
+        _inv_item("longsword_guild", "weapon", equipped=True, name="Longsword"),
+        _inv_item("dagger_iron", "weapon", equipped=True, name="Dagger"),
+    ]
+    found = combat_support._find_equipped(inv, "weapon", name="dagger")
+    assert found is not None and found["id"] == "dagger_iron"
+
+
+# --- _accrue_durability ------------------------------------------------------
+
+
+def _session():
+    return SessionData(player_id="p1", location_id="loc1", room=None)
+
+
+async def test_accrue_persists_decremented_hits():
+    mutations = AsyncMock()
+    item = _inv_item("plate_armor", "armor", tier="standard", current_hits=10)
+    with patch.object(combat_support, "publish_game_event", AsyncMock()):
+        result = await combat_support._accrue_durability(
+            _session(), "p1", item, 1, is_hollow_zone=False, mutations=mutations
+        )
+    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 9)
+    assert result == {"broken": False, "penalty": {}, "current_hits": 9}
+
+
+async def test_accrue_hollow_zone_doubles_loss():
+    mutations = AsyncMock()
+    item = _inv_item("plate_armor", "armor", tier="standard", current_hits=10)
+    with patch.object(combat_support, "publish_game_event", AsyncMock()):
+        await combat_support._accrue_durability(_session(), "p1", item, 1, is_hollow_zone=True, mutations=mutations)
+    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 8)
+
+
+async def test_accrue_lazy_defaults_missing_current_hits_to_full():
+    mutations = AsyncMock()
+    # standard tier max_hits == 10; no current_hits on the row -> reads as 10.
+    item = _inv_item("plate_armor", "armor", tier="standard", current_hits=None)
+    with patch.object(combat_support, "publish_game_event", AsyncMock()):
+        result = await combat_support._accrue_durability(
+            _session(), "p1", item, 1, is_hollow_zone=False, mutations=mutations
+        )
+    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 9)
+    assert result["current_hits"] == 9
+
+
+async def test_accrue_breaks_at_zero_with_typed_penalty_and_event():
+    mutations = AsyncMock()
+    item = _inv_item("longsword_guild", "weapon", tier="fragile", current_hits=1)
+    with patch.object(combat_support, "publish_game_event", AsyncMock()) as pub:
+        result = await combat_support._accrue_durability(
+            _session(), "p1", item, 1, is_hollow_zone=False, mutations=mutations
+        )
+    assert result == {"broken": True, "penalty": {"attack": -2}, "current_hits": 0}
+    # event carries the durability-hit payload
+    assert pub.await_args is not None
+    assert pub.await_args.args[1] == E.ITEM_DURABILITY_HIT
+    payload = pub.await_args.args[2]
+    assert payload["item_id"] == "longsword_guild" and payload["broken"] is True
+
+
+async def test_accrue_already_broken_skips_write_and_event():
+    mutations = AsyncMock()
+    item = _inv_item("longsword_guild", "weapon", tier="fragile", current_hits=0)
+    with patch.object(combat_support, "publish_game_event", AsyncMock()) as pub:
+        result = await combat_support._accrue_durability(
+            _session(), "p1", item, 1, is_hollow_zone=False, mutations=mutations
+        )
+    mutations.update_item_durability.assert_not_awaited()
+    pub.assert_not_awaited()
+    assert result == {"broken": True, "penalty": {"attack": -2}, "current_hits": 0}
