@@ -23,6 +23,14 @@ async accrual/wiring tests inject AsyncMock mutations/queries (test_combat_tools
 import pytest
 
 import combat_resolution
+import event_types as E
+
+# --- event constant ----------------------------------------------------------
+
+
+def test_item_durability_hit_event_constant():
+    assert E.ITEM_DURABILITY_HIT == "item_durability_hit"
+
 
 # --- pure helpers: weapon_hits_for_encounter --------------------------------
 
