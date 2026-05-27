@@ -6,9 +6,11 @@ const CI = !!process.env.CI;
 // Playwright starts EVERY `webServer` entry for ANY run, regardless of which
 // project's specs execute. Parse the selected --project(s) from argv so we only
 // start the servers a run actually needs: a web-only run skips the slow
-// mobile-expo + server boot, and a non-web run skips the ~120s apps/web
-// prerender build. With no --project filter (CI's bare `playwright test`) both
-// gates open, so behavior matches the pre-split config.
+// mobile-expo boot, and a non-web run skips the ~120s apps/web prerender build.
+// The API server (:3001) is the exception — it starts for ANY run, because the
+// chromium app specs AND the web-conversion waitlist spec (which POSTs to
+// /api/waitlist) both need it. With no --project filter (CI's bare
+// `playwright test`) every gate opens, matching the pre-split config.
 function selectedProjects(): string[] {
   const out: string[] = [];
   const argv = process.argv;
@@ -39,8 +41,7 @@ const serverWebServer = {
     DATABASE_URL: process.env.DATABASE_URL ?? DEFAULT_DB_URL,
     REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:6379",
     JWT_SECRET:
-      process.env.JWT_SECRET ??
-      "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      process.env.JWT_SECRET ?? "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
     NODE_ENV: "development",
     RATE_LIMIT_BYPASS: "1",
   },
@@ -126,7 +127,11 @@ export default defineConfig({
     },
   ],
   webServer: [
-    ...(runsNonWeb ? [serverWebServer, mobileWebServer] : []),
+    // Always start the :3001 API server — the chromium app specs and the
+    // web-conversion waitlist spec both depend on it (previously a web-only run
+    // started only :8085, so a web spec POSTing to the API failed).
+    serverWebServer,
+    ...(runsNonWeb ? [mobileWebServer] : []),
     ...(runsWeb ? [webWebServer] : []),
   ],
 });
