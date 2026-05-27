@@ -87,6 +87,10 @@ async def _repair_item_impl(
         durability_tier = item.get("durability_tier")
         if not durability_tier:
             raise ToolError(f"{name} has no durability and cannot be repaired.")
+        # Surface a malformed tier as a ToolError (ADR 0002), not the bare ValueError
+        # max_hits/repair_skill_tier would raise. Both key the same closed tier table.
+        if durability_tier not in durability_mod.DURABILITY_MAX_HITS:
+            raise ToolError(f"{name} has an unrepairable durability tier '{durability_tier}'.")
         max_h = durability_mod.max_hits(durability_tier)
         current_hits = item.get("slot_info", {}).get("current_hits")
         if current_hits is None:  # never-damaged reads as full (story-003 lazy default)

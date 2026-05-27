@@ -121,6 +121,13 @@ async def test_non_durable_item_not_repairable():
     inv_mutations.update_item_durability.assert_not_awaited()
 
 
+async def test_malformed_durability_tier_raises_toolerror_not_valueerror():
+    kwargs, _, inv_mutations = _repair_kwargs(item=_item(tier="indestructible", current_hits=2))
+    with pytest.raises(ToolError, match="unrepairable durability tier"):
+        await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
+    inv_mutations.update_item_durability.assert_not_awaited()
+
+
 # --- success: restore to max + debit disposition-adjusted gold once -----------
 
 
