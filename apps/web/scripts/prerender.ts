@@ -111,9 +111,11 @@ export async function buildSite(outdir = join(APP_DIR, "dist")): Promise<string>
   // literal `$`, or React Suspense boundary markers). A replacer fn is literal.
   const html = shell
     .replace(ROOT_DIV, () => `<div id="root">${appHtml}</div>`)
+    // LCP font preloads first so the preload scanner discovers them early; the
+    // (larger, non-render-critical) SEO meta + JSON-LD follow.
     .replace(
       "</head>",
-      () => `    ${buildMetaTags(SITE_ORIGIN)}\n    ${fontHeadTags()}\n  </head>`,
+      () => `    ${fontHeadTags()}\n    ${buildMetaTags(SITE_ORIGIN)}\n  </head>`,
     );
   await Bun.write(indexPath, html);
   await copyFonts(outdir);
