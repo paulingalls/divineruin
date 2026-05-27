@@ -3,6 +3,7 @@ import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildSite, FONT_PRELOADS } from "./prerender.ts";
+import { META_DESCRIPTION, SITE_TITLE } from "../src/lib/seo.ts";
 
 // Build once into a pid-scoped temp dir so the test never races with or
 // clobbers the real apps/web/dist artifact, then assert on the returned HTML.
@@ -23,6 +24,22 @@ test("buildSite injects the prerendered hero into the root div", () => {
 
 test("buildSite references a content-hashed client bundle", () => {
   expect(html).toMatch(/<script[^>]+src="[^"]*-[A-Za-z0-9]{6,}\.js"/);
+});
+
+// prerender reads PUBLIC_SITE_ORIGIN (defaulting to the prod origin) and injects
+// the seo.ts head block; this asserts the served head carries the SEO meta and
+// that the font-preload tags it shares the </head> seam with are still present.
+test("buildSite injects SEO meta/OG/JSON-LD into the head at the default origin", () => {
+  expect(html).toContain(`<meta name="description" content="${META_DESCRIPTION}" />`);
+  expect(html).toContain(`<meta property="og:title" content="${SITE_TITLE}" />`);
+  expect(html).toContain('<link rel="canonical" href="https://divineruin.com/" />');
+  expect(html).toContain('<meta property="og:image" content="https://divineruin.com/og-image.png"');
+  expect(html).toContain('<script type="application/ld+json">');
+});
+
+test("buildSite still injects the font preload + fonts.css tags alongside the meta", () => {
+  expect(html).toMatch(/<link[^>]+rel="preload"[^>]+href="\/fonts\/cormorant-garamond-300\.woff2"/);
+  expect(html).toContain('<link rel="stylesheet" href="/fonts/fonts.css" />');
 });
 
 // Pins FONT_PRELOADS to the faces the Hero (the mounted above-fold LCP element)

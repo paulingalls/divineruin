@@ -1,6 +1,12 @@
 import { Glob } from "bun";
 import { join } from "node:path";
 import { renderAppHTML } from "../src/entry-server.tsx";
+import { buildMetaTags } from "../src/lib/seo.ts";
+
+// Production site origin baked into canonical / og:url / JSON-LD at build time.
+// A deploy sets PUBLIC_SITE_ORIGIN; unset falls back to the production domain
+// (documented as a deploy gate in the apps/web README, story-007).
+const SITE_ORIGIN = Bun.env.PUBLIC_SITE_ORIGIN ?? "https://divineruin.com";
 
 // apps/web root, resolved from this script's location so build paths are
 // stable whether invoked via `bun run` (cwd=apps/web) or `bun test` (cwd=repo
@@ -105,7 +111,10 @@ export async function buildSite(outdir = join(APP_DIR, "dist")): Promise<string>
   // literal `$`, or React Suspense boundary markers). A replacer fn is literal.
   const html = shell
     .replace(ROOT_DIV, () => `<div id="root">${appHtml}</div>`)
-    .replace("</head>", () => `    ${fontHeadTags()}\n  </head>`);
+    .replace(
+      "</head>",
+      () => `    ${buildMetaTags(SITE_ORIGIN)}\n    ${fontHeadTags()}\n  </head>`,
+    );
   await Bun.write(indexPath, html);
   await copyFonts(outdir);
   await copyAudio(outdir);
