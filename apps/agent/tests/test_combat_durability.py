@@ -292,3 +292,57 @@ async def test_shield_reaction_without_shield_equipped_skips():
     accrue.assert_awaited_once()
     assert accrue.await_args is not None
     assert accrue.await_args.args[2]["id"] == "plate_armor"
+
+
+# --- weapon crit-vs-heavy flag in request_attack -----------------------------
+
+import check_tools  # noqa: E402
+
+_PLAYER_WITH_WEAPON = {
+    "player_id": "p1",
+    "equipment": {"main_hand": {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}},
+}
+
+
+async def _run_request_attack(*, hit, critical, target_ac):
+    ctx = AsyncMock()
+    ctx.userdata = SessionData(player_id="p1", location_id="loc1", room=None)
+    queries = AsyncMock()
+    queries.get_player = AsyncMock(return_value=_PLAYER_WITH_WEAPON)
+    queries.get_npc_combat_stats = AsyncMock(return_value={"ac": target_ac, "hp": {"current": 20}})
+    mutations = AsyncMock()
+    attack = _forced_attack(hit=hit, critical=critical)
+    attack.target_ac = target_ac
+    attack.attack_modifier = 3
+    attack.target_killed = False
+    attack.target_hp_remaining = 15
+    with (
+        patch.object(check_tools.check_resolution, "resolve_attack", return_value=attack),
+        patch.object(check_tools, "publish_game_event", AsyncMock()),
+    ):
+        await check_tools._request_attack_impl(
+            ctx, target_id="goblin_1", weapon_or_spell="Longsword", queries=queries, mutations=mutations
+        )
+    return ctx.userdata
+
+
+async def test_request_attack_marks_weapon_used_even_on_miss():
+    session = await _run_request_attack(hit=False, critical=False, target_ac=13)
+    assert session.weapon_used_this_encounter is True
+    assert session.weapon_crit_vs_heavy is False
+
+
+async def test_request_attack_sets_crit_vs_heavy_on_crit_against_heavy_target():
+    session = await _run_request_attack(hit=True, critical=True, target_ac=18)
+    assert session.weapon_used_this_encounter is True
+    assert session.weapon_crit_vs_heavy is True
+
+
+async def test_request_attack_no_crit_flag_on_normal_hit():
+    session = await _run_request_attack(hit=True, critical=False, target_ac=18)
+    assert session.weapon_crit_vs_heavy is False
+
+
+async def test_request_attack_no_crit_flag_on_crit_against_light_target():
+    session = await _run_request_attack(hit=True, critical=True, target_ac=13)
+    assert session.weapon_crit_vs_heavy is False

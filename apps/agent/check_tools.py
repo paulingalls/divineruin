@@ -7,6 +7,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import combat_resolution
 import db_content_queries
 import db_mutations
 import db_queries
@@ -300,6 +301,12 @@ async def _request_attack_impl(
     target_hp = target.get("hp", {}).get("current", 0)
 
     result = check_resolution.resolve_attack(player, weapon, target_ac, target_hp)
+
+    # Track per-encounter weapon durability: the weapon was swung this encounter, and
+    # a crit against a heavily-armored target costs 2 hits. end_combat reads + resets.
+    session.weapon_used_this_encounter = True
+    if result.hit and result.critical and combat_resolution.is_heavily_armored(result.target_ac):
+        session.weapon_crit_vs_heavy = True
 
     if result.hit:
         await mutations.update_npc_hp(target_id, result.target_hp_remaining)
