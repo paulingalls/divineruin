@@ -34,7 +34,7 @@ test("CLASSES_STAT is internally consistent (total = archetypes * gods)", () => 
   expect(CLASSES_STAT.archetypes).toBe(18);
   expect(CLASSES_STAT.gods).toBe(10);
   expect(CLASSES_STAT.total).toBe(180);
-  expect(CLASSES_STAT.total).toBe(CLASSES_STAT.archetypes * CLASSES_STAT.gods);
+  expect<number>(CLASSES_STAT.total).toBe(CLASSES_STAT.archetypes * CLASSES_STAT.gods);
 });
 
 test("starts unarmed — reveal gate is post-hydration only (matches SSR)", () => {
