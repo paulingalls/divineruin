@@ -1,0 +1,178 @@
+/* Pantheon section + scroll-reveal gate. Theme tokens only (web-section-conventions).
+   The mockup's --accent maps to --color-hollow; gradient midpoint #0B0A0C -> --color-ink. */
+
+.pantheon {
+  padding: var(--space-2xl) var(--space-lg);
+  background: linear-gradient(180deg, var(--color-void), var(--color-ink) 50%, var(--color-void));
+}
+
+.pantheon__inner {
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+}
+
+.pantheon__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+  margin-bottom: var(--space-lg);
+}
+
+.pantheon__eyebrow-num {
+  color: var(--color-hollow);
+}
+
+.pantheon__title {
+  margin: 0 0 var(--space-lg);
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(32px, 5vw, 60px);
+  line-height: 1.05;
+  color: var(--color-parchment);
+}
+
+.pantheon__title em {
+  font-style: italic;
+  color: var(--color-bone);
+}
+
+.pantheon__lede {
+  max-width: 64ch;
+  margin: 0 0 var(--space-2xl);
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--text-body-lg-size);
+  line-height: var(--text-body-lg-line-height);
+  color: var(--color-bone);
+}
+
+/* Grid: 5 cols -> 2 (<=980) -> 1 (<=480). Hairline separators via cell borders:
+   grid carries top+left, each card carries right+bottom. */
+.pantheon__grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  border-top: 1px solid var(--color-charcoal);
+  border-left: 1px solid var(--color-charcoal);
+}
+
+@media (max-width: 980px) {
+  .pantheon__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .pantheon__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pantheon__card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 200px;
+  padding: var(--space-lg) var(--space-md);
+  border-right: 1px solid var(--color-charcoal);
+  border-bottom: 1px solid var(--color-charcoal);
+  transition: background 0.25s ease;
+}
+
+.pantheon__card:hover,
+.pantheon__card:focus-visible {
+  background: var(--color-hollow-faint);
+  outline: none;
+}
+
+.pantheon__card:hover .pantheon__name,
+.pantheon__card:focus-visible .pantheon__name {
+  color: var(--color-hollow);
+}
+
+.pantheon__top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-half);
+}
+
+.pantheon__num {
+  font-family: var(--font-system);
+  font-size: var(--text-caption-size);
+  letter-spacing: 0.3em;
+  color: var(--color-slate);
+}
+
+.pantheon__name {
+  margin: var(--space-sm) 0 var(--space-xs);
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: var(--text-h2-size);
+  letter-spacing: 0.02em;
+  color: var(--color-parchment);
+  transition: color 0.2s ease;
+}
+
+.pantheon__god-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: var(--text-body-lg-size);
+  letter-spacing: 0.04em;
+  color: var(--color-ash);
+}
+
+.pantheon__quote {
+  margin: var(--space-md) 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: var(--text-body-size);
+  line-height: 1.5;
+  color: var(--color-bone);
+}
+
+.pantheon__domain {
+  font-family: var(--font-system);
+  font-size: var(--text-caption-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+}
+
+.pantheon__note {
+  margin-top: var(--space-lg);
+  padding: var(--space-md) 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: var(--text-body-lg-size);
+  letter-spacing: 0.02em;
+  color: var(--color-divine);
+}
+
+/* Reveal gate. Default (no-JS / not armed / no IntersectionObserver): visible.
+   Armed (post-hydration, JS + IO): hide each card until it scrolls into view. */
+.pantheon--armed .pantheon__card {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 600ms ease,
+    transform 600ms ease;
+}
+
+.pantheon--armed .pantheon__card.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pantheon--armed .pantheon__card {
+    transition: none;
+  }
+}

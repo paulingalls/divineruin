@@ -25,36 +25,53 @@ test("buildSite references a content-hashed client bundle", () => {
   expect(html).toMatch(/<script[^>]+src="[^"]*-[A-Za-z0-9]{6,}\.js"/);
 });
 
-// Pins FONT_PRELOADS to the weights styles.css actually applies above the fold
-// and the families theme.css declares. The preload list is hand-maintained, so
-// without this a token/weight change would silently leave the LCP font
-// unpreloaded.
-test("FONT_PRELOADS matches the above-fold weights styles.css applies", async () => {
+// Pins FONT_PRELOADS to the faces the Hero (the mounted above-fold LCP element)
+// actually applies, using the families theme.css declares. The preload list is
+// hand-maintained, so without this a weight/style change in Hero.css would
+// silently leave an above-fold face unpreloaded (FOUT on the LCP text). The
+// previous guard read the placeholder styles.css h1/body rules; the live
+// above-fold styling now lives in Hero.css, so the guard reads there.
+test("FONT_PRELOADS matches the above-fold faces the Hero applies", async () => {
   const SRC = join(import.meta.dir, "..", "src");
-  const styles = await Bun.file(join(SRC, "styles.css")).text();
+  const hero = await Bun.file(join(SRC, "sections", "Hero.css")).text();
   const theme = await Bun.file(join(SRC, "theme.css")).text();
 
-  // Above-the-fold roles: h1 = display, body = body. Read the weight each block
-  // applies; body declares none, so it inherits the CSS default of 400.
-  const blockWeight = (css: string, selector: string): string => {
-    const block = css.match(new RegExp(`(?:^|})\\s*${selector}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
-    return block.match(/font-weight:\s*(\d+)/)?.[1] ?? "400";
-  };
-
-  // First family name of each role's stack, slugified to the woff2 basename
+  const block = (css: string, selector: string): string =>
+    css.match(new RegExp(`(?:^|})\\s*${selector}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+  // Weight a block applies; if it declares none it inherits the CSS default 400.
+  const weight = (css: string, selector: string): string =>
+    block(css, selector).match(/font-weight:\s*(\d+)/)?.[1] ?? "400";
+  const isItalic = (css: string, selector: string): boolean =>
+    /font-style:\s*italic/.test(block(css, selector));
+  // First family name of a role's stack, slugified to the woff2 basename
   // convention ("Cormorant Garamond" -> cormorant-garamond).
-  const familySlug = (css: string, varName: string): string => {
-    const family = css.match(new RegExp(`${varName}:\\s*"([^"]+)"`))?.[1] ?? "";
-    return family.toLowerCase().replace(/\s+/g, "-");
-  };
+  const familySlug = (varName: string): string =>
+    (theme.match(new RegExp(`${varName}:\\s*"([^"]+)"`))?.[1] ?? "")
+      .toLowerCase()
+      .replace(/\s+/g, "-");
 
-  expect(FONT_PRELOADS).toEqual([
-    `${familySlug(theme, "--font-display")}-${blockWeight(styles, "h1")}.woff2`,
-    `${familySlug(theme, "--font-body")}-${blockWeight(styles, "body")}.woff2`,
-  ]);
+  const display = familySlug("--font-display");
+  const body = familySlug("--font-body");
+  const headW = weight(hero, "\\.hero__headline");
+  const subW = weight(hero, "\\.hero__subhead");
+  const pitchW = weight(hero, "\\.hero__pitch");
+  // Above-fold display/body faces the Hero applies, in document order: the
+  // headline (display, normal) + its italic <em> ("Ruin", the largest LCP
+  // glyphs, declared on `.hero__headline em`) + the italic subhead ("the
+  // sundered veil", display) + the pitch (body). The mono framing (meta/cta/
+  // footer, --font-system) is deliberately excluded — it's small chrome, not the
+  // LCP, and preloading it would compete with the headline for bandwidth.
+  // Deduped: the subhead reuses the em's CG-italic face when both share a weight.
+  const faces = [`${display}-${headW}.woff2`];
+  if (isItalic(hero, "\\.hero__headline em")) faces.push(`${display}-${headW}-italic.woff2`);
+  if (isItalic(hero, "\\.hero__subhead")) faces.push(`${display}-${subW}-italic.woff2`);
+  faces.push(`${body}-${pitchW}.woff2`);
+  const expected = [...new Set(faces)];
+
+  expect(FONT_PRELOADS).toEqual(expected);
 
   // ...and each derived face must actually be served. The subset deliberately
-  // omits weights (e.g. no 600), so a valid weight change could derive a
+  // omits weights (e.g. no 600), so a valid weight/style change could derive a
   // basename with no woff2 on disk — preloading a 404 unpreloads the LCP font,
   // the same failure the list-vs-applied check guards against.
   const FONTS = join(SRC, "fonts");
