@@ -8,6 +8,8 @@
 // without the build environment. It does NOT emit <title>: index.html owns the
 // title, and a second one would be a duplicate-title bug.
 
+import { normalizeOrigin } from "./origin.ts";
+
 export const SITE_NAME = "Divine Ruin";
 export const SITE_TITLE = "Divine Ruin — The Sundered Veil";
 // ≤160 chars, faithful to the Hero pitch (apps/web/src/sections/Hero.tsx).
@@ -41,9 +43,7 @@ function jsonLd(base: string): string {
 // "https://divineruin.com"). Returns a newline-joined string ready to splice
 // into <head> before </head>.
 export function buildMetaTags(origin: string): string {
-  // Tolerate a trailing slash on PUBLIC_SITE_ORIGIN so canonical/og:url don't
-  // become "https://divineruin.com//" (malformed; weakens canonicalization).
-  const base = origin.replace(/\/+$/, "");
+  const base = normalizeOrigin(origin);
   const root = `${base}/`;
   const ogImage = `${base}${OG_IMAGE_PATH}`;
   return [

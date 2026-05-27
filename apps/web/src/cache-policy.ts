@@ -15,10 +15,23 @@
 const NO_CACHE = "no-cache";
 const IMMUTABLE = "public, max-age=31536000, immutable";
 
+// Stable (non-content-hashed) names that can change in place across rebuilds, so
+// they must revalidate rather than sit immutable for a year: the HTML shell, the
+// font stylesheet, and the crawl/brand assets (robots.txt + sitemap.xml are
+// regenerated from the origin each build; og-image.png + favicon.ico are brand
+// assets that may be swapped in place). Audio is handled by prefix below.
+const STABLE_REVALIDATE = new Set([
+  "index.html",
+  "fonts/fonts.css",
+  "robots.txt",
+  "sitemap.xml",
+  "favicon.ico",
+  "og-image.png",
+]);
+
 // rel is the dist-relative path (e.g. "index.html", "fonts/fonts.css",
 // "chunk-abc123.js", "audio/dm-sample.mp3"), as produced by Glob("**/*").scan(DIST).
 export function cacheControlFor(rel: string): string {
-  const mustRevalidate =
-    rel === "index.html" || rel === "fonts/fonts.css" || rel.startsWith("audio/");
+  const mustRevalidate = STABLE_REVALIDATE.has(rel) || rel.startsWith("audio/");
   return mustRevalidate ? NO_CACHE : IMMUTABLE;
 }

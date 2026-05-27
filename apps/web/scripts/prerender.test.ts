@@ -42,6 +42,23 @@ test("buildSite still injects the font preload + fonts.css tags alongside the me
   expect(html).toContain('<link rel="stylesheet" href="/fonts/fonts.css" />');
 });
 
+// prerender ships the crawl/brand assets into dist: og-image.png + favicon.ico
+// copied from public/, robots.txt + sitemap.xml generated from SITE_ORIGIN.
+test("buildSite emits the crawl + brand assets into dist", async () => {
+  for (const f of ["robots.txt", "sitemap.xml", "og-image.png", "favicon.ico"]) {
+    expect(await Bun.file(join(OUT, f)).exists()).toBe(true);
+  }
+  // The og-image.svg source is NOT shipped — only the rasterized png.
+  expect(await Bun.file(join(OUT, "og-image.svg")).exists()).toBe(false);
+});
+
+test("robots.txt + sitemap.xml carry the default production origin", async () => {
+  const robots = await Bun.file(join(OUT, "robots.txt")).text();
+  const sitemap = await Bun.file(join(OUT, "sitemap.xml")).text();
+  expect(robots).toContain("Sitemap: https://divineruin.com/sitemap.xml");
+  expect(sitemap).toContain("<loc>https://divineruin.com/</loc>");
+});
+
 // Pins FONT_PRELOADS to the faces the Hero (the mounted above-fold LCP element)
 // actually applies, using the families theme.css declares. The preload list is
 // hand-maintained, so without this a weight/style change in Hero.css would

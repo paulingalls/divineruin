@@ -2,6 +2,7 @@ import { Glob } from "bun";
 import { join } from "node:path";
 import { renderAppHTML } from "../src/entry-server.tsx";
 import { buildMetaTags } from "../src/lib/seo.ts";
+import { buildRobotsTxt, buildSitemapXml } from "../src/lib/crawl.ts";
 
 // Production site origin baked into canonical / og:url / JSON-LD at build time.
 // A deploy sets PUBLIC_SITE_ORIGIN; unset falls back to the production domain
@@ -15,6 +16,7 @@ const APP_DIR = join(import.meta.dir, "..");
 const ROOT_DIV = /<div id="root">\s*<\/div>/;
 const FONTS_SRC = join(APP_DIR, "src", "fonts");
 const AUDIO_SRC = join(APP_DIR, "src", "audio");
+const PUBLIC_SRC = join(APP_DIR, "public");
 // Above-the-fold faces the Hero applies, preloaded so the LCP text doesn't FOUT:
 // the headline "Divine" (Cormorant Garamond 300) + its italic <em> "Ruin" (the
 // largest glyphs, CG 300 italic) + the italic subhead "the sundered veil" (CG
@@ -77,6 +79,15 @@ function copyAudio(outdir: string): Promise<void> {
   return copyStaticDir(AUDIO_SRC, outdir, "audio");
 }
 
+// Crawl/brand static assets served from the site root: the OG share image and
+// the favicon. Copied verbatim into dist/ (same bypass-the-bundler path as fonts
+// /audio). The og-image.svg is the build SOURCE for og-image.png — skip it; only
+// the rasterized png ships. robots.txt + sitemap.xml are NOT here — they're
+// generated per build from SITE_ORIGIN (below) so they track the deploy origin.
+function copyPublic(outdir: string): Promise<void> {
+  return copyStaticDir(PUBLIC_SRC, outdir, ".", (rel) => rel.endsWith(".svg"));
+}
+
 // Build-time SSG. Bun bundles index.html (hashed JS/CSS, script/link rewrites)
 // into `outdir`, then we inject the prerendered App markup into the empty root
 // div so the served HTML carries real content for SEO/LCP and the client can
@@ -120,6 +131,11 @@ export async function buildSite(outdir = join(APP_DIR, "dist")): Promise<string>
   await Bun.write(indexPath, html);
   await copyFonts(outdir);
   await copyAudio(outdir);
+  await copyPublic(outdir);
+  // Generated per build from the production origin so robots/sitemap track the
+  // deploy origin, the same SITE_ORIGIN story-002's canonical/og:url resolve to.
+  await Bun.write(join(outdir, "robots.txt"), buildRobotsTxt(SITE_ORIGIN));
+  await Bun.write(join(outdir, "sitemap.xml"), buildSitemapXml(SITE_ORIGIN));
   return html;
 }
 
