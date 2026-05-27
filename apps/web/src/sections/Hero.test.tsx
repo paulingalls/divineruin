@@ -33,9 +33,10 @@ test("renders the subhead and the real pitch copy", () => {
 test("renders both CTAs with the mockup labels and functional targets", () => {
   const html = renderToStaticMarkup(<Hero />);
   // Primary -> #waitlist (lands M5; shared tracked anchor). Secondary "Enter
-  // Aethos" -> #premise, a functional scroll-to-content anchor in M3.
+  // Aethos" -> #world, the World section (re-pointed from the M3 #premise
+  // placeholder now that World ships id="world").
   expect(html).toMatch(/<a[^>]+href="#waitlist"[^>]*>[\s\S]*?Request Early Access/);
-  expect(html).toMatch(/<a[^>]+href="#premise"[^>]*>[\s\S]*?Enter Aethos/);
+  expect(html).toMatch(/<a[^>]+href="#world"[^>]*>[\s\S]*?Enter Aethos/);
 });
 
 test("renders the bottom meta — voice-first / headphones / scroll cue", () => {
