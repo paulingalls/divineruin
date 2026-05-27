@@ -13,6 +13,7 @@ import random
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from dice_seeds import seed_for_d20 as _seed_for_d20
 from sample_fixtures import make_context, make_db_mod
 
 import experimentation
@@ -49,13 +50,6 @@ OAK_SHIELD = {
     "materials": [{"material_id": "oak_plank", "quantity": 3, "tier_minimum": 1, "substitutable": False}],
 }
 RECIPES = [IRON_SWORD, OAK_SHIELD]
-
-
-def _seed_for_d20(target: int) -> int:
-    for seed in range(2000):
-        if random.Random(seed).randint(1, 20) == target:
-            return seed
-    raise AssertionError(f"no seed for d20={target}")
 
 
 class TestResolveExperimentation:

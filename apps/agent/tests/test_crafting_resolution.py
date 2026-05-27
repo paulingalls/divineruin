@@ -10,6 +10,7 @@ import random
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from dice_seeds import seed_for_d20 as _seed_for_d20
 
 import crafting_resolution
 
@@ -38,13 +39,6 @@ WEAPON_TABLES = {
     "bonus_properties": [{"id": "keen_edge", "name": "Keen Edge", "description": "It hums when it cuts."}],
     "flaws": [{"id": "dull_bite", "name": "Dull Bite", "description": "The edge drags."}],
 }
-
-
-def _seed_for_d20(target: int) -> int:
-    for seed in range(2000):
-        if random.Random(seed).randint(1, 20) == target:
-            return seed
-    raise AssertionError(f"no seed for d20={target}")
 
 
 @pytest.mark.asyncio
