@@ -11,6 +11,14 @@ export interface ItemArtTemplate {
   vars: Record<string, string>;
 }
 
+// Attunement is a discriminated union with a canonical "none" so callers never
+// disambiguate absent/false/""/class-string by truthiness (debt d30d41fdb474).
+// `class` is present only when kind is "class" (e.g. caster-only magic items).
+export type ItemAttunement =
+  | { kind: "none" }
+  | { kind: "required" }
+  | { kind: "class"; class: string };
+
 export interface Item {
   id: string;
   name: string;
@@ -36,7 +44,7 @@ export interface Item {
   ac?: number;
   armor_properties?: string[];
   audio_cue?: string;
-  attunement?: boolean | string;
+  attunement?: ItemAttunement;
   quest_only?: boolean;
   art_template?: ItemArtTemplate;
 }

@@ -168,12 +168,14 @@ describe("content/items.json — M5.0 widening conformance", () => {
       if (item.audio_cue !== undefined && typeof item.audio_cue !== "string") {
         throw new Error(`${ctx}.audio_cue is not a string`);
       }
-      if (
-        item.attunement !== undefined &&
-        typeof item.attunement !== "boolean" &&
-        typeof item.attunement !== "string"
-      ) {
-        throw new Error(`${ctx}.attunement is not boolean or string`);
+      if (item.attunement !== undefined) {
+        const at = asRecord(item.attunement, `${ctx}.attunement`);
+        if (at.kind !== "none" && at.kind !== "required" && at.kind !== "class") {
+          throw new Error(`${ctx}.attunement.kind is not none|required|class`);
+        }
+        if (at.kind === "class" && typeof at.class !== "string") {
+          throw new Error(`${ctx}.attunement.class is required when kind is class`);
+        }
       }
       if (item.quest_only !== undefined && typeof item.quest_only !== "boolean") {
         throw new Error(`${ctx}.quest_only is not a boolean`);
