@@ -1,15 +1,16 @@
 import "./Waitlist.css";
 import { useState, type FormEvent } from "react";
 import { joinWaitlist } from "../lib/api.ts";
+import { trackEvent } from "../lib/analytics.ts";
 
-// Verbatim copy from the mockup source (docs/mockups/source/sections-2.jsx, Waitlist).
+// Copy from the mockup source (docs/mockups/source/sections-2.jsx, Waitlist). The mockup's
+// social-proof meta line ("4,287 wanderers" / "Q3 2026") was fabricated — removed here so the site
+// makes no count/date claim it can't back pre-launch; re-add a real count once the list has one.
 export const WAITLIST_COPY = {
   eyebrow: "Enter the World",
   lede: "Closed playtest opens in waves through 2026. Drop your email and we'll send a Veil-key when your cohort opens — no marketing churn, just the keys.",
   placeholder: "your.true.name@aethos",
   submit: "Request Veil-Key →",
-  metaCount: "4,287 wanderers on the list",
-  metaWave: "Next wave · Q3 2026",
   successLabel: "A whisper, received",
   successMsg: "“The gods know your name. Listen for the bell.”",
 } as const;
@@ -32,6 +33,9 @@ export function Waitlist() {
     if (status === "submitting") return;
     setStatus("submitting");
     const result = await joinWaitlist(email);
+    // Fire-and-forget analytics: trackEvent is synchronous (in-page event + optional beacon), so it
+    // never delays the success/error swap below — the conversion event records either outcome.
+    trackEvent("waitlist_submit", { ok: String(result.ok) });
     if (result.ok) {
       setStatus("success");
     } else {
@@ -77,15 +81,10 @@ export function Waitlist() {
                   {WAITLIST_COPY.submit}
                 </button>
               </form>
-              {status === "error" ? (
+              {status === "error" && (
                 <p className="waitlist__error" role="alert">
                   {error}
                 </p>
-              ) : (
-                <div className="waitlist__meta">
-                  <span>{WAITLIST_COPY.metaCount}</span>
-                  <span>{WAITLIST_COPY.metaWave}</span>
-                </div>
               )}
             </>
           )}
