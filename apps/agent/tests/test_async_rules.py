@@ -3,6 +3,7 @@
 import random
 
 import pytest
+from dice_seeds import seed_for_d20 as _seed_for_d20
 
 from async_rules import (
     resolve_companion_errand,
@@ -43,83 +44,118 @@ SAMPLE_COMPANION = {
 
 # --- resolve_crafting ---
 
+# A parsed quality_outcomes "weapon" row (story-002 shape): bonus_properties + flaws,
+# narration-only {id,name,description}. resolve_crafting draws from this on
+# exceptional/partial via apply_quality_outcome.
+QUALITY_TABLES = {
+    "id": "weapon",
+    "bonus_properties": [
+        {"id": "keen_edge", "name": "Keen Edge", "description": "The blade hums when it cuts."},
+        {"id": "true_temper", "name": "True Temper", "description": "Not a single shiver on a strike."},
+    ],
+    "flaws": [
+        {"id": "dull_bite", "name": "Dull Bite", "description": "The edge drags where it should slice."},
+        {"id": "loose_tang", "name": "Loose Tang", "description": "A faint rattle in the hilt."},
+    ],
+}
 
-def _resolve_craft(params, *, workspace_access=None, crafting_tier="expert", rng=None, player=None):
+
+def _resolve_craft(
+    params, *, workspace_access=None, crafting_tier="expert", rng=None, player=None, quality_tables=QUALITY_TABLES
+):
     """resolve_crafting with gate-PASSING defaults so the roll-focused tests exercise
     the d20 path. The forge recipe in PARAMS is satisfied by ["field", "forge"] access
-    and an Expert (non-tainted) crafter. Gate-failure tests override these."""
+    and an Expert (non-tainted) crafter. Gate-failure tests override these. quality_tables
+    defaults to the weapon row so exceptional/partial attach a property."""
     return resolve_crafting(
         player or SAMPLE_PLAYER,
         params,
         workspace_access=["field", "forge"] if workspace_access is None else workspace_access,
         crafting_tier=crafting_tier,
+        quality_tables=quality_tables,
         rng=rng,
     )
 
 
 class TestResolveCrafting:
+    # SAMPLE_PLAYER's arcana modifier is +3; dc=11 makes margin = d20 - 8, so all four
+    # spec bands are reachable: d20 18-20 -> exceptional, 8-17 -> success, 3-7 -> partial,
+    # 1-2 -> failure (pure margin, no nat-1/nat-20 special-casing).
     PARAMS = {
         "recipe_id": "iron_sword",
         "result_item_id": "iron_sword",
         "result_item_name": "Iron Sword",
         "required_materials": ["iron_ingot", "leather_strip"],
         "skill": "arcana",
-        "dc": 13,
+        "dc": 11,
         "workspace_required": "forge",
         "tainted_materials": False,
     }
 
-    def test_success_on_high_roll(self):
-        # Find a seed that gives high roll
-        for seed in range(200):
-            rng = random.Random(seed)
-            d20 = rng.randint(1, 20)
-            if d20 == 20:
-                rng = random.Random(seed)
-                result = _resolve_craft(self.PARAMS, rng=rng)
-                assert result.tier == "success"
-                assert result.crafted_item_id == "iron_sword"
-                assert result.crafted_item_name == "Iron Sword"
-                assert result.materials_consumed == ["iron_ingot", "leather_strip"]
-                assert len(result.decision_options) > 0
-                return
-        pytest.fail("Could not find seed for success")
+    def test_exceptional_attaches_bonus_property(self):
+        result = _resolve_craft(self.PARAMS, rng=random.Random(_seed_for_d20(20)))
+        assert result.tier == "exceptional"
+        assert result.crafted_item_id == "iron_sword"
+        assert result.bonus_property in QUALITY_TABLES["bonus_properties"]
+        assert result.flaw is None
+        assert result.materials_consumed == ["iron_ingot", "leather_strip"]
+        assert result.materials_returned == []
 
-    def test_failure_on_nat_1(self):
-        for seed in range(200):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 1:
-                rng = random.Random(seed)
-                result = _resolve_craft(self.PARAMS, rng=rng)
-                assert result.tier == "failure"
-                assert result.crafted_item_id is None
-                assert len(result.materials_returned) > 0
-                return
-        pytest.fail("Could not find seed for nat 1")
+    def test_success_attaches_neither(self):
+        result = _resolve_craft(self.PARAMS, rng=random.Random(_seed_for_d20(12)))
+        assert result.tier == "success"
+        assert result.crafted_item_id == "iron_sword"
+        assert result.bonus_property is None
+        assert result.flaw is None
 
-    def test_all_tiers_reachable(self):
-        """Run many seeds, verify we can reach different outcome tiers."""
-        tiers_seen = set()
-        for seed in range(500):
-            result = _resolve_craft(self.PARAMS, rng=random.Random(seed))
-            tiers_seen.add(result.tier)
-        # Should reach at least 3 of 4 tiers
-        assert len(tiers_seen) >= 3
+    def test_partial_attaches_flaw(self):
+        result = _resolve_craft(self.PARAMS, rng=random.Random(_seed_for_d20(5)))
+        assert result.tier == "partial"
+        assert result.crafted_item_id == "iron_sword"  # flawed but functional item produced
+        assert result.flaw in QUALITY_TABLES["flaws"]
+        assert result.bonus_property is None
+
+    def test_failure_consumes_all_materials(self):
+        result = _resolve_craft(self.PARAMS, rng=random.Random(_seed_for_d20(1)))
+        assert result.tier == "failure"
+        assert result.crafted_item_id is None
+        assert result.bonus_property is None
+        assert result.flaw is None
+        assert result.materials_consumed == ["iron_ingot", "leather_strip"]
+        assert result.materials_returned == []  # spec: nothing produced, all consumed
+
+    def test_unexpected_band_never_returned(self):
+        tiers_seen = {_resolve_craft(self.PARAMS, rng=random.Random(seed)).tier for seed in range(500)}
+        assert "unexpected" not in tiers_seen
+        assert tiers_seen <= {"exceptional", "success", "partial", "failure"}
+
+    def test_all_four_bands_reachable(self):
+        tiers_seen = {_resolve_craft(self.PARAMS, rng=random.Random(seed)).tier for seed in range(500)}
+        assert tiers_seen == {"exceptional", "success", "partial", "failure"}
+
+    def test_quality_tables_none_tolerated(self):
+        # Missing content row -> no flavor attached, but the band still resolves.
+        result = _resolve_craft(self.PARAMS, rng=random.Random(_seed_for_d20(20)), quality_tables=None)
+        assert result.tier == "exceptional"
+        assert result.bonus_property is None
 
     def test_narrative_context_populated(self):
-        result = _resolve_craft(self.PARAMS, rng=random.Random(42))
+        result = _resolve_craft(self.PARAMS, rng=random.Random(_seed_for_d20(12)))
         ctx = result.narrative_context
         assert "tier" in ctx
         assert "roll" in ctx
         assert "dc" in ctx
         assert "recipe_name" in ctx
+        assert "bonus_property" in ctx
+        assert "flaw" in ctx
         assert ctx["npc_id"] == "grimjaw_blacksmith"
 
     def test_deterministic_with_rng(self):
-        r1 = _resolve_craft(self.PARAMS, rng=random.Random(42))
-        r2 = _resolve_craft(self.PARAMS, rng=random.Random(42))
+        r1 = _resolve_craft(self.PARAMS, rng=random.Random(_seed_for_d20(20)))
+        r2 = _resolve_craft(self.PARAMS, rng=random.Random(_seed_for_d20(20)))
         assert r1.tier == r2.tier
-        assert r1.quality_bonus == r2.quality_bonus
+        assert r1.bonus_property == r2.bonus_property
+        assert r1.flaw == r2.flaw
 
     def test_decision_options_always_present(self):
         for seed in range(20):
@@ -156,6 +192,7 @@ class TestResolveCrafting:
         result = _resolve_craft(self.PARAMS, workspace_access=["field"], rng=random.Random(1))
         assert result.tier == "failure"
         assert result.crafted_item_id is None
+        assert result.bonus_property is None
         assert result.materials_consumed == ["iron_ingot", "leather_strip"]
         assert result.materials_returned == []
         assert result.narrative_context["gate"] == "workspace"

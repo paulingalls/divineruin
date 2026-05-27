@@ -196,17 +196,17 @@ See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
 - Pure function: `resolve_experimentation(skill_modifier, base_dc, materials, category_tables)` → item + recipe learned OR materials consumed
 - Agent tool: `experiment_with_materials(character_id, materials, intended_output)` → experimentation result
 
-**Acceptance criteria:**
-- [ ] Exceptional quality triggers at DC+10 and adds a random bonus property from the correct category table
-- [ ] Success quality produces standard item matching recipe output
-- [ ] Partial quality (DC-5 to DC-1) produces flawed but functional item with appropriate flaw
-- [ ] Failure (below DC-5) consumes all materials and produces nothing
-- [ ] Experimentation uses `base_dc + 4` as the crafting DC
-- [ ] Successful experimentation produces the item AND adds the recipe to known recipes
-- [ ] Failed experimentation consumes materials without producing item or recipe
-- [ ] Bonus property and flaw tables exist for each item category
-- [ ] `apply_quality_outcome` and `resolve_experimentation` are pure functions
-- [ ] Tests cover all four quality tiers, experimentation success/failure, and bonus/flaw table lookups
+**Acceptance criteria:** _(all met — sprint-014; see capstone footer below)_
+- [x] Exceptional quality triggers at DC+10 and adds a random bonus property from the correct category table
+- [x] Success quality produces standard item matching recipe output
+- [x] Partial quality (DC-5 to DC-1) produces flawed but functional item with appropriate flaw
+- [x] Failure (below DC-5) consumes all materials and produces nothing
+- [x] Experimentation uses `base_dc + 4` as the crafting DC
+- [x] Successful experimentation produces the item AND adds the recipe to known recipes
+- [x] Failed experimentation consumes materials without producing item or recipe
+- [x] Bonus property and flaw tables exist for each item category
+- [x] `apply_quality_outcome` and `resolve_experimentation` are pure functions
+- [x] Tests cover all four quality tiers, experimentation success/failure, and bonus/flaw table lookups
 
 **Key references:**
 - *Game Mechanics Crafting — Quality Outcomes*
@@ -217,7 +217,7 @@ See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
 
 <!-- see audit/phase-5-quality.md -->
 
-**Status: DEFERRED / NOT_STARTED.** The 4-tier spec quality model (`Exceptional` at DC+10 / `Success` at DC / `Partial` at DC-5..DC-1 / `Failure` below DC-5) and the Experimentation system are unshipped. `async_rules.resolve_crafting()` at `apps/agent/async_rules.py:34-129` returns a 4-tier outcome (`success` / `partial` / `unexpected` / `failure`) but the band thresholds diverge: code's `success` fires at `margin>=5` OR `d20==20`, lumping spec's Exceptional and Success together; code's `unexpected` has no spec mapping; code returns half the materials on failure (spec: "materials consumed, nothing produced"). No per-category bonus-property or flaw tables. No `apply_quality_outcome`, `resolve_experimentation`, or `experiment_with_materials` symbols. No `known_recipes` table to receive the experimentation "teaches the recipe" mutation.
+**Status: SUPERSEDED — M5.3 shipped in sprint-014; see the capstone footer below.** _(Sprint-004 snapshot retained for history.)_ The 4-tier spec quality model (`Exceptional` at DC+10 / `Success` at DC / `Partial` at DC-5..DC-1 / `Failure` below DC-5) and the Experimentation system are unshipped. `async_rules.resolve_crafting()` at `apps/agent/async_rules.py:34-129` returns a 4-tier outcome (`success` / `partial` / `unexpected` / `failure`) but the band thresholds diverge: code's `success` fires at `margin>=5` OR `d20==20`, lumping spec's Exceptional and Success together; code's `unexpected` has no spec mapping; code returns half the materials on failure (spec: "materials consumed, nothing produced"). No per-category bonus-property or flaw tables. No `apply_quality_outcome`, `resolve_experimentation`, or `experiment_with_materials` symbols. No `known_recipes` table to receive the experimentation "teaches the recipe" mutation.
 
 | Section | BUILT | DESIGNED | NOT_SHIPPED |
 | --- | --- | --- | --- |
@@ -238,6 +238,22 @@ See `audit/phase-5-recipes-resolution.md` for the full coverage matrix.
 **Spec/milestone conflict to record:** `async_rules.resolve_crafting` returns half materials on Failure (`async_rules.py:88-91`); spec at `game_mechanics_crafting.md:106` is explicit "Materials consumed. Nothing produced." Tracked in `audit/README.md` Sprint-spec-cleanup.
 
 See `audit/phase-5-quality.md` for the full coverage matrix.
+
+### CAPSTONE — M5.3 shipped (sprint-014, story-005)
+
+<!-- capstone-footer: grep "CAPSTONE — M5.3" -->
+
+**Status: SHIPPED.** All 10 M5.3 acceptance criteria are met end-to-end.
+
+- **Story chain:** story-001 (recorded the 5 binding conflict decisions — spec bands `exceptional/success/partial/failure` as SSOT, all-materials-consumed on Failure, Exceptional at DC+10, hidden skill counter scoped as story-006, `quality_outcomes` DB-loaded Python-only) → 002 (`content/quality_outcomes.json` + migration 024 `quality_outcomes` table + pure band-keyed `apply_quality_outcome`) → 003 (rewrote `resolve_crafting` to the pure-margin 4-band model — Exceptional DC+10 / Success / Partial DC-5..-1 / Failure <DC-5, no nat-1/20 special-casing, all materials consumed on Failure; extracted `crafting_resolution.py` orchestrator joining the resolver to the DB quality tables) → 004 (`experiment_with_materials` immediate tool at DC+4, `resolve_experimentation`, `player_failed_experiments` migration 025 with no-match-only dedup) → 006 (hidden Crafting skill counter, +1 on Failure — migration 026 `player_crafting_skill_counter`, atomic-UPSERT increment, async-worker failure hook; en route, touch-split `async_worker.py`→`async_worker_training.py` and `db_mutations.py`→`db_mutations_divine.py`, resolving file-size debts `f3194b59b4ab` + `1f235ab5066a`) → **005 (this capstone)**.
+- **Capstone proof:** `apps/agent/tests/acceptance/test_m53_quality_outcomes_capstone.py` proves M5.3's surfaces compose against one seeded testcontainer. Part A — all four bands resolve through the production `crafting_resolution.resolve_crafting_outcome`, which fetches the recipe category + that category's `quality_outcomes` row from the DB and threads it into the resolver; Exceptional draws a `bonus_property` and Partial a `flaw` that are members of the DB-loaded weapon table (story-002 ⨯ story-003). Part B — a crafting Failure resolves end-to-end through the real async worker (only the LLM/TTS boundary mocked) and the hidden Crafting skill counter reads +1, asserting `gate=="tainted_expert"` so the workspace gate can't mask it (story-003 ⨯ story-006; this fulfills the deferred story-006 AC#4, decision `crafting-counter-ac4-deferred`). Part C — experimentation (story-004, the message_event surface): a no-match consumes materials and records `player_failed_experiments` with no-match-only dedup (row count stays 1 on retry), and a discoverable recipe is learned on success. 4/4 green via `bun run test:acceptance`.
+- **Verified-at:** capstone proof `5822526`; final close SHA recorded at sprint-close.
+
+**Open follow-ups:**
+- **M5.4 cross-language Artificer convergence:** the Portable-Lab slot exception + slot accounting remain TS-REST-only; the Python agent path is still unaware (risk `b335bb95acbd`).
+- **Hidden-counter semantics:** the failure-band increment is at-most-once (a separate await from the outcome-cache write, deliberately — preserves the cached LLM narration on the rare failure-retry path rather than re-running the LLM); revisit if exactly-once is ever required (concern `960a7a9fcb15`).
+- **Economy milestone:** `rent_workspace` fractional-gold reconciliation (concern `67c8f2962302`).
+- **File-size debt:** `debug.ts` (522L) still owes its SRP split (debt `9c8becfce881`); `db_mutations.py`/`async_worker.py` were split in this milestone.
 
 ---
 

@@ -17,6 +17,7 @@ from crafting_tools import query_available_workspaces, rent_workspace, start_cra
 from dispatch_tools import conclude_dispatch
 from environment_tools import play_sound, set_music_state
 from errand_tools import dispatch_companion_errand, resolve_companion_errand
+from experimentation_tools import experiment_with_materials
 from movement_tools import move_player
 from query_tools import query_info
 from recipe_tools import learn_recipe, query_recipe_requirements
@@ -42,6 +43,8 @@ DISPATCH_TOOLS = [
     query_available_workspaces,
     rent_workspace,
     start_crafting_project,
+    # Experimentation (M5.3): craft without a known recipe at DC+4 (resolves immediately).
+    experiment_with_materials,
     # Navigation / queries — enough to talk to the mentor and leave
     move_player,
     query_info,
