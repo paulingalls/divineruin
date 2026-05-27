@@ -1042,5 +1042,541 @@
         "item_features": "the dark iron surface, microscopic interior engraving, and faint cold aura"
       }
     }
+  },
+  {
+    "id": "rapier_dueling",
+    "name": "Rapier",
+    "tier": 2,
+    "type": "weapon",
+    "subtype": "light melee",
+    "rarity": "uncommon",
+    "description": "A needle of steel that sings when it clears the scabbard. Light in the hand, deadly at the point.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 2,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d8",
+        "damage_type": "piercing",
+        "properties": [
+          "finesse"
+        ]
+      }
+    ],
+    "value_base": 15,
+    "damage_dice": "1d8",
+    "properties": [
+      "finesse"
+    ],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "greatsword_war",
+    "name": "Greatsword",
+    "tier": 2,
+    "type": "weapon",
+    "subtype": "martial melee",
+    "rarity": "uncommon",
+    "description": "Two hands, one swing, a sound like a door slamming. It asks for room and rewards commitment.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 6,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "2d6",
+        "damage_type": "slashing",
+        "properties": [
+          "heavy",
+          "two-handed"
+        ]
+      }
+    ],
+    "value_base": 25,
+    "damage_dice": "2d6",
+    "properties": [
+      "heavy",
+      "two-handed"
+    ],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "battleaxe_common",
+    "name": "Battleaxe",
+    "tier": 1,
+    "type": "weapon",
+    "subtype": "martial melee",
+    "rarity": "common",
+    "description": "A solid working axe, heavy at the head. Bites deep, swings either grip.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 4,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d8",
+        "damage_type": "slashing",
+        "properties": [
+          "versatile"
+        ],
+        "versatile_damage": "1d10"
+      }
+    ],
+    "value_base": 8,
+    "damage_dice": "1d8",
+    "properties": [
+      "versatile"
+    ],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "warhammer_common",
+    "name": "Warhammer",
+    "tier": 1,
+    "type": "weapon",
+    "subtype": "martial melee",
+    "rarity": "common",
+    "description": "A blunt iron head that lands with a crack you feel in your shoulders. Crushes what blades skate off.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 3,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d8",
+        "damage_type": "bludgeoning",
+        "properties": [
+          "versatile"
+        ],
+        "versatile_damage": "1d10"
+      }
+    ],
+    "value_base": 10,
+    "damage_dice": "1d8",
+    "properties": [
+      "versatile"
+    ],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "spear_common",
+    "name": "Spear",
+    "tier": 1,
+    "type": "weapon",
+    "subtype": "simple melee",
+    "rarity": "common",
+    "description": "A simple shaft and a point, quiet until it isn't. Keeps trouble at arm's length, or flies when you let it.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 3,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d6",
+        "damage_type": "piercing",
+        "properties": [
+          "versatile",
+          "thrown"
+        ],
+        "versatile_damage": "1d8",
+        "range": "20/60"
+      }
+    ],
+    "value_base": 1,
+    "damage_dice": "1d6",
+    "properties": [
+      "versatile",
+      "thrown"
+    ],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "handaxe_common",
+    "name": "Handaxe",
+    "tier": 1,
+    "type": "weapon",
+    "subtype": "light melee",
+    "rarity": "common",
+    "description": "Short, balanced, made to throw or chop. Thunks home and waits for the next.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 2,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d6",
+        "damage_type": "slashing",
+        "properties": [
+          "light",
+          "thrown"
+        ],
+        "range": "20/60"
+      }
+    ],
+    "value_base": 2,
+    "damage_dice": "1d6",
+    "properties": [
+      "light",
+      "thrown"
+    ],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "shortbow_common",
+    "name": "Shortbow",
+    "tier": 1,
+    "type": "weapon",
+    "subtype": "ranged",
+    "rarity": "common",
+    "description": "A taut creak, a whisper of fletching, gone. Quick to draw, kind to tired arms.",
+    "tags": [
+      "weapon",
+      "ranged"
+    ],
+    "weight": 2,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d6",
+        "damage_type": "piercing",
+        "properties": [
+          "two-handed",
+          "ammunition"
+        ],
+        "range": "80/320"
+      }
+    ],
+    "value_base": 15,
+    "damage_dice": "1d6",
+    "properties": [
+      "two-handed",
+      "ammunition"
+    ],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "longbow_common",
+    "name": "Longbow",
+    "tier": 2,
+    "type": "weapon",
+    "subtype": "ranged",
+    "rarity": "uncommon",
+    "description": "A deep groan of yew and a flat snap downrange. Reaches further than most eyes can follow.",
+    "tags": [
+      "weapon",
+      "ranged"
+    ],
+    "weight": 2,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d8",
+        "damage_type": "piercing",
+        "properties": [
+          "two-handed",
+          "heavy",
+          "ammunition"
+        ],
+        "range": "150/600"
+      }
+    ],
+    "value_base": 30,
+    "damage_dice": "1d8",
+    "properties": [
+      "two-handed",
+      "heavy",
+      "ammunition"
+    ],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "crossbow_light",
+    "name": "Light Crossbow",
+    "tier": 1,
+    "type": "weapon",
+    "subtype": "ranged",
+    "rarity": "common",
+    "description": "A mechanical clack, then a punch with no warning. Slow to crank, simple to aim.",
+    "tags": [
+      "weapon",
+      "ranged"
+    ],
+    "weight": 5,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d8",
+        "damage_type": "piercing",
+        "properties": [
+          "two-handed",
+          "loading",
+          "ammunition"
+        ],
+        "range": "80/320"
+      }
+    ],
+    "value_base": 15,
+    "damage_dice": "1d8",
+    "properties": [
+      "two-handed",
+      "loading",
+      "ammunition"
+    ],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "crossbow_hand",
+    "name": "Hand Crossbow",
+    "tier": 2,
+    "type": "weapon",
+    "subtype": "ranged",
+    "rarity": "uncommon",
+    "description": "A small, vicious thing you can hide in a sleeve. One bolt, one breath, then reload.",
+    "tags": [
+      "weapon",
+      "ranged"
+    ],
+    "weight": 3,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d6",
+        "damage_type": "piercing",
+        "properties": [
+          "light",
+          "loading",
+          "ammunition"
+        ],
+        "range": "30/120"
+      }
+    ],
+    "value_base": 40,
+    "damage_dice": "1d6",
+    "properties": [
+      "light",
+      "loading",
+      "ammunition"
+    ],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "crossbow_heavy",
+    "name": "Heavy Crossbow",
+    "tier": 2,
+    "type": "weapon",
+    "subtype": "ranged",
+    "rarity": "uncommon",
+    "description": "A windlass groan and a blow like a falling beam. Brutal, heavy, worth the wait.",
+    "tags": [
+      "weapon",
+      "ranged"
+    ],
+    "weight": 18,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage": "1d10",
+        "damage_type": "piercing",
+        "properties": [
+          "two-handed",
+          "heavy",
+          "loading",
+          "ammunition"
+        ],
+        "range": "100/400"
+      }
+    ],
+    "value_base": 30,
+    "damage_dice": "1d10",
+    "properties": [
+      "two-handed",
+      "heavy",
+      "loading",
+      "ammunition"
+    ],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "padded_armor",
+    "name": "Padded Armor",
+    "tier": 1,
+    "type": "armor",
+    "subtype": "light",
+    "rarity": "common",
+    "description": "Quilted cloth that rustles when you move and soaks up a glancing blow. Cheap, warm, and loud in the dark.",
+    "tags": [
+      "armor",
+      "light"
+    ],
+    "weight": 8,
+    "effects": [
+      {
+        "type": "armor",
+        "ac_bonus": 11,
+        "properties": [
+          "stealth_disadvantage"
+        ]
+      }
+    ],
+    "value_base": 3,
+    "ac": 11,
+    "armor_properties": [
+      "stealth_disadvantage"
+    ],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "studded_leather",
+    "name": "Studded Leather",
+    "tier": 2,
+    "type": "armor",
+    "subtype": "light",
+    "rarity": "uncommon",
+    "description": "Supple leather set with rivets that catch the light. Quiet, flexible, forgiving of a misstep.",
+    "tags": [
+      "armor",
+      "light"
+    ],
+    "weight": 13,
+    "effects": [
+      {
+        "type": "armor",
+        "ac_bonus": 12,
+        "properties": []
+      }
+    ],
+    "value_base": 25,
+    "ac": 12,
+    "armor_properties": [],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "hide_armor",
+    "name": "Hide Armor",
+    "tier": 1,
+    "type": "armor",
+    "subtype": "medium",
+    "rarity": "common",
+    "description": "Thick cured hide that smells of the beast it came from. Heavy on the shoulders, generous against claws.",
+    "tags": [
+      "armor",
+      "medium"
+    ],
+    "weight": 12,
+    "effects": [
+      {
+        "type": "armor",
+        "ac_bonus": 12,
+        "properties": []
+      }
+    ],
+    "value_base": 5,
+    "ac": 12,
+    "armor_properties": [],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "half_plate",
+    "name": "Half Plate",
+    "tier": 3,
+    "type": "armor",
+    "subtype": "medium",
+    "rarity": "rare",
+    "description": "Fitted plates over the chest and arms that clink with every stride. Strong enough to matter, loud enough to notice.",
+    "tags": [
+      "armor",
+      "medium"
+    ],
+    "weight": 40,
+    "effects": [
+      {
+        "type": "armor",
+        "ac_bonus": 15,
+        "properties": [
+          "stealth_disadvantage"
+        ]
+      }
+    ],
+    "value_base": 500,
+    "ac": 15,
+    "armor_properties": [
+      "stealth_disadvantage"
+    ],
+    "durability_tier": "reinforced"
+  },
+  {
+    "id": "chain_mail",
+    "name": "Chain Mail",
+    "tier": 2,
+    "type": "armor",
+    "subtype": "heavy",
+    "rarity": "uncommon",
+    "description": "A curtain of linked rings that whispers and drags. Turns edges, tires the back, asks for strength.",
+    "tags": [
+      "armor",
+      "heavy"
+    ],
+    "weight": 55,
+    "effects": [
+      {
+        "type": "armor",
+        "ac_bonus": 16,
+        "properties": [
+          "str_13",
+          "stealth_disadvantage"
+        ]
+      }
+    ],
+    "value_base": 50,
+    "ac": 16,
+    "armor_properties": [
+      "str_13",
+      "stealth_disadvantage"
+    ],
+    "durability_tier": "reinforced"
+  },
+  {
+    "id": "plate_armor",
+    "name": "Plate Armor",
+    "tier": 3,
+    "type": "armor",
+    "subtype": "heavy",
+    "rarity": "rare",
+    "description": "A second skin of shaped steel — the wearer sounds like a slow bell. Almost nothing gets through; almost nothing sneaks by.",
+    "tags": [
+      "armor",
+      "heavy"
+    ],
+    "weight": 65,
+    "effects": [
+      {
+        "type": "armor",
+        "ac_bonus": 18,
+        "properties": [
+          "str_15",
+          "stealth_disadvantage"
+        ]
+      }
+    ],
+    "value_base": 1000,
+    "ac": 18,
+    "armor_properties": [
+      "str_15",
+      "stealth_disadvantage"
+    ],
+    "durability_tier": "reinforced"
   }
 ]
