@@ -142,6 +142,20 @@ async def test_success_restores_hits_and_debits_gold_once():
 # --- _can_repair_tier (pure) -------------------------------------------------
 
 
+# --- registration -------------------------------------------------------------
+
+
+def test_repair_item_registered_in_dispatch_tools_within_budget():
+    from dispatch_agent import DISPATCH_TOOLS
+    from llm_config import MAX_STRICT_TOOLS
+
+    assert repair_item.repair_item in DISPATCH_TOOLS
+    assert len(DISPATCH_TOOLS) <= MAX_STRICT_TOOLS
+
+
+# --- _can_repair_tier (pure) -------------------------------------------------
+
+
 @pytest.mark.parametrize(
     "player_tier,required_tier,expected",
     [
