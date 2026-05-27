@@ -48,13 +48,16 @@ async def _publish_sounds(session: SessionData, sounds: list[str]) -> None:
 def _find_equipped(inventory: list[dict], item_type: str, name: str | None = None) -> dict | None:
     """Return the equipped inventory item of a given type (optionally matching a
     name), or None. Inventory dicts are get_player_inventory-shaped: catalog fields
-    top-level, per-instance state under slot_info. Ambiguous matches log and take the
-    first — durability is a side-effect, not worth failing the turn over."""
+    top-level, per-instance state under slot_info. Requires a durability_tier so the
+    caller can damage it; an equipped item missing one is skipped (None) rather than
+    blowing up the turn — durability is a side-effect, not worth failing over.
+    Ambiguous matches log and take the first."""
     matches = [
         it
         for it in inventory
         if it.get("slot_info", {}).get("equipped")
         and it.get("type") == item_type
+        and it.get("durability_tier")
         and (name is None or it.get("name", "").lower() == name.lower())
     ]
     if not matches:

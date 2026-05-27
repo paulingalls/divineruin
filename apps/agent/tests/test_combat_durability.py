@@ -97,6 +97,13 @@ def test_find_equipped_returns_none_when_no_match():
     assert combat_support._find_equipped(inv, "shield") is None
 
 
+def test_find_equipped_skips_equipped_item_missing_durability_tier():
+    # A malformed equipped item with no durability_tier must be skipped (None),
+    # not returned to _accrue_durability where it would KeyError mid-turn.
+    item = {"id": "broken_data", "type": "armor", "slot_info": {"equipped": True}}
+    assert combat_support._find_equipped([item], "armor") is None
+
+
 def test_find_equipped_filters_by_name():
     inv = [
         _inv_item("longsword_guild", "weapon", equipped=True, name="Longsword"),
