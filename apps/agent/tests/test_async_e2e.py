@@ -48,6 +48,15 @@ SAMPLE_PLAYER = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _stub_crafting_skill_counter():
+    """Stub the story-006 failure-band counter write so a random-roll crafting Failure
+    in these pipeline tests doesn't reach the real pool (db.get_pool needs DATABASE_URL).
+    The counter behavior is covered by test_crafting_skill_counter.py."""
+    with patch("async_worker.db_mutations.increment_crafting_skill_counter", new_callable=AsyncMock):
+        yield
+
+
 class TestFullPipeline:
     """End-to-end: create activity -> resolve -> narrate -> audio -> DB update."""
 

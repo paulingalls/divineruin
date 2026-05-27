@@ -1,7 +1,7 @@
 """Hybrid counter integration test (M1.2).
 
 Pins the production contract: session-use (`check_tools._request_skill_check_impl`)
-and training-skill-practice (`async_worker.apply_skill_practice_advancement`) both
+and training-skill-practice (`async_worker_training.apply_skill_practice_advancement`) both
 read and write the SAME `skill_advancement` row keyed by `(player_id, skill_id)`.
 
 If a future refactor splits one path onto a different row, this test breaks.
@@ -13,10 +13,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-import async_worker
+import async_worker_training
 import check_tools
 import skill_persistence
-from async_worker import apply_skill_practice_advancement
+from async_worker_training import apply_skill_practice_advancement
 from check_tools import _request_skill_check_impl
 from tests.test_mechanics_tools import SAMPLE_PLAYER, _make_context, _make_mock_room
 
@@ -162,7 +162,7 @@ class TestHybridCounterSharedRow:
             calls.append((player_id, skill, counter_increment))
             return await real_fn(player_id, skill, counter_increment, **kw)
 
-        _install_helper_spy(monkeypatch, spy, real_fn, [skill_persistence, check_tools, async_worker])
+        _install_helper_spy(monkeypatch, spy, real_fn, [skill_persistence, check_tools, async_worker_training])
 
         _, queries, mutations = _shared_skill_advancement_store()
         ctx = _make_context(player_id="player_1", room=_make_mock_room())

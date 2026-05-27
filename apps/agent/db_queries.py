@@ -177,6 +177,16 @@ async def get_single_skill_advancement(
     }
 
 
+async def get_crafting_skill_counter(player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> int:
+    """Read the player's hidden Crafting skill counter (story-006). Defaults to 0."""
+    _conn = conn or await db.get_pool()
+    counter = await _conn.fetchval(
+        "SELECT counter FROM player_crafting_skill_counter WHERE player_id = $1",
+        player_id,
+    )
+    return counter or 0
+
+
 async def count_player_known_recipes(player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> int:
     """Count recipes a player knows — the slot-capacity input for learn_recipe."""
     _conn = conn or await db.get_pool()

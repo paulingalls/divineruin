@@ -3,6 +3,7 @@
 import json
 import time
 from dataclasses import asdict
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -79,7 +80,8 @@ class TestSessionDataCompanion:
 
 class TestKaelEntity:
     def test_kael_entity_valid_schema(self):
-        with open("../../content/npcs.json") as f:
+        npcs_path = Path(__file__).resolve().parents[3] / "content" / "npcs.json"
+        with open(npcs_path) as f:
             npcs = json.load(f)
         kael = next(n for n in npcs if n["id"] == "companion_kael")
 
