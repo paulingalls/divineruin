@@ -40,9 +40,17 @@ test("maps a 400 to a handled error (no throw)", async () => {
   expect(result.error && result.error.length).toBeGreaterThan(0);
 });
 
-test("maps a 409 duplicate to a handled error", async () => {
-  const { fn } = fakeFetch(Response.json({ error: "dup" }, { status: 409 }));
+test("treats a duplicate signup as success (server dedupes with an idempotent 200)", async () => {
+  // The story-002 endpoint returns {ok:true} for a repeat email (ON CONFLICT DO
+  // NOTHING) — it never 409s — so a duplicate is success from the client's view.
+  const { fn } = fakeFetch(Response.json({ ok: true }));
   const result = await joinWaitlist("dup@b.co", opts(fn));
+  expect(result).toEqual({ ok: true });
+});
+
+test("maps an unexpected server error (500) to a handled error", async () => {
+  const { fn } = fakeFetch(Response.json({ error: "boom" }, { status: 500 }));
+  const result = await joinWaitlist("a@b.co", opts(fn));
   expect(result.ok).toBe(false);
   expect(result.error && result.error.length).toBeGreaterThan(0);
 });
