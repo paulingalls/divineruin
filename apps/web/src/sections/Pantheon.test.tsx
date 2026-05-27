@@ -28,7 +28,7 @@ test("renders every god's name, title, domain, and quote", () => {
 
 test("renders one card per god", () => {
   const html = renderToStaticMarkup(<Pantheon />);
-  const cards = html.match(/class="pantheon__card"/g) ?? [];
+  const cards = html.match(/class="pantheon__card reveal-item"/g) ?? [];
   expect(cards.length).toBe(GODS.length);
   expect(cards.length).toBe(10);
 });
@@ -56,10 +56,10 @@ test("renders the ten expected gods in order", () => {
 
 test("starts unarmed — reveal gate is post-hydration only (matches SSR)", () => {
   const html = renderToStaticMarkup(<Pantheon />);
-  expect(html).not.toContain("pantheon--armed");
+  expect(html).not.toContain("reveal-armed");
 });
 
-test("REVEALED_CLASS matches the literal the reveal CSS keys off", () => {
+test("REVEALED_CLASS matches the literal the reveal-gate CSS keys off", () => {
   expect(REVEALED_CLASS).toBe("is-revealed");
 });
 

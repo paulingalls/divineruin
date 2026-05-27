@@ -16,13 +16,14 @@ test("composes the chrome + above-fold sections in order", () => {
   );
 });
 
-test("composes the Milestone 4 world sections in mockup order after Premise", () => {
+test("composes the Milestone 4 + 5 sections in mockup order after Premise", () => {
   const html = renderToStaticMarkup(<App />);
-  // Premise -> Session -> World -> Races -> Pantheon -> Classes -> Tech -> Footer,
-  // in document order (the story-006 capstone mount). Locks the section sequence so a
-  // mis-ordered or dropped mount fails here, not just in the cross-cutting E2E.
+  // Premise -> Session -> World -> Races -> Pantheon -> Classes -> Tech (M4) ->
+  // Pricing -> FAQ -> Waitlist (M5 conversion) -> Footer, in document order. Locks
+  // the section sequence so a mis-ordered or dropped mount fails here, not just in
+  // the cross-cutting E2E.
   expect(html).toMatch(
-    /id="premise"[\s\S]*?id="session"[\s\S]*?id="world"[\s\S]*?id="races"[\s\S]*?id="pantheon"[\s\S]*?id="classes"[\s\S]*?id="tech"[\s\S]*?<footer/,
+    /id="premise"[\s\S]*?id="session"[\s\S]*?id="world"[\s\S]*?id="races"[\s\S]*?id="pantheon"[\s\S]*?id="classes"[\s\S]*?id="tech"[\s\S]*?id="pricing"[\s\S]*?id="faq"[\s\S]*?id="waitlist"[\s\S]*?<footer/,
   );
 });
 

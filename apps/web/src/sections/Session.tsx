@@ -1,6 +1,5 @@
 import "./Session.css";
-import { useEffect, useRef } from "react";
-import { reveal, defaultRevealEnv } from "../lib/reveal.ts";
+import { useReveal } from "../lib/useReveal.ts";
 
 export type TranscriptVariant = "" | "player" | "combat" | "god";
 
@@ -55,20 +54,11 @@ export const SESSION_LINES: readonly TranscriptLine[] = [
 // product promise to a marketing visitor.
 //
 // Progressive enhancement (matches Premise): the transcript lines are always in the
-// prerendered HTML and visible by default. Only after hydration — and only when
-// IntersectionObserver exists — does the section "arm" (add `session--armed`, which
-// the CSS uses to hide un-revealed lines) and hand its lines to reveal(). So with no
-// JS, no IntersectionObserver, or reduced motion the content stays fully visible.
+// prerendered HTML and visible by default. Only after hydration (via useReveal) does
+// the section arm and reveal its `.reveal-item` lines on scroll. So with no JS, no
+// IntersectionObserver, or reduced motion the content stays fully visible.
 export function Session() {
-  const sectionRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const section = sectionRef.current;
-    const env = defaultRevealEnv();
-    if (!section || !env.IntersectionObserver) return;
-    section.classList.add("session--armed");
-    return reveal(section.querySelectorAll(".session__line"), env);
-  }, []);
+  const sectionRef = useReveal<HTMLElement>();
 
   return (
     <section className="session" id="session" ref={sectionRef}>
@@ -86,7 +76,10 @@ export function Session() {
         <div className="session__transcript">
           {SESSION_LINES.map((line, i) => (
             <div
-              className={"session__line" + (line.variant ? " session__line--" + line.variant : "")}
+              className={
+                "session__line reveal-item" +
+                (line.variant ? " session__line--" + line.variant : "")
+              }
               key={i}
             >
               <span className="session__who">{line.who}</span>

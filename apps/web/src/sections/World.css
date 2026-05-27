@@ -504,30 +504,3 @@
   font-size: var(--text-body-size);
   color: var(--color-ash);
 }
-
-/* Reveal gate. Default (no-JS / not armed / no IntersectionObserver): visible.
-   Armed (post-hydration, JS + IO): hide each card until it scrolls into view. */
-.world--armed .world__tl-event,
-.world--armed .world__place,
-.world--armed .world__tx {
-  opacity: 0;
-  transform: translateY(16px);
-  transition:
-    opacity 600ms ease,
-    transform 600ms ease;
-}
-
-.world--armed .world__tl-event.is-revealed,
-.world--armed .world__place.is-revealed,
-.world--armed .world__tx.is-revealed {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .world--armed .world__tl-event,
-  .world--armed .world__place,
-  .world--armed .world__tx {
-    transition: none;
-  }
-}
