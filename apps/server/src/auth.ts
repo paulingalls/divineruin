@@ -3,6 +3,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { sql } from "./db.ts";
 import { IS_TEST_ENV } from "./env.ts";
 import { parseJsonBody } from "./middleware.ts";
+import { normalizeEmail } from "./email.ts";
 
 const JWT_SECRET_HEX = Bun.env.JWT_SECRET ?? "";
 const RESEND_API_KEY = Bun.env.RESEND_API_KEY ?? "";
@@ -59,18 +60,14 @@ function generateCode(): string {
   return String(arr[0]! % 1_000_000).padStart(6, "0");
 }
 
-const EMAIL_RE =
-  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
-const MAX_EMAIL_LENGTH = 254;
-
 export async function handleRequestCode(req: Request): Promise<Response> {
   const body = await parseJsonBody<{ email?: string }>(req);
   if (!body) {
     return Response.json({ error: "Invalid Content-Type" }, { status: 415 });
   }
 
-  const rawEmail = body.email?.trim().toLowerCase();
-  if (!rawEmail || rawEmail.length > MAX_EMAIL_LENGTH || !EMAIL_RE.test(rawEmail)) {
+  const rawEmail = normalizeEmail(body.email);
+  if (!rawEmail) {
     return Response.json({ error: "A valid email address is required" }, { status: 400 });
   }
 

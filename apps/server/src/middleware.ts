@@ -71,6 +71,7 @@ const RATE_LIMITS: Record<string, number> = {
   "/api/livekit/token": 10,
   "/api/auth/request-code": 3,
   "/api/auth/verify-code": 5,
+  "/api/waitlist": 5,
   "/api/push-token": 5,
   "/api/activities": 10,
   "/api/internal/push": 30,
