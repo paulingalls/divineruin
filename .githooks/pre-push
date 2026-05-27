@@ -32,6 +32,16 @@ else
       echo "ERROR: Docker must be running for pre-push acceptance tests." >&2
       exit 1
     fi
+
+    # Provision Postgres + Redis for the lanes that need real services (E2E's API
+    # server). No-op when DATABASE_URL is already set, so a dev with .env / CI's
+    # service vars is unaffected; otherwise it stands up docker-compose + migrates +
+    # seeds and exports DATABASE_URL/REDIS_URL. Lets the gate run without a sourced
+    # .env. (Server bun tests are env-independent; the Python lane unsets these below
+    # and uses its own testcontainers.)
+    # shellcheck source=scripts/test-env.sh
+    source "$(dirname "$0")/../scripts/test-env.sh"
+
     # Run acceptance in the background so it overlaps the unit + E2E steps.
     ( REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true bun run test:acceptance ) &
     acc_pid=$!
