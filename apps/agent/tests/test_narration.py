@@ -150,6 +150,17 @@ class TestCraftingQualityNote:
         assert "flaw mars" not in prompt
         assert "Exceptional touch" not in prompt
 
+    def test_recipe_cue_surfaced_when_present(self):
+        """decision crafting-narration-ssot: the per-recipe band cue threads into the prompt."""
+        outcome = self._outcome("success")
+        outcome["narrative_context"]["recipe_cue"] = "A blunt heft of oak, balanced for a swing."
+        prompt, _ = build_narration_prompt("crafting", outcome)
+        assert "A blunt heft of oak, balanced for a swing." in prompt
+
+    def test_recipe_cue_absent_when_missing(self):
+        prompt, _ = build_narration_prompt("crafting", self._outcome("success"))
+        assert "The result:" not in prompt
+
 
 class TestSanitizePlayerText:
     def test_allows_normal_names(self):

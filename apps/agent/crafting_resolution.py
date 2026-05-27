@@ -37,4 +37,13 @@ async def resolve_crafting_outcome(activity: dict, player_data: dict, *, rng: ra
         quality_tables=quality_tables,
         rng=rng,
     )
-    return asdict(outcome)
+    result = asdict(outcome)
+    # Thread the recipe's per-band sensory cue into the narration context (decision
+    # crafting-narration-ssot): narration_cues[band] is the base prose for the resolved
+    # band, complementary to the per-category bonus/flaw. None-tolerant — a recipe may
+    # omit exceptional/partial cues (success/failure are always present).
+    if recipe:
+        cue = (recipe.get("narration_cues") or {}).get(result["tier"])
+        if cue:
+            result["narrative_context"]["recipe_cue"] = cue
+    return result

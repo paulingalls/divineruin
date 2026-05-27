@@ -86,6 +86,7 @@ Speech style: {npc_speech_style}
 
 The player attempted to craft: {recipe_name}
 Outcome: {tier} (roll: {roll}, DC: {dc})
+{recipe_cue}
 {quality_note}
 
 Write a short narration (60-120 words) of this crafting outcome.
@@ -161,6 +162,17 @@ def get_companion_context(companion_id: str) -> dict:
     return COMPANION_CONTEXT.get(companion_id, COMPANION_CONTEXT["companion_kael"])
 
 
+def _format_recipe_cue(ctx: dict) -> str:
+    """Render the per-recipe band cue (narration_cues[band]) for the narration prompt.
+
+    The base sensory description of THIS recipe's outcome at the resolved band (decision
+    crafting-narration-ssot), complementary to the per-category quality note. Empty when
+    the recipe omits the resolved band (exceptional/partial are optional).
+    """
+    cue = ctx.get("recipe_cue")
+    return f"The result: {cue}" if cue else ""
+
+
 def _format_quality_note(ctx: dict) -> str:
     """Render the M5.3 crafting quality property for the narration prompt.
 
@@ -199,6 +211,7 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
             tier=ctx.get("tier", "unknown"),
             roll=ctx.get("roll", "?"),
             dc=ctx.get("dc", "?"),
+            recipe_cue=_format_recipe_cue(ctx),
             quality_note=_format_quality_note(ctx),
             decision_options=decision_text,
         )

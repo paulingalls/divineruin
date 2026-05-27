@@ -59,6 +59,46 @@ async def test_threads_category_tables_and_attaches_bonus():
     assert isinstance(outcome, dict)  # asdict'd dataclass
 
 
+_CUES = {
+    "exceptional": "The blade sings with a master's edge.",
+    "success": "A serviceable iron sword, true and plain.",
+    "partial": "Functional, but the temper is uneven.",
+    "failure": "The steel cracks and the work is ruined.",
+}
+
+
+@pytest.mark.asyncio
+async def test_threads_recipe_cue_for_resolved_band():
+    """story-005 close: the per-recipe narration_cues[band] (decision crafting-narration-ssot)
+    is threaded into narrative_context.recipe_cue for the resolved band."""
+    activity = {"activity_type": "crafting", "parameters": PARAMETERS}
+    recipe = {"category": "weapon", "narration_cues": _CUES}
+    with patch("crafting_resolution.get_recipe", new_callable=AsyncMock, return_value=recipe):
+        with patch("crafting_resolution.get_quality_outcomes", new_callable=AsyncMock, return_value=WEAPON_TABLES):
+            outcome = await crafting_resolution.resolve_crafting_outcome(
+                activity, PLAYER, rng=random.Random(_seed_for_d20(20))
+            )
+
+    assert outcome["tier"] == "exceptional"
+    assert outcome["narrative_context"]["recipe_cue"] == _CUES["exceptional"]
+
+
+@pytest.mark.asyncio
+async def test_recipe_cue_omitted_when_band_absent():
+    """narration_cues may carry only success/failure; an exceptional roll then finds no
+    cue and recipe_cue is absent rather than None-keyed or crashing."""
+    activity = {"activity_type": "crafting", "parameters": PARAMETERS}
+    recipe = {"category": "weapon", "narration_cues": {"success": "ok", "failure": "ruined"}}
+    with patch("crafting_resolution.get_recipe", new_callable=AsyncMock, return_value=recipe):
+        with patch("crafting_resolution.get_quality_outcomes", new_callable=AsyncMock, return_value=WEAPON_TABLES):
+            outcome = await crafting_resolution.resolve_crafting_outcome(
+                activity, PLAYER, rng=random.Random(_seed_for_d20(20))
+            )
+
+    assert outcome["tier"] == "exceptional"
+    assert "recipe_cue" not in outcome["narrative_context"]
+
+
 @pytest.mark.asyncio
 async def test_absent_recipe_tolerated_no_table_fetch():
     activity = {"activity_type": "crafting", "parameters": PARAMETERS}
