@@ -46,6 +46,13 @@ test.describe("Above-the-fold sections (apps/web)", () => {
     // in a real browser at the served path (so (1) preloads the weight the title
     // truly uses). Note (2) reads computed CSS, which resolves to 300 in fallback
     // too; it confirms the pin landed, not the absence of a swap — (1) owns that.
+    //
+    // The crimson-pro-300 filename is hardcoded deliberately: this e2e project is
+    // isolated outside the npm workspace (its own package.json, no design-tokens
+    // dep), so it can't derive the name from SHIP_FACES the way prerender.ts and
+    // prerender.test.ts do. A SHIP_FACES filename change turns THIS test red (a
+    // loud signal to update the literal), not silently green — acceptable for an
+    // independent served-build check.
     const res = await request.get(`${WEB}/`);
     expect(res.status()).toBe(200);
     const body = await res.text();
