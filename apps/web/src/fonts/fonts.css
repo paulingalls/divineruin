@@ -1,15 +1,13 @@
-/* Self-hosted brand fonts for apps/web. Hand-authored (NOT bundled by Bun —
-   Bun inlines CSS url() as base64; prerender.ts copies this file + the woff2
-   into dist/ and head-injects the <link>, so the woff2 stay separately served,
-   cacheable, and preloadable). Faces are latin-subset woff2 produced by
-   scripts/gen-fonts.sh — only the weights/styles the design applies (300/400 +
-   CG/CP italics; no 600, no IBM italic).
+/* GENERATED from @divineruin/design-tokens — edit the ship manifest
+   (packages/design-tokens/src/fonts.ts), then regenerate with
+   `bun run scripts/gen-fonts-css.ts`. Do not edit by hand.
 
-   font-display:swap shows the fallback immediately. Each family also gets a
-   metric-adjusted fallback @font-face (ascent/descent/line-gap-override computed
-   by @capsizecss/core from the real font metrics) so the pre-swap fallback box
-   matches the web font's box — driving font-swap CLS toward zero. The --font-*
-   stacks below augment the token stacks (theme.css) with these fallback faces. */
+   Self-hosted brand faces, latin-subset woff2 produced by scripts/gen-fonts.ts.
+   font-display:swap shows the fallback immediately; each family also gets a
+   metric-adjusted fallback @font-face (ascent/descent/line-gap-override from
+   @capsizecss/core) so the pre-swap fallback box matches the web font's box,
+   driving font-swap CLS toward zero. The --font-* stacks that reference these
+   live in theme.css (gen-theme.ts is the sole owner of --font-*). */
 
 /* --- Cormorant Garamond (display) --- */
 @font-face {
@@ -101,12 +99,4 @@
   ascent-override: 102.5%;
   descent-override: 27.5%;
   line-gap-override: 0%;
-}
-
-/* Augment the token font stacks (theme.css) with the adjusted fallback faces.
-   Loaded after theme.css so these :root values win. */
-:root {
-  --font-display: "Cormorant Garamond", "Cormorant Garamond Fallback", serif;
-  --font-body: "Crimson Pro", "Crimson Pro Fallback", serif;
-  --font-system: "IBM Plex Mono", "IBM Plex Mono Fallback", monospace;
 }

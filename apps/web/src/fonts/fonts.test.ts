@@ -41,11 +41,9 @@ test("every brand family has a metric-adjusted fallback face (CLS overrides set)
   }
 });
 
-test("the font stacks reference each family's adjusted fallback face", () => {
-  for (const family of families) {
-    expect(css).toContain(`"${family}", "${family} Fallback"`);
-  }
-});
+// The --font-* stacks that reference each "<family> Fallback" face now live in
+// theme.css (gen-theme.ts is the sole owner); that assertion moved to
+// gen-theme.test.ts. fonts.css only declares the @font-face faces.
 
 test("every src url() points at a woff2 that exists on disk", async () => {
   const urls = [...css.matchAll(/url\("(\.\/[^"]+\.woff2)"\)/g)].map((m) => m[1] ?? "");
