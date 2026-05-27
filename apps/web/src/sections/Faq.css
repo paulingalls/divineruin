@@ -1,0 +1,139 @@
+.faq {
+  padding: var(--space-2xl) var(--space-lg);
+  background: var(--color-void);
+}
+
+.faq__inner {
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+}
+
+.faq__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+  margin-bottom: var(--space-lg);
+}
+
+.faq__eyebrow-num {
+  color: var(--color-hollow);
+}
+
+.faq__title {
+  margin: 0 0 var(--space-xl);
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(32px, 5vw, 60px);
+  line-height: 1.05;
+  color: var(--color-parchment);
+}
+
+.faq__lede {
+  margin: 0;
+  max-width: 60ch;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--text-body-lg-size);
+  line-height: 1.55;
+  color: var(--color-bone);
+}
+
+.faq__list {
+  list-style: none;
+  margin: var(--space-2xl) 0 0;
+  padding: 0;
+}
+
+.faq__item {
+  border-top: 1px solid var(--color-charcoal);
+}
+
+.faq__item:last-child {
+  border-bottom: 1px solid var(--color-charcoal);
+}
+
+/* The question is a real button: full-width, transparent, keyboard-operable. */
+.faq__q {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 56px 1fr 32px;
+  gap: 18px;
+  align-items: center;
+  padding: var(--space-lg) 0;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-parchment);
+  transition: color 0.2s ease;
+}
+
+.faq__q:hover {
+  color: var(--color-hollow);
+}
+
+.faq__q-num {
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  letter-spacing: 0.3em;
+  color: var(--color-ash);
+}
+
+.faq__q-text {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(23px, 2.6vw, 30px);
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+}
+
+.faq__q-toggle {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 33px;
+  text-align: center;
+  color: var(--color-ash);
+  transition: color 0.2s ease;
+}
+
+.faq__item--open .faq__q-toggle {
+  color: var(--color-hollow);
+}
+
+/* Collapse via animatable grid rows (0fr -> 1fr) so the answer expands to its natural height. */
+.faq__answer-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s ease;
+}
+
+.faq__item--open .faq__answer-wrap {
+  grid-template-rows: 1fr;
+}
+
+.faq__answer {
+  overflow: hidden;
+  margin: 0;
+  padding: 0 0 0 74px;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--text-body-size);
+  line-height: 1.6;
+  max-width: 80ch;
+  color: var(--color-bone);
+}
+
+.faq__item--open .faq__answer {
+  padding-bottom: 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faq__answer-wrap {
+    transition: none;
+  }
+}
