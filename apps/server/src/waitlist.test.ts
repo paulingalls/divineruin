@@ -59,6 +59,11 @@ describe("handleJoinWaitlist", () => {
     expect(sqlCalls[0]!.values).toEqual(["a@b.co", "s".repeat(64)]);
   });
 
+  test("stores null source for an empty-string source (absent tag, per migration intent)", async () => {
+    await handleJoinWaitlist(jsonReq({ email: "a@b.co", source: "" }));
+    expect(sqlCalls[0]!.values).toEqual(["a@b.co", null]);
+  });
+
   test("rejects an invalid email with 400 and inserts nothing", async () => {
     const res = await handleJoinWaitlist(jsonReq({ email: "not-an-email" }));
     expect(res.status).toBe(400);

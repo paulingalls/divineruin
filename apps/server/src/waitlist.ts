@@ -26,7 +26,10 @@ export async function handleJoinWaitlist(req: Request): Promise<Response> {
     return Response.json({ error: "A valid email address is required" }, { status: 400 });
   }
 
-  const source = typeof body.source === "string" ? body.source.slice(0, MAX_SOURCE_LENGTH) : null;
+  // Coerce a missing, non-string, or empty source to null (absent tag) — only a
+  // non-empty string is stored, capped at MAX_SOURCE_LENGTH.
+  const source =
+    typeof body.source === "string" && body.source ? body.source.slice(0, MAX_SOURCE_LENGTH) : null;
 
   await sql`
     INSERT INTO waitlist (email, source) VALUES (${email}, ${source})
