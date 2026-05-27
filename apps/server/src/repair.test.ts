@@ -25,8 +25,14 @@ function setMockResults(...results: unknown[][]) {
   };
 }
 
-let mockItem: unknown;
-void mock.module("./items.ts", () => ({ getItem: () => mockItem }));
+// items.ts is intentionally NOT mock.module'd: that mock is process-global in Bun
+// and would leak a partial module (only getItem, no parseItemRow) into
+// items-load.test.ts run in the same process. handleRepairQuote takes an injected
+// getItemFn instead, so these tests control the item without touching the registry.
+import type { Item } from "@divineruin/shared";
+
+let mockItem: Partial<Item> | undefined;
+const stubGetItem = (_id: string): Item | undefined => mockItem as Item | undefined;
 
 const { handleRepairQuote, REPAIR_COST_SP, repairQuote, resolveDisposition, SILVER_PER_GOLD } =
   await import("./repair.ts");
@@ -111,6 +117,7 @@ describe("handleRepairQuote", () => {
       repairReq("blade_rare", "grimjaw"),
       "player_1",
       "blade_rare",
+      stubGetItem,
     );
     expect(resp.status).toBe(200);
     expect(await resp.json()).toEqual({
@@ -127,7 +134,12 @@ describe("handleRepairQuote", () => {
     mockItem = { id: "blade_rare", rarity: "rare", durability_tier: "reinforced" };
     setMockResults([{ data: JSON.stringify({ disposition: "wary" }) }]);
     const body = (await (
-      await handleRepairQuote(repairReq("blade_rare", "grimjaw"), "player_1", "blade_rare")
+      await handleRepairQuote(
+        repairReq("blade_rare", "grimjaw"),
+        "player_1",
+        "blade_rare",
+        stubGetItem,
+      )
     ).json()) as {
       available: boolean;
       priceSp: number;
@@ -138,19 +150,34 @@ describe("handleRepairQuote", () => {
 
   test("404 on an unknown item", async () => {
     mockItem = undefined;
-    const resp = await handleRepairQuote(repairReq("ghost", "grimjaw"), "player_1", "ghost");
+    const resp = await handleRepairQuote(
+      repairReq("ghost", "grimjaw"),
+      "player_1",
+      "ghost",
+      stubGetItem,
+    );
     expect(resp.status).toBe(404);
   });
 
   test("400 on a non-durable item", async () => {
     mockItem = { id: "potion", rarity: "common" }; // no durability_tier
-    const resp = await handleRepairQuote(repairReq("potion", "grimjaw"), "player_1", "potion");
+    const resp = await handleRepairQuote(
+      repairReq("potion", "grimjaw"),
+      "player_1",
+      "potion",
+      stubGetItem,
+    );
     expect(resp.status).toBe(400);
   });
 
   test("400 when the npc query param is missing", async () => {
     mockItem = { id: "blade_rare", rarity: "rare", durability_tier: "reinforced" };
-    const resp = await handleRepairQuote(repairReq("blade_rare"), "player_1", "blade_rare");
+    const resp = await handleRepairQuote(
+      repairReq("blade_rare"),
+      "player_1",
+      "blade_rare",
+      stubGetItem,
+    );
     expect(resp.status).toBe(400);
   });
 });

@@ -1,3 +1,5 @@
+import type { Item } from "@divineruin/shared";
+
 import { sql } from "./db.ts";
 import { logError } from "./env.ts";
 import { getItem } from "./items.ts";
@@ -94,12 +96,13 @@ export async function handleRepairQuote(
   req: Request,
   playerId: string,
   itemId: string,
+  getItemFn: (id: string) => Item | undefined = getItem,
 ): Promise<Response> {
   try {
     const npcId = new URL(req.url).searchParams.get("npc");
     if (!npcId) return Response.json({ error: "missing 'npc' query parameter" }, { status: 400 });
 
-    const item = getItem(itemId);
+    const item = getItemFn(itemId);
     if (!item) return Response.json({ error: `unknown item '${itemId}'` }, { status: 404 });
     if (!item.durability_tier)
       return Response.json({ error: `'${itemId}' is not repairable` }, { status: 400 });
