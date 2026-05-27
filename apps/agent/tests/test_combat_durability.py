@@ -169,3 +169,126 @@ async def test_accrue_already_broken_skips_write_and_event():
     mutations.update_item_durability.assert_not_awaited()
     pub.assert_not_awaited()
     assert result == {"broken": True, "penalty": {"attack": -2}, "current_hits": 0}
+
+
+# --- armor + shield accrual in resolve_enemy_turn ----------------------------
+
+import combat_turn  # noqa: E402
+from session_data import CombatParticipant, CombatState  # noqa: E402
+
+
+def _combat_ctx(corruption_level=0):
+    ctx = AsyncMock()
+    session = SessionData(player_id="p1", location_id="loc1", room=None)
+    session.corruption_level = corruption_level
+    session.combat_state = CombatState(
+        combat_id="c1",
+        participants=[
+            CombatParticipant(id="p1", name="Kael", type="player", initiative=15, hp_current=25, hp_max=25, ac=14),
+            CombatParticipant(
+                id="goblin_1",
+                name="Goblin",
+                type="enemy",
+                initiative=12,
+                hp_current=7,
+                hp_max=7,
+                ac=13,
+                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": []}],
+            ),
+        ],
+        initiative_order=["p1", "goblin_1"],
+        round_number=1,
+        current_turn_index=0,
+        location_id="loc1",
+    )
+    ctx.userdata = session
+    return ctx
+
+
+def _forced_attack(*, hit, critical=False):
+    res = AsyncMock()
+    res.hit = hit
+    res.critical = critical
+    res.roll = 15
+    res.attack_total = 17
+    res.damage = 5
+    res.damage_type = "slashing"
+    res.target_hp_remaining = 20
+    res.narrative_hint = "The blade bites."
+    return res
+
+
+async def _run_enemy_turn(ctx, inventory, *, shield_reaction=None, hit=True):
+    mutations = AsyncMock()
+    queries = AsyncMock()
+    queries.get_player_inventory = AsyncMock(return_value=inventory)
+    with (
+        patch.object(combat_turn.check_resolution, "resolve_attack", return_value=_forced_attack(hit=hit)),
+        patch.object(
+            combat_turn,
+            "_accrue_durability",
+            AsyncMock(return_value={"broken": False, "penalty": {}, "current_hits": 9}),
+        ) as accrue,
+    ):
+        await combat_turn._resolve_enemy_turn_impl(
+            ctx,
+            enemy_id="goblin_1",
+            action_name="Scimitar",
+            target_id="p1",
+            shield_reaction=shield_reaction,
+            mutations=mutations,
+            queries=queries,
+        )
+    return accrue
+
+
+async def test_enemy_hit_accrues_one_armor_hit():
+    ctx = _combat_ctx(corruption_level=0)
+    armor = _inv_item("plate_armor", "armor", current_hits=10)
+    accrue = await _run_enemy_turn(ctx, [armor])
+    accrue.assert_awaited_once()
+    assert accrue.await_args is not None
+    args, kwargs = accrue.await_args.args, accrue.await_args.kwargs
+    assert args[2]["id"] == "plate_armor" and args[3] == 1
+    assert kwargs["is_hollow_zone"] is False
+
+
+async def test_enemy_hit_in_hollow_zone_doubles_via_flag():
+    ctx = _combat_ctx(corruption_level=2)
+    armor = _inv_item("plate_armor", "armor", current_hits=10)
+    accrue = await _run_enemy_turn(ctx, [armor])
+    assert accrue.await_args is not None
+    assert accrue.await_args.kwargs["is_hollow_zone"] is True
+
+
+async def test_enemy_miss_accrues_no_durability():
+    ctx = _combat_ctx()
+    armor = _inv_item("plate_armor", "armor", current_hits=10)
+    accrue = await _run_enemy_turn(ctx, [armor], hit=False)
+    accrue.assert_not_awaited()
+
+
+async def test_no_armor_equipped_skips_armor_accrual():
+    ctx = _combat_ctx()
+    accrue = await _run_enemy_turn(ctx, [])  # empty inventory
+    accrue.assert_not_awaited()
+
+
+async def test_shield_reaction_accrues_shield_hit():
+    ctx = _combat_ctx()
+    inv = [_inv_item("shield_iron", "shield", current_hits=10)]
+    accrue = await _run_enemy_turn(ctx, inv, shield_reaction="Shield Wall")
+    # one accrual for the shield (no armor equipped)
+    accrue.assert_awaited_once()
+    assert accrue.await_args is not None
+    assert accrue.await_args.args[2]["id"] == "shield_iron"
+
+
+async def test_shield_reaction_without_shield_equipped_skips():
+    ctx = _combat_ctx()
+    inv = [_inv_item("plate_armor", "armor", current_hits=10)]
+    accrue = await _run_enemy_turn(ctx, inv, shield_reaction="Shield Wall")
+    # armor accrues (1), shield does not — only one call, for the armor
+    accrue.assert_awaited_once()
+    assert accrue.await_args is not None
+    assert accrue.await_args.args[2]["id"] == "plate_armor"

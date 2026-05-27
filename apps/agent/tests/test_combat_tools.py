@@ -156,6 +156,14 @@ def _make_resolve_mocks():
     return mock_mutations
 
 
+def _make_resolve_queries():
+    """Mock db_queries for resolve_enemy_turn: no equipped items, so a player hit
+    accrues no durability (the accrual path is covered in test_combat_durability)."""
+    mock_queries = MagicMock()
+    mock_queries.get_player_inventory = AsyncMock(return_value=[])
+    return mock_queries
+
+
 def _make_death_save_mocks():
     """Create mock modules for request_death_save DI params."""
     mock_mutations = MagicMock()
@@ -295,6 +303,7 @@ class TestResolveEnemyTurn:
                 action_name="Scimitar",
                 target_id="player_1",
                 mutations=mock_mutations,
+                queries=_make_resolve_queries(),
             )
         )
 
@@ -318,6 +327,7 @@ class TestResolveEnemyTurn:
                 action_name="Scimitar",
                 target_id="player_1",
                 mutations=mock_mutations,
+                queries=_make_resolve_queries(),
             )
         )
 
@@ -337,6 +347,7 @@ class TestResolveEnemyTurn:
             action_name="Scimitar",
             target_id="player_1",
             mutations=mock_mutations,
+            queries=_make_resolve_queries(),
         )
 
         # At minimum: dice_roll event + at least one play_sound
@@ -357,6 +368,7 @@ class TestResolveEnemyTurn:
                 action_name="Scimitar",
                 target_id="player_1",
                 mutations=mock_mutations,
+                queries=_make_resolve_queries(),
             )
         )
 
@@ -379,6 +391,7 @@ class TestResolveEnemyTurn:
                 action_name="Scimitar",
                 target_id="player_1",
                 mutations=mock_mutations,
+                queries=_make_resolve_queries(),
             )
         )
 
@@ -405,6 +418,7 @@ class TestResolveEnemyTurn:
                 action_name="Scimitar",
                 target_id="player_1",
                 mutations=mock_mutations,
+                queries=_make_resolve_queries(),
             )
 
     @pytest.mark.asyncio
@@ -420,6 +434,7 @@ class TestResolveEnemyTurn:
                 action_name="Fireball",
                 target_id="player_1",
                 mutations=mock_mutations,
+                queries=_make_resolve_queries(),
             )
 
     @pytest.mark.asyncio
@@ -435,6 +450,7 @@ class TestResolveEnemyTurn:
                 action_name="Scimitar",
                 target_id="player_1",
                 mutations=mock_mutations,
+                queries=_make_resolve_queries(),
             )
 
 
