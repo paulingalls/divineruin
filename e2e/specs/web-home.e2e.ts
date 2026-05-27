@@ -24,6 +24,24 @@ test.describe("Marketing home page (apps/web)", () => {
     );
   });
 
+  test("serves SEO meta, Open Graph, canonical, and JSON-LD in the head (story-002)", async ({
+    request,
+  }) => {
+    // prerender.ts injects seo.ts's head block; assert it's present in the raw
+    // served HTML (crawler-visible, first byte). The og:image + canonical resolve
+    // to the build-time origin (PUBLIC_SITE_ORIGIN, default https://divineruin.com).
+    const res = await request.get(`${WEB}/`);
+    expect(res.status()).toBe(200);
+    const body = await res.text();
+    expect(body).toMatch(/<meta name="description" content="[^"]+"/);
+    expect(body).toContain('<link rel="canonical" href="https://divineruin.com/" />');
+    expect(body).toContain(
+      '<meta property="og:image" content="https://divineruin.com/og-image.png" />',
+    );
+    expect(body).toContain('<meta name="twitter:card" content="summary_large_image" />');
+    expect(body).toMatch(/<script type="application\/ld\+json">[\s\S]*"@type":"VideoGame"/);
+  });
+
   test("hydrates cleanly with no console errors", async ({ page }) => {
     const consoleErrors: string[] = [];
     const pageErrors: string[] = [];
