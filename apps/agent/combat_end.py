@@ -8,8 +8,9 @@ from livekit.agents.voice import RunContext
 
 import combat_resolution
 import db_mutations
+import db_queries
 import event_types as E
-from combat_support import _publish_sounds, _require_combat
+from combat_support import _accrue_durability, _find_equipped, _publish_sounds, _require_combat
 from db_errors import db_tool
 from game_events import publish_game_event
 from region_types import REGION_CITY
@@ -36,6 +37,7 @@ async def _end_combat_impl(
     outcome: str,
     *,
     mutations=db_mutations,
+    queries=db_queries,
 ) -> str | tuple:
     logger.info("end_combat called: outcome=%s", outcome)
     session: SessionData = context.userdata
@@ -58,6 +60,24 @@ async def _end_combat_impl(
                 enemy_dicts.append({"xp_value": p.xp_value})
                 defeated_enemies.append(p.name)
         xp_total = combat_resolution.calculate_combat_xp(enemy_dicts)
+
+    # Accrue per-encounter weapon durability (1 hit, 2 on a crit vs a heavily-armored
+    # target), hollow-doubled. Always reset the per-encounter flags afterward so each
+    # combat is self-contained — even on fled/defeat.
+    weapon_durability: dict = {}
+    if session.weapon_used_this_encounter:
+        inventory = await queries.get_player_inventory(session.player_id)
+        weapon = _find_equipped(inventory, "weapon")
+        if weapon is not None:
+            weapon_durability = await _accrue_durability(
+                session,
+                session.player_id,
+                weapon,
+                combat_resolution.weapon_hits_for_encounter(session.weapon_crit_vs_heavy),
+                is_hollow_zone=combat_resolution.is_hollow_zone(session.corruption_level),
+            )
+    session.weapon_used_this_encounter = False
+    session.weapon_crit_vs_heavy = False
 
     combat_id = cs.combat_id
 
@@ -92,6 +112,7 @@ async def _end_combat_impl(
         "outcome": outcome,
         "xp_total": xp_total,
         "defeated_enemies": defeated_enemies,
+        "weapon_durability": weapon_durability,
         "note": "Call award_xp with the xp_total to grant experience to the player." if xp_total > 0 else None,
     }
     logger.info("end_combat result: %s, xp=%d", outcome, xp_total)

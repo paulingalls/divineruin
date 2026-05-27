@@ -9,8 +9,9 @@ from livekit.agents.voice import RunContext
 import check_resolution
 import combat_resolution
 import db_mutations
+import db_queries
 import event_types as E
-from combat_support import _publish_sounds, _require_combat
+from combat_support import _accrue_durability, _find_equipped, _publish_sounds, _require_combat
 from db_errors import db_tool
 from game_events import publish_game_event
 from session_data import SessionData
@@ -37,11 +38,15 @@ async def resolve_enemy_turn(
     enemy_id: str,
     action_name: str,
     target_id: str,
+    shield_reaction: str | None = None,
 ) -> str:
     """Resolve an enemy's attack against a target during combat. Provide the
     enemy's participant ID, which action from their action_pool to use, and
-    the target's participant ID. Narrate the result dramatically."""
-    return await _resolve_enemy_turn_impl(context, enemy_id, action_name, target_id)
+    the target's participant ID. If the player spends a shield reaction (Shield
+    Bash, Shield Wall, Intercept) against this attack, pass its name as
+    shield_reaction so the shield takes a durability hit. Narrate the result
+    dramatically."""
+    return await _resolve_enemy_turn_impl(context, enemy_id, action_name, target_id, shield_reaction)
 
 
 async def _resolve_enemy_turn_impl(
@@ -49,8 +54,10 @@ async def _resolve_enemy_turn_impl(
     enemy_id: str,
     action_name: str,
     target_id: str,
+    shield_reaction: str | None = None,
     *,
     mutations=db_mutations,
+    queries=db_queries,
 ) -> str:
     logger.info("resolve_enemy_turn called: enemy=%s, action=%s, target=%s", enemy_id, action_name, target_id)
     session: SessionData = context.userdata
@@ -141,6 +148,25 @@ async def _resolve_enemy_turn_impl(
     )
     await _publish_sounds(session, sounds)
 
+    # Accrue durability on the player's equipped armor (1 hit per damage taken),
+    # and on a shield when the player spends a shield reaction. Hollow zones double.
+    # Runs after the attack's DICE_ROLL so ITEM_DURABILITY_HIT follows the strike.
+    durability_results: dict = {}
+    if target.type == "player" and attack_result.hit:
+        inventory = await queries.get_player_inventory(target.id)
+        is_hollow = combat_resolution.is_hollow_zone(session.corruption_level)
+        armor = _find_equipped(inventory, "armor")
+        if armor is not None:
+            durability_results["armor"] = await _accrue_durability(
+                session, target.id, armor, 1, is_hollow_zone=is_hollow
+            )
+        if shield_reaction:
+            shield = _find_equipped(inventory, "shield")
+            if shield is not None:
+                durability_results["shield"] = await _accrue_durability(
+                    session, target.id, shield, 1, is_hollow_zone=is_hollow
+                )
+
     hit_miss = "hit" if attack_result.hit else "miss"
     session.record_event(f"{enemy.name} attacks {target.name}: {hit_miss}, {attack_result.damage} damage")
 
@@ -158,6 +184,7 @@ async def _resolve_enemy_turn_impl(
         "target_hp_status": hp_status,
         "target_fallen": target.is_fallen,
         "narrative_hint": attack_result.narrative_hint,
+        "durability": durability_results,
     }
     logger.info(
         "resolve_enemy_turn result: %s → %s, %s, damage=%d, hp_status=%s",

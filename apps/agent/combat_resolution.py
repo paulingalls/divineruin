@@ -124,3 +124,34 @@ def hp_threshold_status(current_hp: int, max_hp: int) -> str:
 def calculate_combat_xp(enemies: list[dict]) -> int:
     """Sum xp_value from a list of enemy dicts. Defaults to 0 if missing."""
     return sum(e.get("xp_value", 0) for e in enemies)
+
+
+# --- Durability hit rules (story-003, spec game_mechanics_crafting.md:532-540) ---
+# Pure deterministic helpers; the durability engine (durability.py) applies the loss.
+
+# A crit against a heavily-armored target costs the weapon 2 durability hits instead
+# of 1 (spec). Enemy combat-stats carry only a scalar AC, so "heavily armored" is an
+# AC threshold (decision durability-heavy-armor-proxy).
+_HEAVY_ARMOR_AC = 17
+
+# Corruption level (0-3) at or above which a location counts as a Hollow zone, where
+# durability damage doubles (decision durability-hollow-zone-threshold).
+_HOLLOW_ZONE_CORRUPTION = 2
+
+
+def weapon_hits_for_encounter(crit_vs_heavy: bool) -> int:
+    """Durability hits a weapon takes per combat encounter: 1, or 2 on a crit
+    against a heavily-armored target (spec)."""
+    return 2 if crit_vs_heavy else 1
+
+
+def is_heavily_armored(target_ac: int) -> bool:
+    """Whether a target counts as heavily armored for the weapon crit rule
+    (AC >= 17 proxy, since enemy combat-stats carry no armor weight)."""
+    return target_ac >= _HEAVY_ARMOR_AC
+
+
+def is_hollow_zone(corruption_level: int) -> bool:
+    """Whether the session's corruption level marks a Hollow zone, doubling
+    durability loss (corruption_level >= 2)."""
+    return corruption_level >= _HOLLOW_ZONE_CORRUPTION

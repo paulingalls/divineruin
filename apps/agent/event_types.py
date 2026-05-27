@@ -36,6 +36,7 @@ PLAYER_PORTRAIT_READY = "player_portrait_ready"
 # Inventory & quests
 ITEM_ACQUIRED = "item_acquired"
 INVENTORY_UPDATED = "inventory_updated"
+ITEM_DURABILITY_HIT = "item_durability_hit"
 QUEST_UPDATED = "quest_updated"
 QUEST_UPDATE = "quest_update"  # client-only alias for QUEST_UPDATED
 
