@@ -1,6 +1,7 @@
 import type { Recipe, MaterialReq, QualityBand } from "@divineruin/shared";
 import { sql } from "./db.ts";
 import { WORKSPACE_TYPES } from "./workspace.ts";
+import { asRecord, parseStringArray } from "./parse-helpers.ts";
 
 // DB-loaded recipe content (M5.1). Mirrors the training-programs loader in
 // activity_templates.ts: content/recipes.json -> recipes table, loaded at
@@ -69,8 +70,7 @@ export function craftingDurationSeconds(recipe: Recipe): { min: number; max: num
 }
 
 function parseMaterialReq(raw: unknown, ctx: string): MaterialReq {
-  if (!raw || typeof raw !== "object") throw new Error(`${ctx} is not an object`);
-  const m = raw as Record<string, unknown>;
+  const m = asRecord(raw, ctx);
   if (typeof m.material_id !== "string" || m.material_id.length === 0) {
     throw new Error(`${ctx}.material_id is not a non-empty string`);
   }
@@ -97,10 +97,7 @@ function parseMaterialReq(raw: unknown, ctx: string): MaterialReq {
  * integrity is a cross-entity check owned by the content-validation test.
  */
 export function parseRecipeRow(id: string, raw: unknown): Recipe {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new Error(`recipes[${id}].data is not an object`);
-  }
-  const data = raw as Record<string, unknown>;
+  const data = asRecord(raw, `recipes[${id}].data`);
   const ctx = `recipes[${id}]`;
 
   if (typeof data.name !== "string") throw new Error(`${ctx}.name is not a string`);
@@ -138,13 +135,7 @@ export function parseRecipeRow(id: string, raw: unknown): Recipe {
   }
   const outputQuantity = requireIntAtLeast(data.output_quantity, 1, `${ctx}.output_quantity`);
   const studyCost = requireIntAtLeast(data.study_cost, 0, `${ctx}.study_cost`);
-  if (!Array.isArray(data.discovery_sources)) {
-    throw new Error(`${ctx}.discovery_sources is not an array`);
-  }
-  const discoverySources = data.discovery_sources.map((s, i) => {
-    if (typeof s !== "string") throw new Error(`${ctx}.discovery_sources[${i}] is not a string`);
-    return s;
-  });
+  const discoverySources = parseStringArray(data.discovery_sources, `${ctx}.discovery_sources`);
   if (!data.narration_cues || typeof data.narration_cues !== "object") {
     throw new Error(`${ctx}.narration_cues is not an object`);
   }

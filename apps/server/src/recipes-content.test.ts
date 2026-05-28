@@ -1,4 +1,5 @@
 import { test, expect, describe } from "bun:test";
+import { asRecord } from "./parse-helpers.ts";
 
 // Content-validation test for M5.1 (sprint-012 story-002): load
 // content/recipes.json + content/materials_catalog.json and prove every entry
@@ -68,13 +69,6 @@ async function loadArray(path: URL, label: string): Promise<unknown[]> {
   const raw: unknown = await Bun.file(path).json();
   if (!Array.isArray(raw)) throw new Error(`${label} is not an array`);
   return raw as unknown[];
-}
-
-function asRecord(entry: unknown, ctx: string): Record<string, unknown> {
-  if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
-    throw new Error(`${ctx} is not an object`);
-  }
-  return entry as Record<string, unknown>;
 }
 
 function validateMaterialReq(entry: unknown, ctx: string): void {

@@ -1,5 +1,6 @@
 import type { Item, ItemEffect, ItemAttunement } from "@divineruin/shared";
 import { sql } from "./db.ts";
+import { asRecord, parseStringArray } from "./parse-helpers.ts";
 
 // DB-loaded item content (M5.4). Mirrors recipes.ts: content/items.json -> items
 // table, loaded at startup, parsed fail-loud, exposed via getItem/listItems. The
@@ -35,13 +36,6 @@ export function setItems(map: ReadonlyMap<string, Item>): void {
   items = map;
 }
 
-function asRecord(raw: unknown, ctx: string): Record<string, unknown> {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new Error(`${ctx} is not an object`);
-  }
-  return raw as Record<string, unknown>;
-}
-
 function parseItemEffect(raw: unknown, ctx: string): ItemEffect {
   const e = asRecord(raw, ctx);
   if (typeof e.type !== "string") throw new Error(`${ctx}.type is not a string`);
@@ -74,14 +68,6 @@ function parseAttunement(raw: unknown, ctx: string): ItemAttunement {
   return { kind: a.kind as "none" | "required" };
 }
 
-function parseStringArray(raw: unknown, ctx: string): string[] {
-  if (!Array.isArray(raw)) throw new Error(`${ctx} is not an array`);
-  return raw.map((v, i) => {
-    if (typeof v !== "string") throw new Error(`${ctx}[${i}] is not a string`);
-    return v;
-  });
-}
-
 /**
  * Canonical fail-loud parser for one items-table row. Validates the required Item
  * fields and the optional crafting-system fields' SHAPE when present (tier/rarity/
@@ -93,10 +79,7 @@ function parseStringArray(raw: unknown, ctx: string): string[] {
  * in story-002 Commit 4 alongside the content that satisfies them.
  */
 export function parseItemRow(id: string, raw: unknown): Item {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new Error(`items[${id}].data is not an object`);
-  }
-  const data = raw as Record<string, unknown>;
+  const data = asRecord(raw, `items[${id}].data`);
   const ctx = `items[${id}]`;
 
   if (typeof data.name !== "string") throw new Error(`${ctx}.name is not a string`);
