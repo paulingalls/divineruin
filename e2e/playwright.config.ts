@@ -26,11 +26,15 @@ function selectedProjects(): string[] {
 }
 
 const selected = selectedProjects();
-const runsWeb = selected.length === 0 || selected.includes("web");
-// "non-web" = any selected project other than "web" (today only "chromium").
-// Defined as the complement of "web" so adding a future project — firefox,
-// webkit, etc. — keeps its server+mobile deps without editing this line.
-const runsNonWeb = selected.length === 0 || selected.some((p) => p !== "web");
+// Both web projects (marketing site + its Lighthouse capstone) serve the same
+// apps/web prod build on :8085, so either one selected starts that webServer.
+const WEB_PROJECTS = ["web", "web-lighthouse"];
+const runsWeb = selected.length === 0 || selected.some((p) => WEB_PROJECTS.includes(p));
+// "non-web" = any selected project that is neither web project (today only
+// "chromium"). Defined as the complement of the web projects so adding a future
+// project — firefox, webkit, etc. — keeps its server+mobile deps without editing
+// this line; selecting only a web project skips the slow mobile-expo boot.
+const runsNonWeb = selected.length === 0 || selected.some((p) => !WEB_PROJECTS.includes(p));
 
 const serverWebServer = {
   command: "bun run apps/server/src/index.ts",
@@ -118,11 +122,32 @@ export default defineConfig({
     {
       // Marketing site (apps/web) specs hit the prod build on :8085 at a
       // desktop viewport. Isolated so only this project starts the apps/web
-      // webServer (see the gated webServer array below).
+      // webServer (see the gated webServer array below). Excludes the Lighthouse
+      // capstone: it needs a fixed Chrome debug port + serial execution, which
+      // would collide with this project's fullyParallel:true workers.
       name: "web",
       testMatch: /web-.*\.e2e\.ts$/,
+      testIgnore: /web-production\.e2e\.ts$/,
       use: {
         ...devices["Desktop Chrome"],
+      },
+    },
+    {
+      // story-007 capstone: the Lighthouse + meta/crawl gate, against the same
+      // prod build on :8085. fullyParallel:false so its single spec file runs
+      // serially in one worker — the only Chrome that binds the fixed
+      // remote-debugging-port playAudit attaches to, so it never collides with
+      // the parallel "web" project's Chromes. (Playwright's `workers` is global-
+      // only, not per-project, so serial-within-the-file is what isolates the
+      // port.) launchOptions puts the debug-port arg on this project's fixture
+      // browser — per-project, so only this Chrome opens the port — and the spec
+      // audits the fixture `page`, letting Playwright own browser teardown.
+      name: "web-lighthouse",
+      testMatch: /web-production\.e2e\.ts$/,
+      fullyParallel: false,
+      use: {
+        ...devices["Desktop Chrome"],
+        launchOptions: { args: ["--remote-debugging-port=9222"] },
       },
     },
   ],
