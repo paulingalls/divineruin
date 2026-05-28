@@ -77,3 +77,16 @@ test("waitlistApiBase defaults to the dev/e2e server origin when PUBLIC_API_URL 
   delete process.env.PUBLIC_API_URL;
   expect(waitlistApiBase()).toBe("http://localhost:3001");
 });
+
+test("waitlistApiBase uses PUBLIC_API_URL when set (the deploy gate)", () => {
+  // The prod build inlines PUBLIC_API_URL (e.g. https://divineruin.app) so the
+  // deployed client posts to the real API origin, not the localhost fallback.
+  const prev = process.env.PUBLIC_API_URL;
+  process.env.PUBLIC_API_URL = "https://divineruin.app";
+  try {
+    expect(waitlistApiBase()).toBe("https://divineruin.app");
+  } finally {
+    if (prev === undefined) delete process.env.PUBLIC_API_URL;
+    else process.env.PUBLIC_API_URL = prev;
+  }
+});

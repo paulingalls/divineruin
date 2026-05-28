@@ -60,6 +60,17 @@ test.describe("Conversion sections (apps/web)", () => {
     const email = `web-e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@aethos.test`;
     await queryDb("DELETE FROM waitlist WHERE email = $1", [email]);
     try {
+      // Collect the in-page analytics events (the dr:analytics CustomEvent seam from
+      // analytics.ts). addInitScript runs before page scripts on every navigation, so it
+      // captures the page_view fired at hydration and the waitlist_submit fired on submit.
+      await page.addInitScript(() => {
+        (window as unknown as { __analytics: string[] }).__analytics = [];
+        window.addEventListener("dr:analytics", (e) => {
+          (window as unknown as { __analytics: string[] }).__analytics.push(
+            (e as CustomEvent<{ name: string }>).detail.name,
+          );
+        });
+      });
       await page.goto(`${WEB}/`);
       await page.getByLabel("Email").fill(email);
       await page.getByRole("button", { name: /Request Veil-Key/i }).click();
@@ -68,6 +79,15 @@ test.describe("Conversion sections (apps/web)", () => {
       await expect(page.locator(".waitlist__success")).toContainText("A whisper, received", {
         timeout: 5000,
       });
+
+      // The submit fired a waitlist_submit analytics event (AC#4) without blocking the success
+      // state above, and page_view fired at hydration. The event seam fires regardless of whether
+      // PUBLIC_ANALYTICS_URL is configured, so this holds with no analytics backend wired.
+      const events = await page.evaluate(
+        () => (window as unknown as { __analytics: string[] }).__analytics,
+      );
+      expect(events).toContain("waitlist_submit");
+      expect(events).toContain("page_view");
       // The row reached Postgres.
       const after1 = await queryDb<{ count: string }>(
         "SELECT count(*)::text AS count FROM waitlist WHERE email = $1",

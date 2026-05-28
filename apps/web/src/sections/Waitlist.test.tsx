@@ -29,10 +29,13 @@ test("renders the email form in its idle state with accessible input", () => {
   expect(html).toContain(WAITLIST_COPY.submit);
 });
 
-test("renders the two meta lines", () => {
+test("ships no fabricated social-proof copy (honest pre-launch)", () => {
+  // The waitlist just launched, so a count/date can't be real. story-005 removed the
+  // fabricated "4,287 wanderers"/"Q3 2026" meta line entirely (the .waitlist__meta block) —
+  // re-add a real count post-launch. Honesty before conversion polish.
   const html = renderToStaticMarkup(<Waitlist />);
-  expect(html).toContain(WAITLIST_COPY.metaCount);
-  expect(html).toContain(WAITLIST_COPY.metaWave);
+  expect(html).not.toMatch(/4,?287|wanderers on the list|Q3\s*2026/);
+  expect(html).not.toContain("waitlist__meta");
 });
 
 test("the idle render shows no success state (success is post-submit only)", () => {

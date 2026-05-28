@@ -12,9 +12,11 @@ export interface JoinOpts {
   baseUrl?: string;
 }
 
-// The dev + e2e server origin. Bun replaces process.env.* at build time; the typeof guard keeps a
-// no-process environment safe, and an unset var falls back here. Production's deployed API origin
-// is supplied via PUBLIC_API_URL at deploy time — wired in Milestone 6, not here.
+// The dev + e2e server origin (the fallback when PUBLIC_API_URL is unset). Bun replaces
+// process.env.* at build time; the typeof guard keeps a no-process environment safe. The
+// production client must read PUBLIC_API_URL (set to https://divineruin.app at deploy) — an
+// unset/wrong value silently ships the localhost fallback. Wiring the deploy value (and
+// PUBLIC_SITE_ORIGIN) is a launch gate still open in story-007.
 const DEFAULT_BASE = "http://localhost:3001";
 
 export function waitlistApiBase(): string {
