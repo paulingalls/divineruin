@@ -33,6 +33,7 @@ TABLE_MAP = {
     "recipes.json": "recipes",
     "materials_catalog.json": "materials_catalog",
     "quality_outcomes.json": "quality_outcomes",
+    "pricing.json": "pricing",
 }
 
 PK_COLUMN = {

@@ -1,0 +1,8 @@
+[
+  {
+    "id": "economy",
+    "repair_cost_sp": { "common": 2, "uncommon": 10, "rare": 50, "legendary": 200 },
+    "disposition_multipliers": { "friendly": 0.8, "trusted": 0.6 },
+    "silver_per_gold": 10
+  }
+]
