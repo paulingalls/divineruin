@@ -76,3 +76,11 @@ test("GODS is the ten well-formed mockup entries", () => {
 test("renders hydration-safe markup (no DOM access during render)", () => {
   expect(() => renderToStaticMarkup(<Pantheon />)).not.toThrow();
 });
+
+test("cards are not keyboard tab stops — they carry no tabindex (WCAG 4.1.2)", () => {
+  // The cards are non-interactive content (no handler, no role), so they must
+  // not be in the tab order: a focus stop that does nothing confuses keyboard
+  // and screen-reader users.
+  const html = renderToStaticMarkup(<Pantheon />);
+  expect(html).not.toContain("tabindex");
+});
