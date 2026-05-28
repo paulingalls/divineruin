@@ -116,7 +116,9 @@ h1 {
 }
 
 /* Center nav links — mono, uppercased, muted ash brightening to parchment on
-   hover. Hidden on narrow screens (mockup breakpoint) so the brand + CTA stay. */
+   hover. Hidden below the tablet width so the brand + CTA never overflow (the
+   web-conversion e2e gates no horizontal overflow at 768px; the mockup hid these
+   at 760px, just under that gate, so the breakpoint is widened to clear it). */
 .navbar__links {
   display: flex;
   gap: 36px;
@@ -139,7 +141,7 @@ h1 {
   color: var(--color-parchment);
 }
 
-@media (max-width: 760px) {
+@media (max-width: 820px) {
   .navbar__links {
     display: none;
   }
