@@ -216,34 +216,5 @@ class TestUpdateActivity:
         mock_conn.execute.assert_awaited_once()
 
 
-class TestCountActiveBySlot:
-    @pytest.mark.asyncio
-    async def test_returns_dict_with_three_slots(self):
-        mock_pool = AsyncMock()
-        mock_pool.fetchrow = AsyncMock(return_value={"training": 0, "crafting": 1, "companion": 0})
-
-        with patch("db.get_pool", return_value=mock_pool):
-            result = await db_activity_queries.count_active_by_slot("p1")
-
-        assert result == {"training": 0, "crafting": 1, "companion": 0}
-
-    @pytest.mark.asyncio
-    async def test_returns_zeros_when_empty(self):
-        mock_pool = AsyncMock()
-        mock_pool.fetchrow = AsyncMock(return_value={"training": 0, "crafting": 0, "companion": 0})
-
-        with patch("db.get_pool", return_value=mock_pool):
-            result = await db_activity_queries.count_active_by_slot("p1")
-
-        assert result == {"training": 0, "crafting": 0, "companion": 0}
-
-    @pytest.mark.asyncio
-    async def test_query_uses_union_all(self):
-        mock_pool = AsyncMock()
-        mock_pool.fetchrow = AsyncMock(return_value={"training": 0, "crafting": 0, "companion": 0})
-
-        with patch("db.get_pool", return_value=mock_pool):
-            await db_activity_queries.count_active_by_slot("p1")
-
-        call_args = mock_pool.fetchrow.call_args[0]
-        assert "UNION ALL" in call_args[0]
+# count_active_by_slot tests live in tests/test_db_activity_queries.py (dedicated
+# home for slot accounting + the TS-twin SQL parity guards).
