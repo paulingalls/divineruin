@@ -171,26 +171,93 @@ h1 {
   box-shadow: 0 0 24px -8px var(--color-hollow-faint);
 }
 
+/* Footer — mirrors the mockup's grid, but only the brand + the one "The Game"
+   column of live in-page links remain (the mockup's dead href="#" columns are
+   dropped), so the grid is two columns instead of four. */
 .footer {
+  border-top: 1px solid var(--color-charcoal);
+  padding: 64px var(--space-lg) 32px;
+  color: var(--color-ash);
+}
+
+.footer__grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 48px;
+  margin-bottom: 64px;
+}
+
+.footer__logo {
+  color: var(--color-parchment);
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 20px;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.footer__brand p {
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--color-ash);
+  max-width: 36ch;
+  margin: 0;
+}
+
+.footer__col h3 {
+  font-family: var(--font-system);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+  margin: 0 0 18px;
+}
+
+.footer__col ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
-  align-items: center;
-  padding: var(--space-2xl) var(--space-lg);
-  border-top: 1px solid var(--color-slate);
-  color: var(--color-ash);
-  text-align: center;
+  gap: 10px;
 }
 
-.footer__brand {
+.footer__col a {
+  font-family: var(--font-body);
+  font-size: 18px;
   color: var(--color-bone);
-  font-family: var(--font-display);
-  font-size: var(--text-h2-size);
-  line-height: var(--text-h2-line-height);
+  text-decoration: none;
+  transition: color 200ms ease;
 }
 
-.footer__tagline {
+.footer__col a:hover {
+  color: var(--color-hollow);
+}
+
+.footer__base {
+  border-top: 1px solid var(--color-charcoal);
+  padding-top: 28px;
+  display: flex;
+  justify-content: space-between;
   font-family: var(--font-system);
-  font-size: var(--text-system-size);
-  line-height: var(--text-system-line-height);
+  font-size: 15px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+}
+
+@media (max-width: 760px) {
+  .footer__grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    margin-bottom: 40px;
+  }
+
+  .footer__base {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
