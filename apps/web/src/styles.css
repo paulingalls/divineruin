@@ -16,15 +16,34 @@ body {
   min-height: 100vh;
 }
 
-main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: var(--space-2xl);
-  text-align: center;
+/* The <main> landmark (App.tsx) wraps the content sections in normal flow; the
+   sections own their own layout, so main is an unstyled grouping element. It is
+   focus targetable (tabindex=-1) for the skip link but never shows a focus ring
+   (it's a programmatic, not a keyboard, focus target). */
+main:focus {
+  outline: none;
+}
+
+/* Skip-to-content link: off-screen until focused, then pinned to the top-left
+   above the sticky navbar (z-index > .navbar's 10) with a high-contrast chip so
+   a keyboard user sees where focus landed. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 20;
+}
+
+.skip-link:focus {
+  left: var(--space-md);
+  top: var(--space-md);
+  padding: var(--space-xs) var(--space-md);
+  background: var(--color-hollow);
+  color: var(--color-void);
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  text-decoration: none;
+  border-radius: 4px;
 }
 
 h1 {
