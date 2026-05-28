@@ -57,5 +57,6 @@
   --radius-lg: 12px;
   --radius-icon: 27px;
   /* Layout */
-  --max-content-width: 800px;
+  --max-content-width: 1280px;
+  --section-title-size: clamp(37.8px, 5.77vw, 75.6px);
 }

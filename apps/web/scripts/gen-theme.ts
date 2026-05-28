@@ -2,10 +2,11 @@ import { join } from "node:path";
 import {
   BrandColors,
   FONT_FALLBACKS,
-  MaxContentWidth,
   Radius,
   Spacing,
   TypeScaleTokens,
+  WebMaxContentWidth,
+  WebSectionTitleClamp,
 } from "@divineruin/design-tokens";
 
 // theme.css is a GENERATED file: CSS custom properties mirroring the shared
@@ -57,7 +58,8 @@ export function generateThemeCss(): string {
   }
 
   lines.push("  /* Layout */");
-  lines.push(`  --max-content-width: ${MaxContentWidth}px;`);
+  lines.push(`  --max-content-width: ${WebMaxContentWidth}px;`);
+  lines.push(`  --section-title-size: ${WebSectionTitleClamp};`);
 
   lines.push("}");
   return lines.join("\n") + "\n";

@@ -30,7 +30,7 @@
   margin: 0 0 var(--space-lg);
   font-family: var(--font-display);
   font-weight: 300;
-  font-size: clamp(32px, 5vw, 60px);
+  font-size: var(--section-title-size);
   line-height: 1.05;
   color: var(--color-parchment);
 }

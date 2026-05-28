@@ -203,4 +203,19 @@ export const AnimationPresets = {
 
 // --- Layout ---
 
+// Content cap for the mobile app screens (apps/mobile). Phones render narrower
+// than this; it only caps content on large screens/tablets.
 export const MaxContentWidth = 800;
+
+// The web marketing site (apps/web) uses a wider content container than the
+// mobile app, to match the canonical mockup's 1280px multi-column layout. Kept
+// separate from MaxContentWidth so widening the web landing never reflows the
+// mobile app. Consumed only by apps/web/scripts/gen-theme.ts.
+export const WebMaxContentWidth = 1280;
+
+// Shared responsive clamp for every web section heading (.<section>__title),
+// matching the canonical mockup's single `.section-title`. Defined once here and
+// emitted as the CSS var --section-title-size so the 9 section stylesheets
+// reference one source instead of repeating the literal (and silently drifting
+// when one is missed). Web-only: consumed solely by apps/web/scripts/gen-theme.ts.
+export const WebSectionTitleClamp = "clamp(37.8px, 5.77vw, 75.6px)";
