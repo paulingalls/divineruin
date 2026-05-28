@@ -20,7 +20,7 @@ test.describe("Marketing home page (apps/web)", () => {
     // empty-root regression (or a stray "Divine Ruin" in <title>/the footer)
     // can't satisfy this vacuously.
     expect(body).toMatch(
-      /<div id="root">[\s\S]*?<nav[\s\S]*?<header[^>]*class="hero"[\s\S]*?<h1[^>]*>Divine<br\/?><em>Ruin<\/em>/s,
+      /<div id="root"><a[^>]*class="skip-link"[\s\S]*?<nav[\s\S]*?<header[^>]*class="hero"[\s\S]*?<h1[^>]*>Divine<br\/?><em>Ruin<\/em>/s,
     );
   });
 

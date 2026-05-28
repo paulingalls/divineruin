@@ -20,7 +20,7 @@ test.describe("Above-the-fold sections (apps/web)", () => {
     // or client-only regression can't satisfy it vacuously (story-006 inserted
     // the skip link before <nav> and a <main> landmark around the hero).
     expect(body).toMatch(
-      /<div id="root">[\s\S]*?<nav[\s\S]*?<header[^>]*class="hero"[\s\S]*?<h1[^>]*>Divine<br\/?><em>Ruin<\/em>/s,
+      /<div id="root"><a[^>]*class="skip-link"[\s\S]*?<nav[\s\S]*?<header[^>]*class="hero"[\s\S]*?<h1[^>]*>Divine<br\/?><em>Ruin<\/em>/s,
     );
     expect(body).toMatch(/href="#waitlist"[\s\S]*?Request Early Access/);
   });
