@@ -106,18 +106,69 @@ h1 {
 }
 
 .navbar__brand {
-  color: var(--color-hollow);
+  color: var(--color-parchment);
   font-family: var(--font-display);
-  font-size: var(--text-h2-size);
-  line-height: var(--text-h2-line-height);
+  font-weight: 300;
+  font-size: 18px;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
   text-decoration: none;
 }
 
+/* Center nav links — mono, uppercased, muted ash brightening to parchment on
+   hover. Hidden on narrow screens (mockup breakpoint) so the brand + CTA stay. */
+.navbar__links {
+  display: flex;
+  gap: 36px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.navbar__links a {
+  font-family: var(--font-system);
+  font-size: 15px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+  text-decoration: none;
+  transition: color 200ms ease;
+}
+
+.navbar__links a:hover {
+  color: var(--color-parchment);
+}
+
+@media (max-width: 760px) {
+  .navbar__links {
+    display: none;
+  }
+}
+
+/* Bordered accent CTA — mirrors .hero__cta--accent (Hero.css) so the chrome and
+   hero share one button look without coupling the two stylesheets. */
 .navbar__cta {
-  color: var(--color-bone);
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 22px;
   font-family: var(--font-system);
   font-size: var(--text-system-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
   text-decoration: none;
+  border: 1px solid var(--color-hollow-muted);
+  color: var(--color-hollow);
+  background: color-mix(in srgb, var(--color-hollow) 4%, transparent);
+  transition:
+    border-color 200ms ease,
+    color 200ms ease,
+    background 200ms ease;
+}
+
+.navbar__cta:hover {
+  border-color: var(--color-hollow);
+  background: color-mix(in srgb, var(--color-hollow) 8%, transparent);
+  box-shadow: 0 0 24px -8px var(--color-hollow-faint);
 }
 
 .footer {
