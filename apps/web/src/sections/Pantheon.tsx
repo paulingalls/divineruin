@@ -95,7 +95,7 @@ export function Pantheon() {
 
         <div className="pantheon__grid">
           {GODS.map((g, i) => (
-            <article className="pantheon__card reveal-item" key={g.name} tabIndex={0}>
+            <article className="pantheon__card reveal-item" key={g.name}>
               <div className="pantheon__top">
                 <div className="pantheon__num">{String(i + 1).padStart(2, "0")} / 10</div>
                 <div className="pantheon__name">{g.name}</div>

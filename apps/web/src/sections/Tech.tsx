@@ -23,6 +23,9 @@ export function Tech() {
   return (
     <section className="tech" id="tech" ref={sectionRef}>
       <div className="tech__inner">
+        {/* Visually-hidden heading: the strip leads with an eyebrow <p>, so this
+            keeps the section in the screen-reader document outline (.sr-only). */}
+        <h2 className="sr-only">Technology stack</h2>
         <p className="tech__eyebrow">Built on the best of 2026's voice and AI stack</p>
         <div className="tech__strip">
           {TECH_PARTNERS.map((t) => (

@@ -25,19 +25,28 @@ import { Footer } from "./components/Footer.tsx";
 export function App() {
   return (
     <>
+      {/* Skip-to-content link: the first focusable element so a keyboard user can
+          bypass the NavBar straight to the content (WCAG 2.4.1). Visually hidden
+          until focused (.skip-link in styles.css). The content lives in a single
+          <main> landmark; tabIndex={-1} lets the link move focus into it. */}
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
       <NavBar />
-      <Hero />
-      <AudioDemo />
-      <Premise />
-      <Session />
-      <World />
-      <Races />
-      <Pantheon />
-      <Classes />
-      <Tech />
-      <Pricing />
-      <Faq />
-      <Waitlist />
+      <main id="main-content" tabIndex={-1}>
+        <Hero />
+        <AudioDemo />
+        <Premise />
+        <Session />
+        <World />
+        <Races />
+        <Pantheon />
+        <Classes />
+        <Tech />
+        <Pricing />
+        <Faq />
+        <Waitlist />
+      </main>
       <Footer />
     </>
   );

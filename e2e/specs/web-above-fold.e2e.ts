@@ -17,9 +17,10 @@ test.describe("Above-the-fold sections (apps/web)", () => {
     // LCP content lives inside #root in the raw response (SEO-visible, no JS):
     // the hero <header> with the Divine/Ruin headline and the Request Early
     // Access CTA. Anchored through #root -> nav -> header.hero so an empty-root
-    // or client-only regression can't satisfy it vacuously.
+    // or client-only regression can't satisfy it vacuously (story-006 inserted
+    // the skip link before <nav> and a <main> landmark around the hero).
     expect(body).toMatch(
-      /<div id="root"><nav[\s\S]*?<header[^>]*class="hero"[\s\S]*?<h1[^>]*>Divine<br\/?><em>Ruin<\/em>/s,
+      /<div id="root"><a[^>]*class="skip-link"[\s\S]*?<nav[\s\S]*?<header[^>]*class="hero"[\s\S]*?<h1[^>]*>Divine<br\/?><em>Ruin<\/em>/s,
     );
     expect(body).toMatch(/href="#waitlist"[\s\S]*?Request Early Access/);
   });
