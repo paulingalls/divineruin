@@ -1,5 +1,6 @@
-import { test, expect, describe } from "bun:test";
-import { parseItemRow } from "./items.ts";
+import { test, expect, describe, afterAll } from "bun:test";
+import { parseItemRow, getItem, listItems, setItems } from "./items.ts";
+import type { Item } from "@divineruin/shared";
 
 // Drives the production fail-loud parseItemRow (apps/server/src/items.ts) over
 // content/items.json, proving every entry conforms to the widened Item interface
@@ -105,6 +106,41 @@ describe("content/items.json — parseItemRow conformance", () => {
       }
     }
     expect(offenders, `legacy effect copies still present: ${offenders.join(", ")}`).toEqual([]);
+  });
+});
+
+describe("items accessors — loadItems consumer chain", () => {
+  // loadItems() reads the DB; its accessor chain (setItems -> getItem/listItems) is the
+  // runtime API every consumer uses after startup. Drive that chain against the real
+  // parsed catalog (parseItemRow per row, exactly as loadItems does) without a live DB —
+  // the live-DB loadItems path is covered by the capstone E2E (concern aaf58ceb904a).
+  async function loadParsedMap(): Promise<Map<string, Item>> {
+    const items = await loadItemsJson();
+    const map = new Map<string, Item>();
+    for (const item of items) map.set(item.id as string, parseItemRow(item.id as string, item));
+    return map;
+  }
+
+  // items.ts is a process-shared cached module in Bun (test files run in one
+  // process). Restore the default empty registry so a later no-DB test importing
+  // getItem/listItems sees the startup state, not this catalog — no order coupling.
+  afterAll(() => setItems(new Map()));
+
+  test("getItem returns a populated item and listItems matches the loaded set", async () => {
+    const map = await loadParsedMap();
+    setItems(map);
+    const sword = getItem("shortsword_basic");
+    expect(sword).toBeDefined();
+    expect(sword!.id).toBe("shortsword_basic");
+    expect(sword!.type).toBe("weapon");
+    expect(sword!.damage_dice).toBeDefined();
+    expect(listItems()).toHaveLength(map.size);
+    expect(new Set(listItems().map((i) => i.id))).toEqual(new Set(map.keys()));
+  });
+
+  test("getItem returns undefined for an unknown id", async () => {
+    setItems(await loadParsedMap());
+    expect(getItem("no_such_item_xyz")).toBeUndefined();
   });
 });
 
