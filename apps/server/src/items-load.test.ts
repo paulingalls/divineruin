@@ -81,6 +81,31 @@ describe("content/items.json — parseItemRow conformance", () => {
       }
     }
   });
+
+  test("no effects[] entry duplicates a structured damage_dice/ac (legacy copies stripped)", async () => {
+    // Structured damage_dice (weapons) and ac (armor/shield) are the SSOT; a legacy
+    // `damage`/`ac_bonus` copy inside effects[] would silently drift (debt 07e23821109d,
+    // concern 60ea16c19dfc). A consumable's genuine effect.damage (no damage_dice, e.g.
+    // holy_water) is NOT a duplication and is exempt — the invariant only forbids copying
+    // a structured field's value into effects[].
+    const items = await loadItemsJson();
+    const offenders: string[] = [];
+    for (const item of items) {
+      const parsed = parseItemRow(item.id as string, item);
+      const effects = Array.isArray(item.effects)
+        ? (item.effects as Record<string, unknown>[])
+        : [];
+      for (const eff of effects) {
+        if ("damage" in eff && parsed.damage_dice !== undefined) {
+          offenders.push(`${parsed.id}.effects[].damage`);
+        }
+        if ("ac_bonus" in eff && parsed.ac !== undefined) {
+          offenders.push(`${parsed.id}.effects[].ac_bonus`);
+        }
+      }
+    }
+    expect(offenders, `legacy effect copies still present: ${offenders.join(", ")}`).toEqual([]);
+  });
 });
 
 describe("parseItemRow — fail-loud validation", () => {

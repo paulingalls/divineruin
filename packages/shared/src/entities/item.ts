@@ -41,6 +41,9 @@ export interface Item {
   current_hits?: number;
   damage_dice?: string;
   properties?: string[];
+  // Dual meaning, disambiguated by item `type`: BASE armor class when type==="armor",
+  // AC BONUS when type==="shield". The SSOT for armor/shield AC — never duplicated into
+  // effects[] (content invariant in items-load.test.ts; concern 60ea16c19dfc).
   ac?: number;
   armor_properties?: string[];
   audio_cue?: string;

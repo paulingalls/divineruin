@@ -277,7 +277,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d6",
         "damage_type": "piercing",
         "properties": [
           "light",
@@ -321,7 +320,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d8",
         "damage_type": "slashing",
         "properties": [
           "versatile"
@@ -363,7 +361,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d4",
         "damage_type": "piercing",
         "properties": [
           "light",
@@ -409,7 +406,6 @@
     "effects": [
       {
         "type": "armor",
-        "ac_bonus": 11,
         "properties": [
           "light"
         ]
@@ -450,7 +446,6 @@
     "effects": [
       {
         "type": "armor",
-        "ac_bonus": 13,
         "properties": [
           "medium"
         ]
@@ -490,7 +485,6 @@
     "effects": [
       {
         "type": "shield",
-        "ac_bonus": 2,
         "properties": []
       }
     ],
@@ -707,7 +701,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d6",
         "damage_type": "piercing",
         "properties": [
           "ranged",
@@ -753,7 +746,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d6",
         "damage_type": "bludgeoning",
         "properties": [
           "versatile"
@@ -796,7 +788,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d6",
         "damage_type": "bludgeoning",
         "properties": []
       }
@@ -834,7 +825,6 @@
     "effects": [
       {
         "type": "armor",
-        "ac_bonus": 14,
         "properties": [
           "heavy",
           "stealth_disadvantage"
@@ -877,7 +867,6 @@
     "effects": [
       {
         "type": "armor",
-        "ac_bonus": 0,
         "properties": [
           "stealth_advantage_dim_light",
           "cold_resistance"
@@ -922,7 +911,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d8",
         "damage_type": "slashing",
         "properties": [
           "light",
@@ -1059,7 +1047,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d8",
         "damage_type": "piercing",
         "properties": [
           "finesse"
@@ -1089,7 +1076,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "2d6",
         "damage_type": "slashing",
         "properties": [
           "heavy",
@@ -1121,7 +1107,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d8",
         "damage_type": "slashing",
         "properties": [
           "versatile"
@@ -1152,7 +1137,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d8",
         "damage_type": "bludgeoning",
         "properties": [
           "versatile"
@@ -1183,7 +1167,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d6",
         "damage_type": "piercing",
         "properties": [
           "versatile",
@@ -1217,7 +1200,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d6",
         "damage_type": "slashing",
         "properties": [
           "light",
@@ -1250,7 +1232,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d6",
         "damage_type": "piercing",
         "properties": [
           "two-handed",
@@ -1283,7 +1264,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d8",
         "damage_type": "piercing",
         "properties": [
           "two-handed",
@@ -1318,7 +1298,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d8",
         "damage_type": "piercing",
         "properties": [
           "two-handed",
@@ -1353,7 +1332,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d6",
         "damage_type": "piercing",
         "properties": [
           "light",
@@ -1388,7 +1366,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d10",
         "damage_type": "piercing",
         "properties": [
           "two-handed",
@@ -1425,7 +1402,6 @@
     "effects": [
       {
         "type": "armor",
-        "ac_bonus": 11,
         "properties": [
           "stealth_disadvantage"
         ]
@@ -1454,7 +1430,6 @@
     "effects": [
       {
         "type": "armor",
-        "ac_bonus": 12,
         "properties": []
       }
     ],
@@ -1479,7 +1454,6 @@
     "effects": [
       {
         "type": "armor",
-        "ac_bonus": 12,
         "properties": []
       }
     ],
@@ -1504,7 +1478,6 @@
     "effects": [
       {
         "type": "armor",
-        "ac_bonus": 15,
         "properties": [
           "stealth_disadvantage"
         ]
@@ -1533,7 +1506,6 @@
     "effects": [
       {
         "type": "armor",
-        "ac_bonus": 16,
         "properties": [
           "str_13",
           "stealth_disadvantage"
@@ -1564,7 +1536,6 @@
     "effects": [
       {
         "type": "armor",
-        "ac_bonus": 18,
         "properties": [
           "str_15",
           "stealth_disadvantage"
@@ -2323,7 +2294,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d8",
         "damage_type": "slashing",
         "properties": [
           "versatile"
@@ -2362,7 +2332,6 @@
     "effects": [
       {
         "type": "shield",
-        "ac_bonus": 2,
         "properties": [],
         "description": "Once/long rest: Bark Skin reaction without Focus. +1 AC in natural terrain."
       }
@@ -2496,7 +2465,6 @@
     "effects": [
       {
         "type": "weapon",
-        "damage": "1d8",
         "damage_type": "slashing",
         "properties": [
           "versatile"
@@ -2586,7 +2554,6 @@
     "effects": [
       {
         "type": "shield",
-        "ac_bonus": 2,
         "properties": [
           "enhanced_shield_bonus"
         ],
