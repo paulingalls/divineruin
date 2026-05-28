@@ -4,24 +4,18 @@ import { sql } from "./db.ts";
 import { logError } from "./env.ts";
 import { getItem } from "./items.ts";
 import { parseJsonb } from "./parse-jsonb.ts";
+import { dispositionMultiplier, repairCostSp } from "./pricing.ts";
 
 // Repair pricing + quote endpoint — the REST surface for NPC-blacksmith item repair (M5.4).
 //
-// These constants MIRROR the Python source of truth (durability.REPAIR_COST_SP,
-// tool_support.DISPOSITION_ORDER, workspace._RENTAL_MULTIPLIER/SILVER_PER_GOLD) as a
-// code-constant copy — they are small closed rules tables, not authored content, so
-// they live in code on both sides (same call as the durability-tier / workspace-vocab
-// SSOT decisions). repairQuote must stay numerically identical to the agent tool's
+// The economic constants (repair cost by rarity, disposition multipliers,
+// silver/gold) read here come from the DB-loaded `pricing` table
+// (content/pricing.json -> pricing.ts). The Python agent still mirrors them as code
+// consts (durability/workspace) until story-011's Python increment points it at the
+// same `economy` row. repairQuote stays numerically identical to the agent tool's
 // charge (repair_item.py) so the quote == the charge (no Python/REST asymmetry,
-// cf. risk b335bb95acbd). A third copy or any divergence should trigger consolidation.
-
-// Repair cost in silver pieces, keyed by item rarity (spec Repair Pricing).
-export const REPAIR_COST_SP: Record<string, number> = {
-  common: 2,
-  uncommon: 10,
-  rare: 50,
-  legendary: 200,
-};
+// cf. risk b335bb95acbd). Disposition *order* (the refuse-below-neutral gate) is the
+// canonical disposition vocabulary, a system constant — it stays in code, not pricing.
 
 // Disposition tiers, ordered low->high; below "neutral" the blacksmith refuses.
 // "cautious" aliases neutral (parity with tool_support.DISPOSITION_TIERS).
@@ -38,11 +32,6 @@ function dispositionRank(disposition: string): number | undefined {
   return rank === -1 ? undefined : rank;
 }
 
-// Disposition price multiplier at/above neutral; absent = full price (1.0x). Keyed lowercase.
-const DISPOSITION_MULTIPLIER: Record<string, number> = { friendly: 0.8, trusted: 0.6 };
-
-export const SILVER_PER_GOLD = 10;
-
 export interface RepairQuote {
   available: boolean;
   priceSp: number;
@@ -53,7 +42,7 @@ export interface RepairQuote {
  * Refuses (unavailable, priceSp 0) below Neutral; friendly 0.8x / trusted 0.6x.
  * Throws on an unknown rarity or disposition (caller maps to 400/500). */
 export function repairQuote(rarity: string, disposition: string): RepairQuote {
-  const baseSp = REPAIR_COST_SP[rarity];
+  const baseSp = repairCostSp(rarity);
   if (baseSp === undefined) throw new Error(`unknown rarity ${JSON.stringify(rarity)}`);
   const rank = dispositionRank(disposition);
   if (rank === undefined) throw new Error(`unknown disposition ${JSON.stringify(disposition)}`);
@@ -66,7 +55,7 @@ export function repairQuote(rarity: string, disposition: string): RepairQuote {
   }
   return {
     available: true,
-    priceSp: baseSp * (DISPOSITION_MULTIPLIER[disposition.toLowerCase()] ?? 1.0),
+    priceSp: baseSp * dispositionMultiplier(disposition),
     reason: "",
   };
 }

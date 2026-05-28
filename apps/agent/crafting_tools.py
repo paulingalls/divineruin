@@ -29,6 +29,7 @@ import db_mutations
 import db_queries
 import materials
 import preflight_pipeline
+import pricing_queries
 import recipe_validation
 import recipes
 import workspace
@@ -143,6 +144,7 @@ async def _rent_workspace_impl(
     mutations_mod=db_mutations,
     content_mod=db_content_queries,
     workspace_mod=workspace,
+    pricing_mod=pricing_queries,
     now_fn=None,
 ) -> str:
     context.disallow_interruptions()
@@ -177,13 +179,18 @@ async def _rent_workspace_impl(
     # An off-tier content default_disposition (not a canonical tier) makes
     # compute_rental_price raise ValueError; that's a content bug, so surface it as
     # ToolError to keep the tool's ADR-0002 error shape (mirrors learn_recipe).
+    pricing = await pricing_mod.get_economy_pricing()
     try:
-        quote = workspace_mod.compute_rental_price(workspace_mod.RENTAL_BASE_PRICE_SP[wtype], disposition)
+        quote = workspace_mod.compute_rental_price(
+            workspace_mod.RENTAL_BASE_PRICE_SP[wtype],
+            disposition,
+            multipliers=pricing["disposition_multipliers"],
+        )
     except ValueError as exc:
         raise ToolError(f"NPC {npc_id} has an invalid disposition for renting: {exc}") from exc
     if not quote.available:
         raise ToolError(quote.reason)
-    price_gp = quote.price_sp / workspace_mod.SILVER_PER_GOLD
+    price_gp = quote.price_sp / pricing["silver_per_gold"]
     expires_at = (now_fn or _default_now)() + timedelta(days=days)
 
     async with db_mod.transaction() as conn:

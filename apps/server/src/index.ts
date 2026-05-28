@@ -22,6 +22,7 @@ import { loadTrainingActivityTypes } from "./training_state_machine.ts";
 import { loadTrainingPrograms, loadErrandTemplates } from "./activity_templates.ts";
 import { loadRecipes } from "./recipes.ts";
 import { loadItems } from "./items.ts";
+import { loadPricing } from "./pricing.ts";
 import { isDev } from "./env.ts";
 
 // Load content-backed config at startup. Fail loud if any query fails — the
@@ -33,6 +34,7 @@ await Promise.all([
   loadErrandTemplates(),
   loadRecipes(),
   loadItems(),
+  loadPricing(),
 ]);
 
 const enableDebug = isDev && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
