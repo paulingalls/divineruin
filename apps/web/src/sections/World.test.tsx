@@ -135,9 +135,11 @@ test("content constants are the well-formed mockup sets", () => {
 });
 
 test("the redacted Tier-IV quote is decorative (aria-hidden)", () => {
-  // The "[ crossed out ]" redacted quote is atmospheric, intentionally
-  // unreadable (faint slate) — mark it aria-hidden so it's neither announced
-  // nor flagged for color-contrast as meaningful text.
+  // The redacted quote is atmospheric — a struck-through (line-through),
+  // AA-legal ash string rather than the announced lore of the other tiers.
+  // aria-hidden keeps it out of the screen-reader tree (dedup/atmosphere); it
+  // is NOT what satisfies color-contrast — the slate->ash recolour does, since
+  // axe's color-contrast rule does not exempt aria-hidden elements.
   const html = renderToStaticMarkup(<World />);
   expect(html).toMatch(
     /<p[^>]*class="world__tx-quote world__tx-quote--redacted"[^>]*aria-hidden="true"/,

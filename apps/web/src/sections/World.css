@@ -461,7 +461,11 @@
   letter-spacing: 0.2em;
   text-transform: uppercase;
   text-align: center;
-  color: var(--color-slate);
+  /* Reads as "crossed out" via a real strikethrough on an AA-legal muted colour
+     (ash), instead of a near-invisible slate fill that fails contrast. The
+     line-through carries the redacted intent while the text stays legible. */
+  color: var(--color-ash);
+  text-decoration: line-through;
 }
 
 /* Setting / Threat / Mystery: 3 cols -> 1 (<=760). */

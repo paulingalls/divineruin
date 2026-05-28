@@ -10,20 +10,19 @@ import AxeBuilder from "@axe-core/playwright";
 const WEB = "http://localhost:8085";
 
 test.describe("Accessibility (apps/web, WCAG 2.1 AA)", () => {
-  test("the home page has zero serious/critical axe violations (excluding color-contrast)", async ({
-    page,
-  }) => {
+  test("the home page has zero serious/critical axe violations", async ({ page }) => {
     await page.goto(`${WEB}/`);
-    // color-contrast (WCAG 1.4.3) is intentionally carved out here: the audit
-    // surfaced a systemic, brand-impacting palette-contrast issue (the muted
-    // ash/slate/ember tokens fall below 4.5:1 on the dark surfaces) that is
-    // tracked as its own story so the remediation approach can be weighed
-    // (web-scoped remap vs. shared design-token bump). This gate guards every
-    // OTHER serious/critical rule story-006 remediated — landmarks, accessible
-    // names, roles, heading order, aria — which all pass on the served build.
+    // color-contrast (WCAG 1.4.3) is now in scope: story-008 bumped the muted
+    // ash/ember palette tokens to AA-legal values (#868693 / #e0672e) at the
+    // design-tokens source AND recoloured the last faint slate text — the
+    // ornamental numbers and the redacted quote — from slate to ash (the quote
+    // also gained a strikethrough to keep the "redacted" intent). The recolour
+    // is what makes color-contrast pass: axe's color-contrast rule does NOT
+    // exempt aria-hidden elements, so the aria-hidden on those numbers/quote is
+    // purely screen-reader dedup, not a contrast escape hatch. Every
+    // serious/critical rule — including color-contrast — passes on the served build.
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .disableRules(["color-contrast"])
       .analyze();
     // Map any survivors to a readable id+help list so a regression names the rule.
     const blocking = results.violations.filter(
