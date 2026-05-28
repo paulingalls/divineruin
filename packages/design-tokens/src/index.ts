@@ -15,7 +15,7 @@ export const BrandColors = {
   charcoal: "#1E1E23",
   slate: "#2A2A32",
   // Text
-  ash: "#6B6B78",
+  ash: "#868693",
   bone: "#B8B5AD",
   parchment: "#D4D0C8",
   // Hollow accent
@@ -27,7 +27,7 @@ export const BrandColors = {
   nightTint: "#0A0A2A",
   // Semantic
   emberFaint: "#7C2D12",
-  ember: "#C2410C",
+  ember: "#E0672E",
   divineFaint: "#92702A",
   divine: "#C9A84C",
 } as const;
