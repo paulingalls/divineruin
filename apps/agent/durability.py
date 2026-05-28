@@ -39,10 +39,6 @@ DURABILITY_REPAIR_SKILL: dict[str, SkillTier] = {
     "masterwork": "master",
 }
 
-# Item rarity -> repair cost in silver pieces (spec Repair Pricing, rarity axis).
-# Legendary is "200+ sp or quest"; the interim flat rate is 200.
-REPAIR_COST_SP = {"common": 2, "uncommon": 10, "rare": 50, "legendary": 200}
-
 # Broken-state penalty by item type. Non-equippable types (consumables, materials)
 # carry no penalty — they don't degrade in combat and have no "broken" effect.
 _BROKEN_PENALTY = {
@@ -69,10 +65,15 @@ def repair_skill_tier(durability_tier: str) -> SkillTier:
         raise ValueError(f"unknown durability_tier {durability_tier!r}") from None
 
 
-def calculate_repair_cost(rarity: str) -> int:
-    """Return the repair cost in sp for an item rarity (spec rarity axis)."""
+def calculate_repair_cost(rarity: str, *, cost_table: dict[str, int]) -> int:
+    """Return the repair cost in sp for an item rarity; fail loud on unknown.
+
+    `cost_table` is the rarity->sp map from the DB-loaded pricing SSOT
+    (pricing_queries.get_economy_pricing()['repair_cost_sp']) — passed in so this
+    stays a pure, synchronous rules-engine fn while the DB read lives in the tool.
+    """
     try:
-        return REPAIR_COST_SP[rarity]
+        return cost_table[rarity]
     except KeyError:
         raise ValueError(f"unknown rarity {rarity!r}") from None
 

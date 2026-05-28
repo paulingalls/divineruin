@@ -123,17 +123,22 @@ def test_condition_broken_non_equippable_type_no_penalty():
 # --- calculate_repair_cost (rarity axis, spec Repair Pricing table) ----------
 
 
+# cost_table is the rarity->sp map from the pricing SSOT (content/pricing.json's
+# economy row), injected so calculate_repair_cost stays a pure rules-engine fn.
+_COST_TABLE = {"common": 2, "uncommon": 10, "rare": 50, "legendary": 200}
+
+
 @pytest.mark.parametrize(
     "rarity,expected_sp",
     [("common", 2), ("uncommon", 10), ("rare", 50), ("legendary", 200)],
 )
 def test_repair_cost_per_rarity(rarity, expected_sp):
-    assert durability.calculate_repair_cost(rarity) == expected_sp
+    assert durability.calculate_repair_cost(rarity, cost_table=_COST_TABLE) == expected_sp
 
 
 def test_repair_cost_unknown_rarity_fails_loud():
     with pytest.raises(ValueError):
-        durability.calculate_repair_cost("mythic")
+        durability.calculate_repair_cost("mythic", cost_table=_COST_TABLE)
 
 
 # --- repair_skill_tier (durability-tier -> required Crafting skill tier) ------

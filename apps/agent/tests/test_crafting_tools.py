@@ -28,6 +28,20 @@ _CATALOG = {
 }
 
 
+def _pricing():
+    """A pricing_mod seam returning the economy SSOT values (story-011), so
+    rent_workspace prices without a live DB. Mirrors content/pricing.json."""
+    mod = MagicMock()
+    mod.get_economy_pricing = AsyncMock(
+        return_value={
+            "repair_cost_sp": {"common": 2, "uncommon": 10, "rare": 50, "legendary": 200},
+            "disposition_multipliers": {"friendly": 0.8, "trusted": 0.6},
+            "silver_per_gold": 10,
+        }
+    )
+    return mod
+
+
 def _recipe(**overrides):
     recipe = {
         "id": "iron_sword",
@@ -383,6 +397,7 @@ class TestRentWorkspace:
                 db_mod=db_mod,
                 queries_mod=queries,
                 mutations_mod=mutations,
+                pricing_mod=_pricing(),
             )
         )
         # forge 5sp at neutral = 5sp = 0.5gp; gold 15 -> 14.5.
@@ -405,6 +420,7 @@ class TestRentWorkspace:
                 db_mod=db_mod,
                 queries_mod=_queries(disposition="friendly"),
                 mutations_mod=mutations,
+                pricing_mod=_pricing(),
             )
         )
         assert result["price_sp"] == pytest.approx(4.0)  # 5 * 0.8
@@ -420,6 +436,7 @@ class TestRentWorkspace:
                 db_mod=db_mod,
                 queries_mod=_queries(disposition="hostile"),
                 mutations_mod=MagicMock(),
+                pricing_mod=_pricing(),
             )
 
     async def test_insufficient_gold_raises(self):
@@ -436,6 +453,7 @@ class TestRentWorkspace:
                 db_mod=db_mod,
                 queries_mod=queries,
                 mutations_mod=MagicMock(),
+                pricing_mod=_pricing(),
             )
 
     async def test_absent_npc_refuses_before_debit(self):
@@ -485,6 +503,7 @@ class TestRentWorkspace:
                 db_mod=db_mod,
                 queries_mod=_queries(disposition="grumpy"),
                 mutations_mod=MagicMock(),
+                pricing_mod=_pricing(),
             )
 
     async def test_rejects_zero_days(self):

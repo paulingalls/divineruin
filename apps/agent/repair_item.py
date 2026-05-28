@@ -8,9 +8,9 @@ it gates on the player's Crafting skill tier vs the item's durability-repair tie
 (durability.repair_skill_tier), restores current_hits to the tier max, and debits gold.
 
 Errors raise LiveKit ToolError (ADR 0002). The `_*_impl` helper exposes `*_mod=` keyword
-seams for TEST-ONLY injection (mirrors crafting_tools). Registered in DISPATCH_TOOLS for
-now (a between-adventure activity, like rent_workspace); story-009 moves it onto a
-dedicated BlacksmithAgent.
+seams for TEST-ONLY injection (mirrors crafting_tools). Registered in BLACKSMITH_TOOLS,
+reached via the enter_blacksmith handoff from the City region agent (story-009). The
+pricing values come from the DB-loaded SSOT (pricing_queries) shared with the REST quote.
 """
 
 import json
@@ -25,6 +25,7 @@ import db_mutations
 import db_mutations_inventory
 import db_queries
 import durability
+import pricing_queries
 import workspace
 from rules_engine import SKILL_TIER_ORDER, SkillTier
 from session_data import SessionData
@@ -66,6 +67,7 @@ async def _repair_item_impl(
     content_mod=db_content_queries,
     durability_mod=durability,
     workspace_mod=workspace,
+    pricing_mod=pricing_queries,
 ) -> str:
     context.disallow_interruptions()
     _validate_id(item_id, "item_id")
@@ -114,9 +116,14 @@ async def _repair_item_impl(
         if disposition is None:
             npc = await content_mod.get_npc(npc_id)
             disposition = npc.get("default_disposition", "neutral") if npc else "neutral"
+        pricing = await pricing_mod.get_economy_pricing()
         try:
-            base_sp = durability_mod.calculate_repair_cost(item.get("rarity", "common"))
-            quote = workspace_mod.compute_rental_price(base_sp, disposition)
+            base_sp = durability_mod.calculate_repair_cost(
+                item.get("rarity", "common"), cost_table=pricing["repair_cost_sp"]
+            )
+            quote = workspace_mod.compute_rental_price(
+                base_sp, disposition, multipliers=pricing["disposition_multipliers"]
+            )
         except ValueError as exc:
             raise ToolError(f"Cannot price the repair of {name}: {exc}") from exc
         if not quote.available:
@@ -129,7 +136,7 @@ async def _repair_item_impl(
             raise ToolError(f"Repairing {name} needs Crafting {required_tier}; you are {crafting_tier}.")
 
         # gold gate (quote.price_sp already disposition-adjusted — divide once)
-        price_gp = quote.price_sp / workspace_mod.SILVER_PER_GOLD
+        price_gp = quote.price_sp / pricing["silver_per_gold"]
         gold = player.get("gold", 0)
         if gold < price_gp:
             raise ToolError(f"Not enough gold: repairing {name} costs {price_gp:.1f}gp and you have {gold}gp.")

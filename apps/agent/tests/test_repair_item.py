@@ -51,6 +51,16 @@ def _repair_kwargs(*, item, disposition="neutral", crafting_tier="master", gold=
     inv_mutations.update_item_durability = AsyncMock()
     content = MagicMock()
     content.get_npc = AsyncMock(return_value=None)
+    # Pricing comes from the DB-loaded SSOT (story-011); inject the economy values
+    # so the tool's charge math matches the REST quote without a live DB.
+    pricing = MagicMock()
+    pricing.get_economy_pricing = AsyncMock(
+        return_value={
+            "repair_cost_sp": {"common": 2, "uncommon": 10, "rare": 50, "legendary": 200},
+            "disposition_multipliers": {"friendly": 0.8, "trusted": 0.6},
+            "silver_per_gold": 10,
+        }
+    )
     return (
         {
             "db_mod": db_mod,
@@ -58,6 +68,7 @@ def _repair_kwargs(*, item, disposition="neutral", crafting_tier="master", gold=
             "mutations_mod": mutations,
             "inv_mutations_mod": inv_mutations,
             "content_mod": content,
+            "pricing_mod": pricing,
         },
         mutations,
         inv_mutations,
