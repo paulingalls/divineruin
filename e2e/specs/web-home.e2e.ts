@@ -11,16 +11,16 @@ test.describe("Marketing home page (apps/web)", () => {
     const res = await request.get(`${WEB}/`);
     expect(res.status()).toBe(200);
     const body = await res.text();
-    // Real content lives *immediately inside* #root in the raw response —
-    // SEO-visible, not an empty client-rendered shell. The chrome mounts <nav>
-    // first, then the hero <header class="hero"> with its <h1>Divine<br/>Ruin</h1>
-    // (story-005 mounts the real Hero, replacing the M1 placeholder <main>).
+    // Real content lives inside #root in the raw response — SEO-visible, not an
+    // empty client-rendered shell. The chrome mounts the skip link first, then
+    // <nav>, then the <main> landmark wrapping the hero <header class="hero">
+    // with its <h1>Divine<br/>Ruin</h1> (story-006 added the skip-link + <main>).
     // Anchoring on #root → <nav> → <header class="hero"> → <h1> proves the markup
     // is nested in #root and prerendered (not a client-only shell), so an
     // empty-root regression (or a stray "Divine Ruin" in <title>/the footer)
     // can't satisfy this vacuously.
     expect(body).toMatch(
-      /<div id="root"><nav[\s\S]*?<header[^>]*class="hero"[\s\S]*?<h1[^>]*>Divine<br\/?><em>Ruin<\/em>/s,
+      /<div id="root">[\s\S]*?<nav[\s\S]*?<header[^>]*class="hero"[\s\S]*?<h1[^>]*>Divine<br\/?><em>Ruin<\/em>/s,
     );
   });
 
