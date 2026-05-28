@@ -134,6 +134,28 @@ test("content constants are the well-formed mockup sets", () => {
   }
 });
 
+test("the redacted Tier-IV quote is decorative (aria-hidden)", () => {
+  // The redacted quote is atmospheric — a struck-through (line-through),
+  // AA-legal ash string rather than the announced lore of the other tiers.
+  // aria-hidden keeps it out of the screen-reader tree (dedup/atmosphere); it
+  // is NOT what satisfies color-contrast — the slate->ash recolour does, since
+  // axe's color-contrast rule does not exempt aria-hidden elements.
+  const html = renderToStaticMarkup(<World />);
+  expect(html).toMatch(
+    /<p[^>]*class="world__tx-quote world__tx-quote--redacted"[^>]*aria-hidden="true"/,
+  );
+});
+
+test("non-redacted tier quotes stay readable (no aria-hidden)", () => {
+  // aria-hidden is gated on t.redacted only — the legible Tier I-III quotes
+  // are real content (visible, AA-legal ash) and must remain in the a11y tree.
+  const html = renderToStaticMarkup(<World />);
+  const quotes = html.match(/<p[^>]*class="world__tx-quote[^"]*"[^>]*>/g) ?? [];
+  const visible = quotes.filter((q) => !q.includes("world__tx-quote--redacted"));
+  expect(visible.length).toBe(HOLLOW_TIERS.filter((t) => !t.redacted).length);
+  for (const q of visible) expect(q).not.toContain("aria-hidden");
+});
+
 test("renders hydration-safe markup (no DOM access during render)", () => {
   expect(() => renderToStaticMarkup(<World />)).not.toThrow();
 });

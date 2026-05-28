@@ -17,9 +17,10 @@ test.describe("Above-the-fold sections (apps/web)", () => {
     // LCP content lives inside #root in the raw response (SEO-visible, no JS):
     // the hero <header> with the Divine/Ruin headline and the Request Early
     // Access CTA. Anchored through #root -> nav -> header.hero so an empty-root
-    // or client-only regression can't satisfy it vacuously.
+    // or client-only regression can't satisfy it vacuously (story-006 inserted
+    // the skip link before <nav> and a <main> landmark around the hero).
     expect(body).toMatch(
-      /<div id="root"><nav[\s\S]*?<header[^>]*class="hero"[\s\S]*?<h1[^>]*>Divine<br\/?><em>Ruin<\/em>/s,
+      /<div id="root"><a[^>]*class="skip-link"[\s\S]*?<nav[\s\S]*?<header[^>]*class="hero"[\s\S]*?<h1[^>]*>Divine<br\/?><em>Ruin<\/em>/s,
     );
     expect(body).toMatch(/href="#waitlist"[\s\S]*?Request Early Access/);
   });
@@ -31,6 +32,39 @@ test.describe("Above-the-fold sections (apps/web)", () => {
     const res = await request.get(`${WEB}/audio/dm-sample.mp3`);
     expect(res.status()).toBe(200);
     expect(res.headers()["content-type"] ?? "").toContain("audio");
+  });
+
+  test("preloads the AudioDemo above-fold title face (no late font swap)", async ({
+    request,
+    page,
+  }) => {
+    // The AudioDemo title is above the fold and renders in --font-body (Crimson
+    // Pro). story-004 pinned it to weight 300 — already preloaded for the Hero
+    // pitch — so it shows in its final face with no FOUT. Prove both halves on the
+    // served build: (1) the served HTML carries the crimson-pro-300 preload link
+    // — the half that actually rules out an unpreloaded above-fold face — and
+    // (2) the rendered title computes to weight 300, i.e. the CSS pin is applied
+    // in a real browser at the served path (so (1) preloads the weight the title
+    // truly uses). Note (2) reads computed CSS, which resolves to 300 in fallback
+    // too; it confirms the pin landed, not the absence of a swap — (1) owns that.
+    //
+    // The crimson-pro-300 filename is hardcoded deliberately: this e2e project is
+    // isolated outside the npm workspace (its own package.json, no design-tokens
+    // dep), so it can't derive the name from SHIP_FACES the way prerender.ts and
+    // prerender.test.ts do. A SHIP_FACES filename change turns THIS test red (a
+    // loud signal to update the literal), not silently green — acceptable for an
+    // independent served-build check.
+    const res = await request.get(`${WEB}/`);
+    expect(res.status()).toBe(200);
+    const body = await res.text();
+    expect(body).toMatch(
+      /<link[^>]+rel="preload"[^>]+href="\/fonts\/crimson-pro-300\.woff2"/,
+    );
+
+    await page.goto(`${WEB}/`);
+    const title = page.locator(".audio-demo__title");
+    await expect(title).toBeVisible();
+    await expect(title).toHaveCSS("font-weight", "300");
   });
 
   test("AudioDemo toggles playback on interaction", async ({ page }) => {

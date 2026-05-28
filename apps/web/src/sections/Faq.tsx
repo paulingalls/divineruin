@@ -77,7 +77,9 @@ export function Faq() {
                   aria-controls={panelId}
                   onClick={() => setOpenIdx(open ? -1 : i)}
                 >
-                  <span className="faq__q-num">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="faq__q-num" aria-hidden="true">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
                   <span className="faq__q-text">{item.q}</span>
                   <span className="faq__q-toggle" aria-hidden="true">
                     {open ? "−" : "+"}

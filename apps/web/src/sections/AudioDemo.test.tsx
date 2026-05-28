@@ -52,6 +52,14 @@ test("WAVEFORM_BARS is a non-empty set of fractional heights in (0, 1]", () => {
   }
 });
 
+test("gives the section a heading for the document outline (visually hidden)", () => {
+  // The demo's visible title is a styled <span>, not a heading — a section with
+  // no heading is a hole in the screen-reader outline. Add a visually-hidden
+  // <h2> so the h1 -> h2 outline stays gapless without changing the visual design.
+  const html = renderToStaticMarkup(<AudioDemo />);
+  expect(html).toMatch(/<h2[^>]*class="sr-only"[^>]*>Audio sample<\/h2>/);
+});
+
 test("renders hydration-safe markup (no DOM access during render)", () => {
   expect(() => renderToStaticMarkup(<AudioDemo />)).not.toThrow();
 });

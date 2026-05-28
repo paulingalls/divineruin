@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import { App } from "./App.tsx";
+import { initAnalytics } from "./lib/analytics.ts";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Root element #root not found");
@@ -20,3 +21,8 @@ if (root.childElementCount > 0) {
 } else {
   createRoot(root).render(app);
 }
+
+// Privacy-aware analytics: fire the page_view + install the delegated CTA listener once the app is
+// live in the browser. No-op during prerender (this entry only runs client-side). Kept after
+// hydration so it never competes with first paint.
+initAnalytics();

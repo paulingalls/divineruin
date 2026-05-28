@@ -40,6 +40,9 @@ export function AudioDemo() {
 
   return (
     <section className={playing ? "audio-demo audio-demo--playing" : "audio-demo"}>
+      {/* Visually-hidden heading: the visible title is a styled <span>, so this
+          keeps the section in the screen-reader document outline (.sr-only). */}
+      <h2 className="sr-only">Audio sample</h2>
       <button
         type="button"
         className="audio-demo__play"

@@ -1,6 +1,14 @@
 import { Glob } from "bun";
 import { join } from "node:path";
+import { SHIP_FACES } from "@divineruin/design-tokens";
 import { renderAppHTML } from "../src/entry-server.tsx";
+import { buildMetaTags } from "../src/lib/seo.ts";
+import { buildRobotsTxt, buildSitemapXml } from "../src/lib/crawl.ts";
+
+// Production site origin baked into canonical / og:url / JSON-LD at build time.
+// A deploy sets PUBLIC_SITE_ORIGIN; unset falls back to the production domain
+// (documented as a deploy gate in the apps/web README, story-007).
+const SITE_ORIGIN = Bun.env.PUBLIC_SITE_ORIGIN ?? "https://divineruin.com";
 
 // apps/web root, resolved from this script's location so build paths are
 // stable whether invoked via `bun run` (cwd=apps/web) or `bun test` (cwd=repo
@@ -9,17 +17,34 @@ const APP_DIR = join(import.meta.dir, "..");
 const ROOT_DIV = /<div id="root">\s*<\/div>/;
 const FONTS_SRC = join(APP_DIR, "src", "fonts");
 const AUDIO_SRC = join(APP_DIR, "src", "audio");
-// Above-the-fold faces the Hero applies, preloaded so the LCP text doesn't FOUT:
-// the headline "Divine" (Cormorant Garamond 300) + its italic <em> "Ruin" (the
-// largest glyphs, CG 300 italic) + the italic subhead "the sundered veil" (CG
-// 300 italic — same face, already in the set) + the pitch (Crimson Pro 300).
-// Kept small — the mono framing chrome (meta/cta/footer) is deliberately not
-// preloaded, as over-preloading competes with the LCP markup for bandwidth.
-// prerender.test.ts pins this list to the faces Hero.css actually applies.
+const PUBLIC_SRC = join(APP_DIR, "public");
+// Resolve an above-the-fold face to its shipped woff2 from the single ship
+// manifest (SHIP_FACES) — no hand-copied filename. Throws if the face isn't in
+// the ship set, so a typo or a manifest change can't silently preload a 404
+// (which would unpreload the LCP font). The same SHIP_FACES gen-fonts subsets and
+// gen-fonts-css emits @font-face for, so the preload set can't drift from them.
+function preloadFile(family: string, weight: 300 | 400, style: "normal" | "italic"): string {
+  const face = SHIP_FACES.find(
+    (f) => f.family === family && f.weight === weight && f.style === style,
+  );
+  if (!face) {
+    throw new Error(`prerender: above-fold face ${family} ${weight} ${style} not in SHIP_FACES`);
+  }
+  return face.file;
+}
+
+// Above-the-fold faces, resolved to their shipped filenames. WHICH faces are
+// above the fold is prerender's call (the Hero LCP markup + the AudioDemo title):
+// the headline "Divine" (Cormorant Garamond 300) + its italic <em> "Ruin" + the
+// italic subhead "the sundered veil" (CG 300 italic, same face) + the pitch and
+// the AudioDemo title (both Crimson Pro 300). Kept small — the mono framing chrome
+// (meta/cta/footer) is deliberately not preloaded, as over-preloading competes
+// with the LCP markup for bandwidth. prerender.test.ts pins this list to the faces
+// Hero.css + AudioDemo.css actually apply, and to the ship manifest.
 export const FONT_PRELOADS = [
-  "cormorant-garamond-300.woff2",
-  "cormorant-garamond-300-italic.woff2",
-  "crimson-pro-300.woff2",
+  preloadFile("Cormorant Garamond", 300, "normal"),
+  preloadFile("Cormorant Garamond", 300, "italic"),
+  preloadFile("Crimson Pro", 300, "normal"),
 ];
 
 // The self-hosted fonts deliberately bypass Bun's bundler (which inlines CSS
@@ -71,6 +96,15 @@ function copyAudio(outdir: string): Promise<void> {
   return copyStaticDir(AUDIO_SRC, outdir, "audio");
 }
 
+// Crawl/brand static assets served from the site root: the OG share image and
+// the favicon. Copied verbatim into dist/ (same bypass-the-bundler path as fonts
+// /audio). The og-image.svg is the build SOURCE for og-image.png — skip it; only
+// the rasterized png ships. robots.txt + sitemap.xml are NOT here — they're
+// generated per build from SITE_ORIGIN (below) so they track the deploy origin.
+function copyPublic(outdir: string): Promise<void> {
+  return copyStaticDir(PUBLIC_SRC, outdir, ".", (rel) => rel.endsWith(".svg"));
+}
+
 // Build-time SSG. Bun bundles index.html (hashed JS/CSS, script/link rewrites)
 // into `outdir`, then we inject the prerendered App markup into the empty root
 // div so the served HTML carries real content for SEO/LCP and the client can
@@ -84,6 +118,17 @@ export async function buildSite(outdir = join(APP_DIR, "dist")): Promise<string>
     entrypoints: [join(APP_DIR, "index.html")],
     outdir,
     minify: true,
+    // Inline the deploy env into the client bundle. The Bun.build() PROGRAMMATIC
+    // API (unlike the `bun build` CLI / `bun run` runtime) does NOT substitute
+    // process.env.* by default, so without this the client's PUBLIC_API_URL /
+    // PUBLIC_ANALYTICS_URL reads stay live and resolve to undefined in the browser
+    // — silently shipping the localhost fallback. "PUBLIC_*" (not "inline") scopes
+    // the inlining to the PUBLIC_-prefixed vars only, so no private build-host env
+    // leaks into the shipped bundle. PUBLIC_SITE_ORIGIN is read at build time
+    // (Bun.env above), not in the client bundle, so it's unaffected. An UNSET
+    // PUBLIC_* ref is left intact in the output — safe behind the `typeof process`
+    // guards in api.ts / analytics.ts (pinned by prerender.test.ts).
+    env: "PUBLIC_*",
   });
   if (!result.success) {
     throw new AggregateError(result.logs, "apps/web production build failed");
@@ -105,10 +150,20 @@ export async function buildSite(outdir = join(APP_DIR, "dist")): Promise<string>
   // literal `$`, or React Suspense boundary markers). A replacer fn is literal.
   const html = shell
     .replace(ROOT_DIV, () => `<div id="root">${appHtml}</div>`)
-    .replace("</head>", () => `    ${fontHeadTags()}\n  </head>`);
+    // LCP font preloads first so the preload scanner discovers them early; the
+    // (larger, non-render-critical) SEO meta + JSON-LD follow.
+    .replace(
+      "</head>",
+      () => `    ${fontHeadTags()}\n    ${buildMetaTags(SITE_ORIGIN)}\n  </head>`,
+    );
   await Bun.write(indexPath, html);
   await copyFonts(outdir);
   await copyAudio(outdir);
+  await copyPublic(outdir);
+  // Generated per build from the production origin so robots/sitemap track the
+  // deploy origin, the same SITE_ORIGIN story-002's canonical/og:url resolve to.
+  await Bun.write(join(outdir, "robots.txt"), buildRobotsTxt(SITE_ORIGIN));
+  await Bun.write(join(outdir, "sitemap.xml"), buildSitemapXml(SITE_ORIGIN));
   return html;
 }
 

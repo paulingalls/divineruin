@@ -77,7 +77,9 @@ export function Races() {
         <div className="races__grid">
           {RACES.map((r, i) => (
             <article className="races__card reveal-item" key={r.name}>
-              <div className="races__num">{String(i + 1).padStart(2, "0")} / 06</div>
+              <div className="races__num" aria-hidden="true">
+                {String(i + 1).padStart(2, "0")} / 06
+              </div>
               <h3 className="races__name">{r.name}</h3>
               <p className="races__sense">“{r.sense}”</p>
               <p className="races__tagline">{r.tagline}</p>

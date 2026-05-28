@@ -94,7 +94,10 @@
   font-family: var(--font-system);
   font-size: var(--text-caption-size);
   letter-spacing: 0.3em;
-  color: var(--color-slate);
+  /* Ornamental ordinal — faint but AA-legal (ash), not structural slate which
+     fails contrast even for decorative text. aria-hidden keeps it out of the
+     screen-reader name; the legal colour keeps the axe gate green. */
+  color: var(--color-ash);
 }
 
 .races__name {

@@ -261,7 +261,10 @@ export function World() {
                 </div>
                 <h3 className="world__tx-name">{t.name}</h3>
                 <p className="world__tx-desc">{t.desc}</p>
-                <p className={"world__tx-quote" + (t.redacted ? " world__tx-quote--redacted" : "")}>
+                <p
+                  className={"world__tx-quote" + (t.redacted ? " world__tx-quote--redacted" : "")}
+                  aria-hidden={t.redacted || undefined}
+                >
                   {t.quote}
                 </p>
               </li>

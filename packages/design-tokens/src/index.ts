@@ -15,7 +15,7 @@ export const BrandColors = {
   charcoal: "#1E1E23",
   slate: "#2A2A32",
   // Text
-  ash: "#6B6B78",
+  ash: "#868693",
   bone: "#B8B5AD",
   parchment: "#D4D0C8",
   // Hollow accent
@@ -27,7 +27,7 @@ export const BrandColors = {
   nightTint: "#0A0A2A",
   // Semantic
   emberFaint: "#7C2D12",
-  ember: "#C2410C",
+  ember: "#E0672E",
   divineFaint: "#92702A",
   divine: "#C9A84C",
 } as const;
@@ -140,6 +140,12 @@ export const FontTokens = {
 } as const;
 
 export type FontRole = keyof typeof FontTokens;
+
+// Web ship manifest (which self-hosted woff2 faces apps/web ships + their
+// CLS-fallback tuning). Separate module so this web-only build data stays out of
+// the cross-target FontTokens identity test and off mobile's import path.
+export { SHIP_FACES, FONT_FALLBACKS, shippedFontFiles } from "./fonts";
+export type { ShipFace, FallbackFace } from "./fonts";
 
 // --- Type Scale Tokens ---
 //

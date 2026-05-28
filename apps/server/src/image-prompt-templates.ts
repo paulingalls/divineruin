@@ -25,7 +25,7 @@ export interface ImagePromptTemplate {
 
 const ACCENT_HEX: Record<AccentColor, string | null> = {
   hollow_teal: "#2DD4BF",
-  ember: "#C2410C",
+  ember: "#E0672E",
   divine_gold: "#C9A84C",
   none: null,
 };

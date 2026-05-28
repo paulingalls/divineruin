@@ -49,6 +49,14 @@ test("REVEALED_CLASS matches the literal the reveal-gate CSS keys off", () => {
   expect(REVEALED_CLASS).toBe("is-revealed");
 });
 
+test("gives the section a heading for the document outline (visually hidden)", () => {
+  // The strip is design-headless (just an eyebrow), but a section without a
+  // heading is a hole in the screen-reader outline — add a visually-hidden <h2>
+  // so the h1 -> h2 outline stays gapless without changing the visual design.
+  const html = renderToStaticMarkup(<Tech />);
+  expect(html).toMatch(/<h2[^>]*class="sr-only"[^>]*>Technology stack<\/h2>/);
+});
+
 test("renders hydration-safe markup (no DOM access during render)", () => {
   expect(() => renderToStaticMarkup(<Tech />)).not.toThrow();
 });
