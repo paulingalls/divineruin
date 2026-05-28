@@ -31,12 +31,18 @@ function setMockResults(...results: unknown[][]) {
 // getItemFn instead, so these tests control the item without touching the registry.
 import type { Item } from "@divineruin/shared";
 
-import { setPricing } from "./pricing.ts";
+import pricingRows from "../../../content/pricing.json" with { type: "json" };
+import { parsePricingRow, setPricing } from "./pricing.ts";
 
 let mockItem: Partial<Item> | undefined;
 const stubGetItem = (_id: string): Item | undefined => mockItem as Item | undefined;
 
 const { handleRepairQuote, repairQuote, resolveDisposition } = await import("./repair.ts");
+
+// Seed the pricing singleton from the real content/pricing.json via the real
+// parser, so this test and the Python parity test (test_pricing_queries.py) both
+// derive from ONE source — no independently-hardcoded mirror to drift (story-011).
+const ECONOMY_ROW = (pricingRows as { id: string }[]).find((r) => r.id === "economy");
 
 function repairReq(itemId: string, npc?: string): Request {
   const q = npc === undefined ? "" : `?npc=${npc}`;
@@ -47,11 +53,7 @@ beforeEach(() => {
   setMockResults();
   mockItem = undefined;
   // repairQuote reads the DB-loaded pricing singleton; seed it for the unit run.
-  setPricing({
-    repairCostSp: { common: 2, uncommon: 10, rare: 50, legendary: 200 },
-    dispositionMultipliers: { friendly: 0.8, trusted: 0.6 },
-    silverPerGold: 10,
-  });
+  setPricing(parsePricingRow(ECONOMY_ROW));
 });
 
 // repairQuote mirrors the Python durability.calculate_repair_cost +
