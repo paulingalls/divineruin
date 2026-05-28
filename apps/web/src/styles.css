@@ -46,6 +46,33 @@ main:focus {
   border-radius: 4px;
 }
 
+/* Visually-hidden utility: removes content from the visual layout while keeping
+   it in the accessibility tree (screen readers, document outline). The standard
+   clip-rect pattern — not display:none (which would hide it from AT too). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Site-wide visible focus indicator for keyboard users (WCAG 2.4.7). Scoped to
+   links + buttons — the controls that otherwise have no focus ring — using the
+   high-contrast brand teal against the dark surfaces. :focus-visible keeps it to
+   keyboard focus, not mouse clicks. The Waitlist form owns its own :focus-within
+   treatment, so its input is deliberately not double-styled here. */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--color-hollow);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 h1 {
   color: var(--color-hollow);
   font-family: var(--font-display);
