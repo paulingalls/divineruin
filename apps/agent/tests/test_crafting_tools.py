@@ -305,11 +305,14 @@ class TestStartCraftingProject:
         mutations.create_async_activity.assert_not_awaited()
 
 
-def _queries(*, accessible=None, disposition="neutral", player=None):
+def _queries(*, accessible=None, disposition="neutral", player=None, present_npc_ids=("grimjaw",)):
     mod = MagicMock()
     mod.get_accessible_workspaces = AsyncMock(return_value=accessible or {"field"})
     mod.get_npc_disposition = AsyncMock(return_value=disposition)
     mod.get_player = AsyncMock(return_value=player or {"player_id": "player_1", "gold": 15})
+    # Co-location source (reuses db_queries.get_npcs_at_location): NPCs present at the
+    # player's location. Default: the rental NPC is here.
+    mod.get_npcs_at_location = AsyncMock(return_value=[{"id": nid} for nid in present_npc_ids])
     return mod
 
 
@@ -383,7 +386,9 @@ class TestRentWorkspace:
 
     async def test_insufficient_gold_raises(self):
         db_mod, _ = make_db_mod()
-        queries = _queries(disposition="neutral", player={"player_id": "player_1", "gold": 0})
+        queries = _queries(
+            disposition="neutral", player={"player_id": "player_1", "gold": 0}, present_npc_ids=("alchemist",)
+        )
         with pytest.raises(ToolError, match="gold"):
             await _rent_workspace_impl(
                 make_context(),
@@ -394,6 +399,26 @@ class TestRentWorkspace:
                 queries_mod=queries,
                 mutations_mod=MagicMock(),
             )
+
+    async def test_absent_npc_refuses_before_debit(self):
+        # Co-location gate (concern bec87679b223): the rental NPC is not at the player's
+        # location -> ToolError before any disposition read or gold debit.
+        db_mod, _ = make_db_mod()
+        mutations = MagicMock()
+        mutations.update_player_gold = AsyncMock()
+        mutations.create_workspace_rental = AsyncMock()
+        with pytest.raises(ToolError):
+            await _rent_workspace_impl(
+                make_context(),
+                "forge",
+                "grimjaw",
+                1,
+                db_mod=db_mod,
+                queries_mod=_queries(present_npc_ids=()),
+                mutations_mod=mutations,
+            )
+        mutations.update_player_gold.assert_not_awaited()
+        mutations.create_workspace_rental.assert_not_awaited()
 
     async def test_rejects_field_workspace(self):
         db_mod, _ = make_db_mod()
