@@ -328,7 +328,7 @@ class TestStartCraftingProject:
         mutations.create_async_activity.assert_not_awaited()
 
 
-def _queries(*, accessible=None, disposition="neutral", player=None, present_npc_ids=("grimjaw",)):
+def _queries(*, accessible=None, disposition="neutral", player=None, present_npc_ids=("grimjaw",), has_lab=False):
     mod = MagicMock()
     mod.get_accessible_workspaces = AsyncMock(return_value=accessible or {"field"})
     mod.get_npc_disposition = AsyncMock(return_value=disposition)
@@ -336,6 +336,7 @@ def _queries(*, accessible=None, disposition="neutral", player=None, present_npc
     # Co-location source (reuses db_queries.get_npcs_at_location): NPCs present at the
     # player's location. Default: the rental NPC is here.
     mod.get_npcs_at_location = AsyncMock(return_value=[{"id": nid} for nid in present_npc_ids])
+    mod.get_inventory_item = AsyncMock(return_value={"quantity": 1} if has_lab else None)
     return mod
 
 
@@ -350,6 +351,20 @@ class TestQueryAvailableWorkspaces:
         prices = {r["workspace_type"]: r["base_price_sp"] for r in result["rentable"]}
         assert prices == {"workshop": 2, "forge": 5, "laboratory": 10}
         assert result["combined_forge_lab_sp"] == 12
+
+    async def test_portable_lab_owner_reported_via_grant(self):
+        # Read-path parity with start_crafting_project: a Portable-Lab owner's "what can
+        # I craft here" answer must include the lab grant, not under-report (concern
+        # 6a1b99cd6ac7). The grant itself is get_accessible_workspaces' job; assert the
+        # query path passes lab ownership through to it.
+        queries = _queries(has_lab=True)
+        await _query_available_workspaces_impl(make_context(), queries_mod=queries)
+        assert queries.get_accessible_workspaces.call_args.kwargs.get("has_portable_lab") is True
+
+    async def test_no_lab_passes_false_through(self):
+        queries = _queries(has_lab=False)
+        await _query_available_workspaces_impl(make_context(), queries_mod=queries)
+        assert queries.get_accessible_workspaces.call_args.kwargs.get("has_portable_lab") is False
 
 
 class TestRentWorkspace:

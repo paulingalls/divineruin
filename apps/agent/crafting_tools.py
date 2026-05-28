@@ -45,8 +45,22 @@ _SECONDS_PER_CYCLE = 14400  # 4h per async cycle; mirrors recipes.ts craftingDur
 _FIELD_CRAFT_FLOOR_SECONDS = 900  # 15-min floor for 0-cycle (field) recipes
 
 
+_PORTABLE_LAB_ITEM_ID = "artificers_portable_lab"
+
+
 def _default_now() -> datetime:
     return datetime.now(UTC)
+
+
+async def _owns_portable_lab(queries_mod, player_id: str, *, conn=None) -> bool:
+    """Whether the player owns an Artificer's Portable Lab (quantity >= 1).
+
+    Read once per request and fed to BOTH the workspace grant (get_accessible_workspaces)
+    and the slot validator (_resolve_crafting_slot) — the single-read contract the TS twin
+    uses (activity_create.ts). Quantity-aware to mirror its COALESCE((quantity)::int, 1) >= 1.
+    """
+    lab = await queries_mod.get_inventory_item(player_id, _PORTABLE_LAB_ITEM_ID, conn=conn)
+    return lab is not None and lab.get("quantity", 1) >= 1
 
 
 def _resolve_crafting_slot(
@@ -82,7 +96,10 @@ async def _query_available_workspaces_impl(
 ) -> str:
     player_id = context.userdata.player_id
     location_id = context.userdata.location_id
-    accessible = await queries_mod.get_accessible_workspaces(player_id, location_id)
+    # Report the Portable-Lab grant too (read/write parity): the voiced "what can I craft
+    # here" answer must match what start_crafting_project actually permits (concern 6a1b99cd6ac7).
+    has_portable_lab = await _owns_portable_lab(queries_mod, player_id)
+    accessible = await queries_mod.get_accessible_workspaces(player_id, location_id, has_portable_lab=has_portable_lab)
     rentable = [
         {"workspace_type": wtype.value, "base_price_sp": price}
         for wtype, price in workspace_mod.RENTAL_BASE_PRICE_SP.items()
@@ -237,10 +254,8 @@ async def _start_crafting_project_impl(
             raise ToolError(f"Unknown player: {player_id}")
 
         # Portable-Lab ownership read ONCE, fed to BOTH the slot exception and the
-        # workspace grant below — the single-read contract the TS twin uses
-        # (activity_create.ts). quantity-aware to mirror its COALESCE(quantity,1)>=1.
-        lab = await queries_mod.get_inventory_item(player_id, "artificers_portable_lab", conn=conn)
-        has_portable_lab = lab is not None and lab.get("quantity", 1) >= 1
+        # workspace grant below — the single-read contract the TS twin uses.
+        has_portable_lab = await _owns_portable_lab(queries_mod, player_id, conn=conn)
 
         # Artificer Portable-Lab slot exception (ADR 0005): converge with REST so voice
         # and REST refuse/allow identically. The consumed slot is stamped on the row.
