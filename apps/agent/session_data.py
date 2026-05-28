@@ -91,6 +91,7 @@ class SessionData:
     onboarding_beat: int | None = None
     pre_combat_agent_type: str | None = None
     pre_dispatch_agent_type: str | None = None
+    pre_blacksmith_agent_type: str | None = None
 
     # Per-encounter weapon durability state (story-003). A weapon takes 1 hit per
     # encounter (2 on a crit vs a heavily-armored target); set during request_attack,

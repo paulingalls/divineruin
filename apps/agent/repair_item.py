@@ -71,8 +71,19 @@ async def _repair_item_impl(
     _validate_id(item_id, "item_id")
     _validate_id(npc_id, "npc_id")
     player_id = context.userdata.player_id
+    location_id = context.userdata.location_id
 
-    # Single FOR-UPDATE txn; all gates before any write (decision repair-gate-order).
+    # Co-location gate (constraint: NPC-transaction tools must assert the NPC is
+    # present before pricing/debiting; mirrors rent_workspace at crafting_tools.py).
+    # Disposition alone can't gate an absent smith — a known npc_id must not let the
+    # player repair from afar. Reuse the canonical schedule-based presence query.
+    # Intentionally pre-transaction: presence is schedule-derived (no writable row to
+    # lock), so it doesn't belong inside the FOR-UPDATE block below.
+    present = await queries_mod.get_npcs_at_location(location_id)
+    if npc_id not in {npc["id"] for npc in present}:
+        raise ToolError(f"{npc_id} isn't here to repair your gear.")
+
+    # Single FOR-UPDATE txn; all stateful gates before any write (decision repair-gate-order).
     async with db_mod.transaction() as conn:
         player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
         if not player:

@@ -21,7 +21,6 @@ from experimentation_tools import experiment_with_materials
 from movement_tools import move_player
 from query_tools import query_info
 from recipe_tools import learn_recipe, query_recipe_requirements
-from repair_item import repair_item
 from session_tools import end_session
 from system_prompts import DISPATCH_SYSTEM_PROMPT
 from training_tools import initiate_training_cycle, query_training_programs, resolve_training_midpoint
@@ -44,9 +43,8 @@ DISPATCH_TOOLS = [
     query_available_workspaces,
     rent_workspace,
     start_crafting_project,
-    # Repair (M5.4): NPC-blacksmith item repair. Interim home; story-009 moves it
-    # onto a dedicated BlacksmithAgent.
-    repair_item,
+    # Repair (M5.4) moved to BlacksmithAgent (story-009): repair_item is reached via
+    # the enter_blacksmith handoff from City, not from this dispatch context.
     # Experimentation (M5.3): craft without a known recipe at DC+4 (resolves immediately).
     experiment_with_materials,
     # Navigation / queries — enough to talk to the mentor and leave

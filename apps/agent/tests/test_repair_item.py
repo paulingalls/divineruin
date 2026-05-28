@@ -37,11 +37,12 @@ def _item(
     return item
 
 
-def _repair_kwargs(*, item, disposition="neutral", crafting_tier="master", gold=15.0):
+def _repair_kwargs(*, item, disposition="neutral", crafting_tier="master", gold=15.0, npc_present=True):
     db_mod, _conn = make_db_mod()
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value={"player_id": "player_1", "gold": gold})
     queries.get_player_inventory = AsyncMock(return_value=[item] if item else [])
+    queries.get_npcs_at_location = AsyncMock(return_value=[{"id": "grimjaw"}] if npc_present else [])
     queries.get_npc_disposition = AsyncMock(return_value=disposition)
     queries.get_single_skill_advancement = AsyncMock(return_value={"tier": crafting_tier})
     mutations = MagicMock()
@@ -72,6 +73,16 @@ async def test_below_skill_tier_raises_no_writes():
         item=_item(tier="reinforced", current_hits=5), crafting_tier="untrained"
     )
     with pytest.raises(ToolError, match="Crafting"):
+        await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
+    inv_mutations.update_item_durability.assert_not_awaited()
+    mutations.update_player_gold.assert_not_awaited()
+
+
+async def test_absent_npc_refuses_no_writes():
+    # Co-location gate: a known npc_id who isn't at the player's location can't
+    # repair from afar (disposition alone must not gate an absent smith).
+    kwargs, mutations, inv_mutations = _repair_kwargs(item=_item(current_hits=3), npc_present=False)
+    with pytest.raises(ToolError, match="isn't here"):
         await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
     inv_mutations.update_item_durability.assert_not_awaited()
     mutations.update_player_gold.assert_not_awaited()
@@ -152,12 +163,15 @@ async def test_success_restores_hits_and_debits_gold_once():
 # --- registration -------------------------------------------------------------
 
 
-def test_repair_item_registered_in_dispatch_tools_within_budget():
+def test_repair_item_registered_on_blacksmith_not_dispatch():
+    # story-009 moved repair_item off DISPATCH_TOOLS onto a dedicated BlacksmithAgent.
+    from blacksmith_agent import BLACKSMITH_TOOLS
     from dispatch_agent import DISPATCH_TOOLS
     from llm_config import MAX_STRICT_TOOLS
 
-    assert repair_item.repair_item in DISPATCH_TOOLS
-    assert len(DISPATCH_TOOLS) <= MAX_STRICT_TOOLS
+    assert repair_item.repair_item in BLACKSMITH_TOOLS
+    assert repair_item.repair_item not in DISPATCH_TOOLS
+    assert len(BLACKSMITH_TOOLS) <= MAX_STRICT_TOOLS
 
 
 # --- _can_repair_tier (pure) -------------------------------------------------
