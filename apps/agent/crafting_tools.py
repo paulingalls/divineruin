@@ -244,6 +244,9 @@ async def _start_crafting_project_impl(
 
         # Artificer Portable-Lab slot exception (ADR 0005): converge with REST so voice
         # and REST refuse/allow identically. The consumed slot is stamped on the row.
+        # Lock the slot rows before counting (TS lockPlayerSlotRows parity) so a
+        # concurrent create can't pass the slot check during a worker status flip.
+        await activity_mod.lock_player_slot_rows(player_id, conn=conn)
         slot_counts = await activity_mod.count_active_by_slot(player_id, conn=conn)
         consumed_slot, slot_refusal = _resolve_crafting_slot(slot_counts, player.get("class"), has_portable_lab)
         if slot_refusal is not None:

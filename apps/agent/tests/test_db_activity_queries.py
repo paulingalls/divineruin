@@ -18,6 +18,29 @@ def _pool_with_fetchrow(row):
     return pool
 
 
+def _conn_with_execute():
+    conn = AsyncMock()
+    conn.execute = AsyncMock()
+    return conn
+
+
+class TestLockPlayerSlotRows:
+    async def test_locks_both_slot_tables_with_matching_predicates(self):
+        # Twin of TS lockPlayerSlotRows (activity_create.ts): FOR UPDATE on the same
+        # rows count_active_by_slot reads, so a concurrent create can't pass the slot
+        # check during a worker's in_progress->resolving flip. Predicates MUST match
+        # count_active_by_slot's status filter.
+        conn = _conn_with_execute()
+        await db_activity_queries.lock_player_slot_rows("p1", conn=conn)
+        sqls = [" ".join(call.args[0].split()) for call in conn.execute.call_args_list]
+        joined = " || ".join(sqls)
+        assert "FOR UPDATE" in joined
+        assert "async_activities" in joined
+        assert "data->>'status' IN ('in_progress', 'resolving')" in joined
+        assert "training_activities" in joined
+        assert "state != 'complete'" in joined
+
+
 class TestCountActiveBySlot:
     @patch("db_activity_queries.db")
     async def test_maps_row_to_slot_dict(self, mock_db):

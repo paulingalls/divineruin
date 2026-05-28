@@ -63,6 +63,7 @@ def _craft_queries(
 
 def _activity(crafting=0, training=0):
     mod = MagicMock()
+    mod.lock_player_slot_rows = AsyncMock()
     mod.count_active_by_slot = AsyncMock(return_value={"training": training, "crafting": crafting, "companion": 0})
     return mod
 
@@ -215,6 +216,28 @@ class TestStartCraftingProject:
         )
         # data.slot stamped so count_active_by_slot (COALESCE) buckets it as crafting (TS parity).
         assert mutations.create_async_activity.call_args.args[1]["slot"] == "crafting"
+
+    async def test_locks_slot_rows_before_counting(self):
+        # TS parity (activity_create.ts): lockPlayerSlotRows runs before countActiveBySlot
+        # so a concurrent create can't pass the slot check during a worker status flip.
+        db_mod, _ = make_db_mod()
+        mutations = MagicMock()
+        mutations.consume_player_materials = AsyncMock()
+        mutations.create_async_activity = AsyncMock(return_value="a1")
+        activity = _activity()
+        await _start_crafting_project_impl(
+            make_context(),
+            "iron_sword",
+            db_mod=db_mod,
+            queries_mod=_craft_queries(),
+            mutations_mod=mutations,
+            activity_mod=activity,
+            recipes_mod=_recipes_mod(_recipe()),
+            materials_mod=_materials_mod(),
+            rng=random.Random(1),
+        )
+        called = [c[0] for c in activity.mock_calls if c[0] in ("lock_player_slot_rows", "count_active_by_slot")]
+        assert called == ["lock_player_slot_rows", "count_active_by_slot"]
 
     async def test_artificer_with_lab_borrows_training_slot_when_crafting_full(self):
         # Artificer + Portable Lab + crafting slot full + training free -> allowed,
