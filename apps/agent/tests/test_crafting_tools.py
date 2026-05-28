@@ -17,6 +17,7 @@ from sample_fixtures import make_context, make_db_mod
 from crafting_tools import (
     _query_available_workspaces_impl,
     _rent_workspace_impl,
+    _resolve_crafting_slot,
     _start_crafting_project_impl,
 )
 
@@ -43,19 +44,26 @@ def _recipe(**overrides):
     return recipe
 
 
-def _craft_queries(*, recipe_known=True, tier="expert", accessible=None, materials=None):
+def _craft_queries(
+    *, recipe_known=True, tier="expert", accessible=None, materials=None, player_class=None, has_lab=False
+):
     mod = MagicMock()
-    mod.get_player = AsyncMock(return_value={"player_id": "player_1", "gold": 15})
+    player = {"player_id": "player_1", "gold": 15}
+    if player_class is not None:
+        player["class"] = player_class
+    mod.get_player = AsyncMock(return_value=player)
     mod.get_player_known_recipe_ids = AsyncMock(return_value={"iron_sword"} if recipe_known else set())
     mod.get_single_skill_advancement = AsyncMock(return_value={"tier": tier})
     mod.get_accessible_workspaces = AsyncMock(return_value=accessible or {"field", "forge"})
     mod.get_player_materials = AsyncMock(return_value=materials or {"iron_ingot": 2})
+    # Portable-Lab ownership read (Commit 3): None = not owned; a stack row with quantity.
+    mod.get_inventory_item = AsyncMock(return_value={"quantity": 1} if has_lab else None)
     return mod
 
 
-def _activity(crafting=0):
+def _activity(crafting=0, training=0):
     mod = MagicMock()
-    mod.count_active_by_slot = AsyncMock(return_value={"training": 0, "crafting": crafting, "companion": 0})
+    mod.count_active_by_slot = AsyncMock(return_value={"training": training, "crafting": crafting, "companion": 0})
     return mod
 
 
@@ -69,6 +77,34 @@ def _materials_mod(catalog=None):
     mod = MagicMock()
     mod.get_materials_catalog = AsyncMock(return_value=catalog or _CATALOG)
     return mod
+
+
+class TestResolveCraftingSlot:
+    """Pure mirror of slot_validation.ts validateSlotAvailability crafting branch (ADR 0005)."""
+
+    def test_open_crafting_slot_consumes_crafting(self):
+        assert _resolve_crafting_slot({"crafting": 0, "training": 0}, None, False) == ("crafting", None)
+
+    def test_artificer_with_lab_borrows_training_when_crafting_full(self):
+        assert _resolve_crafting_slot({"crafting": 1, "training": 0}, "artificer", True) == ("training", None)
+
+    def test_artificer_lab_matched_case_insensitively(self):
+        assert _resolve_crafting_slot({"crafting": 1, "training": 0}, "Artificer", True) == ("training", None)
+
+    def test_artificer_with_lab_both_full_refuses(self):
+        slot, reason = _resolve_crafting_slot({"crafting": 1, "training": 1}, "artificer", True)
+        assert slot is None
+        assert reason is not None and "both" in reason.lower()
+
+    def test_non_artificer_full_crafting_refuses(self):
+        slot, reason = _resolve_crafting_slot({"crafting": 1, "training": 0}, "warrior", True)
+        assert slot is None
+        assert reason is not None and "underway" in reason.lower()
+
+    def test_artificer_without_lab_full_crafting_refuses(self):
+        slot, reason = _resolve_crafting_slot({"crafting": 1, "training": 0}, "artificer", False)
+        assert slot is None
+        assert reason is not None and "underway" in reason.lower()
 
 
 class TestStartCraftingProject:
@@ -147,6 +183,7 @@ class TestStartCraftingProject:
             )
 
     async def test_slot_full_raises(self):
+        # Non-Artificer (no class) with the crafting slot full -> refused by the cap.
         db_mod, _ = make_db_mod()
         with pytest.raises(ToolError):
             await _start_crafting_project_impl(
@@ -156,6 +193,63 @@ class TestStartCraftingProject:
                 queries_mod=_craft_queries(),
                 mutations_mod=MagicMock(),
                 activity_mod=_activity(crafting=1),
+                recipes_mod=_recipes_mod(_recipe()),
+                materials_mod=_materials_mod(),
+            )
+
+    async def test_normal_craft_stamps_crafting_slot(self):
+        db_mod, _ = make_db_mod()
+        mutations = MagicMock()
+        mutations.consume_player_materials = AsyncMock()
+        mutations.create_async_activity = AsyncMock(return_value="a1")
+        await _start_crafting_project_impl(
+            make_context(),
+            "iron_sword",
+            db_mod=db_mod,
+            queries_mod=_craft_queries(),
+            mutations_mod=mutations,
+            activity_mod=_activity(),
+            recipes_mod=_recipes_mod(_recipe()),
+            materials_mod=_materials_mod(),
+            rng=random.Random(1),
+        )
+        # data.slot stamped so count_active_by_slot (COALESCE) buckets it as crafting (TS parity).
+        assert mutations.create_async_activity.call_args.args[1]["slot"] == "crafting"
+
+    async def test_artificer_with_lab_borrows_training_slot_when_crafting_full(self):
+        # Artificer + Portable Lab + crafting slot full + training free -> allowed,
+        # borrowing the training slot (ADR 0005). The lab also grants the workshop the
+        # recipe needs; here the mocked accessible set supplies it.
+        db_mod, _ = make_db_mod()
+        mutations = MagicMock()
+        mutations.consume_player_materials = AsyncMock()
+        mutations.create_async_activity = AsyncMock(return_value="a2")
+        queries = _craft_queries(player_class="artificer", has_lab=True, accessible={"field", "workshop"})
+        await _start_crafting_project_impl(
+            make_context(),
+            "iron_sword",
+            db_mod=db_mod,
+            queries_mod=queries,
+            mutations_mod=mutations,
+            activity_mod=_activity(crafting=1, training=0),
+            recipes_mod=_recipes_mod(_recipe(workspace_required="workshop")),
+            materials_mod=_materials_mod(),
+            rng=random.Random(1),
+        )
+        assert mutations.create_async_activity.call_args.args[1]["slot"] == "training"
+        # Lab ownership is read once and fed to the workspace grant too.
+        assert queries.get_accessible_workspaces.call_args.kwargs.get("has_portable_lab") is True
+
+    async def test_artificer_with_lab_both_slots_full_raises(self):
+        db_mod, _ = make_db_mod()
+        with pytest.raises(ToolError, match=r"[Bb]oth"):
+            await _start_crafting_project_impl(
+                make_context(),
+                "iron_sword",
+                db_mod=db_mod,
+                queries_mod=_craft_queries(player_class="artificer", has_lab=True),
+                mutations_mod=MagicMock(),
+                activity_mod=_activity(crafting=1, training=1),
                 recipes_mod=_recipes_mod(_recipe()),
                 materials_mod=_materials_mod(),
             )

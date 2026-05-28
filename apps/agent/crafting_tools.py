@@ -49,6 +49,25 @@ def _default_now() -> datetime:
     return datetime.now(UTC)
 
 
+def _resolve_crafting_slot(
+    slot_counts: dict[str, int], archetype: str | None, has_portable_lab: bool
+) -> tuple[str | None, str | None]:
+    """The slot a new craft consumes, or (None, refusal-reason).
+
+    Pure mirror of slot_validation.ts validateSlotAvailability's crafting branch (ADR 0005):
+    normally a craft takes the crafting slot, but an Artificer who owns a Portable Lab may
+    borrow the training slot when crafting is full (and both-full still refuses). The caller
+    stamps the returned slot on the activity row so count_active_by_slot buckets it correctly.
+    """
+    if slot_counts["crafting"] < _CRAFTING_SLOT_CAP:
+        return "crafting", None
+    if archetype and archetype.lower() == "artificer" and has_portable_lab:
+        if slot_counts["training"] >= 1:
+            return None, "Both crafting and training slots are full."
+        return "training", None  # Portable-Lab exception: borrow the training slot
+    return None, "You already have a crafting project underway. Wait for it to finish first."
+
+
 @function_tool()
 @db_tool
 async def query_available_workspaces(context: RunContext[SessionData]) -> str:
@@ -210,15 +229,26 @@ async def _start_crafting_project_impl(
         if not player:
             raise ToolError(f"Unknown player: {player_id}")
 
+        # Portable-Lab ownership read ONCE, fed to BOTH the slot exception and the
+        # workspace grant below — the single-read contract the TS twin uses
+        # (activity_create.ts). quantity-aware to mirror its COALESCE(quantity,1)>=1.
+        lab = await queries_mod.get_inventory_item(player_id, "artificers_portable_lab", conn=conn)
+        has_portable_lab = lab is not None and lab.get("quantity", 1) >= 1
+
+        # Artificer Portable-Lab slot exception (ADR 0005): converge with REST so voice
+        # and REST refuse/allow identically. The consumed slot is stamped on the row.
         slot_counts = await activity_mod.count_active_by_slot(player_id, conn=conn)
-        if slot_counts["crafting"] >= _CRAFTING_SLOT_CAP:
-            raise ToolError("You already have a crafting project underway. Wait for it to finish first.")
+        consumed_slot, slot_refusal = _resolve_crafting_slot(slot_counts, player.get("class"), has_portable_lab)
+        if slot_refusal is not None:
+            raise ToolError(slot_refusal)
 
         # Gather the five-check pre-flight inputs (materials locked FOR UPDATE so the
         # allocate→consume below can't race a concurrent craft on the same stacks).
         known = await queries_mod.get_player_known_recipe_ids(player_id, conn=conn)
         crafting_tier = (await queries_mod.get_single_skill_advancement(player_id, "crafting", conn=conn))["tier"]
-        accessible = await queries_mod.get_accessible_workspaces(player_id, location_id, conn=conn)
+        accessible = await queries_mod.get_accessible_workspaces(
+            player_id, location_id, conn=conn, has_portable_lab=has_portable_lab
+        )
         available = await queries_mod.get_player_materials(player_id, conn=conn, for_update=True)
 
         # A non-canonical crafting/recipe tier makes run_preflight Check 2 raise a raw
@@ -257,6 +287,10 @@ async def _start_crafting_project_impl(
         data = {
             "status": "in_progress",
             "activity_type": "crafting",
+            # The slot actually consumed (TS activity_create.ts parity): "crafting"
+            # normally, "training" when the Artificer Portable-Lab exception borrows it.
+            # count_active_by_slot COALESCEs this over activity_type.
+            "slot": consumed_slot,
             "start_time": now.isoformat(),
             "duration_min_seconds": min_seconds,
             "duration_max_seconds": max_seconds,
