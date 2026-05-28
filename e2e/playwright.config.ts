@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import { DEFAULT_DB_URL } from "./fixtures/auth.js";
+import { LH_DEBUG_PORT } from "./fixtures/lighthouse.js";
 
 const CI = !!process.env.CI;
 
@@ -147,7 +148,7 @@ export default defineConfig({
       fullyParallel: false,
       use: {
         ...devices["Desktop Chrome"],
-        launchOptions: { args: ["--remote-debugging-port=9222"] },
+        launchOptions: { args: [`--remote-debugging-port=${LH_DEBUG_PORT}`] },
       },
     },
   ],

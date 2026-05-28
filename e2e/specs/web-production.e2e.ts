@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { playAudit } from "playwright-lighthouse";
+import { LH_DEBUG_PORT } from "../fixtures/lighthouse.js";
 
 // story-007 capstone: the Milestone 6 "done" gate for the marketing site. Proves
 // the served PRODUCTION build (apps/web on :8085, built + served by the
@@ -15,7 +16,9 @@ import { playAudit } from "playwright-lighthouse";
 // attach to the fixture page. The parallel "web" project testIgnores this spec,
 // so its fixed port can't collide with the other web specs' concurrent Chromes.
 const WEB = "http://localhost:8085";
-const LH_PORT = 9222;
+// Must equal the web-lighthouse project's launchOptions --remote-debugging-port
+// (playwright.config.ts) — both import the one constant so they can't drift.
+const LH_PORT = LH_DEBUG_PORT;
 
 // Desktop audit config. Lighthouse DEFAULTS to a throttled MOBILE form factor
 // (4x CPU slowdown, slow 4G) — that tanks the Performance score and makes the
