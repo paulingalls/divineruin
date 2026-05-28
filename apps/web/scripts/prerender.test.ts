@@ -1,4 +1,5 @@
 import { test, expect, beforeAll, afterAll } from "bun:test";
+import { Glob } from "bun";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -139,4 +140,74 @@ test("FONT_PRELOADS is drawn entirely from the design-tokens ship manifest", () 
 // it would compete with the above-fold serif faces for bandwidth.
 test("FONT_PRELOADS does not over-preload the mono chrome", () => {
   expect(FONT_PRELOADS.some((f) => f.startsWith("ibm-plex-mono"))).toBe(false);
+});
+
+// Build to an isolated outdir with a one-off client env, in a SUBPROCESS. Two
+// reasons: (1) a per-test env (PUBLIC_API_URL set vs unset) must not leak into
+// the shared beforeAll build or each other; (2) a second in-process Bun.build()
+// under `bun test` fails re-bundling react ("Unexpected reading file") — the
+// plain `bun` runtime re-bundles fine, so we shell out to it. `env` entries set
+// to undefined are removed from the child environment (the unset case).
+function buildWithEnv(out: string, env: Record<string, string | undefined>): void {
+  const childEnv: Record<string, string | undefined> = { ...process.env, ...env };
+  for (const k of Object.keys(env)) if (env[k] === undefined) delete childEnv[k];
+  const script = `import { buildSite } from ${JSON.stringify(join(import.meta.dir, "prerender.ts"))}; await buildSite(${JSON.stringify(out)});`;
+  const proc = Bun.spawnSync({
+    cmd: ["bun", "-e", script],
+    cwd: join(import.meta.dir, ".."),
+    env: childEnv,
+  });
+  if (proc.exitCode !== 0) {
+    throw new Error(`subprocess build (exit ${proc.exitCode}): ${proc.stderr.toString()}`);
+  }
+}
+
+// Concat every emitted JS chunk from a build outdir. The client env
+// (PUBLIC_API_URL / PUBLIC_ANALYTICS_URL) is read in those bundled chunks, so
+// these are where an inlined deploy value (or an un-inlined process.env miss)
+// shows up.
+async function emittedClientJs(out: string): Promise<string> {
+  let js = "";
+  for await (const rel of new Glob("**/*.js").scan(out)) {
+    js += await Bun.file(join(out, rel)).text();
+  }
+  return js;
+}
+
+// Deploy gate (risk 3c10cdf355e2 / concern 7d2c7b34cdc5): the prod client must
+// ship the deploy PUBLIC_API_URL, not the localhost fallback. The Bun.build()
+// PROGRAMMATIC api does NOT inline process.env by default (unlike the `bun build`
+// CLI / `bun run` runtime) — only the `env` option does. This pins that a set
+// PUBLIC_API_URL is baked into the bundle as a literal and the live
+// process.env.PUBLIC_API_URL lookup is gone (it would be undefined in a browser).
+test("buildSite inlines a set PUBLIC_API_URL into the client bundle", async () => {
+  const out = join(tmpdir(), `dr-web-inline-${process.pid}`);
+  try {
+    buildWithEnv(out, { PUBLIC_API_URL: "https://sentinel.example" });
+    const js = await emittedClientJs(out);
+    expect(js).toContain("https://sentinel.example");
+    expect(js).not.toContain("process.env.PUBLIC_API_URL");
+  } finally {
+    await rm(out, { recursive: true, force: true });
+  }
+});
+
+// The complement: with PUBLIC_API_URL unset the bundle must still be safe in a
+// browser. env:"PUBLIC_*" leaves an *unset* process.env.PUBLIC_API_URL reference
+// INTACT (un-inlined) rather than substituting it, so api.ts's localhost fallback
+// ships. Pin the precise env:"PUBLIC_*" contract for the unset case, mirroring the
+// set case: the un-inlined `process.env.PUBLIC_API_URL` reference survives AND the
+// fallback literal is present. (Do NOT assert a bare `typeof process` — React DOM
+// internals also emit that string, so the guard's regression — removing api.ts's
+// `typeof process` guard — would not turn this test red.)
+test("an unset PUBLIC_API_URL leaves the un-inlined ref intact and ships the localhost fallback", async () => {
+  const out = join(tmpdir(), `dr-web-unset-${process.pid}`);
+  try {
+    buildWithEnv(out, { PUBLIC_API_URL: undefined });
+    const js = await emittedClientJs(out);
+    expect(js).toContain("process.env.PUBLIC_API_URL");
+    expect(js).toContain("http://localhost:3001");
+  } finally {
+    await rm(out, { recursive: true, force: true });
+  }
 });
