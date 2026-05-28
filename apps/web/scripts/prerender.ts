@@ -118,6 +118,17 @@ export async function buildSite(outdir = join(APP_DIR, "dist")): Promise<string>
     entrypoints: [join(APP_DIR, "index.html")],
     outdir,
     minify: true,
+    // Inline the deploy env into the client bundle. The Bun.build() PROGRAMMATIC
+    // API (unlike the `bun build` CLI / `bun run` runtime) does NOT substitute
+    // process.env.* by default, so without this the client's PUBLIC_API_URL /
+    // PUBLIC_ANALYTICS_URL reads stay live and resolve to undefined in the browser
+    // — silently shipping the localhost fallback. "PUBLIC_*" (not "inline") scopes
+    // the inlining to the PUBLIC_-prefixed vars only, so no private build-host env
+    // leaks into the shipped bundle. PUBLIC_SITE_ORIGIN is read at build time
+    // (Bun.env above), not in the client bundle, so it's unaffected. An UNSET
+    // PUBLIC_* ref is left intact in the output — safe behind the `typeof process`
+    // guards in api.ts / analytics.ts (pinned by prerender.test.ts).
+    env: "PUBLIC_*",
   });
   if (!result.success) {
     throw new AggregateError(result.logs, "apps/web production build failed");
