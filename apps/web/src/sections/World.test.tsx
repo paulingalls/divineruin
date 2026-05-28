@@ -134,6 +134,26 @@ test("content constants are the well-formed mockup sets", () => {
   }
 });
 
+test("the redacted Tier-IV quote is decorative (aria-hidden)", () => {
+  // The "[ crossed out ]" redacted quote is atmospheric, intentionally
+  // unreadable (faint slate) — mark it aria-hidden so it's neither announced
+  // nor flagged for color-contrast as meaningful text.
+  const html = renderToStaticMarkup(<World />);
+  expect(html).toMatch(
+    /<p[^>]*class="world__tx-quote world__tx-quote--redacted"[^>]*aria-hidden="true"/,
+  );
+});
+
+test("non-redacted tier quotes stay readable (no aria-hidden)", () => {
+  // aria-hidden is gated on t.redacted only — the legible Tier I-III quotes
+  // are real content (visible, AA-legal ash) and must remain in the a11y tree.
+  const html = renderToStaticMarkup(<World />);
+  const quotes = html.match(/<p[^>]*class="world__tx-quote[^"]*"[^>]*>/g) ?? [];
+  const visible = quotes.filter((q) => !q.includes("world__tx-quote--redacted"));
+  expect(visible.length).toBe(HOLLOW_TIERS.filter((t) => !t.redacted).length);
+  for (const q of visible) expect(q).not.toContain("aria-hidden");
+});
+
 test("renders hydration-safe markup (no DOM access during render)", () => {
   expect(() => renderToStaticMarkup(<World />)).not.toThrow();
 });

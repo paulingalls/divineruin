@@ -130,7 +130,9 @@
 }
 
 .world__quote-when {
-  color: var(--color-slate);
+  /* Real metadata ("scratched, undated") — use the AA-legal muted text token, not
+     structural slate (which would fail contrast). slate stays for borders/surfaces. */
+  color: var(--color-ash);
 }
 
 /* Shared lore block. */

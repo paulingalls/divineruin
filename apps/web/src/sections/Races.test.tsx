@@ -69,6 +69,13 @@ test("RACES is the six well-formed mockup entries", () => {
   }
 });
 
+test("the ordinal card number is decorative (aria-hidden)", () => {
+  // "01 / 06" is ornamental pagination — the race name carries the meaning, so
+  // keep the counter out of the accessibility tree.
+  const html = renderToStaticMarkup(<Races />);
+  expect(html).toMatch(/<div[^>]*class="races__num"[^>]*aria-hidden="true"/);
+});
+
 test("renders hydration-safe markup (no DOM access during render)", () => {
   expect(() => renderToStaticMarkup(<Races />)).not.toThrow();
 });
