@@ -11,10 +11,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from blacksmith_agent import BlacksmithAgent
-from blacksmith_tools import _conclude_blacksmith_impl, _enter_blacksmith_impl
-from city_agent import CityAgent
+from blacksmith_agent import BLACKSMITH_TOOLS, BlacksmithAgent
+from blacksmith_tools import (
+    _conclude_blacksmith_impl,
+    _enter_blacksmith_impl,
+    conclude_blacksmith,
+    enter_blacksmith,
+)
+from city_agent import CITY_TOOLS, CityAgent
+from dispatch_agent import DISPATCH_TOOLS
+from dungeon_agent import DUNGEON_TOOLS
+from llm_config import MAX_STRICT_TOOLS
+from repair_item import repair_item
 from session_data import SessionData
+from wilderness_agent import WILDERNESS_TOOLS
 
 
 def _ctx(location_id: str = "accord_guild_hall", current_agent_type: str = "city") -> MagicMock:
@@ -83,3 +93,24 @@ class TestConcludeBlacksmith:
         from dungeon_agent import DungeonAgent
 
         assert isinstance(result[0], DungeonAgent)
+
+
+class TestBlacksmithToolRegistration:
+    def test_enter_blacksmith_in_city_only(self):
+        # Blacksmiths are settlement NPCs — entering a forge from a dungeon or the
+        # wilderness is incoherent, so enter_blacksmith lives on CITY_TOOLS alone
+        # (a deliberate divergence from the all-three-region enter_dispatch).
+        assert enter_blacksmith in CITY_TOOLS
+        assert enter_blacksmith not in WILDERNESS_TOOLS
+        assert enter_blacksmith not in DUNGEON_TOOLS
+
+    def test_repair_item_moved_to_blacksmith(self):
+        assert repair_item in BLACKSMITH_TOOLS
+        assert repair_item not in DISPATCH_TOOLS
+
+    def test_conclude_blacksmith_in_blacksmith_tools(self):
+        assert conclude_blacksmith in BLACKSMITH_TOOLS
+
+    def test_region_and_dispatch_agents_within_ceiling(self):
+        for tools in (CITY_TOOLS, WILDERNESS_TOOLS, DUNGEON_TOOLS, DISPATCH_TOOLS, BLACKSMITH_TOOLS):
+            assert len(tools) <= MAX_STRICT_TOOLS

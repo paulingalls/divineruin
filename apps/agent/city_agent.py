@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from blacksmith_tools import enter_blacksmith
 from check_tools import discover_hidden_element, request_skill_check, roll_dice
 from combat_init import start_combat
 from dispatch_tools import enter_dispatch
@@ -40,6 +41,9 @@ CITY_TOOLS = [
     # handoff, or by moving into an activity-context location) — keeps City under
     # MAX_STRICT_TOOLS. See docs/decisions/0004-agent-tool-scaling.md.
     enter_dispatch,
+    # Forge repair lives in BlacksmithAgent (reached by enter_blacksmith intent
+    # handoff). City-only — blacksmiths are settlement NPCs (story-009).
+    enter_blacksmith,
     # Combat handoff
     start_combat,
 ]

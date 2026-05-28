@@ -163,12 +163,15 @@ async def test_success_restores_hits_and_debits_gold_once():
 # --- registration -------------------------------------------------------------
 
 
-def test_repair_item_registered_in_dispatch_tools_within_budget():
+def test_repair_item_registered_on_blacksmith_not_dispatch():
+    # story-009 moved repair_item off DISPATCH_TOOLS onto a dedicated BlacksmithAgent.
+    from blacksmith_agent import BLACKSMITH_TOOLS
     from dispatch_agent import DISPATCH_TOOLS
     from llm_config import MAX_STRICT_TOOLS
 
-    assert repair_item.repair_item in DISPATCH_TOOLS
-    assert len(DISPATCH_TOOLS) <= MAX_STRICT_TOOLS
+    assert repair_item.repair_item in BLACKSMITH_TOOLS
+    assert repair_item.repair_item not in DISPATCH_TOOLS
+    assert len(BLACKSMITH_TOOLS) <= MAX_STRICT_TOOLS
 
 
 # --- _can_repair_tier (pure) -------------------------------------------------
