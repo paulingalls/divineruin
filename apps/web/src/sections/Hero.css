@@ -112,7 +112,9 @@
 
 .hero__pitch {
   margin: var(--space-md) 0 0;
-  max-width: 38ch;
+  /* Matches the mockup's 620px hero-pitch measure — wider than a typical reading
+     column so the pitch doesn't feel cramped against the 1280px sections below. */
+  max-width: 620px;
   font-family: var(--font-body);
   font-weight: 300;
   font-size: var(--text-body-lg-size);
