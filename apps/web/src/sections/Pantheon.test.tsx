@@ -84,3 +84,10 @@ test("cards are not keyboard tab stops — they carry no tabindex (WCAG 4.1.2)",
   const html = renderToStaticMarkup(<Pantheon />);
   expect(html).not.toContain("tabindex");
 });
+
+test("the ordinal card number is decorative (aria-hidden)", () => {
+  // "01 / 10" is ornamental — the god name carries the meaning, so keep the
+  // counter out of the accessibility tree.
+  const html = renderToStaticMarkup(<Pantheon />);
+  expect(html).toMatch(/<div[^>]*class="pantheon__num"[^>]*aria-hidden="true"/);
+});

@@ -21,7 +21,7 @@ test("BrandColors holds the 16 brand hex values", () => {
     ink: "#141417",
     charcoal: "#1E1E23",
     slate: "#2A2A32",
-    ash: "#6B6B78",
+    ash: "#868693",
     bone: "#B8B5AD",
     parchment: "#D4D0C8",
     hollowFaint: "#134E4A",
@@ -30,7 +30,7 @@ test("BrandColors holds the 16 brand hex values", () => {
     hollowGlow: "#5EEAD4",
     nightTint: "#0A0A2A",
     emberFaint: "#7C2D12",
-    ember: "#C2410C",
+    ember: "#E0672E",
     divineFaint: "#92702A",
     divine: "#C9A84C",
   });

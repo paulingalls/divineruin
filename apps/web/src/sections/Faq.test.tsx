@@ -86,6 +86,13 @@ test("FAQ_ITEMS is the eight well-formed mockup items", () => {
   }
 });
 
+test("the ordinal question number is decorative (aria-hidden)", () => {
+  // The "01" counter is ornamental — the question text is the button's name, so
+  // hide the number from assistive tech to declutter the accessible name.
+  const html = renderToStaticMarkup(<Faq />);
+  expect(html).toMatch(/<span[^>]*class="faq__q-num"[^>]*aria-hidden="true"/);
+});
+
 test("renders hydration-safe markup (no DOM access during render)", () => {
   expect(() => renderToStaticMarkup(<Faq />)).not.toThrow();
 });
