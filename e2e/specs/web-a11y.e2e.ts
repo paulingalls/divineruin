@@ -10,6 +10,20 @@ import AxeBuilder from "@axe-core/playwright";
 const WEB = "http://localhost:8085";
 
 test.describe("Accessibility (apps/web, WCAG 2.1 AA)", () => {
+  // Emulate reduced motion for every check in this group so axe (and any future
+  // contrast assertion) sees a settled, deterministic frame. Otherwise the scan
+  // flakes under parallel-worker CPU load: the hero rift + live-dot run *infinite*
+  // opacity animations (they never settle) and below-fold reveal items transition
+  // 0->1, so axe can sample a transient low-opacity frame and report a false serious
+  // color-contrast violation. prefers-reduced-motion freezes the hero animations to
+  // their declared opacity and makes reveal.ts reveal every item immediately (no
+  // transition) — a stable frame to scan. The colors under test are identical in
+  // both motion modes, so contrast coverage is unchanged; only the timing
+  // nondeterminism is removed.
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+  });
+
   test("the home page has zero serious/critical axe violations", async ({ page }) => {
     await page.goto(`${WEB}/`);
     // color-contrast (WCAG 1.4.3) is now in scope: story-008 bumped the muted
