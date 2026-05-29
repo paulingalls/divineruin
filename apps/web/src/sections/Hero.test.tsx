@@ -17,9 +17,19 @@ test("renders the brand headline with the italic 'Ruin' display treatment", () =
 });
 
 test("renders the eyebrow meta — setting line and playtest status", () => {
+  // Each half splits into a nowrap "<key> ." + a detail so the eyebrow breaks after
+  // the "." (not mid-phrase) on narrow screens - see Hero.css. Assert both pieces of
+  // each half render in key->detail order, AND that the key keeps a trailing
+  // non-breaking space (rendered &nbsp;, \u00a0) before the detail: a flex container
+  // drops a whitespace-only text node between items, so the separator space lives
+  // inside the key span to stay in the accessibility tree / copy-paste.
   const html = renderToStaticMarkup(<Hero />);
-  expect(html).toContain("Aethos · Year 30 of the Sundered Veil");
-  expect(html).toContain("Pre-alpha · Closed playtest");
+  expect(html).toMatch(
+    /hero__meta-key">\u25b8 Aethos \u00b7\u00a0<\/span>[\s\S]*hero__meta-detail">Year 30 of the Sundered Veil</,
+  );
+  expect(html).toMatch(
+    /hero__meta-key">Pre-alpha \u00b7\u00a0<\/span>[\s\S]*hero__meta-detail">Closed playtest</,
+  );
 });
 
 test("renders the subhead and the real pitch copy", () => {

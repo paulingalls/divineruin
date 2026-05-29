@@ -17,11 +17,20 @@ export function Hero() {
           the single <h1> stays the section's only semantic landmark. */}
       <div className="hero__backdrop" aria-hidden="true" />
 
+      {/* Each half splits into a nowrap "<key> ·" and a detail so that, when the row
+          is too narrow to fit, the line breaks right after the "·" (key on one line,
+          detail below) instead of word-wrapping mid-phrase. See Hero.css. */}
       <div className="hero__meta">
-        <span className="hero__meta-label">▸ Aethos · Year 30 of the Sundered Veil</span>
+        <span className="hero__meta-label">
+          <span className="hero__meta-key">▸ Aethos ·&nbsp;</span>
+          <span className="hero__meta-detail">Year 30 of the Sundered Veil</span>
+        </span>
         <span className="hero__meta-status">
           <span className="hero__live-dot" aria-hidden="true" />
-          Pre-alpha · Closed playtest
+          <span className="hero__meta-statustext">
+            <span className="hero__meta-key">Pre-alpha ·&nbsp;</span>
+            <span className="hero__meta-detail">Closed playtest</span>
+          </span>
         </span>
       </div>
 

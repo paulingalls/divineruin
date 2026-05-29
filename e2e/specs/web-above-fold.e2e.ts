@@ -128,6 +128,28 @@ test.describe("Above-the-fold sections (apps/web)", () => {
     expect(gap).toBeGreaterThan(40);
   });
 
+  test("the eyebrow wraps after the '·' on a narrow viewport, never mid-phrase", async ({
+    page,
+  }) => {
+    // On a narrow screen the eyebrow can't stay on one row. It should break at the
+    // "·" — "▸ Aethos ·" on one line, "Year 30 of the Sundered Veil" below — rather
+    // than word-wrapping mid-phrase. The key ("▸ Aethos ·") is a nowrap unit and the
+    // detail is a separate unit, so the wrap lands at the key/detail boundary.
+    await page.setViewportSize({ width: 480, height: 900 });
+    await page.goto(`${WEB}/`);
+    const key = page.locator(".hero__meta-label .hero__meta-key");
+    const detail = page.locator(".hero__meta-label .hero__meta-detail");
+    const keyBox = await key.boundingBox();
+    const detailBox = await detail.boundingBox();
+    expect(keyBox).not.toBeNull();
+    expect(detailBox).not.toBeNull();
+    // The "▸ Aethos ·" key never wraps internally — it stays a single line.
+    expect(keyBox!.height).toBeLessThan(40);
+    // At this width the detail drops onto a line below the key (the break lands right
+    // after the "·"), instead of the key + detail sharing a mid-phrase-wrapped line.
+    expect(detailBox!.y).toBeGreaterThan(keyBox!.y + 10);
+  });
+
   test("composes and hydrates with no console errors", async ({ page }) => {
     const consoleErrors: string[] = [];
     const pageErrors: string[] = [];

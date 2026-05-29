@@ -206,6 +206,25 @@
   gap: var(--space-sm);
 }
 
+/* Each eyebrow half is a flex-wrap row of a nowrap "<key> ·" and its detail, so when
+   the row is too narrow the whole detail flex item drops to the next line — the break
+   lands at the key/detail boundary (right after the "·") rather than word-wrapping
+   mid-phrase. The separator space lives as a trailing &nbsp; INSIDE the key span (not a
+   CSS column-gap): a real character keeps the accessibility tree and copy/paste reading
+   "▸ Aethos · Year 30 …" with a space — a flex container discards a whitespace-only text
+   node between items, so a CSS gap would render the space visually but drop it from the
+   text. The nbsp is non-breaking so it never wraps off the end of the key line. */
+.hero__meta-label,
+.hero__meta-statustext {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.hero__meta-key {
+  white-space: nowrap;
+}
+
 /* Pulsing "live" dot in the playtest-status label. */
 .hero__live-dot {
   width: 7px;
