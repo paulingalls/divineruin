@@ -914,7 +914,7 @@
     "crafting_dc": 20,
     "time": "3 days",
     "async_cycles": 6,
-    "output_item": "greater_healing_potion",
+    "output_item": "healing_potion_greater",
     "output_quantity": 1,
     "study_cost": 6,
     "discovery_sources": ["dungeon_schematic"],
