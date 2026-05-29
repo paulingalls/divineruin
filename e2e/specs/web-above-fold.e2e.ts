@@ -135,7 +135,9 @@ test.describe("Above-the-fold sections (apps/web)", () => {
     // "·" — "▸ Aethos ·" on one line, "Year 30 of the Sundered Veil" below — rather
     // than word-wrapping mid-phrase. The key ("▸ Aethos ·") is a nowrap unit and the
     // detail is a separate unit, so the wrap lands at the key/detail boundary.
-    await page.setViewportSize({ width: 480, height: 900 });
+    // 360px is comfortably narrow: each space-between half is far too tight to hold
+    // the key + detail on one line, so the break is robust to font-metric drift.
+    await page.setViewportSize({ width: 360, height: 900 });
     await page.goto(`${WEB}/`);
     const key = page.locator(".hero__meta-label .hero__meta-key");
     const detail = page.locator(".hero__meta-label .hero__meta-detail");
