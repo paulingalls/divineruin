@@ -3111,5 +3111,215 @@
     "value_base": 300,
     "audio_cue": "A low, steady hum that deepens when the Hollow draws near.",
     "durability_tier": "reinforced"
+  },
+  {
+    "id": "enchant_sharpen",
+    "name": "Sharpening Oil",
+    "tier": 1,
+    "type": "consumable",
+    "rarity": "common",
+    "description": "A whetting oil that draws a hair-splitting edge onto any blade. The shine fades as the edge dulls.",
+    "tags": [
+      "consumable",
+      "enchantment"
+    ],
+    "weight": 0.2,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Apply to a weapon: +1 damage until the edge dulls."
+      }
+    ],
+    "value_base": 8,
+    "audio_cue": "A long, even rasp of stone on steel."
+  },
+  {
+    "id": "enchant_reinforce",
+    "name": "Reinforcing Compound",
+    "tier": 2,
+    "type": "consumable",
+    "rarity": "uncommon",
+    "description": "A grey paste that hardens into the surface of armor, spreading impact across the whole piece.",
+    "tags": [
+      "consumable",
+      "enchantment"
+    ],
+    "weight": 0.2,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Apply to armor: +1 AC or one durability tier until it wears through."
+      }
+    ],
+    "value_base": 30,
+    "audio_cue": "A dull, settling crackle as the paste cures."
+  },
+  {
+    "id": "enchant_balance",
+    "name": "Balancing Weights",
+    "tier": 2,
+    "type": "consumable",
+    "rarity": "uncommon",
+    "description": "A set of trimmed lead weights and shims that bring a weapon's heft true to the hand.",
+    "tags": [
+      "consumable",
+      "enchantment"
+    ],
+    "weight": 0.2,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Apply to a weapon: rebalanced for advantage on the first attack each combat."
+      }
+    ],
+    "value_base": 25,
+    "audio_cue": "A faint click as the weights seat into the haft."
+  },
+  {
+    "id": "enchant_fireproof",
+    "name": "Fireproofing Wax",
+    "tier": 2,
+    "type": "consumable",
+    "rarity": "uncommon",
+    "description": "A waxy salve smelling of green wood and ash that shrugs off flame.",
+    "tags": [
+      "consumable",
+      "enchantment"
+    ],
+    "weight": 0.2,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Apply to armor or a shield: resistance to fire damage until it sloughs off."
+      }
+    ],
+    "value_base": 28,
+    "audio_cue": "A wet sizzle that snuffs itself out."
+  },
+  {
+    "id": "enchant_silk_grip",
+    "name": "Spider-Silk Grip",
+    "tier": 2,
+    "type": "consumable",
+    "rarity": "uncommon",
+    "description": "Wrappings of treated spider silk that bind a weapon to the palm in any weather.",
+    "tags": [
+      "consumable",
+      "enchantment"
+    ],
+    "weight": 0.2,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Apply to a weapon: cannot be disarmed; advantage to keep your grip."
+      }
+    ],
+    "value_base": 26,
+    "audio_cue": "A soft tacky catch as the silk takes hold."
+  },
+  {
+    "id": "enchant_minor",
+    "name": "Minor Enchantment Reagent",
+    "tier": 3,
+    "type": "consumable",
+    "rarity": "rare",
+    "description": "A vial of suspended arcane motes that settle into worked metal and begin, faintly, to glow.",
+    "tags": [
+      "consumable",
+      "enchantment"
+    ],
+    "weight": 0.2,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Apply to a weapon or armor: a +1 magical bonus."
+      }
+    ],
+    "value_base": 120,
+    "audio_cue": "A high, quiet shimmer like a wet finger on glass."
+  },
+  {
+    "id": "enchant_elemental",
+    "name": "Elemental Infusion Vial",
+    "tier": 3,
+    "type": "consumable",
+    "rarity": "rare",
+    "description": "A vial half fire, half frost, the two refusing to mix. Poured over a blade, one wins.",
+    "tags": [
+      "consumable",
+      "enchantment"
+    ],
+    "weight": 0.2,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Apply to a weapon: +1d6 elemental damage of the chosen element."
+      }
+    ],
+    "value_base": 140,
+    "audio_cue": "A hiss and a crackle warring against each other."
+  },
+  {
+    "id": "enchant_hollow_bane",
+    "name": "Hollow-Bane Unguent",
+    "tier": 3,
+    "type": "consumable",
+    "rarity": "rare",
+    "description": "A consecrated unguent that the Hollow cannot abide. It burns cold against corruption.",
+    "tags": [
+      "consumable",
+      "enchantment"
+    ],
+    "weight": 0.2,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Apply to a weapon: +1d6 radiant vs Hollow and undead until it fades."
+      }
+    ],
+    "value_base": 150,
+    "audio_cue": "A clean ringing tone that the dark seems to flee."
+  },
+  {
+    "id": "enchant_resonance_dampener",
+    "name": "Resonance-Dampening Lacquer",
+    "tier": 3,
+    "type": "consumable",
+    "rarity": "rare",
+    "description": "A dark lacquer that drinks the hum of overused magic, steadying a caster's hand.",
+    "tags": [
+      "consumable",
+      "enchantment"
+    ],
+    "weight": 0.2,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Apply to worn gear: spells cast generate -1 Resonance until the lacquer is spent."
+      }
+    ],
+    "value_base": 150,
+    "audio_cue": "A descending hum that trails into silence."
+  },
+  {
+    "id": "enchant_supreme",
+    "name": "Supreme Enchantment Catalyst",
+    "tier": 4,
+    "type": "consumable",
+    "rarity": "legendary",
+    "description": "A single flawless catalyst-stone that does not so much enchant an object as convince it to become more than it was.",
+    "tags": [
+      "consumable",
+      "enchantment"
+    ],
+    "weight": 0.2,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Apply to a weapon or armor: a +2 magical bonus and one minor property."
+      }
+    ],
+    "value_base": 800,
+    "audio_cue": "A deep resonant chord that lingers in the chest."
   }
 ]
