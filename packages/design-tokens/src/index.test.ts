@@ -9,6 +9,8 @@ import {
   Radius,
   Spacing,
   TypeScaleTokens,
+  WebMaxContentWidth,
+  WebSectionTitleClamp,
 } from "./index";
 
 // These assertions pin the exact brand values. Mobile (apps/mobile/src/constants/theme.ts)
@@ -94,6 +96,18 @@ test("Radius scale matches the brand numeric tokens", () => {
 
 test("MaxContentWidth is 800", () => {
   expect(MaxContentWidth).toBe(800);
+});
+
+test("WebMaxContentWidth is 1280 — the marketing site's wider content container", () => {
+  // The web marketing landing (apps/web) uses a wider container than the mobile
+  // app's content cap, to match the canonical mockup's 1280px multi-column layout.
+  expect(WebMaxContentWidth).toBe(1280);
+});
+
+test("WebSectionTitleClamp is the mockup's shared section-title clamp", () => {
+  // One source for every web section heading; emitted as --section-title-size so
+  // the 9 section stylesheets reference it instead of duplicating the literal.
+  expect(WebSectionTitleClamp).toBe("clamp(37.8px, 5.77vw, 75.6px)");
 });
 
 test("AnimationPresets carries the overlay spring", () => {

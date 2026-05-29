@@ -4,10 +4,11 @@ import prettier from "prettier";
 import {
   BrandColors,
   FONT_FALLBACKS,
-  MaxContentWidth,
   Radius,
   Spacing,
   TypeScaleTokens,
+  WebMaxContentWidth,
+  WebSectionTitleClamp,
 } from "@divineruin/design-tokens";
 import { generateThemeCss } from "./gen-theme.ts";
 
@@ -52,7 +53,8 @@ test("defines spacing, radius, and max-content-width", () => {
   for (const [key, value] of Object.entries(Radius)) {
     expect(css).toContain(`--radius-${kebab(key)}: ${value}px;`);
   }
-  expect(css).toContain(`--max-content-width: ${MaxContentWidth}px;`);
+  expect(css).toContain(`--max-content-width: ${WebMaxContentWidth}px;`);
+  expect(css).toContain(`--section-title-size: ${WebSectionTitleClamp};`);
 });
 
 test("on-disk theme.css matches the generator output (drift guard)", async () => {

@@ -106,40 +106,160 @@ h1 {
 }
 
 .navbar__brand {
-  color: var(--color-hollow);
+  color: var(--color-parchment);
   font-family: var(--font-display);
-  font-size: var(--text-h2-size);
-  line-height: var(--text-h2-line-height);
+  font-weight: 300;
+  font-size: 18px;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
   text-decoration: none;
 }
 
+/* Center nav links — mono, uppercased, muted ash brightening to parchment on
+   hover. Hidden below the tablet width so the brand + CTA never overflow (the
+   web-conversion e2e gates no horizontal overflow at 768px; the mockup hid these
+   at 760px, just under that gate, so the breakpoint is widened to clear it). */
+.navbar__links {
+  display: flex;
+  gap: 36px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.navbar__links a {
+  font-family: var(--font-system);
+  font-size: 15px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+  text-decoration: none;
+  transition: color 200ms ease;
+}
+
+.navbar__links a:hover {
+  color: var(--color-parchment);
+}
+
+@media (max-width: 820px) {
+  .navbar__links {
+    display: none;
+  }
+}
+
+/* Bordered accent CTA — mirrors .hero__cta--accent (Hero.css) so the chrome and
+   hero share one button look without coupling the two stylesheets. */
 .navbar__cta {
-  color: var(--color-bone);
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 22px;
   font-family: var(--font-system);
   font-size: var(--text-system-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
   text-decoration: none;
+  border: 1px solid var(--color-hollow-muted);
+  color: var(--color-hollow);
+  background: color-mix(in srgb, var(--color-hollow) 4%, transparent);
+  transition:
+    border-color 200ms ease,
+    color 200ms ease,
+    background 200ms ease;
 }
 
+.navbar__cta:hover {
+  border-color: var(--color-hollow);
+  background: color-mix(in srgb, var(--color-hollow) 8%, transparent);
+  box-shadow: 0 0 24px -8px var(--color-hollow-faint);
+}
+
+/* Footer — mirrors the mockup's grid, but only the brand + the one "The Game"
+   column of live in-page links remain (the mockup's dead href="#" columns are
+   dropped), so the grid is two columns instead of four. */
 .footer {
+  border-top: 1px solid var(--color-charcoal);
+  padding: 64px var(--space-lg) 32px;
+  color: var(--color-ash);
+}
+
+.footer__grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 48px;
+  margin-bottom: 64px;
+}
+
+.footer__logo {
+  color: var(--color-parchment);
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 20px;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.footer__brand p {
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--color-ash);
+  max-width: 36ch;
+  margin: 0;
+}
+
+.footer__col h3 {
+  font-family: var(--font-system);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+  margin: 0 0 18px;
+}
+
+.footer__col ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
-  align-items: center;
-  padding: var(--space-2xl) var(--space-lg);
-  border-top: 1px solid var(--color-slate);
-  color: var(--color-ash);
-  text-align: center;
+  gap: 10px;
 }
 
-.footer__brand {
+.footer__col a {
+  font-family: var(--font-body);
+  font-size: 18px;
   color: var(--color-bone);
-  font-family: var(--font-display);
-  font-size: var(--text-h2-size);
-  line-height: var(--text-h2-line-height);
+  text-decoration: none;
+  transition: color 200ms ease;
 }
 
-.footer__tagline {
+.footer__col a:hover {
+  color: var(--color-hollow);
+}
+
+.footer__base {
+  border-top: 1px solid var(--color-charcoal);
+  padding-top: 28px;
+  display: flex;
+  justify-content: space-between;
   font-family: var(--font-system);
-  font-size: var(--text-system-size);
-  line-height: var(--text-system-line-height);
+  font-size: 15px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+}
+
+@media (max-width: 760px) {
+  .footer__grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    margin-bottom: 40px;
+  }
+
+  .footer__base {
+    flex-direction: column;
+    gap: 8px;
+  }
 }

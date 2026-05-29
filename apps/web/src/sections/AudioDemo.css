@@ -6,8 +6,14 @@
   display: flex;
   align-items: center;
   gap: var(--space-lg);
-  max-width: var(--max-content-width);
-  margin: 0 auto;
+  /* The audio card has its own narrow measure (matching the mockup's 580px),
+     NOT the page content width — at the 1280px content width it would stretch
+     into a full-bleed bar. */
+  max-width: 580px;
+  /* Symmetric vertical margin sets the card apart from the CTA row above and the
+     hero's bottom meta below (the mockup gives it breathing room on both sides);
+     margin-inline auto centers it. */
+  margin: var(--space-2xl) auto;
   padding: var(--space-lg);
   border: 1px solid var(--color-charcoal);
   border-radius: var(--radius-md);
@@ -55,7 +61,31 @@
   flex: 1;
 }
 
+/* Title + time on one baseline-aligned row (mockup's .audio-label). */
+.audio-demo__label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-md);
+}
+
+/* Mono time readout, right-aligned against the title (mockup's .time). */
+.audio-demo__time {
+  flex-shrink: 0;
+  font-family: var(--font-system);
+  font-size: 15px;
+  letter-spacing: 0.2em;
+  color: var(--color-ash);
+  white-space: nowrap;
+}
+
 .audio-demo__title {
+  /* Flex child of .audio-demo__label: min-width:0 lets it shrink below its
+     content so it WRAPS (matching the mockup's two-line title) instead of forcing
+     the row wider than the narrow card — the nowrap time stays right-aligned and
+     the page never gains horizontal scroll. (No ellipsis truncation: the full
+     title must stay readable, per the mockup.) */
+  min-width: 0;
   font-family: var(--font-body);
   /* Pinned to 300 (not the inherited default 400): this title is above the fold,
      and Crimson Pro 300 is already preloaded for the Hero pitch, so the title
@@ -64,6 +94,21 @@
   font-weight: 300;
   font-size: var(--text-body-size);
   color: var(--color-parchment);
+}
+
+/* Mobile: tighten the card and shrink the title + time so they fit the narrow
+   measure (matches the mockup's <760px audio rules). */
+@media (max-width: 760px) {
+  .audio-demo {
+    gap: var(--space-md);
+    padding: var(--space-md);
+  }
+  .audio-demo__title {
+    font-size: var(--text-caption-size);
+  }
+  .audio-demo__time {
+    font-size: 13.5px;
+  }
 }
 
 /* Waveform: thin hollow bars (per brand spec), heights from inline style. */

@@ -50,7 +50,12 @@ test.describe("Conversion sections (apps/web)", () => {
   }) => {
     await page.goto(`${WEB}/`);
     expect(await page.locator("#waitlist").count()).toBe(1);
-    await page.getByRole("link", { name: /Join the waitlist/i }).click();
+    // "Request Early Access" now appears in both the NavBar and the Hero, so
+    // scope the click to the NavBar's CTA specifically.
+    await page
+      .locator("nav.navbar")
+      .getByRole("link", { name: /Request Early Access/i })
+      .click();
     await expect(page.locator("#waitlist")).toBeInViewport({ timeout: 5000 });
   });
 

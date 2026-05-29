@@ -46,6 +46,15 @@ test("renders the bottom meta — voice-first / headphones / scroll cue", () => 
   expect(html).toContain("Scroll");
 });
 
+test("nests the audio sample teaser inside the hero (mockup arrangement)", () => {
+  // The mockup places the AudioDemo card inside the hero, just above the bottom
+  // meta — so "Headphones recommended" sits right by the audio example. The card
+  // (.audio-demo) must therefore render within the hero's markup.
+  const html = renderToStaticMarkup(<Hero />);
+  expect(html).toContain("audio-demo");
+  expect(html).toContain("Hear a session — “The Greyvale Road”");
+});
+
 test("renders hydration-safe markup (no window access during render)", () => {
   expect(() => renderToStaticMarkup(<Hero />)).not.toThrow();
 });
