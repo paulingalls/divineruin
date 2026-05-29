@@ -40,6 +40,11 @@ _te_teardown() {
   return 0
 }
 
+# A prior run that was SIGKILL'd before its trap fired leaves same-named
+# containers behind (the id is PID-keyed and PIDs recycle). Clear any leftovers
+# so the `docker run --name` below can't collide and abort under `set -e`.
+docker rm -f "${_te_id}-pg" "${_te_id}-redis" >/dev/null 2>&1 || true
+
 # `-p 127.0.0.1:0:<port>` lets the kernel assign a free host port atomically
 # (no pick-then-bind race). Image/creds match docker-compose.yml for parity.
 _te_pg_cid="$(docker run -d --name "${_te_id}-pg" -p 127.0.0.1:0:5432 \
