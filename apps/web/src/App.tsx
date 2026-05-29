@@ -1,6 +1,5 @@
 import { NavBar } from "./components/NavBar.tsx";
 import { Hero } from "./sections/Hero.tsx";
-import { AudioDemo } from "./sections/AudioDemo.tsx";
 import { Premise } from "./sections/Premise.tsx";
 import { Session } from "./sections/Session.tsx";
 import { World } from "./sections/World.tsx";
@@ -14,7 +13,7 @@ import { Waitlist } from "./sections/Waitlist.tsx";
 import { Footer } from "./components/Footer.tsx";
 
 // The Divine Ruin marketing site, composed in the mockup's order under the NavBar +
-// Footer chrome: the above-the-fold Hero/AudioDemo/Premise, then the Milestone 4 lore /
+// Footer chrome: the above-the-fold Hero (which nests the AudioDemo card), then the Milestone 4 lore /
 // feature sections (Session, World, Races, Pantheon, Classes, Tech), then the Milestone 5
 // conversion sections (Pricing, FAQ, Waitlist). Mounting Waitlist here lands its
 // id="waitlist", making the NavBar + Hero #waitlist CTAs live. Kept hydration-safe — no
@@ -34,8 +33,9 @@ export function App() {
       </a>
       <NavBar />
       <main id="main-content" tabIndex={-1}>
+        {/* Hero renders the AudioDemo card inside itself (mockup arrangement) so
+            the teaser sits by the hero's "Headphones recommended" meta. */}
         <Hero />
-        <AudioDemo />
         <Premise />
         <Session />
         <World />

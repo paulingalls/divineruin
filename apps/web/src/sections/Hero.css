@@ -169,11 +169,17 @@
   color: var(--color-parchment);
 }
 
-/* Top + bottom meta bars — small mono labels framing the hero. */
+/* Top + bottom meta bars — small mono labels framing the hero. Constrained to the
+   content measure (centered) so their ends line up with the hero content instead
+   of spanning the full viewport — matching the mockup, which keeps the meta inside
+   the same container as the content. */
 .hero__meta,
 .hero__footer-meta {
   position: relative;
   z-index: 1;
+  width: 100%;
+  max-width: var(--max-content-width);
+  margin-inline: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;

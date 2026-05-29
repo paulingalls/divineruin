@@ -1,4 +1,5 @@
 import "./Hero.css";
+import { AudioDemo } from "./AudioDemo.tsx";
 
 // Above-the-fold landing section and the page's LCP element. Renders identical
 // markup server (build-time prerender) and client (hydration) — no window/Date/
@@ -50,6 +51,12 @@ export function Hero() {
             Enter Aethos ↓
           </a>
         </div>
+
+        {/* Audio teaser sits inside the hero (mockup arrangement) so the bottom
+            meta's "Headphones recommended" lands right beside the sample. It's a
+            real lazy player (preload="none"), so it adds no above-fold weight and
+            is not the LCP element (the headline is). */}
+        <AudioDemo />
       </div>
 
       <div className="hero__footer-meta">
