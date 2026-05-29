@@ -10,7 +10,9 @@
      NOT the page content width — at the 1280px content width it would stretch
      into a full-bleed bar. */
   max-width: 580px;
-  margin: 0 auto;
+  /* Extra top margin sets the audio card apart from the CTA row above it (the
+     mockup gives it ~56px of breathing room); margin-inline auto centers it. */
+  margin: var(--space-2xl) auto 0;
   padding: var(--space-lg);
   border: 1px solid var(--color-charcoal);
   border-radius: var(--radius-md);

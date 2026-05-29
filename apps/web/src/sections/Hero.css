@@ -3,6 +3,10 @@
    source of truth and nothing to drift from the drift-guarded theme.css. */
 
 .hero {
+  /* The hero content column width — the pitch and the top/bottom meta bars share
+     it so the meta labels stay aligned with the centered content. One source so
+     the two never drift. */
+  --hero-measure: 620px;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -112,9 +116,10 @@
 
 .hero__pitch {
   margin: var(--space-md) 0 0;
-  /* Matches the mockup's 620px hero-pitch measure — wider than a typical reading
-     column so the pitch doesn't feel cramped against the 1280px sections below. */
-  max-width: 620px;
+  /* The hero content measure (matches the mockup's 620px hero-pitch) — wider than a
+     typical reading column so the pitch doesn't feel cramped against the 1280px
+     sections below. Shared with the meta bars via --hero-measure. */
+  max-width: var(--hero-measure);
   font-family: var(--font-body);
   font-weight: 300;
   font-size: var(--text-body-lg-size);
@@ -170,15 +175,15 @@
 }
 
 /* Top + bottom meta bars — small mono labels framing the hero. Constrained to the
-   content measure (centered) so their ends line up with the hero content instead
-   of spanning the full viewport — matching the mockup, which keeps the meta inside
-   the same container as the content. */
+   hero content column (the 620px pitch measure, centered) so their ends line up
+   with the content cluster — not the full 1280px page container, which left the
+   labels stranded far wider than the centered content. */
 .hero__meta,
 .hero__footer-meta {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: var(--max-content-width);
+  max-width: var(--hero-measure);
   margin-inline: auto;
   display: flex;
   align-items: center;
