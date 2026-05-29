@@ -1898,5 +1898,403 @@
       "success": "Three forged flukes on a long rope — it bites and holds.",
       "failure": "A fluke straightens under load and the hook tears free."
     }
+  },
+  {
+    "id": "blade_of_the_ashmark",
+    "name": "Blade of the Ashmark",
+    "category": "weapon",
+    "tier": "expert",
+    "materials": [
+      {
+        "material_id": "keldaran_steel",
+        "quantity": 2,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      {
+        "material_id": "wrack_core",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "blessed_oil",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 18,
+    "time": "1 week (forge + laboratory)",
+    "async_cycles": 4,
+    "output_item": "blade_of_the_ashmark",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": [
+      "dungeon_schematic",
+      "master_artisan_npc"
+    ],
+    "narration_cues": {
+      "exceptional": "The blessed oil takes hold and the blade chimes whenever the Hollow draws near.",
+      "success": "An Ashmark longsword, radiant-edged and humming against corruption.",
+      "partial": "It holds the blessing, but the chime comes a beat late.",
+      "failure": "The purified core flares and cracks the steel down its length."
+    }
+  },
+  {
+    "id": "thornveld_guardian_shield",
+    "name": "Thornveld Guardian Shield",
+    "category": "armor",
+    "tier": "expert",
+    "materials": [
+      {
+        "material_id": "thornveld_ironwood",
+        "quantity": 2,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "corrupted_heartwood",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "thornveld_amber",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "1 week",
+    "async_cycles": 4,
+    "output_item": "thornveld_guardian_shield",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": [
+      "master_artisan_npc"
+    ],
+    "narration_cues": {
+      "exceptional": "The living wood knits seamlessly; the shield grows a hand's breadth stronger in natural terrain.",
+      "success": "A Thornveld shield that creaks and settles as if still growing.",
+      "partial": "It guards true, but the purified heartwood leaves a soft dead patch.",
+      "failure": "The corruption was not fully burned out and the wood splits, weeping black."
+    }
+  },
+  {
+    "id": "cloak_steppe_winds",
+    "name": "Cloak of the Steppe Winds",
+    "category": "armor",
+    "tier": "expert",
+    "materials": [
+      {
+        "material_id": "razorwing_feather",
+        "quantity": 2,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      {
+        "material_id": "dire_bear_hide",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "spider_silk",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "5 days",
+    "async_cycles": 4,
+    "output_item": "cloak_steppe_winds",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": [
+      "master_artisan_npc"
+    ],
+    "narration_cues": {
+      "exceptional": "The cloak moves as if always in wind; the wearer barely touches the ground.",
+      "success": "A steppe cloak that lifts and ripples with no breeze at all.",
+      "partial": "It carries the wind, but tugs hard the wrong way at times.",
+      "failure": "The razorwing feathers shear loose and scatter on the floor."
+    }
+  },
+  {
+    "id": "veil_sight_lens",
+    "name": "Veil-Sight Lens",
+    "category": "tool",
+    "tier": "expert",
+    "materials": [
+      {
+        "material_id": "veil_shard",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "power_crystal",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "silver_ingot",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "5 days",
+    "async_cycles": 4,
+    "output_item": "veil_sight_lens",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": [
+      "dungeon_schematic"
+    ],
+    "narration_cues": {
+      "exceptional": "The lens seats perfectly; the invisible world snaps into focus through it.",
+      "success": "A silver-set monocle that shows what the eye cannot.",
+      "partial": "It reveals the unseen, but the edges swim and blur.",
+      "failure": "The Veil shard clouds black and the lens is blind."
+    }
+  },
+  {
+    "id": "ring_resonance_dampening",
+    "name": "Ring of Resonance Dampening",
+    "category": "tool",
+    "tier": "expert",
+    "materials": [
+      {
+        "material_id": "spatial_residue",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      {
+        "material_id": "iron_ore",
+        "quantity": 1,
+        "tier_minimum": 1,
+        "substitutable": false
+      },
+      {
+        "material_id": "arcane_dust",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 17,
+    "time": "4 days",
+    "async_cycles": 4,
+    "output_item": "ring_resonance_dampening",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": [
+      "dungeon_schematic"
+    ],
+    "narration_cues": {
+      "exceptional": "The residue threads cleanly into the iron; the ring drinks Resonance without strain.",
+      "success": "A plain iron ring, warm, that quiets a caster's overreach.",
+      "partial": "It dampens, but warms uncomfortably with every spell.",
+      "failure": "The spatial residue destabilizes and the ring cracks in the quenching."
+    }
+  },
+  {
+    "id": "potion_veil_walking",
+    "name": "Potion of Veil Walking",
+    "category": "consumable",
+    "tier": "expert",
+    "materials": [
+      {
+        "material_id": "woven_void_fragment",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "alchemical_reagent",
+        "quantity": 2,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      {
+        "material_id": "crystal_flask",
+        "quantity": 1,
+        "tier_minimum": 1,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "3 days",
+    "async_cycles": 3,
+    "output_item": "potion_veil_walking",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": [
+      "alchemist_npc",
+      "dungeon_schematic"
+    ],
+    "narration_cues": {
+      "exceptional": "The void fragment dissolves into a shimmer that holds incorporeal form a full minute.",
+      "success": "An iridescent draught that smells of ozone and lets the drinker walk through walls.",
+      "partial": "It works, but the incorporeal state flickers in and out.",
+      "failure": "The fragment unravels in the flask and the brew evaporates to nothing."
+    }
+  },
+  {
+    "id": "architects_edge",
+    "name": "Architect's Edge",
+    "category": "weapon",
+    "tier": "master",
+    "materials": [
+      {
+        "material_id": "living_stone",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      },
+      {
+        "material_id": "named_fragment",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      },
+      {
+        "material_id": "veil_shard",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 20,
+    "time": "1 week (forge + laboratory)",
+    "async_cycles": 6,
+    "output_item": "architects_edge",
+    "output_quantity": 1,
+    "study_cost": 6,
+    "discovery_sources": [
+      "dungeon_schematic"
+    ],
+    "narration_cues": {
+      "exceptional": "The living stone settles into a blade that reshapes the battlefield at a thought.",
+      "success": "A weapon of living stone that slowly changes shape between fights.",
+      "partial": "It cuts and reshapes, but the form never quite stops shifting.",
+      "failure": "The named fragment and the stone refuse each other and the blade crumbles to gravel."
+    }
+  },
+  {
+    "id": "choirs_silence",
+    "name": "Choir's Silence",
+    "category": "tool",
+    "tier": "master",
+    "materials": [
+      {
+        "material_id": "choir_resonance_crystal",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      },
+      {
+        "material_id": "named_fragment",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      },
+      {
+        "material_id": "divine_material",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 20,
+    "time": "1 week",
+    "async_cycles": 6,
+    "output_item": "choirs_silence",
+    "output_quantity": 1,
+    "study_cost": 6,
+    "discovery_sources": [
+      "dungeon_schematic"
+    ],
+    "narration_cues": {
+      "exceptional": "The trapped note settles into the crystal; the amulet can swallow all sound at will.",
+      "success": "A crystal pendant holding one perfect, silent note.",
+      "partial": "It silences, but a faint music leaks through when the wearer is alone.",
+      "failure": "The note escapes the crystal in a shriek and the pendant shatters."
+    }
+  },
+  {
+    "id": "stillheart",
+    "name": "Stillheart",
+    "category": "tool",
+    "tier": "master",
+    "materials": [
+      {
+        "material_id": "shard_false_paradise",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      },
+      {
+        "material_id": "named_fragment",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      },
+      {
+        "material_id": "divine_material",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 20,
+    "time": "1 week",
+    "async_cycles": 6,
+    "output_item": "stillheart",
+    "output_quantity": 1,
+    "study_cost": 6,
+    "discovery_sources": [
+      "dungeon_schematic"
+    ],
+    "narration_cues": {
+      "exceptional": "The shard is bound without waking the paradise; the ring soothes without ever lying.",
+      "success": "A warm ring carved from the Still's false paradise; calm radiates from it.",
+      "partial": "It calms allies, but whispers its offer of rest more often than it should.",
+      "failure": "The paradise stirs in the shard and pulls the crafter into a daylong trance."
+    }
   }
 ]
