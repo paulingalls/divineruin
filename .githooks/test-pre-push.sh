@@ -23,7 +23,9 @@ run_case() {
   local out rc got_skip got_tests
   out=$(BASH_TEST=1 BASH_TEST_DIFF="$diff" bash "$HOOK" <<< "$stdin" 2>&1)
   rc=$?
-  got_skip="no"; echo "$out" | grep -q "Docs-only push — skipping" && got_skip="yes"
+  # Both short-circuit messages end in "skipping test suites." (docs-only and
+  # branch-deletion), so grep the common suffix to cover either skip path.
+  got_skip="no"; echo "$out" | grep -q "skipping test suites" && got_skip="yes"
   got_tests="no"; echo "$out" | grep -q "TESTS_RAN" && got_tests="yes"
 
   local expected_tests
@@ -44,6 +46,14 @@ run_case "mixed"       "ref a b c"  $'docs/file.md\napps/server/src/x.ts'  "no"
 run_case "code-only"   "ref a b c"  "apps/server/src/x.ts"  "no"
 run_case "empty-stdin" ""           ""  "no"
 run_case "hook-only"   "ref a b c"  ".githooks/pre-push"  "no"
+# Branch-deletion push: local_sha (2nd field) is the all-zero SHA. Must skip the
+# suite (a pure delete has nothing to test) — guards the prior bug where deleting
+# a remote branch ran the full gate and needed --no-verify.
+run_case "deletion-only" "refs/heads/x 0000000000000000000000000000000000000000 refs/heads/x abc123"  ""  "yes"
+# Mixed push (a deletion ref AND a real code ref) must NOT skip: the real ref
+# flips ALL_DELETIONS=false so the deletion short-circuit doesn't fire. A code
+# change then runs the suite. Guards the ALL_DELETIONS=false transition.
+run_case "mixed-deletion-and-code" $'refs/heads/del 0000000000000000000000000000000000000000 refs/heads/del abc\nrefs/heads/x aaa refs/heads/x bbb'  "apps/server/src/x.ts"  "no"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

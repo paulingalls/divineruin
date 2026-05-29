@@ -30,11 +30,17 @@ const runsWeb = selected.length === 0 || selected.includes("web");
 // webkit, etc. — keeps its server+mobile deps without editing this line.
 const runsNonWeb = selected.length === 0 || selected.some((p) => p !== "web");
 
+// reuseExistingServer is false everywhere (not !CI): two overlapping pre-push
+// runs must never collapse onto one shared webServer — the first run's teardown
+// would kill the second mid-test (the documented cross-kill flake). false makes
+// an overlap fail loud on a port conflict instead of silently corrupting a run.
+// (Per-run server PORTS were tried and reverted — expo bakes EXPO_PUBLIC_API_URL
+// into the cached metro bundle, so a per-run API port breaks the mobile lane.)
 const serverWebServer = {
   command: "bun run apps/server/src/index.ts",
   cwd: "../",
   port: 3001,
-  reuseExistingServer: !CI,
+  reuseExistingServer: false,
   env: {
     DATABASE_URL: process.env.DATABASE_URL ?? DEFAULT_DB_URL,
     REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:6379",
@@ -51,7 +57,7 @@ const mobileWebServer = {
   cwd: "../",
   port: 8082,
   timeout: 120_000,
-  reuseExistingServer: !CI,
+  reuseExistingServer: false,
   env: {
     EXPO_PUBLIC_API_URL: "http://localhost:3001",
   },
