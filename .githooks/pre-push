@@ -37,8 +37,10 @@ else
     # server). No-op when DATABASE_URL is already set, so a dev with .env / CI's
     # service vars is unaffected; otherwise it stands up docker-compose + migrates +
     # seeds and exports DATABASE_URL/REDIS_URL. Lets the gate run without a sourced
-    # .env. (Server bun tests are env-independent; the Python lane unsets these below
-    # and uses its own testcontainers.)
+    # .env. Most server bun tests are env-independent, but the test:server lane
+    # below runs db.test.ts against the live DB — keep DATABASE_URL exported here
+    # or that lazy-Proxy regression test silently skips. (The Python lane unsets
+    # these below and uses its own testcontainers.)
     # shellcheck source=scripts/test-env.sh
     source "$(dirname "$0")/../scripts/test-env.sh"
 
