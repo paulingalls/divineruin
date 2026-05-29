@@ -242,9 +242,27 @@ class TestMagicItemContentInvariant:
     catalog to recipes. Non-craftable magic items (the unique named finds with no
     recipe) are intentionally exempt (decision 396b3afd71d2 / concern 12c946b6ffec).
 
-    HONESTY: the live joins today are all pre-existing craftable rares — the 10 named
-    M5.4 magic items have no recipes yet, so the gate is not exercised over them (debt
-    ee6a0bc84153 / concern c70b7db13b1e: add their recipes or align ids to cover them)."""
+    The named-item test below closes the vacuousness gap (debt ee6a0bc84153 / concern
+    c70b7db13b1e): it exercises the gate over the 10 named M5.4 magic items SPECIFICALLY,
+    not just whichever pre-existing rares happen to be craftable. The 6 Rare + 3
+    Legendary craftable names must each join a tier-correct recipe; the one quest-only
+    name (Thornridge's Stand, "Cannot be crafted" per game_mechanics_crafting.md) must
+    have NO recipe."""
+
+    # The 10 named M5.4 magic items (the `magic`-tagged set the items-load 6/4 invariant
+    # counts). 9 are spec-craftable; thornridges_stand is quest-only.
+    NAMED_RARE_CRAFTABLE = frozenset(
+        {
+            "blade_of_the_ashmark",
+            "thornveld_guardian_shield",
+            "cloak_steppe_winds",
+            "veil_sight_lens",
+            "ring_resonance_dampening",
+            "potion_veil_walking",
+        }
+    )
+    NAMED_LEGENDARY_CRAFTABLE = frozenset({"architects_edge", "choirs_silence", "stillheart"})
+    NAMED_QUEST_ONLY = frozenset({"thornridges_stand"})
 
     @staticmethod
     def _load(name: str):
@@ -273,3 +291,34 @@ class TestMagicItemContentInvariant:
         # Non-vacuous: at least one craftable Rare/Legendary item must be covered,
         # else the join silently asserts nothing (e.g. a future id-divergence regression).
         assert checked > 0, "no craftable Rare/Legendary item joined a recipe — gate untested"
+
+    def test_named_magic_items_join_tier_correct_recipes(self):
+        """Non-vacuous over the NAMED set: each of the 9 craftable named magic items
+        must join a recipe at the gate-correct tier. Asserting the named ids directly
+        (not a generic rare/legendary count) is what keeps c70b7db13b1e closed — a
+        pre-existing rare alone could satisfy a count-based check while the named items
+        stayed unauthored."""
+        recipes = self._load("recipes.json")
+        by_output = {r["output_item"]: r for r in recipes}
+
+        for item_id in self.NAMED_RARE_CRAFTABLE:
+            assert item_id in by_output, f"named Rare magic item {item_id} has no recipe"
+            tier = by_output[item_id]["tier"]
+            assert rv.validate_magic_item_craft_tier("rare", tier).allowed, (
+                f"{item_id} (rare) recipe tier {tier} violates Rare->Expert+ gate"
+            )
+
+        for item_id in self.NAMED_LEGENDARY_CRAFTABLE:
+            assert item_id in by_output, f"named Legendary magic item {item_id} has no recipe"
+            tier = by_output[item_id]["tier"]
+            assert rv.validate_magic_item_craft_tier("legendary", tier).allowed, (
+                f"{item_id} (legendary) recipe tier {tier} violates Legendary->Master gate"
+            )
+
+    def test_quest_only_named_item_is_not_craftable(self):
+        """Thornridge's Stand is a unique quest find ("Cannot be crafted") — it must
+        have no recipe, or it would wrongly become reproducible."""
+        recipes = self._load("recipes.json")
+        by_output = {r["output_item"]: r for r in recipes}
+        for item_id in self.NAMED_QUEST_ONLY:
+            assert item_id not in by_output, f"quest-only named item {item_id} unexpectedly has a recipe"
