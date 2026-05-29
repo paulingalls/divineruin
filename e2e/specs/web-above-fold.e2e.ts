@@ -97,6 +97,61 @@ test.describe("Above-the-fold sections (apps/web)", () => {
     await expect(firstCard).toHaveCSS("opacity", "1");
   });
 
+  test("eyebrow meta spreads on one row, clear of the headline (mockup spacing)", async ({
+    page,
+  }) => {
+    // The mockup keeps the eyebrow meta ("Aethos · Year 30 …" / "Pre-alpha · Closed
+    // playtest") on a single row spanning the content container, with a generous gap
+    // before the Divine/Ruin headline. A regression narrowed the meta to the 620px
+    // pitch measure, which forced the eyebrow to wrap to two lines and pulled it tight
+    // against the headline. Guard both halves at desktop width.
+    await page.goto(`${WEB}/`);
+    const label = page.locator(".hero__meta-label");
+    const meta = page.locator(".hero__meta");
+    const headline = page.locator(".hero__headline");
+    await expect(label).toBeVisible();
+
+    // (1) Single row: the eyebrow label must not wrap. One caption line renders
+    // ~29px tall here; the 620px-measure wrap doubled it to ~58px. A 40px cutoff
+    // cleanly separates one line from two.
+    const labelBox = await label.boundingBox();
+    expect(labelBox).not.toBeNull();
+    expect(labelBox!.height).toBeLessThan(40);
+
+    // (2) Breathing room: a clear vertical gap between the meta row and the headline,
+    // not the tight spacing the wrap regression produced.
+    const metaBox = await meta.boundingBox();
+    const headlineBox = await headline.boundingBox();
+    expect(metaBox).not.toBeNull();
+    expect(headlineBox).not.toBeNull();
+    const gap = headlineBox!.y - (metaBox!.y + metaBox!.height);
+    expect(gap).toBeGreaterThan(40);
+  });
+
+  test("the eyebrow wraps after the '·' on a narrow viewport, never mid-phrase", async ({
+    page,
+  }) => {
+    // On a narrow screen the eyebrow can't stay on one row. It should break at the
+    // "·" — "▸ Aethos ·" on one line, "Year 30 of the Sundered Veil" below — rather
+    // than word-wrapping mid-phrase. The key ("▸ Aethos ·") is a nowrap unit and the
+    // detail is a separate unit, so the wrap lands at the key/detail boundary.
+    // 360px is comfortably narrow: each space-between half is far too tight to hold
+    // the key + detail on one line, so the break is robust to font-metric drift.
+    await page.setViewportSize({ width: 360, height: 900 });
+    await page.goto(`${WEB}/`);
+    const key = page.locator(".hero__meta-label .hero__meta-key");
+    const detail = page.locator(".hero__meta-label .hero__meta-detail");
+    const keyBox = await key.boundingBox();
+    const detailBox = await detail.boundingBox();
+    expect(keyBox).not.toBeNull();
+    expect(detailBox).not.toBeNull();
+    // The "▸ Aethos ·" key never wraps internally — it stays a single line.
+    expect(keyBox!.height).toBeLessThan(40);
+    // At this width the detail drops onto a line below the key (the break lands right
+    // after the "·"), instead of the key + detail sharing a mid-phrase-wrapped line.
+    expect(detailBox!.y).toBeGreaterThan(keyBox!.y + 10);
+  });
+
   test("composes and hydrates with no console errors", async ({ page }) => {
     const consoleErrors: string[] = [];
     const pageErrors: string[] = [];
