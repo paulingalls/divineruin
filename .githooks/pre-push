@@ -100,11 +100,19 @@ fi
 ZERO_SHA="0000000000000000000000000000000000000000"
 DOCS_ONLY=true
 CHANGED=""
+SAW_REF=false        # any non-empty refspec line seen
+ALL_DELETIONS=true   # every seen ref is a deletion (local_sha = ZERO)
 
 while read -r local_ref local_sha remote_ref remote_sha; do
-  if [ -z "${local_sha:-}" ] || [ "${local_sha}" = "${ZERO_SHA}" ]; then
-    continue  # branch deletion or empty line
+  # A blank read (empty stdin yields one) is not a pushed ref — don't count it.
+  if [ -z "${local_ref:-}${local_sha:-}${remote_ref:-}${remote_sha:-}" ]; then
+    continue
   fi
+  SAW_REF=true
+  if [ -z "${local_sha:-}" ] || [ "${local_sha}" = "${ZERO_SHA}" ]; then
+    continue  # branch deletion — keeps ALL_DELETIONS true
+  fi
+  ALL_DELETIONS=false  # a real (non-deletion) ref
   if [ "${remote_sha:-}" = "${ZERO_SHA}" ] || [ -z "${remote_sha:-}" ]; then
     # New branch: diff against the merge-base with origin/main.
     if ! BASE=$(git merge-base "${local_sha}" origin/main 2>/dev/null); then
@@ -120,6 +128,14 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   fi
   CHANGED="${CHANGED}${CHANGED:+$'\n'}${REF_CHANGED}"
 done
+
+# Pure branch-deletion push (every ref is a deletion) → nothing to test. Skip
+# before the docs/code evaluation so deleting a remote branch doesn't run the
+# full gate (previously required --no-verify).
+if [ "$SAW_REF" = true ] && [ "$ALL_DELETIONS" = true ]; then
+  echo "Branch-deletion push — skipping test suites."
+  exit 0
+fi
 
 # Empty stdin (no refs to consider) → run tests (safe fallback).
 if [ -z "$CHANGED" ]; then
