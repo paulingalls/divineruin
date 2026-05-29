@@ -39,11 +39,18 @@ test("renders both CTAs with the mockup labels and functional targets", () => {
   expect(html).toMatch(/<a[^>]+href="#world"[^>]*>[\s\S]*?Enter Aethos/);
 });
 
-test("renders the bottom meta — voice-first / headphones / scroll cue", () => {
+test("captions the audio sample with the voice-first / headphones note (no scroll cue)", () => {
+  // The voice-first + headphones note now sits as a caption directly under the
+  // audio sample card. The mockup's bottom-meta row and its "Scroll" cue were
+  // dropped — everyone knows to scroll, and the note pairs naturally with the
+  // sample it describes.
   const html = renderToStaticMarkup(<Hero />);
   expect(html).toContain("A voice-first audio RPG");
   expect(html).toContain("Headphones recommended");
-  expect(html).toContain("Scroll");
+  // The note renders after the audio card (it captions it).
+  expect(html).toMatch(/audio-demo[\s\S]*hero__audio-caption/);
+  // The scroll cue is gone.
+  expect(html).not.toContain("Scroll");
 });
 
 test("nests the audio sample teaser inside the hero (mockup arrangement)", () => {

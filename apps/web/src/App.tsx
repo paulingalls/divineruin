@@ -33,8 +33,8 @@ export function App() {
       </a>
       <NavBar />
       <main id="main-content" tabIndex={-1}>
-        {/* Hero renders the AudioDemo card inside itself (mockup arrangement) so
-            the teaser sits by the hero's "Headphones recommended" meta. */}
+        {/* Hero renders the AudioDemo card inside itself, captioned with the
+            voice-first / "Headphones recommended" note. */}
         <Hero />
         <Premise />
         <Session />

@@ -97,6 +97,37 @@ test.describe("Above-the-fold sections (apps/web)", () => {
     await expect(firstCard).toHaveCSS("opacity", "1");
   });
 
+  test("eyebrow meta spreads on one row, clear of the headline (mockup spacing)", async ({
+    page,
+  }) => {
+    // The mockup keeps the eyebrow meta ("Aethos · Year 30 …" / "Pre-alpha · Closed
+    // playtest") on a single row spanning the content container, with a generous gap
+    // before the Divine/Ruin headline. A regression narrowed the meta to the 620px
+    // pitch measure, which forced the eyebrow to wrap to two lines and pulled it tight
+    // against the headline. Guard both halves at desktop width.
+    await page.goto(`${WEB}/`);
+    const label = page.locator(".hero__meta-label");
+    const meta = page.locator(".hero__meta");
+    const headline = page.locator(".hero__headline");
+    await expect(label).toBeVisible();
+
+    // (1) Single row: the eyebrow label must not wrap. One caption line renders
+    // ~29px tall here; the 620px-measure wrap doubled it to ~58px. A 40px cutoff
+    // cleanly separates one line from two.
+    const labelBox = await label.boundingBox();
+    expect(labelBox).not.toBeNull();
+    expect(labelBox!.height).toBeLessThan(40);
+
+    // (2) Breathing room: a clear vertical gap between the meta row and the headline,
+    // not the tight spacing the wrap regression produced.
+    const metaBox = await meta.boundingBox();
+    const headlineBox = await headline.boundingBox();
+    expect(metaBox).not.toBeNull();
+    expect(headlineBox).not.toBeNull();
+    const gap = headlineBox!.y - (metaBox!.y + metaBox!.height);
+    expect(gap).toBeGreaterThan(40);
+  });
+
   test("composes and hydrates with no console errors", async ({ page }) => {
     const consoleErrors: string[] = [];
     const pageErrors: string[] = [];
