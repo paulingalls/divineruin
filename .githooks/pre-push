@@ -51,7 +51,11 @@ else
     echo "  Bun tests (server, clean env)..."
     (
       for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done
-      bun test --cwd apps/server
+      # test:server runs the bulk server suite (which mock.module()s ./db.ts)
+      # with db.test.ts excluded, then runs db.test.ts in its own process so it
+      # exercises the REAL lazy SQL Proxy — Bun module mocks leak across files
+      # within one `bun test` invocation, so the live Proxy test must be isolated.
+      bun run test:server
     )
 
     echo "  Bun tests (mobile)..."
