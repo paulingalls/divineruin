@@ -14,6 +14,7 @@ from archetypes import (
     PoolFormula,
     ResourceConfig,
     get_archetype_chassis,
+    is_loaded,
     parse_archetype_row,
     set_archetypes,
 )
@@ -123,3 +124,12 @@ def test_set_archetypes_seam_replaces_state():
     assert get_archetype_chassis("warrior").hp_base == 12
     with pytest.raises(ValueError):
         get_archetype_chassis("mage")
+
+
+def test_is_loaded_reflects_population():
+    # autouse fixture seeded the chassis, so it starts loaded.
+    assert is_loaded() is True
+    set_archetypes({})
+    assert is_loaded() is False
+    set_archetypes({"warrior": parse_archetype_row("warrior", _WARRIOR_ROW)})
+    assert is_loaded() is True

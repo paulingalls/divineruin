@@ -113,6 +113,16 @@ def get_archetype_chassis(archetype_id: str) -> Chassis:
     return _archetypes[archetype_id]
 
 
+def is_loaded() -> bool:
+    """True once the chassis has been populated (startup load or test seam).
+
+    Lets an entry point load once per process and skip redundant DB reads —
+    both the async worker AND the LiveKit agent use the chassis (the agent via
+    award_xp/update_quest -> calculate_max_hp), so each must load it at startup.
+    """
+    return bool(_archetypes)
+
+
 async def load_archetypes() -> None:
     """Load the archetype chassis from the DB into _archetypes.
 
