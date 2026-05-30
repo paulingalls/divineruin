@@ -252,16 +252,13 @@ class TestBuildCharacterData:
         with pytest.raises(ValueError, match="Unknown deity"):
             build_character_data("Aric", "human", "warrior", "fake_god", "Test.")
 
-    def test_custom_skill_choices(self):
-        data = build_character_data(
-            "Aric",
-            "human",
-            "rogue",
-            None,
-            "Test.",
-            skill_choices=["stealth", "perception", "investigation", "insight"],
-        )
-        assert data["proficiencies"] == ["stealth", "perception", "investigation", "insight"]
+    def test_starting_skills_are_the_chassis_fixed_grant(self):
+        # story-005: starting_skills are fixed per-archetype grants from the spec
+        # (num_choices == len(options)), so creation grants the full chassis list.
+        chassis = get_archetype_chassis("rogue")
+        data = build_character_data("Aric", "human", "rogue", None, "Test.")
+        assert data["proficiencies"] == list(chassis.skill_options)
+        assert len(data["proficiencies"]) == chassis.num_skill_choices
 
     def test_json_serializable(self):
         data = build_character_data("Aric", "human", "warrior", "kaelen", "Test.")

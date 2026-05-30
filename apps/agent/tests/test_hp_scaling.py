@@ -14,7 +14,9 @@ from sample_fixtures import GUILD_PLAYER, SAMPLE_PLAYER
 from archetypes import get_archetype_chassis
 from hp_scaling import calculate_hp, calculate_max_hp
 
-# id -> (hp_base, hp_growth, hp_category), the legacy ARCHETYPE_HP_CONFIG values.
+# id -> (hp_base, hp_growth, hp_category). Anchored to the design spec
+# (game_mechanics_archetypes.md); these match the legacy ARCHETYPE_HP_CONFIG
+# except oracle, which story-005 retiered to the spec's 8/3 arcane_shadow.
 EXPECTED_HP = {
     "warrior": (12, 5, "martial"),
     "guardian": (12, 5, "martial"),
@@ -24,8 +26,8 @@ EXPECTED_HP = {
     "warden": (10, 4, "primal_divine"),
     "cleric": (10, 4, "primal_divine"),
     "paladin": (10, 4, "primal_divine"),
-    "oracle": (10, 4, "primal_divine"),
     "marshal": (10, 4, "primal_divine"),
+    "oracle": (8, 3, "arcane_shadow"),
     "mage": (8, 3, "arcane_shadow"),
     "artificer": (8, 3, "arcane_shadow"),
     "seeker": (8, 3, "arcane_shadow"),
@@ -61,12 +63,14 @@ class TestArchetypeChassisHP:
             assert c.hp_category == "martial" and c.hp_base == 12 and c.hp_growth == 5
 
     def test_primal_divine_category(self):
-        for name in ("druid", "beastcaller", "warden", "cleric", "paladin", "oracle", "marshal"):
+        for name in ("druid", "beastcaller", "warden", "cleric", "paladin", "marshal"):
             c = get_archetype_chassis(name)
             assert c.hp_category == "primal_divine" and c.hp_base == 10 and c.hp_growth == 4
 
     def test_arcane_shadow_category(self):
-        for name in ("mage", "artificer", "seeker", "rogue", "spy", "whisper", "bard", "diplomat"):
+        # oracle is spec'd at 8/3 arcane_shadow (game_mechanics_archetypes.md:828),
+        # corrected from the story-001 fold that placed it at 10/4 (story-005).
+        for name in ("mage", "artificer", "seeker", "rogue", "spy", "whisper", "bard", "diplomat", "oracle"):
             c = get_archetype_chassis(name)
             assert c.hp_category == "arcane_shadow" and c.hp_base == 8 and c.hp_growth == 3
 
