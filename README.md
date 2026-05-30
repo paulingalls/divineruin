@@ -298,7 +298,7 @@ The `INWORLD_VOICE_*` variables are optional — stock voices are used if unset.
 
 ### 1. Start infrastructure
 
-Ensure Docker Desktop is running, then:
+Ensure Docker Desktop is running, then bring up Divine Ruin's dedicated stack:
 
 ```bash
 docker compose up -d
@@ -309,7 +309,7 @@ Wait for healthy status:
 docker compose ps
 ```
 
-PostgreSQL on `localhost:5433`, Redis on `localhost:6379`.
+PostgreSQL on `localhost:55432`, Redis on `localhost:56379` (`divineruin-postgres` / `divineruin-redis`). These are **unique, project-dedicated ports** so the stack never collides with a shared host Postgres/Redis or your other projects — `docker compose up` is the only supported way to run local infra. If you have leftover hand-rolled `dr-pg` / `dr-redis` containers from before, retire them: `docker rm -f dr-pg dr-redis`.
 
 ### 2. Configure environment
 

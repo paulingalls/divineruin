@@ -40,7 +40,7 @@ CAPSTONE_RECIPE = "wooden_club"
 async def _recipe_from_db(recipe_id: str) -> dict:
     """Read + parse one recipe straight from the testcontainer, bypassing the Redis
     cache. The seam claim is 'TS REST matches the DB both languages read'; a default
-    Redis (localhost:6379) is up in this lane with a 300s TTL and no flush in
+    Redis (localhost:56379) is up in this lane with a 300s TTL and no flush in
     reset_db_pool, so recipes.get_recipe() could be served from a sibling test's
     cache and never touch the testcontainer — a false-green. Reading the row directly
     keeps the assertion honest."""

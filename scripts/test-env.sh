@@ -23,7 +23,7 @@ fi
 _te_root="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)"
 # Per-run id keyed on the sourcing shell's PID — unique across overlapping
 # `git push` processes, stable for the lifetime of one run.
-_te_id="dr-test-$$"
+_te_id="divineruin-test-$$"
 
 echo "  test-env: provisioning per-run postgres + redis (${_te_id})..."
 

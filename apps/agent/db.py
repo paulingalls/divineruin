@@ -66,7 +66,7 @@ async def get_redis() -> aioredis.Redis:
     async with _redis_lock:
         if _redis is None:
             _redis = aioredis.from_url(
-                os.environ.get("REDIS_URL", "redis://localhost:6379"),
+                os.environ.get("REDIS_URL", "redis://localhost:56379"),
                 decode_responses=True,
             )
         return _redis

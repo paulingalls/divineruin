@@ -201,7 +201,7 @@ async def seed_map_progress(conn: asyncpg.Connection) -> None:
 
 
 async def main() -> None:
-    database_url = os.environ.get("DATABASE_URL", "postgresql://divineruin:divineruin@localhost:5432/divineruin")
+    database_url = os.environ.get("DATABASE_URL", "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin")
     conn = await asyncpg.connect(database_url)
 
     try:
