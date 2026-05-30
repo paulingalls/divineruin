@@ -23,6 +23,7 @@ import { loadTrainingActivityTypes } from "./training_state_machine.ts";
 import { loadTrainingPrograms, loadErrandTemplates } from "./activity_templates.ts";
 import { loadRecipes } from "./recipes.ts";
 import { loadItems } from "./items.ts";
+import { loadArchetypes } from "./archetypes.ts";
 import { loadPricing } from "./pricing.ts";
 import { isDev } from "./env.ts";
 
@@ -35,6 +36,7 @@ await Promise.all([
   loadErrandTemplates(),
   loadRecipes(),
   loadItems(),
+  loadArchetypes(),
   loadPricing(),
 ]);
 
