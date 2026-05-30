@@ -19,3 +19,13 @@ export type {
 export type { GameEvent, EventTrigger, EventEffects, EventEscalation } from "./event";
 
 export type { Faction, ReputationTier } from "./faction";
+
+export type {
+  Archetype,
+  ArchetypeHp,
+  ArchetypeResource,
+  PoolFormula,
+  StartingSkills,
+  HpCategory,
+  ResourcePattern,
+} from "./archetype";
