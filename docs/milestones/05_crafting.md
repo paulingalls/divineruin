@@ -282,19 +282,19 @@ See `audit/phase-5-quality.md` for the full coverage matrix.
 - Pure function: `calculate_repair_cost(item_state, durability_tier)` → gold cost
 
 **Acceptance criteria:**
-- [ ] All 4 durability tiers defined with correct hit point ranges
-- [ ] Items lose 1 durability on use/damage and become broken at 0
-- [ ] Hollow corrosion applies double durability loss in Hollow-influenced areas
-- [ ] Repair cost correctly scales with durability tier and current damage level
-- [ ] Item catalog includes weapons with damage, properties, weight, price, and rarity
-- [ ] Item catalog includes armor with AC, properties, weight, price, and rarity
-- [ ] Item catalog includes consumables (potions, poisons, ammunition) with effects
-- [ ] Item catalog includes tools with skill associations
-- [ ] Magic items correctly gated by crafting tier (Rare = tier 3, Legendary = tier 4)
-- [ ] `content/items.json` expanded with full crafting-system item entries
-- [ ] DB migration updates `items_catalog` with durability and expanded type fields
-- [ ] All durability functions are pure with no side effects
-- [ ] Tests cover all durability tiers, Hollow corrosion, repair costs, and item condition labels
+- [x] All 4 durability tiers defined with correct hit point ranges (`durability.DURABILITY_MAX_HITS`: fragile 3 / standard 10 / reinforced 25 / masterwork 50)
+- [x] Items lose 1 durability on use/damage and become broken at 0 (`apply_durability_damage` + combat hit emission story-003)
+- [x] Hollow corrosion applies double durability loss in Hollow-influenced areas (`is_hollow_zone` 2× in `apply_durability_damage`, driven by `session.corruption_level >= 2`)
+- [x] Repair cost correctly scales with **item rarity** (shipped keyed on rarity per the recorded repair-pricing-axis spec-cleanup `game_mechanics_crafting.md:542-549`; the milestone's "durability tier and damage level" axis was superseded) + disposition multiplier
+- [x] Item catalog includes weapons with damage (`damage_dice`), properties, weight, price (`value_base`), and rarity
+- [x] Item catalog includes armor with AC, properties, weight, price (`value_base`), and rarity
+- [x] Item catalog includes consumables (potions, poisons, ammunition) with `effects`
+- [x] Item catalog includes tools (9 entries) — **caveat:** skill is expressed in `effects`/`tags` prose, not a structured `skill` field (minor catalog gap)
+- [x] Magic items correctly gated by crafting tier (Rare → Expert recipe-tier, Legendary → Master; `validate_magic_item_craft_tier`, enforced as a content invariant)
+- [x] `content/items.json` expanded with full crafting-system item entries (121 items)
+- [x] Item catalog ships durability + expanded type fields — **different-means:** via `content/items.json` → the `items` table + loader (DB-loaded content SSOT), not a separate `items_catalog` migration (assumption `14de9e3b95ee`)
+- [x] All durability functions are pure with no side effects (`durability.py`)
+- [x] Tests cover all durability tiers, Hollow corrosion, repair costs, and item condition labels (unit tests + the capstone E2E below)
 
 **Key references:**
 - *Game Mechanics Crafting — Durability System*
@@ -332,5 +332,24 @@ See `audit/phase-5-quality.md` for the full coverage matrix.
 - **Legendary exception** — Thornridge's Stand carries "Cannot be crafted" (quest-only), breaking the milestone's "Magic items gated by crafting tier" gate.
 
 Both tracked in `audit/README.md` Sprint-spec-cleanup.
+
+### CAPSTONE — M5.4 shipped (sprint-015, story-005)
+
+<!-- capstone-footer: grep "CAPSTONE — M5.4" -->
+
+**Status: SHIPPED.** All 13 M5.4 acceptance criteria are met end-to-end; three are satisfied by deliberate different-means (repair-cost axis → rarity, item catalog → `items` table, tool skill → effect prose), noted inline above. This closes M5.4 and **Phase 5 (Crafting)**.
+
+- **Story chain:** story-001 (durability pure fns — 4 tiers, `apply_durability_damage` Hollow-2×, `check_item_condition`, `calculate_repair_cost`) → 002 (item-catalog expansion + magic-item craft-tier gate `validate_magic_item_craft_tier`) → 003 (combat durability hit emission, persisted by `_accrue_durability`) → 004 (repair flow: REST quote `GET /api/repair/:itemId` + the `repair_item` agent tool) → 006 (Python↔REST Artificer + pricing convergence) → 008 (item loader / content SSOT) → 009 (BlacksmithAgent + repair handoff) → 010 (9 magic-item recipes + items + attunement resolver) → 011 (repair-pricing SSOT content→DB) → 014 (errand wait-with-retry) → 017 (container-infra reconciliation + parallel gate) → **005 (this capstone)**.
+- **Capstone proof:** `apps/agent/tests/acceptance/test_durability_e2e.py` proves the durability surfaces compose across both surfaces against one seeded testcontainer — **message_event** (4-tier accrual + Hollow-2× via `session.corruption_level` persisted through `_accrue_durability`; the `repair_item` blacksmith tool restoring durability to tier-max + debiting gold at the rarity price; the magic craft-tier content invariant over the seeded items↔recipes join) and **http_websocket** (Bun `GET /api/repair/:itemId?npc=` quote — rarity tier load-bearing, `rare > common`, and priced identically to the agent tool, proving one rarity SSOT). 5/5 green via `uv run pytest -m acceptance`.
+- **Different-means resolutions:** repair cost keys on **item rarity** (`calculate_repair_cost(rarity)` + disposition multiplier), not durability-tier/damage-level — the spec-cleanup axis decision; the catalog shipped as `content/items.json` → the `items` table + loader (no separate `items_catalog` migration); tools carry `effects` + `tags` (skill in prose, no structured `skill` field).
+- **Verified-at:** this capstone commit (`test_durability_e2e.py`, 5/5 acceptance green); final close SHA recorded at sprint-close.
+
+**Open follow-ups:**
+- **enchant-apply mechanic** (`46fd2bf9ae4a`): the 10 `enchant_*` product items resolve but nothing consumes them to mutate target gear — candidate follow-up story.
+- **Acceptance Redis cache bleed** (`e3309563507c`): `reset_db_pool` doesn't flush the content cache; self-heals on TTL / fresh per-run Redis.
+- **Waterskin duplicate display name** (`0f2c219957a6`): two ids share the "Waterskin" name (DM voice ambiguity); record-only.
+- **Carried debt/concerns:** `debug.ts` 522L split (`9c8becfce881`); `pricing.ts` dead TS export (`217189d2c1d1`); cross-language material-gate divergence (`2b76f2452f23`); training error-code slugs dropped (`50460413ce12`).
+- **Phase-6 / economy:** fractional-gold reconciliation (`67c8f2962302`), settlement-size SSOT drift (`c5c5871115dc`).
+- **From story-017:** `cost_model.md` recompute for LiveKit Cloud (`ec4c0814257e`).
 
 See `audit/phase-5-durability.md` for the full coverage matrix.
