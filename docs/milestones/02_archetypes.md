@@ -54,16 +54,32 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 - HP computation helpers: hit die by category (Martial 12/5, Primal-Divine 10/4, Arcane-Shadow-Support 8/3)
 
 **Acceptance criteria:**
-- [ ] 18 archetypes exist in the DB after seeding: Warrior, Guardian, Skirmisher, Mage, Artificer, Seeker, Druid, Beastcaller, Warden, Cleric, Paladin, Oracle, Rogue, Spy, Whisper, Bard, Diplomat, Marshal
-- [ ] Each archetype record specifies HP category, armor proficiencies, weapon proficiencies, save proficiencies, resource type (Stamina-only, Focus-only, or both), and 3-5 starting skill proficiencies
-- [ ] `get_archetype_chassis()` returns the correct chassis for each archetype (unit tests for all 18)
-- [ ] HP at level 1 and per-level HP gain match the category formula for each archetype
-- [ ] Resource type assignment is correct: martial archetypes get Stamina, arcane/divine get Focus, hybrids get both
+- [x] 18 archetypes exist in the DB after seeding: Warrior, Guardian, Skirmisher, Mage, Artificer, Seeker, Druid, Beastcaller, Warden, Cleric, Paladin, Oracle, Rogue, Spy, Whisper, Bard, Diplomat, Marshal
+- [x] Each archetype record specifies HP category, armor proficiencies, weapon proficiencies, save proficiencies, resource type (Stamina-only, Focus-only, or both), and 3-5 starting skill proficiencies
+- [x] `get_archetype_chassis()` returns the correct chassis for each archetype (unit tests for all 18)
+- [x] HP at level 1 and per-level HP gain match the category formula for each archetype
+- [x] Resource type assignment is correct: martial archetypes get Stamina, arcane/divine get Focus, hybrids get both
 
 **Key references:**
 - *Game Mechanics Archetypes Doc — Archetype Chassis*
 - *Game Mechanics Archetypes Doc — HP Categories*
 - *Game Mechanics Archetypes Doc — Resource Type Assignment*
+
+### CAPSTONE — M2.1 shipped (sprint-016, story-005)
+
+<!-- capstone-footer: grep "CAPSTONE — M2.1" -->
+
+**Status: SHIPPED.** All 5 M2.1 acceptance criteria above are met end-to-end.
+
+- **Story chain:** story-001 (`content/archetypes.json` SSOT for all 18 chassis + migration 029 + seed) → 002 (Python `archetypes.py` loader; folded `calculate_max_hp`/`calculate_max_pools` onto `get_archetype_chassis`, deleting `ARCHETYPE_HP_CONFIG`/`ARCHETYPE_RESOURCE_CONFIG`) → 003 (TS `archetypes.ts` loader + shared `Archetype` entity type) → 004 (reconciled `creation_classes`: dropped stale `ClassData.hit_die`, routed saves/skills/HP through the chassis SSOT) → **005 (this capstone)**.
+- **Capstone proof:** `apps/agent/tests/acceptance/test_archetype_chassis.py` proves the chassis composes end-to-end against one seeded Postgres testcontainer across both surfaces — message_event (Python `load_archetypes` → all 18 resolve via `get_archetype_chassis`, `calculate_max_hp`/`calculate_max_pools` match the spec-anchored `EXPECTED_HP`/`EXPECTED_RESOURCE`) and http_websocket (a spawned Bun `src/index.ts` whose startup `loadArchetypes()` resolving all 18 from the same DB without throwing is the server chassis-load proof). 4/4 capstone tests green via `bun run test:acceptance`.
+- **Also landed in story-005 (adopted spec re-read Try):** a pre-capstone conformance pass against `game_mechanics_archetypes.md` corrected two divergences the story-001 legacy-constant fold introduced — Oracle HP retiered 10/4→8/3 arcane_shadow (decision `oracle-hp-spec-fix`), and all 18 `starting_skills` rewritten to the spec's fixed per-archetype grants, restoring signature skills (Crafting/Performance) the old pool model dropped (decision `starting-skills-spec-conformance`).
+- **Verified-at:** content/anchor fix `0a174ff`, capstone E2E `b8b3030`; final close SHA recorded at sprint-close.
+
+**Open follow-ups:**
+- No server archetype REST endpoint yet — the http_websocket surface proves the server boots + loads all 18; a REST surface lands when a consumer needs it (decision `archetype-rest-surface-deferred`).
+- `get_skill_proficiencies` choose-N branch is now vestigial (every archetype has `num_choices == len(options)`); either delete it or make the partial-choice mismatch fail loud (debt `30f87f292585`).
+- Acceptance test imports the `EXPECTED_HP`/`EXPECTED_RESOURCE` anchors from sibling unit-test modules; the cleaner home is a shared non-test module (concern `a8a4ba42bebd`).
 
 ---
 
