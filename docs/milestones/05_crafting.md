@@ -285,7 +285,7 @@ See `audit/phase-5-quality.md` for the full coverage matrix.
 - [x] All 4 durability tiers defined with correct hit point ranges (`durability.DURABILITY_MAX_HITS`: fragile 3 / standard 10 / reinforced 25 / masterwork 50)
 - [x] Items lose 1 durability on use/damage and become broken at 0 (`apply_durability_damage` + combat hit emission story-003)
 - [x] Hollow corrosion applies double durability loss in Hollow-influenced areas (`is_hollow_zone` 2× in `apply_durability_damage`, driven by `session.corruption_level >= 2`)
-- [x] Repair cost correctly scales with **item rarity** (shipped keyed on rarity per the recorded repair-pricing-axis spec-cleanup `game_mechanics_crafting.md:542-549`; the milestone's "durability tier and damage level" axis was superseded) + disposition multiplier
+- [x] Repair cost correctly scales with **item rarity** (shipped keyed on rarity per the recorded repair-pricing-axis spec-cleanup `docs/game_mechanics/game_mechanics_crafting.md:542-549`; the milestone's "durability tier and damage level" axis was superseded) + disposition multiplier
 - [x] Item catalog includes weapons with damage (`damage_dice`), properties, weight, price (`value_base`), and rarity
 - [x] Item catalog includes armor with AC, properties, weight, price (`value_base`), and rarity
 - [x] Item catalog includes consumables (potions, poisons, ammunition) with `effects`
@@ -328,7 +328,7 @@ See `audit/phase-5-quality.md` for the full coverage matrix.
 - M5.4 → CLAUDE.md audio-first invariant: magic-item audio cues belong at the schema layer.
 
 **Spec/milestone conflicts to record:**
-- **Repair-pricing axis** — spec keys cost on item-rarity-tier (Common/Uncommon/Rare/Legendary at `game_mechanics_crafting.md:542-549`); milestone acceptance bullet 4 says "scales with durability tier and current damage level" — different axes (rarity vs durability vs damage-level).
+- **Repair-pricing axis** — spec keys cost on item-rarity-tier (Common/Uncommon/Rare/Legendary at `docs/game_mechanics/game_mechanics_crafting.md:542-549`); milestone acceptance bullet 4 says "scales with durability tier and current damage level" — different axes (rarity vs durability vs damage-level).
 - **Legendary exception** — Thornridge's Stand carries "Cannot be crafted" (quest-only), breaking the milestone's "Magic items gated by crafting tier" gate.
 
 Both tracked in `audit/README.md` Sprint-spec-cleanup.
@@ -351,5 +351,6 @@ Both tracked in `audit/README.md` Sprint-spec-cleanup.
 - **Carried debt/concerns:** `debug.ts` 522L split (`9c8becfce881`); `pricing.ts` dead TS export (`217189d2c1d1`); cross-language material-gate divergence (`2b76f2452f23`); training error-code slugs dropped (`50460413ce12`).
 - **Phase-6 / economy:** fractional-gold reconciliation (`67c8f2962302`), settlement-size SSOT drift (`c5c5871115dc`).
 - **From story-017:** `cost_model.md` recompute for LiveKit Cloud (`ec4c0814257e`).
+- **Magic gate is content-invariant, not runtime-enforced:** `validate_magic_item_craft_tier` is asserted over the seeded items↔recipes content (so off-tier recipes can't be authored) but has no caller in the live craft flow — an off-tier *runtime* craft would not be rejected. Runtime enforcement is deferred (the player-skill-vs-recipe-tier preflight gate already bounds who can craft what).
 
 See `audit/phase-5-durability.md` for the full coverage matrix.
