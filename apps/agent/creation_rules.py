@@ -9,6 +9,7 @@ from archetypes import get_archetype_chassis
 from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
+from hp_scaling import calculate_max_hp
 from rules_engine import attribute_modifier
 
 BASE_ATTRIBUTE = 10
@@ -111,14 +112,17 @@ def generate_attributes(race_id: str, class_id: str) -> dict[str, int]:
 
 
 def calculate_starting_hp(class_id: str, constitution: int) -> dict[str, int]:
-    """Max hit die + CON modifier. Returns {current, max}."""
-    cls = CLASSES.get(class_id)
-    if cls is None:
-        return {"current": 10, "max": 10}
+    """Chassis level-1 max HP (hp_base + CON modifier). Returns {current, max}.
 
+    Derives from the archetype chassis SSOT (story-004), so a freshly-created
+    character's max HP matches what the leveling system computes for level 1 —
+    no longer the stale ClassData.hit_die.
+    """
     con_mod = attribute_modifier(constitution)
-    hp = cls.hit_die + con_mod
-    hp = max(1, hp)  # minimum 1 HP
+    try:
+        hp = calculate_max_hp(class_id, 1, con_mod)
+    except ValueError:
+        return {"current": 10, "max": 10}  # unknown archetype fallback
     return {"current": hp, "max": hp}
 
 

@@ -14,6 +14,8 @@ from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
 from creation_tools import finalize_character, push_creation_cards, set_creation_choice
+from hp_scaling import calculate_max_hp
+from rules_engine import attribute_modifier
 from session_data import CreationState, SessionData
 
 # _func bypasses SDK Literal validation — use Any-typed refs so Pyright accepts
@@ -307,6 +309,37 @@ class TestFinalizeCharacter:
         assert data["race"] == "draethar"
         assert data["class"] == "guardian"
         assert data["deity"] == "valdris"
+
+    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
+    async def test_finalize_starting_hp_from_chassis(self, mock_create_player, mock_get_payload):
+        # story-004: a finalized character's starting HP derives end-to-end from
+        # the chassis (hp_base), not the legacy ClassData.hit_die. Warrior diverges
+        # (hp_base 12 vs the old hit_die 10), so this would fail under the old path.
+        mock_get_payload.return_value = {
+            "character": {},
+            "location": None,
+            "quests": [],
+            "inventory": [],
+            "map_progress": [],
+            "world_state": {},
+        }
+
+        cs = CreationState(
+            race="human",
+            class_choice="warrior",
+            deity=None,
+            name="Aric",
+            backstory="Test.",
+        )
+        ctx = _make_context(cs)
+        await _finalize(ctx)
+
+        data = mock_create_player.call_args[0][2]
+        con_mod = attribute_modifier(data["attributes"]["constitution"])
+        expected = calculate_max_hp("warrior", 1, con_mod)
+        assert data["hp"]["current"] == expected
+        assert data["hp"]["max"] == expected
 
     @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)

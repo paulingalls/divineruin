@@ -12,7 +12,6 @@ class ClassData:
     category: str  # martial / arcane / primal / divine / shadow / support
     description: str  # Audio-first description for DM narration
     card_description: str
-    hit_die: int  # e.g. 10 for d10
     primary_attribute: str
     starting_equipment: dict  # {main_hand, armor, shield}
     starting_gold: int
@@ -56,7 +55,6 @@ CLASSES: dict[str, ClassData] = {
             "Decisive, aggressive — you don't wait for the right moment, you make it."
         ),
         card_description="Front-line combatant. Decisive, aggressive, first to strike.",
-        hit_die=10,
         primary_attribute="strength",
         starting_equipment={"main_hand": _LONGSWORD, "armor": _CHAIN_SHIRT, "shield": _SHIELD},
         starting_gold=15,
@@ -70,7 +68,6 @@ CLASSES: dict[str, ClassData] = {
             "those you shield. Reactive, patient — your strength is knowing when to brace."
         ),
         card_description="Protector of allies. Absorbs punishment, controls the battlefield.",
-        hit_die=12,
         primary_attribute="constitution",
         starting_equipment={"main_hand": _LONGSWORD, "armor": _HALF_PLATE, "shield": _SHIELD},
         starting_gold=10,
@@ -84,7 +81,6 @@ CLASSES: dict[str, ClassData] = {
             "out, gone before the enemy turns. Speed and precision over brute force."
         ),
         card_description="Mobile fighter. Quick strikes, flanking, exploiting every opening.",
-        hit_die=8,
         primary_attribute="dexterity",
         starting_equipment={"main_hand": _SHORTSWORD, "armor": _LEATHER, "shield": None},
         starting_gold=15,
@@ -99,7 +95,6 @@ CLASSES: dict[str, ClassData] = {
             "shaped by intent, magic woven through words. The most voice-native class there is."
         ),
         card_description="Classic spellcaster. Commands arcane energy through spoken incantations.",
-        hit_die=6,
         primary_attribute="intelligence",
         starting_equipment={"main_hand": _QUARTERSTAFF, "armor": _ROBES, "shield": None},
         starting_gold=10,
@@ -113,7 +108,6 @@ CLASSES: dict[str, ClassData] = {
             "problems through invention. Between sessions, your workshop never sleeps."
         ),
         card_description="Magical inventor. Crafts enchanted items and deploys constructs.",
-        hit_die=8,
         primary_attribute="intelligence",
         starting_equipment={"main_hand": _WARHAMMER, "armor": _CHAIN_SHIRT, "shield": None},
         starting_gold=20,
@@ -127,7 +121,6 @@ CLASSES: dict[str, ClassData] = {
             "detective who finds what's hidden. Central to any mystery worth solving."
         ),
         card_description="Arcane investigator. Uses magic to perceive and uncover hidden truths.",
-        hit_die=6,
         primary_attribute="intelligence",
         starting_equipment={"main_hand": _QUARTERSTAFF, "armor": _LEATHER, "shield": None},
         starting_gold=15,
@@ -143,7 +136,6 @@ CLASSES: dict[str, ClassData] = {
             "the earth."
         ),
         card_description="Channels nature's power. Shapes terrain, commands weather, speaks to the wild.",
-        hit_die=8,
         primary_attribute="wisdom",
         starting_equipment={"main_hand": _QUARTERSTAFF, "armor": _HIDE, "shield": None},
         starting_gold=10,
@@ -157,7 +149,6 @@ CLASSES: dict[str, ClassData] = {
             "you, and adds a second voice to the party. The bond runs deeper than words."
         ),
         card_description="Bonds with creatures. Commands animal companions and draws on bestial instinct.",
-        hit_die=8,
         primary_attribute="wisdom",
         starting_equipment={"main_hand": _SHORTBOW, "armor": _HIDE, "shield": None},
         starting_gold=10,
@@ -171,7 +162,6 @@ CLASSES: dict[str, ClassData] = {
             "tied to the land. In your territory, you are nearly unstoppable."
         ),
         card_description="Primal guardian bound to the land. Strongest in their home territory.",
-        hit_die=10,
         primary_attribute="wisdom",
         starting_equipment={"main_hand": _SPEAR, "armor": _HIDE, "shield": _SHIELD},
         starting_gold=10,
@@ -187,7 +177,6 @@ CLASSES: dict[str, ClassData] = {
             "works in shadow."
         ),
         card_description="Divine channeler. Your patron god shapes your abilities entirely.",
-        hit_die=8,
         primary_attribute="wisdom",
         starting_equipment={"main_hand": _MACE, "armor": _CHAIN_SHIRT, "shield": _SHIELD},
         starting_gold=15,
@@ -201,7 +190,6 @@ CLASSES: dict[str, ClassData] = {
             "and binds you — power for a price. Break the oath, and there are consequences."
         ),
         card_description="Sworn champion. Combines martial skill with a divine oath.",
-        hit_die=10,
         primary_attribute="strength",
         starting_equipment={"main_hand": _LONGSWORD, "armor": _CHAIN_SHIRT, "shield": _SHIELD},
         starting_gold=15,
@@ -216,7 +204,6 @@ CLASSES: dict[str, ClassData] = {
             "The DM channels plot through you."
         ),
         card_description="Fate-touched prophet. Receives visions and manipulates probability.",
-        hit_die=6,
         primary_attribute="wisdom",
         starting_equipment={"main_hand": _QUARTERSTAFF, "armor": _ROBES, "shield": None},
         starting_gold=10,
@@ -231,7 +218,6 @@ CLASSES: dict[str, ClassData] = {
             "anyone arrives, and strike from surprise. The quiet moments are yours."
         ),
         card_description="Skill specialist. Stealth, precision, and striking from the shadows.",
-        hit_die=8,
         primary_attribute="dexterity",
         starting_equipment={"main_hand": _DAGGER, "armor": _LEATHER, "shield": None},
         starting_gold=20,
@@ -246,7 +232,6 @@ CLASSES: dict[str, ClassData] = {
             "extract secrets through conversation."
         ),
         card_description="Social infiltrator. Deceives, disguises, and extracts secrets through talk.",
-        hit_die=8,
         primary_attribute="charisma",
         starting_equipment={"main_hand": _RAPIER, "armor": _LEATHER, "shield": None},
         starting_gold=25,
@@ -261,7 +246,6 @@ CLASSES: dict[str, ClassData] = {
             "and narratively rich."
         ),
         card_description="Shadow-magic hybrid. Subtle spells of influence and misdirection.",
-        hit_die=6,
         primary_attribute="charisma",
         starting_equipment={"main_hand": _DAGGER, "armor": _ROBES, "shield": None},
         starting_gold=15,
@@ -277,7 +261,6 @@ CLASSES: dict[str, ClassData] = {
             "Your voice is your weapon."
         ),
         card_description="Performer and storyteller. Inspires allies, demoralizes foes with voice.",
-        hit_die=8,
         primary_attribute="charisma",
         starting_equipment={"main_hand": _LUTE, "armor": _LEATHER, "shield": None},
         starting_gold=15,
@@ -292,7 +275,6 @@ CLASSES: dict[str, ClassData] = {
             "You may never swing a sword and still be the most valuable party member."
         ),
         card_description="Master negotiator. Solves encounters through persuasion and social leverage.",
-        hit_die=6,
         primary_attribute="charisma",
         starting_equipment={"main_hand": _QUARTERSTAFF, "armor": _ROBES, "shield": None},
         starting_gold=25,
@@ -307,7 +289,6 @@ CLASSES: dict[str, ClassData] = {
             "what to do."
         ),
         card_description="Tactical commander. Leads allies in battle through voice and presence.",
-        hit_die=10,
         primary_attribute="charisma",
         starting_equipment={"main_hand": _LONGSWORD, "armor": _CHAIN_SHIRT, "shield": _SHIELD},
         starting_gold=15,

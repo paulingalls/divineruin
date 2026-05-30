@@ -78,18 +78,19 @@ class TestRaceAttributes:
 class TestClassMechanics:
     @pytest.mark.parametrize("class_id", list(CLASSES.keys()))
     def test_starting_hp(self, class_id):
-        cls = CLASSES[class_id]
+        # Starting HP = chassis level-1 max (hp_base + con_mod), the SSOT — story-004.
+        chassis = get_archetype_chassis(class_id)
         hp = calculate_starting_hp(class_id, 10)  # CON 10 = +0 modifier
-        assert hp["current"] == cls.hit_die
-        assert hp["max"] == cls.hit_die
+        assert hp["current"] == chassis.hp_base
+        assert hp["max"] == chassis.hp_base
         assert hp["current"] == hp["max"]
 
     @pytest.mark.parametrize("class_id", list(CLASSES.keys()))
     def test_starting_hp_with_high_con(self, class_id):
-        cls = CLASSES[class_id]
+        chassis = get_archetype_chassis(class_id)
         hp = calculate_starting_hp(class_id, 14)  # CON 14 = +2 modifier
-        assert hp["current"] == cls.hit_die + 2
-        assert hp["max"] == cls.hit_die + 2
+        assert hp["current"] == chassis.hp_base + 2
+        assert hp["max"] == chassis.hp_base + 2
 
     def test_starting_hp_minimum_one(self):
         # A class with d6 and CON 1 (-5 modifier) should still have 1 HP

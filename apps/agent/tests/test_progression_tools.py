@@ -42,3 +42,18 @@ async def test_level_up_payload_zero_con_mod_still_carries_hp_gains():
     assert payload is not None
     assert "hp_gains" in payload
     assert payload["hp_gains"] == expected["hp_gains"]
+
+
+@pytest.mark.asyncio
+async def test_level_up_hp_gains_resolve_from_chassis_for_diverging_archetype():
+    # AC#3: progression resolves HP from the chassis accessor. Warrior's hp_base
+    # (12) diverges from its legacy hit_die (10), so this pins the level-up path
+    # to the chassis SSOT (calculate_max_hp), not any ClassData copy.
+    from hp_scaling import calculate_max_hp
+
+    player = {**GUILD_PLAYER, "class": "warrior", "attributes": {**GUILD_PLAYER["attributes"], "constitution": 10}}
+    payload = await _award_crossing_threshold(player)
+
+    assert payload is not None
+    expected_gain = calculate_max_hp("warrior", 2, 0) - calculate_max_hp("warrior", 1, 0)
+    assert payload["hp_gains"] == [{"level": 2, "hp_gain": expected_gain}]
