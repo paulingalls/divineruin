@@ -27,6 +27,7 @@ import db_queries
 import durability
 import pricing_queries
 import workspace
+from disposition import resolve_disposition
 from rules_engine import SKILL_TIER_ORDER, SkillTier
 from session_data import SessionData
 from tool_support import _validate_id
@@ -112,10 +113,9 @@ async def _repair_item_impl(
             raise ToolError(f"{name} is not damaged.")
 
         # disposition gate (refuse below Neutral) + price
-        disposition = await queries_mod.get_npc_disposition(npc_id, player_id, conn=conn)
-        if disposition is None:
-            npc = await content_mod.get_npc(npc_id)
-            disposition = npc.get("default_disposition", "neutral") if npc else "neutral"
+        disposition = await resolve_disposition(
+            npc_id, player_id, conn=conn, queries_mod=queries_mod, content_mod=content_mod
+        )
         pricing = await pricing_mod.get_economy_pricing()
         try:
             base_sp = durability_mod.calculate_repair_cost(

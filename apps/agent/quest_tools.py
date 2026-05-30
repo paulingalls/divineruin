@@ -15,6 +15,7 @@ import db_queries
 import event_types as E
 import rules_engine
 from db_errors import db_tool
+from disposition import resolve_disposition
 from game_events import publish_game_event
 from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from session_data import SessionData
@@ -53,10 +54,9 @@ async def _apply_world_effects(
         if m:
             shorthand, delta_str = m.group(1), int(m.group(2))
             npc_id = EFFECT_NPC_MAP.get(shorthand, shorthand)
-            current = await queries.get_npc_disposition(npc_id, session.player_id, conn=conn)
-            if current is None:
-                npc = await content.get_npc(npc_id)
-                current = npc.get("default_disposition", "neutral") if npc else "neutral"
+            current = await resolve_disposition(
+                npc_id, session.player_id, conn=conn, queries_mod=queries, content_mod=content
+            )
             new_disp = _clamp_disposition_shift(current, delta_str)
             await mutations.set_npc_disposition(
                 npc_id, session.player_id, new_disp, f"world_effect: {effect_str}", conn=conn

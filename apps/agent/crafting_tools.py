@@ -34,6 +34,7 @@ import recipe_validation
 import recipes
 import workspace
 from db_errors import db_tool
+from disposition import resolve_disposition
 from session_data import SessionData
 from tool_support import _validate_id
 from workspace import WorkspaceType
@@ -169,12 +170,9 @@ async def _rent_workspace_impl(
     if npc_id not in {npc["id"] for npc in present}:
         raise ToolError(f"{npc_id} isn't here to rent a workspace from.")
 
-    # Disposition gates the price; fall back to the NPC's default_disposition when
-    # the player has no recorded standing (mirrors query_tools._resolve_disposition).
-    disposition = await queries_mod.get_npc_disposition(npc_id, player_id)
-    if disposition is None:
-        npc = await content_mod.get_npc(npc_id)
-        disposition = npc.get("default_disposition", "neutral") if npc else "neutral"
+    # Disposition gates the price; resolve_disposition falls back to the NPC's
+    # content default_disposition when the player has no recorded standing.
+    disposition = await resolve_disposition(npc_id, player_id, queries_mod=queries_mod, content_mod=content_mod)
 
     # An off-tier content default_disposition (not a canonical tier) makes
     # compute_rental_price raise ValueError; that's a content bug, so surface it as
