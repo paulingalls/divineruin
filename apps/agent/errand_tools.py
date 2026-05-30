@@ -11,6 +11,7 @@ callers use the `@function_tool` wrappers. Errand durations / valid_destinations
 blocked_companions come from the shared errand_templates content (story-011).
 """
 
+import asyncio
 import json
 import logging
 import random
@@ -37,6 +38,16 @@ logger = logging.getLogger("divineruin.tools")
 # time). Kept as a local constant — a single LOCKED-spec integer — rather than a
 # shared source; if the slot model ever changes, update both deliberately.
 _COMPANION_SLOT_CAP = 1
+
+# Wait-with-retry for a resolve that races the background worker (story-014).
+# The worker's resolve window is 10-30s; the player asks within one voice turn,
+# so when the row is mid-'resolving' we poll briefly for the worker to land its
+# outcome before raising. Budget is deliberately SHORT (~1.5s worst case): the
+# worker writes its outcome late (after narration), so most 'resolving' hits
+# still raise — only the immediate boundary race wins. A longer poll would just
+# add dead air to the common (still-out) path, fighting the 1500ms latency rule.
+_RESOLVE_POLL_ATTEMPTS = 2  # initial read + 1 retry
+_RESOLVE_POLL_INTERVAL_SECONDS = 1.5
 
 
 @function_tool()
@@ -169,6 +180,7 @@ async def _resolve_companion_errand_impl(
     mutations_mod=db_mutations,
     resolve_fn=resolve_errand_outcome,
     now_fn=None,
+    sleep_fn=None,
 ) -> str:
     context.disallow_interruptions()
     _validate_id(errand_id, "errand_id")
@@ -176,55 +188,66 @@ async def _resolve_companion_errand_impl(
     player_id = session.player_id
     logger.info("resolve_companion_errand: player=%s errand=%s", player_id, errand_id)
 
-    # Resource-row template: lock the row FOR UPDATE so the read→roll→write is
-    # atomic — two concurrent resolves (or one racing the worker) can't both roll
-    # before the status persists (ADR 0006: risk rolls once, at resolution).
-    async with db_mod.transaction() as conn:
-        activity = await activity_mod.get_activity(errand_id, conn=conn, for_update=True)
-        if activity is None:
-            raise ToolError(f"Unknown errand: {errand_id}")
-        if activity["player_id"] != player_id:
-            raise ToolError(f"Errand {errand_id} does not belong to this player.")
+    sleep = sleep_fn or asyncio.sleep
 
-        # Already resolved (worker or a prior resolve) — return the canonical
-        # persisted outcome, never re-roll, so the DM's account matches the push.
-        cached = activity.get("outcome")
-        if cached is not None:
-            return json.dumps(cached)
+    # Wait-with-retry: a row mid-'resolving' means the worker is mid-flight, so we
+    # re-read in a FRESH short transaction each attempt — releasing FOR UPDATE
+    # before every sleep (never held across a sleep) — giving the worker a brief
+    # window to land its outcome before we raise. Any non-'resolving' row resolves
+    # authoritatively on the first attempt, exactly as a single transaction would.
+    for attempt in range(_RESOLVE_POLL_ATTEMPTS):
+        # Resource-row template: lock the row FOR UPDATE so the read→roll→write is
+        # atomic — two concurrent resolves (or one racing the worker) can't both
+        # roll before the status persists (ADR 0006: risk rolls once, at resolution).
+        async with db_mod.transaction() as conn:
+            activity = await activity_mod.get_activity(errand_id, conn=conn, for_update=True)
+            if activity is None:
+                raise ToolError(f"Unknown errand: {errand_id}")
+            if activity["player_id"] != player_id:
+                raise ToolError(f"Errand {errand_id} does not belong to this player.")
 
-        # The worker has claimed this row and is generating the canonical
-        # narration. Fail closed so we never roll a divergent outcome — the
-        # player simply retries in a moment.
-        if activity.get("status") == "resolving":
-            raise ToolError(
-                f"Errand {errand_id} is currently being resolved by the background worker; ask again in a moment."
-            )
+            # Already resolved (worker or a prior resolve), OR the worker wrote its
+            # outcome mid-'resolving' (Step B, before flipping to 'resolved') —
+            # return the canonical persisted outcome, never re-roll, so the DM's
+            # account matches the push.
+            cached = activity.get("outcome")
+            if cached is not None:
+                return json.dumps(cached)
 
-        # Time gate: the companion is still out until resolve_at passes (the worker
-        # uses the same resolve_at <= NOW() gate).
-        now = (now_fn or _default_now)()
-        resolve_at = activity.get("resolve_at")
-        if resolve_at is not None and now < datetime.fromisoformat(resolve_at):
-            raise ToolError(f"The companion is still out on errand {errand_id}; ask again later.")
+            if activity.get("status") != "resolving":
+                # Time gate: the companion is still out until resolve_at passes (the
+                # worker uses the same resolve_at <= NOW() gate).
+                now = (now_fn or _default_now)()
+                resolve_at = activity.get("resolve_at")
+                if resolve_at is not None and now < datetime.fromisoformat(resolve_at):
+                    raise ToolError(f"The companion is still out on errand {errand_id}; ask again later.")
 
-        # Only load the player once we're committed to resolving.
-        player = await queries_mod.get_player(player_id) or {}
-        companion_data = player.get("companion", {})
-        outcome = await resolve_fn(companion_data, activity.get("parameters", {}))
+                # Only load the player once we're committed to resolving.
+                player = await queries_mod.get_player(player_id) or {}
+                companion_data = player.get("companion", {})
+                outcome = await resolve_fn(companion_data, activity.get("parameters", {}))
 
-        # Persist + mark resolved within the lock so the worker skips this row
-        # (get_due_activities filters status='in_progress').
-        await mutations_mod.update_activity(
-            errand_id,
-            {
-                "status": "resolved",
-                "outcome": outcome,
-                "decision_options": outcome.get("decision_options", []),
-            },
-            conn=conn,
-        )
+                # Persist + mark resolved within the lock so the worker skips this
+                # row (get_due_activities filters status='in_progress').
+                await mutations_mod.update_activity(
+                    errand_id,
+                    {
+                        "status": "resolved",
+                        "outcome": outcome,
+                        "decision_options": outcome.get("decision_options", []),
+                    },
+                    conn=conn,
+                )
+                return json.dumps(outcome)
+            # status == 'resolving': exit the `async with` (RELEASE the lock), then
+            # sleep below before re-reading — the worker holds no lock during its
+            # slow narration window, so the next attempt sees the outcome it lands.
+        if attempt < _RESOLVE_POLL_ATTEMPTS - 1:
+            await sleep(_RESOLVE_POLL_INTERVAL_SECONDS)
 
-    return json.dumps(outcome)
+    # The worker out-ran the poll window. Fail closed so the player retries rather
+    # than the tool double-rolling a divergent outcome.
+    raise ToolError(f"Errand {errand_id} is currently being resolved by the background worker; ask again in a moment.")
 
 
 def _default_now() -> datetime:
