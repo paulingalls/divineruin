@@ -55,6 +55,45 @@ run_case "deletion-only" "refs/heads/x 0000000000000000000000000000000000000000 
 # change then runs the suite. Guards the ALL_DELETIONS=false transition.
 run_case "mixed-deletion-and-code" $'refs/heads/del 0000000000000000000000000000000000000000 refs/heads/del abc\nrefs/heads/x aaa refs/heads/x bbb'  "apps/server/src/x.ts"  "no"
 
+# --- Parallel-lane fail-loud collector (scripts/lane-utils.sh) ---
+# wait_all_lanes must be sourced + called IN THIS shell — `wait` reaps only the
+# current shell's children, so it can't be tested through the hook subprocess.
+source "$(cd "$(dirname "$0")" && pwd)/../scripts/lane-utils.sh"
+
+# lane_case NAME WANT_RC WANT_ERR EXITCODE:LANE...
+# Spawns one background job per spec (exiting with EXITCODE), runs wait_all_lanes,
+# and checks its return code + that WANT_ERR appears on stderr.
+lane_case() {
+  local name="$1" want_rc="$2" want_err="$3"; shift 3
+  local specs=() spec code lname pid rc errfile got_err
+  errfile=$(mktemp)
+  for spec in "$@"; do
+    code="${spec%%:*}"; lname="${spec#*:}"
+    ( exit "$code" ) &
+    pid=$!
+    specs+=("$pid:$lname")
+  done
+  # `if` context keeps a non-zero return from tripping the harness.
+  if wait_all_lanes "${specs[@]}" 2>"$errfile"; then rc=0; else rc=$?; fi
+  got_err="yes"
+  if [ -n "$want_err" ] && ! grep -q "$want_err" "$errfile"; then got_err="no"; fi
+  rm -f "$errfile"
+  if [ "$rc" -eq "$want_rc" ] && [ "$got_err" = "yes" ]; then
+    echo "  PASS: $name"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: $name (rc=$rc want_rc=$want_rc got_err=$got_err)"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+# All lanes green → push proceeds (rc 0).
+lane_case "lanes-all-pass"  0  ""                    "0:server" "0:mobile" "0:shared" "0:python"
+# A single failing lane fails the push loud, naming the lane (rc 1).
+lane_case "one-lane-fails"  1  "mobile lane failed"  "0:server" "1:mobile" "0:shared" "0:python"
+# Every failing lane is waited + reported, not just the first (rc 1).
+lane_case "multi-lane-fail" 1  "python lane failed"  "1:server" "0:mobile" "0:shared" "1:python"
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]
