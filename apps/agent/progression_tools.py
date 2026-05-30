@@ -9,6 +9,7 @@ from livekit.agents.voice import RunContext
 import db
 import db_activity_queries
 import db_mutations
+import db_mutations_divine
 import db_queries
 import event_types as E
 import rules_engine
@@ -132,7 +133,7 @@ async def _award_divine_favor_impl(
     reason: str,
     *,
     db_mod=db,
-    mutations=db_mutations,
+    mutations=db_mutations_divine,
     activities=db_activity_queries,
 ) -> str:
     logger.info("award_divine_favor called: amount=%d, reason=%s", amount, reason)

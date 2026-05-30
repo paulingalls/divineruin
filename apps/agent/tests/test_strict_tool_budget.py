@@ -7,6 +7,7 @@ breaches it should fail here as a unit test, not in production as a 400
 
 import pytest
 
+from blacksmith_agent import BLACKSMITH_TOOLS
 from city_agent import CITY_TOOLS
 from combat_agent import COMBAT_AGENT_TOOLS
 from creation_agent import CREATION_TOOLS
@@ -24,6 +25,7 @@ AGENT_TOOL_LISTS = [
     ("training", DISPATCH_TOOLS),
     ("creation", CREATION_TOOLS),
     ("onboarding", ONBOARDING_TOOLS),
+    ("blacksmith", BLACKSMITH_TOOLS),
 ]
 
 
@@ -34,7 +36,8 @@ def test_agent_within_strict_tool_limit(name, tools):
 
 def test_city_freed_headroom_after_query_consolidation():
     # story-010 collapsed the 4 query_* tools into one query_info, dropping City
-    # from 20 (at ceiling) to 17; story-008 then spent one freed slot on the
-    # enter_dispatch intent tool (City==18), still with headroom under the ceiling.
-    assert len(CITY_TOOLS) == 18
+    # from 20 (at ceiling) to 17; story-008 spent one freed slot on the
+    # enter_dispatch intent tool (City==18); story-009 spent another on the
+    # enter_blacksmith intent tool (City==19), still with headroom under the ceiling.
+    assert len(CITY_TOOLS) == 19
     assert len(CITY_TOOLS) < MAX_STRICT_TOOLS

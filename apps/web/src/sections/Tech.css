@@ -1,0 +1,61 @@
+/* Tech-credibility strip + scroll-reveal gate. Theme tokens only. */
+
+.tech {
+  padding: var(--space-2xl) var(--space-lg);
+  background: var(--color-void);
+}
+
+.tech__inner {
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+}
+
+.tech__eyebrow {
+  margin: 0 0 var(--space-lg);
+  text-align: center;
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+}
+
+/* Strip: 4 cols -> 2 (<=760), hairline top/bottom borders. */
+.tech__strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-lg);
+  padding: var(--space-xl) 0;
+  border-top: 1px solid var(--color-charcoal);
+  border-bottom: 1px solid var(--color-charcoal);
+}
+
+@media (max-width: 760px) {
+  .tech__strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.tech__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-half);
+  text-align: center;
+}
+
+.tech__role {
+  font-family: var(--font-system);
+  font-size: var(--text-caption-size);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+}
+
+.tech__name {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--text-h2-size);
+  letter-spacing: 0.02em;
+  color: var(--color-parchment);
+}

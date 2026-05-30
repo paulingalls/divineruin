@@ -8,7 +8,10 @@ as production without needing to run the async DB loader.
 import json
 from pathlib import Path
 
-from training_rules import parse_activity_type_row, set_training_activity_types
+from training_rules import (
+    parse_activity_type_row,
+    set_training_activity_types,
+)
 
 _CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "training_activity_types.json"
 
@@ -20,5 +23,6 @@ def load_fixture_config() -> dict:
 
 
 def setup_training_config_fixture() -> None:
-    """Populate training_rules._activity_types from the content JSON file."""
+    """Populate training_rules._activity_types from the content JSON file, mirroring
+    the production loader."""
     set_training_activity_types(load_fixture_config())

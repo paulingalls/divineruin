@@ -1,11 +1,10 @@
 """Integration tests for agent handoff round-trip: DM -> CombatAgent -> DM."""
 
 import json
-from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER
+from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, mock_txn
 
 from base_agent import BaseGameAgent
 from check_tools import request_attack, request_saving_throw
@@ -31,11 +30,6 @@ def _make_context(location_id="greyvale_south_road"):
     ctx.session = MagicMock()
     ctx.session.current_agent = None
     return ctx
-
-
-@asynccontextmanager
-async def _mock_txn(conn):
-    yield conn
 
 
 class TestToolSetCompleteness:
@@ -676,7 +670,7 @@ class TestMovePlayerRegionHandoff:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db.extract_exit_connections = MagicMock(return_value=[])
         mock_mutations = MagicMock()
         mock_mutations.update_player_location = AsyncMock()
@@ -734,7 +728,7 @@ class TestMovePlayerRegionHandoff:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db.extract_exit_connections = MagicMock(return_value=[])
         mock_mutations = MagicMock()
         mock_mutations.update_player_location = AsyncMock()
@@ -791,7 +785,7 @@ class TestMovePlayerRegionHandoff:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db.extract_exit_connections = MagicMock(return_value=[])
         mock_mutations = MagicMock()
         mock_mutations.update_player_location = AsyncMock()
@@ -850,7 +844,7 @@ class TestMovePlayerRegionHandoff:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db.extract_exit_connections = MagicMock(return_value=[])
         mock_mutations = MagicMock()
         mock_mutations.update_player_location = AsyncMock()
@@ -912,7 +906,7 @@ class TestRegionHandoffContext:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db.extract_exit_connections = MagicMock(return_value=[])
         mock_mutations = MagicMock()
         mock_mutations.update_player_location = AsyncMock()
@@ -975,7 +969,7 @@ class TestRegionHandoffContext:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db.extract_exit_connections = MagicMock(return_value=[])
         mock_mutations = MagicMock()
         mock_mutations.update_player_location = AsyncMock()

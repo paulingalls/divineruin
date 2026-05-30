@@ -7,8 +7,9 @@ from test_rules_core import SAMPLE_PLAYER
 
 from check_resolution import (
     CheckResult,
+    D20CheckCore,
+    _roll_d20_check,
     attack_modifier,
-    resolve_attack,
     resolve_check,
     resolve_saving_throw,
     resolve_skill_check,
@@ -306,89 +307,6 @@ class TestResolveSkillCheckDc:
         assert result.modifier == 3
 
 
-# --- resolve_attack ---
-
-
-class TestResolveAttack:
-    WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
-
-    def test_hit(self):
-        # Find seed where d20 roll + 4 >= 12
-        for seed in range(1000):
-            rng = random.Random(seed)
-            d20 = rng.randint(1, 20)
-            if d20 != 1 and d20 + 4 >= 12:
-                rng = random.Random(seed)
-                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 20, rng=rng)
-                assert result.hit is True
-                assert result.damage > 0
-                assert result.target_hp_remaining == 20 - result.damage
-                return
-        pytest.fail("Could not find seed for hit")
-
-    def test_miss(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            d20 = rng.randint(1, 20)
-            if d20 != 20 and d20 + 4 < 18:
-                rng = random.Random(seed)
-                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 18, 20, rng=rng)
-                assert result.hit is False
-                assert result.damage == 0
-                assert result.target_hp_remaining == 20
-                return
-        pytest.fail("Could not find seed for miss")
-
-    def test_critical_hit_doubles_damage(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 20:
-                rng = random.Random(seed)
-                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 20, 50, rng=rng)
-                assert result.critical is True
-                assert result.hit is True
-                # Damage should be two rolls of 1d8
-                assert result.damage >= 2  # minimum 1+1
-                return
-        pytest.fail("Could not find seed for crit")
-
-    def test_target_killed_at_zero_hp(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            d20 = rng.randint(1, 20)
-            if d20 != 1 and d20 + 4 >= 10:
-                rng = random.Random(seed)
-                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 1, rng=rng)
-                if result.hit:
-                    assert result.target_hp_remaining == 0
-                    assert result.target_killed is True
-                    return
-        pytest.fail("Could not find seed for kill")
-
-    def test_hp_floors_at_zero(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            d20 = rng.randint(1, 20)
-            if d20 != 1 and d20 + 4 >= 10:
-                rng = random.Random(seed)
-                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 3, rng=rng)
-                if result.hit:
-                    assert result.target_hp_remaining >= 0
-                    return
-        pytest.fail("Could not find seed for hit")
-
-    def test_nat_1_always_misses(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 1:
-                rng = random.Random(seed)
-                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 5, 20, rng=rng)
-                assert result.hit is False
-                assert result.roll == 1
-                return
-        pytest.fail("Could not find seed for nat 1")
-
-
 # --- resolve_saving_throw ---
 
 
@@ -463,3 +381,76 @@ class TestResolveSavingThrow:
         result = resolve_saving_throw(SAMPLE_PLAYER, "charisma", 10, "effect", rng=rng)
         # CHA -1, no prof
         assert result.modifier == -1
+
+
+# --- _roll_d20_check primitive (story-003 chokepoint extraction) ---
+
+
+class TestRollD20Check:
+    """The d20+mod-vs-DC primitive shared by resolve_check (skill) and
+    resolve_saving_throw. Both used to hand-roll identical logic — this
+    class pins the success rule + return shape so future drift is caught."""
+
+    def test_returns_d20_check_core(self):
+        rng = random.Random(42)
+        result = _roll_d20_check(5, 12, rng=rng)
+        assert isinstance(result, D20CheckCore)
+
+    def test_normal_roll_success_when_total_ge_dc(self):
+        # Find a seed where d20 + 5 >= 12 and not nat-20 (to test the
+        # non-critical success path).
+        for seed in range(1000):
+            rng = random.Random(seed)
+            roll = rng.randint(1, 20)
+            if 2 <= roll <= 19 and roll + 5 >= 12:
+                rng = random.Random(seed)
+                result = _roll_d20_check(5, 12, rng=rng)
+                assert result.roll == roll
+                assert result.total == roll + 5
+                assert result.success is True
+                assert result.margin == roll + 5 - 12
+                # narrative_hint is non-empty per rules_engine.narrative_hint
+                assert result.narrative_hint != ""
+                return
+        pytest.fail("Could not find seed for normal success roll")
+
+    def test_normal_roll_failure_when_total_lt_dc(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            roll = rng.randint(1, 20)
+            if 2 <= roll <= 19 and roll + 0 < 12:
+                rng = random.Random(seed)
+                result = _roll_d20_check(0, 12, rng=rng)
+                assert result.roll == roll
+                assert result.total == roll
+                assert result.success is False
+                assert result.margin == roll - 12
+                return
+        pytest.fail("Could not find seed for normal failure roll")
+
+    def test_nat_20_always_succeeds(self):
+        # Even with a wildly impossible DC and zero mod, nat-20 wins.
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 20:
+                rng = random.Random(seed)
+                result = _roll_d20_check(0, 100, rng=rng)
+                assert result.roll == 20
+                assert result.success is True
+                # margin still reflects raw arithmetic, success is rule-based
+                assert result.margin == 20 - 100
+                return
+        pytest.fail("Could not find seed for nat-20")
+
+    def test_nat_1_always_fails(self):
+        # Even with a huge positive mod, nat-1 still fails.
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 1:
+                rng = random.Random(seed)
+                result = _roll_d20_check(50, 5, rng=rng)
+                assert result.roll == 1
+                assert result.success is False
+                assert result.total == 51
+                return
+        pytest.fail("Could not find seed for nat-1")

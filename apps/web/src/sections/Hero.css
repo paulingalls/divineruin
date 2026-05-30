@@ -1,0 +1,279 @@
+/* Hero section + cinematic backdrop. Consumes the generated theme.css tokens
+   (--color-*, --font-*) directly — no --accent alias layer, so there's a single
+   source of truth and nothing to drift from the drift-guarded theme.css. */
+
+.hero {
+  /* The hero pitch measure (matches the mockup's 620px .hero-pitch). The meta
+     bars deliberately do NOT share this — they span --max-content-width like the
+     mockup's .container so the eyebrow line stays on one row. */
+  --hero-measure: 620px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-xl) var(--space-lg);
+  background: var(--color-void);
+  text-align: center;
+}
+
+/* Full-bleed decorative layer behind the content. */
+.hero__backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* The "rift" — a slow vertical scar of accent glow down the centre. */
+.hero__backdrop::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -10%;
+  width: 1px;
+  height: 120%;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--color-hollow-faint) 30%,
+    var(--color-hollow-muted) 50%,
+    var(--color-hollow-faint) 70%,
+    transparent
+  );
+  opacity: 0.35;
+  filter: blur(0.6px);
+  animation: hero-rift-pulse 8s ease-in-out infinite;
+}
+
+/* The "bloom" — a faint radial glow behind the headline. */
+.hero__backdrop::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  transform: translate(-50%, -50%);
+  width: min(1100px, 90vw);
+  height: 700px;
+  background: radial-gradient(ellipse, var(--color-hollow-faint) 0%, transparent 60%);
+  opacity: 0.18;
+  filter: blur(40px);
+}
+
+@keyframes hero-rift-pulse {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Content sits above the backdrop and is constrained to a readable measure. The
+   hero centers the eyebrow meta + this content as one natural-height group
+   (justify-content: center). The gap before the headline comes from the eyebrow's
+   margin-bottom (set on .hero__meta), not from a flex:1 fill. */
+.hero__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+}
+
+.hero__headline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 300;
+  /* Cinematic responsive display sizing — component-level presentation, larger
+     than the --text-display token's default for the page's hero moment. */
+  font-size: clamp(56px, 11vw, 168px);
+  line-height: 0.92;
+  letter-spacing: 0.01em;
+  color: var(--color-parchment);
+}
+
+.hero__headline em {
+  font-style: italic;
+  color: var(--color-bone);
+}
+
+.hero__subhead {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(20px, 2.4vw, 28px);
+  letter-spacing: 0.18em;
+  text-transform: lowercase;
+  color: var(--color-ash);
+}
+
+.hero__pitch {
+  margin: var(--space-md) 0 0;
+  /* The hero pitch measure (--hero-measure, matches the mockup's 620px hero-pitch)
+     — wider than a typical reading column so the pitch doesn't feel cramped against
+     the 1280px sections below. The meta bars deliberately do NOT share this; they
+     span --max-content-width so the eyebrow stays on one row. */
+  max-width: var(--hero-measure);
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--text-body-lg-size);
+  line-height: var(--text-body-lg-line-height);
+  color: var(--color-bone);
+}
+
+.hero__cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  justify-content: center;
+  margin-top: var(--space-lg);
+}
+
+.hero__cta {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 22px;
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid var(--color-charcoal);
+  color: var(--color-parchment);
+  transition:
+    border-color 200ms ease,
+    color 200ms ease,
+    background 200ms ease;
+}
+
+.hero__cta--accent {
+  border-color: var(--color-hollow-muted);
+  color: var(--color-hollow);
+  background: color-mix(in srgb, var(--color-hollow) 4%, transparent);
+}
+
+.hero__cta--accent:hover {
+  border-color: var(--color-hollow);
+  background: color-mix(in srgb, var(--color-hollow) 8%, transparent);
+  box-shadow: 0 0 24px -8px var(--color-hollow-faint);
+}
+
+/* Secondary "Enter Aethos" — quiet, borderless, brightens on hover. */
+.hero__cta--ghost {
+  border-color: transparent;
+  color: var(--color-ash);
+}
+
+.hero__cta--ghost:hover {
+  color: var(--color-parchment);
+}
+
+/* Eyebrow meta — small mono labels framing the top of the hero. Spans the full
+   content container (--max-content-width) like the mockup's .container, with the two
+   labels pushed to opposite ends by space-between, so the eyebrow stays on one row
+   (the 620px pitch measure used earlier was too narrow and wrapped it). margin-bottom
+   opens a generous gap before the headline; the hero centers the eyebrow + content as
+   one group (no bottom meta row — see Hero.tsx). */
+.hero__meta {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: var(--max-content-width);
+  margin-inline: auto;
+  margin-bottom: clamp(60px, 12vh, 140px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  font-family: var(--font-system);
+  font-size: var(--text-caption-size);
+  letter-spacing: 0.2em;
+  color: var(--color-ash);
+  text-align: left;
+}
+
+.hero__meta-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* Each eyebrow half is a flex-wrap row of a nowrap "<key> ·" and its detail, so when
+   the row is too narrow the whole detail flex item drops to the next line — the break
+   lands at the key/detail boundary (right after the "·") rather than word-wrapping
+   mid-phrase. The separator space lives as a trailing &nbsp; INSIDE the key span (not a
+   CSS column-gap): a real character keeps the accessibility tree and copy/paste reading
+   "▸ Aethos · Year 30 …" with a space — a flex container discards a whitespace-only text
+   node between items, so a CSS gap would render the space visually but drop it from the
+   text. The nbsp is non-breaking so it never wraps off the end of the key line. */
+.hero__meta-label,
+.hero__meta-statustext {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.hero__meta-key {
+  white-space: nowrap;
+}
+
+/* Pulsing "live" dot in the playtest-status label. */
+.hero__live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-hollow);
+  box-shadow: 0 0 8px var(--color-hollow);
+  animation: hero-live-pulse 2s ease-in-out infinite;
+}
+
+@keyframes hero-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Caption under the audio sample — quiet mono line that frames the clip. The
+   headphones note is brightened (bone) the way the old bottom-meta value was. */
+.hero__audio-caption {
+  margin: var(--space-md) 0 0;
+  font-family: var(--font-system);
+  font-size: var(--text-caption-size);
+  letter-spacing: 0.2em;
+  color: var(--color-ash);
+  text-align: center;
+}
+
+.hero__audio-caption-sep {
+  margin: 0 var(--space-sm);
+  color: var(--color-charcoal);
+}
+
+.hero__audio-caption-note {
+  color: var(--color-bone);
+}
+
+/* Honor reduced-motion: freeze the rift pulse and the live-dot pulse but keep the
+   rift, the dot, and all content fully visible — motion is removed, information is
+   not. */
+@media (prefers-reduced-motion: reduce) {
+  .hero__backdrop::before {
+    animation: none;
+    opacity: 0.35;
+  }
+  .hero__live-dot {
+    animation: none;
+  }
+}

@@ -30,6 +30,10 @@ TABLE_MAP = {
     "training_activity_types.json": "training_activity_types",
     "training_programs.json": "training_programs",
     "errand_templates.json": "errand_templates",
+    "recipes.json": "recipes",
+    "materials_catalog.json": "materials_catalog",
+    "quality_outcomes.json": "quality_outcomes",
+    "pricing.json": "pricing",
 }
 
 PK_COLUMN = {
@@ -197,7 +201,7 @@ async def seed_map_progress(conn: asyncpg.Connection) -> None:
 
 
 async def main() -> None:
-    database_url = os.environ.get("DATABASE_URL", "postgresql://divineruin:divineruin@localhost:5432/divineruin")
+    database_url = os.environ.get("DATABASE_URL", "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin")
     conn = await asyncpg.connect(database_url)
 
     try:

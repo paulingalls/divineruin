@@ -1,10 +1,10 @@
 """Tests for world effects parser, exit requirements, session flow, and god whispers (WU3)."""
 
 import json
-from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from sample_fixtures import mock_txn
 
 import event_types as E
 from background_process import BackgroundProcess
@@ -20,11 +20,6 @@ from tool_support import EFFECT_NPC_MAP
 
 
 _mock_conn = MagicMock(name="mock_txn_conn")
-
-
-@asynccontextmanager
-async def _mock_txn(conn):
-    yield conn
 
 
 def _make_session(location_id: str = "accord_guild_hall", **kwargs: object) -> SessionData:
@@ -299,7 +294,7 @@ class TestUpdateQuestWorldEffects:
     @pytest.mark.asyncio
     async def test_world_effects_applied_on_stage_advance(self):
         mock_db = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(_mock_conn)
+        mock_db.transaction = lambda: mock_txn(_mock_conn)
         mock_content = MagicMock()
         mock_content.get_quest = AsyncMock(return_value=QUEST_WITH_EFFECTS)
         mock_content.get_npc = AsyncMock(return_value={"default_disposition": "neutral"})

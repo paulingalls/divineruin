@@ -63,18 +63,25 @@ async def get_due_activities(*, conn: asyncpg.Connection | asyncpg.Pool | None =
 async def count_active_by_slot(
     player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> dict[str, int]:
-    """Count active activities per slot: training, crafting, companion."""
+    """Count active activities per slot: training, crafting, companion.
+
+    Bucketing mirrors the TS twin countActiveBySlot (activity_create.ts), so voice and
+    REST count slots identically (ADR 0005): COALESCE(data->>'slot', data->>'activity_type')
+    so an Artificer's borrowed-training-slot craft (data.slot='training') counts toward
+    training, not crafting; and the companion bucket matches both 'companion' and
+    'companion_errand'. COALESCE keeps pre-stamp legacy rows behaving unchanged.
+    """
     _conn = conn or await db.get_pool()
     row = await _conn.fetchrow(
         """
         SELECT
             COALESCE(SUM(CASE WHEN src = 'training' THEN 1 ELSE 0 END), 0) AS training,
             COALESCE(SUM(CASE WHEN src = 'crafting' THEN 1 ELSE 0 END), 0) AS crafting,
-            COALESCE(SUM(CASE WHEN src = 'companion_errand' THEN 1 ELSE 0 END), 0) AS companion
+            COALESCE(SUM(CASE WHEN src IN ('companion', 'companion_errand') THEN 1 ELSE 0 END), 0) AS companion
         FROM (
-            SELECT data->>'activity_type' AS src
+            SELECT COALESCE(data->>'slot', data->>'activity_type') AS src
             FROM async_activities
-            WHERE player_id = $1 AND data->>'status' = 'in_progress'
+            WHERE player_id = $1 AND data->>'status' IN ('in_progress', 'resolving')
           UNION ALL
             SELECT 'training' AS src
             FROM training_activities
@@ -88,6 +95,34 @@ async def count_active_by_slot(
         "crafting": row["crafting"] if row else 0,
         "companion": row["companion"] if row else 0,
     }
+
+
+async def lock_player_slot_rows(player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> None:
+    """Lock every slot-consuming row for a player FOR UPDATE before counting.
+
+    Twin of TS lockPlayerSlotRows (activity_create.ts): the lock predicate MUST match
+    count_active_by_slot's status filter (in_progress + resolving for async, != complete
+    for training) so a row flipping in_progress->resolving concurrently (the worker's CAS
+    claim) can't be counted-but-unlocked, letting two creates both pass the slot check.
+    Kept adjacent to count_active_by_slot so the two predicates can't silently drift.
+    """
+    _conn = conn or await db.get_pool()
+    await _conn.execute(
+        """
+        SELECT id FROM async_activities
+        WHERE player_id = $1 AND data->>'status' IN ('in_progress', 'resolving')
+        FOR UPDATE
+        """,
+        player_id,
+    )
+    await _conn.execute(
+        """
+        SELECT id FROM training_activities
+        WHERE player_id = $1 AND state != 'complete'
+        FOR UPDATE
+        """,
+        player_id,
+    )
 
 
 async def player_exists(player_id: str) -> bool:

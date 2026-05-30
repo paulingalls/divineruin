@@ -2,19 +2,14 @@
 
 import json
 import time
-from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sample_fixtures import mock_txn
 
 from session_data import SessionData
 
 # --- Shared test helpers ---
-
-
-@asynccontextmanager
-async def _mock_txn(conn):
-    yield conn
 
 
 def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None):
@@ -131,7 +126,7 @@ class TestMetricsAccumulation:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_mutations = MagicMock()
         mock_mutations.update_player_xp = AsyncMock()
         mock_queries = MagicMock()
@@ -154,7 +149,7 @@ class TestMetricsAccumulation:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_mutations = MagicMock()
         mock_mutations.add_inventory_item = AsyncMock()
         mock_queries = MagicMock()
@@ -181,7 +176,7 @@ class TestMetricsAccumulation:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_mutations = MagicMock()
         mock_mutations.set_player_quest = AsyncMock()
         mock_queries = MagicMock()
@@ -207,7 +202,7 @@ class TestMetricsAccumulation:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_db.extract_exit_connections = MagicMock(return_value=[])
         mock_mutations = MagicMock()
         mock_mutations.update_player_location = AsyncMock()
@@ -665,7 +660,7 @@ class TestSessionLifecycleIntegration:
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
+        mock_db.transaction = lambda: mock_txn(mock_conn)
         mock_mutations = MagicMock()
         mock_mutations.update_player_xp = AsyncMock()
         mock_mutations.add_inventory_item = AsyncMock()

@@ -1,10 +1,12 @@
 import { serve } from "bun";
 import { handleLivekitToken } from "./livekit.ts";
 import { handleGetCharacter } from "./character.ts";
+import { handleRepairQuote } from "./repair.ts";
 import { handleRequestCode, handleVerifyCode, handleGetMe, requireAuth } from "./auth.ts";
+import { handleJoinWaitlist } from "./waitlist.ts";
 import { handlePreflight, withCors, checkRateLimit } from "./middleware.ts";
+import { handleCreateActivity } from "./activity_create.ts";
 import {
-  handleCreateActivity,
   handleListActivities,
   handleGetActivity,
   handleActivityDecision,
@@ -19,6 +21,9 @@ import { handleStorePushToken, handleInternalPush } from "./push.ts";
 import { loadDestinationDangerLevels } from "./errand_risk.ts";
 import { loadTrainingActivityTypes } from "./training_state_machine.ts";
 import { loadTrainingPrograms, loadErrandTemplates } from "./activity_templates.ts";
+import { loadRecipes } from "./recipes.ts";
+import { loadItems } from "./items.ts";
+import { loadPricing } from "./pricing.ts";
 import { isDev } from "./env.ts";
 
 // Load content-backed config at startup. Fail loud if any query fails — the
@@ -28,11 +33,15 @@ await Promise.all([
   loadTrainingActivityTypes(),
   loadTrainingPrograms(),
   loadErrandTemplates(),
+  loadRecipes(),
+  loadItems(),
+  loadPricing(),
 ]);
 
 const enableDebug = isDev && Bun.env.ENABLE_DEBUG_CONSOLE === "true";
 
 const CHARACTER_RE = /^\/api\/character\/([a-zA-Z0-9_-]+)$/;
+const REPAIR_RE = /^\/api\/repair\/([a-zA-Z0-9_-]+)$/;
 const ACTIVITY_ID_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)$/;
 const ACTIVITY_DECIDE_RE = /^\/api\/activities\/([a-zA-Z0-9_]+)\/decide$/;
 const AUDIO_FILE_RE = /^\/api\/audio\/([a-zA-Z0-9_.-]+)$/;
@@ -63,6 +72,9 @@ const server = serve({
     if (path === "/api/auth/verify-code" && req.method === "POST") {
       return withCors(await handleVerifyCode(req));
     }
+    if (path === "/api/waitlist" && req.method === "POST") {
+      return withCors(await handleJoinWaitlist(req));
+    }
 
     // --- Authenticated routes ---
 
@@ -82,6 +94,17 @@ const server = serve({
         const auth = await requireAuth(req);
         if (auth instanceof Response) return withCors(auth);
         return withCors(await handleGetCharacter(req, auth.playerId));
+      }
+    }
+
+    // --- Repair quote (NPC blacksmith) ---
+
+    if (path.startsWith("/api/repair/") && req.method === "GET") {
+      const repairMatch = path.match(REPAIR_RE);
+      if (repairMatch) {
+        const auth = await requireAuth(req);
+        if (auth instanceof Response) return withCors(auth);
+        return withCors(await handleRepairQuote(req, auth.playerId, repairMatch[1]!));
       }
     }
 

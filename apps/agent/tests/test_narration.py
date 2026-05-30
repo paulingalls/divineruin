@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from activity_templates import build_narration_prompt
 from narration import (
     MODEL,
     _sanitize_player_text,
@@ -22,7 +23,8 @@ CRAFTING_OUTCOME = {
     "tier": "success",
     "crafted_item_id": "iron_sword",
     "crafted_item_name": "Iron Sword",
-    "quality_bonus": 2,
+    "bonus_property": None,
+    "flaw": None,
     "narrative_context": {
         "tier": "success",
         "roll": 18,
@@ -30,7 +32,8 @@ CRAFTING_OUTCOME = {
         "dc": 13,
         "skill": "athletics",
         "recipe_name": "Iron Sword",
-        "quality_bonus": 2,
+        "bonus_property": None,
+        "flaw": None,
         "npc_id": "grimjaw_blacksmith",
     },
     "decision_options": [
@@ -110,6 +113,53 @@ def _mock_tool_use_response(
     mock_response.usage.input_tokens = 150
     mock_response.usage.output_tokens = 100
     return mock_response
+
+
+class TestCraftingQualityNote:
+    """M5.3: the crafting prompt surfaces the bonus_property / flaw description."""
+
+    def _outcome(self, tier, *, bonus_property=None, flaw=None):
+        return {
+            "tier": tier,
+            "narrative_context": {
+                "tier": tier,
+                "roll": 18,
+                "dc": 11,
+                "recipe_name": "Iron Sword",
+                "bonus_property": bonus_property,
+                "flaw": flaw,
+                "npc_id": "grimjaw_blacksmith",
+            },
+            "decision_options": [{"id": "keep", "label": "Keep it"}],
+        }
+
+    def test_exceptional_bonus_surfaced_in_prompt(self):
+        bonus = {"id": "keen_edge", "name": "Keen Edge", "description": "The blade hums when it cuts."}
+        prompt, _ = build_narration_prompt("crafting", self._outcome("exceptional", bonus_property=bonus))
+        assert "Keen Edge" in prompt
+        assert "The blade hums when it cuts." in prompt
+
+    def test_partial_flaw_surfaced_in_prompt(self):
+        flaw = {"id": "dull_bite", "name": "Dull Bite", "description": "The edge drags."}
+        prompt, _ = build_narration_prompt("crafting", self._outcome("partial", flaw=flaw))
+        assert "Dull Bite" in prompt
+        assert "The edge drags." in prompt
+
+    def test_success_has_no_quality_note(self):
+        prompt, _ = build_narration_prompt("crafting", self._outcome("success"))
+        assert "flaw mars" not in prompt
+        assert "Exceptional touch" not in prompt
+
+    def test_recipe_cue_surfaced_when_present(self):
+        """decision crafting-narration-ssot: the per-recipe band cue threads into the prompt."""
+        outcome = self._outcome("success")
+        outcome["narrative_context"]["recipe_cue"] = "A blunt heft of oak, balanced for a swing."
+        prompt, _ = build_narration_prompt("crafting", outcome)
+        assert "A blunt heft of oak, balanced for a swing." in prompt
+
+    def test_recipe_cue_absent_when_missing(self):
+        prompt, _ = build_narration_prompt("crafting", self._outcome("success"))
+        assert "The result:" not in prompt
 
 
 class TestSanitizePlayerText:

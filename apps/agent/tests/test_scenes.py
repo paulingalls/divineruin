@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 import pathlib
-from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sample_fixtures import mock_txn
 
 from quest_tools import _update_quest_impl
 from session_data import SessionData
@@ -330,11 +330,6 @@ class TestWarmLayerSceneInjection:
 _mock_conn = MagicMock(name="mock_txn_conn")
 
 
-@asynccontextmanager
-async def _mock_txn(conn):
-    yield conn
-
-
 def _make_context(player_id="player_1", location_id="accord_guild_hall"):
     ctx = MagicMock()
     ctx.userdata = SessionData(player_id=player_id, location_id=location_id)
@@ -358,7 +353,7 @@ class TestUpdateQuestSceneHandoff:
             ],
         }
         mock_db = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(_mock_conn)
+        mock_db.transaction = lambda: mock_txn(_mock_conn)
         mock_content = MagicMock()
         mock_content.get_quest = AsyncMock(return_value=quest)
         mock_content.get_item = AsyncMock(return_value=None)
@@ -402,7 +397,7 @@ class TestUpdateQuestSceneHandoff:
             ],
         }
         mock_db = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(_mock_conn)
+        mock_db.transaction = lambda: mock_txn(_mock_conn)
         mock_content = MagicMock()
         mock_content.get_quest = AsyncMock(return_value=quest)
         mock_content.get_item = AsyncMock(return_value=None)

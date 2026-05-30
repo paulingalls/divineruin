@@ -1,0 +1,83 @@
+import "./Hero.css";
+import { AudioDemo } from "./AudioDemo.tsx";
+
+// Above-the-fold landing section and the page's LCP element. Renders identical
+// markup server (build-time prerender) and client (hydration) — no window/Date/
+// random during render — so the headline and copy are in the prerendered HTML
+// (good LCP, visible without JS). The only motion is the decorative rift/bloom
+// backdrop + the live-dot pulse, which animate via CSS post-paint and are
+// disabled under prefers-reduced-motion; the content never depends on JS to be
+// seen, so it deliberately does NOT use the scroll-reveal helper (revealing
+// above-the-fold content would delay LCP). Copy is verbatim from the mockup
+// source (docs/mockups/source/hero.jsx).
+export function Hero() {
+  return (
+    <header className="hero" id="top">
+      {/* Decorative rift + bloom; aria-hidden so the backdrop isn't announced and
+          the single <h1> stays the section's only semantic landmark. */}
+      <div className="hero__backdrop" aria-hidden="true" />
+
+      {/* Each half splits into a nowrap "<key> ·" and a detail so that, when the row
+          is too narrow to fit, the line breaks right after the "·" (key on one line,
+          detail below) instead of word-wrapping mid-phrase. See Hero.css. */}
+      <div className="hero__meta">
+        <span className="hero__meta-label">
+          <span className="hero__meta-key">▸ Aethos ·&nbsp;</span>
+          <span className="hero__meta-detail">Year 30 of the Sundered Veil</span>
+        </span>
+        <span className="hero__meta-status">
+          <span className="hero__live-dot" aria-hidden="true" />
+          <span className="hero__meta-statustext">
+            <span className="hero__meta-key">Pre-alpha ·&nbsp;</span>
+            <span className="hero__meta-detail">Closed playtest</span>
+          </span>
+        </span>
+      </div>
+
+      <div className="hero__content">
+        <h1 className="hero__headline">
+          Divine
+          <br />
+          <em>Ruin</em>
+        </h1>
+        <p className="hero__subhead">the sundered veil</p>
+        <p className="hero__pitch">
+          A fantasy RPG you play with your voice. A world tended by ten gods, threatened by
+          something that should not exist, and narrated to you — in real time — by an AI Dungeon
+          Master who voices every character, remembers every choice, and never reads from a script.
+        </p>
+
+        <div className="hero__cta-row">
+          {/* Primary -> #waitlist (in-page section lands in M5; same known,
+              tracked anchor the NavBar uses). */}
+          <a className="hero__cta hero__cta--accent" href="#waitlist">
+            Request Early Access
+          </a>
+          {/* Secondary "Enter Aethos" scrolls into the content — targets #world, the
+              World section (Milestone 4). Re-pointed from the M3 #premise placeholder
+              now that the World section lands id="world". */}
+          <a className="hero__cta hero__cta--ghost" href="#world">
+            Enter Aethos ↓
+          </a>
+        </div>
+
+        {/* Audio teaser sits inside the hero. It's a real lazy player
+            (preload="none"), so it adds no above-fold weight and is not the LCP
+            element (the headline is). */}
+        <AudioDemo />
+
+        {/* Caption for the sample: the voice-first framing + the headphones nudge
+            sit right under the card they describe. (The mockup's separate bottom
+            meta row and its "scroll" cue were dropped — the note pairs better with
+            the sample, and the scroll affordance is self-evident.) */}
+        <p className="hero__audio-caption">
+          <span>A voice-first audio RPG</span>
+          <span className="hero__audio-caption-sep" aria-hidden="true">
+            ·
+          </span>
+          <span className="hero__audio-caption-note">Headphones recommended</span>
+        </p>
+      </div>
+    </header>
+  );
+}

@@ -1,214 +1,95 @@
 import "@/global.css";
 
 import { Platform, type TextStyle } from "react-native";
+import {
+  AnimationPresets,
+  BrandColors,
+  Colors,
+  type FontRole,
+  FontTokens,
+  MaxContentWidth,
+  RARITY_COLORS,
+  Radius,
+  Spacing,
+  type ThemeColor,
+  TypeScaleTokens,
+} from "@divineruin/design-tokens";
 
-// --- Brand Palette ---
+// Platform-neutral primitives now live in @divineruin/design-tokens (shared with
+// apps/web). Re-exported here unchanged so the ~38 mobile consumers importing from
+// "@/constants/theme" are untouched. This file keeps only the React-Native-coupled
+// construction (Platform.select font families, FontStyles, the TextStyle TypeScale,
+// and Shadows) — rebuilt from the tokens so rendered values stay byte-identical.
 
-export const BrandColors = {
-  // Foundation
-  void: "#0A0A0B",
-  ink: "#141417",
-  charcoal: "#1E1E23",
-  slate: "#2A2A32",
-  // Text
-  ash: "#6B6B78",
-  bone: "#B8B5AD",
-  parchment: "#D4D0C8",
-  // Hollow accent
-  hollowFaint: "#134E4A",
-  hollowMuted: "#1A8A7A",
-  hollow: "#2DD4BF",
-  hollowGlow: "#5EEAD4",
-  // Atmospheric
-  nightTint: "#0A0A2A",
-  // Semantic
-  emberFaint: "#7C2D12",
-  ember: "#C2410C",
-  divineFaint: "#92702A",
-  divine: "#C9A84C",
-} as const;
+export { AnimationPresets, BrandColors, Colors, MaxContentWidth, RARITY_COLORS, Radius, Spacing };
+export type { ThemeColor };
 
-// --- Item Rarity Colors ---
-
-export const RARITY_COLORS: Record<string, string> = {
-  common: BrandColors.charcoal,
-  uncommon: BrandColors.hollowMuted,
-  rare: BrandColors.hollow,
-  legendary: BrandColors.divine,
-};
-
-// --- Flat Colors (dark-only, semantic keys) ---
-
-export const Colors = {
-  // Backward-compat keys
-  text: BrandColors.bone,
-  textSecondary: BrandColors.ash,
-  background: BrandColors.void,
-  backgroundElement: BrandColors.ink,
-  cardBackground: BrandColors.ink,
-  cardBorder: BrandColors.charcoal,
-  hpGreen: "#4A7C59",
-  hpYellow: BrandColors.divine,
-  hpRed: BrandColors.ember,
-  accent: BrandColors.hollow,
-  // Brand keys
-  heading: BrandColors.parchment,
-  inactive: BrandColors.slate,
-  hollow: BrandColors.hollow,
-  hollowFaint: BrandColors.hollowFaint,
-  hollowMuted: BrandColors.hollowMuted,
-  hollowGlow: BrandColors.hollowGlow,
-  ember: BrandColors.ember,
-  emberFaint: BrandColors.emberFaint,
-  divine: BrandColors.divine,
-  divineFaint: BrandColors.divineFaint,
-} as const;
-
-export type ThemeColor = keyof typeof Colors;
-
-// --- Font Families ---
+// --- Font Families (web|native string per role, via Platform.select) ---
 
 export const FontFamilies = {
-  display: Platform.select({
-    web: "'Cormorant Garamond', serif",
-    default: "CormorantGaramond_300Light",
-  }),
+  display: Platform.select({ web: FontTokens.display.web, default: FontTokens.display.native }),
   displayRegular: Platform.select({
-    web: "'Cormorant Garamond', serif",
-    default: "CormorantGaramond_400Regular",
+    web: FontTokens.displayRegular.web,
+    default: FontTokens.displayRegular.native,
   }),
   displaySemiBold: Platform.select({
-    web: "'Cormorant Garamond', serif",
-    default: "CormorantGaramond_600SemiBold",
+    web: FontTokens.displaySemiBold.web,
+    default: FontTokens.displaySemiBold.native,
   }),
   displayItalic: Platform.select({
-    web: "'Cormorant Garamond', serif",
-    default: "CormorantGaramond_300Light_Italic",
+    web: FontTokens.displayItalic.web,
+    default: FontTokens.displayItalic.native,
   }),
-  body: Platform.select({
-    web: "'Crimson Pro', serif",
-    default: "CrimsonPro_400Regular",
-  }),
+  body: Platform.select({ web: FontTokens.body.web, default: FontTokens.body.native }),
   bodyLight: Platform.select({
-    web: "'Crimson Pro', serif",
-    default: "CrimsonPro_300Light",
+    web: FontTokens.bodyLight.web,
+    default: FontTokens.bodyLight.native,
   }),
   bodyLightItalic: Platform.select({
-    web: "'Crimson Pro', serif",
-    default: "CrimsonPro_300Light_Italic",
+    web: FontTokens.bodyLightItalic.web,
+    default: FontTokens.bodyLightItalic.native,
   }),
   bodySemiBold: Platform.select({
-    web: "'Crimson Pro', serif",
-    default: "CrimsonPro_600SemiBold",
+    web: FontTokens.bodySemiBold.web,
+    default: FontTokens.bodySemiBold.native,
   }),
-  system: Platform.select({
-    web: "'IBM Plex Mono', monospace",
-    default: "IBMPlexMono_400Regular",
-  }),
+  system: Platform.select({ web: FontTokens.system.web, default: FontTokens.system.native }),
   systemLight: Platform.select({
-    web: "'IBM Plex Mono', monospace",
-    default: "IBMPlexMono_300Light",
+    web: FontTokens.systemLight.web,
+    default: FontTokens.systemLight.native,
   }),
 };
 
 // --- Font Styles (fontFamily + web-only fontWeight/fontStyle) ---
 
-const webWeight = (w: TextStyle["fontWeight"]) =>
-  Platform.OS === "web" ? ({ fontWeight: w } as TextStyle) : {};
-const webItalic = () => (Platform.OS === "web" ? ({ fontStyle: "italic" } as TextStyle) : {});
-
-export const FontStyles = {
-  display: { fontFamily: FontFamilies.display, ...webWeight("300") },
-  displayRegular: { fontFamily: FontFamilies.displayRegular, ...webWeight("400") },
-  displaySemiBold: { fontFamily: FontFamilies.displaySemiBold, ...webWeight("600") },
-  displayItalic: { fontFamily: FontFamilies.displayItalic, ...webWeight("300"), ...webItalic() },
-  body: { fontFamily: FontFamilies.body, ...webWeight("400") },
-  bodyLight: { fontFamily: FontFamilies.bodyLight, ...webWeight("300") },
-  bodyLightItalic: {
-    fontFamily: FontFamilies.bodyLightItalic,
-    ...webWeight("300"),
-    ...webItalic(),
-  },
-  bodySemiBold: { fontFamily: FontFamilies.bodySemiBold, ...webWeight("600") },
-  system: { fontFamily: FontFamilies.system, ...webWeight("400") },
-  systemLight: { fontFamily: FontFamilies.systemLight, ...webWeight("300") },
-} as const;
-
-// --- Type Scale ---
-
-export const TypeScale: Record<string, TextStyle> = {
-  display: {
-    fontSize: 62,
-    ...FontStyles.display,
-    lineHeight: 68,
-    color: BrandColors.parchment,
-  },
-  h1: {
-    fontSize: 36,
-    ...FontStyles.display,
-    lineHeight: 46,
-    color: BrandColors.parchment,
-  },
-  h2: {
-    fontSize: 29,
-    ...FontStyles.displayRegular,
-    lineHeight: 39,
-    color: BrandColors.parchment,
-  },
-  "body-lg": {
-    fontSize: 24,
-    ...FontStyles.bodyLight,
-    lineHeight: 36,
-    color: BrandColors.bone,
-  },
-  body: {
-    fontSize: 20,
-    ...FontStyles.body,
-    lineHeight: 29,
-    color: BrandColors.bone,
-  },
-  system: {
-    fontSize: 14,
-    ...FontStyles.system,
-    lineHeight: 21,
-    color: BrandColors.ash,
-  },
-  caption: {
-    fontSize: 13,
-    ...FontStyles.systemLight,
-    lineHeight: 18,
-    color: BrandColors.ash,
-  },
+// Web applies the token's weight/italic intent as CSS; native ignores them (the
+// postscript font name already encodes weight/style). Built from FontTokens so the
+// weight/italic source of truth stays single — no hardcoded duplication of the tokens.
+// `os` defaults to the runtime Platform.OS so the FontStyles build below is
+// unchanged (byte-identical), but is injectable so tests can exercise the web
+// branch — test-preload.ts pins Platform.OS to "ios", which never reaches it.
+export const fontStyleFor = (role: FontRole, os: typeof Platform.OS = Platform.OS): TextStyle => {
+  const token = FontTokens[role];
+  if (os !== "web") return { fontFamily: FontFamilies[role] };
+  return {
+    fontFamily: FontFamilies[role],
+    fontWeight: token.weight,
+    ...(token.italic ? { fontStyle: "italic" } : {}),
+  };
 };
 
-// --- Spacing ---
+export const FontStyles = Object.fromEntries(
+  (Object.keys(FontTokens) as FontRole[]).map((role) => [role, fontStyleFor(role)]),
+) as Record<FontRole, TextStyle>;
 
-export const Spacing = {
-  // Numeric aliases (backward-compat)
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
-  // Brand-named tokens
-  xs: 4,
-  sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  "2xl": 48,
-} as const;
+// --- Type Scale (RN TextStyle, composed from the shared scale numbers + FontStyles) ---
 
-// --- Radius ---
-
-export const Radius = {
-  sm: 6,
-  md: 8,
-  lg: 12,
-  icon: 27,
-} as const;
+export const TypeScale: Record<string, TextStyle> = Object.fromEntries(
+  Object.entries(TypeScaleTokens).map(([key, t]) => [
+    key,
+    { fontSize: t.fontSize, ...FontStyles[t.font], lineHeight: t.lineHeight, color: t.color },
+  ]),
+);
 
 // --- Shadows ---
 
@@ -251,16 +132,6 @@ export const Shadows = {
   }),
 };
 
-// --- Animation Presets ---
-
-export const AnimationPresets = {
-  overlaySpring: { damping: 18, stiffness: 200 },
-} as const;
-
 // --- Backward-compat aliases ---
 
 export const Fonts = FontFamilies;
-
-// --- Layout ---
-
-export const MaxContentWidth = 800;

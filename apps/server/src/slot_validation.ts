@@ -7,9 +7,8 @@
  *
  * 3-independent-slot model: training (1 max), crafting (1 max), companion (1 max).
  * The Artificer exception (use the training slot for crafting when a Portable Lab
- * is equipped) is implemented here but NOT wired from production yet — deferred to
- * Phase 5 (see ADR 0005). The archetype/hasPortableLab params + their unit tests
- * are the Phase-5-ready seam.
+ * is owned) is wired into production by story-006: the crafting create path passes
+ * archetype + hasPortableLab and stamps the borrowed-training-slot row (ADR 0005).
  */
 
 import type { ActivityType } from "@divineruin/shared";
@@ -25,6 +24,12 @@ export interface SlotCounts {
 export interface SlotValidationResult {
   valid: boolean;
   error: string | null;
+  /**
+   * The slot actually consumed — set when `valid`. Normally the activity's natural
+   * slot, but the Artificer Portable-Lab exception reports "training" when a craft
+   * borrows the training slot, so the create path can stamp the row accordingly.
+   */
+  slot?: ActivitySlot;
 }
 
 const ACTIVITY_TYPE_TO_SLOT: Record<ActivityType, ActivitySlot> = {
@@ -54,12 +59,12 @@ export function validateSlotAvailability(
   const current = slotCounts[slot];
 
   if (slot === "crafting" && current >= 1) {
-    // Artificer exception: can use training slot for crafting
+    // Artificer exception: a Portable Lab lets crafting borrow the training slot.
     if (archetype?.toLowerCase() === "artificer" && hasPortableLab) {
       if (slotCounts.training >= 1) {
         return { valid: false, error: "Both crafting and training slots are full" };
       }
-      return { valid: true, error: null };
+      return { valid: true, error: null, slot: "training" };
     }
     return { valid: false, error: "Crafting slot is full" };
   }
@@ -69,5 +74,5 @@ export function validateSlotAvailability(
     return { valid: false, error: `${label} slot is full` };
   }
 
-  return { valid: true, error: null };
+  return { valid: true, error: null, slot };
 }

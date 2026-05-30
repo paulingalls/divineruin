@@ -1,282 +1,26 @@
-import { test, expect, describe, mock, beforeEach } from "bun:test";
+import { test, expect, describe, beforeEach, mock } from "bun:test";
+import { dbMockFactory, setQueryStubs, resetMockDb, makeRequest } from "./activities-test-mock.ts";
 
-// Shared mock state: tests set this array before calling handlers
-let mockQueryResults: unknown[][] = [];
-let queryCallIndex = 0;
+void mock.module("./db.ts", dbMockFactory);
 
-function mockTaggedTemplate(_strings: TemplateStringsArray, ..._values: unknown[]) {
-  const result = mockQueryResults[queryCallIndex] ?? [];
-  queryCallIndex++;
-  return Promise.resolve(result);
-}
-
-void mock.module("./db.ts", () => {
-  const mockSql = Object.assign(mockTaggedTemplate, {
-    close: () => Promise.resolve(),
-    begin: async (fn: (tx: typeof mockTaggedTemplate) => Promise<unknown>) => {
-      return fn(mockSql);
-    },
-  });
-  // Support sql(values) call form for IN expressions (distinct from tagged template calls)
-  const proxy = new Proxy(mockSql, {
-    apply(_target, _thisArg, args: [unknown, ...unknown[]]) {
-      const first = args[0] as { raw?: unknown } | unknown[] | undefined;
-      // Tagged template: first arg has .raw property
-      if (first && typeof first === "object" && "raw" in first)
-        return mockTaggedTemplate(first as TemplateStringsArray, ...args.slice(1));
-      // sql(array) form for IN clauses — return passthrough
-      if (Array.isArray(first)) return first;
-      return mockTaggedTemplate(first as TemplateStringsArray, ...args.slice(1));
-    },
-  });
-  return { sql: proxy };
-});
-
-const {
-  handleCreateActivity,
-  handleListActivities,
-  handleGetActivity,
-  handleActivityDecision,
-  handleAudioFile,
-} = await import("./activities.ts");
-
-const { setupDangerLevelFixture } = await import("./test-fixtures/danger-levels.ts");
-const { setupTrainingConfigFixture } = await import("./test-fixtures/training-config.ts");
-const { setupErrandTemplatesFixture } = await import("./test-fixtures/errand-templates.ts");
-
-function makeRequest(method: string, path: string, body?: Record<string, unknown>): Request {
-  const opts: RequestInit = { method };
-  if (body) {
-    opts.body = JSON.stringify(body);
-    opts.headers = { "Content-Type": "application/json" };
-  }
-  return new Request(`http://localhost${path}`, opts);
-}
+const { handleListActivities, handleGetActivity, handleActivityDecision, handleAudioFile } =
+  await import("./activities.ts");
 
 beforeEach(() => {
-  mockQueryResults = [];
-  queryCallIndex = 0;
-  setupDangerLevelFixture();
-  setupTrainingConfigFixture();
-  setupErrandTemplatesFixture();
-});
-
-describe("handleCreateActivity", () => {
-  test("creates crafting activity", async () => {
-    // Inside transaction: lock both tables, slot count, material check, delete materials, insert
-    mockQueryResults = [
-      [], // lock async_activities (FOR UPDATE)
-      [], // lock training_activities (FOR UPDATE)
-      [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
-      [{ item_id: "iron_ingot" }, { item_id: "leather_strip" }], // material check (FOR UPDATE)
-      [], // delete iron_ingot
-      [], // delete leather_strip
-      [], // insert activity
-    ];
-
-    const req = makeRequest("POST", "/api/activities", {
-      type: "crafting",
-      parameters: { recipe_id: "iron_sword" },
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      activity_id: string;
-      status: string;
-      resolve_at_estimate: string;
-    };
-    expect(body.activity_id).toStartWith("activity_");
-    expect(body.status).toBe("in_progress");
-    expect(body.resolve_at_estimate).toBeTruthy();
-  });
-
-  test("rejects missing type", async () => {
-    const req = makeRequest("POST", "/api/activities", {});
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("type is required");
-  });
-
-  test("rejects invalid activity type", async () => {
-    const req = makeRequest("POST", "/api/activities", { type: "fishing" });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("Invalid activity type");
-  });
-
-  test("rejects when slot is full", async () => {
-    mockQueryResults = [
-      [], // lock async_activities (FOR UPDATE)
-      [], // lock training_activities (FOR UPDATE)
-      [{ training: 0, crafting: 1, companion: 0 }], // countActiveBySlot — crafting slot full
-    ];
-
-    const req = makeRequest("POST", "/api/activities", {
-      type: "crafting",
-      parameters: { recipe_id: "iron_sword" },
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("Crafting slot is full");
-  });
-
-  test("rejects crafting without recipe_id", async () => {
-    const req = makeRequest("POST", "/api/activities", {
-      type: "crafting",
-      parameters: {},
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("recipe_id");
-  });
-
-  test("rejects unknown recipe", async () => {
-    const req = makeRequest("POST", "/api/activities", {
-      type: "crafting",
-      parameters: { recipe_id: "mithril_armor" },
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("Unknown recipe");
-  });
-
-  test("rejects missing materials", async () => {
-    mockQueryResults = [
-      [], // lock async_activities (FOR UPDATE)
-      [], // lock training_activities (FOR UPDATE)
-      [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
-      [], // batch material check — none found
-    ];
-
-    const req = makeRequest("POST", "/api/activities", {
-      type: "crafting",
-      parameters: { recipe_id: "iron_sword" },
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("Missing required material");
-  });
-
-  test("creates training activity in training_activities table", async () => {
-    // Inside transaction: lock async_activities, lock training_activities, slot count, insert into training_activities
-    mockQueryResults = [
-      [], // lock async_activities (FOR UPDATE)
-      [], // lock training_activities (FOR UPDATE)
-      [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
-      [], // insert into training_activities
-    ];
-
-    const req = makeRequest("POST", "/api/activities", {
-      type: "training",
-      parameters: { program_id: "combat_basics" },
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      activity_id: string;
-      status: string;
-      state: string;
-      transition_at: string;
-    };
-    expect(body.activity_id).toStartWith("train_");
-    expect(body.status).toBe("in_progress");
-    expect(body.state).toBe("running_first_half");
-    expect(body.transition_at).toBeTruthy();
-  });
-
-  test("rejects unknown training program", async () => {
-    const req = makeRequest("POST", "/api/activities", {
-      type: "training",
-      parameters: { program_id: "underwater_basket_weaving" },
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("Unknown training program");
-  });
-
-  test("rejects training without program_id", async () => {
-    const req = makeRequest("POST", "/api/activities", {
-      type: "training",
-      parameters: {},
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("program_id");
-  });
-
-  test("creates companion errand", async () => {
-    // Inside transaction: lock both tables, slot count, insert
-    mockQueryResults = [
-      [], // lock async_activities (FOR UPDATE)
-      [], // lock training_activities (FOR UPDATE)
-      [{ training: 0, crafting: 0, companion: 0 }], // countActiveBySlot
-      [], // insert activity
-    ];
-
-    const req = makeRequest("POST", "/api/activities", {
-      type: "companion_errand",
-      parameters: { errand_type: "scout", destination: "millhaven" },
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { activity_id: string; status: string };
-    expect(body.status).toBe("in_progress");
-  });
-
-  test("rejects errand without errand_type", async () => {
-    const req = makeRequest("POST", "/api/activities", {
-      type: "companion_errand",
-      parameters: { destination: "millhaven" },
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("errand_type");
-  });
-
-  test("rejects errand with invalid destination", async () => {
-    const req = makeRequest("POST", "/api/activities", {
-      type: "companion_errand",
-      parameters: { errand_type: "scout", destination: "narnia" },
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("Invalid destination");
-  });
-
-  test("rejects errand when companion_sable does social", async () => {
-    const req = makeRequest("POST", "/api/activities", {
-      type: "companion_errand",
-      parameters: {
-        errand_type: "social",
-        destination: "millhaven_inn",
-        companion_id: "companion_sable",
-      },
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("companion_sable");
-  });
+  resetMockDb();
 });
 
 describe("handleListActivities", () => {
   test("returns activities list", async () => {
-    mockQueryResults = [
-      [
-        { id: "act_1", data: { status: "in_progress", activity_type: "crafting" } },
-        { id: "act_2", data: { status: "resolved", activity_type: "training" } },
-      ],
-    ];
+    setQueryStubs([
+      {
+        match: "FROM async_activities",
+        result: [
+          { id: "act_1", data: { status: "in_progress", activity_type: "crafting" } },
+          { id: "act_2", data: { status: "resolved", activity_type: "training" } },
+        ],
+      },
+    ]);
 
     const req = makeRequest("GET", "/api/activities");
     const res = await handleListActivities(req, "player_1");
@@ -287,7 +31,9 @@ describe("handleListActivities", () => {
   });
 
   test("supports status filter", async () => {
-    mockQueryResults = [[{ id: "act_1", data: { status: "resolved" } }]];
+    setQueryStubs([
+      { match: "FROM async_activities", result: [{ id: "act_1", data: { status: "resolved" } }] },
+    ]);
 
     const req = makeRequest("GET", "/api/activities?status=resolved");
     const res = await handleListActivities(req, "player_1");
@@ -297,27 +43,91 @@ describe("handleListActivities", () => {
   });
 
   test("returns empty list", async () => {
-    mockQueryResults = [[]];
-
+    // No stub: the list query resolves to [] -> empty activities.
     const req = makeRequest("GET", "/api/activities");
     const res = await handleListActivities(req, "player_1");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { activities: unknown[] };
     expect(body.activities).toEqual([]);
   });
+
+  // sprint-011 story-004: worker-internal 'resolving' state must normalize to
+  // 'in_progress' on the wire so typed mobile clients never see the transient
+  // value. Defense-in-depth at the API egress boundary. Closes 3f87f654ba6c.
+  test("normalizes 'resolving' status to 'in_progress' on the wire", async () => {
+    setQueryStubs([
+      {
+        match: "FROM async_activities",
+        result: [
+          { id: "act_1", data: { status: "resolving", activity_type: "crafting" } },
+          { id: "act_2", data: { status: "in_progress", activity_type: "training" } },
+        ],
+      },
+    ]);
+
+    const req = makeRequest("GET", "/api/activities");
+    const res = await handleListActivities(req, "player_1");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { activities: { id: string; status: string }[] };
+    expect(body.activities.length).toBe(2);
+    expect(body.activities[0]!.status).toBe("in_progress");
+    expect(body.activities[1]!.status).toBe("in_progress");
+  });
+
+  // Worker-internal bookkeeping (resolving_at, resolve_attempts) must not leak to
+  // clients on non-terminal rows. Closes 06edbc8f3eef.
+  test("strips worker-internal fields on the wire", async () => {
+    setQueryStubs([
+      {
+        match: "FROM async_activities",
+        result: [
+          {
+            id: "act_1",
+            data: {
+              status: "resolving",
+              activity_type: "crafting",
+              resolving_at: "2026-01-01T00:00:00Z",
+              resolve_attempts: 4,
+              // Worker's cached TTS breakdown — not stripped by mark_resolved, leaks
+              // verbatim on resolved rows unless stripped at egress.
+              narration_segments: [{ character: "Narrator", emotion: "calm", text: "hi" }],
+              resolve_at: "2026-01-01T01:00:00Z",
+              narration_text: "You forged a blade.",
+              narration_summary: "Forged a blade.",
+            },
+          },
+        ],
+      },
+    ]);
+
+    const req = makeRequest("GET", "/api/activities");
+    const res = await handleListActivities(req, "player_1");
+    const body = (await res.json()) as { activities: Record<string, unknown>[] };
+    expect(body.activities[0]!.resolving_at).toBeUndefined();
+    expect(body.activities[0]!.resolve_attempts).toBeUndefined();
+    expect(body.activities[0]!.narration_segments).toBeUndefined();
+    // Client-facing fields survive the strip.
+    expect(body.activities[0]!.status).toBe("in_progress");
+    expect(body.activities[0]!.resolve_at).toBe("2026-01-01T01:00:00Z");
+    expect(body.activities[0]!.narration_text).toBe("You forged a blade.");
+    expect(body.activities[0]!.narration_summary).toBe("Forged a blade.");
+  });
 });
 
 describe("handleGetActivity", () => {
   test("returns activity detail", async () => {
-    mockQueryResults = [
-      [
-        {
-          id: "act_1",
-          player_id: "player_1",
-          data: { status: "in_progress", activity_type: "crafting" },
-        },
-      ],
-    ];
+    setQueryStubs([
+      {
+        match: "FROM async_activities",
+        result: [
+          {
+            id: "act_1",
+            player_id: "player_1",
+            data: { status: "in_progress", activity_type: "crafting" },
+          },
+        ],
+      },
+    ]);
 
     const req = makeRequest("GET", "/api/activities/act_1");
     const res = await handleGetActivity(req, "player_1", "act_1");
@@ -328,43 +138,101 @@ describe("handleGetActivity", () => {
   });
 
   test("returns 404 for non-existent", async () => {
-    mockQueryResults = [[]];
-
+    // No stub: the lookup resolves to [] -> 404.
     const req = makeRequest("GET", "/api/activities/nonexistent");
     const res = await handleGetActivity(req, "player_1", "nonexistent");
     expect(res.status).toBe(404);
   });
 
   test("returns 404 for wrong owner", async () => {
-    mockQueryResults = [[{ id: "act_1", player_id: "player_2", data: { status: "in_progress" } }]];
+    setQueryStubs([
+      {
+        match: "FROM async_activities",
+        result: [{ id: "act_1", player_id: "player_2", data: { status: "in_progress" } }],
+      },
+    ]);
 
     const req = makeRequest("GET", "/api/activities/act_1");
     const res = await handleGetActivity(req, "player_1", "act_1");
     expect(res.status).toBe(404);
   });
+
+  test("normalizes 'resolving' status to 'in_progress' on the wire", async () => {
+    setQueryStubs([
+      {
+        match: "FROM async_activities",
+        result: [
+          {
+            id: "act_1",
+            player_id: "player_1",
+            data: { status: "resolving", activity_type: "crafting" },
+          },
+        ],
+      },
+    ]);
+
+    const req = makeRequest("GET", "/api/activities/act_1");
+    const res = await handleGetActivity(req, "player_1", "act_1");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { status: string };
+    expect(body.status).toBe("in_progress");
+  });
+
+  test("strips worker-internal fields on the wire", async () => {
+    setQueryStubs([
+      {
+        match: "FROM async_activities",
+        result: [
+          {
+            id: "act_1",
+            player_id: "player_1",
+            data: {
+              status: "resolving",
+              activity_type: "crafting",
+              resolving_at: "2026-01-01T00:00:00Z",
+              resolve_attempts: 4,
+              narration_segments: [{ character: "Narrator", emotion: "calm", text: "hi" }],
+              narration_text: "You forged a blade.",
+            },
+          },
+        ],
+      },
+    ]);
+
+    const req = makeRequest("GET", "/api/activities/act_1");
+    const res = await handleGetActivity(req, "player_1", "act_1");
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.resolving_at).toBeUndefined();
+    expect(body.resolve_attempts).toBeUndefined();
+    expect(body.narration_segments).toBeUndefined();
+    expect(body.status).toBe("in_progress");
+    expect(body.narration_text).toBe("You forged a blade.");
+  });
 });
 
 describe("handleActivityDecision", () => {
   test("submits decision on resolved activity", async () => {
-    mockQueryResults = [
-      [
-        {
-          id: "act_1",
-          player_id: "player_1",
-          data: {
-            status: "resolved",
-            activity_type: "crafting",
-            outcome: { crafted_item_id: "iron_sword" },
-            decision_options: [
-              { id: "keep", label: "Keep the item" },
-              { id: "sell", label: "Sell it" },
-            ],
+    // Only the SELECT returns rows; the inventory upsert + status UPDATE resolve to [].
+    setQueryStubs([
+      {
+        match: "FROM async_activities",
+        result: [
+          {
+            id: "act_1",
+            player_id: "player_1",
+            data: {
+              status: "resolved",
+              activity_type: "crafting",
+              outcome: { crafted_item_id: "iron_sword" },
+              decision_options: [
+                { id: "keep", label: "Keep the item" },
+                { id: "sell", label: "Sell it" },
+              ],
+            },
           },
-        },
-      ],
-      [], // inventory upsert
-      [], // status update
-    ];
+        ],
+      },
+    ]);
 
     const req = makeRequest("POST", "/api/activities/act_1/decide", { decision_id: "keep" });
     const res = await handleActivityDecision(req, "player_1", "act_1");
@@ -381,15 +249,18 @@ describe("handleActivityDecision", () => {
   });
 
   test("rejects decision on non-resolved activity", async () => {
-    mockQueryResults = [
-      [
-        {
-          id: "act_1",
-          player_id: "player_1",
-          data: { status: "in_progress", decision_options: [] },
-        },
-      ],
-    ];
+    setQueryStubs([
+      {
+        match: "FROM async_activities",
+        result: [
+          {
+            id: "act_1",
+            player_id: "player_1",
+            data: { status: "in_progress", decision_options: [] },
+          },
+        ],
+      },
+    ]);
 
     const req = makeRequest("POST", "/api/activities/act_1/decide", { decision_id: "keep" });
     const res = await handleActivityDecision(req, "player_1", "act_1");
@@ -399,18 +270,21 @@ describe("handleActivityDecision", () => {
   });
 
   test("rejects invalid decision id", async () => {
-    mockQueryResults = [
-      [
-        {
-          id: "act_1",
-          player_id: "player_1",
-          data: {
-            status: "resolved",
-            decision_options: [{ id: "keep", label: "Keep" }],
+    setQueryStubs([
+      {
+        match: "FROM async_activities",
+        result: [
+          {
+            id: "act_1",
+            player_id: "player_1",
+            data: {
+              status: "resolved",
+              decision_options: [{ id: "keep", label: "Keep" }],
+            },
           },
-        },
-      ],
-    ];
+        ],
+      },
+    ]);
 
     const req = makeRequest("POST", "/api/activities/act_1/decide", { decision_id: "destroy" });
     const res = await handleActivityDecision(req, "player_1", "act_1");
@@ -420,8 +294,7 @@ describe("handleActivityDecision", () => {
   });
 
   test("rejects decision on non-existent activity", async () => {
-    mockQueryResults = [[]];
-
+    // No stub: the FOR UPDATE lookup resolves to [] -> 404.
     const req = makeRequest("POST", "/api/activities/act_1/decide", { decision_id: "keep" });
     const res = await handleActivityDecision(req, "player_1", "act_1");
     expect(res.status).toBe(404);

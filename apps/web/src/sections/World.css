@@ -1,0 +1,512 @@
+/* World section + scroll-reveal gate. Theme tokens only (web-section-conventions).
+   The mockup's --accent / --accent-glow / --accent-faint map to our --color-hollow*. */
+
+.world {
+  padding: var(--space-2xl) var(--space-lg);
+  background: var(--color-void);
+}
+
+.world__inner {
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+}
+
+.world__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+  margin-bottom: var(--space-lg);
+}
+
+.world__eyebrow-num {
+  color: var(--color-hollow);
+}
+
+.world__title {
+  margin: 0 0 var(--space-lg);
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: var(--section-title-size);
+  line-height: 1.05;
+  color: var(--color-parchment);
+}
+
+.world__title em {
+  font-style: italic;
+  color: var(--color-bone);
+}
+
+.world__lede {
+  max-width: 64ch;
+  margin: 0 0 var(--space-2xl);
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--text-body-lg-size);
+  line-height: var(--text-body-lg-line-height);
+  color: var(--color-bone);
+}
+
+/* Hollow corruption alert callout. */
+.world__alert {
+  margin-top: var(--space-2xl);
+  padding: var(--space-xl) var(--space-xl);
+  border: 1px solid var(--color-hollow-faint);
+  border-radius: 8px;
+  background: radial-gradient(ellipse at bottom, var(--color-hollow-faint), transparent 70%);
+}
+
+.world__alert-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--color-hollow);
+}
+
+.world__alert-label::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-hollow);
+  box-shadow: 0 0 8px var(--color-hollow);
+}
+
+.world__alert-body {
+  max-width: 60ch;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--text-body-lg-size);
+  line-height: 1.55;
+  color: var(--color-bone);
+}
+
+.world__alert-body em {
+  font-style: italic;
+  color: var(--color-parchment);
+}
+
+/* Atmospheric quote pull. */
+.world__quote {
+  margin: var(--space-2xl) 0 0;
+  padding: var(--space-xl) 0 var(--space-lg);
+  text-align: center;
+  border-top: 1px solid var(--color-charcoal);
+  border-bottom: 1px solid var(--color-charcoal);
+}
+
+.world__quote blockquote {
+  margin: 0 auto;
+  max-width: 60ch;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(24px, 2.9vw, 36px);
+  line-height: 1.35;
+  color: var(--color-parchment);
+  text-wrap: balance;
+}
+
+.world__quote figcaption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-half);
+  margin-top: var(--space-md);
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+}
+
+.world__quote-when {
+  /* Real metadata ("scratched, undated") — use the AA-legal muted text token, not
+     structural slate (which would fail contrast). slate stays for borders/surfaces. */
+  color: var(--color-ash);
+}
+
+/* Shared lore block. */
+.world__block {
+  margin-top: clamp(var(--space-2xl), 8vh, 88px);
+}
+
+.world__block-eyebrow {
+  margin-bottom: var(--space-lg);
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+}
+
+/* Timeline. */
+.world__timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.world__timeline::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--color-charcoal) 8%,
+    var(--color-charcoal) 92%,
+    transparent
+  );
+}
+
+.world__tl-event {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: var(--space-md);
+  padding: var(--space-md) 0;
+  align-items: start;
+}
+
+.world__tl-year {
+  grid-column: 2 / -1;
+  margin-bottom: var(--space-xs);
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  color: var(--color-ash);
+}
+
+.world__tl-marker {
+  grid-row: span 2;
+  grid-column: 1;
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+}
+
+.world__tl-marker::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-void);
+  border: 1px solid var(--color-slate);
+}
+
+.world__tl-event--now .world__tl-marker::after {
+  background: var(--color-hollow);
+  border-color: var(--color-hollow);
+  box-shadow:
+    0 0 0 4px var(--color-hollow-faint),
+    0 0 16px var(--color-hollow);
+}
+
+.world__tl-content {
+  grid-column: 2 / -1;
+}
+
+.world__tl-title {
+  margin: 0 0 var(--space-xs);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--text-h2-size);
+  color: var(--color-parchment);
+}
+
+.world__tl-event--now .world__tl-title {
+  color: var(--color-hollow-glow);
+}
+
+.world__tl-desc {
+  margin: 0;
+  max-width: 64ch;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  color: var(--color-bone);
+}
+
+@media (min-width: 760px) {
+  .world__timeline::before {
+    left: calc(160px + 11px);
+  }
+  .world__tl-event {
+    grid-template-columns: 160px 32px 1fr;
+    gap: 0;
+  }
+  .world__tl-year {
+    grid-column: auto;
+    margin-bottom: 0;
+    padding-top: 6px;
+  }
+  .world__tl-marker {
+    grid-row: auto;
+    grid-column: auto;
+  }
+  .world__tl-content {
+    grid-column: auto;
+  }
+}
+
+/* Places grid: 3 -> 2 (<=980) -> 1 (<=560). Hairline separators via gap+bg. */
+.world__places-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--color-charcoal);
+  border: 1px solid var(--color-charcoal);
+}
+
+@media (max-width: 980px) {
+  .world__places-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .world__places-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.world__place {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-lg) var(--space-md);
+  background: var(--color-void);
+  transition: background 0.2s ease;
+}
+
+.world__place:hover {
+  background: var(--color-ink);
+}
+
+.world__place-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.world__place-kind {
+  font-family: var(--font-system);
+  font-size: var(--text-caption-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+}
+
+.world__place-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-half);
+  font-family: var(--font-system);
+  font-size: var(--text-caption-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+.world__place-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.world__place-status--held {
+  color: var(--color-hollow);
+}
+
+.world__place-status--warn {
+  color: var(--color-divine);
+}
+
+.world__place-status--lost {
+  color: var(--color-ember);
+}
+
+.world__place-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--text-h2-size);
+  line-height: 1.1;
+  color: var(--color-parchment);
+}
+
+.world__place-desc {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  color: var(--color-ash);
+}
+
+/* Hollow taxonomy: 2 cols -> 1 (<=760). */
+.world__taxonomy {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--color-charcoal);
+  border: 1px solid var(--color-charcoal);
+}
+
+@media (max-width: 760px) {
+  .world__taxonomy {
+    grid-template-columns: 1fr;
+  }
+}
+
+.world__tx {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-lg) var(--space-md);
+  background: var(--color-void);
+  transition: background 0.2s ease;
+}
+
+.world__tx:hover {
+  background: var(--color-ink);
+}
+
+.world__tx-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-system);
+  font-size: var(--text-caption-size);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+}
+
+.world__tx--1 .world__tx-threat {
+  color: var(--color-bone);
+}
+.world__tx--2 .world__tx-threat {
+  color: var(--color-divine);
+}
+.world__tx--3 .world__tx-threat {
+  color: var(--color-ember);
+}
+.world__tx--4 .world__tx-threat {
+  color: var(--color-hollow);
+}
+
+.world__tx-name {
+  margin: var(--space-xs) 0 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--text-h2-size);
+  color: var(--color-parchment);
+}
+
+.world__tx--4 .world__tx-name {
+  color: var(--color-hollow-glow);
+  text-shadow: 0 0 20px var(--color-hollow-faint);
+}
+
+.world__tx-desc {
+  margin: 0;
+  max-width: 52ch;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  color: var(--color-bone);
+}
+
+.world__tx-quote {
+  margin: var(--space-xs) 0 0;
+  padding-top: var(--space-sm);
+  max-width: 52ch;
+  border-top: 1px dashed var(--color-charcoal);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: var(--text-body-size);
+  line-height: 1.5;
+  color: var(--color-ash);
+}
+
+.world__tx-quote--redacted {
+  font-family: var(--font-system);
+  font-style: normal;
+  font-size: var(--text-caption-size);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-align: center;
+  /* Reads as "crossed out" via a real strikethrough on an AA-legal muted colour
+     (ash), instead of a near-invisible slate fill that fails contrast. The
+     line-through carries the redacted intent while the text stays legible. */
+  color: var(--color-ash);
+  text-decoration: line-through;
+}
+
+/* Setting / Threat / Mystery: 3 cols -> 1 (<=760). */
+.world__meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+  margin-top: var(--space-2xl);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-charcoal);
+}
+
+@media (max-width: 760px) {
+  .world__meta {
+    grid-template-columns: 1fr;
+  }
+}
+
+.world__meta dt {
+  margin-bottom: var(--space-sm);
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+}
+
+.world__meta dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: var(--text-h2-size);
+  line-height: 1.2;
+  color: var(--color-parchment);
+}
+
+.world__meta-small {
+  display: block;
+  margin-top: var(--space-xs);
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: var(--text-body-size);
+  color: var(--color-ash);
+}

@@ -9,6 +9,8 @@ errand_risk.py (ADR 0006); these functions compute the skill-check outcome only.
 import random
 from dataclasses import dataclass
 
+from crafting_gates import tainted_blocks_crafter, workspace_accessible
+from quality_outcomes import apply_quality_outcome
 from rules_engine import attribute_modifier, dc_for_tier, skill_modifier
 
 # --- Outcome dataclasses ---
@@ -16,10 +18,11 @@ from rules_engine import attribute_modifier, dc_for_tier, skill_modifier
 
 @dataclass(frozen=True)
 class CraftingOutcome:
-    tier: str  # success | partial | unexpected | failure
+    tier: str  # exceptional | success | partial | failure (spec bands, M5.3)
     crafted_item_id: str | None
     crafted_item_name: str | None
-    quality_bonus: int
+    bonus_property: dict | None  # {id,name,description} on exceptional, else None
+    flaw: dict | None  # {id,name,description} on partial, else None
     materials_consumed: list[str]
     materials_returned: list[str]
     narrative_context: dict
@@ -43,12 +46,86 @@ class ErrandOutcome:
 def resolve_crafting(
     player_data: dict,
     parameters: dict,
+    *,
+    workspace_access: list[str] | None = None,
+    crafting_tier: str | None = None,
+    quality_tables: dict | None = None,
     rng: random.Random | None = None,
 ) -> CraftingOutcome:
-    """Resolve a crafting activity. Skill check determines outcome tier."""
+    """Resolve a crafting activity: re-check the workspace-access and tainted-Expert
+    gates, then roll d20+mod vs DC.
+
+    The gates were already run at creation for the agent tool path, but the live REST
+    create path skips pre-flight (concern 2b76f2452f23), so resolution is the chokepoint
+    that catches an insufficient workspace or a sub-Expert working tainted materials. A
+    gate FAILURE is a `failure` outcome (materials consumed, no item) — not an exception.
+
+    `workspace_access` (the player's accessible workspaces, captured at creation) and
+    `crafting_tier` are REQUIRED: the worker threads them from the activity parameters,
+    and they fail loud (ValueError) if absent rather than silently defaulting, so a
+    miswired producer surfaces immediately instead of mis-gating the craft.
+
+    `quality_tables` is the recipe category's parsed quality_outcomes row (story-002);
+    the crafting_resolution orchestrator fetches it and threads it in. On an Exceptional
+    roll a bonus_property is drawn from it, on Partial a flaw; it is None-tolerant so a
+    missing content row degrades to a plain item rather than crashing the pure resolver.
+    """
+    if workspace_access is None:
+        raise ValueError("resolve_crafting requires workspace_access captured at creation")
+    if crafting_tier is None:
+        raise ValueError("resolve_crafting requires crafting_tier captured at creation")
+
     r = rng or random.Random()
 
-    # Skill check for crafting
+    required_materials = parameters.get("required_materials", [])
+    recipe_id = parameters.get("recipe_id", "unknown")
+    result_item_id = parameters.get("result_item_id", recipe_id)
+    result_item_name = parameters.get("result_item_name", "crafted item")
+
+    workspace_required = parameters.get("workspace_required")
+    if workspace_required is None:
+        raise ValueError("resolve_crafting requires parameters['workspace_required'] captured at creation")
+    if "tainted_materials" not in parameters:
+        raise ValueError("resolve_crafting requires parameters['tainted_materials'] captured at creation")
+    tainted_materials = parameters["tainted_materials"]
+
+    # Resolution-time gates (story-005). Evaluated BEFORE the roll so a gate failure
+    # consumes no rng (deterministic regardless of seed). Materials were deducted at
+    # creation, so a gate failure consumes them and returns no item — the spec's
+    # failure tier. The gates reuse the same predicates as the pre-flight pipeline.
+    gate = None
+    gate_reason = ""
+    if not workspace_accessible(workspace_required, workspace_access):
+        gate, gate_reason = "workspace", f"no access to a {workspace_required} workspace"
+    elif tainted_blocks_crafter(crafting_tier, tainted_materials):
+        gate, gate_reason = "tainted_expert", f"{crafting_tier} crafting cannot safely work tainted materials"
+    if gate is not None:
+        return CraftingOutcome(
+            tier="failure",
+            crafted_item_id=None,
+            crafted_item_name=None,
+            bonus_property=None,
+            flaw=None,
+            materials_consumed=list(required_materials),
+            materials_returned=[],
+            narrative_context={
+                "tier": "failure",
+                "gate": gate,
+                "gate_reason": gate_reason,
+                "recipe_name": result_item_name,
+                "bonus_property": None,
+                "flaw": None,
+            },
+            decision_options=[
+                {"id": "retry", "label": "Set the work aside for now"},
+                {"id": "abandon", "label": "Walk away from the bench"},
+            ],
+        )
+
+    # Skill check for crafting. Pure-margin spec bands (decision crafting-band-thresholds):
+    # Exceptional at DC+10, Success at DC, Partial DC-5..DC-1, Failure below DC-5. No
+    # natural-1/20 special-casing — a master can't fail a trivial recipe, a nat-20 with a
+    # low mod won't force Exceptional.
     craft_skill = parameters.get("skill", "arcana")
     dc = parameters.get("dc", dc_for_tier("moderate"))
     mod = skill_modifier(player_data, craft_skill)
@@ -56,56 +133,46 @@ def resolve_crafting(
     total = d20 + mod
     margin = total - dc
 
-    required_materials = parameters.get("required_materials", [])
-    recipe_id = parameters.get("recipe_id", "unknown")
-    result_item_id = parameters.get("result_item_id", recipe_id)
-    result_item_name = parameters.get("result_item_name", "crafted item")
-
-    if d20 == 20 or margin >= 5:
+    bonus_property = None
+    flaw = None
+    if margin >= 10:
+        tier = "exceptional"
+        # Draw a bonus property from the recipe category's table (None-tolerant: a missing
+        # content row degrades to a plain exceptional item rather than crashing).
+        if quality_tables is not None:
+            bonus_property = apply_quality_outcome("exceptional", quality_tables, rng=r)
+        crafted_item_id = result_item_id
+        crafted_item_name = result_item_name
+        decisions = [
+            {"id": "keep", "label": "Keep this fine piece"},
+            {"id": "boast", "label": "Show off the craftsmanship"},
+        ]
+    elif margin >= 0:
         tier = "success"
-        quality_bonus = min(margin, 3)
-        materials_consumed = list(required_materials)
-        materials_returned = []
         crafted_item_id = result_item_id
         crafted_item_name = result_item_name
         decisions = [
             {"id": "keep", "label": "Keep the item"},
             {"id": "sell", "label": "Set it aside to sell"},
         ]
-    elif margin >= 0:
+    elif margin >= -5:
         tier = "partial"
-        quality_bonus = 0
-        materials_consumed = list(required_materials)
-        materials_returned = []
+        if quality_tables is not None:
+            flaw = apply_quality_outcome("partial", quality_tables, rng=r)
         crafted_item_id = result_item_id
         crafted_item_name = result_item_name
         decisions = [
             {"id": "keep", "label": "Keep it as-is"},
             {"id": "rework", "label": "Try to improve it (risk breaking)"},
         ]
-    elif d20 == 1 or margin < -5:
+    else:
         tier = "failure"
-        quality_bonus = 0
-        # Return half materials on failure
-        half = len(required_materials) // 2
-        materials_consumed = required_materials[:half]
-        materials_returned = required_materials[half:]
+        # Spec: materials consumed, nothing produced (decision crafting-failure-materials).
         crafted_item_id = None
         crafted_item_name = None
         decisions = [
-            {"id": "retry", "label": "Salvage what you can and try again later"},
+            {"id": "retry", "label": "Salvage your resolve and try again later"},
             {"id": "abandon", "label": "Walk away from the forge"},
-        ]
-    else:
-        tier = "unexpected"
-        quality_bonus = 0
-        materials_consumed = list(required_materials)
-        materials_returned = []
-        crafted_item_id = result_item_id
-        crafted_item_name = result_item_name
-        decisions = [
-            {"id": "keep_odd", "label": "Keep it — it might be useful"},
-            {"id": "show_scholar", "label": "Show it to a scholar"},
         ]
 
     narrative_context = {
@@ -115,7 +182,8 @@ def resolve_crafting(
         "dc": dc,
         "skill": craft_skill,
         "recipe_name": result_item_name,
-        "quality_bonus": quality_bonus,
+        "bonus_property": bonus_property,
+        "flaw": flaw,
         "npc_id": parameters.get("npc_id", "grimjaw_blacksmith"),
     }
 
@@ -123,9 +191,10 @@ def resolve_crafting(
         tier=tier,
         crafted_item_id=crafted_item_id,
         crafted_item_name=crafted_item_name,
-        quality_bonus=quality_bonus,
-        materials_consumed=materials_consumed,
-        materials_returned=materials_returned,
+        bonus_property=bonus_property,
+        flaw=flaw,
+        materials_consumed=list(required_materials),
+        materials_returned=[],
         narrative_context=narrative_context,
         decision_options=decisions,
     )

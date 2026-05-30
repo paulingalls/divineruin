@@ -1,274 +1,41 @@
 import { sql } from "./db.ts";
 import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
-import {
-  CRAFTING_RECIPES,
-  VALID_ACTIVITY_TYPES,
-  getTrainingProgram,
-  getErrandTemplate,
-} from "./activity_templates.ts";
-import { displayName } from "@divineruin/shared";
-import { validateSlotAvailability, type SlotCounts } from "./slot_validation.ts";
-import { validateErrandDispatch } from "./errand_risk.ts";
-import { startTrainingCycle } from "./training_state_machine.ts";
 
-async function countActiveBySlot(playerId: string, tx: typeof sql): Promise<SlotCounts> {
-  const rows: { training: number; crafting: number; companion: number }[] = await tx`
-    SELECT
-      COALESCE(SUM(CASE WHEN src = 'training' THEN 1 ELSE 0 END), 0)::int AS training,
-      COALESCE(SUM(CASE WHEN src = 'crafting' THEN 1 ELSE 0 END), 0)::int AS crafting,
-      COALESCE(SUM(CASE WHEN src = 'companion_errand' THEN 1 ELSE 0 END), 0)::int AS companion
-    FROM (
-      SELECT data->>'activity_type' AS src
-      FROM async_activities
-      WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
-      UNION ALL
-      SELECT 'training' AS src
-      FROM training_activities
-      WHERE player_id = ${playerId} AND state != 'complete'
-    ) combined
-  `;
-  const row = rows[0];
-  return {
-    training: row?.training ?? 0,
-    crafting: row?.crafting ?? 0,
-    companion: row?.companion ?? 0,
-  };
-}
+// Worker-internal bookkeeping kept in async_activities.data that must never reach
+// clients. resolving_at/resolve_attempts are the transient CAS markers that
+// mark_resolved strips in SQL on the terminal write, but they're present during the
+// in_progress/resolving retry window. narration_segments is the worker's cached
+// per-character TTS breakdown (dialogue_parser.Segment: character/emotion/text); it
+// is NOT stripped by mark_resolved, so it persists verbatim on resolved rows — the
+// client only needs narration_audio_url + narration_text. Add any future worker-only
+// field here (concern 06edbc8f3eef).
+// 'slot' is the internal slot-accounting marker (the slot the activity consumes;
+// stamped 'training' for an Artificer borrowed-slot craft). countActiveBySlot in
+// activity_create.ts reads it from the DB; clients have no use for it and key off
+// activity_type.
+const INTERNAL_ONLY_FIELDS = [
+  "resolving_at",
+  "resolve_attempts",
+  "narration_segments",
+  "slot",
+] as const;
 
-function randomInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function makeActivityId(prefix: string): string {
-  return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
-}
-
-export async function handleCreateActivity(req: Request, playerId: string): Promise<Response> {
-  try {
-    const body = (await req.json().catch(() => null)) as {
-      type?: string;
-      parameters?: Record<string, unknown>;
-    } | null;
-
-    if (!body?.type) {
-      return Response.json({ error: "type is required" }, { status: 400 });
-    }
-
-    if (!VALID_ACTIVITY_TYPES.has(body.type)) {
-      return Response.json({ error: "Invalid activity type" }, { status: 400 });
-    }
-
-    // Capture into a const so the narrowed string type survives into the
-    // sql.begin() async closures below (TS widens body.type back to
-    // string | undefined across the closure boundary otherwise).
-    const activityType = body.type;
-    const params = body.parameters ?? {};
-
-    // Training uses its own table and transaction — handle separately and return early
-    if (body.type === "training") {
-      const programId = params.program_id as string | undefined;
-      if (!programId) {
-        return Response.json({ error: "program_id is required for training" }, { status: 400 });
-      }
-      const program = getTrainingProgram(programId);
-      if (!program) {
-        return Response.json({ error: "Unknown training program" }, { status: 400 });
-      }
-
-      const txnResult = await sql.begin(async (tx) => {
-        await tx`
-          SELECT id FROM async_activities
-          WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
-          FOR UPDATE
-        `;
-        await tx`
-          SELECT id FROM training_activities
-          WHERE player_id = ${playerId} AND state != 'complete'
-          FOR UPDATE
-        `;
-        const slotCounts = await countActiveBySlot(playerId, tx);
-        // archetype/hasPortableLab intentionally omitted: the Artificer
-        // training-slot exception is deferred to Phase 5 (see ADR 0005).
-        const slotCheck = validateSlotAvailability(slotCounts, activityType);
-        if (!slotCheck.valid) {
-          return { error: slotCheck.error! } as const;
-        }
-
-        const now = new Date();
-        const cycle = startTrainingCycle(program.training_activity_type, now);
-        const activityId = makeActivityId("train");
-
-        const data = {
-          program_id: program.id,
-          program_name: program.name,
-          first_half_seconds: cycle.first_half_seconds,
-          stat: program.stat,
-          skill: program.skill ?? null,
-          dc: program.dc,
-          mentor_id: program.mentor_id,
-        };
-
-        await tx`
-          INSERT INTO training_activities (id, player_id, activity_type, state, data, transition_at)
-          VALUES (${activityId}, ${playerId}, ${program.training_activity_type}, ${cycle.state}, ${data}, ${cycle.transition_at})
-        `;
-
-        return { activityId, state: cycle.state, transitionAt: cycle.transition_at } as const;
-      });
-
-      if ("error" in txnResult) {
-        return Response.json({ error: txnResult.error }, { status: 400 });
-      }
-
-      return Response.json({
-        activity_id: txnResult.activityId,
-        status: "in_progress",
-        state: txnResult.state,
-        transition_at: txnResult.transitionAt,
-      });
-    }
-
-    // Crafting and companion_errand — both go through async_activities
-    let durationMin: number;
-    let durationMax: number;
-    let activityParams: Record<string, unknown>;
-    let materialsToConsume: string[] = [];
-
-    if (body.type === "crafting") {
-      const recipeId = params.recipe_id as string | undefined;
-      if (!recipeId) {
-        return Response.json({ error: "recipe_id is required for crafting" }, { status: 400 });
-      }
-      const recipe = CRAFTING_RECIPES[recipeId];
-      if (!recipe) {
-        return Response.json({ error: "Unknown recipe" }, { status: 400 });
-      }
-
-      durationMin = recipe.duration_min_seconds;
-      durationMax = recipe.duration_max_seconds;
-      materialsToConsume = recipe.required_materials;
-      activityParams = {
-        recipe_id: recipe.id,
-        result_item_id: recipe.result_item_id,
-        result_item_name: recipe.result_item_name,
-        required_materials: recipe.required_materials,
-        skill: recipe.skill,
-        dc: recipe.dc,
-        npc_id: recipe.npc_id,
-      };
-    } else {
-      // companion_errand
-      const errandType = params.errand_type as string | undefined;
-      const destination = params.destination as string | undefined;
-      if (!errandType) {
-        return Response.json({ error: "errand_type is required" }, { status: 400 });
-      }
-      const template = getErrandTemplate(errandType);
-      if (!template) {
-        return Response.json({ error: "Unknown errand type" }, { status: 400 });
-      }
-      if (!destination) {
-        return Response.json({ error: "destination is required" }, { status: 400 });
-      }
-      if (!template.valid_destinations.includes(destination)) {
-        return Response.json({ error: "Invalid destination for errand type" }, { status: 400 });
-      }
-
-      const companionId = (params.companion_id as string) || "companion_kael";
-      const validation = validateErrandDispatch(errandType, destination, companionId);
-      if (!validation.valid) {
-        return Response.json({ error: validation.error }, { status: 400 });
-      }
-
-      durationMin = template.duration_min_seconds;
-      durationMax = template.duration_max_seconds;
-      // Risk is rolled by the Python worker at resolution (ADR 0006), not here.
-      activityParams = {
-        errand_type: errandType,
-        destination,
-      };
-    }
-
-    // Atomic transaction: check slot availability, verify+consume materials, insert activity
-    const txnResult = await sql.begin(async (tx) => {
-      await tx`
-        SELECT id FROM async_activities
-        WHERE player_id = ${playerId} AND data->>'status' = 'in_progress'
-        FOR UPDATE
-      `;
-      await tx`
-        SELECT id FROM training_activities
-        WHERE player_id = ${playerId} AND state != 'complete'
-        FOR UPDATE
-      `;
-      const slotCounts = await countActiveBySlot(playerId, tx);
-      // archetype/hasPortableLab intentionally omitted: the Artificer
-      // crafting-on-training-slot exception is deferred to Phase 5 (see ADR 0005).
-      const slotCheck = validateSlotAvailability(slotCounts, activityType);
-      if (!slotCheck.valid) {
-        return { error: slotCheck.error! } as const;
-      }
-
-      // Verify and consume materials atomically for crafting
-      if (materialsToConsume.length > 0) {
-        const ownedRows: { item_id: string }[] = await tx`
-          SELECT item_id FROM player_inventory
-          WHERE player_id = ${playerId} AND item_id IN ${sql(materialsToConsume)}
-          FOR UPDATE
-        `;
-        const ownedSet = new Set(ownedRows.map((r) => r.item_id));
-        for (const matId of materialsToConsume) {
-          if (!ownedSet.has(matId)) {
-            return { error: `Missing required material: ${displayName(matId)}` } as const;
-          }
-        }
-        await tx`
-          DELETE FROM player_inventory
-          WHERE player_id = ${playerId} AND item_id IN ${sql(materialsToConsume)}
-        `;
-      }
-
-      const now = new Date();
-      const durationSeconds = randomInt(durationMin, durationMax);
-      const resolveAt = new Date(now.getTime() + durationSeconds * 1000);
-      const activityId = makeActivityId("activity");
-
-      const data = {
-        status: "in_progress",
-        activity_type: activityType,
-        start_time: now.toISOString(),
-        duration_min_seconds: durationMin,
-        duration_max_seconds: durationMax,
-        resolve_at: resolveAt.toISOString(),
-        parameters: activityParams,
-        outcome: null,
-        narration_text: null,
-        narration_audio_url: null,
-        decision_options: null,
-      };
-
-      await tx`
-        INSERT INTO async_activities (id, player_id, data)
-        VALUES (${activityId}, ${playerId}, ${data})
-      `;
-
-      return { activityId, resolveAt: resolveAt.toISOString() } as const;
-    });
-
-    if ("error" in txnResult) {
-      return Response.json({ error: txnResult.error }, { status: 400 });
-    }
-
-    return Response.json({
-      activity_id: txnResult.activityId,
-      status: "in_progress",
-      resolve_at_estimate: txnResult.resolveAt,
-    });
-  } catch (err) {
-    logError("[activities] create failed:", err);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+/**
+ * Sanitize an async-activity row on the way out to clients: normalize the
+ * worker-internal 'resolving' transient state to 'in_progress' (typed consumers
+ * only know in_progress/resolved), and drop worker-internal bookkeeping fields.
+ * Defense-in-depth at the API egress boundary.
+ */
+function normalizeActivityStatus<T extends Record<string, unknown>>(activity: T): T {
+  const sanitized: Record<string, unknown> = { ...activity };
+  if (sanitized.status === "resolving") {
+    sanitized.status = "in_progress";
   }
+  for (const field of INTERNAL_ONLY_FIELDS) {
+    delete sanitized[field];
+  }
+  return sanitized as T;
 }
 
 export async function handleListActivities(req: Request, playerId: string): Promise<Response> {
@@ -277,7 +44,16 @@ export async function handleListActivities(req: Request, playerId: string): Prom
     const statusFilter = url.searchParams.get("status");
 
     let rows: { id: string; data: unknown }[];
-    if (statusFilter) {
+    if (statusFilter === "in_progress") {
+      // Widen to also match worker-claimed rows so clients polling for
+      // in_progress don't miss activities mid-resolution.
+      rows = await sql`
+        SELECT id, data FROM async_activities
+        WHERE player_id = ${playerId} AND data->>'status' IN ('in_progress', 'resolving')
+        ORDER BY created_at DESC
+        LIMIT 100
+      `;
+    } else if (statusFilter) {
       rows = await sql`
         SELECT id, data FROM async_activities
         WHERE player_id = ${playerId} AND data->>'status' = ${statusFilter}
@@ -295,7 +71,7 @@ export async function handleListActivities(req: Request, playerId: string): Prom
 
     const activities = rows.map((row) => {
       const data = parseJsonb(row.data);
-      return { id: row.id, ...data };
+      return normalizeActivityStatus({ id: row.id, ...data });
     });
 
     return Response.json({ activities });
@@ -325,7 +101,7 @@ export async function handleGetActivity(
     }
 
     const data = parseJsonb(row.data);
-    return Response.json({ id: row.id, ...data });
+    return Response.json(normalizeActivityStatus({ id: row.id, ...data }));
   } catch (err) {
     logError("[activities] get failed:", err);
     return Response.json({ error: "Internal server error" }, { status: 500 });

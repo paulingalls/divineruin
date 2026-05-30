@@ -1,0 +1,80 @@
+/* Classes "big number" section + scroll-reveal gate. Theme tokens only. */
+
+.classes {
+  padding: var(--space-2xl) var(--space-lg);
+  background: var(--color-void);
+}
+
+.classes__inner {
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+}
+
+.classes__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-system);
+  font-size: var(--text-system-size);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+  margin-bottom: var(--space-lg);
+}
+
+.classes__eyebrow-num {
+  color: var(--color-hollow);
+}
+
+.classes__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: var(--section-title-size);
+  line-height: 1.05;
+  color: var(--color-parchment);
+}
+
+.classes__title em {
+  font-style: italic;
+  color: var(--color-bone);
+}
+
+.classes__stat {
+  margin-top: var(--space-xl);
+  padding: var(--space-2xl) 0;
+  text-align: center;
+}
+
+.classes__big-num {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(96px, 18vw, 240px);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--color-parchment);
+  text-shadow: 0 0 80px var(--color-hollow-faint);
+}
+
+.classes__equation {
+  margin: var(--space-md) 0 0;
+  font-family: var(--font-system);
+  font-size: var(--text-body-size);
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--color-ash);
+}
+
+.classes__acc {
+  color: var(--color-hollow);
+}
+
+.classes__ctx {
+  max-width: 50ch;
+  margin: var(--space-lg) auto 0;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--text-body-lg-size);
+  line-height: 1.55;
+  color: var(--color-bone);
+}

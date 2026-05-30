@@ -13,6 +13,7 @@ import tempfile
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from claim_stack_helpers import patch_claim_stack
 
 from async_rules import resolve_crafting
 from async_worker import _resolve_single_activity, resolve_due_activities
@@ -47,6 +48,15 @@ SAMPLE_PLAYER = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _stub_crafting_skill_counter():
+    """Stub the story-006 failure-band counter write so a random-roll crafting Failure
+    in these pipeline tests doesn't reach the real pool (db.get_pool needs DATABASE_URL).
+    The counter behavior is covered by test_crafting_skill_counter.py."""
+    with patch("async_worker.db_mutations.increment_crafting_skill_counter", new_callable=AsyncMock):
+        yield
+
+
 class TestFullPipeline:
     """End-to-end: create activity -> resolve -> narrate -> audio -> DB update."""
 
@@ -66,6 +76,11 @@ class TestFullPipeline:
                 "skill": "arcana",
                 "dc": 13,
                 "npc_id": "grimjaw_blacksmith",
+                # story-005 resolution gate inputs (captured at creation).
+                "workspace_required": "forge",
+                "workspace_access": ["field", "forge"],
+                "crafting_tier": "expert",
+                "tainted_materials": False,
             },
             "resolve_at": "2025-01-01T00:00:00Z",
         }
@@ -75,9 +90,29 @@ class TestFullPipeline:
         async def mock_update(activity_id, updates, **kwargs):
             update_calls.append((activity_id, updates))
 
+        async def mock_mark_resolved(activity_id, updates, _conn):
+            update_calls.append((activity_id, updates))
+
+        _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(activity)
         with tempfile.TemporaryDirectory() as tmpdir:
             with (
+                txn_p,
+                get_p,
+                claim_p,
+                revert_p,
                 patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+                # story-003: the crafting branch delegates to crafting_resolution, which
+                # fetches the recipe category + quality tables. Stub both (no DB in this test).
+                patch("crafting_resolution.get_recipe", new_callable=AsyncMock, return_value={"category": "weapon"}),
+                patch(
+                    "crafting_resolution.get_quality_outcomes",
+                    new_callable=AsyncMock,
+                    return_value={
+                        "id": "weapon",
+                        "bonus_properties": [{"id": "keen_edge", "name": "Keen Edge", "description": "It hums."}],
+                        "flaws": [{"id": "dull_bite", "name": "Dull Bite", "description": "It drags."}],
+                    },
+                ),
                 patch(
                     "async_worker.generate_activity_narration",
                     new_callable=AsyncMock,
@@ -96,6 +131,7 @@ class TestFullPipeline:
                     "async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_e2e_craft.mp3"
                 ),
                 patch("async_worker.db_mutations.update_activity", side_effect=mock_update),
+                patch("async_worker.mark_resolved", side_effect=mock_mark_resolved),
                 patch("async_worker.AUDIO_DIR", tmpdir),
                 patch(
                     "async_worker.generate_notification_hook",
@@ -114,7 +150,7 @@ class TestFullPipeline:
         assert any("GRIMJAW" in seg["character"].upper() for seg in cached["narration_segments"])
         assert cached["narration_summary"] is not None
         assert isinstance(cached["narration_segments"], list)
-        assert cached["outcome"]["tier"] in ("success", "partial", "unexpected", "failure")
+        assert cached["outcome"]["tier"] in ("exceptional", "success", "partial", "failure")
         assert len(cached["decision_options"]) >= 2
         # Second call: mark resolved with audio
         _, resolved = update_calls[1]
@@ -142,7 +178,15 @@ class TestFullPipeline:
         async def mock_update(activity_id, updates, **kwargs):
             update_calls.append((activity_id, updates))
 
+        async def mock_mark_resolved(activity_id, updates, _conn):
+            update_calls.append((activity_id, updates))
+
+        _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(activity)
         with (
+            txn_p,
+            get_p,
+            claim_p,
+            revert_p,
             patch("async_worker.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
                 "errand_resolution.db_content_queries.get_location",
@@ -160,6 +204,7 @@ class TestFullPipeline:
             ),
             patch("async_worker.synthesize_segments", new_callable=AsyncMock, return_value="activity_e2e_errand.mp3"),
             patch("async_worker.db_mutations.update_activity", side_effect=mock_update),
+            patch("async_worker.mark_resolved", side_effect=mock_mark_resolved),
             patch("async_worker.generate_notification_hook", new_callable=AsyncMock, return_value="Kael returns."),
             patch("async_worker.send_push_notification", new_callable=AsyncMock),
         ):
@@ -221,10 +266,18 @@ class TestSoftTimerVariance:
             "required_materials": ["iron_ingot"],
             "skill": "arcana",
             "dc": 13,
+            "workspace_required": "forge",
+            "tainted_materials": False,
         }
         tiers = set()
         for seed in range(100):
-            result = resolve_crafting(SAMPLE_PLAYER, params, rng=random.Random(seed))
+            result = resolve_crafting(
+                SAMPLE_PLAYER,
+                params,
+                workspace_access=["field", "forge"],
+                crafting_tier="expert",
+                rng=random.Random(seed),
+            )
             tiers.add(result.tier)
 
         assert len(tiers) >= 3, f"Only got {len(tiers)} tiers: {tiers}"
@@ -266,7 +319,8 @@ class TestCostVerification:
                 "dc": 13,
                 "skill": "athletics",
                 "recipe_name": "Iron Sword",
-                "quality_bonus": 2,
+                "bonus_property": None,
+                "flaw": None,
                 "npc_id": "grimjaw_blacksmith",
             },
             "decision_options": [

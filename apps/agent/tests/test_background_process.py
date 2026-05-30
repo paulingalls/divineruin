@@ -2,7 +2,6 @@
 
 import time
 from contextlib import contextmanager
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import event_types as E
@@ -411,7 +410,10 @@ class TestGodWhisperFlow:
             assert f"GOD_{deity_id.upper()}" in instructions
 
     async def test_deliver_speech_fires_stinger_before_whisper(self):
-        """When delivering a god whisper, the stinger sound fires before generate_reply."""
+        """When delivering a god whisper, the stinger fires before generate_reply, and
+        afterward the favor whisper-level is marked. The favor mocks must bind to the
+        real call sites _deliver_speech uses (db_activity_queries / db_mutations_divine),
+        not a 'db' stand-in — otherwise the write raises, is swallowed, and goes unverified."""
         sd = _make_session_data(patron_id="kaelen")
         bg, _, session = _make_bg(session_data=sd)
         bg._speech_queue.append(
@@ -430,13 +432,20 @@ class TestGodWhisperFlow:
             call_order.append("reply")
 
         session.generate_reply = mock_reply
-        with patch("game_events.publish_game_event", side_effect=mock_publish):
-            with patch.dict("sys.modules", {"db": MagicMock()}):
-                import db as _db
-
-                _db_mock: Any = _db
-                _db_mock.get_divine_favor = AsyncMock(return_value={"level": 25})
-                _db_mock.mark_favor_whisper_level = AsyncMock()
-                await bg._deliver_speech()
+        with (
+            patch("game_events.publish_game_event", side_effect=mock_publish),
+            patch(
+                "background_process.db_activity_queries.get_divine_favor",
+                new=AsyncMock(return_value={"level": 25}),
+            ),
+            patch(
+                "background_process.db_mutations_divine.mark_favor_whisper_level",
+                new=AsyncMock(),
+            ) as mock_mark,
+        ):
+            await bg._deliver_speech()
 
         assert call_order == ["stinger", "reply"]
+        # Favor whisper-level is marked from the delivered favor (level 25), proving the
+        # post-delivery favor path actually executed (no swallowed exception).
+        mock_mark.assert_awaited_once_with("player_1", 25)

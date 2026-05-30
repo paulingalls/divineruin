@@ -8,10 +8,10 @@ the region agent.
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sample_fixtures import mock_txn
 
 from city_agent import CITY_TOOLS, CityAgent
 from dispatch_agent import DISPATCH_TOOLS, DispatchAgent
@@ -37,11 +37,6 @@ _TRAINING_LOC = {
 }
 
 
-@asynccontextmanager
-async def _mock_txn(conn):
-    yield conn
-
-
 def _make_context(location_id: str, current_agent: object) -> MagicMock:
     ctx = MagicMock()
     ctx.userdata = SessionData(player_id="player_1", location_id=location_id)
@@ -52,7 +47,7 @@ def _make_context(location_id: str, current_agent: object) -> MagicMock:
 
 def _move_mocks(current_loc: dict, dest_loc: dict):
     mock_db = MagicMock()
-    mock_db.transaction = lambda: _mock_txn(MagicMock())
+    mock_db.transaction = lambda: mock_txn(MagicMock())
     mock_db.extract_exit_connections = MagicMock(return_value=[])
     mock_mutations = MagicMock()
     mock_mutations.update_player_location = AsyncMock()

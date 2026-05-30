@@ -1,0 +1,2300 @@
+[
+  {
+    "id": "wooden_club",
+    "name": "Wooden Club",
+    "category": "weapon",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "oak_wood", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "1 hour",
+    "async_cycles": 0,
+    "output_item": "club_wooden",
+    "output_quantity": 1,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "A blunt heft of oak, balanced for a swing.",
+      "failure": "The grain splits and the haft snaps in two."
+    }
+  },
+  {
+    "id": "stone_tipped_spear",
+    "name": "Stone-Tipped Spear",
+    "category": "weapon",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "oak_wood", "quantity": 1, "tier_minimum": 1, "substitutable": true },
+      { "material_id": "whetstone", "quantity": 1, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "2 hours",
+    "async_cycles": 0,
+    "output_item": "spear_stone_tipped",
+    "output_quantity": 1,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "A keen stone point lashed firm to a straight shaft.",
+      "failure": "The binding slips and the point clatters loose."
+    }
+  },
+  {
+    "id": "bone_dagger",
+    "name": "Bone Dagger",
+    "category": "weapon",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "animal_bone", "quantity": 2, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 10,
+    "time": "1 hour",
+    "async_cycles": 0,
+    "output_item": "dagger_bone",
+    "output_quantity": 1,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "A wicked sliver of bone, ground to a pale edge.",
+      "failure": "The bone shears along an old crack."
+    }
+  },
+  {
+    "id": "hunting_bow",
+    "name": "Hunting Bow",
+    "category": "weapon",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "quality_wood", "quantity": 1, "tier_minimum": 2, "substitutable": false },
+      { "material_id": "plant_fiber", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 12,
+    "time": "1 day",
+    "async_cycles": 1,
+    "output_item": "hunting_bow",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["bowyer_npc", "dungeon_schematic"],
+    "narration_cues": {
+      "success": "The limbs flex true and the string sings on release.",
+      "failure": "The wood checks under tension and refuses the bend."
+    }
+  },
+  {
+    "id": "iron_sword",
+    "name": "Iron Sword",
+    "category": "weapon",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "iron_ingot", "quantity": 3, "tier_minimum": 1, "substitutable": false },
+      { "material_id": "oak_wood", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "forge",
+    "crafting_dc": 13,
+    "time": "1 day",
+    "async_cycles": 1,
+    "output_item": "iron_sword",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["grimjaw_blacksmith", "dungeon_schematic"],
+    "narration_cues": {
+      "success": "A clean iron blade, balanced from tang to tip.",
+      "failure": "The blade warps in the quench and rings dead."
+    }
+  },
+  {
+    "id": "steel_longsword",
+    "name": "Steel Longsword",
+    "category": "weapon",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "keldaran_steel", "quantity": 2, "tier_minimum": 2, "substitutable": false },
+      { "material_id": "quality_leather", "quantity": 1, "tier_minimum": 2, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "forge",
+    "crafting_dc": 16,
+    "time": "3 days",
+    "async_cycles": 3,
+    "output_item": "longsword_guild",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["grimjaw_blacksmith", "dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "The steel takes an edge that whispers through the air.",
+      "success": "A fine longsword, the grip wrapped tight and true.",
+      "partial": "Serviceable, but the temper ran uneven along the spine.",
+      "failure": "The folded steel delaminates and the billet is ruined."
+    }
+  },
+  {
+    "id": "anti_hollow_blade",
+    "name": "Anti-Hollow Blade",
+    "category": "weapon",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "keldaran_steel", "quantity": 2, "tier_minimum": 2, "substitutable": false },
+      { "material_id": "wrack_core", "quantity": 1, "tier_minimum": 3, "substitutable": false },
+      { "material_id": "blessed_oil", "quantity": 1, "tier_minimum": 2, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 18,
+    "time": "1 week (forge + laboratory)",
+    "async_cycles": 4,
+    "output_item": "hollow_edge_blade",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["dungeon_schematic", "experimentation"],
+    "narration_cues": {
+      "exceptional": "The purified core seats with a chime and the blade drinks the light.",
+      "success": "A longsword that hums against the Hollow, edge flickering radiant.",
+      "partial": "It holds the blessing, but the binding leaves a faint cold spot.",
+      "failure": "The core destabilizes and shatters, taking the blade with it."
+    }
+  },
+  {
+    "id": "veil_forged_greatblade",
+    "name": "Veil-Forged Greatblade",
+    "category": "weapon",
+    "tier": "master",
+    "materials": [
+      { "material_id": "forged_steel", "quantity": 2, "tier_minimum": 3, "substitutable": false },
+      { "material_id": "named_fragment", "quantity": 1, "tier_minimum": 4, "substitutable": false },
+      { "material_id": "veil_shard", "quantity": 1, "tier_minimum": 3, "substitutable": false },
+      { "material_id": "divine_material", "quantity": 1, "tier_minimum": 4, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 20,
+    "time": "2 weeks (forge + laboratory)",
+    "async_cycles": 6,
+    "output_item": "veil_forged_greatblade",
+    "output_quantity": 1,
+    "study_cost": 6,
+    "discovery_sources": ["dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "The named fragment speaks once, and the blade answers with its own name.",
+      "success": "A greatblade veined with light, anti-Hollow to its core.",
+      "partial": "Mighty, yet the Veil shard's song wavers at the edges.",
+      "failure": "The fragment's name unmakes the work in a soundless flash."
+    }
+  },
+  {
+    "id": "rapier_dueling",
+    "name": "Dueling Rapier",
+    "category": "weapon",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "keldaran_steel", "quantity": 1, "tier_minimum": 2, "substitutable": false },
+      { "material_id": "quality_leather", "quantity": 1, "tier_minimum": 2, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "forge",
+    "crafting_dc": 16,
+    "time": "3 days",
+    "async_cycles": 3,
+    "output_item": "rapier_dueling",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["grimjaw_blacksmith"],
+    "narration_cues": {
+      "success": "A slender blade that flexes and snaps back like a struck wire.",
+      "failure": "The thin steel takes a set and never springs true again."
+    }
+  },
+  {
+    "id": "war_mace",
+    "name": "War Mace",
+    "category": "weapon",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "iron_ingot", "quantity": 2, "tier_minimum": 1, "substitutable": false },
+      { "material_id": "oak_wood", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "forge",
+    "crafting_dc": 13,
+    "time": "1 day",
+    "async_cycles": 1,
+    "output_item": "war_mace",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["grimjaw_blacksmith"],
+    "narration_cues": {
+      "success": "A brutal iron head seated dead-solid on a hardwood haft.",
+      "failure": "The head works loose on the first test swing."
+    }
+  },
+  {
+    "id": "oak_quarterstaff",
+    "name": "Oak Quarterstaff",
+    "category": "weapon",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "oak_wood", "quantity": 2, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "2 hours",
+    "async_cycles": 0,
+    "output_item": "quarterstaff_oak",
+    "output_quantity": 1,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "A smooth oak stave, balanced to spin in either hand.",
+      "failure": "A hidden knot splinters under the draw-knife."
+    }
+  },
+  {
+    "id": "balanced_dagger",
+    "name": "Balanced Dagger",
+    "category": "weapon",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "iron_ingot", "quantity": 1, "tier_minimum": 1, "substitutable": true },
+      { "material_id": "leather_strip", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 12,
+    "time": "4 hours",
+    "async_cycles": 1,
+    "output_item": "dagger_balanced",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["dungeon_schematic"],
+    "narration_cues": {
+      "success": "It rests on a fingertip at the guard — perfectly weighted.",
+      "failure": "The point is true but the balance sits all wrong."
+    }
+  },
+  {
+    "id": "shortsword_basic",
+    "name": "Short Sword",
+    "category": "weapon",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "iron_ingot", "quantity": 2, "tier_minimum": 1, "substitutable": false },
+      { "material_id": "leather_strip", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "forge",
+    "crafting_dc": 12,
+    "time": "1 day",
+    "async_cycles": 1,
+    "output_item": "shortsword_basic",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["grimjaw_blacksmith"],
+    "narration_cues": {
+      "success": "A short, honest blade, quick out of the sheath.",
+      "failure": "The tang is set crooked and the grip rattles."
+    }
+  },
+  {
+    "id": "wyrmtooth_warblade",
+    "name": "Wyrmtooth Warblade",
+    "category": "weapon",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "wyrm_teeth", "quantity": 2, "tier_minimum": 3, "substitutable": false },
+      { "material_id": "forged_steel", "quantity": 1, "tier_minimum": 3, "substitutable": true }
+    ],
+    "optional_materials": [
+      { "material_id": "quality_leather", "quantity": 1, "tier_minimum": 2, "substitutable": true }
+    ],
+    "tainted_materials": false,
+    "workspace_required": "forge",
+    "crafting_dc": 16,
+    "time": "4 days",
+    "async_cycles": 3,
+    "output_item": "wyrmtooth_warblade",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "The fanged edge bites the air with a low predatory hiss.",
+      "success": "Wyrm teeth set in steel, serrated and cruel.",
+      "partial": "One tooth seats poorly and threatens to crack loose.",
+      "failure": "The teeth shatter against the steel and scatter."
+    }
+  },
+  {
+    "id": "padded_armor",
+    "name": "Padded Armor",
+    "category": "armor",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "plant_fiber", "quantity": 2, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "2 hours",
+    "async_cycles": 0,
+    "output_item": "padded_armor",
+    "output_quantity": 1,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "Layered and quilted, soft but stubborn against a blow.",
+      "failure": "The stitching pulls loose and the padding sags."
+    }
+  },
+  {
+    "id": "hide_armor",
+    "name": "Hide Armor",
+    "category": "armor",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "wolf_pelt", "quantity": 2, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 12,
+    "time": "1 day",
+    "async_cycles": 1,
+    "output_item": "leather_armor_basic",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["tanner_npc", "dungeon_schematic"],
+    "narration_cues": {
+      "success": "Cured hides lapped and laced into a supple shell.",
+      "failure": "The hide cures stiff and cracks at the shoulders."
+    }
+  },
+  {
+    "id": "studded_leather",
+    "name": "Studded Leather",
+    "category": "armor",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "boar_hide", "quantity": 2, "tier_minimum": 1, "substitutable": true },
+      { "material_id": "iron_ingot", "quantity": 1, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 13,
+    "time": "1 day",
+    "async_cycles": 1,
+    "output_item": "studded_leather",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["tanner_npc"],
+    "narration_cues": {
+      "success": "Iron studs march in neat rows across hardened leather.",
+      "failure": "The rivets tear through and leave ragged holes."
+    }
+  },
+  {
+    "id": "chain_shirt",
+    "name": "Chain Shirt",
+    "category": "armor",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "iron_ingot", "quantity": 4, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "forge",
+    "crafting_dc": 16,
+    "time": "3 days",
+    "async_cycles": 3,
+    "output_item": "chain_shirt",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["grimjaw_blacksmith", "dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "Every link closed flush — it pours like water over the arm.",
+      "success": "A shirt of riveted rings, supple and whispering.",
+      "partial": "A few links sit open and snag against themselves.",
+      "failure": "The weave fails and the shirt comes apart in the hands."
+    }
+  },
+  {
+    "id": "scale_mail",
+    "name": "Scale Mail",
+    "category": "armor",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "wyrm_scales", "quantity": 3, "tier_minimum": 2, "substitutable": true },
+      { "material_id": "iron_ingot", "quantity": 2, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "forge",
+    "crafting_dc": 17,
+    "time": "3 days",
+    "async_cycles": 3,
+    "output_item": "scale_mail",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["grimjaw_blacksmith"],
+    "narration_cues": {
+      "exceptional": "The scales lie like a single skin, chiming softly with each step.",
+      "success": "Overlapping scales laced to a sturdy backing.",
+      "partial": "A row sits proud and catches on the buckles.",
+      "failure": "The scales crack along their grain and flake away."
+    }
+  },
+  {
+    "id": "hollow_ward_armor",
+    "name": "Hollow-Ward Armor",
+    "category": "armor",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "keldaran_steel", "quantity": 3, "tier_minimum": 2, "substitutable": false },
+      {
+        "material_id": "veilrender_carapace",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      { "material_id": "blessed_oil", "quantity": 1, "tier_minimum": 2, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 19,
+    "time": "1 week (forge + laboratory)",
+    "async_cycles": 4,
+    "output_item": "hollow_ward_armor",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "The carapace seams fall silent — the Hollow finds no purchase.",
+      "success": "Plated steel warded with purified carapace, cool to the touch.",
+      "partial": "It wards well, but one seam still whispers in the dark.",
+      "failure": "The carapace rejects the blessing and crumbles to grit."
+    }
+  },
+  {
+    "id": "masterwork_plate",
+    "name": "Masterwork Plate",
+    "category": "armor",
+    "tier": "master",
+    "materials": [
+      { "material_id": "forged_steel", "quantity": 6, "tier_minimum": 3, "substitutable": false },
+      { "material_id": "quality_leather", "quantity": 2, "tier_minimum": 2, "substitutable": true },
+      { "material_id": "divine_material", "quantity": 1, "tier_minimum": 4, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "forge",
+    "crafting_dc": 20,
+    "time": "2 weeks",
+    "async_cycles": 6,
+    "output_item": "masterwork_plate",
+    "output_quantity": 1,
+    "study_cost": 6,
+    "discovery_sources": ["dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "It moves like a second skin, the divine inlay catching every torch.",
+      "success": "Full plate, articulated and proof against the heaviest blow.",
+      "partial": "Magnificent, but a joint binds at the worst angle.",
+      "failure": "A plate cracks in the final temper and the suit is scrap."
+    }
+  },
+  {
+    "id": "wooden_buckler",
+    "name": "Wooden Buckler",
+    "category": "armor",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "oak_wood", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "1 hour",
+    "async_cycles": 0,
+    "output_item": "buckler_wooden",
+    "output_quantity": 1,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "A round oak buckler, light on the forearm.",
+      "failure": "The planks won't seat and the face splits."
+    }
+  },
+  {
+    "id": "iron_shield",
+    "name": "Iron Shield",
+    "category": "armor",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "iron_ingot", "quantity": 2, "tier_minimum": 1, "substitutable": false },
+      { "material_id": "leather_strip", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "forge",
+    "crafting_dc": 13,
+    "time": "1 day",
+    "async_cycles": 1,
+    "output_item": "shield_iron",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["grimjaw_blacksmith"],
+    "narration_cues": {
+      "success": "A banded iron shield, the boss riveted dead-center.",
+      "failure": "The boss caves on the first hard knock."
+    }
+  },
+  {
+    "id": "reinforced_shield",
+    "name": "Reinforced Shield",
+    "category": "armor",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "iron_ingot", "quantity": 2, "tier_minimum": 1, "substitutable": false },
+      { "material_id": "leather_strip", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [
+      { "material_id": "keldaran_steel", "quantity": 1, "tier_minimum": 2, "substitutable": false }
+    ],
+    "tainted_materials": false,
+    "workspace_required": "forge",
+    "crafting_dc": 14,
+    "time": "1 day",
+    "async_cycles": 1,
+    "output_item": "reinforced_shield",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["grimjaw_blacksmith"],
+    "narration_cues": {
+      "success": "Double-banded and rimmed in iron — it shrugs off the heaviest swing.",
+      "failure": "The reinforcing band buckles and warps the face."
+    }
+  },
+  {
+    "id": "travelers_cloak",
+    "name": "Traveler's Cloak",
+    "category": "armor",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "wolf_pelt", "quantity": 1, "tier_minimum": 1, "substitutable": true },
+      { "material_id": "plant_fiber", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "2 hours",
+    "async_cycles": 0,
+    "output_item": "travelers_cloak",
+    "output_quantity": 1,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "A heavy weather-cloak that sheds rain and wind alike.",
+      "failure": "The seams gape and the cloak hangs lopsided."
+    }
+  },
+  {
+    "id": "warded_robes",
+    "name": "Warded Robes",
+    "category": "armor",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "spider_silk", "quantity": 2, "tier_minimum": 2, "substitutable": true },
+      { "material_id": "arcane_dust", "quantity": 1, "tier_minimum": 2, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "3 days",
+    "async_cycles": 3,
+    "output_item": "warded_robes",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["enchanter_npc"],
+    "narration_cues": {
+      "exceptional": "The silk drinks the warding dust and shimmers with a faint blue ward.",
+      "success": "Silken robes woven through with a steady protective hum.",
+      "partial": "The ward holds, but it flickers when the wearer turns fast.",
+      "failure": "The dust burns out the silk in a puff of acrid smoke."
+    }
+  },
+  {
+    "id": "healing_salve",
+    "name": "Healing Salve",
+    "category": "consumable",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "medicinal_herb", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "1 hour",
+    "async_cycles": 0,
+    "output_item": "restoration_salve",
+    "output_quantity": 2,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "A green paste that cools the skin and closes small wounds.",
+      "failure": "The herbs scorch and the salve turns rancid."
+    }
+  },
+  {
+    "id": "healing_poultice",
+    "name": "Healing Poultice",
+    "category": "consumable",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "herb_bundle", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "2 hours",
+    "async_cycles": 0,
+    "output_item": "healing_poultice",
+    "output_quantity": 2,
+    "study_cost": 1,
+    "discovery_sources": ["grimjaw_blacksmith", "experimentation"],
+    "narration_cues": {
+      "success": "A warm mash bound in cloth, drawing the ache from a wound.",
+      "failure": "The bundle molds before it sets and must be thrown out."
+    }
+  },
+  {
+    "id": "antidote",
+    "name": "Antidote",
+    "category": "consumable",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "medicinal_herb", "quantity": 1, "tier_minimum": 1, "substitutable": true },
+      { "material_id": "venom_sac", "quantity": 1, "tier_minimum": 2, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 12,
+    "time": "2 hours",
+    "async_cycles": 1,
+    "output_item": "antidote_basic",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["alchemist_npc", "dungeon_schematic"],
+    "narration_cues": {
+      "success": "A clear draught that neutralizes the venom it was milked from.",
+      "failure": "The mixture curdles and keeps the poison's bite."
+    }
+  },
+  {
+    "id": "healing_potion_minor",
+    "name": "Healing Potion (Minor)",
+    "category": "consumable",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "medicinal_herb", "quantity": 2, "tier_minimum": 1, "substitutable": true },
+      { "material_id": "crystal_flask", "quantity": 1, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 13,
+    "time": "1 day",
+    "async_cycles": 1,
+    "output_item": "healing_potion",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["alchemist_npc"],
+    "narration_cues": {
+      "success": "A ruby draught that knits flesh with a spreading warmth.",
+      "failure": "The brew separates into a grey, inert sludge."
+    }
+  },
+  {
+    "id": "healing_potion_standard",
+    "name": "Healing Potion (Standard)",
+    "category": "consumable",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "medicinal_herb", "quantity": 3, "tier_minimum": 1, "substitutable": true },
+      {
+        "material_id": "dire_bear_heart",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      { "material_id": "crystal_flask", "quantity": 1, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "1 day",
+    "async_cycles": 3,
+    "output_item": "healing_potion_standard",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["alchemist_npc"],
+    "narration_cues": {
+      "exceptional": "It glows like a coal — a single sip slams the heart back to full.",
+      "success": "A deep crimson tonic that closes even grievous wounds.",
+      "partial": "Potent, but it leaves a lingering, bitter chill.",
+      "failure": "The heart spoils the brew and it boils over, wasted."
+    }
+  },
+  {
+    "id": "contact_poison",
+    "name": "Contact Poison",
+    "category": "consumable",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "venom_sac", "quantity": 1, "tier_minimum": 2, "substitutable": false },
+      {
+        "material_id": "alchemical_reagent",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 14,
+    "time": "2 hours",
+    "async_cycles": 1,
+    "output_item": "poison_contact",
+    "output_quantity": 3,
+    "study_cost": 2,
+    "discovery_sources": ["alchemist_npc", "experimentation"],
+    "narration_cues": {
+      "success": "An oily smear that numbs the fingertips just to handle.",
+      "failure": "The venom denatures and the coating runs harmless."
+    }
+  },
+  {
+    "id": "alchemists_fire",
+    "name": "Alchemist's Fire",
+    "category": "consumable",
+    "tier": "trained",
+    "materials": [
+      {
+        "material_id": "alchemical_reagent",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      { "material_id": "animal_fat", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 13,
+    "time": "2 hours",
+    "async_cycles": 1,
+    "output_item": "alchemists_fire",
+    "output_quantity": 2,
+    "study_cost": 2,
+    "discovery_sources": ["alchemist_npc"],
+    "narration_cues": {
+      "success": "A sealed flask of amber liquid that smokes against the glass.",
+      "failure": "It ignites on the bench and gutters out in scorched ruin."
+    }
+  },
+  {
+    "id": "holy_water",
+    "name": "Holy Water",
+    "category": "consumable",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "blessed_oil", "quantity": 1, "tier_minimum": 2, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 12,
+    "time": "2 hours",
+    "async_cycles": 1,
+    "output_item": "holy_water",
+    "output_quantity": 3,
+    "study_cost": 2,
+    "discovery_sources": ["temple_npc"],
+    "narration_cues": {
+      "success": "Three vials that catch the light and warm the palm.",
+      "failure": "The blessing won't take and the water stays plain."
+    }
+  },
+  {
+    "id": "resonance_stabilizer",
+    "name": "Resonance Stabilizer",
+    "category": "consumable",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "veil_shard", "quantity": 1, "tier_minimum": 3, "substitutable": false },
+      {
+        "material_id": "alchemical_reagent",
+        "quantity": 2,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      { "material_id": "divine_material", "quantity": 1, "tier_minimum": 4, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 18,
+    "time": "1 day",
+    "async_cycles": 4,
+    "output_item": "resonance_stabilizer",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "The shard's wrong-note falls perfectly silent in the vial.",
+      "success": "A draught that quiets the Veil's tremor for a precious hour.",
+      "partial": "It steadies the resonance but leaves the ears ringing.",
+      "failure": "The shard's song spikes and cracks the flask."
+    }
+  },
+  {
+    "id": "greater_healing_potion",
+    "name": "Healing Potion (Greater)",
+    "category": "consumable",
+    "tier": "master",
+    "materials": [
+      { "material_id": "medicinal_herb", "quantity": 4, "tier_minimum": 1, "substitutable": true },
+      {
+        "material_id": "thunderbird_oil",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "dire_bear_heart",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      { "material_id": "crystal_flask", "quantity": 1, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 20,
+    "time": "3 days",
+    "async_cycles": 6,
+    "output_item": "healing_potion_greater",
+    "output_quantity": 1,
+    "study_cost": 6,
+    "discovery_sources": ["dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "It crackles with thunderbird fire — wounds close as you watch.",
+      "success": "A radiant tonic that hauls a body back from death's edge.",
+      "partial": "It heals, but the thunderbird oil leaves the veins buzzing.",
+      "failure": "The oil flashes and the whole brew boils to nothing."
+    }
+  },
+  {
+    "id": "courage_draught",
+    "name": "Courage Draught",
+    "category": "consumable",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "sageroot", "quantity": 1, "tier_minimum": 2, "substitutable": true },
+      { "material_id": "crystal_flask", "quantity": 1, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 12,
+    "time": "3 hours",
+    "async_cycles": 1,
+    "output_item": "courage_draught",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["alchemist_npc"],
+    "narration_cues": {
+      "success": "A warm bitter draught that steadies the hand and quiets fear.",
+      "failure": "The sageroot oversteeps and the brew turns to a sour mud."
+    }
+  },
+  {
+    "id": "antivenom_potent",
+    "name": "Potent Antivenom",
+    "category": "consumable",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "sageroot", "quantity": 1, "tier_minimum": 2, "substitutable": true },
+      { "material_id": "venom_sac", "quantity": 1, "tier_minimum": 2, "substitutable": false },
+      {
+        "material_id": "alchemical_reagent",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "1 day",
+    "async_cycles": 3,
+    "output_item": "antivenom_potent",
+    "output_quantity": 2,
+    "study_cost": 4,
+    "discovery_sources": ["alchemist_npc"],
+    "narration_cues": {
+      "exceptional": "One drop on the tongue and the worst venom unclenches its grip.",
+      "success": "A pale tonic that purges even a wyrm's poison.",
+      "partial": "It works, but slowly, and the patient sweats it out hard.",
+      "failure": "The reagent fights the cure and the dose turns toxic."
+    }
+  },
+  {
+    "id": "basic_arrows",
+    "name": "Arrows",
+    "category": "ammunition",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "pine_wood", "quantity": 1, "tier_minimum": 1, "substitutable": true },
+      {
+        "material_id": "thunderbird_feather",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": true
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "1 hour",
+    "async_cycles": 0,
+    "output_item": "arrows_basic",
+    "output_quantity": 10,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "Ten straight shafts, fletched and nocked, ready for the quiver.",
+      "failure": "The shafts warp as they dry and fly crooked."
+    }
+  },
+  {
+    "id": "quality_arrows",
+    "name": "Quality Arrows",
+    "category": "ammunition",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "quality_wood", "quantity": 1, "tier_minimum": 2, "substitutable": true },
+      { "material_id": "iron_ingot", "quantity": 1, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [
+      {
+        "material_id": "thunderbird_feather",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": true
+      }
+    ],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 12,
+    "time": "2 hours",
+    "async_cycles": 1,
+    "output_item": "arrows_quality",
+    "output_quantity": 10,
+    "study_cost": 2,
+    "discovery_sources": ["bowyer_npc"],
+    "narration_cues": {
+      "success": "Iron-tipped and true — they group tight at fifty paces.",
+      "failure": "The heads seat loose and rattle off the shaft."
+    }
+  },
+  {
+    "id": "crossbow_bolts",
+    "name": "Crossbow Bolts",
+    "category": "ammunition",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "pine_wood", "quantity": 1, "tier_minimum": 1, "substitutable": true },
+      { "material_id": "iron_ingot", "quantity": 1, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "1 hour",
+    "async_cycles": 0,
+    "output_item": "bolts_crossbow",
+    "output_quantity": 10,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "Squat iron-headed bolts, heavy and mean.",
+      "failure": "The short shafts split when the heads are pressed in."
+    }
+  },
+  {
+    "id": "blessed_arrows",
+    "name": "Blessed Arrows",
+    "category": "ammunition",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "quality_wood", "quantity": 1, "tier_minimum": 2, "substitutable": true },
+      { "material_id": "blessed_oil", "quantity": 1, "tier_minimum": 2, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "1 day",
+    "async_cycles": 3,
+    "output_item": "blessed_arrows",
+    "output_quantity": 5,
+    "study_cost": 4,
+    "discovery_sources": ["temple_npc"],
+    "narration_cues": {
+      "exceptional": "The heads glow faint gold — they sing toward the Hollow.",
+      "success": "Five arrows anointed and warm, eager against the dark.",
+      "partial": "The blessing takes unevenly; some heads stay dull.",
+      "failure": "The oil burns the fletching and the arrows char."
+    }
+  },
+  {
+    "id": "anti_hollow_oil",
+    "name": "Anti-Hollow Oil (Coating)",
+    "category": "ammunition",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "rend_shard", "quantity": 1, "tier_minimum": 2, "substitutable": false },
+      {
+        "material_id": "alchemical_reagent",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      { "material_id": "blessed_oil", "quantity": 1, "tier_minimum": 2, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 17,
+    "time": "1 day",
+    "async_cycles": 3,
+    "output_item": "anti_hollow_oil",
+    "output_quantity": 3,
+    "study_cost": 4,
+    "discovery_sources": ["alchemist_npc", "dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "The purified shard binds clean — the coating bites Hollow flesh like acid.",
+      "success": "A dark oil that any blade can wear against the corrupted.",
+      "partial": "It works for a swing or two before the potency fades.",
+      "failure": "The shard's taint flares and the oil eats through its own vial."
+    }
+  },
+  {
+    "id": "smoke_bomb",
+    "name": "Smoke Bomb",
+    "category": "ammunition",
+    "tier": "trained",
+    "materials": [
+      {
+        "material_id": "alchemical_reagent",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      { "material_id": "plant_fiber", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 13,
+    "time": "2 hours",
+    "async_cycles": 1,
+    "output_item": "smoke_bomb",
+    "output_quantity": 3,
+    "study_cost": 2,
+    "discovery_sources": ["alchemist_npc"],
+    "narration_cues": {
+      "success": "A wax-sealed ball that bursts into a choking grey cloud.",
+      "failure": "It fizzes and dies, coughing out a thin useless wisp."
+    }
+  },
+  {
+    "id": "explosive_bolts",
+    "name": "Explosive Bolts",
+    "category": "ammunition",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "iron_ingot", "quantity": 1, "tier_minimum": 1, "substitutable": false },
+      {
+        "material_id": "alchemical_reagent",
+        "quantity": 2,
+        "tier_minimum": 2,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "1 day",
+    "async_cycles": 3,
+    "output_item": "bolts_explosive",
+    "output_quantity": 3,
+    "study_cost": 4,
+    "discovery_sources": ["dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "The charges seat flush — they crack like thunder on impact.",
+      "success": "Hollow-headed bolts packed with a volatile charge.",
+      "partial": "One in three is a dud, but the rest go off well enough.",
+      "failure": "A charge cooks off on the bench and ruins the lot."
+    }
+  },
+  {
+    "id": "flaming_arrows",
+    "name": "Flaming Arrows",
+    "category": "ammunition",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "pine_wood", "quantity": 1, "tier_minimum": 1, "substitutable": true },
+      { "material_id": "animal_fat", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 12,
+    "time": "2 hours",
+    "async_cycles": 1,
+    "output_item": "arrows_flaming",
+    "output_quantity": 5,
+    "study_cost": 2,
+    "discovery_sources": ["bowyer_npc", "experimentation"],
+    "narration_cues": {
+      "success": "Fat-soaked heads that catch fast and fly trailing flame.",
+      "failure": "The wadding won't hold the oil and the heads sputter out."
+    }
+  },
+  {
+    "id": "sling_stones",
+    "name": "Hardened Sling Stones",
+    "category": "ammunition",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "whetstone", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "30 minutes",
+    "async_cycles": 0,
+    "output_item": "sling_stones",
+    "output_quantity": 10,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "A pouch of smooth-knapped stones, each one a killing weight.",
+      "failure": "They knap jagged and tumble wild from the sling."
+    }
+  },
+  {
+    "id": "long_burning_torch",
+    "name": "Long-Burning Torch",
+    "category": "tool",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "pine_wood", "quantity": 1, "tier_minimum": 1, "substitutable": true },
+      { "material_id": "animal_fat", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "30 minutes",
+    "async_cycles": 0,
+    "output_item": "torch_bundle",
+    "output_quantity": 3,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "Pitch-soaked brands that burn slow and bright for hours.",
+      "failure": "The fat smokes black and the torch gutters out fast."
+    }
+  },
+  {
+    "id": "hemp_rope",
+    "name": "Rope (50 ft)",
+    "category": "tool",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "plant_fiber", "quantity": 3, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "2 hours",
+    "async_cycles": 0,
+    "output_item": "rope_hemp",
+    "output_quantity": 1,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "Fifty feet of tight-laid rope that creaks and holds.",
+      "failure": "The lay slips and the rope unravels under any real load."
+    }
+  },
+  {
+    "id": "lockpicks",
+    "name": "Lockpicks",
+    "category": "tool",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "iron_ingot", "quantity": 1, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 14,
+    "time": "2 hours",
+    "async_cycles": 1,
+    "output_item": "lockpicks",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["dungeon_schematic"],
+    "narration_cues": {
+      "success": "A neat roll of tension wrenches and rakes, springy and fine.",
+      "failure": "The picks come out too soft and bend at the first lock."
+    }
+  },
+  {
+    "id": "snare_trap",
+    "name": "Snare Trap",
+    "category": "tool",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "plant_fiber", "quantity": 1, "tier_minimum": 1, "substitutable": true },
+      { "material_id": "iron_ingot", "quantity": 1, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 13,
+    "time": "1 hour",
+    "async_cycles": 1,
+    "output_item": "trap_snare",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["dungeon_schematic", "experimentation"],
+    "narration_cues": {
+      "success": "A hidden loop that whips taut at the lightest touch.",
+      "failure": "The trigger sets too stiff and never springs."
+    }
+  },
+  {
+    "id": "spike_trap",
+    "name": "Spike Trap",
+    "category": "tool",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "iron_ingot", "quantity": 2, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [
+      { "material_id": "venom_sac", "quantity": 1, "tier_minimum": 2, "substitutable": false }
+    ],
+    "tainted_materials": false,
+    "workspace_required": "forge",
+    "crafting_dc": 16,
+    "time": "2 hours",
+    "async_cycles": 3,
+    "output_item": "trap_spike",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "The spikes drop on a hair-trigger, silent until they bite.",
+      "success": "A bed of iron spikes set under a false floor panel.",
+      "partial": "It triggers, but a beat too slow to catch the quick.",
+      "failure": "The mechanism jams half-sprung and sits there useless."
+    }
+  },
+  {
+    "id": "artificers_portable_lab",
+    "name": "Artificer's Portable Lab",
+    "category": "tool",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "keldaran_steel", "quantity": 3, "tier_minimum": 2, "substitutable": false },
+      {
+        "material_id": "alchemical_reagent",
+        "quantity": 2,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      { "material_id": "cave_gemstone", "quantity": 1, "tier_minimum": 2, "substitutable": false },
+      { "material_id": "quality_leather", "quantity": 1, "tier_minimum": 2, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 18,
+    "time": "1 week (forge + laboratory)",
+    "async_cycles": 4,
+    "output_item": "artificers_portable_lab",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["artificer_training", "dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "It folds shut to a satchel and unfolds to a full laboratory in moments.",
+      "success": "A leather case of nested vials and tools — a Laboratory you can carry.",
+      "partial": "Functional, but a tray sticks and the burner runs cold.",
+      "failure": "The gemstone focus cracks and the kit is so much scrap."
+    }
+  },
+  {
+    "id": "veil_ward_anchor_small",
+    "name": "Veil-Ward Anchor (Small)",
+    "category": "tool",
+    "tier": "expert",
+    "materials": [
+      {
+        "material_id": "spatial_residue",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      { "material_id": "blessed_oil", "quantity": 1, "tier_minimum": 2, "substitutable": false },
+      { "material_id": "enchanted_stone", "quantity": 1, "tier_minimum": 3, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 18,
+    "time": "1 day",
+    "async_cycles": 4,
+    "output_item": "hollow_ward_charm",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "The anchor hums a steady note — the Veil lies smooth around it.",
+      "success": "A palm-sized ward stone that quiets the Hollow nearby.",
+      "partial": "It wards a small room, but flickers at the edges.",
+      "failure": "The residue destabilizes and the stone goes inert and cold."
+    }
+  },
+  {
+    "id": "veil_ward_anchor_large",
+    "name": "Veil-Ward Anchor (Large)",
+    "category": "tool",
+    "tier": "master",
+    "materials": [
+      {
+        "material_id": "veilrender_carapace",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      { "material_id": "named_fragment", "quantity": 1, "tier_minimum": 4, "substitutable": false },
+      {
+        "material_id": "divine_material",
+        "quantity": 2,
+        "tier_minimum": 4,
+        "substitutable": false
+      },
+      { "material_id": "veil_shard", "quantity": 1, "tier_minimum": 3, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 20,
+    "time": "1 week",
+    "async_cycles": 6,
+    "output_item": "veil_ward_anchor_large",
+    "output_quantity": 1,
+    "study_cost": 6,
+    "discovery_sources": ["dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "It anchors the Veil over a whole settlement — the Hollow simply cannot enter.",
+      "success": "A great warding stone that holds the corruption at bay for miles.",
+      "partial": "It holds, but the named fragment's whisper never fully stills.",
+      "failure": "The fragment and the shard war, and the anchor detonates inward."
+    }
+  },
+  {
+    "id": "ward_stone",
+    "name": "Ward Stone",
+    "category": "tool",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "hollow_shard", "quantity": 1, "tier_minimum": 2, "substitutable": false },
+      { "material_id": "iron_ingot", "quantity": 1, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "6 hours",
+    "async_cycles": 3,
+    "output_item": "ward_stone",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["grimjaw_blacksmith", "dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "The shard sets clean and the stone glows with a steady ward.",
+      "success": "A bound stone that turns aside the lesser Hollow.",
+      "partial": "It wards, but the shard leaves a faint, watchful cold.",
+      "failure": "The shard's taint floods the iron and the stone cracks."
+    }
+  },
+  {
+    "id": "climbers_kit",
+    "name": "Climber's Kit",
+    "category": "tool",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "plant_fiber", "quantity": 2, "tier_minimum": 1, "substitutable": true },
+      { "material_id": "iron_ingot", "quantity": 1, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 12,
+    "time": "3 hours",
+    "async_cycles": 1,
+    "output_item": "climbers_kit",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["dungeon_schematic", "experimentation"],
+    "narration_cues": {
+      "success": "Pitons, rope, and a harness — everything to take a cliff.",
+      "failure": "The pitons bend soft and won't bite the rock."
+    }
+  },
+  {
+    "id": "healers_satchel",
+    "name": "Healer's Satchel",
+    "category": "tool",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "quality_leather", "quantity": 1, "tier_minimum": 2, "substitutable": true },
+      { "material_id": "herb_bundle", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 12,
+    "time": "3 hours",
+    "async_cycles": 1,
+    "output_item": "healers_satchel",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["alchemist_npc"],
+    "narration_cues": {
+      "success": "A fitted satchel of poultices and tools, everything to hand.",
+      "failure": "The compartments tear and the supplies spill loose."
+    }
+  },
+  {
+    "id": "waterskin",
+    "name": "Waterskin",
+    "category": "tool",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "boar_hide", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "1 hour",
+    "async_cycles": 0,
+    "output_item": "waterskin",
+    "output_quantity": 1,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "A tight-sewn skin that holds water without a weep.",
+      "failure": "The seam leaks and the skin sweats dark within the hour."
+    }
+  },
+  {
+    "id": "sharpen",
+    "name": "Sharpen",
+    "category": "enchantment",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "whetstone", "quantity": 1, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "30 minutes",
+    "async_cycles": 0,
+    "output_item": "enchant_sharpen",
+    "output_quantity": 1,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "The edge whispers off the stone, keen enough to part a hair.",
+      "failure": "A heavy stroke rolls the edge and dulls it worse than before."
+    }
+  },
+  {
+    "id": "reinforce",
+    "name": "Reinforce",
+    "category": "enchantment",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "iron_ingot", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 12,
+    "time": "2 hours",
+    "async_cycles": 1,
+    "output_item": "enchant_reinforce",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["grimjaw_blacksmith"],
+    "narration_cues": {
+      "success": "Banded and braced, the gear will take a beating it couldn't before.",
+      "failure": "The reinforcing seam stresses the piece and weakens it."
+    }
+  },
+  {
+    "id": "minor_enchantment",
+    "name": "Minor Enchantment",
+    "category": "enchantment",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "arcane_dust", "quantity": 1, "tier_minimum": 2, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "1 day",
+    "async_cycles": 3,
+    "output_item": "enchant_minor",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["enchanter_npc", "dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "The dust sinks in clean and the item wakes with a soft glow.",
+      "success": "A faint, steady enchantment settles into the gear.",
+      "partial": "The charm takes, but it sputters when leaned on hard.",
+      "failure": "The dust burns out and leaves a scorched, dead mark."
+    }
+  },
+  {
+    "id": "elemental_infusion",
+    "name": "Elemental Infusion",
+    "category": "enchantment",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "arcane_dust", "quantity": 1, "tier_minimum": 2, "substitutable": false },
+      { "material_id": "storm_crystal", "quantity": 1, "tier_minimum": 3, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 18,
+    "time": "3 days",
+    "async_cycles": 3,
+    "output_item": "enchant_elemental",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["enchanter_npc"],
+    "narration_cues": {
+      "exceptional": "Lightning races the blade's length and refuses to fade.",
+      "success": "The weapon crackles, wreathed in caged elemental fury.",
+      "partial": "The infusion holds, but arcs wild at the worst moments.",
+      "failure": "The crystal discharges all at once and the bench blackens."
+    }
+  },
+  {
+    "id": "hollow_bane",
+    "name": "Hollow Bane",
+    "category": "enchantment",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "wrack_core", "quantity": 1, "tier_minimum": 3, "substitutable": false },
+      { "material_id": "blessed_oil", "quantity": 1, "tier_minimum": 2, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 19,
+    "time": "3 days",
+    "async_cycles": 3,
+    "output_item": "enchant_hollow_bane",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["temple_npc", "dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "The blade hungers visibly toward the Hollow, edge limned in light.",
+      "success": "A weapon blessed to bite deep into corrupted flesh.",
+      "partial": "The bane takes, but it only wakes near true corruption.",
+      "failure": "The core's taint overwhelms the oil and fouls the weapon."
+    }
+  },
+  {
+    "id": "resonance_dampener",
+    "name": "Resonance Dampener",
+    "category": "enchantment",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "veil_shard", "quantity": 1, "tier_minimum": 3, "substitutable": false },
+      { "material_id": "divine_material", "quantity": 1, "tier_minimum": 4, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 19,
+    "time": "3 days",
+    "async_cycles": 3,
+    "output_item": "enchant_resonance_dampener",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "The armor swallows the Veil's song whole — utter, blessed quiet.",
+      "success": "Armor warded to blunt the maddening resonance of the Hollow.",
+      "partial": "It dampens the worst of it, but a hum bleeds through.",
+      "failure": "The shard's song spikes through the divine ward and shatters it."
+    }
+  },
+  {
+    "id": "supreme_enchantment",
+    "name": "Supreme Enchantment",
+    "category": "enchantment",
+    "tier": "master",
+    "materials": [
+      { "material_id": "named_fragment", "quantity": 1, "tier_minimum": 4, "substitutable": false },
+      { "material_id": "divine_material", "quantity": 1, "tier_minimum": 4, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 20,
+    "time": "1 week",
+    "async_cycles": 6,
+    "output_item": "enchant_supreme",
+    "output_quantity": 1,
+    "study_cost": 6,
+    "discovery_sources": ["dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "The fragment names the item, and it becomes legend in the hand.",
+      "success": "A profound enchantment that reshapes the item's very nature.",
+      "partial": "The power takes, but the named fragment exacts a subtle cost.",
+      "failure": "The fragment's name consumes the item in a soundless white flare."
+    }
+  },
+  {
+    "id": "balance_weapon",
+    "name": "Balance Weapon",
+    "category": "enchantment",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "quality_leather", "quantity": 1, "tier_minimum": 2, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 12,
+    "time": "2 hours",
+    "async_cycles": 1,
+    "output_item": "enchant_balance",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["grimjaw_blacksmith", "experimentation"],
+    "narration_cues": {
+      "success": "Re-gripped and re-weighted, the weapon falls into the hand like it was born there.",
+      "failure": "The new wrap throws the balance off worse than before."
+    }
+  },
+  {
+    "id": "fireproof_coating",
+    "name": "Fireproof Coating",
+    "category": "enchantment",
+    "tier": "trained",
+    "materials": [
+      {
+        "material_id": "alchemical_reagent",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      { "material_id": "troll_hide", "quantity": 1, "tier_minimum": 3, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 13,
+    "time": "3 hours",
+    "async_cycles": 1,
+    "output_item": "enchant_fireproof",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["alchemist_npc"],
+    "narration_cues": {
+      "success": "A waxy coat that hisses and shrugs off open flame.",
+      "failure": "The coating cracks in the heat and peels away in flakes."
+    }
+  },
+  {
+    "id": "spider_silk_grip",
+    "name": "Spider-Silk Grip",
+    "category": "enchantment",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "spider_silk", "quantity": 1, "tier_minimum": 2, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 12,
+    "time": "2 hours",
+    "async_cycles": 1,
+    "output_item": "enchant_silk_grip",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["dungeon_schematic", "experimentation"],
+    "narration_cues": {
+      "success": "The silk-wrapped grip never slips, even slick with rain or blood.",
+      "failure": "The silk frays loose and the wrap sloughs off in a day."
+    }
+  },
+  {
+    "id": "steel_greatsword",
+    "name": "Steel Greatsword",
+    "category": "weapon",
+    "tier": "expert",
+    "materials": [
+      { "material_id": "keldaran_steel", "quantity": 3, "tier_minimum": 2, "substitutable": false },
+      { "material_id": "quality_leather", "quantity": 1, "tier_minimum": 2, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "forge",
+    "crafting_dc": 16,
+    "time": "4 days",
+    "async_cycles": 3,
+    "output_item": "greatsword_steel",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": ["grimjaw_blacksmith", "dungeon_schematic"],
+    "narration_cues": {
+      "exceptional": "Vast and perfectly balanced, it cuts the air with a low moan.",
+      "success": "A two-handed blade of folded steel, heavy and grim.",
+      "partial": "Mighty, but a touch blade-heavy at the tip.",
+      "failure": "The long billet cracks down its length in the quench."
+    }
+  },
+  {
+    "id": "warhammer",
+    "name": "Warhammer",
+    "category": "weapon",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "iron_ingot", "quantity": 3, "tier_minimum": 1, "substitutable": false },
+      { "material_id": "quality_wood", "quantity": 1, "tier_minimum": 2, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "forge",
+    "crafting_dc": 13,
+    "time": "1 day",
+    "async_cycles": 1,
+    "output_item": "warhammer_common",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["grimjaw_blacksmith"],
+    "narration_cues": {
+      "success": "A blunt iron head on a long haft, made to break shields.",
+      "failure": "The haft cracks under the head's weight on the first swing."
+    }
+  },
+  {
+    "id": "field_rations",
+    "name": "Preserved Field Rations",
+    "category": "consumable",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "herb_bundle", "quantity": 1, "tier_minimum": 1, "substitutable": true },
+      { "material_id": "animal_fat", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "field",
+    "crafting_dc": 8,
+    "time": "2 hours",
+    "async_cycles": 0,
+    "output_item": "rations_basic",
+    "output_quantity": 3,
+    "study_cost": 1,
+    "discovery_sources": ["experimentation", "field_craft"],
+    "narration_cues": {
+      "success": "Salted, smoked, and wrapped tight — good for a week on the trail.",
+      "failure": "The cure doesn't take and the rations turn before nightfall."
+    }
+  },
+  {
+    "id": "grappling_hook",
+    "name": "Grappling Hook",
+    "category": "tool",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "iron_ingot", "quantity": 1, "tier_minimum": 1, "substitutable": false },
+      { "material_id": "plant_fiber", "quantity": 2, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 12,
+    "time": "3 hours",
+    "async_cycles": 1,
+    "output_item": "grappling_hook",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["dungeon_schematic", "experimentation"],
+    "narration_cues": {
+      "success": "Three forged flukes on a long rope — it bites and holds.",
+      "failure": "A fluke straightens under load and the hook tears free."
+    }
+  },
+  {
+    "id": "blade_of_the_ashmark",
+    "name": "Blade of the Ashmark",
+    "category": "weapon",
+    "tier": "expert",
+    "materials": [
+      {
+        "material_id": "keldaran_steel",
+        "quantity": 2,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      {
+        "material_id": "wrack_core",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "blessed_oil",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 18,
+    "time": "1 week (forge + laboratory)",
+    "async_cycles": 4,
+    "output_item": "blade_of_the_ashmark",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": [
+      "dungeon_schematic",
+      "master_artisan_npc"
+    ],
+    "narration_cues": {
+      "exceptional": "The blessed oil takes hold and the blade chimes whenever the Hollow draws near.",
+      "success": "An Ashmark longsword, radiant-edged and humming against corruption.",
+      "partial": "It holds the blessing, but the chime comes a beat late.",
+      "failure": "The purified core flares and cracks the steel down its length."
+    }
+  },
+  {
+    "id": "thornveld_guardian_shield",
+    "name": "Thornveld Guardian Shield",
+    "category": "armor",
+    "tier": "expert",
+    "materials": [
+      {
+        "material_id": "thornveld_ironwood",
+        "quantity": 2,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "corrupted_heartwood",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "thornveld_amber",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "1 week",
+    "async_cycles": 4,
+    "output_item": "thornveld_guardian_shield",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": [
+      "master_artisan_npc"
+    ],
+    "narration_cues": {
+      "exceptional": "The living wood knits seamlessly; the shield grows a hand's breadth stronger in natural terrain.",
+      "success": "A Thornveld shield that creaks and settles as if still growing.",
+      "partial": "It guards true, but the purified heartwood leaves a soft dead patch.",
+      "failure": "The corruption was not fully burned out and the wood splits, weeping black."
+    }
+  },
+  {
+    "id": "cloak_steppe_winds",
+    "name": "Cloak of the Steppe Winds",
+    "category": "armor",
+    "tier": "expert",
+    "materials": [
+      {
+        "material_id": "razorwing_feather",
+        "quantity": 2,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      {
+        "material_id": "dire_bear_hide",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "spider_silk",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "5 days",
+    "async_cycles": 4,
+    "output_item": "cloak_steppe_winds",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": [
+      "master_artisan_npc"
+    ],
+    "narration_cues": {
+      "exceptional": "The cloak moves as if always in wind; the wearer barely touches the ground.",
+      "success": "A steppe cloak that lifts and ripples with no breeze at all.",
+      "partial": "It carries the wind, but tugs hard the wrong way at times.",
+      "failure": "The razorwing feathers shear loose and scatter on the floor."
+    }
+  },
+  {
+    "id": "veil_sight_lens",
+    "name": "Veil-Sight Lens",
+    "category": "tool",
+    "tier": "expert",
+    "materials": [
+      {
+        "material_id": "veil_shard",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "power_crystal",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "silver_ingot",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "5 days",
+    "async_cycles": 4,
+    "output_item": "veil_sight_lens",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": [
+      "dungeon_schematic"
+    ],
+    "narration_cues": {
+      "exceptional": "The lens seats perfectly; the invisible world snaps into focus through it.",
+      "success": "A silver-set monocle that shows what the eye cannot.",
+      "partial": "It reveals the unseen, but the edges swim and blur.",
+      "failure": "The Veil shard clouds black and the lens is blind."
+    }
+  },
+  {
+    "id": "ring_resonance_dampening",
+    "name": "Ring of Resonance Dampening",
+    "category": "tool",
+    "tier": "expert",
+    "materials": [
+      {
+        "material_id": "spatial_residue",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      {
+        "material_id": "iron_ore",
+        "quantity": 1,
+        "tier_minimum": 1,
+        "substitutable": false
+      },
+      {
+        "material_id": "arcane_dust",
+        "quantity": 1,
+        "tier_minimum": 2,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 17,
+    "time": "4 days",
+    "async_cycles": 4,
+    "output_item": "ring_resonance_dampening",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": [
+      "dungeon_schematic"
+    ],
+    "narration_cues": {
+      "exceptional": "The residue threads cleanly into the iron; the ring drinks Resonance without strain.",
+      "success": "A plain iron ring, warm, that quiets a caster's overreach.",
+      "partial": "It dampens, but warms uncomfortably with every spell.",
+      "failure": "The spatial residue destabilizes and the ring cracks in the quenching."
+    }
+  },
+  {
+    "id": "potion_veil_walking",
+    "name": "Potion of Veil Walking",
+    "category": "consumable",
+    "tier": "expert",
+    "materials": [
+      {
+        "material_id": "woven_void_fragment",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      },
+      {
+        "material_id": "alchemical_reagent",
+        "quantity": 2,
+        "tier_minimum": 2,
+        "substitutable": false
+      },
+      {
+        "material_id": "crystal_flask",
+        "quantity": 1,
+        "tier_minimum": 1,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 16,
+    "time": "3 days",
+    "async_cycles": 3,
+    "output_item": "potion_veil_walking",
+    "output_quantity": 1,
+    "study_cost": 4,
+    "discovery_sources": [
+      "alchemist_npc",
+      "dungeon_schematic"
+    ],
+    "narration_cues": {
+      "exceptional": "The void fragment dissolves into a shimmer that holds incorporeal form a full minute.",
+      "success": "An iridescent draught that smells of ozone and lets the drinker walk through walls.",
+      "partial": "It works, but the incorporeal state flickers in and out.",
+      "failure": "The fragment unravels in the flask and the brew evaporates to nothing."
+    }
+  },
+  {
+    "id": "architects_edge",
+    "name": "Architect's Edge",
+    "category": "weapon",
+    "tier": "master",
+    "materials": [
+      {
+        "material_id": "living_stone",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      },
+      {
+        "material_id": "named_fragment",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      },
+      {
+        "material_id": "veil_shard",
+        "quantity": 1,
+        "tier_minimum": 3,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 20,
+    "time": "1 week (forge + laboratory)",
+    "async_cycles": 6,
+    "output_item": "architects_edge",
+    "output_quantity": 1,
+    "study_cost": 6,
+    "discovery_sources": [
+      "dungeon_schematic"
+    ],
+    "narration_cues": {
+      "exceptional": "The living stone settles into a blade that reshapes the battlefield at a thought.",
+      "success": "A weapon of living stone that slowly changes shape between fights.",
+      "partial": "It cuts and reshapes, but the form never quite stops shifting.",
+      "failure": "The named fragment and the stone refuse each other and the blade crumbles to gravel."
+    }
+  },
+  {
+    "id": "choirs_silence",
+    "name": "Choir's Silence",
+    "category": "tool",
+    "tier": "master",
+    "materials": [
+      {
+        "material_id": "choir_resonance_crystal",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      },
+      {
+        "material_id": "named_fragment",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      },
+      {
+        "material_id": "divine_material",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 20,
+    "time": "1 week",
+    "async_cycles": 6,
+    "output_item": "choirs_silence",
+    "output_quantity": 1,
+    "study_cost": 6,
+    "discovery_sources": [
+      "dungeon_schematic"
+    ],
+    "narration_cues": {
+      "exceptional": "The trapped note settles into the crystal; the amulet can swallow all sound at will.",
+      "success": "A crystal pendant holding one perfect, silent note.",
+      "partial": "It silences, but a faint music leaks through when the wearer is alone.",
+      "failure": "The note escapes the crystal in a shriek and the pendant shatters."
+    }
+  },
+  {
+    "id": "stillheart",
+    "name": "Stillheart",
+    "category": "tool",
+    "tier": "master",
+    "materials": [
+      {
+        "material_id": "shard_false_paradise",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      },
+      {
+        "material_id": "named_fragment",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      },
+      {
+        "material_id": "divine_material",
+        "quantity": 1,
+        "tier_minimum": 4,
+        "substitutable": false
+      }
+    ],
+    "optional_materials": [],
+    "tainted_materials": true,
+    "workspace_required": "laboratory",
+    "crafting_dc": 20,
+    "time": "1 week",
+    "async_cycles": 6,
+    "output_item": "stillheart",
+    "output_quantity": 1,
+    "study_cost": 6,
+    "discovery_sources": [
+      "dungeon_schematic"
+    ],
+    "narration_cues": {
+      "exceptional": "The shard is bound without waking the paradise; the ring soothes without ever lying.",
+      "success": "A warm ring carved from the Still's false paradise; calm radiates from it.",
+      "partial": "It calms allies, but whispers its offer of rest more often than it should.",
+      "failure": "The paradise stirs in the shard and pulls the crafter into a daylong trance."
+    }
+  }
+]

@@ -1,0 +1,65 @@
+import { test, expect } from "@playwright/test";
+
+// Capstone for Milestone 1: proves the seam between build-time SSG (story-002)
+// and client hydration (story-001) on the production build. The global baseURL
+// is the mobile app (:8082); the marketing site is served on :8085 by the
+// apps/web webServer entry in playwright.config.ts.
+const WEB = "http://localhost:8085";
+
+test.describe("Marketing home page (apps/web)", () => {
+  test("prerenders the hero into the served HTML (no JS executed)", async ({ request }) => {
+    const res = await request.get(`${WEB}/`);
+    expect(res.status()).toBe(200);
+    const body = await res.text();
+    // Real content lives inside #root in the raw response — SEO-visible, not an
+    // empty client-rendered shell. The chrome mounts the skip link first, then
+    // <nav>, then the <main> landmark wrapping the hero <header class="hero">
+    // with its <h1>Divine<br/>Ruin</h1> (story-006 added the skip-link + <main>).
+    // Anchoring on #root → <nav> → <header class="hero"> → <h1> proves the markup
+    // is nested in #root and prerendered (not a client-only shell), so an
+    // empty-root regression (or a stray "Divine Ruin" in <title>/the footer)
+    // can't satisfy this vacuously.
+    expect(body).toMatch(
+      /<div id="root"><a[^>]*class="skip-link"[\s\S]*?<nav[\s\S]*?<header[^>]*class="hero"[\s\S]*?<h1[^>]*>Divine<br\/?><em>Ruin<\/em>/s,
+    );
+  });
+
+  test("serves SEO meta, Open Graph, canonical, and JSON-LD in the head (story-002)", async ({
+    request,
+  }) => {
+    // prerender.ts injects seo.ts's head block; assert it's present in the raw
+    // served HTML (crawler-visible, first byte). The og:image + canonical resolve
+    // to the build-time origin (PUBLIC_SITE_ORIGIN, default https://divineruin.com).
+    const res = await request.get(`${WEB}/`);
+    expect(res.status()).toBe(200);
+    const body = await res.text();
+    expect(body).toMatch(/<meta name="description" content="[^"]+"/);
+    expect(body).toContain('<link rel="canonical" href="https://divineruin.com/" />');
+    expect(body).toContain(
+      '<meta property="og:image" content="https://divineruin.com/og-image.png" />',
+    );
+    expect(body).toContain('<meta name="twitter:card" content="summary_large_image" />');
+    expect(body).toMatch(/<script type="application\/ld\+json">[\s\S]*"@type":"VideoGame"/);
+  });
+
+  test("hydrates cleanly with no console errors", async ({ page }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    // Attach collectors before navigation so early errors aren't missed.
+    page.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(msg.text());
+    });
+    page.on("pageerror", (err) => pageErrors.push(err.message));
+
+    await page.goto(`${WEB}/`);
+
+    // Hero is visible (rendered) and the page reached an interactive state.
+    await expect(page.getByRole("heading", { name: "Divine Ruin" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+
+    const hydrationErrors = consoleErrors.filter((e) => /hydrat|did not match/i.test(e));
+    expect(hydrationErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+    expect(consoleErrors).toEqual([]);
+  });
+});

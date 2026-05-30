@@ -11,6 +11,7 @@
     "test:e2e:mobile": "bun run ../../scripts/maestro-acceptance.ts"
   },
   "dependencies": {
+    "@divineruin/design-tokens": "workspace:*",
     "@divineruin/shared": "workspace:*",
     "@config-plugins/react-native-webrtc": "14.0.0",
     "@expo-google-fonts/cormorant-garamond": "^0.4.1",

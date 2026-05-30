@@ -14,6 +14,10 @@ echo "  TypeScript typecheck (root)..."
 bun run typecheck
 echo "  TypeScript typecheck (mobile)..."
 bun run typecheck:mobile
+echo "  TypeScript typecheck (server)..."
+bun run typecheck:server
+echo "  TypeScript typecheck (web)..."
+bun run typecheck:web
 
 # ESLint
 echo "  ESLint..."
@@ -21,7 +25,7 @@ bunx eslint --max-warnings 0 .
 
 # Prettier
 echo "  Prettier..."
-bunx prettier --check 'apps/**/*.{ts,tsx}' 'packages/**/*.ts'
+bunx prettier --check 'apps/**/*.{ts,tsx}' 'apps/web/**/*.{html,css}' 'packages/**/*.ts'
 
 # Python linting
 echo "  Python ruff check..."

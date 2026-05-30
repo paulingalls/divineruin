@@ -86,7 +86,8 @@ Speech style: {npc_speech_style}
 
 The player attempted to craft: {recipe_name}
 Outcome: {tier} (roll: {roll}, DC: {dc})
-Quality bonus: {quality_bonus}
+{recipe_cue}
+{quality_note}
 
 Write a short narration (60-120 words) of this crafting outcome.
 Include sensory details — the sound of the hammer, the smell of hot metal, the feel of the work.
@@ -161,6 +162,33 @@ def get_companion_context(companion_id: str) -> dict:
     return COMPANION_CONTEXT.get(companion_id, COMPANION_CONTEXT["companion_kael"])
 
 
+def _format_recipe_cue(ctx: dict) -> str:
+    """Render the per-recipe band cue (narration_cues[band]) for the narration prompt.
+
+    The base sensory description of THIS recipe's outcome at the resolved band (decision
+    crafting-narration-ssot), complementary to the per-category quality note. Empty when
+    the recipe omits the resolved band (exceptional/partial are optional).
+    """
+    cue = ctx.get("recipe_cue")
+    return f"The result: {cue}" if cue else ""
+
+
+def _format_quality_note(ctx: dict) -> str:
+    """Render the M5.3 crafting quality property for the narration prompt.
+
+    Exceptional rolls carry a bonus_property, Partial rolls a flaw (both narration-only
+    {id,name,description} from quality_outcomes); Success/Failure carry neither. Returns a
+    sensory cue line for the DM to weave in, or "" when there's nothing to surface.
+    """
+    bonus = ctx.get("bonus_property")
+    if bonus:
+        return f"Exceptional touch — {bonus['name']}: {bonus['description']}"
+    flaw = ctx.get("flaw")
+    if flaw:
+        return f"A flaw mars it — {flaw['name']}: {flaw['description']}"
+    return ""
+
+
 def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list[str]]:
     """Build a narration prompt and return (prompt, npc_voice_ids).
 
@@ -183,7 +211,8 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
             tier=ctx.get("tier", "unknown"),
             roll=ctx.get("roll", "?"),
             dc=ctx.get("dc", "?"),
-            quality_bonus=ctx.get("quality_bonus", 0),
+            recipe_cue=_format_recipe_cue(ctx),
+            quality_note=_format_quality_note(ctx),
             decision_options=decision_text,
         )
         return prompt, [npc["voice_id"]]
