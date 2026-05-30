@@ -1404,7 +1404,7 @@ Email + 6-digit verification code. No passwords, no OAuth.
 
 ### Cloud Platform
 
-**Recommendation: AWS or GCP.** LiveKit Cloud is available for managed hosting during MVP, with the option to self-host later. The Python DM agent and TypeScript/Bun REST API deploy as separate containers (Docker/Kubernetes), sharing the PostgreSQL and Redis instances. Both containers are lightweight — the DM agent's memory footprint is dominated by the LiveKit session, and the REST API is a standard Bun HTTP server.
+**Target: DigitalOcean, all-managed.** See [`ops/production-deployment-architecture.md`](ops/production-deployment-architecture.md) for the canonical deployment reference — it supersedes any earlier AWS/GCP framing here. Postgres and Redis are DO Managed services; LiveKit uses LiveKit Cloud (self-hosting is a later option, not MVP). The Python DM agent and TypeScript/Bun REST API deploy as separate containers, sharing the managed PostgreSQL and Redis. Both containers are lightweight — the DM agent's memory footprint is dominated by the LiveKit session, and the REST API is a standard Bun HTTP server.
 
 ### Cost Considerations for MVP
 
