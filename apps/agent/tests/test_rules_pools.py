@@ -1,13 +1,16 @@
-"""Tests for resource pool formulas, archetype config, and pool calculations."""
+"""Tests for resource pool formulas, archetype chassis resource config, and pool calculations.
+
+PoolFormula/ResourceConfig now live in archetypes.py (the chassis SSOT);
+PoolMaximums + calculate_max_pools stay in rules_engine. The per-archetype
+resource expectations below are hardcoded from the historically-correct values —
+an independent anchor pinning the chassis now that ARCHETYPE_RESOURCE_CONFIG is gone.
+calculate_max_pools resolves the chassis via the autouse seed_archetypes fixture.
+"""
 
 import pytest
 
-from rules_engine import (
-    ARCHETYPE_RESOURCE_CONFIG,
-    PoolFormula,
-    PoolMaximums,
-    calculate_max_pools,
-)
+from archetypes import PoolFormula, ResourceConfig, get_archetype_chassis
+from rules_engine import PoolMaximums, calculate_max_pools
 
 # --- Resource Pools ---
 
@@ -20,6 +23,29 @@ POOL_TEST_MODS = {
     "intelligence": 3,
     "wisdom": 2,
     "charisma": 3,
+}
+
+# id -> ResourceConfig, the legacy ARCHETYPE_RESOURCE_CONFIG values.
+_SF = lambda b, a, d: PoolFormula(base=b, attribute=a, level_divisor=d)  # noqa: E731
+EXPECTED_RESOURCE = {
+    "warrior": ResourceConfig("stamina_only", _SF(8, "constitution", 1), None),
+    "guardian": ResourceConfig("stamina_only", _SF(8, "constitution", 1), None),
+    "skirmisher": ResourceConfig("stamina_only", _SF(8, "dexterity", 1), None),
+    "rogue": ResourceConfig("stamina_only", _SF(8, "dexterity", 1), None),
+    "spy": ResourceConfig("stamina_only", _SF(8, "charisma", 1), None),
+    "mage": ResourceConfig("focus_only", None, _SF(8, "intelligence", 1)),
+    "artificer": ResourceConfig("focus_only", None, _SF(8, "intelligence", 1)),
+    "seeker": ResourceConfig("focus_only", None, _SF(8, "intelligence", 1)),
+    "whisper": ResourceConfig("focus_only", None, _SF(6, "intelligence", 2)),
+    "druid": ResourceConfig("focus_primary", _SF(4, "constitution", 0), _SF(8, "wisdom", 1)),
+    "cleric": ResourceConfig("focus_primary", _SF(4, "constitution", 0), _SF(8, "wisdom", 1)),
+    "beastcaller": ResourceConfig("focus_primary", _SF(4, "constitution", 0), _SF(8, "wisdom", 1)),
+    "warden": ResourceConfig("focus_primary", _SF(6, "constitution", 0), _SF(8, "wisdom", 1)),
+    "paladin": ResourceConfig("focus_primary", _SF(6, "constitution", 3), _SF(6, "wisdom", 1)),
+    "oracle": ResourceConfig("focus_primary", _SF(4, "constitution", 0), _SF(8, "wisdom", 1)),
+    "bard": ResourceConfig("split", _SF(5, "constitution", 2), _SF(5, "charisma", 2)),
+    "diplomat": ResourceConfig("split", _SF(5, "charisma", 2), _SF(5, "charisma", 2)),
+    "marshal": ResourceConfig("split", _SF(6, "strength", 2), _SF(5, "charisma", 2)),
 }
 
 
@@ -54,62 +80,39 @@ class TestPoolMaximums:
             p.stamina = 5  # type: ignore[misc]
 
 
-class TestArchetypeResourceConfig:
-    def test_has_18_archetypes(self):
-        assert len(ARCHETYPE_RESOURCE_CONFIG) == 18
+class TestArchetypeChassisResource:
+    """The 18 chassis carry the historically-correct resource pattern + formulas."""
 
-    def test_all_keys_lowercase(self):
-        for key in ARCHETYPE_RESOURCE_CONFIG:
-            assert key == key.lower(), f"Key {key!r} is not lowercase"
+    def test_all_18_present(self):
+        assert len(EXPECTED_RESOURCE) == 18
+
+    @pytest.mark.parametrize("archetype", list(EXPECTED_RESOURCE.keys()))
+    def test_resource_matches_expected(self, archetype: str):
+        assert get_archetype_chassis(archetype).resource == EXPECTED_RESOURCE[archetype]
 
     def test_warrior_stamina_config(self):
-        pattern, stamina, focus = ARCHETYPE_RESOURCE_CONFIG["warrior"]
-        assert pattern == "stamina_only"
-        assert stamina is not None
-        assert stamina.base == 8
-        assert stamina.attribute == "constitution"
-        assert stamina.level_divisor == 1
-        assert focus is None
+        r = get_archetype_chassis("warrior").resource
+        assert r.pattern == "stamina_only"
+        assert r.stamina_formula == PoolFormula(8, "constitution", 1)
+        assert r.focus_formula is None
 
     def test_mage_focus_config(self):
-        pattern, stamina, focus = ARCHETYPE_RESOURCE_CONFIG["mage"]
-        assert pattern == "focus_only"
-        assert stamina is None
-        assert focus is not None
-        assert focus.base == 8
-        assert focus.attribute == "intelligence"
-        assert focus.level_divisor == 1
+        r = get_archetype_chassis("mage").resource
+        assert r.pattern == "focus_only"
+        assert r.stamina_formula is None
+        assert r.focus_formula == PoolFormula(8, "intelligence", 1)
 
-    def test_druid_focus_primary_config(self):
-        pattern, stamina, focus = ARCHETYPE_RESOURCE_CONFIG["druid"]
-        assert pattern == "focus_primary"
-        assert stamina is not None
-        assert stamina.level_divisor == 0  # flat
-        assert focus is not None
-        assert focus.level_divisor == 1  # grows with level
+    def test_druid_focus_primary_flat_secondary(self):
+        r = get_archetype_chassis("druid").resource
+        assert r.pattern == "focus_primary"
+        assert r.stamina_formula is not None and r.stamina_formula.level_divisor == 0  # flat
+        assert r.focus_formula is not None and r.focus_formula.level_divisor == 1
 
-    def test_bard_split_config(self):
-        pattern, stamina, focus = ARCHETYPE_RESOURCE_CONFIG["bard"]
-        assert pattern == "split"
-        assert stamina is not None
-        assert focus is not None
-
-    def test_marshal_present(self):
-        assert "marshal" in ARCHETYPE_RESOURCE_CONFIG
-        pattern, stamina, focus = ARCHETYPE_RESOURCE_CONFIG["marshal"]
-        assert pattern == "split"
-        assert stamina is not None
-        assert stamina.attribute == "strength"
-        assert focus is not None
-        assert focus.attribute == "charisma"
-
-    def test_whisper_is_focus_only(self):
-        pattern, stamina, focus = ARCHETYPE_RESOURCE_CONFIG["whisper"]
-        assert pattern == "focus_only"
-        assert stamina is None
-        assert focus is not None
-        assert focus.base == 6
-        assert focus.level_divisor == 2
+    def test_marshal_mixed_attributes(self):
+        r = get_archetype_chassis("marshal").resource
+        assert r.pattern == "split"
+        assert r.stamina_formula is not None and r.stamina_formula.attribute == "strength"
+        assert r.focus_formula is not None and r.focus_formula.attribute == "charisma"
 
 
 class TestCalculateMaxPoolsStaminaOnly:
@@ -334,7 +337,7 @@ class TestCalculateMaxPoolsEdgeCases:
 class TestCalculateMaxPoolsAllArchetypesL1L20:
     """Parametrized sanity check: every archetype produces valid pools at L1 and L20."""
 
-    @pytest.mark.parametrize("archetype", list(ARCHETYPE_RESOURCE_CONFIG.keys()))
+    @pytest.mark.parametrize("archetype", list(EXPECTED_RESOURCE.keys()))
     def test_level_1_pools_are_positive(self, archetype: str):
         result = calculate_max_pools(archetype, 1, POOL_TEST_MODS)
         if result.stamina is not None:
@@ -342,7 +345,7 @@ class TestCalculateMaxPoolsAllArchetypesL1L20:
         if result.focus is not None:
             assert result.focus > 0, f"{archetype} L1 focus <= 0"
 
-    @pytest.mark.parametrize("archetype", list(ARCHETYPE_RESOURCE_CONFIG.keys()))
+    @pytest.mark.parametrize("archetype", list(EXPECTED_RESOURCE.keys()))
     def test_level_20_pools_are_positive(self, archetype: str):
         result = calculate_max_pools(archetype, 20, POOL_TEST_MODS)
         if result.stamina is not None:
@@ -350,7 +353,7 @@ class TestCalculateMaxPoolsAllArchetypesL1L20:
         if result.focus is not None:
             assert result.focus > 0, f"{archetype} L20 focus <= 0"
 
-    @pytest.mark.parametrize("archetype", list(ARCHETYPE_RESOURCE_CONFIG.keys()))
+    @pytest.mark.parametrize("archetype", list(EXPECTED_RESOURCE.keys()))
     def test_level_20_pools_ge_level_1(self, archetype: str):
         l1 = calculate_max_pools(archetype, 1, POOL_TEST_MODS)
         l20 = calculate_max_pools(archetype, 20, POOL_TEST_MODS)

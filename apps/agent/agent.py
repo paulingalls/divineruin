@@ -174,6 +174,15 @@ def _setup_reconnection(
 async def dm_session(ctx: agents.JobContext) -> None:
     player_id = _extract_player_id(ctx)
 
+    # Load the archetype chassis once per agent process. award_xp / update_quest
+    # call calculate_max_hp -> get_archetype_chassis, which needs the chassis
+    # populated (M2.1 folded the old module-level HP/resource constants into the
+    # DB-loaded SSOT). The async worker loads it separately at its own startup.
+    from archetypes import is_loaded, load_archetypes
+
+    if not is_loaded():
+        await load_archetypes()
+
     # Determine session type: new player (creation) vs returning
     player = None
     last_summary = None
