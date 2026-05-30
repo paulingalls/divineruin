@@ -39,7 +39,7 @@ describe("Item interface — M5.0 widening", () => {
       damage_dice: "1d8",
       properties: ["versatile"],
       audio_cue: "soft radiant hum when drawn",
-      attunement: true,
+      attunement: { kind: "required" },
     };
     expect(rare.tier).toBe(3);
     expect(rare.durability_tier).toBe("reinforced");
@@ -63,14 +63,14 @@ describe("Item interface — M5.0 widening", () => {
       ac: 2,
       armor_properties: ["enhanced_shield_bonus"],
       quest_only: true,
-      attunement: true,
+      attunement: { kind: "required" },
     };
     expect(legendary.tier).toBe(4);
     expect(legendary.quest_only).toBe(true);
     expect(legendary.armor_properties).toEqual(["enhanced_shield_bonus"]);
   });
 
-  test("attunement field accepts boolean (requires) or string (class-restricted)", () => {
+  test("attunement is a discriminated union: none / required / class-restricted", () => {
     const requiresAttune: Item = {
       id: "ring_of_resonance_dampening",
       name: "Ring of Resonance Dampening",
@@ -81,16 +81,23 @@ describe("Item interface — M5.0 widening", () => {
       weight: 0,
       effects: [],
       value_base: 0,
-      attunement: true,
+      attunement: { kind: "required" },
     };
     const classRestricted: Item = {
       ...requiresAttune,
       id: "veil_sight_lens",
       name: "Veil-Sight Lens",
-      attunement: "caster",
+      attunement: { kind: "class", class: "caster" },
     };
-    expect(requiresAttune.attunement).toBe(true);
-    expect(classRestricted.attunement).toBe("caster");
+    const noAttune: Item = {
+      ...requiresAttune,
+      id: "longsword_plain",
+      name: "Plain Longsword",
+      attunement: { kind: "none" },
+    };
+    expect(requiresAttune.attunement).toEqual({ kind: "required" });
+    expect(classRestricted.attunement).toEqual({ kind: "class", class: "caster" });
+    expect(noAttune.attunement).toEqual({ kind: "none" });
   });
 
   test("formalizes art_template drift (already present in items.json, was missing from interface)", () => {

@@ -71,7 +71,7 @@ class TestConnectionPoolManagement:
                 await db.get_redis()
 
                 mock_from_url.assert_called_once_with(
-                    "redis://localhost:6379",
+                    "redis://localhost:56379",
                     decode_responses=True,
                 )
 

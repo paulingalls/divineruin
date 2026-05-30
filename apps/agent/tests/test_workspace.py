@@ -9,6 +9,10 @@ import pytest
 
 import workspace as ws
 
+# Disposition multipliers from the pricing SSOT (content/pricing.json economy row),
+# injected into compute_rental_price so it stays a pure rules-engine fn (story-011).
+_MULT = {"friendly": 0.8, "trusted": 0.6}
+
 
 class TestWorkspaceType:
     def test_all_four_types_present(self):
@@ -41,25 +45,25 @@ class TestRentalPricing:
         assert ws.WorkspaceType.FIELD not in ws.RENTAL_BASE_PRICE_SP
 
     def test_neutral_pays_full_price(self):
-        quote = ws.compute_rental_price(5, "neutral")
+        quote = ws.compute_rental_price(5, "neutral", multipliers=_MULT)
         assert quote.available is True
         assert quote.price_sp == pytest.approx(5.0)
         assert quote.reason == ""
 
     def test_friendly_pays_80_percent(self):
-        quote = ws.compute_rental_price(5, "friendly")
+        quote = ws.compute_rental_price(5, "friendly", multipliers=_MULT)
         assert quote.available is True
         assert quote.price_sp == pytest.approx(4.0)
 
     def test_trusted_pays_60_percent(self):
         # 12sp combined bundle at Trusted: 12 * 0.6 = 7.2.
-        quote = ws.compute_rental_price(ws.COMBINED_FORGE_LAB_RENTAL_SP, "trusted")
+        quote = ws.compute_rental_price(ws.COMBINED_FORGE_LAB_RENTAL_SP, "trusted", multipliers=_MULT)
         assert quote.available is True
         assert quote.price_sp == pytest.approx(7.2)
 
     def test_cautious_alias_pays_full_price(self):
         # 'cautious' is a neutral alias (tool_support.DISPOSITION_TIERS).
-        quote = ws.compute_rental_price(10, "cautious")
+        quote = ws.compute_rental_price(10, "cautious", multipliers=_MULT)
         assert quote.available is True
         assert quote.price_sp == pytest.approx(10.0)
 
@@ -67,17 +71,17 @@ class TestRentalPricing:
     def test_below_neutral_refuses_no_surcharge(self, disposition):
         # Adopt spec: below Neutral the NPC refuses outright — no rental, no
         # surcharge (not the milestone's hostile-surcharge wording).
-        quote = ws.compute_rental_price(5, disposition)
+        quote = ws.compute_rental_price(5, disposition, multipliers=_MULT)
         assert quote.available is False
         assert quote.price_sp == 0.0
         assert quote.reason  # explains the refusal
 
     def test_case_insensitive_disposition(self):
-        assert ws.compute_rental_price(5, "FRIENDLY").price_sp == pytest.approx(4.0)
+        assert ws.compute_rental_price(5, "FRIENDLY", multipliers=_MULT).price_sp == pytest.approx(4.0)
 
     def test_unknown_disposition_fails_loud(self):
         with pytest.raises(ValueError):
-            ws.compute_rental_price(5, "ecstatic")
+            ws.compute_rental_price(5, "ecstatic", multipliers=_MULT)
 
 
 class TestSettlementAvailability:

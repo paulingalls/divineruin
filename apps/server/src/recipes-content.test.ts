@@ -1,4 +1,5 @@
 import { test, expect, describe } from "bun:test";
+import { asRecord } from "./parse-helpers.ts";
 
 // Content-validation test for M5.1 (sprint-012 story-002): load
 // content/recipes.json + content/materials_catalog.json and prove every entry
@@ -15,6 +16,7 @@ import { test, expect, describe } from "bun:test";
 
 const RECIPES_PATH = new URL("../../../content/recipes.json", import.meta.url);
 const MATERIALS_PATH = new URL("../../../content/materials_catalog.json", import.meta.url);
+const ITEMS_PATH = new URL("../../../content/items.json", import.meta.url);
 
 // All 16 required Recipe fields (packages/shared/src/entities/recipe.ts). Every
 // field is required — recipes are fully-specified content (decision
@@ -68,13 +70,6 @@ async function loadArray(path: URL, label: string): Promise<unknown[]> {
   const raw: unknown = await Bun.file(path).json();
   if (!Array.isArray(raw)) throw new Error(`${label} is not an array`);
   return raw as unknown[];
-}
-
-function asRecord(entry: unknown, ctx: string): Record<string, unknown> {
-  if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
-    throw new Error(`${ctx} is not an object`);
-  }
-  return entry as Record<string, unknown>;
 }
 
 function validateMaterialReq(entry: unknown, ctx: string): void {
@@ -224,6 +219,25 @@ describe("content/recipes.json — M5.1 Recipe conformance", () => {
         if (!catalogIds.has(mid)) {
           throw new Error(`recipe '${String(r.id)}' references unknown material '${mid}'`);
         }
+      }
+    }
+  });
+
+  // Every recipe must produce a real item — a recipe whose output_item names a
+  // non-existent items.json id is a dangling crafting result that only surfaces
+  // when a player finishes the craft and the inventory loader can't find the
+  // item. Mirrors the material-resolution test above (the input side of the
+  // same join). Resolves debt ee6a0bc84153 (M5.4 story-010).
+  test("every recipe output_item resolves to an items.json entry", async () => {
+    const recipes = (await loadArray(RECIPES_PATH, "recipes.json")) as Array<
+      Record<string, unknown>
+    >;
+    const items = (await loadArray(ITEMS_PATH, "items.json")) as Array<Record<string, unknown>>;
+    const itemIds = new Set(items.map((i) => i.id as string));
+    for (const r of recipes) {
+      const out = r.output_item as string;
+      if (!itemIds.has(out)) {
+        throw new Error(`recipe '${String(r.id)}' produces unknown item '${out}'`);
       }
     }
   });

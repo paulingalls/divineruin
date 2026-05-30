@@ -1,8 +1,9 @@
 services:
   postgres:
     image: postgres:16-alpine
+    container_name: divineruin-postgres
     ports:
-      - "127.0.0.1:5433:5432"
+      - "127.0.0.1:55432:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-divineruin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-divineruin_dev}
@@ -17,8 +18,9 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: divineruin-redis
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:56379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

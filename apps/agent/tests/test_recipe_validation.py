@@ -192,3 +192,133 @@ class TestAllocateMaterials:
         result = rv.allocate_materials([], {}, CATALOG)
         assert result.satisfied is True
         assert result.flat == []
+
+
+class TestValidateMagicItemCraftTier:
+    """Magic-item craft-tier gate (story-002, M5.4). Rare items require an
+    Expert+ recipe, Legendary require Master; common/uncommon are unconstrained.
+    Pure ordering logic over RECIPE_TIER_ORDER, mirroring validate_recipe_slot_capacity.
+    The gate is keyed on the RECIPE tier vocab (basic/trained/expert/master), not
+    the crafting-skill vocab. Consumed by the content-invariant test that joins
+    magic items to their recipes (story-002 Commit 4)."""
+
+    def test_rare_allows_expert_recipe(self):
+        assert rv.validate_magic_item_craft_tier("rare", "expert").allowed is True
+
+    def test_rare_allows_master_recipe(self):
+        assert rv.validate_magic_item_craft_tier("rare", "master").allowed is True
+
+    def test_rare_refuses_trained_recipe(self):
+        result = rv.validate_magic_item_craft_tier("rare", "trained")
+        assert result.allowed is False
+        assert "expert" in result.reason.lower()
+
+    def test_rare_refuses_basic_recipe(self):
+        assert rv.validate_magic_item_craft_tier("rare", "basic").allowed is False
+
+    def test_legendary_requires_master(self):
+        assert rv.validate_magic_item_craft_tier("legendary", "master").allowed is True
+        assert rv.validate_magic_item_craft_tier("legendary", "expert").allowed is False
+
+    def test_common_and_uncommon_are_unconstrained(self):
+        for rarity in ("common", "uncommon"):
+            for tier in ("basic", "trained", "expert", "master"):
+                assert rv.validate_magic_item_craft_tier(rarity, tier).allowed is True
+
+    def test_unknown_rarity_fails_loud(self):
+        with pytest.raises(ValueError):
+            rv.validate_magic_item_craft_tier("mythic", "expert")
+
+    def test_unknown_recipe_tier_fails_loud(self):
+        with pytest.raises(ValueError):
+            rv.validate_magic_item_craft_tier("rare", "untrained")
+
+
+class TestMagicItemContentInvariant:
+    """Content invariant (story-002 c4d): every craftable Rare/Legendary item in
+    content/items.json — i.e. one whose id matches a recipe's output_item — must be
+    produced by a recipe whose tier satisfies validate_magic_item_craft_tier (Rare ->
+    Expert+, Legendary -> Master). This is the gate's production consumer, joining the
+    catalog to recipes. Non-craftable magic items (the unique named finds with no
+    recipe) are intentionally exempt (decision 396b3afd71d2 / concern 12c946b6ffec).
+
+    The named-item test below closes the vacuousness gap (debt ee6a0bc84153 / concern
+    c70b7db13b1e): it exercises the gate over the 10 named M5.4 magic items SPECIFICALLY,
+    not just whichever pre-existing rares happen to be craftable. The 6 Rare + 3
+    Legendary craftable names must each join a tier-correct recipe; the one quest-only
+    name (Thornridge's Stand, "Cannot be crafted" per game_mechanics_crafting.md) must
+    have NO recipe."""
+
+    # The 10 named M5.4 magic items (the `magic`-tagged set the items-load 6/4 invariant
+    # counts). 9 are spec-craftable; thornridges_stand is quest-only.
+    NAMED_RARE_CRAFTABLE = frozenset(
+        {
+            "blade_of_the_ashmark",
+            "thornveld_guardian_shield",
+            "cloak_steppe_winds",
+            "veil_sight_lens",
+            "ring_resonance_dampening",
+            "potion_veil_walking",
+        }
+    )
+    NAMED_LEGENDARY_CRAFTABLE = frozenset({"architects_edge", "choirs_silence", "stillheart"})
+    NAMED_QUEST_ONLY = frozenset({"thornridges_stand"})
+
+    @staticmethod
+    def _load(name: str):
+        import json
+        from pathlib import Path
+
+        content = Path(__file__).resolve().parents[3] / "content" / name
+        return json.loads(content.read_text())
+
+    def test_craftable_magic_items_satisfy_tier_gate(self):
+        items = self._load("items.json")
+        recipes = self._load("recipes.json")
+        by_output = {r["output_item"]: r for r in recipes}
+
+        checked = 0
+        for it in items:
+            if it["rarity"] in ("rare", "legendary") and it["id"] in by_output:
+                recipe = by_output[it["id"]]
+                result = rv.validate_magic_item_craft_tier(it["rarity"], recipe["tier"])
+                assert result.allowed, (
+                    f"{it['id']} ({it['rarity']}) is craftable at {recipe['tier']} "
+                    f"but violates the magic-tier gate: {result.reason}"
+                )
+                checked += 1
+
+        # Non-vacuous: at least one craftable Rare/Legendary item must be covered,
+        # else the join silently asserts nothing (e.g. a future id-divergence regression).
+        assert checked > 0, "no craftable Rare/Legendary item joined a recipe — gate untested"
+
+    def test_named_magic_items_join_tier_correct_recipes(self):
+        """Non-vacuous over the NAMED set: each of the 9 craftable named magic items
+        must join a recipe at the gate-correct tier. Asserting the named ids directly
+        (not a generic rare/legendary count) is what keeps c70b7db13b1e closed — a
+        pre-existing rare alone could satisfy a count-based check while the named items
+        stayed unauthored."""
+        recipes = self._load("recipes.json")
+        by_output = {r["output_item"]: r for r in recipes}
+
+        for item_id in self.NAMED_RARE_CRAFTABLE:
+            assert item_id in by_output, f"named Rare magic item {item_id} has no recipe"
+            tier = by_output[item_id]["tier"]
+            assert rv.validate_magic_item_craft_tier("rare", tier).allowed, (
+                f"{item_id} (rare) recipe tier {tier} violates Rare->Expert+ gate"
+            )
+
+        for item_id in self.NAMED_LEGENDARY_CRAFTABLE:
+            assert item_id in by_output, f"named Legendary magic item {item_id} has no recipe"
+            tier = by_output[item_id]["tier"]
+            assert rv.validate_magic_item_craft_tier("legendary", tier).allowed, (
+                f"{item_id} (legendary) recipe tier {tier} violates Legendary->Master gate"
+            )
+
+    def test_quest_only_named_item_is_not_craftable(self):
+        """Thornridge's Stand is a unique quest find ("Cannot be crafted") — it must
+        have no recipe, or it would wrongly become reproducible."""
+        recipes = self._load("recipes.json")
+        by_output = {r["output_item"]: r for r in recipes}
+        for item_id in self.NAMED_QUEST_ONLY:
+            assert item_id not in by_output, f"quest-only named item {item_id} unexpectedly has a recipe"

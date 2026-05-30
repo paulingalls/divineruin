@@ -8,6 +8,7 @@ raise LiveKit ToolError (ADR 0002). The _*_impl seams take injected mods.
 
 import json
 import random
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
@@ -15,7 +16,11 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import FIXED_NOW, make_context, make_db_mod
 
-from errand_tools import _dispatch_companion_errand_impl, _resolve_companion_errand_impl
+from errand_tools import (
+    _RESOLVE_POLL_ATTEMPTS,
+    _dispatch_companion_errand_impl,
+    _resolve_companion_errand_impl,
+)
 
 SCOUT_TEMPLATE = {
     "id": "scout",
@@ -216,6 +221,20 @@ def _due_activity(resolve_at="2026-05-22T00:00:00+00:00", outcome=None):
     }
 
 
+def _resolving_activity(outcome=None):
+    """An errand the worker has CAS-claimed (status='resolving'); `outcome` is set
+    once the worker writes it (Step B) while status is still 'resolving'."""
+    return {
+        "id": "activity_err123",
+        "player_id": "player_1",
+        "activity_type": "companion_errand",
+        "status": "resolving",
+        "resolve_at": "2026-05-22T00:00:00+00:00",
+        "outcome": outcome,
+        "parameters": {"errand_type": "scout", "destination": "millhaven", "dc": 12},
+    }
+
+
 async def _fake_resolve(_companion_data, parameters, **_):
     return {
         "tier": "success",
@@ -370,27 +389,19 @@ class TestResolveCompanionErrand:
         mutations_mod.update_activity.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_raises_when_status_resolving(self):
-        """If the worker has already CAS-claimed the row (status='resolving'),
-        the tool path must fail closed with a clear ToolError so the player
-        retries instead of double-rolling."""
+    async def test_still_resolving_after_window_polls_then_raises(self):
+        """A row stuck in 'resolving' for the whole poll window still fails closed
+        with the same ToolError — but only after re-reading it in a fresh
+        transaction each attempt (poll-then-raise, never double-rolls)."""
         ctx = make_context()
         activity_mod = MagicMock()
-        resolving_activity = {
-            "id": "activity_err123",
-            "player_id": "player_1",
-            "activity_type": "companion_errand",
-            "status": "resolving",
-            "resolve_at": "2026-05-22T00:00:00+00:00",
-            "outcome": None,
-            "parameters": {"errand_type": "scout", "destination": "millhaven", "dc": 12},
-        }
-        activity_mod.get_activity = AsyncMock(return_value=resolving_activity)
+        activity_mod.get_activity = AsyncMock(return_value=_resolving_activity())
         queries_mod = MagicMock()
         queries_mod.get_player = AsyncMock()
         mutations_mod = MagicMock()
         mutations_mod.update_activity = AsyncMock()
         resolve_fn = AsyncMock()
+        sleep_fn = AsyncMock()
 
         with pytest.raises(ToolError, match="currently being resolved"):
             await _resolve_companion_errand_impl(
@@ -402,9 +413,103 @@ class TestResolveCompanionErrand:
                 mutations_mod=mutations_mod,
                 resolve_fn=resolve_fn,
                 now_fn=_resolve_now,
+                sleep_fn=sleep_fn,
             )
+        # Re-read in a fresh transaction every attempt; sleep between attempts only.
+        assert activity_mod.get_activity.await_count == _RESOLVE_POLL_ATTEMPTS
+        assert sleep_fn.await_count == _RESOLVE_POLL_ATTEMPTS - 1
         resolve_fn.assert_not_awaited()
         mutations_mod.update_activity.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_resolving_then_resolved_within_window_returns(self):
+        """If the worker finishes mid-poll (writes its outcome while still
+        'resolving', Step B), the tool returns that outcome without raising and
+        without re-rolling — the worker's single roll is authoritative (ADR 0006)."""
+        ctx = make_context()
+        worker_outcome = {
+            "tier": "success",
+            "narrative_context": {"risk_outcome": "none"},
+            "decision_options": [{"id": "thank", "label": "Thank them"}],
+        }
+        activity_mod = MagicMock()
+        # First read: worker still resolving (no outcome). Second read: outcome landed.
+        activity_mod.get_activity = AsyncMock(
+            side_effect=[_resolving_activity(), _resolving_activity(outcome=worker_outcome)]
+        )
+        queries_mod = MagicMock()
+        queries_mod.get_player = AsyncMock()
+        mutations_mod = MagicMock()
+        mutations_mod.update_activity = AsyncMock()
+        resolve_fn = AsyncMock()
+        sleep_fn = AsyncMock()
+
+        result = json.loads(
+            await _resolve_companion_errand_impl(
+                ctx,
+                "activity_err123",
+                db_mod=make_db_mod()[0],
+                activity_mod=activity_mod,
+                queries_mod=queries_mod,
+                mutations_mod=mutations_mod,
+                resolve_fn=resolve_fn,
+                now_fn=_resolve_now,
+                sleep_fn=sleep_fn,
+            )
+        )
+        assert result["tier"] == "success"
+        assert activity_mod.get_activity.await_count == 2
+        assert sleep_fn.await_count == 1
+        resolve_fn.assert_not_awaited()
+        mutations_mod.update_activity.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_resolving_poll_does_not_hold_lock_across_sleep(self):
+        """The hard constraint: a FOR UPDATE transaction is never held across a
+        sleep. Each re-read opens and closes its own transaction; the sleep runs
+        with no transaction open."""
+        mock_conn = MagicMock()
+        open_txns = 0
+        max_open_during_sleep = 0
+
+        @asynccontextmanager
+        async def tracking_txn():
+            nonlocal open_txns
+            open_txns += 1
+            try:
+                yield mock_conn
+            finally:
+                open_txns -= 1
+
+        db_mod = MagicMock()
+        db_mod.transaction = tracking_txn
+
+        async def record_sleep(_seconds):
+            nonlocal max_open_during_sleep
+            max_open_during_sleep = max(max_open_during_sleep, open_txns)
+
+        ctx = make_context()
+        activity_mod = MagicMock()
+        activity_mod.get_activity = AsyncMock(return_value=_resolving_activity())
+        queries_mod = MagicMock()
+        queries_mod.get_player = AsyncMock()
+        mutations_mod = MagicMock()
+        mutations_mod.update_activity = AsyncMock()
+
+        with pytest.raises(ToolError, match="currently being resolved"):
+            await _resolve_companion_errand_impl(
+                ctx,
+                "activity_err123",
+                db_mod=db_mod,
+                activity_mod=activity_mod,
+                queries_mod=queries_mod,
+                mutations_mod=mutations_mod,
+                resolve_fn=AsyncMock(),
+                now_fn=_resolve_now,
+                sleep_fn=record_sleep,
+            )
+        assert max_open_during_sleep == 0  # no FOR UPDATE held across any sleep
+        assert open_txns == 0  # every transaction closed
 
     @pytest.mark.asyncio
     async def test_unknown_errand_raises(self):

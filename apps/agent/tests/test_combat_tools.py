@@ -156,6 +156,14 @@ def _make_resolve_mocks():
     return mock_mutations
 
 
+def _make_resolve_queries():
+    """Mock db_queries for resolve_enemy_turn: no equipped items, so a player hit
+    accrues no durability (the accrual path is covered in test_combat_durability)."""
+    mock_queries = MagicMock()
+    mock_queries.get_player_inventory = AsyncMock(return_value=[])
+    return mock_queries
+
+
 def _make_death_save_mocks():
     """Create mock modules for request_death_save DI params."""
     mock_mutations = MagicMock()
@@ -237,6 +245,27 @@ class TestStartCombat:
             assert entry["roll"] >= 1 and entry["roll"] <= 20
 
     @pytest.mark.asyncio
+    async def test_resets_stale_weapon_durability_flags(self):
+        # A weapon swing outside combat must not leak into this encounter's
+        # end-of-combat durability accrual (concern c3c95fd3af40).
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+        ctx = _make_context()
+        ctx.userdata.weapon_used_this_encounter = True
+        ctx.userdata.weapon_crit_vs_heavy = True
+
+        await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Ambush!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+
+        assert ctx.userdata.weapon_used_this_encounter is False
+        assert ctx.userdata.weapon_crit_vs_heavy is False
+
+    @pytest.mark.asyncio
     async def test_publishes_events(self):
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
         room = _make_mock_room()
@@ -295,6 +324,7 @@ class TestResolveEnemyTurn:
                 action_name="Scimitar",
                 target_id="player_1",
                 mutations=mock_mutations,
+                queries=_make_resolve_queries(),
             )
         )
 
@@ -318,6 +348,7 @@ class TestResolveEnemyTurn:
                 action_name="Scimitar",
                 target_id="player_1",
                 mutations=mock_mutations,
+                queries=_make_resolve_queries(),
             )
         )
 
@@ -337,6 +368,7 @@ class TestResolveEnemyTurn:
             action_name="Scimitar",
             target_id="player_1",
             mutations=mock_mutations,
+            queries=_make_resolve_queries(),
         )
 
         # At minimum: dice_roll event + at least one play_sound
@@ -357,6 +389,7 @@ class TestResolveEnemyTurn:
                 action_name="Scimitar",
                 target_id="player_1",
                 mutations=mock_mutations,
+                queries=_make_resolve_queries(),
             )
         )
 
@@ -379,6 +412,7 @@ class TestResolveEnemyTurn:
                 action_name="Scimitar",
                 target_id="player_1",
                 mutations=mock_mutations,
+                queries=_make_resolve_queries(),
             )
         )
 
@@ -405,6 +439,7 @@ class TestResolveEnemyTurn:
                 action_name="Scimitar",
                 target_id="player_1",
                 mutations=mock_mutations,
+                queries=_make_resolve_queries(),
             )
 
     @pytest.mark.asyncio
@@ -420,6 +455,7 @@ class TestResolveEnemyTurn:
                 action_name="Fireball",
                 target_id="player_1",
                 mutations=mock_mutations,
+                queries=_make_resolve_queries(),
             )
 
     @pytest.mark.asyncio
@@ -435,6 +471,7 @@ class TestResolveEnemyTurn:
                 action_name="Scimitar",
                 target_id="player_1",
                 mutations=mock_mutations,
+                queries=_make_resolve_queries(),
             )
 
 

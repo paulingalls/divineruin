@@ -23,7 +23,9 @@ run_case() {
   local out rc got_skip got_tests
   out=$(BASH_TEST=1 BASH_TEST_DIFF="$diff" bash "$HOOK" <<< "$stdin" 2>&1)
   rc=$?
-  got_skip="no"; echo "$out" | grep -q "Docs-only push — skipping" && got_skip="yes"
+  # Both short-circuit messages end in "skipping test suites." (docs-only and
+  # branch-deletion), so grep the common suffix to cover either skip path.
+  got_skip="no"; echo "$out" | grep -q "skipping test suites" && got_skip="yes"
   got_tests="no"; echo "$out" | grep -q "TESTS_RAN" && got_tests="yes"
 
   local expected_tests
@@ -44,6 +46,53 @@ run_case "mixed"       "ref a b c"  $'docs/file.md\napps/server/src/x.ts'  "no"
 run_case "code-only"   "ref a b c"  "apps/server/src/x.ts"  "no"
 run_case "empty-stdin" ""           ""  "no"
 run_case "hook-only"   "ref a b c"  ".githooks/pre-push"  "no"
+# Branch-deletion push: local_sha (2nd field) is the all-zero SHA. Must skip the
+# suite (a pure delete has nothing to test) — guards the prior bug where deleting
+# a remote branch ran the full gate and needed --no-verify.
+run_case "deletion-only" "refs/heads/x 0000000000000000000000000000000000000000 refs/heads/x abc123"  ""  "yes"
+# Mixed push (a deletion ref AND a real code ref) must NOT skip: the real ref
+# flips ALL_DELETIONS=false so the deletion short-circuit doesn't fire. A code
+# change then runs the suite. Guards the ALL_DELETIONS=false transition.
+run_case "mixed-deletion-and-code" $'refs/heads/del 0000000000000000000000000000000000000000 refs/heads/del abc\nrefs/heads/x aaa refs/heads/x bbb'  "apps/server/src/x.ts"  "no"
+
+# --- Parallel-lane fail-loud collector (scripts/lane-utils.sh) ---
+# wait_all_lanes must be sourced + called IN THIS shell — `wait` reaps only the
+# current shell's children, so it can't be tested through the hook subprocess.
+source "$(cd "$(dirname "$0")" && pwd)/../scripts/lane-utils.sh"
+
+# lane_case NAME WANT_RC WANT_ERR EXITCODE:LANE...
+# Spawns one background job per spec (exiting with EXITCODE), runs wait_all_lanes,
+# and checks its return code + that WANT_ERR appears on stderr.
+lane_case() {
+  local name="$1" want_rc="$2" want_err="$3"; shift 3
+  local specs=() spec code lname pid rc errfile got_err
+  errfile=$(mktemp)
+  for spec in "$@"; do
+    code="${spec%%:*}"; lname="${spec#*:}"
+    ( exit "$code" ) &
+    pid=$!
+    specs+=("$pid:$lname")
+  done
+  # `if` context keeps a non-zero return from tripping the harness.
+  if wait_all_lanes "${specs[@]}" 2>"$errfile"; then rc=0; else rc=$?; fi
+  got_err="yes"
+  if [ -n "$want_err" ] && ! grep -q "$want_err" "$errfile"; then got_err="no"; fi
+  rm -f "$errfile"
+  if [ "$rc" -eq "$want_rc" ] && [ "$got_err" = "yes" ]; then
+    echo "  PASS: $name"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: $name (rc=$rc want_rc=$want_rc got_err=$got_err)"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+# All lanes green → push proceeds (rc 0).
+lane_case "lanes-all-pass"  0  ""                    "0:server" "0:mobile" "0:shared" "0:python"
+# A single failing lane fails the push loud, naming the lane (rc 1).
+lane_case "one-lane-fails"  1  "mobile lane failed"  "0:server" "1:mobile" "0:shared" "0:python"
+# Every failing lane is waited + reported, not just the first (rc 1).
+lane_case "multi-lane-fail" 1  "python lane failed"  "1:server" "0:mobile" "0:shared" "1:python"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

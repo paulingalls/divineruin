@@ -219,12 +219,20 @@ async def get_player_materials(
 
 
 async def get_accessible_workspaces(
-    player_id: str, location_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+    player_id: str,
+    location_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    has_portable_lab: bool = False,
 ) -> set[str]:
     """The workspace types a player can use at location_id right now — pre-flight Check 3.
     Always includes 'field' (the universal floor); adds each active (unexpired or standing)
     location-bound rental's workspace_type. Python mirror of the TS accessibleWorkspaceTier
-    (apps/server/src/workspace.ts); converts via WorkspaceType to fail loud on a typo'd type."""
+    (apps/server/src/workspace.ts); converts via WorkspaceType to fail loud on a typo'd type.
+
+    When has_portable_lab is True, grants Workshop + basic Laboratory ANYWHERE (NOT Forge),
+    the Artificer Portable-Lab exception (ADR 0005), matching the TS twin's hasPortableLab
+    branch. The caller reads lab ownership once and passes it here AND to the slot validator."""
     _conn = conn or await db.get_pool()
     rows = await _conn.fetch(
         """
@@ -239,6 +247,9 @@ async def get_accessible_workspaces(
     accessible = {WorkspaceType.FIELD.value}
     for row in rows:
         accessible.add(WorkspaceType(row["workspace_type"]).value)
+    if has_portable_lab:
+        accessible.add(WorkspaceType.WORKSHOP.value)
+        accessible.add(WorkspaceType.LABORATORY.value)
     return accessible
 
 

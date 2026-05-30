@@ -17,10 +17,50 @@ from dataclasses import dataclass
 RECIPE_TIER_ORDER = ["basic", "trained", "expert", "master"]
 
 
+# Item rarity -> the minimum RECIPE tier required to craft it (spec Item Rarity
+# and Tier, crafting.md:347-353): Rare items are Expert+ recipes, Legendary are
+# Master. Common/Uncommon are unconstrained (absent here). Keyed on RECIPE_TIER_ORDER,
+# not the crafting-skill vocab.
+_MAGIC_MIN_RECIPE_TIER = {"rare": "expert", "legendary": "master"}
+
+
 @dataclass(frozen=True)
 class SlotCapacityResult:
     allowed: bool
     reason: str  # "" when allowed
+
+
+@dataclass(frozen=True)
+class MagicTierResult:
+    allowed: bool
+    reason: str  # "" when allowed
+
+
+def validate_magic_item_craft_tier(output_rarity: str, recipe_tier: str) -> MagicTierResult:
+    """Is `recipe_tier` high enough to craft an item of `output_rarity`?
+
+    Spec magic-item gate: Rare items require an Expert+ recipe, Legendary require
+    Master; common/uncommon are unconstrained. Pure ordering logic over
+    RECIPE_TIER_ORDER (the recipe-tier vocab basic|trained|expert|master — NOT the
+    crafting-skill vocab). Fails loud on an unknown rarity or recipe tier. The
+    runtime player-skill refusal already rides on the preflight skill-vs-recipe_tier
+    gate; this formalizes the magic rule and guards content (the content-invariant
+    test joins each craftable magic item to its recipe and asserts this holds).
+    """
+    if recipe_tier not in RECIPE_TIER_ORDER:
+        raise ValueError(f"recipe_tier {recipe_tier!r} is not a valid recipe tier")
+    if output_rarity not in {"common", "uncommon", "rare", "legendary"}:
+        raise ValueError(f"output_rarity {output_rarity!r} is not a valid rarity")
+
+    min_tier = _MAGIC_MIN_RECIPE_TIER.get(output_rarity)
+    if min_tier is None:
+        return MagicTierResult(True, "")  # common/uncommon: no tier floor
+    if RECIPE_TIER_ORDER.index(recipe_tier) < RECIPE_TIER_ORDER.index(min_tier):
+        return MagicTierResult(
+            False,
+            f"{output_rarity} items require a {min_tier}+ recipe; {recipe_tier} is too low",
+        )
+    return MagicTierResult(True, "")
 
 
 @dataclass(frozen=True)

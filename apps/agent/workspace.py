@@ -37,18 +37,13 @@ RENTAL_BASE_PRICE_SP: dict[WorkspaceType, int] = {
 # recipe ever *requires* "combined" — so it lives as its own price constant.
 COMBINED_FORGE_LAB_RENTAL_SP = 12
 
-# Interim silver-to-gold conversion for debiting a rental against a player's gold
-# balance (D&D-standard 10 sp = 1 gp). The economy milestone formalizes currency
-# sub-units (cp/sp/gp) and reconciles any fractional gold this produces; until then
-# rent_workspace debits price_sp / SILVER_PER_GOLD (decision rental-currency-debit).
-SILVER_PER_GOLD = 10
-
-# Disposition price multipliers (spec §Rental rules: Friendly 80%, Trusted 60%);
-# Neutral-and-up not listed here pays full price. Below Neutral the NPC refuses
-# outright — no rental, no surcharge (adopted over the milestone's hostile-
-# surcharge wording). The below-Neutral test reuses tool_support.DISPOSITION_TIERS
-# rather than re-listing the disposition scale here.
-_RENTAL_MULTIPLIER = {"friendly": 0.8, "trusted": 0.6}
+# Disposition price multipliers and the silver/gold conversion moved to the
+# DB-loaded pricing SSOT (content/pricing.json -> pricing_queries.get_economy_pricing:
+# disposition_multipliers, silver_per_gold), shared with repair pricing (story-011).
+# compute_rental_price takes the multipliers as a param so it stays a pure, sync
+# rules-engine fn; the silver/gold debit conversion lives in the calling tools.
+# Disposition *order/refuse-below-neutral* stays here via tool_support.DISPOSITION_TIERS
+# (canonical vocabulary, not pricing).
 
 
 @dataclass(frozen=True)
@@ -58,14 +53,16 @@ class RentalQuote:
     reason: str  # "" when available
 
 
-def compute_rental_price(base_price_sp: int, disposition: str) -> RentalQuote:
+def compute_rental_price(base_price_sp: int, disposition: str, *, multipliers: dict[str, float]) -> RentalQuote:
     """Apply an NPC's `disposition` to a workspace's `base_price_sp` (sp/day).
 
     `base_price_sp` comes from RENTAL_BASE_PRICE_SP[workspace_type] or
     COMBINED_FORGE_LAB_RENTAL_SP — taking the price (not the type) lets the
-    Forge+Laboratory bundle reuse the same disposition logic. Returns an
-    unavailable RentalQuote when the NPC's disposition is below Neutral (a forge
-    is not rented to the unfriendly). Raises ValueError on an unknown disposition.
+    Forge+Laboratory bundle reuse the same disposition logic. `multipliers` is the
+    disposition->factor map from the pricing SSOT (Neutral-and-up not listed pays
+    full price). Returns an unavailable RentalQuote when the NPC's disposition is
+    below Neutral (a forge is not rented to the unfriendly). Raises ValueError on
+    an unknown disposition.
     """
     key = disposition.lower()
     rank = DISPOSITION_TIERS.get(key)
@@ -73,7 +70,7 @@ def compute_rental_price(base_price_sp: int, disposition: str) -> RentalQuote:
         raise ValueError(f"unknown disposition {disposition!r}")
     if rank < DISPOSITION_TIERS["neutral"]:
         return RentalQuote(False, 0.0, f"NPC refuses to rent at {key} disposition (below neutral)")
-    return RentalQuote(True, base_price_sp * _RENTAL_MULTIPLIER.get(key, 1.0), "")
+    return RentalQuote(True, base_price_sp * multipliers.get(key, 1.0), "")
 
 
 class Availability(IntEnum):

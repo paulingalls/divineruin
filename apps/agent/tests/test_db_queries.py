@@ -81,3 +81,35 @@ class TestGetAccessibleWorkspaces:
         sql = pool.fetch.call_args.args[0]
         assert "expires_at IS NULL OR expires_at > NOW()" in sql
         assert pool.fetch.call_args.args[1:] == ("p42", "millhaven")
+
+    @patch("db_queries.db")
+    async def test_portable_lab_grants_workshop_and_laboratory_anywhere(self, mock_db):
+        # Mirror TS accessibleWorkspaceTier (workspace.ts): a Portable Lab grants
+        # Workshop + basic Laboratory at any location (NOT Forge), on top of the field
+        # floor and any rentals.
+        mock_db.get_pool = AsyncMock(return_value=_pool_with_fetch([]))
+        assert await db_queries.get_accessible_workspaces("p1", "loc1", has_portable_lab=True) == {
+            "field",
+            "workshop",
+            "laboratory",
+        }
+
+    @patch("db_queries.db")
+    async def test_no_lab_grant_by_default(self, mock_db):
+        mock_db.get_pool = AsyncMock(return_value=_pool_with_fetch([]))
+        assert await db_queries.get_accessible_workspaces("p1", "loc1") == {"field"}
+
+    @patch("db_queries.db")
+    async def test_portable_lab_grant_merges_with_active_rentals(self, mock_db):
+        # Mirror TS "the Portable Lab grant merges with active rentals": the grant is
+        # additive ON TOP of rentals, not a replacement. A forge rental + portable lab
+        # yields field + forge (rental) + workshop + laboratory (grant) — and notably
+        # the grant never adds forge on its own.
+        pool = _pool_with_fetch([{"workspace_type": "forge"}])
+        mock_db.get_pool = AsyncMock(return_value=pool)
+        assert await db_queries.get_accessible_workspaces("p1", "loc1", has_portable_lab=True) == {
+            "field",
+            "forge",
+            "workshop",
+            "laboratory",
+        }

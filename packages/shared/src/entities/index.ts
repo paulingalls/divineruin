@@ -2,7 +2,7 @@ export type { Location, LocationExit, LocationCondition, HiddenElement } from ".
 
 export type { Npc, NpcKnowledge, NpcQuestKnowledge, NpcSchedule } from "./npc";
 
-export type { Item, ItemEffect, ItemArtTemplate } from "./item";
+export type { Item, ItemEffect, ItemArtTemplate, ItemAttunement } from "./item";
 
 export type { Recipe, MaterialReq, QualityBand } from "./recipe";
 

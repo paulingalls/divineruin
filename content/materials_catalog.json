@@ -488,5 +488,95 @@
     "source": "Bought cheap from any general store (1 sp).",
     "weight": 0.3,
     "description": "A worn grey block that hisses when steel is drawn across it."
+  },
+  {
+    "id": "corrupted_heartwood",
+    "name": "Corrupted Heartwood",
+    "category": "wood",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Cut from the rotted core of a Hollow-touched ironwood; must be purified before use.",
+    "weight": 0.5,
+    "description": "Black-veined wood that twitches faintly until the corruption is burned out."
+  },
+  {
+    "id": "thornveld_amber",
+    "name": "Thornveld Amber",
+    "category": "gem",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Hardened sap of the living Thornveld ironwood, gathered where the trees weep.",
+    "weight": 0.2,
+    "description": "A warm golden bead that holds a fleck of something still moving inside."
+  },
+  {
+    "id": "razorwing_feather",
+    "name": "Razorwing Feather",
+    "category": "monster_part",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Plucked from a razorwing downed over the Drathian steppe.",
+    "weight": 0.1,
+    "description": "A stiff feather edged sharp enough to part skin; it hums in a crosswind."
+  },
+  {
+    "id": "dire_bear_hide",
+    "name": "Dire Bear Hide",
+    "category": "hide",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "Skinned from a slain dire bear; thick enough to turn a blade.",
+    "weight": 8.0,
+    "description": "A heavy shaggy pelt that smells of musk and cold rivers."
+  },
+  {
+    "id": "silver_ingot",
+    "name": "Silver Ingot",
+    "category": "metal",
+    "tier": 2,
+    "rarity": "uncommon",
+    "source": "Refined from Keldaran ore; prized for settings that touch the Veil.",
+    "weight": 1.0,
+    "description": "A bright bar that stays cold to the touch and rings high when struck."
+  },
+  {
+    "id": "woven_void_fragment",
+    "name": "Woven Void Fragment",
+    "category": "hollow_residue",
+    "tier": 3,
+    "rarity": "rare",
+    "source": "A scrap of torn Veil, painstakingly wound onto a spindle before it unravels.",
+    "weight": 0.1,
+    "description": "A thread of nothing that the eye slides off; it weighs less than it should."
+  },
+  {
+    "id": "living_stone",
+    "name": "Living Stone",
+    "category": "stone",
+    "tier": 4,
+    "rarity": "legendary",
+    "source": "Quarried from the Architect's construction zone, where the rock still reshapes itself.",
+    "weight": 3.0,
+    "description": "Grey stone that flows like slow water and re-forms when you look away."
+  },
+  {
+    "id": "choir_resonance_crystal",
+    "name": "Choir Resonance Crystal",
+    "category": "arcane",
+    "tier": 4,
+    "rarity": "legendary",
+    "source": "Recovered from a destroyed Choir; it still holds the last note it sang.",
+    "weight": 0.4,
+    "description": "A clear crystal that rings with a chord no one is playing."
+  },
+  {
+    "id": "shard_false_paradise",
+    "name": "Shard of the False Paradise",
+    "category": "arcane",
+    "tier": 4,
+    "rarity": "legendary",
+    "source": "Broken from the Still's dream of perfect rest; it offers comfort it cannot keep.",
+    "weight": 0.3,
+    "description": "A warm, too-soft shard that whispers stay every time you hold it."
   }
 ]

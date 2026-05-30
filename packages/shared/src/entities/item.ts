@@ -11,6 +11,18 @@ export interface ItemArtTemplate {
   vars: Record<string, string>;
 }
 
+// Attunement is a discriminated union with a canonical "none" so callers never
+// disambiguate absent/false/""/class-string by truthiness (debt d30d41fdb474).
+// `class` is present only when kind is "class"; it holds EITHER a class-GROUP
+// token (e.g. "caster") OR a concrete class id (e.g. "artificer"). The agent
+// resolves either form to the concrete player classes that satisfy it via
+// class_groups.resolve_attunement_classes (story-010 AC#5). Enforcement
+// (matching a player's class at equip/use) is deferred — no caller exists in M5.4.
+export type ItemAttunement =
+  | { kind: "none" }
+  | { kind: "required" }
+  | { kind: "class"; class: string };
+
 export interface Item {
   id: string;
   name: string;
@@ -33,10 +45,13 @@ export interface Item {
   current_hits?: number;
   damage_dice?: string;
   properties?: string[];
+  // Dual meaning, disambiguated by item `type`: BASE armor class when type==="armor",
+  // AC BONUS when type==="shield". The SSOT for armor/shield AC — never duplicated into
+  // effects[] (content invariant in items-load.test.ts; concern 60ea16c19dfc).
   ac?: number;
   armor_properties?: string[];
   audio_cue?: string;
-  attunement?: boolean | string;
+  attunement?: ItemAttunement;
   quest_only?: boolean;
   art_template?: ItemArtTemplate;
 }
