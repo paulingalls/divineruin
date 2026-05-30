@@ -1,15 +1,42 @@
-"""Tests for HP scaling — archetype-based HP formula."""
+"""Tests for HP scaling — archetype-based HP formula.
+
+calculate_hp is pure math (unchanged). calculate_max_hp now derives base/growth
+from the chassis SSOT via get_archetype_chassis (seeded by the autouse
+seed_archetypes conftest fixture from content/archetypes.json). The per-archetype
+HP expectations below are hardcoded from the historically-correct values — an
+independent anchor pinning the chassis to those numbers now that the legacy
+ARCHETYPE_HP_CONFIG constant is gone.
+"""
 
 import pytest
 from sample_fixtures import GUILD_PLAYER, SAMPLE_PLAYER
 
-from hp_scaling import (
-    ARCHETYPE_HP_CONFIG,
-    HPConfig,
-    calculate_hp,
-    calculate_max_hp,
-)
-from rules_engine import ARCHETYPE_RESOURCE_CONFIG
+from archetypes import get_archetype_chassis
+from hp_scaling import calculate_hp, calculate_max_hp
+
+# id -> (hp_base, hp_growth, hp_category). Anchored to the design spec
+# (game_mechanics_archetypes.md); these match the legacy ARCHETYPE_HP_CONFIG
+# except oracle, which story-005 retiered to the spec's 8/3 arcane_shadow.
+EXPECTED_HP = {
+    "warrior": (12, 5, "martial"),
+    "guardian": (12, 5, "martial"),
+    "skirmisher": (12, 5, "martial"),
+    "druid": (10, 4, "primal_divine"),
+    "beastcaller": (10, 4, "primal_divine"),
+    "warden": (10, 4, "primal_divine"),
+    "cleric": (10, 4, "primal_divine"),
+    "paladin": (10, 4, "primal_divine"),
+    "marshal": (10, 4, "primal_divine"),
+    "oracle": (8, 3, "arcane_shadow"),
+    "mage": (8, 3, "arcane_shadow"),
+    "artificer": (8, 3, "arcane_shadow"),
+    "seeker": (8, 3, "arcane_shadow"),
+    "rogue": (8, 3, "arcane_shadow"),
+    "spy": (8, 3, "arcane_shadow"),
+    "whisper": (8, 3, "arcane_shadow"),
+    "bard": (8, 3, "arcane_shadow"),
+    "diplomat": (8, 3, "arcane_shadow"),
+}
 
 
 class TestSampleFixtureArchetypes:
@@ -18,53 +45,34 @@ class TestSampleFixtureArchetypes:
 
     @pytest.mark.parametrize("player", [SAMPLE_PLAYER, GUILD_PLAYER], ids=["sample", "guild"])
     def test_class_is_a_known_archetype(self, player):
-        assert player["class"] in ARCHETYPE_HP_CONFIG
+        # get_archetype_chassis raises ValueError if the class is unknown.
+        assert get_archetype_chassis(player["class"]).id == player["class"]
 
 
-class TestHPConfig:
-    def test_frozen_dataclass(self):
-        cfg = HPConfig(base=12, growth=5, category="martial")
-        with pytest.raises(AttributeError):
-            cfg.base = 99  # type: ignore[misc]
+class TestArchetypeChassisHP:
+    """The 18 chassis carry the historically-correct HP base/growth/category."""
 
-    def test_fields(self):
-        cfg = HPConfig(base=10, growth=4, category="primal_divine")
-        assert cfg.base == 10
-        assert cfg.growth == 4
-        assert cfg.category == "primal_divine"
+    def test_all_18_present_with_expected_hp(self):
+        for aid, (base, growth, category) in EXPECTED_HP.items():
+            c = get_archetype_chassis(aid)
+            assert (c.hp_base, c.hp_growth, c.hp_category) == (base, growth, category), aid
 
-
-class TestArchetypeHPConfig:
-    def test_has_18_archetypes(self):
-        assert len(ARCHETYPE_HP_CONFIG) == 18
-
-    def test_all_keys_lowercase(self):
-        for key in ARCHETYPE_HP_CONFIG:
-            assert key == key.lower(), f"{key} is not lowercase"
-
-    def test_martial_archetypes(self):
+    def test_martial_category(self):
         for name in ("warrior", "guardian", "skirmisher"):
-            cfg = ARCHETYPE_HP_CONFIG[name]
-            assert cfg.category == "martial"
-            assert cfg.base == 12
-            assert cfg.growth == 5
+            c = get_archetype_chassis(name)
+            assert c.hp_category == "martial" and c.hp_base == 12 and c.hp_growth == 5
 
-    def test_primal_divine_archetypes(self):
-        for name in ("druid", "beastcaller", "warden", "cleric", "paladin", "oracle", "marshal"):
-            cfg = ARCHETYPE_HP_CONFIG[name]
-            assert cfg.category == "primal_divine"
-            assert cfg.base == 10
-            assert cfg.growth == 4
+    def test_primal_divine_category(self):
+        for name in ("druid", "beastcaller", "warden", "cleric", "paladin", "marshal"):
+            c = get_archetype_chassis(name)
+            assert c.hp_category == "primal_divine" and c.hp_base == 10 and c.hp_growth == 4
 
-    def test_arcane_shadow_archetypes(self):
-        for name in ("mage", "artificer", "seeker", "rogue", "spy", "whisper", "bard", "diplomat"):
-            cfg = ARCHETYPE_HP_CONFIG[name]
-            assert cfg.category == "arcane_shadow"
-            assert cfg.base == 8
-            assert cfg.growth == 3
-
-    def test_keys_match_resource_config(self):
-        assert set(ARCHETYPE_HP_CONFIG.keys()) == set(ARCHETYPE_RESOURCE_CONFIG.keys())
+    def test_arcane_shadow_category(self):
+        # oracle is spec'd at 8/3 arcane_shadow (game_mechanics_archetypes.md:828),
+        # corrected from the story-001 fold that placed it at 10/4 (story-005).
+        for name in ("mage", "artificer", "seeker", "rogue", "spy", "whisper", "bard", "diplomat", "oracle"):
+            c = get_archetype_chassis(name)
+            assert c.hp_category == "arcane_shadow" and c.hp_base == 8 and c.hp_growth == 3
 
 
 class TestCalculateHP:
