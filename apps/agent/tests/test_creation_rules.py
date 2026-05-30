@@ -93,10 +93,13 @@ class TestClassMechanics:
         assert hp["max"] == chassis.hp_base + 2
 
     def test_starting_hp_minimum_one(self):
-        # A class with d6 and CON 1 (-5 modifier) should still have 1 HP
+        # calculate_hp floors HP at 1. Mage has the lowest hp_base (8); even at
+        # CON 1 (-5 modifier) that is 8 - 5 = 3, so no real archetype/CON combo
+        # reaches the floor today — but the chassis-derived value must stay >= 1.
         hp = calculate_starting_hp("mage", 1)
+        assert hp["current"] == 3
+        assert hp["max"] == 3
         assert hp["current"] >= 1
-        assert hp["max"] >= 1
 
     @pytest.mark.parametrize("class_id", list(CLASSES.keys()))
     def test_starting_equipment_shape(self, class_id):
