@@ -10,7 +10,7 @@ dependencies = [
     "livekit-plugins-inworld~=1.5.9",
     "asyncpg>=0.30.0",
     "redis>=7.4.0",
-    "anthropic>=0.102.0",
+    "anthropic>=0.105.2",
     "httpx>=0.27.0",
 ]
 
