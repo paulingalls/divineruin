@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from archetypes_config_fixture import setup_archetypes_config_fixture
 from training_config_fixture import setup_training_config_fixture
 
 
@@ -28,4 +29,15 @@ def seed_training_config():
     other tests.
     """
     setup_training_config_fixture()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def seed_archetypes():
+    """Populate archetypes._archetypes from content/archetypes.json before every test.
+
+    Mirrors load_archetypes() at worker startup, but sync and file-based, so
+    chassis-fed math (calculate_max_hp, calculate_max_pools) resolves without a DB.
+    """
+    setup_archetypes_config_fixture()
     yield
