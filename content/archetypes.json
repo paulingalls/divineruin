@@ -1,0 +1,304 @@
+[
+  {
+    "id": "warrior",
+    "hp": { "base": 12, "growth": 5, "category": "martial" },
+    "resource": {
+      "pattern": "stamina_only",
+      "stamina_formula": { "base": 8, "attribute": "constitution", "level_divisor": 1 },
+      "focus_formula": null
+    },
+    "save_proficiencies": ["strength", "constitution"],
+    "armor_proficiencies": ["heavy", "medium", "light", "shield"],
+    "weapon_proficiencies": ["martial", "simple"],
+    "starting_skills": {
+      "options": ["athletics", "perception", "stealth", "survival", "acrobatics"],
+      "num_choices": 3
+    }
+  },
+  {
+    "id": "guardian",
+    "hp": { "base": 12, "growth": 5, "category": "martial" },
+    "resource": {
+      "pattern": "stamina_only",
+      "stamina_formula": { "base": 8, "attribute": "constitution", "level_divisor": 1 },
+      "focus_formula": null
+    },
+    "save_proficiencies": ["constitution", "wisdom"],
+    "armor_proficiencies": ["heavy", "medium", "light", "shield"],
+    "weapon_proficiencies": ["martial", "simple"],
+    "starting_skills": {
+      "options": ["athletics", "perception", "insight", "medicine", "religion"],
+      "num_choices": 2
+    }
+  },
+  {
+    "id": "skirmisher",
+    "hp": { "base": 12, "growth": 5, "category": "martial" },
+    "resource": {
+      "pattern": "stamina_only",
+      "stamina_formula": { "base": 8, "attribute": "dexterity", "level_divisor": 1 },
+      "focus_formula": null
+    },
+    "save_proficiencies": ["dexterity", "strength"],
+    "armor_proficiencies": ["medium", "light"],
+    "weapon_proficiencies": ["martial", "simple"],
+    "starting_skills": {
+      "options": ["acrobatics", "athletics", "stealth", "perception", "survival"],
+      "num_choices": 3
+    }
+  },
+  {
+    "id": "mage",
+    "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
+    "resource": {
+      "pattern": "focus_only",
+      "stamina_formula": null,
+      "focus_formula": { "base": 8, "attribute": "intelligence", "level_divisor": 1 }
+    },
+    "save_proficiencies": ["intelligence", "wisdom"],
+    "armor_proficiencies": ["none"],
+    "weapon_proficiencies": ["staff", "dagger", "light_crossbow"],
+    "starting_skills": {
+      "options": ["arcana", "history", "investigation", "nature", "religion"],
+      "num_choices": 2
+    }
+  },
+  {
+    "id": "artificer",
+    "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
+    "resource": {
+      "pattern": "focus_only",
+      "stamina_formula": null,
+      "focus_formula": { "base": 8, "attribute": "intelligence", "level_divisor": 1 }
+    },
+    "save_proficiencies": ["intelligence", "constitution"],
+    "armor_proficiencies": ["medium", "light"],
+    "weapon_proficiencies": ["simple", "hand_crossbow", "tools"],
+    "starting_skills": {
+      "options": ["arcana", "history", "investigation", "perception", "sleight_of_hand"],
+      "num_choices": 2
+    }
+  },
+  {
+    "id": "seeker",
+    "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
+    "resource": {
+      "pattern": "focus_only",
+      "stamina_formula": null,
+      "focus_formula": { "base": 8, "attribute": "intelligence", "level_divisor": 1 }
+    },
+    "save_proficiencies": ["intelligence", "wisdom"],
+    "armor_proficiencies": ["light"],
+    "weapon_proficiencies": ["simple", "hand_crossbow"],
+    "starting_skills": {
+      "options": ["arcana", "investigation", "perception", "insight", "history"],
+      "num_choices": 3
+    }
+  },
+  {
+    "id": "druid",
+    "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
+    "resource": {
+      "pattern": "focus_primary",
+      "stamina_formula": { "base": 4, "attribute": "constitution", "level_divisor": 0 },
+      "focus_formula": { "base": 8, "attribute": "wisdom", "level_divisor": 1 }
+    },
+    "save_proficiencies": ["wisdom", "intelligence"],
+    "armor_proficiencies": ["medium_nonmetal", "light", "shield_nonmetal"],
+    "weapon_proficiencies": ["staff", "scimitar", "sling", "spear"],
+    "starting_skills": {
+      "options": ["nature", "survival", "animal_handling", "perception", "medicine", "religion"],
+      "num_choices": 2
+    }
+  },
+  {
+    "id": "beastcaller",
+    "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
+    "resource": {
+      "pattern": "focus_primary",
+      "stamina_formula": { "base": 4, "attribute": "constitution", "level_divisor": 0 },
+      "focus_formula": { "base": 8, "attribute": "wisdom", "level_divisor": 1 }
+    },
+    "save_proficiencies": ["wisdom", "dexterity"],
+    "armor_proficiencies": ["medium_nonmetal", "light"],
+    "weapon_proficiencies": ["simple", "spear", "shortbow"],
+    "starting_skills": {
+      "options": ["animal_handling", "nature", "survival", "perception", "stealth"],
+      "num_choices": 3
+    }
+  },
+  {
+    "id": "warden",
+    "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
+    "resource": {
+      "pattern": "focus_primary",
+      "stamina_formula": { "base": 6, "attribute": "constitution", "level_divisor": 0 },
+      "focus_formula": { "base": 8, "attribute": "wisdom", "level_divisor": 1 }
+    },
+    "save_proficiencies": ["wisdom", "constitution"],
+    "armor_proficiencies": ["heavy_nonmetal", "medium", "light", "shield"],
+    "weapon_proficiencies": ["simple", "martial_polearms", "martial_hammers"],
+    "starting_skills": {
+      "options": ["nature", "survival", "perception", "athletics", "animal_handling"],
+      "num_choices": 2
+    }
+  },
+  {
+    "id": "cleric",
+    "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
+    "resource": {
+      "pattern": "focus_primary",
+      "stamina_formula": { "base": 4, "attribute": "constitution", "level_divisor": 0 },
+      "focus_formula": { "base": 8, "attribute": "wisdom", "level_divisor": 1 }
+    },
+    "save_proficiencies": ["wisdom", "charisma"],
+    "armor_proficiencies": ["medium", "light", "shield"],
+    "weapon_proficiencies": ["mace", "warhammer", "light_crossbow"],
+    "starting_skills": {
+      "options": ["religion", "insight", "medicine", "history", "persuasion"],
+      "num_choices": 2
+    }
+  },
+  {
+    "id": "paladin",
+    "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
+    "resource": {
+      "pattern": "focus_primary",
+      "stamina_formula": { "base": 6, "attribute": "constitution", "level_divisor": 3 },
+      "focus_formula": { "base": 6, "attribute": "wisdom", "level_divisor": 1 }
+    },
+    "save_proficiencies": ["strength", "charisma"],
+    "armor_proficiencies": ["heavy", "medium", "light", "shield"],
+    "weapon_proficiencies": ["martial", "simple"],
+    "starting_skills": {
+      "options": ["athletics", "religion", "persuasion", "insight", "medicine"],
+      "num_choices": 2
+    }
+  },
+  {
+    "id": "oracle",
+    "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
+    "resource": {
+      "pattern": "focus_primary",
+      "stamina_formula": { "base": 4, "attribute": "constitution", "level_divisor": 0 },
+      "focus_formula": { "base": 8, "attribute": "wisdom", "level_divisor": 1 }
+    },
+    "save_proficiencies": ["wisdom", "charisma"],
+    "armor_proficiencies": ["light"],
+    "weapon_proficiencies": ["simple"],
+    "starting_skills": {
+      "options": ["religion", "insight", "perception", "history", "arcana"],
+      "num_choices": 2
+    }
+  },
+  {
+    "id": "rogue",
+    "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
+    "resource": {
+      "pattern": "stamina_only",
+      "stamina_formula": { "base": 8, "attribute": "dexterity", "level_divisor": 1 },
+      "focus_formula": null
+    },
+    "save_proficiencies": ["dexterity", "intelligence"],
+    "armor_proficiencies": ["light"],
+    "weapon_proficiencies": ["light_weapons", "hand_crossbow", "shortsword", "rapier"],
+    "starting_skills": {
+      "options": [
+        "stealth",
+        "sleight_of_hand",
+        "acrobatics",
+        "perception",
+        "investigation",
+        "insight"
+      ],
+      "num_choices": 4
+    }
+  },
+  {
+    "id": "spy",
+    "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
+    "resource": {
+      "pattern": "stamina_only",
+      "stamina_formula": { "base": 8, "attribute": "charisma", "level_divisor": 1 },
+      "focus_formula": null
+    },
+    "save_proficiencies": ["charisma", "dexterity"],
+    "armor_proficiencies": ["light"],
+    "weapon_proficiencies": ["light_weapons", "hand_crossbow", "garrote"],
+    "starting_skills": {
+      "options": [
+        "persuasion",
+        "insight",
+        "stealth",
+        "sleight_of_hand",
+        "perception",
+        "investigation"
+      ],
+      "num_choices": 4
+    }
+  },
+  {
+    "id": "whisper",
+    "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
+    "resource": {
+      "pattern": "focus_only",
+      "stamina_formula": null,
+      "focus_formula": { "base": 6, "attribute": "intelligence", "level_divisor": 2 }
+    },
+    "save_proficiencies": ["charisma", "wisdom"],
+    "armor_proficiencies": ["light"],
+    "weapon_proficiencies": ["light_weapons", "hand_crossbow"],
+    "starting_skills": {
+      "options": ["stealth", "arcana", "insight", "persuasion", "sleight_of_hand"],
+      "num_choices": 3
+    }
+  },
+  {
+    "id": "bard",
+    "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
+    "resource": {
+      "pattern": "split",
+      "stamina_formula": { "base": 5, "attribute": "constitution", "level_divisor": 2 },
+      "focus_formula": { "base": 5, "attribute": "charisma", "level_divisor": 2 }
+    },
+    "save_proficiencies": ["charisma", "dexterity"],
+    "armor_proficiencies": ["light"],
+    "weapon_proficiencies": ["light_weapons", "hand_crossbow", "longsword", "rapier"],
+    "starting_skills": {
+      "options": ["persuasion", "perception", "insight", "acrobatics", "history", "arcana"],
+      "num_choices": 3
+    }
+  },
+  {
+    "id": "diplomat",
+    "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
+    "resource": {
+      "pattern": "split",
+      "stamina_formula": { "base": 5, "attribute": "charisma", "level_divisor": 2 },
+      "focus_formula": { "base": 5, "attribute": "charisma", "level_divisor": 2 }
+    },
+    "save_proficiencies": ["charisma", "wisdom"],
+    "armor_proficiencies": ["light"],
+    "weapon_proficiencies": ["simple"],
+    "starting_skills": {
+      "options": ["persuasion", "insight", "history", "perception", "religion", "investigation"],
+      "num_choices": 4
+    }
+  },
+  {
+    "id": "marshal",
+    "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
+    "resource": {
+      "pattern": "split",
+      "stamina_formula": { "base": 6, "attribute": "strength", "level_divisor": 2 },
+      "focus_formula": { "base": 5, "attribute": "charisma", "level_divisor": 2 }
+    },
+    "save_proficiencies": ["charisma", "wisdom"],
+    "armor_proficiencies": ["medium", "shield"],
+    "weapon_proficiencies": ["martial_melee", "simple_ranged"],
+    "starting_skills": {
+      "options": ["intimidation", "insight", "perception", "history"],
+      "num_choices": 4
+    }
+  }
+]
