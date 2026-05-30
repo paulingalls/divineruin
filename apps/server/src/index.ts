@@ -3,6 +3,7 @@ import { handleLivekitToken } from "./livekit.ts";
 import { handleGetCharacter } from "./character.ts";
 import { handleRepairQuote } from "./repair.ts";
 import { handleRequestCode, handleVerifyCode, handleGetMe, requireAuth } from "./auth.ts";
+import { handleJoinWaitlist } from "./waitlist.ts";
 import { handlePreflight, withCors, checkRateLimit } from "./middleware.ts";
 import { handleCreateActivity } from "./activity_create.ts";
 import {
@@ -70,6 +71,9 @@ const server = serve({
     }
     if (path === "/api/auth/verify-code" && req.method === "POST") {
       return withCors(await handleVerifyCode(req));
+    }
+    if (path === "/api/waitlist" && req.method === "POST") {
+      return withCors(await handleJoinWaitlist(req));
     }
 
     // --- Authenticated routes ---

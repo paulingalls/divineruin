@@ -24,14 +24,30 @@ export function NavBar() {
   }, []);
 
   return (
-    <nav className={scrolled ? "navbar navbar--scrolled" : "navbar"}>
+    <nav className={scrolled ? "navbar navbar--scrolled" : "navbar"} aria-label="Primary">
       {/* Brand is a link, not a heading, so the hero <h1> stays the only
           heading on the page. */}
       <a className="navbar__brand" href="/">
         Divine Ruin
       </a>
+      {/* Center links to the live in-page sections (text is uppercased in CSS,
+          matching the mockup). Targets resolve to ids mounted in App.tsx. */}
+      <ul className="navbar__links">
+        <li>
+          <a href="#world">World</a>
+        </li>
+        <li>
+          <a href="#pantheon">Pantheon</a>
+        </li>
+        <li>
+          <a href="#faq">Questions</a>
+        </li>
+        <li>
+          <a href="#pricing">Subscribe</a>
+        </li>
+      </ul>
       <a className="navbar__cta" href="#waitlist">
-        Join the waitlist
+        Request Early Access
       </a>
     </nav>
   );

@@ -16,6 +16,30 @@ test("the brand is not a heading (keeps the hero <h1> unique)", () => {
   expect(html).not.toMatch(/<h[1-6]/);
 });
 
+test("the nav landmark has an accessible name (stays unique once the footer nav lands)", () => {
+  // axe's landmark-unique rule flags two unnamed navigation landmarks. The
+  // footer cycle adds a second <nav aria-label="Site">, so this one must carry
+  // its own name now to keep the a11y gate green.
+  const html = renderToStaticMarkup(<NavBar />);
+  expect(html).toMatch(/<nav[^>]*aria-label="Primary"/);
+});
+
+test("renders the center nav links pointing at the live in-page sections", () => {
+  const html = renderToStaticMarkup(<NavBar />);
+  // The four mockup nav links resolve to real section ids that exist in App.tsx.
+  expect(html).toMatch(/href="#world"/);
+  expect(html).toMatch(/href="#pantheon"/);
+  expect(html).toMatch(/href="#faq"/);
+  expect(html).toMatch(/href="#pricing"/);
+});
+
+test("the CTA requests early access and targets the waitlist", () => {
+  const html = renderToStaticMarkup(<NavBar />);
+  expect(html).toContain("Request Early Access");
+  expect(html).toMatch(/href="#waitlist"/);
+  expect(html).not.toContain("Join the waitlist");
+});
+
 test("isScrolledPast crosses the scrolled state strictly past the threshold", () => {
   expect(SCROLL_THRESHOLD_PX).toBe(40);
   expect(isScrolledPast(0)).toBe(false);

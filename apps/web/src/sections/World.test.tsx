@@ -70,7 +70,7 @@ test("renders every meta entry's term and value", () => {
 test("renders one card per item (timeline 5, places 6, tiers 4)", () => {
   const html = renderToStaticMarkup(<World />);
   const tlEvents = html.match(/class="world__tl-event[^"]*"/g) ?? [];
-  const places = html.match(/class="world__place"/g) ?? [];
+  const places = html.match(/class="world__place reveal-item"/g) ?? [];
   // Each tier <li> carries a unique world__tx--N modifier; matching the bare
   // world__tx prefix would also catch world__tx-meta/-name/-desc/-quote inner nodes.
   const tiers = html.match(/world__tx--\d/g) ?? [];
@@ -110,10 +110,10 @@ test("placeStatusVariant maps every actual mockup status to its variant", () => 
 
 test("starts unarmed — reveal gate is post-hydration only (matches SSR)", () => {
   const html = renderToStaticMarkup(<World />);
-  expect(html).not.toContain("world--armed");
+  expect(html).not.toContain("reveal-armed");
 });
 
-test("REVEALED_CLASS matches the literal the reveal CSS keys off", () => {
+test("REVEALED_CLASS matches the literal the reveal-gate CSS keys off", () => {
   expect(REVEALED_CLASS).toBe("is-revealed");
 });
 
@@ -132,6 +132,28 @@ test("content constants are the well-formed mockup sets", () => {
     expect(t.name.length).toBeGreaterThan(0);
     expect(t.quote.length).toBeGreaterThan(0);
   }
+});
+
+test("the redacted Tier-IV quote is decorative (aria-hidden)", () => {
+  // The redacted quote is atmospheric — a struck-through (line-through),
+  // AA-legal ash string rather than the announced lore of the other tiers.
+  // aria-hidden keeps it out of the screen-reader tree (dedup/atmosphere); it
+  // is NOT what satisfies color-contrast — the slate->ash recolour does, since
+  // axe's color-contrast rule does not exempt aria-hidden elements.
+  const html = renderToStaticMarkup(<World />);
+  expect(html).toMatch(
+    /<p[^>]*class="world__tx-quote world__tx-quote--redacted"[^>]*aria-hidden="true"/,
+  );
+});
+
+test("non-redacted tier quotes stay readable (no aria-hidden)", () => {
+  // aria-hidden is gated on t.redacted only — the legible Tier I-III quotes
+  // are real content (visible, AA-legal ash) and must remain in the a11y tree.
+  const html = renderToStaticMarkup(<World />);
+  const quotes = html.match(/<p[^>]*class="world__tx-quote[^"]*"[^>]*>/g) ?? [];
+  const visible = quotes.filter((q) => !q.includes("world__tx-quote--redacted"));
+  expect(visible.length).toBe(HOLLOW_TIERS.filter((t) => !t.redacted).length);
+  for (const q of visible) expect(q).not.toContain("aria-hidden");
 });
 
 test("renders hydration-safe markup (no DOM access during render)", () => {

@@ -1,4 +1,5 @@
 import "./Hero.css";
+import { AudioDemo } from "./AudioDemo.tsx";
 
 // Above-the-fold landing section and the page's LCP element. Renders identical
 // markup server (build-time prerender) and client (hydration) — no window/Date/
@@ -16,11 +17,20 @@ export function Hero() {
           the single <h1> stays the section's only semantic landmark. */}
       <div className="hero__backdrop" aria-hidden="true" />
 
+      {/* Each half splits into a nowrap "<key> ·" and a detail so that, when the row
+          is too narrow to fit, the line breaks right after the "·" (key on one line,
+          detail below) instead of word-wrapping mid-phrase. See Hero.css. */}
       <div className="hero__meta">
-        <span className="hero__meta-label">▸ Aethos · Year 30 of the Sundered Veil</span>
+        <span className="hero__meta-label">
+          <span className="hero__meta-key">▸ Aethos ·&nbsp;</span>
+          <span className="hero__meta-detail">Year 30 of the Sundered Veil</span>
+        </span>
         <span className="hero__meta-status">
           <span className="hero__live-dot" aria-hidden="true" />
-          Pre-alpha · Closed playtest
+          <span className="hero__meta-statustext">
+            <span className="hero__meta-key">Pre-alpha ·&nbsp;</span>
+            <span className="hero__meta-detail">Closed playtest</span>
+          </span>
         </span>
       </div>
 
@@ -50,19 +60,23 @@ export function Hero() {
             Enter Aethos ↓
           </a>
         </div>
-      </div>
 
-      <div className="hero__footer-meta">
-        <div>
-          <div className="hero__footer-label">A voice-first audio RPG</div>
-          <div className="hero__footer-value">Headphones recommended</div>
-        </div>
-        <div className="hero__footer-scroll">
-          <div className="hero__footer-label">Scroll</div>
-          <div className="hero__footer-arrows" aria-hidden="true">
-            ↓ ↓ ↓
-          </div>
-        </div>
+        {/* Audio teaser sits inside the hero. It's a real lazy player
+            (preload="none"), so it adds no above-fold weight and is not the LCP
+            element (the headline is). */}
+        <AudioDemo />
+
+        {/* Caption for the sample: the voice-first framing + the headphones nudge
+            sit right under the card they describe. (The mockup's separate bottom
+            meta row and its "scroll" cue were dropped — the note pairs better with
+            the sample, and the scroll affordance is self-evident.) */}
+        <p className="hero__audio-caption">
+          <span>A voice-first audio RPG</span>
+          <span className="hero__audio-caption-sep" aria-hidden="true">
+            ·
+          </span>
+          <span className="hero__audio-caption-note">Headphones recommended</span>
+        </p>
       </div>
     </header>
   );

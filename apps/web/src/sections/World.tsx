@@ -1,6 +1,5 @@
 import "./World.css";
-import { useEffect, useRef } from "react";
-import { reveal, defaultRevealEnv } from "../lib/reveal.ts";
+import { useReveal } from "../lib/useReveal.ts";
 
 export interface TimelineEvent {
   year: string;
@@ -166,18 +165,10 @@ export const WORLD_META: readonly MetaEntry[] = [
 // "03 / The World" section: Aethos, the Sundering, the Voidmaw, and the Hollow — the
 // lore centerpiece. Lands id="world", the anchor the story-006 capstone re-points
 // Hero's secondary CTA to. Progressive enhancement matches Premise/Session: all content
-// is in the prerendered HTML and visible by default; only post-hydration (JS + IO) does
-// the section arm and reveal its cards on scroll.
+// is in the prerendered HTML and visible by default; only post-hydration (via useReveal)
+// does the section arm and reveal its `.reveal-item` cards on scroll.
 export function World() {
-  const sectionRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const section = sectionRef.current;
-    const env = defaultRevealEnv();
-    if (!section || !env.IntersectionObserver) return;
-    section.classList.add("world--armed");
-    return reveal(section.querySelectorAll(".world__tl-event, .world__place, .world__tx"), env);
-  }, []);
+  const sectionRef = useReveal<HTMLElement>();
 
   return (
     <section className="world" id="world" ref={sectionRef}>
@@ -220,7 +211,7 @@ export function World() {
           <ol className="world__timeline">
             {WORLD_TIMELINE.map((ev) => (
               <li
-                className={"world__tl-event" + (ev.now ? " world__tl-event--now" : "")}
+                className={"world__tl-event reveal-item" + (ev.now ? " world__tl-event--now" : "")}
                 key={ev.year}
               >
                 <div className="world__tl-year">{ev.year}</div>
@@ -238,7 +229,7 @@ export function World() {
           <div className="world__block-eyebrow">Where the world holds, and where it doesn't</div>
           <div className="world__places-grid">
             {WORLD_PLACES.map((p) => (
-              <article className="world__place" key={p.name}>
+              <article className="world__place reveal-item" key={p.name}>
                 <div className="world__place-head">
                   <span className="world__place-kind">{p.kind}</span>
                   <span
@@ -263,14 +254,17 @@ export function World() {
           </div>
           <ol className="world__taxonomy">
             {HOLLOW_TIERS.map((t, i) => (
-              <li className={"world__tx world__tx--" + (i + 1)} key={t.name}>
+              <li className={"world__tx reveal-item world__tx--" + (i + 1)} key={t.name}>
                 <div className="world__tx-meta">
                   <span className="world__tx-tier">{t.tier}</span>
                   <span className="world__tx-threat">{t.threat}</span>
                 </div>
                 <h3 className="world__tx-name">{t.name}</h3>
                 <p className="world__tx-desc">{t.desc}</p>
-                <p className={"world__tx-quote" + (t.redacted ? " world__tx-quote--redacted" : "")}>
+                <p
+                  className={"world__tx-quote" + (t.redacted ? " world__tx-quote--redacted" : "")}
+                  aria-hidden={t.redacted || undefined}
+                >
                   {t.quote}
                 </p>
               </li>

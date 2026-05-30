@@ -1,6 +1,5 @@
 import "./Pantheon.css";
-import { useEffect, useRef } from "react";
-import { reveal, defaultRevealEnv } from "../lib/reveal.ts";
+import { useReveal } from "../lib/useReveal.ts";
 
 export interface God {
   name: string;
@@ -76,17 +75,9 @@ export const GODS: readonly God[] = [
 // "05 / The Pantheon" section: the ten gods as a card grid. Your patron flavors abilities,
 // shapes quest lines, and whispers when the world turns. Progressive enhancement matches the
 // sibling sections: all cards are in the prerendered HTML and visible by default; only
-// post-hydration (JS + IO) does the section arm and reveal them on scroll.
+// post-hydration (via useReveal) does the section arm and reveal its `.reveal-item` cards.
 export function Pantheon() {
-  const sectionRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const section = sectionRef.current;
-    const env = defaultRevealEnv();
-    if (!section || !env.IntersectionObserver) return;
-    section.classList.add("pantheon--armed");
-    return reveal(section.querySelectorAll(".pantheon__card"), env);
-  }, []);
+  const sectionRef = useReveal<HTMLElement>();
 
   return (
     <section className="pantheon" id="pantheon" ref={sectionRef}>
@@ -104,9 +95,11 @@ export function Pantheon() {
 
         <div className="pantheon__grid">
           {GODS.map((g, i) => (
-            <article className="pantheon__card" key={g.name} tabIndex={0}>
+            <article className="pantheon__card reveal-item" key={g.name}>
               <div className="pantheon__top">
-                <div className="pantheon__num">{String(i + 1).padStart(2, "0")} / 10</div>
+                <div className="pantheon__num" aria-hidden="true">
+                  {String(i + 1).padStart(2, "0")} / 10
+                </div>
                 <div className="pantheon__name">{g.name}</div>
                 <div className="pantheon__god-title">{g.title}</div>
               </div>

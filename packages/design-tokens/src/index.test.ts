@@ -9,6 +9,8 @@ import {
   Radius,
   Spacing,
   TypeScaleTokens,
+  WebMaxContentWidth,
+  WebSectionTitleClamp,
 } from "./index";
 
 // These assertions pin the exact brand values. Mobile (apps/mobile/src/constants/theme.ts)
@@ -21,7 +23,7 @@ test("BrandColors holds the 16 brand hex values", () => {
     ink: "#141417",
     charcoal: "#1E1E23",
     slate: "#2A2A32",
-    ash: "#6B6B78",
+    ash: "#868693",
     bone: "#B8B5AD",
     parchment: "#D4D0C8",
     hollowFaint: "#134E4A",
@@ -30,7 +32,7 @@ test("BrandColors holds the 16 brand hex values", () => {
     hollowGlow: "#5EEAD4",
     nightTint: "#0A0A2A",
     emberFaint: "#7C2D12",
-    ember: "#C2410C",
+    ember: "#E0672E",
     divineFaint: "#92702A",
     divine: "#C9A84C",
   });
@@ -94,6 +96,18 @@ test("Radius scale matches the brand numeric tokens", () => {
 
 test("MaxContentWidth is 800", () => {
   expect(MaxContentWidth).toBe(800);
+});
+
+test("WebMaxContentWidth is 1280 — the marketing site's wider content container", () => {
+  // The web marketing landing (apps/web) uses a wider container than the mobile
+  // app's content cap, to match the canonical mockup's 1280px multi-column layout.
+  expect(WebMaxContentWidth).toBe(1280);
+});
+
+test("WebSectionTitleClamp is the mockup's shared section-title clamp", () => {
+  // One source for every web section heading; emitted as --section-title-size so
+  // the 9 section stylesheets reference it instead of duplicating the literal.
+  expect(WebSectionTitleClamp).toBe("clamp(37.8px, 5.77vw, 75.6px)");
 });
 
 test("AnimationPresets carries the overlay spring", () => {

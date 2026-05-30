@@ -31,7 +31,7 @@
   margin: 0 0 var(--space-lg);
   font-family: var(--font-display);
   font-weight: 300;
-  font-size: clamp(32px, 5vw, 60px);
+  font-size: var(--section-title-size);
   line-height: 1.05;
   color: var(--color-parchment);
 }
@@ -91,27 +91,4 @@
   font-size: var(--text-body-size);
   line-height: var(--text-body-line-height);
   color: var(--color-ash);
-}
-
-/* Reveal gate. Default (no-JS / not armed / no IntersectionObserver): visible.
-   Armed (post-hydration, JS + IO): hide until each card scrolls into view. */
-.premise--armed .premise__item {
-  opacity: 0;
-  transform: translateY(16px);
-  transition:
-    opacity 600ms ease,
-    transform 600ms ease;
-}
-
-.premise--armed .premise__item.is-revealed {
-  opacity: 1;
-  transform: none;
-}
-
-/* Reduced motion: reveal() reveals all cards at once (no observer), so they're
-   visible; drop the transition so there's no animation. */
-@media (prefers-reduced-motion: reduce) {
-  .premise--armed .premise__item {
-    transition: none;
-  }
 }

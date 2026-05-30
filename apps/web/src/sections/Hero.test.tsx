@@ -17,9 +17,19 @@ test("renders the brand headline with the italic 'Ruin' display treatment", () =
 });
 
 test("renders the eyebrow meta — setting line and playtest status", () => {
+  // Each half splits into a nowrap "<key> ." + a detail so the eyebrow breaks after
+  // the "." (not mid-phrase) on narrow screens - see Hero.css. Assert both pieces of
+  // each half render in key->detail order, AND that the key keeps a trailing
+  // non-breaking space (rendered &nbsp;, \u00a0) before the detail: a flex container
+  // drops a whitespace-only text node between items, so the separator space lives
+  // inside the key span to stay in the accessibility tree / copy-paste.
   const html = renderToStaticMarkup(<Hero />);
-  expect(html).toContain("Aethos · Year 30 of the Sundered Veil");
-  expect(html).toContain("Pre-alpha · Closed playtest");
+  expect(html).toMatch(
+    /hero__meta-key">\u25b8 Aethos \u00b7\u00a0<\/span>[\s\S]*hero__meta-detail">Year 30 of the Sundered Veil</,
+  );
+  expect(html).toMatch(
+    /hero__meta-key">Pre-alpha \u00b7\u00a0<\/span>[\s\S]*hero__meta-detail">Closed playtest</,
+  );
 });
 
 test("renders the subhead and the real pitch copy", () => {
@@ -39,11 +49,27 @@ test("renders both CTAs with the mockup labels and functional targets", () => {
   expect(html).toMatch(/<a[^>]+href="#world"[^>]*>[\s\S]*?Enter Aethos/);
 });
 
-test("renders the bottom meta — voice-first / headphones / scroll cue", () => {
+test("captions the audio sample with the voice-first / headphones note (no scroll cue)", () => {
+  // The voice-first + headphones note now sits as a caption directly under the
+  // audio sample card. The mockup's bottom-meta row and its "Scroll" cue were
+  // dropped — everyone knows to scroll, and the note pairs naturally with the
+  // sample it describes.
   const html = renderToStaticMarkup(<Hero />);
   expect(html).toContain("A voice-first audio RPG");
   expect(html).toContain("Headphones recommended");
-  expect(html).toContain("Scroll");
+  // The note renders after the audio card (it captions it).
+  expect(html).toMatch(/audio-demo[\s\S]*hero__audio-caption/);
+  // The scroll cue is gone.
+  expect(html).not.toContain("Scroll");
+});
+
+test("nests the audio sample teaser inside the hero (mockup arrangement)", () => {
+  // The mockup places the AudioDemo card inside the hero, just above the bottom
+  // meta — so "Headphones recommended" sits right by the audio example. The card
+  // (.audio-demo) must therefore render within the hero's markup.
+  const html = renderToStaticMarkup(<Hero />);
+  expect(html).toContain("audio-demo");
+  expect(html).toContain("Hear a session — “The Greyvale Road”");
 });
 
 test("renders hydration-safe markup (no window access during render)", () => {

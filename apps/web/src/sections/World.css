@@ -31,7 +31,7 @@
   margin: 0 0 var(--space-lg);
   font-family: var(--font-display);
   font-weight: 300;
-  font-size: clamp(32px, 5vw, 60px);
+  font-size: var(--section-title-size);
   line-height: 1.05;
   color: var(--color-parchment);
 }
@@ -130,7 +130,9 @@
 }
 
 .world__quote-when {
-  color: var(--color-slate);
+  /* Real metadata ("scratched, undated") — use the AA-legal muted text token, not
+     structural slate (which would fail contrast). slate stays for borders/surfaces. */
+  color: var(--color-ash);
 }
 
 /* Shared lore block. */
@@ -459,7 +461,11 @@
   letter-spacing: 0.2em;
   text-transform: uppercase;
   text-align: center;
-  color: var(--color-slate);
+  /* Reads as "crossed out" via a real strikethrough on an AA-legal muted colour
+     (ash), instead of a near-invisible slate fill that fails contrast. The
+     line-through carries the redacted intent while the text stays legible. */
+  color: var(--color-ash);
+  text-decoration: line-through;
 }
 
 /* Setting / Threat / Mystery: 3 cols -> 1 (<=760). */
@@ -503,31 +509,4 @@
   font-style: italic;
   font-size: var(--text-body-size);
   color: var(--color-ash);
-}
-
-/* Reveal gate. Default (no-JS / not armed / no IntersectionObserver): visible.
-   Armed (post-hydration, JS + IO): hide each card until it scrolls into view. */
-.world--armed .world__tl-event,
-.world--armed .world__place,
-.world--armed .world__tx {
-  opacity: 0;
-  transform: translateY(16px);
-  transition:
-    opacity 600ms ease,
-    transform 600ms ease;
-}
-
-.world--armed .world__tl-event.is-revealed,
-.world--armed .world__place.is-revealed,
-.world--armed .world__tx.is-revealed {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .world--armed .world__tl-event,
-  .world--armed .world__place,
-  .world--armed .world__tx {
-    transition: none;
-  }
 }

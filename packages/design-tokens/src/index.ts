@@ -15,7 +15,7 @@ export const BrandColors = {
   charcoal: "#1E1E23",
   slate: "#2A2A32",
   // Text
-  ash: "#6B6B78",
+  ash: "#868693",
   bone: "#B8B5AD",
   parchment: "#D4D0C8",
   // Hollow accent
@@ -27,7 +27,7 @@ export const BrandColors = {
   nightTint: "#0A0A2A",
   // Semantic
   emberFaint: "#7C2D12",
-  ember: "#C2410C",
+  ember: "#E0672E",
   divineFaint: "#92702A",
   divine: "#C9A84C",
 } as const;
@@ -141,6 +141,12 @@ export const FontTokens = {
 
 export type FontRole = keyof typeof FontTokens;
 
+// Web ship manifest (which self-hosted woff2 faces apps/web ships + their
+// CLS-fallback tuning). Separate module so this web-only build data stays out of
+// the cross-target FontTokens identity test and off mobile's import path.
+export { SHIP_FACES, FONT_FALLBACKS, shippedFontFiles } from "./fonts";
+export type { ShipFace, FallbackFace } from "./fonts";
+
 // --- Type Scale Tokens ---
 //
 // Size/lineHeight numbers + the font role and color each text style uses. No
@@ -197,4 +203,19 @@ export const AnimationPresets = {
 
 // --- Layout ---
 
+// Content cap for the mobile app screens (apps/mobile). Phones render narrower
+// than this; it only caps content on large screens/tablets.
 export const MaxContentWidth = 800;
+
+// The web marketing site (apps/web) uses a wider content container than the
+// mobile app, to match the canonical mockup's 1280px multi-column layout. Kept
+// separate from MaxContentWidth so widening the web landing never reflows the
+// mobile app. Consumed only by apps/web/scripts/gen-theme.ts.
+export const WebMaxContentWidth = 1280;
+
+// Shared responsive clamp for every web section heading (.<section>__title),
+// matching the canonical mockup's single `.section-title`. Defined once here and
+// emitted as the CSS var --section-title-size so the 9 section stylesheets
+// reference one source instead of repeating the literal (and silently drifting
+// when one is missed). Web-only: consumed solely by apps/web/scripts/gen-theme.ts.
+export const WebSectionTitleClamp = "clamp(37.8px, 5.77vw, 75.6px)";

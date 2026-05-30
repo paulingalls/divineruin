@@ -3,11 +3,15 @@
    source of truth and nothing to drift from the drift-guarded theme.css. */
 
 .hero {
+  /* The hero pitch measure (matches the mockup's 620px .hero-pitch). The meta
+     bars deliberately do NOT share this — they span --max-content-width like the
+     mockup's .container so the eyebrow line stays on one row. */
+  --hero-measure: 620px;
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   min-height: 100vh;
   padding: var(--space-xl) var(--space-lg);
   background: var(--color-void);
@@ -67,12 +71,13 @@
   }
 }
 
-/* Content sits above the backdrop and is constrained to a readable measure,
-   filling the space between the top + bottom meta rows. */
+/* Content sits above the backdrop and is constrained to a readable measure. The
+   hero centers the eyebrow meta + this content as one natural-height group
+   (justify-content: center). The gap before the headline comes from the eyebrow's
+   margin-bottom (set on .hero__meta), not from a flex:1 fill. */
 .hero__content {
   position: relative;
   z-index: 1;
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -112,7 +117,11 @@
 
 .hero__pitch {
   margin: var(--space-md) 0 0;
-  max-width: 38ch;
+  /* The hero pitch measure (--hero-measure, matches the mockup's 620px hero-pitch)
+     — wider than a typical reading column so the pitch doesn't feel cramped against
+     the 1280px sections below. The meta bars deliberately do NOT share this; they
+     span --max-content-width so the eyebrow stays on one row. */
+  max-width: var(--hero-measure);
   font-family: var(--font-body);
   font-weight: 300;
   font-size: var(--text-body-lg-size);
@@ -167,11 +176,19 @@
   color: var(--color-parchment);
 }
 
-/* Top + bottom meta bars — small mono labels framing the hero. */
-.hero__meta,
-.hero__footer-meta {
+/* Eyebrow meta — small mono labels framing the top of the hero. Spans the full
+   content container (--max-content-width) like the mockup's .container, with the two
+   labels pushed to opposite ends by space-between, so the eyebrow stays on one row
+   (the 620px pitch measure used earlier was too narrow and wrapped it). margin-bottom
+   opens a generous gap before the headline; the hero centers the eyebrow + content as
+   one group (no bottom meta row — see Hero.tsx). */
+.hero__meta {
   position: relative;
   z-index: 1;
+  width: 100%;
+  max-width: var(--max-content-width);
+  margin-inline: auto;
+  margin-bottom: clamp(60px, 12vh, 140px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -187,6 +204,25 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-sm);
+}
+
+/* Each eyebrow half is a flex-wrap row of a nowrap "<key> ·" and its detail, so when
+   the row is too narrow the whole detail flex item drops to the next line — the break
+   lands at the key/detail boundary (right after the "·") rather than word-wrapping
+   mid-phrase. The separator space lives as a trailing &nbsp; INSIDE the key span (not a
+   CSS column-gap): a real character keeps the accessibility tree and copy/paste reading
+   "▸ Aethos · Year 30 …" with a space — a flex container discards a whitespace-only text
+   node between items, so a CSS gap would render the space visually but drop it from the
+   text. The nbsp is non-breaking so it never wraps off the end of the key line. */
+.hero__meta-label,
+.hero__meta-statustext {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.hero__meta-key {
+  white-space: nowrap;
 }
 
 /* Pulsing "live" dot in the playtest-status label. */
@@ -209,20 +245,24 @@
   }
 }
 
-.hero__footer-scroll {
-  text-align: right;
+/* Caption under the audio sample — quiet mono line that frames the clip. The
+   headphones note is brightened (bone) the way the old bottom-meta value was. */
+.hero__audio-caption {
+  margin: var(--space-md) 0 0;
+  font-family: var(--font-system);
+  font-size: var(--text-caption-size);
+  letter-spacing: 0.2em;
+  color: var(--color-ash);
+  text-align: center;
 }
 
-.hero__footer-value {
-  margin-top: var(--space-half);
+.hero__audio-caption-sep {
+  margin: 0 var(--space-sm);
+  color: var(--color-charcoal);
+}
+
+.hero__audio-caption-note {
   color: var(--color-bone);
-  letter-spacing: 0.15em;
-}
-
-.hero__footer-arrows {
-  margin-top: var(--space-half);
-  color: var(--color-hollow);
-  letter-spacing: 0.3em;
 }
 
 /* Honor reduced-motion: freeze the rift pulse and the live-dot pulse but keep the

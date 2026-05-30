@@ -1,6 +1,5 @@
 import "./Premise.css";
-import { useEffect, useRef } from "react";
-import { reveal, defaultRevealEnv } from "../lib/reveal.ts";
+import { useReveal } from "../lib/useReveal.ts";
 
 export interface PremiseItem {
   num: string;
@@ -36,22 +35,13 @@ export const PREMISE_ITEMS: readonly PremiseItem[] = [
 // list. The one above-the-fold section that uses the scroll-reveal helper.
 //
 // Progressive enhancement: the cards are always in the prerendered HTML and
-// visible by default. Only after hydration — and only when IntersectionObserver
-// exists — does the section "arm" (add `premise--armed`, which the CSS uses to
-// hide un-revealed cards) and hand its cards to reveal(). So with no JS, no
-// IntersectionObserver, or reduced motion the content stays fully visible; the
-// reveal-on-scroll is a pure enhancement. Premise sits below the fold (after the
-// 100vh hero + audio demo), so arming-then-revealing is never visible as a flash.
+// visible by default. Only after hydration (via useReveal) does the section
+// "arm" and reveal its `.reveal-item` cards on scroll — so with no JS, no
+// IntersectionObserver, or reduced motion the content stays fully visible. Premise
+// sits below the fold (after the 100vh hero + audio demo), so arming-then-revealing
+// is never visible as a flash.
 export function Premise() {
-  const sectionRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const section = sectionRef.current;
-    const env = defaultRevealEnv();
-    if (!section || !env.IntersectionObserver) return;
-    section.classList.add("premise--armed");
-    return reveal(section.querySelectorAll(".premise__item"), env);
-  }, []);
+  const sectionRef = useReveal<HTMLElement>();
 
   return (
     <section className="premise" id="premise" ref={sectionRef}>
@@ -69,7 +59,7 @@ export function Premise() {
         </p>
         <ul className="premise__list">
           {PREMISE_ITEMS.map((it) => (
-            <li className="premise__item" key={it.num}>
+            <li className="premise__item reveal-item" key={it.num}>
               <span className="premise__num">{it.num}</span>
               <div className="premise__body">
                 <div className="premise__label">{it.label}</div>

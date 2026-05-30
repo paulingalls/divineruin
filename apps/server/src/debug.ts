@@ -70,7 +70,7 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
     --bone: #D4D0C8;
     --parchment: #E8E4DA;
     --hollow: #2DD4BF;
-    --ember: #C2410C;
+    --ember: #E0672E;
     --gold: #C9A84C;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -96,7 +96,7 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
   }
   .status { font-size: 11px; padding: 4px 8px; border-radius: 4px; }
   .status.ok { color: var(--hollow); background: rgba(45,212,191,0.1); }
-  .status.err { color: var(--ember); background: rgba(194,65,12,0.1); }
+  .status.err { color: var(--ember); background: rgba(224,103,46,0.1); }
 
   .nav {
     position: sticky; top: 0; z-index: 10;

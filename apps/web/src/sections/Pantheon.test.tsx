@@ -28,7 +28,7 @@ test("renders every god's name, title, domain, and quote", () => {
 
 test("renders one card per god", () => {
   const html = renderToStaticMarkup(<Pantheon />);
-  const cards = html.match(/class="pantheon__card"/g) ?? [];
+  const cards = html.match(/class="pantheon__card reveal-item"/g) ?? [];
   expect(cards.length).toBe(GODS.length);
   expect(cards.length).toBe(10);
 });
@@ -56,10 +56,10 @@ test("renders the ten expected gods in order", () => {
 
 test("starts unarmed — reveal gate is post-hydration only (matches SSR)", () => {
   const html = renderToStaticMarkup(<Pantheon />);
-  expect(html).not.toContain("pantheon--armed");
+  expect(html).not.toContain("reveal-armed");
 });
 
-test("REVEALED_CLASS matches the literal the reveal CSS keys off", () => {
+test("REVEALED_CLASS matches the literal the reveal-gate CSS keys off", () => {
   expect(REVEALED_CLASS).toBe("is-revealed");
 });
 
@@ -75,4 +75,19 @@ test("GODS is the ten well-formed mockup entries", () => {
 
 test("renders hydration-safe markup (no DOM access during render)", () => {
   expect(() => renderToStaticMarkup(<Pantheon />)).not.toThrow();
+});
+
+test("cards are not keyboard tab stops — they carry no tabindex (WCAG 4.1.2)", () => {
+  // The cards are non-interactive content (no handler, no role), so they must
+  // not be in the tab order: a focus stop that does nothing confuses keyboard
+  // and screen-reader users.
+  const html = renderToStaticMarkup(<Pantheon />);
+  expect(html).not.toContain("tabindex");
+});
+
+test("the ordinal card number is decorative (aria-hidden)", () => {
+  // "01 / 10" is ornamental — the god name carries the meaning, so keep the
+  // counter out of the accessibility tree.
+  const html = renderToStaticMarkup(<Pantheon />);
+  expect(html).toMatch(/<div[^>]*class="pantheon__num"[^>]*aria-hidden="true"/);
 });

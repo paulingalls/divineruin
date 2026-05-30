@@ -31,7 +31,7 @@
   margin: 0 0 var(--space-lg);
   font-family: var(--font-display);
   font-weight: 300;
-  font-size: clamp(32px, 5vw, 60px);
+  font-size: var(--section-title-size);
   line-height: 1.05;
   color: var(--color-parchment);
 }
@@ -83,14 +83,11 @@
   transition: background 0.25s ease;
 }
 
-.pantheon__card:hover,
-.pantheon__card:focus-visible {
+.pantheon__card:hover {
   background: var(--color-hollow-faint);
-  outline: none;
 }
 
-.pantheon__card:hover .pantheon__name,
-.pantheon__card:focus-visible .pantheon__name {
+.pantheon__card:hover .pantheon__name {
   color: var(--color-hollow);
 }
 
@@ -104,7 +101,8 @@
   font-family: var(--font-system);
   font-size: var(--text-caption-size);
   letter-spacing: 0.3em;
-  color: var(--color-slate);
+  /* Ornamental ordinal — faint but AA-legal (ash), not structural slate. */
+  color: var(--color-ash);
 }
 
 .pantheon__name {
@@ -154,25 +152,4 @@
   font-size: var(--text-body-lg-size);
   letter-spacing: 0.02em;
   color: var(--color-divine);
-}
-
-/* Reveal gate. Default (no-JS / not armed / no IntersectionObserver): visible.
-   Armed (post-hydration, JS + IO): hide each card until it scrolls into view. */
-.pantheon--armed .pantheon__card {
-  opacity: 0;
-  transform: translateY(16px);
-  transition:
-    opacity 600ms ease,
-    transform 600ms ease;
-}
-
-.pantheon--armed .pantheon__card.is-revealed {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pantheon--armed .pantheon__card {
-    transition: none;
-  }
 }

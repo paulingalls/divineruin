@@ -28,7 +28,7 @@ test("renders every race's name, sense, tagline, and flavor", () => {
 
 test("renders one card per race", () => {
   const html = renderToStaticMarkup(<Races />);
-  const cards = html.match(/class="races__card"/g) ?? [];
+  const cards = html.match(/class="races__card reveal-item"/g) ?? [];
   expect(cards.length).toBe(RACES.length);
   expect(cards.length).toBe(6);
 });
@@ -52,10 +52,10 @@ test("renders the six expected peoples in order", () => {
 
 test("starts unarmed — reveal gate is post-hydration only (matches SSR)", () => {
   const html = renderToStaticMarkup(<Races />);
-  expect(html).not.toContain("races--armed");
+  expect(html).not.toContain("reveal-armed");
 });
 
-test("REVEALED_CLASS matches the literal the reveal CSS keys off", () => {
+test("REVEALED_CLASS matches the literal the reveal-gate CSS keys off", () => {
   expect(REVEALED_CLASS).toBe("is-revealed");
 });
 
@@ -67,6 +67,13 @@ test("RACES is the six well-formed mockup entries", () => {
     expect(r.tagline.length).toBeGreaterThan(0);
     expect(r.flavor.length).toBeGreaterThan(0);
   }
+});
+
+test("the ordinal card number is decorative (aria-hidden)", () => {
+  // "01 / 06" is ornamental pagination — the race name carries the meaning, so
+  // keep the counter out of the accessibility tree.
+  const html = renderToStaticMarkup(<Races />);
+  expect(html).toMatch(/<div[^>]*class="races__num"[^>]*aria-hidden="true"/);
 });
 
 test("renders hydration-safe markup (no DOM access during render)", () => {

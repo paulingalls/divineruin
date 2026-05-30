@@ -59,24 +59,3 @@
   letter-spacing: 0.02em;
   color: var(--color-parchment);
 }
-
-/* Reveal gate. Default (no-JS / not armed / no IntersectionObserver): visible.
-   Armed (post-hydration, JS + IO): hide each item until it scrolls into view. */
-.tech--armed .tech__item {
-  opacity: 0;
-  transform: translateY(16px);
-  transition:
-    opacity 600ms ease,
-    transform 600ms ease;
-}
-
-.tech--armed .tech__item.is-revealed {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tech--armed .tech__item {
-    transition: none;
-  }
-}

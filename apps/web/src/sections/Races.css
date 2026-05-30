@@ -30,7 +30,7 @@
   margin: 0 0 var(--space-lg);
   font-family: var(--font-display);
   font-weight: 300;
-  font-size: clamp(32px, 5vw, 60px);
+  font-size: var(--section-title-size);
   line-height: 1.05;
   color: var(--color-parchment);
 }
@@ -94,7 +94,10 @@
   font-family: var(--font-system);
   font-size: var(--text-caption-size);
   letter-spacing: 0.3em;
-  color: var(--color-slate);
+  /* Ornamental ordinal — faint but AA-legal (ash), not structural slate which
+     fails contrast even for decorative text. aria-hidden keeps it out of the
+     screen-reader name; the legal colour keeps the axe gate green. */
+  color: var(--color-ash);
 }
 
 .races__name {
@@ -135,25 +138,4 @@
   font-size: var(--text-body-size);
   line-height: var(--text-body-line-height);
   color: var(--color-ash);
-}
-
-/* Reveal gate. Default (no-JS / not armed / no IntersectionObserver): visible.
-   Armed (post-hydration, JS + IO): hide each card until it scrolls into view. */
-.races--armed .races__card {
-  opacity: 0;
-  transform: translateY(16px);
-  transition:
-    opacity 600ms ease,
-    transform 600ms ease;
-}
-
-.races--armed .races__card.is-revealed {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .races--armed .races__card {
-    transition: none;
-  }
 }
