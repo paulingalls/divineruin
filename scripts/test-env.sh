@@ -40,6 +40,11 @@ _te_teardown() {
   return 0
 }
 
+# Reap orphaned per-run containers from earlier killed runs before provisioning
+# (PID-aware — a live concurrent run's containers are skipped, never killed), so
+# leftovers don't accumulate across sessions. Idempotent; no-op when none exist.
+bash "${_te_root}/scripts/sweep-test-containers.sh" || true
+
 # A prior run that was SIGKILL'd before its trap fired leaves same-named
 # containers behind (the id is PID-keyed and PIDs recycle). Clear any leftovers
 # so the `docker run --name` below can't collide and abort under `set -e`.
@@ -50,7 +55,7 @@ docker rm -f "${_te_id}-pg" "${_te_id}-redis" >/dev/null 2>&1 || true
 _te_pg_cid="$(docker run -d --name "${_te_id}-pg" -p 127.0.0.1:0:5432 \
   -e POSTGRES_USER=divineruin -e POSTGRES_PASSWORD=divineruin_dev \
   -e POSTGRES_DB=divineruin postgres:16-alpine)"
-_te_redis_cid="$(docker run -d --name "${_te_id}-redis" -p 127.0.0.1:0:6379 redis:7-alpine)"
+_te_redis_cid="$(docker run -d --name "${_te_id}-redis" -p 127.0.0.1:0:6379 valkey/valkey:8-alpine)"
 
 # Read the kernel-assigned ephemeral host ports (e.g. "127.0.0.1:49xxx").
 _te_pg_port="$(docker port "${_te_pg_cid}" 5432/tcp | head -1)"; _te_pg_port="${_te_pg_port##*:}"
@@ -67,7 +72,7 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 for _ in $(seq 1 30); do
-  if [ "$(docker exec "${_te_redis_cid}" redis-cli ping 2>/dev/null)" = "PONG" ]; then
+  if [ "$(docker exec "${_te_redis_cid}" valkey-cli ping 2>/dev/null)" = "PONG" ]; then
     break
   fi
   sleep 1

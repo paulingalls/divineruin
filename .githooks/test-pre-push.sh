@@ -94,6 +94,18 @@ lane_case "one-lane-fails"  1  "mobile lane failed"  "0:server" "1:mobile" "0:sh
 # Every failing lane is waited + reported, not just the first (rc 1).
 lane_case "multi-lane-fail" 1  "python lane failed"  "1:server" "0:mobile" "0:shared" "1:python"
 
+# --- Orphan-sweep discrimination (scripts/sweep-test-containers.sh) ---
+# Delegates to the sweep's own Docker-gated harness (skips cleanly without
+# Docker; on pre-push Docker is guaranteed by the gate above). Roll its rc into
+# this harness's tally so a regression fails the push.
+echo ""
+echo "Sweep harness:"
+if bash "$(cd "$(dirname "$0")" && pwd)/../scripts/test-sweep-test-containers.sh"; then
+  PASS=$((PASS + 1))
+else
+  FAIL=$((FAIL + 1))
+fi
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

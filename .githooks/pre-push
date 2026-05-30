@@ -33,6 +33,11 @@ else
       exit 1
     fi
 
+    # Reap orphaned per-run test containers from earlier runs that were SIGKILL'd
+    # (or SIGTERM'd before teardown finished) so they don't accumulate. PID-aware:
+    # a live concurrent run's containers are skipped, never killed.
+    bash "$(dirname "$0")/../scripts/sweep-test-containers.sh" || true
+
     # Provision Postgres + Redis for the lanes that need real services (E2E's API
     # server). No-op when DATABASE_URL is already set, so a dev with .env / CI's
     # service vars is unaffected; otherwise it stands up a per-run docker pg+redis on

@@ -11,11 +11,11 @@ Audio-first AI tabletop RPG. Players speak to an AI Dungeon Master via voice —
 ## Architecture
 
 ```
-Expo Client (TS) ◄──► Bun/TS REST API ◄──► PostgreSQL + Redis ◄──► Python DM Agent (LiveKit)
+Expo Client (TS) ◄──► Bun/TS REST API ◄──► PostgreSQL + Valkey ◄──► Python DM Agent (LiveKit)
                   ◄──────── LiveKit voice + data channels ────────►
 ```
 
-Two languages, one database. Python for DM agent (Anthropic plugin only exists for Python SDK). TypeScript/Bun for REST API and Expo client. PostgreSQL JSONB + Redis is the shared state layer.
+Two languages, one database. Python for DM agent (Anthropic plugin only exists for Python SDK). TypeScript/Bun for REST API and Expo client. PostgreSQL JSONB + Valkey (Redis-protocol) is the shared state layer.
 
 ## Monorepo
 
@@ -58,7 +58,7 @@ LiveKit plugins: `livekit-plugins-anthropic`, `livekit-plugins-deepgram`, `livek
 
 ### Shared Data
 
-No shared code between Python and TS. Shared data via PostgreSQL JSONB + Redis.
+No shared code between Python and TS. Shared data via PostgreSQL JSONB + Valkey.
 
 ## Development Values (Extreme Programming)
 
@@ -98,7 +98,7 @@ Rules engine must be exhaustively tested (pure functions, deterministic).
 
 ## Settled Decisions
 
-Don't revisit: LiveKit, Python (agent), Bun (TS), Expo, PostgreSQL+JSONB, Redis, Deepgram Nova-3, Inworld TTS, Claude (LLM), zustand, expo-router, uv.
+Don't revisit: LiveKit, Python (agent), Bun (TS), Expo, PostgreSQL+JSONB, Valkey (Redis-protocol; `Bun.redis`/`redis.asyncio` clients + `REDIS_URL` keep their redis names), Deepgram Nova-3, Inworld TTS, Claude (LLM), zustand, expo-router, uv.
 
 ## Don't
 

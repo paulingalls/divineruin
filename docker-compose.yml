@@ -16,13 +16,13 @@ services:
       timeout: 3s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    container_name: divineruin-redis
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: divineruin-valkey
     ports:
       - "127.0.0.1:56379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5

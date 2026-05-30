@@ -39,12 +39,12 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
-      redis:
-        image: redis:7-alpine
+      valkey:
+        image: valkey/valkey:8-alpine
         ports:
           - 56379:6379
         options: >-
-          --health-cmd "redis-cli ping"
+          --health-cmd "valkey-cli ping"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
@@ -79,8 +79,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # bun is required: the cross-language acceptance tests (_server.py) spawn
+      # `bun src/index.ts` against the Python lane's migrated testcontainer to
+      # exercise the TS↔Python seam over real HTTP. Without it they error with
+      # FileNotFoundError: 'bun'. Mirrors the test-bun / test-e2e setup.
+      - uses: oven-sh/setup-bun@v2
       - uses: astral-sh/setup-uv@v7
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: bun install
       - run: cd apps/agent && uv sync
       - run: cd apps/agent && uv run pytest tests/ -q
 
@@ -101,12 +107,12 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
-      redis:
-        image: redis:7-alpine
+      valkey:
+        image: valkey/valkey:8-alpine
         ports:
           - 56379:6379
         options: >-
-          --health-cmd "redis-cli ping"
+          --health-cmd "valkey-cli ping"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5

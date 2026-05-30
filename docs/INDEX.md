@@ -607,7 +607,7 @@ Runbook: reset a stuck async-activity resolution — when the worker loops repla
 
 ## ops/production-deployment-architecture.md (76 lines)
 
-Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, all-managed** — managed Postgres + Redis, LiveKit Cloud, DO Spaces for assets; agent + server as containers. Local infra maps to this target on unique dev ports (Postgres 55432, Redis 56379). Resolves the AWS/GCP-vs-DO and LiveKit Cloud-vs-self-hosted contradictions.
+Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, all-managed** — managed Postgres + Valkey, LiveKit Cloud, DO Spaces for assets; agent + server as containers. Local infra maps to this target on unique dev ports (Postgres 55432, Valkey 56379). Resolves the AWS/GCP-vs-DO and LiveKit Cloud-vs-self-hosted contradictions.
 
 | Section | Lines | What's There |
 |---|---|---|
