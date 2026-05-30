@@ -42,10 +42,11 @@ _COMPANION_SLOT_CAP = 1
 # Wait-with-retry for a resolve that races the background worker (story-014).
 # The worker's resolve window is 10-30s; the player asks within one voice turn,
 # so when the row is mid-'resolving' we poll briefly for the worker to land its
-# outcome before raising. Best-effort: most 'resolving' hits still raise (the
-# window usually outlasts the poll) — the win is the boundary race. ~4.5s worst
-# case, short enough to hold a single (interruptions-disabled) turn.
-_RESOLVE_POLL_ATTEMPTS = 4  # initial read + 3 retries
+# outcome before raising. Budget is deliberately SHORT (~1.5s worst case): the
+# worker writes its outcome late (after narration), so most 'resolving' hits
+# still raise — only the immediate boundary race wins. A longer poll would just
+# add dead air to the common (still-out) path, fighting the 1500ms latency rule.
+_RESOLVE_POLL_ATTEMPTS = 2  # initial read + 1 retry
 _RESOLVE_POLL_INTERVAL_SECONDS = 1.5
 
 
