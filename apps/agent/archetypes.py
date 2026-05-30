@@ -133,8 +133,14 @@ async def load_archetypes() -> None:
 
     pool = await db.get_pool()
     rows = await pool.fetch("SELECT id, data FROM archetypes")
-    _archetypes.clear()
+    # Build into a local dict first, then swap in one synchronous step. A
+    # malformed row fails loud WITHOUT wiping an already-loaded chassis, and the
+    # clear+update has no await between it, so a concurrent get_archetype_chassis
+    # never observes a half-populated map.
+    loaded: dict[str, Chassis] = {}
     for row in rows:
         data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
-        _archetypes[row["id"]] = parse_archetype_row(row["id"], data)
+        loaded[row["id"]] = parse_archetype_row(row["id"], data)
+    _archetypes.clear()
+    _archetypes.update(loaded)
     logger.info("Loaded %d archetype chassis", len(_archetypes))
