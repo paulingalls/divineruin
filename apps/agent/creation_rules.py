@@ -5,9 +5,11 @@ All functions are deterministic and fully testable without external dependencies
 
 from __future__ import annotations
 
+from archetypes import get_archetype_chassis
 from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
+from hp_scaling import calculate_max_hp
 from rules_engine import attribute_modifier
 
 BASE_ATTRIBUTE = 10
@@ -110,14 +112,17 @@ def generate_attributes(race_id: str, class_id: str) -> dict[str, int]:
 
 
 def calculate_starting_hp(class_id: str, constitution: int) -> dict[str, int]:
-    """Max hit die + CON modifier. Returns {current, max}."""
-    cls = CLASSES.get(class_id)
-    if cls is None:
-        return {"current": 10, "max": 10}
+    """Chassis level-1 max HP (hp_base + CON modifier). Returns {current, max}.
 
+    Derives from the archetype chassis SSOT (story-004), so a freshly-created
+    character's max HP matches what the leveling system computes for level 1 —
+    no longer the stale ClassData.hit_die.
+    """
     con_mod = attribute_modifier(constitution)
-    hp = cls.hit_die + con_mod
-    hp = max(1, hp)  # minimum 1 HP
+    try:
+        hp = calculate_max_hp(class_id, 1, con_mod)
+    except ValueError:
+        return {"current": 10, "max": 10}  # unknown archetype fallback
     return {"current": hp, "max": hp}
 
 
@@ -159,20 +164,22 @@ def get_skill_proficiencies(class_id: str, skill_choices: list[str] | None = Non
     """Return skill proficiencies for a class.
 
     If skill_choices is provided and valid, use those. Otherwise, default to
-    the first N from skill_options.
+    the first N from the chassis skill pool (the SSOT — story-004).
     """
-    cls = CLASSES.get(class_id)
-    if cls is None:
+    try:
+        chassis = get_archetype_chassis(class_id)
+    except ValueError:
         return []
 
+    options = chassis.skill_options
     if skill_choices:
         # Validate choices are from the class pool and correct count
-        valid = [s for s in skill_choices if s in cls.skill_options]
-        if len(valid) == cls.num_skill_choices:
+        valid = [s for s in skill_choices if s in options]
+        if len(valid) == chassis.num_skill_choices:
             return valid
 
-    # Default: first N from skill_options
-    return list(cls.skill_options[: cls.num_skill_choices])
+    # Default: first N from the chassis skill pool
+    return list(options[: chassis.num_skill_choices])
 
 
 def infer_culture(race_id: str, class_id: str, deity_id: str | None) -> list[str]:
@@ -231,6 +238,8 @@ def build_character_data(
     if deity_id is not None and deity_id != "none" and deity_id not in DEITIES:
         raise ValueError(f"Unknown deity: {deity_id}")
 
+    chassis = get_archetype_chassis(class_id)
+
     attributes = generate_attributes(race_id, class_id)
     hp = calculate_starting_hp(class_id, attributes["constitution"])
     equipment = get_starting_equipment(class_id)
@@ -251,7 +260,7 @@ def build_character_data(
         "hp": hp,
         "ac": ac,
         "proficiencies": proficiencies,
-        "saving_throw_proficiencies": list(cls.saving_throw_proficiencies),
+        "saving_throw_proficiencies": list(chassis.save_proficiencies),
         "equipment": equipment,
         "inventory": [],
         "gold": cls.starting_gold,

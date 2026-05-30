@@ -3,8 +3,11 @@
 These read the raw JSON file (NOT a loader; the loader lives in archetypes.py).
 HP/resource values are pinned by test_hp_scaling.py / test_rules_pools.py (which
 assert the loaded chassis against the historically-correct numbers); this module
-checks the JSON's structure, roster, save/skill parity with CLASSES, and the
-armor/weapon proficiency vocabularies (which have no other automated check).
+checks the JSON's structure, roster (still parity-checked against CLASSES ids),
+and the armor/weapon proficiency vocabularies (which have no other automated
+check). Saves/skills are now owned solely by archetypes.json (story-004 dropped
+them from CLASSES), so there is no longer a CLASSES copy of those to assert
+parity against.
 """
 
 import json
@@ -77,7 +80,7 @@ def archetypes() -> dict[str, dict]:
 
 def test_all_18_archetypes_present(archetypes):
     assert set(archetypes) == EXPECTED_IDS
-    # JSON roster agrees with CLASSES (still the creation-flow source until story-004).
+    # JSON roster agrees with the CLASSES creation-flow roster (same 18 ids).
     assert set(archetypes) == set(CLASSES)
 
 
@@ -85,18 +88,6 @@ def test_each_row_has_required_keys(archetypes):
     for aid, row in archetypes.items():
         assert set(row) >= REQUIRED_KEYS, f"{aid} missing keys: {REQUIRED_KEYS - set(row)}"
         assert row["id"] == aid
-
-
-def test_saves_and_skills_parity_with_classes(archetypes):
-    for aid, row in archetypes.items():
-        cls = CLASSES[aid]
-        assert row["save_proficiencies"] == list(cls.saving_throw_proficiencies), (
-            f"{aid} save_proficiencies diverge from CLASSES"
-        )
-        assert row["starting_skills"] == {
-            "options": list(cls.skill_options),
-            "num_choices": cls.num_skill_choices,
-        }, f"{aid} starting_skills diverge from CLASSES"
 
 
 def test_armor_proficiencies_in_closed_vocab(archetypes):
