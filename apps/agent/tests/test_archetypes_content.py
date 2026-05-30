@@ -9,6 +9,7 @@ proficiency lists are NEW (no legacy source) — checked only for non-emptiness.
 """
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -49,6 +50,23 @@ REQUIRED_KEYS = {
     "weapon_proficiencies",
     "starting_skills",
 }
+
+# Armor is a naturally closed vocabulary (classes + non-metal qualifiers + the
+# unarmored sentinel). Weapon tokens are open-ended (specific weapon ids), so
+# they are checked only for well-formedness. story-002/003 loaders will own the
+# fail-loud closed-vocabulary validation; until then this catches typos/casing.
+ARMOR_VOCAB = {
+    "heavy",
+    "medium",
+    "light",
+    "shield",
+    "heavy_nonmetal",
+    "medium_nonmetal",
+    "light_nonmetal",
+    "shield_nonmetal",
+    "none",
+}
+TOKEN_RE = re.compile(r"^[a-z][a-z_]*$")
 
 
 def _serialize_formula(formula: PoolFormula | None) -> dict | None:
@@ -114,13 +132,17 @@ def test_saves_and_skills_parity_with_classes(archetypes):
         }, f"{aid} starting_skills diverge from CLASSES"
 
 
-def test_armor_and_weapon_proficiencies_nonempty(archetypes):
+def test_armor_proficiencies_in_closed_vocab(archetypes):
     for aid, row in archetypes.items():
         armor = row["armor_proficiencies"]
+        assert isinstance(armor, list) and armor, f"{aid} armor_proficiencies must be a non-empty list"
+        unknown = [t for t in armor if t not in ARMOR_VOCAB]
+        assert not unknown, f"{aid} armor_proficiencies has out-of-vocab token(s): {unknown}"
+
+
+def test_weapon_proficiencies_well_formed(archetypes):
+    for aid, row in archetypes.items():
         weapons = row["weapon_proficiencies"]
-        assert isinstance(armor, list) and armor and all(isinstance(t, str) for t in armor), (
-            f"{aid} armor_proficiencies must be a non-empty list of strings"
-        )
-        assert isinstance(weapons, list) and weapons and all(isinstance(t, str) for t in weapons), (
-            f"{aid} weapon_proficiencies must be a non-empty list of strings"
-        )
+        assert isinstance(weapons, list) and weapons, f"{aid} weapon_proficiencies must be a non-empty list"
+        malformed = [t for t in weapons if not (isinstance(t, str) and TOKEN_RE.match(t))]
+        assert not malformed, f"{aid} weapon_proficiencies has malformed token(s): {malformed}"
