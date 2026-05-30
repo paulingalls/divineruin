@@ -28,7 +28,9 @@
     "test:python": "cd apps/agent && uv run pytest tests/ -q -m \"not acceptance\" -n 4",
     "test:acceptance": "cd apps/agent && TESTCONTAINERS_RYUK_DISABLED=true uv run pytest tests/acceptance -m acceptance -q",
     "test:acceptance:clean": "docker rm -f divineruin-livekit-acceptance 2>/dev/null || true",
+    "test:sweep": "bash scripts/test-sweep-test-containers.sh",
     "test:all": "bun run scripts/test-all.ts",
+    "docker:sweep": "bash scripts/sweep-test-containers.sh",
     "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {

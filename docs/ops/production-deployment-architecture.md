@@ -4,9 +4,9 @@ Status: **Decided** (2026-05-29). This is the canonical target for how Divine Ru
 
 ## Summary
 
-Divine Ruin deploys to **DigitalOcean, all-managed**: the two stateful backends (Postgres, Redis) and the voice transport (LiveKit) are **managed services**, not containers we operate. The two application processes — the Python DM agent and the Bun/TS REST API — deploy as **containers**. Binary assets live in **DigitalOcean Spaces** (see [Asset storage](#asset-storage)).
+Divine Ruin deploys to **DigitalOcean, all-managed**: the two stateful backends (Postgres, Valkey) and the voice transport (LiveKit) are **managed services**, not containers we operate. The two application processes — the Python DM agent and the Bun/TS REST API — deploy as **containers**. Binary assets live in **DigitalOcean Spaces** (see [Asset storage](#asset-storage)).
 
-The guiding principle is the Golden Rule **cost-conscious, low-ops**: for an MVP with 10–15 testers, managed Postgres/Redis and LiveKit Cloud remove operational burden at a cost that the [cost model](../cost_model.md) absorbs. Self-hosting is a later optimization, not an MVP concern.
+The guiding principle is the Golden Rule **cost-conscious, low-ops**: for an MVP with 10–15 testers, managed Postgres/Valkey and LiveKit Cloud remove operational burden at a cost that the [cost model](../cost_model.md) absorbs. Self-hosting is a later optimization, not an MVP concern.
 
 ## Target architecture
 
@@ -17,7 +17,7 @@ The guiding principle is the Golden Rule **cost-conscious, low-ops**: for an MVP
                                                    │             │
                               ┌────────────────────┴─────────────┴───────────┐
                               ▼                    ▼                          ▼
-                     DO Managed Postgres   DO Managed Redis           DO Spaces (assets)
+                     DO Managed Postgres   DO Managed Valkey          DO Spaces (assets)
 ```
 
 | Component | Production form | Hosting | Notes |
@@ -27,17 +27,17 @@ The guiding principle is the Golden Rule **cost-conscious, low-ops**: for an MVP
 | DM agent | **Container** (Python, LiveKit Agents SDK) | DO App Platform / droplet | Co-located background process. Scales with concurrent sessions. |
 | REST API | **Container** (Bun/TS) | DO App Platform / droplet | Auth, async activities, push, settings. Stateless; horizontally scalable. |
 | Postgres | **DO Managed Postgres** | DigitalOcean | Source of truth (JSONB entities + state). Daily backups + PITR via the managed offering. |
-| Redis | **DO Managed Redis** | DigitalOcean | Session cache, voice registry, activity timers. |
+| Valkey | **DO Managed Valkey** | DigitalOcean | Session cache, voice registry, activity timers. |
 | Binary assets | **DO Spaces** (S3-compatible) | DigitalOcean | Per the [object-storage migration](../ideas/object-storage-migration.md). |
 
 ## Local → production mapping
 
-Local development mirrors this topology with **containerized stand-ins for the managed services** so no developer needs cloud credentials to work. Divine Ruin's local stack runs on **unique, project-dedicated ports** — Postgres `55432`, Redis `56379` — so it never collides with a shared host Postgres/Redis or other projects on the same machine. (story-017 reconciles `docker-compose.yml`, `.env.example`, CI, and e2e to these ports; the values below are the target this story delivers.)
+Local development mirrors this topology with **containerized stand-ins for the managed services** so no developer needs cloud credentials to work. Divine Ruin's local stack runs on **unique, project-dedicated ports** — Postgres `55432`, Valkey `56379` — so it never collides with a shared host Postgres/cache or other projects on the same machine. (story-017 reconciles `docker-compose.yml`, `.env.example`, CI, and e2e to these ports; the values below are the target this story delivers.)
 
 | Concern | Local (dev) | Production |
 |---|---|---|
 | Postgres | `docker-compose` `divineruin-postgres` on `localhost:55432` | DO Managed Postgres (`DATABASE_URL` from the managed cluster) |
-| Redis | `docker-compose` `divineruin-redis` on `localhost:56379` | DO Managed Redis (`REDIS_URL` from the managed cluster) |
+| Valkey | `docker-compose` `divineruin-valkey` on `localhost:56379` | DO Managed Valkey (`REDIS_URL` from the managed cluster) |
 | LiveKit | self-hosted `livekit-server` container (acceptance tests only) | LiveKit Cloud (`LIVEKIT_URL=wss://<project>.livekit.cloud`) |
 | Agent / Server | `bun`/`uv run` on the host | containers on App Platform / droplet |
 | Assets | rustfs container (per object-storage migration) | DO Spaces |

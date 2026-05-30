@@ -137,7 +137,7 @@ player hears the DM respond
 | **TTS** | Inworld TTS-1.5 Max | #1 ranked quality, <250ms latency, voice cloning, expressiveness controls. Built for game NPCs. 3× cheaper than alternatives. |
 | **LLM** | Claude (Haiku) | Narrative quality + tool use reliability. Streaming. Prompt caching cuts repeated context cost by ~90%. |
 | **Client** | Expo (React Native) | Single codebase for iOS and Android. Thin client — voice connection + glanceable HUD. |
-| **Database** | PostgreSQL + Redis | PostgreSQL for persistent world state (JSONB). Redis for hot-path cache (60s TTL, rebuild on miss). |
+| **Database** | PostgreSQL + Valkey | PostgreSQL for persistent world state (JSONB). Valkey (Redis-protocol) for hot-path cache (60s TTL, rebuild on miss). |
 
 ### MMO Architecture
 
@@ -309,7 +309,7 @@ Wait for healthy status:
 docker compose ps
 ```
 
-PostgreSQL on `localhost:55432`, Redis on `localhost:56379` (`divineruin-postgres` / `divineruin-redis`). These are **unique, project-dedicated ports** so the stack never collides with a shared host Postgres/Redis or your other projects — `docker compose up` is the only supported way to run local infra. If you have leftover hand-rolled `dr-pg` / `dr-redis` containers from before, retire them: `docker rm -f dr-pg dr-redis`.
+PostgreSQL on `localhost:55432`, Valkey on `localhost:56379` (`divineruin-postgres` / `divineruin-valkey`). Valkey is Redis-protocol wire-compatible, so `REDIS_URL` and the `redis://` scheme are unchanged. These are **unique, project-dedicated ports** so the stack never collides with a shared host Postgres/cache or your other projects — `docker compose up` is the only supported way to run local infra. If you have leftover hand-rolled `dr-pg` / `dr-redis` containers from before, retire them: `docker rm -f dr-pg dr-redis`.
 
 ### 2. Configure environment
 
