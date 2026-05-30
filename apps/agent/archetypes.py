@@ -17,12 +17,17 @@ Redis-cached recipes.py idiom — only 18 static rows).
 import json
 import logging
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, get_args
 
 logger = logging.getLogger("divineruin.archetypes")
 
 HPCategory = Literal["martial", "primal_divine", "arcane_shadow"]
 ResourcePattern = Literal["stamina_only", "focus_only", "focus_primary", "split"]
+
+# Closed vocabularies for the chassis enums — the loader owns fail-loud validation
+# (constraint chassis-row-shape-contract), mirroring the TS parseArchetypeRow.
+_HP_CATEGORIES = frozenset(get_args(HPCategory))
+_RESOURCE_PATTERNS = frozenset(get_args(ResourcePattern))
 
 
 @dataclass(frozen=True)
@@ -80,6 +85,14 @@ def parse_archetype_row(archetype_id: str, data: dict) -> Chassis:
         hp = data["hp"]
         resource = data["resource"]
         skills = data["starting_skills"]
+        if hp["category"] not in _HP_CATEGORIES:
+            raise ValueError(
+                f"archetype {archetype_id!r} hp.category {hp['category']!r} not in {sorted(_HP_CATEGORIES)}"
+            )
+        if resource["pattern"] not in _RESOURCE_PATTERNS:
+            raise ValueError(
+                f"archetype {archetype_id!r} resource.pattern {resource['pattern']!r} not in {sorted(_RESOURCE_PATTERNS)}"
+            )
         return Chassis(
             id=archetype_id,
             hp_base=hp["base"],

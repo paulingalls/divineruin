@@ -106,6 +106,20 @@ def test_parse_archetype_row_fail_loud_names_the_row():
         parse_archetype_row("warrior", bad)
 
 
+def test_parse_archetype_row_rejects_unknown_hp_category():
+    # Loader owns fail-loud enum validation (chassis-row-shape-contract), mirroring
+    # the TS parseArchetypeRow — a bad category must not silently load on the agent.
+    bad = {**_WARRIOR_ROW, "hp": {**_WARRIOR_ROW["hp"], "category": "wizardly"}}
+    with pytest.raises(ValueError, match=r"hp\.category"):
+        parse_archetype_row("warrior", bad)
+
+
+def test_parse_archetype_row_rejects_unknown_resource_pattern():
+    bad = {**_WARRIOR_ROW, "resource": {**_WARRIOR_ROW["resource"], "pattern": "mana_only"}}
+    with pytest.raises(ValueError, match=r"resource\.pattern"):
+        parse_archetype_row("warrior", bad)
+
+
 def test_get_archetype_chassis_resolves_all_18():
     # autouse seed_archetypes (conftest) populates from content/archetypes.json
     for aid in EXPECTED_IDS:
