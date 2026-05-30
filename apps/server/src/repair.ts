@@ -10,12 +10,12 @@ import { dispositionMultiplier, repairCostSp } from "./pricing.ts";
 //
 // The economic constants (repair cost by rarity, disposition multipliers,
 // silver/gold) read here come from the DB-loaded `pricing` table
-// (content/pricing.json -> pricing.ts). The Python agent still mirrors them as code
-// consts (durability/workspace) until story-011's Python increment points it at the
-// same `economy` row. repairQuote stays numerically identical to the agent tool's
-// charge (repair_item.py) so the quote == the charge (no Python/REST asymmetry,
-// cf. risk b335bb95acbd). Disposition *order* (the refuse-below-neutral gate) is the
-// canonical disposition vocabulary, a system constant — it stays in code, not pricing.
+// (content/pricing.json -> pricing.ts). The Python agent reads the SAME row
+// (pricing_queries.get_economy_pricing); story-011 moved both languages onto it, so
+// repairQuote stays numerically identical to the agent tool's charge (repair_item.py)
+// — quote == charge, no Python/REST asymmetry (cf. risk b335bb95acbd). Disposition
+// *order* (the refuse-below-neutral gate) is the canonical disposition vocabulary, a
+// system constant — it stays in code, not pricing.
 
 // Disposition tiers, ordered low->high; below "neutral" the blacksmith refuses.
 // "cautious" aliases neutral (parity with tool_support.DISPOSITION_TIERS).

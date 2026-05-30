@@ -2,10 +2,12 @@
 
 Durability is a deterministic mechanic (CLAUDE.md golden rule #3): the LLM decides
 *when* an item takes a hit and *how* to narrate a break; this module calculates the
-result. The 4 durability tiers, their max-hits, the repair-skill-tier coupling, and
-the rarity-keyed repair pricing are a small closed table, so they live as code
-constants (same call as the workspace-vocab SSOT decision) rather than DB-loaded
-content. No accessor, no DB.
+result. The 4 durability tiers, their max-hits, and the repair-skill-tier coupling
+are a small closed table, so they live as code constants (same call as the
+workspace-vocab SSOT decision) rather than DB-loaded content. The rarity-keyed
+repair *pricing* is NOT a constant here: calculate_repair_cost takes the rarity
+cost_table from the DB-loaded `pricing` SSOT (pricing_queries.get_economy_pricing,
+story-011), so the agent charge matches the REST quote. No accessor, no DB here.
 
 An `item_state` is a subset of the JSONB inventory item dict:
 `{"type": str, "durability_tier": str, "current_hits": int}`. `durability_tier` is
