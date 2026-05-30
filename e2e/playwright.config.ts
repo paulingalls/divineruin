@@ -43,7 +43,7 @@ const serverWebServer = {
   reuseExistingServer: false,
   env: {
     DATABASE_URL: process.env.DATABASE_URL ?? DEFAULT_DB_URL,
-    REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:6379",
+    REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:56379",
     JWT_SECRET:
       process.env.JWT_SECRET ??
       "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",

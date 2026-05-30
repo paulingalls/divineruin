@@ -42,61 +42,76 @@ else
     # below runs db.test.ts against the live DB — keep DATABASE_URL exported here
     # or that lazy-Proxy regression test silently skips. (The Python lane unsets
     # these below and uses its own testcontainers.)
-    # Combined cleanup: kill the backgrounded acceptance job (if any) AND remove
-    # the per-run test-env containers via _te_teardown (defined by test-env.sh).
-    # Registered BEFORE sourcing so a failure mid-provision still tears down; the
-    # guards tolerate acc_pid / _te_teardown not existing yet. Trap INT/TERM too
-    # so a killed push doesn't leak containers.
+    # Combined cleanup: kill every STILL-RUNNING backgrounded lane AND remove the
+    # per-run test-env containers via _te_teardown (defined by test-env.sh).
+    # bg_pids tracks only un-reaped jobs (reaped PIDs are dropped below so the
+    # trap never kills a recycled PID). Initialised + trap registered BEFORE
+    # sourcing so a failure mid-provision still tears down; _te_teardown guard
+    # tolerates it not existing yet. INT/TERM too so a killed push doesn't leak.
+    bg_pids=()
     _cleanup() {
-      [ -n "${acc_pid:-}" ] && kill "$acc_pid" 2>/dev/null
+      for pid in "${bg_pids[@]}"; do kill "$pid" 2>/dev/null; done
       command -v _te_teardown >/dev/null 2>&1 && _te_teardown || true
     }
     trap _cleanup EXIT INT TERM
 
     # shellcheck source=scripts/test-env.sh
     source "$(dirname "$0")/../scripts/test-env.sh"
+    # shellcheck source=scripts/lane-utils.sh
+    source "$(dirname "$0")/../scripts/lane-utils.sh"
 
     # Run acceptance in the background so it overlaps the unit + E2E steps.
     ( REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true bun run test:acceptance ) &
     acc_pid=$!
+    bg_pids+=("$acc_pid")
 
-    echo "  Bun tests (server, clean env)..."
-    (
-      for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done
-      # test:server runs the bulk server suite (which mock.module()s ./db.ts)
-      # with db.test.ts excluded, then runs db.test.ts in its own process so it
-      # exercises the REAL lazy SQL Proxy — Bun module mocks leak across files
-      # within one `bun test` invocation, so the live Proxy test must be isolated.
-      bun run test:server
-    )
+    # The four bun/python unit lanes are independent — server's db.test.ts uses
+    # the provisioned DB, python uses its own testcontainers and unsets DB/REDIS,
+    # mobile/shared are env-light — so run them CONCURRENTLY, each in its own env
+    # subshell so var scoping can't leak across siblings. Wall-clock drops from
+    # sum-of-lanes to max-lane; wait_all_lanes fails the push loud if ANY lane
+    # exits non-zero (never swallows an exit code).
+    echo "  Bun + Python unit lanes (parallel: server, mobile, shared, python)..."
+    unit_specs=()
+    # server: test:server isolates db.test.ts (real lazy SQL Proxy) in its own
+    # process; keep DATABASE_URL or it silently skips. Strip only the external API
+    # vars (matches CI's test-bun env).
+    ( for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done; bun run test:server ) &
+    p=$!; bg_pids+=("$p"); unit_specs+=("$p:server")
+    ( bun test --cwd apps/mobile ) &
+    p=$!; bg_pids+=("$p"); unit_specs+=("$p:mobile")
+    ( bun test --cwd packages/shared ) &
+    p=$!; bg_pids+=("$p"); unit_specs+=("$p:shared")
+    # python: unset DB/REDIS too — it uses its own testcontainers.
+    ( for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done; unset DATABASE_URL REDIS_URL; bun run test:python ) &
+    p=$!; bg_pids+=("$p"); unit_specs+=("$p:python")
 
-    echo "  Bun tests (mobile)..."
-    bun test --cwd apps/mobile
+    # `if` context suppresses set -e so a failing lane is captured, not aborted-on.
+    if wait_all_lanes "${unit_specs[@]}"; then unit_rc=0; else unit_rc=$?; fi
+    bg_pids=("$acc_pid")  # unit lanes reaped — drop them from the trap's kill list
+    if [ "$unit_rc" -ne 0 ]; then
+      echo "ERROR: one or more unit lanes failed." >&2
+      exit 1
+    fi
 
-    echo "  Bun tests (shared)..."
-    bun test --cwd packages/shared
-
-    echo "  Python tests (agent, clean env)..."
-    (
-      for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done
-      unset DATABASE_URL REDIS_URL
-      bun run test:python
-    )
-
-    # E2E tests — run locally with Playwright (fast: ~80s). Playwright starts the
-    # API + Expo + web servers via its webServer config against the per-run DB.
-    # reuseExistingServer:false means an overlapping run fails loud on a port
-    # conflict rather than silently collapsing onto a shared (cross-killed) server.
+    # E2E tests — run locally with Playwright (fast: ~80s) AFTER the unit barrier:
+    # it needs the per-run DB, boots its own API/Expo/web servers, and is
+    # resource-heavy. reuseExistingServer:false means an overlapping run fails
+    # loud on a port conflict rather than silently collapsing onto a shared
+    # (cross-killed) server.
     echo "  E2E tests (local Playwright)..."
     (cd e2e && bunx playwright test --reporter=list)
 
-    # Propagate the backgrounded acceptance result.
+    # Propagate the backgrounded acceptance result. Reap + clear bg_pids BEFORE
+    # the failure exit (same pattern as the unit barrier) so the trap never kills
+    # the just-reaped acceptance PID.
     echo "  Acceptance tests (waiting)..."
-    if ! wait "$acc_pid"; then
+    if wait "$acc_pid"; then acc_rc=0; else acc_rc=$?; fi
+    bg_pids=()  # acceptance reaped — trap now only tears down the test-env containers
+    if [ "$acc_rc" -ne 0 ]; then
       echo "ERROR: acceptance tests failed." >&2
       exit 1
     fi
-    acc_pid=""  # reaped — keep the trap armed so test-env containers still tear down on exit
 
     echo "All tests passed."
   }

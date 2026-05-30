@@ -4,7 +4,7 @@ import pg from "pg";
 const { Pool } = pg;
 
 export const DEFAULT_DB_URL =
-  "postgresql://divineruin:divineruin@localhost:5432/divineruin";
+  "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin";
 
 export interface TestUser {
   email: string;
