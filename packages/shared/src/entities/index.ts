@@ -29,3 +29,5 @@ export type {
   HpCategory,
   ResourcePattern,
 } from "./archetype";
+
+export type { Ability, Cost, AbilityType } from "./ability";
