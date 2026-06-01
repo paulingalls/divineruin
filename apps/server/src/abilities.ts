@@ -34,8 +34,15 @@ export function setAbilities(map: ReadonlyMap<string, Ability>): void {
 
 function parseCost(raw: unknown, ctx: string): Cost {
   const c = asRecord(raw, ctx);
-  if (typeof c.stamina !== "number") throw new Error(`${ctx}.stamina is not a number`);
-  if (typeof c.focus !== "number") throw new Error(`${ctx}.focus is not a number`);
+  // Integer (not just number) for parity with the Python loader's _parse_cost, which
+  // requires int — a shared row with a float cost must fail identically on both sides.
+  // The typeof guard also narrows unknown -> number for the return.
+  if (typeof c.stamina !== "number" || !Number.isInteger(c.stamina)) {
+    throw new Error(`${ctx}.stamina is not an integer`);
+  }
+  if (typeof c.focus !== "number" || !Number.isInteger(c.focus)) {
+    throw new Error(`${ctx}.focus is not an integer`);
+  }
   if (c.scaling !== null && typeof c.scaling !== "string") {
     throw new Error(`${ctx}.scaling is not a string or null`);
   }

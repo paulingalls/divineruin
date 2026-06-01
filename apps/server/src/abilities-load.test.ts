@@ -149,6 +149,14 @@ describe("parseAbilityRow — fail-loud validation", () => {
     );
   });
 
+  test("rejects a non-integer cost.stamina (parity with the Python int requirement)", () => {
+    // Python _parse_cost requires int; a float like 2.5 must fail on the TS side too,
+    // so the same shared row can't pass one loader and fail the other (concern f3f1560feb6b).
+    expect(() => parseAbilityRow("x", { ...base, cost: { ...base.cost, stamina: 2.5 } })).toThrow(
+      /abilities\[x\]\.cost\.stamina/,
+    );
+  });
+
   test("rejects a cost.scaling that is neither string nor null", () => {
     expect(() => parseAbilityRow("x", { ...base, cost: { ...base.cost, scaling: 7 } })).toThrow(
       /abilities\[x\]\.cost\.scaling/,
