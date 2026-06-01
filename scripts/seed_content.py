@@ -28,6 +28,7 @@ TABLE_MAP = {
     "inventory_pools.json": "inventory_pools",
     "level_progression.json": "level_progression",
     "archetypes.json": "archetypes",
+    "archetype_abilities.json": "archetype_abilities",
     "training_activity_types.json": "training_activity_types",
     "training_programs.json": "training_programs",
     "errand_templates.json": "errand_templates",
