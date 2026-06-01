@@ -183,6 +183,14 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if not is_loaded():
         await load_archetypes()
 
+    # Load the archetype abilities once per agent process (M2.2). The DM voices
+    # ability activations via request_ability_activation, which reads this map.
+    from abilities import is_loaded as abilities_is_loaded
+    from abilities import load_abilities
+
+    if not abilities_is_loaded():
+        await load_abilities()
+
     # Determine session type: new player (creation) vs returning
     player = None
     last_summary = None

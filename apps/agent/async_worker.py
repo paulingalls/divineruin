@@ -291,11 +291,13 @@ async def main() -> None:
 
     # Load content-backed config. Fail loud if the query fails — the rules
     # engine depends on these maps being populated before the polling loop starts.
+    from abilities import load_abilities
     from archetypes import load_archetypes
     from training_rules import load_training_activity_types
 
     await load_training_activity_types()
     await load_archetypes()
+    await load_abilities()
 
     try:
         while True:

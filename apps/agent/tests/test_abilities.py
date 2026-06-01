@@ -7,9 +7,11 @@ build-then-swap load_abilities (a malformed row must not wipe an already-loaded
 map). The row shape is the cross-language SSOT contract (story-001); cost is the
 nested object {stamina:int, focus:int, scaling:str|None}.
 
-These tests seed state directly (set_abilities / a JSON helper) and do not depend
-on an autouse fixture, so the loader is verifiable on its own (story-002 cycle 1,
-before the conftest seed_abilities fixture lands).
+The conftest autouse seed_abilities fixture pre-populates the map from content
+before each test, but every test here seeds its own state up front
+(set_abilities / a JSON helper) and so is verifiable independent of that fixture:
+test_is_loaded_reflects_population deliberately clears the pre-seeded map with
+set_abilities({}) to assert the empty case.
 """
 
 import json
