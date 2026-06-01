@@ -11,6 +11,7 @@ class TestCombatAgentConfig:
         assert issubclass(CombatAgent, BaseGameAgent)
 
     def test_combat_tools_are_complete(self):
+        from ability_tools import request_ability_activation
         from check_tools import request_attack, request_saving_throw, roll_dice
         from combat_end import end_combat
         from combat_turn import request_death_save, resolve_enemy_turn
@@ -27,6 +28,7 @@ class TestCombatAgentConfig:
             play_sound,
             set_music_state,
             query_info,
+            request_ability_activation,
         }
         assert set(COMBAT_AGENT_TOOLS) == expected
 

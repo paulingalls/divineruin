@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from ability_tools import request_ability_activation
 from base_agent import BaseGameAgent
 from check_tools import request_attack, request_saving_throw, roll_dice
 from combat_end import end_combat
@@ -20,6 +21,7 @@ COMBAT_AGENT_TOOLS = [
     play_sound,
     set_music_state,
     query_info,
+    request_ability_activation,
 ]
 
 
