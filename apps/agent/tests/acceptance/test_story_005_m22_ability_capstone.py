@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
+from typing import Any
 
 import httpx
 import pytest
@@ -139,6 +140,53 @@ async def test_elective_swap_persists_transactionally(reset_db_pool: str) -> Non
     assert equipped["warrior_precision_strike"] is True
     # Old technique's row is KEPT (equipped=False) -> re-selectable on a later rest.
     assert equipped["warrior_cleaving_blow"] is False
+
+
+class _FailOnEquip:
+    """Wraps ability_persistence but raises on set_elective_equipped for one id.
+
+    Used to inject a mid-swap failure between the two writes, proving the
+    db.transaction() wrapping rolls the first write back (the safety property the
+    swap docstring warns about — concern 598dceba2f3e).
+    """
+
+    def __init__(self, real, fail_on: str) -> None:
+        self._real = real
+        self._fail_on = fail_on
+
+    async def get_character_abilities(self, *args, **kwargs):
+        return await self._real.get_character_abilities(*args, **kwargs)
+
+    async def set_elective_equipped(self, player_id, ability_id, equipped, *, conn=None):
+        if ability_id == self._fail_on:
+            raise RuntimeError("injected mid-swap failure")
+        return await self._real.set_elective_equipped(player_id, ability_id, equipped, conn=conn)
+
+
+@pytest.mark.asyncio
+async def test_swap_rolls_back_on_mid_swap_failure(reset_db_pool: str) -> None:
+    pool = await db.get_pool()
+    pid = "cap_rollback"
+    await _seed_player_with_pools(pool, pid, "warrior")
+    await ability_persistence.set_elective_equipped(pid, "warrior_cleaving_blow", True, conn=pool)
+    await abilities.load_abilities()
+
+    # The swap sets cleaving_blow=False (1st write) then precision_strike=True (2nd,
+    # which fails). Under db.transaction() the failure must roll the 1st write back.
+    # Any: the persistence_mod seam is duck-typed (a module by default).
+    failing: Any = _FailOnEquip(ability_persistence, fail_on="warrior_precision_strike")
+    with pytest.raises(RuntimeError):
+        async with db.transaction() as conn:
+            await swap_elective_on_long_rest(
+                pid, "warrior_cleaving_blow", "warrior_precision_strike", conn=conn, persistence_mod=failing
+            )
+
+    rows = await ability_persistence.get_character_abilities(pid)
+    equipped = {row["ability_id"]: row["equipped"] for row in rows}
+    # Rolled back: cleaving_blow is still equipped (not the inconsistent "neither" state),
+    # and precision_strike was never persisted.
+    assert equipped["warrior_cleaving_blow"] is True
+    assert "warrior_precision_strike" not in equipped
 
 
 # --- http_websocket surface (TS server ability-load path) ---
