@@ -116,7 +116,13 @@ def test_elective_pool_sizes(rows):
 def test_each_row_required_keys_and_enums(rows):
     for row in rows:
         rid = row.get("id", "<no id>")
-        assert set(row) >= REQUIRED_KEYS, f"{rid} missing keys: {REQUIRED_KEYS - set(row)}"
+        # Exact match, not superset: the row shape is the cross-language SSOT
+        # contract for the story-002 (Python) and story-003 (TS) parsers, so a
+        # stray/typo'd key must fail here rather than surface as a strict-parse
+        # break downstream.
+        assert set(row) == REQUIRED_KEYS, (
+            f"{rid} key mismatch: missing {REQUIRED_KEYS - set(row)}, extra {set(row) - REQUIRED_KEYS}"
+        )
         assert row["ability_type"] in ABILITY_TYPES, (
             f"{rid} ability_type {row['ability_type']!r} not in {sorted(ABILITY_TYPES)}"
         )
