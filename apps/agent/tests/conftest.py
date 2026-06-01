@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from archetype_abilities_config_fixture import setup_archetype_abilities_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
 from training_config_fixture import setup_training_config_fixture
 
@@ -40,4 +41,16 @@ def seed_archetypes():
     chassis-fed math (calculate_max_hp, calculate_max_pools) resolves without a DB.
     """
     setup_archetypes_config_fixture()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def seed_abilities():
+    """Populate abilities._abilities from content/archetype_abilities.json before every test.
+
+    Mirrors load_abilities() at worker/agent startup, but sync and file-based.
+    Required so agent.py dm_session's guarded load_abilities() sees the map already
+    populated (is_loaded() True) and skips the DB fetch in tests that exercise startup.
+    """
+    setup_archetype_abilities_config_fixture()
     yield
