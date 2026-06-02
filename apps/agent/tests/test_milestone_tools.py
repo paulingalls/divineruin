@@ -173,6 +173,34 @@ class TestAutoGrant:
         assert result["narration_cue"]
 
 
+class TestWriteFailure:
+    async def test_persistence_failure_propagates_and_emits_no_event(self):
+        # A failing specialization write must abort the resolution (the real
+        # db.transaction() rolls back — concern 598dceba2f3e; true DB rollback is
+        # proven by the story-006 capstone) and never emit the HUD event.
+        ctx = make_context(room=make_mock_room())
+        mock_db, _conn = make_db_mod()
+        queries = MagicMock()
+        queries.get_player = AsyncMock(return_value=_player(class_="warrior", level=5))
+        persistence = MagicMock()
+        persistence.set_player_specialization = AsyncMock(side_effect=RuntimeError("db down"))
+        flags = MagicMock()
+        flags.set_player_flag = AsyncMock()
+        events = MagicMock()
+        events.publish_game_event = AsyncMock()
+        with pytest.raises(RuntimeError):
+            await _resolve_milestone_impl(
+                ctx,
+                "warrior_battle_master",
+                db_mod=mock_db,
+                queries_mod=queries,
+                persistence_mod=persistence,
+                flags_mod=flags,
+                events_mod=events,
+            )
+        events.publish_game_event.assert_not_awaited()
+
+
 class TestNoMilestone:
     async def test_level_with_no_milestone_rejects(self):
         with pytest.raises(ToolError, match="milestone"):
