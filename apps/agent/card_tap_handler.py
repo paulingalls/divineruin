@@ -155,6 +155,9 @@ class SpecializationTapHandler(_PlayerHintsListener):
     resolve_milestone with the chosen id — instruction-driven so the DM voices the
     confirmation (audio-first), with resolve_milestone the validation/persistence
     gatekeeper. Active in the exploration agents where leveling happens (story-007).
+
+    Shares the base HINT_COOLDOWN_S debounce intentionally: the L5 choice is a one-shot
+    permanent pick, so the 2s window only suppresses accidental double-taps.
     """
 
     def _handle(self, payload: dict) -> bool:
