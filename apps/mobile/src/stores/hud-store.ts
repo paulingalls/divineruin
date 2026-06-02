@@ -54,6 +54,17 @@ export interface CreationCard {
   imageUrl?: string;
 }
 
+export interface SpecializationOption {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface SpecializationChoiceState {
+  milestoneId: string;
+  options: SpecializationOption[];
+}
+
 // --- Store ---
 
 interface HudState {
@@ -64,6 +75,7 @@ interface HudState {
   combatState: CombatTrackerState | null;
   creationCards: CreationCard[];
   selectedCreationCard: string | null;
+  specializationChoice: SpecializationChoiceState | null;
 
   pushOverlay: (type: OverlayType, payload: Record<string, unknown>, ttl?: number) => string;
   dismissOverlay: (id: string) => void;
@@ -83,6 +95,9 @@ interface HudState {
   setSelectedCreationCard: (id: string | null) => void;
   clearCreationCards: () => void;
 
+  setSpecializationChoice: (choice: SpecializationChoiceState) => void;
+  clearSpecializationChoice: () => void;
+
   reset: () => void;
 }
 
@@ -100,6 +115,7 @@ const INITIAL: Pick<
   | "combatState"
   | "creationCards"
   | "selectedCreationCard"
+  | "specializationChoice"
 > = {
   overlays: [],
   statusEffects: [],
@@ -108,6 +124,7 @@ const INITIAL: Pick<
   combatState: null,
   creationCards: [],
   selectedCreationCard: null,
+  specializationChoice: null,
 };
 
 export const hudStore = createStore<HudState>((set, get) => ({
@@ -169,6 +186,9 @@ export const hudStore = createStore<HudState>((set, get) => ({
   },
   setSelectedCreationCard: (id) => set({ selectedCreationCard: id }),
   clearCreationCards: () => set({ creationCards: [], selectedCreationCard: null }),
+
+  setSpecializationChoice: (choice) => set({ specializationChoice: choice }),
+  clearSpecializationChoice: () => set({ specializationChoice: null }),
 
   reset: () => {
     _nextId = 0;

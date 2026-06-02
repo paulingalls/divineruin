@@ -48,6 +48,13 @@ class TestDungeonAgentTools:
         assert resolve_enemy_turn not in DUNGEON_TOOLS
         assert end_combat not in DUNGEON_TOOLS
 
+    def test_has_milestone_resolution(self):
+        # Leveling happens here via award_xp, so the L5 specialization fork must be
+        # resolvable by the DM in this agent (concern 3c02318dfa99).
+        from milestone_tools import resolve_milestone
+
+        assert resolve_milestone in DUNGEON_TOOLS
+
 
 class TestDungeonAgentPrompt:
     def test_prompt_includes_voice_style(self):

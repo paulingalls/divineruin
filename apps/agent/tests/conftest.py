@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from archetype_abilities_config_fixture import setup_archetype_abilities_config_fixture
+from archetype_milestones_config_fixture import setup_archetype_milestones_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
 from training_config_fixture import setup_training_config_fixture
 
@@ -53,4 +54,16 @@ def seed_abilities():
     populated (is_loaded() True) and skips the DB fetch in tests that exercise startup.
     """
     setup_archetype_abilities_config_fixture()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def seed_milestones():
+    """Populate milestones._milestones from content/archetype_milestones.json before every test.
+
+    Mirrors load_milestones() at worker/agent startup, but sync and file-based.
+    Required so agent.py dm_session's guarded load_milestones() sees the map already
+    populated (is_loaded() True) and skips the DB fetch in tests that exercise startup.
+    """
+    setup_archetype_milestones_config_fixture()
     yield

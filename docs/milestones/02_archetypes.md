@@ -90,7 +90,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 **Inputs:** M2.1 (Archetype Chassis), existing rules engine.
 
 **Deliverables:**
-- `archetype_abilities` DB table: ability definitions (name, ability_type core/elective/reaction, cost_type, cost_amount, effect, narration_cue, archetype_id, level_requirement)
+- `archetype_abilities` DB table: ability definitions (name, ability_type core/elective/reaction, cost `{stamina, focus, scaling}`, effect, narration_cue, archetype_id, level_requirement)
 - `character_abilities` DB table: tracking which abilities a character has learned and equipped
 - Content seed for core abilities (at least 1-2 per archetype)
 - Elective ability pool: L4 and L8 technique choices (pool of 4 per archetype at each level)

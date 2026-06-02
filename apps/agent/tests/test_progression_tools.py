@@ -1,11 +1,13 @@
-"""LEVEL_UP payload tests for award_xp — archetype-aware hp_gains."""
+"""LEVEL_UP payload tests for award_xp — archetype-aware hp_gains + auto-grant side-effects."""
 
+import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sample_fixtures import GUILD_PLAYER, level_up_payload, make_context, make_db_mod, make_mock_room
 
 from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
+from milestones import Grant, Milestone
 from progression_tools import _award_xp_impl
 
 
@@ -57,3 +59,159 @@ async def test_level_up_hp_gains_resolve_from_chassis_for_diverging_archetype():
     assert payload is not None
     expected_gain = calculate_max_hp("warrior", 2, 0) - calculate_max_hp("warrior", 1, 0)
     assert payload["hp_gains"] == [{"level": 2, "hp_gain": expected_gain}]
+
+
+# --- Auto-grant side-effects: L10/15/20 milestone grants resolve in award_xp (story-007) ---
+
+# Warrior milestone ladder stub (mirrors content/archetype_milestones.json shapes):
+# L5 fork (no auto-grant), L10 auto-grant with the extra_attack flag, L15/L20 narrative-only.
+_WARRIOR_MILESTONES = [
+    Milestone("warrior_identity", "warrior", "identity", 5, "specialization_fork", False, (), None, "cue"),
+    Milestone(
+        "warrior_power",
+        "warrior",
+        "power",
+        10,
+        "auto_grant",
+        False,
+        (),
+        Grant("Extra Attack", "Your blade strikes twice.", "extra_attack"),
+        "cue",
+    ),
+    Milestone(
+        "warrior_mastery",
+        "warrior",
+        "mastery",
+        15,
+        "auto_grant",
+        False,
+        (),
+        Grant("Indomitable", "Reroll a failed save.", None),
+        "cue",
+    ),
+    Milestone(
+        "warrior_legend",
+        "warrior",
+        "legend",
+        20,
+        "auto_grant",
+        False,
+        (),
+        Grant("Legendary Action", "Act outside the turn order.", None),
+        "cue",
+    ),
+]
+
+
+def _milestones_mod():
+    mod = MagicMock()
+    by_level = {m.level: m for m in _WARRIOR_MILESTONES}
+    mod.get_milestone_by_level = MagicMock(
+        side_effect=lambda archetype_id, level: by_level.get(level) if archetype_id == "warrior" else None
+    )
+    return mod
+
+
+async def _award_levels(from_level: int, from_xp: int, amount: int):
+    """Award `amount` XP to a warrior at (from_level, from_xp); return (mutations, conn, response)."""
+    room = make_mock_room()
+    mock_db, mock_conn = make_db_mod()
+    queries = MagicMock()
+    queries.get_player = AsyncMock(
+        return_value={**GUILD_PLAYER, "class": "warrior", "level": from_level, "xp": from_xp}
+    )
+    mutations = MagicMock()
+    mutations.update_player_xp = AsyncMock()
+    mutations.set_player_flag = AsyncMock()
+    ctx = make_context(room=room)
+    raw = await _award_xp_impl(
+        ctx,
+        amount,
+        "milestone reached",
+        db_mod=mock_db,
+        mutations=mutations,
+        queries=queries,
+        milestones_mod=_milestones_mod(),
+    )
+    return mutations, mock_conn, json.loads(raw)
+
+
+@pytest.mark.asyncio
+async def test_l10_auto_grant_sets_extra_attack_flag_in_code():
+    # L9 (2900 xp) -> L10 (3450) crosses warrior_power: the extra_attack flag is set
+    # deterministically in award_xp, with no LLM resolve_milestone call.
+    mutations, conn, _ = await _award_levels(from_level=9, from_xp=2900, amount=550)
+    mutations.set_player_flag.assert_awaited_once_with("player_1", "extra_attack", True, conn=conn)
+
+
+@pytest.mark.asyncio
+async def test_multi_level_jump_still_applies_crossed_auto_grant():
+    # L9 (2900) -> L11 (4050) jumps two levels, crossing L10 — the grant still fires.
+    mutations, conn, _ = await _award_levels(from_level=9, from_xp=2900, amount=1150)
+    mutations.set_player_flag.assert_awaited_once_with("player_1", "extra_attack", True, conn=conn)
+
+
+@pytest.mark.asyncio
+async def test_narrative_only_grant_writes_no_flag():
+    # L14 (6000) -> L15 (6750): warrior_mastery is narrative-only (flag=None) — no flag write.
+    mutations, _, _ = await _award_levels(from_level=14, from_xp=6000, amount=750)
+    mutations.set_player_flag.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_l5_specialization_fork_awards_no_auto_grant():
+    # L4 (750) -> L5 (1050): the L5 fork needs a player choice — award_xp applies no auto-grant.
+    mutations, _, _ = await _award_levels(from_level=4, from_xp=750, amount=300)
+    mutations.set_player_flag.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_auto_grant_surfaces_narration_in_response():
+    # The DM voices the grant: award_xp's response carries the crossed auto-grant's name +
+    # narration cue (concern 4bf3efecdc8a — the cue is no longer returned via resolve_milestone).
+    _, _, response = await _award_levels(from_level=9, from_xp=2900, amount=550)
+    assert response["milestone_grants"] == [
+        {"name": "Extra Attack", "effect": "Your blade strikes twice.", "narration_cue": "cue"}
+    ]
+
+
+@pytest.mark.asyncio
+async def test_narrative_only_grant_is_still_surfaced_for_voicing():
+    # L14 -> L15: even though warrior_mastery sets no flag, its narration must reach the DM.
+    _, _, response = await _award_levels(from_level=14, from_xp=6000, amount=750)
+    assert response["milestone_grants"] == [
+        {"name": "Indomitable", "effect": "Reroll a failed save.", "narration_cue": "cue"}
+    ]
+
+
+@pytest.mark.asyncio
+async def test_no_milestone_crossed_surfaces_empty_grants():
+    # L1 -> L2 crosses no auto-grant milestone — milestone_grants is an empty list.
+    player = {**GUILD_PLAYER, "class": "artificer"}
+    room = make_mock_room()
+    mock_db, _ = make_db_mod()
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={**player, "xp": 250})
+    mutations = MagicMock()
+    mutations.update_player_xp = AsyncMock()
+    mutations.set_player_flag = AsyncMock()
+    ctx = make_context(room=room)
+    raw = await _award_xp_impl(
+        ctx, 100, "quest done", db_mod=mock_db, mutations=mutations, queries=queries, milestones_mod=_milestones_mod()
+    )
+    assert json.loads(raw)["milestone_grants"] == []
+
+
+@pytest.mark.asyncio
+async def test_l5_fork_surfaced_in_response_for_dm_cue():
+    # Crossing into L5 must cue the DM to present the specialization fork in award_xp's
+    # response (concern c515f47bf2c5) — symmetric to milestone_grants for auto-grant tiers.
+    _, _, response = await _award_levels(from_level=4, from_xp=750, amount=300)
+    assert response["specialization_fork"] is True
+
+
+@pytest.mark.asyncio
+async def test_non_l5_levelup_has_no_fork_cue():
+    # L9 -> L10 crosses no specialization fork — the cue is False.
+    _, _, response = await _award_levels(from_level=9, from_xp=2900, amount=550)
+    assert response["specialization_fork"] is False

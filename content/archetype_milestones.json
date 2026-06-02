@@ -1,0 +1,1203 @@
+[
+  {
+    "id": "warrior_identity",
+    "archetype_id": "warrior",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "warrior_battle_master",
+        "name": "Battle Master",
+        "description": "Tactical maneuvers: reposition, disarm, and trip your foes."
+      },
+      {
+        "id": "warrior_berserker",
+        "name": "Berserker",
+        "description": "A rage state: bonus damage that burns Stamina each round."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "The clash of war narrows to a single choice — cold tactics, or the red tide of rage."
+  },
+  {
+    "id": "warrior_power",
+    "archetype_id": "warrior",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Extra Attack",
+      "effect": "Make 2 attacks per round instead of 1.",
+      "flag": "extra_attack"
+    },
+    "narration_cue": "Your blade strikes twice where once it struck once."
+  },
+  {
+    "id": "warrior_mastery",
+    "archetype_id": "warrior",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Indomitable",
+      "effect": "Reroll a failed saving throw, once per combat.",
+      "flag": null
+    },
+    "narration_cue": "Where lesser warriors falter, you set your jaw and refuse to fall."
+  },
+  {
+    "id": "warrior_legend",
+    "archetype_id": "warrior",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Legendary Action",
+      "effect": "Take a full extra action, once per combat.",
+      "flag": null
+    },
+    "narration_cue": "For a heartbeat the battlefield bends to your will, and you act beyond mortal limit."
+  },
+
+  {
+    "id": "guardian_identity",
+    "archetype_id": "guardian",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "guardian_bulwark",
+        "name": "Bulwark",
+        "description": "Maximal personal defense: damage resistance and recovery, nearly unkillable."
+      },
+      {
+        "id": "guardian_warden_commander",
+        "name": "Warden-Commander",
+        "description": "Party defense: larger auras, stronger buffs, Intercept reaching 10 feet."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "Steel and duty pull two ways — to be the unbreakable wall, or the shield over others."
+  },
+  {
+    "id": "guardian_power",
+    "archetype_id": "guardian",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Shield Mastery",
+      "effect": "Shield AC +1; Intercept reduces incoming damage by 1d8 before it applies.",
+      "flag": null
+    },
+    "narration_cue": "Your shield becomes an extension of will, turning blows before they land."
+  },
+  {
+    "id": "guardian_mastery",
+    "archetype_id": "guardian",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Last Stand",
+      "effect": "Below 25% HP, allies gain advantage on attacks for 2 rounds and you gain +4 AC.",
+      "flag": null
+    },
+    "narration_cue": "Bloodied and cornered, you plant your feet — and the line holds."
+  },
+  {
+    "id": "guardian_legend",
+    "archetype_id": "guardian",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Immortal Sentinel",
+      "effect": "When reduced to 0 HP, drop to 1 HP instead and gain immunity until end of next turn, once per session.",
+      "flag": null
+    },
+    "narration_cue": "Death reaches for you and finds only the sentinel, still standing."
+  },
+
+  {
+    "id": "skirmisher_identity",
+    "archetype_id": "skirmisher",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "skirmisher_blade_dancer",
+        "name": "Blade Dancer",
+        "description": "Dual-wield mastery: bonus attacks and flowing, unbroken movement."
+      },
+      {
+        "id": "skirmisher_outrider",
+        "name": "Outrider",
+        "description": "A ranged-and-melee hybrid with mounted bonuses and longer reach."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "The wind of the fight asks which dance you'll lead — close and whirling, or swift and far-ranging."
+  },
+  {
+    "id": "skirmisher_power",
+    "archetype_id": "skirmisher",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Extra Attack",
+      "effect": "Make 2 attacks per round instead of 1.",
+      "flag": "extra_attack"
+    },
+    "narration_cue": "Your strikes blur — two falling in the space of one."
+  },
+  {
+    "id": "skirmisher_mastery",
+    "archetype_id": "skirmisher",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Uncatchable",
+      "effect": "Attacks against you have disadvantage; a miss lets you move 10 feet for free.",
+      "flag": null
+    },
+    "narration_cue": "Blades pass through the space you just left, and you are already gone."
+  },
+  {
+    "id": "skirmisher_legend",
+    "archetype_id": "skirmisher",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Perfect Strike",
+      "effect": "Turn one hit into a critical hit, once per combat.",
+      "flag": null
+    },
+    "narration_cue": "Between breaths you find the perfect line, and the strike lands true."
+  },
+
+  {
+    "id": "mage_identity",
+    "archetype_id": "mage",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "mage_elementalist",
+        "name": "Elementalist",
+        "description": "Bigger blast damage, elemental resistances, and reshaped terrain."
+      },
+      {
+        "id": "mage_arcanist",
+        "name": "Arcanist",
+        "description": "Utility, control, counterspelling, and a wider spell selection."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "The Weave offers two grips — raw elemental fury, or subtle mastery of the arcane."
+  },
+  {
+    "id": "mage_power",
+    "archetype_id": "mage",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Spell Mastery",
+      "effect": "One spell costing 3 or less Focus becomes a 0-cost cantrip.",
+      "flag": null
+    },
+    "narration_cue": "A favored spell sinks into your bones, free to cast as easily as breathing."
+  },
+  {
+    "id": "mage_mastery",
+    "archetype_id": "mage",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Arcane Recovery",
+      "effect": "Recover Focus equal to your INT modifier, once per combat.",
+      "flag": null
+    },
+    "narration_cue": "The Weave flows back into you, refilling the well you drew from."
+  },
+  {
+    "id": "mage_legend",
+    "archetype_id": "mage",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Reality Bend",
+      "effect": "Change any d20 result to any value, once per session.",
+      "flag": null
+    },
+    "narration_cue": "For one moment the Weave answers a whisper, and what is becomes what you will."
+  },
+
+  {
+    "id": "artificer_identity",
+    "archetype_id": "artificer",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "artificer_alchemist",
+        "name": "Alchemist",
+        "description": "Potion crafting, healing elixirs, and area concoctions."
+      },
+      {
+        "id": "artificer_battlesmith",
+        "name": "Battlesmith",
+        "description": "An enhanced construct, martial proficiency, and INT for weapon attacks."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "Your workbench splits in two paths — the flask and the forge."
+  },
+  {
+    "id": "artificer_power",
+    "archetype_id": "artificer",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Arcane Armory",
+      "effect": "Infuse up to 3 items at once, and infuse your construct.",
+      "flag": null
+    },
+    "narration_cue": "Your creations hum with stored power, three at once and your construct besides."
+  },
+  {
+    "id": "artificer_mastery",
+    "archetype_id": "artificer",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Master Craftsman",
+      "effect": "Craft at Master tier; async crafting takes half the time; repair Masterwork items.",
+      "flag": null
+    },
+    "narration_cue": "Your hands know the work so well that time itself bends around the bench."
+  },
+  {
+    "id": "artificer_legend",
+    "archetype_id": "artificer",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Soul of Artifice",
+      "effect": "+1 to all saves per infused item (max +4); when reduced to 0 HP, rebound with 1d8+INT, once per long rest.",
+      "flag": null
+    },
+    "narration_cue": "Your inventions ward you like a second skin, and refuse to let you fall."
+  },
+
+  {
+    "id": "seeker_identity",
+    "archetype_id": "seeker",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "seeker_diviner",
+        "name": "Diviner",
+        "description": "Foresight, scrying, and probability — to see the future."
+      },
+      {
+        "id": "seeker_inquisitor",
+        "name": "Inquisitor",
+        "description": "Investigation, ward-breaking, and secrets — to read the present."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "The unknown beckons two ways — toward what will be, or toward what is hidden now."
+  },
+  {
+    "id": "seeker_power",
+    "archetype_id": "seeker",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Arcane Revelation",
+      "effect": "Ask the DM one magical question and receive a true answer, once per long rest.",
+      "flag": null
+    },
+    "narration_cue": "You reach past the veil and a single truth answers your asking."
+  },
+  {
+    "id": "seeker_mastery",
+    "archetype_id": "seeker",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Piercing Insight",
+      "effect": "Your spells ignore resistance and immunity and cannot be Counterspelled.",
+      "flag": null
+    },
+    "narration_cue": "Your magic finds the seam in any ward and slips through untouched."
+  },
+  {
+    "id": "seeker_legend",
+    "archetype_id": "seeker",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Omniscience",
+      "effect": "The DM reveals the single most important hidden truth, once per session.",
+      "flag": null
+    },
+    "narration_cue": "For one breath the whole of a secret lies open before you."
+  },
+
+  {
+    "id": "druid_identity",
+    "archetype_id": "druid",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "druid_circle_of_the_land",
+        "name": "Circle of the Land",
+        "description": "Expanded spells, terrain powers, and Focus efficiency."
+      },
+      {
+        "id": "druid_circle_of_the_beast",
+        "name": "Circle of the Beast",
+        "description": "Enhanced Wild Shape and an animal companion, split between beast and caster."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "The wild offers two communions — the deep roots of the land, or the wild heart of the beast."
+  },
+  {
+    "id": "druid_power",
+    "archetype_id": "druid",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Improved Wild Shape",
+      "effect": "Access more forms and cast cantrips while shapeshifted.",
+      "flag": null
+    },
+    "narration_cue": "More shapes open to you, and your magic survives the change of skin."
+  },
+  {
+    "id": "druid_mastery",
+    "archetype_id": "druid",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Nature's Wrath",
+      "effect": "The terrain strikes all grounded enemies for 3d8, no save, once per combat.",
+      "flag": null
+    },
+    "narration_cue": "The ground itself rises in fury at your command."
+  },
+  {
+    "id": "druid_legend",
+    "archetype_id": "druid",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Archdruid",
+      "effect": "Wild Shape costs 0 Stamina, you cast in beast form, and your beast form regenerates 5 HP per round.",
+      "flag": null
+    },
+    "narration_cue": "The line between you and the wild dissolves; you are nature's own voice."
+  },
+
+  {
+    "id": "beastcaller_identity",
+    "archetype_id": "beastcaller",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "beastcaller_pack_leader",
+        "name": "Pack Leader",
+        "description": "Multiple beasts, summoning, and swarm tactics."
+      },
+      {
+        "id": "beastcaller_alpha",
+        "name": "Alpha",
+        "description": "One supreme companion that evolves toward sapience."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "The bond deepens two ways — toward the many of the pack, or the one of the alpha."
+  },
+  {
+    "id": "beastcaller_power",
+    "archetype_id": "beastcaller",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Empathic Link",
+      "effect": "Full telepathy with your companion, which gains +2 to saves; cast cantrips through it.",
+      "flag": null
+    },
+    "narration_cue": "Your thoughts and your companion's run as one stream."
+  },
+  {
+    "id": "beastcaller_mastery",
+    "archetype_id": "beastcaller",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Apex Bond",
+      "effect": "Your companion's attacks count as magical and heal you 2 HP on hit.",
+      "flag": null
+    },
+    "narration_cue": "Every strike your companion lands echoes back to you as strength."
+  },
+  {
+    "id": "beastcaller_legend",
+    "archetype_id": "beastcaller",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "One Soul",
+      "effect": "Merge with your companion for 1 minute, combining abilities, HP, and form.",
+      "flag": null
+    },
+    "narration_cue": "Two hearts beat as one body, and the bond becomes flesh."
+  },
+
+  {
+    "id": "warden_identity",
+    "archetype_id": "warden",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "warden_sentinel",
+        "name": "Sentinel",
+        "description": "Area defense: the Veil Ward and control of the terrain."
+      },
+      {
+        "id": "warden_avenger",
+        "name": "Avenger",
+        "description": "Terrain-empowered melee and a primal smite."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "The land asks how you'll guard it — as the still ward, or the avenging storm."
+  },
+  {
+    "id": "warden_power",
+    "archetype_id": "warden",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Terrain Mastery",
+      "effect": "Choose a second home terrain; both grant full Rooted benefits.",
+      "flag": null
+    },
+    "narration_cue": "A second land claims you as its own, and you stand rooted in both."
+  },
+  {
+    "id": "warden_mastery",
+    "archetype_id": "warden",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Land's Fury",
+      "effect": "In your home terrain, deal 3d8 terrain damage to all enemies, once per combat.",
+      "flag": null
+    },
+    "narration_cue": "The land you guard turns its wrath upon those who trespass."
+  },
+  {
+    "id": "warden_legend",
+    "archetype_id": "warden",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Primeval Champion",
+      "effect": "In your home terrain, all primal spells cost 0 Resonance and you regenerate 5 HP per round.",
+      "flag": null
+    },
+    "narration_cue": "In the heart of your land you are unkillable, its champion made manifest."
+  },
+
+  {
+    "id": "cleric_identity",
+    "archetype_id": "cleric",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": true,
+    "specialization_options": [],
+    "grant": null,
+    "narration_cue": "Your domain is shaped by your patron — the path will reveal itself when that bond is forged."
+  },
+  {
+    "id": "cleric_power",
+    "archetype_id": "cleric",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Channel Divinity",
+      "effect": "Unleash a powerful patron-themed effect, once per combat.",
+      "flag": null
+    },
+    "narration_cue": "Your patron's power floods through you, ready to be unleashed."
+  },
+  {
+    "id": "cleric_mastery",
+    "archetype_id": "cleric",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Greater Restoration",
+      "effect": "Remove curses, disease, and level drain, and cure the Hollowed.",
+      "flag": null
+    },
+    "narration_cue": "Your touch mends what darker powers have broken."
+  },
+  {
+    "id": "cleric_legend",
+    "archetype_id": "cleric",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Avatar",
+      "effect": "Channel your deity for 3 rounds: spells cost 0 Focus, gain 60 ft flight, +2d8 radiant on hits, and allies heal 10 HP per hit.",
+      "flag": null
+    },
+    "narration_cue": "For three rounds the divine wears your face, and the battlefield bathes in holy light."
+  },
+
+  {
+    "id": "paladin_identity",
+    "archetype_id": "paladin",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": true,
+    "specialization_options": [],
+    "grant": null,
+    "narration_cue": "Your oath is bound to your patron — the path will reveal itself when that bond is forged."
+  },
+  {
+    "id": "paladin_power",
+    "archetype_id": "paladin",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Extra Attack",
+      "effect": "Make 2 attacks per round instead of 1; each can trigger Divine Smite.",
+      "flag": "extra_attack"
+    },
+    "narration_cue": "Your blade falls twice, and holy fire answers each stroke."
+  },
+  {
+    "id": "paladin_mastery",
+    "archetype_id": "paladin",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Cleansing Aura",
+      "effect": "Allies within 10 feet gain advantage against the Hollowed.",
+      "flag": null
+    },
+    "narration_cue": "A radiance spills from you, and the Hollow recoils from those you shield."
+  },
+  {
+    "id": "paladin_legend",
+    "archetype_id": "paladin",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Divine Champion",
+      "effect": "Manifest wings of light for 1 minute: 60 ft flight, +2d8 radiant, and heal allies within 30 ft for 10 HP per hit.",
+      "flag": null
+    },
+    "narration_cue": "Wings of light unfurl, and you become the wrath and mercy of the heavens."
+  },
+
+  {
+    "id": "oracle_identity",
+    "archetype_id": "oracle",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "oracle_fateseer",
+        "name": "Fateseer",
+        "description": "Divination and foresight — the supportive oracle who guides allies."
+      },
+      {
+        "id": "oracle_doomcaller",
+        "name": "Doomcaller",
+        "description": "Curses and probability turned weapon — the offensive oracle."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "The threads of fate split before you — to guide what comes, or to unmake it."
+  },
+  {
+    "id": "oracle_power",
+    "archetype_id": "oracle",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Temporal Echo",
+      "effect": "Take a full second turn immediately after your first, once per combat.",
+      "flag": null
+    },
+    "narration_cue": "Time stutters, and you move twice in the space meant for one."
+  },
+  {
+    "id": "oracle_mastery",
+    "archetype_id": "oracle",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Weave Reading",
+      "effect": "Your visions turn specific, granting advantage on everything for 1 round, once per session.",
+      "flag": null
+    },
+    "narration_cue": "The future sharpens into focus, and for a moment nothing can surprise you."
+  },
+  {
+    "id": "oracle_legend",
+    "archetype_id": "oracle",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Master of Fate",
+      "effect": "Declare a physically possible outcome and it happens, costing 6 Resonance, once per session.",
+      "flag": null
+    },
+    "narration_cue": "You speak a possibility aloud, and fate bends to make it so."
+  },
+
+  {
+    "id": "rogue_identity",
+    "archetype_id": "rogue",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "rogue_assassin",
+        "name": "Assassin",
+        "description": "First-strike damage, poison, and disguise."
+      },
+      {
+        "id": "rogue_thief",
+        "name": "Thief",
+        "description": "Supreme skill mastery, item use as a quick action, impossible acrobatics."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "The shadows offer two trades — the killing strike, or the perfect heist."
+  },
+  {
+    "id": "rogue_power",
+    "archetype_id": "rogue",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Reliable Talent",
+      "effect": "On Trained-or-better skills, treat any d20 roll below 10 as a 10.",
+      "flag": null
+    },
+    "narration_cue": "Your trained hands never truly fumble; even your worst is good enough."
+  },
+  {
+    "id": "rogue_mastery",
+    "archetype_id": "rogue",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Slippery Mind",
+      "effect": "Gain advantage on WIS and CHA saving throws.",
+      "flag": null
+    },
+    "narration_cue": "Attempts to grip your mind slide off like water from oiled steel."
+  },
+  {
+    "id": "rogue_legend",
+    "archetype_id": "rogue",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Death Strike",
+      "effect": "Your first hidden attack against an unaware foe forces a CON save or deals double damage.",
+      "flag": null
+    },
+    "narration_cue": "The unseeing never feel you coming, and the first cut may be the last."
+  },
+
+  {
+    "id": "spy_identity",
+    "archetype_id": "spy",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "spy_handler",
+        "name": "Handler",
+        "description": "NPC agents, intel networks, faction infiltration — the spymaster."
+      },
+      {
+        "id": "spy_operative",
+        "name": "Operative",
+        "description": "Solo infiltration, combat from disguise, poison — the field agent."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "The game of secrets splits — to run the network, or to be the blade in it."
+  },
+  {
+    "id": "spy_power",
+    "archetype_id": "spy",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Master of Disguise",
+      "effect": "Adopt false identities that are immune to non-magical detection.",
+      "flag": null
+    },
+    "narration_cue": "You wear another's face so completely that no ordinary eye can pierce it."
+  },
+  {
+    "id": "spy_mastery",
+    "archetype_id": "spy",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Ghost",
+      "effect": "Retroactively declare you were present in a past scene, once per long rest.",
+      "flag": null
+    },
+    "narration_cue": "It turns out you were there all along — you simply chose not to be seen."
+  },
+  {
+    "id": "spy_legend",
+    "archetype_id": "spy",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Puppet Master",
+      "effect": "Control one NPC for an entire encounter through social manipulation, once per session.",
+      "flag": null
+    },
+    "narration_cue": "A few chosen words, and another's will becomes yours to steer."
+  },
+
+  {
+    "id": "whisper_identity",
+    "archetype_id": "whisper",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "whisper_mesmerist",
+        "name": "Mesmerist",
+        "description": "Crowd control, mass suggestion, emotional manipulation — the puppet master of groups."
+      },
+      {
+        "id": "whisper_phantasm",
+        "name": "Phantasm",
+        "description": "Illusions, false realities, and misdirection — making you see what isn't there."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "The mind opens two doors — to sway the crowd, or to conjure the lie they believe."
+  },
+  {
+    "id": "whisper_power",
+    "archetype_id": "whisper",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Unseen Hand",
+      "effect": "Suggestion affects up to 3 creatures, and Redirect Attention becomes permanent.",
+      "flag": null
+    },
+    "narration_cue": "Your whispers fan out unseen, turning three minds at once."
+  },
+  {
+    "id": "whisper_mastery",
+    "archetype_id": "whisper",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Deep Erasure",
+      "effect": "Fog of Mind erases up to an hour of memory; magic below Supreme cannot restore it.",
+      "flag": null
+    },
+    "narration_cue": "An hour of their life simply ceases to have happened."
+  },
+  {
+    "id": "whisper_legend",
+    "archetype_id": "whisper",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Ghost in the Machine",
+      "effect": "Retroactively declare you influenced a past NPC decision, once per session.",
+      "flag": null
+    },
+    "narration_cue": "That choice they made long ago? Your whisper was behind it all along."
+  },
+
+  {
+    "id": "bard_identity",
+    "archetype_id": "bard",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "bard_college_of_valor",
+        "name": "College of Valor",
+        "description": "Medium armor, martial weapons, and Inspiration that fuels combat."
+      },
+      {
+        "id": "bard_college_of_lore",
+        "name": "College of Lore",
+        "description": "Two extra Trained skills, expanded spells, and abilities borrowed from other archetypes."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "Your song chooses its stage — the clash of valor, or the depths of lore."
+  },
+  {
+    "id": "bard_power",
+    "archetype_id": "bard",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Magical Secrets",
+      "effect": "Learn 2 abilities from ANY archetype's list.",
+      "flag": null
+    },
+    "narration_cue": "No tradition is closed to you now; you borrow power wherever you find it."
+  },
+  {
+    "id": "bard_mastery",
+    "archetype_id": "bard",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Superior Inspiration",
+      "effect": "Begin every combat with a free Inspiration die.",
+      "flag": null
+    },
+    "narration_cue": "Your song is already rising before the first blow lands."
+  },
+  {
+    "id": "bard_legend",
+    "archetype_id": "bard",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Master Performer",
+      "effect": "While you are conscious and audible, allies gain +2 to all d20 rolls.",
+      "flag": null
+    },
+    "narration_cue": "As long as your voice carries, your companions move like heroes of legend."
+  },
+
+  {
+    "id": "diplomat_identity",
+    "archetype_id": "diplomat",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "diplomat_ambassador",
+        "name": "Ambassador",
+        "description": "Faction diplomacy, treaties, and alliance-building."
+      },
+      {
+        "id": "diplomat_provocateur",
+        "name": "Provocateur",
+        "description": "Manipulation, incitement, and information warfare."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "The art of words turns two ways — to bind allies, or to set rivals against each other."
+  },
+  {
+    "id": "diplomat_power",
+    "archetype_id": "diplomat",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Voice of Authority",
+      "effect": "De-escalate affects groups up to 6, and formal Persuasion at DC 15 or less auto-succeeds.",
+      "flag": null
+    },
+    "narration_cue": "A room full of tempers stills the moment you choose to speak."
+  },
+  {
+    "id": "diplomat_mastery",
+    "archetype_id": "diplomat",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Kingmaker",
+      "effect": "Faction reputation gains double, and disposition shifts 2 steps instead of 1.",
+      "flag": null
+    },
+    "narration_cue": "Your favor moves faster now; loyalties turn at twice the pace."
+  },
+  {
+    "id": "diplomat_legend",
+    "archetype_id": "diplomat",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Words That Shape the World",
+      "effect": "Give a speech: NPCs make a WIS save or become Friendly, with no limit on number.",
+      "flag": null
+    },
+    "narration_cue": "You speak, and a hostile crowd becomes a sea of friends."
+  },
+
+  {
+    "id": "marshal_identity",
+    "archetype_id": "marshal",
+    "tier": "identity",
+    "level": 5,
+    "kind": "specialization_fork",
+    "patron_deferred": false,
+    "specialization_options": [
+      {
+        "id": "marshal_warlord",
+        "name": "Warlord",
+        "description": "Aggressive tactics: bonus damage on coordinated attacks; Direct Strike improves to +1d8."
+      },
+      {
+        "id": "marshal_sentinel",
+        "name": "Sentinel",
+        "description": "Defensive tactics: Overwatch as a base ability; Rally grants resistance to one damage type."
+      }
+    ],
+    "grant": null,
+    "narration_cue": "Command demands a doctrine — press the advantage, or hold the line."
+  },
+  {
+    "id": "marshal_power",
+    "archetype_id": "marshal",
+    "tier": "power",
+    "level": 10,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Supreme Commander",
+      "effect": "Direct Strike and Coordinated Assault reach 60 feet, commanding through walls and corners.",
+      "flag": null
+    },
+    "narration_cue": "Your orders carry across the field, unseen but unfailing."
+  },
+  {
+    "id": "marshal_mastery",
+    "archetype_id": "marshal",
+    "tier": "mastery",
+    "level": 15,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Legendary Tactician",
+      "effect": "Declare a target and all allies gain advantage against it for 1 round, once per encounter.",
+      "flag": null
+    },
+    "narration_cue": "You name the weak point, and your whole company strikes it as one."
+  },
+  {
+    "id": "marshal_legend",
+    "archetype_id": "marshal",
+    "tier": "legend",
+    "level": 20,
+    "kind": "auto_grant",
+    "patron_deferred": false,
+    "specialization_options": [],
+    "grant": {
+      "name": "Unbreakable Formation",
+      "effect": "Allies within 30 ft cannot drop below 1 HP while conscious; you take 1d8 psychic each time this triggers.",
+      "flag": null
+    },
+    "narration_cue": "Around you no ally falls; their wounds bleed into your resolve instead."
+  }
+]

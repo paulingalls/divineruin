@@ -11,6 +11,9 @@ from environment_tools import play_sound, set_music_state
 from query_tools import query_info
 from system_prompts import COMBAT_SYSTEM_PROMPT
 
+# resolve_milestone is intentionally NOT here: combat never awards XP (end_combat hands
+# back to the exploration agent, which calls award_xp), so milestones never resolve in
+# combat. It lives in the exploration agents instead (concern 3c02318dfa99).
 COMBAT_AGENT_TOOLS = [
     resolve_enemy_turn,
     request_attack,
