@@ -582,6 +582,30 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }
       break;
 
+    case E.SPECIALIZATION_CHOICE: {
+      // M2.3: the L5 fork. Set the dedicated specializationChoice state, which
+      // OverlayManager renders as an interactive glanceable overlay (a supplement
+      // to the DM voicing the fork). Each option must carry a non-empty string id
+      // — it is the React key and the tap's published specialization_id. Options
+      // without one are dropped; an event with no usable options is a no-op.
+      const rawOptions = Array.isArray(event.options)
+        ? (event.options as Record<string, unknown>[])
+        : [];
+      const options = rawOptions
+        .filter((o) => typeof o.id === "string" && o.id.length > 0)
+        .map((o) => ({
+          id: o.id as string,
+          name: typeof o.name === "string" ? o.name : "",
+          description: typeof o.description === "string" ? o.description : "",
+        }));
+      if (options.length === 0) break;
+      hudStore.getState().setSpecializationChoice({
+        milestoneId: typeof event.milestone_id === "string" ? event.milestone_id : "",
+        options,
+      });
+      break;
+    }
+
     case E.DIVINE_FAVOR_CHANGED:
       if (typeof event.new_level === "number") {
         const favorMax = typeof event.max === "number" ? event.max : 100;
