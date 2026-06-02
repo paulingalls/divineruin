@@ -26,6 +26,7 @@ from milestones import (
     SpecializationOption,
     get_archetype_milestones,
     get_milestone,
+    get_milestone_by_level,
     is_loaded,
     load_milestones,
     parse_milestone_row,
@@ -198,6 +199,24 @@ def test_l5_fork_and_deferred_invariants_via_content():
     # Oracle is NOT patron-deferred (concrete fork per decision m23-l5-fork-spec-fidelity).
     oracle_l5 = next(m for m in get_archetype_milestones("oracle") if m.level == 5)
     assert oracle_l5.patron_deferred is False and len(oracle_l5.specialization_options) == 2
+
+
+def test_get_milestone_by_level_resolves_fork_and_grant():
+    _seed_from_content()
+    fork = get_milestone_by_level("warrior", 5)
+    assert fork is not None and fork.kind == "specialization_fork"
+    grant = get_milestone_by_level("warrior", 10)
+    assert grant is not None and grant.kind == "auto_grant"
+
+
+def test_get_milestone_by_level_missing_level_returns_none():
+    _seed_from_content()
+    assert get_milestone_by_level("warrior", 7) is None
+
+
+def test_get_milestone_by_level_unknown_archetype_returns_none():
+    _seed_from_content()
+    assert get_milestone_by_level("nope", 5) is None
 
 
 def test_get_milestone_resolves_and_unknown_raises():

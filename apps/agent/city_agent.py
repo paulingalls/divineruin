@@ -9,6 +9,7 @@ from dispatch_tools import enter_dispatch
 from environment_tools import play_sound, set_music_state
 from gameplay_agent import GameplayAgent
 from inventory_tools import add_to_inventory, remove_from_inventory
+from milestone_tools import resolve_milestone
 from movement_tools import move_player
 from progression_tools import award_divine_favor, award_xp
 from query_tools import query_info
@@ -37,6 +38,10 @@ CITY_TOOLS = [
     update_npc_disposition,
     record_story_moment,
     end_session,
+    # Milestone resolution: leveling happens here via award_xp, so the L5 specialization
+    # fork must be resolvable in this agent (concern 3c02318dfa99). City is now AT the
+    # strict-tool ceiling — M2.4 must reclaim a slot before adding tools (see debt).
+    resolve_milestone,
     # Activity dispatch lives in DispatchAgent (reached by enter_dispatch intent
     # handoff, or by moving into an activity-context location) — keeps City under
     # MAX_STRICT_TOOLS. See docs/decisions/0004-agent-tool-scaling.md.

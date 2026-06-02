@@ -16,7 +16,6 @@ class TestCombatAgentConfig:
         from combat_end import end_combat
         from combat_turn import request_death_save, resolve_enemy_turn
         from environment_tools import play_sound, set_music_state
-        from milestone_tools import resolve_milestone
         from query_tools import query_info
 
         expected = {
@@ -30,7 +29,6 @@ class TestCombatAgentConfig:
             set_music_state,
             query_info,
             request_ability_activation,
-            resolve_milestone,
         }
         assert set(COMBAT_AGENT_TOOLS) == expected
 
@@ -42,6 +40,14 @@ class TestCombatAgentConfig:
 
         for tool in [enter_location, move_player, start_combat, update_quest]:
             assert tool not in COMBAT_AGENT_TOOLS
+
+    def test_combat_excludes_milestone_resolution(self):
+        # Combat never awards XP (end_combat hands back; the exploration agent calls
+        # award_xp), so milestones never resolve here. resolve_milestone lives in the
+        # exploration agents instead (concern 3c02318dfa99).
+        from milestone_tools import resolve_milestone
+
+        assert resolve_milestone not in COMBAT_AGENT_TOOLS
 
 
 class TestCombatSystemPrompt:

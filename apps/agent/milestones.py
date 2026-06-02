@@ -144,6 +144,19 @@ def get_archetype_milestones(archetype_id: str) -> tuple[Milestone, ...]:
     return tuple(m for m in _milestones.values() if m.archetype_id == archetype_id)
 
 
+def get_milestone_by_level(archetype_id: str, level: int) -> Milestone | None:
+    """Return the archetype's milestone at a given level, or None if there is none.
+
+    Canonical by-level lookup shared by resolve_milestone (the L5 fork / explicit
+    tier) and award_xp's auto-grant loop, so the level-match predicate lives in one
+    place. Each archetype has at most one milestone per level (L5/10/15/20).
+    """
+    return next(
+        (m for m in _milestones.values() if m.archetype_id == archetype_id and m.level == level),
+        None,
+    )
+
+
 def is_loaded() -> bool:
     """True once the milestones have been populated (startup load or test seam)."""
     return bool(_milestones)

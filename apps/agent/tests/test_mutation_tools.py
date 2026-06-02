@@ -947,6 +947,9 @@ class TestIntegerBounds:
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_mutations = MagicMock()
         mock_mutations.update_player_xp = AsyncMock()
+        # A 10000-XP jump levels the skirmisher across L10/L15, so award_xp legitimately
+        # applies the crossed auto-grant flags (e.g. extra_attack) via set_player_flag.
+        mock_mutations.set_player_flag = AsyncMock()
         ctx = _make_context()
         result = json.loads(
             await _award_xp_impl(

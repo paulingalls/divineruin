@@ -19,7 +19,8 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod, make_mock_room
 
 import event_types as E
-from milestone_tools import _resolve_milestone_impl
+from milestone_tools import _resolve_milestone_impl, apply_milestone_grant
+from milestones import Grant, Milestone, MilestoneKind
 
 
 def _player(*, class_: str = "warrior", level: int = 5, specialization: str | None = None) -> dict:
@@ -212,3 +213,40 @@ class TestNoMilestone:
         player = {"player_id": "player_1", "name": "Kael", "level": 5}
         with pytest.raises(ToolError, match="milestone"):
             await _call(player=player)
+
+
+def _milestone(kind: MilestoneKind, grant: Grant | None) -> Milestone:
+    return Milestone("warrior_power", "warrior", "power", 10, kind, False, (), grant, "cue")
+
+
+class TestApplyMilestoneGrant:
+    """Direct unit tests for the shared grant-write primitive (story-007), used by
+    both resolve_milestone and award_xp's auto-grant loop."""
+
+    @pytest.mark.asyncio
+    async def test_flag_grant_writes_flag_and_returns_true(self):
+        flags = MagicMock()
+        flags.set_player_flag = AsyncMock()
+        conn = MagicMock()
+        milestone = _milestone("auto_grant", Grant("Extra Attack", "strikes twice", "extra_attack"))
+        wrote = await apply_milestone_grant(milestone, "player_1", conn=conn, flags_mod=flags)
+        assert wrote is True
+        flags.set_player_flag.assert_awaited_once_with("player_1", "extra_attack", True, conn=conn)
+
+    @pytest.mark.asyncio
+    async def test_narrative_only_grant_is_noop_and_returns_false(self):
+        flags = MagicMock()
+        flags.set_player_flag = AsyncMock()
+        milestone = _milestone("auto_grant", Grant("Indomitable", "reroll a save", None))
+        wrote = await apply_milestone_grant(milestone, "player_1", conn=MagicMock(), flags_mod=flags)
+        assert wrote is False
+        flags.set_player_flag.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_null_grant_is_noop_and_returns_false(self):
+        flags = MagicMock()
+        flags.set_player_flag = AsyncMock()
+        milestone = _milestone("specialization_fork", None)
+        wrote = await apply_milestone_grant(milestone, "player_1", conn=MagicMock(), flags_mod=flags)
+        assert wrote is False
+        flags.set_player_flag.assert_not_called()

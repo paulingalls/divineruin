@@ -36,18 +36,33 @@ from tool_support import _validate_id
 logger = logging.getLogger("divineruin.tools")
 
 
+async def apply_milestone_grant(
+    milestone: milestones.Milestone, player_id: str, *, conn, flags_mod=db_mutations
+) -> bool:
+    """Write an auto_grant milestone's combat flag into players.data.flags.
+
+    No-op (returns False) for a null grant or a narrative-only grant (flag is None).
+    Shared by resolve_milestone (the tool path) and award_xp (the deterministic
+    L10/15/20 side-effect path), so the grant write lives in exactly one place.
+    """
+    grant = milestone.grant
+    if grant is not None and grant.flag:
+        await flags_mod.set_player_flag(player_id, grant.flag, True, conn=conn)
+        return True
+    return False
+
+
 @function_tool()
 @db_tool
 async def resolve_milestone(
     context: RunContext[SessionData],
     choice: str | None = None,
 ) -> str:
-    """Resolve the character's milestone at their current level.
-    Call when the player reaches a milestone (level 5, 10, 15, or 20). At level 5
-    the character chooses a specialization: call first with no choice to present the
-    two paths, then again with the chosen option id to lock it in (the choice is
-    permanent). At levels 10/15/20 the milestone is granted automatically — call
-    with no choice. Returns the narration cue to voice."""
+    """Lock in the character's level-5 specialization choice.
+    Call at level 5 when the character chooses a specialization: first with no choice
+    to present the two paths, then again with the chosen option id to lock it in (the
+    choice is permanent). Milestone grants at levels 10/15/20 are applied automatically
+    on level-up — do NOT call for those. Returns the narration cue to voice."""
     return await _resolve_milestone_impl(context, choice)
 
 
@@ -77,10 +92,7 @@ async def _resolve_milestone_impl(
 
         archetype_id = player.get("class")
         level = player.get("level")
-        milestone = next(
-            (m for m in milestones_mod.get_archetype_milestones(archetype_id) if m.level == level),
-            None,
-        )
+        milestone = milestones_mod.get_milestone_by_level(archetype_id, level)
         if milestone is None:
             raise ToolError(f"No milestone at level {level} for {archetype_id}.")
 
@@ -115,8 +127,7 @@ async def _resolve_milestone_impl(
                 }
         else:  # auto_grant
             grant = milestone.grant
-            if grant is not None and grant.flag:
-                await flags_mod.set_player_flag(player_id, grant.flag, True, conn=conn)
+            await apply_milestone_grant(milestone, player_id, conn=conn, flags_mod=flags_mod)
             result = {
                 "milestone_id": milestone.id,
                 "grant": {"name": grant.name, "effect": grant.effect} if grant else None,
