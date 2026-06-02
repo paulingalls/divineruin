@@ -5,8 +5,8 @@
  * Kept livekit-free (the room is passed in, not pulled from a hook) so it is
  * unit-testable with a mock room. The specialization overlay calls this on tap
  * with the room from useMaybeRoomContext. A no-op without a room (e2e/no-room
- * safety). Agent-side consumption of SPECIALIZATION_CHOICE_TAP is a future
- * wire-up — the DM voice path already resolves via story-004's resolve_milestone.
+ * safety). The agent's SpecializationTapHandler consumes SPECIALIZATION_CHOICE_TAP
+ * (story-008) and drives the DM to resolve via story-004's resolve_milestone.
  */
 
 import type { Room } from "livekit-client";

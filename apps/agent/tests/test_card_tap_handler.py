@@ -7,7 +7,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from card_tap_handler import HINT_COOLDOWN_S, PLAYER_HINTS_TOPIC, CardTapHandler, build_hint_instruction
+from card_tap_handler import (
+    HINT_COOLDOWN_S,
+    PLAYER_HINTS_TOPIC,
+    CardTapHandler,
+    SpecializationTapHandler,
+    build_hint_instruction,
+    build_specialization_instruction,
+)
 from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
@@ -163,3 +170,91 @@ class TestCardTapHandler:
         handler.stop()
         room_mock: Any = handler._room
         room_mock.off.assert_called_once_with("data_received", handler._on_data_received)
+
+
+# ---------------------------------------------------------------------------
+# build_specialization_instruction — pure function tests
+# ---------------------------------------------------------------------------
+
+
+class TestBuildSpecializationInstruction:
+    def test_includes_specialization_id(self):
+        result = build_specialization_instruction("warrior_battle_master")
+        assert "warrior_battle_master" in result
+
+    def test_directs_resolve_milestone_call(self):
+        result = build_specialization_instruction("warrior_berserker")
+        assert "resolve_milestone" in result
+
+
+# ---------------------------------------------------------------------------
+# SpecializationTapHandler — gameplay L5 tap consumer
+# ---------------------------------------------------------------------------
+
+SPEC_TAP = {"type": "specialization_choice_tap", "specialization_id": "warrior_battle_master"}
+
+
+def _make_spec_handler() -> tuple[SpecializationTapHandler, MagicMock]:
+    room = MagicMock()
+    session = MagicMock()
+    session.generate_reply = MagicMock()
+    sd = SessionData(player_id="test", location_id="", room=room)
+    handler = SpecializationTapHandler(room=room, session=session, userdata=sd)
+    return handler, session
+
+
+class TestSpecializationTapHandler:
+    def test_valid_tap_triggers_generate_reply_with_choice(self):
+        handler, session = _make_spec_handler()
+        handler._on_data_received(_make_data_packet(SPEC_TAP))
+        session.generate_reply.assert_called_once()
+        kwargs = session.generate_reply.call_args[1]
+        assert "warrior_battle_master" in kwargs["instructions"]
+
+    def test_allows_tool_call_not_narration_only(self):
+        # Unlike the creation card-tap (tool_choice="none"), this must let the DM call
+        # resolve_milestone — so tool_choice is not pinned to "none".
+        handler, session = _make_spec_handler()
+        handler._on_data_received(_make_data_packet(SPEC_TAP))
+        kwargs = session.generate_reply.call_args[1]
+        assert kwargs.get("tool_choice") != "none"
+        # ...and the instruction must actually direct the tool call, not merely leave it allowed.
+        assert "resolve_milestone" in kwargs["instructions"]
+
+    def test_ignores_wrong_topic(self):
+        handler, session = _make_spec_handler()
+        handler._on_data_received(_make_data_packet(SPEC_TAP, topic="other"))
+        session.generate_reply.assert_not_called()
+
+    def test_ignores_wrong_type(self):
+        handler, session = _make_spec_handler()
+        handler._on_data_received(_make_data_packet({"type": "creation_card_tap", "specialization_id": "x"}))
+        session.generate_reply.assert_not_called()
+
+    def test_ignores_missing_specialization_id(self):
+        handler, session = _make_spec_handler()
+        handler._on_data_received(_make_data_packet({"type": "specialization_choice_tap"}))
+        session.generate_reply.assert_not_called()
+
+    def test_ignores_invalid_json(self):
+        handler, session = _make_spec_handler()
+        pkt = MagicMock()
+        pkt.data = b"not json"
+        pkt.topic = PLAYER_HINTS_TOPIC
+        handler._on_data_received(pkt)
+        session.generate_reply.assert_not_called()
+
+    def test_cooldown_prevents_rapid_taps(self):
+        handler, session = _make_spec_handler()
+        pkt = _make_data_packet(SPEC_TAP)
+        handler._on_data_received(pkt)
+        handler._on_data_received(pkt)
+        assert session.generate_reply.call_count == 1
+
+    def test_ignored_tap_does_not_advance_cooldown(self):
+        # An ignored payload (wrong type) must NOT start the cooldown, or it would
+        # block a following valid tap for 2s (assumption 68f5dbf3bbeb).
+        handler, session = _make_spec_handler()
+        handler._on_data_received(_make_data_packet({"type": "other", "specialization_id": "x"}))
+        handler._on_data_received(_make_data_packet(SPEC_TAP))
+        session.generate_reply.assert_called_once()
