@@ -191,6 +191,14 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if not abilities_is_loaded():
         await load_abilities()
 
+    # Load the archetype milestones once per agent process (M2.3). The DM voices
+    # milestone progression via resolve_milestone, which reads this map.
+    from milestones import is_loaded as milestones_is_loaded
+    from milestones import load_milestones
+
+    if not milestones_is_loaded():
+        await load_milestones()
+
     # Determine session type: new player (creation) vs returning
     player = None
     last_summary = None
