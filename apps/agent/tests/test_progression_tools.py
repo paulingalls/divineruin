@@ -200,3 +200,18 @@ async def test_no_milestone_crossed_surfaces_empty_grants():
         ctx, 100, "quest done", db_mod=mock_db, mutations=mutations, queries=queries, milestones_mod=_milestones_mod()
     )
     assert json.loads(raw)["milestone_grants"] == []
+
+
+@pytest.mark.asyncio
+async def test_l5_fork_surfaced_in_response_for_dm_cue():
+    # Crossing into L5 must cue the DM to present the specialization fork in award_xp's
+    # response (concern c515f47bf2c5) — symmetric to milestone_grants for auto-grant tiers.
+    _, _, response = await _award_levels(from_level=4, from_xp=750, amount=300)
+    assert response["specialization_fork"] is True
+
+
+@pytest.mark.asyncio
+async def test_non_l5_levelup_has_no_fork_cue():
+    # L9 -> L10 crosses no specialization fork — the cue is False.
+    _, _, response = await _award_levels(from_level=9, from_xp=2900, amount=550)
+    assert response["specialization_fork"] is False

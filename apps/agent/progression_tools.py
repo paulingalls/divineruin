@@ -128,6 +128,9 @@ async def _award_xp_impl(
         "leveled_up": result.leveled_up,
         "levels_gained": result.levels_gained,
         "milestone_grants": milestone_grants,
+        # Cue the DM to present the L5 specialization fork (concern c515f47bf2c5) — the L5
+        # tier needs a resolve_milestone call, so surface it like the auto-grant tiers above.
+        "specialization_fork": result.specialization_fork,
     }
     logger.info(
         "award_xp result: +%d XP → %d total, level %d (leveled_up=%s)",
