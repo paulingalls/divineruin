@@ -16,6 +16,7 @@ class TestCombatAgentConfig:
         from combat_end import end_combat
         from combat_turn import request_death_save, resolve_enemy_turn
         from environment_tools import play_sound, set_music_state
+        from milestone_tools import resolve_milestone
         from query_tools import query_info
 
         expected = {
@@ -29,6 +30,7 @@ class TestCombatAgentConfig:
             set_music_state,
             query_info,
             request_ability_activation,
+            resolve_milestone,
         }
         assert set(COMBAT_AGENT_TOOLS) == expected
 

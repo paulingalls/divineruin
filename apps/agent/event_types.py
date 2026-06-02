@@ -52,5 +52,8 @@ TRANSCRIPT_ENTRY = "transcript_entry"
 CREATION_CARDS = "creation_cards"
 CREATION_CARD_SELECTED = "creation_card_selected"
 
+# Archetype milestones (M2.3) — the L5 specialization fork the HUD glances (story-005)
+SPECIALIZATION_CHOICE = "specialization_choice"
+
 # Client → Agent hints (received via data channel, topic "player_hints")
 CREATION_CARD_TAP = "creation_card_tap"
