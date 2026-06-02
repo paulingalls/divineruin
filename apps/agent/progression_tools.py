@@ -57,6 +57,7 @@ async def _award_xp_impl(
         raise ToolError("XP amount must not exceed 10000.")
 
     pending_events: list[tuple[str, dict]] = []
+    milestone_grants: list[dict] = []
 
     async with db_mod.transaction() as conn:
         player = await queries.get_player(session.player_id, conn=conn, for_update=True)
@@ -100,6 +101,17 @@ async def _award_xp_impl(
                     await milestone_tools.apply_milestone_grant(
                         grant_milestone, session.player_id, conn=conn, flags_mod=mutations
                     )
+                    # Surface the grant so the DM can voice it (audio-first): the per-archetype
+                    # narration cue is no longer returned via resolve_milestone for these tiers
+                    # (concern 4bf3efecdc8a). Includes narrative-only grants (flag=None).
+                    grant = grant_milestone.grant
+                    milestone_grants.append(
+                        {
+                            "name": grant.name if grant else None,
+                            "effect": grant.effect if grant else None,
+                            "narration_cue": grant_milestone.narration_cue,
+                        }
+                    )
 
     for event_type, payload in pending_events:
         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
@@ -115,6 +127,7 @@ async def _award_xp_impl(
         "new_level": result.new_level,
         "leveled_up": result.leveled_up,
         "levels_gained": result.levels_gained,
+        "milestone_grants": milestone_grants,
     }
     logger.info(
         "award_xp result: +%d XP → %d total, level %d (leveled_up=%s)",
