@@ -12,6 +12,7 @@ import { XpToast } from "./xp-toast";
 import { LevelUpOverlay } from "./level-up-overlay";
 import { DivineFavorToast } from "./divine-favor-toast";
 import { CreationCardRow } from "./creation-card-row";
+import { SpecializationOverlay } from "./specialization-overlay";
 import { NpcPortraitOverlay } from "./npc-portrait-overlay";
 
 function OverlayContent({ overlay }: { overlay: OverlayEntry }) {
@@ -65,6 +66,7 @@ export function OverlayManager() {
   const overlays = useStore(hudStore, (s) => s.overlays);
   const combatState = useStore(hudStore, (s) => s.combatState);
   const creationCards = useStore(hudStore, (s) => s.creationCards);
+  const specializationChoice = useStore(hudStore, (s) => s.specializationChoice);
 
   return (
     <View style={styles.container} pointerEvents="box-none">
@@ -78,6 +80,9 @@ export function OverlayManager() {
 
       {/* Creation card row */}
       {creationCards.length > 0 && <CreationCardRow />}
+
+      {/* L5 specialization fork (interactive — not tap-to-dismiss) */}
+      {specializationChoice && <SpecializationOverlay />}
 
       {/* NPC portrait */}
       <NpcPortraitOverlay />
