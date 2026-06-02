@@ -16,6 +16,7 @@ import db_queries
 import event_types as E
 from background_process import BackgroundProcess
 from base_agent import BaseGameAgent
+from card_tap_handler import SpecializationTapHandler
 from combat_resolution import hp_threshold_status
 from game_events import publish_game_event
 from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
@@ -52,6 +53,7 @@ class GameplayAgent(BaseGameAgent):
         )
         self._initial_location = initial_location
         self._background: BackgroundProcess | None = None
+        self._spec_tap: SpecializationTapHandler | None = None
         self._session_start_time: float = time.time()
         self._close_scheduled: bool = False
 
@@ -76,8 +78,16 @@ class GameplayAgent(BaseGameAgent):
         self._background.start()
         self._fire_and_forget(self._publish_session_init(sd))
 
+        # Consume L5 specialization taps from the HUD: a tap drives the DM to call
+        # resolve_milestone with the chosen id (story-008, concern c6b7b18f2d8f).
+        assert sd.room is not None  # room is set before agent enters
+        self._spec_tap = SpecializationTapHandler(room=sd.room, session=self.session, userdata=sd)
+        self._spec_tap.start()
+
     async def on_exit(self) -> None:
         logger.info("%sAgent exiting session", self._agent_type.capitalize())
+        if self._spec_tap:
+            self._spec_tap.stop()
         sd: SessionData = self.session.userdata
 
         transcript_path = self._transcript.log_path if self._transcript else None
