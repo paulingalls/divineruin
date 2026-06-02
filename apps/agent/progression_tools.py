@@ -12,6 +12,8 @@ import db_mutations
 import db_mutations_divine
 import db_queries
 import event_types as E
+import milestone_tools
+import milestones
 import rules_engine
 from db_errors import db_tool
 from game_events import publish_game_event
@@ -43,6 +45,7 @@ async def _award_xp_impl(
     db_mod=db,
     mutations=db_mutations,
     queries=db_queries,
+    milestones_mod=milestones,
 ) -> str:
     logger.info("award_xp called: amount=%d, reason=%s", amount, reason)
     _cap_str(reason, 256, "reason")
@@ -87,6 +90,16 @@ async def _award_xp_impl(
             con_mod = con_mod_for_player(player)
             payload = build_level_up_payload_for_archetype(current_level, rewards, player["class"], con_mod=con_mod)
             pending_events.append((E.LEVEL_UP, payload))
+
+            # Auto-grant milestones (L10/15/20) resolve deterministically here — the single
+            # leveling chokepoint — not via an LLM tool call (concern 3c02318dfa99). Iterate
+            # every level crossed so a multi-level jump still applies an intervening grant.
+            for lvl in range(current_level + 1, result.new_level + 1):
+                grant_milestone = milestones_mod.get_milestone_by_level(player["class"], lvl)
+                if grant_milestone is not None and grant_milestone.kind == "auto_grant":
+                    await milestone_tools.apply_milestone_grant(
+                        grant_milestone, session.player_id, conn=conn, flags_mod=mutations
+                    )
 
     for event_type, payload in pending_events:
         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
