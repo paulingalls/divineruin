@@ -149,6 +149,12 @@ def test_parse_milestone_row_rejects_unknown_kind():
         parse_milestone_row(_GRANT_ROW["id"], bad)
 
 
+def test_parse_milestone_row_rejects_noninteger_level():
+    bad = {**_GRANT_ROW, "level": "10"}
+    with pytest.raises(ValueError, match=r"level"):
+        parse_milestone_row(_GRANT_ROW["id"], bad)
+
+
 def test_parse_milestone_row_rejects_malformed_grant_missing_key():
     bad = {**_GRANT_ROW, "grant": {"name": "X", "flag": None}}
     with pytest.raises(ValueError, match="warrior_power"):

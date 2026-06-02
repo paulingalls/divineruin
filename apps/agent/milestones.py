@@ -101,11 +101,15 @@ def parse_milestone_row(milestone_id: str, data: dict) -> Milestone:
         kind = data["kind"]
         if kind not in _KINDS:
             raise ValueError(f"milestone {milestone_id!r} kind {kind!r} not in {sorted(_KINDS)}")
+        level = data["level"]
+        # bool is a subclass of int — exclude it explicitly, mirroring abilities._parse_cost.
+        if not isinstance(level, int) or isinstance(level, bool):
+            raise ValueError(f"milestone {milestone_id!r} level is not an int")
         return Milestone(
             id=milestone_id,
             archetype_id=data["archetype_id"],
             tier=tier,
-            level=data["level"],
+            level=level,
             kind=kind,
             patron_deferred=data["patron_deferred"],
             specialization_options=_parse_options(
