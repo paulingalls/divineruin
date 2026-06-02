@@ -31,3 +31,10 @@ export type {
 } from "./archetype";
 
 export type { Ability, Cost, AbilityType } from "./ability";
+export type {
+  Milestone,
+  MilestoneTier,
+  MilestoneKind,
+  SpecializationOption,
+  Grant,
+} from "./milestone";
