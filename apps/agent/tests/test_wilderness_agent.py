@@ -43,11 +43,11 @@ class TestWildernessAgentTools:
         assert end_combat not in WILDERNESS_TOOLS
 
     def test_has_milestone_resolution(self):
-        # Leveling happens here via award_xp, so the L5 specialization fork must be
-        # resolvable by the DM in this agent (concern 3c02318dfa99).
-        from milestone_tools import resolve_milestone
+        # Leveling happens here via award_xp, so the select verb must be reachable by the
+        # DM to resolve the L5 specialization fork (concern 3c02318dfa99).
+        from choice_tools import select
 
-        assert resolve_milestone in WILDERNESS_TOOLS
+        assert select in WILDERNESS_TOOLS
 
 
 class TestWildernessAgentPrompt:

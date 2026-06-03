@@ -43,11 +43,11 @@ class TestCombatAgentConfig:
 
     def test_combat_excludes_milestone_resolution(self):
         # Combat never awards XP (end_combat hands back; the exploration agent calls
-        # award_xp), so milestones never resolve here. resolve_milestone lives in the
+        # award_xp), so choices never resolve here. The select verb lives in the
         # exploration agents instead (concern 3c02318dfa99).
-        from milestone_tools import resolve_milestone
+        from choice_tools import select
 
-        assert resolve_milestone not in COMBAT_AGENT_TOOLS
+        assert select not in COMBAT_AGENT_TOOLS
 
 
 class TestCombatSystemPrompt:

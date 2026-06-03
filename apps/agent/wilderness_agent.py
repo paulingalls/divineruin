@@ -3,11 +3,11 @@
 from typing import Any
 
 from check_tools import discover_hidden_element, request_skill_check, roll_dice
+from choice_tools import select
 from combat_init import start_combat
 from dispatch_tools import enter_dispatch
 from environment_tools import play_sound, set_music_state
 from gameplay_agent import GameplayAgent
-from milestone_tools import resolve_milestone
 from movement_tools import move_player
 from progression_tools import award_xp
 from query_tools import query_info
@@ -31,8 +31,8 @@ WILDERNESS_TOOLS = [
     play_sound,
     set_music_state,
     end_session,
-    # Leveling happens here via award_xp — the L5 fork must resolve in this agent (3c02318dfa99).
-    resolve_milestone,
+    # Leveling happens here via award_xp — the L5 fork resolves via the select verb (3c02318dfa99).
+    select,
 ]
 
 
