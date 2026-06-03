@@ -16,7 +16,7 @@ from sample_fixtures import (
 )
 
 from check_tools import _request_saving_throw_impl, roll_dice
-from inventory_tools import _add_to_inventory_impl
+from inventory_tools import _transact_impl
 from progression_tools import _award_divine_favor_impl, _award_xp_impl
 from quest_tools import _clamp_disposition_shift
 from session_tools import _update_npc_disposition_impl
@@ -115,10 +115,10 @@ class TestStringCaps:
             )
 
     @pytest.mark.asyncio
-    async def test_add_to_inventory_source_too_long(self):
+    async def test_transact_source_too_long(self):
         ctx = _make_context()
         with pytest.raises(ToolError):
-            await _add_to_inventory_impl(
+            await _transact_impl(
                 ctx,
                 "health_potion",
                 1,
@@ -166,10 +166,10 @@ class TestIntegerBounds:
         assert result["amount"] == 10000
 
     @pytest.mark.asyncio
-    async def test_add_to_inventory_quantity_zero(self):
+    async def test_transact_delta_zero(self):
         ctx = _make_context()
-        with pytest.raises(ToolError):
-            await _add_to_inventory_impl(
+        with pytest.raises(ToolError, match="non-zero"):
+            await _transact_impl(
                 ctx,
                 "health_potion",
                 0,
@@ -181,19 +181,21 @@ class TestIntegerBounds:
             )
 
     @pytest.mark.asyncio
-    async def test_add_to_inventory_quantity_100(self):
+    async def test_transact_magnitude_over_99(self):
         ctx = _make_context()
-        with pytest.raises(ToolError):
-            await _add_to_inventory_impl(
-                ctx,
-                "health_potion",
-                100,
-                "test",
-                db_mod=MagicMock(),
-                mutations=MagicMock(),
-                queries=MagicMock(),
-                content=MagicMock(),
-            )
+        # Both signs exceed the magnitude bound.
+        for delta in (100, -100):
+            with pytest.raises(ToolError, match="magnitude"):
+                await _transact_impl(
+                    ctx,
+                    "health_potion",
+                    delta,
+                    "test",
+                    db_mod=MagicMock(),
+                    mutations=MagicMock(),
+                    queries=MagicMock(),
+                    content=MagicMock(),
+                )
 
     @pytest.mark.asyncio
     async def test_saving_throw_dc_zero(self):

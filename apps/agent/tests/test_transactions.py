@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from inventory_tools import _remove_from_inventory_impl
+from inventory_tools import _transact_impl
 from movement_tools import _move_player_impl
 from progression_tools import _award_xp_impl
 from quest_tools import _update_quest_impl
@@ -142,7 +142,7 @@ class TestMovePlayerAtomicity:
         room.local_participant.publish_data.assert_not_called()
 
 
-# --- remove_from_inventory: equipped check + delete atomic ---
+# --- transact (loss): equipped check + decrement atomic ---
 
 
 class TestRemoveInventoryAtomicity:
@@ -153,9 +153,10 @@ class TestRemoveInventoryAtomicity:
         room = _make_mock_room()
         ctx = _make_context(room=room)
         with pytest.raises(RuntimeError):
-            await _remove_from_inventory_impl(
+            await _transact_impl(
                 ctx,
                 item_id="hp",
+                delta=-1,
                 db_mod=_make_failing_db(),
                 content=mock_content,
             )

@@ -9,7 +9,7 @@ from combat_init import start_combat
 from dispatch_tools import enter_dispatch
 from environment_tools import play_sound, set_music_state
 from gameplay_agent import GameplayAgent
-from inventory_tools import add_to_inventory, remove_from_inventory
+from inventory_tools import transact
 from movement_tools import move_player
 from progression_tools import award_divine_favor, award_xp
 from query_tools import query_info
@@ -30,8 +30,7 @@ CITY_TOOLS = [
     set_music_state,
     # Mutation
     move_player,
-    add_to_inventory,
-    remove_from_inventory,
+    transact,
     update_quest,
     award_xp,
     award_divine_favor,
