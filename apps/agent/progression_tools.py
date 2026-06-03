@@ -135,8 +135,8 @@ async def _award_xp_core(
     mutations=db_mutations,
     milestones_mod=milestones,
 ) -> AwardXpResult:
-    """The single XP/milestone Resolve all award paths route through (award_xp,
-    update_quest, combat-exit). Runs inside the caller's transaction and operates
+    """The single XP/milestone Resolve all award paths route through (award_xp and
+    update_quest). Runs inside the caller's transaction and operates
     on an already-FOR-UPDATE-locked ``player`` row, appending XP_AWARDED / LEVEL_UP /
     SPECIALIZATION_CHOICE to the caller-owned ``pending_events`` for publish-after-commit.
 
