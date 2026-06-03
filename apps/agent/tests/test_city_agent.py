@@ -22,8 +22,8 @@ class TestCityAgentTools:
         assert award_xp in CITY_TOOLS
 
     def test_has_milestone_resolution(self):
-        # Leveling (and thus the L5 specialization fork) happens here via award_xp, so
-        # resolve_milestone must be reachable by the DM in this agent (concern 3c02318dfa99).
-        from milestone_tools import resolve_milestone
+        # Leveling (and thus the L5 specialization fork) happens here via award_xp, so the
+        # select verb must be reachable by the DM to resolve the fork (concern 3c02318dfa99).
+        from choice_tools import select
 
-        assert resolve_milestone in CITY_TOOLS
+        assert select in CITY_TOOLS

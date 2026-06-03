@@ -10,10 +10,10 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from choice_tools import _select_impl
 from livekit.agents.llm import ToolError
 from sample_fixtures import _WARRIOR_MILESTONES, make_context, make_db_mod
 
+from choice_tools import _select_impl
 from milestones import Milestone
 
 # Patron-driven fork (Cleric/Paladin) — resolve_milestone/select reject these pending Phase 8.

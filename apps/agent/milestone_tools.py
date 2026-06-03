@@ -1,25 +1,22 @@
-"""Archetype milestone resolution tool for the DM agent (M2.3).
+"""Archetype milestone helpers for the DM agent (M2.3 / M4).
 
-resolve_milestone is called when a character reaches a milestone level. It derives
-the milestone from the player's archetype (player["class"]) and current level:
-
-- L5 (Identity, specialization_fork): with no choice, presents the two paths and
-  emits SPECIALIZATION_CHOICE for the HUD; with a valid choice id, persists the
-  choice immutably (rejecting a second resolution). Patron-deferred forks
-  (Cleric/Paladin) reject pending the Phase 8 Patron system.
-- L10/L15/L20 (auto_grant): grants without input, setting the grant's combat flag
-  (e.g. extra_attack) in players.data via set_player_flag when present; null-flag
-  grants are narrative-only (Phase-4-deferred). Returns the narration cue.
-
-Grants persist as players.data markers, never character_abilities rows (decision
-4c0677dae1be). All reads+writes run in one db.transaction() with a FOR UPDATE lock
-(concern 598dceba2f3e); the SPECIALIZATION_CHOICE event is published after commit.
+- apply_milestone_grant: writes an auto_grant milestone's combat flag into
+  players.data.flags. The shared Resolve helper that award_xp / _award_xp_core call
+  on the L10/15/20 leveling chokepoint (grants persist as players.data markers,
+  never character_abilities rows — decision 4c0677dae1be).
+- _resolve_milestone_impl: the OLD resolve_milestone tool's implementation. The
+  @function_tool wrapper was removed in M4 story-004 (the L5 fork now resolves via
+  the generic `select` verb in choice_tools.py; L10/15/20 auto-grants resolve in
+  award_xp), so this is no longer LLM-reachable. It is retained ONLY because the M4
+  acceptance (tests/acceptance/test_milestone_progression.py) + test_milestone_tools
+  still drive it directly; story-006's capstone rewrites those to the M4 model and
+  deletes this function.
 """
 
 import json
 import logging
 
-from livekit.agents.llm import ToolError, function_tool
+from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import db
@@ -29,7 +26,6 @@ import event_types as E
 import game_events
 import milestone_persistence
 import milestones
-from db_errors import db_tool
 from session_data import SessionData
 from tool_support import _validate_id
 
@@ -52,20 +48,10 @@ async def apply_milestone_grant(
     return False
 
 
-@function_tool()
-@db_tool
-async def resolve_milestone(
-    context: RunContext[SessionData],
-    choice: str | None = None,
-) -> str:
-    """Lock in the character's level-5 specialization choice.
-    Call at level 5 when the character chooses a specialization: first with no choice
-    to present the two paths, then again with the chosen option id to lock it in (the
-    choice is permanent). Milestone grants at levels 10/15/20 are applied automatically
-    on level-up — do NOT call for those. Returns the narration cue to voice."""
-    return await _resolve_milestone_impl(context, choice)
-
-
+# NOTE: the resolve_milestone @function_tool wrapper was removed in M4 story-004 — the
+# L5 fork resolves via the generic `select` verb (choice_tools.py) and L10/15/20 grants
+# via award_xp, so this path is no longer LLM-reachable. _resolve_milestone_impl is kept
+# only for the M4 acceptance + test_milestone_tools until story-006's capstone deletes it.
 async def _resolve_milestone_impl(
     context: RunContext[SessionData],
     choice: str | None = None,
@@ -82,7 +68,7 @@ async def _resolve_milestone_impl(
         _validate_id(choice, "choice")
     session: SessionData = context.userdata
     player_id = session.player_id
-    logger.info("resolve_milestone called: choice=%s player=%s", choice, player_id)
+    logger.info("_resolve_milestone_impl (transitional) called: choice=%s player=%s", choice, player_id)
 
     pending_event: dict | None = None
     async with db_mod.transaction() as conn:
