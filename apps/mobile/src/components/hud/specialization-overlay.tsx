@@ -21,7 +21,10 @@ export function SpecializationOverlay() {
 
   const handleChoose = useCallback(
     (optionId: string) => {
-      sendSpecializationChoice(room, optionId);
+      // Echo the milestoneId (choice_id) the agent's select verb needs — read at
+      // call time so the closure can't capture a stale/null choice.
+      const milestoneId = hudStore.getState().specializationChoice?.milestoneId ?? "";
+      sendSpecializationChoice(room, milestoneId, optionId);
       hudStore.getState().clearSpecializationChoice();
     },
     [room],

@@ -79,6 +79,13 @@ test("specialization_choice drops options missing a usable id", () => {
   expect(choice!.options[0].id).toBe("warrior_berserker");
 });
 
+test("specialization_choice with valid options but missing milestone_id is a no-op", () => {
+  // The milestoneId is the choice_id the tap echoes to the agent's select verb;
+  // without it every tap is dropped agent-side, so the overlay must not render.
+  handleGameEvent({ type: "specialization_choice", options: OPTIONS });
+  expect(hudStore.getState().specializationChoice).toBeNull();
+});
+
 test("specialization_choice with only malformed options is a no-op", () => {
   handleGameEvent({
     type: "specialization_choice",
@@ -122,19 +129,26 @@ function mockRoom(calls: PublishCall[]) {
 
 type RoomArg = Parameters<typeof sendSpecializationChoice>[0];
 
-test("sendSpecializationChoice publishes a player_hints tap hint with the chosen id", () => {
+test("sendSpecializationChoice publishes a player_hints tap hint with both ids", () => {
   const calls: PublishCall[] = [];
-  sendSpecializationChoice(mockRoom(calls) as unknown as RoomArg, "warrior_battle_master");
+  sendSpecializationChoice(
+    mockRoom(calls) as unknown as RoomArg,
+    "warrior_identity",
+    "warrior_battle_master",
+  );
   expect(calls).toHaveLength(1);
   expect(calls[0].opts.reliable).toBe(true);
   expect(calls[0].opts.topic).toBe("player_hints");
   const decoded = JSON.parse(new TextDecoder().decode(calls[0].data)) as Record<string, unknown>;
   expect(decoded).toEqual({
     type: "specialization_choice_tap",
+    milestone_id: "warrior_identity",
     specialization_id: "warrior_battle_master",
   });
 });
 
 test("sendSpecializationChoice is a no-op without a room", () => {
-  expect(() => sendSpecializationChoice(null, "warrior_battle_master")).not.toThrow();
+  expect(() =>
+    sendSpecializationChoice(null, "warrior_identity", "warrior_battle_master"),
+  ).not.toThrow();
 });

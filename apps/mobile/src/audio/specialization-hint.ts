@@ -6,7 +6,9 @@
  * unit-testable with a mock room. The specialization overlay calls this on tap
  * with the room from useMaybeRoomContext. A no-op without a room (e2e/no-room
  * safety). The agent's SpecializationTapHandler consumes SPECIALIZATION_CHOICE_TAP
- * (story-008) and drives the DM to resolve via story-004's resolve_milestone.
+ * (story-005) and drives the DM to resolve via the select verb — so the tap echoes
+ * back the milestoneId it received in SPECIALIZATION_CHOICE (select needs the
+ * choice_id, which the agent can't derive server-side).
  */
 
 import type { Room } from "livekit-client";
@@ -17,12 +19,14 @@ const PLAYER_HINTS_TOPIC = "player_hints";
 
 export function sendSpecializationChoice(
   room: Room | null | undefined,
+  milestoneId: string,
   specializationId: string,
 ): void {
   if (!room) return;
   const payload = new TextEncoder().encode(
     JSON.stringify({
       type: SPECIALIZATION_CHOICE_TAP,
+      milestone_id: milestoneId,
       specialization_id: specializationId,
     }),
   );

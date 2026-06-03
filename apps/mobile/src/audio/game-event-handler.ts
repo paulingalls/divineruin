@@ -588,6 +588,10 @@ export function handleGameEvent(event: DataChannelEvent): void {
       // to the DM voicing the fork). Each option must carry a non-empty string id
       // — it is the React key and the tap's published specialization_id. Options
       // without one are dropped; an event with no usable options is a no-op.
+      // The milestoneId is the choice_id the tap echoes back to the agent's select
+      // verb; without it every tap would be silently dropped agent-side, so a
+      // choice missing it is a no-op (fail at the boundary, not on the tap).
+      const milestoneId = typeof event.milestone_id === "string" ? event.milestone_id : "";
       const rawOptions = Array.isArray(event.options)
         ? (event.options as Record<string, unknown>[])
         : [];
@@ -598,11 +602,8 @@ export function handleGameEvent(event: DataChannelEvent): void {
           name: typeof o.name === "string" ? o.name : "",
           description: typeof o.description === "string" ? o.description : "",
         }));
-      if (options.length === 0) break;
-      hudStore.getState().setSpecializationChoice({
-        milestoneId: typeof event.milestone_id === "string" ? event.milestone_id : "",
-        options,
-      });
+      if (!milestoneId || options.length === 0) break;
+      hudStore.getState().setSpecializationChoice({ milestoneId, options });
       break;
     }
 
