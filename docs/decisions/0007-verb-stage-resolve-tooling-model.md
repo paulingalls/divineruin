@@ -32,8 +32,9 @@ ADR 0004 capped the tool problem by **rationing** Anthropic's 20-strict-tool lim
 split overloaded agents along activity boundaries and hand off. It worked, but left City at
 **exactly 20** — a ceiling, not headroom (debt `e665104c753a`) — and 0004 itself flagged
 the next moves as deferred: consolidate the `query_*` family (done → `query_info`), then the
-check family (`request_skill_check`/`request_saving_throw`/`request_attack`/
-`discover_hidden_element`), unifying on a numeric DC.
+check family — `request_skill_check`/`request_saving_throw`/`roll_dice`/`discover_hidden_element`
+fold into `check` (with `request_attack` moving to Combat's `attack`, §10), unifying on a
+numeric DC.
 
 Meanwhile the same root cause produced correctness debt: `quest_tools.update_quest`
 hand-rolls a copy of `award_xp`'s level-up logic and drops the L10/15/20 auto-grants + L5

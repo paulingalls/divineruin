@@ -72,27 +72,27 @@ Implementation blueprint. The second largest doc.
 
 ---
 
-## agent_verbs_and_stages.md (476 lines)
+## agent_verbs_and_stages.md (494 lines)
 
 Tooling and context architecture. Refines technical_architecture's three-layer prompt model.
 Design source for the Phase-2 enabler refactor milestones. Recharacterizes tools as a small
-fixed verb vocabulary, locations as dynamically-assembled stages.
+core verb vocabulary, locations as dynamically-assembled stages.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Why this exists | 9-26 | The limits: tool ceiling, duplicated consequence logic, content-driven tool growth |
-| Core model: Sense / Act / Resolve | 28-46 | The three operation kinds; Resolve is never a tool |
-| Sense channels: push + pull | 47-67 | The Stage (push) vs `query` (pull); the cost/latency line; three ceiling levers |
-| Acts are verbs, never nouns | 68-106 | Decision test, verb test, description discipline, standard Act shape + ActResult |
-| Resolve is never a tool | 107-125 | Fires inside Acts; the L5-vs-auto resolve_milestone proof; report back richly |
-| Agents vs Stages | 126-169 | Two axes, handoff/cache cost; collapse region agents into one exploration agent |
-| The Stage in detail | 170-305 | Cold/warm/hot tiers, placement discriminator, numbers→bands, check(skill,target), stage schema |
-| The loop and three actors | 306-329 | Stage→Decide→Act→Resolve→Stage; user/LLM/world; coherence guardrail; event bus |
-| Worked example: Guild Hall | 330-359 | Real content rendered through the schema |
-| Verb vocabulary | 360-405 | 12 core verbs + mode-local sets; what each replaces; what folded |
-| Migration sequence | 406-421 | Five green-throughout steps; M2.4 adds zero tools |
-| Decisions and deferrals | 422-463 | Resolved seams + deferrals with insertion points |
-| Relationship to Golden Rules | 464-476 | How the model maps to the seven rules |
+| Why this exists | 11-29 | The limits: tool ceiling, duplicated consequence logic, content-driven tool growth |
+| Core model: Sense / Act / Resolve | 30-48 | The three operation kinds; Resolve is never a tool |
+| Sense channels: push + pull | 49-69 | The Stage (push) vs `query` (pull); the cost/latency line; three ceiling levers |
+| Acts are verbs, never nouns | 70-108 | Decision test, verb test, description discipline, standard Act shape + ActResult |
+| Resolve is never a tool | 109-131 | Fires inside Acts; resolve_milestone removed (grant=Resolve, choice=select); report back richly |
+| Agents vs Stages | 132-175 | Two axes, handoff/cache cost; collapse region agents into one exploration agent |
+| The Stage in detail | 176-311 | Cold/warm/hot tiers, placement discriminator, numbers→bands, check(skill,target), stage schema |
+| The loop and three actors | 312-335 | Stage→Decide→Act→Resolve→Stage; user/LLM/world; coherence guardrail; event bus |
+| Worked example: Guild Hall | 336-365 | Real content rendered through the schema |
+| Verb vocabulary | 366-421 | 12 core verbs + mode-local sets; what each replaces; what folded |
+| Migration sequence | 422-439 | Five green-throughout steps; M2.4 adds zero tools |
+| Decisions and deferrals | 440-481 | Resolved seams + deferrals with insertion points |
+| Relationship to Golden Rules | 482-494 | How the model maps to the seven rules |
 
 ---
 
