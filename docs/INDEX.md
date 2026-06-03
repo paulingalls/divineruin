@@ -72,6 +72,30 @@ Implementation blueprint. The second largest doc.
 
 ---
 
+## agent_verbs_and_stages.md (494 lines)
+
+Tooling and context architecture. Refines technical_architecture's three-layer prompt model.
+Design source for the Phase-2 enabler refactor milestones. Recharacterizes tools as a small
+core verb vocabulary, locations as dynamically-assembled stages.
+
+| Section | Lines | What's There |
+|---|---|---|
+| Why this exists | 11-29 | The limits: tool ceiling, duplicated consequence logic, content-driven tool growth |
+| Core model: Sense / Act / Resolve | 30-48 | The three operation kinds; Resolve is never a tool |
+| Sense channels: push + pull | 49-69 | The Stage (push) vs `query` (pull); the cost/latency line; three ceiling levers |
+| Acts are verbs, never nouns | 70-108 | Decision test, verb test, description discipline, standard Act shape + ActResult |
+| Resolve is never a tool | 109-131 | Fires inside Acts; resolve_milestone removed (grant=Resolve, choice=select); report back richly |
+| Agents vs Stages | 132-175 | Two axes, handoff/cache cost; collapse region agents into one exploration agent |
+| The Stage in detail | 176-311 | Cold/warm/hot tiers, placement discriminator, numbers→bands, check(skill,target), stage schema |
+| The loop and three actors | 312-335 | Stage→Decide→Act→Resolve→Stage; user/LLM/world; coherence guardrail; event bus |
+| Worked example: Guild Hall | 336-365 | Real content rendered through the schema |
+| Verb vocabulary | 366-421 | 12 core verbs + mode-local sets; what each replaces; what folded |
+| Migration sequence | 422-439 | Five green-throughout steps; M2.4 adds zero tools |
+| Decisions and deferrals | 440-481 | Resolved seams + deferrals with insertion points |
+| Relationship to Golden Rules | 482-494 | How the model maps to the seven rules |
+
+---
+
 ## audio_design.md (~800 lines)
 
 Soundscapes, SFX, music, voice design.
