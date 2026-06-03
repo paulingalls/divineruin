@@ -20,7 +20,7 @@ from sample_fixtures import (
 )
 
 import event_types as E
-from inventory_tools import _add_to_inventory_impl, _remove_from_inventory_impl
+from inventory_tools import _transact_impl
 from session_tools import _update_npc_disposition_impl
 
 
@@ -118,7 +118,9 @@ class TestUpdateNpcDisposition:
         assert result["new"] == "trusted"
 
 
-class TestAddToInventory:
+class TestTransactGain:
+    """transact with a positive delta — the old add_to_inventory behaviour."""
+
     @pytest.mark.asyncio
     async def test_adds_item(self):
         mock_conn = MagicMock()
@@ -132,7 +134,7 @@ class TestAddToInventory:
         mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
         ctx = _make_context()
         result = json.loads(
-            await _add_to_inventory_impl(
+            await _transact_impl(
                 ctx,
                 "health_potion",
                 2,
@@ -146,6 +148,7 @@ class TestAddToInventory:
         assert result["action"] == "added"
         assert result["item_name"] == "Health Potion"
         assert result["quantity"] == 2
+        assert result["source"] == "looted"
         mock_mutations.add_inventory_item.assert_called_once_with("player_1", "health_potion", 2, conn=mock_conn)
 
     @pytest.mark.asyncio
@@ -157,7 +160,7 @@ class TestAddToInventory:
         mock_content.get_item = AsyncMock(return_value=None)
         ctx = _make_context()
         with pytest.raises(ToolError):
-            await _add_to_inventory_impl(
+            await _transact_impl(
                 ctx,
                 "nonexistent",
                 1,
@@ -167,6 +170,12 @@ class TestAddToInventory:
                 queries=MagicMock(),
                 content=mock_content,
             )
+
+    @pytest.mark.asyncio
+    async def test_zero_delta_rejected(self):
+        ctx = _make_context()
+        with pytest.raises(ToolError, match="non-zero"):
+            await _transact_impl(ctx, "health_potion", 0, content=MagicMock())
 
     @pytest.mark.asyncio
     async def test_publishes_event(self):
@@ -184,7 +193,7 @@ class TestAddToInventory:
         mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await _add_to_inventory_impl(
+        await _transact_impl(
             ctx,
             "health_potion",
             1,
@@ -203,91 +212,111 @@ class TestAddToInventory:
         assert second_call["type"] == E.ITEM_ACQUIRED
 
 
-class TestRemoveFromInventory:
-    @pytest.mark.asyncio
-    async def test_removes_item(self):
+class TestTransactLose:
+    """transact with a negative delta — the old remove_from_inventory guards plus
+    quantity-aware decrement via db_mutations_inventory.transact_inventory."""
+
+    def _loss_mocks(self, *, slot, remaining):
         mock_conn = MagicMock()
         mock_db = MagicMock()
         mock_db.transaction = lambda: _mock_txn(mock_conn)
         mock_content = MagicMock()
         mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
         mock_queries = MagicMock()
-        mock_queries.get_inventory_item = AsyncMock(return_value={"quantity": 1, "equipped": False})
-        mock_mutations = MagicMock()
-        mock_mutations.remove_inventory_item = AsyncMock(return_value=True)
+        mock_queries.get_inventory_item = AsyncMock(return_value=slot)
+        mock_inventory_mutations = MagicMock()
+        mock_inventory_mutations.transact_inventory = AsyncMock(return_value=remaining)
+        return mock_conn, mock_db, mock_content, mock_queries, mock_inventory_mutations
+
+    @pytest.mark.asyncio
+    async def test_removes_item(self):
+        mock_conn, mock_db, mock_content, mock_queries, mock_inv = self._loss_mocks(
+            slot={"quantity": 1, "equipped": False}, remaining=0
+        )
         ctx = _make_context()
         result = json.loads(
-            await _remove_from_inventory_impl(
+            await _transact_impl(
                 ctx,
                 "health_potion",
+                -1,
                 db_mod=mock_db,
-                mutations=mock_mutations,
+                inventory_mutations=mock_inv,
                 queries=mock_queries,
                 content=mock_content,
             )
         )
         assert result["action"] == "removed"
         assert result["item_name"] == "Health Potion"
-        mock_mutations.remove_inventory_item.assert_called_once()
+        assert result["quantity"] == 0
+        mock_inv.transact_inventory.assert_called_once_with("player_1", "health_potion", -1, conn=mock_conn)
+
+    @pytest.mark.asyncio
+    async def test_partial_decrement_keeps_stock(self):
+        mock_conn, mock_db, mock_content, mock_queries, mock_inv = self._loss_mocks(
+            slot={"quantity": 5, "equipped": False}, remaining=3
+        )
+        ctx = _make_context()
+        result = json.loads(
+            await _transact_impl(
+                ctx,
+                "health_potion",
+                -2,
+                db_mod=mock_db,
+                inventory_mutations=mock_inv,
+                queries=mock_queries,
+                content=mock_content,
+            )
+        )
+        assert result["quantity"] == 3
+        mock_inv.transact_inventory.assert_called_once_with("player_1", "health_potion", -2, conn=mock_conn)
 
     @pytest.mark.asyncio
     async def test_missing_item(self):
-        mock_conn = MagicMock()
-        mock_db = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
-        mock_content = MagicMock()
-        mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
-        mock_queries = MagicMock()
-        mock_queries.get_inventory_item = AsyncMock(return_value=None)
+        _mock_conn, mock_db, mock_content, mock_queries, mock_inv = self._loss_mocks(slot=None, remaining=0)
         ctx = _make_context()
         with pytest.raises(ToolError):
-            await _remove_from_inventory_impl(
+            await _transact_impl(
                 ctx,
                 "nothing",
+                -1,
                 db_mod=mock_db,
-                mutations=MagicMock(),
+                inventory_mutations=mock_inv,
                 queries=mock_queries,
                 content=mock_content,
             )
+        mock_inv.transact_inventory.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_equipped_item_blocked(self):
-        mock_conn = MagicMock()
-        mock_db = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
-        mock_content = MagicMock()
-        mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
-        mock_queries = MagicMock()
-        mock_queries.get_inventory_item = AsyncMock(return_value={"quantity": 1, "equipped": True})
+        _mock_conn, mock_db, mock_content, mock_queries, mock_inv = self._loss_mocks(
+            slot={"quantity": 1, "equipped": True}, remaining=0
+        )
         ctx = _make_context()
         with pytest.raises(ToolError, match="equipped"):
-            await _remove_from_inventory_impl(
+            await _transact_impl(
                 ctx,
                 "longsword",
+                -1,
                 db_mod=mock_db,
-                mutations=MagicMock(),
+                inventory_mutations=mock_inv,
                 queries=mock_queries,
                 content=mock_content,
             )
+        mock_inv.transact_inventory.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_publishes_event(self):
-        mock_conn = MagicMock()
-        mock_db = MagicMock()
-        mock_db.transaction = lambda: _mock_txn(mock_conn)
-        mock_content = MagicMock()
-        mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
-        mock_queries = MagicMock()
-        mock_queries.get_inventory_item = AsyncMock(return_value={"quantity": 1, "equipped": False})
-        mock_mutations = MagicMock()
-        mock_mutations.remove_inventory_item = AsyncMock(return_value=True)
+        _mock_conn, mock_db, mock_content, mock_queries, mock_inv = self._loss_mocks(
+            slot={"quantity": 1, "equipped": False}, remaining=0
+        )
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await _remove_from_inventory_impl(
+        await _transact_impl(
             ctx,
             "health_potion",
+            -1,
             db_mod=mock_db,
-            mutations=mock_mutations,
+            inventory_mutations=mock_inv,
             queries=mock_queries,
             content=mock_content,
         )

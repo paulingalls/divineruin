@@ -34,12 +34,11 @@ def test_agent_within_strict_tool_limit(name, tools):
     assert len(tools) <= MAX_STRICT_TOOLS, f"{name} has {len(tools)} strict tools (ceiling {MAX_STRICT_TOOLS})"
 
 
-def test_city_at_strict_tool_ceiling():
-    # story-010 collapsed the 4 query_* tools into query_info (City 20->17); story-008
-    # spent one slot on enter_dispatch (18), story-009 one on enter_blacksmith (19), and
-    # story-007 the last on resolve_milestone (concern 3c02318dfa99) — City now sits AT
-    # the strict-tool ceiling, with zero headroom.
-    # DEBT: M2.4 must reclaim a City slot before adding spell tools (a 21st tool is a hard
-    # Anthropic 400 per ADR 0004). See the recorded debt event.
-    assert len(CITY_TOOLS) == 20
-    assert len(CITY_TOOLS) == MAX_STRICT_TOOLS
+def test_city_strict_tool_count():
+    # City reached the ceiling (20) after story-007/008/009/010. M5 verb consolidation
+    # is now reclaiming slots: story-001 folded add_to_inventory + remove_from_inventory
+    # into the single transact verb, dropping City to 19 — one slot of headroom.
+    # Stories 003 (check absorbs discover_hidden_element) and 004 (enter_mode folds the
+    # three handoffs) reclaim more, easing the M2.4 spell-tool pressure (ADR 0004).
+    assert len(CITY_TOOLS) == 19
+    assert len(CITY_TOOLS) == MAX_STRICT_TOOLS - 1

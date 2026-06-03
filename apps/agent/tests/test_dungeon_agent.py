@@ -6,7 +6,7 @@ from combat_end import end_combat
 from combat_init import start_combat
 from combat_turn import resolve_enemy_turn
 from dungeon_agent import DUNGEON_TOOLS, DungeonAgent
-from inventory_tools import add_to_inventory
+from inventory_tools import transact
 from movement_tools import move_player
 from query_tools import query_info
 from quest_tools import update_quest
@@ -37,7 +37,7 @@ class TestDungeonAgentTools:
 
     def test_has_inventory_tools(self):
         assert query_info in DUNGEON_TOOLS
-        assert add_to_inventory in DUNGEON_TOOLS
+        assert transact in DUNGEON_TOOLS
 
     def test_has_utility_tools(self):
         assert roll_dice in DUNGEON_TOOLS

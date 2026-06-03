@@ -8,7 +8,7 @@ from combat_init import start_combat
 from dispatch_tools import enter_dispatch
 from environment_tools import play_sound, set_music_state
 from gameplay_agent import GameplayAgent
-from inventory_tools import add_to_inventory
+from inventory_tools import transact
 from movement_tools import move_player
 from progression_tools import award_xp
 from query_tools import query_info
@@ -29,7 +29,7 @@ DUNGEON_TOOLS = [
     enter_dispatch,
     award_xp,
     roll_dice,
-    add_to_inventory,
+    transact,
     record_story_moment,
     play_sound,
     set_music_state,

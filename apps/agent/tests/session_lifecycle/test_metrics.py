@@ -124,8 +124,8 @@ class TestMetricsAccumulation:
         assert ctx.userdata.session_xp_earned == 80
 
     @pytest.mark.asyncio
-    async def test_add_to_inventory_tracks_metric(self):
-        from inventory_tools import _add_to_inventory_impl
+    async def test_transact_gain_tracks_metric(self):
+        from inventory_tools import _transact_impl
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
@@ -138,10 +138,10 @@ class TestMetricsAccumulation:
         mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
 
         ctx = _make_context()
-        await _add_to_inventory_impl(
+        await _transact_impl(
             ctx,
             item_id="health_potion",
-            quantity=2,
+            delta=2,
             source="looted",
             db_mod=mock_db,
             mutations=mock_mutations,
@@ -214,7 +214,7 @@ class TestSessionLifecycleIntegration:
     @pytest.mark.asyncio
     async def test_metrics_accumulate_across_tools(self):
         """Session metrics accumulate across multiple tool calls."""
-        from inventory_tools import _add_to_inventory_impl
+        from inventory_tools import _transact_impl
         from progression_tools import _award_xp_impl
 
         mock_db = MagicMock()
@@ -234,10 +234,10 @@ class TestSessionLifecycleIntegration:
         await _award_xp_impl(
             ctx, amount=50, reason="combat", db_mod=mock_db, mutations=mock_mutations, queries=mock_queries
         )
-        await _add_to_inventory_impl(
+        await _transact_impl(
             ctx,
             item_id="health_potion",
-            quantity=1,
+            delta=1,
             source="loot",
             db_mod=mock_db,
             mutations=mock_mutations,
