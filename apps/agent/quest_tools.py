@@ -13,13 +13,13 @@ import db_content_queries
 import db_mutations
 import db_queries
 import event_types as E
-import rules_engine
+import milestones
+import progression_tools
 from db_errors import db_tool
 from disposition import resolve_disposition
 from game_events import publish_game_event
-from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from session_data import SessionData
-from tool_support import EFFECT_NPC_MAP, _validate_id, con_mod_for_player
+from tool_support import EFFECT_NPC_MAP, _validate_id
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -119,6 +119,7 @@ async def _update_quest_impl(
     mutations=db_mutations,
     queries=db_queries,
     content=db_content_queries,
+    milestones_mod=milestones,
 ) -> str | tuple:
     logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
     _validate_id(quest_id, "quest_id")
@@ -134,6 +135,7 @@ async def _update_quest_impl(
 
     rewards_applied = []
     pending_events: list[tuple[str, dict]] = []
+    outcome = None
 
     async with db_mod.transaction() as conn:
         player_quest = await queries.get_player_quest(session.player_id, quest_id, conn=conn, for_update=True)
@@ -161,35 +163,20 @@ async def _update_quest_impl(
             if xp_reward > 0:
                 player = await queries.get_player(session.player_id, conn=conn, for_update=True)
                 if player:
-                    current_xp = player.get("xp", 0)
-                    current_level = player.get("level", 1)
-                    level_result = rules_engine.check_level_up(current_xp, xp_reward, current_level)
-                    await mutations.update_player_xp(
-                        session.player_id, level_result.new_xp, level_result.new_level, conn=conn
+                    # Route quest XP through the single XP/milestone Resolve so stage rewards
+                    # apply L10/15/20 auto-grants + surface the L5 fork — which the old inline
+                    # copy dropped (debt ee947a154b10). XP_AWARDED/LEVEL_UP are byte-identical.
+                    outcome = await progression_tools._award_xp_core(
+                        session=session,
+                        player=player,
+                        amount=xp_reward,
+                        reason=f"Quest '{quest.get('name', quest_id)}' stage completed",
+                        conn=conn,
+                        pending_events=pending_events,
+                        mutations=mutations,
+                        milestones_mod=milestones_mod,
                     )
-                    rewards_applied.append({"type": "xp", "amount": xp_reward, "leveled_up": level_result.leveled_up})
-                    pending_events.append(
-                        (
-                            E.XP_AWARDED,
-                            {
-                                "amount": xp_reward,
-                                "reason": f"Quest '{quest.get('name', quest_id)}' stage completed",
-                                "new_xp": level_result.new_xp,
-                                "new_level": level_result.new_level,
-                                "leveled_up": level_result.leveled_up,
-                                "attribute_points": level_result.attribute_points,
-                                "specialization_fork": level_result.specialization_fork,
-                            },
-                        )
-                    )
-
-                    if level_result.leveled_up:
-                        quest_rewards = get_level_up_rewards(current_level, level_result.new_level)
-                        con_mod = con_mod_for_player(player)
-                        level_up_payload = build_level_up_payload_for_archetype(
-                            current_level, quest_rewards, player["class"], con_mod=con_mod
-                        )
-                        pending_events.append((E.LEVEL_UP, level_up_payload))
+                    rewards_applied.append({"type": "xp", "amount": xp_reward, "leveled_up": outcome.result.leveled_up})
 
             for item_reward in on_complete.get("rewards", []):
                 item_id = item_reward.get("item") or item_reward.get("item_id")
@@ -260,6 +247,10 @@ async def _update_quest_impl(
         "new_stage": new_stage_id,
         "objective": new_stage.get("objective", ""),
         "rewards_applied": rewards_applied,
+        # Surface the milestone grant + L5 fork cue so the DM voices them on a quest-stage
+        # level-up, mirroring award_xp (the DM narrates from the tool response, not the bus).
+        "milestone_grants": outcome.milestone_grants if outcome else [],
+        "specialization_fork": outcome.result.specialization_fork if outcome else False,
     }
     logger.info("update_quest result: %s → stage %d, %d rewards", quest_id, new_stage_id, len(rewards_applied))
 

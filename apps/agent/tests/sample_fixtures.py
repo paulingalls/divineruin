@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import event_types as E
+from milestones import Grant, Milestone, SpecializationOption
 from session_data import SessionData
 
 FIXED_NOW = datetime(2026, 5, 19, 12, 0, 0, tzinfo=UTC)
@@ -171,3 +172,63 @@ SAMPLE_DESTINATION = {
     "tags": ["market"],
     "conditions": {},
 }
+
+
+# --- Shared milestone fixtures for progression/quest XP tests ---
+# A warrior milestone ladder mirroring content/archetype_milestones.json shapes:
+# L5 fork with populated options (the fork-present path), L10 auto-grant with the
+# extra_attack flag, L15/L20 narrative-only. Imported by both test_progression_tools
+# and test_quest_tools — keep it here, not duplicated per-file.
+
+_FORK_OPTIONS = (
+    SpecializationOption("battle_master", "Battle Master", "Tactical maneuvers."),
+    SpecializationOption("berserker", "Berserker", "Reckless fury."),
+)
+
+_WARRIOR_MILESTONES = [
+    Milestone("warrior_identity", "warrior", "identity", 5, "specialization_fork", False, _FORK_OPTIONS, None, "cue"),
+    Milestone(
+        "warrior_power",
+        "warrior",
+        "power",
+        10,
+        "auto_grant",
+        False,
+        (),
+        Grant("Extra Attack", "Your blade strikes twice.", "extra_attack"),
+        "cue",
+    ),
+    Milestone(
+        "warrior_mastery",
+        "warrior",
+        "mastery",
+        15,
+        "auto_grant",
+        False,
+        (),
+        Grant("Indomitable", "Reroll a failed save.", None),
+        "cue",
+    ),
+    Milestone(
+        "warrior_legend",
+        "warrior",
+        "legend",
+        20,
+        "auto_grant",
+        False,
+        (),
+        Grant("Legendary Action", "Act outside the turn order.", None),
+        "cue",
+    ),
+]
+
+
+def _milestones_mod_for(ladder, archetype_id):
+    """A milestones-module mock whose get_milestone_by_level resolves `ladder` for
+    `archetype_id` and returns None for any other archetype."""
+    mod = MagicMock()
+    by_level = {m.level: m for m in ladder}
+    mod.get_milestone_by_level = MagicMock(
+        side_effect=lambda aid, level: by_level.get(level) if aid == archetype_id else None
+    )
+    return mod

@@ -4,11 +4,19 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sample_fixtures import GUILD_PLAYER, level_up_payload, make_context, make_db_mod, make_mock_room
+from sample_fixtures import (
+    _WARRIOR_MILESTONES,
+    GUILD_PLAYER,
+    _milestones_mod_for,
+    level_up_payload,
+    make_context,
+    make_db_mod,
+    make_mock_room,
+)
 
 import event_types as E
 from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
-from milestones import Grant, Milestone, SpecializationOption
+from milestones import Milestone
 from progression_tools import AwardXpResult, PendingChoice, _award_xp_core, _award_xp_impl
 
 
@@ -62,61 +70,9 @@ async def test_level_up_hp_gains_resolve_from_chassis_for_diverging_archetype():
     assert payload["hp_gains"] == [{"level": 2, "hp_gain": expected_gain}]
 
 
-# --- Auto-grant side-effects: L10/15/20 milestone grants resolve in award_xp (story-007) ---
-
-_FORK_OPTIONS = (
-    SpecializationOption("battle_master", "Battle Master", "Tactical maneuvers."),
-    SpecializationOption("berserker", "Berserker", "Reckless fury."),
-)
-
-# Warrior milestone ladder stub (mirrors content/archetype_milestones.json shapes):
-# L5 fork with populated options (the fork-present path), L10 auto-grant with the
-# extra_attack flag, L15/L20 narrative-only.
-_WARRIOR_MILESTONES = [
-    Milestone("warrior_identity", "warrior", "identity", 5, "specialization_fork", False, _FORK_OPTIONS, None, "cue"),
-    Milestone(
-        "warrior_power",
-        "warrior",
-        "power",
-        10,
-        "auto_grant",
-        False,
-        (),
-        Grant("Extra Attack", "Your blade strikes twice.", "extra_attack"),
-        "cue",
-    ),
-    Milestone(
-        "warrior_mastery",
-        "warrior",
-        "mastery",
-        15,
-        "auto_grant",
-        False,
-        (),
-        Grant("Indomitable", "Reroll a failed save.", None),
-        "cue",
-    ),
-    Milestone(
-        "warrior_legend",
-        "warrior",
-        "legend",
-        20,
-        "auto_grant",
-        False,
-        (),
-        Grant("Legendary Action", "Act outside the turn order.", None),
-        "cue",
-    ),
-]
-
-
-def _milestones_mod_for(ladder, archetype_id):
-    mod = MagicMock()
-    by_level = {m.level: m for m in ladder}
-    mod.get_milestone_by_level = MagicMock(
-        side_effect=lambda aid, level: by_level.get(level) if aid == archetype_id else None
-    )
-    return mod
+# --- Auto-grant side-effects: L10/15/20 milestone grants resolve in award_xp (story-007).
+# The warrior ladder + fork options + mock factory live in sample_fixtures (shared with
+# test_quest_tools); _PATRON_FORK_MILESTONES below is progression-only. ---
 
 
 def _milestones_mod():
