@@ -53,17 +53,19 @@ async def transact_inventory(
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> int:
-    """Apply a signed delta to a stack's quantity; return the remaining quantity.
+    """Decrement a stack's quantity by a negative delta; return the remaining quantity.
 
-    A positive delta increments, a negative delta decrements. When the result is
-    at or below zero the row is deleted (via db_mutations.remove_inventory_item)
-    and 0 is returned. Single UPDATE ... RETURNING for the quantity change — no
-    read-compute-write — so the decrement is atomic within the caller transaction;
-    the loss path's existence + equipped guards are the caller's FOR UPDATE read.
-    Positive-delta gains route through db_mutations.add_inventory_item, which also
-    inserts a missing row; this helper assumes the row already exists and raises
-    ValueError when it does not — that is a caller-invariant violation, not a
-    no-op (fail loud, matching the sibling consume_player_materials posture).
+    The transact verb's LOSS path is the only caller — gains route through
+    db_mutations.add_inventory_item (which inserts a missing row), so delta is
+    always negative here. The signed UPDATE would increment on a positive delta,
+    but that path is unused by design; pass gains to add_inventory_item instead.
+
+    When the result is at or below zero the row is deleted (via
+    db_mutations.remove_inventory_item) and 0 is returned. Single UPDATE ...
+    RETURNING — no read-compute-write — so the decrement is atomic within the
+    caller transaction; the existence + equipped guards are the caller's FOR UPDATE
+    read. A missing row raises ValueError rather than no-op'ing (fail loud, a
+    caller-invariant violation, matching the sibling consume_player_materials).
 
     Over-decrementing (|delta| greater than the stock on hand) deliberately floors
     the remaining count at 0 and deletes the row, mirroring the legacy whole-stack

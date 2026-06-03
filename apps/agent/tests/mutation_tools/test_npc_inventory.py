@@ -224,6 +224,7 @@ class TestTransactLose:
         mock_content.get_item = AsyncMock(return_value=SAMPLE_ITEM)
         mock_queries = MagicMock()
         mock_queries.get_inventory_item = AsyncMock(return_value=slot)
+        mock_queries.get_player_inventory = AsyncMock(return_value=[SAMPLE_ITEM])
         mock_inventory_mutations = MagicMock()
         mock_inventory_mutations.transact_inventory = AsyncMock(return_value=remaining)
         return mock_conn, mock_db, mock_content, mock_queries, mock_inventory_mutations
@@ -324,3 +325,5 @@ class TestTransactLose:
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == E.INVENTORY_UPDATED
         assert call_data["action"] == "removed"
+        # The full inventory array drives the client HUD refresh on a decrement.
+        assert isinstance(call_data["inventory"], list)
