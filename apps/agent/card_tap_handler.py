@@ -2,7 +2,7 @@
 
 CardTapHandler narrates a tapped creation card during character creation.
 SpecializationTapHandler resolves a tapped L5 specialization during gameplay by
-driving the DM to call resolve_milestone with the chosen id. Both share
+driving the DM to call the select verb with the chosen id. Both share
 _PlayerHintsListener — the data-channel subscription, topic filter, cooldown, and
 JSON parse — and implement _handle for their own event type.
 """
@@ -15,12 +15,14 @@ import time
 
 from livekit import rtc
 from livekit.agents import AgentSession
+from livekit.agents.llm import ToolError
 
 import event_types as E
 from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
 from session_data import SessionData
+from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.card_tap")
 
@@ -66,16 +68,18 @@ def build_hint_instruction(card_id: str, category: str) -> str | None:
     return None
 
 
-def build_specialization_instruction(specialization_id: str) -> str:
+def build_specialization_instruction(milestone_id: str, specialization_id: str) -> str:
     """Instruction telling the DM to lock in the tapped L5 specialization.
 
-    The DM calls resolve_milestone with the chosen id — the gatekeeper that validates
-    the choice against the fork options and persists it immutably — then voices it.
+    The DM calls the select verb with the pending choice_id (the milestone id) and the
+    chosen option — select is the gatekeeper that validates against the fork options and
+    persists immutably — then voices it.
     """
     return (
         f"The player tapped to choose the {specialization_id} specialization. "
-        f'Call resolve_milestone with choice="{specialization_id}" to lock it in, then '
-        "narrate embracing this path in one or two vivid sentences. This choice is permanent."
+        f'Call select with choice_id="{milestone_id}" and option="{specialization_id}" to '
+        "lock it in, then narrate embracing this path in one or two vivid sentences. "
+        "This choice is permanent."
     )
 
 
@@ -149,11 +153,12 @@ class CardTapHandler(_PlayerHintsListener):
 
 
 class SpecializationTapHandler(_PlayerHintsListener):
-    """Resolves a tapped L5 specialization during gameplay via the DM (story-008).
+    """Resolves a tapped L5 specialization during gameplay via the DM (story-005).
 
-    On a SPECIALIZATION_CHOICE_TAP, drives the DM (generate_reply) to call
-    resolve_milestone with the chosen id — instruction-driven so the DM voices the
-    confirmation (audio-first), with resolve_milestone the validation/persistence
+    On a SPECIALIZATION_CHOICE_TAP, drives the DM (generate_reply) to call the select
+    verb with the pending choice_id (the milestone_id the client echoes back from the
+    SPECIALIZATION_CHOICE event) and the chosen option — instruction-driven so the DM
+    voices the confirmation (audio-first), with select the validation/persistence
     gatekeeper. Active in the exploration agents where leveling happens (story-007).
 
     Shares the base HINT_COOLDOWN_S debounce intentionally: the L5 choice is a one-shot
@@ -163,13 +168,20 @@ class SpecializationTapHandler(_PlayerHintsListener):
     def _handle(self, payload: dict) -> bool:
         if payload.get("type") != E.SPECIALIZATION_CHOICE_TAP:
             return False
+        milestone_id = payload.get("milestone_id", "")
         specialization_id = payload.get("specialization_id", "")
-        if not specialization_id:
+        # Validate the untrusted ids with the canonical guard before interpolating them
+        # into the LLM instruction (debt 9a6b6e5dc762); select re-validates downstream.
+        try:
+            _validate_id(milestone_id, "milestone_id")
+            _validate_id(specialization_id, "specialization_id")
+        except ToolError:
+            logger.warning("Specialization tap dropped: invalid ids (%r / %r)", milestone_id, specialization_id)
             return False
 
-        logger.info("Specialization tap: %s", specialization_id)
+        logger.info("Specialization tap: %s -> %s", milestone_id, specialization_id)
         self._session.generate_reply(
             user_input=f"[The player chose the {specialization_id} specialization]",
-            instructions=build_specialization_instruction(specialization_id),
+            instructions=build_specialization_instruction(milestone_id, specialization_id),
         )
         return True
