@@ -24,6 +24,11 @@ def make_db_mod():
     return mock_db, mock_conn
 
 
+def published_types(room):
+    """Event types published to a mock room's data channel, in order."""
+    return [json.loads(call[0][0])["type"] for call in room.local_participant.publish_data.call_args_list]
+
+
 def level_up_payload(room):
     """Return the LEVEL_UP event payload from a mock room's publish_data calls, or None."""
     for call in room.local_participant.publish_data.call_args_list:

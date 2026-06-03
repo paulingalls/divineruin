@@ -13,6 +13,7 @@ from sample_fixtures import (
     make_context,
     make_db_mod,
     make_mock_room,
+    published_types,
 )
 
 import event_types as E
@@ -28,11 +29,6 @@ QUEST = {
         {"id": 2, "objective": "end", "on_complete": {"xp": 150}},
     ],
 }
-
-
-def _published_types(room):
-    """Event types published to the room's data channel, in order."""
-    return [json.loads(c[0][0])["type"] for c in room.local_participant.publish_data.call_args_list]
 
 
 async def _complete_warrior_quest_stage(level, xp, xp_reward):
@@ -125,7 +121,7 @@ async def test_quest_stage_crossing_l5_publishes_specialization_choice():
     # A quest stage crossing L5 surfaces the fork via the SPECIALIZATION_CHOICE event (the
     # HUD overlay), persisting no choice. L4 (750) + 300 -> L5.
     mutations, _, room, _ = await _complete_warrior_quest_stage(level=4, xp=750, xp_reward=300)
-    assert E.SPECIALIZATION_CHOICE in _published_types(room)
+    assert E.SPECIALIZATION_CHOICE in published_types(room)
     mutations.set_player_flag.assert_not_awaited()
 
 
