@@ -68,7 +68,7 @@ async def _resolve_milestone_impl(
         _validate_id(choice, "choice")
     session: SessionData = context.userdata
     player_id = session.player_id
-    logger.info("resolve_milestone called: choice=%s player=%s", choice, player_id)
+    logger.info("_resolve_milestone_impl (transitional) called: choice=%s player=%s", choice, player_id)
 
     pending_event: dict | None = None
     async with db_mod.transaction() as conn:
