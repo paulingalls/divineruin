@@ -25,6 +25,7 @@ import json
 
 import pytest
 from acceptance.seeds import seed_player
+from livekit.agents.llm import is_function_tool, is_raw_function_tool
 from sample_fixtures import make_context
 
 import db
@@ -111,15 +112,17 @@ def test_consolidated_verb_present_where_expected(verb, verb_name: str, expected
 
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
-def test_within_strict_ceiling_and_schema(name: str, tools: list) -> None:
-    """Every agent stays under the strict-tool ceiling and keeps strict schema on all
-    its tools. Per-agent counts are pinned in test_strict_tool_budget; here the ceiling
-    assertion stays thin and adds the strict-schema guard the budget test lacks."""
+def test_within_strict_ceiling_and_strict_schema(name: str, tools: list) -> None:
+    """Every agent stays under the strict-tool ceiling, and every registered tool is a
+    strict function tool — never a raw-schema one. MAX_STRICT_TOOLS counts STRICT tools
+    (ADR 0004); a RawFunctionTool would opt out of strict schema yet still consume a slot,
+    silently breaking the ceiling reasoning. Per-agent counts are pinned in
+    test_strict_tool_budget; the ceiling assertion here stays thin."""
     assert len(tools) <= MAX_STRICT_TOOLS, f"{name} has {len(tools)} tools (ceiling {MAX_STRICT_TOOLS})"
     for t in tools:
-        # livekit-plugins-anthropic defaults _strict_tool_schema=True; the codebase never
-        # opts a tool out (every registered verb counts against the ceiling). Guard it.
-        assert getattr(t, "_strict_tool_schema", True) is not False, f"{name}'s {t.__name__} opted out of strict schema"
+        assert is_function_tool(t) and not is_raw_function_tool(t), (
+            f"{name}'s {getattr(t, '__name__', t)!r} is not a strict function tool"
+        )
 
 
 # --- message_event surface: verbs live over the seeded testcontainer DB ------
