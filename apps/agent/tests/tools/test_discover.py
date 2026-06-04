@@ -3,7 +3,8 @@
 check(skill, target) takes a VISIBLE target; the hidden element's id is the Resolve's
 OUTPUT on success, never an input. M5 scopes the location's hidden_elements room-wide by
 matching discover_skill (the §7 fallback). Covers success/failure, skill-scoping,
-repeat-block on (skill:target), the dc-less event, and the lowest-DC tie-break.
+the element-keyed anti-grind gate (skill:element_id), the dc-less event, and the
+lowest-DC tie-break.
 """
 
 import json
@@ -164,18 +165,62 @@ class TestCheckDiscover:
 
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_blocks_repeated_attempt(self, mock_event):
+    async def test_repeat_search_finds_nothing_new(self, mock_event):
+        # A failed roll exhausts that secret for the session — re-searching the same target
+        # finds nothing new (not_found), rather than re-rolling it.
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         with patch("check_resolution.dice_roll", return_value=_roll(3)):
+            first = json.loads(
+                await _check_discover_impl(
+                    ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
+                )
+            )
+        second = json.loads(
             await _check_discover_impl(
                 ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
             )
-        # Re-searching the same target with the same approach this session is blocked.
-        with pytest.raises(ToolError, match="Already searched"):
+        )
+        assert first["outcome"] == "not_found"
+        assert second["outcome"] == "not_found"
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_reworded_target_cannot_regrind(self, mock_event):
+        # The anti-grind gate keys on the element, not the free-text target: re-searching the
+        # same secret under a different target wording must NOT earn a fresh roll at it.
+        content, queries, mutations = _make_discover_mocks()
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(3)) as mock_dice:
             await _check_discover_impl(
                 ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
             )
+            first_roll_calls = mock_dice.call_count
+            # Reword the target — the perception secret is already attempted, so no new roll.
+            result = json.loads(
+                await _check_discover_impl(
+                    ctx, "perception", "the shelf", content=content, queries=queries, mutations=mutations
+                )
+            )
+            assert mock_dice.call_count == first_roll_calls  # no second roll
+        assert result["outcome"] == "not_found"
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_already_discovered_flag_excludes_candidate(self, mock_event):
+        # The permanent (cross-session) guard: an element already flagged discovered on the
+        # player is excluded from the candidate pool, so re-searching finds nothing and never
+        # re-rolls it.
+        player = {**DISCOVER_PLAYER, "flags": {"secret_door.discovered": True}}
+        content, queries, mutations = _make_discover_mocks(player=player)
+        ctx = _make_context(location_id="test_location")
+        result = json.loads(
+            await _check_discover_impl(
+                ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
+            )
+        )
+        assert result["outcome"] == "not_found"
+        mock_event.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
@@ -204,3 +249,25 @@ class TestCheckDiscover:
         assert result["outcome"] == "discovered"
         assert result["element_id"] == "easy_secret"
         mutations.set_player_flag.assert_called_once_with("player_1", "easy_secret.discovered", True)
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_higher_dc_secret_reachable_after_lowest_exhausted(self, mock_event):
+        # Failing the lowest-DC secret exhausts it for the session; the next search reaches
+        # the higher-DC one instead of re-rolling the easy one.
+        content, queries, mutations = _make_discover_mocks(location=LOCATION_TWO_SECRETS)
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", side_effect=[_roll(1), _roll(20)]):
+            first = json.loads(
+                await _check_discover_impl(
+                    ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
+                )
+            )
+            second = json.loads(
+                await _check_discover_impl(
+                    ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
+                )
+            )
+        assert first["outcome"] == "not_found"  # easy_secret (DC 10) failed
+        assert second["outcome"] == "discovered"
+        assert second["element_id"] == "hard_secret"  # now reachable

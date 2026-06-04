@@ -43,10 +43,6 @@ async def _check_discover_impl(
     if skill_lower not in VALID_SKILLS:
         raise ToolError(f"Unknown skill: '{skill}'. Valid: {sorted(VALID_SKILLS)}")
 
-    block_key = f"{skill_lower}:{target}"
-    if block_key in session.attempted_discoveries:
-        raise ToolError(f"Already searched {target!r} with {skill} this session.")
-
     location = await content.get_location(session.location_id)
     if location is None:
         raise ToolError(f"Current location '{session.location_id}' not found.")
@@ -55,30 +51,34 @@ async def _check_discover_impl(
     if player is None:
         raise ToolError(f"Player '{session.player_id}' not found.")
 
-    # M5 room-wide-by-skill fallback: candidates are undiscovered hidden_elements whose
-    # discover_skill matches the approach. M6 seam: when hidden_element.attaches_to lands,
-    # prefer elements whose attaches_to == target, falling back to skill-match for
-    # un-annotated content.
+    # M5 room-wide-by-skill fallback: candidates are hidden_elements whose discover_skill
+    # matches the approach, excluding ones permanently discovered (player flag) AND ones
+    # already rolled this session. The anti-grind gate is keyed on the ELEMENT, not the
+    # free-text target, so re-searching the same secret under a reworded target can't earn a
+    # fresh roll; once the lowest-DC secret is exhausted the next one becomes reachable.
+    # M6 seam: when hidden_element.attaches_to lands, prefer elements whose attaches_to ==
+    # target, falling back to skill-match for un-annotated content.
     flags = player.get("flags", {})
     candidates = [
         elem
         for elem in location.get("hidden_elements", [])
-        if elem.get("discover_skill", "perception") == skill_lower and not flags.get(f"{elem.get('id')}.discovered")
+        if elem.get("discover_skill", "perception") == skill_lower
+        and not flags.get(f"{elem.get('id')}.discovered")
+        and f"{skill_lower}:{elem.get('id')}" not in session.attempted_discoveries
     ]
 
     if not candidates:
-        # Searched and found nothing matching this approach — a valid outcome, not an error.
-        # Note: no roll happened, so we do NOT block re-search; the player may try again.
+        # Nothing new to find with this approach (none scoped, or all already tried/found) —
+        # a valid "found nothing" outcome, not an error, and safely repeatable.
         logger.info("check discover: target=%s skill=%s -> no candidate", target, skill_lower)
         return json.dumps({"outcome": "not_found", "skill": skill_lower, "target": target})
-
-    # Only a search that actually rolls (a candidate existed) is blocked from re-rolling.
-    session.attempted_discoveries.add(block_key)
 
     # Lowest-DC first: the easiest secret surfaces first, and at most one element can be
     # revealed per roll, so its id stays an OUTPUT (never an input) per §7.
     element = min(candidates, key=lambda e: e.get("dc", 13))
     dc = element.get("dc", 13)
+    # Block re-rolling THIS element this session (keyed on the element, not the target).
+    session.attempted_discoveries.add(f"{skill_lower}:{element.get('id')}")
 
     result = check_resolution.resolve_skill_check_dc(player, skill_lower, dc)
 
