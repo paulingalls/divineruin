@@ -42,7 +42,7 @@ async def apply_skill_practice_advancement(
 
     Delegates to `skill_persistence.apply_skill_use_with_persistence` —
     the single function both this path and the session-use path
-    (`check_tools._request_skill_check_impl`) call, enforcing the M1.2
+    (`check_tools._check_skill_impl`) call, enforcing the M1.2
     hybrid-counter contract by construction.
 
     Returns advancement info dict (advanced, new_tier) or None when no advancement.

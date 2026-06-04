@@ -12,7 +12,7 @@ docs/decisions/0004-agent-tool-scaling.md).
 from typing import Any
 
 from base_agent import BaseGameAgent
-from check_tools import roll_dice
+from check_tools import check
 from crafting_tools import query_available_workspaces, rent_workspace, start_crafting_project
 from dispatch_tools import conclude_dispatch
 from environment_tools import play_sound, set_music_state
@@ -50,7 +50,7 @@ DISPATCH_TOOLS = [
     # Navigation / queries — enough to talk to the mentor and leave
     move_player,
     query_info,
-    roll_dice,
+    check,
     play_sound,
     set_music_state,
     end_session,

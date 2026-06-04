@@ -230,7 +230,7 @@ class TestBuildWarmLayerExits:
 class TestNavigationPromptIncluded:
     def test_system_prompt_includes_navigation(self):
         prompt = build_system_prompt("accord_guild_hall")
-        assert "discover_hidden_element" in prompt
+        assert 'mode="discover"' in prompt
         assert "Navigation" in prompt
 
 
@@ -278,9 +278,12 @@ class TestPromptToolConsistency:
     (concern b1591cb23262). Enforced by construction so the next prompt edit can't
     silently reintroduce the drift (concern df5cc73b2473)."""
 
-    @pytest.mark.parametrize("danger_tool_name", ["request_attack", "request_saving_throw"])
+    @pytest.mark.parametrize("danger_tool_name", ["request_attack"])
     def test_danger_tool_named_iff_in_toolset(self, danger_tool_name):
-        from check_tools import request_attack, request_saving_throw
+        # request_saving_throw folded into the universal `check` verb (M5 story-003), so
+        # request_attack is the remaining combat-only danger tool that must not appear in a
+        # prompt unless the agent holds it.
+        from check_tools import request_attack
         from city_agent import CITY_TOOLS
         from combat_agent import COMBAT_AGENT_TOOLS
         from dispatch_agent import DISPATCH_TOOLS
@@ -288,7 +291,7 @@ class TestPromptToolConsistency:
         from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
         from wilderness_agent import WILDERNESS_TOOLS
 
-        tool_obj = {"request_attack": request_attack, "request_saving_throw": request_saving_throw}[danger_tool_name]
+        tool_obj = {"request_attack": request_attack}[danger_tool_name]
         agents = {
             "city": (build_system_prompt("loc", region_type="city"), CITY_TOOLS),
             "wilderness": (build_system_prompt("loc", region_type="wilderness"), WILDERNESS_TOOLS),

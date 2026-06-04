@@ -35,10 +35,10 @@ def test_agent_within_strict_tool_limit(name, tools):
 
 
 def test_city_strict_tool_count():
-    # City reached the ceiling (20) after story-007/008/009/010. M5 verb consolidation
-    # is now reclaiming slots: story-001 folded add_to_inventory + remove_from_inventory
-    # into the single transact verb, dropping City to 19 — one slot of headroom.
-    # Stories 003 (check absorbs discover_hidden_element) and 004 (enter_mode folds the
-    # three handoffs) reclaim more, easing the M2.4 spell-tool pressure (ADR 0004).
-    assert len(CITY_TOOLS) == 19
-    assert len(CITY_TOOLS) == MAX_STRICT_TOOLS - 1
+    # City reached the ceiling (20) after story-007/008/009/010. M5 verb consolidation is
+    # reclaiming slots: story-001's transact folded add/remove_from_inventory (20->19), and
+    # story-003's check absorbed discover_hidden_element + request_skill_check + roll_dice
+    # (19->17 — three tools into one). story-004 (enter_mode folds the handoffs) reclaims
+    # more, easing the M2.4 spell-tool pressure (ADR 0004).
+    assert len(CITY_TOOLS) == 17
+    assert len(CITY_TOOLS) == MAX_STRICT_TOOLS - 3

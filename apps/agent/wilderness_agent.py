@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from check_tools import discover_hidden_element, request_skill_check, roll_dice
+from check_tools import check
 from choice_tools import select
 from combat_init import start_combat
 from dispatch_tools import enter_dispatch
@@ -20,10 +20,8 @@ WILDERNESS_TOOLS = [
     enter_location,
     query_info,
     move_player,
-    request_skill_check,
-    discover_hidden_element,
+    check,
     update_quest,
-    roll_dice,
     start_combat,
     enter_dispatch,
     award_xp,
