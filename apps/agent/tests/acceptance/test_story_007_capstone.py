@@ -3,7 +3,7 @@
 Proves the DB-loaded recipe flow composes across BOTH surfaces against one seeded
 testcontainer, catching cross-language seam breaks the per-story tests miss:
 
-  - message_event (Python agent): learn_recipe + query_recipe_requirements read
+  - message_event (Python agent): _learn_recipe_impl + query_recipe_requirements read
     the DB-loaded recipe via recipes.get_recipe.
   - http_websocket (TS REST): a spawned `bun src/index.ts` against the SAME DSN
     serves GET /api/activity-templates (listRecipes) and POST /api/activities
@@ -67,7 +67,7 @@ async def _seed_clean_player(player_id: str) -> None:
 
 
 async def test_message_event_learn_and_query_over_db_recipe(reset_db_pool: str) -> None:
-    """learn_recipe + query_recipe_requirements compose over the DB-loaded recipe."""
+    """_learn_recipe_impl + query_recipe_requirements compose over the DB-loaded recipe."""
     await _seed_clean_player("player_capstone_msg")
     ctx = make_context(player_id="player_capstone_msg")
 

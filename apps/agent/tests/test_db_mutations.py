@@ -68,3 +68,24 @@ class TestCreateAsyncActivityConnSeam:
         aid = await db_mutations.create_async_activity("p1", {"status": "in_progress"}, conn=conn)
         assert aid.startswith("activity_")
         conn.execute.assert_awaited_once()
+
+
+class TestQuantityDeltaExpr:
+    """The single source of the signed quantity-delta jsonb_set write (concern
+    cc7c949af1c9) — shared by add_inventory_item and transact_inventory."""
+
+    def test_builds_signed_delta_jsonb_set_for_a_plain_column(self):
+        expr = db_mutations.quantity_delta_expr("data", "$3")
+        assert expr == "jsonb_set(data, '{quantity}', (COALESCE((data->>'quantity')::int, 0) + $3)::text::jsonb)"
+
+    def test_qualifies_the_column_for_the_on_conflict_arm(self):
+        # add_inventory_item's ON CONFLICT references the existing row as player_inventory.data.
+        expr = db_mutations.quantity_delta_expr("player_inventory.data", "$4")
+        assert "COALESCE((player_inventory.data->>'quantity')::int, 0) + $4" in expr
+        assert expr.startswith("jsonb_set(player_inventory.data, '{quantity}',")
+
+    async def test_add_inventory_item_uses_the_shared_expr(self):
+        conn = AsyncMock()
+        await db_mutations.add_inventory_item("p1", "iron_ore", 2, conn=conn)
+        sql = conn.execute.call_args.args[0]
+        assert db_mutations.quantity_delta_expr("player_inventory.data", "$4") in sql

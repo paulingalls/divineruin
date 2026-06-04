@@ -188,7 +188,7 @@ async def get_crafting_skill_counter(player_id: str, *, conn: asyncpg.Connection
 
 
 async def count_player_known_recipes(player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> int:
-    """Count recipes a player knows — the slot-capacity input for learn_recipe."""
+    """Count recipes a player knows — the slot-capacity input for _learn_recipe_impl."""
     _conn = conn or await db.get_pool()
     count = await _conn.fetchval("SELECT COUNT(*) FROM player_known_recipes WHERE player_id = $1", player_id)
     return count or 0

@@ -1,10 +1,12 @@
-"""Combat initialization — start_combat tool."""
+"""Combat initialization — _start_combat_impl, the combat-entry handoff behind
+enter_mode(mode="combat") (mode_tools.py). Rolls initiative, persists CombatState,
+and hands off to CombatAgent."""
 
 import json
 import logging
 import uuid
 
-from livekit.agents.llm import ToolError, function_tool
+from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import combat_resolution
@@ -13,27 +15,12 @@ import db_mutations
 import db_queries
 import event_types as E
 from combat_support import _participant_summary, _publish_sounds
-from db_errors import db_tool
 from game_events import publish_game_event
 from region_types import REGION_CITY
 from session_data import CombatParticipant, CombatState, SessionData
 from tool_support import SOUND_COMBAT_START
 
 logger = logging.getLogger("divineruin.tools")
-
-
-@function_tool()
-@db_tool
-async def start_combat(
-    context: RunContext[SessionData],
-    encounter_id: str,
-    encounter_description: str,
-) -> str | tuple:
-    """Start combat using an encounter template. Rolls initiative for all
-    participants and establishes turn order. Call this when combat begins.
-    Provide the encounter template ID and a brief description of how
-    combat starts."""
-    return await _start_combat_impl(context, encounter_id, encounter_description)
 
 
 async def _start_combat_impl(

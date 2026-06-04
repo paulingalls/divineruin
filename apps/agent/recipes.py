@@ -8,7 +8,7 @@ cached get_recipe / list_recipes accessors keyed recipe:<id> and recipes:all.
 
 Read-only from the agent's view: only the TS server writes recipes during
 resolution. Consumed by story-006's recipe tools (query_recipe_requirements,
-learn_recipe), which read the snake_case parsed dict returned here.
+_learn_recipe_impl), which read the snake_case parsed dict returned here.
 """
 
 import json

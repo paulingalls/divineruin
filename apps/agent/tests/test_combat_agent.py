@@ -12,7 +12,7 @@ class TestCombatAgentConfig:
 
     def test_combat_tools_are_complete(self):
         from ability_tools import request_ability_activation
-        from check_tools import request_attack, request_saving_throw, roll_dice
+        from check_tools import check, request_attack
         from combat_end import end_combat
         from combat_turn import request_death_save, resolve_enemy_turn
         from environment_tools import play_sound, set_music_state
@@ -21,10 +21,9 @@ class TestCombatAgentConfig:
         expected = {
             resolve_enemy_turn,
             request_attack,
-            request_saving_throw,
+            check,
             request_death_save,
             end_combat,
-            roll_dice,
             play_sound,
             set_music_state,
             query_info,
@@ -33,12 +32,12 @@ class TestCombatAgentConfig:
         assert set(COMBAT_AGENT_TOOLS) == expected
 
     def test_combat_tools_exclude_exploration(self):
-        from combat_init import start_combat
+        from mode_tools import enter_mode
         from movement_tools import move_player
         from quest_tools import update_quest
         from scene_tools import enter_location
 
-        for tool in [enter_location, move_player, start_combat, update_quest]:
+        for tool in [enter_location, move_player, enter_mode, update_quest]:
             assert tool not in COMBAT_AGENT_TOOLS
 
     def test_combat_excludes_milestone_resolution(self):

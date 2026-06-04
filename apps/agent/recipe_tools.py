@@ -1,9 +1,11 @@
-"""Recipe acquisition agent tools (story-006, M5.1).
+"""Recipe acquisition agent tools (story-006, M5.1; learn verb M5 story-002).
 
-`learn_recipe` is the mutating write surface: it locks the player row FOR UPDATE
-(serializing per-player learns so the slot count→write is atomic), gates on
-recipe-slot capacity (recipe_validation), and records the learn in
-player_known_recipes. `query_recipe_requirements` is a read tool returning a
+`learn(kind, id, source)` is the generic acquire-knowledge verb (ADR 0007); today
+the only kind is "recipe", which dispatches to `_learn_recipe_impl` — the mutating
+write surface that locks the player row FOR UPDATE (serializing per-player learns
+so the slot count→write is atomic), gates on recipe-slot capacity
+(recipe_validation), and records the learn in player_known_recipes. An unknown kind
+fails loud with ToolError. `query_recipe_requirements` is a read tool returning a
 recipe's crafting requirements.
 
 Errors raise LiveKit `ToolError` (ADR 0002). The `_*_impl` helpers expose
@@ -35,20 +37,51 @@ LEARNED_VIA = frozenset({"training", "npc_teaching", "discovery", "experimentati
 
 
 @function_tool()
-async def learn_recipe(
+async def learn(
     context: RunContext[SessionData],
-    recipe_id: str,
-    learned_via: str,
+    kind: str,
+    id: str,
+    source: str = "",
 ) -> str:
-    """Record that the player has learned a crafting recipe. Use when an NPC
+    """Record that the player has gained permanent knowledge. Use when an NPC
     teaches a recipe, the player finds a schematic, or otherwise acquires one.
 
     Args:
-        recipe_id: The recipe being learned.
-        learned_via: How it was acquired — one of: training, npc_teaching,
-            discovery, experimentation, tier_advancement.
+        kind: What is being learned. Today only "recipe".
+        id: The thing learned — for a recipe, its recipe id.
+        source: For a recipe, HOW it was acquired (required) — one of: training,
+            npc_teaching, discovery, experimentation, tier_advancement.
     """
-    return await _learn_recipe_impl(context, recipe_id, learned_via)
+    return await _learn_impl(context, kind, id, source)
+
+
+async def _learn_impl(
+    context: RunContext[SessionData],
+    kind: str,
+    id: str,
+    source: str = "",
+    *,
+    db_mod=db,
+    queries_mod=db_queries,
+    mutations_mod=db_mutations,
+    recipes_mod=recipes,
+    slots_mod=recipe_slots,
+) -> str:
+    # Each kind owns its own source validation (recipe gates source against
+    # LEARNED_VIA inside _learn_recipe_impl). A new kind MUST validate source
+    # itself — the optional source="" at this seam is not a free pass.
+    if kind == "recipe":
+        return await _learn_recipe_impl(
+            context,
+            id,
+            source,
+            db_mod=db_mod,
+            queries_mod=queries_mod,
+            mutations_mod=mutations_mod,
+            recipes_mod=recipes_mod,
+            slots_mod=slots_mod,
+        )
+    raise ToolError(f"Unknown kind {kind!r}; expected one of: recipe.")
 
 
 async def _learn_recipe_impl(
@@ -67,7 +100,7 @@ async def _learn_recipe_impl(
     if learned_via not in LEARNED_VIA:
         raise ToolError(f"Invalid learned_via {learned_via!r}; expected one of {sorted(LEARNED_VIA)}.")
     player_id = context.userdata.player_id
-    logger.info("learn_recipe: player=%s recipe=%s via=%s", player_id, recipe_id, learned_via)
+    logger.info("learn recipe: player=%s recipe=%s via=%s", player_id, recipe_id, learned_via)
 
     # Cached reference reads — done BEFORE opening the txn so they don't acquire a
     # second pooled connection while this learn holds one (pool max_size=5; a

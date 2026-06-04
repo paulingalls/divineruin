@@ -204,7 +204,7 @@ class TestRecordStoryMoment:
             await record_story_moment._func(ctx, moment_key="combat", description="x" * 600)
 
 
-# --- add_to_inventory sends full inventory + item_acquired ---
+# --- transact (gain) sends full inventory + item_acquired ---
 
 
 def _make_mock_room():
@@ -244,9 +244,9 @@ SAMPLE_INVENTORY = [
 ]
 
 
-class TestAddToInventorySendsFullInventory:
+class TestTransactGainSendsFullInventory:
     async def test_sends_full_inventory_array(self):
-        from inventory_tools import _add_to_inventory_impl
+        from inventory_tools import _transact_impl
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
@@ -261,10 +261,10 @@ class TestAddToInventorySendsFullInventory:
 
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await _add_to_inventory_impl(
+        await _transact_impl(
             ctx,
             item_id="rations_basic",
-            quantity=1,
+            delta=1,
             source="bought",
             db_mod=mock_db,
             mutations=mock_mutations,
@@ -287,7 +287,7 @@ class TestAddToInventorySendsFullInventory:
         assert second_call["name"] == "Trail Rations"
 
     async def test_item_acquired_includes_image_url(self):
-        from inventory_tools import _add_to_inventory_impl
+        from inventory_tools import _transact_impl
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
@@ -302,10 +302,10 @@ class TestAddToInventorySendsFullInventory:
 
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await _add_to_inventory_impl(
+        await _transact_impl(
             ctx,
             item_id="shortsword_basic",
-            quantity=1,
+            delta=1,
             source="looted",
             db_mod=mock_db,
             mutations=mock_mutations,
@@ -319,7 +319,7 @@ class TestAddToInventorySendsFullInventory:
         assert second_call["image_url"].startswith("/api/assets/images/img_")
 
     async def test_item_acquired_omits_image_url_when_no_art(self):
-        from inventory_tools import _add_to_inventory_impl
+        from inventory_tools import _transact_impl
 
         mock_db = MagicMock()
         mock_conn = MagicMock()
@@ -334,10 +334,10 @@ class TestAddToInventorySendsFullInventory:
 
         room = _make_mock_room()
         ctx = _make_context(room=room)
-        await _add_to_inventory_impl(
+        await _transact_impl(
             ctx,
             item_id="rations_basic",
-            quantity=1,
+            delta=1,
             source="bought",
             db_mod=mock_db,
             mutations=mock_mutations,

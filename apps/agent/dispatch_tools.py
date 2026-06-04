@@ -1,11 +1,11 @@
 """Intent handoff to/from DispatchAgent.
 
-`enter_dispatch` lets any region agent hand off to DispatchAgent when the player
-wants a deliberate between-adventure activity (training; companion errands in
-story-009) without travelling; `conclude_dispatch` hands control back to the
-agent that called it. Mirrors the combat start_combat/end_combat return-to-caller
-pattern (pre_dispatch_agent_type stored on SessionData), so control returns to
-whichever region agent the player was in.
+`_enter_dispatch_impl` (the dispatch-entry handoff behind enter_mode(mode="dispatch"),
+mode_tools.py) lets any region agent hand off to DispatchAgent when the player wants a
+deliberate between-adventure activity (training; companion errands in story-009)
+without travelling; `conclude_dispatch` hands control back to the agent that called it.
+Mirrors the combat return-to-caller pattern (pre_dispatch_agent_type stored on
+SessionData), so control returns to whichever region agent the player was in.
 """
 
 import json
@@ -18,14 +18,6 @@ import db_content_queries
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
-
-
-@function_tool()
-async def enter_dispatch(context: RunContext[SessionData]) -> str | tuple:
-    """Hand off to the dispatch context for a deliberate between-adventure activity
-    — training with a mentor, or sending a companion on an errand. Call when the
-    player wants to train or manage companions. Control returns here when they finish."""
-    return await _enter_dispatch_impl(context)
 
 
 async def _enter_dispatch_impl(context: RunContext[SessionData]) -> str | tuple:

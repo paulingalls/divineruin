@@ -12,7 +12,7 @@ docs/decisions/0004-agent-tool-scaling.md).
 from typing import Any
 
 from base_agent import BaseGameAgent
-from check_tools import roll_dice
+from check_tools import check
 from crafting_tools import query_available_workspaces, rent_workspace, start_crafting_project
 from dispatch_tools import conclude_dispatch
 from environment_tools import play_sound, set_music_state
@@ -20,7 +20,7 @@ from errand_tools import dispatch_companion_errand, resolve_companion_errand
 from experimentation_tools import experiment_with_materials
 from movement_tools import move_player
 from query_tools import query_info
-from recipe_tools import learn_recipe, query_recipe_requirements
+from recipe_tools import learn, query_recipe_requirements
 from session_tools import end_session
 from system_prompts import DISPATCH_SYSTEM_PROMPT
 from training_tools import initiate_training_cycle, query_training_programs, resolve_training_midpoint
@@ -33,9 +33,9 @@ DISPATCH_TOOLS = [
     # Companion errands (the third async activity)
     dispatch_companion_errand,
     resolve_companion_errand,
-    # Recipe acquisition (M5.1 crafting)
+    # Recipe acquisition (M5.1 crafting; learn verb M5 story-002)
     query_recipe_requirements,
-    learn_recipe,
+    learn,
     # Crafting workspaces + projects (M5.2). NOTE: the Artificer Portable-Lab
     # training-slot exception (ADR 0005) is the TS REST path's (story-006); this
     # agent tool uses the plain crafting-slot cap, so the two entry points diverge
@@ -44,13 +44,14 @@ DISPATCH_TOOLS = [
     rent_workspace,
     start_crafting_project,
     # Repair (M5.4) moved to BlacksmithAgent (story-009): repair_item is reached via
-    # the enter_blacksmith handoff from City, not from this dispatch context.
+    # the enter_mode(mode="blacksmith") handoff from a region agent (M5 fold), not from
+    # this dispatch context.
     # Experimentation (M5.3): craft without a known recipe at DC+4 (resolves immediately).
     experiment_with_materials,
     # Navigation / queries — enough to talk to the mentor and leave
     move_player,
     query_info,
-    roll_dice,
+    check,
     play_sound,
     set_music_state,
     end_session,

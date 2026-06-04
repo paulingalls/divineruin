@@ -37,12 +37,12 @@ class TestBlacksmithAgentConfig:
     def test_blacksmith_tools_exclude_combat_exploration_and_session(self):
         # The forge is a sub-context: the only exit is conclude_blacksmith (mirrors
         # CombatAgent, which omits move_player/end_session and exits via end_combat).
-        from combat_init import start_combat
+        from mode_tools import enter_mode
         from movement_tools import move_player
         from scene_tools import enter_location
         from session_tools import end_session
 
-        for tool in [enter_location, move_player, start_combat, end_session]:
+        for tool in [enter_location, move_player, enter_mode, end_session]:
             assert tool not in BLACKSMITH_TOOLS
 
 

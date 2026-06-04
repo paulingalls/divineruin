@@ -1,10 +1,10 @@
 """Tests for WildernessAgent — wilderness/travel gameplay agent."""
 
 from base_agent import BaseGameAgent
-from check_tools import discover_hidden_element, request_skill_check, roll_dice
+from check_tools import check
 from combat_end import end_combat
-from combat_init import start_combat
 from combat_turn import resolve_enemy_turn
+from mode_tools import enter_mode
 from movement_tools import move_player
 from query_tools import query_info
 from quest_tools import update_quest
@@ -27,15 +27,13 @@ class TestWildernessAgentTools:
         assert enter_location in WILDERNESS_TOOLS
         assert query_info in WILDERNESS_TOOLS
         assert move_player in WILDERNESS_TOOLS
-        assert discover_hidden_element in WILDERNESS_TOOLS
+        assert check in WILDERNESS_TOOLS
 
     def test_has_combat_entry(self):
-        assert start_combat in WILDERNESS_TOOLS
+        assert enter_mode in WILDERNESS_TOOLS
 
     def test_has_utility_tools(self):
-        assert roll_dice in WILDERNESS_TOOLS
         assert record_story_moment in WILDERNESS_TOOLS
-        assert request_skill_check in WILDERNESS_TOOLS
         assert update_quest in WILDERNESS_TOOLS
 
     def test_no_combat_only_tools(self):
