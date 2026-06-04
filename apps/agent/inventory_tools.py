@@ -134,18 +134,13 @@ async def _lose(session, item_id, delta, item, *, db_mod, inventory_mutations, q
 
     # Publish AFTER commit so a rolled-back txn emits nothing. The full inventory array
     # is what drives the HUD refresh — the client re-renders only from event.inventory,
-    # so a partial decrement (5->3) would otherwise leave the panel stale. Mirrors _gain.
+    # so a partial decrement (5->3) would otherwise leave the panel stale. Payload mirrors
+    # _gain ({inventory} only); the DM-facing action/quantity live on the tool return below.
     full_inventory = await queries.get_player_inventory(session.player_id)
     await publish_game_event(
         session.room,
         E.INVENTORY_UPDATED,
-        {
-            "action": "removed",
-            "item_id": item_id,
-            "item_name": item_name,
-            "quantity": max(remaining, 0),
-            "inventory": full_inventory,
-        },
+        {"inventory": full_inventory},
         event_bus=session.event_bus,
     )
 

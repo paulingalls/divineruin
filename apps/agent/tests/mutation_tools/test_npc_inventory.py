@@ -324,6 +324,7 @@ class TestTransactLose:
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == E.INVENTORY_UPDATED
-        assert call_data["action"] == "removed"
-        # The full inventory array drives the client HUD refresh on a decrement.
+        # The event payload mirrors _gain: only the full inventory array (which drives the
+        # HUD refresh on a decrement). DM-facing action/quantity live on the tool return.
         assert isinstance(call_data["inventory"], list)
+        assert "action" not in call_data

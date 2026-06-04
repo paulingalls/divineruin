@@ -172,20 +172,36 @@ async def increment_crafting_skill_counter(
     )
 
 
+def quantity_delta_expr(data_col: str, delta_param: str) -> str:
+    """Build the jsonb_set SQL expression that adds a signed integer delta to a
+    player_inventory row's quantity field (a missing quantity defaults to 0).
+
+    The single source of the signed quantity-delta write, shared by add_inventory_item
+    (the ON CONFLICT increment, where the existing row is `player_inventory.data`) and
+    db_mutations_inventory.transact_inventory (the signed UPDATE, where it is `data`).
+    `consume_player_materials` is deliberately NOT a caller — it sets an absolute,
+    pre-computed remaining quantity under lock, not a signed delta.
+
+    `data_col` and `delta_param` are caller-supplied SQL identifiers/placeholders
+    (e.g. "data", "player_inventory.data", "$3") — never user input — so the f-string
+    interpolation is injection-safe (same static-fragment pattern as
+    ability_persistence.update_player_resources)."""
+    return (
+        f"jsonb_set({data_col}, '{{quantity}}', "
+        f"(COALESCE(({data_col}->>'quantity')::int, 0) + {delta_param})::text::jsonb)"
+    )
+
+
 async def add_inventory_item(
     player_id: str, item_id: str, quantity: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> None:
     _conn = conn or await db.get_pool()
     await _conn.execute(
-        """
+        f"""
         INSERT INTO player_inventory (player_id, item_id, data)
         VALUES ($1, $2, $3::jsonb)
         ON CONFLICT (player_id, item_id)
-        DO UPDATE SET data = jsonb_set(
-            player_inventory.data,
-            '{quantity}',
-            (COALESCE((player_inventory.data->>'quantity')::int, 0) + $4)::text::jsonb
-        )
+        DO UPDATE SET data = {quantity_delta_expr("player_inventory.data", "$4")}
         """,
         player_id,
         item_id,

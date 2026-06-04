@@ -73,13 +73,9 @@ async def transact_inventory(
     """
     _conn = conn or await db.get_pool()
     row = await _conn.fetchrow(
-        """
+        f"""
         UPDATE player_inventory
-        SET data = jsonb_set(
-            data,
-            '{quantity}',
-            (COALESCE((data->>'quantity')::int, 0) + $3)::text::jsonb
-        )
+        SET data = {db_mutations.quantity_delta_expr("data", "$3")}
         WHERE player_id = $1 AND item_id = $2
         RETURNING (data->>'quantity')::int AS quantity
         """,
