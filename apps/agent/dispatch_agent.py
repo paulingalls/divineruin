@@ -44,7 +44,8 @@ DISPATCH_TOOLS = [
     rent_workspace,
     start_crafting_project,
     # Repair (M5.4) moved to BlacksmithAgent (story-009): repair_item is reached via
-    # the enter_blacksmith handoff from City, not from this dispatch context.
+    # the enter_mode(mode="blacksmith") handoff from a region agent (M5 fold), not from
+    # this dispatch context.
     # Experimentation (M5.3): craft without a known recipe at DC+4 (resolves immediately).
     experiment_with_materials,
     # Navigation / queries — enough to talk to the mentor and leave

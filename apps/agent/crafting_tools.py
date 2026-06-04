@@ -176,7 +176,7 @@ async def _rent_workspace_impl(
 
     # An off-tier content default_disposition (not a canonical tier) makes
     # compute_rental_price raise ValueError; that's a content bug, so surface it as
-    # ToolError to keep the tool's ADR-0002 error shape (mirrors learn_recipe).
+    # ToolError to keep the tool's ADR-0002 error shape (mirrors _learn_recipe_impl).
     pricing = await pricing_mod.get_economy_pricing()
     try:
         quote = workspace_mod.compute_rental_price(
@@ -247,7 +247,7 @@ async def _start_crafting_project_impl(
     player_id = context.userdata.player_id
     location_id = context.userdata.location_id
 
-    # Cached reference reads BEFORE the txn (pool-exhaustion guard, like learn_recipe).
+    # Cached reference reads BEFORE the txn (pool-exhaustion guard, like _learn_recipe_impl).
     recipe = await recipes_mod.get_recipe(recipe_id)
     if recipe is None:
         raise ToolError(f"Unknown recipe: {recipe_id}")
@@ -284,7 +284,7 @@ async def _start_crafting_project_impl(
         # A non-canonical crafting/recipe tier makes run_preflight Check 2 raise a raw
         # ValueError (DB-validated at write boundaries, so a content/migration bug, not
         # user input); surface it as ToolError to keep the tool's ADR-0002 error shape
-        # (mirrors learn_recipe's validate_recipe_slot_capacity wrap + rent_workspace).
+        # (mirrors _learn_recipe_impl's validate_recipe_slot_capacity wrap + rent_workspace).
         try:
             result = preflight_mod.run_preflight(recipe, known, crafting_tier, accessible, available, catalog)
         except ValueError as exc:

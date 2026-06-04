@@ -21,7 +21,7 @@ async def add_player_known_recipe(
 ) -> bool:
     """Record that a player learned a recipe. Returns True if a new row was
     inserted, False if the player already knew it (PK conflict) — lets
-    learn_recipe distinguish a fresh learn from a no-op re-learn."""
+    _learn_recipe_impl distinguish a fresh learn from a no-op re-learn."""
     _conn = conn or await db.get_pool()
     inserted = await _conn.fetchval(
         """

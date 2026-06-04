@@ -1,6 +1,6 @@
 """Tests for the recipe @function_tools (story-006, M5.1).
 
-learn_recipe (mutating: FOR-UPDATE player lock, slot gate, writes
+_learn_recipe_impl (mutating: FOR-UPDATE player lock, slot gate, writes
 player_known_recipes, ToolError) and query_recipe_requirements (read). Mirror
 test_errand_tools.py: make_context + make_db_mod fixtures, injected *_mod seams,
 assert conn threading + ToolError shapes.

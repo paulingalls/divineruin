@@ -3,7 +3,7 @@
 Pure functions for the recipe surface: slot-capacity gating by Crafting skill
 tier and material-requirement checks (substitution + tier_minimum). DB reads
 happen in the calling @function_tools; these take plain args so they stay
-exhaustively unit-testable. Consumed by recipe_tools.learn_recipe (slot gate)
+exhaustively unit-testable. Consumed by recipe_tools._learn_recipe_impl (slot gate)
 and the M5.2 three-check materials gate (check_material_requirements).
 """
 

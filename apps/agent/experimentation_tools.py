@@ -87,7 +87,7 @@ async def _experiment_with_materials_impl(
     player_id = context.userdata.player_id
     logger.info("experiment_with_materials: player=%s output=%s", player_id, intended_output)
 
-    # Cached reference reads BEFORE the txn (pool-exhaustion guard, like learn_recipe).
+    # Cached reference reads BEFORE the txn (pool-exhaustion guard, like _learn_recipe_impl).
     all_recipes = await recipes_mod.list_recipes()
     catalog = await materials_mod.get_materials_catalog()
     combo_key = experimentation.make_combination_key(materials)

@@ -9,7 +9,8 @@ it gates on the player's Crafting skill tier vs the item's durability-repair tie
 
 Errors raise LiveKit ToolError (ADR 0002). The `_*_impl` helper exposes `*_mod=` keyword
 seams for TEST-ONLY injection (mirrors crafting_tools). Registered in BLACKSMITH_TOOLS,
-reached via the enter_blacksmith handoff from the City region agent (story-009). The
+reached via the enter_mode(mode="blacksmith") handoff from a region agent (story-009;
+M5 fold). The
 pricing values come from the DB-loaded SSOT (pricing_queries) shared with the REST quote.
 """
 

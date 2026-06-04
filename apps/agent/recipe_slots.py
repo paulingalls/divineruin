@@ -4,7 +4,7 @@ recipe_slots is small static reference data (one row per Crafting skill tier),
 seeded inline by migration 019. The slot caps live in exactly one place — the DB
 — and both languages read them from there (concern d125d022f084, Golden Rule #4).
 The Python validator (recipe_validation.validate_recipe_slot_capacity) is pure and
-takes this mapping as an arg; learn_recipe loads it here and passes it in.
+takes this mapping as an arg; _learn_recipe_impl loads it here and passes it in.
 
 Mirrors recipes.py: a fail-loud parse_recipe_slot_row plus a cached get_recipe_slots
 accessor keyed recipe_slots:all.
