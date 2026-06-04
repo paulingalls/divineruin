@@ -32,12 +32,12 @@ class TestCombatAgentConfig:
         assert set(COMBAT_AGENT_TOOLS) == expected
 
     def test_combat_tools_exclude_exploration(self):
-        from combat_init import start_combat
+        from mode_tools import enter_mode
         from movement_tools import move_player
         from quest_tools import update_quest
         from scene_tools import enter_location
 
-        for tool in [enter_location, move_player, start_combat, update_quest]:
+        for tool in [enter_location, move_player, enter_mode, update_quest]:
             assert tool not in COMBAT_AGENT_TOOLS
 
     def test_combat_excludes_milestone_resolution(self):

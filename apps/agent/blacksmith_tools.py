@@ -1,10 +1,11 @@
 """Intent handoff to/from BlacksmithAgent.
 
-`enter_blacksmith` lets a settlement (City) region agent hand off to BlacksmithAgent
-when the player wants to repair gear at a forge; `conclude_blacksmith` hands control
-back to the region agent that called it. Mirrors the dispatch enter/conclude
-return-to-caller pattern (pre_blacksmith_agent_type stored on SessionData), so control
-returns to whichever region agent the player was in.
+`_enter_blacksmith_impl` (the forge-entry handoff behind enter_mode(mode="blacksmith"),
+mode_tools.py) lets a region agent hand off to BlacksmithAgent when the player wants to
+repair gear at a forge; `conclude_blacksmith` hands control back to the region agent
+that called it. Mirrors the dispatch enter/conclude return-to-caller pattern
+(pre_blacksmith_agent_type stored on SessionData), so control returns to whichever
+region agent the player was in.
 """
 
 import json
@@ -17,14 +18,6 @@ import db_content_queries
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
-
-
-@function_tool()
-async def enter_blacksmith(context: RunContext[SessionData]) -> str | tuple:
-    """Hand off to the forge to repair damaged gear with the settlement blacksmith.
-    Call when the player wants to get an item repaired (or ask a smith what it would
-    cost) at a town's forge. Control returns here when they finish."""
-    return await _enter_blacksmith_impl(context)
 
 
 async def _enter_blacksmith_impl(context: RunContext[SessionData]) -> str | tuple:

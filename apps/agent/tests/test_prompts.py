@@ -312,8 +312,8 @@ class TestPromptToolConsistency:
         from city_agent import CITY_TOOLS
         from combat_agent import COMBAT_AGENT_TOOLS
         from dispatch_agent import DISPATCH_TOOLS
-        from dispatch_tools import enter_dispatch
         from dungeon_agent import DUNGEON_TOOLS
+        from mode_tools import enter_mode
         from onboarding_agent import ONBOARDING_SYSTEM_PROMPT, ONBOARDING_TOOLS
         from query_tools import query_info
         from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
@@ -332,9 +332,9 @@ class TestPromptToolConsistency:
                 assert query_info in tools, f"{name} prompt names query_info but lacks the tool"
             for removed in ("query_location", "query_npc", "query_lore", "query_inventory"):
                 assert removed not in prompt, f"{name} prompt still names removed tool {removed}"
-            # enter_dispatch named iff held (region agents hold + name it; others neither).
-            assert ("enter_dispatch" in prompt) == (enter_dispatch in tools), (
-                f"{name}: prompt names enter_dispatch but tool-holding differs"
+            # enter_mode named iff held (region agents hold + name it; others neither).
+            assert ("enter_mode" in prompt) == (enter_mode in tools), (
+                f"{name}: prompt names enter_mode but tool-holding differs"
             )
 
 

@@ -12,9 +12,10 @@ import pytest
 
 from city_agent import CITY_TOOLS, CityAgent
 from dispatch_agent import DISPATCH_TOOLS, DispatchAgent
-from dispatch_tools import _conclude_dispatch_impl, _enter_dispatch_impl, conclude_dispatch, enter_dispatch
+from dispatch_tools import _conclude_dispatch_impl, _enter_dispatch_impl, conclude_dispatch
 from dungeon_agent import DUNGEON_TOOLS
 from llm_config import MAX_STRICT_TOOLS
+from mode_tools import enter_mode
 from session_data import SessionData
 from wilderness_agent import WILDERNESS_TOOLS
 
@@ -88,10 +89,12 @@ class TestConcludeDispatch:
 
 
 class TestIntentToolRegistration:
-    def test_enter_dispatch_in_region_agents(self):
-        assert enter_dispatch in CITY_TOOLS
-        assert enter_dispatch in WILDERNESS_TOOLS
-        assert enter_dispatch in DUNGEON_TOOLS
+    def test_enter_mode_in_region_agents(self):
+        # Dispatch entry now folds into the enter_mode verb (M5); all three region
+        # agents hold it.
+        assert enter_mode in CITY_TOOLS
+        assert enter_mode in WILDERNESS_TOOLS
+        assert enter_mode in DUNGEON_TOOLS
 
     def test_conclude_dispatch_in_dispatch_tools(self):
         assert conclude_dispatch in DISPATCH_TOOLS

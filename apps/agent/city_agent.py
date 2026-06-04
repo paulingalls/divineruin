@@ -2,14 +2,12 @@
 
 from typing import Any
 
-from blacksmith_tools import enter_blacksmith
 from check_tools import check
 from choice_tools import select
-from combat_init import start_combat
-from dispatch_tools import enter_dispatch
 from environment_tools import play_sound, set_music_state
 from gameplay_agent import GameplayAgent
 from inventory_tools import transact
+from mode_tools import enter_mode
 from movement_tools import move_player
 from progression_tools import award_divine_favor, award_xp
 from query_tools import query_info
@@ -39,15 +37,12 @@ CITY_TOOLS = [
     # resolves via the generic select verb (concern 3c02318dfa99). City is still AT the
     # strict-tool ceiling — relieved structurally by M7's exploration-agent collapse (debt e665104c753a).
     select,
-    # Activity dispatch lives in DispatchAgent (reached by enter_dispatch intent
-    # handoff, or by moving into an activity-context location) — keeps City under
-    # MAX_STRICT_TOOLS. See docs/decisions/0004-agent-tool-scaling.md.
-    enter_dispatch,
-    # Forge repair lives in BlacksmithAgent (reached by enter_blacksmith intent
-    # handoff). City-only — blacksmiths are settlement NPCs (story-009).
-    enter_blacksmith,
-    # Combat handoff
-    start_combat,
+    # Mode handoffs (combat / dispatch / blacksmith) fold into the single enter_mode
+    # verb (M5, ADR 0007). Combat, the DispatchAgent activity context, and the
+    # BlacksmithAgent forge are all reached via enter_mode(mode=...); their focused
+    # toolsets live on the respective mode agents — keeps City under MAX_STRICT_TOOLS.
+    # See docs/decisions/0004-agent-tool-scaling.md.
+    enter_mode,
 ]
 
 
