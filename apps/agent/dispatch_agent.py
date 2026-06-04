@@ -20,7 +20,7 @@ from errand_tools import dispatch_companion_errand, resolve_companion_errand
 from experimentation_tools import experiment_with_materials
 from movement_tools import move_player
 from query_tools import query_info
-from recipe_tools import learn_recipe, query_recipe_requirements
+from recipe_tools import learn, query_recipe_requirements
 from session_tools import end_session
 from system_prompts import DISPATCH_SYSTEM_PROMPT
 from training_tools import initiate_training_cycle, query_training_programs, resolve_training_midpoint
@@ -33,9 +33,9 @@ DISPATCH_TOOLS = [
     # Companion errands (the third async activity)
     dispatch_companion_errand,
     resolve_companion_errand,
-    # Recipe acquisition (M5.1 crafting)
+    # Recipe acquisition (M5.1 crafting; learn verb M5 story-002)
     query_recipe_requirements,
-    learn_recipe,
+    learn,
     # Crafting workspaces + projects (M5.2). NOTE: the Artificer Portable-Lab
     # training-slot exception (ADR 0005) is the TS REST path's (story-006); this
     # agent tool uses the plain crafting-slot cap, so the two entry points diverge

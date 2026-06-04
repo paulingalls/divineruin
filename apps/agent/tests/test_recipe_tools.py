@@ -13,7 +13,7 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
-from recipe_tools import _learn_recipe_impl, _query_recipe_requirements_impl
+from recipe_tools import _learn_impl, _learn_recipe_impl, _query_recipe_requirements_impl
 
 RECIPE = {
     "id": "iron_sword",
@@ -237,6 +237,42 @@ class TestLearnRecipe:
                 recipes_mod=_recipes(),
                 slots_mod=_slots(),
             )
+
+
+class TestLearn:
+    """The generic learn(kind, id, source) verb — dispatches by kind."""
+
+    @pytest.mark.asyncio
+    async def test_recipe_kind_delegates_to_recipe_path(self):
+        ctx = make_context()
+        db_mod, conn = make_db_mod()
+        queries = _queries(tier="trained", known=2)
+        mutations = _mutations(inserted=True)
+        result = json.loads(
+            await _learn_impl(
+                ctx,
+                "recipe",
+                "iron_sword",
+                "npc_teaching",
+                db_mod=db_mod,
+                queries_mod=queries,
+                mutations_mod=mutations,
+                recipes_mod=_recipes(),
+                slots_mod=_slots(),
+            )
+        )
+        # Delegates to the recipe sub-path: same write + JSON as _learn_recipe_impl.
+        assert result["learned"] == "iron_sword"
+        assert result["learned_via"] == "npc_teaching"
+        add_kwargs = mutations.add_player_known_recipe.await_args
+        assert add_kwargs.args[:3] == ("player_1", "iron_sword", "npc_teaching")
+        assert add_kwargs.kwargs.get("conn") is conn
+
+    @pytest.mark.asyncio
+    async def test_unknown_kind_raises(self):
+        ctx = make_context()
+        with pytest.raises(ToolError, match="kind"):
+            await _learn_impl(ctx, "spell", "fireball", "")
 
 
 class TestQueryRecipeRequirements:
