@@ -67,6 +67,9 @@ async def _learn_impl(
     recipes_mod=recipes,
     slots_mod=recipe_slots,
 ) -> str:
+    # Each kind owns its own source validation (recipe gates source against
+    # LEARNED_VIA inside _learn_recipe_impl). A new kind MUST validate source
+    # itself — the optional source="" at this seam is not a free pass.
     if kind == "recipe":
         return await _learn_recipe_impl(
             context,
@@ -97,7 +100,7 @@ async def _learn_recipe_impl(
     if learned_via not in LEARNED_VIA:
         raise ToolError(f"Invalid learned_via {learned_via!r}; expected one of {sorted(LEARNED_VIA)}.")
     player_id = context.userdata.player_id
-    logger.info("learn_recipe: player=%s recipe=%s via=%s", player_id, recipe_id, learned_via)
+    logger.info("learn recipe: player=%s recipe=%s via=%s", player_id, recipe_id, learned_via)
 
     # Cached reference reads — done BEFORE opening the txn so they don't acquire a
     # second pooled connection while this learn holds one (pool max_size=5; a
