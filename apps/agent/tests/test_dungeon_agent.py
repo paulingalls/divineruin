@@ -1,7 +1,7 @@
 """Tests for DungeonAgent — dungeon exploration gameplay agent."""
 
 from base_agent import BaseGameAgent
-from check_tools import discover_hidden_element, request_saving_throw, request_skill_check, roll_dice
+from check_tools import check
 from combat_end import end_combat
 from combat_init import start_combat
 from combat_turn import resolve_enemy_turn
@@ -28,9 +28,7 @@ class TestDungeonAgentTools:
         assert enter_location in DUNGEON_TOOLS
         assert query_info in DUNGEON_TOOLS
         assert move_player in DUNGEON_TOOLS
-        assert discover_hidden_element in DUNGEON_TOOLS
-        assert request_skill_check in DUNGEON_TOOLS
-        assert request_saving_throw in DUNGEON_TOOLS
+        assert check in DUNGEON_TOOLS
 
     def test_has_combat_entry(self):
         assert start_combat in DUNGEON_TOOLS
@@ -40,7 +38,6 @@ class TestDungeonAgentTools:
         assert transact in DUNGEON_TOOLS
 
     def test_has_utility_tools(self):
-        assert roll_dice in DUNGEON_TOOLS
         assert record_story_moment in DUNGEON_TOOLS
         assert update_quest in DUNGEON_TOOLS
 

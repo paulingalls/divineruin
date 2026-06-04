@@ -1,6 +1,6 @@
 """Shared persistence wrapper for skill advancement.
 
-Both session-time skill checks (check_tools._request_skill_check_impl) and
+Both session-time skill checks (check_tools._check_skill_impl) and
 async training completions (async_worker.apply_skill_practice_advancement)
 mutate the same skill_advancement row keyed by (player_id, skill). This
 helper enforces the M1.2 hybrid-counter contract by construction: both

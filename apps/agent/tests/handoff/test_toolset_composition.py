@@ -1,6 +1,6 @@
 """Tests that each gameplay agent exposes the correct tool set (completeness + isolation)."""
 
-from check_tools import request_attack, request_saving_throw
+from check_tools import request_attack
 from city_agent import CITY_TOOLS
 from combat_agent import COMBAT_AGENT_TOOLS
 from combat_end import end_combat
@@ -53,10 +53,11 @@ class TestToolIsolation:
         assert end_combat not in CITY_TOOLS
 
     def test_city_does_not_have_danger_mechanics(self):
-        """A peaceful settlement escalates violence via start_combat and leaves
-        hazard saves to dungeon/combat — so neither lives in the city baseline."""
+        """A peaceful settlement escalates violence via start_combat — request_attack
+        stays a combat-only tool, never in the city baseline. (Hazard saves are now a
+        mode of the universal `check` verb, M5 story-003, so they're no longer a
+        separate tool to exclude.)"""
         assert request_attack not in CITY_TOOLS
-        assert request_saving_throw not in CITY_TOOLS
 
     def test_city_has_exploration_tools(self):
         """CityAgent should have exploration and mutation tools."""

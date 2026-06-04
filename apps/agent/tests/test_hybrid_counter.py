@@ -1,6 +1,6 @@
 """Hybrid counter integration test (M1.2).
 
-Pins the production contract: session-use (`check_tools._request_skill_check_impl`)
+Pins the production contract: session-use (`check_tools._check_skill_impl`)
 and training-skill-practice (`async_worker_training.apply_skill_practice_advancement`) both
 read and write the SAME `skill_advancement` row keyed by `(player_id, skill_id)`.
 
@@ -17,7 +17,7 @@ import async_worker_training
 import check_tools
 import skill_persistence
 from async_worker_training import apply_skill_practice_advancement
-from check_tools import _request_skill_check_impl
+from check_tools import _check_skill_impl
 from tests.test_mechanics_tools import SAMPLE_PLAYER, _make_context, _make_mock_room
 
 
@@ -82,7 +82,7 @@ class TestHybridCounterSharedRow:
         # Path 1: session use → counter becomes 1
         ctx = _make_context(player_id=player_id, room=_make_mock_room())
         result = json.loads(
-            await _request_skill_check_impl(
+            await _check_skill_impl(
                 ctx,
                 skill=skill,
                 difficulty="moderate",
@@ -129,7 +129,7 @@ class TestHybridCounterSharedRow:
         # Subsequent session-use reads the trained tier from the SAME row
         ctx = _make_context(player_id=player_id, room=_make_mock_room())
         result = json.loads(
-            await _request_skill_check_impl(
+            await _check_skill_impl(
                 ctx,
                 skill=skill,
                 difficulty="moderate",
@@ -166,7 +166,7 @@ class TestHybridCounterSharedRow:
 
         _, queries, mutations = _shared_skill_advancement_store()
         ctx = _make_context(player_id="player_1", room=_make_mock_room())
-        await _request_skill_check_impl(
+        await _check_skill_impl(
             ctx,
             skill="athletics",
             difficulty="moderate",

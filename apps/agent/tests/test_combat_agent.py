@@ -12,7 +12,7 @@ class TestCombatAgentConfig:
 
     def test_combat_tools_are_complete(self):
         from ability_tools import request_ability_activation
-        from check_tools import request_attack, request_saving_throw, roll_dice
+        from check_tools import check, request_attack
         from combat_end import end_combat
         from combat_turn import request_death_save, resolve_enemy_turn
         from environment_tools import play_sound, set_music_state
@@ -21,10 +21,9 @@ class TestCombatAgentConfig:
         expected = {
             resolve_enemy_turn,
             request_attack,
-            request_saving_throw,
+            check,
             request_death_save,
             end_combat,
-            roll_dice,
             play_sound,
             set_music_state,
             query_info,

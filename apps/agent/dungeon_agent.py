@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from check_tools import discover_hidden_element, request_saving_throw, request_skill_check, roll_dice
+from check_tools import check
 from choice_tools import select
 from combat_init import start_combat
 from dispatch_tools import enter_dispatch
@@ -21,14 +21,11 @@ DUNGEON_TOOLS = [
     enter_location,
     query_info,
     move_player,
-    request_skill_check,
-    request_saving_throw,
-    discover_hidden_element,
+    check,
     update_quest,
     start_combat,
     enter_dispatch,
     award_xp,
-    roll_dice,
     transact,
     record_story_moment,
     play_sound,

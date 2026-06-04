@@ -3,7 +3,7 @@
 from typing import Any
 
 from blacksmith_tools import enter_blacksmith
-from check_tools import discover_hidden_element, request_skill_check, roll_dice
+from check_tools import check
 from choice_tools import select
 from combat_init import start_combat
 from dispatch_tools import enter_dispatch
@@ -22,10 +22,8 @@ CITY_TOOLS = [
     # World query
     enter_location,
     query_info,
-    discover_hidden_element,
+    check,
     # Mechanics
-    request_skill_check,
-    roll_dice,
     play_sound,
     set_music_state,
     # Mutation

@@ -30,7 +30,7 @@ async def _check_exit_requirement(requires: str, player_id: str, *, queries=db_q
     branches = [b.strip() for b in requires.split("||")]
     for branch in branches:
         if branch.startswith("skill_check:"):
-            continue  # LLM must resolve via request_skill_check first
+            continue  # LLM must resolve via check (mode="skill") first
         if await queries.get_player_flag(player_id, branch):
             return True
     return False
