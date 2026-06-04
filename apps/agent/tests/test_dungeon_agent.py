@@ -3,10 +3,10 @@
 from base_agent import BaseGameAgent
 from check_tools import check
 from combat_end import end_combat
-from combat_init import start_combat
 from combat_turn import resolve_enemy_turn
 from dungeon_agent import DUNGEON_TOOLS, DungeonAgent
 from inventory_tools import transact
+from mode_tools import enter_mode
 from movement_tools import move_player
 from query_tools import query_info
 from quest_tools import update_quest
@@ -31,7 +31,7 @@ class TestDungeonAgentTools:
         assert check in DUNGEON_TOOLS
 
     def test_has_combat_entry(self):
-        assert start_combat in DUNGEON_TOOLS
+        assert enter_mode in DUNGEON_TOOLS
 
     def test_has_inventory_tools(self):
         assert query_info in DUNGEON_TOOLS

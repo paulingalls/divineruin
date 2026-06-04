@@ -1,8 +1,10 @@
-"""Intent handoff into/out of BlacksmithAgent (enter_blacksmith / conclude_blacksmith).
+"""Intent handoff into/out of BlacksmithAgent (_enter_blacksmith_impl behind
+enter_mode(mode="blacksmith") / conclude_blacksmith).
 
 Mirrors the dispatch enter/conclude return-to-caller pattern (pre_blacksmith_agent_type
 on SessionData), so control returns to whichever region agent the player was in.
-enter_blacksmith lives on CITY_TOOLS only — blacksmiths are settlement NPCs.
+The enter_mode verb lives on all three region agents (M5 fold), so blacksmith mode is
+reachable everywhere; the prompt steers it as a settlement activity.
 """
 
 from __future__ import annotations
@@ -16,12 +18,12 @@ from blacksmith_tools import (
     _conclude_blacksmith_impl,
     _enter_blacksmith_impl,
     conclude_blacksmith,
-    enter_blacksmith,
 )
 from city_agent import CITY_TOOLS, CityAgent
 from dispatch_agent import DISPATCH_TOOLS
 from dungeon_agent import DUNGEON_TOOLS
 from llm_config import MAX_STRICT_TOOLS
+from mode_tools import enter_mode
 from repair_item import repair_item
 from session_data import SessionData
 from wilderness_agent import WILDERNESS_TOOLS
@@ -96,13 +98,16 @@ class TestConcludeBlacksmith:
 
 
 class TestBlacksmithToolRegistration:
-    def test_enter_blacksmith_in_city_only(self):
-        # Blacksmiths are settlement NPCs — entering a forge from a dungeon or the
-        # wilderness is incoherent, so enter_blacksmith lives on CITY_TOOLS alone
-        # (a deliberate divergence from the all-three-region enter_dispatch).
-        assert enter_blacksmith in CITY_TOOLS
-        assert enter_blacksmith not in WILDERNESS_TOOLS
-        assert enter_blacksmith not in DUNGEON_TOOLS
+    def test_enter_mode_in_all_region_agents(self):
+        # The blacksmith handoff folds into the single enter_mode verb (M5), which
+        # lives on all three region agents. Blacksmith mode is therefore reachable
+        # everywhere — an accepted widening from the old City-only enter_blacksmith
+        # registration (decision def79692f957): no runtime region guard; the prompt
+        # steers the forge as a settlement activity. Revisit if the DM offers forges
+        # outside settlements.
+        assert enter_mode in CITY_TOOLS
+        assert enter_mode in WILDERNESS_TOOLS
+        assert enter_mode in DUNGEON_TOOLS
 
     def test_repair_item_moved_to_blacksmith(self):
         assert repair_item in BLACKSMITH_TOOLS

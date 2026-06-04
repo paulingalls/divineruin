@@ -4,9 +4,9 @@ from check_tools import request_attack
 from city_agent import CITY_TOOLS
 from combat_agent import COMBAT_AGENT_TOOLS
 from combat_end import end_combat
-from combat_init import start_combat
 from combat_turn import request_death_save, resolve_enemy_turn
 from dungeon_agent import DUNGEON_TOOLS
+from mode_tools import enter_mode
 from movement_tools import move_player
 from progression_tools import award_xp
 from query_tools import query_info
@@ -42,9 +42,9 @@ class TestToolSetCompleteness:
 class TestToolIsolation:
     """Verify that CityAgent and CombatAgent have the correct tool sets."""
 
-    def test_city_has_start_combat(self):
-        """CityAgent should have start_combat tool."""
-        assert start_combat in CITY_TOOLS
+    def test_city_has_enter_mode(self):
+        """CityAgent should have the enter_mode handoff verb (folds combat/dispatch/blacksmith)."""
+        assert enter_mode in CITY_TOOLS
 
     def test_city_does_not_have_combat_only_tools(self):
         """CityAgent should NOT have combat-only tools."""
@@ -53,10 +53,10 @@ class TestToolIsolation:
         assert end_combat not in CITY_TOOLS
 
     def test_city_does_not_have_danger_mechanics(self):
-        """A peaceful settlement escalates violence via start_combat — request_attack
-        stays a combat-only tool, never in the city baseline. (Hazard saves are now a
-        mode of the universal `check` verb, M5 story-003, so they're no longer a
-        separate tool to exclude.)"""
+        """A peaceful settlement escalates violence via enter_mode(mode="combat") —
+        request_attack stays a combat-only tool, never in the city baseline. (Hazard
+        saves are now a mode of the universal `check` verb, M5 story-003, so they're no
+        longer a separate tool to exclude.)"""
         assert request_attack not in CITY_TOOLS
 
     def test_city_has_exploration_tools(self):
@@ -76,5 +76,5 @@ class TestToolIsolation:
         """CombatAgent should NOT have exploration tools."""
         assert enter_location not in COMBAT_AGENT_TOOLS
         assert move_player not in COMBAT_AGENT_TOOLS
-        assert start_combat not in COMBAT_AGENT_TOOLS
+        assert enter_mode not in COMBAT_AGENT_TOOLS
         assert update_quest not in COMBAT_AGENT_TOOLS

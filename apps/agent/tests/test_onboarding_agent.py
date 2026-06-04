@@ -80,7 +80,7 @@ class TestOnboardingAgentClass:
         from onboarding_agent import ONBOARDING_TOOLS
 
         tool_names = {t.__name__ for t in ONBOARDING_TOOLS}
-        assert "start_combat" not in tool_names
+        assert "enter_mode" not in tool_names
         assert "end_session" not in tool_names
         assert "award_xp" not in tool_names
         assert "end_combat" not in tool_names

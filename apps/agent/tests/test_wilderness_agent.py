@@ -3,8 +3,8 @@
 from base_agent import BaseGameAgent
 from check_tools import check
 from combat_end import end_combat
-from combat_init import start_combat
 from combat_turn import resolve_enemy_turn
+from mode_tools import enter_mode
 from movement_tools import move_player
 from query_tools import query_info
 from quest_tools import update_quest
@@ -30,7 +30,7 @@ class TestWildernessAgentTools:
         assert check in WILDERNESS_TOOLS
 
     def test_has_combat_entry(self):
-        assert start_combat in WILDERNESS_TOOLS
+        assert enter_mode in WILDERNESS_TOOLS
 
     def test_has_utility_tools(self):
         assert record_story_moment in WILDERNESS_TOOLS

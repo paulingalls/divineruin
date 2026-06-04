@@ -4,10 +4,9 @@ from typing import Any
 
 from check_tools import check
 from choice_tools import select
-from combat_init import start_combat
-from dispatch_tools import enter_dispatch
 from environment_tools import play_sound, set_music_state
 from gameplay_agent import GameplayAgent
+from mode_tools import enter_mode
 from movement_tools import move_player
 from progression_tools import award_xp
 from query_tools import query_info
@@ -22,8 +21,8 @@ WILDERNESS_TOOLS = [
     move_player,
     check,
     update_quest,
-    start_combat,
-    enter_dispatch,
+    # Combat + dispatch handoffs fold into the single enter_mode verb (M5, ADR 0007).
+    enter_mode,
     award_xp,
     record_story_moment,
     play_sound,
