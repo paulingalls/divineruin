@@ -78,7 +78,8 @@
         "id": "millhaven_tracks",
         "discover_skill": "investigation",
         "dc": 13,
-        "description": "unusual tracks at the northern edge of town \u2014 not animal, not human, impressions in the earth that seem to resist being looked at directly"
+        "description": "unusual tracks at the northern edge of town \u2014 not animal, not human, impressions in the earth that seem to resist being looked at directly",
+        "attaches_to": "north"
       }
     ],
     "exits": {
@@ -131,7 +132,8 @@
         "id": "veythar_seal_mark",
         "discover_skill": "arcana",
         "dc": 16,
-        "description": "a ward-seal on the inner door bearing Veythar's personal sigil \u2014 not a temple mark, a private one"
+        "description": "a ward-seal on the inner door bearing Veythar's personal sigil \u2014 not a temple mark, a private one",
+        "attaches_to": "deeper"
       }
     ],
     "exits": {

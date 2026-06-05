@@ -3,8 +3,12 @@ import {
   validateErrandDispatch,
   numericToDangerLevel,
   setDestinationDangerLevels,
+  loadDestinationDangerLevels,
+  getDangerLevel,
   BLOCKED_DANGER_COMBOS,
 } from "./errand_risk.ts";
+import { setLocations } from "./locations.ts";
+import type { Location } from "@divineruin/shared";
 import { setupDangerLevelFixture } from "./test-fixtures/danger-levels.ts";
 import { setupErrandTemplatesFixture } from "./test-fixtures/errand-templates.ts";
 
@@ -33,6 +37,40 @@ describe("numericToDangerLevel", () => {
 
   test("accepts numeric input", () => {
     expect(numericToDangerLevel(2)).toBe("dangerous");
+  });
+});
+
+describe("loadDestinationDangerLevels — derives bands from loaded locations", () => {
+  // The danger map is no longer its own SQL read; it is derived from the locations
+  // loaded by locations.ts (listLocations()), so locations are the single SQL source.
+  function loc(id: string, danger_level?: number): Location {
+    const base: Location = {
+      id,
+      name: id,
+      tier: 1,
+      district: "d",
+      region: "r",
+      atmosphere: "a",
+      tags: [],
+      exits: {},
+    };
+    if (danger_level !== undefined) base.danger_level = danger_level;
+    return base;
+  }
+
+  test("maps each location's numeric danger_level to its band; missing -> safe", () => {
+    setLocations(
+      new Map<string, Location>([
+        ["safe_place", loc("safe_place", 0)],
+        ["risky", loc("risky", 2)],
+        ["unmarked", loc("unmarked")],
+      ]),
+    );
+    loadDestinationDangerLevels();
+    expect(getDangerLevel("safe_place")).toBe("safe");
+    expect(getDangerLevel("risky")).toBe("dangerous");
+    expect(getDangerLevel("unmarked")).toBe("safe");
+    setLocations(new Map());
   });
 });
 
