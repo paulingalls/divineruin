@@ -114,7 +114,7 @@ class OnboardingAgent(BaseGameAgent):
     """Guided onboarding agent for new players' first session.
 
     Drives a 5-beat scripted sequence: Arrival, Market, Companion Meeting,
-    Kael's Suggestion, First Destination. After beat 5, hands off to CityAgent.
+    Kael's Suggestion, First Destination. After beat 5, hands off to the exploration agent.
     """
 
     def __init__(self, onboarding_beat: int = 1, chat_ctx: Any = None) -> None:

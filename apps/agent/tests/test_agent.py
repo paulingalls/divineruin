@@ -11,7 +11,7 @@ from agent import (
     validate_env,
 )
 from base_agent import TTS_NUM_CHANNELS, TTS_SAMPLE_RATE, BaseGameAgent, _make_tts, _silence
-from city_agent import CityAgent
+from exploration_agent import ExplorationAgent
 from onboarding_agent import OnboardingAgent
 
 
@@ -336,7 +336,8 @@ class TestDMSession:
                 mock_session_instance.start.assert_awaited_once()
                 start_call = mock_session_instance.start.call_args
                 assert start_call[1]["room"] == mock_ctx.room
-                assert isinstance(start_call[1]["agent"], CityAgent)
+                assert isinstance(start_call[1]["agent"], ExplorationAgent)
+                assert start_call[1]["agent"]._agent_type == "city"
 
     @pytest.mark.asyncio
     async def test_dm_session_generates_initial_greeting(self):
@@ -466,4 +467,5 @@ class TestDMSession:
 
                 mock_session_instance.start.assert_awaited_once()
                 start_call = mock_session_instance.start.call_args
-                assert isinstance(start_call[1]["agent"], CityAgent)
+                assert isinstance(start_call[1]["agent"], ExplorationAgent)
+                assert start_call[1]["agent"]._agent_type == "city"

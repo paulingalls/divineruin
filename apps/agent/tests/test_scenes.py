@@ -381,9 +381,9 @@ class TestUpdateQuestSceneHandoff:
         )
         assert isinstance(result, tuple), f"Expected tuple, got {type(result)}"
         agent, _json = result
-        from gameplay_agent import GameplayAgent
+        from exploration_agent import ExplorationAgent
 
-        assert isinstance(agent, GameplayAgent)
+        assert isinstance(agent, ExplorationAgent)
         assert agent._agent_type == "city"
 
     @pytest.mark.asyncio

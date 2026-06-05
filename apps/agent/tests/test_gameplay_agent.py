@@ -8,12 +8,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from city_agent import CityAgent
+from exploration_agent import ExplorationAgent
 from session_data import SessionData
 
 
 def _agent_with_session():
-    agent = CityAgent()
+    agent = ExplorationAgent()
     mock_session = MagicMock()
     sd = SessionData(player_id="test_player", location_id="", room=MagicMock())
     mock_session.userdata = sd
@@ -26,7 +26,7 @@ class TestHotContextReveal:
     SessionData.recently_revealed_element_ids)."""
 
     def test_surfaces_recently_revealed_then_clears(self):
-        agent = CityAgent()
+        agent = ExplorationAgent()
         sd = SessionData(player_id="p", location_id="ruins")
         sd.recently_revealed_element_ids = ["veythar_seal_mark", "ruins_journal_fragment"]
         hot = agent._build_hot_context(sd)
@@ -36,7 +36,7 @@ class TestHotContextReveal:
         assert sd.recently_revealed_element_ids == []
 
     def test_no_reveal_part_when_none(self):
-        agent = CityAgent()
+        agent = ExplorationAgent()
         sd = SessionData(player_id="p", location_id="ruins")
         hot = agent._build_hot_context(sd)
         assert "Revealed" not in hot
@@ -48,12 +48,12 @@ class TestGameplaySpecializationTapWiring:
         agent, mock_session, sd = _agent_with_session()
         with (
             patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)),
-            patch("gameplay_agent.BackgroundProcess"),
+            patch("exploration_agent.BackgroundProcess"),
             patch.object(agent, "_fire_and_forget"),
             # Force a sync mock: the real method is async, so the default mock would be an
             # AsyncMock whose coroutine the no-op _fire_and_forget never awaits (leak).
             patch.object(agent, "_publish_session_init", new_callable=MagicMock),
-            patch("gameplay_agent.SpecializationTapHandler") as MockSTH,
+            patch("exploration_agent.SpecializationTapHandler") as MockSTH,
         ):
             mock_sth = MagicMock()
             MockSTH.return_value = mock_sth
@@ -70,9 +70,9 @@ class TestGameplaySpecializationTapWiring:
         agent._spec_tap = mock_sth
         with (
             patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)),
-            patch("gameplay_agent.generate_session_summary", new_callable=AsyncMock, return_value={}),
-            patch("gameplay_agent.publish_game_event", new_callable=AsyncMock),
-            patch("gameplay_agent.db_mutations.save_session_summary", new_callable=AsyncMock),
+            patch("exploration_agent.generate_session_summary", new_callable=AsyncMock, return_value={}),
+            patch("exploration_agent.publish_game_event", new_callable=AsyncMock),
+            patch("exploration_agent.db_mutations.save_session_summary", new_callable=AsyncMock),
         ):
             await agent.on_exit()
 

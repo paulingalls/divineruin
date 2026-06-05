@@ -358,18 +358,14 @@ class TestPromptToolConsistency:
         # request_attack is the remaining combat-only danger tool that must not appear in a
         # prompt unless the agent holds it.
         from check_tools import request_attack
-        from city_agent import CITY_TOOLS
         from combat_agent import COMBAT_AGENT_TOOLS
         from dispatch_agent import DISPATCH_TOOLS
-        from dungeon_agent import DUNGEON_TOOLS
+        from exploration_agent import EXPLORATION_TOOLS
         from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
-        from wilderness_agent import WILDERNESS_TOOLS
 
         tool_obj = {"request_attack": request_attack}[danger_tool_name]
         agents = {
-            "city": (build_system_prompt("loc", region_type="city"), CITY_TOOLS),
-            "wilderness": (build_system_prompt("loc", region_type="wilderness"), WILDERNESS_TOOLS),
-            "dungeon": (build_system_prompt("loc", region_type="dungeon"), DUNGEON_TOOLS),
+            "exploration": (build_system_prompt("loc", region_type="city"), EXPLORATION_TOOLS),
             "combat": (COMBAT_SYSTEM_PROMPT, COMBAT_AGENT_TOOLS),
             "training": (DISPATCH_SYSTEM_PROMPT, DISPATCH_TOOLS),
         }
@@ -383,20 +379,16 @@ class TestPromptToolConsistency:
     def test_query_info_consolidation_consistency(self):
         """After collapsing query_* into query_info: a prompt naming query_info must hold
         it (no absent-tool instruction), and no prompt may name a removed query_* tool."""
-        from city_agent import CITY_TOOLS
         from combat_agent import COMBAT_AGENT_TOOLS
         from dispatch_agent import DISPATCH_TOOLS
-        from dungeon_agent import DUNGEON_TOOLS
+        from exploration_agent import EXPLORATION_TOOLS
         from mode_tools import enter_mode
         from onboarding_agent import ONBOARDING_SYSTEM_PROMPT, ONBOARDING_TOOLS
         from query_tools import query_info
         from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
-        from wilderness_agent import WILDERNESS_TOOLS
 
         agents = {
-            "city": (build_system_prompt("loc", region_type="city"), CITY_TOOLS),
-            "wilderness": (build_system_prompt("loc", region_type="wilderness"), WILDERNESS_TOOLS),
-            "dungeon": (build_system_prompt("loc", region_type="dungeon"), DUNGEON_TOOLS),
+            "exploration": (build_system_prompt("loc", region_type="city"), EXPLORATION_TOOLS),
             "combat": (COMBAT_SYSTEM_PROMPT, COMBAT_AGENT_TOOLS),
             "training": (DISPATCH_SYSTEM_PROMPT, DISPATCH_TOOLS),
             "onboarding": (ONBOARDING_SYSTEM_PROMPT, ONBOARDING_TOOLS),

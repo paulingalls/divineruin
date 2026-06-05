@@ -8,7 +8,7 @@ from handoff._helpers import make_context as _make_context
 from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER
 
 from base_agent import BaseGameAgent
-from city_agent import CityAgent
+from exploration_agent import ExplorationAgent
 from session_data import CombatParticipant, CombatState, CompanionState, SessionData
 
 
@@ -196,7 +196,8 @@ class TestEndCombatHandoff:
         assert isinstance(raw, tuple)
         agent_instance, json_str = raw
 
-        assert isinstance(agent_instance, CityAgent)
+        assert isinstance(agent_instance, ExplorationAgent)
+        assert agent_instance._agent_type == "city"
         assert isinstance(agent_instance, BaseGameAgent)
 
         result = json.loads(json_str)
@@ -283,7 +284,7 @@ class TestDynamicEndCombat:
     async def test_end_combat_returns_wilderness_agent(self):
         """end_combat with pre_combat_agent_type='wilderness' returns WildernessAgent."""
         from combat_end import _end_combat_impl
-        from wilderness_agent import WildernessAgent
+        from exploration_agent import ExplorationAgent
 
         mock_mutations = MagicMock()
         mock_mutations.delete_combat_state = AsyncMock()
@@ -321,13 +322,14 @@ class TestDynamicEndCombat:
 
         assert isinstance(result, tuple)
         agent, _ = result
-        assert isinstance(agent, WildernessAgent)
+        assert isinstance(agent, ExplorationAgent)
+        assert agent._agent_type == "wilderness"
 
     @pytest.mark.asyncio
     async def test_end_combat_returns_dungeon_agent(self):
         """end_combat with pre_combat_agent_type='dungeon' returns DungeonAgent."""
         from combat_end import _end_combat_impl
-        from dungeon_agent import DungeonAgent
+        from exploration_agent import ExplorationAgent
 
         mock_mutations = MagicMock()
         mock_mutations.delete_combat_state = AsyncMock()
@@ -365,4 +367,5 @@ class TestDynamicEndCombat:
 
         assert isinstance(result, tuple)
         agent, _ = result
-        assert isinstance(agent, DungeonAgent)
+        assert isinstance(agent, ExplorationAgent)
+        assert agent._agent_type == "dungeon"

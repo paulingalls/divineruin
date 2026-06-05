@@ -13,9 +13,14 @@ class TestMovePlayerRegionHandoff:
 
     @pytest.mark.asyncio
     async def test_city_to_wilderness_returns_agent_tuple(self):
-        """Moving from city to wilderness location returns (WildernessAgent, str)."""
+        """Moving from city to wilderness returns (ExplorationAgent[wilderness], str).
+
+        story-001 keeps the region handoff (movement_tools is untouched); the factory
+        now returns an ExplorationAgent carrying the destination region. story-003 later
+        removes the handoff entirely.
+        """
+        from exploration_agent import ExplorationAgent
         from movement_tools import _move_player_impl
-        from wilderness_agent import WildernessAgent
 
         city_location = {
             "id": "accord_market_square",
@@ -68,7 +73,8 @@ class TestMovePlayerRegionHandoff:
 
         assert isinstance(result, tuple), f"Expected tuple, got {type(result)}"
         agent, _json_str = result
-        assert isinstance(agent, WildernessAgent)
+        assert isinstance(agent, ExplorationAgent)
+        assert agent._agent_type == "wilderness"
 
     @pytest.mark.asyncio
     async def test_same_region_returns_string(self):
@@ -128,8 +134,8 @@ class TestMovePlayerRegionHandoff:
 
     @pytest.mark.asyncio
     async def test_wilderness_to_dungeon_returns_dungeon_agent(self):
-        """Moving from wilderness to dungeon triggers WildernessAgent -> DungeonAgent handoff."""
-        from dungeon_agent import DungeonAgent
+        """Moving wilderness -> dungeon returns an ExplorationAgent carrying the dungeon region."""
+        from exploration_agent import ExplorationAgent
         from movement_tools import _move_player_impl
 
         wilderness_loc = {
@@ -183,13 +189,14 @@ class TestMovePlayerRegionHandoff:
 
         assert isinstance(result, tuple)
         agent, _ = result
-        assert isinstance(agent, DungeonAgent)
+        assert isinstance(agent, ExplorationAgent)
+        assert agent._agent_type == "dungeon"
 
     @pytest.mark.asyncio
     async def test_dungeon_to_wilderness_returns_wilderness_agent(self):
-        """Moving from dungeon to exterior triggers DungeonAgent -> WildernessAgent handoff."""
+        """Moving dungeon -> exterior returns an ExplorationAgent carrying the wilderness region."""
+        from exploration_agent import ExplorationAgent
         from movement_tools import _move_player_impl
-        from wilderness_agent import WildernessAgent
 
         dungeon_loc = {
             "id": "greyvale_ruins_entrance",
@@ -242,7 +249,8 @@ class TestMovePlayerRegionHandoff:
 
         assert isinstance(result, tuple)
         agent, _ = result
-        assert isinstance(agent, WildernessAgent)
+        assert isinstance(agent, ExplorationAgent)
+        assert agent._agent_type == "wilderness"
 
 
 class TestRegionHandoffContext:

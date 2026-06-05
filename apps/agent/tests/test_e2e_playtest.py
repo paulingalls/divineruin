@@ -6,11 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, mock_txn
 
-from city_agent import CityAgent
-from dungeon_agent import DungeonAgent
+from exploration_agent import ExplorationAgent
 from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
 from session_data import CombatParticipant, CombatState, CompanionState, SessionData
-from wilderness_agent import WildernessAgent
 
 
 def _make_context(location_id: str, companion: CompanionState | None = None) -> MagicMock:
@@ -94,7 +92,8 @@ class TestNewPlayerHandoffChain:
 
         assert isinstance(result, tuple)
         agent1, _ = result
-        assert isinstance(agent1, WildernessAgent)
+        assert isinstance(agent1, ExplorationAgent)
+        assert agent1._agent_type == REGION_WILDERNESS
         assert ctx.userdata.location_id == "greyvale_south_road"
         assert ctx.userdata.companion is not None
 
@@ -112,7 +111,8 @@ class TestNewPlayerHandoffChain:
 
         assert isinstance(result, tuple)
         agent2, _ = result
-        assert isinstance(agent2, DungeonAgent)
+        assert isinstance(agent2, ExplorationAgent)
+        assert agent2._agent_type == REGION_DUNGEON
         assert ctx.userdata.location_id == "greyvale_ruins_entrance"
 
         # Step 3: Dungeon -> City (back through wilderness)
@@ -137,7 +137,8 @@ class TestNewPlayerHandoffChain:
 
         assert isinstance(result, tuple)
         agent3, _ = result
-        assert isinstance(agent3, CityAgent)
+        assert isinstance(agent3, ExplorationAgent)
+        assert agent3._agent_type == REGION_CITY
 
     @pytest.mark.asyncio
     async def test_companion_persists_across_handoffs(self):
@@ -188,7 +189,8 @@ class TestNewPlayerHandoffChain:
             )
 
         agent, _ = result
-        assert isinstance(agent, WildernessAgent)
+        assert isinstance(agent, ExplorationAgent)
+        assert agent._agent_type == REGION_WILDERNESS
         # Companion still in SessionData
         assert ctx.userdata.companion is not None
         assert ctx.userdata.companion.name == "Kael"
@@ -262,7 +264,8 @@ class TestCombatRoundTrip:
 
         assert isinstance(result, tuple)
         agent, json_str = result
-        assert isinstance(agent, WildernessAgent)
+        assert isinstance(agent, ExplorationAgent)
+        assert agent._agent_type == REGION_WILDERNESS
         data = json.loads(json_str)
         assert data["outcome"] == "victory"
         assert data["xp_total"] > 0
@@ -276,28 +279,32 @@ class TestReturningPlayerDispatch:
         from gameplay_agent import create_gameplay_agent
 
         agent = create_gameplay_agent(REGION_CITY, "accord_guild_hall")
-        assert isinstance(agent, CityAgent)
+        assert isinstance(agent, ExplorationAgent)
+        assert agent._agent_type == REGION_CITY
 
     @pytest.mark.asyncio
     async def test_dispatch_wilderness_region(self):
         from gameplay_agent import create_gameplay_agent
 
         agent = create_gameplay_agent(REGION_WILDERNESS, "greyvale_south_road")
-        assert isinstance(agent, WildernessAgent)
+        assert isinstance(agent, ExplorationAgent)
+        assert agent._agent_type == REGION_WILDERNESS
 
     @pytest.mark.asyncio
     async def test_dispatch_dungeon_region(self):
         from gameplay_agent import create_gameplay_agent
 
         agent = create_gameplay_agent(REGION_DUNGEON, "greyvale_ruins_entrance")
-        assert isinstance(agent, DungeonAgent)
+        assert isinstance(agent, ExplorationAgent)
+        assert agent._agent_type == REGION_DUNGEON
 
     @pytest.mark.asyncio
     async def test_dispatch_with_companion(self):
         from gameplay_agent import create_gameplay_agent
 
         agent = create_gameplay_agent(REGION_CITY, "accord_guild_hall", companion=COMPANION)
-        assert isinstance(agent, CityAgent)
+        assert isinstance(agent, ExplorationAgent)
+        assert agent._agent_type == REGION_CITY
 
 
 class TestOnboardingToGameplay:
@@ -317,7 +324,8 @@ class TestOnboardingToGameplay:
         result = await advance_onboarding_beat._func(ctx)
         assert isinstance(result, tuple)
         agent, json_str = result
-        assert isinstance(agent, CityAgent)
+        assert isinstance(agent, ExplorationAgent)
+        assert agent._agent_type == REGION_CITY
         data = json.loads(json_str)
         assert data["onboarding_complete"] is True
 
