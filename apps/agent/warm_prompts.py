@@ -168,11 +168,25 @@ async def build_warm_layer(
             sections.append(f"REGISTER — {active_scene['name']}\n{active_scene['instructions']}")
 
         # AFFORDANCES — the Stage's nouns grouped by the verb that consumes them. Gated exits
-        # (exit.requires) render under check, not go, until unlocked; key_features are check
-        # targets. Hidden elements are never listed — they surface via discovery (the hot layer).
+        # (exit.requires) render under check, not go, until their requirement is MET — then they
+        # promote to go; key_features are check targets. Hidden elements are never listed — they
+        # surface via discovery (the hot layer).
+        #
+        # Reuse movement's single canonical evaluator so the affordance and the move gate can't
+        # drift: flag branches resolve against player flags, skill_check:* branches stay locked
+        # until their flag is set. Only locations with gated exits pay the per-branch flag read,
+        # and warm rebuilds are event-driven (not per-turn), so the cost is negligible.
+        from movement_tools import _check_exit_requirement
+
         exits = narr.get("exits", {})
-        go_exits = [f"{d} → {e.get('destination', 'unknown')}" for d, e in exits.items() if not e.get("requires")]
-        gated_exits = [(d, e) for d, e in exits.items() if e.get("requires")]
+        go_exits: list[str] = []
+        locked_exits: list[tuple[str, dict]] = []
+        for direction, exit_entry in exits.items():
+            requires = exit_entry.get("requires")
+            if requires and not await _check_exit_requirement(requires, player_id):
+                locked_exits.append((direction, exit_entry))
+            else:
+                go_exits.append(f"{direction} → {exit_entry.get('destination', 'unknown')}")
 
         address_lines: list[str] = []
         if npcs_raw and region_type == REGION_CITY:
@@ -186,7 +200,7 @@ async def build_warm_layer(
         advance_lines = [f"{q['quest_name']}: {quest_objective(q)}" for q in (quests or []) if quest_objective(q)]
 
         check_targets = [str(f) for f in narr.get("key_features", [])]
-        check_targets += [f"{d} (locked: requires {e['requires']})" for d, e in gated_exits]
+        check_targets += [f"{d} (locked: requires {e['requires']})" for d, e in locked_exits]
 
         affordances = ["AFFORDANCES"]
         if go_exits:

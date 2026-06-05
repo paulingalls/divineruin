@@ -196,11 +196,12 @@ class TestBuildWarmLayerExits:
         assert "south" in result
         assert "accord_market_square" in result
 
+    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
     @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
     @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db_content_queries.get_location", new_callable=AsyncMock)
-    async def test_blocked_exit_shows_requires(self, mock_loc, mock_npcs, mock_disp, mock_quests):
+    async def test_blocked_exit_shows_requires(self, mock_loc, mock_npcs, mock_disp, mock_quests, mock_flag):
         location_with_blocked = {
             **SAMPLE_LOCATION,
             "exits": {
@@ -211,10 +212,35 @@ class TestBuildWarmLayerExits:
         mock_loc.return_value = location_with_blocked
         mock_npcs.return_value = []
         mock_quests.return_value = []
+        mock_flag.return_value = False  # requirement unmet -> exit stays locked
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
         # §7: a gated exit (requires) renders under `check`, not `go`, until unlocked.
         assert "check:" in result
         assert "east (locked: requires temple_key)" in result
+
+    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
+    async def test_met_requirement_promotes_exit_check_to_go(
+        self, mock_loc, mock_npcs, mock_disp, mock_quests, mock_flag
+    ):
+        # §7 (story-004): once the requirement is MET, the gated exit promotes check -> go.
+        location_with_gate = {
+            **SAMPLE_LOCATION,
+            "exits": {
+                "south": {"destination": "accord_market_square"},
+                "east": {"destination": "accord_temple_row", "requires": "temple_key"},
+            },
+        }
+        mock_loc.return_value = location_with_gate
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        mock_flag.return_value = True  # player holds the flag -> requirement met
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "east → accord_temple_row" in result  # now a go affordance
+        assert "east (locked" not in result
 
     @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
