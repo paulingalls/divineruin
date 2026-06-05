@@ -56,16 +56,21 @@ describe("content/locations.json — parseLocationRow conformance", () => {
     expect(deeper!.requires).toBe("veythar_seal_mark.discovered || skill_check:arcana:14");
   });
 
-  test("a hidden element bound to an exit round-trips its attaches_to id", async () => {
-    // greyvale_ruins_entrance is the M6 fixture: the ward-seal hangs off the gated
-    // "deeper" exit (attaches_to), and that same exit's requires gate references the
-    // seal's discovery — so check(arcana, deeper) scopes to it (story-002/003).
+  test("a hidden element bound to a key_feature round-trips its attaches_to id", async () => {
+    // greyvale_ruins_entrance is the M6 fixture: the ward-seal attaches to the "archway"
+    // — a distinctive noun in the advertised key_feature ("Aelindran script carved into
+    // the archway"), so check(arcana, <archway prose>) scopes to it via whole-word
+    // containment. Discovering it sets veythar_seal_mark.discovered, which the gated
+    // "deeper" exit's requires gate then satisfies (story-002/003/004).
     const rows = await loadLocationsJson();
     const ruins = rows.find((r) => r.id === "greyvale_ruins_entrance");
     const parsed = parseLocationRow("greyvale_ruins_entrance", ruins!);
     const seal = parsed.hidden_elements!.find((h) => h.id === "veythar_seal_mark");
     expect(seal).toBeDefined();
-    expect(seal!.attaches_to).toBe("deeper");
+    expect(seal!.attaches_to).toBe("archway");
+    // The attaches_to token appears as a whole word in an advertised key_feature, so the
+    // discovery is reachable via natural feature prose (concern fa6663a95762).
+    expect(parsed.key_features!.some((f) => /\barchway\b/.test(f))).toBe(true);
   });
 });
 
