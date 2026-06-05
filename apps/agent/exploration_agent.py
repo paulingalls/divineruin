@@ -97,7 +97,7 @@ class ExplorationAgent(BaseGameAgent):
     ) -> None:
         self._agent_type = region_type
         super().__init__(
-            instructions=build_system_prompt(initial_location, companion, region_type=region_type),
+            instructions=build_system_prompt(initial_location, companion),
             tools=tools or EXPLORATION_TOOLS,
             chat_ctx=chat_ctx,
         )
