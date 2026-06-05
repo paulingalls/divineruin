@@ -1,9 +1,9 @@
-"""Tests for tool_support helpers: knowledge filtering, time conditions, DC stripping, id validation."""
+"""Tests for tool_support helpers: knowledge filtering, time conditions, narration, id validation."""
 
 import pytest
 from livekit.agents.llm import ToolError
 
-from tool_support import _strip_hidden_dcs, _validate_id, apply_time_conditions, filter_knowledge
+from tool_support import _location_for_narration, _validate_id, apply_time_conditions, filter_knowledge
 
 
 class TestFilterKnowledge:
@@ -123,28 +123,33 @@ class TestApplyTimeConditions:
         assert location["description"] == "Original"
 
 
-class TestStripHiddenDCs:
-    def test_strips_dc_and_discover_skill(self):
+class TestLocationForNarration:
+    def test_excludes_hidden_elements(self):
+        # §7: undiscovered hidden elements must never reach narration — their id and
+        # description would let the DM voice a secret the player hasn't found. check(discover)
+        # adjudicates discovery from the raw location, not this narration view.
         location = {
+            "id": "ruins",
+            "name": "Ruins",
+            "description": "A room",
+            "atmosphere": "still",
+            "key_features": ["a fallen shelf"],
             "hidden_elements": [
-                {
-                    "id": "secret_door",
-                    "discover_skill": "perception",
-                    "dc": 15,
-                    "description": "A hidden passage",
-                }
-            ]
+                {"id": "secret_door", "discover_skill": "perception", "dc": 15, "description": "A hidden passage"}
+            ],
+            "exits": {},
+            "tags": [],
         }
-        result = _strip_hidden_dcs(location)
-        elem = result["hidden_elements"][0]
-        assert elem == {"id": "secret_door", "description": "A hidden passage"}
-        assert "dc" not in elem
-        assert "discover_skill" not in elem
+        result = _location_for_narration(location)
+        assert "hidden_elements" not in result
+        assert "secret_door" not in str(result)
+        assert "hidden passage" not in str(result)
+        # Visible fields still pass through.
+        assert result["key_features"] == ["a fallen shelf"]
 
-    def test_no_hidden_elements(self):
-        location = {"description": "A room"}
-        result = _strip_hidden_dcs(location)
-        assert result == location
+    def test_no_hidden_elements_key(self):
+        result = _location_for_narration({"id": "x", "name": "X", "description": "A room"})
+        assert "hidden_elements" not in result
 
 
 class TestValidateId:

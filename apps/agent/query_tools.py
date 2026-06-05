@@ -14,7 +14,6 @@ from session_data import SessionData
 from tool_support import (
     _location_for_narration,
     _npc_for_narration,
-    _strip_hidden_dcs,
     _validate_id,
     apply_time_conditions,
     filter_knowledge,
@@ -77,7 +76,6 @@ async def _query_location_impl(
 
     session: SessionData = context.userdata
     location = apply_time_conditions(location, session.world_time)
-    location = _strip_hidden_dcs(location)
     narration = _location_for_narration(location)
     return json.dumps(narration)
 

@@ -15,7 +15,6 @@ from tool_support import (
     _location_for_narration,
     _npc_summary,
     _player_summary,
-    _strip_hidden_dcs,
     _target_summary,
     _validate_id,
     apply_time_conditions,
@@ -80,7 +79,6 @@ async def _build_scene_context(
         raise ToolError(f"Location '{location_id}' not found.")
 
     location = apply_time_conditions(location, session.world_time)
-    location = _strip_hidden_dcs(location)
 
     npcs_raw, targets_raw, player = await asyncio.gather(
         queries.get_npcs_at_location(location_id),

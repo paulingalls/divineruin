@@ -38,7 +38,6 @@ __all__ = [
     "_npc_summary",
     "_player_summary",
     "_resolve_ambient_sounds",
-    "_strip_hidden_dcs",
     "_target_summary",
     "_validate_id",
     "apply_time_conditions",
@@ -134,35 +133,19 @@ def apply_time_conditions(location: dict, time_of_day: str = "day") -> dict:
     return result
 
 
-def _strip_hidden_dcs(location: dict) -> dict:
-    """Remove dc and discover_skill from hidden_elements so the LLM can't
-    reveal them without a skill check."""
-    hidden = location.get("hidden_elements")
-    if not hidden:
-        return location
-
-    stripped = []
-    for elem in hidden:
-        stripped.append(
-            {
-                "id": elem.get("id"),
-                "description": elem.get("description"),
-            }
-        )
-
-    result = {**location, "hidden_elements": stripped}
-    return result
-
-
 def _location_for_narration(location: dict) -> dict:
-    """Extract the fields the LLM needs for narrating a location."""
+    """Extract the fields the LLM needs for narrating a location.
+
+    §7: hidden_elements are intentionally excluded — undiscovered secrets must never
+    reach the DM's narration (their id/description would let the DM voice something the
+    player hasn't found). check(discover) adjudicates discovery from the raw location.
+    """
     return {
         "id": location.get("id"),
         "name": location.get("name"),
         "description": location.get("description"),
         "atmosphere": location.get("atmosphere"),
         "key_features": location.get("key_features", []),
-        "hidden_elements": location.get("hidden_elements", []),
         "exits": location.get("exits", {}),
         "tags": location.get("tags", []),
     }
