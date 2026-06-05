@@ -195,7 +195,9 @@ async def _award_xp_core(
                         "narration_cue": milestone.narration_cue,
                     }
                 )
-            elif milestone.kind == "specialization_fork" and not milestone.patron_deferred:
+            # Pure predicate on the milestone — call the real module, NOT milestones_mod
+            # (that seam only mocks the DB-backed get_milestone_by_level lookup).
+            elif milestones.is_selectable_fork(milestone):
                 # Present the L5 fork as a pending choice (presentation moved off
                 # resolve_milestone, concern c515f47bf2c5). Patron-driven forks (Phase 8)
                 # cannot be presented yet — leave pending_choice None. Persist nothing.

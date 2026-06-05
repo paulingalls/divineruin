@@ -122,6 +122,19 @@ def test_parse_ability_row_rejects_noninteger_cost():
         parse_ability_row("warrior_cleaving_blow", bad)
 
 
+def test_parse_ability_row_rejects_noninteger_level_requirement():
+    bad = {**_CLEAVE_ROW, "level_requirement": "4"}
+    with pytest.raises(ValueError, match=r"level_requirement"):
+        parse_ability_row(_CLEAVE_ROW["id"], bad)
+
+
+def test_parse_ability_row_rejects_bool_level_requirement():
+    # bool is an int subclass — must be excluded, mirroring _parse_cost (parity with TS).
+    bad = {**_CLEAVE_ROW, "level_requirement": True}
+    with pytest.raises(ValueError, match=r"level_requirement"):
+        parse_ability_row(_CLEAVE_ROW["id"], bad)
+
+
 def test_cost_roundtrip_preserves_scaling():
     a = parse_ability_row(_SMITE_ROW["id"], _SMITE_ROW)
     assert a.cost.focus == 2

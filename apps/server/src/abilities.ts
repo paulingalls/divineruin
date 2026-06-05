@@ -61,8 +61,12 @@ export function parseAbilityRow(id: string, raw: unknown): Ability {
   }
   if (typeof data.archetype_id !== "string") throw new Error(`${ctx}.archetype_id is not a string`);
   if (typeof data.name !== "string") throw new Error(`${ctx}.name is not a string`);
-  if (typeof data.level_requirement !== "number") {
-    throw new Error(`${ctx}.level_requirement is not a number`);
+  // Integer (not just number) for parity with the Python loader, which requires an int
+  // level_requirement — a shared row with a float level_requirement must fail identically
+  // on both sides (the cross-language parity discipline, matching parseCost above and the
+  // milestones loader's level guard).
+  if (typeof data.level_requirement !== "number" || !Number.isInteger(data.level_requirement)) {
+    throw new Error(`${ctx}.level_requirement is not an integer`);
   }
   if (typeof data.effect !== "string") throw new Error(`${ctx}.effect is not a string`);
   if (typeof data.narration_cue !== "string")

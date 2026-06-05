@@ -28,6 +28,7 @@ from milestones import (
     get_milestone,
     get_milestone_by_level,
     is_loaded,
+    is_selectable_fork,
     load_milestones,
     parse_milestone_row,
     set_milestones,
@@ -168,6 +169,36 @@ def test_parse_milestone_row_rejects_malformed_option_missing_key():
         parse_milestone_row("warrior_identity", bad)
 
 
+def test_parse_milestone_row_rejects_nonstring_archetype_id():
+    bad = {**_FORK_ROW, "archetype_id": 123}
+    with pytest.raises(ValueError, match=r"archetype_id"):
+        parse_milestone_row(_FORK_ROW["id"], bad)
+
+
+def test_parse_milestone_row_rejects_nonbool_patron_deferred():
+    bad = {**_FORK_ROW, "patron_deferred": "false"}
+    with pytest.raises(ValueError, match=r"patron_deferred"):
+        parse_milestone_row(_FORK_ROW["id"], bad)
+
+
+def test_parse_milestone_row_rejects_nonstring_narration_cue():
+    bad = {**_FORK_ROW, "narration_cue": 42}
+    with pytest.raises(ValueError, match=r"narration_cue"):
+        parse_milestone_row(_FORK_ROW["id"], bad)
+
+
+def test_parse_milestone_row_rejects_nonstring_option_field():
+    bad = {**_FORK_ROW, "specialization_options": [{"id": "x", "name": 5, "description": "d"}]}
+    with pytest.raises(ValueError, match=r"name is not a string"):
+        parse_milestone_row(_FORK_ROW["id"], bad)
+
+
+def test_parse_milestone_row_rejects_nonstring_grant_field():
+    bad = {**_GRANT_ROW, "grant": {"name": 7, "effect": "e", "flag": None}}
+    with pytest.raises(ValueError, match=r"name is not a string"):
+        parse_milestone_row(_GRANT_ROW["id"], bad)
+
+
 # --- accessors -----------------------------------------------------------------
 
 
@@ -217,6 +248,22 @@ def test_get_milestone_by_level_missing_level_returns_none():
 def test_get_milestone_by_level_unknown_archetype_returns_none():
     _seed_from_content()
     assert get_milestone_by_level("nope", 5) is None
+
+
+def test_is_selectable_fork_true_for_concrete_fork():
+    m = parse_milestone_row(_FORK_ROW["id"], _FORK_ROW)
+    assert is_selectable_fork(m) is True
+
+
+def test_is_selectable_fork_false_for_patron_deferred():
+    # Patron-driven forks (Phase 8) are a fork by kind but not presentable yet.
+    m = parse_milestone_row(_DEFERRED_ROW["id"], _DEFERRED_ROW)
+    assert is_selectable_fork(m) is False
+
+
+def test_is_selectable_fork_false_for_auto_grant():
+    m = parse_milestone_row(_GRANT_ROW["id"], _GRANT_ROW)
+    assert is_selectable_fork(m) is False
 
 
 def test_get_milestone_resolves_and_unknown_raises():
