@@ -109,9 +109,10 @@ class TestAdvanceOnboardingBeat:
         # Should be a tuple (Agent, json_str) for tool-return handoff
         assert isinstance(raw, tuple)
         agent, json_str = raw
-        from city_agent import CityAgent
+        from exploration_agent import ExplorationAgent
 
-        assert isinstance(agent, CityAgent)
+        assert isinstance(agent, ExplorationAgent)
+        assert agent._agent_type == "city"
         result = json.loads(json_str)
         assert result["onboarding_complete"] is True
         # onboarding_beat should be cleared

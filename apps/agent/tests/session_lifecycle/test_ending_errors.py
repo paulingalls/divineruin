@@ -57,11 +57,11 @@ class TestSessionEndingPrompt:
         assert "Session Ending" in prompt
         assert "end_session" in prompt
 
-    def test_end_session_in_city_tools(self):
-        from city_agent import CITY_TOOLS
+    def test_end_session_in_exploration_tools(self):
+        from exploration_agent import EXPLORATION_TOOLS
         from session_tools import end_session
 
-        assert end_session in CITY_TOOLS
+        assert end_session in EXPLORATION_TOOLS
 
 
 class TestLLMErrorHandling:

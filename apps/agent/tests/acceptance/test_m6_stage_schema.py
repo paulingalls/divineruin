@@ -38,7 +38,7 @@ from bg_event_handlers import handle_events
 from check_discovery import _check_discover_impl
 from dice import DiceResult
 from errand_risk import numeric_to_danger
-from gameplay_agent import GameplayAgent
+from exploration_agent import ExplorationAgent
 from warm_prompts import build_warm_layer
 
 _PLAYER_ID = "player_m6_capstone"
@@ -179,7 +179,7 @@ async def test_ac2_discovery_reveals_and_surfaces_in_hot_layer_same_turn(
 
     # ...and the hot layer surfaces it THIS turn, then clears so it doesn't echo.
     # _build_hot_context reads only `sd` (zero I/O), so call it unbound.
-    hot = GameplayAgent._build_hot_context(None, sd)  # type: ignore[arg-type]
+    hot = ExplorationAgent._build_hot_context(None, sd)  # type: ignore[arg-type]
     assert f"[Revealed: {_SEAL_ID}]" in hot
     assert sd.recently_revealed_element_ids == []
 
@@ -216,7 +216,7 @@ async def test_ac4_full_stage_pipeline_e2e(m6_world: str, monkeypatch: pytest.Mo
     assert result["outcome"] == "discovered"
     needs_rebuild, _ = handle_events(sd.event_bus.drain(), sd, [], False, {}, [])
     assert needs_rebuild is True
-    assert f"[Revealed: {_SEAL_ID}]" in GameplayAgent._build_hot_context(None, sd)  # type: ignore[arg-type]
+    assert f"[Revealed: {_SEAL_ID}]" in ExplorationAgent._build_hot_context(None, sd)  # type: ignore[arg-type]
 
     # 3. Warm rebuild: the discovery flag now unlocks the gated exit (check -> go).
     unlocked = await _warm(m6_world)

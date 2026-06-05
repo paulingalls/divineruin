@@ -7,7 +7,7 @@ import pytest
 from handoff._helpers import make_context as _make_context
 from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER
 
-from city_agent import CityAgent
+from exploration_agent import ExplorationAgent
 from session_data import CompanionState, SessionData
 
 
@@ -109,7 +109,8 @@ class TestCreationOnboardingCityRoundTrip:
         raw = await advance_onboarding_beat._func(ctx)
         assert isinstance(raw, tuple)
         agent, json_str = raw
-        assert isinstance(agent, CityAgent)
+        assert isinstance(agent, ExplorationAgent)
+        assert agent._agent_type == "city"
         result = json.loads(json_str)
         assert result["onboarding_complete"] is True
         assert ctx.userdata.onboarding_beat is None
@@ -156,7 +157,8 @@ class TestCreationOnboardingCityRoundTrip:
             if isinstance(result, tuple):
                 # Beat 5 -> CityAgent handoff
                 city_agent, _json_str = result
-                assert isinstance(city_agent, CityAgent)
+                assert isinstance(city_agent, ExplorationAgent)
+                assert city_agent._agent_type == "city"
                 assert ctx.userdata.onboarding_beat is None
                 break
             parsed = json.loads(result)

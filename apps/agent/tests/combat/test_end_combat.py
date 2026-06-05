@@ -37,7 +37,7 @@ class TestEndCombat:
 
     @pytest.mark.asyncio
     async def test_returns_city_agent(self):
-        from city_agent import CityAgent
+        from exploration_agent import ExplorationAgent
 
         mock_mutations = _make_end_combat_mocks()
         ctx = _make_context()
@@ -45,7 +45,8 @@ class TestEndCombat:
 
         raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
         agent_instance, _ = raw
-        assert isinstance(agent_instance, CityAgent)
+        assert isinstance(agent_instance, ExplorationAgent)
+        assert agent_instance._agent_type == "city"
 
     @pytest.mark.asyncio
     async def test_returned_agent_has_combat_summary_context(self):

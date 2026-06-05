@@ -10,14 +10,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from city_agent import CITY_TOOLS, CityAgent
 from dispatch_agent import DISPATCH_TOOLS, DispatchAgent
 from dispatch_tools import _conclude_dispatch_impl, _enter_dispatch_impl, conclude_dispatch
-from dungeon_agent import DUNGEON_TOOLS
+from exploration_agent import EXPLORATION_TOOLS, ExplorationAgent
 from llm_config import MAX_STRICT_TOOLS
 from mode_tools import enter_mode
 from session_data import SessionData
-from wilderness_agent import WILDERNESS_TOOLS
 
 
 def _ctx(location_id: str = "accord_guild_hall", current_agent_type: str = "city") -> MagicMock:
@@ -67,7 +65,8 @@ class TestConcludeDispatch:
         ctx.userdata.pre_dispatch_agent_type = "city"
         result = await _conclude_dispatch_impl(ctx)
         assert isinstance(result, tuple)
-        assert isinstance(result[0], CityAgent)
+        assert isinstance(result[0], ExplorationAgent)
+        assert result[0]._agent_type == "city"
         assert ctx.userdata.pre_dispatch_agent_type is None  # cleared
 
     @pytest.mark.asyncio
@@ -83,24 +82,21 @@ class TestConcludeDispatch:
         ) as m:
             result = await _conclude_dispatch_impl(ctx)
         m.assert_awaited_once_with("greyvale_ruins_entrance")
-        from dungeon_agent import DungeonAgent
+        from exploration_agent import ExplorationAgent
 
-        assert isinstance(result[0], DungeonAgent)
+        assert isinstance(result[0], ExplorationAgent)
+        assert result[0]._agent_type == "dungeon"
 
 
 class TestIntentToolRegistration:
     def test_enter_mode_in_region_agents(self):
-        # Dispatch entry now folds into the enter_mode verb (M5); all three region
-        # agents hold it.
-        assert enter_mode in CITY_TOOLS
-        assert enter_mode in WILDERNESS_TOOLS
-        assert enter_mode in DUNGEON_TOOLS
+        # Dispatch entry now folds into the enter_mode verb (M5); the unified
+        # exploration agent holds it.
+        assert enter_mode in EXPLORATION_TOOLS
 
     def test_conclude_dispatch_in_dispatch_tools(self):
         assert conclude_dispatch in DISPATCH_TOOLS
 
     def test_region_agents_within_ceiling(self):
-        assert len(CITY_TOOLS) <= MAX_STRICT_TOOLS
-        assert len(WILDERNESS_TOOLS) <= MAX_STRICT_TOOLS
-        assert len(DUNGEON_TOOLS) <= MAX_STRICT_TOOLS
+        assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS
         assert len(DISPATCH_TOOLS) <= MAX_STRICT_TOOLS

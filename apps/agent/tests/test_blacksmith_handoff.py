@@ -19,14 +19,12 @@ from blacksmith_tools import (
     _enter_blacksmith_impl,
     conclude_blacksmith,
 )
-from city_agent import CITY_TOOLS, CityAgent
 from dispatch_agent import DISPATCH_TOOLS
-from dungeon_agent import DUNGEON_TOOLS
+from exploration_agent import EXPLORATION_TOOLS, ExplorationAgent
 from llm_config import MAX_STRICT_TOOLS
 from mode_tools import enter_mode
 from repair_item import repair_item
 from session_data import SessionData
-from wilderness_agent import WILDERNESS_TOOLS
 
 
 def _ctx(location_id: str = "accord_guild_hall", current_agent_type: str = "city") -> MagicMock:
@@ -76,7 +74,8 @@ class TestConcludeBlacksmith:
         ctx.userdata.pre_blacksmith_agent_type = "city"
         result = await _conclude_blacksmith_impl(ctx)
         assert isinstance(result, tuple)
-        assert isinstance(result[0], CityAgent)
+        assert isinstance(result[0], ExplorationAgent)
+        assert result[0]._agent_type == "city"
         assert ctx.userdata.pre_blacksmith_agent_type is None  # cleared
 
     @pytest.mark.asyncio
@@ -92,22 +91,21 @@ class TestConcludeBlacksmith:
         ) as m:
             result = await _conclude_blacksmith_impl(ctx)
         m.assert_awaited_once_with("greyvale_ruins_entrance")
-        from dungeon_agent import DungeonAgent
+        from exploration_agent import ExplorationAgent
 
-        assert isinstance(result[0], DungeonAgent)
+        assert isinstance(result[0], ExplorationAgent)
+        assert result[0]._agent_type == "dungeon"
 
 
 class TestBlacksmithToolRegistration:
     def test_enter_mode_in_all_region_agents(self):
         # The blacksmith handoff folds into the single enter_mode verb (M5), which
-        # lives on all three region agents. Blacksmith mode is therefore reachable
+        # lives on the unified exploration agent. Blacksmith mode is therefore reachable
         # everywhere — an accepted widening from the old City-only enter_blacksmith
         # registration (decision def79692f957): no runtime region guard; the prompt
         # steers the forge as a settlement activity. Revisit if the DM offers forges
         # outside settlements.
-        assert enter_mode in CITY_TOOLS
-        assert enter_mode in WILDERNESS_TOOLS
-        assert enter_mode in DUNGEON_TOOLS
+        assert enter_mode in EXPLORATION_TOOLS
 
     def test_repair_item_moved_to_blacksmith(self):
         assert repair_item in BLACKSMITH_TOOLS
@@ -117,5 +115,5 @@ class TestBlacksmithToolRegistration:
         assert conclude_blacksmith in BLACKSMITH_TOOLS
 
     def test_region_and_dispatch_agents_within_ceiling(self):
-        for tools in (CITY_TOOLS, WILDERNESS_TOOLS, DUNGEON_TOOLS, DISPATCH_TOOLS, BLACKSMITH_TOOLS):
+        for tools in (EXPLORATION_TOOLS, DISPATCH_TOOLS, BLACKSMITH_TOOLS):
             assert len(tools) <= MAX_STRICT_TOOLS
