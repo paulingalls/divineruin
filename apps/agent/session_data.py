@@ -104,6 +104,10 @@ class SessionData:
     cached_location_name: str = ""
     cached_npc_names: list[str] = field(default_factory=list)
     cached_quest_summaries: list[str] = field(default_factory=list)
+    # M6 reveal signal: element ids surfaced by check(discover) this turn, appended by the
+    # E.HIDDEN_REVEALED handler. story-003's hot-layer assembly reads these to surface the
+    # revealed target same-turn, then clears the list.
+    recently_revealed_element_ids: list[str] = field(default_factory=list)
 
     # Session metrics tracking
     session_xp_earned: int = 0
