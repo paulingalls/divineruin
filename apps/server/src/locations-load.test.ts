@@ -55,6 +55,18 @@ describe("content/locations.json — parseLocationRow conformance", () => {
     expect(deeper).toBeDefined();
     expect(deeper!.requires).toBe("veythar_seal_mark.discovered || skill_check:arcana:14");
   });
+
+  test("a hidden element bound to an exit round-trips its attaches_to id", async () => {
+    // greyvale_ruins_entrance is the M6 fixture: the ward-seal hangs off the gated
+    // "deeper" exit (attaches_to), and that same exit's requires gate references the
+    // seal's discovery — so check(arcana, deeper) scopes to it (story-002/003).
+    const rows = await loadLocationsJson();
+    const ruins = rows.find((r) => r.id === "greyvale_ruins_entrance");
+    const parsed = parseLocationRow("greyvale_ruins_entrance", ruins!);
+    const seal = parsed.hidden_elements!.find((h) => h.id === "veythar_seal_mark");
+    expect(seal).toBeDefined();
+    expect(seal!.attaches_to).toBe("deeper");
+  });
 });
 
 describe("locations accessors — loadLocations consumer chain", () => {
