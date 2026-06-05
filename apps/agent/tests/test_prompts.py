@@ -191,7 +191,8 @@ class TestBuildWarmLayerExits:
         mock_npcs.return_value = []
         mock_quests.return_value = []
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
-        assert "EXITS" in result
+        # §7: ungated exits are `go` affordances.
+        assert "go:" in result
         assert "south" in result
         assert "accord_market_square" in result
 
@@ -211,8 +212,9 @@ class TestBuildWarmLayerExits:
         mock_npcs.return_value = []
         mock_quests.return_value = []
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
-        assert "blocked" in result
-        assert "temple_key" in result
+        # §7: a gated exit (requires) renders under `check`, not `go`, until unlocked.
+        assert "check:" in result
+        assert "east (locked: requires temple_key)" in result
 
     @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
@@ -225,6 +227,20 @@ class TestBuildWarmLayerExits:
         mock_quests.return_value = []
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
         assert "EXITS" not in result
+
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
+    async def test_danger_rendered_as_band_not_integer(self, mock_loc, mock_npcs, mock_disp, mock_quests):
+        # §7: numbers stay in engine/HUD; the voiced warm layer speaks the danger BAND.
+        mock_loc.return_value = {**SAMPLE_LOCATION, "danger_level": 2}
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "danger: dangerous" in result
+        assert "danger: 2" not in result
+        assert "AFFORDANCES" in result
 
 
 class TestNavigationPromptIncluded:
@@ -382,7 +398,8 @@ class TestRegionTypeWarmLayer:
             npcs_raw=[SAMPLE_NPC_RAW],
             region_type="city",
         )
-        assert "NPCS PRESENT" in result
+        # §7: NPCs present are `address` affordances.
+        assert "address:" in result
 
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
     @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])

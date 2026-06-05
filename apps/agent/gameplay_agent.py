@@ -167,6 +167,13 @@ class GameplayAgent(BaseGameAgent):
         if sd.cached_npc_names:
             parts.append("[NPCs nearby: " + ", ".join(sd.cached_npc_names) + "]")
 
+        # M6 same-turn reveal: surface elements discovered this turn (appended by the
+        # E.HIDDEN_REVEALED handler), then clear so the reveal doesn't echo next turn. The
+        # warm rebuild absorbs them into the affordances on its next pass.
+        if sd.recently_revealed_element_ids:
+            parts.append("[Revealed: " + ", ".join(sd.recently_revealed_element_ids) + "]")
+            sd.recently_revealed_element_ids.clear()
+
         return " ".join(parts)
 
 
