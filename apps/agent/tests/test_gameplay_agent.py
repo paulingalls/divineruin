@@ -20,6 +20,28 @@ def _agent_with_session():
     return agent, mock_session, sd
 
 
+class TestHotContextReveal:
+    """M6 same-turn reveal: _build_hot_context surfaces freshly-discovered element ids and
+    clears the signal so they don't repeat on the next turn (story-003 consumes story-002's
+    SessionData.recently_revealed_element_ids)."""
+
+    def test_surfaces_recently_revealed_then_clears(self):
+        agent = CityAgent()
+        sd = SessionData(player_id="p", location_id="ruins")
+        sd.recently_revealed_element_ids = ["veythar_seal_mark", "ruins_journal_fragment"]
+        hot = agent._build_hot_context(sd)
+        assert "veythar_seal_mark" in hot
+        assert "ruins_journal_fragment" in hot
+        # Consumed same-turn: cleared so the reveal doesn't echo next turn.
+        assert sd.recently_revealed_element_ids == []
+
+    def test_no_reveal_part_when_none(self):
+        agent = CityAgent()
+        sd = SessionData(player_id="p", location_id="ruins")
+        hot = agent._build_hot_context(sd)
+        assert "Revealed" not in hot
+
+
 class TestGameplaySpecializationTapWiring:
     @pytest.mark.asyncio
     async def test_on_enter_starts_specialization_tap_handler(self):
