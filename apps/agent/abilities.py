@@ -79,12 +79,16 @@ def parse_ability_row(ability_id: str, data: dict) -> Ability:
         ability_type = data["ability_type"]
         if ability_type not in _ABILITY_TYPES:
             raise ValueError(f"ability {ability_id!r} ability_type {ability_type!r} not in {sorted(_ABILITY_TYPES)}")
+        level_requirement = data["level_requirement"]
+        # bool is a subclass of int — exclude it explicitly, mirroring _parse_cost.
+        if not isinstance(level_requirement, int) or isinstance(level_requirement, bool):
+            raise ValueError(f"ability {ability_id!r} level_requirement is not an int")
         return Ability(
             id=ability_id,
             archetype_id=data["archetype_id"],
             name=data["name"],
             ability_type=ability_type,
-            level_requirement=data["level_requirement"],
+            level_requirement=level_requirement,
             cost=_parse_cost(data["cost"], f"{ability_id}.cost"),
             effect=data["effect"],
             narration_cue=data["narration_cue"],

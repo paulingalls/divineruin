@@ -169,6 +169,36 @@ def test_parse_milestone_row_rejects_malformed_option_missing_key():
         parse_milestone_row("warrior_identity", bad)
 
 
+def test_parse_milestone_row_rejects_nonstring_archetype_id():
+    bad = {**_FORK_ROW, "archetype_id": 123}
+    with pytest.raises(ValueError, match=r"archetype_id"):
+        parse_milestone_row(_FORK_ROW["id"], bad)
+
+
+def test_parse_milestone_row_rejects_nonbool_patron_deferred():
+    bad = {**_FORK_ROW, "patron_deferred": "false"}
+    with pytest.raises(ValueError, match=r"patron_deferred"):
+        parse_milestone_row(_FORK_ROW["id"], bad)
+
+
+def test_parse_milestone_row_rejects_nonstring_narration_cue():
+    bad = {**_FORK_ROW, "narration_cue": 42}
+    with pytest.raises(ValueError, match=r"narration_cue"):
+        parse_milestone_row(_FORK_ROW["id"], bad)
+
+
+def test_parse_milestone_row_rejects_nonstring_option_field():
+    bad = {**_FORK_ROW, "specialization_options": [{"id": "x", "name": 5, "description": "d"}]}
+    with pytest.raises(ValueError, match=r"name is not a string"):
+        parse_milestone_row(_FORK_ROW["id"], bad)
+
+
+def test_parse_milestone_row_rejects_nonstring_grant_field():
+    bad = {**_GRANT_ROW, "grant": {"name": 7, "effect": "e", "flag": None}}
+    with pytest.raises(ValueError, match=r"name is not a string"):
+        parse_milestone_row(_GRANT_ROW["id"], bad)
+
+
 # --- accessors -----------------------------------------------------------------
 
 

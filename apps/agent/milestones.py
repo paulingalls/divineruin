@@ -70,7 +70,16 @@ def _parse_options(raw: object, ctx: str) -> tuple[SpecializationOption, ...]:
     for i, opt in enumerate(raw):
         if not isinstance(opt, dict):
             raise ValueError(f"{ctx}[{i}] is not an object")
-        out.append(SpecializationOption(id=opt["id"], name=opt["name"], description=opt["description"]))
+        oid = opt["id"]
+        name = opt["name"]
+        description = opt["description"]
+        if not isinstance(oid, str):
+            raise ValueError(f"{ctx}[{i}].id is not a string")
+        if not isinstance(name, str):
+            raise ValueError(f"{ctx}[{i}].name is not a string")
+        if not isinstance(description, str):
+            raise ValueError(f"{ctx}[{i}].description is not a string")
+        out.append(SpecializationOption(id=oid, name=name, description=description))
     return tuple(out)
 
 
@@ -82,7 +91,13 @@ def _parse_grant(raw: object, ctx: str) -> Grant | None:
     flag = raw["flag"]
     if flag is not None and not isinstance(flag, str):
         raise ValueError(f"{ctx}.flag is not a string or null")
-    return Grant(name=raw["name"], effect=raw["effect"], flag=flag)
+    name = raw["name"]
+    effect = raw["effect"]
+    if not isinstance(name, str):
+        raise ValueError(f"{ctx}.name is not a string")
+    if not isinstance(effect, str):
+        raise ValueError(f"{ctx}.effect is not a string")
+    return Grant(name=name, effect=effect, flag=flag)
 
 
 def parse_milestone_row(milestone_id: str, data: dict) -> Milestone:
@@ -105,18 +120,27 @@ def parse_milestone_row(milestone_id: str, data: dict) -> Milestone:
         # bool is a subclass of int — exclude it explicitly, mirroring abilities._parse_cost.
         if not isinstance(level, int) or isinstance(level, bool):
             raise ValueError(f"milestone {milestone_id!r} level is not an int")
+        archetype_id = data["archetype_id"]
+        if not isinstance(archetype_id, str):
+            raise ValueError(f"milestone {milestone_id!r} archetype_id is not a string")
+        patron_deferred = data["patron_deferred"]
+        if not isinstance(patron_deferred, bool):
+            raise ValueError(f"milestone {milestone_id!r} patron_deferred is not a bool")
+        narration_cue = data["narration_cue"]
+        if not isinstance(narration_cue, str):
+            raise ValueError(f"milestone {milestone_id!r} narration_cue is not a string")
         return Milestone(
             id=milestone_id,
-            archetype_id=data["archetype_id"],
+            archetype_id=archetype_id,
             tier=tier,
             level=level,
             kind=kind,
-            patron_deferred=data["patron_deferred"],
+            patron_deferred=patron_deferred,
             specialization_options=_parse_options(
                 data["specialization_options"], f"{milestone_id}.specialization_options"
             ),
             grant=_parse_grant(data["grant"], f"{milestone_id}.grant"),
-            narration_cue=data["narration_cue"],
+            narration_cue=narration_cue,
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed archetype_milestones row {milestone_id!r}: {e}") from e

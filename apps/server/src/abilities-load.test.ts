@@ -157,6 +157,14 @@ describe("parseAbilityRow — fail-loud validation", () => {
     );
   });
 
+  test("rejects a non-integer level_requirement (parity with the Python int requirement)", () => {
+    // Python parse_ability_row requires an int level_requirement; a float like 4.5 must fail
+    // on the TS side too, so the same shared row can't pass one loader and fail the other.
+    expect(() => parseAbilityRow("x", { ...base, level_requirement: 4.5 })).toThrow(
+      /abilities\[x\]\.level_requirement/,
+    );
+  });
+
   test("rejects a cost.scaling that is neither string nor null", () => {
     expect(() => parseAbilityRow("x", { ...base, cost: { ...base.cost, scaling: 7 } })).toThrow(
       /abilities\[x\]\.cost\.scaling/,
