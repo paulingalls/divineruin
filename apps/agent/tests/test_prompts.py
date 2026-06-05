@@ -201,7 +201,9 @@ class TestBuildWarmLayerExits:
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
     @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db_content_queries.get_location", new_callable=AsyncMock)
-    async def test_blocked_exit_shows_requires(self, mock_loc, mock_npcs, mock_disp, mock_quests, mock_flag):
+    async def test_blocked_exit_shows_locked_without_leaking_requires(
+        self, mock_loc, mock_npcs, mock_disp, mock_quests, mock_flag
+    ):
         location_with_blocked = {
             **SAMPLE_LOCATION,
             "exits": {
@@ -214,9 +216,39 @@ class TestBuildWarmLayerExits:
         mock_quests.return_value = []
         mock_flag.return_value = False  # requirement unmet -> exit stays locked
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
-        # §7: a gated exit (requires) renders under `check`, not `go`, until unlocked.
+        # §7: a gated exit renders under `check` as "(locked)", until unlocked — but the raw
+        # `requires` string (flag names / undiscovered hidden ids) never reaches the DM layer.
         assert "check:" in result
-        assert "east (locked: requires temple_key)" in result
+        assert "east (locked)" in result
+        assert "temple_key" not in result
+
+    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
+    async def test_blocked_exit_uses_blocked_hint_when_present(
+        self, mock_loc, mock_npcs, mock_disp, mock_quests, mock_flag
+    ):
+        # When content gives a DM-safe blocked_hint, the locked label surfaces it (still no
+        # raw requires).
+        location_with_hint = {
+            **SAMPLE_LOCATION,
+            "exits": {
+                "east": {
+                    "destination": "accord_temple_row",
+                    "requires": "temple_key",
+                    "blocked_hint": "a sealed bronze door bars the way",
+                },
+            },
+        }
+        mock_loc.return_value = location_with_hint
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        mock_flag.return_value = False
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "east (locked: a sealed bronze door bars the way)" in result
+        assert "temple_key" not in result
 
     @patch("db_queries.get_player_flag", new_callable=AsyncMock)
     @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)

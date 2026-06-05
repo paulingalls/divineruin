@@ -200,7 +200,14 @@ async def build_warm_layer(
         advance_lines = [f"{q['quest_name']}: {quest_objective(q)}" for q in (quests or []) if quest_objective(q)]
 
         check_targets = [str(f) for f in narr.get("key_features", [])]
-        check_targets += [f"{d} (locked: requires {e['requires']})" for d, e in locked_exits]
+        # Locked exits surface as check targets, but NOT their raw `requires` — that string
+        # names flags and undiscovered hidden-element ids (e.g. veythar_seal_mark.discovered),
+        # which §7 keeps out of the DM-facing layer (same rule as _location_for_narration's
+        # hidden-element exclusion). Use the exit's DM-safe blocked_hint when content provides
+        # one, else a bare "(locked)".
+        check_targets += [
+            f"{d} (locked: {e['blocked_hint']})" if e.get("blocked_hint") else f"{d} (locked)" for d, e in locked_exits
+        ]
 
         affordances = ["AFFORDANCES"]
         if go_exits:

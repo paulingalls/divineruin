@@ -78,6 +78,24 @@ LOCATION_MIXED = {
     ],
 }
 
+# M6 (story-004 follow-up): attaches_to is a short token ("arch") but the warm layer
+# advertises the key_feature as prose ("a cracked stone arch to the north"). Matching is
+# asymmetric whole-word containment — attaches_to must appear as a whole word IN the
+# examined target, so the player examines via the advertised prose; mid-word substrings
+# (e.g. "arch" in "search") must NOT match.
+LOCATION_ARCH = {
+    **LOCATION_WITH_HIDDEN,
+    "hidden_elements": [
+        {
+            "id": "arch_seal",
+            "discover_skill": "perception",
+            "dc": 10,
+            "description": "A seal behind the arch",
+            "attaches_to": "arch",
+        }
+    ],
+}
+
 DISCOVER_PLAYER = {
     "player_id": "player_1",
     "name": "Kael",
@@ -370,6 +388,43 @@ class TestCheckDiscover:
                 )
             )
         assert result["element_id"] == "loose_brick"
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_prose_target_matches_token_attaches_to(self, mock_event):
+        # The player examines the feature using the advertised key_feature prose; the bare
+        # attaches_to token ("arch") is a whole word within it, so the element surfaces.
+        content, queries, mutations = _make_discover_mocks(location=LOCATION_ARCH)
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(15)):
+            result = json.loads(
+                await _check_discover_impl(
+                    ctx,
+                    "perception",
+                    "the cracked stone arch to the north",
+                    content=content,
+                    queries=queries,
+                    mutations=mutations,
+                )
+            )
+        assert result["outcome"] == "discovered"
+        assert result["element_id"] == "arch_seal"
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_token_attaches_to_no_midword_false_match(self, mock_event):
+        # "arch" must match as a WORD, not a mid-word substring of "search" — otherwise an
+        # unrelated examine would wrongly surface (and burn) the attached element.
+        content, queries, mutations = _make_discover_mocks(location=LOCATION_ARCH)
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(15)):
+            result = json.loads(
+                await _check_discover_impl(
+                    ctx, "perception", "search the alcove", content=content, queries=queries, mutations=mutations
+                )
+            )
+        assert result["outcome"] == "not_found"
+        mock_event.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)

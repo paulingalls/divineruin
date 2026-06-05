@@ -2,14 +2,17 @@
 
 Split from check_tools.py (500-line cap). check(skill, target) takes a VISIBLE
 target; the hidden element's id is the Resolve's OUTPUT on success, never an input
-(Verbs & Stages §7). M6 scopes by hidden_element.attaches_to == target (an element
-bound to a different target never surfaces); unannotated elements are the room-wide
-skill-match fallback. A successful discovery emits E.HIDDEN_REVEALED.
+(Verbs & Stages §7). M6 scopes by hidden_element.attaches_to: the element surfaces when
+its attaches_to token appears as a whole word in the examined target (so the player can
+examine via the DM-advertised key_feature prose), and an element bound to a different
+target never surfaces; unannotated elements are the room-wide skill-match fallback. A
+successful discovery emits E.HIDDEN_REVEALED.
 Exposes `*_mod=` keyword seams for TEST-ONLY injection.
 """
 
 import json
 import logging
+import re
 
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
@@ -27,6 +30,24 @@ from tool_support import _cap_str
 logger = logging.getLogger("divineruin.tools")
 
 VALID_SKILLS = set(rules_engine.SKILLS.keys())
+
+
+def _target_matches(target_norm: str, attaches_norm: str) -> bool:
+    """True when the examined target names the feature an element's attaches_to is bound to.
+
+    The warm layer advertises a key_feature as prose ("a cracked stone arch to the north")
+    while attaches_to is a short token ("arch"); the player examines via the prose, so the
+    match is asymmetric whole-word containment — attaches_to must appear as a whole word IN
+    the target ("arch" surfaces on "the cracked stone arch", but not mid-word in "search").
+    The `==` fast path covers attaches_to values with leading/trailing non-word characters,
+    where the `\\b` boundary would silently fail to match. Both inputs are already
+    stripped+lowercased by the caller.
+    """
+    if not target_norm or not attaches_norm:
+        return False
+    if target_norm == attaches_norm:
+        return True
+    return re.search(rf"\b{re.escape(attaches_norm)}\b", target_norm) is not None
 
 
 async def _check_discover_impl(
@@ -70,7 +91,11 @@ async def _check_discover_impl(
     # unannotated element is the room-wide skill-match fallback when nothing is attached to
     # the examined target (Verbs & Stages §7). Match is case-insensitive + stripped.
     target_norm = target.strip().lower()
-    attached = [e for e in skill_candidates if e.get("attaches_to") and e["attaches_to"].strip().lower() == target_norm]
+    attached = [
+        e
+        for e in skill_candidates
+        if e.get("attaches_to") and _target_matches(target_norm, e["attaches_to"].strip().lower())
+    ]
     candidates = attached if attached else [e for e in skill_candidates if not e.get("attaches_to")]
 
     if not candidates:

@@ -44,7 +44,10 @@ from warm_prompts import build_warm_layer
 _PLAYER_ID = "player_m6_capstone"
 _LOCATION_ID = "test_m6_stage_location"
 _SEAL_ID = "test_seal"
-_TARGET = "arch"  # the visible feature the player examines; matches attaches_to
+_TARGET = "arch"  # the bare attaches_to token
+# The player examines the feature using the DM-advertised key_feature prose; whole-word
+# containment of the attaches_to token ("arch") makes discovery fire on natural phrasing.
+_PROSE_TARGET = "the cracked stone arch to the north"
 
 # One seeded Stage: a visible arch (key_feature) with a hidden seal attached to it,
 # an ungated exit (`out`, a `go` affordance) and a gated exit (`deeper`) whose
@@ -134,20 +137,19 @@ async def test_ac1_affordances_verb_grouped_and_banded(m6_world: str) -> None:
     assert "go: " in warm
     assert "out → accord_market_square" in warm
     assert "check: " in warm
-    assert f"deeper (locked: requires {_SEAL_ID}.discovered)" in warm
+    assert "deeper (locked)" in warm  # gated exit is a check target, sanitized
     assert "a cracked stone arch to the north" in warm  # key_feature is a check target
 
     # Danger renders as a BAND word, not the raw integer.
     assert f"danger: {numeric_to_danger(2)}" in warm
     assert numeric_to_danger(2) == "dangerous"
 
-    # §7: the hidden element's secret prose never reaches the DM-facing layer
-    # (_location_for_narration strips hidden_elements). The seal id appears ONLY in
-    # the gated exit's requirement scaffolding — never as discoverable narration.
+    # §7: neither the hidden element's prose NOR its id reaches the DM-facing layer. The
+    # locked exit no longer leaks the raw `requires` (which named the seal), so the id is
+    # absent from the WHOLE warm string, not just the narration section.
     assert "veythar seal" not in warm
     assert "etched into the keystone" not in warm
-    narration = warm.split("AFFORDANCES")[0]
-    assert _SEAL_ID not in narration
+    assert _SEAL_ID not in warm
 
 
 async def test_ac2_discovery_reveals_and_surfaces_in_hot_layer_same_turn(
@@ -159,7 +161,8 @@ async def test_ac2_discovery_reveals_and_surfaces_in_hot_layer_same_turn(
     ctx = make_context(player_id=_PLAYER_ID, location_id=m6_world)
     sd = ctx.userdata
 
-    result = json.loads(await _check_discover_impl(ctx, skill="perception", target=_TARGET))
+    # Examine via the DM-advertised prose; whole-word containment still surfaces the seal.
+    result = json.loads(await _check_discover_impl(ctx, skill="perception", target=_PROSE_TARGET))
     assert result["outcome"] == "discovered"
     assert result["element_id"] == _SEAL_ID
 
@@ -183,9 +186,10 @@ async def test_ac2_discovery_reveals_and_surfaces_in_hot_layer_same_turn(
 
 async def test_ac3_met_requirement_promotes_exit_check_to_go(m6_world: str) -> None:
     """AC3: once the gated exit's requirement is met, a rebuild moves it check -> go."""
-    # Pre-condition: the gate is locked.
+    # Pre-condition: the gate is locked (sanitized label, no raw requires leak).
     before = await _warm(m6_world)
-    assert f"deeper (locked: requires {_SEAL_ID}.discovered)" in before
+    assert "deeper (locked)" in before
+    assert _SEAL_ID not in before
 
     # Meet the requirement directly (independent of the discovery path).
     await db_mutations.set_player_flag(_PLAYER_ID, f"{_SEAL_ID}.discovered", True)
@@ -202,13 +206,13 @@ async def test_ac4_full_stage_pipeline_e2e(m6_world: str, monkeypatch: pytest.Mo
     ctx = make_context(player_id=_PLAYER_ID, location_id=m6_world)
     sd = ctx.userdata
 
-    # 1. Stage assembled: gated exit locked, hidden element's secret prose absent.
+    # 1. Stage assembled: gated exit locked (sanitized — no raw requires/hidden id leak).
     locked = await _warm(m6_world)
-    assert f"deeper (locked: requires {_SEAL_ID}.discovered)" in locked
-    assert "veythar seal" not in locked
+    assert "deeper (locked)" in locked
+    assert _SEAL_ID not in locked
 
-    # 2. Discover the seal: reveal fires and surfaces same-turn in the hot layer.
-    result = json.loads(await _check_discover_impl(ctx, skill="perception", target=_TARGET))
+    # 2. Discover the seal via the advertised prose: reveal fires + hot-layer same-turn.
+    result = json.loads(await _check_discover_impl(ctx, skill="perception", target=_PROSE_TARGET))
     assert result["outcome"] == "discovered"
     needs_rebuild, _ = handle_events(sd.event_bus.drain(), sd, [], False, {}, [])
     assert needs_rebuild is True
