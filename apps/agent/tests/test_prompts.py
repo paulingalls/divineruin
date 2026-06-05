@@ -450,6 +450,39 @@ class TestRegionTypeWarmLayer:
         assert "HOLLOW CORRUPTION" in result
 
 
+class TestGatedExitEvaluationCount:
+    """Regression pin (retro try d172fa50ba56): the warm-layer affordance loop must
+    evaluate _check_exit_requirement exactly ONCE per GATED exit (exit.requires set)
+    and never for ungated exits — not once per turn. Warm rebuilds are event-driven,
+    so this keeps the per-branch flag read off the hot path."""
+
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("movement_tools._check_exit_requirement", new_callable=AsyncMock, return_value=True)
+    async def test_check_exit_requirement_awaited_once_per_gated_exit(self, mock_check, _disp):
+        loc = {
+            **SAMPLE_LOCATION,
+            "region_type": "city",
+            "exits": {
+                "north": {"destination": "a", "requires": "key_a.discovered"},
+                "south": {"destination": "b", "requires": "key_b.discovered"},
+                "east": {"destination": "c"},  # ungated — must NOT trigger an evaluation
+            },
+        }
+        await build_warm_layer("loc", "p1", "evening", quests=[], location=loc, npcs_raw=[])
+        assert mock_check.await_count == 2
+
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("movement_tools._check_exit_requirement", new_callable=AsyncMock, return_value=True)
+    async def test_ungated_exits_skip_evaluation(self, mock_check, _disp):
+        loc = {
+            **SAMPLE_LOCATION,
+            "region_type": "city",
+            "exits": {"east": {"destination": "c"}, "west": {"destination": "d"}},
+        }
+        await build_warm_layer("loc", "p1", "evening", quests=[], location=loc, npcs_raw=[])
+        assert mock_check.await_count == 0
+
+
 class TestBuildFullPrompt:
     def test_combines_layers(self):
         result = build_full_prompt("STATIC", "WARM")
