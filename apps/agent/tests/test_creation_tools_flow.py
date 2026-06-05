@@ -1,6 +1,11 @@
-"""Tests for character creation tools."""
+"""Tests for the character creation flow tools.
 
-import hashlib
+push_creation_cards / set_creation_choice / finalize_character — the card-push,
+choice-confirmation, phase-advance, and finalize behaviors, plus the end-to-end
+flow. Split from the asset-id / image-url tests (test_creation_tools_assets.py)
+to stay under the 500-line cap.
+"""
+
 import json
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -8,8 +13,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from livekit.agents.llm import ToolError
 
-import event_types as E
-from asset_utils import compute_asset_id
 from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
@@ -478,65 +481,3 @@ class TestFullCreationFlow:
             result = json.loads(json_str)
             assert "character" in result, f"Failed for {race_id}/{class_id}: {result}"
             assert cs.phase == "complete"
-
-
-class TestComputeAssetId:
-    def test_deterministic(self):
-        """Same inputs produce same output."""
-        a = compute_asset_id("npc_portrait", {"description": "a guard", "features": "tall"})
-        b = compute_asset_id("npc_portrait", {"description": "a guard", "features": "tall"})
-        assert a == b
-
-    def test_different_vars_produce_different_ids(self):
-        a = compute_asset_id("npc_portrait", {"description": "a guard", "features": "tall"})
-        b = compute_asset_id("npc_portrait", {"description": "a mage", "features": "thin"})
-        assert a != b
-
-    def test_format(self):
-        result = compute_asset_id("test", {"key": "val"})
-        assert result.startswith("img_")
-        assert len(result) == 4 + 16  # "img_" + 16 hex chars
-
-    def test_matches_typescript_algorithm(self):
-        """Verify Python output matches the TypeScript computeAssetId logic."""
-        template_id = "npc_portrait"
-        vars = {"description": "a guard", "features": "tall"}
-        sorted_entries = sorted(vars.items())
-        payload = template_id + json.dumps(sorted_entries)
-        expected_hash = hashlib.sha256(payload.encode()).hexdigest()[:16]
-        expected = f"img_{expected_hash}"
-        assert compute_asset_id(template_id, vars) == expected
-
-    def test_key_order_independent(self):
-        """Vars with different insertion order but same content produce same ID."""
-        a = compute_asset_id("t", {"b": "2", "a": "1"})
-        b = compute_asset_id("t", {"a": "1", "b": "2"})
-        assert a == b
-
-
-class TestCreationCardsImageUrl:
-    async def test_race_cards_have_image_url(self):
-        ctx = _make_context()
-        await _push_cards(ctx, category="race")
-        # Verify function doesn't error out — actual image_url content tested below
-        # The unit test for the actual image_url content relies on compute_asset_id tests
-
-    async def test_class_cards_have_image_url(self):
-        ctx = _make_context()
-        await _push_cards(ctx, category="class")
-
-    async def test_deity_cards_have_image_url(self):
-        ctx = _make_context()
-        await _push_cards(ctx, category="deity")
-
-    @pytest.mark.parametrize("category", ["race", "class", "deity"])
-    @patch("creation_tools.publish_game_event", new_callable=AsyncMock)
-    async def test_card_payloads_contain_image_url(self, mock_publish, category):
-        ctx = _make_context()
-        await _push_cards(ctx, category=category)
-        cards_call = [c for c in mock_publish.call_args_list if c[0][1] == E.CREATION_CARDS]
-        assert len(cards_call) > 0
-        cards = cards_call[0][0][2]["cards"]
-        for card in cards:
-            assert "image_url" in card, f"Card {card['id']} missing image_url"
-            assert card["image_url"].startswith(f"/api/assets/images/{category}_")
