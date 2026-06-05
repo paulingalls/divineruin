@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from combat_resolution import hp_threshold_status
-from region_types import REGION_CITY
+from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
 from session_data import CombatState
 
 if TYPE_CHECKING:
@@ -86,6 +86,59 @@ CORRUPTION_GUIDANCE: dict[int, str] = {
 }
 
 
+# REGION_REGISTER — the ambient narration register per region, keyed by the Stage's
+# region_type. This was formerly spliced into the system prompt (one prompt per region);
+# moving it here keeps build_system_prompt region-agnostic so the cached static layer
+# survives region moves, and ties region flavor to the location (the Stage) as the single
+# source of truth. The "## X Mode" header is gone — the REGISTER section label replaces it.
+REGION_REGISTER: dict[str, str] = {
+    REGION_WILDERNESS: (
+        "You are narrating wilderness travel and exploration. Paced, atmospheric, "
+        "tension-aware narration. Sound and smell dominate over sight — the player "
+        "is traveling eyes-closed.\n"
+        "\n"
+        "Narration style:\n"
+        "- Longer descriptions of landscape, weather, and distance than in cities.\n"
+        "- Environmental hazards are constant companions: weather shifts, terrain "
+        "difficulty, wildlife signs.\n"
+        "- No NPC commerce rules apply. There are no shopkeepers out here.\n"
+        "- No social context rules. Wilderness encounters are about survival and discovery.\n"
+        "\n"
+        "Travel pacing: compress routine travel to one sentence per location. Save "
+        "full narration for encounters, discoveries, and destination arrivals.\n"
+        "\n"
+        "The companion is especially active during travel — pointing things out, "
+        "sharing stories, warning about danger. Let Kael fill the silences of the road."
+    ),
+    REGION_DUNGEON: (
+        "You are narrating dungeon exploration. Terse, tense, sensory-heavy narration. "
+        "Short sentences. Every sound matters. Echo and dripping water. The darkness "
+        "presses close.\n"
+        "\n"
+        "Narration style:\n"
+        "- Emphasize what the player hears and feels. Sight is limited.\n"
+        "- Hidden elements are everywhere. Reward careful exploration.\n"
+        "- Traps and puzzles are narrated through sensory clues, never revealed directly.\n"
+        "- No social context rules. No commerce. No casual NPC conversation.\n"
+        "- The Hollow's corruption is strongest here. Describe its effects on the senses: "
+        "sounds from wrong distances, metallic tastes, moments where reality overlaps.\n"
+        "\n"
+        'When a trap springs or a hazard threatens the player, call check with mode="save", '
+        "the save type, DC, and what happens on failure. Narrate the danger, never "
+        "the numbers.\n"
+        "\n"
+        "The companion speaks in whispers here. Nervous, alert. Shorter sentences than "
+        "usual. Old instincts from the caravan keep him checking corners."
+    ),
+    REGION_CITY: (
+        "When the player asks about learning, training, improving a skill, or finding a "
+        "mentor, point them toward the settlement's training hall and lead them there "
+        "(move_player). The mentor and the actual training happen once they arrive — "
+        "don't promise specific programs before they're in front of the trainer."
+    ),
+}
+
+
 def format_training_section(active_cycles: list[dict]) -> str | None:
     """Render the ACTIVE TRAINING warm-layer block, or None when there are none.
 
@@ -121,7 +174,6 @@ async def build_warm_layer(
     corruption_level: int = 0,
     location: dict | None = None,
     npcs_raw: list[dict] | None = None,
-    region_type: str = REGION_CITY,
     scene_cache: dict[str, dict] | None = None,
     training: list[dict] | None = None,
 ) -> str:
@@ -158,6 +210,16 @@ async def build_warm_layer(
             f"Atmosphere: {narr.get('atmosphere', '')}"
         )
 
+        # REGISTER — Region: the ambient narration register for this Stage's region,
+        # sourced from the location's region_type (the Stage dict), not a caller param, so
+        # region and register can never disagree. Region is ambient; the scene register
+        # (below) is quest-specific and refines it, so it lands after — the more-specific
+        # guidance reads as the final word.
+        region = location.get("region_type", REGION_CITY)
+        region_register = REGION_REGISTER.get(region)
+        if region_register:
+            sections.append(f"REGISTER — Region: {region.capitalize()}\n{region_register}")
+
         # REGISTER — DM persona guidance from the active scene's instructions (may be absent).
         active_scene = None
         if scene_cache:
@@ -189,7 +251,7 @@ async def build_warm_layer(
                 go_exits.append(f"{direction} → {exit_entry.get('destination', 'unknown')}")
 
         address_lines: list[str] = []
-        if npcs_raw and region_type == REGION_CITY:
+        if npcs_raw and region == REGION_CITY:
             npc_ids = [npc["id"] for npc in npcs_raw]
             dispositions = await db_queries.get_npc_dispositions(npc_ids, player_id)
             for npc in npcs_raw:
