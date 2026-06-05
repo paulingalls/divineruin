@@ -2,8 +2,9 @@
 
 Split from check_tools.py (500-line cap). check(skill, target) takes a VISIBLE
 target; the hidden element's id is the Resolve's OUTPUT on success, never an input
-(Verbs & Stages §7). M5 scopes the location's hidden_elements room-wide by matching
-discover_skill (the §7 fallback, since hidden_element.attaches_to is M6 content).
+(Verbs & Stages §7). M6 scopes by hidden_element.attaches_to == target (an element
+bound to a different target never surfaces); unannotated elements are the room-wide
+skill-match fallback. A successful discovery emits E.HIDDEN_REVEALED.
 Exposes `*_mod=` keyword seams for TEST-ONLY injection.
 """
 
@@ -51,21 +52,26 @@ async def _check_discover_impl(
     if player is None:
         raise ToolError(f"Player '{session.player_id}' not found.")
 
-    # M5 room-wide-by-skill fallback: candidates are hidden_elements whose discover_skill
-    # matches the approach, excluding ones permanently discovered (player flag) AND ones
-    # already rolled this session. The anti-grind gate is keyed on the ELEMENT, not the
-    # free-text target, so re-searching the same secret under a reworded target can't earn a
-    # fresh roll; once the lowest-DC secret is exhausted the next one becomes reachable.
-    # M6 seam: when hidden_element.attaches_to lands, prefer elements whose attaches_to ==
-    # target, falling back to skill-match for un-annotated content.
+    # Skill-matched, undiscovered, un-rolled-this-session hidden_elements. The anti-grind gate
+    # is keyed on the ELEMENT, not the free-text target, so re-searching the same secret under a
+    # reworded target can't earn a fresh roll; once the lowest-DC secret is exhausted the next
+    # one becomes reachable.
     flags = player.get("flags", {})
-    candidates = [
+    skill_candidates = [
         elem
         for elem in location.get("hidden_elements", [])
         if elem.get("discover_skill", "perception") == skill_lower
         and not flags.get(f"{elem.get('id')}.discovered")
         and f"{skill_lower}:{elem.get('id')}" not in session.attempted_discoveries
     ]
+
+    # M6 attaches_to scoping: an element bound to a visible target surfaces ONLY when that
+    # target is examined; an element bound to a DIFFERENT target never surfaces here. An
+    # unannotated element is the room-wide skill-match fallback when nothing is attached to
+    # the examined target (Verbs & Stages §7). Match is case-insensitive + stripped.
+    target_norm = target.strip().lower()
+    attached = [e for e in skill_candidates if e.get("attaches_to") and e["attaches_to"].strip().lower() == target_norm]
+    candidates = attached if attached else [e for e in skill_candidates if not e.get("attaches_to")]
 
     if not candidates:
         # Nothing new to find with this approach (none scoped, or all already tried/found) —
@@ -115,6 +121,19 @@ async def _check_discover_impl(
         loc_name = location.get("name", session.location_id)
         session.record_companion_memory(f"Discovered {element.get('description', element_id)} at {loc_name}")
         await mutations.set_player_flag(session.player_id, f"{element_id}.discovered", True)
+        # Close the Act->Resolve->Stage edge: emit the reveal so story-003's background
+        # consumer can rebuild the warm layer and record this id for the hot layer.
+        await publish_game_event(
+            session.room,
+            E.HIDDEN_REVEALED,
+            {
+                "element_id": element_id,
+                "attaches_to": element.get("attaches_to"),
+                "description": element.get("description", ""),
+                "skill": skill_lower,
+            },
+            event_bus=session.event_bus,
+        )
 
     logger.info(
         "check discover: target=%s skill=%s d20=%d+%d=%d vs DC %d → %s",

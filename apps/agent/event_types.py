@@ -44,6 +44,11 @@ QUEST_UPDATE = "quest_update"  # client-only alias for QUEST_UPDATED
 HOLLOW_CORRUPTION_CHANGED = "hollow_corruption_changed"
 DISPOSITION_CHANGED = "disposition_changed"
 WORLD_EVENT = "world_event"
+# Emitted by check(mode=discover) on a successful discovery (M6). Server-internal:
+# the warm-layer rebuild + hot-layer record consumer lands in story-003 (bg_event_handlers
+# does not yet handle it). Reveals reach the player via the DM's voice, not a HUD affordance
+# — so this is intentionally NOT mirrored in apps/mobile (the client ignores unknown types).
+HIDDEN_REVEALED = "hidden_revealed"
 
 # Transcript
 TRANSCRIPT_ENTRY = "transcript_entry"
