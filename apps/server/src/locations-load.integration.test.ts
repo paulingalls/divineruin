@@ -16,6 +16,15 @@ import { sql } from "./db.ts";
 // (the pre-push / CI server lane); the unit lane skips it cleanly.
 const hasDb = Boolean(process.env.DATABASE_URL);
 
+// Anti-silent-skip sentinel: the server lane sets REQUIRE_DB=1 (package.json
+// test:server). If DATABASE_URL ever drifts to unset in that lane, the describe
+// below would silently skip and the lane would go green without ever exercising
+// loadLocations — so fail loud here instead. The env-free unit lane leaves
+// REQUIRE_DB unset and skips cleanly. (Closes retro decision 458e9030621f.)
+test("DATABASE_URL present when the lane requires it (REQUIRE_DB sentinel)", () => {
+  if (process.env.REQUIRE_DB) expect(hasDb).toBe(true);
+});
+
 describe.skipIf(!hasDb)("loadLocations — DB row-fetch path", () => {
   const testRows: Record<string, Record<string, unknown>> = {
     test_load_alpha: {

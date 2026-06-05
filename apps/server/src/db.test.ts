@@ -12,6 +12,14 @@ import { sql } from "./db.ts";
 // server lane provisions DATABASE_URL (scripts/test-env.sh) so they run there.
 const hasDb = Boolean(process.env.DATABASE_URL);
 
+// Anti-silent-skip sentinel: the server lane sets REQUIRE_DB=1 (package.json
+// test:server). If DATABASE_URL ever drifts to unset in that lane, the live-PG
+// describe below would silently skip and the lane would go green untested — so
+// fail loud here instead. The env-free unit lane leaves REQUIRE_DB unset and skips.
+test("DATABASE_URL present when the lane requires it (REQUIRE_DB sentinel)", () => {
+  if (process.env.REQUIRE_DB) expect(hasDb).toBe(true);
+});
+
 // Env-free: probing `.then` hits the guard at db.ts and returns before
 // getClient(), so it neither constructs the client nor reads the env. The
 // laziness guarantee itself is enforced by the whole env-free unit lane — every
