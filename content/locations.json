@@ -71,14 +71,16 @@
     "key_features": [
       "the old stone mill at the town's center, still running but neglected",
       "a makeshift notice board with warnings about traveling north alone",
-      "a cluster of refugee families camped near the south road, recently arrived from further north"
+      "a cluster of refugee families camped near the south road, recently arrived from further north",
+      "the muddy northern edge of town, where the last houses give way to open road"
     ],
     "hidden_elements": [
       {
         "id": "millhaven_tracks",
         "discover_skill": "investigation",
         "dc": 13,
-        "description": "unusual tracks at the northern edge of town \u2014 not animal, not human, impressions in the earth that seem to resist being looked at directly"
+        "description": "unusual tracks at the northern edge of town \u2014 not animal, not human, impressions in the earth that seem to resist being looked at directly",
+        "attaches_to": "northern edge"
       }
     ],
     "exits": {
@@ -131,7 +133,8 @@
         "id": "veythar_seal_mark",
         "discover_skill": "arcana",
         "dc": 16,
-        "description": "a ward-seal on the inner door bearing Veythar's personal sigil \u2014 not a temple mark, a private one"
+        "description": "a ward-seal on the inner door bearing Veythar's personal sigil \u2014 not a temple mark, a private one",
+        "attaches_to": "archway"
       }
     ],
     "exits": {

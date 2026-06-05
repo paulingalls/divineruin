@@ -42,8 +42,8 @@ class TestQueryLocation:
         ctx = _make_context()
         result = json.loads(await _query_location_impl(ctx, location_id="accord_guild_hall", content=mock_content))
         assert result["name"] == "Guild Hall"
-        assert "dc" not in json.dumps(result["hidden_elements"])
-        assert "discover_skill" not in json.dumps(result["hidden_elements"])
+        # §7: undiscovered hidden elements never reach the DM's location narration.
+        assert "hidden_elements" not in result
 
     @pytest.mark.asyncio
     async def test_missing_location(self):

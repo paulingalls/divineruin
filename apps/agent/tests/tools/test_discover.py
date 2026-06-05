@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from livekit.agents.llm import ToolError
 
+import event_types as E
 from check_discovery import _check_discover_impl
 from tools._helpers import _make_context
 
@@ -40,6 +41,58 @@ LOCATION_TWO_SECRETS = {
     "hidden_elements": [
         {"id": "hard_secret", "discover_skill": "perception", "dc": 15, "description": "A hard find"},
         {"id": "easy_secret", "discover_skill": "perception", "dc": 10, "description": "An easy find"},
+    ],
+}
+
+# M6: an element bound to a visible target via attaches_to surfaces ONLY when that
+# target is examined; an unannotated element is the room-wide skill-match fallback.
+LOCATION_ATTACHED = {
+    **LOCATION_WITH_HIDDEN,
+    "hidden_elements": [
+        {
+            "id": "door_seal",
+            "discover_skill": "arcana",
+            "dc": 10,
+            "description": "A ward-seal on the inner door",
+            "attaches_to": "inner_door",
+        }
+    ],
+}
+
+LOCATION_MIXED = {
+    **LOCATION_WITH_HIDDEN,
+    "hidden_elements": [
+        {
+            "id": "door_seal",
+            "discover_skill": "perception",
+            "dc": 10,
+            "description": "A ward-seal on the inner door",
+            "attaches_to": "inner_door",
+        },
+        {
+            "id": "loose_brick",
+            "discover_skill": "perception",
+            "dc": 10,
+            "description": "A loose brick in the wall",
+        },
+    ],
+}
+
+# M6 (story-004 follow-up): attaches_to is a short token ("arch") but the warm layer
+# advertises the key_feature as prose ("a cracked stone arch to the north"). Matching is
+# asymmetric whole-word containment — attaches_to must appear as a whole word IN the
+# examined target, so the player examines via the advertised prose; mid-word substrings
+# (e.g. "arch" in "search") must NOT match.
+LOCATION_ARCH = {
+    **LOCATION_WITH_HIDDEN,
+    "hidden_elements": [
+        {
+            "id": "arch_seal",
+            "discover_skill": "perception",
+            "dc": 10,
+            "description": "A seal behind the arch",
+            "attaches_to": "arch",
+        }
     ],
 }
 
@@ -231,8 +284,147 @@ class TestCheckDiscover:
             await _check_discover_impl(
                 ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
             )
-        event_payload = mock_event.call_args[0][2]
-        assert "dc" not in event_payload
+        # The success path now publishes DICE_ROLL *and* HIDDEN_REVEALED — assert against
+        # the DICE_ROLL event specifically, not whichever fired last.
+        dice_calls = [c for c in mock_event.call_args_list if c[0][1] == E.DICE_ROLL]
+        assert len(dice_calls) == 1
+        assert "dc" not in dice_calls[0][0][2]
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_successful_discovery_emits_hidden_revealed(self, mock_event):
+        content, queries, mutations = _make_discover_mocks()
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(15)):
+            await _check_discover_impl(
+                ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
+            )
+        revealed = [c for c in mock_event.call_args_list if c[0][1] == E.HIDDEN_REVEALED]
+        assert len(revealed) == 1
+        assert revealed[0][0][2]["element_id"] == "secret_door"
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_failed_discovery_emits_no_reveal(self, mock_event):
+        content, queries, mutations = _make_discover_mocks()
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(3)):
+            await _check_discover_impl(
+                ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
+            )
+        revealed = [c for c in mock_event.call_args_list if c[0][1] == E.HIDDEN_REVEALED]
+        assert revealed == []
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_attached_element_surfaces_on_its_target(self, mock_event):
+        # Examining the target an element is attaches_to'd to surfaces that element.
+        content, queries, mutations = _make_discover_mocks(location=LOCATION_ATTACHED)
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(15)):
+            result = json.loads(
+                await _check_discover_impl(
+                    ctx, "arcana", "inner_door", content=content, queries=queries, mutations=mutations
+                )
+            )
+        assert result["outcome"] == "discovered"
+        assert result["element_id"] == "door_seal"
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_attached_element_not_surfaced_on_other_target(self, mock_event):
+        # An attaches_to'd element does NOT surface when a DIFFERENT target is examined,
+        # and there is no unannotated fallback — so the search finds nothing.
+        content, queries, mutations = _make_discover_mocks(location=LOCATION_ATTACHED)
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(15)):
+            result = json.loads(
+                await _check_discover_impl(
+                    ctx, "arcana", "bookshelf", content=content, queries=queries, mutations=mutations
+                )
+            )
+        assert result["outcome"] == "not_found"
+        mock_event.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_attaches_to_match_is_case_insensitive(self, mock_event):
+        content, queries, mutations = _make_discover_mocks(location=LOCATION_ATTACHED)
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(15)):
+            result = json.loads(
+                await _check_discover_impl(
+                    ctx, "arcana", "  Inner_Door  ", content=content, queries=queries, mutations=mutations
+                )
+            )
+        assert result["element_id"] == "door_seal"
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_mixed_examine_attached_target_prefers_attached(self, mock_event):
+        # With an attached + an unannotated element, examining the attached target surfaces
+        # the attached element (not the unannotated one).
+        content, queries, mutations = _make_discover_mocks(location=LOCATION_MIXED)
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(15)):
+            result = json.loads(
+                await _check_discover_impl(
+                    ctx, "perception", "inner_door", content=content, queries=queries, mutations=mutations
+                )
+            )
+        assert result["element_id"] == "door_seal"
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_mixed_examine_other_target_falls_back_to_unannotated(self, mock_event):
+        # Examining a target nothing is attached to falls back to the unannotated element,
+        # never the element attached to a different target.
+        content, queries, mutations = _make_discover_mocks(location=LOCATION_MIXED)
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(15)):
+            result = json.loads(
+                await _check_discover_impl(
+                    ctx, "perception", "the wall", content=content, queries=queries, mutations=mutations
+                )
+            )
+        assert result["element_id"] == "loose_brick"
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_prose_target_matches_token_attaches_to(self, mock_event):
+        # The player examines the feature using the advertised key_feature prose; the bare
+        # attaches_to token ("arch") is a whole word within it, so the element surfaces.
+        content, queries, mutations = _make_discover_mocks(location=LOCATION_ARCH)
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(15)):
+            result = json.loads(
+                await _check_discover_impl(
+                    ctx,
+                    "perception",
+                    "the cracked stone arch to the north",
+                    content=content,
+                    queries=queries,
+                    mutations=mutations,
+                )
+            )
+        assert result["outcome"] == "discovered"
+        assert result["element_id"] == "arch_seal"
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_token_attaches_to_no_midword_false_match(self, mock_event):
+        # "arch" must match as a WORD, not a mid-word substring of "search" — otherwise an
+        # unrelated examine would wrongly surface (and burn) the attached element.
+        content, queries, mutations = _make_discover_mocks(location=LOCATION_ARCH)
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(15)):
+            result = json.loads(
+                await _check_discover_impl(
+                    ctx, "perception", "search the alcove", content=content, queries=queries, mutations=mutations
+                )
+            )
+        assert result["outcome"] == "not_found"
+        mock_event.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)

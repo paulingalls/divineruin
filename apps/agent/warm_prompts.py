@@ -129,7 +129,8 @@ async def build_warm_layer(
 
     import db_content_queries
     import db_queries
-    from tool_support import _location_for_narration, _npc_summary, apply_time_conditions
+    from errand_risk import numeric_to_danger
+    from tool_support import _location_for_narration, _npc_summary, _resolve_ambient_sounds, apply_time_conditions
 
     sections: list[str] = []
 
@@ -147,7 +148,7 @@ async def build_warm_layer(
                 db_queries.get_active_player_quests(player_id),
             )
 
-    # Current scene
+    # The Stage (§7): narration + register + affordances-grouped-by-verb + scene band.
     if location:
         location = apply_time_conditions(location, world_time)
         narr = _location_for_narration(location)
@@ -157,51 +158,81 @@ async def build_warm_layer(
             f"Atmosphere: {narr.get('atmosphere', '')}"
         )
 
-        # Exits
+        # REGISTER — DM persona guidance from the active scene's instructions (may be absent).
+        active_scene = None
+        if scene_cache:
+            from scene_tools import get_active_scene_for_context
+
+            active_scene = get_active_scene_for_context(scene_cache, quests or [], location)
+        if active_scene:
+            sections.append(f"REGISTER — {active_scene['name']}\n{active_scene['instructions']}")
+
+        # AFFORDANCES — the Stage's nouns grouped by the verb that consumes them. Gated exits
+        # (exit.requires) render under check, not go, until their requirement is MET — then they
+        # promote to go; key_features are check targets. Hidden elements are never listed — they
+        # surface via discovery (the hot layer).
+        #
+        # Reuse movement's single canonical evaluator so the affordance and the move gate can't
+        # drift: flag branches resolve against player flags, skill_check:* branches stay locked
+        # until their flag is set. Only locations with gated exits pay the per-branch flag read,
+        # and warm rebuilds are event-driven (not per-turn), so the cost is negligible.
+        from movement_tools import _check_exit_requirement
+
         exits = narr.get("exits", {})
-        if exits:
-            exit_lines = []
-            for direction, exit_data in exits.items():
-                dest = exit_data.get("destination", "unknown")
-                requires = exit_data.get("requires")
-                line = f"- {direction} \u2192 {dest}"
-                if requires:
-                    line += f" (blocked: requires {requires})"
-                exit_lines.append(line)
-            sections.append("EXITS\n" + "\n".join(exit_lines))
+        go_exits: list[str] = []
+        locked_exits: list[tuple[str, dict]] = []
+        for direction, exit_entry in exits.items():
+            requires = exit_entry.get("requires")
+            if requires and not await _check_exit_requirement(requires, player_id):
+                locked_exits.append((direction, exit_entry))
+            else:
+                go_exits.append(f"{direction} → {exit_entry.get('destination', 'unknown')}")
 
-    # Active NPCs at location (city only — wilderness/dungeon de-emphasize NPCs)
-    if npcs_raw and region_type == REGION_CITY:
-        npc_ids = [npc["id"] for npc in npcs_raw]
-        dispositions = await db_queries.get_npc_dispositions(npc_ids, player_id)
-        npc_lines = []
-        for npc in npcs_raw:
-            disposition = dispositions.get(npc["id"]) or str(npc.get("default_disposition", "neutral"))
-            summary = _npc_summary(npc, disposition)
-            npc_lines.append(f"- {summary['name']} ({summary['role']}) — disposition: {summary['disposition']}")
-        sections.append("NPCS PRESENT\n" + "\n".join(npc_lines))
+        address_lines: list[str] = []
+        if npcs_raw and region_type == REGION_CITY:
+            npc_ids = [npc["id"] for npc in npcs_raw]
+            dispositions = await db_queries.get_npc_dispositions(npc_ids, player_id)
+            for npc in npcs_raw:
+                disposition = dispositions.get(npc["id"]) or str(npc.get("default_disposition", "neutral"))
+                s = _npc_summary(npc, disposition)
+                address_lines.append(f"{s['name']} ({s['role']}) — {s['disposition']}")
 
-    # Active quests
-    if quests:
-        quest_lines = []
-        for q in quests:
-            objective = quest_objective(q)
-            quest_lines.append(f"- {q['quest_name']}: {objective}")
-        sections.append("ACTIVE QUESTS\n" + "\n".join(quest_lines))
+        advance_lines = [f"{q['quest_name']}: {quest_objective(q)}" for q in (quests or []) if quest_objective(q)]
+
+        check_targets = [str(f) for f in narr.get("key_features", [])]
+        # Locked exits surface as check targets, but NOT their raw `requires` — that string
+        # names flags and undiscovered hidden-element ids (e.g. veythar_seal_mark.discovered),
+        # which §7 keeps out of the DM-facing layer (same rule as _location_for_narration's
+        # hidden-element exclusion). Use the exit's DM-safe blocked_hint when content provides
+        # one, else a bare "(locked)".
+        check_targets += [
+            f"{d} (locked: {e['blocked_hint']})" if e.get("blocked_hint") else f"{d} (locked)" for d, e in locked_exits
+        ]
+
+        affordances = ["AFFORDANCES"]
+        if go_exits:
+            affordances.append("  go: " + ", ".join(go_exits))
+        if address_lines:
+            affordances.append("  address: " + "; ".join(address_lines))
+        if advance_lines:
+            affordances.append("  advance_quest: " + "; ".join(advance_lines))
+        if check_targets:
+            affordances.append("  check: " + "; ".join(check_targets))
+        if len(affordances) > 1:
+            sections.append("\n".join(affordances))
+
+        # SCENE — ambient audio | time-of-day | danger BAND (the integer stays in engine/HUD).
+        scene_bits = [world_time, f"danger: {numeric_to_danger(location.get('danger_level'))}"]
+        ambient = _resolve_ambient_sounds(location, world_time)
+        if ambient:
+            scene_bits.insert(1, f"ambient: {ambient}")
+        sections.append("SCENE — " + " | ".join(scene_bits))
 
     # Active training cycles (surfaces the cycle id so the DM can resolve midpoints)
     if training:
         training_section = format_training_section([t for t in training if t.get("state") != "complete"])
         if training_section:
             sections.append(training_section)
-
-    # Active scene (from quest play tree or location default)
-    if scene_cache:
-        from scene_tools import get_active_scene_for_context
-
-        active_scene = get_active_scene_for_context(scene_cache, quests or [], location)
-        if active_scene:
-            sections.append(f"ACTIVE SCENE — {active_scene['name']}\n{active_scene['instructions']}")
 
     # Companion state
     if companion is not None and companion.is_present:

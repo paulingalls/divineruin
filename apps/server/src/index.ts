@@ -19,6 +19,7 @@ import { sql } from "./db.ts";
 import { handleGetActivityTemplates } from "./activity-templates-api.ts";
 import { handleStorePushToken, handleInternalPush } from "./push.ts";
 import { loadDestinationDangerLevels } from "./errand_risk.ts";
+import { loadLocations } from "./locations.ts";
 import { loadTrainingActivityTypes } from "./training_state_machine.ts";
 import { loadTrainingPrograms, loadErrandTemplates } from "./activity_templates.ts";
 import { loadRecipes } from "./recipes.ts";
@@ -31,8 +32,11 @@ import { isDev } from "./env.ts";
 
 // Load content-backed config at startup. Fail loud if any query fails — the
 // request handlers depend on these maps being populated before requests arrive.
+// Locations load first: the danger-level band map derives from them synchronously
+// (errand_risk.loadDestinationDangerLevels) rather than re-querying the table.
+await loadLocations();
+loadDestinationDangerLevels();
 await Promise.all([
-  loadDestinationDangerLevels(),
   loadTrainingActivityTypes(),
   loadTrainingPrograms(),
   loadErrandTemplates(),

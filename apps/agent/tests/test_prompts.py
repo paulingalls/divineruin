@@ -191,15 +191,19 @@ class TestBuildWarmLayerExits:
         mock_npcs.return_value = []
         mock_quests.return_value = []
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
-        assert "EXITS" in result
+        # §7: ungated exits are `go` affordances.
+        assert "go:" in result
         assert "south" in result
         assert "accord_market_square" in result
 
+    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
     @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
     @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db_content_queries.get_location", new_callable=AsyncMock)
-    async def test_blocked_exit_shows_requires(self, mock_loc, mock_npcs, mock_disp, mock_quests):
+    async def test_blocked_exit_shows_locked_without_leaking_requires(
+        self, mock_loc, mock_npcs, mock_disp, mock_quests, mock_flag
+    ):
         location_with_blocked = {
             **SAMPLE_LOCATION,
             "exits": {
@@ -210,9 +214,65 @@ class TestBuildWarmLayerExits:
         mock_loc.return_value = location_with_blocked
         mock_npcs.return_value = []
         mock_quests.return_value = []
+        mock_flag.return_value = False  # requirement unmet -> exit stays locked
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
-        assert "blocked" in result
-        assert "temple_key" in result
+        # §7: a gated exit renders under `check` as "(locked)", until unlocked — but the raw
+        # `requires` string (flag names / undiscovered hidden ids) never reaches the DM layer.
+        assert "check:" in result
+        assert "east (locked)" in result
+        assert "temple_key" not in result
+
+    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
+    async def test_blocked_exit_uses_blocked_hint_when_present(
+        self, mock_loc, mock_npcs, mock_disp, mock_quests, mock_flag
+    ):
+        # When content gives a DM-safe blocked_hint, the locked label surfaces it (still no
+        # raw requires).
+        location_with_hint = {
+            **SAMPLE_LOCATION,
+            "exits": {
+                "east": {
+                    "destination": "accord_temple_row",
+                    "requires": "temple_key",
+                    "blocked_hint": "a sealed bronze door bars the way",
+                },
+            },
+        }
+        mock_loc.return_value = location_with_hint
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        mock_flag.return_value = False
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "east (locked: a sealed bronze door bars the way)" in result
+        assert "temple_key" not in result
+
+    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
+    async def test_met_requirement_promotes_exit_check_to_go(
+        self, mock_loc, mock_npcs, mock_disp, mock_quests, mock_flag
+    ):
+        # §7 (story-004): once the requirement is MET, the gated exit promotes check -> go.
+        location_with_gate = {
+            **SAMPLE_LOCATION,
+            "exits": {
+                "south": {"destination": "accord_market_square"},
+                "east": {"destination": "accord_temple_row", "requires": "temple_key"},
+            },
+        }
+        mock_loc.return_value = location_with_gate
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        mock_flag.return_value = True  # player holds the flag -> requirement met
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "east → accord_temple_row" in result  # now a go affordance
+        assert "east (locked" not in result
 
     @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
@@ -225,6 +285,20 @@ class TestBuildWarmLayerExits:
         mock_quests.return_value = []
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
         assert "EXITS" not in result
+
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
+    async def test_danger_rendered_as_band_not_integer(self, mock_loc, mock_npcs, mock_disp, mock_quests):
+        # §7: numbers stay in engine/HUD; the voiced warm layer speaks the danger BAND.
+        mock_loc.return_value = {**SAMPLE_LOCATION, "danger_level": 2}
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "danger: dangerous" in result
+        assert "danger: 2" not in result
+        assert "AFFORDANCES" in result
 
 
 class TestNavigationPromptIncluded:
@@ -382,7 +456,8 @@ class TestRegionTypeWarmLayer:
             npcs_raw=[SAMPLE_NPC_RAW],
             region_type="city",
         )
-        assert "NPCS PRESENT" in result
+        # §7: NPCs present are `address` affordances.
+        assert "address:" in result
 
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
     @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])

@@ -8,12 +8,13 @@
  * game_mechanics_core.md §Companion Risk (L887-892) — the same spec the Python
  * risk table conformance-pins against.
  *
- * Destination danger levels are loaded from the locations table at startup
- * via loadDestinationDangerLevels(). locations.json uses numeric values
+ * Destination danger levels are derived at startup from the locations loaded by
+ * locations.ts (listLocations()), so locations are the single SQL source — no
+ * parallel query here. locations.json uses numeric danger_level values
  * (0=safe, 1=moderate, 2=dangerous, 3=extreme).
  */
 
-import { sql } from "./db.ts";
+import { listLocations } from "./locations.ts";
 import { getErrandTemplate } from "./activity_templates.ts";
 
 export type DangerLevel = "safe" | "moderate" | "dangerous" | "extreme";
@@ -49,13 +50,14 @@ export function numericToDangerLevel(raw: string | number | null | undefined): D
   }
 }
 
-export async function loadDestinationDangerLevels(): Promise<void> {
-  const rows = await sql<{ id: string; danger_level: string | null }[]>`
-    SELECT id, data->>'danger_level' AS danger_level FROM locations
-  `;
+// Derives the danger-level band map from the already-loaded locations. Pure and
+// synchronous — call AFTER loadLocations() has populated the locations registry
+// (index.ts startup). Replaces the former parallel `SELECT data->>'danger_level'
+// FROM locations` so locations.ts is the single SQL read for location content.
+export function loadDestinationDangerLevels(): void {
   const map = new Map<string, DangerLevel>();
-  for (const row of rows) {
-    map.set(row.id, numericToDangerLevel(row.danger_level));
+  for (const loc of listLocations()) {
+    map.set(loc.id, numericToDangerLevel(loc.danger_level));
   }
   dangerLevels = map;
   console.log(`Loaded danger levels for ${map.size} locations`);
