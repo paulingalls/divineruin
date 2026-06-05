@@ -320,7 +320,8 @@ class TestWarmLayerSceneInjection:
             quests=[quest_with_graph],
             scene_cache=scene_cache,
         )
-        assert "ACTIVE SCENE" in result
+        # §7: scene.instructions are promoted to the REGISTER block (DM persona guidance).
+        assert "REGISTER" in result
         assert "Road to Millhaven" in result
         assert "Narrate the journey with growing unease." in result
 
