@@ -157,6 +157,17 @@ def get_milestone_by_level(archetype_id: str, level: int) -> Milestone | None:
     )
 
 
+def is_selectable_fork(milestone: Milestone) -> bool:
+    """True when a milestone is a specialization fork the engine can present now.
+
+    Single source of the present-this-fork predicate. Patron-driven forks
+    (Cleric/Paladin/Oracle) are patron_deferred until the Patron system arrives
+    (Phase 8) and cannot be surfaced as a pending choice yet, so they are False
+    here. Shared by award_xp's level-crossing loop (progression_tools).
+    """
+    return milestone.kind == "specialization_fork" and not milestone.patron_deferred
+
+
 def is_loaded() -> bool:
     """True once the milestones have been populated (startup load or test seam)."""
     return bool(_milestones)

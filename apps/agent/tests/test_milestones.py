@@ -28,6 +28,7 @@ from milestones import (
     get_milestone,
     get_milestone_by_level,
     is_loaded,
+    is_selectable_fork,
     load_milestones,
     parse_milestone_row,
     set_milestones,
@@ -217,6 +218,22 @@ def test_get_milestone_by_level_missing_level_returns_none():
 def test_get_milestone_by_level_unknown_archetype_returns_none():
     _seed_from_content()
     assert get_milestone_by_level("nope", 5) is None
+
+
+def test_is_selectable_fork_true_for_concrete_fork():
+    m = parse_milestone_row(_FORK_ROW["id"], _FORK_ROW)
+    assert is_selectable_fork(m) is True
+
+
+def test_is_selectable_fork_false_for_patron_deferred():
+    # Patron-driven forks (Phase 8) are a fork by kind but not presentable yet.
+    m = parse_milestone_row(_DEFERRED_ROW["id"], _DEFERRED_ROW)
+    assert is_selectable_fork(m) is False
+
+
+def test_is_selectable_fork_false_for_auto_grant():
+    m = parse_milestone_row(_GRANT_ROW["id"], _GRANT_ROW)
+    assert is_selectable_fork(m) is False
 
 
 def test_get_milestone_resolves_and_unknown_raises():
