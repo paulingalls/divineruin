@@ -1,7 +1,7 @@
-"""GameplayAgent shared-lifecycle tests — SpecializationTapHandler wiring (story-008).
+"""ExplorationAgent shared-lifecycle tests — SpecializationTapHandler wiring (story-008).
 
-The gameplay agents (city/dungeon/wilderness) host the L5 specialization-tap consumer
-so a tap resolves where leveling happens. Tested on the concrete CityAgent.
+The single region-agnostic ExplorationAgent (M7 collapse of city/dungeon/wilderness)
+hosts the L5 specialization-tap consumer so a tap resolves where leveling happens.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -53,15 +53,14 @@ class TestGameplaySpecializationTapWiring:
             # Force a sync mock: the real method is async, so the default mock would be an
             # AsyncMock whose coroutine the no-op _fire_and_forget never awaits (leak).
             patch.object(agent, "_publish_session_init", new_callable=MagicMock),
-            patch("exploration_agent.SpecializationTapHandler") as MockSTH,
+            patch("exploration_agent.start_specialization_tap") as mock_start,
         ):
-            mock_sth = MagicMock()
-            MockSTH.return_value = mock_sth
+            mock_handler = MagicMock()
+            mock_start.return_value = mock_handler
             await agent.on_enter()
 
-            MockSTH.assert_called_once_with(room=sd.room, session=mock_session, userdata=sd)
-            mock_sth.start.assert_called_once()
-            assert agent._spec_tap is mock_sth
+            mock_start.assert_called_once_with(sd.room, mock_session, sd)
+            assert agent._spec_tap is mock_handler
 
     @pytest.mark.asyncio
     async def test_on_exit_stops_specialization_tap_handler(self):

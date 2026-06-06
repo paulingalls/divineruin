@@ -22,7 +22,7 @@ import db_queries
 import event_types as E
 from background_process import BackgroundProcess
 from base_agent import BaseGameAgent
-from card_tap_handler import SpecializationTapHandler
+from card_tap_handler import SpecializationTapHandler, start_specialization_tap
 from check_tools import check
 from choice_tools import select
 from combat_resolution import hp_threshold_status
@@ -131,8 +131,7 @@ class ExplorationAgent(BaseGameAgent):
         # Consume L5 specialization taps from the HUD: a tap drives the DM to resolve
         # the fork via the select verb (story-008, concern c6b7b18f2d8f).
         assert sd.room is not None  # room is set before agent enters
-        self._spec_tap = SpecializationTapHandler(room=sd.room, session=self.session, userdata=sd)
-        self._spec_tap.start()
+        self._spec_tap = start_specialization_tap(sd.room, self.session, sd)
 
     async def on_exit(self) -> None:
         logger.info("%sAgent exiting session", self._agent_type.capitalize())
