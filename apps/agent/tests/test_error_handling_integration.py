@@ -44,12 +44,15 @@ async def test_update_disposition_timeout_returns_json_error():
     context.userdata = session
 
     # Simulate timeout during transaction
-    # Must also mock db.get_npc since it's called before db.transaction
+    # Must also mock db.get_npc (called before db.transaction) and the NPC-presence
+    # guard's get_npcs_at_location (story-005) so the flow reaches the transaction.
     with (
         patch("db.transaction") as mock_txn,
         patch("db_content_queries.get_npc", new_callable=AsyncMock) as mock_get_npc,
+        patch("db_queries.get_npcs_at_location", new_callable=AsyncMock) as mock_present,
     ):
         mock_get_npc.return_value = {"id": "torin", "name": "Torin", "default_disposition": "neutral"}
+        mock_present.return_value = [{"id": "torin"}]
         mock_txn.side_effect = TimeoutError("Query took too long")
 
         with pytest.raises(ToolError, match="longer than expected"):

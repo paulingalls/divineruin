@@ -25,7 +25,7 @@ from session_tools import _update_npc_disposition_impl
 
 
 class TestUpdateNpcDisposition:
-    def _mocks(self, *, npc=SAMPLE_NPC, disp: str | None = "neutral"):
+    def _mocks(self, *, npc=SAMPLE_NPC, disp: str | None = "neutral", present=("guildmaster_torin",)):
         mock_conn = MagicMock()
         mock_db = MagicMock()
         mock_db.transaction = lambda: _mock_txn(mock_conn)
@@ -33,6 +33,10 @@ class TestUpdateNpcDisposition:
         mock_content.get_npc = AsyncMock(return_value=npc)
         mock_queries = MagicMock()
         mock_queries.get_npc_disposition = AsyncMock(return_value=disp)
+        # NPC-presence guard reads the Stage's scheduled NPCs (story-005); provision the
+        # target as present so the success paths pass. Tests that exercise the absent
+        # case pass present=().
+        mock_queries.get_npcs_at_location = AsyncMock(return_value=[{"id": npc_id} for npc_id in present])
         mock_mutations = MagicMock()
         mock_mutations.set_npc_disposition = AsyncMock()
         return mock_db, mock_content, mock_queries, mock_mutations
@@ -89,6 +93,15 @@ class TestUpdateNpcDisposition:
         ctx = _make_context()
         with pytest.raises(ToolError, match="not found"):
             await self._call(ctx, "nobody", 1, "test", mocks)
+
+    @pytest.mark.asyncio
+    async def test_absent_npc_raises(self):
+        # NPC exists in content but is not scheduled at the current location (story-005
+        # Stage-driven guard): shifting disposition toward an absent NPC must fail loud.
+        mocks = self._mocks(disp="neutral", present=())
+        ctx = _make_context()
+        with pytest.raises(ToolError, match="isn't here"):
+            await self._call(ctx, "guildmaster_torin", 1, "tried from afar", mocks)
 
     @pytest.mark.asyncio
     async def test_falls_back_to_default_disposition(self):
