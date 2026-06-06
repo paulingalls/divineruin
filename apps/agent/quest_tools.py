@@ -103,7 +103,7 @@ async def update_quest(
     context: RunContext[SessionData],
     quest_id: str,
     new_stage_id: int,
-) -> str | tuple:
+) -> str:
     """Advance a quest to a new stage. For starting a quest, use stage 0.
     Stages must advance forward — no skipping or going backward.
     Rewards from the completing stage are automatically applied."""
@@ -120,7 +120,7 @@ async def _update_quest_impl(
     queries=db_queries,
     content=db_content_queries,
     milestones_mod=milestones,
-) -> str | tuple:
+) -> str:
     logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
     _validate_id(quest_id, "quest_id")
     session: SessionData = context.userdata
@@ -254,7 +254,10 @@ async def _update_quest_impl(
     }
     logger.info("update_quest result: %s → stage %d, %d rewards", quest_id, new_stage_id, len(rewards_applied))
 
-    # Scene transition check — if scene changes region, trigger handoff
+    # Scene transition check — a scene region change updates the persisting agent in
+    # place (M7 story-003: no handoff, mirroring move_player). Region rides the Stage,
+    # so the same warm agent narrates the new region; the transition rides the tool
+    # response so the DM can narrate it without a handoff context.
     from scene_tools import detect_scene_transition
 
     transition = None
@@ -263,23 +266,14 @@ async def _update_quest_impl(
         scene_cache = await content.get_scenes_batch(scene_ids)
         transition = detect_scene_transition(scene_cache, quest, current_stage, new_stage_id)
     if transition and transition["region_changed"]:
-        from livekit.agents.llm import ChatContext
-
-        from gameplay_agent import create_gameplay_agent
+        from gameplay_agent import set_agent_region
 
         new_region = transition["new_scene"]["region_type"]
-        summary_ctx = ChatContext()
-        summary_ctx.add_message(
-            role="system",
-            content=(
-                f"Quest '{quest_name}' advanced. Scene changed from "
-                f"'{transition['old_scene']['name']}' to '{transition['new_scene']['name']}'. "
-                f"Region changed to {new_region}."
-            ),
-        )
-        return (
-            create_gameplay_agent(new_region, session.location_id, companion=session.companion, chat_ctx=summary_ctx),
-            json.dumps(response),
-        )
+        set_agent_region(context.session.current_agent, new_region)
+        response["scene_transition"] = {
+            "from": transition["old_scene"]["name"],
+            "to": transition["new_scene"]["name"],
+            "region": new_region,
+        }
 
     return json.dumps(response)

@@ -29,7 +29,8 @@ class TestNewPlayerHandoffChain:
 
     @pytest.mark.asyncio
     async def test_city_to_wilderness_to_dungeon_to_city(self):
-        """Simulate: CityAgent -> WildernessAgent -> DungeonAgent -> CityAgent."""
+        """M7 story-003: city -> wilderness -> dungeon -> city keeps ONE warm
+        ExplorationAgent (no handoff); only its region attribute tracks the Stage."""
         from movement_tools import _move_player_impl
 
         locations = {
@@ -78,8 +79,12 @@ class TestNewPlayerHandoffChain:
         mock_content = MagicMock()
         mock_content.get_location = AsyncMock(side_effect=lambda loc_id: locations.get(loc_id))
 
+        # One warm agent persists for the whole journey.
+        agent = ExplorationAgent(initial_location="accord_market_square", region_type=REGION_CITY)
+
         # Step 1: City -> Wilderness
         ctx = _make_context("accord_market_square", companion=COMPANION)
+        ctx.session.current_agent = agent
         with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
             result = await _move_player_impl(
                 ctx,
@@ -90,10 +95,9 @@ class TestNewPlayerHandoffChain:
                 content=mock_content,
             )
 
-        assert isinstance(result, tuple)
-        agent1, _ = result
-        assert isinstance(agent1, ExplorationAgent)
-        assert agent1._agent_type == REGION_WILDERNESS
+        assert isinstance(result, str)  # no handoff on a region crossing
+        assert ctx.session.current_agent is agent  # same instance persists
+        assert agent._agent_type == REGION_WILDERNESS  # region updated in place
         assert ctx.userdata.location_id == "greyvale_south_road"
         assert ctx.userdata.companion is not None
 
@@ -109,10 +113,9 @@ class TestNewPlayerHandoffChain:
                 content=mock_content,
             )
 
-        assert isinstance(result, tuple)
-        agent2, _ = result
-        assert isinstance(agent2, ExplorationAgent)
-        assert agent2._agent_type == REGION_DUNGEON
+        assert isinstance(result, str)
+        assert ctx.session.current_agent is agent
+        assert agent._agent_type == REGION_DUNGEON
         assert ctx.userdata.location_id == "greyvale_ruins_entrance"
 
         # Step 3: Dungeon -> City (back through wilderness)
@@ -135,14 +138,14 @@ class TestNewPlayerHandoffChain:
                 content=mock_content,
             )
 
-        assert isinstance(result, tuple)
-        agent3, _ = result
-        assert isinstance(agent3, ExplorationAgent)
-        assert agent3._agent_type == REGION_CITY
+        assert isinstance(result, str)
+        assert ctx.session.current_agent is agent
+        assert agent._agent_type == REGION_CITY
 
     @pytest.mark.asyncio
     async def test_companion_persists_across_handoffs(self):
-        """Companion state survives region transitions."""
+        """Companion state survives region transitions — trivially, since the same
+        agent (and its SessionData companion) persist with no handoff."""
         from movement_tools import _move_player_impl
 
         locations = {
@@ -177,7 +180,9 @@ class TestNewPlayerHandoffChain:
         mock_content = MagicMock()
         mock_content.get_location = AsyncMock(side_effect=lambda loc_id: locations.get(loc_id))
 
+        agent = ExplorationAgent(initial_location="accord_market_square", region_type=REGION_CITY)
         ctx = _make_context("accord_market_square", companion=COMPANION)
+        ctx.session.current_agent = agent
         with patch("movement_tools.publish_game_event", new_callable=AsyncMock):
             result = await _move_player_impl(
                 ctx,
@@ -188,10 +193,10 @@ class TestNewPlayerHandoffChain:
                 content=mock_content,
             )
 
-        agent, _ = result
-        assert isinstance(agent, ExplorationAgent)
+        assert isinstance(result, str)  # no handoff
+        assert ctx.session.current_agent is agent
         assert agent._agent_type == REGION_WILDERNESS
-        # Companion still in SessionData
+        # Companion still in SessionData (same agent, same session)
         assert ctx.userdata.companion is not None
         assert ctx.userdata.companion.name == "Kael"
 
