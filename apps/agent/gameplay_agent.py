@@ -27,3 +27,14 @@ def create_gameplay_agent(
         chat_ctx=chat_ctx,
         region_type=region,
     )
+
+
+def set_agent_region(agent: Any, region_type: str) -> None:
+    """Update a persisting ExplorationAgent's region in place — region rides the
+    Stage (M7), so a region change updates the live agent instead of handing off.
+
+    No-op for non-region agents (dispatch/combat have no _agent_type). Unknown
+    regions normalize to city, mirroring create_gameplay_agent.
+    """
+    if isinstance(agent, ExplorationAgent):
+        agent._agent_type = region_type if region_type in _KNOWN_REGIONS else REGION_CITY
