@@ -76,7 +76,8 @@ class TestTrainingActivityTypesContent:
         data = _load_json("training_activity_types.json")
         by_id = {entry["id"]: entry for entry in data}
 
-        for activity_type, (dur, decision) in TRAINING_ACTIVITY_CONFIG.items():
+        for activity_type, cfg in TRAINING_ACTIVITY_CONFIG.items():
+            dur, decision = cfg.duration, cfg.decision
             assert activity_type in by_id, f"{activity_type} missing from JSON"
             entry = by_id[activity_type]
             assert entry["first_half_min_seconds"] == dur.first_half_min

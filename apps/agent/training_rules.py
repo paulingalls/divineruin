@@ -63,6 +63,21 @@ class MidpointDecision:
     options: list[DecisionOption]
 
 
+@dataclass(frozen=True)
+class ActivityTypeConfig:
+    """Per-activity-type config: timing + midpoint decision (+ spell learn-cycle count).
+
+    Named fields rather than a bare tuple — callers read `.duration` / `.decision`
+    instead of unpacking positionally. `cycles_required` is the data-driven
+    tier→cycles count (story-004); only spell tiers carry one, so it is None for
+    recipe/technique/skill types.
+    """
+
+    duration: DurationRange
+    decision: MidpointDecision
+    cycles_required: int | None = None
+
+
 # ── Result dataclasses ─────────────────────────────────────────────────
 
 
@@ -96,16 +111,17 @@ class CompletionResult:
 # at worker startup, or by set_training_activity_types() in tests.
 # TRAINING_ACTIVITY_CONFIG is kept as a live alias for backward compatibility
 # with existing test imports.
-_activity_types: dict[str, tuple[DurationRange, MidpointDecision]] = {}
+_activity_types: dict[str, ActivityTypeConfig] = {}
 TRAINING_ACTIVITY_CONFIG = _activity_types
 
 logger = logging.getLogger("divineruin.training")
 
 
-def parse_activity_type_row(activity_type_id: str, data: dict) -> tuple[DurationRange, MidpointDecision]:
-    """Parse a raw dict (from JSON file or DB JSONB) into the typed config tuple.
+def parse_activity_type_row(activity_type_id: str, data: dict) -> ActivityTypeConfig:
+    """Parse a raw dict (from JSON file or DB JSONB) into the typed config.
 
     Shared by load_training_activity_types (DB) and tests/training_config_fixture (JSON).
+    `cycles_required` is optional — only spell tiers carry it (None otherwise).
     Raises ValueError wrapping the underlying error with the row id for context.
     """
     try:
@@ -127,11 +143,11 @@ def parse_activity_type_row(activity_type_id: str, data: dict) -> tuple[Duration
         decision = MidpointDecision(prompt=decision_raw["prompt"], options=options)
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed training_activity_types row {activity_type_id!r}: {e}") from e
-    return (dur, decision)
+    return ActivityTypeConfig(duration=dur, decision=decision, cycles_required=data.get("cycles_required"))
 
 
 def set_training_activity_types(
-    config: dict[str, tuple[DurationRange, MidpointDecision]],
+    config: dict[str, ActivityTypeConfig],
 ) -> None:
     """Test seam: populate _activity_types directly without going through the DB."""
     _activity_types.clear()
@@ -140,14 +156,28 @@ def set_training_activity_types(
 
 def get_activity_type_config(
     activity_type: str,
-) -> tuple[DurationRange, MidpointDecision]:
-    """Return (duration_range, midpoint_decision) for a training activity type.
+) -> ActivityTypeConfig:
+    """Return the ActivityTypeConfig for a training activity type.
 
     Raises ValueError if the type is not loaded.
     """
     if activity_type not in _activity_types:
         raise ValueError(f"Unknown training activity type: {activity_type!r}")
     return _activity_types[activity_type]
+
+
+def get_cycles_required(activity_type: str) -> int:
+    """Training cycles needed to learn an elective spell at this tier (story-004).
+
+    Data-driven from content/training_activity_types.json (Cantrip 1 / Minor 2 /
+    Standard 3 / Major 5 / Supreme 8). Fails loud on an unknown type or a type with
+    no cycle count — only spell tiers carry one, and a spell-training caller must
+    never silently default.
+    """
+    config = get_activity_type_config(activity_type)  # raises ValueError on unknown
+    if config.cycles_required is None:
+        raise ValueError(f"training activity {activity_type!r} has no cycles_required")
+    return config.cycles_required
 
 
 async def load_training_activity_types() -> None:
@@ -183,7 +213,7 @@ def start_training_cycle(
         raise ValueError(f"Unknown training activity type: {activity_type!r}")
 
     r = rng or random.Random()
-    dur, _ = TRAINING_ACTIVITY_CONFIG[activity_type]
+    dur = TRAINING_ACTIVITY_CONFIG[activity_type].duration
     first_half = r.randint(dur.first_half_min, dur.first_half_max)
     decision_at = start_time + timedelta(seconds=first_half)
 
@@ -197,8 +227,7 @@ def start_training_cycle(
 def get_midpoint_decision(activity_type: TrainingActivityType) -> MidpointDecision:
     if activity_type not in TRAINING_ACTIVITY_CONFIG:
         raise ValueError(f"Unknown training activity type: {activity_type!r}")
-    _, decision = TRAINING_ACTIVITY_CONFIG[activity_type]
-    return decision
+    return TRAINING_ACTIVITY_CONFIG[activity_type].decision
 
 
 def resolve_midpoint_decision(
@@ -210,7 +239,8 @@ def resolve_midpoint_decision(
     if activity_type not in TRAINING_ACTIVITY_CONFIG:
         raise ValueError(f"Unknown training activity type: {activity_type!r}")
 
-    dur, decision = TRAINING_ACTIVITY_CONFIG[activity_type]
+    config = TRAINING_ACTIVITY_CONFIG[activity_type]
+    dur, decision = config.duration, config.decision
     chosen = next((o for o in decision.options if o.id == decision_id), None)
     if chosen is None:
         valid_ids = [o.id for o in decision.options]
@@ -236,7 +266,7 @@ def complete_training_cycle(
     if activity_type not in TRAINING_ACTIVITY_CONFIG:
         raise ValueError(f"Unknown training activity type: {activity_type!r}")
 
-    _, decision = TRAINING_ACTIVITY_CONFIG[activity_type]
+    decision = TRAINING_ACTIVITY_CONFIG[activity_type].decision
     chosen = next((o for o in decision.options if o.id == decision_id), None)
     if chosen is None:
         valid_ids = [o.id for o in decision.options]
