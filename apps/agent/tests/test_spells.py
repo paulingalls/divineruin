@@ -85,6 +85,15 @@ def test_parse_spell_row_fail_loud_names_the_row():
         parse_spell_row("arcane_fireball", bad)
 
 
+@pytest.mark.parametrize("not_a_dict", [None, []])
+def test_parse_spell_row_rejects_non_dict_row(not_a_dict):
+    # Parity with the TS loader's asRecord guard (spells-load.test.ts): a non-object
+    # row fails loud naming the id. Python reaches it via the wrapped TypeError rather
+    # than an explicit dict guard (mirroring abilities.parse_ability_row).
+    with pytest.raises(ValueError, match="arcane_fireball"):
+        parse_spell_row("arcane_fireball", not_a_dict)
+
+
 def test_parse_spell_row_rejects_unknown_source():
     bad = {**_FIREBALL_ROW, "source": "shadow"}
     with pytest.raises(ValueError, match=r"source"):
