@@ -20,6 +20,7 @@ from pathlib import Path
 
 import pytest
 
+from leveling import MAX_SPELL_TIER_BY_LEVEL, is_spell_tier_unlocked
 from spells import (
     Spell,
     get_spell,
@@ -35,8 +36,10 @@ CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "spells.json"
 SPELL_SOURCES = {"arcane", "divine", "primal"}
 SPELL_TIERS = {"cantrip", "minor", "standard", "major", "supreme"}
 
-# The floor character level at which each tier becomes learnable (story-005 gate).
-TIER_LEVEL_FLOOR = {"cantrip": 1, "minor": 1, "standard": 4, "major": 7, "supreme": 13}
+# The floor character level at which each tier becomes learnable. Sourced from the
+# prod gate (leveling.MAX_SPELL_TIER_BY_LEVEL) so this fixture cannot silently
+# diverge from the constant that story-005/006 enforce.
+TIER_LEVEL_FLOOR = MAX_SPELL_TIER_BY_LEVEL
 
 _FIREBALL_ROW = {
     "id": "arcane_fireball",
@@ -200,6 +203,11 @@ def test_content_level_requirement_matches_tier_floor():
             f"{s.id}: level_requirement {s.level_requirement} != tier floor "
             f"{TIER_LEVEL_FLOOR[s.spell_tier]} for {s.spell_tier}"
         )
+        # The prod gate must agree with the row's own level_requirement: unlocked
+        # exactly at the floor, gated one level below.
+        assert is_spell_tier_unlocked(s.spell_tier, s.level_requirement) is True
+        if s.level_requirement > 1:
+            assert is_spell_tier_unlocked(s.spell_tier, s.level_requirement - 1) is False
 
 
 def test_content_excludes_caster_core_spells():
