@@ -10,7 +10,7 @@ cross-language SSOT contract; it borrows M3.3's schema minimally and stays
 forward-compatible with the full Phase-3 Magic catalog.
 
 Tier-unlock ladder (the floor character level at which a tier becomes learnable,
-enforced by story-005's MAX_SPELL_TIER_BY_LEVEL): cantrip/minor L1, standard L4,
+enforced by story-005's MIN_LEVEL_BY_SPELL_TIER): cantrip/minor L1, standard L4,
 major L7, supreme L13. The minimal catalog sets each spell's level_requirement to
 its tier floor.
 """
@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from leveling import MAX_SPELL_TIER_BY_LEVEL, is_spell_tier_unlocked
+from leveling import MIN_LEVEL_BY_SPELL_TIER, is_spell_tier_unlocked
 from spells import (
     Spell,
     get_spell,
@@ -37,9 +37,9 @@ SPELL_SOURCES = {"arcane", "divine", "primal"}
 SPELL_TIERS = {"cantrip", "minor", "standard", "major", "supreme"}
 
 # The floor character level at which each tier becomes learnable. Sourced from the
-# prod gate (leveling.MAX_SPELL_TIER_BY_LEVEL) so this fixture cannot silently
+# prod gate (leveling.MIN_LEVEL_BY_SPELL_TIER) so this fixture cannot silently
 # diverge from the constant that story-005/006 enforce.
-TIER_LEVEL_FLOOR = MAX_SPELL_TIER_BY_LEVEL
+TIER_LEVEL_FLOOR = MIN_LEVEL_BY_SPELL_TIER
 
 _FIREBALL_ROW = {
     "id": "arcane_fireball",

@@ -3,7 +3,7 @@
 Spells add ZERO new @function_tools (ADR 0007): scroll/mentor acquisition rides
 the existing learn(kind, id, source) verb via a 'spell' kind dispatched to
 spell_tools. A character may not learn a spell above their level allowance —
-leveling.MAX_SPELL_TIER_BY_LEVEL (Cantrip/Minor L1, Standard L4, Major L7,
+leveling.MIN_LEVEL_BY_SPELL_TIER (Cantrip/Minor L1, Standard L4, Major L7,
 Supreme L13) is the enforced gate (shared with story-006's prepare check).
 
 The literal real-Postgres AC4 (mentor-taught Minor spell -> character_spells with
@@ -30,7 +30,7 @@ def _spell(spell_id="arcane_fireball", *, tier: SpellTier = "standard", source: 
         name="Fireball",
         source=source,
         spell_tier=tier,
-        level_requirement=leveling.MAX_SPELL_TIER_BY_LEVEL[tier],
+        level_requirement=leveling.MIN_LEVEL_BY_SPELL_TIER[tier],
         focus_cost=1,
         mechanics="boom",
         narration_cue="The air ignites.",

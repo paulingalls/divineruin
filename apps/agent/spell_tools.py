@@ -3,7 +3,7 @@
 Spells add ZERO new @function_tools (ADR 0007): the generic learn(kind, id, source)
 verb in recipe_tools dispatches kind="spell" here. `_learn_spell_impl` validates the
 immediate-acquisition source, enforces the level→tier unlock gate
-(leveling.MAX_SPELL_TIER_BY_LEVEL), and records the learn via
+(leveling.MIN_LEVEL_BY_SPELL_TIER), and records the learn via
 character_spells.record_learned. Errors raise LiveKit `ToolError` (ADR 0002); the
 `*_mod=` keyword seams are TEST-ONLY (production callers use the defaults).
 """
@@ -56,7 +56,7 @@ async def _learn_spell_impl(
 
     level = player.get("level", 1)
     if not leveling_mod.is_spell_tier_unlocked(spell.spell_tier, level):
-        min_level = leveling_mod.MAX_SPELL_TIER_BY_LEVEL[spell.spell_tier]
+        min_level = leveling_mod.MIN_LEVEL_BY_SPELL_TIER[spell.spell_tier]
         raise ToolError(
             f"Cannot learn {spell_id}: {spell.spell_tier} spells unlock at level {min_level}, "
             f"character is level {level}."
