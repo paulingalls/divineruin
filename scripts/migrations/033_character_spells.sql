@@ -7,7 +7,7 @@
 -- Mirrors the M2.2 character_abilities table (migration 030): relational typed
 -- columns, players(player_id) + spells(id) FKs ON DELETE CASCADE, per-player index.
 -- Written by apps/agent/character_spells.py. acquisition_track is validated in
--- Python ({training, discovery}) — no DB CHECK, matching the house pattern.
+-- Python ({training, discovery, npc_teaching}) — no DB CHECK, matching the house pattern.
 
 CREATE TABLE IF NOT EXISTS character_spells (
   player_id         TEXT NOT NULL REFERENCES players(player_id) ON DELETE CASCADE,

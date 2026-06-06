@@ -10,7 +10,7 @@ singleton pool, using single-statement ON CONFLICT upserts.
 The known pool is character_spells; a spell mid-training lives only in
 spell_learning_progress and is NOT known until the caller promotes it (record_learned
 + delete_learning_progress on completion — story-004 orchestrates). acquisition_track
-is validated fail-loud against {training, discovery} — there is no core track.
+is validated fail-loud against {training, discovery, npc_teaching} — there is no core track.
 
 Consumers: story-003 (creation: starting electives), story-004 (training accrual),
 story-005 (learn from scroll/mentor), story-006 (preparation).
@@ -21,8 +21,10 @@ import asyncpg
 import db
 
 # Closed vocabulary for how an elective spell entered the library. NO 'core' — core
-# spells are abilities (seam 235ae150c5d3, decision m8-elective-catalog-source-keyed).
-ACQUISITION_TRACKS = frozenset({"training", "discovery"})
+# spells are abilities (seam 235ae150c5d3). training=async study cycles (story-004);
+# discovery=instant via scroll; npc_teaching=instant via a mentor (story-005 widened
+# the original {training, discovery} set — supersedes m8-elective-catalog-source-keyed).
+ACQUISITION_TRACKS = frozenset({"training", "discovery", "npc_teaching"})
 
 
 async def record_learned(
