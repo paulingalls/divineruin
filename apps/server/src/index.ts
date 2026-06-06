@@ -26,6 +26,7 @@ import { loadRecipes } from "./recipes.ts";
 import { loadItems } from "./items.ts";
 import { loadArchetypes } from "./archetypes.ts";
 import { loadAbilities } from "./abilities.ts";
+import { loadSpells } from "./spells.ts";
 import { loadMilestones } from "./milestones.ts";
 import { loadPricing } from "./pricing.ts";
 import { isDev } from "./env.ts";
@@ -44,6 +45,7 @@ await Promise.all([
   loadItems(),
   loadArchetypes(),
   loadAbilities(),
+  loadSpells(),
   loadMilestones(),
   loadPricing(),
 ]);

@@ -1,0 +1,172 @@
+[
+  {
+    "id": "arcane_frost_touch",
+    "name": "Frost Touch",
+    "source": "arcane",
+    "spell_tier": "cantrip",
+    "level_requirement": 1,
+    "focus_cost": 0,
+    "mechanics": "Melee spell attack. 1d6 cold and the target's speed drops 10 ft until the end of its next turn. Scales with level.",
+    "narration_cue": "Your hand closes and the cold bites deep — frost crackles across skin."
+  },
+  {
+    "id": "arcane_magic_missile",
+    "name": "Magic Missile",
+    "source": "arcane",
+    "spell_tier": "minor",
+    "level_requirement": 1,
+    "focus_cost": 2,
+    "mechanics": "Three darts auto-hit for 1d4+1 force each, split between targets as you choose. More darts at higher levels.",
+    "narration_cue": "Darts of light streak out, each finding its mark with perfect inevitability."
+  },
+  {
+    "id": "arcane_mage_hand",
+    "name": "Mage Hand",
+    "source": "arcane",
+    "spell_tier": "minor",
+    "level_requirement": 1,
+    "focus_cost": 1,
+    "mechanics": "A spectral hand manipulates objects up to 10 lbs at range. It cannot attack.",
+    "narration_cue": "A translucent hand materializes, fingers flexing with your intent."
+  },
+  {
+    "id": "arcane_hold_person",
+    "name": "Hold Person",
+    "source": "arcane",
+    "spell_tier": "standard",
+    "level_requirement": 4,
+    "focus_cost": 3,
+    "mechanics": "One humanoid makes a WIS save or is paralyzed; it re-saves each turn. Attacks against it have advantage.",
+    "narration_cue": "They freeze mid-motion, eyes still moving, mouth struggling."
+  },
+  {
+    "id": "arcane_invisibility",
+    "name": "Invisibility",
+    "source": "arcane",
+    "spell_tier": "standard",
+    "level_requirement": 4,
+    "focus_cost": 3,
+    "mechanics": "The target becomes invisible until it attacks or casts an offensive spell. Attacks against it have disadvantage.",
+    "narration_cue": "Light bends around you — first translucent, then gone."
+  },
+  {
+    "id": "arcane_fireball",
+    "name": "Fireball",
+    "source": "arcane",
+    "spell_tier": "major",
+    "level_requirement": 7,
+    "focus_cost": 5,
+    "mechanics": "A bead of flame detonates in a 20 ft sphere. DEX save, 3d6 fire on a fail, half on a success. Scales with level.",
+    "narration_cue": "A bead of light detonates — heat, light, the roar of air consumed."
+  },
+  {
+    "id": "arcane_chain_lightning",
+    "name": "Chain Lightning",
+    "source": "arcane",
+    "spell_tier": "supreme",
+    "level_requirement": 13,
+    "focus_cost": 7,
+    "mechanics": "Primary target takes 4d6 lightning, then it arcs to three others within 30 ft for 2d6 each. DEX save halves.",
+    "narration_cue": "Lightning strikes the first and leaps — finding the next body and the next."
+  },
+  {
+    "id": "divine_guiding_light",
+    "name": "Guiding Light",
+    "source": "divine",
+    "spell_tier": "cantrip",
+    "level_requirement": 1,
+    "focus_cost": 0,
+    "mechanics": "The next attack roll against the marked target has advantage. No damage.",
+    "narration_cue": "A faint halo settles over your ally's target — subtle, warm, marking them."
+  },
+  {
+    "id": "divine_bless",
+    "name": "Bless",
+    "source": "divine",
+    "spell_tier": "minor",
+    "level_requirement": 1,
+    "focus_cost": 2,
+    "mechanics": "Up to three allies gain +1d4 on attack rolls and saving throws. Concentration.",
+    "narration_cue": "You speak their names and your patron hears — warmth settling into bones."
+  },
+  {
+    "id": "divine_spiritual_weapon",
+    "name": "Spiritual Weapon",
+    "source": "divine",
+    "spell_tier": "standard",
+    "level_requirement": 4,
+    "focus_cost": 4,
+    "mechanics": "A spectral weapon themed to your patron attacks independently each round for 1d8 + WIS. No concentration.",
+    "narration_cue": "A weapon forms from light and will — not yours, but your god's."
+  },
+  {
+    "id": "divine_mass_heal",
+    "name": "Mass Heal",
+    "source": "divine",
+    "spell_tier": "major",
+    "level_requirement": 7,
+    "focus_cost": 6,
+    "mechanics": "Restore 2d8 + WIS HP to every ally within earshot. The benchmark group heal.",
+    "narration_cue": "The light finds every wound, every bruise, every ache. Everyone feels it at once."
+  },
+  {
+    "id": "divine_greater_restoration",
+    "name": "Greater Restoration",
+    "source": "divine",
+    "spell_tier": "supreme",
+    "level_requirement": 13,
+    "focus_cost": 7,
+    "mechanics": "Remove one curse, disease, ability drain, the Hollowed condition, or another lasting affliction. The reliable Hollowed cure.",
+    "narration_cue": "Light that goes deeper than flesh — reaching into the pattern and straightening what was bent."
+  },
+  {
+    "id": "primal_produce_flame",
+    "name": "Produce Flame",
+    "source": "primal",
+    "spell_tier": "cantrip",
+    "level_requirement": 1,
+    "focus_cost": 0,
+    "mechanics": "Conjure flame in your hand for light, or hurl it as a ranged spell attack for 1d6 fire. Scales with level.",
+    "narration_cue": "Fire blooms in your palm — drawn from the heat of the earth. It knows you."
+  },
+  {
+    "id": "primal_faerie_fire",
+    "name": "Faerie Fire",
+    "source": "primal",
+    "spell_tier": "minor",
+    "level_requirement": 1,
+    "focus_cost": 2,
+    "mechanics": "Creatures in a 20 ft cube make a DEX save or are outlined in light; they cannot be invisible and attacks against them have advantage. Concentration.",
+    "narration_cue": "Drifting motes of cold light cling to everything, outlining bodies in eerie luminescence."
+  },
+  {
+    "id": "primal_call_lightning",
+    "name": "Call Lightning",
+    "source": "primal",
+    "spell_tier": "standard",
+    "level_requirement": 4,
+    "focus_cost": 4,
+    "mechanics": "Outdoors, call a bolt for 2d8 lightning (DEX half); later rounds strike again for 2 Focus. Concentration.",
+    "narration_cue": "The sky answers. A pause, then a focused lance of light finds exactly what you pointed at."
+  },
+  {
+    "id": "primal_ice_storm",
+    "name": "Ice Storm",
+    "source": "primal",
+    "spell_tier": "major",
+    "level_requirement": 7,
+    "focus_cost": 5,
+    "mechanics": "A 20 ft radius is hammered by hail. DEX save, 2d8 bludgeoning + 2d6 cold on a fail, half on a success. The area becomes difficult terrain for a round.",
+    "narration_cue": "The temperature drops. Fist-sized hail hammers everything below."
+  },
+  {
+    "id": "primal_regenerate",
+    "name": "Regenerate",
+    "source": "primal",
+    "spell_tier": "supreme",
+    "level_requirement": 13,
+    "focus_cost": 7,
+    "mechanics": "Restore 4d8+15 HP at once, then 1 HP per round for an hour, regrowing severed limbs over the full duration.",
+    "narration_cue": "Life flows in and doesn't stop — the body repairs with the patience of a forest regrowing after fire."
+  }
+]
