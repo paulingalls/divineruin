@@ -10,6 +10,11 @@ export type HpCategory = "martial" | "primal_divine" | "arcane_shadow";
 
 export type ResourcePattern = "stamina_only" | "focus_only" | "focus_primary" | "split";
 
+// M8: the archetype's magic source binding — single source for primary casters, "cross"
+// for Bard; null/absent for pure martials. "cross" intentionally differs from the spell
+// catalog's SpellSource (only single sources index the catalog).
+export type MagicSource = "arcane" | "divine" | "primal" | "cross";
+
 export interface PoolFormula {
   base: number;
   attribute: string;
@@ -41,4 +46,5 @@ export interface Archetype {
   armor_proficiencies: string[];
   weapon_proficiencies: string[];
   starting_skills: StartingSkills;
+  magic_source: MagicSource | null; // M8; null for pure martials (no magic)
 }
