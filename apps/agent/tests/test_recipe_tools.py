@@ -271,8 +271,9 @@ class TestLearn:
     @pytest.mark.asyncio
     async def test_unknown_kind_raises(self):
         ctx = make_context()
+        # "spell" is now a valid kind (story-005); use a genuinely unknown kind.
         with pytest.raises(ToolError, match="kind"):
-            await _learn_impl(ctx, "spell", "fireball", "")
+            await _learn_impl(ctx, "potion", "healing", "")
 
 
 class TestQueryRecipeRequirements:

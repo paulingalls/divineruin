@@ -7,8 +7,8 @@ fixtures live in tests/acceptance/conftest.py, unreachable from tests/.
 
 character_spells is the known ELECTIVE library (caster core spells stay
 archetype_abilities rows, seam 235ae150c5d3); spell_learning_progress is in-flight
-training counted in discrete cycles. acquisition_track is {training, discovery}
-only — NO core track.
+training counted in discrete cycles. acquisition_track is {training, discovery,
+npc_teaching} — NO core track (story-005 added npc_teaching for mentor-taught spells).
 """
 
 from unittest.mock import AsyncMock
@@ -43,9 +43,18 @@ class TestRecordLearned:
         assert "bonus_variant" in sql
         assert params == ["p1", "arcane_fireball", "training", False, "power"]
 
+    @pytest.mark.parametrize("track", ["training", "discovery", "npc_teaching"])
+    async def test_accepts_each_valid_track(self, track):
+        # story-005: npc_teaching joins {training, discovery} — mentor-taught spells
+        # record their own acquisition track (supersedes the 2-track vocab).
+        conn = AsyncMock()
+        await character_spells.record_learned("p1", "arcane_fireball", track, conn=conn)
+        _sql, *params = conn.execute.call_args.args
+        assert params[2] == track
+
     @pytest.mark.parametrize("bad_track", ["core", "scroll", "", "Training"])
     async def test_rejects_invalid_acquisition_track(self, bad_track):
-        # Electives-only contract: only training/discovery (decision m8-elective-catalog).
+        # Electives-only contract: only {training, discovery, npc_teaching} (story-005 vocab).
         conn = AsyncMock()
         with pytest.raises(ValueError, match=bad_track or "acquisition_track"):
             await character_spells.record_learned("p1", "arcane_fireball", bad_track, conn=conn)
