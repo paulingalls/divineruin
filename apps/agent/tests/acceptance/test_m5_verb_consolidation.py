@@ -79,7 +79,8 @@ VERB_PRESENCE = [
     (learn, "learn", {"dispatch"}),
     (check, "check", {"exploration", "combat", "onboarding", "dispatch"}),
     (enter_mode, "enter_mode", {"exploration"}),
-    (select, "select", {"exploration"}),
+    # M7 story-004: select also resolves pending L5 choices mid-training, so dispatch holds it too.
+    (select, "select", {"exploration", "dispatch"}),
 ]
 
 
