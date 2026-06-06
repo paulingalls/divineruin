@@ -5,7 +5,8 @@
   "types": "src/index.ts",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./test-util": "./src/test-util.ts"
   },
   "scripts": {
     "test": "bun test",

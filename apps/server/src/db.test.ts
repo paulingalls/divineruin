@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
+import { assertDbRequired } from "@divineruin/shared/test-util";
+
 import { sql } from "./db.ts";
 
 // db.ts exports `sql` as a lazy Proxy over Bun.SQL: the apply trap runs
@@ -12,12 +14,11 @@ import { sql } from "./db.ts";
 // server lane provisions DATABASE_URL (scripts/test-env.sh) so they run there.
 const hasDb = Boolean(process.env.DATABASE_URL);
 
-// Anti-silent-skip sentinel: the server lane sets REQUIRE_DB=1 (package.json
-// test:server). If DATABASE_URL ever drifts to unset in that lane, the live-PG
-// describe below would silently skip and the lane would go green untested — so
-// fail loud here instead. The env-free unit lane leaves REQUIRE_DB unset and skips.
+// Anti-silent-skip sentinel: the server lane sets REQUIRE_DB=1, so a DATABASE_URL
+// drift that would make the live-PG describe below silently skip fails loud here.
+// See assertDbRequired for the full rationale.
 test("DATABASE_URL present when the lane requires it (REQUIRE_DB sentinel)", () => {
-  if (process.env.REQUIRE_DB) expect(hasDb).toBe(true);
+  assertDbRequired(hasDb);
 });
 
 // Env-free: probing `.then` hits the guard at db.ts and returns before

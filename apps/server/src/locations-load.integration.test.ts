@@ -1,4 +1,5 @@
 import { test, expect, describe, afterAll, beforeAll } from "bun:test";
+import { assertDbRequired } from "@divineruin/shared/test-util";
 import { getLocation, listLocations, setLocations, loadLocations } from "./locations.ts";
 import { sql } from "./db.ts";
 
@@ -16,13 +17,11 @@ import { sql } from "./db.ts";
 // (the pre-push / CI server lane); the unit lane skips it cleanly.
 const hasDb = Boolean(process.env.DATABASE_URL);
 
-// Anti-silent-skip sentinel: the server lane sets REQUIRE_DB=1 (package.json
-// test:server). If DATABASE_URL ever drifts to unset in that lane, the describe
-// below would silently skip and the lane would go green without ever exercising
-// loadLocations — so fail loud here instead. The env-free unit lane leaves
-// REQUIRE_DB unset and skips cleanly. (Closes retro decision 458e9030621f.)
+// Anti-silent-skip sentinel: the server lane sets REQUIRE_DB=1, so a DATABASE_URL
+// drift that would make the describe below silently skip (never exercising
+// loadLocations) fails loud here. See assertDbRequired for the full rationale.
 test("DATABASE_URL present when the lane requires it (REQUIRE_DB sentinel)", () => {
-  if (process.env.REQUIRE_DB) expect(hasDb).toBe(true);
+  assertDbRequired(hasDb);
 });
 
 describe.skipIf(!hasDb)("loadLocations — DB row-fetch path", () => {

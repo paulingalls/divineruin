@@ -1,15 +1,17 @@
 import { test, expect, describe, afterAll } from "bun:test";
 
+// Relative path, not the "@divineruin/shared" package name: scripts/ is not a workspace
+// member, so the package symlink (present in each app's node_modules) isn't resolvable here.
+import { assertDbRequired } from "../packages/shared/src/test-util.ts";
+
 const hasDatabase = !!process.env.DATABASE_URL;
 const hasRedis = !!process.env.REDIS_URL;
 
 // Anti-silent-skip sentinel: no test:* lane runs this file today, but if one ever wires
-// it into a live-DB lane it must set REQUIRE_DB=1. Then DATABASE_URL drifting to unset
-// would make the describe below silently skip and the lane go green without exercising
-// any seeded content — so fail loud here instead. Lanes that leave REQUIRE_DB unset skip
-// cleanly. (Extends retro sentinel 458e9030621f to scripts/test_content.test.ts.)
+// it into a live-DB lane (REQUIRE_DB=1), a DATABASE_URL drift that would make the seeded
+// describe below silently skip fails loud here. See assertDbRequired for the rationale.
 test("DATABASE_URL present when the lane requires it (REQUIRE_DB sentinel)", () => {
-  if (process.env.REQUIRE_DB) expect(hasDatabase).toBe(true);
+  assertDbRequired(hasDatabase);
 });
 
 // Row shape returned by Bun.sql for JSONB data columns
