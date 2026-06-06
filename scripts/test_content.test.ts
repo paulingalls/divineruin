@@ -3,6 +3,15 @@ import { test, expect, describe, afterAll } from "bun:test";
 const hasDatabase = !!process.env.DATABASE_URL;
 const hasRedis = !!process.env.REDIS_URL;
 
+// Anti-silent-skip sentinel: no test:* lane runs this file today, but if one ever wires
+// it into a live-DB lane it must set REQUIRE_DB=1. Then DATABASE_URL drifting to unset
+// would make the describe below silently skip and the lane go green without exercising
+// any seeded content — so fail loud here instead. Lanes that leave REQUIRE_DB unset skip
+// cleanly. (Extends retro sentinel 458e9030621f to scripts/test_content.test.ts.)
+test("DATABASE_URL present when the lane requires it (REQUIRE_DB sentinel)", () => {
+  if (process.env.REQUIRE_DB) expect(hasDatabase).toBe(true);
+});
+
 // Row shape returned by Bun.sql for JSONB data columns
 interface DataRow {
   id?: string;
