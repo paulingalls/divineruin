@@ -8,19 +8,15 @@ breaches it should fail here as a unit test, not in production as a 400
 import pytest
 
 from blacksmith_agent import BLACKSMITH_TOOLS
-from city_agent import CITY_TOOLS
 from combat_agent import COMBAT_AGENT_TOOLS
 from creation_agent import CREATION_TOOLS
 from dispatch_agent import DISPATCH_TOOLS
-from dungeon_agent import DUNGEON_TOOLS
+from exploration_agent import EXPLORATION_TOOLS
 from llm_config import MAX_STRICT_TOOLS
 from onboarding_agent import ONBOARDING_TOOLS
-from wilderness_agent import WILDERNESS_TOOLS
 
 AGENT_TOOL_LISTS = [
-    ("city", CITY_TOOLS),
-    ("wilderness", WILDERNESS_TOOLS),
-    ("dungeon", DUNGEON_TOOLS),
+    ("exploration", EXPLORATION_TOOLS),
     ("combat", COMBAT_AGENT_TOOLS),
     ("training", DISPATCH_TOOLS),
     ("creation", CREATION_TOOLS),
@@ -34,12 +30,10 @@ def test_agent_within_strict_tool_limit(name, tools):
     assert len(tools) <= MAX_STRICT_TOOLS, f"{name} has {len(tools)} strict tools (ceiling {MAX_STRICT_TOOLS})"
 
 
-def test_city_strict_tool_count():
-    # City reached the ceiling (20) after story-007/008/009/010. M5 verb consolidation is
-    # reclaiming slots: story-001's transact folded add/remove_from_inventory (20->19),
-    # story-003's check absorbed discover_hidden_element + request_skill_check + roll_dice
-    # (19->17 — three tools into one), and story-004's enter_mode folded start_combat +
-    # enter_dispatch + enter_blacksmith (17->15 — three handoffs into one), easing the
-    # M2.4 spell-tool pressure (ADR 0004).
-    assert len(CITY_TOOLS) == 15
-    assert len(CITY_TOOLS) == MAX_STRICT_TOOLS - 5
+def test_exploration_strict_tool_count():
+    # M5 verb consolidation reclaimed slots on the old CityAgent (20->15 via transact /
+    # check / enter_mode folds). M7's exploration-agent collapse keeps that single 15-verb
+    # list for ALL regions, so the per-region ceiling no longer binds — 5 free slots remain
+    # under MAX_STRICT_TOOLS for the M2.4 spell tools (relieves debt e665104c753a).
+    assert len(EXPLORATION_TOOLS) == 15
+    assert len(EXPLORATION_TOOLS) == MAX_STRICT_TOOLS - 5

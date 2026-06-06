@@ -1,7 +1,18 @@
 import { test, expect, describe, afterAll } from "bun:test";
 
+// Relative path, not the "@divineruin/shared" package name: scripts/ is not a workspace
+// member, so the package symlink (present in each app's node_modules) isn't resolvable here.
+import { assertDbRequired } from "../packages/shared/src/test-util.ts";
+
 const hasDatabase = !!process.env.DATABASE_URL;
 const hasRedis = !!process.env.REDIS_URL;
+
+// Anti-silent-skip sentinel: no test:* lane runs this file today, but if one ever wires
+// it into a live-DB lane (REQUIRE_DB=1), a DATABASE_URL drift that would make the seeded
+// describe below silently skip fails loud here. See assertDbRequired for the rationale.
+test("DATABASE_URL present when the lane requires it (REQUIRE_DB sentinel)", () => {
+  assertDbRequired(hasDatabase);
+});
 
 // Row shape returned by Bun.sql for JSONB data columns
 interface DataRow {
@@ -116,13 +127,18 @@ describe.skipIf(!hasDatabase)("seeded content", () => {
 });
 
 describe.skipIf(!hasRedis)("redis connectivity", () => {
-  const redis = Bun.redis;
-
+  // Access Bun.redis lazily inside the test/afterAll bodies, never at describe-eval.
+  // Bun still evaluates a skipped describe's callback to collect its tests, so a
+  // top-level `const redis = Bun.redis` would build the default client from REDIS_URL
+  // and throw 'Invalid URL format' when it is unset — failing the file as an unhandled
+  // error even though every test here is skipped. The bodies only run when not skipped
+  // (REDIS_URL present), so the access is safe there. (Closes debt b19dd5e150b8.)
   afterAll(() => {
-    redis.close();
+    Bun.redis.close();
   });
 
   test("SET/GET/DEL round-trips", async () => {
+    const redis = Bun.redis;
     await redis.set("__test_key", "divineruin_ok");
     const val = await redis.get("__test_key");
     expect(val).toBe("divineruin_ok");

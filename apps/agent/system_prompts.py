@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
 from voices import DEFAULT_VOICE, EMOTIONS, VOICES
 
 if TYPE_CHECKING:
@@ -204,7 +203,13 @@ call check with mode="discover", the skill they're using (the approach, e.g. \
 perception) and target set to the visible thing they're examining. What is \
 hidden — if anything — is revealed by the roll; never name a secret yourself. \
 On success, reveal the find naturally. On failure, describe a fruitless search \
-without revealing what was missed.\
+without revealing what was missed.
+
+When a quest update returns a scene_transition (with from, to, and region \
+fields), the story itself has carried the player across a threshold — narrate \
+the crossing in one sound-first sentence, leaving the old place behind for the \
+new, then describe where they now stand. Don't speak the field names or the \
+region id.\
 """
 
 
@@ -326,65 +331,6 @@ a moment of rest. Mention what they accomplished. Plant one seed for next time. 
 """
 
 
-WILDERNESS_PROMPT = """\
-
-## Wilderness Mode
-
-You are narrating wilderness travel and exploration. Paced, atmospheric, \
-tension-aware narration. Sound and smell dominate over sight — the player \
-is traveling eyes-closed.
-
-Narration style:
-- Longer descriptions of landscape, weather, and distance than in cities.
-- Environmental hazards are constant companions: weather shifts, terrain \
-  difficulty, wildlife signs.
-- No NPC commerce rules apply. There are no shopkeepers out here.
-- No social context rules. Wilderness encounters are about survival and discovery.
-
-Travel pacing: compress routine travel to one sentence per location. Save \
-full narration for encounters, discoveries, and destination arrivals.
-
-The companion is especially active during travel — pointing things out, \
-sharing stories, warning about danger. Let Kael fill the silences of the road.\
-"""
-
-
-DUNGEON_PROMPT = """\
-
-## Dungeon Mode
-
-You are narrating dungeon exploration. Terse, tense, sensory-heavy narration. \
-Short sentences. Every sound matters. Echo and dripping water. The darkness \
-presses close.
-
-Narration style:
-- Emphasize what the player hears and feels. Sight is limited.
-- Hidden elements are everywhere. Reward careful exploration.
-- Traps and puzzles are narrated through sensory clues, never revealed directly.
-- No social context rules. No commerce. No casual NPC conversation.
-- The Hollow's corruption is strongest here. Describe its effects on the senses: \
-  sounds from wrong distances, metallic tastes, moments where reality overlaps.
-
-When a trap springs or a hazard threatens the player, call check with mode="save", \
-the save type, DC, and what happens on failure. Narrate the danger, never \
-the numbers.
-
-The companion speaks in whispers here. Nervous, alert. Shorter sentences than \
-usual. Old instincts from the caravan keep him checking corners.\
-"""
-
-
-TRAINING_PROMPT = """\
-
-## Training and Mentors
-
-When the player asks about learning, training, improving a skill, or finding a \
-mentor, point them toward the settlement's training hall and lead them there \
-(move_player). The mentor and the actual training happen once they arrive — \
-don't promise specific programs before they're in front of the trainer.\
-"""
-
-
 DISPATCH_MODE_PROMPT = """\
 
 ## Dispatch Mode
@@ -465,35 +411,11 @@ Sundered Veil.
 def build_system_prompt(
     location_id: str,
     companion: CompanionState | None = None,
-    region_type: str = REGION_CITY,
 ) -> str:
-    if region_type == REGION_WILDERNESS:
-        parts = (
-            SYSTEM_PROMPT
-            + PLAYER_AWARENESS_PROMPT
-            + NAVIGATION_PROMPT
-            + WILDERNESS_PROMPT
-            + STORY_MOMENT_PROMPT
-            + SESSION_ENDING_PROMPT
-        )
-    elif region_type == REGION_DUNGEON:
-        parts = (
-            SYSTEM_PROMPT
-            + PLAYER_AWARENESS_PROMPT
-            + NAVIGATION_PROMPT
-            + DUNGEON_PROMPT
-            + STORY_MOMENT_PROMPT
-            + SESSION_ENDING_PROMPT
-        )
-    else:
-        parts = (
-            SYSTEM_PROMPT
-            + PLAYER_AWARENESS_PROMPT
-            + NAVIGATION_PROMPT
-            + TRAINING_PROMPT
-            + STORY_MOMENT_PROMPT
-            + SESSION_ENDING_PROMPT
-        )
+    # Region-agnostic by design (M7): one stable verb-charter, no region branch, so the
+    # cached static layer survives region moves. Region narration flavor rides the
+    # warm-layer Stage register (warm_prompts.REGION_REGISTER), keyed off the location.
+    parts = SYSTEM_PROMPT + PLAYER_AWARENESS_PROMPT + NAVIGATION_PROMPT + STORY_MOMENT_PROMPT + SESSION_ENDING_PROMPT
     if companion is not None and companion.is_present:
         parts += COMPANION_PROMPT
     parts += (

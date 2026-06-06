@@ -36,6 +36,7 @@ import workspace
 from db_errors import db_tool
 from disposition import resolve_disposition
 from session_data import SessionData
+from tool_preconditions import require_npc_present
 from tool_support import _validate_id
 from workspace import WorkspaceType
 
@@ -164,11 +165,8 @@ async def _rent_workspace_impl(
     location_id = context.userdata.location_id
 
     # Co-location gate (concern bec87679b223): you can only rent from an NPC who is
-    # actually here. Disposition alone is not enough — an absent NPC must not gate a
-    # rental. Reuse the canonical schedule-based presence query.
-    present = await queries_mod.get_npcs_at_location(location_id)
-    if npc_id not in {npc["id"] for npc in present}:
-        raise ToolError(f"{npc_id} isn't here to rent a workspace from.")
+    # actually here — disposition alone is not enough.
+    await require_npc_present(location_id, npc_id, queries=queries_mod, suffix=" to rent a workspace from")
 
     # Disposition gates the price; resolve_disposition falls back to the NPC's
     # content default_disposition when the player has no recorded standing.

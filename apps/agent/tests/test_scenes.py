@@ -326,7 +326,7 @@ class TestWarmLayerSceneInjection:
         assert "Narrate the journey with growing unease." in result
 
 
-# === update_quest scene-triggered handoffs ===
+# === update_quest scene-triggered region changes (in-place, no handoff) ===
 
 _mock_conn = MagicMock(name="mock_txn_conn")
 
@@ -337,10 +337,14 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall"):
     return ctx
 
 
-class TestUpdateQuestSceneHandoff:
+class TestUpdateQuestSceneRegionChange:
     @pytest.mark.asyncio
-    async def test_scene_graph_handoff(self):
-        """Quest with scene_graph triggers handoff on region change."""
+    async def test_scene_graph_region_change_updates_agent_in_place(self):
+        """A quest scene_graph region change updates the persisting ExplorationAgent
+        in place (M7 story-003: no handoff). The transition rides the tool response
+        so the DM can narrate it; the agent's region is kept honest."""
+        from exploration_agent import ExplorationAgent
+
         quest = {
             "id": "graph_quest",
             "name": "Graph Quest",
@@ -369,7 +373,9 @@ class TestUpdateQuestSceneHandoff:
         mock_mutations = MagicMock()
         mock_mutations.set_player_quest = AsyncMock()
 
+        agent = ExplorationAgent(initial_location="accord_guild_hall", region_type="wilderness")
         ctx = _make_context()
+        ctx.session.current_agent = agent
         result = await _update_quest_impl(
             ctx,
             quest_id="graph_quest",
@@ -379,12 +385,13 @@ class TestUpdateQuestSceneHandoff:
             queries=mock_queries,
             content=mock_content,
         )
-        assert isinstance(result, tuple), f"Expected tuple, got {type(result)}"
-        agent, _json = result
-        from gameplay_agent import GameplayAgent
-
-        assert isinstance(agent, GameplayAgent)
+        assert isinstance(result, str), f"Expected str (no handoff), got {type(result)}"
+        # Same agent persists; its region is updated in place to the new scene's region.
+        assert ctx.session.current_agent is agent
         assert agent._agent_type == "city"
+        # The transition rides the response so the DM can narrate it without a handoff.
+        payload = json.loads(result)
+        assert payload["scene_transition"] == {"from": "Wild", "to": "City", "region": "city"}
 
     @pytest.mark.asyncio
     async def test_no_scene_graph_returns_string(self):

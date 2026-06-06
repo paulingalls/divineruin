@@ -18,6 +18,7 @@ from db_errors import db_tool
 from game_events import publish_game_event
 from quest_tools import _clamp_disposition_shift
 from session_data import SessionData
+from tool_preconditions import require_npc_present
 from tool_support import MAX_STORY_MOMENTS_PER_SESSION, STORY_MOMENTS, _cap_str
 
 logger = logging.getLogger("divineruin.tools")
@@ -57,6 +58,11 @@ async def _update_npc_disposition_impl(
     npc = await content.get_npc(npc_id)
     if npc is None:
         raise ToolError(f"NPC '{npc_id}' not found.")
+
+    # Stage-driven precondition (story-005): the NPC must be present at the player's
+    # current location. M7's collapsed agent exposes this verb in every region, so the
+    # guard — not a per-agent tool list — keeps disposition shifts to co-located NPCs.
+    await require_npc_present(session.location_id, npc_id, queries=queries)
 
     pending_events: list[tuple[str, dict]] = []
 

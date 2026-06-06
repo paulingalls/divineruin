@@ -3,7 +3,7 @@
 import json
 import time
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,6 +14,7 @@ from card_tap_handler import (
     SpecializationTapHandler,
     build_hint_instruction,
     build_specialization_instruction,
+    start_specialization_tap,
 )
 from creation_classes import CLASSES
 from creation_deities import DEITIES
@@ -287,3 +288,21 @@ class TestSpecializationTapHandler:
             )
         )
         session.generate_reply.assert_not_called()
+
+
+class TestStartSpecializationTap:
+    """The shared factory both exploration and dispatch use to host the tap consumer."""
+
+    def test_constructs_starts_and_returns_handler(self):
+        room = MagicMock()
+        session = MagicMock()
+        sd = SessionData(player_id="test", location_id="", room=room)
+        with patch("card_tap_handler.SpecializationTapHandler") as MockSTH:
+            mock_handler = MagicMock()
+            MockSTH.return_value = mock_handler
+
+            result = start_specialization_tap(room, session, sd)
+
+            MockSTH.assert_called_once_with(room=room, session=session, userdata=sd)
+            mock_handler.start.assert_called_once()
+            assert result is mock_handler

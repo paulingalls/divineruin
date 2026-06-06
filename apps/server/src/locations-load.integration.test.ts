@@ -1,4 +1,5 @@
 import { test, expect, describe, afterAll, beforeAll } from "bun:test";
+import { assertDbRequired } from "@divineruin/shared/test-util";
 import { getLocation, listLocations, setLocations, loadLocations } from "./locations.ts";
 import { sql } from "./db.ts";
 
@@ -15,6 +16,13 @@ import { sql } from "./db.ts";
 // shared client/state breaks across files). It runs only when DATABASE_URL is set
 // (the pre-push / CI server lane); the unit lane skips it cleanly.
 const hasDb = Boolean(process.env.DATABASE_URL);
+
+// Anti-silent-skip sentinel: the server lane sets REQUIRE_DB=1, so a DATABASE_URL
+// drift that would make the describe below silently skip (never exercising
+// loadLocations) fails loud here. See assertDbRequired for the full rationale.
+test("DATABASE_URL present when the lane requires it (REQUIRE_DB sentinel)", () => {
+  assertDbRequired(hasDb);
+});
 
 describe.skipIf(!hasDb)("loadLocations — DB row-fetch path", () => {
   const testRows: Record<string, Record<string, unknown>> = {

@@ -32,17 +32,15 @@ import db
 from blacksmith_agent import BLACKSMITH_TOOLS
 from check_tools import check
 from choice_tools import select
-from city_agent import CITY_TOOLS
 from combat_agent import COMBAT_AGENT_TOOLS
 from creation_agent import CREATION_TOOLS
 from dispatch_agent import DISPATCH_TOOLS
-from dungeon_agent import DUNGEON_TOOLS
+from exploration_agent import EXPLORATION_TOOLS
 from inventory_tools import _transact_impl, transact
 from llm_config import MAX_STRICT_TOOLS
 from mode_tools import enter_mode
 from onboarding_agent import ONBOARDING_TOOLS
 from recipe_tools import _learn_recipe_impl, learn
-from wilderness_agent import WILDERNESS_TOOLS
 
 # The complete set of noun tools the four M5 folds removed (stories 001-004). The story
 # text says "six"; the real set is ten — the check fold (story-003) absorbed four.
@@ -61,11 +59,10 @@ REMOVED_NOUN_TOOLS = frozenset(
     }
 )
 
-# Every assembled gameplay-agent tool registry.
+# Every assembled gameplay-agent tool registry. M7 collapsed the three region agents
+# into one exploration registry, so city/wilderness/dungeon are a single "exploration" row.
 AGENT_TOOL_LISTS = [
-    ("city", CITY_TOOLS),
-    ("wilderness", WILDERNESS_TOOLS),
-    ("dungeon", DUNGEON_TOOLS),
+    ("exploration", EXPLORATION_TOOLS),
     ("combat", COMBAT_AGENT_TOOLS),
     ("dispatch", DISPATCH_TOOLS),
     ("onboarding", ONBOARDING_TOOLS),
@@ -74,14 +71,16 @@ AGENT_TOOL_LISTS = [
 ]
 
 # verb -> the EXACT set of agents that must hold it (grep-verified against the tool
-# lists). Frozen at story-005 time: a future sprint that moves a verb on/off an agent
-# must update this map in lockstep, or this capstone goes red on staleness.
+# lists). Updated for M7: the three region rows fold into "exploration". A future sprint
+# that moves a verb on/off an agent must update this map in lockstep, or this capstone
+# goes red on staleness.
 VERB_PRESENCE = [
-    (transact, "transact", {"city", "dungeon"}),
+    (transact, "transact", {"exploration"}),
     (learn, "learn", {"dispatch"}),
-    (check, "check", {"city", "dungeon", "wilderness", "combat", "onboarding", "dispatch"}),
-    (enter_mode, "enter_mode", {"city", "dungeon", "wilderness"}),
-    (select, "select", {"city", "dungeon", "wilderness"}),
+    (check, "check", {"exploration", "combat", "onboarding", "dispatch"}),
+    (enter_mode, "enter_mode", {"exploration"}),
+    # M7 story-004: select also resolves pending L5 choices mid-training, so dispatch holds it too.
+    (select, "select", {"exploration", "dispatch"}),
 ]
 
 

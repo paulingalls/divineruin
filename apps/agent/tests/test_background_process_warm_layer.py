@@ -72,7 +72,6 @@ class TestWarmLayerRebuild:
                         corruption_level=mock_sd.corruption_level,
                         location=mock_location,
                         npcs_raw=mock_npcs,
-                        region_type="city",
                         scene_cache=None,
                         training=None,
                     )
