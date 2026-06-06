@@ -53,6 +53,15 @@ describe("startTrainingCycle", () => {
     }
   });
 
+  test("first_half_seconds within range for spell_minor", () => {
+    const config = getActivityTypeConfig("spell_minor")!;
+    for (let i = 0; i < 20; i++) {
+      const result = startTrainingCycle("spell_minor", now);
+      expect(result.first_half_seconds).toBeGreaterThanOrEqual(config.first_half_min_seconds);
+      expect(result.first_half_seconds).toBeLessThanOrEqual(config.first_half_max_seconds);
+    }
+  });
+
   test("throws for unknown activity type", () => {
     expect(() => startTrainingCycle("unknown_type", now)).toThrow("Unknown training activity type");
   });
@@ -111,9 +120,18 @@ describe("getMidpointDecision", () => {
     expect(decision.options[1]!.id).toBe("control");
   });
 
+  test("returns prompt and options for spell_minor", () => {
+    const decision = getMidpointDecision("spell_minor");
+    expect(decision.prompt.length).toBeGreaterThan(0);
+    expect(decision.options).toHaveLength(2);
+    expect(decision.options[0]!.id).toBeTruthy();
+    expect(decision.options[1]!.id).toBeTruthy();
+  });
+
   test("all activity types have decisions", () => {
     const types = [
       "spell_cantrip",
+      "spell_minor",
       "spell_standard",
       "spell_major",
       "spell_supreme",

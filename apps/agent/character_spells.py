@@ -31,26 +31,30 @@ async def record_learned(
     acquisition_track: str,
     *,
     is_prepared: bool = False,
+    bonus_variant: str | None = None,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
     """Add an elective spell to the character's known library (idempotent).
 
     Validates acquisition_track fail-loud. ON CONFLICT DO NOTHING — re-learning a
     known spell is a no-op (preparation is managed separately via set_prepared).
+    `bonus_variant` carries the training midpoint decision onto the learned spell
+    (AC3); None for the discovery track (no training decision).
     """
     if acquisition_track not in ACQUISITION_TRACKS:
         raise ValueError(f"acquisition_track {acquisition_track!r} not in {sorted(ACQUISITION_TRACKS)}")
     _conn = conn or await db.get_pool()
     await _conn.execute(
         """
-        INSERT INTO character_spells (player_id, spell_id, acquisition_track, is_prepared)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO character_spells (player_id, spell_id, acquisition_track, is_prepared, bonus_variant)
+        VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (player_id, spell_id) DO NOTHING
         """,
         player_id,
         spell_id,
         acquisition_track,
         is_prepared,
+        bonus_variant,
     )
 
 
@@ -62,7 +66,7 @@ async def get_known(
     """Return the character's known elective spells (the library)."""
     _conn = conn or await db.get_pool()
     rows = await _conn.fetch(
-        "SELECT spell_id, acquisition_track, is_prepared FROM character_spells WHERE player_id = $1",
+        "SELECT spell_id, acquisition_track, is_prepared, bonus_variant FROM character_spells WHERE player_id = $1",
         player_id,
     )
     return [
@@ -70,6 +74,7 @@ async def get_known(
             "spell_id": r["spell_id"],
             "acquisition_track": r["acquisition_track"],
             "is_prepared": r["is_prepared"],
+            "bonus_variant": r["bonus_variant"],
         }
         for r in rows
     ]
@@ -121,9 +126,11 @@ async def advance_learning_cycle(
     """Record one completed training cycle toward an elective spell.
 
     Upserts the in-flight spell_learning_progress row (cycles_completed += 1) and
-    returns {cycles_completed, cycles_required, completed}. Increments only — it does
-    NOT promote the spell into the known library; the caller (story-004) promotes via
-    record_learned + delete_learning_progress when `completed` is True.
+    returns {cycles_completed, cycles_required, completed, midpoint_decision_id}.
+    Increments only — it does NOT promote the spell into the known library; the
+    caller (story-004) promotes via record_learned + delete_learning_progress when
+    `completed` is True, carrying midpoint_decision_id onto the spell as its
+    bonus_variant (AC3). The COALESCE keeps the first decision recorded.
     """
     if cycles_required < 1:
         # Fail loud (matching acquisition_track validation): a tier needs >=1 cycle;
@@ -138,7 +145,7 @@ async def advance_learning_cycle(
         ON CONFLICT (player_id, spell_id) DO UPDATE SET
             cycles_completed = spell_learning_progress.cycles_completed + 1,
             midpoint_decision_id = COALESCE($4, spell_learning_progress.midpoint_decision_id)
-        RETURNING cycles_completed, cycles_required
+        RETURNING cycles_completed, cycles_required, midpoint_decision_id
         """,
         player_id,
         spell_id,
@@ -152,6 +159,7 @@ async def advance_learning_cycle(
         "cycles_completed": row["cycles_completed"],
         "cycles_required": row["cycles_required"],
         "completed": completed,
+        "midpoint_decision_id": row["midpoint_decision_id"],
     }
 
 

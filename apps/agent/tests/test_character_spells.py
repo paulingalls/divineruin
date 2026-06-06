@@ -25,13 +25,23 @@ class TestRecordLearned:
         sql, *params = conn.execute.call_args.args
         assert "INSERT INTO character_spells" in sql
         assert "ON CONFLICT (player_id, spell_id) DO NOTHING" in sql
-        assert params == ["p1", "arcane_fireball", "discovery", True]
+        # bonus_variant defaults to None (no training decision on the discovery track).
+        assert params == ["p1", "arcane_fireball", "discovery", True, None]
 
     async def test_defaults_unprepared(self):
         conn = AsyncMock()
         await character_spells.record_learned("p1", "arcane_fireball", "training", conn=conn)
         _sql, *params = conn.execute.call_args.args
-        assert params == ["p1", "arcane_fireball", "training", False]
+        assert params == ["p1", "arcane_fireball", "training", False, None]
+
+    async def test_persists_bonus_variant(self):
+        # AC3: a spell learned via training carries the midpoint decision as its
+        # bonus_variant, so the learned spell reflects the choice made while training.
+        conn = AsyncMock()
+        await character_spells.record_learned("p1", "arcane_fireball", "training", bonus_variant="power", conn=conn)
+        sql, *params = conn.execute.call_args.args
+        assert "bonus_variant" in sql
+        assert params == ["p1", "arcane_fireball", "training", False, "power"]
 
     @pytest.mark.parametrize("bad_track", ["core", "scroll", "", "Training"])
     async def test_rejects_invalid_acquisition_track(self, bad_track):
@@ -47,14 +57,26 @@ class TestGetKnown:
         conn = AsyncMock()
         conn.fetch = AsyncMock(
             return_value=[
-                {"spell_id": "arcane_fireball", "acquisition_track": "discovery", "is_prepared": True},
+                {
+                    "spell_id": "arcane_fireball",
+                    "acquisition_track": "discovery",
+                    "is_prepared": True,
+                    "bonus_variant": None,
+                },
             ]
         )
         rows = await character_spells.get_known("p1", conn=conn)
         sql, *params = conn.fetch.call_args.args
         assert "FROM character_spells WHERE player_id = $1" in sql
         assert params == ["p1"]
-        assert rows == [{"spell_id": "arcane_fireball", "acquisition_track": "discovery", "is_prepared": True}]
+        assert rows == [
+            {
+                "spell_id": "arcane_fireball",
+                "acquisition_track": "discovery",
+                "is_prepared": True,
+                "bonus_variant": None,
+            }
+        ]
 
 
 class TestGetPrepared:
@@ -81,7 +103,9 @@ class TestSetPrepared:
 class TestAdvanceLearningCycle:
     async def test_increments_and_reports_incomplete_below_threshold(self):
         conn = AsyncMock()
-        conn.fetchrow = AsyncMock(return_value={"cycles_completed": 3, "cycles_required": 5})
+        conn.fetchrow = AsyncMock(
+            return_value={"cycles_completed": 3, "cycles_required": 5, "midpoint_decision_id": "power"}
+        )
         result = await character_spells.advance_learning_cycle(
             "p1", "arcane_fireball", 5, midpoint_decision_id="power", conn=conn
         )
@@ -89,9 +113,15 @@ class TestAdvanceLearningCycle:
         assert "INSERT INTO spell_learning_progress" in sql
         assert "ON CONFLICT (player_id, spell_id) DO UPDATE" in sql
         assert "cycles_completed = spell_learning_progress.cycles_completed + 1" in sql
-        assert "RETURNING cycles_completed, cycles_required" in sql
+        # The decision is returned so the caller can carry it onto the learned spell (AC3).
+        assert "RETURNING cycles_completed, cycles_required, midpoint_decision_id" in sql
         assert params == ["p1", "arcane_fireball", 5, "power"]
-        assert result == {"cycles_completed": 3, "cycles_required": 5, "completed": False}
+        assert result == {
+            "cycles_completed": 3,
+            "cycles_required": 5,
+            "completed": False,
+            "midpoint_decision_id": "power",
+        }
 
     @pytest.mark.parametrize("bad_required", [0, -1])
     async def test_rejects_non_positive_cycles_required(self, bad_required):
@@ -103,12 +133,15 @@ class TestAdvanceLearningCycle:
 
     async def test_reports_completed_at_threshold(self):
         conn = AsyncMock()
-        conn.fetchrow = AsyncMock(return_value={"cycles_completed": 5, "cycles_required": 5})
+        conn.fetchrow = AsyncMock(
+            return_value={"cycles_completed": 5, "cycles_required": 5, "midpoint_decision_id": None}
+        )
         result = await character_spells.advance_learning_cycle("p1", "arcane_fireball", 5, conn=conn)
         _sql, *params = conn.fetchrow.call_args.args
         # midpoint_decision_id defaults to None when not supplied.
         assert params == ["p1", "arcane_fireball", 5, None]
         assert result["completed"] is True
+        assert result["midpoint_decision_id"] is None
 
 
 class TestLearningProgressHelpers:
