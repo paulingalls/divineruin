@@ -1,10 +1,11 @@
-"""Rest recovery — short/long rest resource restoration (pure), plus the long-rest
-elective swap (async, DB-backed).
+"""Rest recovery — short/long rest resource restoration (pure), plus two long-rest
+DB-backed operations: the elective technique swap and elective spell preparation.
 
 apply_short_rest/apply_long_rest/apply_rest are pure resource-pool math. The long
 rest additionally lets a character swap a known L4/L8 elective for an unchosen
 option in the same pool (swap_elective_on_long_rest) without losing the old
-technique — that one function is async and mutates character_abilities.
+technique, and choose which known elective spells fill their loadout
+(prepare_spells_on_long_rest) — those two are async and mutate the DB.
 """
 
 from typing import Literal
@@ -13,6 +14,10 @@ import asyncpg
 
 import abilities
 import ability_persistence
+import archetypes
+import character_spells
+import spell_preparation
+import spells
 
 RestType = Literal["short", "long"]
 
@@ -116,3 +121,71 @@ async def swap_elective_on_long_rest(
     # Keep the old technique's row (equipped=FALSE -> re-selectable); equip the new one.
     await persistence_mod.set_elective_equipped(player_id, from_ability_id, False, conn=conn)
     await persistence_mod.set_elective_equipped(player_id, to_ability_id, True, conn=conn)
+
+
+async def prepare_spells_on_long_rest(
+    player_id: str,
+    loadout: list[str],
+    *,
+    slot_limit: int,
+    archetype_id: str,
+    character_level: int,
+    in_natural_terrain: bool,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    spells_mod=spells,
+    character_spells_mod=character_spells,
+    preparation_mod=spell_preparation,
+    archetypes_mod=archetypes,
+) -> None:
+    """On a long rest, set the character's prepared elective spells to exactly ``loadout``.
+
+    Track 3 preparation (game_mechanics_archetypes.md L1255-1283), a deterministic Resolve
+    (ADR 0007: no new @function_tool). Enforces the rules via spell_preparation: a primal
+    caster may only re-prepare in natural terrain, every loadout spell must be known, of an
+    unlocked tier, within the archetype's tier cap, and the loadout must fit ``slot_limit``.
+
+    The whole loadout is validated BEFORE any write, so an invalid or over-limit loadout is
+    refused atomically (nothing persists). Core spells are archetype_abilities (a different
+    table) — always prepared, slot-free, never read or touched here. ``loadout`` is the full
+    desired set: electives currently prepared but absent from it are un-prepared.
+
+    Writes (un-prepare + prepare) are atomic ONLY if the caller passes a transactional
+    ``conn`` (e.g. from ``db.transaction()``); with ``conn=None`` each runs on a separate
+    pooled connection, so a mid-flight failure can leave a partially-applied loadout.
+    """
+    # Operation-level gate first — a blocked primal caster makes no reads or writes.
+    # magic_source is derived from the archetype chassis (SSOT) rather than a hardcoded set.
+    magic_source = archetypes_mod.get_archetype_chassis(archetype_id).magic_source
+    preparation_mod.can_change_preparation(magic_source, in_natural_terrain=in_natural_terrain)
+
+    # A loadout is conceptually a set of distinct electives. Duplicates are malformed input:
+    # they desync the slot accounting below (enumerate counts entries, not unique spells), so
+    # fail loud before any read/write rather than silently mis-count or double-write.
+    if len(set(loadout)) != len(loadout):
+        raise ValueError(f"loadout has duplicate spell ids: {loadout!r}")
+
+    known = await character_spells_mod.get_known(player_id, conn=conn)
+    known_ids = {row["spell_id"] for row in known}
+
+    # Validate the entire loadout up front (all-or-nothing). The slot count is the number of
+    # spells already accepted, so a loadout longer than slot_limit is refused on its last entry.
+    for accepted_count, spell_id in enumerate(loadout):
+        spell = spells_mod.get_spell(spell_id)  # ValueError on an unknown catalog id
+        preparation_mod.can_prepare(
+            spell_id=spell_id,
+            spell_tier=spell.spell_tier,
+            archetype_id=archetype_id,
+            character_level=character_level,
+            known_spell_ids=known_ids,
+            prepared_elective_count=accepted_count,
+            slot_limit=slot_limit,
+        )
+
+    # Write only the delta: un-prepare electives dropped from the loadout, prepare the ones
+    # newly added. A spell already prepared and still in the loadout needs no write.
+    loadout_set = set(loadout)
+    currently_prepared = {row["spell_id"] for row in known if row["is_prepared"]}
+    for spell_id in currently_prepared - loadout_set:
+        await character_spells_mod.set_prepared(player_id, spell_id, False, conn=conn)
+    for spell_id in loadout_set - currently_prepared:
+        await character_spells_mod.set_prepared(player_id, spell_id, True, conn=conn)

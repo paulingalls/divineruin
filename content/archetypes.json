@@ -49,6 +49,7 @@
   },
   {
     "id": "mage",
+    "magic_source": "arcane",
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "focus_only",
@@ -65,6 +66,7 @@
   },
   {
     "id": "artificer",
+    "magic_source": "arcane",
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "focus_only",
@@ -81,6 +83,7 @@
   },
   {
     "id": "seeker",
+    "magic_source": "arcane",
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "focus_only",
@@ -97,6 +100,7 @@
   },
   {
     "id": "druid",
+    "magic_source": "primal",
     "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
     "resource": {
       "pattern": "focus_primary",
@@ -113,6 +117,7 @@
   },
   {
     "id": "beastcaller",
+    "magic_source": "primal",
     "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
     "resource": {
       "pattern": "focus_primary",
@@ -129,6 +134,7 @@
   },
   {
     "id": "warden",
+    "magic_source": "primal",
     "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
     "resource": {
       "pattern": "focus_primary",
@@ -145,6 +151,7 @@
   },
   {
     "id": "cleric",
+    "magic_source": "divine",
     "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
     "resource": {
       "pattern": "focus_primary",
@@ -161,6 +168,7 @@
   },
   {
     "id": "paladin",
+    "magic_source": "divine",
     "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
     "resource": {
       "pattern": "focus_primary",
@@ -177,6 +185,7 @@
   },
   {
     "id": "oracle",
+    "magic_source": "divine",
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "focus_primary",
@@ -225,6 +234,7 @@
   },
   {
     "id": "whisper",
+    "magic_source": "arcane",
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "focus_only",
@@ -241,6 +251,7 @@
   },
   {
     "id": "bard",
+    "magic_source": "cross",
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "split",
@@ -257,6 +268,7 @@
   },
   {
     "id": "diplomat",
+    "magic_source": "divine",
     "hp": { "base": 8, "growth": 3, "category": "arcane_shadow" },
     "resource": {
       "pattern": "split",
@@ -273,6 +285,7 @@
   },
   {
     "id": "marshal",
+    "magic_source": "divine",
     "hp": { "base": 10, "growth": 4, "category": "primal_divine" },
     "resource": {
       "pattern": "split",

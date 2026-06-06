@@ -23,11 +23,16 @@ logger = logging.getLogger("divineruin.archetypes")
 
 HPCategory = Literal["martial", "primal_divine", "arcane_shadow"]
 ResourcePattern = Literal["stamina_only", "focus_only", "focus_primary", "split"]
+# The archetype's magic source binding (M8). Single source for the primary casters,
+# "cross" for Bard; null/absent for pure martials (no magic). "cross" and the spell
+# catalog's SpellSource intentionally differ — only single sources index the catalog.
+MagicSource = Literal["arcane", "divine", "primal", "cross"]
 
 # Closed vocabularies for the chassis enums — the loader owns fail-loud validation
 # (constraint chassis-row-shape-contract), mirroring the TS parseArchetypeRow.
 _HP_CATEGORIES = frozenset(get_args(HPCategory))
 _RESOURCE_PATTERNS = frozenset(get_args(ResourcePattern))
+_MAGIC_SOURCES = frozenset(get_args(MagicSource))
 
 
 @dataclass(frozen=True)
@@ -56,6 +61,7 @@ class Chassis:
     weapon_proficiencies: tuple[str, ...]
     skill_options: tuple[str, ...]
     num_skill_choices: int
+    magic_source: str | None = None  # M8: arcane/divine/primal/cross; None for pure martials
 
 
 # Module-level runtime-loaded chassis. Populated by load_archetypes() at worker
@@ -93,6 +99,12 @@ def parse_archetype_row(archetype_id: str, data: dict) -> Chassis:
             raise ValueError(
                 f"archetype {archetype_id!r} resource.pattern {resource['pattern']!r} not in {sorted(_RESOURCE_PATTERNS)}"
             )
+        # magic_source is optional (absent/null for pure martials); validate the vocab when present.
+        magic_source = data.get("magic_source")
+        if magic_source is not None and magic_source not in _MAGIC_SOURCES:
+            raise ValueError(
+                f"archetype {archetype_id!r} magic_source {magic_source!r} not in {sorted(_MAGIC_SOURCES)}"
+            )
         return Chassis(
             id=archetype_id,
             hp_base=hp["base"],
@@ -108,6 +120,7 @@ def parse_archetype_row(archetype_id: str, data: dict) -> Chassis:
             weapon_proficiencies=tuple(data["weapon_proficiencies"]),
             skill_options=tuple(skills["options"]),
             num_skill_choices=skills["num_choices"],
+            magic_source=magic_source,
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed archetypes row {archetype_id!r}: {e}") from e

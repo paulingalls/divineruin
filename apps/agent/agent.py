@@ -199,6 +199,14 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if not milestones_is_loaded():
         await load_milestones()
 
+    # Load the elective spell catalog once per agent process (M8). learn(spell,id)
+    # and spell preparation read this map; caster core spells stay abilities.
+    from spells import is_loaded as spells_is_loaded
+    from spells import load_spells
+
+    if not spells_is_loaded():
+        await load_spells()
+
     # Determine session type: new player (creation) vs returning
     player = None
     last_summary = None

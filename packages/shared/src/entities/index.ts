@@ -28,9 +28,11 @@ export type {
   StartingSkills,
   HpCategory,
   ResourcePattern,
+  MagicSource,
 } from "./archetype";
 
 export type { Ability, Cost, AbilityType } from "./ability";
+export type { Spell, SpellSource, SpellTier } from "./spell";
 export type {
   Milestone,
   MilestoneTier,

@@ -6,6 +6,7 @@ import type {
   StartingSkills,
   HpCategory,
   ResourcePattern,
+  MagicSource,
 } from "@divineruin/shared";
 import { sql } from "./db.ts";
 import { asRecord, parseStringArray } from "./parse-helpers.ts";
@@ -26,6 +27,7 @@ const RESOURCE_PATTERNS = new Set<ResourcePattern>([
   "focus_primary",
   "split",
 ]);
+const MAGIC_SOURCES = new Set<MagicSource>(["arcane", "divine", "primal", "cross"]);
 
 // Runtime-loaded chassis (populated by loadArchetypes at startup).
 let archetypes: ReadonlyMap<string, Archetype> = new Map();
@@ -89,6 +91,19 @@ export function parseArchetypeRow(id: string, raw: unknown): Archetype {
     num_choices: skillsRaw.num_choices,
   };
 
+  // magic_source is optional (absent/null for pure martials); validate the vocab when present.
+  // Mirrors the Python loader's optional magic_source guard for cross-language parity.
+  let magic_source: MagicSource | null = null;
+  if (data.magic_source !== undefined && data.magic_source !== null) {
+    if (
+      typeof data.magic_source !== "string" ||
+      !MAGIC_SOURCES.has(data.magic_source as MagicSource)
+    ) {
+      throw new Error(`${ctx}.magic_source ${JSON.stringify(data.magic_source)} is invalid`);
+    }
+    magic_source = data.magic_source as MagicSource;
+  }
+
   return {
     id,
     hp,
@@ -100,6 +115,7 @@ export function parseArchetypeRow(id: string, raw: unknown): Archetype {
       `${ctx}.weapon_proficiencies`,
     ),
     starting_skills,
+    magic_source,
   };
 }
 

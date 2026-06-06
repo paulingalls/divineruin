@@ -1,6 +1,7 @@
 [
   {
     "id": "spell_cantrip",
+    "cycles_required": 1,
     "first_half_min_seconds": 10800,
     "first_half_max_seconds": 18000,
     "second_half_min_seconds": 7200,
@@ -22,7 +23,31 @@
     }
   },
   {
+    "id": "spell_minor",
+    "cycles_required": 2,
+    "first_half_min_seconds": 12600,
+    "first_half_max_seconds": 19800,
+    "second_half_min_seconds": 9000,
+    "second_half_max_seconds": 16200,
+    "midpoint_decision": {
+      "prompt": "The weave settles. Do you anchor it for reliability or stretch it for reach?",
+      "options": [
+        {
+          "id": "anchor",
+          "label": "Anchor the weave",
+          "micro_bonus": { "type": "save_dc", "value": 1 }
+        },
+        {
+          "id": "stretch",
+          "label": "Stretch the weave",
+          "micro_bonus": { "type": "range_bonus", "value": 5 }
+        }
+      ]
+    }
+  },
+  {
     "id": "spell_standard",
+    "cycles_required": 3,
     "first_half_min_seconds": 14400,
     "first_half_max_seconds": 21600,
     "second_half_min_seconds": 10800,
@@ -45,6 +70,7 @@
   },
   {
     "id": "spell_major",
+    "cycles_required": 5,
     "first_half_min_seconds": 14400,
     "first_half_max_seconds": 21600,
     "second_half_min_seconds": 10800,
@@ -67,6 +93,7 @@
   },
   {
     "id": "spell_supreme",
+    "cycles_required": 8,
     "first_half_min_seconds": 18000,
     "first_half_max_seconds": 28800,
     "second_half_min_seconds": 14400,
