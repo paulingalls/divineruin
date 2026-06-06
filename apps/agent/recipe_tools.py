@@ -25,6 +25,7 @@ import db_mutations
 import db_queries
 import recipe_slots
 import recipes
+import spell_tools
 from db_errors import db_tool
 from recipe_validation import validate_recipe_slot_capacity
 from session_data import SessionData
@@ -44,13 +45,15 @@ async def learn(
     source: str = "",
 ) -> str:
     """Record that the player has gained permanent knowledge. Use when an NPC
-    teaches a recipe, the player finds a schematic, or otherwise acquires one.
+    teaches a recipe or spell, the player finds a schematic or scroll, or
+    otherwise acquires one.
 
     Args:
-        kind: What is being learned. Today only "recipe".
-        id: The thing learned — for a recipe, its recipe id.
-        source: For a recipe, HOW it was acquired (required) — one of: training,
-            npc_teaching, discovery, experimentation, tier_advancement.
+        kind: What is being learned — "recipe" or "spell".
+        id: The thing learned — a recipe id or spell id.
+        source: HOW it was acquired (required). Recipe: training, npc_teaching,
+            discovery, experimentation, tier_advancement. Spell: discovery (scroll)
+            or npc_teaching (mentor).
     """
     return await _learn_impl(context, kind, id, source)
 
@@ -81,7 +84,11 @@ async def _learn_impl(
             recipes_mod=recipes_mod,
             slots_mod=slots_mod,
         )
-    raise ToolError(f"Unknown kind {kind!r}; expected one of: recipe.")
+    if kind == "spell":
+        # Spell-domain impl (ADR 0007): no new tool, just a new kind. spell_tools
+        # validates the source ({discovery, npc_teaching}) and the level→tier gate.
+        return await spell_tools._learn_spell_impl(context, id, source)
+    raise ToolError(f"Unknown kind {kind!r}; expected one of: recipe, spell.")
 
 
 async def _learn_recipe_impl(
