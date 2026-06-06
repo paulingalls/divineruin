@@ -13,10 +13,6 @@ from typing import get_args
 import leveling
 from spells import SpellTier
 
-# Primal casters may only CHANGE preparation in natural terrain — they must commune with
-# the land (Druid lore). This is exactly the set of primal-source casters.
-PRIMAL_TERRAIN_CASTERS = frozenset({"druid", "beastcaller", "warden"})
-
 # These archetypes cap at Major tier — no Supreme access (spec L803/L1060/L1135). They are
 # a STRICT SUBSET of divine casters (cleric/oracle keep Supreme), so the cap is an explicit
 # id set, not magic_source — consistent with story-003's "explicit set, not magic_source".
@@ -28,14 +24,15 @@ SPELL_TIER_ORDER = get_args(SpellTier)
 _MAJOR_RANK = SPELL_TIER_ORDER.index("major")
 
 
-def can_change_preparation(archetype_id: str, *, in_natural_terrain: bool) -> None:
-    """Operation-level gate: may this archetype change its preparation here?
+def can_change_preparation(magic_source: str | None, *, in_natural_terrain: bool) -> None:
+    """Operation-level gate: may a caster of this magic source change preparation here?
 
-    Primal casters (Druid/Beastcaller/Warden) can only re-prepare in natural terrain.
-    All other archetypes re-prepare anywhere. Raises ValueError when blocked.
+    Primal casters can only re-prepare in natural terrain — they must commune with the land
+    (Druid lore). Every other source (arcane/divine/cross) and pure martials (None) re-prepare
+    anywhere. Keyed on magic_source (the chassis SSOT), not an archetype-id set. Raises on block.
     """
-    if archetype_id in PRIMAL_TERRAIN_CASTERS and not in_natural_terrain:
-        raise ValueError(f"{archetype_id!r} is a primal caster and can only change preparation in natural terrain")
+    if magic_source == "primal" and not in_natural_terrain:
+        raise ValueError("primal casters can only change preparation in natural terrain")
 
 
 def can_prepare(

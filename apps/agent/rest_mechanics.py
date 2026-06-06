@@ -14,6 +14,7 @@ import asyncpg
 
 import abilities
 import ability_persistence
+import archetypes
 import character_spells
 import spell_preparation
 import spells
@@ -134,6 +135,7 @@ async def prepare_spells_on_long_rest(
     spells_mod=spells,
     character_spells_mod=character_spells,
     preparation_mod=spell_preparation,
+    archetypes_mod=archetypes,
 ) -> None:
     """On a long rest, set the character's prepared elective spells to exactly ``loadout``.
 
@@ -152,7 +154,9 @@ async def prepare_spells_on_long_rest(
     pooled connection, so a mid-flight failure can leave a partially-applied loadout.
     """
     # Operation-level gate first — a blocked primal caster makes no reads or writes.
-    preparation_mod.can_change_preparation(archetype_id, in_natural_terrain=in_natural_terrain)
+    # magic_source is derived from the archetype chassis (SSOT) rather than a hardcoded set.
+    magic_source = archetypes_mod.get_archetype_chassis(archetype_id).magic_source
+    preparation_mod.can_change_preparation(magic_source, in_natural_terrain=in_natural_terrain)
 
     # A loadout is conceptually a set of distinct electives. Duplicates are malformed input:
     # they desync the slot accounting below (enumerate counts entries, not unique spells), so

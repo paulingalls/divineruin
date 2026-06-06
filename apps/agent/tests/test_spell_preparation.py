@@ -38,24 +38,22 @@ def _archetypes_by_magic_source() -> dict[str | None, set[str]]:
     return by_source
 
 
-# --- AC2: Primal terrain gate (can_change_preparation) ---
+# --- AC2: Primal terrain gate (can_change_preparation, keyed on magic_source) ---
 
 
-@pytest.mark.parametrize("archetype_id", ["druid", "beastcaller", "warden"])
-def test_primal_caster_cannot_change_preparation_outside_natural_terrain(archetype_id):
+def test_primal_source_cannot_change_preparation_outside_natural_terrain():
     with pytest.raises(ValueError, match="natural terrain"):
-        spell_preparation.can_change_preparation(archetype_id, in_natural_terrain=False)
+        spell_preparation.can_change_preparation("primal", in_natural_terrain=False)
 
 
-@pytest.mark.parametrize("archetype_id", ["druid", "beastcaller", "warden"])
-def test_primal_caster_can_change_preparation_in_natural_terrain(archetype_id):
-    assert spell_preparation.can_change_preparation(archetype_id, in_natural_terrain=True) is None
+def test_primal_source_can_change_preparation_in_natural_terrain():
+    assert spell_preparation.can_change_preparation("primal", in_natural_terrain=True) is None
 
 
-@pytest.mark.parametrize("archetype_id", ["mage", "cleric", "paladin", "warrior"])
-def test_non_primal_caster_unaffected_by_terrain(archetype_id):
-    # Non-primal casters re-prepare anywhere — terrain is irrelevant.
-    assert spell_preparation.can_change_preparation(archetype_id, in_natural_terrain=False) is None
+@pytest.mark.parametrize("magic_source", ["arcane", "divine", "cross", None])
+def test_non_primal_source_unaffected_by_terrain(magic_source):
+    # Every non-primal source (and pure martials, None) re-prepares anywhere.
+    assert spell_preparation.can_change_preparation(magic_source, in_natural_terrain=False) is None
 
 
 # --- AC1: know-it / tier-access / slot gates (can_prepare) ---
@@ -153,15 +151,10 @@ def test_uncapped_caster_can_prepare_supreme(archetype_id):
     )
 
 
-# --- Parity: hardcoded caster sets must stay in sync with content/archetypes.json ---
-# These guard against silent drift if an archetype id is renamed/added in the content SSOT
-# without updating the explicit sets here (the module stays pure — no runtime IO coupling).
-
-
-def test_primal_terrain_casters_match_primal_source_archetypes():
-    # The terrain gate must cover EXACTLY the primal-source casters — no more, no fewer.
-    primal_in_content = _archetypes_by_magic_source().get("primal", set())
-    assert primal_in_content == spell_preparation.PRIMAL_TERRAIN_CASTERS
+# --- Parity: the hardcoded Major-cap set must stay in sync with content/archetypes.json ---
+# Guards silent drift if a divine archetype is renamed/added in the content SSOT without
+# updating the explicit cap set here. (The primal terrain rule is now derived from
+# magic_source, so it needs no parity guard.)
 
 
 def test_major_capped_archetypes_are_known_divine_casters():
