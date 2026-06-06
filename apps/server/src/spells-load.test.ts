@@ -43,7 +43,6 @@ describe("content/spells.json — parseSpellRow conformance", () => {
     expect(parsed.id).toBe("arcane_fireball");
     expect(parsed.source).toBe("arcane");
     expect(parsed.spell_tier).toBe("major");
-    expect(parsed.level_requirement).toBe(7);
     expect(parsed.focus_cost).toBe(5);
   });
 
@@ -108,7 +107,6 @@ describe("parseSpellRow — fail-loud validation", () => {
     name: "Test Spell",
     source: "arcane",
     spell_tier: "standard",
-    level_requirement: 4,
     focus_cost: 3,
     mechanics: "Does a thing.",
     narration_cue: "A thing happens.",
@@ -136,12 +134,6 @@ describe("parseSpellRow — fail-loud validation", () => {
   test("rejects a missing mechanics field", () => {
     const { mechanics: _omit, ...noMechanics } = base;
     expect(() => parseSpellRow("x", noMechanics)).toThrow(/spells\[x\]\.mechanics/);
-  });
-
-  test("rejects a non-integer level_requirement (parity with the Python int requirement)", () => {
-    expect(() => parseSpellRow("x", { ...base, level_requirement: 4.5 })).toThrow(
-      /spells\[x\]\.level_requirement/,
-    );
   });
 
   test("rejects a non-integer focus_cost (parity with the Python int requirement)", () => {

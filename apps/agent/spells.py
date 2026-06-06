@@ -39,7 +39,6 @@ class Spell:
     name: str
     source: SpellSource
     spell_tier: SpellTier
-    level_requirement: int
     focus_cost: int
     mechanics: str
     narration_cue: str
@@ -78,7 +77,6 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             name=data["name"],
             source=source,
             spell_tier=spell_tier,
-            level_requirement=_require_int(data, "level_requirement", spell_id),
             focus_cost=_require_int(data, "focus_cost", spell_id),
             mechanics=data["mechanics"],
             narration_cue=data["narration_cue"],
@@ -104,8 +102,9 @@ def get_spells_by_source(source: str) -> tuple[Spell, ...]:
     """Return all loaded spells for a magic source, in load order.
 
     Empty tuple when the source has none loaded (e.g. an unknown source). Callers
-    filter further by spell_tier / level_requirement (the source-keyed analogue of
-    abilities.get_archetype_abilities).
+    filter further by spell_tier (the source-keyed analogue of
+    abilities.get_archetype_abilities). The level->tier unlock gate lives in
+    leveling.MIN_LEVEL_BY_SPELL_TIER, keyed by tier — spells carry no per-row level.
     """
     return tuple(s for s in _spells.values() if s.source == source)
 

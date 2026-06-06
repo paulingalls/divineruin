@@ -11,8 +11,7 @@ forward-compatible with the full Phase-3 Magic catalog.
 
 Tier-unlock ladder (the floor character level at which a tier becomes learnable,
 enforced by story-005's MIN_LEVEL_BY_SPELL_TIER): cantrip/minor L1, standard L4,
-major L7, supreme L13. The minimal catalog sets each spell's level_requirement to
-its tier floor.
+major L7, supreme L13. The gate is keyed by tier — spells carry no per-row level.
 """
 
 import json
@@ -46,7 +45,6 @@ _FIREBALL_ROW = {
     "name": "Fireball",
     "source": "arcane",
     "spell_tier": "major",
-    "level_requirement": 7,
     "focus_cost": 5,
     "mechanics": "A bead of flame detonates in a 20 ft sphere. DEX save, half on success.",
     "narration_cue": "A bead of light detonates — heat, light, the roar of air consumed.",
@@ -57,7 +55,6 @@ _BLESS_ROW = {
     "name": "Bless",
     "source": "divine",
     "spell_tier": "minor",
-    "level_requirement": 1,
     "focus_cost": 2,
     "mechanics": "Up to 3 allies gain +1d4 on attacks and saves. Concentration.",
     "narration_cue": "You speak their names and your patron hears — warmth settling into bones.",
@@ -77,7 +74,6 @@ def test_parse_spell_row_full_shape():
     assert isinstance(s, Spell)
     assert (s.id, s.name, s.source) == ("arcane_fireball", "Fireball", "arcane")
     assert s.spell_tier == "major"
-    assert s.level_requirement == 7
     assert s.focus_cost == 5
     assert s.mechanics and s.narration_cue
 
@@ -106,19 +102,6 @@ def test_parse_spell_row_rejects_unknown_source():
 def test_parse_spell_row_rejects_unknown_tier():
     bad = {**_FIREBALL_ROW, "spell_tier": "legendary"}
     with pytest.raises(ValueError, match=r"spell_tier"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
-
-
-def test_parse_spell_row_rejects_noninteger_level_requirement():
-    bad = {**_FIREBALL_ROW, "level_requirement": "7"}
-    with pytest.raises(ValueError, match=r"level_requirement"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
-
-
-def test_parse_spell_row_rejects_bool_level_requirement():
-    # bool is an int subclass — must be excluded (parity with the TS integer guard).
-    bad = {**_FIREBALL_ROW, "level_requirement": True}
-    with pytest.raises(ValueError, match=r"level_requirement"):
         parse_spell_row(_FIREBALL_ROW["id"], bad)
 
 
@@ -194,20 +177,18 @@ def test_content_every_row_parses_and_covers_each_source_and_tier():
             assert (source, tier) in pairs, f"missing {source}/{tier} in content/spells.json"
 
 
-def test_content_level_requirement_matches_tier_floor():
+def test_content_spell_tiers_are_gated_by_the_level_table():
+    # Every content spell's tier is covered by the level->tier gate (the single source
+    # of truth, leveling.MIN_LEVEL_BY_SPELL_TIER): unlocked exactly at the tier floor,
+    # gated one level below. Spells carry no per-row level_requirement.
     _seed_from_content()
     raw = json.loads(CONTENT_PATH.read_text())
     for row in raw:
         s = get_spell(row["id"])
-        assert s.level_requirement == TIER_LEVEL_FLOOR[s.spell_tier], (
-            f"{s.id}: level_requirement {s.level_requirement} != tier floor "
-            f"{TIER_LEVEL_FLOOR[s.spell_tier]} for {s.spell_tier}"
-        )
-        # The prod gate must agree with the row's own level_requirement: unlocked
-        # exactly at the floor, gated one level below.
-        assert is_spell_tier_unlocked(s.spell_tier, s.level_requirement) is True
-        if s.level_requirement > 1:
-            assert is_spell_tier_unlocked(s.spell_tier, s.level_requirement - 1) is False
+        floor = TIER_LEVEL_FLOOR[s.spell_tier]
+        assert is_spell_tier_unlocked(s.spell_tier, floor) is True
+        if floor > 1:
+            assert is_spell_tier_unlocked(s.spell_tier, floor - 1) is False
 
 
 def test_content_excludes_caster_core_spells():

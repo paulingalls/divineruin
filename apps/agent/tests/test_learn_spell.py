@@ -30,7 +30,6 @@ def _spell(spell_id="arcane_fireball", *, tier: SpellTier = "standard", source: 
         name="Fireball",
         source=source,
         spell_tier=tier,
-        level_requirement=leveling.MIN_LEVEL_BY_SPELL_TIER[tier],
         focus_cost=1,
         mechanics="boom",
         narration_cue="The air ignites.",

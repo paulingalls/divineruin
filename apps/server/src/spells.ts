@@ -64,7 +64,6 @@ export function parseSpellRow(id: string, raw: unknown): Spell {
     name: data.name,
     source: data.source as SpellSource,
     spell_tier: data.spell_tier as SpellTier,
-    level_requirement: requireInteger(data.level_requirement, `${ctx}.level_requirement`),
     focus_cost: requireInteger(data.focus_cost, `${ctx}.focus_cost`),
     mechanics: data.mechanics,
     narration_cue: data.narration_cue,

@@ -18,7 +18,6 @@ export interface Spell {
   name: string;
   source: SpellSource;
   spell_tier: SpellTier;
-  level_requirement: number;
   focus_cost: number;
   mechanics: string;
   narration_cue: string;

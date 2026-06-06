@@ -72,7 +72,6 @@ class TestSelectStartingSpells:
                         name="X",
                         source="arcane",
                         spell_tier="cantrip",
-                        level_requirement=1,
                         focus_cost=0,
                         mechanics="m",
                         narration_cue="n",

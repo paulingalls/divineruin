@@ -41,8 +41,8 @@ from creation_rules import select_starting_spells
 _CANTRIP = "arcane_frost_touch"
 _MINOR_A = "arcane_magic_missile"
 _MINOR_B = "arcane_mage_hand"
-_STANDARD = "arcane_hold_person"  # level_requirement 4
-_MAJOR = "arcane_fireball"  # level_requirement 7
+_STANDARD = "arcane_hold_person"  # standard tier, unlocks at L4
+_MAJOR = "arcane_fireball"  # major tier, unlocks at L7
 
 
 @pytest.fixture(scope="module")
