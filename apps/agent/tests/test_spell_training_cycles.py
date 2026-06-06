@@ -80,7 +80,12 @@ class TestSpellTrainingAccrual:
         with track='training' and its in-flight progress row is cleared (promotion seam)."""
         patches, advance, record_learned, delete_progress = _completion_patches(
             SAMPLE_SPELL_ACTIVITY,
-            advance_return={"cycles_completed": 5, "cycles_required": 5, "completed": True},
+            advance_return={
+                "cycles_completed": 5,
+                "cycles_required": 5,
+                "completed": True,
+                "midpoint_decision_id": "push",
+            },
         )
         with (
             patches[0],
@@ -101,8 +106,9 @@ class TestSpellTrainingAccrual:
         advance.assert_awaited_once()
         assert advance.call_args.args[:2] == ("player_1", "arcane_fireball")
         assert advance.call_args.args[2] == 5  # cycles_required from content config
-        # Promotion fired.
-        record_learned.assert_awaited_once_with("player_1", "arcane_fireball", "training")
+        # Promotion fired, carrying the recorded midpoint decision as the spell's
+        # bonus_variant (AC3: the learned spell reflects the training decision).
+        record_learned.assert_awaited_once_with("player_1", "arcane_fireball", "training", bonus_variant="push")
         delete_progress.assert_awaited_once_with("player_1", "arcane_fireball")
 
     @pytest.mark.asyncio
@@ -235,20 +241,24 @@ class _FakeSpellStore:
 
     def __init__(self) -> None:
         self.progress: dict[tuple[str, str], int] = {}
-        self.known: dict[tuple[str, str], str] = {}
+        self.decisions: dict[tuple[str, str], str] = {}  # first non-null decision (COALESCE)
+        self.known: dict[tuple[str, str], dict] = {}
 
-    async def advance_learning_cycle(self, player_id, spell_id, cycles_required, **_kwargs):
+    async def advance_learning_cycle(self, player_id, spell_id, cycles_required, *, midpoint_decision_id=None):
         key = (player_id, spell_id)
         self.progress[key] = self.progress.get(key, 0) + 1
+        if midpoint_decision_id is not None and key not in self.decisions:
+            self.decisions[key] = midpoint_decision_id
         completed = self.progress[key] >= cycles_required
         return {
             "cycles_completed": self.progress[key],
             "cycles_required": cycles_required,
             "completed": completed,
+            "midpoint_decision_id": self.decisions.get(key),
         }
 
-    async def record_learned(self, player_id, spell_id, acquisition_track):
-        self.known[(player_id, spell_id)] = acquisition_track
+    async def record_learned(self, player_id, spell_id, acquisition_track, *, bonus_variant=None):
+        self.known[(player_id, spell_id)] = {"track": acquisition_track, "bonus_variant": bonus_variant}
 
     async def delete_learning_progress(self, player_id, spell_id):
         self.progress.pop((player_id, spell_id), None)
@@ -306,6 +316,7 @@ class TestSpellTrainingThreeCycleStandard:
             if cycle < 3:
                 assert key not in store.known, f"spell known too early (after cycle {cycle})"
             else:
-                assert store.known[key] == "training"
+                # Known with track='training' and the midpoint decision as bonus_variant (AC3).
+                assert store.known[key] == {"track": "training", "bonus_variant": "power"}
                 # Promotion clears the in-flight progress row.
                 assert key not in store.progress

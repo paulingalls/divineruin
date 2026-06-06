@@ -184,7 +184,14 @@ async def advance_training_cycles() -> int:
                             midpoint_decision_id=data.get("decision_id"),
                         )
                         if progress["completed"]:
-                            await character_spells.record_learned(player_id, spell_id, "training")
+                            # Carry the recorded midpoint decision onto the learned spell
+                            # as its bonus_variant (AC3) before clearing the progress row.
+                            await character_spells.record_learned(
+                                player_id,
+                                spell_id,
+                                "training",
+                                bonus_variant=progress["midpoint_decision_id"],
+                            )
                             await character_spells.delete_learning_progress(player_id, spell_id)
 
                     # Generate narration via LLM
