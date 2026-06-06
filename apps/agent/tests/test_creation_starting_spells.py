@@ -59,6 +59,33 @@ class TestSelectStartingSpells:
     def test_martial_gets_nothing(self):
         assert select_starting_spells("warrior", None) == []
 
+    def test_fails_loud_when_source_lacks_a_tier(self):
+        # An eligible caster's source must carry both tiers; a missing tier is a content
+        # regression that must fail loud, not silently grant fewer spells.
+        from spells import Spell, set_spells
+
+        try:
+            set_spells(
+                {
+                    "arcane_only_cantrip": Spell(
+                        id="arcane_only_cantrip",
+                        name="X",
+                        source="arcane",
+                        spell_tier="cantrip",
+                        level_requirement=1,
+                        focus_cost=0,
+                        mechanics="m",
+                        narration_cue="n",
+                    )
+                }
+            )
+            with pytest.raises(ValueError, match="minor"):
+                select_starting_spells("mage", "arcane")
+        finally:
+            from spells_config_fixture import setup_spells_config_fixture
+
+            setup_spells_config_fixture()
+
     @pytest.mark.parametrize(
         "archetype_id,source", [("bard", "cross"), ("whisper", "arcane"), ("diplomat", "divine"), ("marshal", "divine")]
     )

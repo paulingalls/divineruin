@@ -48,8 +48,12 @@ def select_starting_spells(archetype_id: str, magic_source: str | None) -> list[
     chosen: list[str] = []
     for tier in ("cantrip", "minor"):
         ids = sorted(s.id for s in by_source if s.spell_tier == tier)
-        if ids:
-            chosen.append(ids[0])
+        if not ids:
+            # Fail loud: an eligible caster's source must carry both tiers (the catalog
+            # guarantees per-source per-tier coverage). A missing tier is a content
+            # regression, not a silently-degraded grant.
+            raise ValueError(f"spell catalog has no {tier!r} spell for source {magic_source!r}")
+        chosen.append(ids[0])
     return chosen
 
 
