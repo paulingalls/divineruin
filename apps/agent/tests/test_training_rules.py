@@ -30,6 +30,7 @@ from training_rules import (
 
 ALL_ACTIVITY_TYPES: list[TrainingActivityType] = [
     "spell_cantrip",
+    "spell_minor",
     "spell_standard",
     "spell_major",
     "spell_supreme",
@@ -41,7 +42,7 @@ ALL_ACTIVITY_TYPES: list[TrainingActivityType] = [
 
 
 class TestConfig:
-    def test_all_eight_activity_types_present(self) -> None:
+    def test_all_activity_types_present(self) -> None:
         assert set(TRAINING_ACTIVITY_CONFIG.keys()) == set(ALL_ACTIVITY_TYPES)
 
     def test_duration_ranges_are_positive(self) -> None:
@@ -235,7 +236,7 @@ class TestCompleteTrainingCycle:
         assert result.counter_increment == 1
 
 
-# ── Duration range integration (all 8 types) ──────────────────────────
+# ── Duration range integration (all activity types) ───────────────────
 
 
 class TestDurationRanges:
@@ -244,6 +245,7 @@ class TestDurationRanges:
     # (type, min_total_seconds, max_total_seconds)
     EXPECTED_RANGES = [
         ("spell_cantrip", 5 * 3600, 9 * 3600),  # 5-9 hours
+        ("spell_minor", 6 * 3600, 10 * 3600),  # 6-10 hours
         ("spell_standard", 7 * 3600, 11 * 3600),  # 7-11 hours
         ("spell_major", 7 * 3600, 11 * 3600),  # 7-11 (standard/major row)
         ("spell_supreme", 9 * 3600, 14 * 3600),  # 9-14 hours

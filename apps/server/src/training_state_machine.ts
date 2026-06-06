@@ -13,6 +13,7 @@ import { sql } from "./db.ts";
 
 export type TrainingActivityType =
   | "spell_cantrip"
+  | "spell_minor"
   | "spell_standard"
   | "spell_major"
   | "spell_supreme"

@@ -12,6 +12,7 @@ CONTENT_DIR = Path(__file__).resolve().parents[3] / "content"
 
 EXPECTED_ACTIVITY_TYPES = {
     "spell_cantrip",
+    "spell_minor",
     "spell_standard",
     "spell_major",
     "spell_supreme",
@@ -37,7 +38,7 @@ def _load_json(filename: str) -> list[dict]:
 
 
 class TestTrainingActivityTypesContent:
-    def test_all_eight_ids_present(self):
+    def test_all_activity_type_ids_present(self):
         data = _load_json("training_activity_types.json")
         ids = {entry["id"] for entry in data}
         assert ids == EXPECTED_ACTIVITY_TYPES

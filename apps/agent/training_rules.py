@@ -20,6 +20,7 @@ MicroBonus = dict[str, str | int | float | bool]
 
 TrainingActivityType = Literal[
     "spell_cantrip",
+    "spell_minor",
     "spell_standard",
     "spell_major",
     "spell_supreme",
