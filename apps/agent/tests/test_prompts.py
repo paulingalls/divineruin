@@ -307,6 +307,13 @@ class TestNavigationPromptIncluded:
         assert 'mode="discover"' in prompt
         assert "Navigation" in prompt
 
+    def test_navigation_prompt_nudges_scene_transition_narration(self):
+        # update_quest carries a quest-driven region move in response["scene_transition"];
+        # the DM needs a cue to voice it, since NAVIGATION otherwise only covers move_player
+        # (concern c7c8d6acb6ec).
+        prompt = build_system_prompt("accord_guild_hall")
+        assert "scene_transition" in prompt
+
 
 # NOTE: region-specific system-prompt assertions moved to tests/test_region_register.py.
 # After M7 story-002, build_system_prompt is region-agnostic — wilderness/dungeon/city

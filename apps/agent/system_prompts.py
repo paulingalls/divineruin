@@ -203,7 +203,13 @@ call check with mode="discover", the skill they're using (the approach, e.g. \
 perception) and target set to the visible thing they're examining. What is \
 hidden — if anything — is revealed by the roll; never name a secret yourself. \
 On success, reveal the find naturally. On failure, describe a fruitless search \
-without revealing what was missed.\
+without revealing what was missed.
+
+When a quest update returns a scene_transition (with from, to, and region \
+fields), the story itself has carried the player across a threshold — narrate \
+the crossing in one sound-first sentence, leaving the old place behind for the \
+new, then describe where they now stand. Don't speak the field names or the \
+region id.\
 """
 
 
