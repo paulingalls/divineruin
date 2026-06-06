@@ -294,12 +294,14 @@ async def main() -> None:
     from abilities import load_abilities
     from archetypes import load_archetypes
     from milestones import load_milestones
+    from spells import load_spells
     from training_rules import load_training_activity_types
 
     await load_training_activity_types()
     await load_archetypes()
     await load_abilities()
     await load_milestones()
+    await load_spells()
 
     try:
         while True:
