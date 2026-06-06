@@ -125,13 +125,18 @@ describe.skipIf(!hasDatabase)("seeded content", () => {
 });
 
 describe.skipIf(!hasRedis)("redis connectivity", () => {
-  const redis = Bun.redis;
-
+  // Access Bun.redis lazily inside the test/afterAll bodies, never at describe-eval.
+  // Bun still evaluates a skipped describe's callback to collect its tests, so a
+  // top-level `const redis = Bun.redis` would build the default client from REDIS_URL
+  // and throw 'Invalid URL format' when it is unset — failing the file as an unhandled
+  // error even though every test here is skipped. The bodies only run when not skipped
+  // (REDIS_URL present), so the access is safe there. (Closes debt b19dd5e150b8.)
   afterAll(() => {
-    redis.close();
+    Bun.redis.close();
   });
 
   test("SET/GET/DEL round-trips", async () => {
+    const redis = Bun.redis;
     await redis.set("__test_key", "divineruin_ok");
     const val = await redis.get("__test_key");
     expect(val).toBe("divineruin_ok");
