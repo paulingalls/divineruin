@@ -93,6 +93,14 @@ class TestAdvanceLearningCycle:
         assert params == ["p1", "arcane_fireball", 5, "power"]
         assert result == {"cycles_completed": 3, "cycles_required": 5, "completed": False}
 
+    @pytest.mark.parametrize("bad_required", [0, -1])
+    async def test_rejects_non_positive_cycles_required(self, bad_required):
+        # Fail-loud: 0 would complete on the first cycle, negative is unreachable.
+        conn = AsyncMock()
+        with pytest.raises(ValueError, match="cycles_required"):
+            await character_spells.advance_learning_cycle("p1", "arcane_fireball", bad_required, conn=conn)
+        conn.fetchrow.assert_not_awaited()
+
     async def test_reports_completed_at_threshold(self):
         conn = AsyncMock()
         conn.fetchrow = AsyncMock(return_value={"cycles_completed": 5, "cycles_required": 5})

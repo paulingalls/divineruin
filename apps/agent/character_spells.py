@@ -125,6 +125,10 @@ async def advance_learning_cycle(
     NOT promote the spell into the known library; the caller (story-004) promotes via
     record_learned + delete_learning_progress when `completed` is True.
     """
+    if cycles_required < 1:
+        # Fail loud (matching acquisition_track validation): a tier needs >=1 cycle;
+        # 0 would mark complete on the first cycle, negative makes completion unreachable.
+        raise ValueError(f"cycles_required must be >= 1, got {cycles_required}")
     _conn = conn or await db.get_pool()
     row = await _conn.fetchrow(
         """
