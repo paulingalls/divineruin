@@ -12,14 +12,16 @@ from livekit.agents.llm import ToolError
 import db_queries
 
 
-async def require_npc_present(location_id: str, npc_id: str, *, queries=db_queries) -> None:
+async def require_npc_present(location_id: str, npc_id: str, *, queries=db_queries, suffix: str = "") -> None:
     """Raise ToolError unless ``npc_id`` is present at ``location_id``.
 
     Presence is the schedule-derived Stage fact (``get_npcs_at_location`` — NPCs
-    whose ``schedule`` includes this location), the same co-location gate used by
-    repair_item and rent_workspace. Reads the authoritative Stage, never an
-    agent's cached region. ``queries`` is a seam for unit tests.
+    whose ``schedule`` includes this location). The canonical co-location gate for
+    every NPC-targeted verb: update_npc_disposition, repair_item, rent_workspace.
+    Reads the authoritative Stage, never an agent's cached region. ``suffix`` tailors
+    the refusal to the calling verb (e.g. " to repair your gear"); ``queries`` is a
+    seam for unit tests.
     """
     present = await queries.get_npcs_at_location(location_id)
     if npc_id not in {npc["id"] for npc in present}:
-        raise ToolError(f"{npc_id} isn't here.")
+        raise ToolError(f"{npc_id} isn't here{suffix}.")
