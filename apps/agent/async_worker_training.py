@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from training_rules import CompletionResult
 
+import character_spells
 import db_mutations
 import db_queries
 import db_training
@@ -98,7 +99,7 @@ async def advance_training_cycles() -> int:
 
     Returns count of transitions applied.
     """
-    from training_rules import complete_training_cycle, get_midpoint_decision
+    from training_rules import complete_training_cycle, get_cycles_required, get_midpoint_decision
 
     due = await db_training.get_due_training_transitions()
     if not due:
@@ -167,6 +168,24 @@ async def advance_training_cycles() -> int:
                             )
                         else:
                             logger.warning("Training %s is skill_practice but missing 'skill' in data", activity_id)
+
+                    # Spell training: one completed activity = one learning cycle toward the
+                    # spell's tier count. When the tier is reached, promote it into the known
+                    # library (record_learned + clear progress). Lives in the non-cached block
+                    # so a TTS retry (cached narration) never double-counts a cycle.
+                    elif activity_type.startswith("spell_"):
+                        spell_id = data.get("spell_id")
+                        if not spell_id:
+                            raise ValueError(f"spell training {activity_id} missing spell_id in data")
+                        progress = await character_spells.advance_learning_cycle(
+                            player_id,
+                            spell_id,
+                            get_cycles_required(activity_type),
+                            midpoint_decision_id=data.get("decision_id"),
+                        )
+                        if progress["completed"]:
+                            await character_spells.record_learned(player_id, spell_id, "training")
+                            await character_spells.delete_learning_progress(player_id, spell_id)
 
                     # Generate narration via LLM
                     player_data = await db_queries.get_player(player_id) or {}
