@@ -12,7 +12,9 @@ docs/decisions/0004-agent-tool-scaling.md).
 from typing import Any
 
 from base_agent import BaseGameAgent
+from card_tap_handler import SpecializationTapHandler, start_specialization_tap
 from check_tools import check
+from choice_tools import select
 from crafting_tools import query_available_workspaces, rent_workspace, start_crafting_project
 from dispatch_tools import conclude_dispatch
 from environment_tools import play_sound, set_music_state
@@ -48,6 +50,9 @@ DISPATCH_TOOLS = [
     # this dispatch context.
     # Experimentation (M5.3): craft without a known recipe at DC+4 (resolves immediately).
     experiment_with_materials,
+    # Resolve a pending player choice (the L5 specialization fork) — leveling can land
+    # mid-training, so select must be reachable here too, not only in exploration (story-004).
+    select,
     # Navigation / queries — enough to talk to the mentor and leave
     move_player,
     query_info,
@@ -73,6 +78,20 @@ class DispatchAgent(BaseGameAgent):
             tools=DISPATCH_TOOLS,
             chat_ctx=chat_ctx,
         )
+        self._spec_tap: SpecializationTapHandler | None = None
+
+    async def on_enter(self) -> None:
+        await super().on_enter()
+        # Host the L5 specialization-tap consumer: training-driven level-ups can surface
+        # the fork here, so a tap (or DM voice) resolves it via select without a handoff.
+        sd = self.session.userdata
+        assert sd.room is not None  # room is set before the agent enters
+        self._spec_tap = start_specialization_tap(sd.room, self.session, sd)
+
+    async def on_exit(self) -> None:
+        if self._spec_tap:
+            self._spec_tap.stop()
+        await super().on_exit()
 
 
 def create_dispatch_agent(chat_ctx: Any = None) -> DispatchAgent:

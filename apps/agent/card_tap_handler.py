@@ -159,7 +159,8 @@ class SpecializationTapHandler(_PlayerHintsListener):
     verb with the pending choice_id (the milestone_id the client echoes back from the
     SPECIALIZATION_CHOICE event) and the chosen option — instruction-driven so the DM
     voices the confirmation (audio-first), with select the validation/persistence
-    gatekeeper. Active in the exploration agents where leveling happens (story-007).
+    gatekeeper. Active wherever leveling happens — the exploration agents (story-008)
+    and the dispatch/training context (story-004) — started via start_specialization_tap.
 
     Shares the base HINT_COOLDOWN_S debounce intentionally: the L5 choice is a one-shot
     permanent pick, so the 2s window only suppresses accidental double-taps.
@@ -185,3 +186,15 @@ class SpecializationTapHandler(_PlayerHintsListener):
             instructions=build_specialization_instruction(milestone_id, specialization_id),
         )
         return True
+
+
+def start_specialization_tap(room: rtc.Room, session: AgentSession, userdata: SessionData) -> SpecializationTapHandler:
+    """Construct and start the L5 specialization-tap consumer, returning the handler.
+
+    Shared by every agent context where leveling happens — exploration (story-008) and
+    dispatch/training (story-004) — so the tap construct+start lives in one place. The
+    caller stores the handler and stops it in on_exit (``handler.stop()``).
+    """
+    handler = SpecializationTapHandler(room=room, session=session, userdata=userdata)
+    handler.start()
+    return handler
