@@ -28,6 +28,7 @@ export type {
   StartingSkills,
   HpCategory,
   ResourcePattern,
+  MagicSource,
 } from "./archetype";
 
 export type { Ability, Cost, AbilityType } from "./ability";

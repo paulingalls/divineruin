@@ -29,6 +29,7 @@ const warrior: Archetype = {
     options: ["athletics", "perception", "stealth", "survival", "acrobatics"],
     num_choices: 3,
   },
+  magic_source: null, // pure martial — no magic (M8)
 };
 
 describe("Archetype — content/archetypes.json row shape (7 fields, all required)", () => {
@@ -59,6 +60,7 @@ describe("Archetype — content/archetypes.json row shape (7 fields, all require
       armor_proficiencies: ["light"],
       weapon_proficiencies: ["simple"],
       starting_skills: { options: ["arcana", "history", "investigation"], num_choices: 2 },
+      magic_source: "arcane", // M8
     };
     expect(mage.resource.stamina_formula).toBeNull();
     expect(mage.resource.focus_formula?.attribute).toBe("intelligence");

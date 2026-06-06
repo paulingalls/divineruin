@@ -136,6 +136,17 @@ describe("parseArchetypeRow — fail-loud validation", () => {
     expect(() => parseArchetypeRow("test_archetype", base)).not.toThrow();
   });
 
+  test("parses an optional magic_source and defaults absent to null (M8 parity)", () => {
+    expect(parseArchetypeRow("test_archetype", base).magic_source).toBeNull();
+    expect(parseArchetypeRow("x", { ...base, magic_source: "arcane" }).magic_source).toBe("arcane");
+  });
+
+  test("rejects a magic_source outside the closed set (parity with Python)", () => {
+    expect(() => parseArchetypeRow("x", { ...base, magic_source: "shadow" })).toThrow(
+      /archetypes\[x\]\.magic_source/,
+    );
+  });
+
   test("rejects a non-object row", () => {
     expect(() => parseArchetypeRow("x", null)).toThrow(/archetypes\[x\]/);
     expect(() => parseArchetypeRow("x", [])).toThrow(/archetypes\[x\]/);

@@ -11,8 +11,47 @@ from creation_deities import DEITIES
 from creation_races import RACES
 from hp_scaling import calculate_max_hp
 from rules_engine import attribute_modifier
+from spells import get_spells_by_source
 
 BASE_ATTRIBUTE = 10
+
+# The 9 single-source casters the spec grants L1 elective spells (per-archetype L1
+# elective tables, game_mechanics_archetypes.md). Cross-source (Bard), hybrid (Whisper),
+# and social (Diplomat/Marshal) casters begin elective spells later, not at L1; pure
+# martials never. The full per-archetype progression table is future M8 scope.
+STARTING_ELECTIVE_ARCHETYPES = frozenset(
+    {
+        "mage",
+        "artificer",
+        "seeker",  # arcane
+        "cleric",
+        "paladin",
+        "oracle",  # divine
+        "druid",
+        "beastcaller",
+        "warden",  # primal
+    }
+)
+_SINGLE_SOURCES = frozenset({"arcane", "divine", "primal"})
+
+
+def select_starting_spells(archetype_id: str, magic_source: str | None) -> list[str]:
+    """Return the starting elective spell ids for a new character (pre-game training).
+
+    A single cantrip + a single minor from the archetype's magic source, picked
+    deterministically (lowest spell id per tier) so creation is reproducible. Empty
+    for any archetype outside the 9 single-source casters or without a single source.
+    """
+    if archetype_id not in STARTING_ELECTIVE_ARCHETYPES or magic_source not in _SINGLE_SOURCES:
+        return []
+    by_source = get_spells_by_source(magic_source)
+    chosen: list[str] = []
+    for tier in ("cantrip", "minor"):
+        ids = sorted(s.id for s in by_source if s.spell_tier == tier)
+        if ids:
+            chosen.append(ids[0])
+    return chosen
+
 
 # Culture inference mapping: (race_affinity, class_category_affinity, deity_affinity) -> cultures
 # Each culture has a primary god and racial lean from the lore.
