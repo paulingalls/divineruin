@@ -207,6 +207,15 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if not spells_is_loaded():
         await load_spells()
 
+    # Load the mentor variant catalog once per agent process (M9). Activation
+    # applies an unlocked variant's cost/effect/narration override, which reads
+    # this map; the catalog keys variants to base martial elective techniques.
+    from mentor_variants import is_loaded as mentor_variants_is_loaded
+    from mentor_variants import load_mentor_variants
+
+    if not mentor_variants_is_loaded():
+        await load_mentor_variants()
+
     # Determine session type: new player (creation) vs returning
     player = None
     last_summary = None
