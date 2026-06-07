@@ -7,6 +7,7 @@ from _db_lifecycle import ensure_db_up, stop_if_started
 from archetype_abilities_config_fixture import setup_archetype_abilities_config_fixture
 from archetype_milestones_config_fixture import setup_archetype_milestones_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
+from mentor_variants_config_fixture import setup_mentor_variants_config_fixture
 from spells_config_fixture import setup_spells_config_fixture
 from training_config_fixture import setup_training_config_fixture
 
@@ -106,6 +107,19 @@ def seed_spells():
     populated (is_loaded() True) and skips the DB fetch in tests that exercise startup.
     """
     setup_spells_config_fixture()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def seed_mentor_variants():
+    """Populate mentor_variants._mentor_variants from content before every test.
+
+    Mirrors load_mentor_variants() at worker/agent startup, but sync and
+    file-based. Required so agent.py dm_session's guarded load_mentor_variants()
+    sees the map already populated (is_loaded() True) and skips the DB fetch in
+    tests that exercise startup.
+    """
+    setup_mentor_variants_config_fixture()
     yield
 
 
