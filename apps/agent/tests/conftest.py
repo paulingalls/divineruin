@@ -3,11 +3,50 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from _db_lifecycle import ensure_db_up, stop_if_started
 from archetype_abilities_config_fixture import setup_archetype_abilities_config_fixture
 from archetype_milestones_config_fixture import setup_archetype_milestones_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
 from spells_config_fixture import setup_spells_config_fixture
 from training_config_fixture import setup_training_config_fixture
+
+# Tracks whether THIS process started docker compose, so sessionfinish only
+# stops what sessionstart started.
+_started_db = False
+
+
+def _is_xdist_worker(config: pytest.Config) -> bool:
+    """True on an xdist worker subprocess; False on the controller / serial run."""
+    return hasattr(config, "workerinput")
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    """Start the docker-compose dev DB for the run if it isn't already up.
+
+    Many non-acceptance tests connect to the dev Postgres at :55432, so a bare
+    `pytest` would fail when docker isn't running. ensure_db_up() is a fast
+    no-op when the DB is already reachable (the common dev case) and only starts
+    docker compose when it's down. See _db_lifecycle.py.
+
+    Under pytest-xdist (-n N) every worker runs its own session; gating on the
+    controller (no `workerinput`) ensures docker is started/stopped exactly once
+    so a worker that finishes early can't stop the DB while others still query.
+    """
+    global _started_db
+    if _is_xdist_worker(session.config):
+        return
+    _started_db = ensure_db_up()
+
+
+def pytest_sessionfinish(session: pytest.Session) -> None:
+    """Stop docker compose iff this run started it (never `down -v`).
+
+    Runs only on the controller / serial run, mirroring pytest_sessionstart, so
+    the dev DB is preserved and workers never tear it down mid-run.
+    """
+    if _is_xdist_worker(session.config):
+        return
+    stop_if_started(_started_db)
 
 
 @pytest.fixture(autouse=True)
