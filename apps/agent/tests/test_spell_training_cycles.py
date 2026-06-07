@@ -197,9 +197,11 @@ class TestSpellTrainingAccrual:
     @pytest.mark.asyncio
     async def test_cached_narration_does_not_re_accrue(self):
         """On a TTS retry the worker reuses cached narration and skips the non-cached
-        else block, so advance_learning_cycle does NOT re-run. (This guards only the
-        post-cache retry window; a narration failure before the cache write can still
-        re-accrue — a pre-existing exposure shared with skill_practice, tracked as debt.)"""
+        else block, so advance_learning_cycle does NOT re-run. A narration failure
+        BEFORE the cache write re-enters this block but is now safe: the progress row
+        is still present (delete is deferred until after the cache write), so advance
+        re-runs as a no-op via last_activity_id rather than re-INSERTing a phantom row —
+        see test_narration_failure_preserves_progress (debt b20815f92023, resolved)."""
         cached_activity = {
             **SAMPLE_SPELL_ACTIVITY,
             "data": {
@@ -230,6 +232,51 @@ class TestSpellTrainingAccrual:
         record_learned.assert_not_awaited()
         delete_progress.assert_not_awaited()
 
+    @pytest.mark.asyncio
+    async def test_narration_failure_preserves_progress(self):
+        """A completed spell whose narration fails must NOT delete the progress row.
+
+        delete_learning_progress is deferred until after the narration is cached. If it
+        ran before narration, a narration-failure retry would find no progress row and
+        advance_learning_cycle would re-INSERT a phantom 1/5 row for the already-learned
+        spell (the last_activity_id guard can only protect a row that still exists) —
+        debt b20815f92023. record_learned still runs pre-narration (ON CONFLICT DO
+        NOTHING makes it idempotent); only the delete must wait."""
+        advance = AsyncMock(
+            return_value={
+                "cycles_completed": 5,
+                "cycles_required": 5,
+                "completed": True,
+                "midpoint_decision_id": "push",
+            }
+        )
+        record_learned = AsyncMock()
+        delete_progress = AsyncMock()
+        with (
+            patch(
+                "async_worker_training.db_training.get_due_training_transitions",
+                new_callable=AsyncMock,
+                return_value=[SAMPLE_SPELL_ACTIVITY],
+            ),
+            patch("async_worker_training.db_training.update_training_activity", new_callable=AsyncMock) as mock_update,
+            patch("async_worker_training.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+            patch("async_worker_training.character_spells.advance_learning_cycle", advance),
+            patch("async_worker_training.character_spells.record_learned", record_learned),
+            patch("async_worker_training.character_spells.delete_learning_progress", delete_progress),
+            patch(
+                "async_worker_training.generate_activity_narration",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("LLM down"),
+            ),
+        ):
+            count = await advance_training_cycles()
+
+        # Narration failed: no transition, no cache write, progress row preserved.
+        assert count == 0
+        mock_update.assert_not_awaited()
+        delete_progress.assert_not_awaited()
+        record_learned.assert_awaited_once()
+
 
 class _FakeSpellStore:
     """Stateful stand-in for character_spells' progress + known tables.
@@ -244,7 +291,9 @@ class _FakeSpellStore:
         self.decisions: dict[tuple[str, str], str] = {}  # first non-null decision (COALESCE)
         self.known: dict[tuple[str, str], dict] = {}
 
-    async def advance_learning_cycle(self, player_id, spell_id, cycles_required, *, midpoint_decision_id=None):
+    async def advance_learning_cycle(
+        self, player_id, spell_id, cycles_required, *, activity_id=None, midpoint_decision_id=None
+    ):
         key = (player_id, spell_id)
         self.progress[key] = self.progress.get(key, 0) + 1
         if midpoint_decision_id is not None and key not in self.decisions:

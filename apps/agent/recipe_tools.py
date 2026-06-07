@@ -23,6 +23,7 @@ from livekit.agents.voice import RunContext
 import db
 import db_mutations
 import db_queries
+import mentor_variant_tools
 import recipe_slots
 import recipes
 import spell_tools
@@ -49,11 +50,13 @@ async def learn(
     otherwise acquires one.
 
     Args:
-        kind: What is being learned — "recipe" or "spell".
-        id: The thing learned — a recipe id or spell id.
-        source: HOW it was acquired (required). Recipe: training, npc_teaching,
-            discovery, experimentation, tier_advancement. Spell: discovery (scroll)
-            or npc_teaching (mentor).
+        kind: What is being learned — "recipe", "spell", or "variant".
+        id: The thing learned — a recipe id, spell id, or mentor-variant id.
+        source: HOW it was acquired. Recipe: training, npc_teaching, discovery,
+            experimentation, tier_advancement. Spell: discovery (scroll) or
+            npc_teaching (mentor). Variant: omit — a mentor variant is acquired by
+            training with its mentor over a multi-session loop (this BEGINS that
+            training; the variant unlocks after the cycles complete).
     """
     return await _learn_impl(context, kind, id, source)
 
@@ -88,7 +91,12 @@ async def _learn_impl(
         # Spell-domain impl (ADR 0007): no new tool, just a new kind. spell_tools
         # validates the source ({discovery, npc_teaching}) and the level→tier gate.
         return await spell_tools._learn_spell_impl(context, id, source)
-    raise ToolError(f"Unknown kind {kind!r}; expected one of: recipe, spell.")
+    if kind == "variant":
+        # Mentor-variant impl (ADR 0007, M9): unlike recipe/spell this INITIATES a
+        # multi-session training loop rather than acquiring instantly. mentor_variant_tools
+        # validates the variant + co-location and starts the cycle.
+        return await mentor_variant_tools._learn_variant_impl(context, id, source)
+    raise ToolError(f"Unknown kind {kind!r}; expected one of: recipe, spell, variant.")
 
 
 async def _learn_recipe_impl(

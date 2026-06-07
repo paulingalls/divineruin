@@ -190,7 +190,8 @@ class TestLearnDispatch:
         assert mock_impl.await_args.args[1:] == ("arcane_fireball", "discovery")
 
     @pytest.mark.asyncio
-    async def test_unknown_kind_names_recipe_and_spell(self):
-        # AC3: unknown kind raises ToolError naming the accepted kinds.
-        with pytest.raises(ToolError, match="recipe, spell"):
+    async def test_unknown_kind_names_all_kinds(self):
+        # AC3: unknown kind raises ToolError naming every accepted kind, so a
+        # regression dropping one (e.g. "variant") from the LLM-facing list is caught.
+        with pytest.raises(ToolError, match="recipe, spell, variant"):
             await _learn_impl(make_context(player_id="player_1"), "potion", "healing", "discovery")

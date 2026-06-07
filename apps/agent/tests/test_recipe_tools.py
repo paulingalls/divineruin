@@ -269,9 +269,22 @@ class TestLearn:
         assert add_kwargs.kwargs.get("conn") is conn
 
     @pytest.mark.asyncio
+    async def test_variant_kind_delegates_to_variant_path(self, monkeypatch):
+        # kind="variant" (M9) routes to mentor_variant_tools._learn_variant_impl,
+        # which INITIATES mentor training rather than acquiring instantly.
+        ctx = make_context()
+        import mentor_variant_tools
+
+        spy = AsyncMock(return_value='{"training_started": "warrior_cleaving_blow_drathian"}')
+        monkeypatch.setattr(mentor_variant_tools, "_learn_variant_impl", spy)
+        result = await _learn_impl(ctx, "variant", "warrior_cleaving_blow_drathian", "")
+        assert json.loads(result)["training_started"] == "warrior_cleaving_blow_drathian"
+        spy.assert_awaited_once_with(ctx, "warrior_cleaving_blow_drathian", "")
+
+    @pytest.mark.asyncio
     async def test_unknown_kind_raises(self):
         ctx = make_context()
-        # "spell" is now a valid kind (story-005); use a genuinely unknown kind.
+        # "spell"/"variant" are valid kinds now; use a genuinely unknown kind.
         with pytest.raises(ToolError, match="kind"):
             await _learn_impl(ctx, "potion", "healing", "")
 

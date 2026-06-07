@@ -27,6 +27,7 @@ TrainingActivityType = Literal[
     "recipe_study",
     "technique_base",
     "technique_mentor",
+    "technique_mentor_variant",
     "skill_practice",
 ]
 
@@ -121,7 +122,8 @@ def parse_activity_type_row(activity_type_id: str, data: dict) -> ActivityTypeCo
     """Parse a raw dict (from JSON file or DB JSONB) into the typed config.
 
     Shared by load_training_activity_types (DB) and tests/training_config_fixture (JSON).
-    `cycles_required` is optional — only spell tiers carry it (None otherwise).
+    `cycles_required` is optional — multi-cycle tracks (spell tiers, mentor variants)
+    carry it; single-session types leave it None.
     Raises ValueError wrapping the underlying error with the row id for context.
     """
     try:
@@ -167,12 +169,13 @@ def get_activity_type_config(
 
 
 def get_cycles_required(activity_type: str) -> int:
-    """Training cycles needed to learn an elective spell at this tier (story-004).
+    """Training cycles needed to complete a multi-cycle training track (story-004).
 
-    Data-driven from content/training_activity_types.json (Cantrip 1 / Minor 2 /
-    Standard 3 / Major 5 / Supreme 8). Fails loud on an unknown type or a type with
-    no cycle count — only spell tiers carry one, and a spell-training caller must
-    never silently default.
+    Data-driven from content/training_activity_types.json: spell tiers (Cantrip 1 /
+    Minor 2 / Standard 3 / Major 5 / Supreme 8) and mentor variants
+    (technique_mentor_variant 3). Fails loud on an unknown type or a type with no
+    cycle count — single-session types do not carry one, and a multi-cycle caller
+    must never silently default.
     """
     config = get_activity_type_config(activity_type)  # raises ValueError on unknown
     if config.cycles_required is None:

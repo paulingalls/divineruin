@@ -115,6 +115,32 @@ async def create_training_activity(
     return activity_id
 
 
+async def claim_training_accrual(
+    activity_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> bool:
+    """Atomically claim an activity's completion accrual; True iff freshly claimed.
+
+    Idempotency ledger for the worker's second-half accrual (debt b20815f92023):
+    the first call for an activity_id inserts a row and returns True (apply the
+    accrual); a retry of the same activity_id conflicts and returns False (skip).
+    Used by apply_skill_practice_advancement, whose shared skill-counter increment
+    has no per-cycle progress row to guard with last_activity_id (unlike the spell
+    and mentor-variant tracks).
+    """
+    _conn = conn or await db.get_pool()
+    row = await _conn.fetchrow(
+        """
+        INSERT INTO training_cycle_accruals (activity_id) VALUES ($1)
+        ON CONFLICT (activity_id) DO NOTHING
+        RETURNING activity_id
+        """,
+        activity_id,
+    )
+    return row is not None
+
+
 async def update_training_activity(
     activity_id: str,
     state: TrainingState,
