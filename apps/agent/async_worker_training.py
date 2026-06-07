@@ -21,6 +21,7 @@ import character_spells
 import db_mutations
 import db_queries
 import db_training
+import mentor_variant_progress
 import skill_persistence
 from dialogue_parser import Segment
 from llm_config import AUDIO_DIR, audio_url_for
@@ -35,9 +36,11 @@ async def apply_skill_practice_advancement(
     player_id: str,
     training_skill: str,
     counter_increment: int,
+    activity_id: str,
     *,
     queries=db_queries,
     mutations=db_mutations,
+    training=db_training,
 ) -> dict | None:
     """Increment the skill_advancement counter from a skill_practice training completion.
 
@@ -46,8 +49,19 @@ async def apply_skill_practice_advancement(
     (`check_tools._check_skill_impl`) call, enforcing the M1.2
     hybrid-counter contract by construction.
 
-    Returns advancement info dict (advanced, new_tier) or None when no advancement.
+    Idempotency (debt b20815f92023): the accrual runs BEFORE narration, so a
+    worker retry after a narration-LLM failure re-enters here. The skill counter
+    is shared with the live session-use path (so it can't carry a last_activity_id
+    guard like the spell/variant progress rows); instead we claim the activity in a
+    worker-owned ledger and apply the increment only on a fresh claim — a retry of
+    the same completion skips it. The guard lives here, NOT in
+    apply_skill_use_with_persistence, so legitimate session uses keep counting.
+
+    Returns advancement info dict (advanced, new_tier) or None when no advancement
+    (or when this completion was already accrued on a prior attempt).
     """
+    if not await training.claim_training_accrual(activity_id):
+        return None
     adv = await skill_persistence.apply_skill_use_with_persistence(
         player_id,
         training_skill,
@@ -157,6 +171,14 @@ async def advance_training_cycles() -> int:
                         adv_info = {"advanced": data["skill_advanced"], "new_tier": data.get("new_tier")}
                 else:
                     adv_info: dict | None = None
+                    # Deferred progress-row cleanup for completed spell/variant promotions.
+                    # advance + record_* run BEFORE narration (both idempotent: advance via
+                    # last_activity_id on the still-present row, record via ON CONFLICT), but
+                    # delete_learning_progress MUST wait until the narration is cached. A
+                    # narration-LLM failure retry re-enters this block and needs the progress
+                    # row present so advance re-runs as a no-op instead of re-INSERTing a
+                    # phantom 1/N row for an already-promoted spell/variant (debt b20815f92023).
+                    completed_promotion: tuple[object, str] | None = None
 
                     # Skill practice: increment the skill use counter (hybrid advancement —
                     # shares the skill_advancement row with the session-use path in check_tools).
@@ -164,15 +186,16 @@ async def advance_training_cycles() -> int:
                         training_skill = data.get("skill")
                         if training_skill:
                             adv_info = await apply_skill_practice_advancement(
-                                player_id, training_skill, completion.counter_increment
+                                player_id, training_skill, completion.counter_increment, activity_id
                             )
                         else:
                             logger.warning("Training %s is skill_practice but missing 'skill' in data", activity_id)
 
                     # Spell training: one completed activity = one learning cycle toward the
                     # spell's tier count. When the tier is reached, promote it into the known
-                    # library (record_learned + clear progress). Lives in the non-cached block
-                    # so a TTS retry (cached narration) never double-counts a cycle.
+                    # library (record_learned now; clear progress after narration is cached).
+                    # Lives in the non-cached block so a TTS retry (cached narration) never
+                    # double-counts a cycle.
                     elif activity_type.startswith("spell_"):
                         spell_id = data.get("spell_id")
                         if not spell_id:
@@ -181,18 +204,43 @@ async def advance_training_cycles() -> int:
                             player_id,
                             spell_id,
                             get_cycles_required(activity_type),
+                            activity_id=activity_id,
                             midpoint_decision_id=data.get("decision_id"),
                         )
                         if progress["completed"]:
                             # Carry the recorded midpoint decision onto the learned spell
-                            # as its bonus_variant (AC3) before clearing the progress row.
+                            # as its bonus_variant (AC3). Progress cleared after the cache write.
                             await character_spells.record_learned(
                                 player_id,
                                 spell_id,
                                 "training",
                                 bonus_variant=progress["midpoint_decision_id"],
                             )
-                            await character_spells.delete_learning_progress(player_id, spell_id)
+                            completed_promotion = (character_spells, spell_id)
+
+                    # Mentor-variant training (M9): one completed activity = one cycle
+                    # toward the variant's count. When reached, unlock it (record_unlocked
+                    # now; clear progress after narration is cached). activity_id makes the
+                    # cycle accrual idempotent so a narration-failure retry never double-counts
+                    # (debt b20815f92023).
+                    elif activity_type == "technique_mentor_variant":
+                        variant_id = data.get("variant_id")
+                        if not variant_id:
+                            raise ValueError(f"variant training {activity_id} missing variant_id in data")
+                        progress = await mentor_variant_progress.advance_learning_cycle(
+                            player_id,
+                            variant_id,
+                            get_cycles_required(activity_type),
+                            activity_id=activity_id,
+                            midpoint_decision_id=data.get("decision_id"),
+                        )
+                        if progress["completed"]:
+                            await mentor_variant_progress.record_unlocked(
+                                player_id,
+                                variant_id,
+                                midpoint_decision_id=progress["midpoint_decision_id"],
+                            )
+                            completed_promotion = (mentor_variant_progress, variant_id)
 
                     # Generate narration via LLM
                     player_data = await db_queries.get_player(player_id) or {}
@@ -215,6 +263,13 @@ async def advance_training_cycles() -> int:
                         "running_second_half",
                         cache_data,
                     )
+
+                    # Now that the narration is durably cached, clear the in-flight progress
+                    # row. A retry past this point takes the cached-narration branch above,
+                    # which never re-runs accrual or this delete — so it runs exactly once.
+                    if completed_promotion is not None:
+                        module, entity_id = completed_promotion
+                        await module.delete_learning_progress(player_id, entity_id)
 
                 # Pre-render TTS audio
                 audio_filename = f"{activity_id}.mp3"

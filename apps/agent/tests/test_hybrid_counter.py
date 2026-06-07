@@ -21,6 +21,18 @@ from check_tools import _check_skill_impl
 from tests.test_mechanics_tools import SAMPLE_PLAYER, _make_context, _make_mock_room
 
 
+def _fake_training():
+    """Stub the worker accrual ledger so these skill-practice tests stay hermetic.
+
+    apply_skill_practice_advancement claims the activity via
+    db_training.claim_training_accrual before incrementing (idempotency, debt
+    b20815f92023); a True claim means 'fresh — apply the increment'.
+    """
+    mod = MagicMock()
+    mod.claim_training_accrual = AsyncMock(return_value=True)
+    return mod
+
+
 def _install_helper_spy(monkeypatch, spy, real_fn, modules) -> None:
     """Replace every binding of `real_fn` in `modules` with `spy`.
 
@@ -96,7 +108,13 @@ class TestHybridCounterSharedRow:
 
         # Path 2: training skill_practice (counter_increment=2 for 'fundamentals') → counter becomes 3
         adv_info = await apply_skill_practice_advancement(
-            player_id, skill, counter_increment=2, queries=queries, mutations=mutations
+            player_id,
+            skill,
+            counter_increment=2,
+            activity_id="train_hc",
+            queries=queries,
+            mutations=mutations,
+            training=_fake_training(),
         )
         assert adv_info is not None
         assert store[(player_id, skill)]["use_counter"] == 3
@@ -117,7 +135,13 @@ class TestHybridCounterSharedRow:
 
         # Training skill_practice with counter_increment=2 → counter=8 → advance to trained
         adv_info = await apply_skill_practice_advancement(
-            player_id, skill, counter_increment=2, queries=queries, mutations=mutations
+            player_id,
+            skill,
+            counter_increment=2,
+            activity_id="train_hc",
+            queries=queries,
+            mutations=mutations,
+            training=_fake_training(),
         )
         assert adv_info == {"advanced": True, "new_tier": "trained"}
         assert store[(player_id, skill)] == {
@@ -178,8 +202,10 @@ class TestHybridCounterSharedRow:
             "player_1",
             "athletics",
             counter_increment=2,
+            activity_id="train_hc",
             queries=queries,
             mutations=mutations,
+            training=_fake_training(),
         )
 
         assert len(calls) == 2
@@ -223,10 +249,22 @@ class TestHybridCounterSharedRow:
         player_id = "player_1"
 
         await apply_skill_practice_advancement(
-            player_id, "athletics", counter_increment=1, queries=queries, mutations=mutations
+            player_id,
+            "athletics",
+            counter_increment=1,
+            activity_id="train_hc",
+            queries=queries,
+            mutations=mutations,
+            training=_fake_training(),
         )
         await apply_skill_practice_advancement(
-            player_id, "stealth", counter_increment=1, queries=queries, mutations=mutations
+            player_id,
+            "stealth",
+            counter_increment=1,
+            activity_id="train_hc",
+            queries=queries,
+            mutations=mutations,
+            training=_fake_training(),
         )
 
         assert store[(player_id, "athletics")]["use_counter"] == 1
