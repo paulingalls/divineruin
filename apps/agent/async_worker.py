@@ -293,6 +293,7 @@ async def main() -> None:
     # engine depends on these maps being populated before the polling loop starts.
     from abilities import load_abilities
     from archetypes import load_archetypes
+    from mentor_variants import load_mentor_variants
     from milestones import load_milestones
     from spells import load_spells
     from training_rules import load_training_activity_types
@@ -302,6 +303,7 @@ async def main() -> None:
     await load_abilities()
     await load_milestones()
     await load_spells()
+    await load_mentor_variants()
 
     try:
         while True:
