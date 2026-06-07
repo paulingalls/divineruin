@@ -181,6 +181,29 @@
     }
   },
   {
+    "id": "technique_mentor_variant",
+    "cycles_required": 3,
+    "first_half_min_seconds": 18000,
+    "first_half_max_seconds": 25200,
+    "second_half_min_seconds": 14400,
+    "second_half_max_seconds": 21600,
+    "midpoint_decision": {
+      "prompt": "Your mentor's style demands a commitment — raw power, or disciplined precision?",
+      "options": [
+        {
+          "id": "power",
+          "label": "Raw power",
+          "micro_bonus": { "type": "damage_bonus", "value": 1 }
+        },
+        {
+          "id": "precision",
+          "label": "Disciplined precision",
+          "micro_bonus": { "type": "accuracy_bonus", "value": 1 }
+        }
+      ]
+    }
+  },
+  {
     "id": "skill_practice",
     "first_half_min_seconds": 10800,
     "first_half_max_seconds": 18000,

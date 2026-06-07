@@ -44,6 +44,15 @@ describe("startTrainingCycle", () => {
     }
   });
 
+  test("first_half_seconds within range for technique_mentor_variant", () => {
+    const config = getActivityTypeConfig("technique_mentor_variant")!;
+    for (let i = 0; i < 20; i++) {
+      const result = startTrainingCycle("technique_mentor_variant", now);
+      expect(result.first_half_seconds).toBeGreaterThanOrEqual(config.first_half_min_seconds);
+      expect(result.first_half_seconds).toBeLessThanOrEqual(config.first_half_max_seconds);
+    }
+  });
+
   test("first_half_seconds within range for spell_standard", () => {
     const config = getActivityTypeConfig("spell_standard")!;
     for (let i = 0; i < 20; i++) {
@@ -138,6 +147,7 @@ describe("getMidpointDecision", () => {
       "recipe_study",
       "technique_base",
       "technique_mentor",
+      "technique_mentor_variant",
       "skill_practice",
     ];
     for (const type of types) {

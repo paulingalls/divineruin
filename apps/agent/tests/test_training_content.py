@@ -19,6 +19,7 @@ EXPECTED_ACTIVITY_TYPES = {
     "recipe_study",
     "technique_base",
     "technique_mentor",
+    "technique_mentor_variant",
     "skill_practice",
 }
 
