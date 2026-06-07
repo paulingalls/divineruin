@@ -122,6 +122,7 @@ async def advance_learning_cycle(
     spell_id: str,
     cycles_required: int,
     *,
+    activity_id: str | None = None,
     midpoint_decision_id: str | None = None,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> dict:
@@ -133,6 +134,12 @@ async def advance_learning_cycle(
     caller (story-004) promotes via record_learned + delete_learning_progress when
     `completed` is True, carrying midpoint_decision_id onto the spell as its
     bonus_variant (AC3). The COALESCE keeps the first decision recorded.
+
+    Idempotency (debt b20815f92023): when the caller passes the completing
+    activity's `activity_id`, a repeated call with the SAME id (a worker retry
+    after a narration failure) re-runs as a no-op — the increment is gated on the
+    id differing from the stored last_activity_id. With activity_id=None the
+    increment is unconditional (behavior-preserving for direct callers).
     """
     if cycles_required < 1:
         # Fail loud (matching acquisition_track validation): a tier needs >=1 cycle;
@@ -142,17 +149,22 @@ async def advance_learning_cycle(
     row = await _conn.fetchrow(
         """
         INSERT INTO spell_learning_progress
-            (player_id, spell_id, cycles_completed, cycles_required, midpoint_decision_id)
-        VALUES ($1, $2, 1, $3, $4)
+            (player_id, spell_id, cycles_completed, cycles_required, midpoint_decision_id, last_activity_id)
+        VALUES ($1, $2, 1, $3, $4, $5)
         ON CONFLICT (player_id, spell_id) DO UPDATE SET
-            cycles_completed = spell_learning_progress.cycles_completed + 1,
-            midpoint_decision_id = COALESCE($4, spell_learning_progress.midpoint_decision_id)
+            cycles_completed = spell_learning_progress.cycles_completed
+                + CASE WHEN $5::text IS NOT NULL
+                        AND spell_learning_progress.last_activity_id IS NOT DISTINCT FROM $5::text
+                       THEN 0 ELSE 1 END,
+            midpoint_decision_id = COALESCE($4, spell_learning_progress.midpoint_decision_id),
+            last_activity_id = $5
         RETURNING cycles_completed, cycles_required, midpoint_decision_id
         """,
         player_id,
         spell_id,
         cycles_required,
         midpoint_decision_id,
+        activity_id,
     )
     if row is None:  # an upsert with RETURNING always yields a row — fail loud if not
         raise RuntimeError(f"spell_learning_progress upsert returned no row for {spell_id!r}")

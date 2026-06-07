@@ -121,16 +121,32 @@ class TestAdvanceLearningCycle:
         sql, *params = conn.fetchrow.call_args.args
         assert "INSERT INTO spell_learning_progress" in sql
         assert "ON CONFLICT (player_id, spell_id) DO UPDATE" in sql
-        assert "cycles_completed = spell_learning_progress.cycles_completed + 1" in sql
+        # The increment is gated on a new activity id (idempotency, debt b20815f92023).
+        assert "last_activity_id IS NOT DISTINCT FROM" in sql
         # The decision is returned so the caller can carry it onto the learned spell (AC3).
         assert "RETURNING cycles_completed, cycles_required, midpoint_decision_id" in sql
-        assert params == ["p1", "arcane_fireball", 5, "power"]
+        # activity_id defaults to None (unconditional increment for direct callers).
+        assert params == ["p1", "arcane_fireball", 5, "power", None]
         assert result == {
             "cycles_completed": 3,
             "cycles_required": 5,
             "completed": False,
             "midpoint_decision_id": "power",
         }
+
+    async def test_passes_activity_id_for_idempotent_retry(self):
+        # Debt b20815f92023: the worker passes the completing activity's id; a same-id
+        # retry (narration failure) must not double-advance. The SQL gates the increment
+        # on the id differing from last_activity_id; here we pin that the id reaches the
+        # query (real no-double-count behavior is exercised against PG at the capstone).
+        conn = AsyncMock()
+        conn.fetchrow = AsyncMock(
+            return_value={"cycles_completed": 2, "cycles_required": 3, "midpoint_decision_id": None}
+        )
+        await character_spells.advance_learning_cycle("p1", "arcane_fireball", 3, activity_id="train_abc", conn=conn)
+        sql, *params = conn.fetchrow.call_args.args
+        assert "last_activity_id = $5" in sql
+        assert params == ["p1", "arcane_fireball", 3, None, "train_abc"]
 
     @pytest.mark.parametrize("bad_required", [0, -1])
     async def test_rejects_non_positive_cycles_required(self, bad_required):
@@ -147,8 +163,8 @@ class TestAdvanceLearningCycle:
         )
         result = await character_spells.advance_learning_cycle("p1", "arcane_fireball", 5, conn=conn)
         _sql, *params = conn.fetchrow.call_args.args
-        # midpoint_decision_id defaults to None when not supplied.
-        assert params == ["p1", "arcane_fireball", 5, None]
+        # midpoint_decision_id + activity_id both default to None when not supplied.
+        assert params == ["p1", "arcane_fireball", 5, None, None]
         assert result["completed"] is True
         assert result["midpoint_decision_id"] is None
 
