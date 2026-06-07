@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from training_rules import CompletionResult
 
 import character_spells
+import db
 import db_mutations
 import db_queries
 import db_training
@@ -38,6 +39,7 @@ async def apply_skill_practice_advancement(
     counter_increment: int,
     activity_id: str,
     *,
+    db_mod=None,
     queries=db_queries,
     mutations=db_mutations,
     training=db_training,
@@ -60,15 +62,22 @@ async def apply_skill_practice_advancement(
     Returns advancement info dict (advanced, new_tier) or None when no advancement
     (or when this completion was already accrued on a prior attempt).
     """
-    if not await training.claim_training_accrual(activity_id):
-        return None
-    adv = await skill_persistence.apply_skill_use_with_persistence(
-        player_id,
-        training_skill,
-        counter_increment,
-        queries=queries,
-        mutations=mutations,
-    )
+    # Claim + counter update run in ONE transaction so a crash can't leave the
+    # ledger claimed but the increment unapplied (which a retry would then skip,
+    # losing a cycle). db_mod defaults to the live db module at call time so tests
+    # can patch async_worker_training.db or inject db_mod.
+    dbm = db_mod or db
+    async with dbm.transaction() as conn:
+        if not await training.claim_training_accrual(activity_id, conn=conn):
+            return None
+        adv = await skill_persistence.apply_skill_use_with_persistence(
+            player_id,
+            training_skill,
+            counter_increment,
+            conn=conn,
+            queries=queries,
+            mutations=mutations,
+        )
     if adv is None:
         return None
     return {"advanced": adv.advanced, "new_tier": adv.new_tier}

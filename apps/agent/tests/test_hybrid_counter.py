@@ -9,6 +9,7 @@ If a future refactor splits one path onto a different row, this test breaks.
 
 import json
 import types
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -33,6 +34,23 @@ def _fake_training():
     return mod
 
 
+def _txn_db():
+    """db-module stand-in whose transaction() yields a mock conn (no real DB).
+
+    apply_skill_practice_advancement now wraps claim + counter update in one
+    db.transaction() (atomicity, debt b20815f92023); these tests inject it.
+    """
+    conn = AsyncMock()
+
+    @asynccontextmanager
+    async def _transaction():
+        yield conn
+
+    module = MagicMock()
+    module.transaction = _transaction
+    return module
+
+
 def _install_helper_spy(monkeypatch, spy, real_fn, modules) -> None:
     """Replace every binding of `real_fn` in `modules` with `spy`.
 
@@ -52,20 +70,22 @@ def _shared_skill_advancement_store():
     """Build mock queries+mutations backed by a single in-memory dict keyed by (player_id, skill)."""
     store: dict[tuple[str, str], dict] = {}
 
-    async def fake_get_single_skill_advancement(player_id: str, skill: str) -> dict:
+    async def fake_get_single_skill_advancement(player_id: str, skill: str, *, conn=None) -> dict:
         key = (player_id, skill)
         if key not in store:
             store[key] = {"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False}
         return dict(store[key])
 
-    async def fake_update_skill_advancement(player_id: str, skill: str, new_tier: str, new_use_count: int) -> None:
+    async def fake_update_skill_advancement(
+        player_id: str, skill: str, new_tier: str, new_use_count: int, *, conn=None
+    ) -> None:
         store[(player_id, skill)] = {
             "tier": new_tier,
             "use_counter": new_use_count,
             "narrative_moment_ready": store.get((player_id, skill), {}).get("narrative_moment_ready", False),
         }
 
-    async def fake_clear_narrative_moment(player_id: str, skill: str) -> None:
+    async def fake_clear_narrative_moment(player_id: str, skill: str, *, conn=None) -> None:
         if (player_id, skill) in store:
             store[(player_id, skill)]["narrative_moment_ready"] = False
 
@@ -114,6 +134,7 @@ class TestHybridCounterSharedRow:
             activity_id="train_hc",
             queries=queries,
             mutations=mutations,
+            db_mod=_txn_db(),
             training=_fake_training(),
         )
         assert adv_info is not None
@@ -141,6 +162,7 @@ class TestHybridCounterSharedRow:
             activity_id="train_hc",
             queries=queries,
             mutations=mutations,
+            db_mod=_txn_db(),
             training=_fake_training(),
         )
         assert adv_info == {"advanced": True, "new_tier": "trained"}
@@ -205,6 +227,7 @@ class TestHybridCounterSharedRow:
             activity_id="train_hc",
             queries=queries,
             mutations=mutations,
+            db_mod=_txn_db(),
             training=_fake_training(),
         )
 
@@ -255,6 +278,7 @@ class TestHybridCounterSharedRow:
             activity_id="train_hc",
             queries=queries,
             mutations=mutations,
+            db_mod=_txn_db(),
             training=_fake_training(),
         )
         await apply_skill_practice_advancement(
@@ -264,6 +288,7 @@ class TestHybridCounterSharedRow:
             activity_id="train_hc",
             queries=queries,
             mutations=mutations,
+            db_mod=_txn_db(),
             training=_fake_training(),
         )
 

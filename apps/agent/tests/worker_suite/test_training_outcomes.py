@@ -1,5 +1,6 @@
 """Tests for training completion: outcome building, narration cycles, push notifications."""
 
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,6 +13,25 @@ from async_worker_training import (
 )
 from dialogue_parser import Segment
 from training_rules import CompletionResult
+
+
+def _txn_db():
+    """A db-module stand-in whose transaction() yields a mock conn (no real DB).
+
+    apply_skill_practice_advancement now runs the ledger claim + counter update in
+    one db.transaction() (atomicity, debt b20815f92023); skill-path tests inject
+    this so they stay hermetic.
+    """
+    conn = AsyncMock()
+
+    @asynccontextmanager
+    async def _transaction():
+        yield conn
+
+    module = MagicMock()
+    module.transaction = _transaction
+    return module
+
 
 SAMPLE_TRAINING_DATA = {
     "mentor_id": "guildmaster_torin",
@@ -92,6 +112,7 @@ class TestAdvanceTrainingCyclesNarration:
                 new_callable=AsyncMock,
                 return_value=True,
             ),
+            patch("async_worker_training.db", _txn_db()),
             patch("async_worker_training.db_training.update_training_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker_training.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
@@ -160,6 +181,7 @@ class TestAdvanceTrainingCyclesNarration:
                 new_callable=AsyncMock,
                 return_value=True,
             ),
+            patch("async_worker_training.db", _txn_db()),
             patch("async_worker_training.db_training.update_training_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker_training.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
@@ -196,6 +218,7 @@ class TestAdvanceTrainingCyclesNarration:
                 new_callable=AsyncMock,
                 return_value=True,
             ),
+            patch("async_worker_training.db", _txn_db()),
             patch("async_worker_training.db_training.update_training_activity", new_callable=AsyncMock) as mock_update,
             patch("async_worker_training.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
             patch(
@@ -413,9 +436,13 @@ class TestSkillAccrualIdempotency:
         training = AsyncMock()
         training.claim_training_accrual = AsyncMock(return_value=False)
         with patch("async_worker_training.skill_persistence.apply_skill_use_with_persistence") as mock_apply:
-            result = await apply_skill_practice_advancement("player_1", "perception", 2, "train_x", training=training)
+            result = await apply_skill_practice_advancement(
+                "player_1", "perception", 2, "train_x", db_mod=_txn_db(), training=training
+            )
         assert result is None
-        training.claim_training_accrual.assert_awaited_once_with("train_x")
+        # claim runs inside the transaction with the shared conn.
+        training.claim_training_accrual.assert_awaited_once()
+        assert training.claim_training_accrual.await_args.args[0] == "train_x"
         mock_apply.assert_not_called()  # the shared counter is never touched on a retry
 
     @pytest.mark.asyncio
@@ -429,6 +456,8 @@ class TestSkillAccrualIdempotency:
             new_callable=AsyncMock,
             return_value=adv,
         ) as mock_apply:
-            result = await apply_skill_practice_advancement("player_1", "perception", 2, "train_y", training=training)
+            result = await apply_skill_practice_advancement(
+                "player_1", "perception", 2, "train_y", db_mod=_txn_db(), training=training
+            )
         assert result == {"advanced": True, "new_tier": "journeyman"}
         mock_apply.assert_awaited_once()

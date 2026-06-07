@@ -15,20 +15,20 @@ from skill_persistence import apply_skill_use_with_persistence
 def _store_backed_mocks():
     store: dict[tuple[str, str], dict] = {}
 
-    async def fake_get(player_id: str, skill: str) -> dict:
+    async def fake_get(player_id: str, skill: str, *, conn=None) -> dict:
         key = (player_id, skill)
         if key not in store:
             store[key] = {"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False}
         return dict(store[key])
 
-    async def fake_update(player_id: str, skill: str, new_tier: str, new_use_count: int) -> None:
+    async def fake_update(player_id: str, skill: str, new_tier: str, new_use_count: int, *, conn=None) -> None:
         store[(player_id, skill)] = {
             "tier": new_tier,
             "use_counter": new_use_count,
             "narrative_moment_ready": store.get((player_id, skill), {}).get("narrative_moment_ready", False),
         }
 
-    async def fake_clear(player_id: str, skill: str) -> None:
+    async def fake_clear(player_id: str, skill: str, *, conn=None) -> None:
         if (player_id, skill) in store:
             store[(player_id, skill)]["narrative_moment_ready"] = False
 
