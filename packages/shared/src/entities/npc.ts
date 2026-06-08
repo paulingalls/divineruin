@@ -1,3 +1,5 @@
+import type { ArchetypeService, CombatStats } from "./role_archetype";
+
 export interface NpcQuestKnowledge {
   quest: string;
   stage: number;
@@ -19,9 +21,10 @@ export interface Npc {
   name: string;
   tier: 1 | 2;
   role: string;
+  role_archetype?: string; // links to a RoleArchetype id (M6.1)
   species: string;
   gender: string;
-  age?: string;
+  age_range?: "young" | "middle" | "elder";
   appearance?: string;
   personality: string[];
   speech_style: string;
@@ -32,6 +35,10 @@ export interface Npc {
   default_disposition: string;
   disposition_modifiers?: Record<string, number>;
   inventory_pool: string | null;
+  services?: ArchetypeService[]; // per-NPC economy overrides (M6.1)
+  price_modifier?: number; // 1.0 baseline; per-NPC override of the archetype default
+  combat_stats?: CombatStats; // inlined combat block (M6.1) — see role_archetype.ts
+  quest_giver?: boolean; // Quest Giver overlay flag (a function, not a standalone role)
   secrets?: string[];
   faction: string;
   voice_id: string;

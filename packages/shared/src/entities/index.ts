@@ -33,6 +33,17 @@ export type {
 
 export type { Ability, Cost, AbilityType } from "./ability";
 export type { MentorVariant } from "./mentor_variant";
+export type {
+  RoleArchetype,
+  RoleType,
+  Disposition,
+  Attributes,
+  CombatAction,
+  CombatStats,
+  CombatVariant,
+  ServiceCost,
+  ArchetypeService,
+} from "./role_archetype";
 export type { Spell, SpellSource, SpellTier } from "./spell";
 export type {
   Milestone,
