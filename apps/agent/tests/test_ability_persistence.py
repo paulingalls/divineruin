@@ -62,6 +62,39 @@ class TestSetElectiveEquipped:
         assert params == ["p1", "warrior_cleaving_blow", False]
 
 
+class TestSetActiveVariant:
+    async def test_upserts_one_variant_per_technique(self):
+        # The PK (player_id, ability_id) + ON CONFLICT DO UPDATE is what makes a second
+        # set for the same technique REPLACE the first (AC3 — one variant per technique;
+        # swap requires re-training). Real replace is exercised at the story-004 capstone.
+        conn = AsyncMock()
+        await ability_persistence.set_active_variant(
+            "p1", "warrior_cleaving_blow", "warrior_cleaving_blow_drathian", conn=conn
+        )
+        sql, *params = conn.execute.call_args.args
+        assert "INSERT INTO character_active_variants" in sql
+        assert "ON CONFLICT (player_id, ability_id) DO UPDATE SET variant_id" in sql
+        assert params == ["p1", "warrior_cleaving_blow", "warrior_cleaving_blow_drathian"]
+
+
+class TestGetActiveVariant:
+    async def test_returns_active_variant_id(self):
+        conn = AsyncMock()
+        conn.fetchval = AsyncMock(return_value="warrior_cleaving_blow_drathian")
+        result = await ability_persistence.get_active_variant("p1", "warrior_cleaving_blow", conn=conn)
+        sql, *params = conn.fetchval.call_args.args
+        assert "SELECT variant_id FROM character_active_variants" in sql
+        assert "WHERE player_id = $1 AND ability_id = $2" in sql
+        assert params == ["p1", "warrior_cleaving_blow"]
+        assert result == "warrior_cleaving_blow_drathian"
+
+    async def test_returns_none_when_no_active_variant(self):
+        conn = AsyncMock()
+        conn.fetchval = AsyncMock(return_value=None)
+        result = await ability_persistence.get_active_variant("p1", "warrior_cleaving_blow", conn=conn)
+        assert result is None
+
+
 class TestGetCharacterAbilities:
     async def test_returns_mapped_rows(self):
         conn = AsyncMock()

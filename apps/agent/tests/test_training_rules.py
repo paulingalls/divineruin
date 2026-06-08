@@ -39,6 +39,7 @@ ALL_ACTIVITY_TYPES: list[TrainingActivityType] = [
     "recipe_study",
     "technique_base",
     "technique_mentor",
+    "technique_mentor_variant",
     "skill_practice",
 ]
 
@@ -295,6 +296,11 @@ class TestCyclesRequired:
     )
     def test_returns_tier_cycle_count(self, activity_type: str, expected: int) -> None:
         assert get_cycles_required(activity_type) == expected
+
+    def test_returns_mentor_variant_cycle_count(self) -> None:
+        # M9 story-002: the mentor-variant loop is the first NON-spell type to carry a
+        # cycle count (3 — the "2-3 session" loop), so get_cycles_required serves it too.
+        assert get_cycles_required("technique_mentor_variant") == 3
 
     @pytest.mark.parametrize("activity_type", ["technique_base", "skill_practice", "recipe_study"])
     def test_raises_on_non_spell_type(self, activity_type: str) -> None:

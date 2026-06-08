@@ -20,6 +20,7 @@ export type TrainingActivityType =
   | "recipe_study"
   | "technique_base"
   | "technique_mentor"
+  | "technique_mentor_variant"
   | "skill_practice";
 
 export interface MidpointOption {

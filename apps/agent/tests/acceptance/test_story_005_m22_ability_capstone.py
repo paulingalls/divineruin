@@ -24,7 +24,7 @@ from typing import Any
 import httpx
 import pytest
 from acceptance._server import start_server
-from acceptance.seeds import seed_player
+from acceptance.seeds import seed_player_with_pools
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
@@ -42,24 +42,6 @@ def capstone_server(migrated_db: str) -> Iterator[dict[str, str]]:
     yield from start_server(migrated_db)
 
 
-async def _seed_player_with_pools(
-    pool, player_id: str, class_: str, *, stamina_current: int = 10, focus_current: int = 10
-) -> None:
-    """seed_player + add Stamina/Focus pools (seed_player's default has none).
-
-    jsonb_set on the top-level '{stamina}' / '{focus}' keys (parent `data` exists)
-    initializes the pools the activation tool reads.
-    """
-    await seed_player(pool, player_id=player_id, class_=class_)
-    await pool.execute(
-        "UPDATE players SET data = jsonb_set(jsonb_set(data, '{stamina}', $2::jsonb), '{focus}', $3::jsonb) "
-        "WHERE player_id = $1",
-        player_id,
-        json.dumps({"current": stamina_current, "max": 10}),
-        json.dumps({"current": focus_current, "max": 10}),
-    )
-
-
 # --- message_event surface (Python ability-activation path) ---
 
 
@@ -67,7 +49,7 @@ async def _seed_player_with_pools(
 async def test_activation_deducts_stamina_from_real_db(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     pid = "cap_warrior"
-    await _seed_player_with_pools(pool, pid, "warrior")
+    await seed_player_with_pools(pool, player_id=pid, class_="warrior")
     await abilities.load_abilities()  # story-002 loader over the seeded testcontainer
     assert abilities.is_loaded()
 
@@ -87,7 +69,7 @@ async def test_activation_deducts_stamina_from_real_db(reset_db_pool: str) -> No
 async def test_pool_cost_ability_surfaces_scaling_and_is_not_free(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     pid = "cap_paladin"
-    await _seed_player_with_pools(pool, pid, "paladin")
+    await seed_player_with_pools(pool, player_id=pid, class_="paladin")
     await abilities.load_abilities()
 
     ctx = make_context(player_id=pid)
@@ -109,7 +91,7 @@ async def test_pool_cost_ability_surfaces_scaling_and_is_not_free(reset_db_pool:
 async def test_insufficient_focus_rejects_without_mutating(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     pid = "cap_cleric"
-    await _seed_player_with_pools(pool, pid, "cleric", focus_current=1)
+    await seed_player_with_pools(pool, player_id=pid, class_="cleric", focus_current=1)
     await abilities.load_abilities()
 
     ctx = make_context(player_id=pid)
@@ -126,7 +108,7 @@ async def test_insufficient_focus_rejects_without_mutating(reset_db_pool: str) -
 async def test_elective_swap_persists_transactionally(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     pid = "cap_swapper"
-    await _seed_player_with_pools(pool, pid, "warrior")
+    await seed_player_with_pools(pool, player_id=pid, class_="warrior")
     # Character currently has the L4 elective warrior_cleaving_blow equipped.
     await ability_persistence.set_elective_equipped(pid, "warrior_cleaving_blow", True, conn=pool)
     await abilities.load_abilities()
@@ -167,7 +149,7 @@ class _FailOnEquip:
 async def test_swap_rolls_back_on_mid_swap_failure(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     pid = "cap_rollback"
-    await _seed_player_with_pools(pool, pid, "warrior")
+    await seed_player_with_pools(pool, player_id=pid, class_="warrior")
     await ability_persistence.set_elective_equipped(pid, "warrior_cleaving_blow", True, conn=pool)
     await abilities.load_abilities()
 

@@ -25,6 +25,33 @@ TRAINING_MENTORS = {
         "speech_style": "rapid and precise when discussing scholarship, halting in casual conversation",
         "voice_id": "SCHOLAR_EMRIS",
     },
+    # M9 per-culture martial mentors — one per cultural variant style (story-003). Personas
+    # mirror their content/npcs.json entries so the DM voice stays coherent when narrating a
+    # variant; without these the variant narration would fall back to guildmaster_torin.
+    "mentor_drathian_warleader": {
+        "name": "Warleader Hessa Stormhand",
+        "personality": "blunt, commanding, fiercely proud of clan honor, privately grieving the warriors she has spent",
+        "speech_style": "short declarative commands at a steady carrying volume; thins and slows when she speaks of the dead",
+        "voice_id": "drathian_hessa_v1",
+    },
+    "mentor_keldaran_forgemaster": {
+        "name": "Forge-Master Doran Ironvein",
+        "personality": "precise, unhurried, pragmatic, finds genuine beauty in efficiency",
+        "speech_style": "short level sentences, no wasted word; explains fighting through metalwork, warms only for good craft",
+        "voice_id": "keldaran_doran_v1",
+    },
+    "mentor_thornwarden_elder": {
+        "name": "Elder Senna Rootwarden",
+        "personality": "patient to stillness, listens more than she speaks, gently immovable when the forest is threatened",
+        "speech_style": "long flowing sentences broken by unhurried pauses; disapproval drops to a whisper rather than a shout",
+        "voice_id": "thornwarden_senna_v1",
+    },
+    "mentor_tidecaller_bosun": {
+        "name": "Bosun Marek Tideborn",
+        "personality": "restless, adaptable, fiercely independent, sees patterns in movement others miss",
+        "speech_style": "sentences that flow and wander like a current but reach the point; quickens when danger at sea comes up",
+        "voice_id": "tidecaller_marek_v1",
+    },
 }
 
 # Companion errand context
@@ -105,7 +132,7 @@ Speech style: {mentor_speech_style}
 The player trained: {training_stat}{skill_note}
 Outcome: {tier} (roll: {roll}, DC: {dc})
 Stat gains: {stat_gains}
-
+{cultural_attribution_line}
 Write a short narration (60-120 words) of this training session.
 Include physical sensory details — sweat, exertion, the moment of clarity or frustration.
 End with the decision point.
@@ -122,7 +149,7 @@ Speech style: {mentor_speech_style}
 The player completed training: {training_stat}{skill_note}
 Outcome tier: {tier} (DC: {dc})
 Stat gains: {stat_gains}
-
+{cultural_attribution_line}{replacement_line}
 Write a short narration (60-120 words) of the training conclusion.
 Include physical sensory details — sweat, exertion, the moment of clarity or frustration.
 Describe the outcome: breakthrough means real progress was made, plateau means steady effort with no leap forward.
@@ -171,6 +198,30 @@ def _format_recipe_cue(ctx: dict) -> str:
     """
     cue = ctx.get("recipe_cue")
     return f"The result: {cue}" if cue else ""
+
+
+def _format_cultural_attribution(ctx: dict) -> str:
+    """Render the mentor-variant cultural-attribution line for the training narration prompt.
+
+    Present only for mentor-variant training (cultural_attribution in the activity data, M9
+    story-003); empty for stat/skill training so those prompts are byte-unchanged. Tells the DM
+    to voice the technique's cultural lineage when narrating the variant (AC4).
+    """
+    attribution = ctx.get("cultural_attribution")
+    return f"This technique is a {attribution} — let its cultural lineage colour the telling.\n" if attribution else ""
+
+
+def _format_replacement_notice(ctx: dict) -> str:
+    """Render the variant-replacement line for the training-completion prompt.
+
+    Present only when a newly-trained variant supplants a prior active variant on the same
+    technique (concern 25b663d3e245); empty otherwise. Tells the DM to voice the swap so the
+    player learns their form changed — audio-first, never a silent state change.
+    """
+    replaced = ctx.get("replaced_cultural_attribution")
+    return (
+        f"This new form supplants the {replaced} they had been practising — make the shift felt.\n" if replaced else ""
+    )
 
 
 def _format_quality_note(ctx: dict) -> str:
@@ -230,6 +281,8 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
             "tier": ctx.get("tier", "unknown"),
             "stat_gains": outcome.get("stat_gains", {}),
             "dc": ctx.get("dc", "?"),
+            "cultural_attribution_line": _format_cultural_attribution(ctx),
+            "replacement_line": _format_replacement_notice(ctx),
         }
         if activity_type == "training":
             format_args["roll"] = ctx.get("roll", "?")

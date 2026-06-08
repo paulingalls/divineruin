@@ -8,6 +8,8 @@
 // pre-push / sprint close (see ADR 0003) to control API cost. Run it explicitly
 // with `bun run test:acceptance`.
 
+import { ensureDbUp, stopIfStarted } from "./ensure-db.ts";
+
 type Lane = { name: string; cmd: string[] };
 type Result = { name: string; stdout: string; stderr: string; exitCode: number };
 
@@ -36,7 +38,16 @@ async function runLane(lane: Lane): Promise<Result> {
   }
 }
 
-const results = await Promise.all(lanes.map(runLane));
+// Both lanes connect to the docker-compose Postgres; start it if it isn't up and
+// stop only what we started (never the pre-existing dev DB). See ensure-db.ts.
+const startedDb = await ensureDbUp();
+
+let results: Result[];
+try {
+  results = await Promise.all(lanes.map(runLane));
+} finally {
+  await stopIfStarted(startedDb);
+}
 
 for (const r of results) {
   const status = r.exitCode === 0 ? "PASS" : "FAIL";
