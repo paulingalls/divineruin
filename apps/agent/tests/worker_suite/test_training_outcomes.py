@@ -346,6 +346,9 @@ class TestMentorVariantCompletion:
             patch(
                 "async_worker_training.mentor_variant_progress.delete_learning_progress", new_callable=AsyncMock
             ) as mock_delete,
+            patch(
+                "async_worker_training.ability_persistence.set_active_variant", new_callable=AsyncMock
+            ) as mock_activate,
         ):
             count = await advance_training_cycles()
 
@@ -355,6 +358,8 @@ class TestMentorVariantCompletion:
         assert mock_advance.await_args.kwargs["activity_id"] == "train_var999"
         mock_unlock.assert_awaited_once_with("player_1", "warrior_cleaving_blow_drathian", midpoint_decision_id="power")
         mock_delete.assert_awaited_once_with("player_1", "warrior_cleaving_blow_drathian")
+        # The unlocked variant is made the active override on its base technique (data.ability_id).
+        mock_activate.assert_awaited_once_with("player_1", "warrior_cleaving_blow", "warrior_cleaving_blow_drathian")
 
     @pytest.mark.asyncio
     async def test_narration_failure_preserves_progress_for_idempotent_retry(self):
@@ -390,6 +395,9 @@ class TestMentorVariantCompletion:
             patch(
                 "async_worker_training.mentor_variant_progress.delete_learning_progress", new_callable=AsyncMock
             ) as mock_delete,
+            patch(
+                "async_worker_training.ability_persistence.set_active_variant", new_callable=AsyncMock
+            ) as mock_activate,
         ):
             count = await advance_training_cycles()
 
@@ -400,6 +408,9 @@ class TestMentorVariantCompletion:
         # record_unlocked is idempotent (ON CONFLICT DO NOTHING) so running it pre-narration
         # is safe; the bug is purely the premature delete, which must not have happened.
         mock_unlock.assert_awaited_once()
+        # set_active_variant also runs pre-narration; it is idempotent (ON CONFLICT DO UPDATE),
+        # so a retry re-running it is harmless. It must have run exactly once on this attempt.
+        mock_activate.assert_awaited_once_with("player_1", "warrior_cleaving_blow", "warrior_cleaving_blow_drathian")
 
     @pytest.mark.asyncio
     async def test_intermediate_cycle_does_not_unlock(self):
@@ -421,12 +432,17 @@ class TestMentorVariantCompletion:
             patch(
                 "async_worker_training.mentor_variant_progress.delete_learning_progress", new_callable=AsyncMock
             ) as mock_delete,
+            patch(
+                "async_worker_training.ability_persistence.set_active_variant", new_callable=AsyncMock
+            ) as mock_activate,
         ):
             count = await advance_training_cycles()
 
         assert count == 1
         mock_unlock.assert_not_awaited()
         mock_delete.assert_not_awaited()
+        # No unlock yet → no active-variant override set until training completes.
+        mock_activate.assert_not_awaited()
 
 
 class TestSkillAccrualIdempotency:
