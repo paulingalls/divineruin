@@ -28,6 +28,7 @@ import { loadArchetypes } from "./archetypes.ts";
 import { loadAbilities } from "./abilities.ts";
 import { loadSpells } from "./spells.ts";
 import { loadMentorVariants } from "./mentor_variants.ts";
+import { loadRoleArchetypes } from "./role_archetypes.ts";
 import { loadMilestones } from "./milestones.ts";
 import { loadPricing } from "./pricing.ts";
 import { isDev } from "./env.ts";
@@ -48,6 +49,7 @@ await Promise.all([
   loadAbilities(),
   loadSpells(),
   loadMentorVariants(),
+  loadRoleArchetypes(),
   loadMilestones(),
   loadPricing(),
 ]);
