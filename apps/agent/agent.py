@@ -216,6 +216,15 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if not mentor_variants_is_loaded():
         await load_mentor_variants()
 
+    # Load the role archetype catalog once per agent process (M6.1). NPC stat-block
+    # templates (services, combat stats, disposition baselines) consumed by
+    # create_npc_from_archetype and settlement generation (M6.2).
+    from role_archetypes import is_loaded as role_archetypes_is_loaded
+    from role_archetypes import load_role_archetypes
+
+    if not role_archetypes_is_loaded():
+        await load_role_archetypes()
+
     # Determine session type: new player (creation) vs returning
     player = None
     last_summary = None
