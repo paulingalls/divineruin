@@ -8,6 +8,9 @@ and every file under its limit (decision ability-persistence-module).
 - update_player_resources: deduct Stamina/Focus after an ability is activated.
 - set_elective_equipped / get_character_abilities: the character_abilities table
   (migration 030) — which L4/L8 electives a character currently has equipped.
+- set_active_variant / get_active_variant: the character_active_variants table
+  (migration 038) — which unlocked mentor variant currently overrides a base
+  technique (one per technique; M9 story-003).
 """
 
 import json
@@ -67,6 +70,48 @@ async def set_elective_equipped(
         player_id,
         ability_id,
         equipped,
+    )
+
+
+async def set_active_variant(
+    player_id: str,
+    ability_id: str,
+    variant_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> None:
+    """Make a mentor variant the active override on its base technique (migration 038).
+
+    The PK (player_id, ability_id) + ON CONFLICT DO UPDATE enforces one active variant per
+    technique: training a second variant for the same base ability REPLACES the active one
+    (swap requires re-training). Callers pass a variant already validated against the ability
+    (mentor_variants.get_variant fails loud on a mismatch).
+    """
+    _conn = conn or await db.get_pool()
+    await _conn.execute(
+        """
+        INSERT INTO character_active_variants (player_id, ability_id, variant_id)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (player_id, ability_id) DO UPDATE SET variant_id = $3
+        """,
+        player_id,
+        ability_id,
+        variant_id,
+    )
+
+
+async def get_active_variant(
+    player_id: str,
+    ability_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> str | None:
+    """Return the active variant id overriding a base technique, or None when none is active."""
+    _conn = conn or await db.get_pool()
+    return await _conn.fetchval(
+        "SELECT variant_id FROM character_active_variants WHERE player_id = $1 AND ability_id = $2",
+        player_id,
+        ability_id,
     )
 
 

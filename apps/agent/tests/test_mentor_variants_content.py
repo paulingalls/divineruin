@@ -8,9 +8,10 @@ behavior lives in test_mentor_variants.py.
 """
 
 import json
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 
+from activity_templates import TRAINING_MENTORS
 from mentor_variants import parse_mentor_variant_row
 
 _ROOT = Path(__file__).resolve().parents[3]
@@ -66,3 +67,59 @@ def test_every_martial_elective_has_exactly_two_variants():
     assert len(counts) == 40
     offenders = {ability: n for ability, n in counts.items() if n != 2}
     assert not offenders, f"expected 2 variants per technique, got {offenders}"
+
+
+def test_variant_effect_contains_base_ability_effect():
+    """Parity guard (concern dbc689 / retro Try): a variant's effect is its base ability's
+    full effect text plus a cultural suffix (decision m9 override shape). If a base ability's
+    effect is later edited, this catches the silent desync of its two variant rows — there is
+    no other guard binding the duplicated copy to its source."""
+    abilities = {a["id"]: a for a in _load("archetype_abilities.json")}
+    for row in _variants():
+        variant = parse_mentor_variant_row(row["id"], row)
+        base = abilities[variant.ability_id]
+        assert base["effect"] in variant.effect, (
+            f"{variant.id}: base effect not contained in variant effect — stale copy after a base edit?"
+        )
+
+
+def test_each_culture_is_taught_by_exactly_one_mentor():
+    """Concern 603af: the catalog must not alternate generic mentors across cultures. Each
+    cultural martial style is taught by a single coherent mentor NPC (audio-first / dm-is-the-game)."""
+    culture_mentors: dict[str, set[str]] = defaultdict(set)
+    for row in _variants():
+        variant = parse_mentor_variant_row(row["id"], row)
+        culture_mentors[variant.cultural_attribution].add(variant.mentor_id)
+    offenders = {c: sorted(ms) for c, ms in culture_mentors.items() if len(ms) != 1}
+    assert not offenders, f"each culture must map to exactly one mentor, got {offenders}"
+
+
+def test_every_mentor_id_resolves_in_training_mentors():
+    """The narration prompt looks the variant's mentor up in TRAINING_MENTORS; an unknown id
+    silently falls back to guildmaster_torin, breaking mentor-culture coherence in the DM voice
+    (concern 603af). Every variant mentor must have a TRAINING_MENTORS persona."""
+    for row in _variants():
+        variant = parse_mentor_variant_row(row["id"], row)
+        assert variant.mentor_id in TRAINING_MENTORS, (
+            f"{variant.id} -> mentor {variant.mentor_id} missing from activity_templates.TRAINING_MENTORS"
+        )
+
+
+def test_narration_cues_vary_within_each_culture():
+    """Concern 603af: narration_cue was one fixed string repeated 20x per culture, making the
+    DM voice robotic when it narrates a variant. Each culture's variants must read distinctly."""
+    culture_cues: dict[str, list[str]] = defaultdict(list)
+    for row in _variants():
+        variant = parse_mentor_variant_row(row["id"], row)
+        culture_cues[variant.cultural_attribution].append(variant.narration_cue)
+    offenders = {c: len(cues) for c, cues in culture_cues.items() if len(set(cues)) == 1}
+    assert not offenders, f"these cultures have all-identical narration_cues (robotic): {offenders}"
+
+
+def test_all_narration_cues_are_unique():
+    """Stronger guard than per-culture variety: every variant gets its own cue, so no two
+    learned variants ever make the DM voice the exact same line. Catches same-named techniques
+    (e.g. warrior vs skirmisher 'Whirlwind') colliding under a shared cue template."""
+    cues = [parse_mentor_variant_row(r["id"], r).narration_cue for r in _variants()]
+    dupes = {c: n for c, n in Counter(cues).items() if n > 1}
+    assert not dupes, f"narration_cues must be unique across the catalog; collisions: {dupes}"

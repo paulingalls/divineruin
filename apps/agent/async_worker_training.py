@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from training_rules import CompletionResult
 
+import ability_persistence
 import character_spells
 import db
 import db_mutations
@@ -103,6 +104,10 @@ def build_training_completion_outcome(
             "training_skill": data.get("skill"),
             "tier": tier,
             "dc": data.get("dc", "?"),
+            # Mentor-variant training carries the variant's cultural attribution (story-003,
+            # written by learn(variant)); None for stat/skill training. The narration template
+            # renders it only when present so non-variant prompts are unchanged.
+            "cultural_attribution": data.get("cultural_attribution"),
         },
         "stat_gains": {
             "counter_increment": completion.counter_increment,
@@ -249,6 +254,15 @@ async def advance_training_cycles() -> int:
                                 variant_id,
                                 midpoint_decision_id=progress["midpoint_decision_id"],
                             )
+                            # The unlocked variant becomes the active override on its base
+                            # technique (one per technique; swap requires re-training). The active
+                            # table upserts ON CONFLICT, so a later trained variant replaces this
+                            # one (story-003 / migration 038). Idempotent like record_unlocked, so a
+                            # narration-failure retry re-runs it harmlessly.
+                            ability_id = data.get("ability_id")
+                            if not ability_id:
+                                raise ValueError(f"variant training {activity_id} missing ability_id in data")
+                            await ability_persistence.set_active_variant(player_id, ability_id, variant_id)
                             completed_promotion = (mentor_variant_progress, variant_id)
 
                     # Generate narration via LLM
