@@ -56,7 +56,10 @@
     "appearance": "wiry, sun-weathered, moves with the deliberate economy of someone who's worked hard their entire life",
     "personality": ["stubborn", "protective", "distrustful of outsiders", "hiding deep fear"],
     "speech_style": "short sentences, farmland dialect, doesn't answer questions she doesn't like, asks her own instead",
-    "mannerisms": ["looks north involuntarily when anyone mentions the Hollow", "grips her walking stick when stressed"],
+    "mannerisms": [
+      "looks north involuntarily when anyone mentions the Hollow",
+      "grips her walking stick when stressed"
+    ],
     "backstory_summary": "Born in Millhaven, will die in Millhaven. Has watched the town slowly empty as younger people move south. The Hollow reports are the final threat to everything she's spent her life protecting. Won't leave. Won't ask for help easily.",
     "knowledge": {
       "free": [
@@ -100,9 +103,17 @@
     "gender": "non-binary",
     "age": "appears mid 30s (Elari — actually much older)",
     "appearance": "thin, precise movements, eyes that focus too intensely, ink-stained fingers, always carrying a satchel of notes",
-    "personality": ["brilliant", "socially awkward", "haunted by Aelindra's fall", "desperately hopeful that the old knowledge can be recovered"],
+    "personality": [
+      "brilliant",
+      "socially awkward",
+      "haunted by Aelindra's fall",
+      "desperately hopeful that the old knowledge can be recovered"
+    ],
     "speech_style": "rapid and precise when discussing scholarship, halting and uncertain in casual conversation, occasionally slips into Aelindran academic terminology without realizing",
-    "mannerisms": ["adjusts spectacles that aren't there (lost in the fall of Aelindra, still reaches for them)", "speaks to artifacts as if they can hear"],
+    "mannerisms": [
+      "adjusts spectacles that aren't there (lost in the fall of Aelindra, still reaches for them)",
+      "speaks to artifacts as if they can hear"
+    ],
     "backstory_summary": "Survived the fall of Aelindra as a junior archivist. Has spent thirty years cataloging recovered artifacts in the Accord of Tides, searching for any clue about why the city fell. When the player brings the Greyvale artifact, Emris recognizes the notation style immediately — and it terrifies them.",
     "knowledge": {
       "free": [
@@ -152,9 +163,19 @@
     "gender": "male",
     "age": "early 30s",
     "appearance": "broad-shouldered, practical gear worn soft from use, old scars on his forearms, watchful eyes that track exits",
-    "personality": ["steady", "practical", "quietly haunted", "protective", "dry humor when relaxed"],
+    "personality": [
+      "steady",
+      "practical",
+      "quietly haunted",
+      "protective",
+      "dry humor when relaxed"
+    ],
     "speech_style": "measured and deliberate, short sentences when tense, warmer when relaxed, occasional dry humor",
-    "mannerisms": ["checks exits when entering a room", "tenses at unexpected sounds", "runs thumb along sword pommel when thinking"],
+    "mannerisms": [
+      "checks exits when entering a room",
+      "tenses at unexpected sounds",
+      "runs thumb along sword pommel when thinking"
+    ],
     "backstory_summary": "Former caravan guard who lost his company to something on the northern roads. Won't say exactly what happened. Carries guilt about surviving when they didn't. Found his way to the Accord of Tides, drifting without purpose until meeting the player.",
     "knowledge": {
       "free": [
@@ -268,9 +289,18 @@
     "gender": "female",
     "age": "early 40s",
     "appearance": "strong arms, flour-dusted apron, dark circles under sharp eyes, hair pinned back with a wooden stick",
-    "personality": ["wary", "observant", "protective of regulars", "practical", "hides worry behind work"],
+    "personality": [
+      "wary",
+      "observant",
+      "protective of regulars",
+      "practical",
+      "hides worry behind work"
+    ],
     "speech_style": "clipped and efficient, asks questions instead of answering them, warms up slowly, northern dialect — dropped articles, blunt phrasing",
-    "mannerisms": ["wipes the same spot on the bar when thinking", "lowers voice when saying anything she considers important"],
+    "mannerisms": [
+      "wipes the same spot on the bar when thinking",
+      "lowers voice when saying anything she considers important"
+    ],
     "backstory_summary": "Runs the only inn in Millhaven. Knows everyone's business because they all drink here. Has watched the town empty out over the past two weeks. Won't leave — the inn is everything she has.",
     "knowledge": {
       "free": [
@@ -316,9 +346,17 @@
     "gender": "male",
     "age": "late 40s",
     "appearance": "immaculate dark coat, silver clasp at the collar bearing a temple insignia, manicured hands, eyes that miss nothing",
-    "personality": ["formal", "calculating", "genuinely curious beneath the politics", "represents interests he doesn't fully agree with"],
+    "personality": [
+      "formal",
+      "calculating",
+      "genuinely curious beneath the politics",
+      "represents interests he doesn't fully agree with"
+    ],
     "speech_style": "precise, measured, never uses two words where one will do, occasionally lets genuine interest crack through the official facade",
-    "mannerisms": ["adjusts his silver clasp when about to say something important", "tilts his head slightly when genuinely listening versus performing attention"],
+    "mannerisms": [
+      "adjusts his silver clasp when about to say something important",
+      "tilts his head slightly when genuinely listening versus performing attention"
+    ],
     "backstory_summary": "Sent by the temple authorities to assess the Greyvale situation — and, unofficially, to determine whether the guild's response was appropriate or an overreach. He's caught between institutional politics and the growing suspicion that the Hollow threat is worse than anyone is admitting.",
     "knowledge": {
       "free": [
@@ -365,9 +403,18 @@
     "gender": "male",
     "age": "late 100s (middle-aged for a dwarf)",
     "appearance": "barrel-chested, soot-streaked leather apron, burn-scarred hands that move with surprising precision, beard braided tight against sparks",
-    "personality": ["gruff", "perfectionist", "secretly proud of students who show promise", "judges people by their work not their words"],
+    "personality": [
+      "gruff",
+      "perfectionist",
+      "secretly proud of students who show promise",
+      "judges people by their work not their words"
+    ],
     "speech_style": "short grunts, metaphors about metal and fire, calls mistakes 'offenses to the forge', rare genuine compliments land like hammer blows",
-    "mannerisms": ["tests blade edges with his thumb", "spits into the forge when disgusted", "nods once — slowly — when truly impressed"],
+    "mannerisms": [
+      "tests blade edges with his thumb",
+      "spits into the forge when disgusted",
+      "nods once — slowly — when truly impressed"
+    ],
     "backstory_summary": "Trained in the deep holds before settling in the Accord. Makes functional weapons, not art — and considers that a point of pride. The guild contracts keep his forge lit. Quietly worried that the Hollow threat means more weapons needed, and fewer hands to wield them.",
     "knowledge": {
       "free": [
@@ -412,9 +459,19 @@
     "gender": "female",
     "age": "mid 40s",
     "appearance": "broad-hipped, dark hair streaked with early grey, apron permanently stained, hands that never stop moving — wiping, pouring, gesturing",
-    "personality": ["warm", "observant", "protective of her regulars", "sharper than she lets on", "collects information like other people collect coins"],
+    "personality": [
+      "warm",
+      "observant",
+      "protective of her regulars",
+      "sharper than she lets on",
+      "collects information like other people collect coins"
+    ],
     "speech_style": "casual, warm, uses nicknames, transitions smoothly from banter to serious conversation, asks questions that sound innocent but aren't",
-    "mannerisms": ["wipes the bar in circles when listening carefully", "remembers every regular's drink without asking", "lowers her voice and leans forward when sharing something important"],
+    "mannerisms": [
+      "wipes the bar in circles when listening carefully",
+      "remembers every regular's drink without asking",
+      "lowers her voice and leans forward when sharing something important"
+    ],
     "backstory_summary": "Has run the Hearthstone for fifteen years. Before that, she traveled — the scars on her forearms suggest she didn't always pour drinks for a living. Knows more about what happens in the Accord than most guild operatives, because everyone talks in a tavern and she remembers everything.",
     "knowledge": {
       "free": [
@@ -463,9 +520,18 @@
     "gender": "female",
     "age": "appears late 20s (Elari — much older)",
     "appearance": "tall, still, silver-white hair worn in a single braid, robes that shift color subtly with the light, eyes that seem to focus on something behind you",
-    "personality": ["serene", "perceptive", "carries the weight of Veil-sense constantly", "genuinely compassionate beneath the formal exterior"],
+    "personality": [
+      "serene",
+      "perceptive",
+      "carries the weight of Veil-sense constantly",
+      "genuinely compassionate beneath the formal exterior"
+    ],
     "speech_style": "measured, formal, pauses before speaking as if consulting something internal, occasionally trails off when sensing Veil disturbances, Elari accent — elongated vowels",
-    "mannerisms": ["closes eyes briefly when sensing the Veil", "touches her temple when a Hollow disturbance pulses", "speaks to supplicants as equals, never talks down"],
+    "mannerisms": [
+      "closes eyes briefly when sensing the Veil",
+      "touches her temple when a Hollow disturbance pulses",
+      "speaks to supplicants as equals, never talks down"
+    ],
     "backstory_summary": "An Elari who has served at the temples for decades. Her Veil-sense makes her uniquely qualified to mediate between the four faiths represented on Temple Row. She can feel the Sundering's wound as a constant low-grade wrongness, and lately it has been getting worse. The Greyvale disturbances register as a new, sharper pain.",
     "knowledge": {
       "free": [
@@ -513,15 +579,21 @@
     "gender": "male",
     "age": "early 40s",
     "appearance": "gaunt, hollow-eyed, sits with unnatural stillness, his hands rest on the table but his fingers occasionally twitch in patterns — not random, almost like notation",
-    "personality": ["absent", "broken", "occasionally surfaces with fragments of lucidity", "terrified of something he cannot name"],
+    "personality": [
+      "absent",
+      "broken",
+      "occasionally surfaces with fragments of lucidity",
+      "terrified of something he cannot name"
+    ],
     "speech_style": "almost never speaks, when he does it is single words or fragments, disconnected from the conversation, as if answering questions no one asked",
-    "mannerisms": ["stares at a fixed point only he can see", "traces shapes on table surfaces with one finger", "flinches at sounds no one else hears"],
+    "mannerisms": [
+      "stares at a fixed point only he can see",
+      "traces shapes on table surfaces with one finger",
+      "flinches at sounds no one else hears"
+    ],
     "backstory_summary": "A Millhaven farmer who went to the Greyvale Ruins a month ago. He found an Attenuation Sphere fragment — one of Veythar's artifacts. It changed him. His mind brushed the Veil and couldn't fully return. He carries the humming stone Yanna found in his pocket. He is not Hollowed — he is Veil-touched, which is different and in some ways worse.",
     "knowledge": {
-      "free": [
-        "will not respond to normal conversation",
-        "stares at nothing, fingers twitching"
-      ],
+      "free": ["will not respond to normal conversation", "stares at nothing, fingers twitching"],
       "disposition >= friendly": [
         "with patience and gentleness, he may respond to direct questions with single words",
         "he draws the same symbol repeatedly — a circle with a line through it, Veythar's personal sigil"
@@ -564,9 +636,18 @@
     "gender": "female",
     "age": "late 20s",
     "appearance": "lean, moves like smoke, dark clothes that blend with shadow, sharp-featured, eyes that catalogue everything, a thin scar along her jawline",
-    "personality": ["amused", "calculating", "genuinely curious beneath the performance", "loyal to truth more than to any institution"],
+    "personality": [
+      "amused",
+      "calculating",
+      "genuinely curious beneath the performance",
+      "loyal to truth more than to any institution"
+    ],
     "speech_style": "speaks in questions and implications, never states directly what she could suggest obliquely, occasional genuine warmth that catches you off guard, uses silence as a tool",
-    "mannerisms": ["appears from unexpected directions", "watches people's hands when they talk", "smiles before delivering uncomfortable observations"],
+    "mannerisms": [
+      "appears from unexpected directions",
+      "watches people's hands when they talk",
+      "smiles before delivering uncomfortable observations"
+    ],
     "backstory_summary": "One of Syrath's operatives — not clergy, not officially anything. She appears after the Greyvale discovery because Syrath's network flagged the anomaly. She wants information about what the player found, and she's willing to trade for it. Her interest is genuine: she believes someone caused the Sundering deliberately, and the Greyvale ruins may contain evidence.",
     "knowledge": {
       "free": [
@@ -613,9 +694,18 @@
     "gender": "male",
     "age": "mid 30s",
     "appearance": "neat, careful grooming, scholar's robes immaculate, carries a leather satchel, hands that fidget with his pen when he's nervous — which is often",
-    "personality": ["earnest", "nervous", "genuinely scholarly but serving an agenda he doesn't fully understand", "wants to do the right thing but isn't sure what that is"],
+    "personality": [
+      "earnest",
+      "nervous",
+      "genuinely scholarly but serving an agenda he doesn't fully understand",
+      "wants to do the right thing but isn't sure what that is"
+    ],
     "speech_style": "rapid, enthusiastic about scholarship, stumbles when the conversation gets political, slightly too eager to take charge of artifacts — the eagerness is trained, not natural",
-    "mannerisms": ["pushes spectacles up his nose when thinking", "speaks faster when nervous", "glances toward the temple when making promises about artifacts"],
+    "mannerisms": [
+      "pushes spectacles up his nose when thinking",
+      "speaks faster when nervous",
+      "glances toward the temple when making promises about artifacts"
+    ],
     "backstory_summary": "A junior archivist from Veythar's temple, sent to assess the Greyvale discovery and — though he doesn't know this is his real mission — ensure that anything connecting the ruins to Veythar's personal research is recovered and suppressed. He believes he's simply cataloging artifacts for proper scholarly study. His superiors know better.",
     "knowledge": {
       "free": [
@@ -664,9 +754,19 @@
     "gender": "female",
     "age": "early 50s",
     "appearance": "sturdy, calloused hands, sensible clothing, a guild chain around her neck bearing Aelora's mark, face that's weathered from years of outdoor work and honest smiles",
-    "personality": ["pragmatic", "warm", "impatient with politics", "focused on outcomes", "cares about people more than artifacts"],
+    "personality": [
+      "pragmatic",
+      "warm",
+      "impatient with politics",
+      "focused on outcomes",
+      "cares about people more than artifacts"
+    ],
     "speech_style": "plain, direct, uses trade metaphors, gets frustrated with scholars who lose sight of practical concerns, laughs easily but her laugh has an edge lately",
-    "mannerisms": ["counts things unconsciously — people in a room, coins on a table, exits", "crosses arms when she disagrees", "nods once, firmly, when she's decided something"],
+    "mannerisms": [
+      "counts things unconsciously — people in a room, coins on a table, exits",
+      "crosses arms when she disagrees",
+      "nods once, firmly, when she's decided something"
+    ],
     "backstory_summary": "Runs the Merchant and Trades Guild under Aelora's patronage. Her concern with the Greyvale isn't the artifact or the mystery — it's the trade routes. Caravans have stopped coming from the north. Millhaven's harvest won't reach the Accord. Prices are already rising. She needs to know if the roads are safe, and she needs it yesterday.",
     "knowledge": {
       "free": [
@@ -704,5 +804,215 @@
     "faction": "temple_authority",
     "voice_id": "AELORA_DARA",
     "voice_notes": "warm alto, practical, direct, no-nonsense, laughs easily but the laugh has an edge lately"
+  },
+  {
+    "id": "mentor_drathian_warleader",
+    "name": "Warleader Hessa Stormhand",
+    "tier": 1,
+    "role": "Drathian war-band leader, martial mentor",
+    "species": "human",
+    "gender": "female",
+    "age": "mid 40s",
+    "appearance": "Boot-heels strike the floor like a slow drum; bone clan-tokens click at her belt with every turn. Her voice carries campfire smoke and a parade-ground edge, and an old scar pulls one corner of her mouth into a permanent half-smile she never earned by smiling.",
+    "personality": [
+      "blunt and commanding",
+      "fiercely proud of clan honor",
+      "impatient with theory and flourish",
+      "privately grieving the warriors she has spent"
+    ],
+    "speech_style": "Short declarative sentences, given at a steady carrying volume — commands, not requests. Drops an archaic Steppe oath when startled. Her voice thins and slows the moment she speaks of the dead, then snaps back to brisk before anyone can answer.",
+    "mannerisms": [
+      "drums two fingers in a marching cadence while she thinks",
+      "closes a fist over a clan-token before delivering hard news"
+    ],
+    "backstory_summary": "Led a Drathian war-band against the Hollow for fifteen years and buried half of it in the last campaign. Came south to drill the next generation because 'standing still is death, but spending good warriors carelessly is worse.' Teaches survival, not glory — and resents anyone who confuses the two.",
+    "knowledge": {
+      "free": [
+        "Drathian close-combat forms and how the clans fight the Hollow on open ground",
+        "which southern roads the war-bands still consider safe to ride"
+      ],
+      "disposition >= friendly": [
+        "the Steppe leadership is quietly furious that the south keeps downplaying the incursions",
+        "she trains only those she judges likely to live — and tells them so to their faces"
+      ],
+      "disposition >= trusted": [
+        "she carries the tokens of every warrior she lost and can name each death",
+        "she suspects the clans are being bled deliberately to weaken their political voice"
+      ]
+    },
+    "schedule": {
+      "06:00-19:00": "accord_training_hall",
+      "19:00-06:00": "accord_hearthstone_tavern"
+    },
+    "default_disposition": "neutral",
+    "disposition_modifiers": {
+      "won_sparring_match": 2,
+      "stood_ground_under_fire": 3,
+      "showed_cowardice": -4,
+      "spoke_poorly_of_drathian_honor": -5
+    },
+    "inventory_pool": null,
+    "secrets": ["the warrior she misses most is the student she pushed too hard, too young"],
+    "faction": "independent",
+    "voice_id": "drathian_hessa_v1",
+    "voice_notes": "Low, carrying alto with a clipped Steppe roll on the r's. Never hesitates on tactics; softens and slows only when the dead come up."
+  },
+  {
+    "id": "mentor_keldaran_forgemaster",
+    "name": "Forge-Master Doran Ironvein",
+    "tier": 1,
+    "role": "Keldaran forge-master, martial-technique mentor",
+    "species": "dwarf",
+    "gender": "male",
+    "age": "mid 50s",
+    "appearance": "He smells of quenched steel and coal-smoke before he speaks. Soot lines the creases of his hands; his voice has the worn rasp of someone who has talked over a forge-roar for forty years. He sets each word down the way he sets a tool — deliberately, in its place.",
+    "personality": [
+      "precise and unhurried",
+      "pragmatic to the bone",
+      "fiercely proud of Keldaran craft",
+      "finds genuine beauty in efficiency"
+    ],
+    "speech_style": "Short, level sentences with no wasted word. Explains fighting through metalwork — pressure, grain, temper — and means it literally, not as metaphor. Tone stays even as stone; the only warmth that leaks in is when the talk turns to a thing well made.",
+    "mannerisms": [
+      "taps a working-rhythm on the bench while listening",
+      "tests an edge with his thumb before answering a hard question"
+    ],
+    "backstory_summary": "Forty years at the Ironpeak forges, where Keldaran steel became the spine of every army in Aethos. Believes a warrior deserves technique equal to the blade they carry: poorly forged steel fails because the smith ignored its nature, and so does a careless fighter. Teaches combat as craft — measured pressure, perfect timing, knowing when to yield and when to strike.",
+    "knowledge": {
+      "free": [
+        "the grades of Keldaran steel and how to read a weapon's making",
+        "armor-aware striking — where any plate is weakest and why"
+      ],
+      "disposition >= friendly": [
+        "the Holds are supplying every side of this war and intend to outlast all of them",
+        "he judges a student by their care, not their strength — sloppiness offends him deeply"
+      ],
+      "disposition >= trusted": [
+        "he left Ironpeak after a collapse he believes his own haste helped cause",
+        "he keeps the failed blade from that day and will not say why"
+      ]
+    },
+    "schedule": {
+      "06:00-18:00": "accord_forge",
+      "18:00-06:00": "accord_hearthstone_tavern"
+    },
+    "default_disposition": "neutral",
+    "disposition_modifiers": {
+      "studied_craftsmanship": 2,
+      "completed_athletics_trial": 2,
+      "showed_carelessness_in_combat": -3,
+      "dismissed_keldaran_expertise": -4
+    },
+    "inventory_pool": null,
+    "secrets": [
+      "the collapse he blames himself for killed an apprentice he had promised to protect"
+    ],
+    "faction": "independent",
+    "voice_id": "keldaran_doran_v1",
+    "voice_notes": "Steady, gravelled baritone, slow and measured, a faint metallic undertone. Warms only when the subject is good craft."
+  },
+  {
+    "id": "mentor_thornwarden_elder",
+    "name": "Elder Senna Rootwarden",
+    "tier": 1,
+    "role": "Thornwarden elder, guardian, martial mentor",
+    "species": "elari",
+    "gender": "female",
+    "age": "elder",
+    "appearance": "Her footsteps barely register; her clothes rustle with the dry texture of natural fibre, a stray leaf caught in a fold. Her voice has the patient cadence of wind moving through high branches, and it trails off sometimes mid-sentence, as if she is listening to something the rest of the room cannot hear.",
+    "personality": [
+      "patient to the point of stillness",
+      "listens far more than she speaks",
+      "bonded deep to living things",
+      "gently immovable when the forest is threatened"
+    ],
+    "speech_style": "Long, flowing sentences broken by unhurried pauses. Speaks of trees and beasts as kin and of patience as a weapon. Never raises her voice; when she disapproves it drops to near a whisper, and that lands harder than any shout.",
+    "mannerisms": [
+      "rests a hand on living wood before she says anything that matters",
+      "hums a wordless three-note phrase while she considers"
+    ],
+    "backstory_summary": "Bonded seventy years to a great oak at the Thornveld's heart, and felt it sicken when the Hollow touched the eastern edge. Left the bonding-grove for the first time in generations to warn the south and to find those willing to learn the old defensive forms. Teaches not violence but immovability — to be as patient as stone and as cunning as a closing snare.",
+    "knowledge": {
+      "free": [
+        "Thornwarden defensive forms — feint, hold, and the patient counter",
+        "reading an opponent's intent before they commit to a strike"
+      ],
+      "disposition >= friendly": [
+        "the Thornveld is the first place the Hollow's advance has actually been resisted",
+        "she believes the forest is trying to tell the Wardens something about the Veil"
+      ],
+      "disposition >= trusted": [
+        "her bonded oak is dying and she has not told her own people",
+        "she fears what she will become when the bond finally breaks"
+      ]
+    },
+    "schedule": {
+      "06:00-22:00": "accord_training_hall",
+      "22:00-06:00": "accord_hearthstone_tavern"
+    },
+    "default_disposition": "wary",
+    "disposition_modifiers": {
+      "acted_to_protect_living_things": 3,
+      "showed_patience_in_training": 2,
+      "needless_destruction": -4,
+      "mocked_the_wardens": -4
+    },
+    "inventory_pool": null,
+    "secrets": ["she came south as much to flee her oak's slow death as to warn anyone"],
+    "faction": "independent",
+    "voice_id": "thornwarden_senna_v1",
+    "voice_notes": "Soft, slightly breathy, the texture of wind in leaves. Deliberate pauses. Disappointment drops the voice to a whisper rather than raising it."
+  },
+  {
+    "id": "mentor_tidecaller_bosun",
+    "name": "Bosun Marek Tideborn",
+    "tier": 1,
+    "role": "Tidecaller sailing master, movement and martial mentor",
+    "species": "vaelti",
+    "gender": "male",
+    "age": "mid 30s",
+    "appearance": "Rope and salt and a faint tropical oil come off him; his loose practical clothes move with him as if there were always a deck underfoot. His voice is pitched to carry across wind and wave — clear, never harsh — and he sways a little even on solid stone, riding a swell that isn't there.",
+    "personality": [
+      "restless and outgoing",
+      "endlessly adaptable",
+      "fiercely independent",
+      "sees patterns in movement that others miss"
+    ],
+    "speech_style": "Sentences flow and wander like a current, but always reach the point. Reaches for the sea for every comparison without noticing. His mood shifts like wind on water — easy one moment, urgent the next — and his speech quickens with it.",
+    "mannerisms": [
+      "sways gently as if riding an unseen deck",
+      "traces flowing circles with one hand while explaining a form"
+    ],
+    "backstory_summary": "Twenty years a bosun on the trade routes between the Shattered Isles and the Sunward Coast, survivor of three wrecks and two Hollow attacks at sea — each time by adapting faster than the thing hunting him. Came to the Accord to teach that survival is not strength but reading the currents: move with momentum, never against it, know when to flow and when to anchor.",
+    "knowledge": {
+      "free": [
+        "Tidecaller footwork — flowing, never-planted movement and momentum striking",
+        "sea routes between the Isles and the coast, and which are still safe to sail"
+      ],
+      "disposition >= friendly": [
+        "some Tidecallers have turned their exploring inward, hunting unmapped places on Aethos",
+        "he reads a fight the way he reads weather — and trusts the reading over any plan"
+      ],
+      "disposition >= trusted": [
+        "he lost his first crew to a Hollow thing that came up out of calm water",
+        "he no longer fully trusts a still sea, and it costs him sleep"
+      ]
+    },
+    "schedule": {
+      "07:00-20:00": "accord_dockside",
+      "20:00-07:00": "accord_hearthstone_tavern"
+    },
+    "default_disposition": "friendly",
+    "disposition_modifiers": {
+      "showed_adaptability": 2,
+      "explored_boldly": 2,
+      "froze_under_pressure": -2,
+      "mocked_seafaring_culture": -4
+    },
+    "inventory_pool": null,
+    "secrets": ["he hides the depth of his fear of still water behind constant easy motion"],
+    "faction": "independent",
+    "voice_id": "tidecaller_marek_v1",
+    "voice_notes": "Light, musical baritone, relaxed and warm, speech paced to long easy breaths. Quickens and sharpens when the talk turns to danger at sea."
   }
 ]

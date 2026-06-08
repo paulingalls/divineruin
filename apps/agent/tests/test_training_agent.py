@@ -13,12 +13,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sample_fixtures import mock_txn
 
-from city_agent import CITY_TOOLS, CityAgent
 from dispatch_agent import DISPATCH_TOOLS, DispatchAgent
+from exploration_agent import EXPLORATION_TOOLS, ExplorationAgent
 from movement_tools import _move_player_impl
 from session_data import SessionData
 from training_tools import initiate_training_cycle, query_training_programs, resolve_training_midpoint
-from wilderness_agent import WildernessAgent
 
 _CITY_LOC = {
     "id": "accord_guild_hall",
@@ -77,9 +76,9 @@ class TestCityToolBudget:
     def test_training_tools_left_city(self):
         # Extracting these tools is what keeps City at or under the strict-tool
         # ceiling (the count pin lives in test_strict_tool_budget.py).
-        assert query_training_programs not in CITY_TOOLS
-        assert initiate_training_cycle not in CITY_TOOLS
-        assert resolve_training_midpoint not in CITY_TOOLS
+        assert query_training_programs not in EXPLORATION_TOOLS
+        assert initiate_training_cycle not in EXPLORATION_TOOLS
+        assert resolve_training_midpoint not in EXPLORATION_TOOLS
 
 
 class TestMovePlayerActivityHandoff:
@@ -113,7 +112,8 @@ class TestMovePlayerActivityHandoff:
                 content=mock_content,
             )
         assert isinstance(result, tuple), "leaving a training location should hand back"
-        assert isinstance(result[0], CityAgent)
+        assert isinstance(result[0], ExplorationAgent)
+        assert result[0]._agent_type == "city"
 
     @pytest.mark.asyncio
     async def test_out_of_training_across_region_returns_region_agent(self):
@@ -142,7 +142,8 @@ class TestMovePlayerActivityHandoff:
                 content=mock_content,
             )
         assert isinstance(result, tuple), "leaving training into another region should hand off"
-        assert isinstance(result[0], WildernessAgent)
+        assert isinstance(result[0], ExplorationAgent)
+        assert result[0]._agent_type == "wilderness"
 
     @pytest.mark.asyncio
     async def test_same_context_city_move_does_not_hand_off(self):

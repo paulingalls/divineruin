@@ -19,6 +19,31 @@ MilestoneType = Literal[
 ]
 
 
+# --- Spell tier unlock gate (M8) ---
+
+# Minimum character level to learn a spell of each tier. Promotes the L4/L7/L13
+# "unlock" milestone narration into an enforced gate. Shared by spell acquisition
+# (story-005 learn) and preparation (story-006). Ref: 02_archetypes.md M2.4 L163.
+MIN_LEVEL_BY_SPELL_TIER: dict[str, int] = {
+    "cantrip": 1,
+    "minor": 1,
+    "standard": 4,
+    "major": 7,
+    "supreme": 13,
+}
+
+
+def is_spell_tier_unlocked(tier: str, level: int) -> bool:
+    """True if a character of `level` may learn/prepare a `tier` spell.
+
+    Fails loud on an unknown tier — callers must pass a known spell_tier
+    (cantrip/minor/standard/major/supreme), never default it.
+    """
+    if tier not in MIN_LEVEL_BY_SPELL_TIER:
+        raise ValueError(f"unknown spell tier {tier!r}; expected one of {sorted(MIN_LEVEL_BY_SPELL_TIER)}")
+    return level >= MIN_LEVEL_BY_SPELL_TIER[tier]
+
+
 # --- Data structures ---
 
 

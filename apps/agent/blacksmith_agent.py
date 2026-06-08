@@ -3,8 +3,9 @@
 Split from story-004 (the customer chose a dedicated agent over folding repair into
 DispatchAgent). Holds repair_item off the region/dispatch agents so each stays under
 Anthropic's strict-tool ceiling (llm_config.MAX_STRICT_TOOLS; ADR 0004). Reached by
-an intent handoff (enter_blacksmith) from the City region agent; hands back via
-conclude_blacksmith. Mirrors the CombatAgent/DispatchAgent (Agent, json) tuple handoff.
+an intent handoff (enter_mode(mode="blacksmith"), M5 fold) from a region agent; hands
+back via conclude_blacksmith. Mirrors the CombatAgent/DispatchAgent (Agent, json) tuple
+handoff.
 """
 
 from typing import Any
@@ -32,7 +33,7 @@ class BlacksmithAgent(BaseGameAgent):
     """Specialized agent for repairing gear at a settlement forge.
 
     Uses BLACKSMITH_SYSTEM_PROMPT and a focused tool set (no combat, exploration,
-    movement, or session tools). Handed off to by enter_blacksmith from the City
+    movement, or session tools). Handed off to by enter_mode(mode="blacksmith") from a
     region agent; hands back via conclude_blacksmith.
     """
 

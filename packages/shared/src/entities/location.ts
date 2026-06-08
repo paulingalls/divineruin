@@ -3,6 +3,10 @@ export interface HiddenElement {
   discover_skill: string;
   dc: number;
   description: string;
+  // M6: binds the element to an examinable target (a key_feature or exit id) so
+  // check(skill, target) can scope discovery. Optional; the target-matching
+  // contract is owned by the discovery verb (story-002).
+  attaches_to?: string;
 }
 
 export interface LocationExit {

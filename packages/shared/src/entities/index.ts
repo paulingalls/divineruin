@@ -19,3 +19,25 @@ export type {
 export type { GameEvent, EventTrigger, EventEffects, EventEscalation } from "./event";
 
 export type { Faction, ReputationTier } from "./faction";
+
+export type {
+  Archetype,
+  ArchetypeHp,
+  ArchetypeResource,
+  PoolFormula,
+  StartingSkills,
+  HpCategory,
+  ResourcePattern,
+  MagicSource,
+} from "./archetype";
+
+export type { Ability, Cost, AbilityType } from "./ability";
+export type { MentorVariant } from "./mentor_variant";
+export type { Spell, SpellSource, SpellTier } from "./spell";
+export type {
+  Milestone,
+  MilestoneTier,
+  MilestoneKind,
+  SpecializationOption,
+  Grant,
+} from "./milestone";

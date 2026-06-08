@@ -277,7 +277,6 @@ class BackgroundProcess:
                 if quest_objective(q)
             ]
 
-            region_type = getattr(self._agent, "_agent_type", "city")
             warm = await build_warm_layer(
                 self._sd.location_id,
                 self._sd.player_id,
@@ -288,7 +287,6 @@ class BackgroundProcess:
                 corruption_level=self._sd.corruption_level,
                 location=location,
                 npcs_raw=npcs_raw,
-                region_type=region_type,
                 scene_cache=self._scene_cache or None,
                 training=training or None,
             )
@@ -303,9 +301,7 @@ class BackgroundProcess:
         static_key = (self._sd.location_id, self._sd.has_companion)
         if static_key != self._last_static_key:
             self._last_static_key = static_key
-            self._cached_static = build_system_prompt(
-                self._sd.location_id, companion=self._sd.companion, region_type=region_type
-            )
+            self._cached_static = build_system_prompt(self._sd.location_id, companion=self._sd.companion)
         full_prompt = build_full_prompt(self._cached_static, warm)
         await self._agent.update_instructions(full_prompt)
         logger.info("Warm layer updated (%d chars)", len(warm))

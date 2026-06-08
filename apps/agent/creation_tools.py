@@ -15,14 +15,16 @@ from typing import Literal
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import character_spells
 import db_mutations
 import db_queries
 import event_types as E
+from archetypes import get_archetype_chassis
 from asset_utils import slug_asset_url
 from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
-from creation_rules import build_character_data, infer_culture
+from creation_rules import build_character_data, infer_culture, select_starting_spells
 from game_events import publish_game_event
 from session_data import SessionData
 
@@ -275,6 +277,17 @@ async def finalize_character(context: RunContext) -> str | tuple:
     except Exception as e:
         logger.exception("Failed to create player %s", sd.player_id)
         raise ToolError("Failed to save character. Please try again.") from e
+
+    # Grant starting elective spells (M8 story-003): the 9 single-source casters begin
+    # with a source-appropriate cantrip + minor, prepared (pre-game training). No-op for
+    # martials. Non-fatal — the character is already persisted; a grant hiccup must not
+    # strand a created character, so it is logged rather than raised.
+    try:
+        chassis = get_archetype_chassis(cs.class_choice)
+        for spell_id in select_starting_spells(cs.class_choice, chassis.magic_source):
+            await character_spells.record_learned(sd.player_id, spell_id, "training", is_prepared=True)
+    except Exception:
+        logger.exception("Failed to grant starting spells for %s", sd.player_id)
 
     # Update session state
     sd.location_id = character_data["location_id"]

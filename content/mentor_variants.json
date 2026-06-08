@@ -1,0 +1,1042 @@
+[
+  {
+    "id": "warrior_cleaving_blow_drathian",
+    "ability_id": "warrior_cleaving_blow",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 5,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "A single melee attack hits up to 2 adjacent enemies. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "Cleaving Blow, the Drathian way — all muscle and momentum, footing spent for force.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "warrior_cleaving_blow_keldaran",
+    "ability_id": "warrior_cleaving_blow",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "A single melee attack hits up to 2 adjacent enemies. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "Cleaving Blow, Hold-forged — economical and exact, the weak seam found and split.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "warrior_iron_stance_keldaran",
+    "ability_id": "warrior_iron_stance",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 2,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Until next turn: can't be moved, advantage on saves, resistance to all damage. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "A Keldaran iron stance: no motion wasted, struck like a hammer that knows the grain.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "warrior_iron_stance_thornwarden",
+    "ability_id": "warrior_iron_stance",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Until next turn: can't be moved, advantage on saves, resistance to all damage. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "Iron Stance, Thornwarden-patient — a feint first, then the trap snaps shut.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "warrior_precision_strike_thornwarden",
+    "ability_id": "warrior_precision_strike",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Gain advantage on your next attack. Best against high-AC targets. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "A Warden's precision strike: still as rootwood, reading the foe before the strike lands.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "warrior_precision_strike_tidecaller",
+    "ability_id": "warrior_precision_strike",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 2,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Gain advantage on your next attack. Best against high-AC targets. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "Precision Strike, Tidecaller-fluid — never planting, each motion flowing into the next.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "warrior_reckless_assault_tidecaller",
+    "ability_id": "warrior_reckless_assault",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 1,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Advantage on all attacks this round, but attacks against you also have advantage. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "A Tideborn reckless assault: read the current, move with it, strike on the swell.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "warrior_reckless_assault_drathian",
+    "ability_id": "warrior_reckless_assault",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 3,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Advantage on all attacks this round, but attacks against you also have advantage. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "A Steppe-born reckless assault: war-drums in the blood, the whole body thrown behind it.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "warrior_taunt_drathian",
+    "ability_id": "warrior_taunt",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 3,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Force one enemy to attack you for 1 round (WIS save negates). Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "Taunt loosed with a clansman's abandon — heavier, wider, unstoppable once begun.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "warrior_taunt_keldaran",
+    "ability_id": "warrior_taunt",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 1,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Force one enemy to attack you for 1 round (WIS save negates). Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "Taunt measured to the breath — stone-patient, then precise as a chisel.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "warrior_unstoppable_charge_keldaran",
+    "ability_id": "warrior_unstoppable_charge",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Double-speed move in a straight line + attack. Target STR save or knocked prone. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "The Holds teach unstoppable charge as craft: pressure, timing, armor undone by technique.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "warrior_unstoppable_charge_thornwarden",
+    "ability_id": "warrior_unstoppable_charge",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 4,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Double-speed move in a straight line + attack. Target STR save or knocked prone. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "Unstoppable Charge drawn slow as rising sap, then sudden — the forest's own ambush.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "warrior_war_cry_thornwarden",
+    "ability_id": "warrior_war_cry",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 5,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "All enemies in earshot: WIS save or Frightened 1 round. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "The Thornveld way of war cry: yield like a branch, bind like a thorn.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "warrior_war_cry_tidecaller",
+    "ability_id": "warrior_war_cry",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 4,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "All enemies in earshot: WIS save or Frightened 1 round. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "War Cry like water finding its level — unhurried, then sudden as a breaking wave.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "warrior_whirlwind_tidecaller",
+    "ability_id": "warrior_whirlwind",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 4,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Attack every enemy within melee range (one roll per target). Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "The Isles teach whirlwind as tide: give ground, gather momentum, return harder.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "warrior_whirlwind_drathian",
+    "ability_id": "warrior_whirlwind",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 6,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Attack every enemy within melee range (one roll per target). Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "The Drathian whirlwind lands like a charging horse: raw, committed, final.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "guardian_avengers_mark_drathian",
+    "ability_id": "guardian_avengers_mark",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 5,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "When an ally drops to 0 HP, your next attack deals double damage. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "Avenger's Mark, the Drathian way — all muscle and momentum, footing spent for force.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "guardian_avengers_mark_keldaran",
+    "ability_id": "guardian_avengers_mark",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "When an ally drops to 0 HP, your next attack deals double damage. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "Avenger's Mark, Hold-forged — economical and exact, the weak seam found and split.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "guardian_body_block_keldaran",
+    "ability_id": "guardian_body_block",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 2,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Move 10 ft and block a passage. No creature can pass your space until next turn. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "A Keldaran body block: no motion wasted, struck like a hammer that knows the grain.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "guardian_body_block_thornwarden",
+    "ability_id": "guardian_body_block",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Move 10 ft and block a passage. No creature can pass your space until next turn. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "Body Block, Thornwarden-patient — a feint first, then the trap snaps shut.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "guardian_challenging_shout_thornwarden",
+    "ability_id": "guardian_challenging_shout",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "All enemies within 15 ft: WIS save or must include you as a target if attacking this round. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "A Warden's challenging shout: still as rootwood, reading the foe before the strike lands.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "guardian_challenging_shout_tidecaller",
+    "ability_id": "guardian_challenging_shout",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 2,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "All enemies within 15 ft: WIS save or must include you as a target if attacking this round. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "Challenging Shout, Tidecaller-fluid — never planting, each motion flowing into the next.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "guardian_fortify_tidecaller",
+    "ability_id": "guardian_fortify",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 2,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Grant one ally within 30 ft resistance to the next damage instance (half damage). Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "A Tideborn fortify: read the current, move with it, strike on the swell.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "guardian_fortify_drathian",
+    "ability_id": "guardian_fortify",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 4,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Grant one ally within 30 ft resistance to the next damage instance (half damage). Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "A Steppe-born fortify: war-drums in the blood, the whole body thrown behind it.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "guardian_inspiring_presence_drathian",
+    "ability_id": "guardian_inspiring_presence",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 5,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "All allies in earshot gain +1 to attack rolls. Lasts 3 rounds. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "Inspiring Presence loosed with a clansman's abandon — heavier, wider, unstoppable once begun.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "guardian_inspiring_presence_keldaran",
+    "ability_id": "guardian_inspiring_presence",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "All allies in earshot gain +1 to attack rolls. Lasts 3 rounds. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "Inspiring Presence measured to the breath — stone-patient, then precise as a chisel.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "guardian_living_fortress_keldaran",
+    "ability_id": "guardian_living_fortress",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 4,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "10 ft zone for 2 rounds: allies +2 AC and advantage on saves, enemies -2 to attacks. Can't move. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "The Holds teach living fortress as craft: pressure, timing, armor undone by technique.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "guardian_living_fortress_thornwarden",
+    "ability_id": "guardian_living_fortress",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 5,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "10 ft zone for 2 rounds: allies +2 AC and advantage on saves, enemies -2 to attacks. Can't move. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "Living Fortress drawn slow as rising sap, then sudden — the forest's own ambush.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "guardian_taunt_thornwarden",
+    "ability_id": "guardian_taunt",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 2,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Force one enemy to attack you for 1 round (WIS save negates). Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "The Thornveld way of taunt: yield like a branch, bind like a thorn.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "guardian_taunt_tidecaller",
+    "ability_id": "guardian_taunt",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 1,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Force one enemy to attack you for 1 round (WIS save negates). Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "Taunt like water finding its level — unhurried, then sudden as a breaking wave.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "guardian_unbreakable_tidecaller",
+    "ability_id": "guardian_unbreakable",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 4,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "For 2 rounds all damage to you is halved; you can't attack during this time. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "The Isles teach unbreakable as tide: give ground, gather momentum, return harder.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "guardian_unbreakable_drathian",
+    "ability_id": "guardian_unbreakable",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 6,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "For 2 rounds all damage to you is halved; you can't attack during this time. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "The Drathian unbreakable lands like a charging horse: raw, committed, final.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "skirmisher_dual_strike_drathian",
+    "ability_id": "skirmisher_dual_strike",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 4,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Two attacks with light weapons, same or different targets. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "Dual Strike, the Drathian way — all muscle and momentum, footing spent for force.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "skirmisher_dual_strike_keldaran",
+    "ability_id": "skirmisher_dual_strike",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 2,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Two attacks with light weapons, same or different targets. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "Dual Strike, Hold-forged — economical and exact, the weak seam found and split.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "skirmisher_evasive_sprint_keldaran",
+    "ability_id": "skirmisher_evasive_sprint",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Dash + advantage on DEX saves + 4 AC until next turn. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "A Keldaran evasive sprint: no motion wasted, struck like a hammer that knows the grain.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "skirmisher_evasive_sprint_thornwarden",
+    "ability_id": "skirmisher_evasive_sprint",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 4,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Dash + advantage on DEX saves + 4 AC until next turn. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "Evasive Sprint, Thornwarden-patient — a feint first, then the trap snaps shut.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "skirmisher_hamstring_thornwarden",
+    "ability_id": "skirmisher_hamstring",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "On hit, target's speed is halved for 2 rounds (CON save each turn). Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "A Warden's hamstring: still as rootwood, reading the foe before the strike lands.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "skirmisher_hamstring_tidecaller",
+    "ability_id": "skirmisher_hamstring",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 2,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "On hit, target's speed is halved for 2 rounds (CON save each turn). Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "Hamstring, Tidecaller-fluid — never planting, each motion flowing into the next.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "skirmisher_predators_pursuit_tidecaller",
+    "ability_id": "skirmisher_predators_pursuit",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 2,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Mark an enemy: always know its position, +1d6 damage against it. Until death or combat ends. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "A Tideborn predator's pursuit: read the current, move with it, strike on the swell.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "skirmisher_predators_pursuit_drathian",
+    "ability_id": "skirmisher_predators_pursuit",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 4,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Mark an enemy: always know its position, +1d6 damage against it. Until death or combat ends. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "A Steppe-born predator's pursuit: war-drums in the blood, the whole body thrown behind it.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "skirmisher_spring_attack_drathian",
+    "ability_id": "skirmisher_spring_attack",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 5,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Move, attack at any point, then move again. Total up to double speed. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "Spring Attack loosed with a clansman's abandon — heavier, wider, unstoppable once begun.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "skirmisher_spring_attack_keldaran",
+    "ability_id": "skirmisher_spring_attack",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Move, attack at any point, then move again. Total up to double speed. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "Spring Attack measured to the breath — stone-patient, then precise as a chisel.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "skirmisher_throwing_mastery_keldaran",
+    "ability_id": "skirmisher_throwing_mastery",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 1,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Throw a weapon at range with no disadvantage and draw another for free. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "The Holds teach throwing mastery as craft: pressure, timing, armor undone by technique.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "skirmisher_throwing_mastery_thornwarden",
+    "ability_id": "skirmisher_throwing_mastery",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 2,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Throw a weapon at range with no disadvantage and draw another for free. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "Throwing Mastery drawn slow as rising sap, then sudden — the forest's own ambush.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "skirmisher_tumbling_assault_thornwarden",
+    "ability_id": "skirmisher_tumbling_assault",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Move through enemy spaces; each enemy passed takes a free attack at -2. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "The Thornveld way of tumbling assault: yield like a branch, bind like a thorn.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "skirmisher_tumbling_assault_tidecaller",
+    "ability_id": "skirmisher_tumbling_assault",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 2,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Move through enemy spaces; each enemy passed takes a free attack at -2. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "Tumbling Assault like water finding its level — unhurried, then sudden as a breaking wave.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "skirmisher_whirlwind_tidecaller",
+    "ability_id": "skirmisher_whirlwind",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 4,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Attack every enemy in melee range (one roll per target). Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "A skirmisher's whirlwind, Tidecaller-light — a spinning eddy that touches every foe and is gone before they close.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "skirmisher_whirlwind_drathian",
+    "ability_id": "skirmisher_whirlwind",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 6,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Attack every enemy in melee range (one roll per target). Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "A skirmisher's whirlwind, Drathian-heavy — a low brutal sweep that scythes through the press, footing spent for reach.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "rogue_blade_flurry_drathian",
+    "ability_id": "rogue_blade_flurry",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 5,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "3 quick attacks at -2 each. Each can trigger Sneak Attack if conditions are met. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "Blade Flurry, the Drathian way — all muscle and momentum, footing spent for force.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "rogue_blade_flurry_keldaran",
+    "ability_id": "rogue_blade_flurry",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "3 quick attacks at -2 each. Each can trigger Sneak Attack if conditions are met. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "Blade Flurry, Hold-forged — economical and exact, the weak seam found and split.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "rogue_crippling_strike_keldaran",
+    "ability_id": "rogue_crippling_strike",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 2,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "On hit, target's speed is halved until the end of their next turn. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "A Keldaran crippling strike: no motion wasted, struck like a hammer that knows the grain.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "rogue_crippling_strike_thornwarden",
+    "ability_id": "rogue_crippling_strike",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "On hit, target's speed is halved until the end of their next turn. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "Crippling Strike, Thornwarden-patient — a feint first, then the trap snaps shut.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "rogue_dirty_trick_thornwarden",
+    "ability_id": "rogue_dirty_trick",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 2,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Target has disadvantage on their next action. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "A Warden's dirty trick: still as rootwood, reading the foe before the strike lands.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "rogue_dirty_trick_tidecaller",
+    "ability_id": "rogue_dirty_trick",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 1,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Target has disadvantage on their next action. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "Dirty Trick, Tidecaller-fluid — never planting, each motion flowing into the next.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "rogue_exploit_weakness_tidecaller",
+    "ability_id": "rogue_exploit_weakness",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 3,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Study for 1 round, then a Sneak Attack deals maximum damage (no roll). Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "A Tideborn exploit weakness: read the current, move with it, strike on the swell.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "rogue_exploit_weakness_drathian",
+    "ability_id": "rogue_exploit_weakness",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 5,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Study for 1 round, then a Sneak Attack deals maximum damage (no roll). Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "A Steppe-born exploit weakness: war-drums in the blood, the whole body thrown behind it.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "rogue_quick_fingers_drathian",
+    "ability_id": "rogue_quick_fingers",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 3,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Sleight of Hand as a quick action. Steal, plant, or swap mid-combat. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "Quick Fingers loosed with a clansman's abandon — heavier, wider, unstoppable once begun.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "rogue_quick_fingers_keldaran",
+    "ability_id": "rogue_quick_fingers",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 1,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Sleight of Hand as a quick action. Steal, plant, or swap mid-combat. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "Quick Fingers measured to the breath — stone-patient, then precise as a chisel.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "rogue_shadow_step_keldaran",
+    "ability_id": "rogue_shadow_step",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Move undetected to a new position. Must end in cover or shadow. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "The Holds teach shadow step as craft: pressure, timing, armor undone by technique.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "rogue_shadow_step_thornwarden",
+    "ability_id": "rogue_shadow_step",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 4,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Move undetected to a new position. Must end in cover or shadow. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "Shadow Step drawn slow as rising sap, then sudden — the forest's own ambush.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "rogue_smoke_bomb_thornwarden",
+    "ability_id": "rogue_smoke_bomb",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "10 ft obscurement cloud; attacks through it have disadvantage. Lasts 1 round. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "The Thornveld way of smoke bomb: yield like a branch, bind like a thorn.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "rogue_smoke_bomb_tidecaller",
+    "ability_id": "rogue_smoke_bomb",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 2,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "10 ft obscurement cloud; attacks through it have disadvantage. Lasts 1 round. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "Smoke Bomb like water finding its level — unhurried, then sudden as a breaking wave.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "rogue_vanish_tidecaller",
+    "ability_id": "rogue_vanish",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 4,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Become fully hidden mid-combat. Break all targeting. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "The Isles teach vanish as tide: give ground, gather momentum, return harder.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "rogue_vanish_drathian",
+    "ability_id": "rogue_vanish",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 6,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Become fully hidden mid-combat. Break all targeting. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "The Drathian vanish lands like a charging horse: raw, committed, final.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "spy_double_agent_drathian",
+    "ability_id": "spy_double_agent",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 6,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "In a cover identity: convince an NPC to switch allegiance for the encounter. Contested CHA. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "Double Agent, the Drathian way — all muscle and momentum, footing spent for force.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "spy_double_agent_keldaran",
+    "ability_id": "spy_double_agent",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 4,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "In a cover identity: convince an NPC to switch allegiance for the encounter. Contested CHA. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "Double Agent, Hold-forged — economical and exact, the weak seam found and split.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "spy_garrote_keldaran",
+    "ability_id": "spy_garrote",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 2,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "From hidden: a silent attack that grapples and silences. 1d6/round. STR save to escape. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "A Keldaran garrote: no motion wasted, struck like a hammer that knows the grain.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "spy_garrote_thornwarden",
+    "ability_id": "spy_garrote",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 3,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "From hidden: a silent attack that grapples and silences. 1d6/round. STR save to escape. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "Garrote, Thornwarden-patient — a feint first, then the trap snaps shut.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "spy_lip_reading_thornwarden",
+    "ability_id": "spy_lip_reading",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 1,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Understand visible conversations you can't hear — through glass, across rooms. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "A Warden's lip reading: still as rootwood, reading the foe before the strike lands.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "spy_lip_reading_tidecaller",
+    "ability_id": "spy_lip_reading",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 0,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Understand visible conversations you can't hear — through glass, across rooms. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "Lip Reading, Tidecaller-fluid — never planting, each motion flowing into the next.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "spy_misdirection_tidecaller",
+    "ability_id": "spy_misdirection",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 2,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Plant false evidence or a trail. Investigators follow the planted lead (Deception vs Investigation). Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "A Tideborn misdirection: read the current, move with it, strike on the swell.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "spy_misdirection_drathian",
+    "ability_id": "spy_misdirection",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 4,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Plant false evidence or a trail. Investigators follow the planted lead (Deception vs Investigation). Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "A Steppe-born misdirection: war-drums in the blood, the whole body thrown behind it.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "spy_poison_craft_drathian",
+    "ability_id": "spy_poison_craft",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 3,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "Apply poison to weapon or drink. Next hit: 2d6 poison + Poisoned (CON save). Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "Poison Craft loosed with a clansman's abandon — heavier, wider, unstoppable once begun.",
+    "cultural_attribution": "Drathian Clans technique"
+  },
+  {
+    "id": "spy_poison_craft_keldaran",
+    "ability_id": "spy_poison_craft",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 1,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Apply poison to weapon or drink. Next hit: 2d6 poison + Poisoned (CON save). Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "Poison Craft measured to the breath — stone-patient, then precise as a chisel.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "spy_sleeper_strike_keldaran",
+    "ability_id": "spy_sleeper_strike",
+    "mentor_id": "mentor_keldaran_forgemaster",
+    "cost": {
+      "stamina": 4,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Social scene: mark a target (Sleight of Hand). Within 1 hour, trigger unconsciousness for 1 min (CON save). Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "narration_cue": "The Holds teach sleeper strike as craft: pressure, timing, armor undone by technique.",
+    "cultural_attribution": "Keldaran Holds technique"
+  },
+  {
+    "id": "spy_sleeper_strike_thornwarden",
+    "ability_id": "spy_sleeper_strike",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 5,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "Social scene: mark a target (Sleight of Hand). Within 1 hour, trigger unconsciousness for 1 min (CON save). Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "Sleeper Strike drawn slow as rising sap, then sudden — the forest's own ambush.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "spy_vanish_in_plain_sight_thornwarden",
+    "ability_id": "spy_vanish_in_plain_sight",
+    "mentor_id": "mentor_thornwarden_elder",
+    "cost": {
+      "stamina": 4,
+      "focus": 1,
+      "scaling": null
+    },
+    "effect": "End combat by disappearing into a crowd or environment. Requires 3+ non-hostiles or cover. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "narration_cue": "The Thornveld way of vanish in plain sight: yield like a branch, bind like a thorn.",
+    "cultural_attribution": "Thornwardens technique"
+  },
+  {
+    "id": "spy_vanish_in_plain_sight_tidecaller",
+    "ability_id": "spy_vanish_in_plain_sight",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 3,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "End combat by disappearing into a crowd or environment. Requires 3+ non-hostiles or cover. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "Vanish in Plain Sight like water finding its level — unhurried, then sudden as a breaking wave.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "spy_whisper_network_tidecaller",
+    "ability_id": "spy_whisper_network",
+    "mentor_id": "mentor_tidecaller_bosun",
+    "cost": {
+      "stamina": 3,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "In a settlement: learn 2 rumors (1 true, 1 partial) and who is asking about you. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "narration_cue": "The Isles teach whisper network as tide: give ground, gather momentum, return harder.",
+    "cultural_attribution": "Tidecallers technique"
+  },
+  {
+    "id": "spy_whisper_network_drathian",
+    "ability_id": "spy_whisper_network",
+    "mentor_id": "mentor_drathian_warleader",
+    "cost": {
+      "stamina": 5,
+      "focus": 0,
+      "scaling": null
+    },
+    "effect": "In a settlement: learn 2 rumors (1 true, 1 partial) and who is asking about you. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "narration_cue": "The Drathian whisper network lands like a charging horse: raw, committed, final.",
+    "cultural_attribution": "Drathian Clans technique"
+  }
+]

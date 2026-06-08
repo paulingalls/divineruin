@@ -43,13 +43,14 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
     current = sd.onboarding_beat
 
     if current >= 5:
-        # Beat 5 complete — handoff to CityAgent
+        # Beat 5 complete — hand off to open-world exploration (city region).
         sd.onboarding_beat = None
         await db_mutations.set_player_flag(sd.player_id, "onboarding_beat", ONBOARDING_COMPLETE)
 
         from livekit.agents.llm import ChatContext
 
-        from city_agent import CityAgent
+        from gameplay_agent import create_gameplay_agent
+        from region_types import REGION_CITY
 
         summary_ctx = ChatContext()
         summary_ctx.add_message(
@@ -63,8 +64,9 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
         result = json.dumps({"onboarding_complete": True, "location": sd.location_id})
         companion = sd.companion
         return (
-            CityAgent(
-                initial_location=sd.location_id,
+            create_gameplay_agent(
+                REGION_CITY,
+                sd.location_id,
                 companion=companion,
                 chat_ctx=summary_ctx,
             ),

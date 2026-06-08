@@ -1,6 +1,6 @@
 """Tests for the Python recipe accessors (story-005, M5.1).
 
-Mirrors the mocked-pool style of test_db.py: patch db._cache_get / _cache_set /
+Mirrors the mocked-pool style of tests/database/: patch db._cache_get / _cache_set /
 db.get_pool. The agent reads recipes from the DB (constraint 8508fdb1abc3) the
 same way the TS server does (apps/server/src/recipes.ts) — recipe:<id> and
 recipes:all cache keys, fail-loud parse via parse_recipe_row.

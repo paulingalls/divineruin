@@ -25,6 +25,7 @@ REBUILD_EVENT_TYPES = {
     E.COMBAT_ENDED,
     E.HOLLOW_CORRUPTION_CHANGED,
     E.DIVINE_FAVOR_CHANGED,
+    E.HIDDEN_REVEALED,
 }
 
 CORRUPTION_COMPANION_SPEECH: dict[int, str] = {
@@ -189,6 +190,13 @@ def handle_events(
             last_whisper = ev.payload.get("last_whisper_level", 0)
             if should_trigger_whisper(new_level, last_whisper):
                 queue_god_whisper(ev.payload, sd, speech_queue)
+
+        elif ev.event_type == E.HIDDEN_REVEALED:
+            # Record the revealed element for story-003's hot-layer assembly (same-turn
+            # reveal). The warm rebuild itself is already triggered via REBUILD_EVENT_TYPES.
+            element_id = ev.payload.get("element_id")
+            if element_id:
+                sd.recently_revealed_element_ids.append(element_id)
 
     return needs_rebuild, rider_triggered
 

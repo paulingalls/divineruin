@@ -8,19 +8,15 @@ breaches it should fail here as a unit test, not in production as a 400
 import pytest
 
 from blacksmith_agent import BLACKSMITH_TOOLS
-from city_agent import CITY_TOOLS
 from combat_agent import COMBAT_AGENT_TOOLS
 from creation_agent import CREATION_TOOLS
 from dispatch_agent import DISPATCH_TOOLS
-from dungeon_agent import DUNGEON_TOOLS
+from exploration_agent import EXPLORATION_TOOLS
 from llm_config import MAX_STRICT_TOOLS
 from onboarding_agent import ONBOARDING_TOOLS
-from wilderness_agent import WILDERNESS_TOOLS
 
 AGENT_TOOL_LISTS = [
-    ("city", CITY_TOOLS),
-    ("wilderness", WILDERNESS_TOOLS),
-    ("dungeon", DUNGEON_TOOLS),
+    ("exploration", EXPLORATION_TOOLS),
     ("combat", COMBAT_AGENT_TOOLS),
     ("training", DISPATCH_TOOLS),
     ("creation", CREATION_TOOLS),
@@ -34,10 +30,10 @@ def test_agent_within_strict_tool_limit(name, tools):
     assert len(tools) <= MAX_STRICT_TOOLS, f"{name} has {len(tools)} strict tools (ceiling {MAX_STRICT_TOOLS})"
 
 
-def test_city_freed_headroom_after_query_consolidation():
-    # story-010 collapsed the 4 query_* tools into one query_info, dropping City
-    # from 20 (at ceiling) to 17; story-008 spent one freed slot on the
-    # enter_dispatch intent tool (City==18); story-009 spent another on the
-    # enter_blacksmith intent tool (City==19), still with headroom under the ceiling.
-    assert len(CITY_TOOLS) == 19
-    assert len(CITY_TOOLS) < MAX_STRICT_TOOLS
+def test_exploration_strict_tool_count():
+    # M5 verb consolidation reclaimed slots on the old CityAgent (20->15 via transact /
+    # check / enter_mode folds). M7's exploration-agent collapse keeps that single 15-verb
+    # list for ALL regions, so the per-region ceiling no longer binds — 5 free slots remain
+    # under MAX_STRICT_TOOLS for the M2.4 spell tools (relieves debt e665104c753a).
+    assert len(EXPLORATION_TOOLS) == 15
+    assert len(EXPLORATION_TOOLS) == MAX_STRICT_TOOLS - 5

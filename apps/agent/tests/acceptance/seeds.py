@@ -56,6 +56,31 @@ async def seed_player(
     return player_id
 
 
+async def seed_player_with_pools(
+    conn: asyncpg.Connection | asyncpg.Pool,
+    *,
+    player_id: str = "player_1",
+    class_: str = "skirmisher",
+    stamina_current: int = 10,
+    focus_current: int = 10,
+) -> str:
+    """seed_player + add the Stamina/Focus pools the ability-activation tool reads.
+
+    seed_player's default has no pools; jsonb_set on the top-level '{stamina}' /
+    '{focus}' keys (parent `data` exists) initializes them. Shared by the M2.2 and
+    M9 ability/variant capstones, which deduct real Stamina/Focus on activation.
+    """
+    await seed_player(conn, player_id=player_id, class_=class_)
+    await conn.execute(
+        "UPDATE players SET data = jsonb_set(jsonb_set(data, '{stamina}', $2::jsonb), '{focus}', $3::jsonb) "
+        "WHERE player_id = $1",
+        player_id,
+        json.dumps({"current": stamina_current, "max": 10}),
+        json.dumps({"current": focus_current, "max": 10}),
+    )
+    return player_id
+
+
 async def clear_training_activities(conn: asyncpg.Connection | asyncpg.Pool, player_id: str = "player_1") -> None:
     """Drop any training rows so each scenario starts from an empty slot."""
     await conn.execute("DELETE FROM training_activities WHERE player_id = $1", player_id)

@@ -174,6 +174,48 @@ def _setup_reconnection(
 async def dm_session(ctx: agents.JobContext) -> None:
     player_id = _extract_player_id(ctx)
 
+    # Load the archetype chassis once per agent process. award_xp / update_quest
+    # call calculate_max_hp -> get_archetype_chassis, which needs the chassis
+    # populated (M2.1 folded the old module-level HP/resource constants into the
+    # DB-loaded SSOT). The async worker loads it separately at its own startup.
+    from archetypes import is_loaded, load_archetypes
+
+    if not is_loaded():
+        await load_archetypes()
+
+    # Load the archetype abilities once per agent process (M2.2). The DM voices
+    # ability activations via request_ability_activation, which reads this map.
+    from abilities import is_loaded as abilities_is_loaded
+    from abilities import load_abilities
+
+    if not abilities_is_loaded():
+        await load_abilities()
+
+    # Load the archetype milestones once per agent process (M2.3). The DM voices
+    # milestone progression via resolve_milestone, which reads this map.
+    from milestones import is_loaded as milestones_is_loaded
+    from milestones import load_milestones
+
+    if not milestones_is_loaded():
+        await load_milestones()
+
+    # Load the elective spell catalog once per agent process (M8). learn(spell,id)
+    # and spell preparation read this map; caster core spells stay abilities.
+    from spells import is_loaded as spells_is_loaded
+    from spells import load_spells
+
+    if not spells_is_loaded():
+        await load_spells()
+
+    # Load the mentor variant catalog once per agent process (M9). Activation
+    # applies an unlocked variant's cost/effect/narration override, which reads
+    # this map; the catalog keys variants to base martial elective techniques.
+    from mentor_variants import is_loaded as mentor_variants_is_loaded
+    from mentor_variants import load_mentor_variants
+
+    if not mentor_variants_is_loaded():
+        await load_mentor_variants()
+
     # Determine session type: new player (creation) vs returning
     player = None
     last_summary = None
@@ -214,7 +256,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if needs_creation:
         # --- Character creation mode ---
         # PrologueAgent plays audio, hands off to CreationAgent,
-        # which guides creation and hands off to CityAgent via finalize_character.
+        # which guides creation and hands off to the exploration agent via finalize_character.
         from prologue_agent import PrologueAgent
 
         userdata = SessionData(

@@ -11,6 +11,7 @@ import pytest
 
 from training_rules import (
     TRAINING_ACTIVITY_CONFIG,
+    ActivityTypeConfig,
     CompletionResult,
     DurationRange,
     MidpointDecision,
@@ -18,6 +19,7 @@ from training_rules import (
     TrainingActivityType,
     TrainingCycleInit,
     complete_training_cycle,
+    get_cycles_required,
     get_midpoint_decision,
     resolve_midpoint_decision,
     set_training_activity_types,
@@ -30,22 +32,25 @@ from training_rules import (
 
 ALL_ACTIVITY_TYPES: list[TrainingActivityType] = [
     "spell_cantrip",
+    "spell_minor",
     "spell_standard",
     "spell_major",
     "spell_supreme",
     "recipe_study",
     "technique_base",
     "technique_mentor",
+    "technique_mentor_variant",
     "skill_practice",
 ]
 
 
 class TestConfig:
-    def test_all_eight_activity_types_present(self) -> None:
+    def test_all_activity_types_present(self) -> None:
         assert set(TRAINING_ACTIVITY_CONFIG.keys()) == set(ALL_ACTIVITY_TYPES)
 
     def test_duration_ranges_are_positive(self) -> None:
-        for atype, (dur, _) in TRAINING_ACTIVITY_CONFIG.items():
+        for atype, cfg in TRAINING_ACTIVITY_CONFIG.items():
+            dur = cfg.duration
             assert dur.first_half_min > 0, f"{atype} first_half_min"
             assert dur.first_half_max >= dur.first_half_min, f"{atype} first_half range"
             assert dur.second_half_min > 0, f"{atype} second_half_min"
@@ -235,7 +240,7 @@ class TestCompleteTrainingCycle:
         assert result.counter_increment == 1
 
 
-# ── Duration range integration (all 8 types) ──────────────────────────
+# ── Duration range integration (all activity types) ───────────────────
 
 
 class TestDurationRanges:
@@ -244,6 +249,7 @@ class TestDurationRanges:
     # (type, min_total_seconds, max_total_seconds)
     EXPECTED_RANGES = [
         ("spell_cantrip", 5 * 3600, 9 * 3600),  # 5-9 hours
+        ("spell_minor", 6 * 3600, 10 * 3600),  # 6-10 hours
         ("spell_standard", 7 * 3600, 11 * 3600),  # 7-11 hours
         ("spell_major", 7 * 3600, 11 * 3600),  # 7-11 (standard/major row)
         ("spell_supreme", 9 * 3600, 14 * 3600),  # 9-14 hours
@@ -260,11 +266,51 @@ class TestDurationRanges:
         min_total: int,
         max_total: int,
     ) -> None:
-        dur, _ = TRAINING_ACTIVITY_CONFIG[atype]  # type: ignore[index]
+        dur = TRAINING_ACTIVITY_CONFIG[atype].duration  # type: ignore[index]
         actual_min = dur.first_half_min + dur.second_half_min
         actual_max = dur.first_half_max + dur.second_half_max
         assert actual_min >= min_total, f"{atype} min total too low"
         assert actual_max <= max_total, f"{atype} max total too high"
+
+
+# ── cycles_required (M8 story-004: data-driven tier→cycles) ─────────────
+
+
+class TestCyclesRequired:
+    """get_cycles_required surfaces the data-driven learn-cycle count per spell tier.
+
+    Counts live in content/training_activity_types.json (loaded by the autouse
+    conftest fixture); the spec table is Cantrip 1 / Minor 2 / Standard 3 /
+    Major 5 / Supreme 8.
+    """
+
+    @pytest.mark.parametrize(
+        "activity_type,expected",
+        [
+            ("spell_cantrip", 1),
+            ("spell_minor", 2),
+            ("spell_standard", 3),
+            ("spell_major", 5),
+            ("spell_supreme", 8),
+        ],
+    )
+    def test_returns_tier_cycle_count(self, activity_type: str, expected: int) -> None:
+        assert get_cycles_required(activity_type) == expected
+
+    def test_returns_mentor_variant_cycle_count(self) -> None:
+        # M9 story-002: the mentor-variant loop is the first NON-spell type to carry a
+        # cycle count (3 — the "2-3 session" loop), so get_cycles_required serves it too.
+        assert get_cycles_required("technique_mentor_variant") == 3
+
+    @pytest.mark.parametrize("activity_type", ["technique_base", "skill_practice", "recipe_study"])
+    def test_raises_on_non_spell_type(self, activity_type: str) -> None:
+        # Non-spell training carries no cycle count — fail loud, never default.
+        with pytest.raises(ValueError, match="cycles_required"):
+            get_cycles_required(activity_type)
+
+    def test_raises_on_unknown_type(self) -> None:
+        with pytest.raises(ValueError, match="Unknown"):
+            get_cycles_required("nonexistent")
 
 
 # ── Runtime-loaded config test seam ─────────────────────────────────────
@@ -274,15 +320,15 @@ class TestTrainingConfigSeam:
     def test_set_training_activity_types_populates_config(self) -> None:
         from training_rules import get_activity_type_config
 
-        fixture: dict[str, tuple[DurationRange, MidpointDecision]] = {
-            "technique_base": (
-                DurationRange(14400, 21600, 10800, 18000),
-                MidpointDecision(prompt="test", options=[]),
+        fixture: dict[str, ActivityTypeConfig] = {
+            "technique_base": ActivityTypeConfig(
+                duration=DurationRange(14400, 21600, 10800, 18000),
+                decision=MidpointDecision(prompt="test", options=[]),
             ),
         }
         set_training_activity_types(fixture)
 
-        dur, _ = get_activity_type_config("technique_base")
+        dur = get_activity_type_config("technique_base").duration
         assert dur.first_half_min == 14400
 
     def test_get_activity_type_config_raises_on_unknown(self) -> None:

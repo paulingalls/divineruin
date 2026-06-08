@@ -9,7 +9,7 @@ from sample_fixtures import mock_txn
 import event_types as E
 from background_process import BackgroundProcess
 from bg_speech import SpeechPriority
-from check_tools import _discover_hidden_element_impl
+from check_discovery import _check_discover_impl
 from event_bus import GameEvent
 from movement_tools import _check_exit_requirement
 from quest_tools import _apply_world_effects, _update_quest_impl
@@ -253,9 +253,10 @@ class TestDiscoverSetsFlag:
         mock_mutations.set_player_flag = AsyncMock()
         ctx = _make_context(location_id="test_loc")
         result = json.loads(
-            await _discover_hidden_element_impl(
+            await _check_discover_impl(
                 ctx,
-                element_id="test_seal",
+                "perception",
+                "seal",
                 content=mock_content,
                 queries=mock_queries,
                 mutations=mock_mutations,

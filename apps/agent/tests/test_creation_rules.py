@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from archetypes import get_archetype_chassis
 from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
@@ -77,24 +78,28 @@ class TestRaceAttributes:
 class TestClassMechanics:
     @pytest.mark.parametrize("class_id", list(CLASSES.keys()))
     def test_starting_hp(self, class_id):
-        cls = CLASSES[class_id]
+        # Starting HP = chassis level-1 max (hp_base + con_mod), the SSOT — story-004.
+        chassis = get_archetype_chassis(class_id)
         hp = calculate_starting_hp(class_id, 10)  # CON 10 = +0 modifier
-        assert hp["current"] == cls.hit_die
-        assert hp["max"] == cls.hit_die
+        assert hp["current"] == chassis.hp_base
+        assert hp["max"] == chassis.hp_base
         assert hp["current"] == hp["max"]
 
     @pytest.mark.parametrize("class_id", list(CLASSES.keys()))
     def test_starting_hp_with_high_con(self, class_id):
-        cls = CLASSES[class_id]
+        chassis = get_archetype_chassis(class_id)
         hp = calculate_starting_hp(class_id, 14)  # CON 14 = +2 modifier
-        assert hp["current"] == cls.hit_die + 2
-        assert hp["max"] == cls.hit_die + 2
+        assert hp["current"] == chassis.hp_base + 2
+        assert hp["max"] == chassis.hp_base + 2
 
     def test_starting_hp_minimum_one(self):
-        # A class with d6 and CON 1 (-5 modifier) should still have 1 HP
+        # calculate_hp floors HP at 1. Mage has the lowest hp_base (8); even at
+        # CON 1 (-5 modifier) that is 8 - 5 = 3, so no real archetype/CON combo
+        # reaches the floor today — but the chassis-derived value must stay >= 1.
         hp = calculate_starting_hp("mage", 1)
+        assert hp["current"] == 3
+        assert hp["max"] == 3
         assert hp["current"] >= 1
-        assert hp["max"] >= 1
 
     @pytest.mark.parametrize("class_id", list(CLASSES.keys()))
     def test_starting_equipment_shape(self, class_id):
@@ -105,16 +110,16 @@ class TestClassMechanics:
 
     @pytest.mark.parametrize("class_id", list(CLASSES.keys()))
     def test_skill_proficiencies_count(self, class_id):
-        cls = CLASSES[class_id]
+        chassis = get_archetype_chassis(class_id)
         profs = get_skill_proficiencies(class_id)
-        assert len(profs) == cls.num_skill_choices
+        assert len(profs) == chassis.num_skill_choices
 
     @pytest.mark.parametrize("class_id", list(CLASSES.keys()))
     def test_skill_proficiencies_from_pool(self, class_id):
-        cls = CLASSES[class_id]
+        chassis = get_archetype_chassis(class_id)
         profs = get_skill_proficiencies(class_id)
         for p in profs:
-            assert p in cls.skill_options, f"{p} not in {cls.skill_options}"
+            assert p in chassis.skill_options, f"{p} not in {chassis.skill_options}"
 
 
 # --- AC calculation ---
@@ -229,10 +234,11 @@ class TestBuildCharacterData:
             data = build_character_data("Test", "human", class_id, None, "Test.")
             assert data["gold"] == cls.starting_gold
 
-    def test_saving_throws_match_class(self):
-        for class_id, cls in CLASSES.items():
+    def test_saving_throws_match_chassis(self):
+        for class_id in CLASSES:
             data = build_character_data("Test", "human", class_id, None, "Test.")
-            assert data["saving_throw_proficiencies"] == list(cls.saving_throw_proficiencies)
+            chassis = get_archetype_chassis(class_id)
+            assert data["saving_throw_proficiencies"] == list(chassis.save_proficiencies)
 
     def test_invalid_race_raises(self):
         with pytest.raises(ValueError, match="Unknown race"):
@@ -246,22 +252,56 @@ class TestBuildCharacterData:
         with pytest.raises(ValueError, match="Unknown deity"):
             build_character_data("Aric", "human", "warrior", "fake_god", "Test.")
 
-    def test_custom_skill_choices(self):
-        data = build_character_data(
-            "Aric",
-            "human",
-            "rogue",
-            None,
-            "Test.",
-            skill_choices=["stealth", "perception", "investigation", "insight"],
-        )
-        assert data["proficiencies"] == ["stealth", "perception", "investigation", "insight"]
+    def test_starting_skills_are_the_chassis_fixed_grant(self):
+        # story-005: starting_skills are fixed per-archetype grants from the spec
+        # (num_choices == len(options)), so creation grants the full chassis list.
+        chassis = get_archetype_chassis("rogue")
+        data = build_character_data("Aric", "human", "rogue", None, "Test.")
+        assert data["proficiencies"] == list(chassis.skill_options)
+        assert len(data["proficiencies"]) == chassis.num_skill_choices
 
     def test_json_serializable(self):
         data = build_character_data("Aric", "human", "warrior", "kaelen", "Test.")
         serialized = json.dumps(data)
         roundtripped = json.loads(serialized)
         assert roundtripped == data
+
+
+# --- Chassis routing (story-004) ---
+
+
+class TestChassisRouting:
+    """Saves and skills come from the chassis SSOT, not a ClassData copy.
+
+    The shipped chassis happens to match the old CLASSES values, so equality
+    alone wouldn't prove the read is routed. These tests inject a chassis whose
+    saves/skills differ from anything CLASSES ever held and assert creation
+    follows the injected chassis. The autouse seed_archetypes fixture restores
+    the real chassis before each test, so the mutation doesn't leak.
+    """
+
+    def test_saves_route_from_chassis(self):
+        from dataclasses import replace
+
+        from archetypes import set_archetypes
+
+        custom = replace(get_archetype_chassis("warrior"), save_proficiencies=("charisma", "wisdom"))
+        set_archetypes({"warrior": custom})
+        data = build_character_data("Test", "human", "warrior", None, "Test.")
+        assert data["saving_throw_proficiencies"] == ["charisma", "wisdom"]
+
+    def test_skills_route_from_chassis(self):
+        from dataclasses import replace
+
+        from archetypes import set_archetypes
+
+        custom = replace(
+            get_archetype_chassis("warrior"),
+            skill_options=("arcana", "history", "religion"),
+            num_skill_choices=2,
+        )
+        set_archetypes({"warrior": custom})
+        assert get_skill_proficiencies("warrior") == ["arcana", "history"]
 
 
 # --- Culture inference ---
@@ -388,8 +428,8 @@ class TestDataIntegrity:
 
     def test_all_class_saving_throws_valid(self):
         valid_attrs = {"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
-        for class_id, cls in CLASSES.items():
-            for st in cls.saving_throw_proficiencies:
+        for class_id in CLASSES:
+            for st in get_archetype_chassis(class_id).save_proficiencies:
                 assert st in valid_attrs, f"{class_id} has invalid saving throw {st}"
 
     @pytest.mark.parametrize(

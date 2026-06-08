@@ -36,6 +36,7 @@ import workspace
 from db_errors import db_tool
 from disposition import resolve_disposition
 from session_data import SessionData
+from tool_preconditions import require_npc_present
 from tool_support import _validate_id
 from workspace import WorkspaceType
 
@@ -164,11 +165,8 @@ async def _rent_workspace_impl(
     location_id = context.userdata.location_id
 
     # Co-location gate (concern bec87679b223): you can only rent from an NPC who is
-    # actually here. Disposition alone is not enough — an absent NPC must not gate a
-    # rental. Reuse the canonical schedule-based presence query.
-    present = await queries_mod.get_npcs_at_location(location_id)
-    if npc_id not in {npc["id"] for npc in present}:
-        raise ToolError(f"{npc_id} isn't here to rent a workspace from.")
+    # actually here — disposition alone is not enough.
+    await require_npc_present(location_id, npc_id, queries=queries_mod, suffix=" to rent a workspace from")
 
     # Disposition gates the price; resolve_disposition falls back to the NPC's
     # content default_disposition when the player has no recorded standing.
@@ -176,7 +174,7 @@ async def _rent_workspace_impl(
 
     # An off-tier content default_disposition (not a canonical tier) makes
     # compute_rental_price raise ValueError; that's a content bug, so surface it as
-    # ToolError to keep the tool's ADR-0002 error shape (mirrors learn_recipe).
+    # ToolError to keep the tool's ADR-0002 error shape (mirrors _learn_recipe_impl).
     pricing = await pricing_mod.get_economy_pricing()
     try:
         quote = workspace_mod.compute_rental_price(
@@ -247,7 +245,7 @@ async def _start_crafting_project_impl(
     player_id = context.userdata.player_id
     location_id = context.userdata.location_id
 
-    # Cached reference reads BEFORE the txn (pool-exhaustion guard, like learn_recipe).
+    # Cached reference reads BEFORE the txn (pool-exhaustion guard, like _learn_recipe_impl).
     recipe = await recipes_mod.get_recipe(recipe_id)
     if recipe is None:
         raise ToolError(f"Unknown recipe: {recipe_id}")
@@ -284,7 +282,7 @@ async def _start_crafting_project_impl(
         # A non-canonical crafting/recipe tier makes run_preflight Check 2 raise a raw
         # ValueError (DB-validated at write boundaries, so a content/migration bug, not
         # user input); surface it as ToolError to keep the tool's ADR-0002 error shape
-        # (mirrors learn_recipe's validate_recipe_slot_capacity wrap + rent_workspace).
+        # (mirrors _learn_recipe_impl's validate_recipe_slot_capacity wrap + rent_workspace).
         try:
             result = preflight_mod.run_preflight(recipe, known, crafting_tier, accessible, available, catalog)
         except ValueError as exc:

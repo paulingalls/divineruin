@@ -3,8 +3,12 @@ import {
   validateErrandDispatch,
   numericToDangerLevel,
   setDestinationDangerLevels,
+  loadDestinationDangerLevels,
+  getDangerLevel,
   BLOCKED_DANGER_COMBOS,
 } from "./errand_risk.ts";
+import { setLocations } from "./locations.ts";
+import type { Location, LocationCondition } from "@divineruin/shared";
 import { setupDangerLevelFixture } from "./test-fixtures/danger-levels.ts";
 import { setupErrandTemplatesFixture } from "./test-fixtures/errand-templates.ts";
 
@@ -36,6 +40,40 @@ describe("numericToDangerLevel", () => {
   });
 });
 
+describe("loadDestinationDangerLevels — derives bands from loaded locations", () => {
+  // The danger map is no longer its own SQL read; it is derived from the locations
+  // loaded by locations.ts (listLocations()), so locations are the single SQL source.
+  function loc(id: string, danger_level?: number): Location {
+    const base: Location = {
+      id,
+      name: id,
+      tier: 1,
+      district: "d",
+      region: "r",
+      atmosphere: "a",
+      tags: [],
+      exits: {},
+    };
+    if (danger_level !== undefined) base.danger_level = danger_level;
+    return base;
+  }
+
+  test("maps each location's numeric danger_level to its band; missing -> safe", () => {
+    setLocations(
+      new Map<string, Location>([
+        ["safe_place", loc("safe_place", 0)],
+        ["risky", loc("risky", 2)],
+        ["unmarked", loc("unmarked")],
+      ]),
+    );
+    loadDestinationDangerLevels();
+    expect(getDangerLevel("safe_place")).toBe("safe");
+    expect(getDangerLevel("risky")).toBe("dangerous");
+    expect(getDangerLevel("unmarked")).toBe("safe");
+    setLocations(new Map());
+  });
+});
+
 describe("BLOCKED_DANGER_COMBOS conformance", () => {
   // game_mechanics_core.md §Companion Risk L887-892 marks these cells N/A. Risk
   // is now rolled in the Python worker (ADR 0006); the risk table moved to
@@ -56,6 +94,64 @@ describe("BLOCKED_DANGER_COMBOS conformance", () => {
         "extreme|acquire",
       ]),
     );
+  });
+});
+
+describe("per-condition danger overrides vs the static gate (concern 30b8d7c984c0)", () => {
+  // loadDestinationDangerLevels derives the band map from each location's TOP-LEVEL
+  // danger_level only; validateErrandDispatch is stateless (no world-state arg) so it
+  // cannot apply per-condition overrides (Location.conditions[*].danger_level /
+  // danger_level_add) at dispatch time. This guard makes that blind spot EXPLICIT: it
+  // recomputes each condition's effective band and asserts no condition introduces a
+  // BLOCKED_DANGER_COMBOS entry the top-level band misses — EXCEPT the known, accepted
+  // gaps below. A NEW silent gap (new content, or drift in the known one) fails this test.
+  //
+  // KNOWN, ACCEPTED gap: greyvale_ruins_entrance is dangerous (2) baseline; under
+  // hollow_corruption >= 3 its danger_level_add:2 pushes it to extreme, which blocks
+  // social/acquire/relationship the static "dangerous" band allows. Accepted because the
+  // gate is stateless by design and statically over-blocking would nerf baseline-condition
+  // gameplay; the proper fix is a world-state-aware dispatch gate (tracked as debt).
+  const KNOWN_CONDITION_DANGER_GAPS = new Set(["greyvale_ruins_entrance"]);
+  const ERRAND_TYPES = ["scout", "social", "acquire", "relationship"] as const;
+  const CONTENT_PATH = new URL("../../../content/locations.json", import.meta.url);
+
+  // Use the shared Location/LocationCondition types (which model danger_level and
+  // danger_level_add) so a new danger field on either is tracked here, not silently
+  // dropped by a private inline shape.
+  const clampBand = (n: number): number => Math.max(0, Math.min(3, n));
+
+  test("no per-condition danger override silently widens BLOCKED_DANGER_COMBOS beyond the known gaps", async () => {
+    const raw: unknown = await Bun.file(CONTENT_PATH).json();
+    if (!Array.isArray(raw)) throw new Error("content/locations.json is not an array");
+    const locations = raw as Location[];
+
+    const gaps = new Set<string>();
+    for (const loc of locations) {
+      const topNum = loc.danger_level ?? 0;
+      // Clamp the top-level band symmetrically with the condition path: parseLocationRow
+      // only range-checks integers loosely, so content could carry a top-level danger_level
+      // outside 0-3, which numericToDangerLevel throws on. Clamping keeps the guard from an
+      // opaque throw while still flagging real band widening.
+      const topBand = numericToDangerLevel(clampBand(topNum));
+      for (const cond of Object.values<LocationCondition>(loc.conditions ?? {})) {
+        let effNum: number | undefined;
+        if (cond.danger_level !== undefined) effNum = cond.danger_level;
+        else if (cond.danger_level_add !== undefined) effNum = topNum + cond.danger_level_add;
+        if (effNum === undefined) continue;
+
+        const effBand = numericToDangerLevel(clampBand(effNum));
+        const introducesNewBlock = ERRAND_TYPES.some(
+          (e) =>
+            BLOCKED_DANGER_COMBOS.has(`${effBand}|${e}`) &&
+            !BLOCKED_DANGER_COMBOS.has(`${topBand}|${e}`),
+        );
+        if (introducesNewBlock) gaps.add(loc.id);
+      }
+    }
+
+    // Equality (not subset): catches BOTH a new silent gap AND drift in the known one
+    // (e.g. greyvale's override removed -> update the allowlist).
+    expect(gaps).toEqual(KNOWN_CONDITION_DANGER_GAPS);
   });
 });
 

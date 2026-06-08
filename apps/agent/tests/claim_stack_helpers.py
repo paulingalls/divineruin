@@ -1,6 +1,6 @@
 """Shared CAS claim-lifecycle test helpers (async-worker resolve race, story-004).
 
-test_async_worker.py and test_async_e2e.py both mock the same claim/transaction
+worker_suite/test_single_activity_resolution.py and test_async_e2e.py both mock the same claim/transaction
 lifecycle that _resolve_single_activity drives: a db.transaction yielding a mock
 conn, a get_activity FOR-UPDATE re-fetch, claim_resolving, and revert_claim_safe.
 Extracted here to kill the duplicated copies before a third lands (concern

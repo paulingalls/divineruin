@@ -12,12 +12,14 @@ CONTENT_DIR = Path(__file__).resolve().parents[3] / "content"
 
 EXPECTED_ACTIVITY_TYPES = {
     "spell_cantrip",
+    "spell_minor",
     "spell_standard",
     "spell_major",
     "spell_supreme",
     "recipe_study",
     "technique_base",
     "technique_mentor",
+    "technique_mentor_variant",
     "skill_practice",
 }
 
@@ -37,7 +39,7 @@ def _load_json(filename: str) -> list[dict]:
 
 
 class TestTrainingActivityTypesContent:
-    def test_all_eight_ids_present(self):
+    def test_all_activity_type_ids_present(self):
         data = _load_json("training_activity_types.json")
         ids = {entry["id"] for entry in data}
         assert ids == EXPECTED_ACTIVITY_TYPES
@@ -75,7 +77,8 @@ class TestTrainingActivityTypesContent:
         data = _load_json("training_activity_types.json")
         by_id = {entry["id"]: entry for entry in data}
 
-        for activity_type, (dur, decision) in TRAINING_ACTIVITY_CONFIG.items():
+        for activity_type, cfg in TRAINING_ACTIVITY_CONFIG.items():
+            dur, decision = cfg.duration, cfg.decision
             assert activity_type in by_id, f"{activity_type} missing from JSON"
             entry = by_id[activity_type]
             assert entry["first_half_min_seconds"] == dur.first_half_min

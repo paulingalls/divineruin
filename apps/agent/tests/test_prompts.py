@@ -191,15 +191,19 @@ class TestBuildWarmLayerExits:
         mock_npcs.return_value = []
         mock_quests.return_value = []
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
-        assert "EXITS" in result
+        # §7: ungated exits are `go` affordances.
+        assert "go:" in result
         assert "south" in result
         assert "accord_market_square" in result
 
+    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
     @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
     @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db_content_queries.get_location", new_callable=AsyncMock)
-    async def test_blocked_exit_shows_requires(self, mock_loc, mock_npcs, mock_disp, mock_quests):
+    async def test_blocked_exit_shows_locked_without_leaking_requires(
+        self, mock_loc, mock_npcs, mock_disp, mock_quests, mock_flag
+    ):
         location_with_blocked = {
             **SAMPLE_LOCATION,
             "exits": {
@@ -210,9 +214,65 @@ class TestBuildWarmLayerExits:
         mock_loc.return_value = location_with_blocked
         mock_npcs.return_value = []
         mock_quests.return_value = []
+        mock_flag.return_value = False  # requirement unmet -> exit stays locked
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
-        assert "blocked" in result
-        assert "temple_key" in result
+        # §7: a gated exit renders under `check` as "(locked)", until unlocked — but the raw
+        # `requires` string (flag names / undiscovered hidden ids) never reaches the DM layer.
+        assert "check:" in result
+        assert "east (locked)" in result
+        assert "temple_key" not in result
+
+    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
+    async def test_blocked_exit_uses_blocked_hint_when_present(
+        self, mock_loc, mock_npcs, mock_disp, mock_quests, mock_flag
+    ):
+        # When content gives a DM-safe blocked_hint, the locked label surfaces it (still no
+        # raw requires).
+        location_with_hint = {
+            **SAMPLE_LOCATION,
+            "exits": {
+                "east": {
+                    "destination": "accord_temple_row",
+                    "requires": "temple_key",
+                    "blocked_hint": "a sealed bronze door bars the way",
+                },
+            },
+        }
+        mock_loc.return_value = location_with_hint
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        mock_flag.return_value = False
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "east (locked: a sealed bronze door bars the way)" in result
+        assert "temple_key" not in result
+
+    @patch("db_queries.get_player_flag", new_callable=AsyncMock)
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
+    async def test_met_requirement_promotes_exit_check_to_go(
+        self, mock_loc, mock_npcs, mock_disp, mock_quests, mock_flag
+    ):
+        # §7 (story-004): once the requirement is MET, the gated exit promotes check -> go.
+        location_with_gate = {
+            **SAMPLE_LOCATION,
+            "exits": {
+                "south": {"destination": "accord_market_square"},
+                "east": {"destination": "accord_temple_row", "requires": "temple_key"},
+            },
+        }
+        mock_loc.return_value = location_with_gate
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        mock_flag.return_value = True  # player holds the flag -> requirement met
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "east → accord_temple_row" in result  # now a go affordance
+        assert "east (locked" not in result
 
     @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
@@ -226,50 +286,39 @@ class TestBuildWarmLayerExits:
         result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
         assert "EXITS" not in result
 
+    @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock)
+    @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
+    @patch("db_content_queries.get_location", new_callable=AsyncMock)
+    async def test_danger_rendered_as_band_not_integer(self, mock_loc, mock_npcs, mock_disp, mock_quests):
+        # §7: numbers stay in engine/HUD; the voiced warm layer speaks the danger BAND.
+        mock_loc.return_value = {**SAMPLE_LOCATION, "danger_level": 2}
+        mock_npcs.return_value = []
+        mock_quests.return_value = []
+        result = await build_warm_layer("accord_guild_hall", "player_1", "evening")
+        assert "danger: dangerous" in result
+        assert "danger: 2" not in result
+        assert "AFFORDANCES" in result
+
 
 class TestNavigationPromptIncluded:
     def test_system_prompt_includes_navigation(self):
         prompt = build_system_prompt("accord_guild_hall")
-        assert "discover_hidden_element" in prompt
+        assert 'mode="discover"' in prompt
         assert "Navigation" in prompt
 
+    def test_navigation_prompt_nudges_scene_transition_narration(self):
+        # update_quest carries a quest-driven region move in response["scene_transition"];
+        # the DM needs a cue to voice it, since NAVIGATION otherwise only covers move_player
+        # (concern c7c8d6acb6ec).
+        prompt = build_system_prompt("accord_guild_hall")
+        assert "scene_transition" in prompt
 
-class TestRegionTypePrompts:
-    """System prompts vary by region_type."""
 
-    def test_city_prompt_is_default(self):
-        default = build_system_prompt("loc")
-        city = build_system_prompt("loc", region_type="city")
-        assert default == city
-
-    def test_wilderness_prompt_includes_travel(self):
-        prompt = build_system_prompt("loc", region_type="wilderness")
-        assert "travel" in prompt.lower() or "wilderness" in prompt.lower()
-
-    def test_wilderness_prompt_has_no_commerce_rule(self):
-        from system_prompts import WILDERNESS_PROMPT
-
-        prompt = build_system_prompt("loc", region_type="wilderness")
-        assert WILDERNESS_PROMPT in prompt
-        assert "No NPC commerce" in prompt
-
-    def test_dungeon_prompt_includes_corruption(self):
-        from system_prompts import DUNGEON_PROMPT
-
-        prompt = build_system_prompt("loc", region_type="dungeon")
-        assert DUNGEON_PROMPT in prompt
-        assert "corruption" in prompt.lower()
-
-    def test_dungeon_prompt_has_no_social_rule(self):
-        prompt = build_system_prompt("loc", region_type="dungeon")
-        assert "No social context" in prompt
-
-    def test_each_region_type_has_voice_style(self):
-        from system_prompts import VOICE_STYLE_PROMPT
-
-        for rt in ("city", "wilderness", "dungeon"):
-            prompt = build_system_prompt("loc", region_type=rt)
-            assert VOICE_STYLE_PROMPT in prompt, f"{rt} prompt missing VOICE_STYLE_PROMPT"
+# NOTE: region-specific system-prompt assertions moved to tests/test_region_register.py.
+# After M7 story-002, build_system_prompt is region-agnostic — wilderness/dungeon/city
+# narration flavor now rides the warm-layer Stage register (REGION_REGISTER), so the
+# per-region prose is asserted there (TestWarmLayerRegionRegister), not here.
 
 
 class TestPromptToolConsistency:
@@ -278,21 +327,20 @@ class TestPromptToolConsistency:
     (concern b1591cb23262). Enforced by construction so the next prompt edit can't
     silently reintroduce the drift (concern df5cc73b2473)."""
 
-    @pytest.mark.parametrize("danger_tool_name", ["request_attack", "request_saving_throw"])
+    @pytest.mark.parametrize("danger_tool_name", ["request_attack"])
     def test_danger_tool_named_iff_in_toolset(self, danger_tool_name):
-        from check_tools import request_attack, request_saving_throw
-        from city_agent import CITY_TOOLS
+        # request_saving_throw folded into the universal `check` verb (M5 story-003), so
+        # request_attack is the remaining combat-only danger tool that must not appear in a
+        # prompt unless the agent holds it.
+        from check_tools import request_attack
         from combat_agent import COMBAT_AGENT_TOOLS
         from dispatch_agent import DISPATCH_TOOLS
-        from dungeon_agent import DUNGEON_TOOLS
+        from exploration_agent import EXPLORATION_TOOLS
         from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
-        from wilderness_agent import WILDERNESS_TOOLS
 
-        tool_obj = {"request_attack": request_attack, "request_saving_throw": request_saving_throw}[danger_tool_name]
+        tool_obj = {"request_attack": request_attack}[danger_tool_name]
         agents = {
-            "city": (build_system_prompt("loc", region_type="city"), CITY_TOOLS),
-            "wilderness": (build_system_prompt("loc", region_type="wilderness"), WILDERNESS_TOOLS),
-            "dungeon": (build_system_prompt("loc", region_type="dungeon"), DUNGEON_TOOLS),
+            "exploration": (build_system_prompt("loc"), EXPLORATION_TOOLS),
             "combat": (COMBAT_SYSTEM_PROMPT, COMBAT_AGENT_TOOLS),
             "training": (DISPATCH_SYSTEM_PROMPT, DISPATCH_TOOLS),
         }
@@ -306,20 +354,16 @@ class TestPromptToolConsistency:
     def test_query_info_consolidation_consistency(self):
         """After collapsing query_* into query_info: a prompt naming query_info must hold
         it (no absent-tool instruction), and no prompt may name a removed query_* tool."""
-        from city_agent import CITY_TOOLS
         from combat_agent import COMBAT_AGENT_TOOLS
         from dispatch_agent import DISPATCH_TOOLS
-        from dispatch_tools import enter_dispatch
-        from dungeon_agent import DUNGEON_TOOLS
+        from exploration_agent import EXPLORATION_TOOLS
+        from mode_tools import enter_mode
         from onboarding_agent import ONBOARDING_SYSTEM_PROMPT, ONBOARDING_TOOLS
         from query_tools import query_info
         from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
-        from wilderness_agent import WILDERNESS_TOOLS
 
         agents = {
-            "city": (build_system_prompt("loc", region_type="city"), CITY_TOOLS),
-            "wilderness": (build_system_prompt("loc", region_type="wilderness"), WILDERNESS_TOOLS),
-            "dungeon": (build_system_prompt("loc", region_type="dungeon"), DUNGEON_TOOLS),
+            "exploration": (build_system_prompt("loc"), EXPLORATION_TOOLS),
             "combat": (COMBAT_SYSTEM_PROMPT, COMBAT_AGENT_TOOLS),
             "training": (DISPATCH_SYSTEM_PROMPT, DISPATCH_TOOLS),
             "onboarding": (ONBOARDING_SYSTEM_PROMPT, ONBOARDING_TOOLS),
@@ -329,36 +373,15 @@ class TestPromptToolConsistency:
                 assert query_info in tools, f"{name} prompt names query_info but lacks the tool"
             for removed in ("query_location", "query_npc", "query_lore", "query_inventory"):
                 assert removed not in prompt, f"{name} prompt still names removed tool {removed}"
-            # enter_dispatch named iff held (region agents hold + name it; others neither).
-            assert ("enter_dispatch" in prompt) == (enter_dispatch in tools), (
-                f"{name}: prompt names enter_dispatch but tool-holding differs"
+            # enter_mode named iff held (region agents hold + name it; others neither).
+            assert ("enter_mode" in prompt) == (enter_mode in tools), (
+                f"{name}: prompt names enter_mode but tool-holding differs"
             )
 
 
-class TestTrainingDiscoveryPrompt:
-    """Training is a cities-only activity reached via the training hall. The city
-    prompt carries a referral (lead the player to the hall), and the actual
-    training tools live in DispatchAgent — so the city prompt must NOT name them."""
-
-    def test_city_prompt_refers_to_the_training_hall(self):
-        from system_prompts import TRAINING_PROMPT
-
-        prompt = build_system_prompt("loc", region_type="city")
-        assert TRAINING_PROMPT in prompt
-        assert "training hall" in prompt
-        # City no longer holds the training tools — the prompt must not name them.
-        assert "query_training_programs" not in prompt
-
-    def test_wilderness_prompt_omits_training_referral(self):
-        from system_prompts import TRAINING_PROMPT
-
-        prompt = build_system_prompt("loc", region_type="wilderness")
-        assert TRAINING_PROMPT not in prompt
-        assert "query_training_programs" not in prompt
-
-    def test_dungeon_prompt_omits_training_referral(self):
-        prompt = build_system_prompt("loc", region_type="dungeon")
-        assert "query_training_programs" not in prompt
+# NOTE: the training-hall referral moved from the city system prompt to the city
+# REGION_REGISTER (warm layer) in M7 story-002 — asserted in
+# tests/test_region_register.py::TestWarmLayerRegionRegister.test_city_location_yields_city_register.
 
 
 class TestRegionTypeWarmLayer:
@@ -368,67 +391,103 @@ class TestRegionTypeWarmLayer:
     @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock)
     @patch("db_content_queries.get_location", new_callable=AsyncMock)
     async def test_city_warm_layer_includes_npcs(self, mock_loc, mock_npcs, mock_disp):
-        mock_loc.return_value = SAMPLE_LOCATION
+        city_loc = {**SAMPLE_LOCATION, "region_type": "city"}
+        mock_loc.return_value = city_loc
         mock_npcs.return_value = [SAMPLE_NPC_RAW]
         result = await build_warm_layer(
             "accord_guild_hall",
             "p1",
             "evening",
             quests=[SAMPLE_QUEST],
-            location=SAMPLE_LOCATION,
+            location=city_loc,
             npcs_raw=[SAMPLE_NPC_RAW],
-            region_type="city",
         )
-        assert "NPCS PRESENT" in result
+        # §7: NPCs present are `address` affordances (gate sourced from the Stage region_type).
+        assert "address:" in result
 
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
     @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
     @patch("db_content_queries.get_location", new_callable=AsyncMock)
     async def test_wilderness_warm_layer_omits_npcs(self, mock_loc, mock_npcs, mock_disp):
-        mock_loc.return_value = SAMPLE_LOCATION
+        wild_loc = {**SAMPLE_LOCATION, "region_type": "wilderness"}
+        mock_loc.return_value = wild_loc
         result = await build_warm_layer(
             "greyvale_south_road",
             "p1",
             "evening",
             quests=[],
-            location=SAMPLE_LOCATION,
+            location=wild_loc,
             npcs_raw=[SAMPLE_NPC_RAW],
-            region_type="wilderness",
         )
-        assert "NPCS PRESENT" not in result
+        # Wilderness Stage: no commerce gate, so NPCs present do NOT surface as address affordances.
+        assert "address:" not in result
 
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
     @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
     @patch("db_content_queries.get_location", new_callable=AsyncMock)
     async def test_dungeon_warm_layer_omits_npcs(self, mock_loc, mock_npcs, mock_disp):
-        mock_loc.return_value = SAMPLE_LOCATION
+        dungeon_loc = {**SAMPLE_LOCATION, "region_type": "dungeon"}
+        mock_loc.return_value = dungeon_loc
         result = await build_warm_layer(
             "greyvale_ruins_entrance",
             "p1",
             "evening",
             quests=[],
-            location=SAMPLE_LOCATION,
+            location=dungeon_loc,
             npcs_raw=[SAMPLE_NPC_RAW],
-            region_type="dungeon",
         )
-        assert "NPCS PRESENT" not in result
+        # Dungeon Stage: no commerce gate, so NPCs present do NOT surface as address affordances.
+        assert "address:" not in result
 
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
     @patch("db_queries.get_npcs_at_location", new_callable=AsyncMock, return_value=[])
     @patch("db_content_queries.get_location", new_callable=AsyncMock)
     async def test_dungeon_warm_layer_includes_corruption(self, mock_loc, mock_npcs, mock_disp):
-        mock_loc.return_value = SAMPLE_LOCATION
+        dungeon_loc = {**SAMPLE_LOCATION, "region_type": "dungeon"}
+        mock_loc.return_value = dungeon_loc
         result = await build_warm_layer(
             "greyvale_ruins_inner",
             "p1",
             "evening",
             quests=[],
-            location=SAMPLE_LOCATION,
+            location=dungeon_loc,
             npcs_raw=[],
             corruption_level=2,
-            region_type="dungeon",
         )
         assert "HOLLOW CORRUPTION" in result
+
+
+class TestGatedExitEvaluationCount:
+    """Regression pin (retro try d172fa50ba56): the warm-layer affordance loop must
+    evaluate _check_exit_requirement exactly ONCE per GATED exit (exit.requires set)
+    and never for ungated exits — not once per turn. Warm rebuilds are event-driven,
+    so this keeps the per-branch flag read off the hot path."""
+
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("movement_tools._check_exit_requirement", new_callable=AsyncMock, return_value=True)
+    async def test_check_exit_requirement_awaited_once_per_gated_exit(self, mock_check, _disp):
+        loc = {
+            **SAMPLE_LOCATION,
+            "region_type": "city",
+            "exits": {
+                "north": {"destination": "a", "requires": "key_a.discovered"},
+                "south": {"destination": "b", "requires": "key_b.discovered"},
+                "east": {"destination": "c"},  # ungated — must NOT trigger an evaluation
+            },
+        }
+        await build_warm_layer("loc", "p1", "evening", quests=[], location=loc, npcs_raw=[])
+        assert mock_check.await_count == 2
+
+    @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
+    @patch("movement_tools._check_exit_requirement", new_callable=AsyncMock, return_value=True)
+    async def test_ungated_exits_skip_evaluation(self, mock_check, _disp):
+        loc = {
+            **SAMPLE_LOCATION,
+            "region_type": "city",
+            "exits": {"east": {"destination": "c"}, "west": {"destination": "d"}},
+        }
+        await build_warm_layer("loc", "p1", "evening", quests=[], location=loc, npcs_raw=[])
+        assert mock_check.await_count == 0
 
 
 class TestBuildFullPrompt:

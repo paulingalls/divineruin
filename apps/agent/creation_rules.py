@@ -5,12 +5,57 @@ All functions are deterministic and fully testable without external dependencies
 
 from __future__ import annotations
 
+from archetypes import get_archetype_chassis
 from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
+from hp_scaling import calculate_max_hp
 from rules_engine import attribute_modifier
+from spells import get_spells_by_source
 
 BASE_ATTRIBUTE = 10
+
+# The 9 single-source casters the spec grants L1 elective spells (per-archetype L1
+# elective tables, game_mechanics_archetypes.md). Cross-source (Bard), hybrid (Whisper),
+# and social (Diplomat/Marshal) casters begin elective spells later, not at L1; pure
+# martials never. The full per-archetype progression table is future M8 scope.
+STARTING_ELECTIVE_ARCHETYPES = frozenset(
+    {
+        "mage",
+        "artificer",
+        "seeker",  # arcane
+        "cleric",
+        "paladin",
+        "oracle",  # divine
+        "druid",
+        "beastcaller",
+        "warden",  # primal
+    }
+)
+_SINGLE_SOURCES = frozenset({"arcane", "divine", "primal"})
+
+
+def select_starting_spells(archetype_id: str, magic_source: str | None) -> list[str]:
+    """Return the starting elective spell ids for a new character (pre-game training).
+
+    A single cantrip + a single minor from the archetype's magic source, picked
+    deterministically (lowest spell id per tier) so creation is reproducible. Empty
+    for any archetype outside the 9 single-source casters or without a single source.
+    """
+    if archetype_id not in STARTING_ELECTIVE_ARCHETYPES or magic_source not in _SINGLE_SOURCES:
+        return []
+    by_source = get_spells_by_source(magic_source)
+    chosen: list[str] = []
+    for tier in ("cantrip", "minor"):
+        ids = sorted(s.id for s in by_source if s.spell_tier == tier)
+        if not ids:
+            # Fail loud: an eligible caster's source must carry both tiers (the catalog
+            # guarantees per-source per-tier coverage). A missing tier is a content
+            # regression, not a silently-degraded grant.
+            raise ValueError(f"spell catalog has no {tier!r} spell for source {magic_source!r}")
+        chosen.append(ids[0])
+    return chosen
+
 
 # Culture inference mapping: (race_affinity, class_category_affinity, deity_affinity) -> cultures
 # Each culture has a primary god and racial lean from the lore.
@@ -110,14 +155,17 @@ def generate_attributes(race_id: str, class_id: str) -> dict[str, int]:
 
 
 def calculate_starting_hp(class_id: str, constitution: int) -> dict[str, int]:
-    """Max hit die + CON modifier. Returns {current, max}."""
-    cls = CLASSES.get(class_id)
-    if cls is None:
-        return {"current": 10, "max": 10}
+    """Chassis level-1 max HP (hp_base + CON modifier). Returns {current, max}.
 
+    Derives from the archetype chassis SSOT (story-004), so a freshly-created
+    character's max HP matches what the leveling system computes for level 1 —
+    no longer the stale ClassData.hit_die.
+    """
     con_mod = attribute_modifier(constitution)
-    hp = cls.hit_die + con_mod
-    hp = max(1, hp)  # minimum 1 HP
+    try:
+        hp = calculate_max_hp(class_id, 1, con_mod)
+    except ValueError:
+        return {"current": 10, "max": 10}  # unknown archetype fallback
     return {"current": hp, "max": hp}
 
 
@@ -159,20 +207,22 @@ def get_skill_proficiencies(class_id: str, skill_choices: list[str] | None = Non
     """Return skill proficiencies for a class.
 
     If skill_choices is provided and valid, use those. Otherwise, default to
-    the first N from skill_options.
+    the first N from the chassis skill pool (the SSOT — story-004).
     """
-    cls = CLASSES.get(class_id)
-    if cls is None:
+    try:
+        chassis = get_archetype_chassis(class_id)
+    except ValueError:
         return []
 
+    options = chassis.skill_options
     if skill_choices:
         # Validate choices are from the class pool and correct count
-        valid = [s for s in skill_choices if s in cls.skill_options]
-        if len(valid) == cls.num_skill_choices:
+        valid = [s for s in skill_choices if s in options]
+        if len(valid) == chassis.num_skill_choices:
             return valid
 
-    # Default: first N from skill_options
-    return list(cls.skill_options[: cls.num_skill_choices])
+    # Default: first N from the chassis skill pool
+    return list(options[: chassis.num_skill_choices])
 
 
 def infer_culture(race_id: str, class_id: str, deity_id: str | None) -> list[str]:
@@ -231,6 +281,8 @@ def build_character_data(
     if deity_id is not None and deity_id != "none" and deity_id not in DEITIES:
         raise ValueError(f"Unknown deity: {deity_id}")
 
+    chassis = get_archetype_chassis(class_id)
+
     attributes = generate_attributes(race_id, class_id)
     hp = calculate_starting_hp(class_id, attributes["constitution"])
     equipment = get_starting_equipment(class_id)
@@ -251,7 +303,7 @@ def build_character_data(
         "hp": hp,
         "ac": ac,
         "proficiencies": proficiencies,
-        "saving_throw_proficiencies": list(cls.saving_throw_proficiencies),
+        "saving_throw_proficiencies": list(chassis.save_proficiencies),
         "equipment": equipment,
         "inventory": [],
         "gold": cls.starting_gold,

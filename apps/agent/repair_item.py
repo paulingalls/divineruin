@@ -9,7 +9,8 @@ it gates on the player's Crafting skill tier vs the item's durability-repair tie
 
 Errors raise LiveKit ToolError (ADR 0002). The `_*_impl` helper exposes `*_mod=` keyword
 seams for TEST-ONLY injection (mirrors crafting_tools). Registered in BLACKSMITH_TOOLS,
-reached via the enter_blacksmith handoff from the City region agent (story-009). The
+reached via the enter_mode(mode="blacksmith") handoff from a region agent (story-009;
+M5 fold). The
 pricing values come from the DB-loaded SSOT (pricing_queries) shared with the REST quote.
 """
 
@@ -30,6 +31,7 @@ import workspace
 from disposition import resolve_disposition
 from rules_engine import SKILL_TIER_ORDER, SkillTier
 from session_data import SessionData
+from tool_preconditions import require_npc_present
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
@@ -76,15 +78,11 @@ async def _repair_item_impl(
     player_id = context.userdata.player_id
     location_id = context.userdata.location_id
 
-    # Co-location gate (constraint: NPC-transaction tools must assert the NPC is
-    # present before pricing/debiting; mirrors rent_workspace at crafting_tools.py).
-    # Disposition alone can't gate an absent smith — a known npc_id must not let the
-    # player repair from afar. Reuse the canonical schedule-based presence query.
-    # Intentionally pre-transaction: presence is schedule-derived (no writable row to
-    # lock), so it doesn't belong inside the FOR-UPDATE block below.
-    present = await queries_mod.get_npcs_at_location(location_id)
-    if npc_id not in {npc["id"] for npc in present}:
-        raise ToolError(f"{npc_id} isn't here to repair your gear.")
+    # Co-location gate: NPC-transaction tools must assert the NPC is present before
+    # pricing/debiting — disposition alone can't gate an absent smith. Intentionally
+    # pre-transaction (presence is schedule-derived, no writable row to lock, so it
+    # doesn't belong inside the FOR-UPDATE block below).
+    await require_npc_present(location_id, npc_id, queries=queries_mod, suffix=" to repair your gear")
 
     # Single FOR-UPDATE txn; all stateful gates before any write (decision repair-gate-order).
     async with db_mod.transaction() as conn:

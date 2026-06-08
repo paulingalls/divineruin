@@ -36,7 +36,7 @@ class TestCreationAgentInit:
         agent = CreationAgent()
         tool_names = {getattr(t, "__name__", "") for t in agent._tools}
         assert "enter_location" not in tool_names
-        assert "start_combat" not in tool_names
+        assert "enter_mode" not in tool_names
         assert "move_player" not in tool_names
         assert "end_session" not in tool_names
 

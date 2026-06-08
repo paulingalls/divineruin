@@ -1,41 +1,10 @@
-"""HP scaling — archetype-based HP formula. Zero IO, zero async."""
+"""HP scaling — archetype-based HP formula. Zero IO, zero async.
 
-from dataclasses import dataclass
-from typing import Literal
+HP base/growth per archetype now live in the chassis SSOT (content/archetypes.json,
+loaded via archetypes.get_archetype_chassis) — this module owns only the math.
+"""
 
-HPCategory = Literal["martial", "primal_divine", "arcane_shadow"]
-
-
-@dataclass(frozen=True)
-class HPConfig:
-    base: int
-    growth: int
-    category: HPCategory
-
-
-ARCHETYPE_HP_CONFIG: dict[str, HPConfig] = {
-    # Martial (12 base, 5 growth)
-    "warrior": HPConfig(12, 5, "martial"),
-    "guardian": HPConfig(12, 5, "martial"),
-    "skirmisher": HPConfig(12, 5, "martial"),
-    # Primal / Divine / Marshal (10 base, 4 growth)
-    "druid": HPConfig(10, 4, "primal_divine"),
-    "beastcaller": HPConfig(10, 4, "primal_divine"),
-    "warden": HPConfig(10, 4, "primal_divine"),
-    "cleric": HPConfig(10, 4, "primal_divine"),
-    "paladin": HPConfig(10, 4, "primal_divine"),
-    "oracle": HPConfig(10, 4, "primal_divine"),
-    "marshal": HPConfig(10, 4, "primal_divine"),
-    # Arcane / Shadow / Support (8 base, 3 growth)
-    "mage": HPConfig(8, 3, "arcane_shadow"),
-    "artificer": HPConfig(8, 3, "arcane_shadow"),
-    "seeker": HPConfig(8, 3, "arcane_shadow"),
-    "rogue": HPConfig(8, 3, "arcane_shadow"),
-    "spy": HPConfig(8, 3, "arcane_shadow"),
-    "whisper": HPConfig(8, 3, "arcane_shadow"),
-    "bard": HPConfig(8, 3, "arcane_shadow"),
-    "diplomat": HPConfig(8, 3, "arcane_shadow"),
-}
+from archetypes import get_archetype_chassis
 
 
 def calculate_hp(level: int, base_hp: int, growth: int, con_mod: int) -> int:
@@ -54,8 +23,6 @@ def calculate_hp(level: int, base_hp: int, growth: int, con_mod: int) -> int:
 
 
 def calculate_max_hp(archetype: str, level: int, con_mod: int) -> int:
-    """Look up archetype config and calculate max HP."""
-    if archetype not in ARCHETYPE_HP_CONFIG:
-        raise ValueError(f"Unknown archetype: {archetype!r}")
-    cfg = ARCHETYPE_HP_CONFIG[archetype]
-    return calculate_hp(level, cfg.base, cfg.growth, con_mod)
+    """Look up the archetype chassis and calculate max HP."""
+    chassis = get_archetype_chassis(archetype)
+    return calculate_hp(level, chassis.hp_base, chassis.hp_growth, con_mod)

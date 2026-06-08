@@ -1,6 +1,6 @@
 """Tests for the recipe @function_tools (story-006, M5.1).
 
-learn_recipe (mutating: FOR-UPDATE player lock, slot gate, writes
+_learn_recipe_impl (mutating: FOR-UPDATE player lock, slot gate, writes
 player_known_recipes, ToolError) and query_recipe_requirements (read). Mirror
 test_errand_tools.py: make_context + make_db_mod fixtures, injected *_mod seams,
 assert conn threading + ToolError shapes.
@@ -13,7 +13,7 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
-from recipe_tools import _learn_recipe_impl, _query_recipe_requirements_impl
+from recipe_tools import _learn_impl, _learn_recipe_impl, _query_recipe_requirements_impl
 
 RECIPE = {
     "id": "iron_sword",
@@ -237,6 +237,56 @@ class TestLearnRecipe:
                 recipes_mod=_recipes(),
                 slots_mod=_slots(),
             )
+
+
+class TestLearn:
+    """The generic learn(kind, id, source) verb — dispatches by kind."""
+
+    @pytest.mark.asyncio
+    async def test_recipe_kind_delegates_to_recipe_path(self):
+        ctx = make_context()
+        db_mod, conn = make_db_mod()
+        queries = _queries(tier="trained", known=2)
+        mutations = _mutations(inserted=True)
+        result = json.loads(
+            await _learn_impl(
+                ctx,
+                "recipe",
+                "iron_sword",
+                "npc_teaching",
+                db_mod=db_mod,
+                queries_mod=queries,
+                mutations_mod=mutations,
+                recipes_mod=_recipes(),
+                slots_mod=_slots(),
+            )
+        )
+        # Delegates to the recipe sub-path: same write + JSON as _learn_recipe_impl.
+        assert result["learned"] == "iron_sword"
+        assert result["learned_via"] == "npc_teaching"
+        add_kwargs = mutations.add_player_known_recipe.await_args
+        assert add_kwargs.args[:3] == ("player_1", "iron_sword", "npc_teaching")
+        assert add_kwargs.kwargs.get("conn") is conn
+
+    @pytest.mark.asyncio
+    async def test_variant_kind_delegates_to_variant_path(self, monkeypatch):
+        # kind="variant" (M9) routes to mentor_variant_tools._learn_variant_impl,
+        # which INITIATES mentor training rather than acquiring instantly.
+        ctx = make_context()
+        import mentor_variant_tools
+
+        spy = AsyncMock(return_value='{"training_started": "warrior_cleaving_blow_drathian"}')
+        monkeypatch.setattr(mentor_variant_tools, "_learn_variant_impl", spy)
+        result = await _learn_impl(ctx, "variant", "warrior_cleaving_blow_drathian", "")
+        assert json.loads(result)["training_started"] == "warrior_cleaving_blow_drathian"
+        spy.assert_awaited_once_with(ctx, "warrior_cleaving_blow_drathian", "")
+
+    @pytest.mark.asyncio
+    async def test_unknown_kind_raises(self):
+        ctx = make_context()
+        # "spell"/"variant" are valid kinds now; use a genuinely unknown kind.
+        with pytest.raises(ToolError, match="kind"):
+            await _learn_impl(ctx, "potion", "healing", "")
 
 
 class TestQueryRecipeRequirements:

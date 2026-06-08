@@ -30,7 +30,7 @@ async def _check_exit_requirement(requires: str, player_id: str, *, queries=db_q
     branches = [b.strip() for b in requires.split("||")]
     for branch in branches:
         if branch.startswith("skill_check:"):
-            continue  # LLM must resolve via request_skill_check first
+            continue  # LLM must resolve via check (mode="skill") first
         if await queries.get_player_flag(player_id, branch):
             return True
     return False
@@ -175,20 +175,22 @@ async def _move_player_impl(
     )
     json_str = json.dumps(result)
 
-    # Hand off when the destination needs a different agent than the current one.
-    # That's a region crossing OR an activity-context change (entering/leaving an
-    # activity-context location), since dispatch activities get their own focused agent.
+    # Hand off ONLY on an activity-context change — entering or leaving a dispatch
+    # activity (training), which gets its own focused agent. Region crossings (M7
+    # story-003) NO LONGER hand off: region rides the Stage, so the same warm
+    # ExplorationAgent persists across city/wilderness/dungeon and only its region
+    # attribute is updated in place (keeping the cached static layer alive).
     from dispatch_agent import DispatchAgent, create_dispatch_agent
 
     dest_is_training = bool(destination_location and destination_location.get("agent_context") == "training")
-    # Only region and dispatch agents own move_player, so current_agent is one of
-    # those here — combat can't reach this path (CombatAgent has no move_player; it
+    # Only exploration and dispatch agents own move_player, so current_agent is one
+    # of those here — combat can't reach this path (CombatAgent has no move_player; it
     # exits via end_combat). If move_player is ever added to a combat-like agent,
     # revisit so an in-progress activity isn't abandoned by an incidental move.
     current_is_training = isinstance(context.session.current_agent, DispatchAgent)
     activity_change = dest_is_training != current_is_training
 
-    if region_change or activity_change:
+    if activity_change:
         from livekit.agents.llm import ChatContext
 
         from gameplay_agent import create_gameplay_agent
@@ -213,8 +215,18 @@ async def _move_player_impl(
         summary_ctx.add_message(role="system", content=" ".join(parts))
         if dest_is_training:
             return create_dispatch_agent(chat_ctx=summary_ctx), json_str
+        # Leaving dispatch back out to exploration — recreate the exploration agent
+        # for the destination region (region passed through, but the prompt is now
+        # region-agnostic, so this only seeds _agent_type).
         return create_gameplay_agent(
             dest_region, destination_id, companion=session.companion, chat_ctx=summary_ctx
         ), json_str
+
+    # No handoff: a region crossing updates the persisting agent's region in place
+    # (the transition narration is covered by NAVIGATION_PROMPT + the scene json above).
+    if region_change:
+        from gameplay_agent import set_agent_region
+
+        set_agent_region(context.session.current_agent, dest_region)
 
     return json_str
