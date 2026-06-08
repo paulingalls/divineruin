@@ -38,6 +38,9 @@ async def _call(ability_id: str, *, stamina: int = 10, focus: int = 10, player: 
     queries.get_player = AsyncMock(return_value=_player(stamina, focus) if player is None else player)
     persistence = MagicMock()
     persistence.update_player_resources = AsyncMock()
+    # These tests exercise the base (no active variant) path; the override path has its
+    # own suite in test_ability_variant_override.py.
+    persistence.get_active_variant = AsyncMock(return_value=None)
     raw = await _request_ability_activation_impl(
         ctx, ability_id, db_mod=mock_db, queries_mod=queries, persistence_mod=persistence
     )
@@ -92,6 +95,7 @@ class TestRejection:
         queries.get_player = AsyncMock(return_value=_player(focus=1))
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
+        persistence.get_active_variant = AsyncMock(return_value=None)
         with pytest.raises(ToolError):
             await _request_ability_activation_impl(
                 ctx, "cleric_heal_wounds", db_mod=mock_db, queries_mod=queries, persistence_mod=persistence

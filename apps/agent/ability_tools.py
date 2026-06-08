@@ -22,6 +22,7 @@ import abilities
 import ability_persistence
 import db
 import db_queries
+import mentor_variants
 from db_errors import db_tool
 from session_data import SessionData
 from tool_support import _validate_id
@@ -52,6 +53,7 @@ async def _request_ability_activation_impl(
     queries_mod=db_queries,
     persistence_mod=ability_persistence,
     abilities_mod=abilities,
+    variants_mod=mentor_variants,
 ) -> str:
     context.disallow_interruptions()
     _validate_id(ability_id, "ability_id")
@@ -63,12 +65,23 @@ async def _request_ability_activation_impl(
         ability = abilities_mod.get_ability(ability_id)
     except ValueError as e:
         raise ToolError(str(e)) from e
-    cost = ability.cost
 
     async with db_mod.transaction() as conn:
         player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
         if player is None:
             raise ToolError(f"Unknown player: {player_id}")
+
+        # An unlocked-and-active mentor variant overrides the base technique wholesale
+        # (cost/effect/narration — decision m9 override shape). get_variant validates the
+        # variant belongs to this ability and fails loud on a mismatch.
+        variant = None
+        active_variant_id = await persistence_mod.get_active_variant(player_id, ability_id, conn=conn)
+        if active_variant_id is not None:
+            try:
+                variant = variants_mod.get_variant(ability_id, active_variant_id)
+            except ValueError as e:
+                raise ToolError(str(e)) from e
+        cost = variant.cost if variant is not None else ability.cost
 
         stamina_pool = player.get("stamina") or {}
         focus_pool = player.get("focus") or {}
@@ -93,10 +106,14 @@ async def _request_ability_activation_impl(
         if new_stamina is not None or new_focus is not None:
             await persistence_mod.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
 
-    return json.dumps(
-        {
-            "narration_cue": ability.narration_cue,
-            "deducted": {"stamina": cost.stamina, "focus": cost.focus},
-            "variable_cost": cost.scaling,
-        }
-    )
+    response = {
+        "narration_cue": variant.narration_cue if variant is not None else ability.narration_cue,
+        "deducted": {"stamina": cost.stamina, "focus": cost.focus},
+        "variable_cost": cost.scaling,
+    }
+    # On the override path, surface the variant's effect + cultural attribution so the DM
+    # voices the variant (not the base) and attributes the technique to its culture (AC4).
+    if variant is not None:
+        response["effect"] = variant.effect
+        response["cultural_attribution"] = variant.cultural_attribution
+    return json.dumps(response)
