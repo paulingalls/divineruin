@@ -10,6 +10,12 @@ export function asRecord(raw: unknown, ctx: string): Record<string, unknown> {
   return raw as Record<string, unknown>;
 }
 
+/** Coerce an unknown to a string, rejecting any non-string with the caller's ctx. */
+export function parseString(raw: unknown, ctx: string): string {
+  if (typeof raw !== "string") throw new Error(`${ctx} is not a string`);
+  return raw;
+}
+
 /** Parse an unknown into a string[], rejecting non-arrays and non-string elements. */
 export function parseStringArray(raw: unknown, ctx: string): string[] {
   if (!Array.isArray(raw)) throw new Error(`${ctx} is not an array`);
