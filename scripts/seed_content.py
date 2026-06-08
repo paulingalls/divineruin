@@ -32,6 +32,7 @@ TABLE_MAP = {
     "archetype_milestones.json": "archetype_milestones",
     "spells.json": "spells",
     "mentor_variants.json": "mentor_variants",
+    "role_archetypes.json": "role_archetypes",
     "training_activity_types.json": "training_activity_types",
     "training_programs.json": "training_programs",
     "errand_templates.json": "errand_templates",
