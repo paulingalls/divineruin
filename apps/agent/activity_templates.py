@@ -25,6 +25,33 @@ TRAINING_MENTORS = {
         "speech_style": "rapid and precise when discussing scholarship, halting in casual conversation",
         "voice_id": "SCHOLAR_EMRIS",
     },
+    # M9 per-culture martial mentors — one per cultural variant style (story-003). Personas
+    # mirror their content/npcs.json entries so the DM voice stays coherent when narrating a
+    # variant; without these the variant narration would fall back to guildmaster_torin.
+    "mentor_drathian_warleader": {
+        "name": "Warleader Hessa Stormhand",
+        "personality": "blunt, commanding, fiercely proud of clan honor, privately grieving the warriors she has spent",
+        "speech_style": "short declarative commands at a steady carrying volume; thins and slows when she speaks of the dead",
+        "voice_id": "drathian_hessa_v1",
+    },
+    "mentor_keldaran_forgemaster": {
+        "name": "Forge-Master Doran Ironvein",
+        "personality": "precise, unhurried, pragmatic, finds genuine beauty in efficiency",
+        "speech_style": "short level sentences, no wasted word; explains fighting through metalwork, warms only for good craft",
+        "voice_id": "keldaran_doran_v1",
+    },
+    "mentor_thornwarden_elder": {
+        "name": "Elder Senna Rootwarden",
+        "personality": "patient to stillness, listens more than she speaks, gently immovable when the forest is threatened",
+        "speech_style": "long flowing sentences broken by unhurried pauses; disapproval drops to a whisper rather than a shout",
+        "voice_id": "thornwarden_senna_v1",
+    },
+    "mentor_tidecaller_bosun": {
+        "name": "Bosun Marek Tideborn",
+        "personality": "restless, adaptable, fiercely independent, sees patterns in movement others miss",
+        "speech_style": "sentences that flow and wander like a current but reach the point; quickens when danger at sea comes up",
+        "voice_id": "tidecaller_marek_v1",
+    },
 }
 
 # Companion errand context
