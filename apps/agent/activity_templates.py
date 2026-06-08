@@ -149,7 +149,7 @@ Speech style: {mentor_speech_style}
 The player completed training: {training_stat}{skill_note}
 Outcome tier: {tier} (DC: {dc})
 Stat gains: {stat_gains}
-{cultural_attribution_line}
+{cultural_attribution_line}{replacement_line}
 Write a short narration (60-120 words) of the training conclusion.
 Include physical sensory details — sweat, exertion, the moment of clarity or frustration.
 Describe the outcome: breakthrough means real progress was made, plateau means steady effort with no leap forward.
@@ -211,6 +211,19 @@ def _format_cultural_attribution(ctx: dict) -> str:
     return f"This technique is a {attribution} — let its cultural lineage colour the telling.\n" if attribution else ""
 
 
+def _format_replacement_notice(ctx: dict) -> str:
+    """Render the variant-replacement line for the training-completion prompt.
+
+    Present only when a newly-trained variant supplants a prior active variant on the same
+    technique (concern 25b663d3e245); empty otherwise. Tells the DM to voice the swap so the
+    player learns their form changed — audio-first, never a silent state change.
+    """
+    replaced = ctx.get("replaced_cultural_attribution")
+    return (
+        f"This new form supplants the {replaced} they had been practising — make the shift felt.\n" if replaced else ""
+    )
+
+
 def _format_quality_note(ctx: dict) -> str:
     """Render the M5.3 crafting quality property for the narration prompt.
 
@@ -269,6 +282,7 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
             "stat_gains": outcome.get("stat_gains", {}),
             "dc": ctx.get("dc", "?"),
             "cultural_attribution_line": _format_cultural_attribution(ctx),
+            "replacement_line": _format_replacement_notice(ctx),
         }
         if activity_type == "training":
             format_args["roll"] = ctx.get("roll", "?")

@@ -1,6 +1,8 @@
 """Tests for training completion: outcome building, narration cycles, push notifications."""
 
+import copy
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -349,6 +351,11 @@ class TestMentorVariantCompletion:
             patch(
                 "async_worker_training.ability_persistence.set_active_variant", new_callable=AsyncMock
             ) as mock_activate,
+            patch(
+                "async_worker_training.ability_persistence.get_active_variant",
+                new_callable=AsyncMock,
+                return_value=None,  # no prior active variant => no replacement notice
+            ),
         ):
             count = await advance_training_cycles()
 
@@ -398,6 +405,11 @@ class TestMentorVariantCompletion:
             patch(
                 "async_worker_training.ability_persistence.set_active_variant", new_callable=AsyncMock
             ) as mock_activate,
+            patch(
+                "async_worker_training.ability_persistence.get_active_variant",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
         ):
             count = await advance_training_cycles()
 
@@ -443,6 +455,55 @@ class TestMentorVariantCompletion:
         mock_delete.assert_not_awaited()
         # No unlock yet → no active-variant override set until training completes.
         mock_activate.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_replacing_prior_active_variant_is_narrated(self):
+        """When the unlock supplants a prior active variant on the same technique, the prior's
+        cultural attribution is threaded into the completion narration (concern 25b663d3e245 —
+        audio-first, never a silent swap). Uses a copied activity so the in-place data mutation
+        does not leak into other tests sharing SAMPLE_VARIANT_ACTIVITY."""
+        advance = {"cycles_completed": 3, "cycles_required": 3, "completed": True, "midpoint_decision_id": "power"}
+        activity = copy.deepcopy(SAMPLE_VARIANT_ACTIVITY)
+        seg = [Segment("GUILDMASTER_TORIN", "stern", "The form is yours.")]
+        with (
+            patch(
+                "async_worker_training.db_training.get_due_training_transitions",
+                new_callable=AsyncMock,
+                return_value=[activity],
+            ),
+            patch("async_worker_training.db_training.update_training_activity", new_callable=AsyncMock),
+            patch("async_worker_training.db_queries.get_player", new_callable=AsyncMock, return_value=SAMPLE_PLAYER),
+            patch(
+                "async_worker_training.mentor_variant_progress.advance_learning_cycle",
+                new_callable=AsyncMock,
+                return_value=advance,
+            ),
+            patch(
+                "async_worker_training.generate_activity_narration",
+                new_callable=AsyncMock,
+                return_value=(seg, "The form is yours.", "Variant trained."),
+            ) as mock_narration,
+            patch("async_worker_training.synthesize_segments", new_callable=AsyncMock, return_value="train_var999.mp3"),
+            patch("async_worker_training.generate_notification_hook", new_callable=AsyncMock, return_value="Done."),
+            patch("async_worker_training.send_push_notification", new_callable=AsyncMock),
+            patch("async_worker_training.mentor_variant_progress.record_unlocked", new_callable=AsyncMock),
+            patch("async_worker_training.mentor_variant_progress.delete_learning_progress", new_callable=AsyncMock),
+            patch("async_worker_training.ability_persistence.set_active_variant", new_callable=AsyncMock),
+            patch(
+                "async_worker_training.ability_persistence.get_active_variant",
+                new_callable=AsyncMock,
+                return_value="warrior_cleaving_blow_keldaran",  # a prior, different active variant
+            ),
+            patch(
+                "async_worker_training.mentor_variants.get_mentor_variant",
+                return_value=SimpleNamespace(cultural_attribution="Keldaran Holds technique"),
+            ),
+        ):
+            count = await advance_training_cycles()
+
+        assert count == 1
+        outcome = mock_narration.call_args[0][0]
+        assert outcome["narrative_context"]["replaced_cultural_attribution"] == "Keldaran Holds technique"
 
 
 class TestSkillAccrualIdempotency:

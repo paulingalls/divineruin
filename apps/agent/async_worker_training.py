@@ -24,6 +24,7 @@ import db_mutations
 import db_queries
 import db_training
 import mentor_variant_progress
+import mentor_variants
 import skill_persistence
 from dialogue_parser import Segment
 from llm_config import AUDIO_DIR, audio_url_for
@@ -108,6 +109,9 @@ def build_training_completion_outcome(
             # written by learn(variant)); None for stat/skill training. The narration template
             # renders it only when present so non-variant prompts are unchanged.
             "cultural_attribution": data.get("cultural_attribution"),
+            # When this unlock supplants a prior active variant on the same technique, the worker
+            # stashes the prior's attribution here so the DM voices the swap (concern 25b663d3e245).
+            "replaced_cultural_attribution": data.get("replaced_cultural_attribution"),
         },
         "stat_gains": {
             "counter_increment": completion.counter_increment,
@@ -262,6 +266,22 @@ async def advance_training_cycles() -> int:
                             ability_id = data.get("ability_id")
                             if not ability_id:
                                 raise ValueError(f"variant training {activity_id} missing ability_id in data")
+                            # Capture a prior active variant of this technique (read BEFORE the
+                            # upsert overwrites it) so the completion narration tells the player
+                            # their form was supplanted — audio-first, never a silent swap
+                            # (concern 25b663d3e245). Best-effort: a narration-failure retry, which
+                            # re-enters after set_active_variant already ran, omits the notice.
+                            prior_active_id = await ability_persistence.get_active_variant(player_id, ability_id)
+                            if prior_active_id is not None and prior_active_id != variant_id:
+                                try:
+                                    data["replaced_cultural_attribution"] = mentor_variants.get_mentor_variant(
+                                        prior_active_id
+                                    ).cultural_attribution
+                                except ValueError:
+                                    logger.warning(
+                                        "prior active variant %s not in catalog; skipping replace notice",
+                                        prior_active_id,
+                                    )
                             await ability_persistence.set_active_variant(player_id, ability_id, variant_id)
                             completed_promotion = (mentor_variant_progress, variant_id)
 
