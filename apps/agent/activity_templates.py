@@ -105,7 +105,7 @@ Speech style: {mentor_speech_style}
 The player trained: {training_stat}{skill_note}
 Outcome: {tier} (roll: {roll}, DC: {dc})
 Stat gains: {stat_gains}
-
+{cultural_attribution_line}
 Write a short narration (60-120 words) of this training session.
 Include physical sensory details — sweat, exertion, the moment of clarity or frustration.
 End with the decision point.
@@ -122,7 +122,7 @@ Speech style: {mentor_speech_style}
 The player completed training: {training_stat}{skill_note}
 Outcome tier: {tier} (DC: {dc})
 Stat gains: {stat_gains}
-
+{cultural_attribution_line}
 Write a short narration (60-120 words) of the training conclusion.
 Include physical sensory details — sweat, exertion, the moment of clarity or frustration.
 Describe the outcome: breakthrough means real progress was made, plateau means steady effort with no leap forward.
@@ -171,6 +171,17 @@ def _format_recipe_cue(ctx: dict) -> str:
     """
     cue = ctx.get("recipe_cue")
     return f"The result: {cue}" if cue else ""
+
+
+def _format_cultural_attribution(ctx: dict) -> str:
+    """Render the mentor-variant cultural-attribution line for the training narration prompt.
+
+    Present only for mentor-variant training (cultural_attribution in the activity data, M9
+    story-003); empty for stat/skill training so those prompts are byte-unchanged. Tells the DM
+    to voice the technique's cultural lineage when narrating the variant (AC4).
+    """
+    attribution = ctx.get("cultural_attribution")
+    return f"This technique is a {attribution} — let its cultural lineage colour the telling.\n" if attribution else ""
 
 
 def _format_quality_note(ctx: dict) -> str:
@@ -230,6 +241,7 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
             "tier": ctx.get("tier", "unknown"),
             "stat_gains": outcome.get("stat_gains", {}),
             "dc": ctx.get("dc", "?"),
+            "cultural_attribution_line": _format_cultural_attribution(ctx),
         }
         if activity_type == "training":
             format_args["roll"] = ctx.get("roll", "?")

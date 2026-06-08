@@ -104,6 +104,10 @@ def build_training_completion_outcome(
             "training_skill": data.get("skill"),
             "tier": tier,
             "dc": data.get("dc", "?"),
+            # Mentor-variant training carries the variant's cultural attribution (story-003,
+            # written by learn(variant)); None for stat/skill training. The narration template
+            # renders it only when present so non-variant prompts are unchanged.
+            "cultural_attribution": data.get("cultural_attribution"),
         },
         "stat_gains": {
             "counter_increment": completion.counter_increment,
