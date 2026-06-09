@@ -100,7 +100,7 @@ async def test_absent_npc_refuses_no_writes():
 
 
 async def test_below_neutral_disposition_refuses_no_writes():
-    kwargs, mutations, inv_mutations = _repair_kwargs(item=_item(current_hits=3), disposition="wary")
+    kwargs, mutations, inv_mutations = _repair_kwargs(item=_item(current_hits=3), disposition="unfriendly")
     with pytest.raises(ToolError):
         await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
     inv_mutations.update_item_durability.assert_not_awaited()

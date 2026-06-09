@@ -83,10 +83,6 @@ def _cap_str(value: str, max_len: int, name: str) -> None:
 DISPOSITION_ORDER = ["hostile", "unfriendly", "neutral", "friendly", "trusted"]
 
 DISPOSITION_TIERS = {name: i for i, name in enumerate(DISPOSITION_ORDER)}
-# Legacy stored dispositions (pre-story-004 vocabulary) aliased onto the canonical
-# ladder: "wary" ranked between hostile and neutral, now "unfriendly".
-DISPOSITION_TIERS["wary"] = DISPOSITION_TIERS["unfriendly"]
-DISPOSITION_TIERS["cautious"] = DISPOSITION_TIERS["neutral"]
 
 
 def _disposition_rank(tier: str) -> int:

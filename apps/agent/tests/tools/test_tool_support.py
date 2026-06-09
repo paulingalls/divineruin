@@ -13,16 +13,16 @@ from tool_support import (
 
 
 class TestDispositionVocabulary:
-    """story-004: NPC content uses the canonical 5-tier ladder (hostile, unfriendly,
-    neutral, friendly, trusted). The runtime ladder must rank 'unfriendly' as a
-    first-class below-neutral tier, with 'wary'/'cautious' kept as legacy aliases."""
+    """story-004: NPC content + all disposition writers use the canonical 5-tier ladder
+    (hostile, unfriendly, neutral, friendly, trusted). The legacy 'wary'/'cautious'
+    vocabulary is retired — those values are no longer ranked (no live data emits them)."""
 
     def test_unfriendly_is_canonical_below_neutral(self):
         assert DISPOSITION_TIERS["unfriendly"] < DISPOSITION_TIERS["neutral"]
 
-    def test_legacy_aliases_preserved(self):
-        assert DISPOSITION_TIERS["wary"] == DISPOSITION_TIERS["unfriendly"]
-        assert DISPOSITION_TIERS["cautious"] == DISPOSITION_TIERS["neutral"]
+    def test_legacy_values_are_non_canonical(self):
+        assert "wary" not in DISPOSITION_TIERS
+        assert "cautious" not in DISPOSITION_TIERS
 
     def test_unfriendly_filters_to_free_only(self):
         knowledge = {"free": ["public"], "disposition >= friendly": ["secret"]}
@@ -42,7 +42,7 @@ class TestFilterKnowledge:
             "disposition >= friendly": ["secret-ish"],
         }
         assert filter_knowledge(knowledge, "hostile") == ["public"]
-        assert filter_knowledge(knowledge, "wary") == ["public"]
+        assert filter_knowledge(knowledge, "unfriendly") == ["public"]
         assert filter_knowledge(knowledge, "neutral") == ["public"]
         assert filter_knowledge(knowledge, "friendly") == ["public", "secret-ish"]
         assert filter_knowledge(knowledge, "trusted") == ["public", "secret-ish"]
@@ -72,17 +72,13 @@ class TestFilterKnowledge:
         assert filter_knowledge({}, "neutral") == []
 
     def test_unknown_disposition_defaults_neutral(self):
+        # story-004: retired aliases ("wary"/"cautious") and any unknown value all
+        # default to neutral — below the friendly gate, so only "free" knowledge.
         knowledge = {
             "free": ["public"],
             "disposition >= friendly": ["secret"],
         }
         assert filter_knowledge(knowledge, "unknown_tier") == ["public"]
-
-    def test_cautious_treated_as_neutral(self):
-        knowledge = {
-            "free": ["public"],
-            "disposition >= friendly": ["secret"],
-        }
         assert filter_knowledge(knowledge, "cautious") == ["public"]
 
     def test_all_tiers_hostile(self):

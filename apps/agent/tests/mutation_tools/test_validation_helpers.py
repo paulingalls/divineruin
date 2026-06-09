@@ -37,15 +37,14 @@ class TestClampDispositionShift:
     def test_clamp_at_bottom(self):
         assert _clamp_disposition_shift("hostile", -1) == "hostile"
 
-    def test_cautious_normalizes_to_neutral(self):
-        # "cautious" shares rank 2 with "neutral" — shifting up from cautious
-        assert _clamp_disposition_shift("cautious", 1) == "friendly"
-
     def test_shift_multiple(self):
         assert _clamp_disposition_shift("hostile", 2) == "neutral"
 
     def test_unknown_defaults_neutral(self):
+        # story-004: retired aliases ("wary"/"cautious") and any unknown value
+        # all default to rank 2 (neutral) via _disposition_rank's .get(..., 2).
         assert _clamp_disposition_shift("unknown", 1) == "friendly"
+        assert _clamp_disposition_shift("cautious", 1) == "friendly"
 
 
 class TestResolveAmbientSounds:

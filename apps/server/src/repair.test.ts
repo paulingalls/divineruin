@@ -70,19 +70,21 @@ describe("repairQuote", () => {
     expect(repairQuote("common", "trusted").priceSp).toBeCloseTo(1.2); // 2 * 0.6
   });
 
-  test("cautious aliases neutral (full price)", () => {
-    expect(repairQuote("common", "cautious").priceSp).toBe(2);
+  test("legacy wary/cautious dispositions are retired (throw, non-canonical)", () => {
+    // story-004 dropped the wary/cautious aliases; content + writers emit the canonical ladder.
+    expect(() => repairQuote("common", "cautious")).toThrow();
+    expect(() => repairQuote("rare", "wary")).toThrow();
   });
 
   test("disposition is case-insensitive (mirrors Python .lower())", () => {
     expect(repairQuote("uncommon", "Friendly").priceSp).toBeCloseTo(8); // not full 10
     expect(repairQuote("rare", "NEUTRAL").priceSp).toBe(50);
-    expect(repairQuote("rare", "Wary").available).toBe(false);
+    expect(repairQuote("rare", "UNFRIENDLY").available).toBe(false);
   });
 
   test("below Neutral refuses (unavailable, no charge)", () => {
-    // story-004: 'unfriendly' is the canonical below-neutral tier; 'wary' a legacy alias.
-    for (const disposition of ["unfriendly", "wary", "hostile"]) {
+    // story-004: 'unfriendly' is the canonical below-neutral tier.
+    for (const disposition of ["unfriendly", "hostile"]) {
       const q = repairQuote("rare", disposition);
       expect(q.available).toBe(false);
       expect(q.priceSp).toBe(0);
@@ -104,8 +106,8 @@ describe("resolveDisposition", () => {
   });
 
   test("falls back to the NPC's default_disposition when no standing", async () => {
-    setMockResults([], [{ data: { default_disposition: "wary" } }]);
-    expect(await resolveDisposition("grimjaw", "player_1")).toBe("wary");
+    setMockResults([], [{ data: { default_disposition: "unfriendly" } }]);
+    expect(await resolveDisposition("grimjaw", "player_1")).toBe("unfriendly");
   });
 
   test("falls back to neutral when neither exists", async () => {
@@ -137,7 +139,7 @@ describe("handleRepairQuote", () => {
 
   test("below-Neutral blacksmith refuses (available:false)", async () => {
     mockItem = { id: "blade_rare", rarity: "rare", durability_tier: "reinforced" };
-    setMockResults([{ data: JSON.stringify({ disposition: "wary" }) }]);
+    setMockResults([{ data: JSON.stringify({ disposition: "unfriendly" }) }]);
     const body = (await (
       await handleRepairQuote(
         repairReq("blade_rare", "grimjaw"),
