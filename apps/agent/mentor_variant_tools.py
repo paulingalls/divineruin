@@ -48,10 +48,13 @@ async def _learn_variant_impl(
 ) -> str:
     context.disallow_interruptions()
     _validate_id(variant_id, "variant_id")
+    # learn(variant) is documented to OMIT source: a variant is acquired only via the
+    # async mentor training loop, never instantly. Reject a non-empty source rather than
+    # silently ignoring it — parity with learn(recipe)/learn(spell) closed-set validation.
+    if source:
+        raise ToolError(f"learn(variant) takes no source (got {source!r}); a variant is acquired by mentor training.")
 
     # Catalog lookup is an in-memory read (no IO) — do it before touching the DB.
-    # `source` is accepted for the learn(kind, id, source) dispatch shape but not
-    # gated: a variant's only acquisition track is the mentor loop (mentor_training).
     try:
         variant = variants_mod.get_mentor_variant(variant_id)
     except ValueError as exc:

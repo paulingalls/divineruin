@@ -99,6 +99,16 @@ class TestLearnVariant:
         assert kwargs["data"]["mentor_id"] == "guildmaster_torin"
 
     @pytest.mark.asyncio
+    async def test_non_empty_source_rejected(self):
+        # learn(variant) is documented to OMIT source — a variant is acquired via the
+        # async mentor loop, not instantly. A non-empty source is rejected (not silently
+        # ignored), for parity with learn(recipe)/learn(spell) closed-set validation.
+        ctx = make_context()
+        with pytest.raises(ToolError, match="no source"):
+            await _learn_variant_impl(ctx, "warrior_cleaving_blow_drathian", "discovery")
+        ctx.disallow_interruptions.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_unknown_variant_raises(self):
         ctx = make_context()
         db_mod, _ = make_db_mod()
