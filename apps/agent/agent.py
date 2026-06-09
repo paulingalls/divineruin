@@ -225,6 +225,15 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if not role_archetypes_is_loaded():
         await load_role_archetypes()
 
+    # Authored NPC catalog (content/npcs.json) for synchronous narration consumers —
+    # activity_templates derives crafting/training personas from it (story-004 shim
+    # consolidation). Guarded so the seed_npcs test fixture skips the DB fetch.
+    from npcs import is_loaded as npcs_is_loaded
+    from npcs import load_npcs
+
+    if not npcs_is_loaded():
+        await load_npcs()
+
     # Determine session type: new player (creation) vs returning
     player = None
     last_summary = None
