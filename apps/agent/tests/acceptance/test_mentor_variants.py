@@ -55,8 +55,13 @@ def capstone_server(migrated_db: str) -> Iterator[dict[str, str]]:
 
 
 async def _seed_warrior_with_pools(pool, player_id: str) -> None:
-    """seed_player_with_pools as a warrior (the M9 base technique's archetype)."""
-    await seed_player_with_pools(pool, player_id=player_id, class_="warrior")
+    """seed_player_with_pools as a warrior owning the base elective.
+
+    The own-the-base gate (story-006) requires a character_abilities row for the
+    base technique before a variant can be trained (learn) or its override
+    activated — so the warrior must own _BASE, not just have the pools.
+    """
+    await seed_player_with_pools(pool, player_id=player_id, class_="warrior", equipped_electives=(_BASE,))
 
 
 async def _load_catalogs() -> None:

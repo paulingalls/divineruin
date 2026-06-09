@@ -71,6 +71,17 @@ async def _request_ability_activation_impl(
         if player is None:
             raise ToolError(f"Unknown player: {player_id}")
 
+        # Own-the-base gate (story-006): reject an ability the player hasn't learned
+        # BEFORE any resource deduction. Core/reaction are always-known for the
+        # archetype; an elective needs a character_abilities row (queried only then).
+        owned_elective = (
+            await persistence_mod.owns_elective(player_id, ability_id, conn=conn)
+            if ability.ability_type == "elective"
+            else False
+        )
+        if not abilities_mod.owns_ability(player.get("class"), ability, owns_elective=owned_elective):
+            raise ToolError(f"You haven't learned {ability.name}.")
+
         # An unlocked-and-active mentor variant overrides the base technique wholesale
         # (cost/effect/narration — decision m9 override shape). get_variant validates the
         # variant belongs to this ability and fails loud on a mismatch.

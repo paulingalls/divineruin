@@ -95,6 +95,26 @@ class TestGetActiveVariant:
         assert result is None
 
 
+class TestOwnsElective:
+    async def test_true_when_row_exists(self):
+        conn = AsyncMock()
+        conn.fetchval = AsyncMock(return_value=True)
+        result = await ability_persistence.owns_elective("p1", "warrior_cleaving_blow", conn=conn)
+        sql, *params = conn.fetchval.call_args.args
+        assert "SELECT EXISTS (SELECT 1 FROM character_abilities" in sql
+        assert "WHERE player_id = $1 AND ability_id = $2" in sql
+        assert params == ["p1", "warrior_cleaving_blow"]
+        assert result is True
+
+    async def test_false_when_absent(self):
+        # Ownership is "has a row", regardless of equipped — a swapped-out elective
+        # (equipped=FALSE) keeps its row and stays owned; no row means not owned.
+        conn = AsyncMock()
+        conn.fetchval = AsyncMock(return_value=False)
+        result = await ability_persistence.owns_elective("p1", "warrior_cleaving_blow", conn=conn)
+        assert result is False
+
+
 class TestGetCharacterAbilities:
     async def test_returns_mapped_rows(self):
         conn = AsyncMock()
