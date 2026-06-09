@@ -17,6 +17,7 @@ import db_activity_queries
 import db_mutations
 import db_mutations_divine
 import db_queries
+import db_training
 from async_worker_claim import claim_resolving, mark_resolved, reset_stale_resolving, revert_claim_safe
 from async_worker_config import POLL_INTERVAL
 from async_worker_training import advance_training_cycles
@@ -327,6 +328,11 @@ async def main() -> None:
                 await check_god_whisper_triggers()
             except Exception:
                 logger.exception("Error in god whisper check")
+
+            try:
+                await db_training.prune_training_cycle_accruals()
+            except Exception:
+                logger.exception("Error pruning training accruals")
 
             await asyncio.sleep(POLL_INTERVAL)
     finally:
