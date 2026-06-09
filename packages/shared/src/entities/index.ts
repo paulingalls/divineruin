@@ -1,4 +1,11 @@
-export type { Location, LocationExit, LocationCondition, HiddenElement } from "./location";
+export type {
+  Location,
+  LocationExit,
+  LocationCondition,
+  HiddenElement,
+  SettlementSize,
+  SettlementPersonality,
+} from "./location";
 
 export type { Npc, NpcKnowledge, NpcQuestKnowledge, NpcSchedule } from "./npc";
 
