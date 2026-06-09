@@ -18,8 +18,9 @@ import { dispositionMultiplier, repairCostSp } from "./pricing.ts";
 // system constant — it stays in code, not pricing.
 
 // Disposition tiers, ordered low->high; below "neutral" the blacksmith refuses.
-// "cautious" aliases neutral (parity with tool_support.DISPOSITION_TIERS).
-const DISPOSITION_ORDER = ["hostile", "wary", "neutral", "friendly", "trusted"];
+// "wary"/"cautious" are legacy stored values aliased onto the canonical ladder
+// (parity with tool_support.DISPOSITION_TIERS).
+const DISPOSITION_ORDER = ["hostile", "unfriendly", "neutral", "friendly", "trusted"];
 const NEUTRAL_RANK = DISPOSITION_ORDER.indexOf("neutral");
 
 /** Rank of a disposition (cautious aliases neutral), or undefined if unknown.
@@ -27,6 +28,7 @@ const NEUTRAL_RANK = DISPOSITION_ORDER.indexOf("neutral");
  * — stored JSONB dispositions are uncontrolled, so a "Friendly" must price like Python. */
 function dispositionRank(disposition: string): number | undefined {
   const key = disposition.toLowerCase();
+  if (key === "wary") return DISPOSITION_ORDER.indexOf("unfriendly");
   if (key === "cautious") return NEUTRAL_RANK;
   const rank = DISPOSITION_ORDER.indexOf(key);
   return rank === -1 ? undefined : rank;

@@ -28,7 +28,8 @@ class TestClampDispositionShift:
         assert _clamp_disposition_shift("neutral", 1) == "friendly"
 
     def test_shift_down(self):
-        assert _clamp_disposition_shift("neutral", -1) == "wary"
+        # canonical ladder (story-004): neutral -1 -> unfriendly (was "wary")
+        assert _clamp_disposition_shift("neutral", -1) == "unfriendly"
 
     def test_clamp_at_top(self):
         assert _clamp_disposition_shift("trusted", 2) == "trusted"

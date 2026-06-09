@@ -34,7 +34,7 @@ async def update_npc_disposition(
 ) -> str:
     """Shift an NPC's disposition toward or away from the player.
     Delta range: -2 to +2. Positive = warmer, negative = colder.
-    Scale: hostile -> wary -> neutral -> friendly -> trusted."""
+    Scale: hostile -> unfriendly -> neutral -> friendly -> trusted."""
     return await _update_npc_disposition_impl(context, npc_id, delta, reason)
 
 

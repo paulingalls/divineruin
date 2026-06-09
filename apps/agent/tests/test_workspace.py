@@ -67,10 +67,11 @@ class TestRentalPricing:
         assert quote.available is True
         assert quote.price_sp == pytest.approx(10.0)
 
-    @pytest.mark.parametrize("disposition", ["wary", "hostile"])
+    @pytest.mark.parametrize("disposition", ["unfriendly", "wary", "hostile"])
     def test_below_neutral_refuses_no_surcharge(self, disposition):
         # Adopt spec: below Neutral the NPC refuses outright — no rental, no
-        # surcharge (not the milestone's hostile-surcharge wording).
+        # surcharge (not the milestone's hostile-surcharge wording). story-004:
+        # 'unfriendly' is the canonical below-neutral tier; 'wary' a legacy alias.
         quote = ws.compute_rental_price(5, disposition, multipliers=_MULT)
         assert quote.available is False
         assert quote.price_sp == 0.0

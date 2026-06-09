@@ -1,4 +1,4 @@
-import type { ArchetypeService, CombatStats } from "./role_archetype";
+import type { ArchetypeService, CombatStats, Disposition } from "./role_archetype";
 
 export interface NpcQuestKnowledge {
   quest: string;
@@ -32,7 +32,7 @@ export interface Npc {
   backstory_summary?: string;
   knowledge: NpcKnowledge;
   schedule: NpcSchedule;
-  default_disposition: string;
+  default_disposition: Disposition; // canonical 5-tier ladder (story-004); see role_archetype.ts
   disposition_modifiers?: Record<string, number>;
   inventory_pool: string | null;
   services?: ArchetypeService[]; // per-NPC economy overrides (M6.1)

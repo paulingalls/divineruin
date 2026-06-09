@@ -3,7 +3,30 @@
 import pytest
 from livekit.agents.llm import ToolError
 
-from tool_support import _location_for_narration, _validate_id, apply_time_conditions, filter_knowledge
+from tool_support import (
+    DISPOSITION_TIERS,
+    _location_for_narration,
+    _validate_id,
+    apply_time_conditions,
+    filter_knowledge,
+)
+
+
+class TestDispositionVocabulary:
+    """story-004: NPC content uses the canonical 5-tier ladder (hostile, unfriendly,
+    neutral, friendly, trusted). The runtime ladder must rank 'unfriendly' as a
+    first-class below-neutral tier, with 'wary'/'cautious' kept as legacy aliases."""
+
+    def test_unfriendly_is_canonical_below_neutral(self):
+        assert DISPOSITION_TIERS["unfriendly"] < DISPOSITION_TIERS["neutral"]
+
+    def test_legacy_aliases_preserved(self):
+        assert DISPOSITION_TIERS["wary"] == DISPOSITION_TIERS["unfriendly"]
+        assert DISPOSITION_TIERS["cautious"] == DISPOSITION_TIERS["neutral"]
+
+    def test_unfriendly_filters_to_free_only(self):
+        knowledge = {"free": ["public"], "disposition >= friendly": ["secret"]}
+        assert filter_knowledge(knowledge, "unfriendly") == ["public"]
 
 
 class TestFilterKnowledge:

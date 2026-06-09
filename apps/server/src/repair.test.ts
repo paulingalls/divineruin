@@ -81,7 +81,8 @@ describe("repairQuote", () => {
   });
 
   test("below Neutral refuses (unavailable, no charge)", () => {
-    for (const disposition of ["wary", "hostile"]) {
+    // story-004: 'unfriendly' is the canonical below-neutral tier; 'wary' a legacy alias.
+    for (const disposition of ["unfriendly", "wary", "hostile"]) {
       const q = repairQuote("rare", disposition);
       expect(q.available).toBe(false);
       expect(q.priceSp).toBe(0);
