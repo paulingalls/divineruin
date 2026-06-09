@@ -225,6 +225,15 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if not role_archetypes_is_loaded():
         await load_role_archetypes()
 
+    # Settlement population templates (content/settlement_templates.json) — per-tier role
+    # counts + personality modifiers consumed by settlement NPC generation (M6.2, story-003).
+    # Guarded so the seed_settlement_templates test fixture skips the DB fetch.
+    from settlement_templates import is_loaded as settlement_templates_is_loaded
+    from settlement_templates import load_settlement_templates
+
+    if not settlement_templates_is_loaded():
+        await load_settlement_templates()
+
     # Authored NPC catalog (content/npcs.json) for synchronous narration consumers —
     # activity_templates derives crafting/training personas from it (story-004 shim
     # consolidation). Guarded so the seed_npcs test fixture skips the DB fetch.

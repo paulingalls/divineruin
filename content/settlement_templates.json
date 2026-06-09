@@ -1,0 +1,115 @@
+[
+  {
+    "id": "hamlet",
+    "kind": "tier",
+    "role_counts": {
+      "innkeeper": { "min": 0, "max": 1 },
+      "guard": { "min": 0, "max": 2 }
+    }
+  },
+  {
+    "id": "village",
+    "kind": "tier",
+    "role_counts": {
+      "innkeeper": { "min": 1, "max": 1 },
+      "merchant_general_goods": { "min": 1, "max": 1 },
+      "merchant_traveling": { "min": 0, "max": 1 },
+      "blacksmith": { "min": 1, "max": 1 },
+      "healer_temple": { "min": 1, "max": 1 },
+      "guard": { "min": 2, "max": 4 }
+    }
+  },
+  {
+    "id": "town",
+    "kind": "tier",
+    "role_counts": {
+      "innkeeper": { "min": 1, "max": 2 },
+      "merchant_general_goods": { "min": 2, "max": 3 },
+      "blacksmith": { "min": 1, "max": 2 },
+      "healer_temple": { "min": 1, "max": 2 },
+      "scholar_sage": { "min": 0, "max": 1 },
+      "guard": { "min": 6, "max": 12 }
+    }
+  },
+  {
+    "id": "city",
+    "kind": "tier",
+    "role_counts": {
+      "innkeeper": { "min": 3, "max": 5 },
+      "merchant_general_goods": { "min": 5, "max": 10 },
+      "merchant_weapons_armor": { "min": 2, "max": 4 },
+      "merchant_alchemist": { "min": 1, "max": 3 },
+      "merchant_jeweler": { "min": 1, "max": 2 },
+      "merchant_exotic": { "min": 1, "max": 3 },
+      "merchant_black_market": { "min": 1, "max": 2 },
+      "blacksmith": { "min": 3, "max": 6 },
+      "healer_temple": { "min": 3, "max": 6 },
+      "scholar_sage": { "min": 2, "max": 5 },
+      "guard": { "min": 30, "max": 60 }
+    }
+  },
+  {
+    "id": "prosperous",
+    "kind": "personality",
+    "role_frequency_modifiers": { "merchant_general_goods": 1 },
+    "disposition_modifiers": {},
+    "price_modifier": 1.15,
+    "description": "Fuller inventories, higher prices, confident NPCs."
+  },
+  {
+    "id": "struggling",
+    "kind": "personality",
+    "role_frequency_modifiers": { "fence": 1 },
+    "disposition_modifiers": {},
+    "price_modifier": 0.9,
+    "description": "Thin inventories, desperate NPCs, more quest hooks."
+  },
+  {
+    "id": "military",
+    "kind": "personality",
+    "role_frequency_modifiers": { "guard": 2, "soldier_ashmark": 1 },
+    "disposition_modifiers": {},
+    "price_modifier": 1.0,
+    "description": "Guards everywhere, martial mentors, suspicious of strangers."
+  },
+  {
+    "id": "scholarly",
+    "kind": "personality",
+    "role_frequency_modifiers": { "scholar_sage": 1 },
+    "disposition_modifiers": {},
+    "price_modifier": 1.0,
+    "description": "Scholar NPCs, library access, cheap identification services."
+  },
+  {
+    "id": "corrupt",
+    "kind": "personality",
+    "role_frequency_modifiers": { "fence": 1, "merchant_black_market": 1 },
+    "disposition_modifiers": { "guard": -1 },
+    "price_modifier": 1.0,
+    "description": "Black market thrives, guards take bribes, faction tensions run high."
+  },
+  {
+    "id": "devout",
+    "kind": "personality",
+    "role_frequency_modifiers": { "priest": 1, "healer_temple": 1 },
+    "disposition_modifiers": {},
+    "price_modifier": 1.0,
+    "description": "Largest temple, cheap healer services, rich in divine knowledge."
+  },
+  {
+    "id": "frontier",
+    "kind": "personality",
+    "role_frequency_modifiers": { "guard": -1 },
+    "disposition_modifiers": {},
+    "price_modifier": 1.0,
+    "description": "Minimal services, self-reliant NPCs, Hollow knowledge shared freely."
+  },
+  {
+    "id": "refuge",
+    "kind": "personality",
+    "role_frequency_modifiers": { "guard": 1 },
+    "disposition_modifiers": {},
+    "price_modifier": 1.0,
+    "description": "Diverse population, cautious NPCs, high demand for protection."
+  }
+]
