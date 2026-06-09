@@ -192,10 +192,10 @@
     "id": "thornwatch",
     "name": "The Thornwatch",
     "type": "military_order",
-    "description": "The military order that holds the line against the Hollow. Disciplined, well-equipped, and stretched thin across the Ashmark front and the watchtower network. They do not talk about winning — they talk about holding.",
+    "description": "The military order that holds the line against the Hollow, held under Commander Voss. Disciplined, well-equipped, and stretched thin across the Ashmark front and the watchtower network. They do not talk about winning — they talk about holding.",
     "values": ["order", "duty", "sacrifice", "suspicion of the unknown"],
     "territory": ["ashmark", "border_regions", "watchtower_network"],
-    "leader": "commander_voss",
+    "leader": null,
     "reputation_tiers": {
       "hostile": {
         "threshold": -10,

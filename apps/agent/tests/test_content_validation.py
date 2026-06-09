@@ -97,6 +97,16 @@ class TestContentCrossReferences:
                     f"Location '{loc['id']}' exit '{direction}' references unknown destination '{dest}'"
                 )
 
+    def test_faction_leaders_resolve_to_real_npc_or_null(self):
+        # A faction's leader is either null (leader not modeled as an NPC yet) or a real
+        # npcs.json id — no dangling references (story-005 close-review concern 34d6eb85a088).
+        npc_ids = _load_ids("npcs.json")
+        for faction in _load_json("factions.json"):
+            leader = faction.get("leader")
+            assert leader is None or leader in npc_ids, (
+                f"Faction '{faction['id']}' leader '{leader}' is neither null nor a known NPC"
+            )
+
 
 class TestContentIntegrity:
     def test_all_npcs_have_knowledge_tiers(self):
