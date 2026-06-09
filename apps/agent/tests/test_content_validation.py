@@ -158,3 +158,76 @@ class TestContentIntegrity:
             assert loc["region_type"] in valid_types, (
                 f"Location '{loc['id']}' has invalid region_type '{loc['region_type']}', expected one of {valid_types}"
             )
+
+
+# Phase 6 / M6.2 (story-005): the 4 humanoid-faction hostile encounters + the Ashmark Patrol
+# reputation-gated stance.
+_ENEMY_REQUIRED_FIELDS = (
+    "id",
+    "name",
+    "level",
+    "ac",
+    "hp",
+    "attributes",
+    "action_pool",
+    "xp_value",
+    "sound_signature",
+)
+_ATTRIBUTE_KEYS = ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma")
+# Fixed inline compositions within the audit-spec ranges.
+_NEW_ENCOUNTER_ENEMY_COUNTS = {
+    "bandit_ambush": 5,  # 4 Bandits + 1 Bandit Captain
+    "ashmark_patrol": 5,  # 4 Ashmark Soldiers + 1 Ashmark Sergeant
+    "cult_cell": 7,  # 2 Cult Fanatics + 4 Cultists + 1 Cult Leader
+    "hollow_corrupted_settlement": 10,  # 1 Hollowed Knight + 3 Mawlings + 6 Shadelings
+}
+
+
+class TestM62HostileEncounters:
+    def _encounters(self) -> dict[str, dict]:
+        return {e["id"]: e for e in _load_json("encounter_templates.json")}
+
+    def _factions(self) -> dict[str, dict]:
+        return {f["id"]: f for f in _load_json("factions.json")}
+
+    def test_four_new_encounters_exist_with_expected_enemy_counts(self):
+        encs = self._encounters()
+        for eid, count in _NEW_ENCOUNTER_ENEMY_COUNTS.items():
+            assert eid in encs, f"missing encounter '{eid}'"
+            assert len(encs[eid]["enemies"]) == count, (
+                f"encounter '{eid}' expected {count} enemies, got {len(encs[eid]['enemies'])}"
+            )
+
+    def test_new_encounter_enemies_have_full_stat_blocks(self):
+        encs = self._encounters()
+        for eid in _NEW_ENCOUNTER_ENEMY_COUNTS:
+            for enemy in encs[eid]["enemies"]:
+                for field in _ENEMY_REQUIRED_FIELDS:
+                    assert field in enemy, f"'{eid}' enemy '{enemy.get('id', '?')}' missing '{field}'"
+                for attr in _ATTRIBUTE_KEYS:
+                    assert attr in enemy["attributes"], f"'{eid}' enemy '{enemy['id']}' attributes missing '{attr}'"
+                assert len(enemy["action_pool"]) > 0, f"'{eid}' enemy '{enemy['id']}' has no actions"
+
+    def test_thornwatch_faction_exists_with_reputation_tiers(self):
+        factions = self._factions()
+        assert "thornwatch" in factions, "thornwatch faction not found in factions.json"
+        tiers = factions["thornwatch"]["reputation_tiers"]
+        assert "friendly" in tiers, "thornwatch reputation_tiers missing 'friendly'"
+        assert "threshold" in tiers["friendly"]
+
+    def test_ashmark_patrol_stance_gate_references_real_faction_and_tier(self):
+        gate = self._encounters()["ashmark_patrol"]["stance_gate"]
+        factions = self._factions()
+        assert gate["faction"] in factions, f"stance_gate faction '{gate['faction']}' not in factions.json"
+        tiers = factions[gate["faction"]]["reputation_tiers"]
+        assert gate["allied_at_or_above"] in tiers, (
+            f"stance_gate tier '{gate['allied_at_or_above']}' not in {gate['faction']} reputation_tiers"
+        )
+
+    def test_ashmark_stance_resolves_allied_high_hostile_low(self):
+        from encounter_stance import resolve_encounter_stance
+
+        gate = self._encounters()["ashmark_patrol"]["stance_gate"]
+        tiers = self._factions()[gate["faction"]]["reputation_tiers"]
+        assert resolve_encounter_stance(gate, 25, tiers) == "allied"
+        assert resolve_encounter_stance(gate, -10, tiers) == "hostile"

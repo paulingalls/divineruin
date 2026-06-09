@@ -83,7 +83,11 @@
     },
     "world_state": {
       "current_strength": "fragile",
-      "active_concerns": ["artifact recovery", "Greyvale ruins connection to Aelindra", "preserving remaining knowledge"],
+      "active_concerns": [
+        "artifact recovery",
+        "Greyvale ruins connection to Aelindra",
+        "preserving remaining knowledge"
+      ],
       "recent_events": []
     }
   },
@@ -127,7 +131,11 @@
     },
     "world_state": {
       "current_strength": "vulnerable",
-      "active_concerns": ["Hollow incursions near Millhaven", "farm abandonment", "dwindling trade"],
+      "active_concerns": [
+        "Hollow incursions near Millhaven",
+        "farm abandonment",
+        "dwindling trade"
+      ],
       "recent_events": []
     }
   },
@@ -172,7 +180,60 @@
     },
     "world_state": {
       "current_strength": "institutional",
-      "active_concerns": ["Greyvale threat assessment", "guild overreach concerns", "maintaining public calm"],
+      "active_concerns": [
+        "Greyvale threat assessment",
+        "guild overreach concerns",
+        "maintaining public calm"
+      ],
+      "recent_events": []
+    }
+  },
+  {
+    "id": "thornwatch",
+    "name": "The Thornwatch",
+    "type": "military_order",
+    "description": "The military order that holds the line against the Hollow. Disciplined, well-equipped, and stretched thin across the Ashmark front and the watchtower network. They do not talk about winning — they talk about holding.",
+    "values": ["order", "duty", "sacrifice", "suspicion of the unknown"],
+    "territory": ["ashmark", "border_regions", "watchtower_network"],
+    "leader": "commander_voss",
+    "reputation_tiers": {
+      "hostile": {
+        "threshold": -10,
+        "effects": ["detained on sight", "barred from the front", "flagged on patrol rosters"]
+      },
+      "unfriendly": {
+        "threshold": -5,
+        "effects": ["papers demanded", "suspicious goods confiscated", "cold reception at camps"]
+      },
+      "neutral": {
+        "threshold": 0,
+        "effects": ["standard passage", "public threat briefings"]
+      },
+      "friendly": {
+        "threshold": 5,
+        "effects": ["patrol escort offered", "shared Hollow intelligence", "rest at camp"]
+      },
+      "trusted": {
+        "threshold": 15,
+        "effects": ["frontline supply access", "tactical briefings", "watchtower billet"]
+      },
+      "honored": {
+        "threshold": 25,
+        "effects": [
+          "field commission honored",
+          "classified front intelligence",
+          "Thornwatch commendation"
+        ]
+      }
+    },
+    "relationships": {
+      "accord_guild": "respectful_cooperation",
+      "temple_authority": "cautious_alliance",
+      "independent": "protective"
+    },
+    "world_state": {
+      "current_strength": "strained",
+      "active_concerns": ["missing patrol", "border incursions increasing", "supply shortages"],
       "recent_events": []
     }
   }
