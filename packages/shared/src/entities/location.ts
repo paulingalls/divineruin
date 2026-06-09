@@ -26,6 +26,34 @@ export interface LocationCondition {
   danger_level_add?: number;
 }
 
+// Settlement population size (Phase 6 M6.2). Mirrors apps/agent/workspace.py SettlementSize
+// for cross-language parity — the value array is the SSOT, the union derived from it (so a
+// new size updates both the type and location.test.ts, which imports the array). Capital is
+// absent (deferred post-Sundering); keldaran_hold is present though no current location or
+// settlement template uses it.
+export const SETTLEMENT_SIZE_VALUES = [
+  "hamlet",
+  "village",
+  "town",
+  "city",
+  "keldaran_hold",
+] as const;
+export type SettlementSize = (typeof SETTLEMENT_SIZE_VALUES)[number];
+
+// The 8 settlement personality traits (M6.2, Audit M6.2). The Python settlement-template
+// loader (story-002) validates settlement_templates.json against the same 8.
+export const SETTLEMENT_PERSONALITY_VALUES = [
+  "prosperous",
+  "struggling",
+  "military",
+  "scholarly",
+  "corrupt",
+  "devout",
+  "frontier",
+  "refuge",
+] as const;
+export type SettlementPersonality = (typeof SETTLEMENT_PERSONALITY_VALUES)[number];
+
 export interface Location {
   id: string;
   name: string;
@@ -42,4 +70,9 @@ export interface Location {
   ambient_sounds?: string;
   ambient_sounds_night?: string;
   danger_level?: number;
+  // Settlement size + flavor (M6.2), agent-consumed for NPC-population generation. Orthogonal
+  // to region_type. Present only on populated settlements; dungeon/wilderness locations omit
+  // both. See SettlementSize / SettlementPersonality above.
+  settlement_tier?: SettlementSize;
+  personality?: SettlementPersonality;
 }

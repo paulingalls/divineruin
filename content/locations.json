@@ -1,6 +1,8 @@
 [
   {
     "id": "accord_market_square",
+    "settlement_tier": "city",
+    "personality": "prosperous",
     "name": "Market Square",
     "tier": 1,
     "danger_level": 1,
@@ -59,6 +61,8 @@
   },
   {
     "id": "millhaven",
+    "settlement_tier": "village",
+    "personality": "struggling",
     "name": "Millhaven",
     "tier": 1,
     "danger_level": 0,
@@ -187,6 +191,8 @@
   },
   {
     "id": "accord_guild_hall",
+    "settlement_tier": "city",
+    "personality": "prosperous",
     "name": "Guild Hall",
     "tier": 1,
     "danger_level": 0,
@@ -220,6 +226,8 @@
   },
   {
     "id": "accord_training_hall",
+    "settlement_tier": "city",
+    "personality": "prosperous",
     "name": "Training Hall",
     "tier": 1,
     "danger_level": 0,
@@ -245,6 +253,8 @@
   },
   {
     "id": "accord_temple_row",
+    "settlement_tier": "city",
+    "personality": "prosperous",
     "name": "Temple Row",
     "tier": 1,
     "district": "accord_central",
@@ -273,6 +283,8 @@
   },
   {
     "id": "accord_dockside",
+    "settlement_tier": "city",
+    "personality": "prosperous",
     "name": "Dockside Quarter",
     "tier": 1,
     "danger_level": 1,
@@ -303,6 +315,8 @@
   },
   {
     "id": "accord_hearthstone_tavern",
+    "settlement_tier": "city",
+    "personality": "prosperous",
     "name": "The Hearthstone Tavern",
     "tier": 1,
     "district": "accord_central",
@@ -430,6 +444,8 @@
   },
   {
     "id": "millhaven_inn",
+    "settlement_tier": "village",
+    "personality": "struggling",
     "name": "Millhaven Inn",
     "tier": 2,
     "district": "millhaven_town",
@@ -448,6 +464,8 @@
   },
   {
     "id": "torin_quarters",
+    "settlement_tier": "city",
+    "personality": "prosperous",
     "name": "Torin's Quarters",
     "tier": 2,
     "district": "accord_central",
@@ -465,6 +483,8 @@
   },
   {
     "id": "yanna_farmhouse",
+    "settlement_tier": "village",
+    "personality": "struggling",
     "name": "Yanna's Farmhouse",
     "tier": 2,
     "district": "millhaven_town",
@@ -482,6 +502,8 @@
   },
   {
     "id": "emris_study",
+    "settlement_tier": "city",
+    "personality": "prosperous",
     "name": "Emris's Study",
     "tier": 2,
     "district": "accord_dockside",
@@ -499,6 +521,8 @@
   },
   {
     "id": "accord_forge",
+    "settlement_tier": "city",
+    "personality": "prosperous",
     "name": "Grimjaw's Forge",
     "tier": 2,
     "district": "accord_central",
@@ -527,6 +551,8 @@
   },
   {
     "id": "grimjaw_quarters",
+    "settlement_tier": "city",
+    "personality": "prosperous",
     "name": "Grimjaw's Quarters",
     "tier": 2,
     "district": "accord_central",
