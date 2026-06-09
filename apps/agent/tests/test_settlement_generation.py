@@ -13,8 +13,18 @@ from pathlib import Path
 
 import pytest
 
-from role_archetypes import parse_role_archetype_row, set_role_archetypes
-from settlement_generation import _effective_ranges, generate_settlement_npcs
+from role_archetypes import (
+    DISPOSITIONS,
+    create_npc_from_archetype,
+    parse_role_archetype_row,
+    set_role_archetypes,
+)
+from settlement_generation import (
+    _effective_ranges,
+    _shift_disposition,
+    generate_settlement_npcs,
+    instantiate_npc_from_template,
+)
 from settlement_templates import parse_settlement_template_row, set_settlement_templates
 
 _CONTENT = Path(__file__).resolve().parents[3] / "content"
@@ -87,3 +97,65 @@ class TestEffectiveRanges:
         r = _effective_ranges("village", "frontier")
         assert all(rng["max"] >= 0 and rng["min"] >= 0 for rng in r.values())
         assert "soldier_ashmark" not in r  # frontier doesn't add it
+
+
+class TestShiftDisposition:
+    def test_shifts_within_ladder(self):
+        assert _shift_disposition("neutral", -1) == "unfriendly"
+        assert _shift_disposition("neutral", 1) == "friendly"
+
+    def test_clamps_at_both_ends(self):
+        assert _shift_disposition("hostile", -3) == "hostile"
+        assert _shift_disposition("trusted", 5) == "trusted"
+
+
+class TestInstantiate:
+    def test_calls_create_npc_and_preserves_base_keys(self):
+        npc = instantiate_npc_from_template("innkeeper", "village", "military")
+        base = create_npc_from_archetype("innkeeper")
+        assert npc["role_archetype"] == base["role_archetype"]
+        assert npc["services"] == base["services"]
+        assert npc["knowledge_domains"] == base["knowledge_domains"]
+
+    def test_overrides_pass_through(self):
+        npc = instantiate_npc_from_template("guard", "town", "military", {"id": "npc_42", "name": "Bran"})
+        assert npc["id"] == "npc_42"
+        assert npc["name"] == "Bran"
+
+    def test_disposition_modifier_drops_guard_under_corrupt(self):
+        # guard default_disposition is neutral; corrupt guard -1 -> unfriendly.
+        npc = instantiate_npc_from_template("guard", "city", "corrupt")
+        assert npc["default_disposition"] == "unfriendly"
+
+    def test_no_disposition_modifier_leaves_baseline(self):
+        base = create_npc_from_archetype("guard")
+        npc = instantiate_npc_from_template("guard", "city", "military")  # military has no guard disp mod
+        assert npc["default_disposition"] == base["default_disposition"]
+
+    def test_price_modifier_composes_multiplicatively(self):
+        base = create_npc_from_archetype("merchant_general_goods")
+        npc = instantiate_npc_from_template("merchant_general_goods", "city", "prosperous")
+        assert npc["price_modifier"] == pytest.approx(base["price_modifier"] * 1.15)
+
+    def test_inventory_richness_set_from_personality(self):
+        prosperous = instantiate_npc_from_template("merchant_general_goods", "city", "prosperous")
+        struggling = instantiate_npc_from_template("merchant_general_goods", "city", "struggling")
+        assert prosperous["inventory_richness"] == 1.2
+        assert struggling["inventory_richness"] == 0.8
+
+    def test_keldaran_hold_tier_validates(self):
+        # keldaran_hold normalizes to city; a bogus tier fails loud.
+        instantiate_npc_from_template("guard", "keldaran_hold", "military")
+        with pytest.raises(ValueError):
+            instantiate_npc_from_template("guard", "metropolis", "military")
+
+
+class TestCorruptAcceptance:
+    def test_corrupt_raises_blackmarket_frequency_and_drops_guard_disposition(self):
+        # story-003 AC: Corrupt raises Fence/Black-Market frequency AND drops Guard disposition.
+        ranges = _effective_ranges("city", "corrupt")
+        plain = _effective_ranges("city", "military")  # military has no fence/blackmarket freq mod
+        assert ranges["fence"]["max"] > plain.get("fence", {"max": 0})["max"]
+        assert ranges["merchant_black_market"]["max"] > plain["merchant_black_market"]["max"]
+        guard = instantiate_npc_from_template("guard", "city", "corrupt")
+        assert DISPOSITIONS.index(guard["default_disposition"]) < DISPOSITIONS.index("neutral")

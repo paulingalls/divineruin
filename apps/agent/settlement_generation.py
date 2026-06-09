@@ -17,6 +17,7 @@ get_settlement_tier itself keeps its fail-loud contract for unknown sizes.
 
 import random
 
+from role_archetypes import DISPOSITIONS, create_npc_from_archetype
 from settlement_templates import get_settlement_personality, get_settlement_tier
 
 # keldaran_hold is City-scale (spec lists Keldaran holds as City examples). Normalize to
@@ -55,3 +56,37 @@ def generate_settlement_npcs(tier: str, personality: str, *, rng: random.Random 
     rng = rng or random.Random()
     ranges = _effective_ranges(tier, personality)
     return {role_id: rng.randint(r["min"], r["max"]) for role_id, r in ranges.items()}
+
+
+def _shift_disposition(base: str, delta: int) -> str:
+    """Move `base` along the DISPOSITIONS ladder by `delta`, clamped to its ends.
+
+    A positive delta is friendlier, negative more hostile; the result never falls off the
+    5-tier ladder (so it stays a valid disposition). Raises ValueError if `base` isn't a
+    canonical disposition.
+    """
+    idx = DISPOSITIONS.index(base)
+    return DISPOSITIONS[max(0, min(len(DISPOSITIONS) - 1, idx + delta))]
+
+
+def instantiate_npc_from_template(role: str, tier: str, personality: str, overrides: dict | None = None) -> dict:
+    """Build one settlement NPC: create_npc_from_archetype(role, overrides) with the
+    settlement's personality modifiers layered on top.
+
+    Applies the personality's per-role disposition_modifier (shift along DISPOSITIONS,
+    clamped), its price_modifier (composed multiplicatively with the archetype's), and its
+    inventory_modifier (emitted as `inventory_richness`, a forward-wired Phase-9 economy
+    field with no live reader yet). `tier` carries no per-NPC stat modifier in the M6.2 data
+    model — settlement tier only drives role COUNTS (generate_settlement_npcs) — so it is
+    used here solely to fail loud (with keldaran_hold->city normalization) on a bogus tier,
+    anchoring the NPC to a real settlement size. Raises ValueError for an unknown role, tier,
+    or personality.
+    """
+    get_settlement_tier(_TIER_ALIASES.get(tier, tier))  # fail-loud tier guard
+    pers = get_settlement_personality(personality)
+    npc = create_npc_from_archetype(role, overrides)
+    disp_delta = pers["disposition_modifiers"].get(role, 0)
+    npc["default_disposition"] = _shift_disposition(npc["default_disposition"], disp_delta)
+    npc["price_modifier"] = npc["price_modifier"] * pers["price_modifier"]
+    npc["inventory_richness"] = pers["inventory_modifier"]
+    return npc
