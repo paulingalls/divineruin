@@ -25,11 +25,30 @@ from settlement_generation import (
     generate_settlement_npcs,
     instantiate_npc_from_template,
 )
-from settlement_templates import parse_settlement_template_row, set_settlement_templates
+from settlement_templates import (
+    get_settlement_personality,
+    parse_settlement_template_row,
+    set_settlement_templates,
+)
 
 _CONTENT = Path(__file__).resolve().parents[3] / "content"
 _TEMPLATES = json.loads((_CONTENT / "settlement_templates.json").read_text())
 _ARCHETYPES = json.loads((_CONTENT / "role_archetypes.json").read_text())
+_ARCHETYPE_IDS = {e["id"] for e in _ARCHETYPES}
+
+# Every SettlementSize (keldaran_hold has no tier row — generate normalizes it to city)
+# crossed with every personality. The E2E sweep asserts no unknown role/disposition escapes.
+_ALL_TIERS = ["hamlet", "village", "town", "city", "keldaran_hold"]
+_ALL_PERSONALITIES = [
+    "prosperous",
+    "struggling",
+    "military",
+    "scholarly",
+    "corrupt",
+    "devout",
+    "frontier",
+    "refuge",
+]
 
 
 @pytest.fixture(autouse=True)
@@ -134,8 +153,10 @@ class TestInstantiate:
 
     def test_price_modifier_composes_multiplicatively(self):
         base = create_npc_from_archetype("merchant_general_goods")
-        npc = instantiate_npc_from_template("merchant_general_goods", "city", "prosperous")
-        assert npc["price_modifier"] == pytest.approx(base["price_modifier"] * 1.15)
+        prosperous = instantiate_npc_from_template("merchant_general_goods", "city", "prosperous")
+        struggling = instantiate_npc_from_template("merchant_general_goods", "city", "struggling")
+        assert prosperous["price_modifier"] == pytest.approx(base["price_modifier"] * 1.15)
+        assert struggling["price_modifier"] == pytest.approx(base["price_modifier"] * 0.9)
 
     def test_inventory_richness_set_from_personality(self):
         prosperous = instantiate_npc_from_template("merchant_general_goods", "city", "prosperous")
@@ -159,3 +180,24 @@ class TestCorruptAcceptance:
         assert ranges["merchant_black_market"]["max"] > plain["merchant_black_market"]["max"]
         guard = instantiate_npc_from_template("guard", "city", "corrupt")
         assert DISPOSITIONS.index(guard["default_disposition"]) < DISPOSITIONS.index("neutral")
+
+
+class TestEndToEnd:
+    @pytest.mark.parametrize("tier", _ALL_TIERS)
+    @pytest.mark.parametrize("personality", _ALL_PERSONALITIES)
+    def test_every_tier_personality_yields_valid_roles_and_dispositions(self, tier, personality):
+        # AC4: across all tier x personality combos, generated roles are real archetypes,
+        # counts fall within the spec's effective range, and every instantiated NPC has a
+        # canonical disposition.
+        counts = generate_settlement_npcs(tier, personality, rng=random.Random(123))
+        ranges = _effective_ranges(tier, personality)
+        assert counts, f"{tier}/{personality} generated an empty population"
+        assert set(counts) == set(ranges), f"{tier}/{personality} role set drifted from spec ranges"
+        for role_id, n in counts.items():
+            assert role_id in _ARCHETYPE_IDS, f"{tier}/{personality} yielded unknown role {role_id!r}"
+            lo, hi = ranges[role_id]["min"], ranges[role_id]["max"]
+            assert lo <= n <= hi, f"{tier}/{personality} role {role_id!r} count {n} outside [{lo}, {hi}]"
+            npc = instantiate_npc_from_template(role_id, tier, personality)
+            assert npc["default_disposition"] in DISPOSITIONS
+            assert npc["inventory_richness"] == get_settlement_personality(personality)["inventory_modifier"]
+            assert isinstance(npc["price_modifier"], (int, float))
