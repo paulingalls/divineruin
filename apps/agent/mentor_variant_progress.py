@@ -19,6 +19,7 @@ retry after a narration-LLM failure re-runs as a no-op.
 import asyncpg
 
 import db
+import db_training
 
 # The only acquisition track for a mentor variant — there is no instant track
 # (variants must be trained over a multi-session mentor loop).
@@ -76,37 +77,15 @@ async def advance_learning_cycle(
     id differing from the stored last_activity_id. Mirrors
     character_spells.advance_learning_cycle.
     """
-    if cycles_required < 1:
-        raise ValueError(f"cycles_required must be >= 1, got {cycles_required}")
-    _conn = conn or await db.get_pool()
-    row = await _conn.fetchrow(
-        """
-        INSERT INTO mentor_variant_learning_progress
-            (player_id, variant_id, cycles_completed, cycles_required, midpoint_decision_id, last_activity_id)
-        VALUES ($1, $2, 1, $3, $4, $5)
-        ON CONFLICT (player_id, variant_id) DO UPDATE SET
-            cycles_completed = mentor_variant_learning_progress.cycles_completed
-                + CASE WHEN $5::text IS NOT NULL
-                        AND mentor_variant_learning_progress.last_activity_id IS NOT DISTINCT FROM $5::text
-                       THEN 0 ELSE 1 END,
-            midpoint_decision_id = COALESCE($4, mentor_variant_learning_progress.midpoint_decision_id),
-            last_activity_id = $5
-        RETURNING cycles_completed, cycles_required, midpoint_decision_id
-        """,
+    return await db_training.upsert_learning_cycle(
+        "mentor_variant_learning_progress",
         player_id,
         variant_id,
         cycles_required,
-        midpoint_decision_id,
-        activity_id,
+        midpoint_decision_id=midpoint_decision_id,
+        activity_id=activity_id,
+        conn=conn,
     )
-    if row is None:  # an upsert with RETURNING always yields a row — fail loud if not
-        raise RuntimeError(f"mentor_variant_learning_progress upsert returned no row for {variant_id!r}")
-    return {
-        "cycles_completed": row["cycles_completed"],
-        "cycles_required": row["cycles_required"],
-        "completed": row["cycles_completed"] >= row["cycles_required"],
-        "midpoint_decision_id": row["midpoint_decision_id"],
-    }
 
 
 async def record_unlocked(

@@ -19,6 +19,7 @@ story-005 (learn from scroll/mentor), story-006 (preparation).
 import asyncpg
 
 import db
+import db_training
 
 # Closed vocabulary for how an elective spell entered the library. NO 'core' — core
 # spells are abilities (seam 235ae150c5d3). training=async study cycles (story-004);
@@ -141,40 +142,15 @@ async def advance_learning_cycle(
     id differing from the stored last_activity_id. With activity_id=None the
     increment is unconditional (behavior-preserving for direct callers).
     """
-    if cycles_required < 1:
-        # Fail loud (matching acquisition_track validation): a tier needs >=1 cycle;
-        # 0 would mark complete on the first cycle, negative makes completion unreachable.
-        raise ValueError(f"cycles_required must be >= 1, got {cycles_required}")
-    _conn = conn or await db.get_pool()
-    row = await _conn.fetchrow(
-        """
-        INSERT INTO spell_learning_progress
-            (player_id, spell_id, cycles_completed, cycles_required, midpoint_decision_id, last_activity_id)
-        VALUES ($1, $2, 1, $3, $4, $5)
-        ON CONFLICT (player_id, spell_id) DO UPDATE SET
-            cycles_completed = spell_learning_progress.cycles_completed
-                + CASE WHEN $5::text IS NOT NULL
-                        AND spell_learning_progress.last_activity_id IS NOT DISTINCT FROM $5::text
-                       THEN 0 ELSE 1 END,
-            midpoint_decision_id = COALESCE($4, spell_learning_progress.midpoint_decision_id),
-            last_activity_id = $5
-        RETURNING cycles_completed, cycles_required, midpoint_decision_id
-        """,
+    return await db_training.upsert_learning_cycle(
+        "spell_learning_progress",
         player_id,
         spell_id,
         cycles_required,
-        midpoint_decision_id,
-        activity_id,
+        midpoint_decision_id=midpoint_decision_id,
+        activity_id=activity_id,
+        conn=conn,
     )
-    if row is None:  # an upsert with RETURNING always yields a row — fail loud if not
-        raise RuntimeError(f"spell_learning_progress upsert returned no row for {spell_id!r}")
-    completed = row["cycles_completed"] >= row["cycles_required"]
-    return {
-        "cycles_completed": row["cycles_completed"],
-        "cycles_required": row["cycles_required"],
-        "completed": completed,
-        "midpoint_decision_id": row["midpoint_decision_id"],
-    }
 
 
 async def get_learning_progress(
