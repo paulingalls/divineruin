@@ -71,22 +71,37 @@ def _shift_disposition(base: str, delta: int) -> str:
 
 def instantiate_npc_from_template(role: str, tier: str, personality: str, overrides: dict | None = None) -> dict:
     """Build one settlement NPC: create_npc_from_archetype(role, overrides) with the
-    settlement's personality modifiers layered on top.
+    settlement's personality modifiers filling in any field the caller did not pin.
 
-    Applies the personality's per-role disposition_modifier (shift along DISPOSITIONS,
-    clamped), its price_modifier (composed multiplicatively with the archetype's), and its
-    inventory_modifier (emitted as `inventory_richness`, a forward-wired Phase-9 economy
-    field with no live reader yet). `tier` carries no per-NPC stat modifier in the M6.2 data
-    model — settlement tier only drives role COUNTS (generate_settlement_npcs) — so it is
-    used here solely to fail loud (with keldaran_hold->city normalization) on a bogus tier,
-    anchoring the NPC to a real settlement size. Raises ValueError for an unknown role, tier,
-    or personality.
+    Overrides WIN: each personality modifier applies only when its target key is NOT in
+    `overrides`, so an explicit caller value is final (e.g. a named NPC forced hostile in any
+    settlement). The three modifier targets are:
+      - default_disposition — shifted along DISPOSITIONS by the personality's per-role
+        disposition_modifier, clamped to the ladder ends.
+      - price_modifier — multiplied by the personality's price_modifier (both are ratios
+        around 1.0).
+      - inventory_richness — set from the personality's inventory_modifier. This is a NEW
+        scalar field distinct from the archetype's `inventory_pool` (a pool-id string), and
+        is a forward-wired Phase-9 economy field with no live reader yet.
+
+    `tier` carries no per-NPC stat modifier in the M6.2 data model — settlement tier only
+    drives role COUNTS (generate_settlement_npcs) — so it is used here solely to fail loud
+    (with keldaran_hold->city normalization) on a bogus tier, anchoring the NPC to a real
+    settlement size. Raises ValueError for an unknown role, tier, or personality.
     """
+    overrides = overrides or {}
     get_settlement_tier(_TIER_ALIASES.get(tier, tier))  # fail-loud tier guard
     pers = get_settlement_personality(personality)
     npc = create_npc_from_archetype(role, overrides)
-    disp_delta = pers["disposition_modifiers"].get(role, 0)
-    npc["default_disposition"] = _shift_disposition(npc["default_disposition"], disp_delta)
-    npc["price_modifier"] = npc["price_modifier"] * pers["price_modifier"]
-    npc["inventory_richness"] = pers["inventory_modifier"]
+    if "default_disposition" not in overrides:
+        disp_delta = pers["disposition_modifiers"].get(role, 0)
+        npc["default_disposition"] = _shift_disposition(npc["default_disposition"], disp_delta)
+    elif npc["default_disposition"] not in DISPOSITIONS:
+        # Overrides win, but a disposition must still be on the canonical ladder — an
+        # override skips _shift_disposition's validation, so guard it here (fail loud).
+        raise ValueError(f"override default_disposition {npc['default_disposition']!r} not in {DISPOSITIONS}")
+    if "price_modifier" not in overrides:
+        npc["price_modifier"] = npc["price_modifier"] * pers["price_modifier"]
+    if "inventory_richness" not in overrides:
+        npc["inventory_richness"] = pers["inventory_modifier"]
     return npc

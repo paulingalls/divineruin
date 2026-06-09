@@ -170,6 +170,24 @@ class TestInstantiate:
         with pytest.raises(ValueError):
             instantiate_npc_from_template("guard", "metropolis", "military")
 
+    def test_override_wins_over_personality_modifiers(self):
+        # An explicitly pinned field is final — the personality modifier is NOT applied.
+        # corrupt would shift guard neutral->unfriendly, but the override pins it.
+        npc = instantiate_npc_from_template(
+            "guard", "city", "corrupt", {"default_disposition": "trusted", "inventory_richness": 5.0}
+        )
+        assert npc["default_disposition"] == "trusted"  # not shifted
+        assert npc["inventory_richness"] == 5.0  # not overwritten from personality
+
+    def test_override_price_modifier_skips_multiply(self):
+        npc = instantiate_npc_from_template("merchant_general_goods", "city", "prosperous", {"price_modifier": 3.0})
+        assert npc["price_modifier"] == 3.0  # not multiplied by 1.15
+
+    def test_off_ladder_override_disposition_fails_loud(self):
+        # Overrides win, but a disposition must stay on the canonical ladder.
+        with pytest.raises(ValueError, match="not in"):
+            instantiate_npc_from_template("guard", "city", "military", {"default_disposition": "weird"})
+
 
 class TestCorruptAcceptance:
     def test_corrupt_raises_blackmarket_frequency_and_drops_guard_disposition(self):
