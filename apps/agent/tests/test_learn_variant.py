@@ -43,6 +43,20 @@ def _progress_mod(*, unlocked=False):
     return mod
 
 
+def _abilities_mod(ability_type="elective", name="Cleaving Blow"):
+    """Mock abilities module: get_ability returns a base of the given type."""
+    mod = MagicMock()
+    base = MagicMock(ability_type=ability_type, name=name)
+    mod.get_ability = MagicMock(return_value=base)
+    return mod
+
+
+def _persistence_mod(*, owns=True):
+    mod = MagicMock()
+    mod.owns_elective = AsyncMock(return_value=owns)
+    return mod
+
+
 def _cycle(first_half_seconds=6 * 3600):
     return TrainingCycleInit(
         state="running_first_half",
@@ -76,6 +90,8 @@ class TestLearnVariant:
                 db_training_mod=training,
                 variants_mod=_variants_mod(_variant()),
                 progress_mod=progress,
+                abilities_mod=_abilities_mod(),
+                persistence_mod=_persistence_mod(owns=True),
                 rules_mod=_rules_factory(_cycle(8 * 3600)),
                 now_fn=lambda: FIXED_NOW,
             )
@@ -97,6 +113,60 @@ class TestLearnVariant:
         assert kwargs["data"]["variant_id"] == "warrior_cleaving_blow_drathian"
         assert kwargs["data"]["ability_id"] == "warrior_cleaving_blow"
         assert kwargs["data"]["mentor_id"] == "guildmaster_torin"
+
+    @pytest.mark.asyncio
+    async def test_rejects_when_base_not_owned(self):
+        # Own-the-base gate (story-006): you cannot train a variant of a technique
+        # you don't own. Rejects without seeding progress or creating an activity.
+        ctx = make_context()
+        db_mod, _ = make_db_mod()
+        progress = _progress_mod(unlocked=False)
+        training = MagicMock()
+        training.get_player_training_activities = AsyncMock(return_value=[])
+        training.create_training_activity = AsyncMock()
+        with pytest.raises(ToolError, match="own the base"):
+            await _learn_variant_impl(
+                ctx,
+                "warrior_cleaving_blow_drathian",
+                "",
+                db_mod=db_mod,
+                db_training_mod=training,
+                variants_mod=_variants_mod(_variant()),
+                progress_mod=progress,
+                abilities_mod=_abilities_mod(),
+                persistence_mod=_persistence_mod(owns=False),
+                rules_mod=_rules_factory(_cycle()),
+                now_fn=lambda: FIXED_NOW,
+            )
+        progress.seed_progress.assert_not_awaited()
+        training.create_training_activity.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_rejects_when_base_ability_not_elective(self):
+        # A variant whose base is core/reaction is unmodeled — reject loud rather
+        # than train a variant of an always-known ability.
+        ctx = make_context()
+        db_mod, _ = make_db_mod()
+        progress = _progress_mod(unlocked=False)
+        training = MagicMock()
+        training.get_player_training_activities = AsyncMock(return_value=[])
+        training.create_training_activity = AsyncMock()
+        with pytest.raises(ToolError, match="elective"):
+            await _learn_variant_impl(
+                ctx,
+                "warrior_cleaving_blow_drathian",
+                "",
+                db_mod=db_mod,
+                db_training_mod=training,
+                variants_mod=_variants_mod(_variant()),
+                progress_mod=progress,
+                abilities_mod=_abilities_mod(ability_type="core"),
+                persistence_mod=_persistence_mod(owns=True),
+                rules_mod=_rules_factory(_cycle()),
+                now_fn=lambda: FIXED_NOW,
+            )
+        progress.seed_progress.assert_not_awaited()
+        training.create_training_activity.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_non_empty_source_rejected(self):
