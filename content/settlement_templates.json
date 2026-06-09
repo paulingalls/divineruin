@@ -54,6 +54,7 @@
     "role_frequency_modifiers": { "merchant_general_goods": 1 },
     "disposition_modifiers": {},
     "price_modifier": 1.15,
+    "inventory_modifier": 1.2,
     "description": "Fuller inventories, higher prices, confident NPCs."
   },
   {
@@ -62,6 +63,7 @@
     "role_frequency_modifiers": { "fence": 1 },
     "disposition_modifiers": {},
     "price_modifier": 0.9,
+    "inventory_modifier": 0.8,
     "description": "Thin inventories, desperate NPCs, more quest hooks."
   },
   {
@@ -70,6 +72,7 @@
     "role_frequency_modifiers": { "guard": 2, "soldier_ashmark": 1 },
     "disposition_modifiers": {},
     "price_modifier": 1.0,
+    "inventory_modifier": 1.0,
     "description": "Guards everywhere, martial mentors, suspicious of strangers."
   },
   {
@@ -78,6 +81,7 @@
     "role_frequency_modifiers": { "scholar_sage": 1 },
     "disposition_modifiers": {},
     "price_modifier": 1.0,
+    "inventory_modifier": 1.0,
     "description": "Scholar NPCs, library access, cheap identification services."
   },
   {
@@ -86,6 +90,7 @@
     "role_frequency_modifiers": { "fence": 1, "merchant_black_market": 1 },
     "disposition_modifiers": { "guard": -1 },
     "price_modifier": 1.0,
+    "inventory_modifier": 1.0,
     "description": "Black market thrives, guards take bribes, faction tensions run high."
   },
   {
@@ -94,6 +99,7 @@
     "role_frequency_modifiers": { "priest": 1, "healer_temple": 1 },
     "disposition_modifiers": {},
     "price_modifier": 1.0,
+    "inventory_modifier": 1.0,
     "description": "Largest temple, cheap healer services, rich in divine knowledge."
   },
   {
@@ -102,6 +108,7 @@
     "role_frequency_modifiers": { "guard": -1 },
     "disposition_modifiers": {},
     "price_modifier": 1.0,
+    "inventory_modifier": 1.0,
     "description": "Minimal services, self-reliant NPCs, Hollow knowledge shared freely."
   },
   {
@@ -110,6 +117,7 @@
     "role_frequency_modifiers": { "guard": 1 },
     "disposition_modifiers": {},
     "price_modifier": 1.0,
+    "inventory_modifier": 1.0,
     "description": "Diverse population, cautious NPCs, high demand for protection."
   }
 ]

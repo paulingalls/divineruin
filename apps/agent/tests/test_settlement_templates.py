@@ -8,7 +8,8 @@ counts, get_settlement_personality(trait) for modifiers.
 
 Catalog shape: a flat list of self-contained id/JSONB rows discriminated by `kind`:
 4 tier rows (id == SettlementSize, role_counts of {min,max} ranges) + 8 personality
-rows (role_frequency_modifiers, disposition_modifiers, price_modifier, description).
+rows (role_frequency_modifiers, disposition_modifiers, price_modifier, inventory_modifier,
+description).
 """
 
 import json
@@ -119,6 +120,18 @@ class TestParse:
         bad = {**_row("village"), "role_counts": {"guard": {"min": "two", "max": 4}}}
         with pytest.raises(ValueError, match="village"):
             parse_settlement_template_row("village", bad)
+
+    def test_inventory_modifier_pins(self):
+        # story-003 scope expansion: prosperous = fuller (>1.0), struggling = thinner (<1.0),
+        # neutral personalities = 1.0. Forward-wired Phase-9 economy field (debt recorded).
+        assert parse_settlement_template_row("prosperous", _row("prosperous"))["inventory_modifier"] > 1.0
+        assert parse_settlement_template_row("struggling", _row("struggling"))["inventory_modifier"] < 1.0
+        assert parse_settlement_template_row("military", _row("military"))["inventory_modifier"] == 1.0
+
+    def test_personality_missing_inventory_modifier_fails_loud(self):
+        bad = {k: v for k, v in _row("corrupt").items() if k != "inventory_modifier"}
+        with pytest.raises(ValueError, match="corrupt"):
+            parse_settlement_template_row("corrupt", bad)
 
 
 class TestAccessors:

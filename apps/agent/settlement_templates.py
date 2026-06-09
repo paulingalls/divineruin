@@ -11,7 +11,8 @@ The catalog is a flat list of self-contained id/JSONB rows discriminated by `kin
   - tier rows (kind="tier", id == SettlementSize): role_counts mapping role_archetype
     ids to {min, max} integer ranges.
   - personality rows (kind="personality", id == trait): role_frequency_modifiers and
-    disposition_modifiers (role_archetype id -> int), price_modifier, description.
+    disposition_modifiers (role_archetype id -> int), price_modifier, inventory_modifier,
+    description.
 
 story-003 (generate_settlement_npcs / instantiate_npc_from_template) consumes this:
 get_settlement_tier(size) for role counts, get_settlement_personality(trait) for
@@ -72,6 +73,9 @@ def _parse_personality(row_id: str, data: dict) -> None:
         for role_id, delta in mods.items():
             _parse_int(delta, f"{row_id}.{field}[{role_id}]")
     _parse_number(data["price_modifier"], f"{row_id}.price_modifier")
+    # inventory_modifier: prosperous>1.0 fuller, struggling<1.0 thinner; forward-wired
+    # Phase-9 economy field (no live reader yet — debt recorded), story-003 scope expansion.
+    _parse_number(data["inventory_modifier"], f"{row_id}.inventory_modifier")
     _parse_str(data["description"], f"{row_id}.description")
 
 
