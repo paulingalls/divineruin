@@ -10,6 +10,7 @@ from archetypes_config_fixture import setup_archetypes_config_fixture
 from mentor_variants_config_fixture import setup_mentor_variants_config_fixture
 from npcs_config_fixture import setup_npcs_config_fixture
 from role_archetypes_config_fixture import setup_role_archetypes_config_fixture
+from settlement_templates_config_fixture import setup_settlement_templates_config_fixture
 from spells_config_fixture import setup_spells_config_fixture
 from training_config_fixture import setup_training_config_fixture
 
@@ -134,6 +135,18 @@ def seed_role_archetypes():
     already populated (is_loaded() True) and skips the DB fetch in tests that exercise startup.
     """
     setup_role_archetypes_config_fixture()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def seed_settlement_templates():
+    """Populate settlement_templates._tiers/._personalities from content before every test.
+
+    Mirrors load_settlement_templates() at agent startup, but sync and file-based. Required
+    so agent.py's guarded load_settlement_templates() sees the catalog already populated
+    (is_loaded() True) and skips the DB fetch in tests that exercise startup.
+    """
+    setup_settlement_templates_config_fixture()
     yield
 
 
