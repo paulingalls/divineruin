@@ -63,12 +63,17 @@ async def seed_player_with_pools(
     class_: str = "skirmisher",
     stamina_current: int = 10,
     focus_current: int = 10,
+    equipped_electives: tuple[str, ...] = (),
 ) -> str:
     """seed_player + add the Stamina/Focus pools the ability-activation tool reads.
 
     seed_player's default has no pools; jsonb_set on the top-level '{stamina}' /
     '{focus}' keys (parent `data` exists) initializes them. Shared by the M2.2 and
     M9 ability/variant capstones, which deduct real Stamina/Focus on activation.
+
+    Pass `equipped_electives` to give the character ownership of L4/L8 elective
+    techniques (a character_abilities row each) — the own-the-base gate (story-006)
+    rejects activating/training a variant of an elective with no row.
     """
     await seed_player(conn, player_id=player_id, class_=class_)
     await conn.execute(
@@ -78,6 +83,16 @@ async def seed_player_with_pools(
         json.dumps({"current": stamina_current, "max": 10}),
         json.dumps({"current": focus_current, "max": 10}),
     )
+    for ability_id in equipped_electives:
+        await conn.execute(
+            """
+            INSERT INTO character_abilities (player_id, ability_id, equipped)
+            VALUES ($1, $2, TRUE)
+            ON CONFLICT (player_id, ability_id) DO NOTHING
+            """,
+            player_id,
+            ability_id,
+        )
     return player_id
 
 
