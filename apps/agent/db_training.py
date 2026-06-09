@@ -141,6 +141,29 @@ async def claim_training_accrual(
     return row is not None
 
 
+async def prune_training_cycle_accruals(
+    *,
+    retention_days: int = 7,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> int:
+    """Delete idempotency-ledger rows older than the retention window; return rows deleted.
+
+    Bounds the otherwise-unbounded training_cycle_accruals ledger (debt 8336cc9c9d03). The
+    worker calls this every maintenance cycle. A row only guards against re-applying an
+    activity's accrual while that activity could still be retried by the worker — bounded by
+    its resolving_at timeout (minutes/hours) — so any row older than retention_days can be
+    deleted with no risk of a double-apply. The 7-day default assumes no activity stays
+    retryable for longer; widen it if that ceases to hold.
+    """
+    _conn = conn or await db.get_pool()
+    status = await _conn.execute(
+        "DELETE FROM training_cycle_accruals WHERE applied_at < NOW() - make_interval(days => $1)",
+        retention_days,
+    )
+    # asyncpg returns a command tag like "DELETE 5"; the trailing token is the row count.
+    return int(status.split()[-1])
+
+
 async def update_training_activity(
     activity_id: str,
     state: TrainingState,
