@@ -11,8 +11,8 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from activity_templates import TRAINING_MENTORS
 from mentor_variants import parse_mentor_variant_row
+from npcs import get_npc_sync
 
 _ROOT = Path(__file__).resolve().parents[3]
 _CONTENT = _ROOT / "content"
@@ -94,14 +94,14 @@ def test_each_culture_is_taught_by_exactly_one_mentor():
     assert not offenders, f"each culture must map to exactly one mentor, got {offenders}"
 
 
-def test_every_mentor_id_resolves_in_training_mentors():
-    """The narration prompt looks the variant's mentor up in TRAINING_MENTORS; an unknown id
-    silently falls back to guildmaster_torin, breaking mentor-culture coherence in the DM voice
-    (concern 603af). Every variant mentor must have a TRAINING_MENTORS persona."""
+def test_every_mentor_id_resolves_in_npc_catalog():
+    """The narration prompt derives the variant's mentor persona via npcs.get_npc_sync; an
+    unknown id silently falls back to guildmaster_torin, breaking mentor-culture coherence in
+    the DM voice (concern 603af). Every variant mentor must be a real, migrated NPC."""
     for row in _variants():
         variant = parse_mentor_variant_row(row["id"], row)
-        assert variant.mentor_id in TRAINING_MENTORS, (
-            f"{variant.id} -> mentor {variant.mentor_id} missing from activity_templates.TRAINING_MENTORS"
+        assert get_npc_sync(variant.mentor_id) is not None, (
+            f"{variant.id} -> mentor {variant.mentor_id} missing from the NPC catalog"
         )
 
 
