@@ -295,6 +295,7 @@ async def main() -> None:
     from archetypes import load_archetypes
     from mentor_variants import load_mentor_variants
     from milestones import load_milestones
+    from npcs import load_npcs
     from role_archetypes import load_role_archetypes
     from spells import load_spells
     from training_rules import load_training_activity_types
@@ -306,6 +307,7 @@ async def main() -> None:
     await load_spells()
     await load_mentor_variants()
     await load_role_archetypes()
+    await load_npcs()
 
     try:
         while True:

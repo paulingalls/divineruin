@@ -80,10 +80,9 @@ def _cap_str(value: str, max_len: int, name: str) -> None:
         raise ToolError(f"{name} exceeds maximum length of {max_len} characters.")
 
 
-DISPOSITION_ORDER = ["hostile", "wary", "neutral", "friendly", "trusted"]
+DISPOSITION_ORDER = ["hostile", "unfriendly", "neutral", "friendly", "trusted"]
 
 DISPOSITION_TIERS = {name: i for i, name in enumerate(DISPOSITION_ORDER)}
-DISPOSITION_TIERS["cautious"] = DISPOSITION_TIERS["neutral"]  # alias
 
 
 def _disposition_rank(tier: str) -> int:

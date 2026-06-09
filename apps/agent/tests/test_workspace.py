@@ -61,16 +61,18 @@ class TestRentalPricing:
         assert quote.available is True
         assert quote.price_sp == pytest.approx(7.2)
 
-    def test_cautious_alias_pays_full_price(self):
-        # 'cautious' is a neutral alias (tool_support.DISPOSITION_TIERS).
-        quote = ws.compute_rental_price(10, "cautious", multipliers=_MULT)
-        assert quote.available is True
-        assert quote.price_sp == pytest.approx(10.0)
+    @pytest.mark.parametrize("disposition", ["cautious", "wary"])
+    def test_legacy_disposition_rejected(self, disposition):
+        # story-004 retired the wary/cautious aliases — they now raise like any
+        # unknown disposition (all writers + content emit the canonical ladder).
+        with pytest.raises(ValueError):
+            ws.compute_rental_price(10, disposition, multipliers=_MULT)
 
-    @pytest.mark.parametrize("disposition", ["wary", "hostile"])
+    @pytest.mark.parametrize("disposition", ["unfriendly", "hostile"])
     def test_below_neutral_refuses_no_surcharge(self, disposition):
         # Adopt spec: below Neutral the NPC refuses outright — no rental, no
-        # surcharge (not the milestone's hostile-surcharge wording).
+        # surcharge (not the milestone's hostile-surcharge wording). story-004:
+        # 'unfriendly' is the canonical below-neutral tier.
         quote = ws.compute_rental_price(5, disposition, multipliers=_MULT)
         assert quote.available is False
         assert quote.price_sp == 0.0

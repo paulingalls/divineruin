@@ -85,11 +85,11 @@ class TestQuestArcProgression:
         pending: list[tuple[str, dict]] = []
 
         mock_queries = MagicMock()
-        mock_queries.get_npc_disposition = AsyncMock(return_value="wary")
+        mock_queries.get_npc_disposition = AsyncMock(return_value="unfriendly")
         mock_mutations = MagicMock()
         mock_mutations.set_npc_disposition = AsyncMock()
         mock_content = MagicMock()
-        mock_content.get_npc = AsyncMock(return_value={"default_disposition": "wary"})
+        mock_content.get_npc = AsyncMock(return_value={"default_disposition": "unfriendly"})
 
         await _apply_world_effects(
             effects,
@@ -141,11 +141,11 @@ class TestQuestArcProgression:
         pending: list[tuple[str, dict]] = []
 
         mock_queries = MagicMock()
-        mock_queries.get_npc_disposition = AsyncMock(return_value="cautious")
+        mock_queries.get_npc_disposition = AsyncMock(return_value="neutral")
         mock_mutations = MagicMock()
         mock_mutations.set_npc_disposition = AsyncMock()
         mock_content = MagicMock()
-        mock_content.get_npc = AsyncMock(return_value={"default_disposition": "cautious"})
+        mock_content.get_npc = AsyncMock(return_value={"default_disposition": "neutral"})
 
         await _apply_world_effects(
             effects,

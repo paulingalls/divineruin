@@ -84,7 +84,12 @@ Apply XP values in all work:
 2. **Background Process:** Async coroutine. Monitors world events, updates warm prompt layer, injects proactive events.
 3. **Toolset:** `@function_tool` functions — world queries (read), dice/mechanics (deterministic), state mutation (enforced rules), client effects (UI events).
 
-**Ventriloquism:** One agent voices all characters. Tag format: `[CHARACTER_NAME, emotion_hint]: "dialogue"`. Untagged = narrator. See `technical_architecture.md` — DM Agent Architecture section for tool pattern and details.
+**Ventriloquism:** One agent voices all characters. Tag format: `[CHARACTER_NAME, emotion_hint]: "dialogue"`. Untagged = narrator. `CHARACTER_NAME` must be a registered key in `apps/agent/voices.py` (`VOICES`, env-backed via `INWORLD_VOICE_*`) — unregistered tags silently fall back to `DM_NARRATOR`. NPC `voice_id` in `content/npcs.json` must equal a `VOICES` key. See `technical_architecture.md` — DM Agent Architecture section for tool pattern and details.
+
+## External Docs
+
+- **Inworld TTS** (voice provider): doc index at https://docs.inworld.ai/llms.txt — browse available voices, voice params (`speaking_rate`, `temperature`), and multilingual support. Pick voice names from the Inworld catalog when adding `INWORLD_VOICE_*` env vars.
+- **LiveKit** (voice transport + agent SDK): use the `livekit-docs` MCP server (search/browse) — never rely on model memory for LiveKit APIs.
 
 ## Content Rules
 

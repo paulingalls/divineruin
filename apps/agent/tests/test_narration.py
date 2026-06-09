@@ -12,6 +12,7 @@ from narration import (
     generate_notification_hook,
     generate_progress_snippets,
 )
+from npcs import get_npc_sync
 
 SAMPLE_PLAYER = {
     "name": "Aldric",
@@ -160,6 +161,71 @@ class TestCraftingQualityNote:
     def test_recipe_cue_absent_when_missing(self):
         prompt, _ = build_narration_prompt("crafting", self._outcome("success"))
         assert "The result:" not in prompt
+
+
+class TestNarrationPersonaDerivation:
+    """Commit 3: crafting/training personas derive from the canonical NPC record
+    (npcs.get_npc_sync), not a duplicated activity_templates literal. The seed_npcs
+    autouse fixture populates the catalog."""
+
+    def _crafting_outcome(self, npc_id):
+        return {
+            "tier": "success",
+            "narrative_context": {
+                "tier": "success",
+                "roll": 18,
+                "dc": 11,
+                "recipe_name": "Iron Sword",
+                "npc_id": npc_id,
+            },
+            "decision_options": [{"id": "keep", "label": "Keep it"}],
+        }
+
+    def _training_outcome(self, mentor_id):
+        return {
+            "tier": "breakthrough",
+            "stat_gains": {"strength": 1},
+            "narrative_context": {
+                "tier": "breakthrough",
+                "roll": 20,
+                "dc": 13,
+                "training_stat": "strength",
+                "training_skill": None,
+                "mentor_id": mentor_id,
+            },
+            "decision_options": [{"id": "rest", "label": "Rest"}],
+        }
+
+    def test_crafting_persona_derives_from_npc_record(self):
+        prompt, voices = build_narration_prompt("crafting", self._crafting_outcome("grimjaw_blacksmith"))
+        npc = get_npc_sync("grimjaw_blacksmith")
+        assert npc is not None
+        assert ", ".join(npc["personality"]) in prompt
+        assert npc["speech_style"] in prompt
+        assert npc["role"] in prompt
+        assert voices == [npc["voice_id"]]
+
+    def test_unknown_crafting_npc_falls_back_to_grimjaw(self):
+        prompt, voices = build_narration_prompt("crafting", self._crafting_outcome("does_not_exist"))
+        grimjaw = get_npc_sync("grimjaw_blacksmith")
+        assert grimjaw is not None
+        assert voices == [grimjaw["voice_id"]]
+        assert grimjaw["speech_style"] in prompt
+
+    def test_training_persona_derives_from_npc_record(self):
+        prompt, voices = build_narration_prompt("training", self._training_outcome("mentor_drathian_warleader"))
+        npc = get_npc_sync("mentor_drathian_warleader")
+        assert npc is not None
+        assert ", ".join(npc["personality"]) in prompt
+        assert npc["speech_style"] in prompt
+        assert voices == [npc["voice_id"]]
+
+    def test_unknown_mentor_falls_back_to_guildmaster(self):
+        prompt, voices = build_narration_prompt("training", self._training_outcome("does_not_exist"))
+        torin = get_npc_sync("guildmaster_torin")
+        assert torin is not None
+        assert voices == [torin["voice_id"]]
+        assert torin["speech_style"] in prompt
 
 
 class TestSanitizePlayerText:
