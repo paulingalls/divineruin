@@ -9,6 +9,7 @@ import re
 from livekit.agents.llm import ToolError
 
 import rules_engine
+from role_archetypes import DISPOSITIONS
 
 __all__ = [
     "DISPOSITION_ORDER",
@@ -80,13 +81,18 @@ def _cap_str(value: str, max_len: int, name: str) -> None:
         raise ToolError(f"{name} exceeds maximum length of {max_len} characters.")
 
 
-DISPOSITION_ORDER = ["hostile", "unfriendly", "neutral", "friendly", "trusted"]
+# Ranking view of the canonical ladder (the shared role_archetypes.DISPOSITIONS SSOT).
+DISPOSITION_ORDER = list(DISPOSITIONS)
 
 DISPOSITION_TIERS = {name: i for i, name in enumerate(DISPOSITION_ORDER)}
 
 
 def _disposition_rank(tier: str) -> int:
-    return DISPOSITION_TIERS.get(tier.lower(), 2)
+    # KNOWLEDGE-gating path: an unknown/off-ladder tier defaults to neutral so live
+    # narration never 500s on hand-corrupted npc_dispositions data. Pricing deliberately
+    # differs — workspace.compute_rental_price fail-louds on unknown (decision
+    # unknown-disposition-contract). Intentional per-feature split, not an oversight.
+    return DISPOSITION_TIERS.get(tier.lower(), DISPOSITION_TIERS["neutral"])
 
 
 def filter_knowledge(knowledge: dict, disposition: str) -> list[str]:

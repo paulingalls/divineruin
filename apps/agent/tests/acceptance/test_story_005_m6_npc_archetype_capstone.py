@@ -103,7 +103,7 @@ async def test_parse_role_archetype_row_accepts_a_real_db_row(reset_db_pool: str
     # fails loud if the parser ever loosens the guard.
     assert archetype.role_type in role_archetypes._ROLE_TYPES
     assert archetype.default_disposition in _DISPOSITION_LADDER
-    assert _DISPOSITION_LADDER == role_archetypes._DISPOSITIONS
+    assert _DISPOSITION_LADDER == role_archetypes.DISPOSITIONS
 
 
 @pytest.mark.asyncio

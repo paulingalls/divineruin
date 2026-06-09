@@ -8,6 +8,7 @@ import type {
   ServiceCost,
 } from "@divineruin/shared";
 import { sql } from "./db.ts";
+import { DISPOSITION_ORDER } from "./dispositions.ts";
 import { asRecord, parseString, parseStringArray } from "./parse-helpers.ts";
 
 // DB-loaded role archetype catalog (Phase 6 / M6.1, story-003). Mirrors mentor_variants.ts:
@@ -20,12 +21,12 @@ import { asRecord, parseString, parseStringArray } from "./parse-helpers.ts";
 // the Python rules engine); the server loads + validates so a malformed catalog crashes boot.
 //
 // String fields go through the shared parseString helper (parse-helpers.ts) rather than
-// inline typeof checks. The role_type/disposition value arrays are inlined here, mirroring
-// the Python loader's _ROLE_TYPES/_DISPOSITIONS (the shared const arrays are type-only across
-// the package boundary).
+// inline typeof checks. ROLE_TYPES is inlined (mirrors the Python _ROLE_TYPES); the
+// disposition ladder comes from the server SSOT (dispositions.ts) so repair.ts and this
+// loader validate one shared vocabulary. The shared package's const arrays stay type-only
+// across the boundary.
 
 const ROLE_TYPES = ["civilian", "military", "specialist"];
-const DISPOSITIONS = ["hostile", "unfriendly", "neutral", "friendly", "trusted"];
 let roleArchetypes: ReadonlyMap<string, RoleArchetype> = new Map();
 
 export function getRoleArchetype(id: string): RoleArchetype {
@@ -152,7 +153,7 @@ export function parseRoleArchetypeRow(id: string, raw: unknown): RoleArchetype {
   const roleType = parseString(data.role_type, `${ctx}.role_type`);
   if (!ROLE_TYPES.includes(roleType)) throw new Error(`${ctx}.role_type ${roleType} is invalid`);
   const disposition = parseString(data.default_disposition, `${ctx}.default_disposition`);
-  if (!DISPOSITIONS.includes(disposition)) {
+  if (!DISPOSITION_ORDER.includes(disposition)) {
     throw new Error(`${ctx}.default_disposition ${disposition} is invalid`);
   }
   if (data.inventory_pool !== null && typeof data.inventory_pool !== "string") {

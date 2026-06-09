@@ -87,7 +87,10 @@ class RoleArchetype:
 _role_archetypes: dict[str, RoleArchetype] = {}
 
 _ROLE_TYPES = ("civilian", "military", "specialist")
-_DISPOSITIONS = ("hostile", "unfriendly", "neutral", "friendly", "trusted")
+# Canonical 5-tier disposition ladder — the single Python SSOT (mirrors the TS
+# DISPOSITION_VALUES home in role_archetype.ts). npcs.py and tool_support.py import
+# this so a tier change touches one place, not three.
+DISPOSITIONS = ("hostile", "unfriendly", "neutral", "friendly", "trusted")
 
 
 # --- fail-loud parse helpers (inlined per the loader convention; no shared module) ---
@@ -213,8 +216,8 @@ def parse_role_archetype_row(archetype_id: str, data: dict) -> RoleArchetype:
         if role_type not in _ROLE_TYPES:
             raise ValueError(f"{archetype_id}.role_type {role_type!r} not in {_ROLE_TYPES}")
         disposition = _parse_str(data["default_disposition"], f"{archetype_id}.default_disposition")
-        if disposition not in _DISPOSITIONS:
-            raise ValueError(f"{archetype_id}.default_disposition {disposition!r} not in {_DISPOSITIONS}")
+        if disposition not in DISPOSITIONS:
+            raise ValueError(f"{archetype_id}.default_disposition {disposition!r} not in {DISPOSITIONS}")
         inv = data["inventory_pool"]
         if inv is not None and not isinstance(inv, str):
             raise ValueError(f"{archetype_id}.inventory_pool is not a string or null")

@@ -11,19 +11,19 @@ handlers that already await): same source rows, different timing/shape. NPC reco
 are static content, so the catalog is loaded once and never invalidated.
 
 Each loader owns its own fail-loud validation — the npcs.json row IS the contract.
-default_disposition is validated against the canonical 5-tier ladder (parity with
-role_archetypes._DISPOSITIONS), and role_archetype is required: story-004 binds every
-NPC to a catalog archetype.
+default_disposition is validated against the canonical 5-tier ladder (the shared
+role_archetypes.DISPOSITIONS SSOT), and role_archetype is required: story-004 binds
+every NPC to a catalog archetype.
 """
 
 import json
 import logging
 
+from role_archetypes import DISPOSITIONS
+
 logger = logging.getLogger("divineruin.npcs")
 
 _npcs: dict[str, dict] = {}
-
-_DISPOSITIONS = ("hostile", "unfriendly", "neutral", "friendly", "trusted")
 
 
 def _parse_str(raw: object, ctx: str) -> str:
@@ -65,8 +65,8 @@ def parse_npc_row(npc_id: str, data: dict) -> dict:
         _parse_dict(data["knowledge"], f"{npc_id}.knowledge")
         _parse_dict(data["schedule"], f"{npc_id}.schedule")
         disposition = _parse_str(data["default_disposition"], f"{npc_id}.default_disposition")
-        if disposition not in _DISPOSITIONS:
-            raise ValueError(f"{npc_id}.default_disposition {disposition!r} not in {_DISPOSITIONS}")
+        if disposition not in DISPOSITIONS:
+            raise ValueError(f"{npc_id}.default_disposition {disposition!r} not in {DISPOSITIONS}")
         return data
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed npcs row {npc_id!r}: {e}") from e

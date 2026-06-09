@@ -1,6 +1,7 @@
 import type { Item } from "@divineruin/shared";
 
 import { sql } from "./db.ts";
+import { DISPOSITION_ORDER } from "./dispositions.ts";
 import { logError } from "./env.ts";
 import { getItem } from "./items.ts";
 import { parseJsonb } from "./parse-jsonb.ts";
@@ -17,14 +18,19 @@ import { dispositionMultiplier, repairCostSp } from "./pricing.ts";
 // *order* (the refuse-below-neutral gate) is the canonical disposition vocabulary, a
 // system constant — it stays in code, not pricing.
 
-// Disposition tiers, ordered low->high; below "neutral" the blacksmith refuses.
-// Canonical 5-tier ladder (parity with tool_support.DISPOSITION_ORDER).
-const DISPOSITION_ORDER = ["hostile", "unfriendly", "neutral", "friendly", "trusted"];
+// Below "neutral" the blacksmith refuses; ladder is the server SSOT (dispositions.ts).
 const NEUTRAL_RANK = DISPOSITION_ORDER.indexOf("neutral");
 
 /** Rank of a disposition, or undefined if unknown.
  * Case-insensitive to mirror Python workspace.compute_rental_price (disposition.lower())
- * — stored JSONB dispositions are uncontrolled, so a "Friendly" must price like Python. */
+ * — stored JSONB dispositions are uncontrolled, so a "Friendly" must price like Python.
+ *
+ * PRICING contract: returns undefined for an unknown/off-ladder value so repairQuote
+ * fail-louds (a repair is a transaction — garbage data must surface, not silently
+ * price). This deliberately matches Python's workspace.compute_rental_price (also
+ * fail-loud) and differs from the KNOWLEDGE-gating path (tool_support._disposition_rank),
+ * which neutral-defaults unknowns so narration never 500s (decision
+ * unknown-disposition-contract). */
 function dispositionRank(disposition: string): number | undefined {
   const key = disposition.toLowerCase();
   const rank = DISPOSITION_ORDER.indexOf(key);

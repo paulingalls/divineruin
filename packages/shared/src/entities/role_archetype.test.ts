@@ -63,6 +63,21 @@ describe("role_archetypes.json — catalog cardinality", () => {
   test("all 7 merchant subtypes are present", () => {
     for (const id of MERCHANT_SUBTYPES) expect(byId.has(id)).toBe(true);
   });
+
+  // DISPOSITION_VALUES is the cross-package *type* SSOT; the server re-states the same
+  // ladder as a runtime array (dispositions.ts DISPOSITION_ORDER) because the barrel is
+  // type-only. Pin the literal here so a tier change to DISPOSITION_VALUES that misses
+  // dispositions.ts breaks one of the two pins (apps/server/src/dispositions.test.ts
+  // pins the same literal against DISPOSITION_ORDER).
+  test("DISPOSITION_VALUES is the canonical 5-tier ladder low->high", () => {
+    expect([...DISPOSITION_VALUES]).toEqual([
+      "hostile",
+      "unfriendly",
+      "neutral",
+      "friendly",
+      "trusted",
+    ]);
+  });
 });
 
 describe("role_archetypes.json — row shape", () => {
