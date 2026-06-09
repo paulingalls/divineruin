@@ -119,6 +119,22 @@ def get_archetype_abilities(archetype_id: str) -> tuple[Ability, ...]:
     return tuple(a for a in _abilities.values() if a.archetype_id == archetype_id)
 
 
+def owns_ability(player_class: str | None, ability: Ability, *, owns_elective: bool) -> bool:
+    """Whether a player owns a base ability — the predicate the activation and
+    learn(variant) gates share (story-006).
+
+    Two ownership rules, keyed on ability_type (migration 030): core and reaction
+    abilities are always-known, derived from the archetype, with NO
+    character_abilities row — so they are owned iff the player's class is the
+    ability's archetype. Elective techniques DO get a row when chosen, so their
+    ownership is the EXISTS-on-character_abilities result the caller passes as
+    owns_elective (computed lazily, only when needed — core/reaction skip the DB).
+    """
+    if ability.ability_type == "elective":
+        return owns_elective
+    return player_class == ability.archetype_id
+
+
 def is_loaded() -> bool:
     """True once the abilities have been populated (startup load or test seam)."""
     return bool(_abilities)

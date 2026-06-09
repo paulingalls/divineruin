@@ -1,0 +1,926 @@
+[
+  {
+    "id": "merchant_general_goods",
+    "name": "General Goods Merchant",
+    "role_type": "civilian",
+    "default_disposition": "neutral",
+    "knowledge_domains": ["market gossip", "trade routes", "item properties", "supply and demand"],
+    "services": [
+      {
+        "name": "buy",
+        "cost": 0,
+        "cost_unit": "sp",
+        "description": "Buys common goods from the player at market value."
+      },
+      {
+        "name": "sell",
+        "cost": 0,
+        "cost_unit": "sp",
+        "description": "Sells common supplies, rations, rope, torches, tools."
+      }
+    ],
+    "inventory_pool": "market_general",
+    "price_modifier": 1.0,
+    "combat_stats": null
+  },
+  {
+    "id": "merchant_weapons_armor",
+    "name": "Weapons & Armor Merchant",
+    "role_type": "civilian",
+    "default_disposition": "neutral",
+    "knowledge_domains": [
+      "weapon properties",
+      "armor properties",
+      "local military",
+      "trade routes"
+    ],
+    "services": [
+      {
+        "name": "buy",
+        "cost": 0,
+        "cost_unit": "sp",
+        "description": "Buys martial weapons, shields, and armor."
+      },
+      {
+        "name": "sell",
+        "cost": 0,
+        "cost_unit": "sp",
+        "description": "Sells weapons and armor; quality scales with settlement size."
+      },
+      {
+        "name": "repair",
+        "cost": 5,
+        "cost_unit": "sp",
+        "requirements": { "crafting_skill": "Trained" },
+        "description": "Repairs damaged equipment."
+      }
+    ],
+    "inventory_pool": "grimjaw_weapons",
+    "price_modifier": 1.05,
+    "combat_stats": null
+  },
+  {
+    "id": "merchant_alchemist",
+    "name": "Alchemist",
+    "role_type": "civilian",
+    "default_disposition": "neutral",
+    "knowledge_domains": ["potions", "reagents", "herbalism", "poison lore"],
+    "services": [
+      { "name": "buy", "cost": 0, "cost_unit": "sp", "description": "Buys reagents and herbs." },
+      {
+        "name": "sell",
+        "cost": 0,
+        "cost_unit": "sp",
+        "description": "Sells potions, reagents, poisons (disposition-gated), herbs."
+      },
+      {
+        "name": "identify_potion",
+        "cost": 10,
+        "cost_unit": "sp",
+        "description": "Identifies an unknown potion."
+      },
+      {
+        "name": "custom_mixture",
+        "cost": 50,
+        "cost_unit": "sp",
+        "requirements": { "crafting_skill": "Expert" },
+        "description": "Creates a custom alchemical mixture."
+      }
+    ],
+    "inventory_pool": "alchemical_supplies",
+    "price_modifier": 1.1,
+    "combat_stats": null
+  },
+  {
+    "id": "merchant_jeweler",
+    "name": "Jeweler",
+    "role_type": "civilian",
+    "default_disposition": "neutral",
+    "knowledge_domains": ["gems", "precious metals", "appraisal", "enchanted trinkets"],
+    "services": [
+      { "name": "buy", "cost": 0, "cost_unit": "sp", "description": "Buys gems at a fair price." },
+      {
+        "name": "sell",
+        "cost": 0,
+        "cost_unit": "sp",
+        "description": "Sells gems, jewelry, precious metals, enchanted trinkets."
+      },
+      {
+        "name": "appraise",
+        "cost": 10,
+        "cost_unit": "sp",
+        "description": "Appraises gem or jewelry value."
+      }
+    ],
+    "inventory_pool": "jeweler_wares",
+    "price_modifier": 1.2,
+    "combat_stats": null
+  },
+  {
+    "id": "merchant_exotic",
+    "name": "Exotic Goods Merchant",
+    "role_type": "civilian",
+    "default_disposition": "neutral",
+    "knowledge_domains": ["rare materials", "imports", "purified Hollow lore", "cultural items"],
+    "services": [
+      {
+        "name": "buy",
+        "cost": 0,
+        "cost_unit": "sp",
+        "description": "Buys exotic and rare items; connects to specialist buyers."
+      },
+      {
+        "name": "sell",
+        "cost": 0,
+        "cost_unit": "sp",
+        "description": "Sells rare materials, imports, purified Hollow-sourced goods."
+      },
+      {
+        "name": "appraise_exotic",
+        "cost": 25,
+        "cost_unit": "sp",
+        "description": "Appraises exotic item value."
+      }
+    ],
+    "inventory_pool": "exotic_goods",
+    "price_modifier": 1.3,
+    "combat_stats": null
+  },
+  {
+    "id": "merchant_traveling",
+    "name": "Traveling Merchant",
+    "role_type": "civilian",
+    "default_disposition": "friendly",
+    "knowledge_domains": ["road rumors", "trade routes", "regional events"],
+    "services": [
+      {
+        "name": "buy",
+        "cost": 0,
+        "cost_unit": "sp",
+        "description": "Buys goods while passing through."
+      },
+      {
+        "name": "sell",
+        "cost": 0,
+        "cost_unit": "sp",
+        "description": "Sells mixed common goods plus 1-2 rare items; stock changes between visits."
+      },
+      {
+        "name": "road_rumors",
+        "cost": 0,
+        "cost_unit": "sp",
+        "description": "Shares rumors from the road (free knowledge)."
+      }
+    ],
+    "inventory_pool": "traveling_stock",
+    "price_modifier": 1.15,
+    "combat_stats": null
+  },
+  {
+    "id": "merchant_black_market",
+    "name": "Black Market Dealer",
+    "role_type": "civilian",
+    "default_disposition": "unfriendly",
+    "knowledge_domains": [
+      "restricted goods",
+      "smuggling routes",
+      "criminal contacts",
+      "unpurified Hollow lore"
+    ],
+    "services": [
+      {
+        "name": "fence",
+        "cost": 0,
+        "cost_unit": "sp",
+        "requirements": { "disposition": "trusted" },
+        "description": "Buys stolen goods, no questions asked (requires trust)."
+      },
+      {
+        "name": "sell",
+        "cost": 0,
+        "cost_unit": "sp",
+        "requirements": { "disposition": "trusted" },
+        "description": "Sells restricted items, poisons, unpurified Hollow materials."
+      }
+    ],
+    "inventory_pool": "black_market_goods",
+    "price_modifier": 1.5,
+    "combat_stats": null
+  },
+  {
+    "id": "blacksmith",
+    "name": "Blacksmith",
+    "role_type": "civilian",
+    "default_disposition": "neutral",
+    "knowledge_domains": [
+      "weapon and armor properties",
+      "material quality",
+      "local military",
+      "Keldaran forge techniques"
+    ],
+    "services": [
+      { "name": "repair", "cost": 5, "cost_unit": "sp", "description": "Repairs equipment." },
+      {
+        "name": "commission_tier1",
+        "cost": { "min": 5, "max": 15 },
+        "cost_unit": "sp",
+        "time_to_complete": "1 day",
+        "description": "Crafts a Tier 1 item (5 sp player materials / 15 sp smith provides)."
+      },
+      {
+        "name": "commission_tier2",
+        "cost": { "min": 25, "max": 75 },
+        "cost_unit": "sp",
+        "time_to_complete": "3 days",
+        "requirements": { "crafting_skill": "Expert" },
+        "description": "Crafts a Tier 2 item."
+      },
+      {
+        "name": "commission_tier3",
+        "cost": { "min": 100, "max": 300 },
+        "cost_unit": "sp",
+        "time_to_complete": "1 week",
+        "requirements": { "crafting_skill": "Master" },
+        "description": "Crafts a Tier 3 item (cities / Keldaran holds only)."
+      }
+    ],
+    "inventory_pool": "grimjaw_weapons",
+    "price_modifier": 1.0,
+    "combat_stats": {
+      "level": 2,
+      "hp": 14,
+      "ac": 11,
+      "attributes": {
+        "strength": 14,
+        "dexterity": 10,
+        "constitution": 13,
+        "intelligence": 10,
+        "wisdom": 10,
+        "charisma": 10
+      },
+      "save_proficiencies": ["strength"],
+      "action_pool": [
+        {
+          "name": "Smith's Hammer",
+          "damage": "1d6+2",
+          "damage_type": "bludgeoning",
+          "properties": ["melee"]
+        }
+      ],
+      "passives": ["Defends the settlement if threatened (Militia)"]
+    }
+  },
+  {
+    "id": "innkeeper",
+    "name": "Innkeeper",
+    "role_type": "civilian",
+    "default_disposition": "friendly",
+    "knowledge_domains": ["local gossip", "visitor logs", "regional events", "NPC locations"],
+    "services": [
+      {
+        "name": "lodging_common",
+        "cost": 1,
+        "cost_unit": "sp",
+        "description": "Common room. Enables long rest; -1 to rest quality roll (crowded, noisy)."
+      },
+      {
+        "name": "lodging_private",
+        "cost": 5,
+        "cost_unit": "sp",
+        "description": "Private room. Standard long rest."
+      },
+      {
+        "name": "lodging_fine",
+        "cost": 15,
+        "cost_unit": "sp",
+        "description": "Fine room. +1 to rest quality roll; 1 temp HP until next rest."
+      },
+      {
+        "name": "food_drink",
+        "cost": 1,
+        "cost_unit": "sp",
+        "description": "Food and drink; rumors and message board."
+      }
+    ],
+    "inventory_pool": "millhaven_supplies",
+    "price_modifier": 1.0,
+    "combat_stats": null
+  },
+  {
+    "id": "healer_temple",
+    "name": "Healer / Temple Attendant",
+    "role_type": "civilian",
+    "default_disposition": "friendly",
+    "knowledge_domains": [
+      "patron god's domain",
+      "religious history",
+      "Hollow corruption symptoms",
+      "divine favor"
+    ],
+    "services": [
+      {
+        "name": "heal_wounds",
+        "cost": 5,
+        "cost_unit": "sp",
+        "description": "Heal Wounds (1d8+WIS HP)."
+      },
+      {
+        "name": "cure_poison_disease",
+        "cost": 15,
+        "cost_unit": "sp",
+        "description": "Cures poison or disease."
+      },
+      {
+        "name": "dispel_corruption",
+        "cost": 25,
+        "cost_unit": "sp",
+        "requirements": { "temple": "Orenthel|Kaelen|Valdris" },
+        "description": "Purifies a Hollow-tainted material."
+      },
+      {
+        "name": "remove_curse",
+        "cost": 50,
+        "cost_unit": "sp",
+        "requirements": { "settlement_tier": "city" },
+        "description": "Removes a curse (city temple only)."
+      },
+      {
+        "name": "greater_restoration",
+        "cost": 200,
+        "cost_unit": "sp",
+        "requirements": { "settlement_tier": "city" },
+        "description": "Greater Restoration (high-level priest)."
+      },
+      {
+        "name": "resurrection",
+        "cost": { "min": 1000, "max": 5000 },
+        "cost_unit": "sp",
+        "requirements": { "settlement_tier": "city", "patron_approval": "true" },
+        "description": "Resurrection (cathedral only)."
+      }
+    ],
+    "inventory_pool": "temple_supplies",
+    "price_modifier": 1.0,
+    "combat_stats": {
+      "level": 2,
+      "hp": 12,
+      "ac": 12,
+      "attributes": {
+        "strength": 10,
+        "dexterity": 12,
+        "constitution": 12,
+        "intelligence": 11,
+        "wisdom": 14,
+        "charisma": 12
+      },
+      "save_proficiencies": ["wisdom"],
+      "action_pool": [
+        {
+          "name": "Sacred Flame",
+          "damage": "1d8",
+          "damage_type": "radiant",
+          "properties": ["ranged", "cantrip"],
+          "effect": "Ignores armor AC (WIS save)."
+        },
+        {
+          "name": "Heal Wounds",
+          "damage": "0",
+          "damage_type": "none",
+          "properties": ["support"],
+          "effect": "Restores 1d8+WIS HP, 2/day."
+        }
+      ]
+    }
+  },
+  {
+    "id": "scholar_sage",
+    "name": "Scholar / Sage",
+    "role_type": "civilian",
+    "default_disposition": "neutral",
+    "knowledge_domains": [
+      "Aelindran history",
+      "Hollow taxonomy",
+      "magical theory",
+      "ancient languages",
+      "creature lore"
+    ],
+    "services": [
+      {
+        "name": "identify_item",
+        "cost": 10,
+        "cost_unit": "sp",
+        "time_to_complete": "immediate",
+        "description": "Identifies a magical item's properties, history, value."
+      },
+      {
+        "name": "identify_hollow_material",
+        "cost": 25,
+        "cost_unit": "sp",
+        "time_to_complete": "1 day",
+        "description": "Identifies a Hollow material."
+      },
+      {
+        "name": "research_common",
+        "cost": 15,
+        "cost_unit": "sp",
+        "time_to_complete": "1 day",
+        "description": "Researches a common topic."
+      },
+      {
+        "name": "research_obscure",
+        "cost": 50,
+        "cost_unit": "sp",
+        "time_to_complete": "3 days",
+        "description": "Researches an obscure topic."
+      },
+      {
+        "name": "translate_text",
+        "cost": 25,
+        "cost_unit": "sp",
+        "time_to_complete": "1-3 days",
+        "description": "Translates a text."
+      },
+      {
+        "name": "buy_hollow_sample",
+        "cost": { "min": 50, "max": 500 },
+        "cost_unit": "sp",
+        "time_to_complete": "immediate",
+        "description": "Buys a Hollow research sample (they pay you; tier-dependent)."
+      }
+    ],
+    "inventory_pool": "scholar_supplies",
+    "price_modifier": 1.0,
+    "combat_stats": null
+  },
+  {
+    "id": "guard",
+    "name": "Guard",
+    "role_type": "military",
+    "default_disposition": "neutral",
+    "knowledge_domains": [
+      "local laws",
+      "recent incidents",
+      "patrol routes",
+      "settlement layout",
+      "wanted persons"
+    ],
+    "services": [
+      {
+        "name": "directions",
+        "cost": 0,
+        "cost_unit": "sp",
+        "description": "Gives directions and warnings; responds to threats; arrests criminals."
+      }
+    ],
+    "inventory_pool": null,
+    "price_modifier": 1.0,
+    "combat_stats": {
+      "level": 2,
+      "hp": 16,
+      "ac": 14,
+      "attributes": {
+        "strength": 14,
+        "dexterity": 12,
+        "constitution": 12,
+        "intelligence": 10,
+        "wisdom": 10,
+        "charisma": 10
+      },
+      "save_proficiencies": ["strength"],
+      "action_pool": [
+        {
+          "name": "Spear",
+          "damage": "1d6+2",
+          "damage_type": "piercing",
+          "properties": ["melee", "thrown"],
+          "effect": "+4 to hit; thrown 20/60 ft."
+        },
+        {
+          "name": "Crossbow",
+          "damage": "1d8+1",
+          "damage_type": "piercing",
+          "properties": ["ranged"],
+          "effect": "+3 to hit; range 80 ft."
+        }
+      ],
+      "passives": ["Alert (advantage on initiative, can't be surprised)"]
+    },
+    "combat_variants": [
+      {
+        "name": "Elite Guard",
+        "level": 4,
+        "hp": 32,
+        "ac": 16,
+        "action_pool": [
+          {
+            "name": "Spear",
+            "damage": "1d8+3",
+            "damage_type": "piercing",
+            "properties": ["melee"],
+            "effect": "+6 to hit; Multiattack (2 strikes)."
+          }
+        ],
+        "notes": "Stationed at gates, faction HQs, noble districts."
+      }
+    ]
+  },
+  {
+    "id": "soldier_ashmark",
+    "name": "Ashmark Soldier",
+    "role_type": "military",
+    "default_disposition": "neutral",
+    "knowledge_domains": [
+      "Hollow creature behavior",
+      "Ashmark tactical situation",
+      "supply routes",
+      "corruption signs"
+    ],
+    "services": [],
+    "inventory_pool": null,
+    "price_modifier": 1.0,
+    "combat_stats": {
+      "level": 3,
+      "hp": 24,
+      "ac": 15,
+      "attributes": {
+        "strength": 14,
+        "dexterity": 12,
+        "constitution": 14,
+        "intelligence": 10,
+        "wisdom": 12,
+        "charisma": 10
+      },
+      "save_proficiencies": ["strength", "constitution"],
+      "action_pool": [
+        {
+          "name": "Longsword",
+          "damage": "1d8+2",
+          "damage_type": "slashing",
+          "properties": ["melee"],
+          "effect": "+4 to hit."
+        },
+        {
+          "name": "Javelin",
+          "damage": "1d6+2",
+          "damage_type": "piercing",
+          "properties": ["ranged"],
+          "effect": "+4 to hit; range 30/120 ft."
+        }
+      ],
+      "passives": [
+        "Hollow Veteran (advantage on saves vs Frightened from Hollow sources)",
+        "Formation Fighter (+1 AC when adjacent to another soldier)"
+      ],
+      "actives": [
+        "Rally (1/encounter): allied soldiers within 30 ft gain +1 to attacks for 2 rounds"
+      ]
+    },
+    "combat_variants": [
+      {
+        "name": "Ashmark Sergeant",
+        "level": 5,
+        "hp": 40,
+        "ac": 16,
+        "action_pool": [
+          {
+            "name": "Blessed Longsword",
+            "damage": "1d8+3",
+            "damage_type": "slashing",
+            "properties": ["melee"],
+            "effect": "+6 to hit; Multiattack (2); +1d4 radiant vs Hollow."
+          }
+        ],
+        "actives": ["Leadership Aura (+1 attacks for allies in 30 ft)"]
+      },
+      {
+        "name": "Ashmark Commander",
+        "level": 9,
+        "hp": 75,
+        "ac": 18,
+        "action_pool": [
+          {
+            "name": "Greatsword",
+            "damage": "1d10+4",
+            "damage_type": "slashing",
+            "properties": ["melee"],
+            "effect": "+8 to hit; Multiattack (2)."
+          }
+        ],
+        "passives": ["Commanding Presence (allies in 30 ft advantage on saves)"],
+        "actives": ["Tactical Maneuver (1/encounter, reaction): reposition all allies 15 ft"]
+      }
+    ]
+  },
+  {
+    "id": "assassin_rogue",
+    "name": "Assassin / Rogue",
+    "role_type": "military",
+    "default_disposition": "unfriendly",
+    "knowledge_domains": [
+      "criminal operations",
+      "stealth craft",
+      "poison lore",
+      "isolated targets"
+    ],
+    "services": [],
+    "inventory_pool": null,
+    "price_modifier": 1.0,
+    "combat_stats": {
+      "level": 6,
+      "hp": 42,
+      "ac": 15,
+      "attributes": {
+        "strength": 10,
+        "dexterity": 18,
+        "constitution": 12,
+        "intelligence": 14,
+        "wisdom": 12,
+        "charisma": 14
+      },
+      "save_proficiencies": ["dexterity", "intelligence"],
+      "action_pool": [
+        {
+          "name": "Dagger",
+          "damage": "1d4+4",
+          "damage_type": "piercing",
+          "properties": ["melee", "finesse"],
+          "effect": "+7 to hit; Multiattack (2); +3d6 sneak attack with advantage or adjacent ally."
+        },
+        {
+          "name": "Hand Crossbow",
+          "damage": "1d6+4",
+          "damage_type": "piercing",
+          "properties": ["ranged"],
+          "effect": "+7 to hit; range 30 ft; poisoned bolt DC 14 CON or Poisoned 1 hour."
+        }
+      ],
+      "passives": [
+        "Evasion (DEX save AoE: success 0 dmg, fail half)",
+        "Assassinate (advantage vs creatures that haven't acted; crit on surprise)"
+      ],
+      "actives": [
+        "Vanish (1/encounter): hide as a bonus action",
+        "Poison (3d6 poison on failed save, pre-applied to blade or 3 bolts)"
+      ]
+    }
+  },
+  {
+    "id": "mage",
+    "name": "Mage",
+    "role_type": "military",
+    "default_disposition": "neutral",
+    "knowledge_domains": [
+      "arcane theory",
+      "magical phenomena",
+      "spell identification",
+      "ancient magic"
+    ],
+    "services": [
+      {
+        "name": "identify_magic",
+        "cost": 25,
+        "cost_unit": "sp",
+        "description": "Identifies magical effects and items."
+      }
+    ],
+    "inventory_pool": null,
+    "price_modifier": 1.0,
+    "combat_stats": {
+      "level": 6,
+      "hp": 32,
+      "ac": 12,
+      "attributes": {
+        "strength": 8,
+        "dexterity": 14,
+        "constitution": 12,
+        "intelligence": 18,
+        "wisdom": 12,
+        "charisma": 12
+      },
+      "save_proficiencies": ["intelligence", "wisdom"],
+      "action_pool": [
+        {
+          "name": "Arcane Bolt",
+          "damage": "2d6+4",
+          "damage_type": "force",
+          "properties": ["ranged", "cantrip"],
+          "effect": "+7 to hit; range 60 ft; no Focus cost."
+        },
+        {
+          "name": "Elemental Burst",
+          "damage": "2d6",
+          "damage_type": "fire",
+          "properties": ["ranged", "area"],
+          "effect": "DEX save DC 15; 15 ft sphere at 60 ft; 3 Focus."
+        }
+      ],
+      "passives": ["Arcane Awareness (senses magic)"],
+      "actives": [
+        "Shield (1 Focus, reaction): +3 AC",
+        "Mist Step (2 Focus): teleport 30 ft",
+        "Hold Person (3 Focus): paralyze a target",
+        "Fireball (5 Focus): 3d6 fire, large area",
+        "Counterspell (3 Focus): negate an enemy spell"
+      ]
+    },
+    "combat_variants": [
+      {
+        "name": "Apprentice Mage",
+        "level": 2,
+        "hp": 12,
+        "ac": 10,
+        "action_pool": [
+          {
+            "name": "Arcane Bolt",
+            "damage": "1d6+2",
+            "damage_type": "force",
+            "properties": ["ranged", "cantrip"]
+          }
+        ],
+        "notes": "Arcane Bolt + Shield only; Focus pool 10."
+      },
+      {
+        "name": "Archmage",
+        "level": 12,
+        "hp": 65,
+        "ac": 15,
+        "notes": "Full Arcane catalog through Standard tier; Spell Mastery (one spell costs 0); Focus pool 45; Mage Armor permanent."
+      }
+    ]
+  },
+  {
+    "id": "priest",
+    "name": "Priest",
+    "role_type": "military",
+    "default_disposition": "friendly",
+    "knowledge_domains": [
+      "divine doctrine",
+      "religious history",
+      "Hollow corruption",
+      "patron god's domain"
+    ],
+    "services": [
+      {
+        "name": "blessing",
+        "cost": 10,
+        "cost_unit": "sp",
+        "description": "Bestows a minor blessing or rite."
+      }
+    ],
+    "inventory_pool": "temple_supplies",
+    "price_modifier": 1.0,
+    "combat_stats": {
+      "level": 5,
+      "hp": 35,
+      "ac": 14,
+      "attributes": {
+        "strength": 10,
+        "dexterity": 12,
+        "constitution": 14,
+        "intelligence": 12,
+        "wisdom": 16,
+        "charisma": 14
+      },
+      "save_proficiencies": ["wisdom", "charisma"],
+      "action_pool": [
+        {
+          "name": "Sacred Flame",
+          "damage": "2d6",
+          "damage_type": "radiant",
+          "properties": ["ranged"],
+          "effect": "WIS save DC 14; range 60 ft; ignores armor AC."
+        },
+        {
+          "name": "Mace",
+          "damage": "1d6",
+          "damage_type": "bludgeoning",
+          "properties": ["melee"],
+          "effect": "+3 to hit."
+        }
+      ],
+      "actives": [
+        "Heal Wounds (2 Focus): 1d8+3 HP",
+        "Shield of Faith (2 Focus, reaction): +2 AC to an ally",
+        "Bless (2 Focus): +1d4 to 3 allies' rolls",
+        "Spiritual Weapon (4 Focus): independent 1d8+3 attack for 3 rounds",
+        "Dispel Corruption (3 Focus): purify Hollow taint"
+      ]
+    },
+    "combat_variants": [
+      {
+        "name": "High Priest",
+        "level": 10,
+        "hp": 65,
+        "ac": 16,
+        "notes": "Full Divine catalog through Major tier; Channel Divinity (1/encounter); Mass Heal."
+      }
+    ]
+  },
+  {
+    "id": "fence",
+    "name": "Fence / Black Market Contact",
+    "role_type": "specialist",
+    "default_disposition": "unfriendly",
+    "knowledge_domains": [
+      "criminal operations",
+      "smuggling routes",
+      "corrupt officials",
+      "restricted item locations"
+    ],
+    "services": [
+      {
+        "name": "buy_stolen",
+        "cost": 0,
+        "cost_unit": "sp",
+        "requirements": { "disposition": "trusted" },
+        "description": "Buys stolen goods at 50% market value."
+      },
+      {
+        "name": "sell_restricted",
+        "cost": 0,
+        "cost_unit": "sp",
+        "requirements": { "disposition": "trusted" },
+        "description": "Sells restricted items, poison, shadow-economy access."
+      }
+    ],
+    "inventory_pool": "black_market_goods",
+    "price_modifier": 1.4,
+    "combat_stats": {
+      "level": 2,
+      "hp": 11,
+      "ac": 12,
+      "attributes": {
+        "strength": 11,
+        "dexterity": 14,
+        "constitution": 12,
+        "intelligence": 12,
+        "wisdom": 10,
+        "charisma": 12
+      },
+      "save_proficiencies": ["dexterity"],
+      "action_pool": [
+        {
+          "name": "Dagger",
+          "damage": "1d4+2",
+          "damage_type": "piercing",
+          "properties": ["melee", "finesse"],
+          "effect": "Prefers to flee or bribe (Bandit)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "stablemaster",
+    "name": "Stablemaster / Animal Handler",
+    "role_type": "specialist",
+    "default_disposition": "neutral",
+    "knowledge_domains": [
+      "local wildlife",
+      "terrain conditions",
+      "travel routes",
+      "animal behavior"
+    ],
+    "services": [
+      {
+        "name": "mount_purchase",
+        "cost": { "min": 50, "max": 500 },
+        "cost_unit": "sp",
+        "description": "Sells or rents mounts."
+      },
+      {
+        "name": "boarding",
+        "cost": 2,
+        "cost_unit": "sp",
+        "description": "Animal boarding and pack-animal hire; beast companion care (Beastcaller service point)."
+      }
+    ],
+    "inventory_pool": "stable_stock",
+    "price_modifier": 1.0,
+    "combat_stats": null
+  },
+  {
+    "id": "shipwright",
+    "name": "Shipwright / Boatman",
+    "role_type": "specialist",
+    "default_disposition": "neutral",
+    "knowledge_domains": ["water routes", "tides", "sea creature sightings", "coastal weather"],
+    "services": [
+      {
+        "name": "passage",
+        "cost": { "min": 5, "max": 50 },
+        "cost_unit": "sp",
+        "description": "Ferries the party by water (Sunward Coast settlements, river crossings)."
+      },
+      { "name": "boat_repair", "cost": 25, "cost_unit": "sp", "description": "Repairs a boat." },
+      {
+        "name": "boat_purchase",
+        "cost": { "min": 100, "max": 1000 },
+        "cost_unit": "sp",
+        "description": "Sells or rents a boat."
+      }
+    ],
+    "inventory_pool": null,
+    "price_modifier": 1.0,
+    "combat_stats": null
+  }
+]

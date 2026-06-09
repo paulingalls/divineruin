@@ -20,6 +20,8 @@ from datetime import UTC, datetime
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+import abilities
+import ability_persistence
 import db
 import db_training
 import mentor_variant_progress
@@ -43,15 +45,20 @@ async def _learn_variant_impl(
     db_training_mod=db_training,
     variants_mod=mentor_variants,
     progress_mod=mentor_variant_progress,
+    abilities_mod=abilities,
+    persistence_mod=ability_persistence,
     rules_mod=None,
     now_fn=None,
 ) -> str:
     context.disallow_interruptions()
     _validate_id(variant_id, "variant_id")
+    # learn(variant) is documented to OMIT source: a variant is acquired only via the
+    # async mentor training loop, never instantly. Reject a non-empty source rather than
+    # silently ignoring it — parity with learn(recipe)/learn(spell) closed-set validation.
+    if source:
+        raise ToolError(f"learn(variant) takes no source (got {source!r}); a variant is acquired by mentor training.")
 
     # Catalog lookup is an in-memory read (no IO) — do it before touching the DB.
-    # `source` is accepted for the learn(kind, id, source) dispatch shape but not
-    # gated: a variant's only acquisition track is the mentor loop (mentor_training).
     try:
         variant = variants_mod.get_mentor_variant(variant_id)
     except ValueError as exc:
@@ -77,6 +84,18 @@ async def _learn_variant_impl(
         existing = await db_training_mod.get_player_training_activities(player_id, state=None, conn=conn)
         if any(row["state"] != _TERMINAL_STATE for row in existing):
             raise ToolError("A training cycle is already in progress.")
+
+        # Own-the-base gate (story-006): a variant overrides a base elective the
+        # player must already own — you cannot train a variant of a technique you
+        # lack. A variant whose base is core/reaction is unmodeled (fail loud).
+        try:
+            base = abilities_mod.get_ability(variant.ability_id)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        if base.ability_type != "elective":
+            raise ToolError(f"Variant {variant_id} overrides a non-elective base ({base.ability_type}); unmodeled.")
+        if not await persistence_mod.owns_elective(player_id, variant.ability_id, conn=conn):
+            raise ToolError(f"You must own the base technique {base.name} before training a variant of it.")
 
         await progress_mod.seed_progress(player_id, variant_id, cycles_required, conn=conn)
         data = {

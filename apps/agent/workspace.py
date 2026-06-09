@@ -63,6 +63,13 @@ def compute_rental_price(base_price_sp: int, disposition: str, *, multipliers: d
     full price). Returns an unavailable RentalQuote when the NPC's disposition is
     below Neutral (a forge is not rented to the unfriendly). Raises ValueError on
     an unknown disposition.
+
+    PRICING path: fail-loud on an unknown/off-ladder disposition — a rental is a
+    transaction, so garbage stored data must surface, not silently price. This is
+    the deliberate counterpart to the KNOWLEDGE path (tool_support._disposition_rank),
+    which neutral-defaults unknowns so live narration never 500s. Cross-language
+    parity: the TS twin repair.ts also fail-louds here (decision
+    unknown-disposition-contract).
     """
     key = disposition.lower()
     rank = DISPOSITION_TIERS.get(key)

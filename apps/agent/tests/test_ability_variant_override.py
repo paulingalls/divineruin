@@ -60,6 +60,9 @@ async def _call(
     persistence = MagicMock()
     persistence.update_player_resources = AsyncMock()
     persistence.get_active_variant = AsyncMock(return_value=active_variant_id)
+    # The player owns the base elective (own-the-base gate, story-006); these
+    # tests exercise the override path, not the ownership gate.
+    persistence.owns_elective = AsyncMock(return_value=True)
     variants = MagicMock()
     variants.get_variant = MagicMock(return_value=variant)
     raw = await _request_ability_activation_impl(

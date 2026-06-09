@@ -8,6 +8,8 @@ from archetype_abilities_config_fixture import setup_archetype_abilities_config_
 from archetype_milestones_config_fixture import setup_archetype_milestones_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
 from mentor_variants_config_fixture import setup_mentor_variants_config_fixture
+from npcs_config_fixture import setup_npcs_config_fixture
+from role_archetypes_config_fixture import setup_role_archetypes_config_fixture
 from spells_config_fixture import setup_spells_config_fixture
 from training_config_fixture import setup_training_config_fixture
 
@@ -120,6 +122,31 @@ def seed_mentor_variants():
     tests that exercise startup.
     """
     setup_mentor_variants_config_fixture()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def seed_role_archetypes():
+    """Populate role_archetypes._role_archetypes from content before every test.
+
+    Mirrors load_role_archetypes() at worker/agent startup, but sync and file-based.
+    Required so agent.py / async_worker.py's guarded load_role_archetypes() sees the map
+    already populated (is_loaded() True) and skips the DB fetch in tests that exercise startup.
+    """
+    setup_role_archetypes_config_fixture()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def seed_npcs():
+    """Populate npcs._npcs from content/npcs.json before every test.
+
+    Mirrors load_npcs() at worker/agent startup, but sync and file-based. Required so
+    agent.py / async_worker.py's guarded load_npcs() sees the map already populated
+    (is_loaded() True) and skips the DB fetch in tests that exercise startup, and so
+    the consolidated narration shims resolve NPC personas via get_npc_sync().
+    """
+    setup_npcs_config_fixture()
     yield
 
 
