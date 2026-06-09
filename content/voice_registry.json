@@ -13,11 +13,11 @@
     "notes": "Primary narrator voice. Warm baritone. Default for all untagged text."
   },
   {
-    "character_id": "torin_v1",
+    "character_id": "GUILDMASTER_TORIN",
     "name": "Guildmaster Torin",
     "voice_provider": "inworld",
     "voice_tier": "max",
-    "voice_id": "torin_v1",
+    "voice_id": "GUILDMASTER_TORIN",
     "voice_settings": {
       "base_temperature": 0.4,
       "base_speed": 0.95,
@@ -26,11 +26,11 @@
     "notes": "Softens slightly when genuinely worried. Calls everyone 'recruit' until they earn a name."
   },
   {
-    "character_id": "yanna_v1",
+    "character_id": "ELDER_YANNA",
     "name": "Elder Yanna",
     "voice_provider": "inworld",
     "voice_tier": "max",
-    "voice_id": "yanna_v1",
+    "voice_id": "ELDER_YANNA",
     "voice_settings": {
       "base_temperature": 0.5,
       "base_speed": 0.85,
@@ -39,11 +39,11 @@
     "notes": "Speaks slowly. Rural accent. Drops questions she doesn't like."
   },
   {
-    "character_id": "emris_v1",
+    "character_id": "SCHOLAR_EMRIS",
     "name": "Emris of the Diaspora",
     "voice_provider": "inworld",
     "voice_tier": "max",
-    "voice_id": "emris_v1",
+    "voice_id": "SCHOLAR_EMRIS",
     "voice_settings": {
       "base_temperature": 0.6,
       "base_speed": 1.15,
@@ -193,6 +193,58 @@
       "style": "warm alto, practical, direct"
     },
     "notes": "No-nonsense. Cares about outcomes, not politics."
+  },
+  {
+    "character_id": "DRATHIAN_HESSA",
+    "name": "Warleader Hessa Stormhand",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "DRATHIAN_HESSA",
+    "voice_settings": {
+      "base_temperature": 0.4,
+      "base_speed": 1.0,
+      "style": "low carrying alto, clipped, commanding"
+    },
+    "notes": "Steppe roll on the r's. Never hesitates on tactics; softens and slows only when the dead come up."
+  },
+  {
+    "character_id": "KELDARAN_DORAN",
+    "name": "Forge-Master Doran Ironvein",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "KELDARAN_DORAN",
+    "voice_settings": {
+      "base_temperature": 0.3,
+      "base_speed": 0.85,
+      "style": "steady gravelled baritone, slow, measured"
+    },
+    "notes": "Faint metallic undertone. Warms only when the subject is good craft."
+  },
+  {
+    "character_id": "THORNWARDEN_SENNA",
+    "name": "Elder Senna Rootwarden",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "THORNWARDEN_SENNA",
+    "voice_settings": {
+      "base_temperature": 0.5,
+      "base_speed": 0.8,
+      "style": "soft, breathy, deliberate, the texture of wind in leaves"
+    },
+    "notes": "Deliberate pauses. Disappointment drops the voice to a whisper rather than raising it."
+  },
+  {
+    "character_id": "TIDECALLER_MAREK",
+    "name": "Bosun Marek Tideborn",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "TIDECALLER_MAREK",
+    "voice_settings": {
+      "base_temperature": 0.5,
+      "base_speed": 1.05,
+      "style": "light musical baritone, relaxed, flowing"
+    },
+    "notes": "Paced to long easy breaths. Quickens and sharpens when the talk turns to danger at sea."
   },
   {
     "character_id": "GOD_VEYTHAR",

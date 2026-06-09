@@ -22,6 +22,7 @@ from pathlib import Path
 from npcs import get_npc_sync, parse_npc_row
 from role_archetypes import get_role_archetype
 from tool_support import filter_knowledge
+from voices import VOICES
 
 _CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "npcs.json"
 
@@ -128,3 +129,18 @@ def test_get_npc_sync_resolves_seeded_catalog():
     for npc_id in _parsed():
         assert get_npc_sync(npc_id) is not None, f"{npc_id} not in the seeded NPC catalog"
     assert get_npc_sync("does_not_exist") is None
+
+
+def test_every_voice_id_registered_in_voices():
+    """Every NPC voice_id must be a key in voices.VOICES (audio-first golden rule).
+
+    get_voice_config does VOICES.get(character, DEFAULT_VOICE), so an unregistered
+    voice_id silently falls back to DM_NARRATOR. The shim consolidation derives an
+    NPC's voice from this record, so a gap here mutes the character. story-004
+    reconciled npcs.json voice_ids to the SCREAMING_CASE runtime keys and registers
+    the previously-missing ones in voices.py.
+    """
+    for npc_id, npc in _parsed().items():
+        assert npc["voice_id"] in VOICES, (
+            f"{npc_id} voice_id {npc['voice_id']!r} not in voices.VOICES -> would fall back to DM_NARRATOR"
+        )
