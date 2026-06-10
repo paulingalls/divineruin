@@ -2,6 +2,7 @@
 
 import json
 import logging
+import random
 from typing import Literal
 
 from livekit.agents.llm import ToolError, function_tool
@@ -97,7 +98,9 @@ async def _query_settlement_population_impl(
     Reads the location's settlement_tier/personality (story-001 fields) and delegates to the
     pure generate_settlement_npcs rules engine (story-003). Fail-loud (ADR 0002): an unknown
     or non-settlement location raises ToolError rather than returning an empty roster. `rng`
-    is injectable for deterministic tests; production passes None (a fresh population per call).
+    is injectable for deterministic tests; production seeds it from location_id (concern
+    b3c8b30eb849) so repeat queries of the same town return identical counts in- and
+    cross-session, while distinct settlements still get distinct populations.
     """
     logger.info("query_info[settlement_population] called: location_id=%s", location_id)
     _validate_id(location_id, "location_id")
@@ -108,8 +111,9 @@ async def _query_settlement_population_impl(
     personality = location.get("personality")
     if not tier or not personality:
         raise ToolError(f"Location '{location_id}' is not a settlement (no tier/personality).")
+    seeded_rng = rng if rng is not None else random.Random(location_id)
     try:
-        population = generate_settlement_npcs(tier, personality, rng=rng)
+        population = generate_settlement_npcs(tier, personality, rng=seeded_rng)
     except ValueError as e:
         raise ToolError(f"Cannot generate a settlement population for '{location_id}': {e}") from e
     return json.dumps(
