@@ -38,6 +38,10 @@ export function setMilestones(map: ReadonlyMap<string, Milestone>): void {
   milestones = map;
 }
 
+export function listMilestones(): Milestone[] {
+  return Array.from(milestones.values());
+}
+
 function parseOptions(raw: unknown, ctx: string): SpecializationOption[] {
   if (!Array.isArray(raw)) throw new Error(`${ctx} is not an array`);
   return raw.map((opt, i) => {

@@ -1,6 +1,8 @@
-"""Tests for the query_info tools: location, npc, lore, inventory, and dispatch."""
+"""Tests for the query_info tools: location, npc, lore, inventory, settlement_population, and dispatch."""
 
 import json
+import random
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,8 +14,17 @@ from query_tools import (
     _query_location_impl,
     _query_lore_impl,
     _query_npc_impl,
+    _query_settlement_population_impl,
 )
+from settlement_generation import generate_settlement_npcs
 from tools._helpers import SAMPLE_LOCATION, _make_context
+
+# Reference data for assertions (the catalogs themselves are seeded globally by the autouse
+# seed_role_archetypes / seed_settlement_templates fixtures in tests/conftest.py). This test
+# file lives at apps/agent/tests/tools/, so the repo-root content/ dir is parents[4].
+_CONTENT = Path(__file__).resolve().parents[4] / "content"
+_ARCHETYPE_IDS = {e["id"] for e in json.loads((_CONTENT / "role_archetypes.json").read_text())}
+_LOCATIONS = json.loads((_CONTENT / "locations.json").read_text())
 
 SAMPLE_NPC = {
     "id": "guildmaster_torin",
@@ -194,8 +205,89 @@ class TestQueryInfo:
         assert result == '{"k":"inv"}'
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("kind", ["location", "npc", "lore"])
+    async def test_routes_settlement_population(self):
+        ctx = _make_context()
+        with patch(
+            "query_tools._query_settlement_population_impl", new_callable=AsyncMock, return_value='{"k":"pop"}'
+        ) as m:
+            result = await _query_info_impl(ctx, "settlement_population", "accord_market_square")
+        m.assert_awaited_once_with(ctx, "accord_market_square")
+        assert result == '{"k":"pop"}'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("kind", ["location", "npc", "lore", "settlement_population"])
     async def test_missing_target_id_raises(self, kind):
         ctx = _make_context()
         with pytest.raises(ToolError):
             await _query_info_impl(ctx, kind, None)
+
+
+class TestSettlementPopulation:
+    """query_info[settlement_population] reads a location's settlement_tier + personality and
+    returns the generated NPC role counts (delegating to settlement_generation, story-003).
+    Fail-loud via ToolError on an unknown or non-settlement location — never an empty roster.
+
+    The settlement + archetype catalogs are seeded globally by the autouse fixtures in
+    tests/conftest.py (seed_settlement_templates / seed_role_archetypes), so no local seed."""
+
+    def _content(self, location):
+        mod = MagicMock()
+        mod.get_location = AsyncMock(return_value=location)
+        return mod
+
+    @pytest.mark.asyncio
+    async def test_returns_population_reflecting_tier_and_personality(self):
+        # AC1: faithful delegation — same tier+personality+seed yields generate_settlement_npcs's output.
+        ctx = _make_context()
+        location = {"id": "accord_market_square", "settlement_tier": "city", "personality": "prosperous"}
+        result = json.loads(
+            await _query_settlement_population_impl(
+                ctx, "accord_market_square", content=self._content(location), rng=random.Random(0)
+            )
+        )
+        assert result["location_id"] == "accord_market_square"
+        assert result["settlement_tier"] == "city"
+        assert result["personality"] == "prosperous"
+        expected = generate_settlement_npcs("city", "prosperous", rng=random.Random(0))
+        assert result["population"] == expected
+        assert result["total"] == sum(expected.values())
+        assert set(result["population"]) <= _ARCHETYPE_IDS
+
+    @pytest.mark.asyncio
+    async def test_unknown_location_fails_loud(self):
+        # AC2: missing location -> ToolError, not an empty roster.
+        ctx = _make_context()
+        with pytest.raises(ToolError):
+            await _query_settlement_population_impl(ctx, "nowhere", content=self._content(None))
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "location",
+        [
+            {"id": "greyvale_ruins_entrance", "name": "Ruins"},  # neither field
+            {"id": "x", "settlement_tier": "city"},  # personality missing
+            {"id": "x", "personality": "prosperous"},  # tier missing
+        ],
+    )
+    async def test_non_settlement_location_fails_loud(self, location):
+        # AC2: a location without BOTH settlement fields is not a settlement -> ToolError.
+        ctx = _make_context()
+        with pytest.raises(ToolError):
+            await _query_settlement_population_impl(ctx, location["id"], content=self._content(location))
+
+    @pytest.mark.asyncio
+    async def test_e2e_against_seeded_location(self):
+        # AC4: end-to-end against a real seeded settlement from content/locations.json.
+        ctx = _make_context()
+        settlement = next(loc for loc in _LOCATIONS if loc.get("settlement_tier") and loc.get("personality"))
+        result = json.loads(
+            await _query_settlement_population_impl(
+                ctx, settlement["id"], content=self._content(settlement), rng=random.Random(3)
+            )
+        )
+        assert result["settlement_tier"] == settlement["settlement_tier"]
+        assert result["personality"] == settlement["personality"]
+        assert result["population"], "a real settlement yields a non-empty role map"
+        assert set(result["population"]) <= _ARCHETYPE_IDS
+        assert all(n >= 0 for n in result["population"].values())
+        assert result["total"] == sum(result["population"].values())

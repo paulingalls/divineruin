@@ -5,6 +5,7 @@ wrapping (set/dict assembly, FIELD floor, fail-loud parse, FOR UPDATE constructi
 Real SQL correctness is exercised against a testcontainer at the capstone (ADR 0003).
 """
 
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -15,6 +16,12 @@ import db_queries
 def _pool_with_fetch(rows):
     pool = AsyncMock()
     pool.fetch = AsyncMock(return_value=rows)
+    return pool
+
+
+def _pool_with_fetchrow(row):
+    pool = AsyncMock()
+    pool.fetchrow = AsyncMock(return_value=row)
     return pool
 
 
@@ -113,3 +120,32 @@ class TestGetAccessibleWorkspaces:
             "workshop",
             "laboratory",
         }
+
+
+class TestGetPlayerFactionReputation:
+    """The stance-gate read seam (story-008): the player's int reputation with a faction,
+    from player_reputation.data["value"], or None when no row (the common case today — no
+    writer ships yet, so the caller defaults to neutral)."""
+
+    @patch("db_queries.db")
+    async def test_returns_value_from_data(self, mock_db):
+        pool = _pool_with_fetchrow({"data": json.dumps({"value": 12})})
+        mock_db.get_pool = AsyncMock(return_value=pool)
+        assert await db_queries.get_player_faction_reputation("p1", "thornwatch") == 12
+        assert "player_reputation" in pool.fetchrow.call_args.args[0]
+
+    @patch("db_queries.db")
+    async def test_none_when_no_row(self, mock_db):
+        mock_db.get_pool = AsyncMock(return_value=_pool_with_fetchrow(None))
+        assert await db_queries.get_player_faction_reputation("p1", "thornwatch") is None
+
+    @patch("db_queries.db")
+    async def test_none_when_value_absent(self, mock_db):
+        # A row whose data lacks "value" yields None (caller treats as neutral), not a KeyError.
+        mock_db.get_pool = AsyncMock(return_value=_pool_with_fetchrow({"data": json.dumps({})}))
+        assert await db_queries.get_player_faction_reputation("p1", "thornwatch") is None
+
+    async def test_uses_injected_conn(self):
+        conn = _pool_with_fetchrow({"data": json.dumps({"value": -3})})
+        assert await db_queries.get_player_faction_reputation("p1", "thornwatch", conn=conn) == -3
+        conn.fetchrow.assert_awaited_once()

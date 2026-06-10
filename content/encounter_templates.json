@@ -388,5 +388,894 @@
         "sound_signature": "hollow_deep_resonance"
       }
     ]
+  },
+  {
+    "id": "bandit_ambush",
+    "name": "Bandit Ambush",
+    "description": "Gravel shifts on the slope above — too deliberate for an animal. Figures rise from cover with crossbows half-raised, and a broad-shouldered captain steps onto the road. \"Coin and cargo,\" he calls, almost bored. \"Or we do this the loud way.\"",
+    "difficulty": "moderate",
+    "enemies": [
+      {
+        "id": "bandit_1",
+        "name": "Bandit",
+        "level": 1,
+        "ac": 12,
+        "hp": 11,
+        "attributes": {
+          "strength": 12,
+          "dexterity": 13,
+          "constitution": 12,
+          "intelligence": 9,
+          "wisdom": 10,
+          "charisma": 9
+        },
+        "action_pool": [
+          {
+            "name": "Shortsword",
+            "damage": "1d6+1",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A quick, practiced thrust from a chipped blade"
+          },
+          {
+            "name": "Light Crossbow",
+            "damage": "1d8",
+            "damage_type": "piercing",
+            "properties": ["ranged"],
+            "description": "A bolt loosed from cover before the rush"
+          }
+        ],
+        "xp_value": 50,
+        "sound_signature": "bandit_snarl"
+      },
+      {
+        "id": "bandit_2",
+        "name": "Bandit",
+        "level": 1,
+        "ac": 12,
+        "hp": 11,
+        "attributes": {
+          "strength": 12,
+          "dexterity": 13,
+          "constitution": 12,
+          "intelligence": 9,
+          "wisdom": 10,
+          "charisma": 9
+        },
+        "action_pool": [
+          {
+            "name": "Shortsword",
+            "damage": "1d6+1",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A quick, practiced thrust from a chipped blade"
+          },
+          {
+            "name": "Light Crossbow",
+            "damage": "1d8",
+            "damage_type": "piercing",
+            "properties": ["ranged"],
+            "description": "A bolt loosed from cover before the rush"
+          }
+        ],
+        "xp_value": 50,
+        "sound_signature": "bandit_snarl"
+      },
+      {
+        "id": "bandit_3",
+        "name": "Bandit",
+        "level": 1,
+        "ac": 12,
+        "hp": 11,
+        "attributes": {
+          "strength": 12,
+          "dexterity": 13,
+          "constitution": 12,
+          "intelligence": 9,
+          "wisdom": 10,
+          "charisma": 9
+        },
+        "action_pool": [
+          {
+            "name": "Shortsword",
+            "damage": "1d6+1",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A quick, practiced thrust from a chipped blade"
+          },
+          {
+            "name": "Light Crossbow",
+            "damage": "1d8",
+            "damage_type": "piercing",
+            "properties": ["ranged"],
+            "description": "A bolt loosed from cover before the rush"
+          }
+        ],
+        "xp_value": 50,
+        "sound_signature": "bandit_snarl"
+      },
+      {
+        "id": "bandit_4",
+        "name": "Bandit",
+        "level": 1,
+        "ac": 12,
+        "hp": 11,
+        "attributes": {
+          "strength": 12,
+          "dexterity": 13,
+          "constitution": 12,
+          "intelligence": 9,
+          "wisdom": 10,
+          "charisma": 9
+        },
+        "action_pool": [
+          {
+            "name": "Shortsword",
+            "damage": "1d6+1",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A quick, practiced thrust from a chipped blade"
+          },
+          {
+            "name": "Light Crossbow",
+            "damage": "1d8",
+            "damage_type": "piercing",
+            "properties": ["ranged"],
+            "description": "A bolt loosed from cover before the rush"
+          }
+        ],
+        "xp_value": 50,
+        "sound_signature": "bandit_snarl"
+      },
+      {
+        "id": "bandit_captain",
+        "name": "Bandit Captain",
+        "level": 3,
+        "ac": 14,
+        "hp": 26,
+        "attributes": {
+          "strength": 15,
+          "dexterity": 14,
+          "constitution": 14,
+          "intelligence": 11,
+          "wisdom": 11,
+          "charisma": 13
+        },
+        "action_pool": [
+          {
+            "name": "Scimitar",
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A curved blade that flashes in two quick arcs"
+          },
+          {
+            "name": "Heavy Crossbow",
+            "damage": "1d10+1",
+            "damage_type": "piercing",
+            "properties": ["ranged"],
+            "description": "Held back from the line, picking targets"
+          },
+          {
+            "name": "Press the Attack",
+            "damage": "0",
+            "damage_type": "none",
+            "properties": ["buff"],
+            "description": "A barked order rallies the bandits to focus their strikes"
+          }
+        ],
+        "xp_value": 200,
+        "sound_signature": "bandit_captain_bark"
+      }
+    ]
+  },
+  {
+    "id": "ashmark_patrol",
+    "name": "Ashmark Patrol",
+    "description": "Boots in lockstep, grey tabards stiff with road dust. A Thornwatch patrol fans into a clean line, the sergeant reading you before a word is spoken. Whether their hands stay near their hilts depends entirely on what your name means to the Thornwatch.",
+    "difficulty": "moderate",
+    "stance_gate": { "faction": "thornwatch", "allied_at_or_above": "friendly" },
+    "enemies": [
+      {
+        "id": "ashmark_soldier_1",
+        "name": "Ashmark Soldier",
+        "level": 3,
+        "ac": 15,
+        "hp": 24,
+        "attributes": {
+          "strength": 14,
+          "dexterity": 12,
+          "constitution": 14,
+          "intelligence": 10,
+          "wisdom": 11,
+          "charisma": 10
+        },
+        "action_pool": [
+          {
+            "name": "Longsword",
+            "damage": "1d8+2",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A disciplined cut held in formation"
+          },
+          {
+            "name": "Shield Bash",
+            "damage": "1d4+2",
+            "damage_type": "bludgeoning",
+            "properties": ["knockback"],
+            "description": "A braced shove to break the enemy's footing"
+          }
+        ],
+        "xp_value": 150,
+        "sound_signature": "ashmark_soldier_advance"
+      },
+      {
+        "id": "ashmark_soldier_2",
+        "name": "Ashmark Soldier",
+        "level": 3,
+        "ac": 15,
+        "hp": 24,
+        "attributes": {
+          "strength": 14,
+          "dexterity": 12,
+          "constitution": 14,
+          "intelligence": 10,
+          "wisdom": 11,
+          "charisma": 10
+        },
+        "action_pool": [
+          {
+            "name": "Longsword",
+            "damage": "1d8+2",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A disciplined cut held in formation"
+          },
+          {
+            "name": "Shield Bash",
+            "damage": "1d4+2",
+            "damage_type": "bludgeoning",
+            "properties": ["knockback"],
+            "description": "A braced shove to break the enemy's footing"
+          }
+        ],
+        "xp_value": 150,
+        "sound_signature": "ashmark_soldier_advance"
+      },
+      {
+        "id": "ashmark_soldier_3",
+        "name": "Ashmark Soldier",
+        "level": 3,
+        "ac": 15,
+        "hp": 24,
+        "attributes": {
+          "strength": 14,
+          "dexterity": 12,
+          "constitution": 14,
+          "intelligence": 10,
+          "wisdom": 11,
+          "charisma": 10
+        },
+        "action_pool": [
+          {
+            "name": "Longsword",
+            "damage": "1d8+2",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A disciplined cut held in formation"
+          },
+          {
+            "name": "Shield Bash",
+            "damage": "1d4+2",
+            "damage_type": "bludgeoning",
+            "properties": ["knockback"],
+            "description": "A braced shove to break the enemy's footing"
+          }
+        ],
+        "xp_value": 150,
+        "sound_signature": "ashmark_soldier_advance"
+      },
+      {
+        "id": "ashmark_soldier_4",
+        "name": "Ashmark Soldier",
+        "level": 3,
+        "ac": 15,
+        "hp": 24,
+        "attributes": {
+          "strength": 14,
+          "dexterity": 12,
+          "constitution": 14,
+          "intelligence": 10,
+          "wisdom": 11,
+          "charisma": 10
+        },
+        "action_pool": [
+          {
+            "name": "Longsword",
+            "damage": "1d8+2",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A disciplined cut held in formation"
+          },
+          {
+            "name": "Shield Bash",
+            "damage": "1d4+2",
+            "damage_type": "bludgeoning",
+            "properties": ["knockback"],
+            "description": "A braced shove to break the enemy's footing"
+          }
+        ],
+        "xp_value": 150,
+        "sound_signature": "ashmark_soldier_advance"
+      },
+      {
+        "id": "ashmark_sergeant",
+        "name": "Ashmark Sergeant",
+        "level": 4,
+        "ac": 16,
+        "hp": 32,
+        "attributes": {
+          "strength": 15,
+          "dexterity": 12,
+          "constitution": 15,
+          "intelligence": 11,
+          "wisdom": 12,
+          "charisma": 13
+        },
+        "action_pool": [
+          {
+            "name": "Greatsword",
+            "damage": "2d6+2",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A two-handed arc meant to end the exchange quickly"
+          },
+          {
+            "name": "Rally",
+            "damage": "0",
+            "damage_type": "none",
+            "properties": ["buff"],
+            "description": "A sharp command steadies the line and sharpens their focus fire"
+          }
+        ],
+        "xp_value": 250,
+        "sound_signature": "ashmark_sergeant_order"
+      }
+    ]
+  },
+  {
+    "id": "cult_cell",
+    "name": "Cult Cell",
+    "description": "Tallow smoke and a low chant coil out of the chamber. Hooded cultists ring a defaced altar while two fanatics sway in prayer, and at the back a robed leader traces a sigil that makes the air feel thin. They were expecting someone. Not you.",
+    "difficulty": "hard",
+    "enemies": [
+      {
+        "id": "cult_fanatic_1",
+        "name": "Cult Fanatic",
+        "level": 3,
+        "ac": 13,
+        "hp": 22,
+        "attributes": {
+          "strength": 11,
+          "dexterity": 12,
+          "constitution": 13,
+          "intelligence": 12,
+          "wisdom": 15,
+          "charisma": 13
+        },
+        "action_pool": [
+          {
+            "name": "Mace",
+            "damage": "1d6",
+            "damage_type": "bludgeoning",
+            "properties": [],
+            "description": "A heavy ritual head swung in time with the chant"
+          },
+          {
+            "name": "Bless",
+            "damage": "0",
+            "damage_type": "none",
+            "properties": ["buff"],
+            "description": "Murmured fervor steadies the cultists' hands"
+          },
+          {
+            "name": "Inflict Wounds",
+            "damage": "2d8",
+            "damage_type": "necrotic",
+            "properties": [],
+            "description": "A grasping touch that withers what it holds"
+          }
+        ],
+        "xp_value": 150,
+        "sound_signature": "cult_chant"
+      },
+      {
+        "id": "cult_fanatic_2",
+        "name": "Cult Fanatic",
+        "level": 3,
+        "ac": 13,
+        "hp": 22,
+        "attributes": {
+          "strength": 11,
+          "dexterity": 12,
+          "constitution": 13,
+          "intelligence": 12,
+          "wisdom": 15,
+          "charisma": 13
+        },
+        "action_pool": [
+          {
+            "name": "Mace",
+            "damage": "1d6",
+            "damage_type": "bludgeoning",
+            "properties": [],
+            "description": "A heavy ritual head swung in time with the chant"
+          },
+          {
+            "name": "Bless",
+            "damage": "0",
+            "damage_type": "none",
+            "properties": ["buff"],
+            "description": "Murmured fervor steadies the cultists' hands"
+          },
+          {
+            "name": "Inflict Wounds",
+            "damage": "2d8",
+            "damage_type": "necrotic",
+            "properties": [],
+            "description": "A grasping touch that withers what it holds"
+          }
+        ],
+        "xp_value": 150,
+        "sound_signature": "cult_chant"
+      },
+      {
+        "id": "cultist_1",
+        "name": "Cultist",
+        "level": 1,
+        "ac": 12,
+        "hp": 9,
+        "attributes": {
+          "strength": 11,
+          "dexterity": 12,
+          "constitution": 11,
+          "intelligence": 10,
+          "wisdom": 11,
+          "charisma": 10
+        },
+        "action_pool": [
+          {
+            "name": "Ritual Dagger",
+            "damage": "1d4+1",
+            "damage_type": "piercing",
+            "properties": [],
+            "description": "A notched blade gripped in both shaking hands"
+          }
+        ],
+        "xp_value": 40,
+        "sound_signature": "cult_murmur"
+      },
+      {
+        "id": "cultist_2",
+        "name": "Cultist",
+        "level": 1,
+        "ac": 12,
+        "hp": 9,
+        "attributes": {
+          "strength": 11,
+          "dexterity": 12,
+          "constitution": 11,
+          "intelligence": 10,
+          "wisdom": 11,
+          "charisma": 10
+        },
+        "action_pool": [
+          {
+            "name": "Ritual Dagger",
+            "damage": "1d4+1",
+            "damage_type": "piercing",
+            "properties": [],
+            "description": "A notched blade gripped in both shaking hands"
+          }
+        ],
+        "xp_value": 40,
+        "sound_signature": "cult_murmur"
+      },
+      {
+        "id": "cultist_3",
+        "name": "Cultist",
+        "level": 1,
+        "ac": 12,
+        "hp": 9,
+        "attributes": {
+          "strength": 11,
+          "dexterity": 12,
+          "constitution": 11,
+          "intelligence": 10,
+          "wisdom": 11,
+          "charisma": 10
+        },
+        "action_pool": [
+          {
+            "name": "Ritual Dagger",
+            "damage": "1d4+1",
+            "damage_type": "piercing",
+            "properties": [],
+            "description": "A notched blade gripped in both shaking hands"
+          }
+        ],
+        "xp_value": 40,
+        "sound_signature": "cult_murmur"
+      },
+      {
+        "id": "cultist_4",
+        "name": "Cultist",
+        "level": 1,
+        "ac": 12,
+        "hp": 9,
+        "attributes": {
+          "strength": 11,
+          "dexterity": 12,
+          "constitution": 11,
+          "intelligence": 10,
+          "wisdom": 11,
+          "charisma": 10
+        },
+        "action_pool": [
+          {
+            "name": "Ritual Dagger",
+            "damage": "1d4+1",
+            "damage_type": "piercing",
+            "properties": [],
+            "description": "A notched blade gripped in both shaking hands"
+          }
+        ],
+        "xp_value": 40,
+        "sound_signature": "cult_murmur"
+      },
+      {
+        "id": "cult_leader",
+        "name": "Cult Leader",
+        "level": 4,
+        "ac": 12,
+        "hp": 28,
+        "attributes": {
+          "strength": 9,
+          "dexterity": 14,
+          "constitution": 13,
+          "intelligence": 16,
+          "wisdom": 13,
+          "charisma": 14
+        },
+        "action_pool": [
+          {
+            "name": "Shadow Bolt",
+            "damage": "2d6",
+            "damage_type": "necrotic",
+            "properties": ["ranged"],
+            "description": "A lance of cold dark flung from the back of the chamber"
+          },
+          {
+            "name": "Hold Person",
+            "damage": "0",
+            "damage_type": "none",
+            "properties": ["control"],
+            "description": "A word that locks a victim's limbs mid-step"
+          },
+          {
+            "name": "Dark Pulse",
+            "damage": "1d10",
+            "damage_type": "necrotic",
+            "properties": ["aoe"],
+            "description": "The sigil flares and rot washes outward in a ring"
+          }
+        ],
+        "xp_value": 300,
+        "sound_signature": "cult_leader_incant"
+      }
+    ]
+  },
+  {
+    "id": "hollow_corrupted_settlement",
+    "name": "Hollow-Corrupted Settlement",
+    "description": "The village still stands, after a fashion. Doors hang open on dark rooms, and the things that were neighbors drift between the houses. A Hollowed Knight stands in the square where a well used to be, mawlings circling its feet while shadelings pour from the broken windows at its silent command.",
+    "difficulty": "hard",
+    "enemies": [
+      {
+        "id": "hollowed_knight",
+        "name": "Hollowed Knight",
+        "level": 4,
+        "ac": 16,
+        "hp": 40,
+        "attributes": {
+          "strength": 16,
+          "dexterity": 11,
+          "constitution": 16,
+          "intelligence": 9,
+          "wisdom": 12,
+          "charisma": 7
+        },
+        "action_pool": [
+          {
+            "name": "Corrupted Blade",
+            "damage": "1d10+3",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A rusted greatsword that drags a tail of grey light"
+          },
+          {
+            "name": "Command Lesser",
+            "damage": "0",
+            "damage_type": "none",
+            "properties": ["buff"],
+            "description": "A silent pulse marshals the shadelings and mawlings to a single target"
+          },
+          {
+            "name": "Despair Aura",
+            "damage": "1d6",
+            "damage_type": "psychic",
+            "properties": ["aoe"],
+            "description": "The weight of what it used to be presses on everyone near"
+          }
+        ],
+        "xp_value": 400,
+        "sound_signature": "hollow_knight_groan"
+      },
+      {
+        "id": "mawling_1",
+        "name": "Mawling",
+        "level": 2,
+        "ac": 13,
+        "hp": 14,
+        "attributes": {
+          "strength": 13,
+          "dexterity": 13,
+          "constitution": 13,
+          "intelligence": 5,
+          "wisdom": 9,
+          "charisma": 4
+        },
+        "action_pool": [
+          {
+            "name": "Bite",
+            "damage": "1d6+1",
+            "damage_type": "piercing",
+            "properties": [],
+            "description": "A too-wide mouth clamps shut"
+          },
+          {
+            "name": "Pounce",
+            "damage": "1d4+1",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A low lunge that rakes as it passes"
+          }
+        ],
+        "xp_value": 75,
+        "sound_signature": "hollow_mawling_screech"
+      },
+      {
+        "id": "mawling_2",
+        "name": "Mawling",
+        "level": 2,
+        "ac": 13,
+        "hp": 14,
+        "attributes": {
+          "strength": 13,
+          "dexterity": 13,
+          "constitution": 13,
+          "intelligence": 5,
+          "wisdom": 9,
+          "charisma": 4
+        },
+        "action_pool": [
+          {
+            "name": "Bite",
+            "damage": "1d6+1",
+            "damage_type": "piercing",
+            "properties": [],
+            "description": "A too-wide mouth clamps shut"
+          },
+          {
+            "name": "Pounce",
+            "damage": "1d4+1",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A low lunge that rakes as it passes"
+          }
+        ],
+        "xp_value": 75,
+        "sound_signature": "hollow_mawling_screech"
+      },
+      {
+        "id": "mawling_3",
+        "name": "Mawling",
+        "level": 2,
+        "ac": 13,
+        "hp": 14,
+        "attributes": {
+          "strength": 13,
+          "dexterity": 13,
+          "constitution": 13,
+          "intelligence": 5,
+          "wisdom": 9,
+          "charisma": 4
+        },
+        "action_pool": [
+          {
+            "name": "Bite",
+            "damage": "1d6+1",
+            "damage_type": "piercing",
+            "properties": [],
+            "description": "A too-wide mouth clamps shut"
+          },
+          {
+            "name": "Pounce",
+            "damage": "1d4+1",
+            "damage_type": "slashing",
+            "properties": [],
+            "description": "A low lunge that rakes as it passes"
+          }
+        ],
+        "xp_value": 75,
+        "sound_signature": "hollow_mawling_screech"
+      },
+      {
+        "id": "shadeling_1",
+        "name": "Shadeling",
+        "level": 1,
+        "ac": 12,
+        "hp": 7,
+        "attributes": {
+          "strength": 6,
+          "dexterity": 15,
+          "constitution": 9,
+          "intelligence": 4,
+          "wisdom": 10,
+          "charisma": 3
+        },
+        "action_pool": [
+          {
+            "name": "Shadow Claw",
+            "damage": "1d4",
+            "damage_type": "necrotic",
+            "properties": [],
+            "description": "A cold raking of half-there talons"
+          }
+        ],
+        "xp_value": 40,
+        "sound_signature": "hollow_shadeling_hiss"
+      },
+      {
+        "id": "shadeling_2",
+        "name": "Shadeling",
+        "level": 1,
+        "ac": 12,
+        "hp": 7,
+        "attributes": {
+          "strength": 6,
+          "dexterity": 15,
+          "constitution": 9,
+          "intelligence": 4,
+          "wisdom": 10,
+          "charisma": 3
+        },
+        "action_pool": [
+          {
+            "name": "Shadow Claw",
+            "damage": "1d4",
+            "damage_type": "necrotic",
+            "properties": [],
+            "description": "A cold raking of half-there talons"
+          }
+        ],
+        "xp_value": 40,
+        "sound_signature": "hollow_shadeling_hiss"
+      },
+      {
+        "id": "shadeling_3",
+        "name": "Shadeling",
+        "level": 1,
+        "ac": 12,
+        "hp": 7,
+        "attributes": {
+          "strength": 6,
+          "dexterity": 15,
+          "constitution": 9,
+          "intelligence": 4,
+          "wisdom": 10,
+          "charisma": 3
+        },
+        "action_pool": [
+          {
+            "name": "Shadow Claw",
+            "damage": "1d4",
+            "damage_type": "necrotic",
+            "properties": [],
+            "description": "A cold raking of half-there talons"
+          }
+        ],
+        "xp_value": 40,
+        "sound_signature": "hollow_shadeling_hiss"
+      },
+      {
+        "id": "shadeling_4",
+        "name": "Shadeling",
+        "level": 1,
+        "ac": 12,
+        "hp": 7,
+        "attributes": {
+          "strength": 6,
+          "dexterity": 15,
+          "constitution": 9,
+          "intelligence": 4,
+          "wisdom": 10,
+          "charisma": 3
+        },
+        "action_pool": [
+          {
+            "name": "Shadow Claw",
+            "damage": "1d4",
+            "damage_type": "necrotic",
+            "properties": [],
+            "description": "A cold raking of half-there talons"
+          }
+        ],
+        "xp_value": 40,
+        "sound_signature": "hollow_shadeling_hiss"
+      },
+      {
+        "id": "shadeling_5",
+        "name": "Shadeling",
+        "level": 1,
+        "ac": 12,
+        "hp": 7,
+        "attributes": {
+          "strength": 6,
+          "dexterity": 15,
+          "constitution": 9,
+          "intelligence": 4,
+          "wisdom": 10,
+          "charisma": 3
+        },
+        "action_pool": [
+          {
+            "name": "Shadow Claw",
+            "damage": "1d4",
+            "damage_type": "necrotic",
+            "properties": [],
+            "description": "A cold raking of half-there talons"
+          }
+        ],
+        "xp_value": 40,
+        "sound_signature": "hollow_shadeling_hiss"
+      },
+      {
+        "id": "shadeling_6",
+        "name": "Shadeling",
+        "level": 1,
+        "ac": 12,
+        "hp": 7,
+        "attributes": {
+          "strength": 6,
+          "dexterity": 15,
+          "constitution": 9,
+          "intelligence": 4,
+          "wisdom": 10,
+          "charisma": 3
+        },
+        "action_pool": [
+          {
+            "name": "Shadow Claw",
+            "damage": "1d4",
+            "damage_type": "necrotic",
+            "properties": [],
+            "description": "A cold raking of half-there talons"
+          }
+        ],
+        "xp_value": 40,
+        "sound_signature": "hollow_shadeling_hiss"
+      }
+    ]
   }
 ]

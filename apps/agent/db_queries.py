@@ -38,6 +38,30 @@ async def get_npc_disposition(
     return data.get("disposition")
 
 
+async def get_player_faction_reputation(
+    player_id: str,
+    faction_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> int | None:
+    """Return the player's int reputation with a faction, or None if no row (story-008).
+
+    Reads player_reputation.data["value"] — this query forward-defines that shape; no
+    writer ships yet, so a missing row (None) is the common case and the stance-gate caller
+    defaults it to neutral. A read-only stance input, so no FOR UPDATE lock path.
+    """
+    _conn = conn or await db.get_pool()
+    row = await _conn.fetchrow(
+        "SELECT data FROM player_reputation WHERE player_id = $1 AND faction_id = $2",
+        player_id,
+        faction_id,
+    )
+    if row is None:
+        return None
+    data = json.loads(row["data"])
+    return data.get("value")
+
+
 async def get_npc_dispositions(
     npc_ids: list[str], player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> dict[str, str]:
