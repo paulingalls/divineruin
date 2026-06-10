@@ -11,6 +11,7 @@ import db_content_queries
 import db_queries
 from db_errors import db_tool
 from session_data import SessionData
+from settlement_generation import generate_settlement_npcs
 from tool_support import (
     _location_for_narration,
     _npc_for_narration,
@@ -33,14 +34,16 @@ async def _resolve_disposition(npc_id: str, player_id: str, npc: dict, *, querie
 @db_tool
 async def query_info(
     context: RunContext[SessionData],
-    kind: Literal["location", "npc", "lore", "inventory"],
+    kind: Literal["location", "npc", "lore", "inventory", "settlement_population"],
     target_id: str | None = None,
 ) -> str:
     """Look up world info in one call. Set kind and (for most kinds) target_id:
     - kind="location", target_id=<location id>: scene details, atmosphere, exits.
     - kind="npc", target_id=<npc id>: personality, speech style, relationship-filtered knowledge.
     - kind="lore", target_id=<topic keyword>: history, gods, the Hollow, races, cultures.
-    - kind="inventory": the current player's carried items (no target_id needed)."""
+    - kind="inventory": the current player's carried items (no target_id needed).
+    - kind="settlement_population", target_id=<location id>: how many of each NPC role staff a
+      settlement, scaled by its size (tier) and character (personality)."""
     return await _query_info_impl(context, kind, target_id)
 
 
@@ -59,6 +62,8 @@ async def _query_info_impl(
         return await _query_npc_impl(context, target_id)
     if kind == "lore":
         return await _query_lore_impl(context, target_id)
+    if kind == "settlement_population":
+        return await _query_settlement_population_impl(context, target_id)
     raise ToolError(f"Unknown query_info kind: {kind!r}.")
 
 
@@ -78,6 +83,44 @@ async def _query_location_impl(
     location = apply_time_conditions(location, session.world_time)
     narration = _location_for_narration(location)
     return json.dumps(narration)
+
+
+async def _query_settlement_population_impl(
+    context: RunContext[SessionData],
+    location_id: str,
+    *,
+    content=db_content_queries,
+    rng=None,
+) -> str:
+    """Generate a settlement's NPC population (counts per role) from its tier + personality.
+
+    Reads the location's settlement_tier/personality (story-001 fields) and delegates to the
+    pure generate_settlement_npcs rules engine (story-003). Fail-loud (ADR 0002): an unknown
+    or non-settlement location raises ToolError rather than returning an empty roster. `rng`
+    is injectable for deterministic tests; production passes None (a fresh population per call).
+    """
+    logger.info("query_info[settlement_population] called: location_id=%s", location_id)
+    _validate_id(location_id, "location_id")
+    location = await content.get_location(location_id)
+    if location is None:
+        raise ToolError(f"Location '{location_id}' not found.")
+    tier = location.get("settlement_tier")
+    personality = location.get("personality")
+    if not tier or not personality:
+        raise ToolError(f"Location '{location_id}' is not a settlement (no tier/personality).")
+    try:
+        population = generate_settlement_npcs(tier, personality, rng=rng)
+    except ValueError as e:
+        raise ToolError(f"Cannot generate a settlement population for '{location_id}': {e}") from e
+    return json.dumps(
+        {
+            "location_id": location_id,
+            "settlement_tier": tier,
+            "personality": personality,
+            "population": population,
+            "total": sum(population.values()),
+        }
+    )
 
 
 async def _query_npc_impl(
