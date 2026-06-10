@@ -64,6 +64,27 @@ async def _seed_warrior_with_pools(pool, player_id: str) -> None:
     await seed_player_with_pools(pool, player_id=player_id, class_="warrior", equipped_electives=(_BASE,))
 
 
+async def _satisfy_drathian_training_gates(pool, player_id: str) -> None:
+    """learn(variant) now gates on M6.3 mentor preconditions. Co-location is supplied via the
+    ctx location_id (a Drathian-Hessa schedule stage); here we seed her requirement gates
+    (friendly disposition, 50 gold, Athletics: Trained) so this capstone can still exercise
+    the train->unlock->activate path. Drathian's mentor{} block is the steepest of the four
+    (the only one with a skill gate)."""
+    await pool.execute("UPDATE players SET data = jsonb_set(data, '{gold}', '50') WHERE player_id = $1", player_id)
+    await pool.execute(
+        "INSERT INTO npc_dispositions (npc_id, player_id, data) VALUES ('mentor_drathian_warleader', $1, $2::jsonb) "
+        "ON CONFLICT (npc_id, player_id) DO UPDATE SET data = $2::jsonb",
+        player_id,
+        json.dumps({"disposition": "friendly"}),
+    )
+    await pool.execute(
+        "INSERT INTO skill_advancement (player_id, skill_id, tier, use_counter, narrative_moment_ready) "
+        "VALUES ($1, 'athletics', 'trained', 0, FALSE) "
+        "ON CONFLICT (player_id, skill_id) DO UPDATE SET tier = 'trained'",
+        player_id,
+    )
+
+
 async def _load_catalogs() -> None:
     """Load the ability + mentor-variant catalogs from the seeded testcontainer."""
     await abilities.load_abilities()
@@ -80,10 +101,12 @@ async def test_variant_train_unlock_activate_override(reset_db_pool: str) -> Non
     pool = await db.get_pool()
     pid = "cap_m9_train"
     await _seed_warrior_with_pools(pool, pid)
+    await _satisfy_drathian_training_gates(pool, pid)
     await _load_catalogs()
 
-    # learn(variant) initiates the mentor training loop (story-002) on real rows.
-    ctx = make_context(player_id=pid)
+    # learn(variant) initiates the mentor training loop (story-002) on real rows. The ctx is
+    # located at a Drathian-Hessa schedule stage so the M6.3 co-location gate passes.
+    ctx = make_context(player_id=pid, location_id="accord_training_hall")
     started = json.loads(await mentor_variant_tools._learn_variant_impl(ctx, _DRATHIAN))
     assert started["training_started"] == _DRATHIAN
     assert started["ability_id"] == _BASE

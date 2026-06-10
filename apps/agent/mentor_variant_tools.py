@@ -24,8 +24,10 @@ import abilities
 import ability_persistence
 import db
 import db_training
+import mentor_requirements
 import mentor_variant_progress
 import mentor_variants
+import tool_preconditions
 from session_data import SessionData
 from tool_support import _validate_id
 from training_rules import get_cycles_required, start_training_cycle
@@ -47,6 +49,8 @@ async def _learn_variant_impl(
     progress_mod=mentor_variant_progress,
     abilities_mod=abilities,
     persistence_mod=ability_persistence,
+    requirements_mod=mentor_requirements,
+    preconditions_mod=tool_preconditions,
     rules_mod=None,
     now_fn=None,
 ) -> str:
@@ -73,9 +77,19 @@ async def _learn_variant_impl(
         raise ToolError(str(e)) from e
     cycles_required = get_cycles_required(_VARIANT_ACTIVITY_TYPE)
 
-    # Mentor co-location / valid-relationship gating depends on Phase 6 NPC
-    # disposition (recorded cross-phase constraint) — stubbed here. The variant
-    # carries its bound mentor_id; full co-location enforcement lands with Phase 6.
+    # Mentor gates (M6.3), pre-transaction: both are reads (schedule + content), no
+    # writable row to lock — mirrors the pre-tx co-location gate in repair_item.
+    # Co-location runs FIRST: an absent mentor short-circuits before the requirement read.
+    await preconditions_mod.require_npc_present(
+        context.userdata.location_id, variant.mentor_id, suffix=" to train this variant"
+    )
+    try:
+        requirements = await requirements_mod.check_mentor_requirements(player_id, variant.mentor_id, variant_id)
+    except ValueError as exc:
+        # Malformed/absent mentor binding — story-002 contract: map ValueError to ToolError.
+        raise ToolError(str(exc)) from exc
+    if not requirements.met:
+        raise ToolError(f"You can't train {variant_id} yet: {'; '.join(requirements.unmet)}")
 
     async with db_mod.transaction() as conn:
         if await progress_mod.is_unlocked(player_id, variant_id, conn=conn):

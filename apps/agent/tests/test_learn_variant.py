@@ -14,6 +14,7 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import FIXED_NOW, make_context, make_db_mod
 
+from mentor_requirements import MentorRequirementsResult
 from mentor_variant_tools import _learn_variant_impl
 from training_rules import TrainingCycleInit
 
@@ -72,6 +73,21 @@ def _rules_factory(cycle):
     return _stub
 
 
+def _reqs_mod(*, met=True, unmet=()):
+    """story-002 check seam: returns a canned MentorRequirementsResult."""
+    mod = MagicMock()
+    mod.check_mentor_requirements = AsyncMock(return_value=MentorRequirementsResult(met=met, unmet=list(unmet)))
+    return mod
+
+
+def _preconds_mod(*, present=True):
+    """Co-location seam (story-003 reuses require_npc_present): raises ToolError when absent."""
+    mod = MagicMock()
+    side = None if present else ToolError("mentor isn't here to train this variant.")
+    mod.require_npc_present = AsyncMock(side_effect=side)
+    return mod
+
+
 class TestLearnVariant:
     @pytest.mark.asyncio
     async def test_happy_path_seeds_progress_and_creates_activity(self):
@@ -92,6 +108,8 @@ class TestLearnVariant:
                 progress_mod=progress,
                 abilities_mod=_abilities_mod(),
                 persistence_mod=_persistence_mod(owns=True),
+                requirements_mod=_reqs_mod(),
+                preconditions_mod=_preconds_mod(),
                 rules_mod=_rules_factory(_cycle(8 * 3600)),
                 now_fn=lambda: FIXED_NOW,
             )
@@ -135,6 +153,8 @@ class TestLearnVariant:
                 progress_mod=progress,
                 abilities_mod=_abilities_mod(),
                 persistence_mod=_persistence_mod(owns=False),
+                requirements_mod=_reqs_mod(),
+                preconditions_mod=_preconds_mod(),
                 rules_mod=_rules_factory(_cycle()),
                 now_fn=lambda: FIXED_NOW,
             )
@@ -162,6 +182,8 @@ class TestLearnVariant:
                 progress_mod=progress,
                 abilities_mod=_abilities_mod(ability_type="core"),
                 persistence_mod=_persistence_mod(owns=True),
+                requirements_mod=_reqs_mod(),
+                preconditions_mod=_preconds_mod(),
                 rules_mod=_rules_factory(_cycle()),
                 now_fn=lambda: FIXED_NOW,
             )
@@ -215,6 +237,8 @@ class TestLearnVariant:
                 db_training_mod=training,
                 variants_mod=_variants_mod(_variant()),
                 progress_mod=progress,
+                requirements_mod=_reqs_mod(),
+                preconditions_mod=_preconds_mod(),
                 rules_mod=_rules_factory(_cycle()),
                 now_fn=lambda: FIXED_NOW,
             )
@@ -240,6 +264,8 @@ class TestLearnVariant:
                 db_training_mod=training,
                 variants_mod=_variants_mod(_variant()),
                 progress_mod=progress,
+                requirements_mod=_reqs_mod(),
+                preconditions_mod=_preconds_mod(),
                 rules_mod=_rules_factory(_cycle()),
                 now_fn=lambda: FIXED_NOW,
             )
@@ -263,3 +289,64 @@ class TestLearnVariant:
                 now_fn=lambda: FIXED_NOW,
             )
         variants.get_mentor_variant.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_rejects_when_mentor_not_co_located(self):
+        # Co-location gate (story-003): training can't begin unless the bound mentor is
+        # present at the player's location. It runs BEFORE the requirement check — even
+        # with requirements unmet, the co-location ToolError wins and the check is skipped.
+        ctx = make_context()
+        db_mod, _ = make_db_mod()
+        progress = _progress_mod(unlocked=False)
+        training = MagicMock()
+        training.get_player_training_activities = AsyncMock(return_value=[])
+        training.create_training_activity = AsyncMock()
+        reqs = _reqs_mod(met=False, unmet=["gold: need 50, have 0"])
+        with pytest.raises(ToolError, match="isn't here"):
+            await _learn_variant_impl(
+                ctx,
+                "warrior_cleaving_blow_drathian",
+                "",
+                db_mod=db_mod,
+                db_training_mod=training,
+                variants_mod=_variants_mod(_variant()),
+                progress_mod=progress,
+                abilities_mod=_abilities_mod(),
+                persistence_mod=_persistence_mod(owns=True),
+                requirements_mod=reqs,
+                preconditions_mod=_preconds_mod(present=False),
+                rules_mod=_rules_factory(_cycle()),
+                now_fn=lambda: FIXED_NOW,
+            )
+        reqs.check_mentor_requirements.assert_not_awaited()  # co-location gates first
+        progress.seed_progress.assert_not_awaited()
+        training.create_training_activity.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_rejects_when_requirements_unmet(self):
+        # Requirement gate (story-003): co-located but the player doesn't meet the mentor's
+        # disposition/quest/gold/skill — the specific unmet labels surface in the refusal.
+        ctx = make_context()
+        db_mod, _ = make_db_mod()
+        progress = _progress_mod(unlocked=False)
+        training = MagicMock()
+        training.get_player_training_activities = AsyncMock(return_value=[])
+        training.create_training_activity = AsyncMock()
+        with pytest.raises(ToolError, match="gold: need 50"):
+            await _learn_variant_impl(
+                ctx,
+                "warrior_cleaving_blow_drathian",
+                "",
+                db_mod=db_mod,
+                db_training_mod=training,
+                variants_mod=_variants_mod(_variant()),
+                progress_mod=progress,
+                abilities_mod=_abilities_mod(),
+                persistence_mod=_persistence_mod(owns=True),
+                requirements_mod=_reqs_mod(met=False, unmet=["gold: need 50, have 0"]),
+                preconditions_mod=_preconds_mod(present=True),
+                rules_mod=_rules_factory(_cycle()),
+                now_fn=lambda: FIXED_NOW,
+            )
+        progress.seed_progress.assert_not_awaited()
+        training.create_training_activity.assert_not_awaited()
