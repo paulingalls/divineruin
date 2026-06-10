@@ -22,7 +22,10 @@ from companion_profiles import (
     parse_companion_row,
     set_companion_profiles,
 )
-from companion_scaling import scale_companion_stats_to_player_level
+from companion_scaling import (
+    companion_attacks_to_action_pool,
+    scale_companion_stats_to_player_level,
+)
 from hp_scaling import calculate_max_hp
 
 _CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "companions.json"
@@ -49,10 +52,12 @@ class TestParse:
             c = parse_companion_row(e["id"], e)
             assert len(c.save_proficiencies) == 2
 
-    def test_sable_non_verbal_with_palette(self):
+    def test_sable_non_verbal(self):
         sable = parse_companion_row("companion_sable", _row("companion_sable"))
         assert sable.non_verbal is True
-        assert sable.sound_palette is not None and len(sable.sound_palette) == 6
+        # sound_palette is owned solely by voice_registry.json now (B1, debt eb08ad17f6e2);
+        # the companion entity no longer mirrors it.
+        assert not hasattr(sable, "sound_palette")
         assert sable.reactions == ()
 
     def test_bad_disposition_raises(self):
@@ -148,6 +153,69 @@ class TestScaling:
         before = dict(kael.base_attributes)
         scale_companion_stats_to_player_level(kael, 100, 20)
         assert kael.base_attributes == before
+
+
+class TestVoiceRegistration:
+    def test_every_companion_voice_id_registered_in_voices(self):
+        """Every companions.json voice_id must be a key in voices.VOICES (audio-first golden rule).
+
+        get_voice_config does VOICES.get(character, DEFAULT_VOICE), so an unregistered voice_id
+        silently falls back to DM_NARRATOR. This includes Sable's COMPANION_SABLE: she is
+        non-verbal (empty env default), but the key must exist so the invariant holds uniformly.
+        """
+        from voices import VOICES
+
+        for cid in _IDS:
+            voice_id = get_companion_profile(cid).voice_id
+            assert voice_id in VOICES, (
+                f"{cid} voice_id {voice_id!r} not in voices.VOICES -> would fall back to DM_NARRATOR"
+            )
+
+
+class TestActionPool:
+    """companion_attacks_to_action_pool translates the profile's NARRATIVE attack notation
+    (damage "1d8+STR", hit "STR+prof") into the MECHANICAL action dicts the combat resolver
+    consumes (plain dice + attributes-supply-the-mod). Attacks only — actives/reactions are
+    DM-narrated. ranged:True routes the resolver's DEX branch (attack_modifier reads the
+    top-level 'ranged' key, NOT properties)."""
+
+    def test_kael_melee_attacks(self):
+        kael = get_companion_profile("companion_kael")
+        pool = companion_attacks_to_action_pool(kael)
+        assert pool == [
+            {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []},
+            {"name": "Shield Bash", "damage": "1d4", "damage_type": "bludgeoning", "properties": []},
+        ]
+
+    def test_lira_ranged_attack_sets_ranged_flag(self):
+        lira = get_companion_profile("companion_lira")
+        pool = companion_attacks_to_action_pool(lira)
+        # Arcane Bolt is type=ranged -> top-level ranged:True (resolver uses DEX). damage strips +INT.
+        assert pool == [
+            {"name": "Arcane Bolt", "damage": "1d6", "damage_type": "force", "properties": [], "ranged": True}
+        ]
+
+    def test_tam_mixed_melee_and_ranged(self):
+        tam = get_companion_profile("companion_tam")
+        pool = companion_attacks_to_action_pool(tam)
+        by_name = {a["name"]: a for a in pool}
+        assert by_name["Short Sword"].get("ranged") is None  # melee -> no ranged key
+        assert by_name["Shortbow"]["ranged"] is True
+        assert by_name["Short Sword"]["damage"] == "1d6"  # +DEX stripped
+
+    def test_every_companion_attack_yields_a_dice_term(self):
+        for cid in _IDS:
+            pool = companion_attacks_to_action_pool(get_companion_profile(cid))
+            for action in pool:
+                assert action["damage"], f"{cid} {action['name']} lost its dice term"
+
+    def test_malformed_damage_without_dice_term_raises(self):
+        # A pure-attribute damage expression has no dice/int term to keep -> fail loud.
+        broken = copy.deepcopy(_row("companion_kael"))
+        broken["attacks"][0]["damage"] = "STR"
+        bad_profile = parse_companion_row("companion_kael", broken)
+        with pytest.raises(ValueError, match="damage"):
+            companion_attacks_to_action_pool(bad_profile)
 
 
 class TestLoader:

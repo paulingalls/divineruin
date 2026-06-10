@@ -127,7 +127,6 @@ class Companion:
     relationship_unlocks: dict[str, list[str]] | None = None
     voice_notes: str | None = None
     non_verbal: bool = False
-    sound_palette: dict[str, str] | None = None
 
 
 _companion_profiles: dict[str, Companion] = {}
@@ -294,9 +293,6 @@ def parse_companion_row(companion_id: str, data: dict) -> Companion:
             if sp not in _ATTRIBUTE_KEYS:
                 raise ValueError(f"{companion_id}.save_proficiencies {sp!r} not in {_ATTRIBUTE_KEYS}")
         non_verbal = bool(data.get("non_verbal", False))
-        palette = data.get("sound_palette")
-        if palette is not None and not isinstance(palette, dict):
-            raise ValueError(f"{companion_id}.sound_palette is not an object or null")
         mods = data.get("disposition_modifiers")
         if mods is not None and not isinstance(mods, dict):
             raise ValueError(f"{companion_id}.disposition_modifiers is not an object or null")
@@ -338,7 +334,6 @@ def parse_companion_row(companion_id: str, data: dict) -> Companion:
             relationship_unlocks=unlocks,
             voice_notes=_opt_str(data.get("voice_notes"), f"{companion_id}.voice_notes"),
             non_verbal=non_verbal,
-            sound_palette=palette,
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed companions row {companion_id!r}: {e}") from e

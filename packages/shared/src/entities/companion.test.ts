@@ -145,19 +145,19 @@ describe("companions.json — ability cardinality (spec)", () => {
 });
 
 describe("companions.json — Sable non-verbal", () => {
-  test("Sable is non_verbal with a 6-cue sound_palette", () => {
+  test("Sable is non_verbal; sound_palette is owned solely by voice_registry.json (B1)", () => {
     const sable = byId.get("companion_sable")!;
     expect(sable.non_verbal).toBe(true);
-    expect(sable.sound_palette).toBeDefined();
-    expect(Object.keys(sable.sound_palette!).length).toBe(6);
     expect(sable.voice_id).toBe("COMPANION_SABLE");
+    // The companion entity no longer mirrors sound_palette (debt eb08ad17f6e2); voice_registry
+    // is the single owner. Cast through any since the field is gone from the Companion type.
+    expect((sable as { sound_palette?: unknown }).sound_palette).toBeUndefined();
   });
 
   test("the verbal companions are not flagged non_verbal", () => {
     for (const id of ["companion_kael", "companion_lira", "companion_tam"]) {
       const c = byId.get(id)!;
       expect(c.non_verbal).toBeUndefined();
-      expect(c.sound_palette).toBeUndefined();
     }
   });
 });
@@ -189,10 +189,10 @@ describe("companions.json — Kael fidelity (copied from npcs.json)", () => {
     expect(k.reactions.some((r) => r.name === "Intercept")).toBe(true);
   });
 
-  test("npcs.json still contains companion_kael (removal deferred to story-004)", async () => {
+  test("companion_kael migrated out of npcs.json (story-004)", async () => {
     const npcs = (await Bun.file(
       new URL("../../../../content/npcs.json", import.meta.url),
     ).json()) as Npc[];
-    expect(npcs.some((n) => n.id === "companion_kael")).toBe(true);
+    expect(npcs.some((n) => n.id === "companion_kael")).toBe(false);
   });
 });

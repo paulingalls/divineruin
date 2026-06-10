@@ -15,6 +15,11 @@ import db_mutations
 import db_queries
 import event_types as E
 from combat_support import _participant_summary, _publish_sounds
+from companion_profiles import get_companion_profile
+from companion_scaling import (
+    companion_attacks_to_action_pool,
+    scale_companion_stats_to_player_level,
+)
 from encounter_stance import resolve_encounter_stance
 from game_events import publish_game_event
 from region_types import REGION_CITY
@@ -95,22 +100,31 @@ async def _start_combat_impl(
             }
         )
 
-    # Add companion if present and conscious
-    companion_npc = None
-    comp_stats: dict = {}
-    comp_attrs: dict = {}
+    # Add companion if present and conscious. Stats come from the companions.json profile
+    # (companion_scaling: level scaler + action_pool translator), NOT npcs.json — and they are
+    # independent of relationship (session_count/affinity); combat is never relationship-gated
+    # (spec L871, the negative invariant).
+    companion_scaled = None
+    companion_action_pool: list[dict] = []
     if session.companion_can_act and session.companion:
-        companion_npc = await content.get_npc(session.companion.id)
-        if companion_npc:
-            comp_stats = companion_npc.get("combat_stats", {})
-            comp_attrs = comp_stats.get("attributes", {"strength": 12, "dexterity": 12})
-            initiative_inputs.append(
-                {
-                    "id": session.companion.id,
-                    "name": session.companion.name,
-                    "attributes": comp_attrs,
-                }
-            )
+        try:
+            profile = get_companion_profile(session.companion.id)
+        except ValueError as e:
+            # Unknown/unloaded companion id (stale id, catalog inconsistency). Surface as a
+            # ToolError so the DM narrates cleanly — matching the encounter/player/faction
+            # not-found convention above — instead of crashing combat init.
+            raise ToolError(f"Companion '{session.companion.id}' not found: {e}") from e
+        companion_scaled = scale_companion_stats_to_player_level(
+            profile, player_hp.get("max", 1), player.get("level", 1)
+        )
+        companion_action_pool = companion_attacks_to_action_pool(profile)
+        initiative_inputs.append(
+            {
+                "id": session.companion.id,
+                "name": session.companion.name,
+                "attributes": companion_scaled.attributes,
+            }
+        )
 
     # Roll initiative and build lookup
     initiative_entries = combat_resolution.roll_initiative(initiative_inputs)
@@ -149,19 +163,19 @@ async def _start_combat_impl(
         )
 
     # Add companion participant
-    if companion_npc is not None and session.companion:
+    if companion_scaled is not None and session.companion:
         participants.append(
             CombatParticipant(
                 id=session.companion.id,
                 name=session.companion.name,
                 type="companion",
                 initiative=initiative_by_id[session.companion.id],
-                hp_current=comp_stats.get("hp", 20),
-                hp_max=comp_stats.get("hp", 20),
-                ac=comp_stats.get("ac", 14),
-                attributes=comp_attrs,
-                level=comp_stats.get("level", 2),
-                action_pool=comp_stats.get("action_pool", []),
+                hp_current=companion_scaled.hp,
+                hp_max=companion_scaled.hp,
+                ac=companion_scaled.ac,
+                attributes=companion_scaled.attributes,
+                level=companion_scaled.level,
+                action_pool=companion_action_pool,
             )
         )
 

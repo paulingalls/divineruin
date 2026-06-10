@@ -71,15 +71,14 @@ class TestSessionDataCompanion:
 
 class TestKaelEntity:
     def test_kael_entity_valid_schema(self):
-        # parents[4] = repo root (this file is nested one level deeper than the
-        # original tests/test_companion.py, under tests/companion/).
-        npcs_path = Path(__file__).resolve().parents[4] / "content" / "npcs.json"
-        with open(npcs_path) as f:
-            npcs = json.load(f)
-        kael = next(n for n in npcs if n["id"] == "companion_kael")
+        # Kael is a dedicated Companion in companions.json (story-004 moved him out of npcs.json).
+        # parents[4] = repo root (this file is nested under tests/companion/).
+        companions_path = Path(__file__).resolve().parents[4] / "content" / "companions.json"
+        with open(companions_path) as f:
+            companions = json.load(f)
+        kael = next(c for c in companions if c["id"] == "companion_kael")
 
         assert kael["name"] == "Kael"
-        assert kael["role"] == "companion, former caravan guard"
         assert kael["default_disposition"] == "friendly"
         assert kael["voice_id"] == "COMPANION_KAEL"
 
@@ -90,12 +89,9 @@ class TestKaelEntity:
         assert "disposition >= trusted" in knowledge
         assert len(knowledge["free"]) >= 2
 
-        # Combat stats
-        stats = kael["combat_stats"]
-        assert stats["hp"] == 22
-        assert stats["ac"] == 15
-        assert stats["level"] == 2
-        assert len(stats["action_pool"]) >= 2
+        # Combat identity is the typed profile (scaling_rules + attacks), not an npcs combat_stats block.
+        assert "scaling_rules" in kael
+        assert len(kael["attacks"]) >= 2
 
         # Personality
         assert len(kael["personality"]) >= 3
