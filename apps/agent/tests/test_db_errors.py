@@ -187,3 +187,30 @@ class TestDbToolDecorator:
 
         with pytest.raises(KeyError):
             await buggy_tool()
+
+    @pytest.mark.asyncio
+    async def test_json_decode_error_caught_and_formatted(self):
+        """A corrupted content row (json.loads -> JSONDecodeError, a ValueError subclass)
+        is a DATA error: it must surface as a clean ToolError, not a raw stack to the LLM
+        (debt cdde4f403edf). Decision db-tool-jsondecode-catch: narrow JSONDecodeError catch."""
+
+        @db_tool
+        async def corrupt_data_tool():
+            json.loads("{ not valid json")
+            return json.dumps({"unreachable": True})
+
+        with pytest.raises(ToolError, match="unexpected"):
+            await corrupt_data_tool()
+
+    @pytest.mark.asyncio
+    async def test_non_json_valueerror_not_caught(self):
+        """Boundary guard: a non-JSON ValueError is a programming bug, not corrupted data —
+        it must keep propagating (fail-loud). The catch is JSONDecodeError-specific, never
+        broad ValueError, so logic bugs are never masked as 'data corrupted'."""
+
+        @db_tool
+        async def logic_bug_tool():
+            raise ValueError("a logic bug, not corrupted data")
+
+        with pytest.raises(ValueError):
+            await logic_bug_tool()
