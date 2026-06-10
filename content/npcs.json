@@ -868,6 +868,16 @@
       "spoke_poorly_of_drathian_honor": -5
     },
     "inventory_pool": null,
+    "mentor": {
+      "culture": "Drathian Clans",
+      "training_cycles": 3,
+      "requirements": {
+        "disposition": "friendly",
+        "quest": null,
+        "gold": 50,
+        "skill": "Athletics: Trained"
+      }
+    },
     "secrets": ["the warrior she misses most is the student she pushed too hard, too young"],
     "faction": "independent",
     "voice_id": "DRATHIAN_HESSA",
@@ -921,6 +931,16 @@
       "dismissed_keldaran_expertise": -4
     },
     "inventory_pool": null,
+    "mentor": {
+      "culture": "Keldaran Forge",
+      "training_cycles": 4,
+      "requirements": {
+        "disposition": "friendly",
+        "quest": null,
+        "gold": 60,
+        "skill": null
+      }
+    },
     "secrets": [
       "the collapse he blames himself for killed an apprentice he had promised to protect"
     ],
@@ -976,6 +996,16 @@
       "mocked_the_wardens": -4
     },
     "inventory_pool": null,
+    "mentor": {
+      "culture": "Thornwarden",
+      "training_cycles": 4,
+      "requirements": {
+        "disposition": "trusted",
+        "quest": null,
+        "gold": 40,
+        "skill": null
+      }
+    },
     "secrets": ["she came south as much to flee her oak's slow death as to warn anyone"],
     "faction": "independent",
     "voice_id": "THORNWARDEN_SENNA",
@@ -1029,6 +1059,16 @@
       "mocked_seafaring_culture": -4
     },
     "inventory_pool": null,
+    "mentor": {
+      "culture": "Tidecaller",
+      "training_cycles": 3,
+      "requirements": {
+        "disposition": "friendly",
+        "quest": null,
+        "gold": 45,
+        "skill": null
+      }
+    },
     "secrets": ["he hides the depth of his fear of still water behind constant easy motion"],
     "faction": "independent",
     "voice_id": "TIDECALLER_MAREK",
