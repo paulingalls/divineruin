@@ -189,10 +189,10 @@ describe("companions.json — Kael fidelity (copied from npcs.json)", () => {
     expect(k.reactions.some((r) => r.name === "Intercept")).toBe(true);
   });
 
-  test("npcs.json still contains companion_kael (removal deferred to story-004)", async () => {
+  test("companion_kael migrated out of npcs.json (story-004)", async () => {
     const npcs = (await Bun.file(
       new URL("../../../../content/npcs.json", import.meta.url),
     ).json()) as Npc[];
-    expect(npcs.some((n) => n.id === "companion_kael")).toBe(true);
+    expect(npcs.some((n) => n.id === "companion_kael")).toBe(false);
   });
 });

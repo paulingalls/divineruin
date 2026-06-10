@@ -5,7 +5,7 @@ one seeded testcontainer, catching cross-language seam breaks the per-story test
 miss (auto-marked `acceptance` by tests/acceptance/conftest.py):
 
 - **message_event** (Python load path): `load_role_archetypes()` resolves all 19
-  catalog rows via `get_role_archetype`; `load_npcs()` resolves all 18 NPCs, and
+  catalog rows via `get_role_archetype`; `load_npcs()` resolves all 17 NPCs, and
   every NPC's `role_archetype` binding resolves in the archetype catalog (the
   load-bearing schema seam — a migrated NPC pointing at a missing archetype would
   break narration/combat). `parse_role_archetype_row` re-parses a real DB row, and
@@ -38,7 +38,7 @@ import role_archetypes
 from role_archetypes import RoleArchetype, parse_role_archetype_row
 
 _EXPECTED_ARCHETYPES = 19  # 12 base (incl. Shipwright) + 7 Merchant subtypes
-_EXPECTED_NPCS = 18
+_EXPECTED_NPCS = 17  # story-004 moved companion_kael out to companions.json (dedicated Companion)
 _DISPOSITION_LADDER = ("hostile", "unfriendly", "neutral", "friendly", "trusted")
 
 

@@ -51,7 +51,8 @@ def _parsed() -> dict[str, dict]:
 
 def test_every_npc_parses_fail_loud():
     parsed = _parsed()
-    assert len(parsed) == 18
+    # 17 npcs since story-004 moved companion_kael out to companions.json (dedicated Companion).
+    assert len(parsed) == 17
 
 
 def test_npc_ids_are_unique():

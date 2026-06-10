@@ -120,6 +120,12 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
 
     npc_ids = {row["id"] for row in npc_rows}
 
+    # The 'companion' shorthand resolves into the companions id space (Kael is a dedicated
+    # Companion in companions.json, not an npcs row), so world-effect targets validate against
+    # the npcs + companions union.
+    companion_rows = await conn.fetch("SELECT id FROM companions")
+    disposition_target_ids = npc_ids | {row["id"] for row in companion_rows}
+
     effect_npc_map = {
         "torin": "guildmaster_torin", "yanna": "elder_yanna",
         "emris": "scholar_emris", "companion": "companion_kael",
@@ -162,10 +168,10 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
                 if m:
                     shorthand = m.group(1)
                     resolved = effect_npc_map.get(shorthand, shorthand)
-                    if resolved not in npc_ids:
+                    if resolved not in disposition_target_ids:
                         errors.append(
                             f"Quest '{row['id']}' world_effect '{effect}' references "
-                            f"unknown NPC '{resolved}'"
+                            f"unknown disposition target '{resolved}'"
                         )
 
     return errors
