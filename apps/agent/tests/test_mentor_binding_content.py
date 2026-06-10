@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 
 from role_archetypes import DISPOSITIONS as _DISPOSITION_LADDER
+from rules_engine import SKILL_TIER_ORDER
 
 _ROOT = Path(__file__).resolve().parents[3]
 _CONTENT = _ROOT / "content"
@@ -62,6 +63,15 @@ def test_mentor_blocks_conform_to_the_binding_shape():
         for opt in ("quest", "skill"):
             assert opt in req, f"{mentor_id}: requirements missing '{opt}' key"
             assert req[opt] is None or isinstance(req[opt], str), f"{mentor_id}: {opt} must be str|None"
+        # A non-null skill gate must be the "SkillName: Tier" shape story-002's reader parses
+        # (interface contract). A bare "Athletics" would pass the str check above but break the
+        # reader — so the guard must enforce the same shape it exists to protect.
+        skill = req["skill"]
+        if skill is not None:
+            name, sep, tier = skill.partition(":")
+            assert sep and name.strip() and tier.strip().lower() in SKILL_TIER_ORDER, (
+                f"{mentor_id}: skill {skill!r} must be 'SkillName: Tier' with tier in {SKILL_TIER_ORDER}"
+            )
 
 
 def test_only_mentor_npcs_carry_a_mentor_block():
