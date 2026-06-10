@@ -34,6 +34,7 @@ TABLE_MAP = {
     "mentor_variants.json": "mentor_variants",
     "role_archetypes.json": "role_archetypes",
     "settlement_templates.json": "settlement_templates",
+    "companions.json": "companions",
     "training_activity_types.json": "training_activity_types",
     "training_programs.json": "training_programs",
     "errand_templates.json": "errand_templates",
@@ -187,10 +188,7 @@ async def seed_map_progress(conn: asyncpg.Connection) -> None:
         exits = loc.get("exits", {})
         connections = []
         for exit_data in exits.values():
-            if isinstance(exit_data, dict):
-                dest = exit_data.get("destination", "")
-            else:
-                dest = str(exit_data)
+            dest = exit_data.get("destination", "") if isinstance(exit_data, dict) else str(exit_data)
             if dest:
                 connections.append(dest)
 

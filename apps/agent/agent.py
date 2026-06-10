@@ -243,6 +243,14 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if not npcs_is_loaded():
         await load_npcs()
 
+    # Companion catalog (content/companions.json) — typed combat profiles + scaling_rules for
+    # the 4 companions. Guarded so the seed_companion_profiles test fixture skips the DB fetch.
+    from companion_profiles import is_loaded as companion_profiles_is_loaded
+    from companion_profiles import load_companion_profiles
+
+    if not companion_profiles_is_loaded():
+        await load_companion_profiles()
+
     # Determine session type: new player (creation) vs returning
     player = None
     last_summary = None
