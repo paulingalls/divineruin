@@ -65,6 +65,23 @@
     "notes": "Gets quieter under stress not louder. Dry humor when comfortable."
   },
   {
+    "character_id": "COMPANION_SABLE",
+    "name": "Sable",
+    "voice_provider": "none",
+    "voice_tier": "none",
+    "voice_id": "COMPANION_SABLE",
+    "non_verbal": true,
+    "sound_palette": {
+      "chirp": "curious",
+      "trill": "content",
+      "purr": "comfortable",
+      "bark": "alert/alarm",
+      "whine": "distressed",
+      "growl": "hostile"
+    },
+    "notes": "Non-verbal shadow-fox. No TTS speech — the DM narrates her vocalizations from the sound_palette. Her silence is loud."
+  },
+  {
     "character_id": "WOUNDED_RIDER",
     "name": "Wounded Rider",
     "voice_provider": "inworld",
