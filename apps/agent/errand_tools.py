@@ -20,6 +20,7 @@ from datetime import UTC, datetime, timedelta
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import companion_relationship_queries
 import db
 import db_activity_queries
 import db_content_queries
@@ -179,6 +180,7 @@ async def _resolve_companion_errand_impl(
     queries_mod=db_queries,
     mutations_mod=db_mutations,
     resolve_fn=resolve_errand_outcome,
+    companion_rel_mod=companion_relationship_queries,
     now_fn=None,
     sleep_fn=None,
 ) -> str:
@@ -225,7 +227,19 @@ async def _resolve_companion_errand_impl(
                 # Only load the player once we're committed to resolving.
                 player = await queries_mod.get_player(player_id) or {}
                 companion_data = player.get("companion", {})
+                companion_id = companion_data.get("id")
+                if companion_id:
+                    # Feed the bonus the live effective rank (session_count + affinity), not the
+                    # stale players.data int (M6.4 / story-003). Same FOR UPDATE lock.
+                    companion_data["relationship_tier"] = await companion_rel_mod.cached_effective_rank(
+                        player_id, companion_id, conn=conn
+                    )
                 outcome = await resolve_fn(companion_data, activity.get("parameters", {}))
+                if companion_id:
+                    # Persist the HYBRID affinity nudge atomically with the resolve (same lock).
+                    await companion_rel_mod.apply_errand_affinity(
+                        player_id, companion_id, outcome.get("relationship_change", 0), conn=conn
+                    )
 
                 # Persist + mark resolved within the lock so the worker skips this
                 # row (get_due_activities filters status='in_progress').

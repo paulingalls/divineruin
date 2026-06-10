@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from combat_resolution import hp_threshold_status
+from companion_relationship import effective_tier_rank, tier_name
 from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
 from session_data import CombatState
 
@@ -302,7 +303,7 @@ async def build_warm_layer(
         companion_lines = [
             f"COMPANION — {companion.name}",
             f"Emotional state: {companion.emotional_state}",
-            f"Relationship tier: {companion.relationship_tier}",
+            f"Relationship tier: {tier_name(effective_tier_rank(companion.session_count, companion.affinity))}",
             f"Conscious: {conscious_str}",
         ]
         recent_memories = companion.session_memories[-5:]

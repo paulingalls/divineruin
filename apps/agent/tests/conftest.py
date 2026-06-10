@@ -1,6 +1,6 @@
 """Shared test fixtures — auto-mock agent factories, seed training config."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _db_lifecycle import ensure_db_up, stop_if_started
@@ -137,6 +137,40 @@ def seed_role_archetypes():
     """
     setup_role_archetypes_config_fixture()
     yield
+
+
+@pytest.fixture(autouse=True)
+def stub_companion_affinity_io():
+    """Default-stub the companion-relationship DB calls the errand path makes (M6.4 / story-003).
+
+    errand_tools and async_worker call companion_relationship_queries.cached_effective_rank (the
+    bonus rank) and .apply_errand_affinity (the persisted nudge); agent.py/onboarding_tools call
+    .hydrate_companion_state at session start — all hit the DB. Stub them so session/errand/worker
+    unit tests stay DB-free. tests/companion/test_relationship_persistence.py overrides this fixture
+    (same name) to exercise the real read-modify-write against a fake conn.
+    """
+    from session_data import CompanionState
+
+    async def _fake_hydrate(player_id, companion_id, name, *, conn=None):
+        return CompanionState(id=companion_id, name=name, session_count=1)
+
+    with (
+        patch(
+            "companion_relationship_queries.cached_effective_rank",
+            new_callable=AsyncMock,
+            return_value=1,
+        ),
+        patch(
+            "companion_relationship_queries.apply_errand_affinity",
+            new_callable=AsyncMock,
+            return_value=0,
+        ),
+        patch(
+            "companion_relationship_queries.hydrate_companion_state",
+            side_effect=_fake_hydrate,
+        ),
+    ):
+        yield
 
 
 @pytest.fixture(autouse=True)

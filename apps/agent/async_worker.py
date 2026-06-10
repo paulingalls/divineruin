@@ -12,6 +12,7 @@ import logging
 import os
 from dataclasses import asdict
 
+import companion_relationship_queries
 import db
 import db_activity_queries
 import db_mutations
@@ -86,7 +87,14 @@ async def _resolve_one_outcome(activity: dict, player_data: dict) -> dict | None
         return await resolve_crafting_outcome(activity, player_data)
     if activity_type == "companion_errand":
         # ADR 0006: errand_resolution is the sole risk roll site.
-        return await resolve_errand_outcome(player_data.get("companion", {}), parameters)
+        companion = player_data.get("companion", {})
+        companion_id = companion.get("id")
+        if companion_id:
+            # Feed the bonus the live effective rank (session_count + affinity), M6.4 / story-003.
+            companion["relationship_tier"] = await companion_relationship_queries.cached_effective_rank(
+                activity["player_id"], companion_id
+            )
+        return await resolve_errand_outcome(companion, parameters)
     logger.error("Unknown activity type: %s", activity_type)
     return None
 
@@ -149,6 +157,15 @@ async def _resolve_single_activity(activity: dict) -> None:
             # TTS retry re-enters above and never double-increments.
             if activity_type == "crafting" and outcome_dict.get("tier") == "failure":
                 await db_mutations.increment_crafting_skill_counter(player_id)
+            # story-003 (M6.4): persist the HYBRID affinity nudge from the errand's
+            # relationship_change. Non-cached branch only, like the crafting counter above, so a
+            # cached-narration TTS retry re-enters the cached branch and never double-applies.
+            if activity_type == "companion_errand":
+                errand_companion_id = player_data.get("companion", {}).get("id")
+                if errand_companion_id:
+                    await companion_relationship_queries.apply_errand_affinity(
+                        player_id, errand_companion_id, outcome_dict.get("relationship_change", 0)
+                    )
 
         # Step C: pre-render audio.
         audio_filename = f"{activity_id}.mp3"

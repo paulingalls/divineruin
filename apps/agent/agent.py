@@ -15,7 +15,7 @@ import db_content_queries
 import db_queries
 from base_agent import _make_tts
 from region_types import REGION_CITY
-from session_data import CompanionState, CreationState, SessionData
+from session_data import CreationState, SessionData
 from token_tracker import TokenTracker
 from voices import VOICES
 
@@ -326,11 +326,14 @@ async def dm_session(ctx: agents.JobContext) -> None:
         )
 
         if player.get("flags", {}).get("companion_met"):
-            userdata.companion = CompanionState(
-                id="companion_kael",
-                name="Kael",
-                last_speech_time=time.time(),
-            )
+            from companion_relationship_queries import hydrate_companion_state
+
+            # Fresh session: hydrate persisted relationship state + increment session_count once
+            # (M6.4 / story-003). Reconnects reuse the in-memory CompanionState, so this runs
+            # exactly once per session.
+            companion = await hydrate_companion_state(player_id, "companion_kael", "Kael")
+            companion.last_speech_time = time.time()
+            userdata.companion = companion
             logger.info("Companion Kael loaded for returning player")
 
         # Check for mid-onboarding reconnection
