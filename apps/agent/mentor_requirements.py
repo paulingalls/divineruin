@@ -93,7 +93,12 @@ async def check_mentor_requirements(
     npc = await content_mod.get_npc(mentor_id)
     if npc is None or "mentor" not in npc:
         raise ValueError(f"NPC {mentor_id!r} has no mentor training block")
-    req = npc["mentor"]["requirements"]
+    req = npc["mentor"].get("requirements", {})
+    missing = {"disposition", "gold"} - req.keys()
+    if missing:
+        # Fail loud (ValueError, not a stray KeyError) so story-003 maps a malformed
+        # binding to ToolError. quest/skill stay optional (.get below).
+        raise ValueError(f"NPC {mentor_id!r} mentor requirements missing {sorted(missing)}")
 
     unmet: list[str] = []
 

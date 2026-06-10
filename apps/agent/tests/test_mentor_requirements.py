@@ -203,6 +203,23 @@ async def test_unknown_mentor_npc_raises():
         )
 
 
+@pytest.mark.parametrize("requirements", [{"gold": 50}, {"disposition": "friendly"}, {}])
+async def test_requirements_missing_required_key_raises_valueerror(requirements):
+    """A malformed binding missing disposition/gold fails loud with ValueError (not a bare
+    KeyError), so story-003 maps it to ToolError instead of leaking a stack."""
+    npc = {"id": "mentor_x", "mentor": {"culture": "X", "training_cycles": 3, "requirements": requirements}}
+    with pytest.raises(ValueError):
+        await mr.check_mentor_requirements(
+            "p1",
+            "mentor_x",
+            "v1",
+            queries_mod=_queries(),
+            content_mod=_content(npc),
+            variants_mod=_variants(),
+            disposition_mod=_disposition("trusted"),
+        )
+
+
 # --- real content integration ----------------------------------------------
 
 
