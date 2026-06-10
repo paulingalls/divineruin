@@ -39,6 +39,10 @@ export function setRoleArchetypes(map: ReadonlyMap<string, RoleArchetype>): void
   roleArchetypes = map;
 }
 
+export function listRoleArchetypes(): RoleArchetype[] {
+  return Array.from(roleArchetypes.values());
+}
+
 // Integer (not just number) for parity with the Python loader's _parse_int. typeof excludes
 // booleans (typeof true === "boolean"); Number.isInteger excludes floats — a shared row with
 // a float where an int is required must fail identically on both sides.

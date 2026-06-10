@@ -32,6 +32,10 @@ export function setAbilities(map: ReadonlyMap<string, Ability>): void {
   abilities = map;
 }
 
+export function listAbilities(): Ability[] {
+  return Array.from(abilities.values());
+}
+
 function parseCost(raw: unknown, ctx: string): Cost {
   const c = asRecord(raw, ctx);
   // Integer (not just number) for parity with the Python loader's _parse_cost, which
