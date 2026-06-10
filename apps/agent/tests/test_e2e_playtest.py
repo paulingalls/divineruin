@@ -220,11 +220,6 @@ class TestCombatRoundTrip:
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_content = MagicMock()
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
-        mock_content.get_npc = AsyncMock(
-            return_value={
-                "combat_stats": {"hp": 20, "ac": 14, "level": 2, "action_pool": []},
-            }
-        )
 
         # Start combat from wilderness
         ctx = _make_context("greyvale_south_road", companion=COMPANION)

@@ -10,9 +10,15 @@ the player's archetype/CON. The combat layer (story-004) computes player_max_hp 
 """
 
 import math
+import re
 from dataclasses import dataclass
 
 from companion_profiles import Companion
+
+# A dice term ("1d8", "2d6") or a flat int ("3"). Narrative damage strings also carry
+# attribute/prof tokens (STR/DEX/INT/prof) that the combat resolver supplies itself from the
+# attacker's attributes — those are dropped before dice_roll ever sees the notation.
+_DICE_TERM = re.compile(r"^\d*d?\d+$")
 
 
 @dataclass(frozen=True)
@@ -45,3 +51,45 @@ def scale_companion_stats_to_player_level(
         if step.level <= player_level:
             attributes[step.attribute] += step.amount
     return ScaledCompanionStats(level=player_level, hp=hp, ac=ac, attributes=attributes)
+
+
+def companion_attacks_to_action_pool(profile: Companion) -> list[dict]:
+    """Translate a companion's NARRATIVE attacks into the MECHANICAL action dicts combat consumes.
+
+    content/companions.json stores attacks human-readably (damage "1d8+STR", hit "STR+prof",
+    type "melee"/"ranged"). The deterministic resolver (check_resolution.resolve_attack) instead
+    expects plain dice notation and supplies the attribute/proficiency bonus itself from the
+    attacker's attributes. This builds the {name, damage, damage_type, properties[, ranged]}
+    dicts the resolver + combat_turn.py consume.
+
+    Attacks ONLY — actives/reactions/passives are non-damaging narrative abilities with no
+    mechanical resolver; the DM narrates those from the profile. `ranged: True` (a top-level key
+    attack_modifier reads) routes the resolver's DEX branch for ranged attacks; melee omits it
+    and resolves via STR. INT-spell / finesse-melee hit-stat fidelity is a known gap.
+    """
+    pool: list[dict] = []
+    for attack in profile.attacks:
+        action: dict = {
+            "name": attack.name,
+            "damage": _strip_to_dice_notation(attack.damage, f"{profile.id}.{attack.name}"),
+            "damage_type": attack.damage_type,
+            "properties": [],
+        }
+        if attack.type == "ranged":
+            action["ranged"] = True
+        pool.append(action)
+    return pool
+
+
+def _strip_to_dice_notation(damage: str, ctx: str) -> str:
+    """Keep only the dice/flat-int terms of a narrative damage string, dropping attribute/prof
+    tokens ("1d8+STR" -> "1d8", "1d6+2+DEX" -> "1d6+2"). Fail loud if nothing survives — dice_roll
+    cannot parse an empty or attribute-only expression."""
+    kept = []
+    for term in damage.split("+"):
+        term = term.strip()
+        if _DICE_TERM.match(term):
+            kept.append(term)
+    if not kept:
+        raise ValueError(f"{ctx} damage {damage!r} has no dice/int term after stripping modifiers")
+    return "+".join(kept)
