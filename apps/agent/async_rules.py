@@ -212,9 +212,12 @@ def resolve_companion_errand(
     destination = parameters.get("destination", "unknown")
     relationship_tier = companion_data.get("relationship_tier", 1)
 
-    # Companion skill check — higher relationship = better results
+    # Companion skill check — higher relationship = better results. Cap at 5: the M6.4
+    # 5-tier model reaches rank 5 (Legendary), which gives a distinct +5 (decision
+    # companion-errand-bonus-cap). relationship_tier here is the cached effective rank the
+    # caller injects from companion_relationships (session_count + affinity).
     base_roll = r.randint(1, 20)
-    relationship_bonus = min(relationship_tier, 4)
+    relationship_bonus = min(relationship_tier, 5)
     total = base_roll + relationship_bonus
 
     # Errand-type specific skill bonus

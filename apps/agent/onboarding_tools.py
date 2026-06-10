@@ -9,7 +9,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import db_mutations
-from session_data import CompanionState, SessionData
+from session_data import SessionData
 
 logger = logging.getLogger("divineruin.onboarding_tools")
 
@@ -79,11 +79,12 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
     await db_mutations.set_player_flag(sd.player_id, "onboarding_beat", next_beat)
 
     if current == 3:
-        sd.companion = CompanionState(
-            id="companion_kael",
-            name="Kael",
-            last_speech_time=time.time(),
-        )
+        from companion_relationship_queries import hydrate_companion_state
+
+        # First meeting: hydrate (no prior row -> session_count becomes 1) + persist (M6.4 / story-003).
+        companion = await hydrate_companion_state(sd.player_id, "companion_kael", "Kael")
+        companion.last_speech_time = time.time()
+        sd.companion = companion
         await db_mutations.set_player_flag(sd.player_id, "companion_met", True)
         logger.info("Companion Kael initialized for player %s after beat 3", sd.player_id)
 

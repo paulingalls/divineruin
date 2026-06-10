@@ -20,7 +20,8 @@ class TestCompanionState:
         assert cs.is_present is True
         assert cs.is_conscious is True
         assert cs.emotional_state == "steady"
-        assert cs.relationship_tier == 1
+        assert cs.session_count == 0
+        assert cs.affinity == 0
         assert cs.session_memories == []
         assert cs.last_speech_time == 0.0
 
@@ -146,14 +147,14 @@ class TestCompanionPrompt:
             id="companion_kael",
             name="Kael",
             emotional_state="alert",
-            relationship_tier=2,
+            session_count=6,  # floor rank 3 -> "trusted"
             session_memories=["Traveled to Millhaven", "Fought goblins"],
         )
 
         result = await build_warm_layer("test_loc", "p1", "evening", companion=companion)
         assert "COMPANION — Kael" in result
         assert "alert" in result
-        assert "Relationship tier: 2" in result
+        assert "Relationship tier: trusted" in result
         assert "Traveled to Millhaven" in result
 
     @patch("db_queries.get_active_player_quests", new_callable=AsyncMock)
