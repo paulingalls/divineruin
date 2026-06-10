@@ -15,6 +15,7 @@ import db_mutations
 import db_queries
 import event_types as E
 from combat_support import _participant_summary, _publish_sounds
+from encounter_stance import resolve_encounter_stance
 from game_events import publish_game_event
 from region_types import REGION_CITY
 from session_data import CombatParticipant, CombatState, SessionData
@@ -45,6 +46,33 @@ async def _start_combat_impl(
     player = await queries.get_player(session.player_id)
     if player is None:
         raise ToolError(f"Player '{session.player_id}' not found.")
+
+    # Stance gate (story-008): a gated encounter resolves allied/hostile from the player's
+    # reputation with the GATE faction. "allied" stands the encounter down (return a narration
+    # string — no combat handoff); "hostile" falls through to the normal combat build. The
+    # reputation defaults to neutral (0) when unset — no player_reputation writer ships yet
+    # (debt 6e8c1e79a775), so gated encounters resolve hostile in prod until one does.
+    stance_gate = encounter.get("stance_gate")
+    if stance_gate is not None:
+        faction_id = stance_gate.get("faction")
+        if not faction_id:
+            raise ToolError(f"Encounter '{encounter_id}' has a malformed stance gate: missing 'faction'.")
+        faction = await content.get_faction(faction_id)
+        if faction is None:
+            raise ToolError(f"Stance-gate faction '{faction_id}' not found.")
+        reputation = await queries.get_player_faction_reputation(session.player_id, faction_id)
+        try:
+            stance = resolve_encounter_stance(
+                stance_gate,
+                reputation if reputation is not None else 0,
+                faction.get("reputation_tiers") or {},
+            )
+        except ValueError as e:
+            raise ToolError(f"Encounter '{encounter_id}' has a malformed stance gate: {e}") from e
+        if stance == "allied":
+            session.record_event(f"{encounter.get('name', encounter_id)} stood down — allied")
+            logger.info("start_combat: encounter %s resolved allied; combat averted", encounter_id)
+            return f"The {faction.get('name', faction_id)} recognizes you as an ally and stands down. No combat."
 
     # Build participant dicts for initiative rolling
     player_hp = player.get("hp", {})
