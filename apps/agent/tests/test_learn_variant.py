@@ -88,6 +88,14 @@ def _preconds_mod(*, present=True):
     return mod
 
 
+def _content_mod(*, training_cycles=None):
+    """db_content_queries seam: the mentor NPC whose mentor{} block sets the per-mentor
+    training_cycles (story-001). None -> the impl falls back to the flat activity-type default."""
+    mod = MagicMock()
+    mod.get_npc = AsyncMock(return_value={"mentor": {"training_cycles": training_cycles}})
+    return mod
+
+
 class TestLearnVariant:
     @pytest.mark.asyncio
     async def test_happy_path_seeds_progress_and_creates_activity(self):
@@ -110,6 +118,7 @@ class TestLearnVariant:
                 persistence_mod=_persistence_mod(owns=True),
                 requirements_mod=_reqs_mod(),
                 preconditions_mod=_preconds_mod(),
+                content_mod=_content_mod(),
                 rules_mod=_rules_factory(_cycle(8 * 3600)),
                 now_fn=lambda: FIXED_NOW,
             )
@@ -131,6 +140,37 @@ class TestLearnVariant:
         assert kwargs["data"]["variant_id"] == "warrior_cleaving_blow_drathian"
         assert kwargs["data"]["ability_id"] == "warrior_cleaving_blow"
         assert kwargs["data"]["mentor_id"] == "guildmaster_torin"
+
+    @pytest.mark.asyncio
+    async def test_uses_per_mentor_training_cycles(self):
+        # Per-mentor training length (story-001 mentor{}.training_cycles, wired at sprint-011
+        # close): a mentor declaring 4 cycles seeds the progress row at 4, not the flat default.
+        ctx = make_context()
+        db_mod, conn = make_db_mod()
+        progress = _progress_mod(unlocked=False)
+        training = MagicMock()
+        training.get_player_training_activities = AsyncMock(return_value=[])
+        training.create_training_activity = AsyncMock(return_value="train_var1")
+        result = json.loads(
+            await _learn_variant_impl(
+                ctx,
+                "warrior_cleaving_blow_drathian",
+                "",
+                db_mod=db_mod,
+                db_training_mod=training,
+                variants_mod=_variants_mod(_variant()),
+                progress_mod=progress,
+                abilities_mod=_abilities_mod(),
+                persistence_mod=_persistence_mod(owns=True),
+                requirements_mod=_reqs_mod(),
+                preconditions_mod=_preconds_mod(),
+                content_mod=_content_mod(training_cycles=4),
+                rules_mod=_rules_factory(_cycle()),
+                now_fn=lambda: FIXED_NOW,
+            )
+        )
+        assert result["cycles_required"] == 4
+        progress.seed_progress.assert_awaited_once_with("player_1", "warrior_cleaving_blow_drathian", 4, conn=conn)
 
     @pytest.mark.asyncio
     async def test_rejects_when_base_not_owned(self):
@@ -155,6 +195,7 @@ class TestLearnVariant:
                 persistence_mod=_persistence_mod(owns=False),
                 requirements_mod=_reqs_mod(),
                 preconditions_mod=_preconds_mod(),
+                content_mod=_content_mod(),
                 rules_mod=_rules_factory(_cycle()),
                 now_fn=lambda: FIXED_NOW,
             )
@@ -184,6 +225,7 @@ class TestLearnVariant:
                 persistence_mod=_persistence_mod(owns=True),
                 requirements_mod=_reqs_mod(),
                 preconditions_mod=_preconds_mod(),
+                content_mod=_content_mod(),
                 rules_mod=_rules_factory(_cycle()),
                 now_fn=lambda: FIXED_NOW,
             )
@@ -239,6 +281,7 @@ class TestLearnVariant:
                 progress_mod=progress,
                 requirements_mod=_reqs_mod(),
                 preconditions_mod=_preconds_mod(),
+                content_mod=_content_mod(),
                 rules_mod=_rules_factory(_cycle()),
                 now_fn=lambda: FIXED_NOW,
             )
@@ -266,6 +309,7 @@ class TestLearnVariant:
                 progress_mod=progress,
                 requirements_mod=_reqs_mod(),
                 preconditions_mod=_preconds_mod(),
+                content_mod=_content_mod(),
                 rules_mod=_rules_factory(_cycle()),
                 now_fn=lambda: FIXED_NOW,
             )

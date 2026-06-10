@@ -45,7 +45,7 @@ def _skill_tier_meets(have_tier: str, required_tier: str) -> bool:
     return SKILL_TIER_ORDER.index(have_tier) >= SKILL_TIER_ORDER.index(required_tier)
 
 
-async def _evaluate_skill(player_id, skill_requirement, *, conn, queries_mod) -> tuple[bool, str]:
+async def _evaluate_skill(player_id: str, skill_requirement: str, *, conn, queries_mod) -> tuple[bool, str]:
     """Parse the "SkillName: Tier" requirement, read the player's advancement once, and
     report (meets_requirement, have_tier). A skill with no advancement row is 'untrained'.
     Single source for both the boolean check_skill_tier and the unmet-label aggregate."""
@@ -55,13 +55,13 @@ async def _evaluate_skill(player_id, skill_requirement, *, conn, queries_mod) ->
     return _skill_tier_meets(have_tier, required_tier), have_tier
 
 
-async def check_quest_completed(player_id, quest_id, *, conn=None, queries_mod=db_queries) -> bool:
+async def check_quest_completed(player_id: str, quest_id: str, *, conn=None, queries_mod=db_queries) -> bool:
     """True iff the player has a player_quests row for quest_id with status 'complete'."""
     player_quest = await queries_mod.get_player_quest(player_id, quest_id, conn=conn)
     return player_quest is not None and player_quest.get("status", "active") == "complete"
 
 
-async def check_skill_tier(player_id, skill_requirement, *, conn=None, queries_mod=db_queries) -> bool:
+async def check_skill_tier(player_id: str, skill_requirement: str, *, conn=None, queries_mod=db_queries) -> bool:
     """True iff the player's tier in the required skill is at or above the requirement.
     A player with no advancement row for the skill is treated as 'untrained' (rank 0)."""
     met, _ = await _evaluate_skill(player_id, skill_requirement, conn=conn, queries_mod=queries_mod)
@@ -69,9 +69,9 @@ async def check_skill_tier(player_id, skill_requirement, *, conn=None, queries_m
 
 
 async def check_mentor_requirements(
-    player_id,
-    mentor_id,
-    variant_id,
+    player_id: str,
+    mentor_id: str,
+    variant_id: str,
     *,
     conn=None,
     queries_mod=db_queries,

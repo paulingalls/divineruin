@@ -49,9 +49,14 @@ def test_mentor_blocks_conform_to_the_binding_shape():
             f"{mentor_id}: culture must be a non-empty str"
         )
         # bool is an int subclass — exclude it so a stray true/false fails loud.
-        assert isinstance(block.get("training_cycles"), int) and not isinstance(block["training_cycles"], bool), (
-            f"{mentor_id}: training_cycles must be an int"
-        )
+        # Must be >= 1: a training loop needs at least one cycle, and learn(variant)'s
+        # `training_cycles or <flat default>` fallback treats 0 as unset (would silently
+        # substitute the flat default), so 0 is a content bug we catch here at the boundary.
+        assert (
+            isinstance(block.get("training_cycles"), int)
+            and not isinstance(block["training_cycles"], bool)
+            and block["training_cycles"] >= 1
+        ), f"{mentor_id}: training_cycles must be an int >= 1"
         req = block.get("requirements")
         assert isinstance(req, dict), f"{mentor_id}: requirements must be an object"
         assert req.get("disposition") in _DISPOSITION_LADDER, (
