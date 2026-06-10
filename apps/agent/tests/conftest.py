@@ -7,6 +7,7 @@ from _db_lifecycle import ensure_db_up, stop_if_started
 from archetype_abilities_config_fixture import setup_archetype_abilities_config_fixture
 from archetype_milestones_config_fixture import setup_archetype_milestones_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
+from companion_profiles_config_fixture import setup_companion_profiles_config_fixture
 from mentor_variants_config_fixture import setup_mentor_variants_config_fixture
 from npcs_config_fixture import setup_npcs_config_fixture
 from role_archetypes_config_fixture import setup_role_archetypes_config_fixture
@@ -135,6 +136,18 @@ def seed_role_archetypes():
     already populated (is_loaded() True) and skips the DB fetch in tests that exercise startup.
     """
     setup_role_archetypes_config_fixture()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def seed_companion_profiles():
+    """Populate companion_profiles._companion_profiles from content/companions.json before every test.
+
+    Mirrors load_companion_profiles() at agent startup, but sync and file-based. Required so
+    agent.py's guarded load_companion_profiles() sees the catalog already populated
+    (is_loaded() True) and skips the DB fetch in tests that exercise startup.
+    """
+    setup_companion_profiles_config_fixture()
     yield
 
 
