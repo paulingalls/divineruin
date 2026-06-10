@@ -82,6 +82,32 @@
     "notes": "Non-verbal shadow-fox. No TTS speech — the DM narrates her vocalizations from the sound_palette. Her silence is loud."
   },
   {
+    "character_id": "COMPANION_LIRA",
+    "name": "Lira",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "COMPANION_LIRA",
+    "voice_settings": {
+      "base_temperature": 0.5,
+      "base_speed": 1.1,
+      "style": "alto, quick and precise"
+    },
+    "notes": "Warms when a theory excites her. Goes flat and careful when frightened. Aelindran cadence."
+  },
+  {
+    "character_id": "COMPANION_TAM",
+    "name": "Tam",
+    "voice_provider": "inworld",
+    "voice_tier": "max",
+    "voice_id": "COMPANION_TAM",
+    "voice_settings": {
+      "base_temperature": 0.6,
+      "base_speed": 1.15,
+      "style": "bright tenor, fast and breathless"
+    },
+    "notes": "Drops to a near-whisper in vulnerable moments. Frontier Vaelti accent."
+  },
+  {
     "character_id": "WOUNDED_RIDER",
     "name": "Wounded Rider",
     "voice_provider": "inworld",
