@@ -153,6 +153,23 @@ class TestScaling:
         assert kael.base_attributes == before
 
 
+class TestVoiceRegistration:
+    def test_every_companion_voice_id_registered_in_voices(self):
+        """Every companions.json voice_id must be a key in voices.VOICES (audio-first golden rule).
+
+        get_voice_config does VOICES.get(character, DEFAULT_VOICE), so an unregistered voice_id
+        silently falls back to DM_NARRATOR. This includes Sable's COMPANION_SABLE: she is
+        non-verbal (empty env default), but the key must exist so the invariant holds uniformly.
+        """
+        from voices import VOICES
+
+        for cid in _IDS:
+            voice_id = get_companion_profile(cid).voice_id
+            assert voice_id in VOICES, (
+                f"{cid} voice_id {voice_id!r} not in voices.VOICES -> would fall back to DM_NARRATOR"
+            )
+
+
 class TestActionPool:
     """companion_attacks_to_action_pool translates the profile's NARRATIVE attack notation
     (damage "1d8+STR", hit "STR+prof") into the MECHANICAL action dicts the combat resolver

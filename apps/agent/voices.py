@@ -16,6 +16,12 @@ VOICES: dict[str, str] = {
     "DM_NARRATOR": os.getenv("INWORLD_VOICE_DM", ""),
     "GUILDMASTER_TORIN": os.getenv("INWORLD_VOICE_TORIN", ""),
     "COMPANION_KAEL": os.getenv("INWORLD_VOICE_KAEL", ""),
+    "COMPANION_LIRA": os.getenv("INWORLD_VOICE_LIRA", ""),
+    "COMPANION_TAM": os.getenv("INWORLD_VOICE_TAM", ""),
+    # Sable is non-verbal (DM narrates her sound_palette); registered with an empty default so
+    # the "every companion voice_id is a VOICES key" invariant holds uniformly. Falls back to
+    # DM_NARRATOR if ever voiced, which non-verbal narration avoids.
+    "COMPANION_SABLE": os.getenv("INWORLD_VOICE_SABLE", ""),
     "ELDER_YANNA": os.getenv("INWORLD_VOICE_YANNA", ""),
     "SCHOLAR_EMRIS": os.getenv("INWORLD_VOICE_EMRIS", ""),
     "GRIMJAW_BLACKSMITH": os.getenv("INWORLD_VOICE_GRIMJAW", ""),
