@@ -254,6 +254,39 @@ class TestSettlementPopulation:
         assert set(result["population"]) <= _ARCHETYPE_IDS
 
     @pytest.mark.asyncio
+    async def test_population_is_deterministic_per_location(self):
+        # Try #3 / concern b3c8b30eb849: with no injected rng (production), repeat queries of the
+        # SAME town return identical counts — the rng is seeded from location_id, not fresh per call.
+        ctx = _make_context()
+        loc_id = "accord_market_square"
+        location = {"id": loc_id, "settlement_tier": "city", "personality": "prosperous"}
+        first = json.loads(await _query_settlement_population_impl(ctx, loc_id, content=self._content(location)))
+        second = json.loads(await _query_settlement_population_impl(ctx, loc_id, content=self._content(location)))
+        assert first["population"] == second["population"]
+        # The seed source is the location_id itself (not a global/time seed).
+        assert first["population"] == generate_settlement_npcs("city", "prosperous", rng=random.Random(loc_id))
+
+    @pytest.mark.asyncio
+    async def test_population_seed_differs_by_location(self):
+        # Different settlements of the same tier+personality seed distinct rngs, so each town reads
+        # as its own location-seeded population rather than one shared roster.
+        ctx = _make_context()
+        loc_a = {"id": "accord_market_square", "settlement_tier": "city", "personality": "prosperous"}
+        loc_b = {"id": "ashport_market", "settlement_tier": "city", "personality": "prosperous"}
+        result_a = json.loads(
+            await _query_settlement_population_impl(ctx, "accord_market_square", content=self._content(loc_a))
+        )
+        result_b = json.loads(
+            await _query_settlement_population_impl(ctx, "ashport_market", content=self._content(loc_b))
+        )
+        assert result_a["population"] == generate_settlement_npcs(
+            "city", "prosperous", rng=random.Random("accord_market_square")
+        )
+        assert result_b["population"] == generate_settlement_npcs(
+            "city", "prosperous", rng=random.Random("ashport_market")
+        )
+
+    @pytest.mark.asyncio
     async def test_unknown_location_fails_loud(self):
         # AC2: missing location -> ToolError, not an empty roster.
         ctx = _make_context()
