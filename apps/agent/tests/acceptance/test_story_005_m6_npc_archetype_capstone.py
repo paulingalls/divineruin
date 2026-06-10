@@ -11,11 +11,12 @@ miss (auto-marked `acceptance` by tests/acceptance/conftest.py):
   break narration/combat). `parse_role_archetype_row` re-parses a real DB row, and
   `create_npc_from_archetype` composes a stat block from the real catalog.
 - **http_websocket** (TS load path): the Bun server boots bound to the SAME seeded
-  testcontainer. Its startup `Promise.all([... loadRoleArchetypes() ...])` resolving
-  all 19 without throwing IS the cross-language parity letter — a row the TS
-  `parseRoleArchetypeRow` rejects fails boot before `_wait_ready` returns. No
-  archetype REST endpoint exists (debt e43ada4fac62: the TS loader is validation-
-  only), so boot-green stands in for an endpoint round-trip.
+  testcontainer, then serves its loaded catalog over `GET /api/content/role-archetypes`.
+  A real endpoint round-trip (story-006) replaces the old boot-green stand-in: the
+  response carries all 19 archetypes the TS `loadRoleArchetypes` parsed, so a row the
+  TS `parseRoleArchetypeRow` rejects fails boot before `_wait_ready` returns, and a
+  served-but-mismatched catalog fails the count/id assertions. The endpoint is the
+  TS loader's production consumer (closes concern ae5f95ca2156).
 
 The gate work (story-006) is a different subsystem (mentor variants / abilities);
 story-005 depends on it for ordering only, not coverage.
@@ -29,7 +30,7 @@ from collections.abc import Iterator
 
 import httpx
 import pytest
-from acceptance._server import start_server
+from acceptance._server import mint_server_jwt, start_server
 
 import db
 import npcs
@@ -127,11 +128,31 @@ async def test_create_npc_from_archetype_over_real_catalog(reset_db_pool: str) -
 # --- http_websocket surface (TS server load path) ----------------------------
 
 
-def test_server_boots_with_role_archetypes_loaded_from_real_db(capstone_server: dict[str, str]) -> None:
-    # The fixture only yields after the Bun server reaches ready; its startup
-    # Promise.all runs loadRoleArchetypes() against the seeded testcontainer, so a
-    # served response proves all 19 archetype rows parsed without failing boot.
-    # No archetype REST endpoint exists (debt e43ada4fac62: validation-only loader),
-    # so boot-green IS the cross-language parity letter, not an endpoint round-trip.
-    response = httpx.get(capstone_server["base_url"], timeout=5.0)
-    assert response.status_code < 500
+@pytest.mark.asyncio
+async def test_role_archetypes_endpoint_round_trips_the_real_catalog(
+    capstone_server: dict[str, str], reset_db_pool: str
+) -> None:
+    # Endpoint round-trip (story-006) replaces the old boot-green stand-in: the Bun
+    # server, booted against the seeded testcontainer, serves its loaded role-archetype
+    # catalog over the auth-gated GET /api/content/role-archetypes. A served 200 whose
+    # payload carries all 19 archetypes is the cross-language parity letter — the TS
+    # loadRoleArchetypes parsed every row (a rejected row fails boot) AND the endpoint
+    # (the loader's production consumer, closing concern ae5f95ca2156) serves them.
+    token = mint_server_jwt(player_id="capstone_player")
+    response = httpx.get(
+        f"{capstone_server['base_url']}/api/content/role-archetypes",
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=5.0,
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["catalog"] == "role-archetypes"
+    served_ids = {item["id"] for item in body["items"]}
+    assert len(served_ids) == _EXPECTED_ARCHETYPES, (
+        f"served {len(served_ids)} archetypes, expected {_EXPECTED_ARCHETYPES}"
+    )
+
+    # Cross-language parity: the TS-served ids match the rows Python reads from the same DB.
+    pool = await db.get_pool()
+    db_ids = {r["id"] for r in await pool.fetch("SELECT id FROM role_archetypes")}
+    assert served_ids == db_ids
