@@ -28,6 +28,27 @@ async def get_location(location_id: str) -> dict | None:
     return data
 
 
+async def get_faction(faction_id: str) -> dict | None:
+    """Return a faction's content row (incl. reputation_tiers), or None if not found.
+
+    Cache-backed read of the factions table — the stance-gate read seam (story-008):
+    combat_init resolves an encounter's stance from the gate faction's reputation_tiers.
+    """
+    cache_key = f"faction:{faction_id}"
+    cached = await db._cache_get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
+    pool = await db.get_pool()
+    row = await pool.fetchrow("SELECT data FROM factions WHERE id = $1", faction_id)
+    if row is None:
+        return None
+
+    data = json.loads(row["data"])
+    await db._cache_set(cache_key, json.dumps(data))
+    return data
+
+
 async def get_location_region_type(location_id: str) -> str:
     """Return the region_type for a location ('city', 'wilderness', or 'dungeon').
 

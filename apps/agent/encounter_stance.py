@@ -6,9 +6,12 @@ player's reputation with a faction. The Ashmark Patrol (content/encounter_templa
 uses it — allied when the player's Thornwatch reputation is at or above `friendly`, hostile
 below.
 
-No runtime caller wires this into combat yet: encounter spawning would need a
-get_player_faction_reputation query that isn't shipped. This module ships the deterministic
-mechanic + its contract; the combat_init integration is future work.
+combat_init._start_combat_impl is the production caller (story-008): a stance-gated encounter
+spawn reads the gate faction's reputation_tiers (db_content_queries.get_faction) and the
+player's reputation (db_queries.get_player_faction_reputation), resolves the stance here, and
+stands the encounter down on "allied" (no combat handoff). Reputation has no writer yet
+(debt 6e8c1e79a775), so it defaults to neutral and gated encounters resolve hostile in prod
+until one ships.
 """
 
 
