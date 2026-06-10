@@ -115,13 +115,6 @@ export interface ProgressionMilestone {
 // invariant story-004 proves).
 export type RelationshipUnlocks = Partial<Record<RelationshipTier, string[]>>;
 
-// Sable's non-verbal vocalizations: cue -> meaning (e.g. { bark: "alert/alarm" }). The DM
-// narrates these instead of TTS speech. The canonical audio identity is in voice_registry.json;
-// this companion-side mirror lets combat/DM consumers branch without cross-loading the registry.
-export interface SoundPalette {
-  [cue: string]: string;
-}
-
 export interface Companion {
   id: string; // e.g. "companion_kael" (matches voice_registry character_id + world effect ids)
   name: string;
@@ -164,6 +157,5 @@ export interface Companion {
   // Voice.
   voice_id: string; // links to voice_registry.json character_id
   voice_notes?: string;
-  non_verbal?: boolean; // true for Sable
-  sound_palette?: SoundPalette; // present iff non_verbal
+  non_verbal?: boolean; // true for Sable; her sound_palette lives solely in voice_registry.json
 }

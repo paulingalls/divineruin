@@ -65,7 +65,6 @@ export type {
   CompanionReaction,
   ProgressionMilestone,
   RelationshipUnlocks,
-  SoundPalette,
 } from "./companion";
 export type { Spell, SpellSource, SpellTier } from "./spell";
 export type {

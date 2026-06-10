@@ -52,10 +52,12 @@ class TestParse:
             c = parse_companion_row(e["id"], e)
             assert len(c.save_proficiencies) == 2
 
-    def test_sable_non_verbal_with_palette(self):
+    def test_sable_non_verbal(self):
         sable = parse_companion_row("companion_sable", _row("companion_sable"))
         assert sable.non_verbal is True
-        assert sable.sound_palette is not None and len(sable.sound_palette) == 6
+        # sound_palette is owned solely by voice_registry.json now (B1, debt eb08ad17f6e2);
+        # the companion entity no longer mirrors it.
+        assert not hasattr(sable, "sound_palette")
         assert sable.reactions == ()
 
     def test_bad_disposition_raises(self):

@@ -561,14 +561,6 @@
     "complements": ["spy", "whisper", "beastcaller", "warden"],
     "voice_id": "COMPANION_SABLE",
     "non_verbal": true,
-    "sound_palette": {
-      "chirp": "curious",
-      "trill": "content",
-      "purr": "comfortable",
-      "bark": "alert/alarm",
-      "whine": "distressed",
-      "growl": "hostile"
-    },
-    "voice_notes": "no TTS speech — the DM narrates her vocalizations from the sound_palette; her silence is loud"
+    "voice_notes": "no TTS speech — the DM narrates her vocalizations from her sound_palette in voice_registry.json; her silence is loud"
   }
 ]
