@@ -16,8 +16,10 @@ import companion_relationship_queries as crq
 
 
 @pytest.fixture(autouse=True)
-def stub_companion_affinity_io():
-    """Override the global autouse stub (tests/conftest.py) so the REAL crq functions run here."""
+def stub_companion_hydrate_io():
+    """Override the global autouse hydrate stub (tests/conftest.py) so the REAL crq functions —
+    including hydrate_companion_state — run here against the patched DB layer. Rank/affinity are
+    real by default (this module does not opt into stub_companion_errand_affinity_io)."""
     yield
 
 
