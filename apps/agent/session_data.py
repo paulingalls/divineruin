@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, field
 
 from livekit import rtc
 
+import resonance
 from event_bus import EventBus
 
 MAX_RECENT_EVENTS = 20
@@ -26,6 +27,24 @@ class CompanionState:
     affinity: int = 0
     session_memories: list[str] = field(default_factory=list)
     last_speech_time: float = 0.0
+
+
+@dataclass
+class ResonanceTrack:
+    """Per-caster Resonance carried in the session (story-003, M3.1).
+
+    Only ``current`` (the authoritative int) is stored; the stable/flickering/
+    overreach STATE is always derived via resonance.get_resonance_state — single
+    source of truth, no cached copy to drift (same discipline as the companion
+    HYBRID tier above and the players.data persistence in db_mutations_resonance).
+    Defaults to current 0 -> "stable".
+    """
+
+    current: int = 0
+
+    @property
+    def state(self) -> resonance.ResState:
+        return resonance.get_resonance_state(self.current)
 
 
 @dataclass
@@ -89,6 +108,7 @@ class SessionData:
     recent_events: deque[str] = field(default_factory=lambda: deque(maxlen=MAX_RECENT_EVENTS))
     attempted_discoveries: set[str] = field(default_factory=set)
     companion: CompanionState | None = None
+    resonance: ResonanceTrack = field(default_factory=ResonanceTrack)
     corruption_level: int = 0
     patron_id: str = "none"
     creation_state: CreationState | None = None
