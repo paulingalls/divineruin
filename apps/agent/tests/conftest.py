@@ -1,13 +1,17 @@
 """Shared test fixtures — auto-mock agent factories, seed training config."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _db_lifecycle import ensure_db_up, stop_if_started
 from archetype_abilities_config_fixture import setup_archetype_abilities_config_fixture
 from archetype_milestones_config_fixture import setup_archetype_milestones_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
+from companion_profiles_config_fixture import setup_companion_profiles_config_fixture
 from mentor_variants_config_fixture import setup_mentor_variants_config_fixture
+from npcs_config_fixture import setup_npcs_config_fixture
+from role_archetypes_config_fixture import setup_role_archetypes_config_fixture
+from settlement_templates_config_fixture import setup_settlement_templates_config_fixture
 from spells_config_fixture import setup_spells_config_fixture
 from training_config_fixture import setup_training_config_fixture
 
@@ -120,6 +124,109 @@ def seed_mentor_variants():
     tests that exercise startup.
     """
     setup_mentor_variants_config_fixture()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def seed_role_archetypes():
+    """Populate role_archetypes._role_archetypes from content before every test.
+
+    Mirrors load_role_archetypes() at worker/agent startup, but sync and file-based.
+    Required so agent.py / async_worker.py's guarded load_role_archetypes() sees the map
+    already populated (is_loaded() True) and skips the DB fetch in tests that exercise startup.
+    """
+    setup_role_archetypes_config_fixture()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def stub_companion_hydrate_io():
+    """Default-stub the fresh-session companion-state builder so DB-free tests stay DB-free
+    (M6.4 / story-003; scope split out in story-007).
+
+    agent.py/onboarding_tools call companion_relationship_queries.hydrate_companion_state at
+    session start — it hits the DB. This stub stays global autouse: its reach is wide (~15
+    startup/handoff/session-lifecycle tests across 4 dirs) and it carries NO tier semantics, so
+    stubbing it everywhere masks nothing. The errand rank/affinity queries are stubbed separately
+    and NARROWLY via stub_companion_errand_affinity_io (opt-in) so tier>1 errand/worker paths are
+    not silently masked (concern 11908b7f8b29). Tests that need real hydrate (real-DB) override
+    this fixture by name (e.g. tests/companion/test_relationship_persistence.py).
+    """
+    from session_data import CompanionState
+
+    async def _fake_hydrate(player_id, companion_id, name, *, conn=None):
+        return CompanionState(id=companion_id, name=name, session_count=1)
+
+    with patch(
+        "companion_relationship_queries.hydrate_companion_state",
+        side_effect=_fake_hydrate,
+    ):
+        yield
+
+
+@pytest.fixture
+def stub_companion_errand_affinity_io():
+    """Narrow, opt-in stub for the errand/worker companion-relationship DB calls (story-007).
+
+    errand_tools and async_worker call companion_relationship_queries.cached_effective_rank (the
+    bonus rank) and .apply_errand_affinity (the persisted nudge) — both hit the DB. Errand and
+    worker unit tests opt in to stay DB-free. Decision rule for which opt-in mechanism: a single
+    test module opts in with module-level `pytestmark = pytest.mark.usefixtures("...")`; an entire
+    suite directory opts in once via an autouse wrapper in that dir's conftest.py (see
+    worker_suite/conftest.py::_errand_affinity_for_worker), which re-requests this fixture so the
+    patch block is never duplicated. Deliberately NOT autouse: forcing
+    cached_effective_rank -> 1 globally masked tier>1 behavior in any integration test exercising
+    a bonded companion (concern 11908b7f8b29 / decision 5a29b2786537).
+    """
+    with (
+        patch(
+            "companion_relationship_queries.cached_effective_rank",
+            new_callable=AsyncMock,
+            return_value=1,
+        ),
+        patch(
+            "companion_relationship_queries.apply_errand_affinity",
+            new_callable=AsyncMock,
+            return_value=0,
+        ),
+    ):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def seed_companion_profiles():
+    """Populate companion_profiles._companion_profiles from content/companions.json before every test.
+
+    Mirrors load_companion_profiles() at agent startup, but sync and file-based. Required so
+    agent.py's guarded load_companion_profiles() sees the catalog already populated
+    (is_loaded() True) and skips the DB fetch in tests that exercise startup.
+    """
+    setup_companion_profiles_config_fixture()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def seed_settlement_templates():
+    """Populate settlement_templates._tiers/._personalities from content before every test.
+
+    Mirrors load_settlement_templates() at agent startup, but sync and file-based. Required
+    so agent.py's guarded load_settlement_templates() sees the catalog already populated
+    (is_loaded() True) and skips the DB fetch in tests that exercise startup.
+    """
+    setup_settlement_templates_config_fixture()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def seed_npcs():
+    """Populate npcs._npcs from content/npcs.json before every test.
+
+    Mirrors load_npcs() at worker/agent startup, but sync and file-based. Required so
+    agent.py / async_worker.py's guarded load_npcs() sees the map already populated
+    (is_loaded() True) and skips the DB fetch in tests that exercise startup, and so
+    the consolidated narration shims resolve NPC personas via get_npc_sync().
+    """
+    setup_npcs_config_fixture()
     yield
 
 

@@ -277,9 +277,14 @@ def resolve_skill_check_dc(
 
 def attack_modifier(player_data: dict, weapon: dict) -> int:
     attributes = player_data.get("attributes", {})
-    finesse = "finesse" in weapon.get("properties", [])
+    governing = weapon.get("governing_attribute")
 
-    if finesse:
+    if governing:
+        # An explicit governing attribute (e.g. a companion's INT spell-attack or a DEX finesse
+        # melee, set by companion_attacks_to_action_pool from the attack's hit field) is
+        # authoritative — it overrides the melee/ranged/finesse inference below (story-008).
+        attr_mod = attribute_modifier(attributes.get(governing, 10))
+    elif "finesse" in weapon.get("properties", []):
         str_mod = attribute_modifier(attributes.get("strength", 10))
         dex_mod = attribute_modifier(attributes.get("dexterity", 10))
         attr_mod = max(str_mod, dex_mod)

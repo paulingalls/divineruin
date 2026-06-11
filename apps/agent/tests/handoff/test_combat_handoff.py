@@ -52,17 +52,6 @@ class TestStartCombatHandoff:
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_content = MagicMock()
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
-        mock_content.get_npc = AsyncMock(
-            return_value={
-                "combat_stats": {
-                    "hp": 20,
-                    "ac": 14,
-                    "level": 2,
-                    "attributes": {"strength": 12, "dexterity": 12},
-                    "action_pool": [],
-                }
-            }
-        )
 
         ctx = _make_context(location_id="greyvale_south_road")
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
@@ -132,11 +121,6 @@ class TestCombatHandoffContext:
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_content = MagicMock()
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
-        mock_content.get_npc = AsyncMock(
-            return_value={
-                "combat_stats": {"hp": 20, "ac": 14, "level": 2, "action_pool": []},
-            }
-        )
 
         ctx = _make_context(location_id="greyvale_south_road")
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")

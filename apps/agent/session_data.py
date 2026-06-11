@@ -19,7 +19,11 @@ class CompanionState:
     is_present: bool = True
     is_conscious: bool = True
     emotional_state: str = "steady"
-    relationship_tier: int = 1
+    # HYBRID relationship model (M6.4 / story-003): session_count + affinity are the authoritative
+    # inputs; the named tier is DERIVED (companion_relationship.effective_tier_rank/tier_name), never
+    # stored in-memory, so there is no cached copy to drift. Persisted in companion_relationships.
+    session_count: int = 0
+    affinity: int = 0
     session_memories: list[str] = field(default_factory=list)
     last_speech_time: float = 0.0
 

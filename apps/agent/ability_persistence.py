@@ -115,6 +115,30 @@ async def get_active_variant(
     )
 
 
+async def owns_elective(
+    player_id: str,
+    ability_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> bool:
+    """Whether the player owns a given elective technique (story-006).
+
+    Ownership is "has a character_abilities row", NOT "currently equipped": a
+    swapped-out elective keeps its row (set_elective_equipped sets equipped=FALSE
+    but never deletes), so it stays owned. Core/reaction abilities have no row and
+    are handled by abilities.owns_ability without touching this query.
+    """
+    _conn = conn or await db.get_pool()
+    # EXISTS always yields a non-null boolean; coerce for the static type checker.
+    return bool(
+        await _conn.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM character_abilities WHERE player_id = $1 AND ability_id = $2)",
+            player_id,
+            ability_id,
+        )
+    )
+
+
 async def get_character_abilities(
     player_id: str,
     *,

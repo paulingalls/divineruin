@@ -71,7 +71,7 @@ class TestUpdateNpcDisposition:
         ctx = _make_context()
         result = await self._call(ctx, "guildmaster_torin", -2, "insulted them", mocks)
         assert result["previous"] == "friendly"
-        assert result["new"] == "wary"
+        assert result["new"] == "unfriendly"  # friendly -2 -> rank 1 (canonical ladder, story-004)
 
     @pytest.mark.asyncio
     async def test_clamp_at_top(self):

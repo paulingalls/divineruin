@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Callable
 from functools import wraps
@@ -159,5 +160,11 @@ def db_tool(func: Callable[..., Any]) -> Callable[..., Any]:
         except ConnectionError as e:
             logger.error("Database connection error in %s: %s", func.__name__, e, exc_info=True)
             raise ToolError(DatabaseConnectionError(func.__name__, e).user_message) from e
+        except json.JSONDecodeError as e:
+            # A corrupted stored game-data row (json.loads in db_content_queries) is a DATA
+            # error, not a programming bug — surface a clean ToolError instead of a raw stack.
+            # Narrow on JSONDecodeError (not broad ValueError) so logic bugs still fail loud.
+            logger.error("Corrupted game data (JSON) in %s: %s", func.__name__, e, exc_info=True)
+            raise ToolError(DatabaseIntegrityError(func.__name__, e).user_message) from e
 
     return wrapper

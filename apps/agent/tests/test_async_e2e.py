@@ -19,6 +19,10 @@ from async_rules import resolve_crafting
 from async_worker import _resolve_single_activity, resolve_due_activities
 from dialogue_parser import Segment
 
+# The companion-errand pipeline drives async_worker -> companion_relationship_queries
+# cached_effective_rank/apply_errand_affinity (DB). Opt into the narrow stub (story-007).
+pytestmark = pytest.mark.usefixtures("stub_companion_errand_affinity_io")
+
 SAMPLE_PLAYER = {
     "name": "Aldric",
     "level": 3,

@@ -15,7 +15,7 @@ import db_content_queries
 import db_queries
 from base_agent import _make_tts
 from region_types import REGION_CITY
-from session_data import CompanionState, CreationState, SessionData
+from session_data import CreationState, SessionData
 from token_tracker import TokenTracker
 from voices import VOICES
 
@@ -216,6 +216,41 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if not mentor_variants_is_loaded():
         await load_mentor_variants()
 
+    # Load the role archetype catalog once per agent process (M6.1). NPC stat-block
+    # templates (services, combat stats, disposition baselines) consumed by
+    # create_npc_from_archetype and settlement generation (M6.2).
+    from role_archetypes import is_loaded as role_archetypes_is_loaded
+    from role_archetypes import load_role_archetypes
+
+    if not role_archetypes_is_loaded():
+        await load_role_archetypes()
+
+    # Settlement population templates (content/settlement_templates.json) — per-tier role
+    # counts + personality modifiers consumed by settlement NPC generation (M6.2, story-003).
+    # Guarded so the seed_settlement_templates test fixture skips the DB fetch.
+    from settlement_templates import is_loaded as settlement_templates_is_loaded
+    from settlement_templates import load_settlement_templates
+
+    if not settlement_templates_is_loaded():
+        await load_settlement_templates()
+
+    # Authored NPC catalog (content/npcs.json) for synchronous narration consumers —
+    # activity_templates derives crafting/training personas from it (story-004 shim
+    # consolidation). Guarded so the seed_npcs test fixture skips the DB fetch.
+    from npcs import is_loaded as npcs_is_loaded
+    from npcs import load_npcs
+
+    if not npcs_is_loaded():
+        await load_npcs()
+
+    # Companion catalog (content/companions.json) — typed combat profiles + scaling_rules for
+    # the 4 companions. Guarded so the seed_companion_profiles test fixture skips the DB fetch.
+    from companion_profiles import is_loaded as companion_profiles_is_loaded
+    from companion_profiles import load_companion_profiles
+
+    if not companion_profiles_is_loaded():
+        await load_companion_profiles()
+
     # Determine session type: new player (creation) vs returning
     player = None
     last_summary = None
@@ -291,11 +326,14 @@ async def dm_session(ctx: agents.JobContext) -> None:
         )
 
         if player.get("flags", {}).get("companion_met"):
-            userdata.companion = CompanionState(
-                id="companion_kael",
-                name="Kael",
-                last_speech_time=time.time(),
-            )
+            from companion_relationship_queries import hydrate_companion_state
+
+            # Fresh session: hydrate persisted relationship state + increment session_count once
+            # (M6.4 / story-003). Reconnects reuse the in-memory CompanionState, so this runs
+            # exactly once per session.
+            companion = await hydrate_companion_state(player_id, "companion_kael", "Kael")
+            companion.last_speech_time = time.time()
+            userdata.companion = companion
             logger.info("Companion Kael loaded for returning player")
 
         # Check for mid-onboarding reconnection

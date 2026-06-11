@@ -4,6 +4,8 @@
     "name": "Guildmaster Torin",
     "tier": 1,
     "role": "guild hall master, quest giver",
+    "role_archetype": "scholar_sage",
+    "quest_giver": true,
     "species": "human",
     "gender": "male",
     "age": "late 50s",
@@ -42,7 +44,7 @@
       "his missing scout is someone he personally trained — the worry is personal, not just professional"
     ],
     "faction": "accord_guild",
-    "voice_id": "torin_v1",
+    "voice_id": "GUILDMASTER_TORIN",
     "voice_notes": "deep baritone, clipped delivery, softens slightly when genuinely worried"
   },
   {
@@ -50,6 +52,7 @@
     "name": "Elder Yanna",
     "tier": 1,
     "role": "Millhaven elder, local authority",
+    "role_archetype": "scholar_sage",
     "species": "human",
     "gender": "female",
     "age": "mid 60s",
@@ -79,7 +82,7 @@
       "05:00-20:00": "millhaven",
       "20:00-05:00": "yanna_farmhouse"
     },
-    "default_disposition": "wary",
+    "default_disposition": "unfriendly",
     "disposition_modifiers": {
       "helped_townsfolk": 2,
       "mentioned_evacuation": -2,
@@ -91,7 +94,7 @@
       "Aldric's stone is in her pocket right now — she's afraid to show anyone because she doesn't know what it means"
     ],
     "faction": "independent",
-    "voice_id": "yanna_v1",
+    "voice_id": "ELDER_YANNA",
     "voice_notes": "alto, gravelly, speaks slowly and deliberately, rural accent"
   },
   {
@@ -99,6 +102,7 @@
     "name": "Emris of the Diaspora",
     "tier": 1,
     "role": "Aelindran scholar, artifact expert",
+    "role_archetype": "scholar_sage",
     "species": "elari",
     "gender": "non-binary",
     "age": "appears mid 30s (Elari — actually much older)",
@@ -138,7 +142,7 @@
       "08:00-23:00": "accord_dockside",
       "23:00-08:00": "emris_study"
     },
-    "default_disposition": "cautious",
+    "default_disposition": "unfriendly",
     "disposition_modifiers": {
       "brought_aelindran_artifact": 4,
       "showed_interest_in_scholarship": 2,
@@ -151,102 +155,15 @@
       "they have a letter from their mentor — the last one — that mentions 'a discovery that changes everything' but gives no details"
     ],
     "faction": "aelindran_diaspora",
-    "voice_id": "emris_v1",
+    "voice_id": "SCHOLAR_EMRIS",
     "voice_notes": "soft, quick, slightly breathless when excited, Elari accent — elongated vowels, precise consonants"
-  },
-  {
-    "id": "companion_kael",
-    "name": "Kael",
-    "tier": 1,
-    "role": "companion, former caravan guard",
-    "species": "human",
-    "gender": "male",
-    "age": "early 30s",
-    "appearance": "broad-shouldered, practical gear worn soft from use, old scars on his forearms, watchful eyes that track exits",
-    "personality": [
-      "steady",
-      "practical",
-      "quietly haunted",
-      "protective",
-      "dry humor when relaxed"
-    ],
-    "speech_style": "measured and deliberate, short sentences when tense, warmer when relaxed, occasional dry humor",
-    "mannerisms": [
-      "checks exits when entering a room",
-      "tenses at unexpected sounds",
-      "runs thumb along sword pommel when thinking"
-    ],
-    "backstory_summary": "Former caravan guard who lost his company to something on the northern roads. Won't say exactly what happened. Carries guilt about surviving when they didn't. Found his way to the Accord of Tides, drifting without purpose until meeting the player.",
-    "knowledge": {
-      "free": [
-        "dockside gossip and merchant news in the Accord",
-        "caravan routes between major settlements",
-        "basic Hollow creature behavior — how they move, how they sound"
-      ],
-      "disposition >= friendly": [
-        "his caravan company was called the Iron Wheel — twelve guards, four merchants",
-        "they were ambushed on the northern road near the Ashmark border",
-        "he was the only one who made it out"
-      ],
-      "disposition >= trusted": [
-        "he has a journal fragment from his company's last job — the merchants had found something",
-        "the company wasn't just guarding cargo — they were transporting a sealed container they were told not to open",
-        "he heard sounds from the container at night, like humming stone"
-      ]
-    },
-    "schedule": {
-      "00:00-23:59": "companion"
-    },
-    "default_disposition": "friendly",
-    "disposition_modifiers": {
-      "showed_trust": 2,
-      "shared_danger": 1,
-      "lied_to_kael": -3,
-      "abandoned_ally": -4,
-      "asked_about_past_gently": 1
-    },
-    "inventory_pool": null,
-    "secrets": [
-      "he kept one item from the sealed container — a smooth warm stone that hums faintly, hidden in his pack",
-      "he dreams about the ambush every night and sometimes wakes reaching for a sword"
-    ],
-    "faction": "independent",
-    "voice_id": "COMPANION_KAEL",
-    "voice_notes": "warm baritone, measured pace, gets quieter under stress not louder, dry humor surfaces when comfortable",
-    "combat_stats": {
-      "hp": 22,
-      "ac": 15,
-      "level": 2,
-      "attributes": {
-        "strength": 15,
-        "dexterity": 13,
-        "constitution": 14,
-        "intelligence": 10,
-        "wisdom": 12,
-        "charisma": 11
-      },
-      "action_pool": [
-        {
-          "name": "Longsword",
-          "damage": "1d8",
-          "damage_type": "slashing",
-          "properties": ["versatile"]
-        },
-        {
-          "name": "Defensive Stance",
-          "damage": "0",
-          "damage_type": "none",
-          "properties": ["defensive"],
-          "effect": "Kael braces and guards, gaining +2 AC until next turn"
-        }
-      ]
-    }
   },
   {
     "id": "wounded_rider",
     "name": "Wounded Rider",
     "tier": 1,
     "role": "scene catalyst, messenger",
+    "role_archetype": "soldier_ashmark",
     "species": "human",
     "gender": "male",
     "age": "mid 20s",
@@ -285,6 +202,7 @@
     "name": "Maren",
     "tier": 1,
     "role": "innkeeper, local information source",
+    "role_archetype": "innkeeper",
     "species": "human",
     "gender": "female",
     "age": "early 40s",
@@ -322,7 +240,7 @@
       "06:00-23:00": "millhaven_inn",
       "23:00-06:00": "millhaven_inn"
     },
-    "default_disposition": "wary",
+    "default_disposition": "unfriendly",
     "disposition_modifiers": {
       "bought_drinks": 1,
       "showed_guild_contract": 2,
@@ -342,6 +260,7 @@
     "name": "Investigator Valdris",
     "tier": 1,
     "role": "faction representative, political pressure",
+    "role_archetype": "guard",
     "species": "human",
     "gender": "male",
     "age": "late 40s",
@@ -399,6 +318,7 @@
     "name": "Grimjaw",
     "tier": 1,
     "role": "blacksmith, crafting mentor",
+    "role_archetype": "blacksmith",
     "species": "dwarf",
     "gender": "male",
     "age": "late 100s (middle-aged for a dwarf)",
@@ -455,6 +375,7 @@
     "name": "Bryn",
     "tier": 1,
     "role": "tavern keeper, social hub",
+    "role_archetype": "innkeeper",
     "species": "human",
     "gender": "female",
     "age": "mid 40s",
@@ -516,6 +437,7 @@
     "name": "Warden Selene",
     "tier": 1,
     "role": "temple row representative, divine liaison",
+    "role_archetype": "priest",
     "species": "elari",
     "gender": "female",
     "age": "appears late 20s (Elari — much older)",
@@ -575,6 +497,7 @@
     "name": "Aldric",
     "tier": 1,
     "role": "afflicted farmer, mystery subplot",
+    "role_archetype": "stablemaster",
     "species": "human",
     "gender": "male",
     "age": "early 40s",
@@ -608,7 +531,7 @@
       "06:00-20:00": "millhaven_inn",
       "20:00-06:00": "millhaven"
     },
-    "default_disposition": "absent",
+    "default_disposition": "neutral",
     "disposition_modifiers": {
       "showed_patience": 2,
       "spoke_gently": 1,
@@ -632,6 +555,7 @@
     "name": "Nyx",
     "tier": 1,
     "role": "Syrath faction representative, intelligence operative",
+    "role_archetype": "assassin_rogue",
     "species": "vaelti",
     "gender": "female",
     "age": "late 20s",
@@ -668,7 +592,7 @@
     "schedule": {
       "00:00-23:59": "accord_hearthstone_tavern"
     },
-    "default_disposition": "cautious",
+    "default_disposition": "unfriendly",
     "disposition_modifiers": {
       "shared_greyvale_information": 4,
       "showed_artifact": 3,
@@ -690,6 +614,7 @@
     "name": "Archivist Theron",
     "tier": 1,
     "role": "Veythar faction representative, damage control",
+    "role_archetype": "scholar_sage",
     "species": "human",
     "gender": "male",
     "age": "mid 30s",
@@ -750,6 +675,7 @@
     "name": "Guild Master Dara",
     "tier": 1,
     "role": "Aelora faction representative, practical concerns",
+    "role_archetype": "merchant_general_goods",
     "species": "human",
     "gender": "female",
     "age": "early 50s",
@@ -810,6 +736,7 @@
     "name": "Warleader Hessa Stormhand",
     "tier": 1,
     "role": "Drathian war-band leader, martial mentor",
+    "role_archetype": "soldier_ashmark",
     "species": "human",
     "gender": "female",
     "age": "mid 40s",
@@ -852,9 +779,19 @@
       "spoke_poorly_of_drathian_honor": -5
     },
     "inventory_pool": null,
+    "mentor": {
+      "culture": "Drathian Clans",
+      "training_cycles": 3,
+      "requirements": {
+        "disposition": "friendly",
+        "quest": null,
+        "gold": 50,
+        "skill": "Athletics: Trained"
+      }
+    },
     "secrets": ["the warrior she misses most is the student she pushed too hard, too young"],
     "faction": "independent",
-    "voice_id": "drathian_hessa_v1",
+    "voice_id": "DRATHIAN_HESSA",
     "voice_notes": "Low, carrying alto with a clipped Steppe roll on the r's. Never hesitates on tactics; softens and slows only when the dead come up."
   },
   {
@@ -862,6 +799,7 @@
     "name": "Forge-Master Doran Ironvein",
     "tier": 1,
     "role": "Keldaran forge-master, martial-technique mentor",
+    "role_archetype": "blacksmith",
     "species": "dwarf",
     "gender": "male",
     "age": "mid 50s",
@@ -904,11 +842,21 @@
       "dismissed_keldaran_expertise": -4
     },
     "inventory_pool": null,
+    "mentor": {
+      "culture": "Keldaran Forge",
+      "training_cycles": 4,
+      "requirements": {
+        "disposition": "friendly",
+        "quest": null,
+        "gold": 60,
+        "skill": null
+      }
+    },
     "secrets": [
       "the collapse he blames himself for killed an apprentice he had promised to protect"
     ],
     "faction": "independent",
-    "voice_id": "keldaran_doran_v1",
+    "voice_id": "KELDARAN_DORAN",
     "voice_notes": "Steady, gravelled baritone, slow and measured, a faint metallic undertone. Warms only when the subject is good craft."
   },
   {
@@ -916,6 +864,7 @@
     "name": "Elder Senna Rootwarden",
     "tier": 1,
     "role": "Thornwarden elder, guardian, martial mentor",
+    "role_archetype": "priest",
     "species": "elari",
     "gender": "female",
     "age": "elder",
@@ -950,7 +899,7 @@
       "06:00-22:00": "accord_training_hall",
       "22:00-06:00": "accord_hearthstone_tavern"
     },
-    "default_disposition": "wary",
+    "default_disposition": "unfriendly",
     "disposition_modifiers": {
       "acted_to_protect_living_things": 3,
       "showed_patience_in_training": 2,
@@ -958,9 +907,19 @@
       "mocked_the_wardens": -4
     },
     "inventory_pool": null,
+    "mentor": {
+      "culture": "Thornwarden",
+      "training_cycles": 4,
+      "requirements": {
+        "disposition": "trusted",
+        "quest": null,
+        "gold": 40,
+        "skill": null
+      }
+    },
     "secrets": ["she came south as much to flee her oak's slow death as to warn anyone"],
     "faction": "independent",
-    "voice_id": "thornwarden_senna_v1",
+    "voice_id": "THORNWARDEN_SENNA",
     "voice_notes": "Soft, slightly breathy, the texture of wind in leaves. Deliberate pauses. Disappointment drops the voice to a whisper rather than raising it."
   },
   {
@@ -968,6 +927,7 @@
     "name": "Bosun Marek Tideborn",
     "tier": 1,
     "role": "Tidecaller sailing master, movement and martial mentor",
+    "role_archetype": "shipwright",
     "species": "vaelti",
     "gender": "male",
     "age": "mid 30s",
@@ -1010,9 +970,19 @@
       "mocked_seafaring_culture": -4
     },
     "inventory_pool": null,
+    "mentor": {
+      "culture": "Tidecaller",
+      "training_cycles": 3,
+      "requirements": {
+        "disposition": "friendly",
+        "quest": null,
+        "gold": 45,
+        "skill": null
+      }
+    },
     "secrets": ["he hides the depth of his fear of still water behind constant easy motion"],
     "faction": "independent",
-    "voice_id": "tidecaller_marek_v1",
+    "voice_id": "TIDECALLER_MAREK",
     "voice_notes": "Light, musical baritone, relaxed and warm, speech paced to long easy breaths. Quickens and sharpens when the talk turns to danger at sea."
   }
 ]

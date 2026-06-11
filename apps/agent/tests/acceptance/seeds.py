@@ -63,12 +63,17 @@ async def seed_player_with_pools(
     class_: str = "skirmisher",
     stamina_current: int = 10,
     focus_current: int = 10,
+    equipped_electives: tuple[str, ...] = (),
 ) -> str:
     """seed_player + add the Stamina/Focus pools the ability-activation tool reads.
 
     seed_player's default has no pools; jsonb_set on the top-level '{stamina}' /
     '{focus}' keys (parent `data` exists) initializes them. Shared by the M2.2 and
     M9 ability/variant capstones, which deduct real Stamina/Focus on activation.
+
+    Pass `equipped_electives` to give the character ownership of L4/L8 elective
+    techniques (a character_abilities row each) — the own-the-base gate (story-006)
+    rejects activating/training a variant of an elective with no row.
     """
     await seed_player(conn, player_id=player_id, class_=class_)
     await conn.execute(
@@ -78,7 +83,73 @@ async def seed_player_with_pools(
         json.dumps({"current": stamina_current, "max": 10}),
         json.dumps({"current": focus_current, "max": 10}),
     )
+    for ability_id in equipped_electives:
+        await conn.execute(
+            """
+            INSERT INTO character_abilities (player_id, ability_id, equipped)
+            VALUES ($1, $2, TRUE)
+            ON CONFLICT (player_id, ability_id) DO NOTHING
+            """,
+            player_id,
+            ability_id,
+        )
     return player_id
+
+
+async def seed_warrior_owning_base(
+    conn: asyncpg.Connection | asyncpg.Pool,
+    player_id: str,
+    base_ability_id: str,
+) -> None:
+    """Seed a warrior with Stamina/Focus pools who already owns ``base_ability_id``.
+
+    The own-the-base gate (story-006) requires a character_abilities row for the base
+    elective before a variant of it can be trained or its override activated — so the
+    warrior must own the base, not just have the pools. Shared by the M9 and M6.3
+    mentor-variant capstones, which all train/activate a variant of an owned base.
+    """
+    await seed_player_with_pools(conn, player_id=player_id, class_="warrior", equipped_electives=(base_ability_id,))
+
+
+async def seed_mentor_training_gates(
+    conn: asyncpg.Connection | asyncpg.Pool,
+    player_id: str,
+    mentor_id: str,
+    *,
+    disposition: str = "friendly",
+    gold: int = 50,
+    skill: tuple[str, str] | None = ("athletics", "trained"),
+) -> None:
+    """Seed a player's M6.3 mentor training-requirement gates for ``mentor_id``.
+
+    Co-location is supplied separately via the ctx location_id (a mentor schedule stage);
+    this seeds the disposition / gold / skill requirements a ``mentor{}`` block can demand,
+    so a capstone can drive learn(variant) past check_mentor_requirements. Shared by the M9
+    train->unlock->activate capstone and the M6.3 gating capstone. Pass ``skill=None`` for a
+    mentor with no skill gate.
+    """
+    await conn.execute(
+        "UPDATE players SET data = jsonb_set(data, '{gold}', $2::jsonb) WHERE player_id = $1",
+        player_id,
+        json.dumps(gold),
+    )
+    await conn.execute(
+        "INSERT INTO npc_dispositions (npc_id, player_id, data) VALUES ($1, $2, $3::jsonb) "
+        "ON CONFLICT (npc_id, player_id) DO UPDATE SET data = $3::jsonb",
+        mentor_id,
+        player_id,
+        json.dumps({"disposition": disposition}),
+    )
+    if skill is not None:
+        skill_id, tier = skill
+        await conn.execute(
+            "INSERT INTO skill_advancement (player_id, skill_id, tier, use_counter, narrative_moment_ready) "
+            "VALUES ($1, $2, $3, 0, FALSE) "
+            "ON CONFLICT (player_id, skill_id) DO UPDATE SET tier = $3",
+            player_id,
+            skill_id,
+            tier,
+        )
 
 
 async def clear_training_activities(conn: asyncpg.Connection | asyncpg.Pool, player_id: str = "player_1") -> None:

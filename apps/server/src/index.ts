@@ -17,6 +17,7 @@ import { handleImageAsset } from "./image-assets.ts";
 import { handleGenerateImage } from "./image-gen-api.ts";
 import { sql } from "./db.ts";
 import { handleGetActivityTemplates } from "./activity-templates-api.ts";
+import { handleGetContentCatalog } from "./content-catalog-api.ts";
 import { handleStorePushToken, handleInternalPush } from "./push.ts";
 import { loadDestinationDangerLevels } from "./errand_risk.ts";
 import { loadLocations } from "./locations.ts";
@@ -28,6 +29,7 @@ import { loadArchetypes } from "./archetypes.ts";
 import { loadAbilities } from "./abilities.ts";
 import { loadSpells } from "./spells.ts";
 import { loadMentorVariants } from "./mentor_variants.ts";
+import { loadRoleArchetypes } from "./role_archetypes.ts";
 import { loadMilestones } from "./milestones.ts";
 import { loadPricing } from "./pricing.ts";
 import { isDev } from "./env.ts";
@@ -48,6 +50,7 @@ await Promise.all([
   loadAbilities(),
   loadSpells(),
   loadMentorVariants(),
+  loadRoleArchetypes(),
   loadMilestones(),
   loadPricing(),
 ]);
@@ -156,6 +159,15 @@ const server = serve({
       const auth = await requireAuth(req);
       if (auth instanceof Response) return withCors(auth);
       return withCors(await handleGetActivityTemplates(auth.playerId));
+    }
+
+    // Content catalogs (role-archetypes, archetypes, abilities, milestones): auth-gated
+    // read of a fail-loud-parsed boot catalog — the production consumer for loaders that
+    // were previously validation-only (debt e43ada4fac62).
+    if (path.startsWith("/api/content/") && req.method === "GET") {
+      const auth = await requireAuth(req);
+      if (auth instanceof Response) return withCors(auth);
+      return withCors(handleGetContentCatalog(path.slice("/api/content/".length)));
     }
 
     // --- Push notifications ---

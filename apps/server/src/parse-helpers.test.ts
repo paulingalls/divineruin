@@ -1,5 +1,5 @@
 import { test, expect, describe } from "bun:test";
-import { asRecord, parseStringArray } from "./parse-helpers.ts";
+import { asRecord, parseString, parseStringArray } from "./parse-helpers.ts";
 
 describe("asRecord", () => {
   test("returns a plain object unchanged", () => {
@@ -13,6 +13,20 @@ describe("asRecord", () => {
     expect(() => asRecord("str", "items[x]")).toThrow("items[x] is not an object");
     expect(() => asRecord(42, "items[x]")).toThrow("items[x] is not an object");
     expect(() => asRecord([1, 2], "items[x]")).toThrow("items[x] is not an object");
+  });
+});
+
+describe("parseString", () => {
+  test("returns a string unchanged", () => {
+    expect(parseString("hello", "ctx")).toBe("hello");
+    expect(parseString("", "ctx")).toBe("");
+  });
+
+  test("rejects null/undefined/number/object with ctx in the message", () => {
+    expect(() => parseString(null, "a.name")).toThrow("a.name is not a string");
+    expect(() => parseString(undefined, "a.name")).toThrow("a.name is not a string");
+    expect(() => parseString(42, "a.name")).toThrow("a.name is not a string");
+    expect(() => parseString({}, "a.name")).toThrow("a.name is not a string");
   });
 });
 

@@ -73,3 +73,65 @@ class TestUpdateTrainingActivity:
         assert "UPDATE training_activities" in sql
         assert "transition_at = $4" in sql
         assert args == ["train_abc", "running_second_half", json.dumps(updates), FIXED_NOW]
+
+
+class TestUpsertLearningCycle:
+    """The shared engine behind the spell + mentor-variant per-cycle upserts (concern
+    5d7feeae22ae). table is whitelisted -> entity column; the two tracks differ only
+    there. Pins the parametrization + guards directly against a mock connection."""
+
+    def _row_conn(self, completed=1, required=3):
+        conn = AsyncMock()
+        conn.fetchrow = AsyncMock(
+            return_value={"cycles_completed": completed, "cycles_required": required, "midpoint_decision_id": None}
+        )
+        return conn
+
+    @pytest.mark.asyncio
+    async def test_unknown_table_rejected(self):
+        with pytest.raises(ValueError, match="unknown learning-progress table"):
+            await db_training.upsert_learning_cycle("player_xp", "p1", "e1", 3, conn=self._row_conn())
+
+    @pytest.mark.asyncio
+    async def test_cycles_required_below_one_rejected(self):
+        with pytest.raises(ValueError, match="cycles_required must be >= 1"):
+            await db_training.upsert_learning_cycle(
+                "spell_learning_progress", "p1", "fireball", 0, conn=self._row_conn()
+            )
+
+    @pytest.mark.asyncio
+    async def test_spell_table_parametrization(self):
+        conn = self._row_conn(completed=1, required=3)
+        result = await db_training.upsert_learning_cycle(
+            "spell_learning_progress", "p1", "fireball", 3, activity_id="train_a", conn=conn
+        )
+        sql, *params = conn.fetchrow.call_args.args
+        assert "INSERT INTO spell_learning_progress" in sql
+        assert "ON CONFLICT (player_id, spell_id) DO UPDATE" in sql
+        assert "last_activity_id IS NOT DISTINCT FROM" in sql
+        assert params == ["p1", "fireball", 3, None, "train_a"]
+        assert result == {
+            "cycles_completed": 1,
+            "cycles_required": 3,
+            "completed": False,
+            "midpoint_decision_id": None,
+        }
+
+    @pytest.mark.asyncio
+    async def test_variant_table_parametrization_and_completion(self):
+        conn = self._row_conn(completed=3, required=3)
+        result = await db_training.upsert_learning_cycle(
+            "mentor_variant_learning_progress", "p1", "warrior_cleaving_blow_drathian", 3, conn=conn
+        )
+        sql, *params = conn.fetchrow.call_args.args
+        assert "INSERT INTO mentor_variant_learning_progress" in sql
+        assert "ON CONFLICT (player_id, variant_id) DO UPDATE" in sql
+        assert params == ["p1", "warrior_cleaving_blow_drathian", 3, None, None]
+        assert result["completed"] is True
+
+    @pytest.mark.asyncio
+    async def test_fail_loud_when_no_row_returned(self):
+        conn = AsyncMock()
+        conn.fetchrow = AsyncMock(return_value=None)
+        with pytest.raises(RuntimeError, match="returned no row"):
+            await db_training.upsert_learning_cycle("spell_learning_progress", "p1", "fireball", 3, conn=conn)

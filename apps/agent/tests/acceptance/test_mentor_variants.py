@@ -30,7 +30,7 @@ from collections.abc import Iterator
 import httpx
 import pytest
 from acceptance._server import start_server
-from acceptance.seeds import seed_player_with_pools
+from acceptance.seeds import seed_mentor_training_gates, seed_warrior_owning_base
 from sample_fixtures import make_context
 
 import abilities
@@ -54,11 +54,6 @@ def capstone_server(migrated_db: str) -> Iterator[dict[str, str]]:
     yield from start_server(migrated_db)
 
 
-async def _seed_warrior_with_pools(pool, player_id: str) -> None:
-    """seed_player_with_pools as a warrior (the M9 base technique's archetype)."""
-    await seed_player_with_pools(pool, player_id=player_id, class_="warrior")
-
-
 async def _load_catalogs() -> None:
     """Load the ability + mentor-variant catalogs from the seeded testcontainer."""
     await abilities.load_abilities()
@@ -74,11 +69,13 @@ async def test_variant_train_unlock_activate_override(reset_db_pool: str) -> Non
     """The headline E2E: learn(variant) -> accrue 3 cycles -> unlock -> activate overrides base."""
     pool = await db.get_pool()
     pid = "cap_m9_train"
-    await _seed_warrior_with_pools(pool, pid)
+    await seed_warrior_owning_base(pool, pid, _BASE)
+    await seed_mentor_training_gates(pool, pid, "mentor_drathian_warleader")
     await _load_catalogs()
 
-    # learn(variant) initiates the mentor training loop (story-002) on real rows.
-    ctx = make_context(player_id=pid)
+    # learn(variant) initiates the mentor training loop (story-002) on real rows. The ctx is
+    # located at a Drathian-Hessa schedule stage so the M6.3 co-location gate passes.
+    ctx = make_context(player_id=pid, location_id="accord_training_hall")
     started = json.loads(await mentor_variant_tools._learn_variant_impl(ctx, _DRATHIAN))
     assert started["training_started"] == _DRATHIAN
     assert started["ability_id"] == _BASE
@@ -122,7 +119,7 @@ async def test_base_activation_unchanged_without_active_variant(reset_db_pool: s
     """AC2: with no active variant, activation uses the base cost/cue and no override fields."""
     pool = await db.get_pool()
     pid = "cap_m9_base"
-    await _seed_warrior_with_pools(pool, pid)
+    await seed_warrior_owning_base(pool, pid, _BASE)
     await _load_catalogs()
 
     raw = await ability_tools._request_ability_activation_impl(make_context(player_id=pid), _BASE)
@@ -142,7 +139,7 @@ async def test_active_variant_replaced_on_real_db(reset_db_pool: str) -> None:
     """AC3: training a second variant for the same technique replaces the active one (PK upsert)."""
     pool = await db.get_pool()
     pid = "cap_m9_replace"
-    await _seed_warrior_with_pools(pool, pid)
+    await seed_warrior_owning_base(pool, pid, _BASE)
     await _load_catalogs()
 
     # First variant active: activation deducts the Drathian cost (stamina 5).

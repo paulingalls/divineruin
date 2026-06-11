@@ -17,7 +17,8 @@ async def require_npc_present(location_id: str, npc_id: str, *, queries=db_queri
 
     Presence is the schedule-derived Stage fact (``get_npcs_at_location`` — NPCs
     whose ``schedule`` includes this location). The canonical co-location gate for
-    every NPC-targeted verb: update_npc_disposition, repair_item, rent_workspace.
+    every NPC-targeted verb: update_npc_disposition, repair_item, rent_workspace,
+    learn(variant) (a mentor is an NPC — gate before training begins).
     Reads the authoritative Stage, never an agent's cached region. ``suffix`` tailors
     the refusal to the calling verb (e.g. " to repair your gear"); ``queries`` is a
     seam for unit tests.

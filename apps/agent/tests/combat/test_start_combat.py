@@ -92,6 +92,149 @@ def _make_start_combat_mocks():
     return mock_mutations, mock_queries, mock_content
 
 
+# Thornwatch reputation ladder (mirrors content/factions.json) for the stance-gate suite.
+_THORNWATCH = {
+    "id": "thornwatch",
+    "name": "The Thornwatch",
+    "reputation_tiers": {
+        "hostile": {"threshold": -10},
+        "unfriendly": {"threshold": -5},
+        "neutral": {"threshold": 0},
+        "friendly": {"threshold": 5},
+        "trusted": {"threshold": 15},
+        "honored": {"threshold": 25},
+    },
+}
+
+
+def _gated_encounter():
+    # The real Ashmark Patrol stance gate: allied iff Thornwatch reputation >= friendly (5).
+    return {
+        **SAMPLE_ENCOUNTER,
+        "id": "ashmark_patrol",
+        "name": "Ashmark Patrol",
+        "stance_gate": {"faction": "thornwatch", "allied_at_or_above": "friendly"},
+    }
+
+
+def _stance_mocks(reputation, faction=_THORNWATCH):
+    mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+    mock_content.get_encounter_template = AsyncMock(return_value=_gated_encounter())
+    mock_content.get_faction = AsyncMock(return_value=faction)
+    mock_queries.get_player_faction_reputation = AsyncMock(return_value=reputation)
+    return mock_mutations, mock_queries, mock_content
+
+
+class TestStartCombatStanceGate:
+    """story-008: _start_combat_impl is resolve_encounter_stance's first production caller.
+    A gated encounter resolves allied (avert combat, narration string) or hostile (combat)
+    from the player's reputation with the gate faction."""
+
+    @pytest.mark.asyncio
+    async def test_allied_reputation_averts_combat(self):
+        mock_mutations, mock_queries, mock_content = _stance_mocks(reputation=8)  # >= friendly(5)
+        ctx = _make_context()
+        result = await _start_combat_impl(
+            ctx,
+            encounter_id="ashmark_patrol",
+            encounter_description="A patrol approaches.",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+        assert isinstance(result, str)  # narration, no combat handoff
+        assert "stands down" in result.lower()
+        assert ctx.userdata.combat_state is None
+        assert ctx.userdata.in_combat is False
+        mock_mutations.save_combat_state.assert_not_called()
+        mock_queries.get_player_faction_reputation.assert_awaited_once_with("player_1", "thornwatch")
+
+    @pytest.mark.asyncio
+    async def test_hostile_reputation_starts_combat(self):
+        mock_mutations, mock_queries, mock_content = _stance_mocks(reputation=4)  # < friendly(5)
+        ctx = _make_context()
+        result = await _start_combat_impl(
+            ctx,
+            encounter_id="ashmark_patrol",
+            encounter_description="A patrol blocks the road.",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+        assert isinstance(result, tuple)  # combat handoff
+        assert ctx.userdata.combat_state is not None
+        mock_mutations.save_combat_state.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_missing_reputation_defaults_to_neutral_hostile(self):
+        # No player_reputation row -> None -> neutral (0) -> below friendly -> hostile.
+        mock_mutations, mock_queries, mock_content = _stance_mocks(reputation=None)
+        ctx = _make_context()
+        result = await _start_combat_impl(
+            ctx,
+            encounter_id="ashmark_patrol",
+            encounter_description="A patrol approaches.",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+        assert isinstance(result, tuple)
+        assert ctx.userdata.combat_state is not None
+
+    @pytest.mark.asyncio
+    async def test_unknown_gate_faction_fails_loud(self):
+        mock_mutations, mock_queries, mock_content = _stance_mocks(reputation=8)
+        mock_content.get_faction = AsyncMock(return_value=None)
+        ctx = _make_context()
+        with pytest.raises(ToolError):
+            await _start_combat_impl(
+                ctx,
+                encounter_id="ashmark_patrol",
+                encounter_description="...",
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
+
+    @pytest.mark.asyncio
+    async def test_malformed_gate_missing_faction_fails_loud(self):
+        # A stance gate without a 'faction' key must raise ToolError (fail-loud to LLM),
+        # not an uncaught KeyError.
+        mock_mutations, mock_queries, mock_content = _stance_mocks(reputation=8)
+        encounter = _gated_encounter()
+        encounter["stance_gate"] = {"allied_at_or_above": "friendly"}  # no faction
+        mock_content.get_encounter_template = AsyncMock(return_value=encounter)
+        ctx = _make_context()
+        with pytest.raises(ToolError, match="malformed stance gate"):
+            await _start_combat_impl(
+                ctx,
+                encounter_id="ashmark_patrol",
+                encounter_description="...",
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
+        mock_content.get_faction.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_non_gated_encounter_skips_stance_resolution(self):
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()  # goblin_patrol, no gate
+        mock_content.get_faction = AsyncMock()
+        mock_queries.get_player_faction_reputation = AsyncMock()
+        ctx = _make_context()
+        result = await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Goblins ambush!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+        assert isinstance(result, tuple)
+        mock_content.get_faction.assert_not_called()
+        mock_queries.get_player_faction_reputation.assert_not_called()
+
+
 class TestStartCombat:
     @pytest.mark.asyncio
     async def test_creates_combat_state(self):

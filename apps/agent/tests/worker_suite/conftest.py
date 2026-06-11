@@ -21,3 +21,14 @@ def _stub_crafting_worker_db():
         patch("async_worker.db_mutations.increment_crafting_skill_counter", new_callable=AsyncMock),
     ):
         yield
+
+
+@pytest.fixture(autouse=True)
+def _errand_affinity_for_worker(stub_companion_errand_affinity_io):
+    """Apply the narrow companion rank/affinity stub (root conftest) to every worker test.
+
+    async_worker._resolve_one_outcome calls cached_effective_rank + apply_errand_affinity on the
+    companion-errand path; these hit the DB. The stub is opt-in (no longer global autouse,
+    story-007) so this dir-scoped wrapper re-applies it for the whole worker suite rather than
+    duplicating the patch block."""
+    yield

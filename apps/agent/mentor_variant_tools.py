@@ -20,10 +20,15 @@ from datetime import UTC, datetime
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+import abilities
+import ability_persistence
 import db
+import db_content_queries
 import db_training
+import mentor_requirements
 import mentor_variant_progress
 import mentor_variants
+import tool_preconditions
 from session_data import SessionData
 from tool_support import _validate_id
 from training_rules import get_cycles_required, start_training_cycle
@@ -43,15 +48,23 @@ async def _learn_variant_impl(
     db_training_mod=db_training,
     variants_mod=mentor_variants,
     progress_mod=mentor_variant_progress,
+    abilities_mod=abilities,
+    persistence_mod=ability_persistence,
+    requirements_mod=mentor_requirements,
+    preconditions_mod=tool_preconditions,
+    content_mod=db_content_queries,
     rules_mod=None,
     now_fn=None,
 ) -> str:
     context.disallow_interruptions()
     _validate_id(variant_id, "variant_id")
+    # learn(variant) is documented to OMIT source: a variant is acquired only via the
+    # async mentor training loop, never instantly. Reject a non-empty source rather than
+    # silently ignoring it — parity with learn(recipe)/learn(spell) closed-set validation.
+    if source:
+        raise ToolError(f"learn(variant) takes no source (got {source!r}); a variant is acquired by mentor training.")
 
     # Catalog lookup is an in-memory read (no IO) — do it before touching the DB.
-    # `source` is accepted for the learn(kind, id, source) dispatch shape but not
-    # gated: a variant's only acquisition track is the mentor loop (mentor_training).
     try:
         variant = variants_mod.get_mentor_variant(variant_id)
     except ValueError as exc:
@@ -64,11 +77,27 @@ async def _learn_variant_impl(
         cycle = start_fn(_VARIANT_ACTIVITY_TYPE, now)
     except ValueError as e:
         raise ToolError(str(e)) from e
-    cycles_required = get_cycles_required(_VARIANT_ACTIVITY_TYPE)
 
-    # Mentor co-location / valid-relationship gating depends on Phase 6 NPC
-    # disposition (recorded cross-phase constraint) — stubbed here. The variant
-    # carries its bound mentor_id; full co-location enforcement lands with Phase 6.
+    # Mentor gates (M6.3), pre-transaction: both are reads (schedule + content), no
+    # writable row to lock — mirrors the pre-tx co-location gate in repair_item.
+    # Co-location runs FIRST: an absent mentor short-circuits before the requirement read.
+    await preconditions_mod.require_npc_present(
+        context.userdata.location_id, variant.mentor_id, suffix=" to train this variant"
+    )
+    try:
+        requirements = await requirements_mod.check_mentor_requirements(player_id, variant.mentor_id, variant_id)
+    except ValueError as exc:
+        # Malformed/absent mentor binding — story-002 contract: map ValueError to ToolError.
+        raise ToolError(str(exc)) from exc
+    if not requirements.met:
+        raise ToolError(f"You can't train {variant_id} yet: {'; '.join(requirements.unmet)}")
+
+    # Training length is per-mentor (mentor{}.training_cycles, story-001); fall back to the
+    # flat activity-type default when a mentor leaves it unset. The binding is guaranteed
+    # present here — check_mentor_requirements already validated it.
+    mentor_npc = await content_mod.get_npc(variant.mentor_id)
+    binding = (mentor_npc or {}).get("mentor") or {}
+    cycles_required = binding.get("training_cycles") or get_cycles_required(_VARIANT_ACTIVITY_TYPE)
 
     async with db_mod.transaction() as conn:
         if await progress_mod.is_unlocked(player_id, variant_id, conn=conn):
@@ -77,6 +106,18 @@ async def _learn_variant_impl(
         existing = await db_training_mod.get_player_training_activities(player_id, state=None, conn=conn)
         if any(row["state"] != _TERMINAL_STATE for row in existing):
             raise ToolError("A training cycle is already in progress.")
+
+        # Own-the-base gate (story-006): a variant overrides a base elective the
+        # player must already own — you cannot train a variant of a technique you
+        # lack. A variant whose base is core/reaction is unmodeled (fail loud).
+        try:
+            base = abilities_mod.get_ability(variant.ability_id)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        if base.ability_type != "elective":
+            raise ToolError(f"Variant {variant_id} overrides a non-elective base ({base.ability_type}); unmodeled.")
+        if not await persistence_mod.owns_elective(player_id, variant.ability_id, conn=conn):
+            raise ToolError(f"You must own the base technique {base.name} before training a variant of it.")
 
         await progress_mod.seed_progress(player_id, variant_id, cycles_required, conn=conn)
         data = {

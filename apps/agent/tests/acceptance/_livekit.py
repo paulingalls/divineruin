@@ -8,6 +8,7 @@ ryuk reaper is never launched, so the container persists across runs.
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 import pytest
@@ -17,6 +18,26 @@ from docker.errors import DockerException
 CONTAINER_NAME = "divineruin-livekit-acceptance"
 IMAGE = "livekit/livekit-server:v1.11.0"
 PORT = 7880
+
+# Single-port ICE/UDP mux. Without this, LiveKit allocates WebRTC media across a
+# UDP port *range*; each port is a separate Docker port-forward, and under
+# concurrency many participants race through Docker's userland UDP proxy, dropping
+# DTLS handshake packets -> timeouts (the documented Docker+WebRTC failure mode).
+# rtc.udp_port muxes ALL media for every concurrent session onto one UDP port, so a
+# single fixed forward (7882:7882, fixed so the advertised candidate's port matches
+# what the host reaches) is reliable and scales to parallel media e2e sessions.
+# node_ip pins the advertised ICE candidate to the host-reachable loopback;
+# use_external_ip stops STUN from advertising an unreachable container IP.
+# See LiveKit self-hosting/deployment docs (rtc.udp_port).
+RTC_UDP_PORT = 7882
+_LIVEKIT_CONFIG = "rtc:\n  udp_port: 7882\n  node_ip: 127.0.0.1\n  use_external_ip: false\n"
+_COMMAND = "--dev --bind 0.0.0.0"
+
+# Digest of everything that shapes the booted server. Stamped as a container label so
+# that a *running* container reused by name is rebuilt when its config is stale (e.g.
+# left over from before this UDP-mux change) instead of silently kept — otherwise the
+# concurrency fix would be absent until a manual `test:acceptance:clean`.
+_CONFIG_DIGEST = hashlib.sha256(f"{IMAGE}|{_COMMAND}|{_LIVEKIT_CONFIG}|{RTC_UDP_PORT}".encode()).hexdigest()[:12]
 
 
 def _handle_docker_unavailable(exc: DockerException, *, require_docker: bool) -> None:
@@ -35,24 +56,27 @@ def _host_port(container: Any, port: int) -> int:
 def _ensure_livekit_container(client: Any, *, name: str, image: str, port: int) -> tuple[Any, int]:
     """Return (container, host_port), reusing a running named container or booting a new one."""
     running = client.containers.list(filters={"name": name})
-    if running:
-        container = running[0]
-        return container, _host_port(container, port)
+    if running and running[0].labels.get("divineruin.acceptance.config") == _CONFIG_DIGEST:
+        return running[0], _host_port(running[0], port)
 
-    # A stopped container from a prior run still holds the name; reusing it as a
-    # running container is impossible, and `run(name=...)` would 409. Remove it
-    # so we can boot a fresh one cleanly.
+    # A stopped container — OR a running one whose config digest is stale (booted
+    # before a config change) — still holds the name; `run(name=...)` would 409 and a
+    # stale running one would silently keep the old config. Remove either so we boot
+    # a fresh one with the current config.
     stale = client.containers.list(all=True, filters={"name": name})
     if stale:
         stale[0].remove(force=True)
 
     container = client.containers.run(
         image,
-        command="--dev --bind 0.0.0.0",
+        command=_COMMAND,
         name=name,
         detach=True,
-        ports={f"{port}/tcp": None},
+        environment={"LIVEKIT_CONFIG": _LIVEKIT_CONFIG},
+        # Signaling auto-mapped (TCP through Docker is fine); the RTC UDP mux port is
+        # fixed-mapped so the advertised candidate port matches the host's.
+        ports={f"{port}/tcp": None, f"{RTC_UDP_PORT}/udp": RTC_UDP_PORT},
         remove=False,
-        labels={"divineruin.acceptance": "1"},
+        labels={"divineruin.acceptance": "1", "divineruin.acceptance.config": _CONFIG_DIGEST},
     )
     return container, _host_port(container, port)

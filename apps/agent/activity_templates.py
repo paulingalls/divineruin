@@ -1,58 +1,12 @@
-"""NPC personalities and context data for async activity narration prompts."""
+"""NPC context data for async activity narration prompts.
 
-# Crafting NPCs
-CRAFTING_NPCS = {
-    "grimjaw_blacksmith": {
-        "name": "Grimjaw",
-        "role": "blacksmith",
-        "personality": "gruff, perfectionist, secretly proud of students who show promise",
-        "speech_style": "short grunts, metaphors about metal and fire, calls mistakes 'offenses to the forge'",
-        "voice_id": "GRIMJAW_BLACKSMITH",
-    },
-}
+Crafting/training personas derive from the canonical NPC record (npcs.get_npc_sync)
+via _npc_persona — no duplicated literals (story-004 shim consolidation). Companion
+errand context stays inline: companions are a separate entity and only companion_kael
+exists in content/npcs.json today.
+"""
 
-# Training mentors
-TRAINING_MENTORS = {
-    "guildmaster_torin": {
-        "name": "Guildmaster Torin",
-        "personality": "pragmatic, decisive, privately exhausted",
-        "speech_style": "direct, wastes no words, occasional dry humor, calls everyone 'recruit'",
-        "voice_id": "GUILDMASTER_TORIN",
-    },
-    "scholar_emris": {
-        "name": "Emris of the Diaspora",
-        "personality": "brilliant, socially awkward, haunted by Aelindra's fall",
-        "speech_style": "rapid and precise when discussing scholarship, halting in casual conversation",
-        "voice_id": "SCHOLAR_EMRIS",
-    },
-    # M9 per-culture martial mentors — one per cultural variant style (story-003). Personas
-    # mirror their content/npcs.json entries so the DM voice stays coherent when narrating a
-    # variant; without these the variant narration would fall back to guildmaster_torin.
-    "mentor_drathian_warleader": {
-        "name": "Warleader Hessa Stormhand",
-        "personality": "blunt, commanding, fiercely proud of clan honor, privately grieving the warriors she has spent",
-        "speech_style": "short declarative commands at a steady carrying volume; thins and slows when she speaks of the dead",
-        "voice_id": "drathian_hessa_v1",
-    },
-    "mentor_keldaran_forgemaster": {
-        "name": "Forge-Master Doran Ironvein",
-        "personality": "precise, unhurried, pragmatic, finds genuine beauty in efficiency",
-        "speech_style": "short level sentences, no wasted word; explains fighting through metalwork, warms only for good craft",
-        "voice_id": "keldaran_doran_v1",
-    },
-    "mentor_thornwarden_elder": {
-        "name": "Elder Senna Rootwarden",
-        "personality": "patient to stillness, listens more than she speaks, gently immovable when the forest is threatened",
-        "speech_style": "long flowing sentences broken by unhurried pauses; disapproval drops to a whisper rather than a shout",
-        "voice_id": "thornwarden_senna_v1",
-    },
-    "mentor_tidecaller_bosun": {
-        "name": "Bosun Marek Tideborn",
-        "personality": "restless, adaptable, fiercely independent, sees patterns in movement others miss",
-        "speech_style": "sentences that flow and wander like a current but reach the point; quickens when danger at sea comes up",
-        "voice_id": "tidecaller_marek_v1",
-    },
-}
+from npcs import get_npc_sync
 
 # Companion errand context
 COMPANION_CONTEXT = {
@@ -177,12 +131,38 @@ Keep it concise and in-character.""",
 }
 
 
+def _npc_persona(npc: dict) -> dict:
+    """Adapt a content NPC record to the persona shape the narration templates expect.
+
+    Bridges personality (list[str] in the expanded schema) to the comma-joined string
+    the prompt renders, and surfaces name/role/speech_style/voice_id.
+    """
+    return {
+        "name": npc["name"],
+        "role": npc.get("role", ""),
+        "personality": ", ".join(npc["personality"]),
+        "speech_style": npc["speech_style"],
+        "voice_id": npc["voice_id"],
+    }
+
+
+def _resolve_persona(npc_id: str, fallback_id: str) -> dict:
+    """Resolve an NPC persona from the canonical catalog, falling back to fallback_id
+    for an unknown id. Raises if the catalog isn't loaded (load_npcs() at startup)."""
+    npc = get_npc_sync(npc_id) or get_npc_sync(fallback_id)
+    if npc is None:
+        raise RuntimeError(f"NPC catalog not loaded — {fallback_id!r} missing (call load_npcs() at startup)")
+    return _npc_persona(npc)
+
+
 def get_crafting_npc(npc_id: str) -> dict:
-    return CRAFTING_NPCS.get(npc_id, CRAFTING_NPCS["grimjaw_blacksmith"])
+    """Crafting-NPC persona derived from the canonical NPC record (falls back to grimjaw)."""
+    return _resolve_persona(npc_id, "grimjaw_blacksmith")
 
 
 def get_training_mentor(mentor_id: str) -> dict:
-    return TRAINING_MENTORS.get(mentor_id, TRAINING_MENTORS["guildmaster_torin"])
+    """Training-mentor persona derived from the canonical NPC record (falls back to torin)."""
+    return _resolve_persona(mentor_id, "guildmaster_torin")
 
 
 def get_companion_context(companion_id: str) -> dict:
