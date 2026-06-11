@@ -40,6 +40,11 @@ ITEM_DURABILITY_HIT = "item_durability_hit"
 QUEST_UPDATED = "quest_updated"
 QUEST_UPDATE = "quest_update"  # client-only alias for QUEST_UPDATED
 
+# Magic (M3.1)
+# Resonance state push: carries {state, current, max} on the game_events topic.
+# Mirror const lands in apps/mobile/src/audio/event-types.ts in story-004.
+RESONANCE_CHANGED = "resonance_changed"
+
 # World
 HOLLOW_CORRUPTION_CHANGED = "hollow_corruption_changed"
 DISPOSITION_CHANGED = "disposition_changed"
