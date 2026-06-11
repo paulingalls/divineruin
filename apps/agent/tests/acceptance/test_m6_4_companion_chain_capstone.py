@@ -57,9 +57,10 @@ _CON_MOD = 2
 
 
 @pytest.fixture(autouse=True)
-def stub_companion_affinity_io():
-    """Override the global autouse stub (tests/conftest.py) so the REAL companion-relationship
-    queries run against the testcontainer — the whole point of this capstone."""
+def stub_companion_hydrate_io():
+    """Override the global autouse hydrate stub (tests/conftest.py) so the REAL companion-
+    relationship queries — including hydrate_companion_state — run against the testcontainer, the
+    whole point of this capstone. Rank/affinity are real by default (no narrow-stub opt-in)."""
     yield
 
 
