@@ -75,6 +75,26 @@ class TestCompanionCombatProfile:
         assert "STR" not in longsword["damage"]
 
     @pytest.mark.asyncio
+    async def test_lira_arcane_bolt_resolves_hit_on_int_not_dex(self):
+        # Debt 785f7399 / story-008: Lira's ranged INT Arcane Bolt must resolve its hit on INT, not
+        # the ranged-default DEX. The translated action carries governing_attribute=intelligence,
+        # and attack_modifier honors it — observable because Lira's INT and DEX modifiers differ.
+        from check_resolution import attack_modifier
+        from rules_engine import attribute_modifier, proficiency_bonus
+
+        comp, _ = await _run_combat_with_companion(CompanionState(id="companion_lira", name="Lira"))
+        bolt = next(a for a in comp.action_pool if a["name"] == "Arcane Bolt")
+        assert bolt["governing_attribute"] == "intelligence"
+        assert bolt.get("ranged") is True  # still ranged, but the hit stat is INT
+
+        attacker = {"attributes": comp.attributes, "level": comp.level}
+        prof = proficiency_bonus(comp.level)
+        int_based = attribute_modifier(comp.attributes["intelligence"]) + prof
+        dex_based = attribute_modifier(comp.attributes["dexterity"]) + prof
+        assert int_based != dex_based  # the INT-vs-DEX choice is observable for Lira
+        assert attack_modifier(attacker, bolt) == int_based
+
+    @pytest.mark.asyncio
     async def test_unknown_companion_id_raises_tool_error(self):
         # A stale/unknown companion id surfaces as a ToolError (the DM-narratable not-found
         # convention), not a raw ValueError that crashes combat init.

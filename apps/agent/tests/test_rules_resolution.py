@@ -190,6 +190,28 @@ class TestAttackModifier:
         # max(STR +2, DEX +1) + prof +1 at L1 = +3
         assert mod == 3
 
+    def test_governing_attribute_uses_that_stat(self):
+        # An explicit governing_attribute (e.g. a companion's INT spell-attack) drives the hit
+        # stat directly, ignoring the melee/ranged/finesse inference (story-008).
+        weapon = {"damage": "1d6", "governing_attribute": "intelligence"}
+        mod = attack_modifier(SAMPLE_PLAYER, weapon)
+        # INT +0, prof +1 at L1 = +1
+        assert mod == 1
+
+    def test_governing_attribute_overrides_ranged(self):
+        # Lira's ranged Arcane Bolt: ranged flag would route DEX, but governing_attribute wins -> INT.
+        weapon = {"damage": "1d6", "ranged": True, "governing_attribute": "intelligence"}
+        mod = attack_modifier(SAMPLE_PLAYER, weapon)
+        # INT +0 (not DEX +1), prof +1 at L1 = +1
+        assert mod == 1
+
+    def test_governing_attribute_dexterity_on_melee(self):
+        # Tam's DEX finesse short sword / Sable's DEX bite: melee would default STR, governing -> DEX.
+        weapon = {"damage": "1d6", "governing_attribute": "dexterity", "properties": []}
+        mod = attack_modifier(SAMPLE_PLAYER, weapon)
+        # DEX +1 (not STR +2), prof +1 at L1 = +2
+        assert mod == 2
+
 
 # --- resolve_skill_check ---
 
