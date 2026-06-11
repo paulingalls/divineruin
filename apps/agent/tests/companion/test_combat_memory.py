@@ -48,27 +48,6 @@ SAMPLE_ENCOUNTER = {
     ],
 }
 
-KAEL_NPC = {
-    "id": "companion_kael",
-    "name": "Kael",
-    "combat_stats": {
-        "hp": 22,
-        "ac": 15,
-        "level": 2,
-        "attributes": {
-            "strength": 15,
-            "dexterity": 13,
-            "constitution": 14,
-            "intelligence": 10,
-            "wisdom": 12,
-            "charisma": 11,
-        },
-        "action_pool": [
-            {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": ["versatile"]},
-        ],
-    },
-}
-
 
 class TestCompanionInCombat:
     @pytest.mark.asyncio
@@ -81,7 +60,6 @@ class TestCompanionInCombat:
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_content = MagicMock()
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
-        mock_content.get_npc = AsyncMock(return_value=KAEL_NPC)
 
         ctx = _make_context()
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
@@ -100,13 +78,14 @@ class TestCompanionInCombat:
         assert len(result["participants"]) == 3
         companion_p = next(p for p in result["participants"] if p["name"] == "Kael")
         assert companion_p["type"] == "companion"
-        assert companion_p["ac"] == 15
-        # Verify the actual combat state participant has correct stats
+        assert companion_p["ac"] == 15  # Kael profile AC at L1 (steps to 17 at L10)
+        # Stats come from the companions.json profile scaler, not npcs.json: at the player's
+        # level 1 / max HP 25, Kael's hp = floor(25 * 0.75 hp_factor) = 18.
         cs = ctx.userdata.combat_state
         kael_p = cs.get_participant("companion_kael")
         assert kael_p is not None
-        assert kael_p.hp_current == 22
-        assert kael_p.hp_max == 22
+        assert kael_p.hp_current == 18
+        assert kael_p.hp_max == 18
 
     @pytest.mark.asyncio
     async def test_start_combat_no_companion_when_absent(self):
@@ -143,7 +122,6 @@ class TestCompanionInCombat:
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_content = MagicMock()
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
-        mock_content.get_npc = AsyncMock(return_value=KAEL_NPC)
 
         ctx = _make_context()
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael", is_conscious=False)

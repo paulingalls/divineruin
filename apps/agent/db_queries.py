@@ -62,6 +62,41 @@ async def get_player_faction_reputation(
     return data.get("value")
 
 
+async def get_companion_relationship(
+    player_id: str,
+    companion_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> dict | None:
+    """Return companion relationship state, or None if no row (M6.4 / story-003).
+
+    Returns {relationship_tier, session_count, affinity, session_memories}. relationship_tier is
+    a denormalized cache for external readers; session_count + affinity are the authoritative
+    HYBRID inputs and every agent-side consumer re-derives the rank via
+    companion_relationship.effective_tier_rank rather than trusting the cached column. Written by
+    db_mutations.upsert_companion_relationship; a missing row means a never-met companion.
+    """
+    _conn = conn or await db.get_pool()
+    row = await _conn.fetchrow(
+        """
+        SELECT relationship_tier, session_count, affinity, session_memories
+        FROM companion_relationships
+        WHERE player_id = $1 AND companion_id = $2
+        """,
+        player_id,
+        companion_id,
+    )
+    if row is None:
+        return None
+    memories = row["session_memories"]
+    return {
+        "relationship_tier": row["relationship_tier"],
+        "session_count": row["session_count"],
+        "affinity": row["affinity"],
+        "session_memories": json.loads(memories) if isinstance(memories, str) else memories,
+    }
+
+
 async def get_npc_dispositions(
     npc_ids: list[str], player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> dict[str, str]:

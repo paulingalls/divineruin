@@ -51,6 +51,21 @@ export type {
   ServiceCost,
   ArchetypeService,
 } from "./role_archetype";
+export type {
+  Companion,
+  TacticalPreference,
+  RelationshipTier,
+  AttackType,
+  ScalingRules,
+  AcThreshold,
+  AttributeScalingStep,
+  CompanionAttack,
+  CompanionPassive,
+  CompanionActive,
+  CompanionReaction,
+  ProgressionMilestone,
+  RelationshipUnlocks,
+} from "./companion";
 export type { Spell, SpellSource, SpellTier } from "./spell";
 export type {
   Milestone,

@@ -62,7 +62,7 @@ def _given_dispatch_scene(harness: SimpleNamespace) -> None:
         session_data = SessionData(
             player_id="player_1",
             location_id="accord_guild_hall",
-            companion=CompanionState(id="companion_kael", name="Kael", relationship_tier=2),
+            companion=CompanionState(id="companion_kael", name="Kael", session_count=4),
         )
         # Brief the dispatch scene with the ids the DM needs — there is no query
         # tool for errands, so the scene context is the realistic id source. STATE

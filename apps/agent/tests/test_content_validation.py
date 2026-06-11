@@ -71,7 +71,9 @@ class TestContentCrossReferences:
                     )
 
     def test_npc_shorthand_in_world_effects_resolves(self):
-        npc_ids = _load_ids("npcs.json")
+        # The 'companion' shorthand resolves into the companions id space (Kael now lives in
+        # companions.json, not npcs.json), so validate against the npcs + companions union.
+        valid_ids = _load_ids("npcs.json") | _load_ids("companions.json")
         quests = _load_json("quests.json")
 
         for quest in quests:
@@ -82,9 +84,14 @@ class TestContentCrossReferences:
                     if m:
                         shorthand = m.group(1)
                         resolved = EFFECT_NPC_MAP.get(shorthand, shorthand)
-                        assert resolved in npc_ids, (
-                            f"Quest '{quest['id']}' world_effect '{effect}' references unknown NPC '{resolved}'"
+                        assert resolved in valid_ids, (
+                            f"Quest '{quest['id']}' world_effect '{effect}' references unknown target '{resolved}'"
                         )
+
+    def test_companion_kael_migrated_out_of_npcs(self):
+        # story-004: Kael is a dedicated Companion (companions.json), no longer an npcs.json entry.
+        assert "companion_kael" not in _load_ids("npcs.json")
+        assert "companion_kael" in _load_ids("companions.json")
 
     def test_location_exits_reference_valid_destinations(self):
         locations = _load_json("locations.json")

@@ -19,6 +19,10 @@ from sample_fixtures import make_context, make_db_mod
 
 from errand_tools import _RESOLVE_POLL_ATTEMPTS, _resolve_companion_errand_impl
 
+# Resolve drives errand_tools -> companion_relationship_queries.apply_errand_affinity (DB).
+# Opt into the narrow rank/affinity stub (root conftest) to stay DB-free (story-007).
+pytestmark = pytest.mark.usefixtures("stub_companion_errand_affinity_io")
+
 
 def _resolve_now(iso="2026-05-22T12:00:00+00:00"):
     return datetime.fromisoformat(iso)

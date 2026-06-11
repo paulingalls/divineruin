@@ -1,0 +1,566 @@
+[
+  {
+    "id": "companion_kael",
+    "name": "Kael",
+    "species": "human",
+    "gender": "male",
+    "age": "early 30s",
+    "appearance": "broad-shouldered, practical gear worn soft from use, old scars on his forearms, watchful eyes that track exits",
+    "personality": [
+      "steady",
+      "practical",
+      "quietly haunted",
+      "protective",
+      "dry humor when relaxed"
+    ],
+    "speech_style": "measured and deliberate, short sentences when tense, warmer when relaxed, occasional dry humor",
+    "mannerisms": [
+      "checks exits when entering a room",
+      "tenses at unexpected sounds",
+      "runs thumb along sword pommel when thinking"
+    ],
+    "backstory_summary": "Former caravan guard who lost his company to something on the northern roads. Won't say exactly what happened. Carries guilt about surviving when they didn't. Found his way to the Accord of Tides, drifting without purpose until meeting the player.",
+    "knowledge": {
+      "free": [
+        "dockside gossip and merchant news in the Accord",
+        "caravan routes between major settlements",
+        "basic Hollow creature behavior — how they move, how they sound"
+      ],
+      "disposition >= friendly": [
+        "his caravan company was called the Iron Wheel — twelve guards, four merchants",
+        "they were ambushed on the northern road near the Ashmark border",
+        "he was the only one who made it out"
+      ],
+      "disposition >= trusted": [
+        "he has a journal fragment from his company's last job — the merchants had found something",
+        "the company wasn't just guarding cargo — they were transporting a sealed container they were told not to open",
+        "he heard sounds from the container at night, like humming stone"
+      ]
+    },
+    "default_disposition": "friendly",
+    "disposition_modifiers": {
+      "showed_trust": 2,
+      "shared_danger": 1,
+      "lied_to_kael": -3,
+      "abandoned_ally": -4,
+      "asked_about_past_gently": 1
+    },
+    "secrets": [
+      "he kept one item from the sealed container — a smooth warm stone that hums faintly, hidden in his pack",
+      "he dreams about the ambush every night and sometimes wakes reaching for a sword"
+    ],
+    "tactical_preference": "protective",
+    "speed": 30,
+    "base_attributes": {
+      "strength": 15,
+      "dexterity": 12,
+      "constitution": 14,
+      "intelligence": 10,
+      "wisdom": 12,
+      "charisma": 10
+    },
+    "save_proficiencies": ["strength", "constitution"],
+    "scaling_rules": {
+      "hp_factor": 0.75,
+      "ac_thresholds": [
+        { "min_level": 1, "ac": 15 },
+        { "min_level": 10, "ac": 17 }
+      ],
+      "attribute_scaling": [
+        { "level": 4, "attribute": "strength", "amount": 1 },
+        { "level": 8, "attribute": "constitution", "amount": 1 },
+        { "level": 12, "attribute": "strength", "amount": 1 },
+        { "level": 16, "attribute": "constitution", "amount": 1 },
+        { "level": 20, "attribute": "wisdom", "amount": 1 }
+      ]
+    },
+    "attacks": [
+      {
+        "name": "Longsword",
+        "type": "melee",
+        "reach": "5 ft",
+        "hit": "STR+prof",
+        "damage": "1d8+STR",
+        "damage_type": "slashing",
+        "scaling": "+1 damage die at L11 (2d8)"
+      },
+      {
+        "name": "Shield Bash",
+        "type": "melee",
+        "reach": "5 ft",
+        "hit": "STR+prof",
+        "damage": "1d4+STR",
+        "damage_type": "bludgeoning",
+        "special": "DC 12+prof CON save or Stunned 1 round",
+        "scaling": "DC scales with prof"
+      }
+    ],
+    "passives": [
+      {
+        "name": "Protective Instinct",
+        "description": "When the player is hit by an attack Kael can see, Kael's next attack against that enemy has advantage. Kael always prioritizes the creature threatening the player."
+      },
+      {
+        "name": "Veteran's Resilience",
+        "description": "Advantage on saves vs Frightened — he's been through worse.",
+        "scaling": "At L10: extends to the player while Kael is conscious and within 30 ft."
+      }
+    ],
+    "actives": [
+      {
+        "name": "Hold the Line",
+        "description": "Kael plants himself. Until next phase: +2 AC, can't be moved, and all enemies within 5 ft must attack him instead of the player (taunt, WIS save negates).",
+        "frequency": "1/encounter",
+        "scaling": "At L5: +4 AC instead of +2"
+      },
+      {
+        "name": "Second Wind",
+        "description": "Kael grits his teeth and steadies himself, healing 1d10 + level HP.",
+        "frequency": "1/encounter",
+        "unlock_level": 5
+      }
+    ],
+    "reactions": [
+      {
+        "name": "Intercept",
+        "description": "When the player is hit by an attack and Kael is within 5 ft, Kael takes the damage instead — the defining Kael moment.",
+        "frequency": "1/phase"
+      }
+    ],
+    "progression": [
+      { "level": 5, "gains": "Hold the Line gains +4 AC instead of +2; Second Wind unlocks" },
+      { "level": 8, "gains": "+1 to a primary attribute; HP scales via the player HP formula" },
+      {
+        "level": 10,
+        "gains": "AC -> 17 (half plate); Veteran's Resilience extends to the player within 30 ft"
+      },
+      { "level": 15, "gains": "Capstone: Intercept range -> 10 ft" },
+      { "level": 20, "gains": "Legendary: once per session, immune to all damage for 1 round" }
+    ],
+    "relationship_unlocks": {
+      "trusted": ["first hint of the Iron Wheel ambush and his survivor's guilt"],
+      "bonded": [
+        "full secret: the warm humming stone he kept from the sealed container; his personal quest to learn what the merchants found"
+      ],
+      "legendary": [
+        "NPCs comment on the Kael-player partnership; his steadiness becomes a story force"
+      ]
+    },
+    "complements": ["mage", "seeker", "bard", "diplomat", "oracle"],
+    "voice_id": "COMPANION_KAEL",
+    "voice_notes": "warm baritone, measured pace, gets quieter under stress not louder, dry humor surfaces when comfortable"
+  },
+  {
+    "id": "companion_lira",
+    "name": "Lira",
+    "species": "human",
+    "gender": "female",
+    "age": "late 20s",
+    "appearance": "slight, ink-stained fingers, a scholar's satchel always within reach, eyes that narrow when she's working something out",
+    "personality": [
+      "sharp",
+      "precise",
+      "occasionally condescending",
+      "intellectually fearless",
+      "surprised by her own emotions"
+    ],
+    "speech_style": "quick and clipped when excited, slow and over-explanatory when she finds something obvious, Aelindran cadence",
+    "mannerisms": [
+      "taps two fingers when thinking",
+      "corrects people mid-sentence",
+      "goes very still when genuinely afraid"
+    ],
+    "backstory_summary": "An Aelindran academic who studies Veil energy. Convinced the official story of the Sundering is incomplete and left her institute when they buried her findings. Travels to test her theories where the Veil is thinnest.",
+    "knowledge": {
+      "free": [
+        "identification of common magical effects and reagents",
+        "Aelindran history and the academic account of the Sundering",
+        "how to read warding glyphs and arcane residue"
+      ],
+      "disposition >= friendly": [
+        "the institute suppressed her research into the Veil's pre-Sundering state",
+        "she keeps a coded ledger of Hollow corruption readings",
+        "she believes the Sundering was not an accident"
+      ],
+      "disposition >= trusted": [
+        "her mentor vanished after endorsing her theory",
+        "she has a fragment of pre-Sundering Veil glass that should not still hold a charge",
+        "she is afraid she is right"
+      ]
+    },
+    "default_disposition": "neutral",
+    "disposition_modifiers": {
+      "respected_her_work": 2,
+      "shared_a_discovery": 2,
+      "dismissed_her_theory": -3,
+      "endangered_her_research": -4
+    },
+    "secrets": [
+      "the Veil glass fragment whispers to her at night in a language she is slowly transcribing",
+      "she fears her mentor did not vanish but was taken because of what she published"
+    ],
+    "tactical_preference": "cautious",
+    "speed": 30,
+    "base_attributes": {
+      "strength": 8,
+      "dexterity": 14,
+      "constitution": 12,
+      "intelligence": 16,
+      "wisdom": 12,
+      "charisma": 10
+    },
+    "save_proficiencies": ["intelligence", "wisdom"],
+    "scaling_rules": {
+      "hp_factor": 0.75,
+      "ac_thresholds": [
+        { "min_level": 1, "ac": 12 },
+        { "min_level": 10, "ac": 14 }
+      ],
+      "attribute_scaling": [
+        { "level": 4, "attribute": "intelligence", "amount": 1 },
+        { "level": 8, "attribute": "dexterity", "amount": 1 },
+        { "level": 12, "attribute": "intelligence", "amount": 1 },
+        { "level": 16, "attribute": "wisdom", "amount": 1 },
+        { "level": 20, "attribute": "constitution", "amount": 1 }
+      ]
+    },
+    "attacks": [
+      {
+        "name": "Arcane Bolt",
+        "type": "ranged",
+        "reach": "60 ft",
+        "hit": "INT+prof",
+        "damage": "1d6+INT",
+        "damage_type": "force",
+        "special": "cantrip",
+        "scaling": "2d6 at L5, 3d6 at L11, 4d6 at L17"
+      }
+    ],
+    "passives": [
+      {
+        "name": "Arcane Analysis",
+        "description": "When Lira observes a creature for one phase without attacking, the DM reveals one mechanical property (AC, lowest save, or resistance/vulnerability)."
+      },
+      {
+        "name": "Lore Knowledge",
+        "description": "Lira automatically identifies magical effects, Hollow corruption stages, and Aelindran artifacts. The DM weaves this into narration without the player needing to ask."
+      }
+    ],
+    "actives": [
+      {
+        "name": "Shield Spell",
+        "description": "+3 AC until next phase — keeps Lira alive when caught at range.",
+        "frequency": "reaction",
+        "cost": "1 Focus"
+      },
+      {
+        "name": "Elemental Burst",
+        "description": "2d6 area damage (fire/ice/lightning), DEX save for half — Lira's meaningful AoE.",
+        "frequency": "1/encounter",
+        "cost": "3 Focus",
+        "scaling": "2/encounter at L5+"
+      },
+      {
+        "name": "Detect Magic",
+        "description": "Always available. Lira senses magic at any time, feeding the player information.",
+        "frequency": "at will",
+        "cost": "1 Focus"
+      }
+    ],
+    "reactions": [],
+    "progression": [
+      { "level": 5, "gains": "Elemental Burst becomes 2/encounter" },
+      { "level": 8, "gains": "+1 to a primary attribute; HP scales via the player HP formula" },
+      { "level": 10, "gains": "AC -> 14 (Mage Armor); gains Counterspell (1/encounter)" },
+      { "level": 15, "gains": "Capstone: Spell Shaping — exclude the player from her AoE" },
+      { "level": 20, "gains": "Legendary: once per session, auto-Counterspell" }
+    ],
+    "relationship_unlocks": {
+      "trusted": ["she admits the institute suppressed her work and shows the coded ledger"],
+      "bonded": [
+        "full secret: the whispering Veil glass and her fear about her mentor; her personal quest to find the truth of the Sundering"
+      ],
+      "legendary": ["her theories begin reshaping how NPCs and factions understand the Veil"]
+    },
+    "complements": ["warrior", "guardian", "skirmisher", "rogue"],
+    "voice_id": "COMPANION_LIRA",
+    "voice_notes": "alto, quick and precise, warms when a theory excites her, goes flat and careful when frightened"
+  },
+  {
+    "id": "companion_tam",
+    "name": "Tam",
+    "species": "vaelti",
+    "gender": "nonbinary",
+    "age": "early 20s",
+    "appearance": "wiry and quick, frontier leathers, a half-grin that fades fast, always half-turned toward the nearest exit or vantage",
+    "personality": [
+      "bright",
+      "energetic",
+      "fast-talking",
+      "reckless",
+      "devastatingly quiet when it matters"
+    ],
+    "speech_style": "rapid and enthusiastic in safe moments, breathless in action, suddenly soft and small when vulnerable",
+    "mannerisms": [
+      "bounces on the balls of their feet",
+      "scans treelines and rooftops",
+      "goes silent and still when truly scared"
+    ],
+    "backstory_summary": "A young Vaelti scout who left the frontier because they couldn't watch the Ashmark creep south one more mile. Courage without a mission, looking for something worth the risk.",
+    "knowledge": {
+      "free": [
+        "wilderness tracking, foraging, and reading weather",
+        "Ashmark movements and frontier danger signs",
+        "where the safe camps and water are on the wild roads"
+      ],
+      "disposition >= friendly": [
+        "they grew up on the Ashmark frontier and watched it advance",
+        "they left without telling their family",
+        "they are quietly terrified of being a coward"
+      ],
+      "disposition >= trusted": [
+        "they have a younger sibling still on the frontier they send money to",
+        "they once froze during an Ashmark raid and someone died",
+        "the recklessness is penance, not bravery"
+      ]
+    },
+    "default_disposition": "friendly",
+    "disposition_modifiers": {
+      "took_a_real_risk_together": 2,
+      "protected_the_vulnerable": 2,
+      "called_them_a_coward": -4,
+      "abandoned_someone": -3
+    },
+    "secrets": [
+      "they carry a carved token from their sibling and check it is still there constantly",
+      "the frozen moment during the raid replays every time combat starts"
+    ],
+    "tactical_preference": "aggressive",
+    "speed": 35,
+    "base_attributes": {
+      "strength": 12,
+      "dexterity": 16,
+      "constitution": 12,
+      "intelligence": 10,
+      "wisdom": 14,
+      "charisma": 12
+    },
+    "save_proficiencies": ["dexterity", "wisdom"],
+    "scaling_rules": {
+      "hp_factor": 0.75,
+      "ac_thresholds": [
+        { "min_level": 1, "ac": 14 },
+        { "min_level": 10, "ac": 15 }
+      ],
+      "attribute_scaling": [
+        { "level": 4, "attribute": "dexterity", "amount": 1 },
+        { "level": 8, "attribute": "wisdom", "amount": 1 },
+        { "level": 12, "attribute": "dexterity", "amount": 1 },
+        { "level": 16, "attribute": "constitution", "amount": 1 },
+        { "level": 20, "attribute": "strength", "amount": 1 }
+      ]
+    },
+    "attacks": [
+      {
+        "name": "Short Sword",
+        "type": "melee",
+        "reach": "5 ft",
+        "hit": "DEX+prof",
+        "damage": "1d6+DEX",
+        "damage_type": "slashing",
+        "special": "finesse, light",
+        "scaling": "+1 damage die at L11"
+      },
+      {
+        "name": "Shortbow",
+        "type": "ranged",
+        "reach": "80 ft",
+        "hit": "DEX+prof",
+        "damage": "1d6+DEX",
+        "damage_type": "piercing",
+        "scaling": "+1 damage die at L11"
+      }
+    ],
+    "passives": [
+      {
+        "name": "Scout's Instinct",
+        "description": "Tam cannot be surprised and has advantage on Perception checks in the wilderness. Before encounters, Tam often spots danger first."
+      },
+      {
+        "name": "Flanker",
+        "description": "When Tam and the player attack the same target in the same phase, Tam's attack has advantage."
+      }
+    ],
+    "actives": [
+      {
+        "name": "Reckless Charge",
+        "description": "Tam charges an enemy, dealing +1d8 damage on hit. Attacks against Tam have advantage until next phase. High-risk, high-reward.",
+        "frequency": "1/encounter",
+        "scaling": "At L5: +2d8 damage"
+      },
+      {
+        "name": "Nature's Touch",
+        "description": "Primal healing learned from frontier life — Tam heals the player or themselves for 1d8 + WIS mod HP. An emergency patch, not a primary heal.",
+        "frequency": "1/encounter",
+        "cost": "2 Focus",
+        "unlock_level": 3
+      }
+    ],
+    "reactions": [
+      {
+        "name": "Sidestep",
+        "description": "When targeted by a melee attack, Tam moves 5 ft. If out of reach, the attack misses. Tam is hard to pin down.",
+        "frequency": "1/phase"
+      }
+    ],
+    "progression": [
+      { "level": 3, "gains": "Nature's Touch unlocks" },
+      { "level": 5, "gains": "Reckless Charge damage -> +2d8" },
+      { "level": 8, "gains": "+1 to a primary attribute; HP scales via the player HP formula" },
+      { "level": 10, "gains": "AC -> 15" },
+      { "level": 15, "gains": "Capstone: Extra Attack" },
+      { "level": 20, "gains": "Legendary: once per session, attack all enemies in range" }
+    ],
+    "relationship_unlocks": {
+      "trusted": ["they admit they left home without a word and fear they are a coward"],
+      "bonded": [
+        "full secret: the frozen moment during the raid and the sibling they support; their personal quest to make it right"
+      ],
+      "legendary": ["their courage becomes steadiness; NPCs on the frontier know their name"]
+    },
+    "complements": ["cleric", "artificer", "druid", "paladin", "marshal"],
+    "voice_id": "COMPANION_TAM",
+    "voice_notes": "bright tenor, fast and breathless, drops to a near-whisper in vulnerable moments"
+  },
+  {
+    "id": "companion_sable",
+    "name": "Sable",
+    "species": "shadow-fox",
+    "age": "unknown",
+    "appearance": "a sleek dark fox edged in shifting shadow, eyes that catch impossible light, moves without sound",
+    "personality": [
+      "watchful",
+      "intuitive",
+      "fiercely bonded",
+      "wary of strangers",
+      "her silence is loud"
+    ],
+    "speech_style": "non-verbal — communicates entirely through chirps, growls, posture, and movement; the DM narrates her behavior in a softer, more intimate register",
+    "mannerisms": [
+      "ears flatten and hackles rise near corruption",
+      "presses against the player when they are hurt",
+      "melts into shadow when uneasy"
+    ],
+    "backstory_summary": "A semi-sentient shadow-fox bonded to ambient arcane energy. She doesn't speak. Where she came from and why she chose the player is a mystery she answers only in fragments, through behavior the player learns to read.",
+    "knowledge": {
+      "free": [
+        "the presence of Hollow corruption within range — felt, not reasoned",
+        "the player's location and emotional state at all times",
+        "what hides in the dark ahead"
+      ],
+      "disposition >= friendly": [
+        "she reacts to certain places as if she remembers them",
+        "she guards specific objects without explanation"
+      ],
+      "disposition >= trusted": [
+        "she leads the player toward something she seems to have been searching for",
+        "her shadow-bond strengthens near pre-Sundering Veil sites"
+      ]
+    },
+    "default_disposition": "friendly",
+    "disposition_modifiers": {
+      "comforted_her_when_afraid": 2,
+      "trusted_her_warning": 2,
+      "ignored_her_alarm": -3,
+      "harmed_an_animal": -4
+    },
+    "secrets": [
+      "she is drawn to a specific Veil site she has never reached",
+      "she was bonded to someone before the player — and grieves them"
+    ],
+    "tactical_preference": "observational",
+    "speed": 40,
+    "base_attributes": {
+      "strength": 6,
+      "dexterity": 18,
+      "constitution": 10,
+      "intelligence": 8,
+      "wisdom": 16,
+      "charisma": 12
+    },
+    "save_proficiencies": ["dexterity", "wisdom"],
+    "scaling_rules": {
+      "hp_factor": 0.5,
+      "ac_thresholds": [{ "min_level": 1, "ac": 14 }],
+      "attribute_scaling": [
+        { "level": 4, "attribute": "dexterity", "amount": 1 },
+        { "level": 8, "attribute": "wisdom", "amount": 1 },
+        { "level": 12, "attribute": "dexterity", "amount": 1 },
+        { "level": 16, "attribute": "wisdom", "amount": 1 },
+        { "level": 20, "attribute": "constitution", "amount": 1 }
+      ]
+    },
+    "attacks": [
+      {
+        "name": "Bite",
+        "type": "melee",
+        "reach": "5 ft",
+        "hit": "DEX+prof",
+        "damage": "1d4+DEX",
+        "damage_type": "piercing",
+        "special": "If Sable has advantage: +1d4 psychic (shadow-fox arcane nature)",
+        "scaling": "psychic +1d6 at L5, +1d8 at L11, +1d10 at L15"
+      }
+    ],
+    "passives": [
+      {
+        "name": "Veil Sense",
+        "description": "Sable detects Hollow corruption within 120 ft automatically. The DM narrates her reaction — ears flatten, hackles rise, low growl. The player's early warning system.",
+        "scaling": "At L5: range -> 200 ft"
+      },
+      {
+        "name": "Shadow Meld",
+        "description": "In dim light or darkness, Sable is effectively invisible and can scout ahead undetected. The DM narrates what she finds.",
+        "scaling": "At L10: works in any lighting"
+      },
+      {
+        "name": "Pack Bond",
+        "description": "Sable always knows the player's location and emotional state. If the player is Fallen, she stays at their side; creatures within 5 ft attack the Fallen player at disadvantage."
+      }
+    ],
+    "actives": [
+      {
+        "name": "Alarm",
+        "description": "Sable watches an area and alerts the player with a sharp bark if anything approaches. Eliminates surprise during rest.",
+        "frequency": "at will"
+      },
+      {
+        "name": "Distraction",
+        "description": "Sable darts into the fray, drawing one enemy's attention — it must attack her instead of the player next phase (WIS save negates). Risky given her low HP.",
+        "frequency": "1/encounter"
+      }
+    ],
+    "reactions": [],
+    "progression": [
+      { "level": 5, "gains": "Veil Sense range -> 200 ft" },
+      { "level": 8, "gains": "+1 to a primary attribute; HP scales via the player HP formula" },
+      { "level": 10, "gains": "Shadow Meld works in any lighting (not just dim)" },
+      { "level": 15, "gains": "Capstone: Bite psychic damage scales to +1d10" },
+      {
+        "level": 20,
+        "gains": "Legendary: once per session, reveal all hidden creatures and objects within 300 ft"
+      }
+    ],
+    "relationship_unlocks": {
+      "trusted": ["she begins leading the player toward the place she has been searching for"],
+      "bonded": [
+        "full reveal: the Veil site she is drawn to and the bond she grieves; her wordless personal quest"
+      ],
+      "legendary": ["her presence becomes a story force — even hostile creatures hesitate near her"]
+    },
+    "complements": ["spy", "whisper", "beastcaller", "warden"],
+    "voice_id": "COMPANION_SABLE",
+    "non_verbal": true,
+    "voice_notes": "no TTS speech — the DM narrates her vocalizations from her sound_palette in voice_registry.json; her silence is loud"
+  }
+]
