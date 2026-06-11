@@ -1,5 +1,7 @@
 import { createStore } from "zustand/vanilla";
 
+import { BrandColors } from "@/constants/theme";
+
 // --- Types ---
 
 export type OverlayType =
@@ -65,6 +67,21 @@ export interface SpecializationChoiceState {
   options: SpecializationOption[];
 }
 
+// Qualitative Resonance state (M3.1). Mirrors the agent's ResState — the HUD shows
+// only this label, never the underlying number (audio-first / no-number spec).
+export type ResonanceState = "stable" | "flickering" | "overreach";
+
+// Qualitative display for each Resonance state — label + accent color, never a
+// number. Calm ash for Stable, the Veil teal (hollow) for Flickering, danger ember
+// for Overreach. Lives here (not resonance-tracker.tsx) so it is unit-testable
+// without importing react-native — the bun suite has no JSX renderer and the RN mock
+// omits View/Text, so a .tsx import throws at module load.
+export const RESONANCE_DISPLAY: Record<ResonanceState, { label: string; color: string }> = {
+  stable: { label: "Stable", color: BrandColors.ash },
+  flickering: { label: "Flickering", color: BrandColors.hollow },
+  overreach: { label: "Overreach", color: BrandColors.ember },
+};
+
 // --- Store ---
 
 interface HudState {
@@ -73,6 +90,7 @@ interface HudState {
   activeObjective: ActiveObjective | null;
   questObjectiveVisible: boolean;
   combatState: CombatTrackerState | null;
+  resonanceState: ResonanceState | null;
   creationCards: CreationCard[];
   selectedCreationCard: string | null;
   specializationChoice: SpecializationChoiceState | null;
@@ -90,6 +108,8 @@ interface HudState {
 
   setCombatState: (state: CombatTrackerState) => void;
   clearCombatState: () => void;
+
+  setResonanceState: (state: ResonanceState) => void;
 
   setCreationCards: (cards: CreationCard[]) => void;
   setSelectedCreationCard: (id: string | null) => void;
@@ -113,6 +133,7 @@ const INITIAL: Pick<
   | "activeObjective"
   | "questObjectiveVisible"
   | "combatState"
+  | "resonanceState"
   | "creationCards"
   | "selectedCreationCard"
   | "specializationChoice"
@@ -122,6 +143,7 @@ const INITIAL: Pick<
   activeObjective: null,
   questObjectiveVisible: false,
   combatState: null,
+  resonanceState: null,
   creationCards: [],
   selectedCreationCard: null,
   specializationChoice: null,
@@ -172,6 +194,8 @@ export const hudStore = createStore<HudState>((set, get) => ({
 
   setCombatState: (state) => set({ combatState: state }),
   clearCombatState: () => set({ combatState: null }),
+
+  setResonanceState: (state) => set({ resonanceState: state }),
 
   setCreationCards: (cards) => {
     const current = get().creationCards;

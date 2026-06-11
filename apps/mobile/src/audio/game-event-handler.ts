@@ -11,7 +11,12 @@ import { transcriptStore } from "@/stores/transcript-store";
 import { hudStore } from "@/stores/hud-store";
 import { panelStore } from "@/stores/panel-store";
 import { portraitStore } from "@/stores/portrait-store";
-import type { Combatant, CombatTrackerState, CreationCard } from "@/stores/hud-store";
+import type {
+  Combatant,
+  CombatTrackerState,
+  CreationCard,
+  ResonanceState,
+} from "@/stores/hud-store";
 import type {
   InventoryItem,
   QuestView,
@@ -42,6 +47,12 @@ const VALID_MUSIC_STATES = new Set<MusicState>([
 ]);
 
 const VALID_DIFFICULTIES = new Set<CombatDifficulty>(["moderate", "hard"]);
+
+export const VALID_RESONANCE_STATES = new Set<ResonanceState>([
+  "stable",
+  "flickering",
+  "overreach",
+]);
 
 function parseRarity(value: unknown): ItemRarity {
   return typeof value === "string" && VALID_RARITIES.has(value as ItemRarity)
@@ -440,6 +451,14 @@ export function handleGameEvent(event: DataChannelEvent): void {
         characterStore
           .getState()
           .updateHp(event.current, typeof event.max === "number" ? event.max : undefined);
+      }
+      break;
+
+    case E.RESONANCE_CHANGED:
+      // HUD shows the qualitative state only; current/max are ignored. Unknown
+      // states are dropped (fail-safe) rather than corrupting the tracker.
+      if (VALID_RESONANCE_STATES.has(event.state as ResonanceState)) {
+        hudStore.getState().setResonanceState(event.state as ResonanceState);
       }
       break;
 
