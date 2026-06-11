@@ -36,7 +36,18 @@ class TestUpdatePlayerResonance:
 class TestReadPlayerResonance:
     async def test_derives_state_from_stored_current(self):
         # current is stored; state is derived via resonance.get_resonance_state.
-        for current, state in [(2, "stable"), (7, "flickering"), (10, "overreach")]:
+        # Includes the band-edge values (4/5, 8/9) so the read-derivation contract
+        # guards an off-by-one even before the story-005 real-DB round-trip lands.
+        cases = [
+            (2, "stable"),
+            (4, "stable"),
+            (5, "flickering"),
+            (7, "flickering"),
+            (8, "flickering"),
+            (9, "overreach"),
+            (10, "overreach"),
+        ]
+        for current, state in cases:
             conn = AsyncMock()
             conn.fetchrow.return_value = {"current": str(current)}
             out = await db_mutations_resonance.read_player_resonance("p1", conn=conn)
