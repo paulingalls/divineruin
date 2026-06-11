@@ -36,12 +36,9 @@ test("resonanceState defaults to null (tracker hidden)", () => {
   expect(hudStore.getState().resonanceState).toBeNull();
 });
 
-test("setResonanceState updates the store; clearResonanceState resets it to null", () => {
+test("setResonanceState updates the store", () => {
   hudStore.getState().setResonanceState("flickering");
   expect(hudStore.getState().resonanceState).toBe("flickering");
-
-  hudStore.getState().clearResonanceState();
-  expect(hudStore.getState().resonanceState).toBeNull();
 });
 
 test("reset() clears resonanceState", () => {

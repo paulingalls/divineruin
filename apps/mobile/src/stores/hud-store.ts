@@ -110,7 +110,6 @@ interface HudState {
   clearCombatState: () => void;
 
   setResonanceState: (state: ResonanceState) => void;
-  clearResonanceState: () => void;
 
   setCreationCards: (cards: CreationCard[]) => void;
   setSelectedCreationCard: (id: string | null) => void;
@@ -197,7 +196,6 @@ export const hudStore = createStore<HudState>((set, get) => ({
   clearCombatState: () => set({ combatState: null }),
 
   setResonanceState: (state) => set({ resonanceState: state }),
-  clearResonanceState: () => set({ resonanceState: null }),
 
   setCreationCards: (cards) => {
     const current = get().creationCards;
