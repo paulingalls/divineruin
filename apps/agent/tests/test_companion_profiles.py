@@ -176,23 +176,45 @@ class TestActionPool:
     """companion_attacks_to_action_pool translates the profile's NARRATIVE attack notation
     (damage "1d8+STR", hit "STR+prof") into the MECHANICAL action dicts the combat resolver
     consumes (plain dice + attributes-supply-the-mod). Attacks only — actives/reactions are
-    DM-narrated. ranged:True routes the resolver's DEX branch (attack_modifier reads the
-    top-level 'ranged' key, NOT properties)."""
+    DM-narrated. The per-attack governing_attribute (derived from the hit field) drives the
+    resolver's hit stat (story-008); ranged:True is still emitted for ranged attacks (range/reach
+    narration) but no longer determines the hit stat."""
 
     def test_kael_melee_attacks(self):
         kael = get_companion_profile("companion_kael")
         pool = companion_attacks_to_action_pool(kael)
+        # hit "STR+prof" -> governing_attribute strength.
         assert pool == [
-            {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []},
-            {"name": "Shield Bash", "damage": "1d4", "damage_type": "bludgeoning", "properties": []},
+            {
+                "name": "Longsword",
+                "damage": "1d8",
+                "damage_type": "slashing",
+                "properties": [],
+                "governing_attribute": "strength",
+            },
+            {
+                "name": "Shield Bash",
+                "damage": "1d4",
+                "damage_type": "bludgeoning",
+                "properties": [],
+                "governing_attribute": "strength",
+            },
         ]
 
     def test_lira_ranged_attack_sets_ranged_flag(self):
         lira = get_companion_profile("companion_lira")
         pool = companion_attacks_to_action_pool(lira)
-        # Arcane Bolt is type=ranged -> top-level ranged:True (resolver uses DEX). damage strips +INT.
+        # Arcane Bolt is type=ranged -> top-level ranged:True. hit "INT+prof" -> governing INT
+        # (the resolver uses INT, NOT the ranged-default DEX). damage strips +INT.
         assert pool == [
-            {"name": "Arcane Bolt", "damage": "1d6", "damage_type": "force", "properties": [], "ranged": True}
+            {
+                "name": "Arcane Bolt",
+                "damage": "1d6",
+                "damage_type": "force",
+                "properties": [],
+                "governing_attribute": "intelligence",
+                "ranged": True,
+            }
         ]
 
     def test_tam_mixed_melee_and_ranged(self):
@@ -202,6 +224,9 @@ class TestActionPool:
         assert by_name["Short Sword"].get("ranged") is None  # melee -> no ranged key
         assert by_name["Shortbow"]["ranged"] is True
         assert by_name["Short Sword"]["damage"] == "1d6"  # +DEX stripped
+        # Both Tam attacks are DEX (hit "DEX+prof"); the melee short sword resolves on DEX, not STR.
+        assert by_name["Short Sword"]["governing_attribute"] == "dexterity"
+        assert by_name["Shortbow"]["governing_attribute"] == "dexterity"
 
     def test_every_companion_attack_yields_a_dice_term(self):
         for cid in _IDS:
@@ -215,6 +240,14 @@ class TestActionPool:
         broken["attacks"][0]["damage"] = "STR"
         bad_profile = parse_companion_row("companion_kael", broken)
         with pytest.raises(ValueError, match="damage"):
+            companion_attacks_to_action_pool(bad_profile)
+
+    def test_malformed_hit_without_attribute_raises(self):
+        # A hit expression with no recognized attribute token can't yield a governing stat -> fail loud.
+        broken = copy.deepcopy(_row("companion_kael"))
+        broken["attacks"][0]["hit"] = "prof"
+        bad_profile = parse_companion_row("companion_kael", broken)
+        with pytest.raises(ValueError, match="hit"):
             companion_attacks_to_action_pool(bad_profile)
 
 

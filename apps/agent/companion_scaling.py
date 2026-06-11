@@ -20,6 +20,17 @@ from companion_profiles import Companion
 # attacker's attributes — those are dropped before dice_roll ever sees the notation.
 _DICE_TERM = re.compile(r"^\d*d?\d+$")
 
+# Maps a hit-expression attribute abbreviation to the full attribute key the resolver indexes
+# (player_data["attributes"]). The hit field is the SSOT for a companion attack's governing stat.
+_HIT_ATTR = {
+    "STR": "strength",
+    "DEX": "dexterity",
+    "CON": "constitution",
+    "INT": "intelligence",
+    "WIS": "wisdom",
+    "CHA": "charisma",
+}
+
 
 @dataclass(frozen=True)
 class ScaledCompanionStats:
@@ -59,21 +70,25 @@ def companion_attacks_to_action_pool(profile: Companion) -> list[dict]:
     content/companions.json stores attacks human-readably (damage "1d8+STR", hit "STR+prof",
     type "melee"/"ranged"). The deterministic resolver (check_resolution.resolve_attack) instead
     expects plain dice notation and supplies the attribute/proficiency bonus itself from the
-    attacker's attributes. This builds the {name, damage, damage_type, properties[, ranged]}
-    dicts the resolver + combat_turn.py consume.
+    attacker's attributes. This builds the {name, damage, damage_type, properties,
+    governing_attribute[, ranged]} dicts the resolver + combat_turn.py consume.
 
     Attacks ONLY — actives/reactions/passives are non-damaging narrative abilities with no
-    mechanical resolver; the DM narrates those from the profile. `ranged: True` (a top-level key
-    attack_modifier reads) routes the resolver's DEX branch for ranged attacks; melee omits it
-    and resolves via STR. INT-spell / finesse-melee hit-stat fidelity is a known gap.
+    mechanical resolver; the DM narrates those from the profile. `governing_attribute` (derived
+    from the attack's hit field, e.g. "INT+prof" -> "intelligence") drives the resolver's hit
+    stat per-attack (story-008), so Lira's INT bolt and Tam's DEX finesse melee resolve correctly.
+    `ranged: True` is still emitted for ranged attacks (range/reach narration) but no longer
+    determines the hit stat.
     """
     pool: list[dict] = []
     for attack in profile.attacks:
+        ctx = f"{profile.id}.{attack.name}"
         action: dict = {
             "name": attack.name,
-            "damage": _strip_to_dice_notation(attack.damage, f"{profile.id}.{attack.name}"),
+            "damage": _strip_to_dice_notation(attack.damage, ctx),
             "damage_type": attack.damage_type,
             "properties": [],
+            "governing_attribute": _hit_to_governing_attribute(attack.hit, ctx),
         }
         if attack.type == "ranged":
             action["ranged"] = True
@@ -93,3 +108,14 @@ def _strip_to_dice_notation(damage: str, ctx: str) -> str:
     if not kept:
         raise ValueError(f"{ctx} damage {damage!r} has no dice/int term after stripping modifiers")
     return "+".join(kept)
+
+
+def _hit_to_governing_attribute(hit: str, ctx: str) -> str:
+    """Extract the governing attribute from a narrative hit expression ("INT+prof" ->
+    "intelligence", "DEX+prof" -> "dexterity"). Fail loud (consistent with _strip_to_dice_notation)
+    if no recognized attribute token is present — the resolver needs a real attribute to index."""
+    for term in hit.replace("+", " ").split():
+        full = _HIT_ATTR.get(term.strip().upper())
+        if full:
+            return full
+    raise ValueError(f"{ctx} hit {hit!r} has no recognized attribute token")
