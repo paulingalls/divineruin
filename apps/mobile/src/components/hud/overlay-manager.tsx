@@ -6,6 +6,7 @@ import { useStore } from "zustand";
 import { hudStore, type OverlayEntry } from "@/stores/hud-store";
 import { DiceRollOverlay } from "./dice-roll-overlay";
 import { CombatTracker } from "./combat-tracker";
+import { ResonanceTracker } from "./resonance-tracker";
 import { ItemCardOverlay } from "./item-card-overlay";
 import { QuestUpdateToast } from "./quest-update-toast";
 import { XpToast } from "./xp-toast";
@@ -65,6 +66,7 @@ function TapToDismissOverlay({ overlay }: { overlay: OverlayEntry }) {
 export function OverlayManager() {
   const overlays = useStore(hudStore, (s) => s.overlays);
   const combatState = useStore(hudStore, (s) => s.combatState);
+  const resonanceState = useStore(hudStore, (s) => s.resonanceState);
   const creationCards = useStore(hudStore, (s) => s.creationCards);
   const specializationChoice = useStore(hudStore, (s) => s.specializationChoice);
 
@@ -77,6 +79,9 @@ export function OverlayManager() {
 
       {/* Bottom-anchored combat tracker */}
       {combatState && <CombatTracker state={combatState} />}
+
+      {/* Resonance tracker (M3.1) — qualitative state only; hidden until first push */}
+      {resonanceState && <ResonanceTracker state={resonanceState} />}
 
       {/* Creation card row */}
       {creationCards.length > 0 && <CreationCardRow />}
