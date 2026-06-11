@@ -40,7 +40,7 @@ export interface Npc {
   role_archetype?: string; // links to a RoleArchetype id (M6.1)
   species: string;
   gender: string;
-  age_range?: "young" | "middle" | "elder";
+  age?: string; // freeform narrative age, e.g. "late 100s (middle-aged for a dwarf)" (story-006)
   appearance?: string;
   personality: string[];
   speech_style: string;
