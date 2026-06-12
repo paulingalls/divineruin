@@ -65,8 +65,9 @@ async def _cast(
 ):
     """Invoke _cast_spell_impl with mock db/queries/persistence/mutations.
 
-    Returns (parsed_packet, ctx, persistence_mock, mutations_mock). spells_mod
-    defaults to a mock returning `spell`; pass the real module for catalog tests.
+    Returns (parsed_packet, ctx, persistence_mock, mutations_mock, events_mock).
+    spells_mod defaults to a mock returning `spell`; pass the real module for
+    catalog tests.
     """
     ctx = make_context()
     ctx.userdata.resonance.current = start_resonance
@@ -77,6 +78,8 @@ async def _cast(
     persistence.update_player_resources = AsyncMock()
     mutations = MagicMock()
     mutations.update_player_resonance = AsyncMock()
+    events = MagicMock()
+    events.publish_resonance_changed = AsyncMock()
     if spells_mod is None:
         spells_mod = MagicMock()
         spells_mod.get_spell = MagicMock(return_value=spell)
@@ -87,9 +90,10 @@ async def _cast(
         queries_mod=queries,
         persistence_mod=persistence,
         resonance_mutations_mod=mutations,
+        resonance_events_mod=events,
         spells_mod=spells_mod,
     )
-    return json.loads(raw), ctx, persistence, mutations
+    return json.loads(raw), ctx, persistence, mutations, events
 
 
 class TestCastSpellFocusGate:
@@ -184,14 +188,14 @@ class TestCastSpellFocusGate:
 class TestCastSpellResonance:
     async def test_sufficient_focus_deducts(self):
         # AC2: Focus is deducted by focus_cost.
-        _packet, _ctx, persistence, _mut = await _cast(_spell(focus_cost=3), focus=10)
+        _packet, _ctx, persistence, _mut, _ev = await _cast(_spell(focus_cost=3), focus=10)
         persistence.update_player_resources.assert_awaited_once()
         _args, kwargs = persistence.update_player_resources.call_args
         assert kwargs["focus"] == 7  # 10 - 3
 
     async def test_resonance_accrues_and_persists(self):
         # AC2: arcane multiplier 0.6 -> ceil(10*0.6)=6 generated; 0 -> 6 = flickering.
-        packet, ctx, _p, mutations = await _cast(_spell(source="arcane", focus_cost=10), start_resonance=0)
+        packet, ctx, _p, mutations, events = await _cast(_spell(source="arcane", focus_cost=10), start_resonance=0)
         assert packet["resonance_generated"] == 6
         assert ctx.userdata.resonance.current == 6
         assert packet["state"] == "flickering"
@@ -199,21 +203,27 @@ class TestCastSpellResonance:
         args, kwargs = mutations.update_player_resonance.call_args
         # signature: update_player_resonance(player_id, current, *, conn=)
         assert args[1] == 6 or kwargs.get("current") == 6
+        # AC6: a resonance-generating cast pushes the new qualitative state to the HUD.
+        events.publish_resonance_changed.assert_awaited_once_with(ctx.userdata)
 
     async def test_cantrip_accrues_zero_and_scales_damage(self):
         # AC3: cantrip (focus_cost 0) -> 0 resonance, no resonance write, damage via
         # cantrip_damage_dice(level). Level 11 -> "3d6".
-        packet, ctx, persistence, mutations = await _cast(_spell(tier="cantrip", focus_cost=0), focus=10, level=11)
+        packet, ctx, persistence, mutations, events = await _cast(
+            _spell(tier="cantrip", focus_cost=0), focus=10, level=11
+        )
         assert packet["resonance_generated"] == 0
         assert ctx.userdata.resonance.current == 0
         assert packet["damage_dice"] == "3d6"
         mutations.update_player_resonance.assert_not_called()
         # A free cantrip deducts no Focus.
         persistence.update_player_resources.assert_not_called()
+        # AC6: a cantrip leaves the resonance state unchanged, so it pushes no HUD event.
+        events.publish_resonance_changed.assert_not_called()
 
     async def test_packet_shape(self):
         # AC2: packet returns effect, narration_cue, audio_cue (+ state metadata).
-        packet, _ctx, _p, _m = await _cast(_spell(), focus=10)
+        packet, _ctx, _p, _m, _ev = await _cast(_spell(), focus=10)
         for key in ("narration_cue", "audio_cue", "effect", "state", "resonance_generated", "resonance_modifiers"):
             assert key in packet, f"packet missing {key}"
         assert packet["narration_cue"] == "A surge of raw power snaps outward."
@@ -222,7 +232,7 @@ class TestCastSpellResonance:
         assert packet["resonance_modifiers"] == {"damage_dice": 1, "dc": 0}  # flickering (6)
 
     async def test_non_cantrip_has_no_damage_dice_key(self):
-        packet, _ctx, _p, _m = await _cast(_spell(tier="standard", focus_cost=3), focus=10)
+        packet, _ctx, _p, _m, _ev = await _cast(_spell(tier="standard", focus_cost=3), focus=10)
         assert "damage_dice" not in packet
 
 
@@ -232,7 +242,7 @@ class TestCastSpellRealCatalog:
         # arcane_shield_spell: focus_cost 1, arcane -> ceil(1*0.6)=1 generated -> stable.
         import spells as spells_mod
 
-        packet, ctx, persistence, mutations = await _cast(
+        packet, ctx, persistence, mutations, events = await _cast(
             spells_mod.get_spell("arcane_shield_spell"),
             focus=10,
             start_resonance=0,
@@ -244,11 +254,12 @@ class TestCastSpellRealCatalog:
         assert packet["narration_cue"]  # catalog cue, non-empty
         persistence.update_player_resources.assert_awaited_once()
         mutations.update_player_resonance.assert_awaited_once()
+        events.publish_resonance_changed.assert_awaited_once_with(ctx.userdata)
 
     async def test_real_arcane_bolt_cantrip(self):
         import spells as spells_mod
 
-        packet, _ctx, _p, mutations = await _cast(
+        packet, _ctx, _p, mutations, _ev = await _cast(
             spells_mod.get_spell("arcane_bolt"),
             focus=10,
             level=1,

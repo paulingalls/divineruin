@@ -17,7 +17,8 @@ come from the rules engine; the LLM only decides when to cast and how to narrate
 
 Mirrors the ability_tools seam exactly: a thin @function_tool wrapper over an _impl
 with module-injection keyword args (db_mod/queries_mod/persistence_mod/
-resonance_mutations_mod/spells_mod/resonance_mod/leveling_mod) for test mocking, a
+resonance_mutations_mod/resonance_events_mod/spells_mod/resonance_mod/leveling_mod)
+for test mocking, a
 single db.transaction() block, and ToolError for every user-facing failure.
 
 Terrain note: calculate_resonance_generated needs a terrain only for PRIMAL
@@ -40,6 +41,7 @@ import db_mutations_resonance
 import db_queries
 import leveling
 import resonance as resonance_mod
+import resonance_events
 import spells
 from db_errors import db_tool
 from session_data import SessionData
@@ -101,6 +103,7 @@ async def _cast_spell_impl(
     queries_mod=db_queries,
     persistence_mod=ability_persistence,
     resonance_mutations_mod=db_mutations_resonance,
+    resonance_events_mod=resonance_events,
     spells_mod=spells,
     resonance=resonance_mod,
     leveling_mod=leveling,
@@ -154,6 +157,10 @@ async def _cast_spell_impl(
     # Transaction committed cleanly — now sync the in-memory SSOT to the persisted value.
     session.resonance.current = new_resonance
     state = resonance.get_resonance_state(session.resonance.current)
+    # Push the new qualitative state to the HUD only when resonance actually moved —
+    # a cantrip (generated == 0) leaves the state unchanged, so it pushes nothing (AC6).
+    if generated > 0:
+        await resonance_events_mod.publish_resonance_changed(session)
     packet = {
         "narration_cue": spell.narration_cue,
         "audio_cue": spell.audio_cue,

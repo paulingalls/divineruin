@@ -19,7 +19,7 @@ from unittest.mock import AsyncMock, patch
 
 import event_types as E
 import resonance_events
-from resonance_events import RESONANCE_DISPLAY_MAX, publish_resonance_changed
+from resonance_events import publish_resonance_changed
 from rest_mechanics import reset_resonance_on_rest
 from session_data import SessionData
 
@@ -62,7 +62,7 @@ async def test_rest_reset_zeroes_in_memory_and_persists():
     mutations.reset_player_resonance.assert_awaited_once_with("p1", conn=conn)
 
 
-async def test_publish_resonance_changed_emits_state_current_max():
+async def test_publish_resonance_changed_emits_state_only():
     session = _session(current=0)
 
     with patch.object(resonance_events, "publish_game_event", AsyncMock()) as pub:
@@ -72,7 +72,8 @@ async def test_publish_resonance_changed_emits_state_current_max():
     args, _ = pub.call_args
     room, event_type, payload, event_bus = args
     assert event_type == E.RESONANCE_CHANGED
-    assert payload == {"state": "stable", "current": 0, "max": RESONANCE_DISPLAY_MAX}
+    # No-number spec (magic.md:98): the wire carries the qualitative state only.
+    assert payload == {"state": "stable"}
     assert room is session.room
     assert event_bus is session.event_bus
 
@@ -88,4 +89,4 @@ async def test_rest_path_persists_reset_and_emits_event_end_to_end():
     mutations.reset_player_resonance.assert_awaited_once_with("p1", conn=None)
     pub.assert_awaited_once()
     _, payload, *_ = pub.call_args.args[1:]
-    assert payload == {"state": "stable", "current": 0, "max": RESONANCE_DISPLAY_MAX}
+    assert payload == {"state": "stable"}
