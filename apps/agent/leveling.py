@@ -44,6 +44,30 @@ def is_spell_tier_unlocked(tier: str, level: int) -> bool:
     return level >= MIN_LEVEL_BY_SPELL_TIER[tier]
 
 
+# --- Cantrip damage scaling (M3.3) ---
+
+
+# Character-level brackets to cantrip damage dice. The numeric SSOT cast_spell
+# (story-004) consumes; the LEVEL_PROGRESSION narration strings ("scales to 3d6")
+# stay for DM flavor. Ref: 03_magic.md L132, game_mechanics_combat.md L235.
+def cantrip_damage_dice(level: int) -> str:
+    """Cantrip damage dice notation (NdM) for a character of `level`.
+
+    Brackets: 1d6 (L1-4), 2d6 (L5-10), 3d6 (L11-16), 4d6 (L17-20). The returned
+    spec is valid `dice.roll` notation. Fails loud (ValueError) outside L1-20 —
+    callers must pass a valid character level, never default it.
+    """
+    if not 1 <= level <= 20:
+        raise ValueError(f"level {level} out of range; expected a character level 1-20")
+    if level <= 4:
+        return "1d6"
+    if level <= 10:
+        return "2d6"
+    if level <= 16:
+        return "3d6"
+    return "4d6"
+
+
 # --- Data structures ---
 
 
