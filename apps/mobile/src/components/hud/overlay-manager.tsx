@@ -80,8 +80,9 @@ export function OverlayManager() {
       {/* Bottom-anchored combat tracker */}
       {combatState && <CombatTracker state={combatState} />}
 
-      {/* Resonance tracker (M3.1) — qualitative state only; hidden until first push */}
-      {resonanceState && <ResonanceTracker state={resonanceState} />}
+      {/* Resonance tracker (M3.1) — qualitative state only; hidden until first push.
+          Offsets above the combat tracker when combat is active (concern 843b). */}
+      {resonanceState && <ResonanceTracker state={resonanceState} isCombatActive={!!combatState} />}
 
       {/* Creation card row */}
       {creationCards.length > 0 && <CreationCardRow />}
