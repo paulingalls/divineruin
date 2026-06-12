@@ -17,6 +17,7 @@ class TestCombatAgentConfig:
         from combat_turn import request_death_save, resolve_enemy_turn
         from environment_tools import play_sound, set_music_state
         from query_tools import query_info
+        from spell_casting import cast_spell, get_spell_info
 
         expected = {
             resolve_enemy_turn,
@@ -28,8 +29,17 @@ class TestCombatAgentConfig:
             set_music_state,
             query_info,
             request_ability_activation,
+            cast_spell,
+            get_spell_info,
         }
         assert set(COMBAT_AGENT_TOOLS) == expected
+
+    def test_cast_spell_and_get_spell_info_registered(self):
+        # story-004 M3: the cast path is callable from the combat agent.
+        from spell_casting import cast_spell, get_spell_info
+
+        assert cast_spell in COMBAT_AGENT_TOOLS
+        assert get_spell_info in COMBAT_AGENT_TOOLS
 
     def test_combat_tools_exclude_exploration(self):
         from mode_tools import enter_mode
