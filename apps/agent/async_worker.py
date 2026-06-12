@@ -320,9 +320,11 @@ async def main() -> None:
 
     await load_training_activity_types()
     await load_archetypes()
+    # Spells before abilities: spell-backed caster CORE rows compose their cast DATA
+    # from the spell catalog at parse time (Try 2), so the catalog must load first.
+    await load_spells()
     await load_abilities()
     await load_milestones()
-    await load_spells()
     await load_mentor_variants()
     await load_role_archetypes()
     await load_npcs()

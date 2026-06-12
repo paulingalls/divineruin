@@ -64,7 +64,20 @@ REQUIRED_KEYS = {
     "narration_cue",
 }
 
+# Spell-backed caster CORE rows (Arcane Bolt, Sacred Flame, …) drop their authored
+# `cost` and carry a `spell_id` instead: the Focus cost — the one number shared with
+# the cast path — composes from content/spells.json at load time (Try 2), so it can't
+# drift. effect/level/narration stay authored per-archetype. So these rows REPLACE
+# `cost` with `spell_id` and keep everything else.
+SPELL_BACKED_KEYS = (REQUIRED_KEYS - {"cost"}) | {"spell_id"}
+
+SPELLS_JSON = Path(__file__).resolve().parents[3] / "content" / "spells.json"
+
 ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+
+def _is_spell_backed(row: dict) -> bool:
+    return "spell_id" in row
 
 
 @pytest.fixture(scope="module")
@@ -119,29 +132,67 @@ def test_each_row_required_keys_and_enums(rows):
         # Exact match, not superset: the row shape is the cross-language SSOT
         # contract for the story-002 (Python) and story-003 (TS) parsers, so a
         # stray/typo'd key must fail here rather than surface as a strict-parse
-        # break downstream.
-        assert set(row) == REQUIRED_KEYS, (
-            f"{rid} key mismatch: missing {REQUIRED_KEYS - set(row)}, extra {set(row) - REQUIRED_KEYS}"
+        # break downstream. A spell-backed CORE row REPLACES `cost` with `spell_id`
+        # (the Focus cost composes from the catalog); everything else is identical.
+        if _is_spell_backed(row):
+            assert set(row) == SPELL_BACKED_KEYS, (
+                f"{rid} spell-backed key mismatch: missing {SPELL_BACKED_KEYS - set(row)}, "
+                f"extra {set(row) - SPELL_BACKED_KEYS}"
+            )
+            assert row["ability_type"] == "core", f"{rid} spell-backed rows must be ability_type=core"
+            assert isinstance(row["spell_id"], str) and ID_RE.match(row["spell_id"]), (
+                f"{rid} spell_id {row['spell_id']!r} must be a well-formed catalog spell id"
+            )
+        else:
+            assert set(row) == REQUIRED_KEYS, (
+                f"{rid} key mismatch: missing {REQUIRED_KEYS - set(row)}, extra {set(row) - REQUIRED_KEYS}"
+            )
+        # Common to both shapes — every row authors its own level/effect/name/narration.
+        assert isinstance(row["level_requirement"], int) and row["level_requirement"] >= 1, (
+            f"{rid} level_requirement must be a positive int"
         )
+        assert isinstance(row["effect"], str) and row["effect"], f"{rid} effect must be a non-empty string"
         assert row["ability_type"] in ABILITY_TYPES, (
             f"{rid} ability_type {row['ability_type']!r} not in {sorted(ABILITY_TYPES)}"
         )
         assert row["archetype_id"] in ARCHETYPE_IDS, (
             f"{rid} archetype_id {row['archetype_id']!r} is not a known chassis id"
         )
-        assert isinstance(row["level_requirement"], int) and row["level_requirement"] >= 1, (
-            f"{rid} level_requirement must be a positive int"
-        )
         assert isinstance(row["name"], str) and row["name"], f"{rid} name must be a non-empty string"
-        assert isinstance(row["effect"], str) and row["effect"], f"{rid} effect must be a non-empty string"
         assert isinstance(row["narration_cue"], str) and row["narration_cue"], (
             f"{rid} narration_cue must be a non-empty string"
         )
 
 
+def test_spell_backed_rows_reference_a_real_catalog_spell(rows):
+    # Cross-file integrity: every spell_id must resolve in content/spells.json, or
+    # the load-time composition fails loud at startup. Catches a typo'd spell_id.
+    spells_raw = json.loads(SPELLS_JSON.read_text())
+
+    def _spell_ids(obj):
+        if isinstance(obj, dict):
+            if "spell_tier" in obj and "focus_cost" in obj:
+                yield obj["id"]
+            else:
+                for v in obj.values():
+                    yield from _spell_ids(v)
+        elif isinstance(obj, list):
+            for v in obj:
+                yield from _spell_ids(v)
+
+    catalog_ids = set(_spell_ids(spells_raw))
+    for row in rows:
+        if _is_spell_backed(row):
+            assert row["spell_id"] in catalog_ids, (
+                f"{row['id']} references spell_id {row['spell_id']!r} not in content/spells.json"
+            )
+
+
 def test_cost_shape(rows):
     for row in rows:
         rid = row.get("id", "<no id>")
+        if _is_spell_backed(row):
+            continue  # cost is composed from the catalog, not authored on the row
         cost = row["cost"]
         assert isinstance(cost, dict), f"{rid} cost must be an object"
         assert set(cost) == {"stamina", "focus", "scaling"}, (

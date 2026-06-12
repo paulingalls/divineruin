@@ -91,12 +91,16 @@ def seed_archetypes():
 
 
 @pytest.fixture(autouse=True)
-def seed_abilities():
+def seed_abilities(seed_spells):
     """Populate abilities._abilities from content/archetype_abilities.json before every test.
 
     Mirrors load_abilities() at worker/agent startup, but sync and file-based.
     Required so agent.py dm_session's guarded load_abilities() sees the map already
     populated (is_loaded() True) and skips the DB fetch in tests that exercise startup.
+
+    Depends on seed_spells: spell-backed core rows compose their cast DATA from the
+    catalog at parse time (Try 2), so spells must be loaded first — same ordering the
+    production loader enforces (load_spells before load_abilities).
     """
     setup_archetype_abilities_config_fixture()
     yield

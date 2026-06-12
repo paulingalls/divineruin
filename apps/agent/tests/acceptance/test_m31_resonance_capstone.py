@@ -28,7 +28,6 @@ import resonance
 import resonance_events
 import rest_mechanics
 from event_types import RESONANCE_CHANGED
-from resonance_events import RESONANCE_DISPLAY_MAX
 from session_data import SessionData
 
 # (persisted current, derived state) across the spec bands: stable 0-4, flickering 5-8,
@@ -128,8 +127,5 @@ async def test_rest_reset_then_publish_emits_resonance_changed_event(reset_db_po
     events = session.event_bus.drain()
     resonance_events_published = [e for e in events if e.event_type == RESONANCE_CHANGED]
     assert len(resonance_events_published) == 1
-    assert resonance_events_published[0].payload == {
-        "state": "stable",
-        "current": 0,
-        "max": RESONANCE_DISPLAY_MAX,
-    }
+    # No-number spec (magic.md:98): the wire carries the qualitative state only.
+    assert resonance_events_published[0].payload == {"state": "stable"}
