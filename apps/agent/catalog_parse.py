@@ -60,6 +60,18 @@ def parse_dict(raw: object, ctx: str) -> dict:
     return raw
 
 
+def parse_int_dict(raw: object, ctx: str) -> dict[str, int]:
+    """Validate an open-keyed str->int map (e.g. resonance/modifier tables), values included.
+
+    Unlike parse_dict (a shallow object guard) this deep-validates each value as an int,
+    so a stringly-typed value fails loud at the boundary instead of slipping through to a
+    cast-time TypeError. Keys are open (caller-defined ids), so only values are checked.
+    """
+    if not isinstance(raw, dict):
+        raise ValueError(f"{ctx} is not an object")
+    return {k: parse_int(v, f"{ctx}[{k}]") for k, v in raw.items()}
+
+
 def parse_attributes(raw: object, ctx: str) -> dict[str, int]:
     if not isinstance(raw, dict):
         raise ValueError(f"{ctx} is not an object")

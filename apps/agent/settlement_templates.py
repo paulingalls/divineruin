@@ -25,7 +25,7 @@ refs are validated in content tests rather than the location loader.
 import json
 import logging
 
-from catalog_parse import parse_dict, parse_int, parse_number, parse_str
+from catalog_parse import parse_dict, parse_int, parse_int_dict, parse_number, parse_str
 
 logger = logging.getLogger("divineruin.settlement_templates")
 
@@ -46,9 +46,7 @@ def _parse_tier(row_id: str, data: dict) -> None:
 
 def _parse_personality(row_id: str, data: dict) -> None:
     for field in ("role_frequency_modifiers", "disposition_modifiers"):
-        mods = parse_dict(data[field], f"{row_id}.{field}")
-        for role_id, delta in mods.items():
-            parse_int(delta, f"{row_id}.{field}[{role_id}]")
+        parse_int_dict(data[field], f"{row_id}.{field}")
     parse_number(data["price_modifier"], f"{row_id}.price_modifier")
     # inventory_modifier: prosperous>1.0 fuller, struggling<1.0 thinner; forward-wired
     # Phase-9 economy field (no live reader yet — debt recorded), story-003 scope expansion.

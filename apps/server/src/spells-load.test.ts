@@ -7,17 +7,20 @@ import type { Spell } from "@divineruin/shared";
 // parseSpellRow is the real TS load boundary (loadSpells calls it at startup); this
 // test exercises it against the canonical content, pins its fail-loud behavior on
 // malformed rows, and mirrors the Python loader's vocab assertions (apps/agent/
-// spells.py) so the cross-language contract is enforced on both sides. The catalog
-// is SOURCE-keyed (arcane/divine/primal) — caster core spells stay archetype_abilities
-// rows (seam 235ae150c5d3); spells.json is the ELECTIVE library only.
+// spells.py) so the cross-language contract is enforced on both sides. M3.3 makes
+// spells.json the FULL casting-data SSOT (decision spell-catalog-full-casting-ssot),
+// superseding the M8 elective-only seam (235ae150c5d3): caster core spells now live in
+// the catalog too. This TS loader stays lenient on the M3.3 fields (ignores the extra
+// JSONB) pending the strict-mirror work tracked as concern 26ab12def2a3.
 
 const SPELLS_PATH = new URL("../../../content/spells.json", import.meta.url);
 
-// content/spells.json is a closed minimal set (story-001): 17 elective spells across
-// 3 sources, >=1 per source per tier. Exact counts catch silent attrition AND
-// accidental additions (move these literals if the minimal catalog changes).
-const SPELL_COUNT = 17;
+// content/spells.json is the full M3.3 casting catalog: 87 spells across 3 sources,
+// partitioned 30 arcane / 28 divine / 29 primal (magic.md:541). Exact counts catch
+// silent attrition AND accidental additions (move these literals if the catalog changes).
+const SPELL_COUNT = 87;
 const SOURCE_COUNT = 3;
+const SOURCE_PARTITIONS: Record<string, number> = { arcane: 30, divine: 28, primal: 29 };
 
 async function loadSpellsJson(): Promise<Record<string, unknown>[]> {
   const raw: unknown = await Bun.file(SPELLS_PATH).json();
@@ -35,6 +38,13 @@ describe("content/spells.json — parseSpellRow conformance", () => {
     }
   });
 
+  test("the catalog is partitioned 30 arcane / 28 divine / 29 primal", async () => {
+    const rows = await loadSpellsJson();
+    const counts: Record<string, number> = {};
+    for (const row of rows) counts[String(row.source)] = (counts[String(row.source)] ?? 0) + 1;
+    expect(counts).toEqual(SOURCE_PARTITIONS);
+  });
+
   test("a major spell round-trips its id, source, tier, and focus cost", async () => {
     const rows = await loadSpellsJson();
     const fireball = rows.find((r) => r.id === "arcane_fireball");
@@ -46,7 +56,11 @@ describe("content/spells.json — parseSpellRow conformance", () => {
     expect(parsed.focus_cost).toBe(5);
   });
 
-  test("the catalog excludes caster core spells (those stay abilities)", async () => {
+  test("the full casting catalog includes the caster core spells", async () => {
+    // M3.3 (decision spell-catalog-full-casting-ssot): cast_spell/get_spell_info need data
+    // for every castable spell, so the caster-core spells live in the catalog too;
+    // archetype_abilities `core` rows remain as the access grant. Mirrors the Python
+    // test_content_includes_caster_core_spells.
     const rows = await loadSpellsJson();
     const names = new Set(rows.map((r) => String(r.name).toLowerCase()));
     for (const core of [
@@ -56,7 +70,7 @@ describe("content/spells.json — parseSpellRow conformance", () => {
       "thorn whip",
       "healing touch",
     ]) {
-      expect(names.has(core), `core spell ${core} must stay an ability`).toBe(false);
+      expect(names.has(core), `casting catalog must carry core spell ${core}`).toBe(true);
     }
   });
 });
