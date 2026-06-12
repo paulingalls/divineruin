@@ -48,6 +48,11 @@ _FIREBALL_ROW = {
     "focus_cost": 5,
     "mechanics": "A bead of flame detonates in a 20 ft sphere. DEX save, half on success.",
     "narration_cue": "A bead of light detonates — heat, light, the roar of air consumed.",
+    "resonance_by_source": {"arcane": 3},
+    "terrain_effects": {},
+    "audio_cue": "CMB-006 (powerful)",
+    "concentration": False,
+    "level_requirement": 5,
 }
 
 _BLESS_ROW = {
@@ -58,7 +63,16 @@ _BLESS_ROW = {
     "focus_cost": 2,
     "mechanics": "Up to 3 allies gain +1d4 on attacks and saves. Concentration.",
     "narration_cue": "You speak their names and your patron hears — warmth settling into bones.",
+    "resonance_by_source": {"divine": 1},
+    "terrain_effects": {},
+    "audio_cue": "",
+    "concentration": True,
+    "level_requirement": 1,
 }
+
+# The five M3.3 cast-time fields parse_spell_row requires (strict). Used by the
+# missing-field fail-loud parametrization.
+_M33_FIELDS = ("resonance_by_source", "terrain_effects", "audio_cue", "concentration", "level_requirement")
 
 
 def _seed_from_content() -> None:
@@ -76,6 +90,76 @@ def test_parse_spell_row_full_shape():
     assert s.spell_tier == "major"
     assert s.focus_cost == 5
     assert s.mechanics and s.narration_cue
+
+
+def test_parse_spell_row_exposes_m33_fields():
+    s = parse_spell_row(_FIREBALL_ROW["id"], _FIREBALL_ROW)
+    assert s.resonance_by_source == {"arcane": 3}
+    assert s.terrain_effects == {}
+    assert s.audio_cue == "CMB-006 (powerful)"
+    assert s.concentration is False
+    assert s.level_requirement == 5
+    # Concentration is a real bool from the row, not coerced.
+    conc = parse_spell_row(_BLESS_ROW["id"], _BLESS_ROW)
+    assert conc.concentration is True
+
+
+@pytest.mark.parametrize("missing", _M33_FIELDS)
+def test_parse_spell_row_strict_requires_each_m33_field(missing):
+    # Strict loader (decision spell-loader-strict-contract): absence of any known M3.3
+    # field fails loud naming the row — the 87-row catalog + content guard guarantee
+    # presence, so a row that lacks one is a real defect, not a forward-compat gap.
+    bad = {k: v for k, v in _FIREBALL_ROW.items() if k != missing}
+    with pytest.raises(ValueError, match="arcane_fireball"):
+        parse_spell_row("arcane_fireball", bad)
+
+
+def test_parse_spell_row_rejects_bool_level_requirement():
+    bad = {**_FIREBALL_ROW, "level_requirement": True}
+    with pytest.raises(ValueError, match=r"level_requirement"):
+        parse_spell_row(_FIREBALL_ROW["id"], bad)
+
+
+def test_parse_spell_row_rejects_nonbool_concentration():
+    bad = {**_FIREBALL_ROW, "concentration": "yes"}
+    with pytest.raises(ValueError, match=r"concentration"):
+        parse_spell_row(_FIREBALL_ROW["id"], bad)
+
+
+@pytest.mark.parametrize("field", ["resonance_by_source", "terrain_effects"])
+def test_parse_spell_row_rejects_non_dict_dict_fields(field):
+    bad = {**_FIREBALL_ROW, field: ["not", "a", "dict"]}
+    with pytest.raises(ValueError, match=field):
+        parse_spell_row(_FIREBALL_ROW["id"], bad)
+
+
+@pytest.mark.parametrize("field", ["resonance_by_source", "terrain_effects"])
+def test_parse_spell_row_rejects_non_int_dict_value(field):
+    # Deep value validation at the load boundary: a stringly-typed Resonance value fails
+    # loud naming the row+key, NOT downstream at cast-time int arithmetic (story-004).
+    bad = {**_FIREBALL_ROW, field: {"arcane": "high"}}
+    with pytest.raises(ValueError, match=field):
+        parse_spell_row(_FIREBALL_ROW["id"], bad)
+
+
+def test_spell_defaults_allow_in_code_construction_without_m33_args():
+    # The dataclass fields carry defaults so existing in-code Spell(...) builds (tests,
+    # fixtures) keep working without supplying the M3.3 args; strictness lives in
+    # parse_spell_row, not the dataclass.
+    s = Spell(
+        id="x",
+        name="X",
+        source="arcane",
+        spell_tier="cantrip",
+        focus_cost=0,
+        mechanics="m",
+        narration_cue="n",
+    )
+    assert s.resonance_by_source == {}
+    assert s.terrain_effects == {}
+    assert s.audio_cue == ""
+    assert s.concentration is False
+    assert s.level_requirement == 1
 
 
 def test_parse_spell_row_fail_loud_names_the_row():

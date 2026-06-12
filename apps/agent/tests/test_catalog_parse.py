@@ -93,6 +93,29 @@ class TestParseDict:
             cp.parse_dict(["not", "a", "dict"], "ctx")
 
 
+class TestParseIntDict:
+    def test_returns_int_map(self):
+        d = {"arcane": 3, "divine": 1}
+        assert cp.parse_int_dict(d, "ctx") == d
+
+    def test_empty_dict_passes(self):
+        assert cp.parse_int_dict({}, "ctx") == {}
+
+    def test_rejects_non_dict(self):
+        with pytest.raises(ValueError, match="ctx is not an object"):
+            cp.parse_int_dict(["not", "a", "dict"], "ctx")
+
+    def test_rejects_non_int_value_with_key_context(self):
+        # Deep value validation: a stringly-typed value fails loud naming the key.
+        with pytest.raises(ValueError, match=r"ctx\[arcane\] is not an int"):
+            cp.parse_int_dict({"arcane": "high"}, "ctx")
+
+    def test_rejects_bool_value(self):
+        # bool is an int subclass — must be rejected, parity with parse_int.
+        with pytest.raises(ValueError, match=r"ctx\[arcane\] is not an int"):
+            cp.parse_int_dict({"arcane": True}, "ctx")
+
+
 class TestParseAttributes:
     def test_parses_all_six(self):
         raw = {k: i for i, k in enumerate(cp.ATTRIBUTE_KEYS)}
