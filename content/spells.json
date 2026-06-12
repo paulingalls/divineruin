@@ -7,9 +7,123 @@
     "focus_cost": 0,
     "mechanics": "Melee spell attack. 1d6 cold and the target's speed drops 10 ft until the end of its next turn. Scales with level.",
     "narration_cue": "Your hand closes and the cold bites deep — frost crackles across skin.",
-    "resonance_by_source": { "arcane": 0 },
+    "resonance_by_source": {
+      "arcane": 0
+    },
     "terrain_effects": {},
     "audio_cue": "CMB-007",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "arcane_bolt",
+    "name": "Arcane Bolt",
+    "source": "arcane",
+    "spell_tier": "cantrip",
+    "focus_cost": 0,
+    "mechanics": "Ranged spell attack. 1d6 force + INT mod. Scales: 2d6 at L5, 3d6 at L11, 4d6 at L17.",
+    "narration_cue": "A streak of raw arcane energy — crackling, colorless, fast.",
+    "resonance_by_source": {
+      "arcane": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "CMB-008",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "arcane_spark",
+    "name": "Spark",
+    "source": "arcane",
+    "spell_tier": "cantrip",
+    "focus_cost": 0,
+    "mechanics": "Ranged spell attack. 1d4 lightning and the target cannot take reactions until your next turn. Scales with level.",
+    "narration_cue": "A snap of electricity leaps — brief, blinding, disorienting.",
+    "resonance_by_source": {
+      "arcane": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "CMB-008 variant",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "arcane_prestidigitation",
+    "name": "Prestidigitation",
+    "source": "arcane",
+    "spell_tier": "cantrip",
+    "focus_cost": 0,
+    "mechanics": "Minor trick: light a candle, clean, warm or cool, or a small sensory effect. No combat use.",
+    "narration_cue": "A flick of the wrist and the candles catch, or the mud slides from your boots.",
+    "resonance_by_source": {
+      "arcane": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "arcane_mage_light",
+    "name": "Mage Light",
+    "source": "arcane",
+    "spell_tier": "cantrip",
+    "focus_cost": 0,
+    "mechanics": "20 ft of bright light plus 20 ft of dim light. No concentration.",
+    "narration_cue": "Light blooms from your fingertip — warm, steady, obedient.",
+    "resonance_by_source": {
+      "arcane": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "Soft chime",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "arcane_shield_spell",
+    "name": "Shield Spell",
+    "source": "arcane",
+    "spell_tier": "minor",
+    "focus_cost": 1,
+    "mechanics": "Reaction: +3 AC until the start of your next turn. Cast when attacked.",
+    "narration_cue": "A shimmer of force snaps into existence — translucent, geometric, instant.",
+    "resonance_by_source": {
+      "arcane": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "CMB-008 (soft)",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "arcane_detect_magic",
+    "name": "Detect Magic",
+    "source": "arcane",
+    "spell_tier": "minor",
+    "focus_cost": 1,
+    "mechanics": "Sense the presence and school of magic. Reveals items, spells, enchantments, and wards. Concentration.",
+    "narration_cue": "Everything touched by magic shimmers faintly, each with different light.",
+    "resonance_by_source": {
+      "arcane": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "Subtle shimmer",
+    "concentration": true,
+    "level_requirement": 1
+  },
+  {
+    "id": "arcane_mage_hand",
+    "name": "Mage Hand",
+    "source": "arcane",
+    "spell_tier": "minor",
+    "focus_cost": 1,
+    "mechanics": "A spectral hand manipulates objects up to 10 lbs at range. It cannot attack.",
+    "narration_cue": "A translucent hand materializes, fingers flexing with your intent.",
+    "resonance_by_source": {
+      "arcane": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "Soft hum",
     "concentration": false,
     "level_requirement": 1
   },
@@ -21,23 +135,59 @@
     "focus_cost": 2,
     "mechanics": "Three darts auto-hit for 1d4+1 force each, split between targets as you choose. More darts at higher levels.",
     "narration_cue": "Darts of light streak out, each finding its mark with perfect inevitability.",
-    "resonance_by_source": { "arcane": 1 },
+    "resonance_by_source": {
+      "arcane": 1
+    },
     "terrain_effects": {},
     "audio_cue": "CMB-008 (triple)",
     "concentration": false,
     "level_requirement": 1
   },
   {
-    "id": "arcane_mage_hand",
-    "name": "Mage Hand",
+    "id": "arcane_mist_step",
+    "name": "Mist Step",
     "source": "arcane",
     "spell_tier": "minor",
-    "focus_cost": 1,
-    "mechanics": "A spectral hand manipulates objects up to 10 lbs at range. It cannot attack.",
-    "narration_cue": "A translucent hand materializes, fingers flexing with your intent.",
-    "resonance_by_source": { "arcane": 1 },
+    "focus_cost": 2,
+    "mechanics": "Teleport to a visible location, breaking line of sight. High Resonance for the cost — a local Veil tear.",
+    "narration_cue": "You dissolve into a smear of light and reconstitute somewhere else.",
+    "resonance_by_source": {
+      "arcane": 2
+    },
     "terrain_effects": {},
-    "audio_cue": "Soft hum",
+    "audio_cue": "Displacement whoosh",
+    "concentration": false,
+    "level_requirement": 2
+  },
+  {
+    "id": "arcane_arcane_lock",
+    "name": "Arcane Lock",
+    "source": "arcane",
+    "spell_tier": "minor",
+    "focus_cost": 2,
+    "mechanics": "Magically seal a door or container; the force DC rises by 10. Bypassed by Expert Arcana or Master Sleight of Hand.",
+    "narration_cue": "The magic sinks in — the lock clicks with finality beyond any key.",
+    "resonance_by_source": {
+      "arcane": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "Lock + magic hum",
+    "concentration": false,
+    "level_requirement": 2
+  },
+  {
+    "id": "arcane_elemental_burst",
+    "name": "Elemental Burst",
+    "source": "arcane",
+    "spell_tier": "standard",
+    "focus_cost": 3,
+    "mechanics": "Choose fire, ice, or lightning. DEX save in a 15 ft sphere. Fail: 2d6, half on success. L7: 3d6, L13: 4d6.",
+    "narration_cue": "Fire erupts, ice crystallizes, or lightning arcs across the space.",
+    "resonance_by_source": {
+      "arcane": 2
+    },
+    "terrain_effects": {},
+    "audio_cue": "CMB-006/7/8",
     "concentration": false,
     "level_requirement": 1
   },
@@ -47,13 +197,63 @@
     "source": "arcane",
     "spell_tier": "standard",
     "focus_cost": 3,
-    "mechanics": "One humanoid makes a WIS save or is paralyzed; it re-saves each turn. Attacks against it have advantage.",
+    "mechanics": "One humanoid makes a WIS save or is paralyzed; it re-saves each turn. Attacks against it have advantage. Concentration.",
     "narration_cue": "They freeze mid-motion, eyes still moving, mouth struggling.",
-    "resonance_by_source": { "arcane": 2 },
+    "resonance_by_source": {
+      "arcane": 2
+    },
     "terrain_effects": {},
     "audio_cue": "Low thrum + lock",
     "concentration": true,
     "level_requirement": 3
+  },
+  {
+    "id": "arcane_counterspell",
+    "name": "Counterspell",
+    "source": "arcane",
+    "spell_tier": "standard",
+    "focus_cost": 3,
+    "mechanics": "Reaction: INT check vs DC 10 + the enemy spell's Focus cost. Success negates the spell.",
+    "narration_cue": "You feel the magic building and reach out to unravel it.",
+    "resonance_by_source": {
+      "arcane": 2
+    },
+    "terrain_effects": {},
+    "audio_cue": "Sharp crack + silence",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "arcane_dispel_magic",
+    "name": "Dispel Magic",
+    "source": "arcane",
+    "spell_tier": "standard",
+    "focus_cost": 3,
+    "mechanics": "End one spell or magical effect; higher-cost targets need an INT check vs DC 10 + cost. Reduces the target's Resonance by 2.",
+    "narration_cue": "The spell collapses inward like a knot pulled free.",
+    "resonance_by_source": {
+      "arcane": 2
+    },
+    "terrain_effects": {},
+    "audio_cue": "Reverse shimmer",
+    "concentration": false,
+    "level_requirement": 3
+  },
+  {
+    "id": "arcane_fly",
+    "name": "Fly",
+    "source": "arcane",
+    "spell_tier": "standard",
+    "focus_cost": 3,
+    "mechanics": "A willing target gains a flying speed equal to its walking speed. Falls if concentration breaks. Concentration.",
+    "narration_cue": "Your feet leave the ground — the air holds you.",
+    "resonance_by_source": {
+      "arcane": 2
+    },
+    "terrain_effects": {},
+    "audio_cue": "Rising wind",
+    "concentration": true,
+    "level_requirement": 4
   },
   {
     "id": "arcane_invisibility",
@@ -61,9 +261,11 @@
     "source": "arcane",
     "spell_tier": "standard",
     "focus_cost": 3,
-    "mechanics": "The target becomes invisible until it attacks or casts an offensive spell. Attacks against it have disadvantage.",
+    "mechanics": "The target becomes invisible until it attacks or casts an offensive spell. Attacks against it have disadvantage. Concentration.",
     "narration_cue": "Light bends around you — first translucent, then gone.",
-    "resonance_by_source": { "arcane": 2 },
+    "resonance_by_source": {
+      "arcane": 2
+    },
     "terrain_effects": {},
     "audio_cue": "Displacement hiss",
     "concentration": true,
@@ -75,13 +277,95 @@
     "source": "arcane",
     "spell_tier": "major",
     "focus_cost": 5,
-    "mechanics": "A bead of flame detonates in a 20 ft sphere. DEX save, 3d6 fire on a fail, half on a success. Scales with level.",
+    "mechanics": "A bead of flame detonates in a 20 ft sphere. DEX save, 3d6 fire on a fail, half on a success. L11: 4d6, L17: 5d6.",
     "narration_cue": "A bead of light detonates — heat, light, the roar of air consumed.",
-    "resonance_by_source": { "arcane": 3 },
+    "resonance_by_source": {
+      "arcane": 3
+    },
     "terrain_effects": {},
     "audio_cue": "CMB-006 (powerful)",
     "concentration": false,
     "level_requirement": 5
+  },
+  {
+    "id": "arcane_lightning_bolt",
+    "name": "Lightning Bolt",
+    "source": "arcane",
+    "spell_tier": "major",
+    "focus_cost": 5,
+    "mechanics": "A 100 ft line. DEX save, 3d6 lightning on a fail, half on a success. Line shape rewards positioning. L11: 4d6, L17: 5d6.",
+    "narration_cue": "Lightning erupts in a searing line — everything struck simultaneously.",
+    "resonance_by_source": {
+      "arcane": 3
+    },
+    "terrain_effects": {},
+    "audio_cue": "CMB-008 (sustained)",
+    "concentration": false,
+    "level_requirement": 5
+  },
+  {
+    "id": "arcane_wall_of_force",
+    "name": "Wall of Force",
+    "source": "arcane",
+    "spell_tier": "major",
+    "focus_cost": 5,
+    "mechanics": "An invisible, impassable wall or dome. Nothing passes and it cannot be dispelled. Concentration.",
+    "narration_cue": "The air hardens. An absolute boundary.",
+    "resonance_by_source": {
+      "arcane": 4
+    },
+    "terrain_effects": {},
+    "audio_cue": "Deep resonant hum",
+    "concentration": true,
+    "level_requirement": 7
+  },
+  {
+    "id": "arcane_haste",
+    "name": "Haste",
+    "source": "arcane",
+    "spell_tier": "major",
+    "focus_cost": 5,
+    "mechanics": "A willing target gains 2x speed, +2 AC, advantage on DEX saves, and an extra action. Ends: cannot move or act for 1 round. Concentration.",
+    "narration_cue": "Time bends — they blur, existing faster than the world allows.",
+    "resonance_by_source": {
+      "arcane": 3
+    },
+    "terrain_effects": {},
+    "audio_cue": "Accelerating pulse",
+    "concentration": true,
+    "level_requirement": 5
+  },
+  {
+    "id": "arcane_slow",
+    "name": "Slow",
+    "source": "arcane",
+    "spell_tier": "major",
+    "focus_cost": 5,
+    "mechanics": "Up to 3 creatures make a WIS save. Fail: speed halved, -2 AC, no reactions, one action or quick action. Re-save each turn. Concentration.",
+    "narration_cue": "The air thickens — movements drag, thoughts struggle.",
+    "resonance_by_source": {
+      "arcane": 3
+    },
+    "terrain_effects": {},
+    "audio_cue": "Decelerating tone",
+    "concentration": true,
+    "level_requirement": 5
+  },
+  {
+    "id": "arcane_arcane_eye",
+    "name": "Arcane Eye",
+    "source": "arcane",
+    "spell_tier": "major",
+    "focus_cost": 5,
+    "mechanics": "An invisible sensor you see through, moving 30 ft/round and passing 1-inch gaps. Expert+ Arcana detects it. Concentration.",
+    "narration_cue": "You close your eyes and open another — somewhere else, silent, watching.",
+    "resonance_by_source": {
+      "arcane": 2
+    },
+    "terrain_effects": {},
+    "audio_cue": "Soft hum",
+    "concentration": true,
+    "level_requirement": 6
   },
   {
     "id": "arcane_chain_lightning",
@@ -89,13 +373,127 @@
     "source": "arcane",
     "spell_tier": "supreme",
     "focus_cost": 7,
-    "mechanics": "Primary target takes 4d6 lightning, then it arcs to three others within 30 ft for 2d6 each. DEX save halves.",
+    "mechanics": "Primary target takes 4d6 lightning (DEX half), then it arcs to three others within 30 ft for 2d6 each. Cannot arc the same target.",
     "narration_cue": "Lightning strikes the first and leaps — finding the next body and the next.",
-    "resonance_by_source": { "arcane": 5 },
+    "resonance_by_source": {
+      "arcane": 5
+    },
     "terrain_effects": {},
-    "audio_cue": "CMB-008 (sustained)",
+    "audio_cue": "CMB-008 + arcs",
     "concentration": false,
-    "level_requirement": 13
+    "level_requirement": 9
+  },
+  {
+    "id": "arcane_disintegrate",
+    "name": "Disintegrate",
+    "source": "arcane",
+    "spell_tier": "supreme",
+    "focus_cost": 7,
+    "mechanics": "Ranged spell attack. Hit: 5d6+20 force; if reduced to 0 HP the target is disintegrated, no death saves. Miss: nothing.",
+    "narration_cue": "A thin green ray — where it touches, matter ceases. Absence.",
+    "resonance_by_source": {
+      "arcane": 5
+    },
+    "terrain_effects": {},
+    "audio_cue": "Charge then silence",
+    "concentration": false,
+    "level_requirement": 9
+  },
+  {
+    "id": "arcane_teleport",
+    "name": "Teleport",
+    "source": "arcane",
+    "spell_tier": "supreme",
+    "focus_cost": 7,
+    "mechanics": "Teleport yourself and up to four others to a previously visited location. Familiarity affects accuracy.",
+    "narration_cue": "The world folds. An instant of being in both places.",
+    "resonance_by_source": {
+      "arcane": 5
+    },
+    "terrain_effects": {},
+    "audio_cue": "Reality bending",
+    "concentration": false,
+    "level_requirement": 9
+  },
+  {
+    "id": "arcane_power_word_stun",
+    "name": "Power Word: Stun",
+    "source": "arcane",
+    "spell_tier": "supreme",
+    "focus_cost": 7,
+    "mechanics": "If the target has 75 HP or fewer it is auto-stunned, CON save each turn. If it has more, the spell fails silently — the caster does not know.",
+    "narration_cue": "A syllable that collapses thought. They stop. Everything stops.",
+    "resonance_by_source": {
+      "arcane": 4
+    },
+    "terrain_effects": {},
+    "audio_cue": "Subsonic pulse",
+    "concentration": false,
+    "level_requirement": 9
+  },
+  {
+    "id": "arcane_maze",
+    "name": "Maze",
+    "source": "arcane",
+    "spell_tier": "supreme",
+    "focus_cost": 7,
+    "mechanics": "The target vanishes into an extradimensional maze, no initial save. INT check DC 20 each round to escape. Concentration.",
+    "narration_cue": "Space opens beneath them — they fall into somewhere that shouldn't exist.",
+    "resonance_by_source": {
+      "arcane": 4
+    },
+    "terrain_effects": {},
+    "audio_cue": "Spatial distortion",
+    "concentration": true,
+    "level_requirement": 8
+  },
+  {
+    "id": "arcane_meteor_swarm",
+    "name": "Meteor Swarm",
+    "source": "arcane",
+    "spell_tier": "supreme",
+    "focus_cost": 8,
+    "mechanics": "Four 20 ft spheres, DEX save each. Fail: 4d6 fire + 4d6 bludgeoning, half on a success. Areas can overlap.",
+    "narration_cue": "The sky splits. Four streaks descend like the fists of an angry god.",
+    "resonance_by_source": {
+      "arcane": 6
+    },
+    "terrain_effects": {},
+    "audio_cue": "Whistle then quad detonation",
+    "concentration": false,
+    "level_requirement": 10
+  },
+  {
+    "id": "arcane_time_stop",
+    "name": "Time Stop",
+    "source": "arcane",
+    "spell_tier": "supreme",
+    "focus_cost": 8,
+    "mechanics": "Time stops for everyone but you for 1d4+1 turns. Directly affecting another creature ends it. Preparation, not attack.",
+    "narration_cue": "The world freezes mid-breath. Only you move, alone in a silent instant.",
+    "resonance_by_source": {
+      "arcane": 6
+    },
+    "terrain_effects": {},
+    "audio_cue": "All sound ceases then heartbeat",
+    "concentration": false,
+    "level_requirement": 10
+  },
+  {
+    "id": "divine_sacred_flame",
+    "name": "Sacred Flame",
+    "source": "divine",
+    "spell_tier": "cantrip",
+    "focus_cost": 0,
+    "mechanics": "WIS save, ignoring armor. 1d6 radiant + WIS mod. Scales: 2d6 at L5, 3d6 at L11, 4d6 at L17.",
+    "narration_cue": "A pillar of golden light descends — not from the sky, but from somewhere beyond it.",
+    "resonance_by_source": {
+      "divine": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "CMB-009 variant (offensive radiance)",
+    "concentration": false,
+    "level_requirement": 1
   },
   {
     "id": "divine_guiding_light",
@@ -105,9 +503,75 @@
     "focus_cost": 0,
     "mechanics": "The next attack roll against the marked target has advantage. No damage.",
     "narration_cue": "A faint halo settles over your ally's target — subtle, warm, marking them.",
-    "resonance_by_source": { "divine": 0 },
+    "resonance_by_source": {
+      "divine": 0
+    },
     "terrain_effects": {},
-    "audio_cue": "Soft chime",
+    "audio_cue": "Soft radiant chime",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "divine_mend",
+    "name": "Mend",
+    "source": "divine",
+    "spell_tier": "cantrip",
+    "focus_cost": 0,
+    "mechanics": "Repair a single break or tear in an object. No combat application.",
+    "narration_cue": "Your fingers trace the crack and the material remembers what it was.",
+    "resonance_by_source": {
+      "divine": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "Quiet crystalline tone",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "divine_sacred_word",
+    "name": "Sacred Word",
+    "source": "divine",
+    "spell_tier": "cantrip",
+    "focus_cost": 0,
+    "mechanics": "Undead and Hollow within 10 ft take 1d4 radiant; living creatures are unaffected. Scales: 2d4 at L5, 3d4 at L11, 4d4 at L17.",
+    "narration_cue": "You speak a word that has weight. The Hollow things recoil — not from sound, but from meaning.",
+    "resonance_by_source": {
+      "divine": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "Resonant spoken tone + radiant pulse",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "divine_heal_wounds",
+    "name": "Heal Wounds",
+    "source": "divine",
+    "spell_tier": "minor",
+    "focus_cost": 2,
+    "mechanics": "Restore 1d8 + WIS mod HP. The fundamental healing spell.",
+    "narration_cue": "Warmth flows from your hands into the wound. Flesh knits. Color returns.",
+    "resonance_by_source": {
+      "divine": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "CMB-009 (healing)",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "divine_shield_of_faith",
+    "name": "Shield of Faith",
+    "source": "divine",
+    "spell_tier": "minor",
+    "focus_cost": 2,
+    "mechanics": "Reaction: +2 AC to an ally when attacked, which may cause a miss retroactively.",
+    "narration_cue": "A shimmer of golden force interposes itself — not your shield, but your god's.",
+    "resonance_by_source": {
+      "divine": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "CMB-009 variant + deflection",
     "concentration": false,
     "level_requirement": 1
   },
@@ -119,11 +583,77 @@
     "focus_cost": 2,
     "mechanics": "Up to three allies gain +1d4 on attack rolls and saving throws. Concentration.",
     "narration_cue": "You speak their names and your patron hears — warmth settling into bones.",
-    "resonance_by_source": { "divine": 1 },
+    "resonance_by_source": {
+      "divine": 1
+    },
     "terrain_effects": {},
-    "audio_cue": "",
+    "audio_cue": "Ascending choral tone",
     "concentration": true,
     "level_requirement": 1
+  },
+  {
+    "id": "divine_sanctuary",
+    "name": "Sanctuary",
+    "source": "divine",
+    "spell_tier": "minor",
+    "focus_cost": 1,
+    "mechanics": "Enemies must make a WIS save before attacking the target; on a fail they must choose a different target. Breaks if the protected creature attacks.",
+    "narration_cue": "A quiet falls around them. Something about them makes violence feel wrong.",
+    "resonance_by_source": {
+      "divine": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "Soft bell tone",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "divine_detect_hollow",
+    "name": "Detect Hollow",
+    "source": "divine",
+    "spell_tier": "minor",
+    "focus_cost": 1,
+    "mechanics": "Sense the presence, direction, and intensity of Hollow corruption within 60 ft. 0 Resonance — divine sensing stabilizes the Veil. Concentration.",
+    "narration_cue": "Your perception shifts. Clean light where reality is whole, darkness where it frays.",
+    "resonance_by_source": {
+      "divine": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "Low harmonic drone",
+    "concentration": true,
+    "level_requirement": 1
+  },
+  {
+    "id": "divine_command",
+    "name": "Command",
+    "source": "divine",
+    "spell_tier": "minor",
+    "focus_cost": 2,
+    "mechanics": "A one-word command (Halt, Flee, Drop, Kneel, Approach). WIS save; on a fail the target obeys next turn. Won't obey directly harmful commands.",
+    "narration_cue": "You speak one word with divine authority. The target's body obeys before their mind can object.",
+    "resonance_by_source": {
+      "divine": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "Resonant authoritative tone",
+    "concentration": false,
+    "level_requirement": 2
+  },
+  {
+    "id": "divine_turn_undead_hollow",
+    "name": "Turn Undead/Hollow",
+    "source": "divine",
+    "spell_tier": "standard",
+    "focus_cost": 3,
+    "mechanics": "Undead and Hollow make a WIS save or are frightened and flee for 1 min. At L5+, a creature with HP under 5x your level is destroyed.",
+    "narration_cue": "You raise your holy symbol and divine light pours out. The unnatural things shriek and scatter.",
+    "resonance_by_source": {
+      "divine": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "Radiant surge + creature recoil",
+    "concentration": false,
+    "level_requirement": 2
   },
   {
     "id": "divine_spiritual_weapon",
@@ -133,11 +663,77 @@
     "focus_cost": 4,
     "mechanics": "A spectral weapon themed to your patron attacks independently each round for 1d8 + WIS. No concentration.",
     "narration_cue": "A weapon forms from light and will — not yours, but your god's.",
-    "resonance_by_source": { "divine": 2 },
+    "resonance_by_source": {
+      "divine": 2
+    },
     "terrain_effects": {},
-    "audio_cue": "",
+    "audio_cue": "Weapon SFX + radiant shimmer",
+    "concentration": false,
+    "level_requirement": 5
+  },
+  {
+    "id": "divine_dispel_corruption",
+    "name": "Dispel Corruption",
+    "source": "divine",
+    "spell_tier": "standard",
+    "focus_cost": 3,
+    "mechanics": "Remove Hollow corruption from an object, a 10 ft area, or a creature; ends stage 1 Hollowed. Stage 2+ needs Greater Restoration.",
+    "narration_cue": "Your hand presses to the corruption and light flows in. The wrongness resists — then breaks.",
+    "resonance_by_source": {
+      "divine": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "Reverse Hollow audio — wrongness unwinding",
     "concentration": false,
     "level_requirement": 3
+  },
+  {
+    "id": "divine_zone_of_truth",
+    "name": "Zone of Truth",
+    "source": "divine",
+    "spell_tier": "standard",
+    "focus_cost": 3,
+    "mechanics": "All creatures in a 15 ft radius make a CHA save or cannot deliberately lie for 10 minutes; they may be evasive. Affected creatures know it.",
+    "narration_cue": "The air clears. Something in the space demands honesty — with the quiet insistence of a judge's gaze.",
+    "resonance_by_source": {
+      "divine": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "Subtle bell + low harmonic",
+    "concentration": false,
+    "level_requirement": 3
+  },
+  {
+    "id": "divine_prayer_of_healing",
+    "name": "Prayer of Healing",
+    "source": "divine",
+    "spell_tier": "standard",
+    "focus_cost": 4,
+    "mechanics": "Out of combat only. Over 10 minutes, restore 2d8 + WIS mod HP to up to six creatures.",
+    "narration_cue": "You kneel and pray. The divine warmth seeps in slowly — the steady warmth of being tended.",
+    "resonance_by_source": {
+      "divine": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "Extended gentle choral tone",
+    "concentration": false,
+    "level_requirement": 3
+  },
+  {
+    "id": "divine_beacon_of_hope",
+    "name": "Beacon of Hope",
+    "source": "divine",
+    "spell_tier": "standard",
+    "focus_cost": 3,
+    "mechanics": "Up to three allies gain advantage on WIS and death saves, and any healing they receive restores maximum HP. Concentration.",
+    "narration_cue": "Hope is not a feeling. It's a decision. Your prayer makes that decision easier.",
+    "resonance_by_source": {
+      "divine": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "Warm sustained tone",
+    "concentration": true,
+    "level_requirement": 4
   },
   {
     "id": "divine_mass_heal",
@@ -145,13 +741,111 @@
     "source": "divine",
     "spell_tier": "major",
     "focus_cost": 6,
-    "mechanics": "Restore 2d8 + WIS HP to every ally within earshot. The benchmark group heal.",
+    "mechanics": "Restore 2d8 + WIS mod HP to every ally within earshot. The benchmark group heal.",
     "narration_cue": "The light finds every wound, every bruise, every ache. Everyone feels it at once.",
-    "resonance_by_source": { "divine": 2 },
+    "resonance_by_source": {
+      "divine": 2
+    },
     "terrain_effects": {},
-    "audio_cue": "CMB-009 (radiant swell)",
+    "audio_cue": "CMB-009 (powerful, wide)",
+    "concentration": false,
+    "level_requirement": 5
+  },
+  {
+    "id": "divine_divine_ward",
+    "name": "Divine Ward",
+    "source": "divine",
+    "spell_tier": "major",
+    "focus_cost": 4,
+    "mechanics": "One ally gains resistance to all damage for 1 round as your patron interposes their will.",
+    "narration_cue": "A shield that isn't a shield. The blow lands and seems diminished. Reduced. Judged insufficient.",
+    "resonance_by_source": {
+      "divine": 2
+    },
+    "terrain_effects": {},
+    "audio_cue": "Heavy radiant impact absorption",
     "concentration": false,
     "level_requirement": 7
+  },
+  {
+    "id": "divine_flame_strike",
+    "name": "Flame Strike",
+    "source": "divine",
+    "spell_tier": "major",
+    "focus_cost": 5,
+    "mechanics": "DEX save in a 10 ft cylinder. Fail: 2d6 fire + 2d6 radiant, half on a success. The radiant half harms Hollow even if fire-resistant.",
+    "narration_cue": "A column of fire falls from above — not natural fire. This burns with purpose.",
+    "resonance_by_source": {
+      "divine": 2
+    },
+    "terrain_effects": {},
+    "audio_cue": "Descending fire + radiant harmonic",
+    "concentration": false,
+    "level_requirement": 5
+  },
+  {
+    "id": "divine_veil_ward",
+    "name": "Veil Ward",
+    "source": "divine",
+    "spell_tier": "major",
+    "focus_cost": 4,
+    "mechanics": "Reinforce the Veil in a 30 ft radius: all Resonance halved, echo rolls +4, but spell damage -1 die and DCs -1.",
+    "narration_cue": "The Veil's cracks close slightly. Magic here is safer. Weaker. Controlled.",
+    "resonance_by_source": {
+      "divine": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "Deep stabilizing harmonic",
+    "concentration": false,
+    "level_requirement": 7
+  },
+  {
+    "id": "divine_revivify",
+    "name": "Revivify",
+    "source": "divine",
+    "spell_tier": "major",
+    "focus_cost": 5,
+    "mechanics": "Touch a creature dead within the last minute; it returns with 1 HP. Doesn't work on Hollow-killed. Requires a diamond, consumed.",
+    "narration_cue": "You press your hand to the still chest and refuse the threshold. A gasp. A heartbeat. They're back.",
+    "resonance_by_source": {
+      "divine": 2
+    },
+    "terrain_effects": {},
+    "audio_cue": "Silence then heartbeat then breath",
+    "concentration": false,
+    "level_requirement": 5
+  },
+  {
+    "id": "divine_commune",
+    "name": "Commune",
+    "source": "divine",
+    "spell_tier": "major",
+    "focus_cost": 5,
+    "mechanics": "Contact your patron deity and ask three yes/no questions. The god answers truthfully but may answer 'unclear'.",
+    "narration_cue": "The world falls away. You are alone with your god — vast, attentive, ancient.",
+    "resonance_by_source": {
+      "divine": 2
+    },
+    "terrain_effects": {},
+    "audio_cue": "STG-006 (god whisper) + deity voice",
+    "concentration": false,
+    "level_requirement": 7
+  },
+  {
+    "id": "divine_banishment",
+    "name": "Banishment",
+    "source": "divine",
+    "spell_tier": "supreme",
+    "focus_cost": 7,
+    "mechanics": "A Hollow creature makes a CHA save or is sent beyond the Veil; held a full minute, it is permanent. Non-Hollow is banished to a demiplane for the duration. Concentration.",
+    "narration_cue": "You point and speak with your god's voice. Reality opens beneath the creature — a rejection.",
+    "resonance_by_source": {
+      "divine": 3
+    },
+    "terrain_effects": {},
+    "audio_cue": "Veil tearing (controlled)",
+    "concentration": true,
+    "level_requirement": 9
   },
   {
     "id": "divine_greater_restoration",
@@ -159,13 +853,111 @@
     "source": "divine",
     "spell_tier": "supreme",
     "focus_cost": 7,
-    "mechanics": "Remove one curse, disease, ability drain, the Hollowed condition, or another lasting affliction. The reliable Hollowed cure.",
+    "mechanics": "Remove one curse, disease, ability drain, Hollowed condition (any stage), Charmed, or Petrified. The only reliable Hollowed cure.",
     "narration_cue": "Light that goes deeper than flesh — reaching into the pattern and straightening what was bent.",
-    "resonance_by_source": { "divine": 3 },
+    "resonance_by_source": {
+      "divine": 3
+    },
     "terrain_effects": {},
-    "audio_cue": "Sustained radiant tone",
+    "audio_cue": "Deep healing tone + radiant surge",
     "concentration": false,
-    "level_requirement": 13
+    "level_requirement": 9
+  },
+  {
+    "id": "divine_resurrection",
+    "name": "Resurrection",
+    "source": "divine",
+    "spell_tier": "supreme",
+    "focus_cost": 8,
+    "mechanics": "Return a creature dead up to 10 days to life at full HP. A diamond is consumed. The soul must be willing; returns with 1 exhaustion.",
+    "narration_cue": "This is negotiation with death itself. You reach across Mortaen's threshold and ask for them back.",
+    "resonance_by_source": {
+      "divine": 3
+    },
+    "terrain_effects": {},
+    "audio_cue": "Silence then STG-006 (Mortaen) then heartbeat",
+    "concentration": false,
+    "level_requirement": 10
+  },
+  {
+    "id": "divine_holy_aura",
+    "name": "Holy Aura",
+    "source": "divine",
+    "spell_tier": "supreme",
+    "focus_cost": 7,
+    "mechanics": "Allies within 30 ft gain advantage on saves and impose disadvantage on attacks; undead/Hollow hitting in melee make a CON save or are blinded. Concentration.",
+    "narration_cue": "Your god's presence fills the space — warm, golden, absolute.",
+    "resonance_by_source": {
+      "divine": 3
+    },
+    "terrain_effects": {},
+    "audio_cue": "Sustained radiant harmonic",
+    "concentration": true,
+    "level_requirement": 9
+  },
+  {
+    "id": "divine_divine_judgment",
+    "name": "Divine Judgment",
+    "source": "divine",
+    "spell_tier": "supreme",
+    "focus_cost": 7,
+    "mechanics": "WIS save. Fail: 6d8 radiant + stunned 1 round, half and no stun on a success. Against Hollow the damage rises to 8d8.",
+    "narration_cue": "Your god looks through your eyes. The judgment is instant, absolute, and searing.",
+    "resonance_by_source": {
+      "divine": 3
+    },
+    "terrain_effects": {},
+    "audio_cue": "STG-006 (patron) then radiant detonation",
+    "concentration": false,
+    "level_requirement": 9
+  },
+  {
+    "id": "divine_miracle",
+    "name": "Miracle",
+    "source": "divine",
+    "spell_tier": "supreme",
+    "focus_cost": 8,
+    "mechanics": "Request divine intervention; the god decides. Can replicate any standard-or-lower spell at 0 Focus or produce unique domain effects. Once per session.",
+    "narration_cue": "You pray — truly, desperately — and your god answers. What happens next is theirs, not yours.",
+    "resonance_by_source": {
+      "divine": 4
+    },
+    "terrain_effects": {},
+    "audio_cue": "Full STG-006 then deity audio then effect audio",
+    "concentration": false,
+    "level_requirement": 10
+  },
+  {
+    "id": "primal_thorn_whip",
+    "name": "Thorn Whip",
+    "source": "primal",
+    "spell_tier": "cantrip",
+    "focus_cost": 0,
+    "mechanics": "Melee spell attack at range. 1d6 piercing, pull the target 10 ft closer, + WIS mod. Scales: 2d6 at L5, 3d6 at L11, 4d6 at L17.",
+    "narration_cue": "A vine lashes out — thorned, fast, hungry. It strikes and drags them toward you.",
+    "resonance_by_source": {
+      "primal": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "Whip crack + organic tearing",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "primal_druidcraft",
+    "name": "Druidcraft",
+    "source": "primal",
+    "spell_tier": "cantrip",
+    "focus_cost": 0,
+    "mechanics": "Minor nature effect: bloom a flower, a sensory effect, predict weather 24 hours, or light/snuff a small flame.",
+    "narration_cue": "You whisper to the world and it responds — a flower opens, a breeze shifts.",
+    "resonance_by_source": {
+      "primal": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "",
+    "concentration": false,
+    "level_requirement": 1
   },
   {
     "id": "primal_produce_flame",
@@ -175,9 +967,126 @@
     "focus_cost": 0,
     "mechanics": "Conjure flame in your hand for light, or hurl it as a ranged spell attack for 1d6 fire. Scales with level.",
     "narration_cue": "Fire blooms in your palm — drawn from the heat of the earth. It knows you.",
-    "resonance_by_source": { "primal": 0 },
+    "resonance_by_source": {
+      "primal": 0
+    },
     "terrain_effects": {},
     "audio_cue": "Soft ignition + crackling",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "primal_shillelagh",
+    "name": "Shillelagh",
+    "source": "primal",
+    "spell_tier": "cantrip",
+    "focus_cost": 0,
+    "mechanics": "A held staff or club becomes magical, uses WIS for attack and damage, and its damage die becomes 1d8.",
+    "narration_cue": "You grip the staff and the wood responds — harder, heavier, alive.",
+    "resonance_by_source": {
+      "primal": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "Wood resonance hum",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "primal_gust",
+    "name": "Gust",
+    "source": "primal",
+    "spell_tier": "cantrip",
+    "focus_cost": 0,
+    "mechanics": "Push a creature 5 ft (STR save), push objects 10 ft, or create a harmless wind. Minor control or utility.",
+    "narration_cue": "The air obeys — a sharp push, scattered leaves, a campfire bending wrong.",
+    "resonance_by_source": {
+      "primal": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "Sharp wind gust",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "primal_healing_touch",
+    "name": "Healing Touch",
+    "source": "primal",
+    "spell_tier": "minor",
+    "focus_cost": 2,
+    "mechanics": "Restore 1d8 + WIS mod HP. Primal healing — the body remembers wholeness.",
+    "narration_cue": "Your hand presses to the wound and the flesh remembers what it was.",
+    "resonance_by_source": {
+      "primal": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "CMB-009 variant (organic)",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "primal_bark_skin",
+    "name": "Bark Skin",
+    "source": "primal",
+    "spell_tier": "minor",
+    "focus_cost": 2,
+    "mechanics": "Reaction: when hit, +2 AC for the rest of the round as skin hardens to bark.",
+    "narration_cue": "Your skin darkens, hardens — bark spreading from the point of impact.",
+    "resonance_by_source": {
+      "primal": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "Crackling organic armor",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "primal_entangle",
+    "name": "Entangle",
+    "source": "primal",
+    "spell_tier": "minor",
+    "focus_cost": 3,
+    "mechanics": "Vines erupt in a 20 ft square. STR save or restrained, re-save each turn; the area is difficult terrain. 0 Resonance in nature, 2 in urban. Concentration.",
+    "narration_cue": "The ground opens and vines pour upward — thick, thorned, grasping.",
+    "resonance_by_source": {
+      "primal": 0
+    },
+    "terrain_effects": {
+      "ancient_forest": 0,
+      "large_city": 2
+    },
+    "audio_cue": "Erupting vegetation",
+    "concentration": true,
+    "level_requirement": 1
+  },
+  {
+    "id": "primal_speak_with_animals",
+    "name": "Speak with Animals",
+    "source": "primal",
+    "spell_tier": "minor",
+    "focus_cost": 1,
+    "mechanics": "Communicate with animals for 10 minutes; they understand speech and answer within their intelligence. 0 Resonance.",
+    "narration_cue": "The birdsong sharpens into meaning. The fox stops and really looks at you.",
+    "resonance_by_source": {
+      "primal": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "Nature ambient shift",
+    "concentration": false,
+    "level_requirement": 1
+  },
+  {
+    "id": "primal_goodberry",
+    "name": "Goodberry",
+    "source": "primal",
+    "spell_tier": "minor",
+    "focus_cost": 1,
+    "mechanics": "Create five berries; each restores 1 HP and a full day's nourishment. 0 Resonance — growth magic.",
+    "narration_cue": "You cup your hands and life gathers — five small berries, warm, faintly glowing.",
+    "resonance_by_source": {
+      "primal": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "Soft organic growth chime",
     "concentration": false,
     "level_requirement": 1
   },
@@ -189,8 +1098,14 @@
     "focus_cost": 2,
     "mechanics": "Creatures in a 20 ft cube make a DEX save or are outlined in light; they cannot be invisible and attacks against them have advantage. Concentration.",
     "narration_cue": "Drifting motes of cold light cling to everything, outlining bodies in eerie luminescence.",
-    "resonance_by_source": { "primal": 1 },
-    "terrain_effects": { "ancient_forest": 0, "village": 1, "large_city": 1 },
+    "resonance_by_source": {
+      "primal": 1
+    },
+    "terrain_effects": {
+      "ancient_forest": 0,
+      "village": 1,
+      "large_city": 1
+    },
     "audio_cue": "Shimmering bioluminescent hum",
     "concentration": true,
     "level_requirement": 2
@@ -201,13 +1116,191 @@
     "source": "primal",
     "spell_tier": "standard",
     "focus_cost": 4,
-    "mechanics": "Outdoors, call a bolt for 2d8 lightning (DEX half); later rounds strike again for 2 Focus. Concentration.",
+    "mechanics": "Outdoors, call a bolt for 2d8 lightning (DEX half); later rounds strike again for 2 Focus. 1 Resonance outdoors, 3 indoors. Concentration.",
     "narration_cue": "The sky answers. A pause, then a focused lance of light finds exactly what you pointed at.",
-    "resonance_by_source": { "primal": 1 },
-    "terrain_effects": { "healthy_natural": 1, "large_city": 3 },
+    "resonance_by_source": {
+      "primal": 1
+    },
+    "terrain_effects": {
+      "healthy_natural": 1,
+      "large_city": 3
+    },
     "audio_cue": "Atmospheric charge then targeted strike",
     "concentration": true,
     "level_requirement": 3
+  },
+  {
+    "id": "primal_plant_growth",
+    "name": "Plant Growth",
+    "source": "primal",
+    "spell_tier": "standard",
+    "focus_cost": 3,
+    "mechanics": "Combat: a 100 ft radius becomes difficult terrain (4x movement). Non-combat: double crop yields over 8 hours. Near-zero Resonance in nature.",
+    "narration_cue": "The forest surges. Every vine thickens, every root rises. The land becomes its own fortress.",
+    "resonance_by_source": {
+      "primal": 0
+    },
+    "terrain_effects": {
+      "large_city": 1
+    },
+    "audio_cue": "Deep organic growth rumble",
+    "concentration": false,
+    "level_requirement": 3
+  },
+  {
+    "id": "primal_conjure_animals",
+    "name": "Conjure Animals",
+    "source": "primal",
+    "spell_tier": "standard",
+    "focus_cost": 3,
+    "mechanics": "Summon 2 wolves, 1 bear, or 4 hawks that obey verbal commands and act on your turn. They vanish at 0 HP or when the duration ends. Concentration.",
+    "narration_cue": "You call, and the wild answers — from the earth itself. Real, warm, willing.",
+    "resonance_by_source": {
+      "primal": 2
+    },
+    "terrain_effects": {},
+    "audio_cue": "Animal calls (species-appropriate)",
+    "concentration": true,
+    "level_requirement": 3
+  },
+  {
+    "id": "primal_protection_from_hollow",
+    "name": "Protection from Hollow",
+    "source": "primal",
+    "spell_tier": "standard",
+    "focus_cost": 3,
+    "mechanics": "Advantage on saves vs Hollow effects; Hollow creatures have disadvantage attacking the target. 0 Resonance — reinforces the Veil. Concentration.",
+    "narration_cue": "You trace a pattern and the wrongness parts around them like water around stone.",
+    "resonance_by_source": {
+      "primal": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "Stabilizing hum + Hollow receding",
+    "concentration": true,
+    "level_requirement": 3
+  },
+  {
+    "id": "primal_water_breathing",
+    "name": "Water Breathing",
+    "source": "primal",
+    "spell_tier": "standard",
+    "focus_cost": 3,
+    "mechanics": "Up to six creatures breathe underwater for 24 hours, and normally above water. No concentration.",
+    "narration_cue": "You press their chest and their lungs expand — the water will be air to them now.",
+    "resonance_by_source": {
+      "primal": 1
+    },
+    "terrain_effects": {},
+    "audio_cue": "Water bubble + breath shift",
+    "concentration": false,
+    "level_requirement": 3
+  },
+  {
+    "id": "primal_natures_grasp",
+    "name": "Nature's Grasp",
+    "source": "primal",
+    "spell_tier": "standard",
+    "focus_cost": 2,
+    "mechanics": "Reaction: an enemy moving through natural terrain near you is restrained by roots (STR save) until end of turn. 0 Resonance in nature.",
+    "narration_cue": "The ground reaches up and grabs — with the patient, absolute grip of ancient roots.",
+    "resonance_by_source": {
+      "primal": 0
+    },
+    "terrain_effects": {
+      "large_city": 1
+    },
+    "audio_cue": "Sudden root eruption",
+    "concentration": false,
+    "level_requirement": 5
+  },
+  {
+    "id": "primal_wild_shape",
+    "name": "Wild Shape",
+    "source": "primal",
+    "spell_tier": "major",
+    "focus_cost": 4,
+    "mechanics": "Transform into a beast form with its own HP pool, natural attacks, and beast senses. Costs Focus and Stamina. No spellcasting in form until L10.",
+    "narration_cue": "Bones shift. Skin ripples. One terrible, exhilarating moment of being neither — then something new.",
+    "resonance_by_source": {
+      "primal": 1
+    },
+    "terrain_effects": {
+      "large_city": 2
+    },
+    "audio_cue": "Organic transformation",
+    "concentration": false,
+    "level_requirement": 5
+  },
+  {
+    "id": "primal_wall_of_thorns",
+    "name": "Wall of Thorns",
+    "source": "primal",
+    "spell_tier": "major",
+    "focus_cost": 5,
+    "mechanics": "A 60 ft thorn barrier; passing through deals 2d6 piercing (DEX half) and it gives full cover. 1 Resonance in forest, 3 in urban. Concentration.",
+    "narration_cue": "A hedge of thorns thick as your arm, higher than a house, absolutely impassable.",
+    "resonance_by_source": {
+      "primal": 1
+    },
+    "terrain_effects": {
+      "ancient_forest": 1,
+      "large_city": 3
+    },
+    "audio_cue": "Rapid violent plant growth",
+    "concentration": true,
+    "level_requirement": 7
+  },
+  {
+    "id": "primal_commune_with_nature",
+    "name": "Commune with Nature",
+    "source": "primal",
+    "spell_tier": "major",
+    "focus_cost": 3,
+    "mechanics": "Learn three facts about the surrounding 3 miles: terrain, water, life, Hollow corruption, settlements, or powerful creatures. 0 Resonance.",
+    "narration_cue": "You press palm to earth. The land speaks in impressions — water here, corruption there, something wrong to the north.",
+    "resonance_by_source": {
+      "primal": 0
+    },
+    "terrain_effects": {},
+    "audio_cue": "Deep earth resonance",
+    "concentration": false,
+    "level_requirement": 5
+  },
+  {
+    "id": "primal_blight",
+    "name": "Blight",
+    "source": "primal",
+    "spell_tier": "major",
+    "focus_cost": 5,
+    "mechanics": "CON save. Fail: 4d8 necrotic, half on a success. Plant creatures take max damage with no save. Higher Resonance — decay as a weapon.",
+    "narration_cue": "You reach for the opposite of growth. The target withers — color draining, life pulled out like thread.",
+    "resonance_by_source": {
+      "primal": 2
+    },
+    "terrain_effects": {
+      "hollow_corrupted": 4
+    },
+    "audio_cue": "Organic decay — drying, cracking",
+    "concentration": false,
+    "level_requirement": 5
+  },
+  {
+    "id": "primal_guardian_of_nature",
+    "name": "Guardian of Nature",
+    "source": "primal",
+    "spell_tier": "major",
+    "focus_cost": 5,
+    "mechanics": "Choose Great Tree (+10 temp HP, advantage on CON saves and attacks, difficult terrain 15 ft) or Primal Beast (+10 ft speed, advantage on WIS, +1d6 force, darkvision 120 ft). Concentration.",
+    "narration_cue": "Nature pours into you — bark hardening skin, or predator instinct sharpening every sense.",
+    "resonance_by_source": {
+      "primal": 1
+    },
+    "terrain_effects": {
+      "large_city": 2
+    },
+    "audio_cue": "Organic transformation (by form)",
+    "concentration": true,
+    "level_requirement": 7
   },
   {
     "id": "primal_ice_storm",
@@ -215,13 +1308,54 @@
     "source": "primal",
     "spell_tier": "major",
     "focus_cost": 5,
-    "mechanics": "A 20 ft radius is hammered by hail. DEX save, 2d8 bludgeoning + 2d6 cold on a fail, half on a success. The area becomes difficult terrain for a round.",
+    "mechanics": "A 20 ft radius. DEX save, 2d8 bludgeoning + 2d6 cold on a fail, half on a success. The area becomes difficult terrain for a round.",
     "narration_cue": "The temperature drops. Fist-sized hail hammers everything below.",
-    "resonance_by_source": { "primal": 2 },
-    "terrain_effects": { "healthy_natural": 2, "large_city": 3 },
-    "audio_cue": "Hail impact roar",
+    "resonance_by_source": {
+      "primal": 2
+    },
+    "terrain_effects": {
+      "healthy_natural": 2,
+      "large_city": 3
+    },
+    "audio_cue": "CMB-007 variant + hail impact",
     "concentration": false,
-    "level_requirement": 7
+    "level_requirement": 5
+  },
+  {
+    "id": "primal_earthquake",
+    "name": "Earthquake",
+    "source": "primal",
+    "spell_tier": "supreme",
+    "focus_cost": 8,
+    "mechanics": "All creatures in a 100 ft radius make a DEX save each round or fall prone and take 2d6. Structures take massive damage, fissures open, concentration breaks. 3 Resonance in nature, 5 urban. Concentration.",
+    "narration_cue": "The earth moves. The ground buckles, cracks, rises and falls like a breathing thing.",
+    "resonance_by_source": {
+      "primal": 3
+    },
+    "terrain_effects": {
+      "large_city": 5
+    },
+    "audio_cue": "Deep seismic rumble then cracking",
+    "concentration": true,
+    "level_requirement": 10
+  },
+  {
+    "id": "primal_tsunami",
+    "name": "Tsunami",
+    "source": "primal",
+    "spell_tier": "supreme",
+    "focus_cost": 8,
+    "mechanics": "A 300 ft wall advances 50 ft/round. STR save, 3d8 bludgeoning and carried on a fail, half and not carried on a success. Requires nearby water. Concentration.",
+    "narration_cue": "The ocean rises. Not a wave — a wall. It hangs, then comes for everything.",
+    "resonance_by_source": {
+      "primal": 3
+    },
+    "terrain_effects": {
+      "large_city": 5
+    },
+    "audio_cue": "Building roar then crashing impact",
+    "concentration": true,
+    "level_requirement": 10
   },
   {
     "id": "primal_regenerate",
@@ -229,12 +1363,62 @@
     "source": "primal",
     "spell_tier": "supreme",
     "focus_cost": 7,
-    "mechanics": "Restore 4d8+15 HP at once, then 1 HP per round for an hour, regrowing severed limbs over the full duration.",
+    "mechanics": "Restore 4d8+15 HP immediately, then 1 HP per round for an hour, regrowing severed limbs over the full duration.",
     "narration_cue": "Life flows in and doesn't stop — the body repairs with the patience of a forest regrowing after fire.",
-    "resonance_by_source": { "primal": 2 },
+    "resonance_by_source": {
+      "primal": 2
+    },
     "terrain_effects": {},
-    "audio_cue": "Organic regrowth swell",
+    "audio_cue": "Sustained organic healing tone",
     "concentration": false,
-    "level_requirement": 13
+    "level_requirement": 9
+  },
+  {
+    "id": "primal_animal_shapes",
+    "name": "Animal Shapes",
+    "source": "primal",
+    "spell_tier": "supreme",
+    "focus_cost": 7,
+    "mechanics": "Transform up to six willing creatures into beast forms (max CR = level/4), each with its own beast HP. Concentration.",
+    "narration_cue": "You speak beast names and allies hear the call in their bones. One by one they change.",
+    "resonance_by_source": {
+      "primal": 3
+    },
+    "terrain_effects": {},
+    "audio_cue": "Cascading organic transformations",
+    "concentration": true,
+    "level_requirement": 9
+  },
+  {
+    "id": "primal_feeblemind",
+    "name": "Feeblemind",
+    "source": "primal",
+    "spell_tier": "supreme",
+    "focus_cost": 7,
+    "mechanics": "INT save. Fail: INT and CHA drop to 1; the target cannot cast, use magic items, or understand language. Save repeats every 30 days. Only Greater Restoration ends it.",
+    "narration_cue": "You reach into their mind and pull. Not a thought — the capacity for thought.",
+    "resonance_by_source": {
+      "primal": 4
+    },
+    "terrain_effects": {},
+    "audio_cue": "Psychic collapse",
+    "concentration": false,
+    "level_requirement": 9
+  },
+  {
+    "id": "primal_storm_of_vengeance",
+    "name": "Storm of Vengeance",
+    "source": "primal",
+    "spell_tier": "supreme",
+    "focus_cost": 8,
+    "mechanics": "A 360 ft storm escalates each round: deafen, acid 1d6, lightning 3d6 to six, hail 2d6, then a blizzard of difficult terrain and 1d6 cold. Concentration.",
+    "narration_cue": "You give the sky permission. What follows is weather with intent.",
+    "resonance_by_source": {
+      "primal": 5
+    },
+    "terrain_effects": {},
+    "audio_cue": "Building storm: wind, rain, thunder, hail, blizzard",
+    "concentration": true,
+    "level_requirement": 10
   }
 ]

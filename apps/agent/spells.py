@@ -1,18 +1,24 @@
-"""Spell catalog — DB-loaded content config (M8 / story-001).
+"""Spell catalog — DB-loaded content config (M8 / M3.3 / story-001).
 
-content/spells.json is the single source of truth for the ELECTIVE spell library:
-the learnable pool keyed by magic source (arcane/divine/primal). Caster CORE spells
-are NOT here — they stay archetype_abilities rows with ability_type=core (the
-M2.2/M2.4 seam, decision 235ae150c5d3). This module is the Python loader, an exact
-mirror of abilities.py: a module-global dict populated by load_spells() at process
-startup (or set_spells() in tests), a fail-loud parse_spell_row shared by the DB
-loader and the JSON test fixture, and sync accessors.
+content/spells.json is the single source of truth for the FULL 87-spell casting
+catalog, keyed by magic source (arcane/divine/primal). M3.3 (decision
+spell-catalog-full-casting-ssot) made this the casting-data SSOT, superseding the
+earlier elective-only seam (235ae150c5d3): cast_spell/get_spell_info need data for
+every castable spell, so the caster CORE spells (Arcane Bolt, Sacred Flame, Heal
+Wounds, Thorn Whip, Healing Touch) now live here too. archetype_abilities `core`
+rows remain as the ACCESS grant (which spells an archetype always-knows); the spell
+DATA lives here. The resulting core-spell data duplication is tracked debt, to be
+reconciled when cast_spell lands. This module is the Python loader, an exact mirror
+of abilities.py: a module-global dict populated by load_spells() at process startup
+(or set_spells() in tests), a fail-loud parse_spell_row shared by the DB loader and
+the JSON test fixture, and sync accessors.
 
 The catalog is SOURCE-keyed, not archetype-keyed: get_spells_by_source filters by
 the magic source, the analogue of abilities.get_archetype_abilities. The row shape
-borrows Phase-3 Magic's M3.3 schema minimally and is forward-compatible — extra
-fields (resonance_by_source, terrain_effects, ...) in the JSONB column are ignored
-here and consumed by M3.3 when it ships. Downstream stories consume get_spell /
+carries the full M3.3 cast-time schema (resonance_by_source, terrain_effects,
+audio_cue, concentration, level_requirement); parse_spell_row is STRICT on these
+(decision spell-loader-strict-contract) while still ignoring genuinely-unknown extra
+fields for forward compatibility. Downstream stories consume get_spell /
 get_spells_by_source: character_spells (story-002), learn(spell,id) (story-005),
 preparation (story-006).
 """

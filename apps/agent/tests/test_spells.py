@@ -11,7 +11,9 @@ forward-compatible with the full Phase-3 Magic catalog.
 
 Tier-unlock ladder (the floor character level at which a tier becomes learnable,
 enforced by story-005's MIN_LEVEL_BY_SPELL_TIER): cantrip/minor L1, standard L4,
-major L7, supreme L13. The gate is keyed by tier — spells carry no per-row level.
+major L7, supreme L13. This tier table is still the ACTIVE learn/cast gate. Spells
+also now carry a per-row level_requirement (the spec "Level" column, M3.3) that no
+reader consumes yet; reconciling the two is tracked as concern 3d7b7bbbd50b.
 """
 
 import json
@@ -262,9 +264,10 @@ def test_content_every_row_parses_and_covers_each_source_and_tier():
 
 
 def test_content_spell_tiers_are_gated_by_the_level_table():
-    # Every content spell's tier is covered by the level->tier gate (the single source
-    # of truth, leveling.MIN_LEVEL_BY_SPELL_TIER): unlocked exactly at the tier floor,
-    # gated one level below. Spells carry no per-row level_requirement.
+    # Every content spell's tier is covered by the level->tier gate
+    # (leveling.MIN_LEVEL_BY_SPELL_TIER): unlocked exactly at the tier floor, gated one
+    # level below. This tier table is the ACTIVE gate; the new per-row level_requirement
+    # is not yet a reader (dual-SSOT reconciliation tracked as concern 3d7b7bbbd50b).
     _seed_from_content()
     raw = json.loads(CONTENT_PATH.read_text())
     for row in raw:
@@ -275,14 +278,18 @@ def test_content_spell_tiers_are_gated_by_the_level_table():
             assert is_spell_tier_unlocked(s.spell_tier, floor - 1) is False
 
 
-def test_content_excludes_caster_core_spells():
-    # Core spells (Arcane Bolt, Sacred Flame, Heal Wounds, Thorn Whip, Healing Touch)
-    # live as archetype_abilities rows (seam 235ae150c5d3), NOT the elective catalog.
+def test_content_includes_caster_core_spells():
+    # M3.3 supersedes the M8 elective-only seam (235ae150c5d3 -> decision
+    # spell-catalog-full-casting-ssot): spells.json is now the FULL 87-spell casting
+    # catalog, so cast_spell/get_spell_info have data for every castable spell — INCLUDING
+    # the caster-core cantrips/spells. archetype_abilities `core` rows remain as the
+    # ACCESS grant (which spells an archetype always-knows); the spell DATA lives here.
+    # (Core-spell data is duplicated across both for now — tracked as debt to reconcile.)
     _seed_from_content()
     raw = json.loads(CONTENT_PATH.read_text())
     names = {row["name"].lower() for row in raw}
     for core in ("arcane bolt", "sacred flame", "heal wounds", "thorn whip", "healing touch"):
-        assert core not in names, f"core spell {core!r} must stay an ability, not a catalog row"
+        assert core in names, f"M3.3 casting catalog must carry core spell {core!r}"
 
 
 # --- build-then-swap load_spells (DB path) -------------------------------------
