@@ -27,4 +27,9 @@ export interface Ability {
   cost: Cost;
   effect: string;
   narration_cue: string;
+  // Set on spell-backed caster CORE rows. The Focus cost — the one cast number shared with
+  // the cast path — is NOT authored on the row; it composes from content/spells.json via this
+  // id (kept single-sourced, no drift). effect/narration/level stay per-archetype. Absent on
+  // non-spell rows.
+  spell_id?: string;
 }

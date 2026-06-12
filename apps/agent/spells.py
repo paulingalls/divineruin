@@ -6,9 +6,10 @@ spell-catalog-full-casting-ssot) made this the casting-data SSOT, superseding th
 earlier elective-only seam (235ae150c5d3): cast_spell/get_spell_info need data for
 every castable spell, so the caster CORE spells (Arcane Bolt, Sacred Flame, Heal
 Wounds, Thorn Whip, Healing Touch) now live here too. archetype_abilities `core`
-rows remain as the ACCESS grant (which spells an archetype always-knows); the spell
-DATA lives here. The resulting core-spell data duplication is tracked debt, to be
-reconciled when cast_spell lands. This module is the Python loader, an exact mirror
+rows are the ACCESS grant (which spells an archetype always-knows) + per-archetype
+description and narration; their Focus cost — the one cast number shared with the
+cast path — is NOT authored there but composed from this catalog at load time
+(abilities._resolve_cost via spell_id, Try 2), so it can't drift. This module is the Python loader, an exact mirror
 of abilities.py: a module-global dict populated by load_spells() at process startup
 (or set_spells() in tests), a fail-loud parse_spell_row shared by the DB loader and
 the JSON test fixture, and sync accessors.
