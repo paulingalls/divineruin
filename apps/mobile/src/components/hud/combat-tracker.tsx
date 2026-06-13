@@ -10,6 +10,7 @@ import Animated, {
 
 import { ThemedText } from "@/components/themed-text";
 import { AnimationPresets, BrandColors, FontStyles, Radius, Spacing } from "@/constants/theme";
+import { HUD_ANCHORS } from "@/constants/hud-anchors";
 import type { Combatant, CombatTrackerState } from "@/stores/hud-store";
 
 function CombatantHpBar({ current, max }: { current: number; max: number }) {
@@ -102,7 +103,7 @@ export function CombatTracker({ state }: CombatTrackerProps) {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    bottom: 80,
+    bottom: HUD_ANCHORS.bottomToast,
     left: 0,
     right: 0,
     maxHeight: "30%",

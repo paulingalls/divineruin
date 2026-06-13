@@ -1,6 +1,7 @@
 import { createStore } from "zustand/vanilla";
 
 import { BrandColors } from "@/constants/theme";
+import { HUD_ANCHORS } from "@/constants/hud-anchors";
 
 // --- Types ---
 
@@ -88,7 +89,7 @@ export const RESONANCE_DISPLAY: Record<ResonanceState, { label: string; color: s
 // combat tracker (concern 843b). When combat is active, lift the resonance pill
 // above the combat tracker; otherwise keep its default bottom:80. Lives here (not
 // resonance-tracker.tsx) so the bun suite can unit-test it without a .tsx import.
-export const RESONANCE_TRACKER_BOTTOM_DEFAULT = 80;
+export const RESONANCE_TRACKER_BOTTOM_DEFAULT = HUD_ANCHORS.bottomToast;
 export const RESONANCE_TRACKER_BOTTOM_IN_COMBAT = 140;
 
 export function resonanceTrackerBottom(isCombatActive: boolean): number {

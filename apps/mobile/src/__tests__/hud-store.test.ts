@@ -1,14 +1,29 @@
 import { test, expect, beforeEach } from "bun:test";
 import {
   hudStore,
+  RESONANCE_TRACKER_BOTTOM_DEFAULT,
   type OverlayType,
   type StatusEffect,
   type CombatTrackerState,
   type CreationCard,
 } from "@/stores/hud-store";
+import { HUD_ANCHORS } from "@/constants/hud-anchors";
 
 beforeEach(() => {
   hudStore.getState().reset();
+});
+
+// --- HUD_ANCHORS: single source of truth for bottom-anchored HUD insets (Try-1) ---
+// The XP/divine-favor toasts and the combat tracker all anchor at the same bottom
+// inset; before this they each hard-coded bottom:80, so a layout shift meant editing
+// four places. HUD_ANCHORS centralizes the value (closes concern 61cae1d5).
+
+test("HUD_ANCHORS.bottomToast is the shared 80px bottom inset", () => {
+  expect(HUD_ANCHORS.bottomToast).toBe(80);
+});
+
+test("RESONANCE_TRACKER_BOTTOM_DEFAULT is sourced from HUD_ANCHORS (no drift)", () => {
+  expect(RESONANCE_TRACKER_BOTTOM_DEFAULT).toBe(HUD_ANCHORS.bottomToast);
 });
 
 // --- pushOverlay ---
