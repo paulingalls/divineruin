@@ -12,8 +12,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "CMB-007",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "arcane_bolt",
@@ -28,8 +27,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "CMB-008",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "arcane_spark",
@@ -44,8 +42,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "CMB-008 variant",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "arcane_prestidigitation",
@@ -60,8 +57,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "arcane_mage_light",
@@ -76,8 +72,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Soft chime",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "arcane_shield_spell",
@@ -92,8 +87,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "CMB-008 (soft)",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "arcane_detect_magic",
@@ -108,8 +102,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Subtle shimmer",
-    "concentration": true,
-    "level_requirement": 1
+    "concentration": true
   },
   {
     "id": "arcane_mage_hand",
@@ -124,8 +117,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Soft hum",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "arcane_magic_missile",
@@ -140,8 +132,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "CMB-008 (triple)",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "arcane_mist_step",
@@ -156,8 +147,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Displacement whoosh",
-    "concentration": false,
-    "level_requirement": 2
+    "concentration": false
   },
   {
     "id": "arcane_arcane_lock",
@@ -172,8 +162,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Lock + magic hum",
-    "concentration": false,
-    "level_requirement": 2
+    "concentration": false
   },
   {
     "id": "arcane_elemental_burst",
@@ -188,8 +177,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "CMB-006/7/8",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "arcane_hold_person",
@@ -204,8 +192,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Low thrum + lock",
-    "concentration": true,
-    "level_requirement": 3
+    "concentration": true
   },
   {
     "id": "arcane_counterspell",
@@ -220,8 +207,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Sharp crack + silence",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "arcane_dispel_magic",
@@ -236,8 +222,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Reverse shimmer",
-    "concentration": false,
-    "level_requirement": 3
+    "concentration": false
   },
   {
     "id": "arcane_fly",
@@ -252,8 +237,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Rising wind",
-    "concentration": true,
-    "level_requirement": 4
+    "concentration": true
   },
   {
     "id": "arcane_invisibility",
@@ -268,8 +252,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Displacement hiss",
-    "concentration": true,
-    "level_requirement": 3
+    "concentration": true
   },
   {
     "id": "arcane_fireball",
@@ -284,8 +267,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "CMB-006 (powerful)",
-    "concentration": false,
-    "level_requirement": 5
+    "concentration": false
   },
   {
     "id": "arcane_lightning_bolt",
@@ -300,8 +282,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "CMB-008 (sustained)",
-    "concentration": false,
-    "level_requirement": 5
+    "concentration": false
   },
   {
     "id": "arcane_wall_of_force",
@@ -316,8 +297,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Deep resonant hum",
-    "concentration": true,
-    "level_requirement": 7
+    "concentration": true
   },
   {
     "id": "arcane_haste",
@@ -332,8 +312,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Accelerating pulse",
-    "concentration": true,
-    "level_requirement": 5
+    "concentration": true
   },
   {
     "id": "arcane_slow",
@@ -348,8 +327,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Decelerating tone",
-    "concentration": true,
-    "level_requirement": 5
+    "concentration": true
   },
   {
     "id": "arcane_arcane_eye",
@@ -364,8 +342,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Soft hum",
-    "concentration": true,
-    "level_requirement": 6
+    "concentration": true
   },
   {
     "id": "arcane_chain_lightning",
@@ -380,8 +357,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "CMB-008 + arcs",
-    "concentration": false,
-    "level_requirement": 9
+    "concentration": false
   },
   {
     "id": "arcane_disintegrate",
@@ -396,8 +372,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Charge then silence",
-    "concentration": false,
-    "level_requirement": 9
+    "concentration": false
   },
   {
     "id": "arcane_teleport",
@@ -412,8 +387,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Reality bending",
-    "concentration": false,
-    "level_requirement": 9
+    "concentration": false
   },
   {
     "id": "arcane_power_word_stun",
@@ -428,8 +402,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Subsonic pulse",
-    "concentration": false,
-    "level_requirement": 9
+    "concentration": false
   },
   {
     "id": "arcane_maze",
@@ -444,8 +417,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Spatial distortion",
-    "concentration": true,
-    "level_requirement": 8
+    "concentration": true
   },
   {
     "id": "arcane_meteor_swarm",
@@ -460,8 +432,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Whistle then quad detonation",
-    "concentration": false,
-    "level_requirement": 10
+    "concentration": false
   },
   {
     "id": "arcane_time_stop",
@@ -476,8 +447,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "All sound ceases then heartbeat",
-    "concentration": false,
-    "level_requirement": 10
+    "concentration": false
   },
   {
     "id": "divine_sacred_flame",
@@ -492,8 +462,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "CMB-009 variant (offensive radiance)",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "divine_guiding_light",
@@ -508,8 +477,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Soft radiant chime",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "divine_mend",
@@ -524,8 +492,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Quiet crystalline tone",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "divine_sacred_word",
@@ -540,8 +507,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Resonant spoken tone + radiant pulse",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "divine_heal_wounds",
@@ -556,8 +522,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "CMB-009 (healing)",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "divine_shield_of_faith",
@@ -572,8 +537,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "CMB-009 variant + deflection",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "divine_bless",
@@ -588,8 +552,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Ascending choral tone",
-    "concentration": true,
-    "level_requirement": 1
+    "concentration": true
   },
   {
     "id": "divine_sanctuary",
@@ -604,8 +567,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Soft bell tone",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "divine_detect_hollow",
@@ -620,8 +582,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Low harmonic drone",
-    "concentration": true,
-    "level_requirement": 1
+    "concentration": true
   },
   {
     "id": "divine_command",
@@ -636,8 +597,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Resonant authoritative tone",
-    "concentration": false,
-    "level_requirement": 2
+    "concentration": false
   },
   {
     "id": "divine_turn_undead_hollow",
@@ -652,8 +612,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Radiant surge + creature recoil",
-    "concentration": false,
-    "level_requirement": 2
+    "concentration": false
   },
   {
     "id": "divine_spiritual_weapon",
@@ -668,8 +627,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Weapon SFX + radiant shimmer",
-    "concentration": false,
-    "level_requirement": 5
+    "concentration": false
   },
   {
     "id": "divine_dispel_corruption",
@@ -684,8 +642,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Reverse Hollow audio — wrongness unwinding",
-    "concentration": false,
-    "level_requirement": 3
+    "concentration": false
   },
   {
     "id": "divine_zone_of_truth",
@@ -700,8 +657,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Subtle bell + low harmonic",
-    "concentration": false,
-    "level_requirement": 3
+    "concentration": false
   },
   {
     "id": "divine_prayer_of_healing",
@@ -716,8 +672,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Extended gentle choral tone",
-    "concentration": false,
-    "level_requirement": 3
+    "concentration": false
   },
   {
     "id": "divine_beacon_of_hope",
@@ -732,8 +687,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Warm sustained tone",
-    "concentration": true,
-    "level_requirement": 4
+    "concentration": true
   },
   {
     "id": "divine_mass_heal",
@@ -748,8 +702,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "CMB-009 (powerful, wide)",
-    "concentration": false,
-    "level_requirement": 5
+    "concentration": false
   },
   {
     "id": "divine_divine_ward",
@@ -764,8 +717,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Heavy radiant impact absorption",
-    "concentration": false,
-    "level_requirement": 7
+    "concentration": false
   },
   {
     "id": "divine_flame_strike",
@@ -780,8 +732,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Descending fire + radiant harmonic",
-    "concentration": false,
-    "level_requirement": 5
+    "concentration": false
   },
   {
     "id": "divine_veil_ward",
@@ -796,8 +747,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Deep stabilizing harmonic",
-    "concentration": false,
-    "level_requirement": 7
+    "concentration": false
   },
   {
     "id": "divine_revivify",
@@ -812,8 +762,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Silence then heartbeat then breath",
-    "concentration": false,
-    "level_requirement": 5
+    "concentration": false
   },
   {
     "id": "divine_commune",
@@ -828,8 +777,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "STG-006 (god whisper) + deity voice",
-    "concentration": false,
-    "level_requirement": 7
+    "concentration": false
   },
   {
     "id": "divine_banishment",
@@ -844,8 +792,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Veil tearing (controlled)",
-    "concentration": true,
-    "level_requirement": 9
+    "concentration": true
   },
   {
     "id": "divine_greater_restoration",
@@ -860,8 +807,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Deep healing tone + radiant surge",
-    "concentration": false,
-    "level_requirement": 9
+    "concentration": false
   },
   {
     "id": "divine_resurrection",
@@ -876,8 +822,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Silence then STG-006 (Mortaen) then heartbeat",
-    "concentration": false,
-    "level_requirement": 10
+    "concentration": false
   },
   {
     "id": "divine_holy_aura",
@@ -892,8 +837,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Sustained radiant harmonic",
-    "concentration": true,
-    "level_requirement": 9
+    "concentration": true
   },
   {
     "id": "divine_divine_judgment",
@@ -908,8 +852,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "STG-006 (patron) then radiant detonation",
-    "concentration": false,
-    "level_requirement": 9
+    "concentration": false
   },
   {
     "id": "divine_miracle",
@@ -924,8 +867,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Full STG-006 then deity audio then effect audio",
-    "concentration": false,
-    "level_requirement": 10
+    "concentration": false
   },
   {
     "id": "primal_thorn_whip",
@@ -940,8 +882,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Whip crack + organic tearing",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "primal_druidcraft",
@@ -956,8 +897,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "primal_produce_flame",
@@ -972,8 +912,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Soft ignition + crackling",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "primal_shillelagh",
@@ -988,8 +927,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Wood resonance hum",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "primal_gust",
@@ -1004,8 +942,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Sharp wind gust",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "primal_healing_touch",
@@ -1020,8 +957,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "CMB-009 variant (organic)",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "primal_bark_skin",
@@ -1036,8 +972,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Crackling organic armor",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "primal_entangle",
@@ -1055,8 +990,7 @@
       "large_city": 2
     },
     "audio_cue": "Erupting vegetation",
-    "concentration": true,
-    "level_requirement": 1
+    "concentration": true
   },
   {
     "id": "primal_speak_with_animals",
@@ -1071,8 +1005,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Nature ambient shift",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "primal_goodberry",
@@ -1087,8 +1020,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Soft organic growth chime",
-    "concentration": false,
-    "level_requirement": 1
+    "concentration": false
   },
   {
     "id": "primal_faerie_fire",
@@ -1107,8 +1039,7 @@
       "large_city": 1
     },
     "audio_cue": "Shimmering bioluminescent hum",
-    "concentration": true,
-    "level_requirement": 2
+    "concentration": true
   },
   {
     "id": "primal_call_lightning",
@@ -1126,8 +1057,7 @@
       "large_city": 3
     },
     "audio_cue": "Atmospheric charge then targeted strike",
-    "concentration": true,
-    "level_requirement": 3
+    "concentration": true
   },
   {
     "id": "primal_plant_growth",
@@ -1144,8 +1074,7 @@
       "large_city": 1
     },
     "audio_cue": "Deep organic growth rumble",
-    "concentration": false,
-    "level_requirement": 3
+    "concentration": false
   },
   {
     "id": "primal_conjure_animals",
@@ -1160,8 +1089,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Animal calls (species-appropriate)",
-    "concentration": true,
-    "level_requirement": 3
+    "concentration": true
   },
   {
     "id": "primal_protection_from_hollow",
@@ -1176,8 +1104,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Stabilizing hum + Hollow receding",
-    "concentration": true,
-    "level_requirement": 3
+    "concentration": true
   },
   {
     "id": "primal_water_breathing",
@@ -1192,8 +1119,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Water bubble + breath shift",
-    "concentration": false,
-    "level_requirement": 3
+    "concentration": false
   },
   {
     "id": "primal_natures_grasp",
@@ -1210,8 +1136,7 @@
       "large_city": 1
     },
     "audio_cue": "Sudden root eruption",
-    "concentration": false,
-    "level_requirement": 5
+    "concentration": false
   },
   {
     "id": "primal_wild_shape",
@@ -1228,8 +1153,7 @@
       "large_city": 2
     },
     "audio_cue": "Organic transformation",
-    "concentration": false,
-    "level_requirement": 5
+    "concentration": false
   },
   {
     "id": "primal_wall_of_thorns",
@@ -1247,8 +1171,7 @@
       "large_city": 3
     },
     "audio_cue": "Rapid violent plant growth",
-    "concentration": true,
-    "level_requirement": 7
+    "concentration": true
   },
   {
     "id": "primal_commune_with_nature",
@@ -1263,8 +1186,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Deep earth resonance",
-    "concentration": false,
-    "level_requirement": 5
+    "concentration": false
   },
   {
     "id": "primal_blight",
@@ -1281,8 +1203,7 @@
       "hollow_corrupted": 4
     },
     "audio_cue": "Organic decay — drying, cracking",
-    "concentration": false,
-    "level_requirement": 5
+    "concentration": false
   },
   {
     "id": "primal_guardian_of_nature",
@@ -1299,8 +1220,7 @@
       "large_city": 2
     },
     "audio_cue": "Organic transformation (by form)",
-    "concentration": true,
-    "level_requirement": 7
+    "concentration": true
   },
   {
     "id": "primal_ice_storm",
@@ -1318,8 +1238,7 @@
       "large_city": 3
     },
     "audio_cue": "CMB-007 variant + hail impact",
-    "concentration": false,
-    "level_requirement": 5
+    "concentration": false
   },
   {
     "id": "primal_earthquake",
@@ -1336,8 +1255,7 @@
       "large_city": 5
     },
     "audio_cue": "Deep seismic rumble then cracking",
-    "concentration": true,
-    "level_requirement": 10
+    "concentration": true
   },
   {
     "id": "primal_tsunami",
@@ -1354,8 +1272,7 @@
       "large_city": 5
     },
     "audio_cue": "Building roar then crashing impact",
-    "concentration": true,
-    "level_requirement": 10
+    "concentration": true
   },
   {
     "id": "primal_regenerate",
@@ -1370,8 +1287,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Sustained organic healing tone",
-    "concentration": false,
-    "level_requirement": 9
+    "concentration": false
   },
   {
     "id": "primal_animal_shapes",
@@ -1386,8 +1302,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Cascading organic transformations",
-    "concentration": true,
-    "level_requirement": 9
+    "concentration": true
   },
   {
     "id": "primal_feeblemind",
@@ -1402,8 +1317,7 @@
     },
     "terrain_effects": {},
     "audio_cue": "Psychic collapse",
-    "concentration": false,
-    "level_requirement": 9
+    "concentration": false
   },
   {
     "id": "primal_storm_of_vengeance",
@@ -1418,7 +1332,6 @@
     },
     "terrain_effects": {},
     "audio_cue": "Building storm: wind, rain, thunder, hail, blizzard",
-    "concentration": true,
-    "level_requirement": 10
+    "concentration": true
   }
 ]

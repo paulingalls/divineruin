@@ -32,7 +32,6 @@ _REQUIRED_FIELDS = (
     "terrain_effects",
     "audio_cue",
     "concentration",
-    "level_requirement",
 )
 
 

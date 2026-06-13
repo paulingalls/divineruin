@@ -4,19 +4,20 @@ import type { Spell, SpellSource, SpellTier } from "./spell";
 // Tests for the M3.3 Spell catalog type (content/spells.json row shape).
 //
 // READER-GATED MIRROR (story-005, decision spell-ts-reader-gated). The Python
-// Spell dataclass (apps/agent/spells.py) carries 12 fields — the 7 below PLUS 5
+// Spell dataclass (apps/agent/spells.py) carries 11 fields — the 7 below PLUS 4
 // M3.3 cast-time fields (resonance_by_source, terrain_effects, audio_cue,
-// concentration, level_requirement). This TS type mirrors ONLY the fields a TS
-// consumer actually reads. Investigation (story-005) found ZERO TS readers of
-// those 5 fields: the Spell type is server-only (parsed by apps/server spells.ts,
-// only focus_cost is read — by abilities.ts cost composition), never serialized
-// over REST or the LiveKit data channel, never imported by mobile/web. Adding the
-// 5 fields here would be forward-wired dead state (risk
-// inventory-richness-forward-wired). The Python loader stays the fail-loud SSOT.
+// concentration). This TS type mirrors ONLY the fields a TS consumer actually
+// reads. Investigation (story-005) found ZERO TS readers of those 4 fields: the
+// Spell type is server-only (parsed by apps/server spells.ts, only focus_cost is
+// read — by abilities.ts cost composition), never serialized over REST or the
+// LiveKit data channel, never imported by mobile/web. Adding the 4 fields here
+// would be forward-wired dead state (risk inventory-richness-forward-wired). The
+// Python loader stays the fail-loud SSOT. (A 5th M3.3 field, level_requirement,
+// was deleted entirely in story-008 as orphaned non-gating metadata.)
 //
 // These are compile-time shape conformance tests plus a structural guard: the
 // fixture pins the exact 7-field shape, so accidentally widening the interface
-// (adding a field with no reader) turns this red. The 5 deliberate omissions are
+// (adding a field with no reader) turns this red. The 4 deliberate omissions are
 // documented as asserted data, not just prose — when a real TS reader lands (e.g.
 // story-007, a mobile character-sheet spell list), move the now-consumed field out
 // of OMITTED_M33_FIELDS and into the interface in the same change.
@@ -62,11 +63,6 @@ const OMITTED_M33_FIELDS: ReadonlyArray<{ field: string; reason: string }> = [
     reason:
       "M3.4 gate; no TS reader yet (a mobile spell-list concentration badge would be one — story-007)",
   },
-  {
-    field: "level_requirement",
-    reason:
-      "catalog Level column; tier gating lives in Python leveling.MIN_LEVEL_BY_SPELL_TIER, no TS reader",
-  },
 ];
 
 describe("Spell — content/spells.json row shape (reader-gated TS mirror)", () => {
@@ -85,14 +81,13 @@ describe("Spell — content/spells.json row shape (reader-gated TS mirror)", () 
     expect(Object.keys(arcaneBolt).sort()).toEqual([...SPELL_FIELDS].sort());
   });
 
-  test("the 5 M3.3 fields are intentionally omitted for lack of a TS reader", () => {
+  test("the 4 M3.3 fields are intentionally omitted for lack of a TS reader", () => {
     const omitted = OMITTED_M33_FIELDS.map((o) => o.field);
     expect(omitted).toEqual([
       "resonance_by_source",
       "terrain_effects",
       "audio_cue",
       "concentration",
-      "level_requirement",
     ]);
     // None of the omitted fields leaked onto the mirrored shape.
     for (const field of omitted) {

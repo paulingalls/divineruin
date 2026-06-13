@@ -17,7 +17,7 @@ the JSON test fixture, and sync accessors.
 The catalog is SOURCE-keyed, not archetype-keyed: get_spells_by_source filters by
 the magic source, the analogue of abilities.get_archetype_abilities. The row shape
 carries the full M3.3 cast-time schema (resonance_by_source, terrain_effects,
-audio_cue, concentration, level_requirement); parse_spell_row is STRICT on these
+audio_cue, concentration); parse_spell_row is STRICT on these
 (decision spell-loader-strict-contract) while still ignoring genuinely-unknown extra
 fields for forward compatibility. Downstream stories consume get_spell /
 get_spells_by_source: character_spells (story-002), learn(spell,id) (story-005),
@@ -56,13 +56,13 @@ class Spell:
     # decision spell-loader-strict-contract). resonance_by_source maps the spell's magic
     # source to its catalog Resonance value (magic.md Spell-to-Resonance Map); terrain_effects
     # holds the Primal terrain->Resonance overrides ({} for non-Primal); audio_cue is the SFX
-    # code auto-pushed on cast ("" if silent); concentration gates M3.4; level_requirement is
-    # the catalog "Level" column.
+    # code auto-pushed on cast ("" if silent); concentration gates M3.4. (The catalog "Level"
+    # column / per-row level_requirement was deleted in story-008: orphaned non-gating metadata
+    # with no reader — access is gated by the per-archetype tier tables, not per-spell level.)
     resonance_by_source: dict[str, int] = field(default_factory=dict)
     terrain_effects: dict[str, int] = field(default_factory=dict)
     audio_cue: str = ""
     concentration: bool = False
-    level_requirement: int = 1
 
 
 # Module-level runtime-loaded spells, keyed by spell id. Populated by load_spells()
@@ -77,8 +77,8 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
     the underlying error with the row id for context; owns fail-loud validation of the
     source/spell_tier enums and the typed fields.
 
-    STRICT on the five known M3.3 fields (resonance_by_source, terrain_effects, audio_cue,
-    concentration, level_requirement) — a missing or malformed one fails loud naming the
+    STRICT on the four known M3.3 fields (resonance_by_source, terrain_effects, audio_cue,
+    concentration) — a missing or malformed one fails loud naming the
     row (decision spell-loader-strict-contract). Genuinely-unknown extra fields are still
     ignored, so the loader stays forward-compatible for future schema additions. Generic
     field validation reuses the shared catalog_parse primitives.
@@ -105,7 +105,6 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             terrain_effects=parse_int_dict(data["terrain_effects"], f"spell {spell_id!r} terrain_effects"),
             audio_cue=parse_str(data["audio_cue"], f"spell {spell_id!r} audio_cue"),
             concentration=concentration,
-            level_requirement=parse_int(data["level_requirement"], f"spell {spell_id!r} level_requirement"),
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed spells row {spell_id!r}: {e}") from e
