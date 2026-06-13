@@ -1,0 +1,15 @@
+{
+  "_doc": "Canonical wire-shape fixture (story-007). The single source of truth both lanes assert against: the Python agent publishers must serialize these exact shapes, and the TS mobile handlers/parsers must accept them. A key rename on either side fails its lane's wire-contract test instead of silently rendering a blank value (concern 82fc). Each event is the full top-level wire object {type, ...payload} as flat-merged by game_events.publish_game_event.",
+  "events": {
+    "resonance_changed": { "type": "resonance_changed", "state": "stable" },
+    "hollow_echo_result": { "type": "hollow_echo_result", "band": "whisper" },
+    "veil_ward_changed": { "type": "veil_ward_changed", "active": true }
+  },
+  "spell_row": {
+    "spell_id": "arcane_fireball",
+    "name": "Fireball",
+    "spell_tier": "major",
+    "focus_cost": 5,
+    "is_prepared": true
+  }
+}
