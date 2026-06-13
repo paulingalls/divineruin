@@ -20,9 +20,9 @@ come from the rules engine; the LLM only decides when to cast and how to narrate
 
 Mirrors the ability_tools seam exactly: a thin @function_tool wrapper over an _impl
 with module-injection keyword args (db_mod/queries_mod/persistence_mod/
-resonance_mutations_mod/resonance_events_mod/spells_mod/resonance_mod/leveling_mod)
-for test mocking, a
-single db.transaction() block, and ToolError for every user-facing failure.
+resonance_mutations_mod/resonance_events_mod/spells_mod/resonance/leveling_mod, plus
+the M3.2 echo/ward mods veil_ward/hollow_echo/dice_mod/echo_events_mod) for test
+mocking, a single db.transaction() block, and ToolError for every user-facing failure.
 
 Terrain note: every catalog spell (primal included) carries a designed
 resonance_by_source baseline, so casts no longer depend on terrain — a primal
@@ -44,10 +44,14 @@ import ability_persistence
 import db
 import db_mutations_resonance
 import db_queries
+import dice
+import hollow_echo as hollow_echo_mod
+import hollow_echo_events
 import leveling
 import resonance as resonance_mod
 import resonance_events
 import spells
+import veil_ward as veil_ward_mod
 from db_errors import db_tool
 from session_data import SessionData
 from tool_support import _validate_id
@@ -112,6 +116,10 @@ async def _cast_spell_impl(
     spells_mod=spells,
     resonance=resonance_mod,
     leveling_mod=leveling,
+    veil_ward=veil_ward_mod,
+    hollow_echo=hollow_echo_mod,
+    dice_mod=dice,
+    echo_events_mod=hollow_echo_events,
 ) -> str:
     context.disallow_interruptions()
     _validate_id(spell_id, "spell_id")
@@ -156,6 +164,13 @@ async def _cast_spell_impl(
             except ValueError as e:
                 raise ToolError(f"Cannot cast {spell.name}: {e}") from e
 
+        # An active Veil Ward halves the Resonance the cast generates (round down, spec
+        # magic.md:197) — so a warded caster reaches Overreach (and Hollow Echoes) less often.
+        # Focus cost is NOT halved (the ward dampens generation, not the spell's cost).
+        ward_active = session.veil_ward.active
+        if ward_active and generated > 0:
+            generated = veil_ward.halve_generation(generated)
+
         if spell.focus_cost > 0:
             await persistence_mod.update_player_resources(player_id, focus=current_focus - spell.focus_cost, conn=conn)
 
@@ -172,14 +187,34 @@ async def _cast_spell_impl(
     # a cantrip (generated == 0) leaves the state unchanged, so it pushes nothing (AC6).
     if generated > 0:
         await resonance_events_mod.publish_resonance_changed(session)
+    # An active ward folds its -1 damage die / -1 DC (spec magic.md:199-200) into the net
+    # combat modifiers the DM applies; the negative net is the ward's deliberate power-for-safety
+    # cost. get_state_modifiers returns a fresh dict, so this never mutates the shared table.
+    modifiers = resonance.get_state_modifiers(state)
+    if ward_active:
+        modifiers["damage_dice"] += veil_ward.WARD_DAMAGE_DIE_PENALTY
+        modifiers["dc"] += veil_ward.WARD_DC_PENALTY
     packet = {
         "narration_cue": spell.narration_cue,
         "audio_cue": spell.audio_cue,
         "effect": spell.mechanics,
         "state": state,
         "resonance_generated": generated,
-        "resonance_modifiers": resonance.get_state_modifiers(state),
+        "resonance_modifiers": modifiers,
+        "ward_active": ward_active,
     }
+    # At Overreach the Veil tears: auto-roll a d20 Hollow Echo (spec magic.md:167-185). An
+    # active ward adds +4 to the roll (milder result). The band is returned for the DM to
+    # narrate the consequence and pushed to the client's dramatic-dice overlay.
+    if state == "overreach":
+        roll = dice_mod.roll("d20").total
+        echo = hollow_echo.resolve_hollow_echo(
+            roll,
+            session.resonance.current,
+            ward_bonus=veil_ward.WARD_ECHO_BONUS if ward_active else 0,
+        )
+        packet["hollow_echo"] = {"band": echo.band, "name": echo.name, "effect": echo.effect}
+        await echo_events_mod.publish_hollow_echo(session, echo)
     # Cantrips scale their base damage with character level (story-003); fixed-cost
     # spells carry their damage in `mechanics`, so no scaled dice for them.
     if spell.spell_tier == "cantrip":

@@ -51,6 +51,11 @@ RESONANCE_CHANGED = "resonance_changed"
 # state). Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
 VEIL_WARD_CHANGED = "veil_ward_changed"
 
+# Magic (M3.2) — Hollow Echo result push: carries the qualitative {band} only (the dramatic
+# dice overlay maps band -> label/colour; the raw roll stays server-side, no-number discipline).
+# Auto-rolled by cast_spell at Overreach. Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
+HOLLOW_ECHO_RESULT = "hollow_echo_result"
+
 # World
 HOLLOW_CORRUPTION_CHANGED = "hollow_corruption_changed"
 DISPOSITION_CHANGED = "disposition_changed"
