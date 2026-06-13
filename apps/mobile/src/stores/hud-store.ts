@@ -11,7 +11,8 @@ export type OverlayType =
   | "quest_update"
   | "xp_toast"
   | "level_up"
-  | "divine_favor";
+  | "divine_favor"
+  | "hollow_echo";
 
 export interface OverlayEntry {
   id: string;
@@ -83,6 +84,33 @@ export const RESONANCE_DISPLAY: Record<ResonanceState, { label: string; color: s
   overreach: { label: "Overreach", color: BrandColors.ember },
 };
 
+// The seven Hollow Echo bands (M3.2). Mirrors the agent's hollow_echo._BANDS ids —
+// when an Overreach cast tears the Veil, story-004 publishes HOLLOW_ECHO_RESULT
+// {band}; the dramatic overlay flashes this band, never the raw d20 (same no-number
+// discipline as Resonance).
+export type HollowEchoBand =
+  | "nothing"
+  | "whisper"
+  | "veil_scar"
+  | "sympathetic"
+  | "hollow_attention"
+  | "reality_fracture"
+  | "breach";
+
+// Qualitative display for each band: a short label + accent color, scaling from calm
+// (a clean "Nothing stirs") through the Veil teal to danger ember as the Veil tears.
+// Lives here (not hollow-echo-overlay.tsx) so the bun suite can assert it without a
+// .tsx import (mobile-bun-tsx convention).
+export const HOLLOW_ECHO_DISPLAY: Record<HollowEchoBand, { label: string; color: string }> = {
+  nothing: { label: "Nothing Stirs", color: BrandColors.ash },
+  whisper: { label: "Whisper", color: BrandColors.ash },
+  veil_scar: { label: "Veil Scar", color: BrandColors.hollow },
+  sympathetic: { label: "Sympathetic Resonance", color: BrandColors.hollow },
+  hollow_attention: { label: "Hollow Attention", color: BrandColors.ember },
+  reality_fracture: { label: "Reality Fracture", color: BrandColors.ember },
+  breach: { label: "Breach", color: BrandColors.ember },
+};
+
 // Vertical anchor (bottom inset) for the ResonanceTracker. The CombatTracker is
 // full-width and anchors at bottom:80, so casting during combat — a core Phase-3
 // scenario where both mount together — would overlap the resonance pill on the
@@ -105,6 +133,7 @@ interface HudState {
   questObjectiveVisible: boolean;
   combatState: CombatTrackerState | null;
   resonanceState: ResonanceState | null;
+  veilWardActive: boolean;
   creationCards: CreationCard[];
   selectedCreationCard: string | null;
   specializationChoice: SpecializationChoiceState | null;
@@ -124,6 +153,8 @@ interface HudState {
   clearCombatState: () => void;
 
   setResonanceState: (state: ResonanceState) => void;
+
+  setVeilWardActive: (active: boolean) => void;
 
   setCreationCards: (cards: CreationCard[]) => void;
   setSelectedCreationCard: (id: string | null) => void;
@@ -148,6 +179,7 @@ const INITIAL: Pick<
   | "questObjectiveVisible"
   | "combatState"
   | "resonanceState"
+  | "veilWardActive"
   | "creationCards"
   | "selectedCreationCard"
   | "specializationChoice"
@@ -158,6 +190,7 @@ const INITIAL: Pick<
   questObjectiveVisible: false,
   combatState: null,
   resonanceState: null,
+  veilWardActive: false,
   creationCards: [],
   selectedCreationCard: null,
   specializationChoice: null,
@@ -210,6 +243,8 @@ export const hudStore = createStore<HudState>((set, get) => ({
   clearCombatState: () => set({ combatState: null }),
 
   setResonanceState: (state) => set({ resonanceState: state }),
+
+  setVeilWardActive: (active) => set({ veilWardActive: active }),
 
   setCreationCards: (cards) => {
     const current = get().creationCards;

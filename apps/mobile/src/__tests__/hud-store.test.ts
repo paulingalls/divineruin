@@ -1,13 +1,28 @@
 import { test, expect, beforeEach } from "bun:test";
 import {
   hudStore,
+  HOLLOW_ECHO_DISPLAY,
   RESONANCE_TRACKER_BOTTOM_DEFAULT,
+  type HollowEchoBand,
   type OverlayType,
   type StatusEffect,
   type CombatTrackerState,
   type CreationCard,
 } from "@/stores/hud-store";
 import { HUD_ANCHORS } from "@/constants/hud-anchors";
+
+// The 7 Hollow Echo bands, mirroring the agent's hollow_echo._BANDS ids. The HUD
+// flashes the band name when an Overreach cast tears the Veil (story-004 publishes
+// HOLLOW_ECHO_RESULT {band}); only the band crosses the wire, never the raw d20.
+const HOLLOW_ECHO_BANDS: HollowEchoBand[] = [
+  "nothing",
+  "whisper",
+  "veil_scar",
+  "sympathetic",
+  "hollow_attention",
+  "reality_fracture",
+  "breach",
+];
 
 beforeEach(() => {
   hudStore.getState().reset();
@@ -24,6 +39,40 @@ test("HUD_ANCHORS.bottomToast is the shared 80px bottom inset", () => {
 
 test("RESONANCE_TRACKER_BOTTOM_DEFAULT is sourced from HUD_ANCHORS (no drift)", () => {
   expect(RESONANCE_TRACKER_BOTTOM_DEFAULT).toBe(HUD_ANCHORS.bottomToast);
+});
+
+// --- HOLLOW_ECHO_DISPLAY: band -> dramatic label + accent color (story-005 M2) ---
+
+test("HOLLOW_ECHO_DISPLAY resolves every band to a non-empty label and color (no gaps)", () => {
+  for (const band of HOLLOW_ECHO_BANDS) {
+    const display = HOLLOW_ECHO_DISPLAY[band];
+    expect(display).toBeDefined();
+    expect(display.label.length).toBeGreaterThan(0);
+    expect(display.color.length).toBeGreaterThan(0);
+  }
+});
+
+test("HOLLOW_ECHO_DISPLAY has no entries beyond the 7 canonical bands", () => {
+  expect(Object.keys(HOLLOW_ECHO_DISPLAY).sort()).toEqual([...HOLLOW_ECHO_BANDS].sort());
+});
+
+// --- Veil Ward zone state (story-005 M2) ---
+
+test("veilWardActive defaults to false (no ward indicator)", () => {
+  expect(hudStore.getState().veilWardActive).toBe(false);
+});
+
+test("setVeilWardActive toggles the ward state", () => {
+  hudStore.getState().setVeilWardActive(true);
+  expect(hudStore.getState().veilWardActive).toBe(true);
+  hudStore.getState().setVeilWardActive(false);
+  expect(hudStore.getState().veilWardActive).toBe(false);
+});
+
+test("reset() clears veilWardActive", () => {
+  hudStore.getState().setVeilWardActive(true);
+  hudStore.getState().reset();
+  expect(hudStore.getState().veilWardActive).toBe(false);
 });
 
 // --- pushOverlay ---
@@ -220,6 +269,7 @@ test("all OverlayType values can be pushed to store", () => {
     "xp_toast",
     "level_up",
     "divine_favor",
+    "hollow_echo",
   ];
 
   for (const type of ALL_OVERLAY_TYPES) {
