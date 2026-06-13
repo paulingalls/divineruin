@@ -25,58 +25,33 @@ refs are validated in content tests rather than the location loader.
 import json
 import logging
 
+from catalog_parse import parse_dict, parse_int, parse_int_dict, parse_number, parse_str
+
 logger = logging.getLogger("divineruin.settlement_templates")
 
 _tiers: dict[str, dict] = {}
 _personalities: dict[str, dict] = {}
 
 
-def _parse_str(raw: object, ctx: str) -> str:
-    if not isinstance(raw, str):
-        raise ValueError(f"{ctx} is not a string")
-    return raw
-
-
-def _parse_int(raw: object, ctx: str) -> int:
-    # bool is an int subclass; reject it — counts and deltas are real integers.
-    if not isinstance(raw, int) or isinstance(raw, bool):
-        raise ValueError(f"{ctx} is not an int")
-    return raw
-
-
-def _parse_number(raw: object, ctx: str) -> float:
-    if not isinstance(raw, (int, float)) or isinstance(raw, bool):
-        raise ValueError(f"{ctx} is not a number")
-    return raw
-
-
-def _parse_dict(raw: object, ctx: str) -> dict:
-    if not isinstance(raw, dict):
-        raise ValueError(f"{ctx} is not an object")
-    return raw
-
-
 def _parse_tier(row_id: str, data: dict) -> None:
-    role_counts = _parse_dict(data["role_counts"], f"{row_id}.role_counts")
+    role_counts = parse_dict(data["role_counts"], f"{row_id}.role_counts")
     for role_id, rng in role_counts.items():
         ctx = f"{row_id}.role_counts[{role_id}]"
-        rng = _parse_dict(rng, ctx)
-        lo = _parse_int(rng["min"], f"{ctx}.min")
-        hi = _parse_int(rng["max"], f"{ctx}.max")
+        rng = parse_dict(rng, ctx)
+        lo = parse_int(rng["min"], f"{ctx}.min")
+        hi = parse_int(rng["max"], f"{ctx}.max")
         if lo < 0 or hi < lo:
             raise ValueError(f"{ctx} invalid range min={lo} max={hi}")
 
 
 def _parse_personality(row_id: str, data: dict) -> None:
     for field in ("role_frequency_modifiers", "disposition_modifiers"):
-        mods = _parse_dict(data[field], f"{row_id}.{field}")
-        for role_id, delta in mods.items():
-            _parse_int(delta, f"{row_id}.{field}[{role_id}]")
-    _parse_number(data["price_modifier"], f"{row_id}.price_modifier")
+        parse_int_dict(data[field], f"{row_id}.{field}")
+    parse_number(data["price_modifier"], f"{row_id}.price_modifier")
     # inventory_modifier: prosperous>1.0 fuller, struggling<1.0 thinner; forward-wired
     # Phase-9 economy field (no live reader yet — debt recorded), story-003 scope expansion.
-    _parse_number(data["inventory_modifier"], f"{row_id}.inventory_modifier")
-    _parse_str(data["description"], f"{row_id}.description")
+    parse_number(data["inventory_modifier"], f"{row_id}.inventory_modifier")
+    parse_str(data["description"], f"{row_id}.description")
 
 
 def parse_settlement_template_row(row_id: str, data: dict) -> dict:
@@ -87,7 +62,7 @@ def parse_settlement_template_row(row_id: str, data: dict) -> dict:
     the row id for context.
     """
     try:
-        kind = _parse_str(data["kind"], f"{row_id}.kind")
+        kind = parse_str(data["kind"], f"{row_id}.kind")
         if kind == "tier":
             _parse_tier(row_id, data)
         elif kind == "personality":

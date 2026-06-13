@@ -82,6 +82,19 @@ export const RESONANCE_DISPLAY: Record<ResonanceState, { label: string; color: s
   overreach: { label: "Overreach", color: BrandColors.ember },
 };
 
+// Vertical anchor (bottom inset) for the ResonanceTracker. The CombatTracker is
+// full-width and anchors at bottom:80, so casting during combat — a core Phase-3
+// scenario where both mount together — would overlap the resonance pill on the
+// combat tracker (concern 843b). When combat is active, lift the resonance pill
+// above the combat tracker; otherwise keep its default bottom:80. Lives here (not
+// resonance-tracker.tsx) so the bun suite can unit-test it without a .tsx import.
+export const RESONANCE_TRACKER_BOTTOM_DEFAULT = 80;
+export const RESONANCE_TRACKER_BOTTOM_IN_COMBAT = 140;
+
+export function resonanceTrackerBottom(isCombatActive: boolean): number {
+  return isCombatActive ? RESONANCE_TRACKER_BOTTOM_IN_COMBAT : RESONANCE_TRACKER_BOTTOM_DEFAULT;
+}
+
 // --- Store ---
 
 interface HudState {

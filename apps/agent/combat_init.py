@@ -109,15 +109,19 @@ async def _start_combat_impl(
     if session.companion_can_act and session.companion:
         try:
             profile = get_companion_profile(session.companion.id)
+            # Both translators consume the profile and fail loud on a corrupt seed (an attack
+            # whose damage/hit has no parseable term). Keep them inside the try so a catalog
+            # inconsistency surfaces as a DM-narratable ToolError, just like an unknown id —
+            # instead of a raw ValueError that crashes combat init.
+            companion_scaled = scale_companion_stats_to_player_level(
+                profile, player_hp.get("max", 1), player.get("level", 1)
+            )
+            companion_action_pool = companion_attacks_to_action_pool(profile)
         except ValueError as e:
-            # Unknown/unloaded companion id (stale id, catalog inconsistency). Surface as a
-            # ToolError so the DM narrates cleanly — matching the encounter/player/faction
+            # Unknown/unloaded companion id (stale id) or a malformed profile attack. Surface as
+            # a ToolError so the DM narrates cleanly — matching the encounter/player/faction
             # not-found convention above — instead of crashing combat init.
             raise ToolError(f"Companion '{session.companion.id}' not found: {e}") from e
-        companion_scaled = scale_companion_stats_to_player_level(
-            profile, player_hp.get("max", 1), player.get("level", 1)
-        )
-        companion_action_pool = companion_attacks_to_action_pool(profile)
         initiative_inputs.append(
             {
                 "id": session.companion.id,

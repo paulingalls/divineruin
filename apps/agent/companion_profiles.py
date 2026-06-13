@@ -15,20 +15,31 @@ steps up at level thresholds, and attributes accrue per-companion bumps. It take
 player's already-computed max HP (from hp_scaling.calculate_max_hp) so the scaler stays
 pure — no coupling to the player's archetype/CON.
 
-Each loader owns its own fail-loud validation (inlined parse helpers, no shared module) for
-cross-language parity with the TS Companion type (packages/shared/src/entities/companion.ts):
-the companions.json row IS the contract, and a malformed row must reject identically.
+Generic field validation (str/int/number/list/dict/attributes + optionals) comes from the
+shared catalog_parse module; only the domain-specific parsers below stay inlined here. This
+preserves cross-language parity with the TS Companion type
+(packages/shared/src/entities/companion.ts): the companions.json row IS the contract, and a
+malformed row must reject identically.
 """
 
 import json
 import logging
 from dataclasses import dataclass
 
+from catalog_parse import (
+    ATTRIBUTE_KEYS,
+    opt_int,
+    opt_str,
+    parse_attributes,
+    parse_int,
+    parse_number,
+    parse_str,
+    parse_str_tuple,
+)
 from role_archetypes import DISPOSITIONS  # canonical 5-tier ladder SSOT
 
 logger = logging.getLogger("divineruin.companion_profiles")
 
-_ATTRIBUTE_KEYS = ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma")
 _TACTICAL_PREFERENCES = ("aggressive", "protective", "cautious", "observational", "opportunistic")
 
 
@@ -132,46 +143,7 @@ class Companion:
 _companion_profiles: dict[str, Companion] = {}
 
 
-# --- fail-loud parse helpers (inlined per the loader convention; no shared module) ---
-
-
-def _parse_str(raw: object, ctx: str) -> str:
-    if not isinstance(raw, str):
-        raise ValueError(f"{ctx} is not a string")
-    return raw
-
-
-def _parse_int(raw: object, ctx: str) -> int:
-    # bool is a subclass of int — exclude it explicitly, parity with the TS guard.
-    if not isinstance(raw, int) or isinstance(raw, bool):
-        raise ValueError(f"{ctx} is not an int")
-    return raw
-
-
-def _parse_number(raw: object, ctx: str) -> float:
-    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
-        raise ValueError(f"{ctx} is not a number")
-    return float(raw)
-
-
-def _parse_str_tuple(raw: object, ctx: str) -> tuple[str, ...]:
-    if not isinstance(raw, list):
-        raise ValueError(f"{ctx} is not a list")
-    return tuple(_parse_str(x, f"{ctx}[{i}]") for i, x in enumerate(raw))
-
-
-def _parse_attributes(raw: object, ctx: str) -> dict[str, int]:
-    if not isinstance(raw, dict):
-        raise ValueError(f"{ctx} is not an object")
-    return {k: _parse_int(raw[k], f"{ctx}.{k}") for k in _ATTRIBUTE_KEYS}
-
-
-def _opt_str(raw: object, ctx: str) -> str | None:
-    return None if raw is None else _parse_str(raw, ctx)
-
-
-def _opt_int(raw: object, ctx: str) -> int | None:
-    return None if raw is None else _parse_int(raw, ctx)
+# --- domain-specific parse helpers (generic primitives come from catalog_parse) ---
 
 
 def _parse_scaling_rules(raw: object, ctx: str) -> ScalingRules:
@@ -185,14 +157,14 @@ def _parse_scaling_rules(raw: object, ctx: str) -> ScalingRules:
         raise ValueError(f"{ctx}.attribute_scaling is not a list")
     ac_thresholds = tuple(
         AcThreshold(
-            min_level=_parse_int(t["min_level"], f"{ctx}.ac_thresholds[{i}].min_level"),
-            ac=_parse_int(t["ac"], f"{ctx}.ac_thresholds[{i}].ac"),
+            min_level=parse_int(t["min_level"], f"{ctx}.ac_thresholds[{i}].min_level"),
+            ac=parse_int(t["ac"], f"{ctx}.ac_thresholds[{i}].ac"),
         )
         for i, t in enumerate(thresholds)
     )
     attribute_scaling = tuple(_parse_scaling_step(s, f"{ctx}.attribute_scaling[{i}]") for i, s in enumerate(steps))
     return ScalingRules(
-        hp_factor=_parse_number(raw["hp_factor"], f"{ctx}.hp_factor"),
+        hp_factor=parse_number(raw["hp_factor"], f"{ctx}.hp_factor"),
         ac_thresholds=ac_thresholds,
         attribute_scaling=attribute_scaling,
     )
@@ -201,13 +173,13 @@ def _parse_scaling_rules(raw: object, ctx: str) -> ScalingRules:
 def _parse_scaling_step(raw: object, ctx: str) -> AttributeScalingStep:
     if not isinstance(raw, dict):
         raise ValueError(f"{ctx} is not an object")
-    attribute = _parse_str(raw["attribute"], f"{ctx}.attribute")
-    if attribute not in _ATTRIBUTE_KEYS:
-        raise ValueError(f"{ctx}.attribute {attribute!r} not in {_ATTRIBUTE_KEYS}")
+    attribute = parse_str(raw["attribute"], f"{ctx}.attribute")
+    if attribute not in ATTRIBUTE_KEYS:
+        raise ValueError(f"{ctx}.attribute {attribute!r} not in {ATTRIBUTE_KEYS}")
     return AttributeScalingStep(
-        level=_parse_int(raw["level"], f"{ctx}.level"),
+        level=parse_int(raw["level"], f"{ctx}.level"),
         attribute=attribute,
-        amount=_parse_int(raw["amount"], f"{ctx}.amount"),
+        amount=parse_int(raw["amount"], f"{ctx}.amount"),
     )
 
 
@@ -215,14 +187,14 @@ def _parse_attack(raw: object, ctx: str) -> CompanionAttack:
     if not isinstance(raw, dict):
         raise ValueError(f"{ctx} is not an object")
     return CompanionAttack(
-        name=_parse_str(raw["name"], f"{ctx}.name"),
-        type=_parse_str(raw["type"], f"{ctx}.type"),
-        reach=_parse_str(raw["reach"], f"{ctx}.reach"),
-        hit=_parse_str(raw["hit"], f"{ctx}.hit"),
-        damage=_parse_str(raw["damage"], f"{ctx}.damage"),
-        damage_type=_parse_str(raw["damage_type"], f"{ctx}.damage_type"),
-        special=_opt_str(raw.get("special"), f"{ctx}.special"),
-        scaling=_opt_str(raw.get("scaling"), f"{ctx}.scaling"),
+        name=parse_str(raw["name"], f"{ctx}.name"),
+        type=parse_str(raw["type"], f"{ctx}.type"),
+        reach=parse_str(raw["reach"], f"{ctx}.reach"),
+        hit=parse_str(raw["hit"], f"{ctx}.hit"),
+        damage=parse_str(raw["damage"], f"{ctx}.damage"),
+        damage_type=parse_str(raw["damage_type"], f"{ctx}.damage_type"),
+        special=opt_str(raw.get("special"), f"{ctx}.special"),
+        scaling=opt_str(raw.get("scaling"), f"{ctx}.scaling"),
     )
 
 
@@ -230,10 +202,10 @@ def _parse_passive(raw: object, ctx: str) -> CompanionPassive:
     if not isinstance(raw, dict):
         raise ValueError(f"{ctx} is not an object")
     return CompanionPassive(
-        name=_parse_str(raw["name"], f"{ctx}.name"),
-        description=_parse_str(raw["description"], f"{ctx}.description"),
-        unlock_level=_opt_int(raw.get("unlock_level"), f"{ctx}.unlock_level"),
-        scaling=_opt_str(raw.get("scaling"), f"{ctx}.scaling"),
+        name=parse_str(raw["name"], f"{ctx}.name"),
+        description=parse_str(raw["description"], f"{ctx}.description"),
+        unlock_level=opt_int(raw.get("unlock_level"), f"{ctx}.unlock_level"),
+        scaling=opt_str(raw.get("scaling"), f"{ctx}.scaling"),
     )
 
 
@@ -241,12 +213,12 @@ def _parse_active(raw: object, ctx: str) -> CompanionActive:
     if not isinstance(raw, dict):
         raise ValueError(f"{ctx} is not an object")
     return CompanionActive(
-        name=_parse_str(raw["name"], f"{ctx}.name"),
-        description=_parse_str(raw["description"], f"{ctx}.description"),
-        frequency=_parse_str(raw["frequency"], f"{ctx}.frequency"),
-        cost=_opt_str(raw.get("cost"), f"{ctx}.cost"),
-        unlock_level=_opt_int(raw.get("unlock_level"), f"{ctx}.unlock_level"),
-        scaling=_opt_str(raw.get("scaling"), f"{ctx}.scaling"),
+        name=parse_str(raw["name"], f"{ctx}.name"),
+        description=parse_str(raw["description"], f"{ctx}.description"),
+        frequency=parse_str(raw["frequency"], f"{ctx}.frequency"),
+        cost=opt_str(raw.get("cost"), f"{ctx}.cost"),
+        unlock_level=opt_int(raw.get("unlock_level"), f"{ctx}.unlock_level"),
+        scaling=opt_str(raw.get("scaling"), f"{ctx}.scaling"),
     )
 
 
@@ -254,10 +226,10 @@ def _parse_reaction(raw: object, ctx: str) -> CompanionReaction:
     if not isinstance(raw, dict):
         raise ValueError(f"{ctx} is not an object")
     return CompanionReaction(
-        name=_parse_str(raw["name"], f"{ctx}.name"),
-        description=_parse_str(raw["description"], f"{ctx}.description"),
-        frequency=_parse_str(raw["frequency"], f"{ctx}.frequency"),
-        unlock_level=_opt_int(raw.get("unlock_level"), f"{ctx}.unlock_level"),
+        name=parse_str(raw["name"], f"{ctx}.name"),
+        description=parse_str(raw["description"], f"{ctx}.description"),
+        frequency=parse_str(raw["frequency"], f"{ctx}.frequency"),
+        unlock_level=opt_int(raw.get("unlock_level"), f"{ctx}.unlock_level"),
     )
 
 
@@ -265,8 +237,8 @@ def _parse_progression(raw: object, ctx: str) -> ProgressionMilestone:
     if not isinstance(raw, dict):
         raise ValueError(f"{ctx} is not an object")
     return ProgressionMilestone(
-        level=_parse_int(raw["level"], f"{ctx}.level"),
-        gains=_parse_str(raw["gains"], f"{ctx}.gains"),
+        level=parse_int(raw["level"], f"{ctx}.level"),
+        gains=parse_str(raw["gains"], f"{ctx}.gains"),
     )
 
 
@@ -277,21 +249,21 @@ def parse_companion_row(companion_id: str, data: dict) -> Companion:
     error with the row id for context.
     """
     try:
-        disposition = _parse_str(data["default_disposition"], f"{companion_id}.default_disposition")
+        disposition = parse_str(data["default_disposition"], f"{companion_id}.default_disposition")
         if disposition not in DISPOSITIONS:
             raise ValueError(f"{companion_id}.default_disposition {disposition!r} not in {DISPOSITIONS}")
-        tactical = _parse_str(data["tactical_preference"], f"{companion_id}.tactical_preference")
+        tactical = parse_str(data["tactical_preference"], f"{companion_id}.tactical_preference")
         if tactical not in _TACTICAL_PREFERENCES:
             raise ValueError(f"{companion_id}.tactical_preference {tactical!r} not in {_TACTICAL_PREFERENCES}")
         knowledge = data["knowledge"]
         if not isinstance(knowledge, dict) or not isinstance(knowledge.get("free"), list):
             raise ValueError(f"{companion_id}.knowledge missing a 'free' list")
-        save_profs = _parse_str_tuple(data["save_proficiencies"], f"{companion_id}.save_proficiencies")
+        save_profs = parse_str_tuple(data["save_proficiencies"], f"{companion_id}.save_proficiencies")
         if len(save_profs) != 2:
             raise ValueError(f"{companion_id}.save_proficiencies must have exactly 2 entries")
         for sp in save_profs:
-            if sp not in _ATTRIBUTE_KEYS:
-                raise ValueError(f"{companion_id}.save_proficiencies {sp!r} not in {_ATTRIBUTE_KEYS}")
+            if sp not in ATTRIBUTE_KEYS:
+                raise ValueError(f"{companion_id}.save_proficiencies {sp!r} not in {ATTRIBUTE_KEYS}")
         non_verbal = bool(data.get("non_verbal", False))
         mods = data.get("disposition_modifiers")
         if mods is not None and not isinstance(mods, dict):
@@ -301,15 +273,15 @@ def parse_companion_row(companion_id: str, data: dict) -> Companion:
             raise ValueError(f"{companion_id}.relationship_unlocks is not an object or null")
         return Companion(
             id=companion_id,
-            name=_parse_str(data["name"], f"{companion_id}.name"),
-            species=_parse_str(data["species"], f"{companion_id}.species"),
-            personality=_parse_str_tuple(data["personality"], f"{companion_id}.personality"),
-            speech_style=_parse_str(data["speech_style"], f"{companion_id}.speech_style"),
+            name=parse_str(data["name"], f"{companion_id}.name"),
+            species=parse_str(data["species"], f"{companion_id}.species"),
+            personality=parse_str_tuple(data["personality"], f"{companion_id}.personality"),
+            speech_style=parse_str(data["speech_style"], f"{companion_id}.speech_style"),
             knowledge=knowledge,
             default_disposition=disposition,
             tactical_preference=tactical,
-            speed=_parse_int(data["speed"], f"{companion_id}.speed"),
-            base_attributes=_parse_attributes(data["base_attributes"], f"{companion_id}.base_attributes"),
+            speed=parse_int(data["speed"], f"{companion_id}.speed"),
+            base_attributes=parse_attributes(data["base_attributes"], f"{companion_id}.base_attributes"),
             save_proficiencies=save_profs,
             scaling_rules=_parse_scaling_rules(data["scaling_rules"], f"{companion_id}.scaling_rules"),
             attacks=tuple(_parse_attack(a, f"{companion_id}.attacks[{i}]") for i, a in enumerate(data["attacks"])),
@@ -318,21 +290,21 @@ def parse_companion_row(companion_id: str, data: dict) -> Companion:
             reactions=tuple(
                 _parse_reaction(r, f"{companion_id}.reactions[{i}]") for i, r in enumerate(data["reactions"])
             ),
-            complements=_parse_str_tuple(data["complements"], f"{companion_id}.complements"),
-            voice_id=_parse_str(data["voice_id"], f"{companion_id}.voice_id"),
-            gender=_opt_str(data.get("gender"), f"{companion_id}.gender"),
-            age=_opt_str(data.get("age"), f"{companion_id}.age"),
-            appearance=_opt_str(data.get("appearance"), f"{companion_id}.appearance"),
-            mannerisms=_parse_str_tuple(data.get("mannerisms", []), f"{companion_id}.mannerisms"),
-            backstory_summary=_opt_str(data.get("backstory_summary"), f"{companion_id}.backstory_summary"),
+            complements=parse_str_tuple(data["complements"], f"{companion_id}.complements"),
+            voice_id=parse_str(data["voice_id"], f"{companion_id}.voice_id"),
+            gender=opt_str(data.get("gender"), f"{companion_id}.gender"),
+            age=opt_str(data.get("age"), f"{companion_id}.age"),
+            appearance=opt_str(data.get("appearance"), f"{companion_id}.appearance"),
+            mannerisms=parse_str_tuple(data.get("mannerisms", []), f"{companion_id}.mannerisms"),
+            backstory_summary=opt_str(data.get("backstory_summary"), f"{companion_id}.backstory_summary"),
             disposition_modifiers=mods,
-            secrets=_parse_str_tuple(data.get("secrets", []), f"{companion_id}.secrets"),
+            secrets=parse_str_tuple(data.get("secrets", []), f"{companion_id}.secrets"),
             progression=tuple(
                 _parse_progression(m, f"{companion_id}.progression[{i}]")
                 for i, m in enumerate(data.get("progression", []))
             ),
             relationship_unlocks=unlocks,
-            voice_notes=_opt_str(data.get("voice_notes"), f"{companion_id}.voice_notes"),
+            voice_notes=opt_str(data.get("voice_notes"), f"{companion_id}.voice_notes"),
             non_verbal=non_verbal,
         )
     except (KeyError, TypeError) as e:

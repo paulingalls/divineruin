@@ -2,6 +2,7 @@
 
 import pytest
 
+from dice import roll
 from hp_scaling import calculate_max_hp
 from leveling import (
     LEVEL_PROGRESSION,
@@ -9,6 +10,7 @@ from leveling import (
     LevelUpRewards,
     build_level_up_payload,
     build_level_up_payload_for_archetype,
+    cantrip_damage_dice,
     get_level_up_rewards,
     get_milestone_narration,
 )
@@ -154,6 +156,53 @@ class TestLevelUpE2E:
         milestone = rewards.milestones[0]
         assert milestone["type"] == "archetype_milestone"
         assert len(milestone["description"]) > 20
+
+
+class TestCantripDamageDice:
+    """Numeric cantrip damage scaling — the SSOT cast_spell (story-004) consumes.
+
+    Brackets (03_magic.md L132): 1d6 L1-4, 2d6 L5-10, 3d6 L11-16, 4d6 L17-20.
+    """
+
+    def test_bracket_1d6_levels_1_to_4(self) -> None:
+        for level in range(1, 5):
+            assert cantrip_damage_dice(level) == "1d6", f"L{level} should be 1d6"
+
+    def test_bracket_2d6_levels_5_to_10(self) -> None:
+        for level in range(5, 11):
+            assert cantrip_damage_dice(level) == "2d6", f"L{level} should be 2d6"
+
+    def test_bracket_3d6_levels_11_to_16(self) -> None:
+        for level in range(11, 17):
+            assert cantrip_damage_dice(level) == "3d6", f"L{level} should be 3d6"
+
+    def test_bracket_4d6_levels_17_to_20(self) -> None:
+        for level in range(17, 21):
+            assert cantrip_damage_dice(level) == "4d6", f"L{level} should be 4d6"
+
+    def test_bracket_boundaries(self) -> None:
+        # Lower edge stays in the prior bracket; upper edge crosses into the next.
+        assert cantrip_damage_dice(4) == "1d6"
+        assert cantrip_damage_dice(5) == "2d6"
+        assert cantrip_damage_dice(10) == "2d6"
+        assert cantrip_damage_dice(11) == "3d6"
+        assert cantrip_damage_dice(16) == "3d6"
+        assert cantrip_damage_dice(17) == "4d6"
+
+    def test_level_below_1_raises(self) -> None:
+        with pytest.raises(ValueError):
+            cantrip_damage_dice(0)
+
+    def test_level_above_20_raises(self) -> None:
+        with pytest.raises(ValueError):
+            cantrip_damage_dice(21)
+
+    def test_every_level_returns_rollable_spec_no_gap(self) -> None:
+        # E2E: every level 1-20 yields a dice spec the real roller accepts.
+        for level in range(1, 21):
+            spec = cantrip_damage_dice(level)
+            result = roll(spec)
+            assert result.total >= 1, f"L{level} spec {spec!r} rolled non-positive"
 
 
 class TestArchetypePayload:

@@ -183,6 +183,15 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if not is_loaded():
         await load_archetypes()
 
+    # Load the spell catalog once per agent process (M3.3 casting SSOT). cast_spell /
+    # get_spell_info read it, and spell-backed caster CORE abilities compose their cast
+    # DATA from it (Try 2) — so it MUST load before abilities below.
+    from spells import is_loaded as spells_is_loaded
+    from spells import load_spells
+
+    if not spells_is_loaded():
+        await load_spells()
+
     # Load the archetype abilities once per agent process (M2.2). The DM voices
     # ability activations via request_ability_activation, which reads this map.
     from abilities import is_loaded as abilities_is_loaded
@@ -198,14 +207,6 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
     if not milestones_is_loaded():
         await load_milestones()
-
-    # Load the elective spell catalog once per agent process (M8). learn(spell,id)
-    # and spell preparation read this map; caster core spells stay abilities.
-    from spells import is_loaded as spells_is_loaded
-    from spells import load_spells
-
-    if not spells_is_loaded():
-        await load_spells()
 
     # Load the mentor variant catalog once per agent process (M9). Activation
     # applies an unlocked variant's cost/effect/narration override, which reads

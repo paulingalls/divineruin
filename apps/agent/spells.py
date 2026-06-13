@@ -1,26 +1,35 @@
-"""Spell catalog — DB-loaded content config (M8 / story-001).
+"""Spell catalog — DB-loaded content config (M8 / M3.3 / story-001).
 
-content/spells.json is the single source of truth for the ELECTIVE spell library:
-the learnable pool keyed by magic source (arcane/divine/primal). Caster CORE spells
-are NOT here — they stay archetype_abilities rows with ability_type=core (the
-M2.2/M2.4 seam, decision 235ae150c5d3). This module is the Python loader, an exact
-mirror of abilities.py: a module-global dict populated by load_spells() at process
-startup (or set_spells() in tests), a fail-loud parse_spell_row shared by the DB
-loader and the JSON test fixture, and sync accessors.
+content/spells.json is the single source of truth for the FULL 87-spell casting
+catalog, keyed by magic source (arcane/divine/primal). M3.3 (decision
+spell-catalog-full-casting-ssot) made this the casting-data SSOT, superseding the
+earlier elective-only seam (235ae150c5d3): cast_spell/get_spell_info need data for
+every castable spell, so the caster CORE spells (Arcane Bolt, Sacred Flame, Heal
+Wounds, Thorn Whip, Healing Touch) now live here too. archetype_abilities `core`
+rows are the ACCESS grant (which spells an archetype always-knows) + per-archetype
+description and narration; their Focus cost — the one cast number shared with the
+cast path — is NOT authored there but composed from this catalog at load time
+(abilities._resolve_cost via spell_id, Try 2), so it can't drift. This module is the Python loader, an exact mirror
+of abilities.py: a module-global dict populated by load_spells() at process startup
+(or set_spells() in tests), a fail-loud parse_spell_row shared by the DB loader and
+the JSON test fixture, and sync accessors.
 
 The catalog is SOURCE-keyed, not archetype-keyed: get_spells_by_source filters by
 the magic source, the analogue of abilities.get_archetype_abilities. The row shape
-borrows Phase-3 Magic's M3.3 schema minimally and is forward-compatible — extra
-fields (resonance_by_source, terrain_effects, ...) in the JSONB column are ignored
-here and consumed by M3.3 when it ships. Downstream stories consume get_spell /
+carries the full M3.3 cast-time schema (resonance_by_source, terrain_effects,
+audio_cue, concentration); parse_spell_row is STRICT on these
+(decision spell-loader-strict-contract) while still ignoring genuinely-unknown extra
+fields for forward compatibility. Downstream stories consume get_spell /
 get_spells_by_source: character_spells (story-002), learn(spell,id) (story-005),
 preparation (story-006).
 """
 
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal, get_args
+
+from catalog_parse import parse_int, parse_int_dict, parse_str
 
 logger = logging.getLogger("divineruin.spells")
 
@@ -42,6 +51,18 @@ class Spell:
     focus_cost: int
     mechanics: str
     narration_cue: str
+    # M3.3 cast-time fields. Defaults keep in-code Spell(...) builds (tests/fixtures)
+    # working without supplying them; parse_spell_row REQUIRES them in raw rows (strict,
+    # decision spell-loader-strict-contract). resonance_by_source maps the spell's magic
+    # source to its catalog Resonance value (magic.md Spell-to-Resonance Map); terrain_effects
+    # holds the Primal terrain->Resonance overrides ({} for non-Primal); audio_cue is the SFX
+    # code auto-pushed on cast ("" if silent); concentration gates M3.4. (The catalog "Level"
+    # column / per-row level_requirement was deleted in story-008: orphaned non-gating metadata
+    # with no reader — access is gated by the per-archetype tier tables, not per-spell level.)
+    resonance_by_source: dict[str, int] = field(default_factory=dict)
+    terrain_effects: dict[str, int] = field(default_factory=dict)
+    audio_cue: str = ""
+    concentration: bool = False
 
 
 # Module-level runtime-loaded spells, keyed by spell id. Populated by load_spells()
@@ -49,21 +70,18 @@ class Spell:
 _spells: dict[str, Spell] = {}
 
 
-def _require_int(data: dict, key: str, spell_id: str) -> int:
-    value = data[key]
-    # bool is a subclass of int — exclude it explicitly (parity with the TS loader's
-    # integer guard, so a shared row fails identically on both sides).
-    if not isinstance(value, int) or isinstance(value, bool):
-        raise ValueError(f"spell {spell_id!r} {key} is not an int")
-    return value
-
-
 def parse_spell_row(spell_id: str, data: dict) -> Spell:
     """Parse a raw dict (from JSON file or DB JSONB) into a Spell.
 
     Shared by load_spells (DB) and the JSON test fixture. Raises ValueError wrapping
     the underlying error with the row id for context; owns fail-loud validation of the
-    source/spell_tier enums and the integer fields.
+    source/spell_tier enums and the typed fields.
+
+    STRICT on the four known M3.3 fields (resonance_by_source, terrain_effects, audio_cue,
+    concentration) — a missing or malformed one fails loud naming the
+    row (decision spell-loader-strict-contract). Genuinely-unknown extra fields are still
+    ignored, so the loader stays forward-compatible for future schema additions. Generic
+    field validation reuses the shared catalog_parse primitives.
     """
     try:
         source = data["source"]
@@ -72,14 +90,21 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
         spell_tier = data["spell_tier"]
         if spell_tier not in _SPELL_TIERS:
             raise ValueError(f"spell {spell_id!r} spell_tier {spell_tier!r} not in {sorted(_SPELL_TIERS)}")
+        concentration = data["concentration"]
+        if not isinstance(concentration, bool):
+            raise ValueError(f"spell {spell_id!r} concentration is not a bool")
         return Spell(
             id=spell_id,
             name=data["name"],
             source=source,
             spell_tier=spell_tier,
-            focus_cost=_require_int(data, "focus_cost", spell_id),
+            focus_cost=parse_int(data["focus_cost"], f"spell {spell_id!r} focus_cost"),
             mechanics=data["mechanics"],
             narration_cue=data["narration_cue"],
+            resonance_by_source=parse_int_dict(data["resonance_by_source"], f"spell {spell_id!r} resonance_by_source"),
+            terrain_effects=parse_int_dict(data["terrain_effects"], f"spell {spell_id!r} terrain_effects"),
+            audio_cue=parse_str(data["audio_cue"], f"spell {spell_id!r} audio_cue"),
+            concentration=concentration,
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed spells row {spell_id!r}: {e}") from e

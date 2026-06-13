@@ -41,8 +41,9 @@ QUEST_UPDATED = "quest_updated"
 QUEST_UPDATE = "quest_update"  # client-only alias for QUEST_UPDATED
 
 # Magic (M3.1)
-# Resonance state push: carries {state, current, max} on the game_events topic.
-# Mirror const lands in apps/mobile/src/audio/event-types.ts in story-004.
+# Resonance state push: carries the qualitative {state} only on the game_events topic
+# — the raw number never crosses to the client (no-number spec magic.md:98, story-004).
+# Mirror const in apps/mobile/src/audio/event-types.ts.
 RESONANCE_CHANGED = "resonance_changed"
 
 # World

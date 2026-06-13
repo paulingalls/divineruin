@@ -2,7 +2,14 @@ import { test, expect, beforeEach } from "bun:test";
 
 import { RESONANCE_CHANGED } from "@/audio/event-types";
 import { handleGameEvent, VALID_RESONANCE_STATES } from "@/audio/game-event-handler";
-import { hudStore, RESONANCE_DISPLAY, type ResonanceState } from "@/stores/hud-store";
+import {
+  hudStore,
+  RESONANCE_DISPLAY,
+  RESONANCE_TRACKER_BOTTOM_DEFAULT,
+  RESONANCE_TRACKER_BOTTOM_IN_COMBAT,
+  resonanceTrackerBottom,
+  type ResonanceState,
+} from "@/stores/hud-store";
 
 import { resetStores } from "./use-game-events.helpers";
 
@@ -45,6 +52,19 @@ test("reset() clears resonanceState", () => {
   hudStore.getState().setResonanceState("overreach");
   hudStore.getState().reset();
   expect(hudStore.getState().resonanceState).toBeNull();
+});
+
+// --- Tracker vertical offset: clears the combat tracker during combat (843b) ---
+
+test("resonanceTrackerBottom keeps the default anchor when no combat is active", () => {
+  expect(resonanceTrackerBottom(false)).toBe(RESONANCE_TRACKER_BOTTOM_DEFAULT);
+  expect(RESONANCE_TRACKER_BOTTOM_DEFAULT).toBe(80);
+});
+
+test("resonanceTrackerBottom lifts the pill above the combat tracker during combat", () => {
+  expect(resonanceTrackerBottom(true)).toBe(RESONANCE_TRACKER_BOTTOM_IN_COMBAT);
+  // The combat tracker anchors at bottom:80, so the in-combat offset must clear it.
+  expect(RESONANCE_TRACKER_BOTTOM_IN_COMBAT).toBeGreaterThan(RESONANCE_TRACKER_BOTTOM_DEFAULT);
 });
 
 // --- Event dispatch ---

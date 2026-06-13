@@ -9,6 +9,7 @@ from combat_end import end_combat
 from combat_turn import request_death_save, resolve_enemy_turn
 from environment_tools import play_sound, set_music_state
 from query_tools import query_info
+from spell_casting import cast_spell, get_spell_info
 from system_prompts import COMBAT_SYSTEM_PROMPT
 
 # resolve_milestone is intentionally NOT here: combat never awards XP (end_combat hands
@@ -24,6 +25,8 @@ COMBAT_AGENT_TOOLS = [
     set_music_state,
     query_info,
     request_ability_activation,
+    cast_spell,
+    get_spell_info,
 ]
 
 

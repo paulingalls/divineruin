@@ -13,18 +13,25 @@ merges an archetype's template defaults UNDER per-NPC overrides into an Npc-shap
 block dict (combat_stats/services emitted as plain dicts via asdict so combat_init.py's
 .get() chain works). Consumed by M6.2's settlement generation.
 
-Each loader owns its own fail-loud validation for cross-language parity with the TS
-loader (apps/server/src/role_archetypes.ts, story-003) — the role_archetypes.json row IS
-the contract, and a malformed row must reject identically on both sides.
+Generic field validation comes from the shared catalog_parse module; only the
+domain-specific parsers stay here. This preserves cross-language parity with the TS loader
+(apps/server/src/role_archetypes.ts, story-003) — the role_archetypes.json row IS the
+contract, and a malformed row must reject identically on both sides.
 """
 
 import json
 import logging
 from dataclasses import asdict, dataclass
 
-logger = logging.getLogger("divineruin.role_archetypes")
+from catalog_parse import (
+    parse_attributes,
+    parse_int,
+    parse_number,
+    parse_str,
+    parse_str_tuple,
+)
 
-_ATTRIBUTE_KEYS = ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma")
+logger = logging.getLogger("divineruin.role_archetypes")
 
 
 @dataclass(frozen=True)
@@ -93,38 +100,7 @@ _ROLE_TYPES = ("civilian", "military", "specialist")
 DISPOSITIONS = ("hostile", "unfriendly", "neutral", "friendly", "trusted")
 
 
-# --- fail-loud parse helpers (inlined per the loader convention; no shared module) ---
-
-
-def _parse_str(raw: object, ctx: str) -> str:
-    if not isinstance(raw, str):
-        raise ValueError(f"{ctx} is not a string")
-    return raw
-
-
-def _parse_int(raw: object, ctx: str) -> int:
-    # bool is a subclass of int — exclude it explicitly, parity with the TS guard.
-    if not isinstance(raw, int) or isinstance(raw, bool):
-        raise ValueError(f"{ctx} is not an int")
-    return raw
-
-
-def _parse_number(raw: object, ctx: str) -> float:
-    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
-        raise ValueError(f"{ctx} is not a number")
-    return float(raw)
-
-
-def _parse_str_tuple(raw: object, ctx: str) -> tuple[str, ...]:
-    if not isinstance(raw, list):
-        raise ValueError(f"{ctx} is not a list")
-    return tuple(_parse_str(x, f"{ctx}[{i}]") for i, x in enumerate(raw))
-
-
-def _parse_attributes(raw: object, ctx: str) -> dict[str, int]:
-    if not isinstance(raw, dict):
-        raise ValueError(f"{ctx} is not an object")
-    return {k: _parse_int(raw[k], f"{ctx}.{k}") for k in _ATTRIBUTE_KEYS}
+# --- domain-specific parse helpers (generic primitives come from catalog_parse) ---
 
 
 def _parse_action(raw: object, ctx: str) -> CombatAction:
@@ -132,11 +108,11 @@ def _parse_action(raw: object, ctx: str) -> CombatAction:
         raise ValueError(f"{ctx} is not an object")
     effect = raw.get("effect")
     return CombatAction(
-        name=_parse_str(raw["name"], f"{ctx}.name"),
-        damage=_parse_str(raw["damage"], f"{ctx}.damage"),
-        damage_type=_parse_str(raw["damage_type"], f"{ctx}.damage_type"),
-        properties=_parse_str_tuple(raw["properties"], f"{ctx}.properties"),
-        effect=None if effect is None else _parse_str(effect, f"{ctx}.effect"),
+        name=parse_str(raw["name"], f"{ctx}.name"),
+        damage=parse_str(raw["damage"], f"{ctx}.damage"),
+        damage_type=parse_str(raw["damage_type"], f"{ctx}.damage_type"),
+        properties=parse_str_tuple(raw["properties"], f"{ctx}.properties"),
+        effect=None if effect is None else parse_str(effect, f"{ctx}.effect"),
     )
 
 
@@ -149,14 +125,14 @@ def _parse_combat_stats(raw: object, ctx: str) -> CombatStats | None:
     if not isinstance(actions, list):
         raise ValueError(f"{ctx}.action_pool is not a list")
     return CombatStats(
-        level=_parse_int(raw["level"], f"{ctx}.level"),
-        hp=_parse_int(raw["hp"], f"{ctx}.hp"),
-        ac=_parse_int(raw["ac"], f"{ctx}.ac"),
-        attributes=_parse_attributes(raw["attributes"], f"{ctx}.attributes"),
+        level=parse_int(raw["level"], f"{ctx}.level"),
+        hp=parse_int(raw["hp"], f"{ctx}.hp"),
+        ac=parse_int(raw["ac"], f"{ctx}.ac"),
+        attributes=parse_attributes(raw["attributes"], f"{ctx}.attributes"),
         action_pool=tuple(_parse_action(a, f"{ctx}.action_pool[{i}]") for i, a in enumerate(actions)),
-        save_proficiencies=_parse_str_tuple(raw.get("save_proficiencies", []), f"{ctx}.save_proficiencies"),
-        passives=_parse_str_tuple(raw.get("passives", []), f"{ctx}.passives"),
-        actives=_parse_str_tuple(raw.get("actives", []), f"{ctx}.actives"),
+        save_proficiencies=parse_str_tuple(raw.get("save_proficiencies", []), f"{ctx}.save_proficiencies"),
+        passives=parse_str_tuple(raw.get("passives", []), f"{ctx}.passives"),
+        actives=parse_str_tuple(raw.get("actives", []), f"{ctx}.actives"),
     )
 
 
@@ -168,14 +144,14 @@ def _parse_variant(raw: object, ctx: str) -> CombatVariant:
         raise ValueError(f"{ctx}.action_pool is not a list")
     notes = raw.get("notes")
     return CombatVariant(
-        name=_parse_str(raw["name"], f"{ctx}.name"),
-        level=_parse_int(raw["level"], f"{ctx}.level"),
-        hp=None if raw.get("hp") is None else _parse_int(raw["hp"], f"{ctx}.hp"),
-        ac=None if raw.get("ac") is None else _parse_int(raw["ac"], f"{ctx}.ac"),
+        name=parse_str(raw["name"], f"{ctx}.name"),
+        level=parse_int(raw["level"], f"{ctx}.level"),
+        hp=None if raw.get("hp") is None else parse_int(raw["hp"], f"{ctx}.hp"),
+        ac=None if raw.get("ac") is None else parse_int(raw["ac"], f"{ctx}.ac"),
         action_pool=tuple(_parse_action(a, f"{ctx}.action_pool[{i}]") for i, a in enumerate(actions)),
-        passives=_parse_str_tuple(raw.get("passives", []), f"{ctx}.passives"),
-        actives=_parse_str_tuple(raw.get("actives", []), f"{ctx}.actives"),
-        notes=None if notes is None else _parse_str(notes, f"{ctx}.notes"),
+        passives=parse_str_tuple(raw.get("passives", []), f"{ctx}.passives"),
+        actives=parse_str_tuple(raw.get("actives", []), f"{ctx}.actives"),
+        notes=None if notes is None else parse_str(notes, f"{ctx}.notes"),
     )
 
 
@@ -185,23 +161,23 @@ def _parse_service(raw: object, ctx: str) -> ArchetypeService:
     cost = raw["cost"]
     if isinstance(cost, dict):
         cost = {
-            "min": _parse_number(cost["min"], f"{ctx}.cost.min"),
-            "max": _parse_number(cost["max"], f"{ctx}.cost.max"),
+            "min": parse_number(cost["min"], f"{ctx}.cost.min"),
+            "max": parse_number(cost["max"], f"{ctx}.cost.max"),
         }
     else:
-        cost = _parse_number(cost, f"{ctx}.cost")
+        cost = parse_number(cost, f"{ctx}.cost")
     reqs = raw.get("requirements")
     if reqs is not None and not isinstance(reqs, dict):
         raise ValueError(f"{ctx}.requirements is not an object or null")
     ttc = raw.get("time_to_complete")
     desc = raw.get("description")
     return ArchetypeService(
-        name=_parse_str(raw["name"], f"{ctx}.name"),
+        name=parse_str(raw["name"], f"{ctx}.name"),
         cost=cost,
-        cost_unit=_parse_str(raw["cost_unit"], f"{ctx}.cost_unit"),
-        time_to_complete=None if ttc is None else _parse_str(ttc, f"{ctx}.time_to_complete"),
+        cost_unit=parse_str(raw["cost_unit"], f"{ctx}.cost_unit"),
+        time_to_complete=None if ttc is None else parse_str(ttc, f"{ctx}.time_to_complete"),
         requirements=reqs,
-        description=None if desc is None else _parse_str(desc, f"{ctx}.description"),
+        description=None if desc is None else parse_str(desc, f"{ctx}.description"),
     )
 
 
@@ -212,10 +188,10 @@ def parse_role_archetype_row(archetype_id: str, data: dict) -> RoleArchetype:
     underlying error with the row id for context.
     """
     try:
-        role_type = _parse_str(data["role_type"], f"{archetype_id}.role_type")
+        role_type = parse_str(data["role_type"], f"{archetype_id}.role_type")
         if role_type not in _ROLE_TYPES:
             raise ValueError(f"{archetype_id}.role_type {role_type!r} not in {_ROLE_TYPES}")
-        disposition = _parse_str(data["default_disposition"], f"{archetype_id}.default_disposition")
+        disposition = parse_str(data["default_disposition"], f"{archetype_id}.default_disposition")
         if disposition not in DISPOSITIONS:
             raise ValueError(f"{archetype_id}.default_disposition {disposition!r} not in {DISPOSITIONS}")
         inv = data["inventory_pool"]
@@ -229,13 +205,13 @@ def parse_role_archetype_row(archetype_id: str, data: dict) -> RoleArchetype:
             raise ValueError(f"{archetype_id}.combat_variants is not a list")
         return RoleArchetype(
             id=archetype_id,
-            name=_parse_str(data["name"], f"{archetype_id}.name"),
+            name=parse_str(data["name"], f"{archetype_id}.name"),
             role_type=role_type,
             default_disposition=disposition,
-            knowledge_domains=_parse_str_tuple(data["knowledge_domains"], f"{archetype_id}.knowledge_domains"),
+            knowledge_domains=parse_str_tuple(data["knowledge_domains"], f"{archetype_id}.knowledge_domains"),
             services=tuple(_parse_service(s, f"{archetype_id}.services[{i}]") for i, s in enumerate(services)),
             inventory_pool=inv,
-            price_modifier=_parse_number(data["price_modifier"], f"{archetype_id}.price_modifier"),
+            price_modifier=parse_number(data["price_modifier"], f"{archetype_id}.price_modifier"),
             combat_stats=_parse_combat_stats(data["combat_stats"], f"{archetype_id}.combat_stats"),
             combat_variants=tuple(
                 _parse_variant(v, f"{archetype_id}.combat_variants[{i}]") for i, v in enumerate(variants)
