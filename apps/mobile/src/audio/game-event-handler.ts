@@ -5,6 +5,7 @@ import type { MusicState } from "./music-registry";
 import * as E from "./event-types";
 import Constants from "expo-constants";
 import { getApiBase, resolveApiUrl } from "@/utils/base-url";
+import { parseSpellRows } from "@/utils/spell-display";
 import { sessionStore, type CombatDifficulty, type StoryMoment } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
@@ -247,6 +248,15 @@ export function handleGameEvent(event: DataChannelEvent): void {
               }
             : null,
         };
+        // Spells are a top-level session_init sibling (event.spells), not nested under
+        // character — publish_game_event flat-merges the payload. (story-007)
+        const spellsPayload = event.spells as Record<string, unknown> | undefined;
+        if (spellsPayload && typeof spellsPayload === "object") {
+          detail.spells = {
+            core: parseSpellRows(spellsPayload.core),
+            learned: parseSpellRows(spellsPayload.learned),
+          };
+        }
         panelStore.getState().setCharacterDetail(detail);
       }
 
