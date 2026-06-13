@@ -9,12 +9,12 @@ content/spells.json holds only the elective library. The row shape is the
 cross-language SSOT contract; it borrows M3.3's schema minimally and stays
 forward-compatible with the full Phase-3 Magic catalog.
 
-Tier-unlock ladder (the floor character level at which a tier becomes learnable,
-enforced by story-005's MIN_LEVEL_BY_SPELL_TIER): cantrip/minor L1, standard L4,
-major L7, supreme L13. This tier table is the ACTIVE learn/cast gate. (The per-row
-level_requirement / catalog "Level" column was deleted in story-008 as orphaned
-non-gating metadata with no reader — access is gated by the per-archetype tier
-tables in game_mechanics_archetypes.md, not per-spell level.)
+Tier-unlock ladder (the floor character level at which a tier becomes learnable) is
+PER-ARCHETYPE (leveling.MIN_LEVEL_BY_ARCHETYPE_TIER): full casters reach standard/major/
+supreme at L3/L5/L9. This tier table is the ACTIVE learn/cast gate. (The per-row
+level_requirement / catalog "Level" column was deleted as orphaned non-gating metadata
+with no reader — access is gated by the per-archetype tier tables in
+game_mechanics_archetypes.md, not per-spell level.)
 """
 
 import json
@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from leveling import MIN_LEVEL_BY_SPELL_TIER, is_spell_tier_unlocked
+from leveling import is_spell_tier_unlocked, min_level_for_tier
 from spells import (
     Spell,
     get_spell,
@@ -38,10 +38,10 @@ CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "spells.json"
 SPELL_SOURCES = {"arcane", "divine", "primal"}
 SPELL_TIERS = {"cantrip", "minor", "standard", "major", "supreme"}
 
-# The floor character level at which each tier becomes learnable. Sourced from the
-# prod gate (leveling.MIN_LEVEL_BY_SPELL_TIER) so this fixture cannot silently
-# diverge from the constant that story-005/006 enforce.
-TIER_LEVEL_FLOOR = MIN_LEVEL_BY_SPELL_TIER
+# Representative full-caster archetype per spell source. The 87 content spells are all
+# full-caster-source (arcane/divine/primal), so each is gated by a full caster of its
+# source; the per-archetype floors live in leveling.MIN_LEVEL_BY_ARCHETYPE_TIER.
+SOURCE_REPRESENTATIVE = {"arcane": "mage", "divine": "cleric", "primal": "druid"}
 
 _FIREBALL_ROW = {
     "id": "arcane_fireball",
@@ -254,19 +254,21 @@ def test_content_every_row_parses_and_covers_each_source_and_tier():
             assert (source, tier) in pairs, f"missing {source}/{tier} in content/spells.json"
 
 
-def test_content_spell_tiers_are_gated_by_the_level_table():
-    # Every content spell's tier is covered by the level->tier gate
-    # (leveling.MIN_LEVEL_BY_SPELL_TIER): unlocked exactly at the tier floor, gated one
-    # level below. This tier table is the sole ACTIVE gate; the per-row level_requirement
-    # was deleted (story-008) as orphaned non-gating metadata, closing the dual-SSOT.
+def test_content_spell_tiers_are_gated_by_the_per_archetype_table():
+    # Every content spell's tier is covered by the per-archetype level->tier gate
+    # (leveling.MIN_LEVEL_BY_ARCHETYPE_TIER), validated against a representative full
+    # caster of the spell's source: unlocked exactly at that archetype's tier floor,
+    # gated one level below. This tier table is the sole ACTIVE gate.
     _seed_from_content()
     raw = json.loads(CONTENT_PATH.read_text())
     for row in raw:
         s = get_spell(row["id"])
-        floor = TIER_LEVEL_FLOOR[s.spell_tier]
-        assert is_spell_tier_unlocked(s.spell_tier, floor) is True
+        archetype = SOURCE_REPRESENTATIVE[s.source]
+        floor = min_level_for_tier(archetype, s.spell_tier)
+        assert floor is not None, f"{archetype} should reach {s.spell_tier} tier"
+        assert is_spell_tier_unlocked(archetype, s.spell_tier, floor) is True
         if floor > 1:
-            assert is_spell_tier_unlocked(s.spell_tier, floor - 1) is False
+            assert is_spell_tier_unlocked(archetype, s.spell_tier, floor - 1) is False
 
 
 def test_content_includes_caster_core_spells():
