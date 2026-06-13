@@ -2,6 +2,7 @@ import { StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors, FontStyles } from "@/constants/theme";
+import { HUD_ANCHORS } from "@/constants/hud-anchors";
 
 interface XpToastProps {
   payload: Record<string, unknown>;
@@ -20,7 +21,7 @@ export function XpToast({ payload }: XpToastProps) {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    bottom: 80,
+    bottom: HUD_ANCHORS.bottomToast,
     alignSelf: "center",
   },
   text: {

@@ -9,16 +9,22 @@ interface ResonanceTrackerProps {
   // Lift the pill above the full-width combat tracker when combat is active so the
   // two don't overlap during cast-in-combat (concern 843b).
   isCombatActive?: boolean;
+  // The combat tracker's measured height; the pill clears it once known (b52a56bc).
+  combatTrackerHeight?: number;
 }
 
-export function ResonanceTracker({ state, isCombatActive = false }: ResonanceTrackerProps) {
+export function ResonanceTracker({
+  state,
+  isCombatActive = false,
+  combatTrackerHeight = 0,
+}: ResonanceTrackerProps) {
   const { label, color } = RESONANCE_DISPLAY[state];
 
   return (
     <View
       style={[
         styles.container,
-        { borderColor: color, bottom: resonanceTrackerBottom(isCombatActive) },
+        { borderColor: color, bottom: resonanceTrackerBottom(isCombatActive, combatTrackerHeight) },
       ]}
       testID="resonance-tracker"
     >
