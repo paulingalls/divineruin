@@ -10,6 +10,8 @@ import {
   type CreationCard,
 } from "@/stores/hud-store";
 import { HUD_ANCHORS } from "@/constants/hud-anchors";
+import { HOLLOW_ECHO_RESULT, VEIL_WARD_CHANGED } from "@/audio/event-types";
+import { handleGameEvent, VALID_HOLLOW_ECHO_BANDS } from "@/audio/game-event-handler";
 
 // The 7 Hollow Echo bands, mirroring the agent's hollow_echo._BANDS ids. The HUD
 // flashes the band name when an Overreach cast tears the Veil (story-004 publishes
@@ -73,6 +75,57 @@ test("reset() clears veilWardActive", () => {
   hudStore.getState().setVeilWardActive(true);
   hudStore.getState().reset();
   expect(hudStore.getState().veilWardActive).toBe(false);
+});
+
+// --- Event dispatch: HOLLOW_ECHO_RESULT + VEIL_WARD_CHANGED (story-005 M3) ---
+
+test("HOLLOW_ECHO_RESULT / VEIL_WARD_CHANGED mirror the agent wire values", () => {
+  expect(HOLLOW_ECHO_RESULT).toBe("hollow_echo_result");
+  expect(VEIL_WARD_CHANGED).toBe("veil_ward_changed");
+});
+
+test("VALID_HOLLOW_ECHO_BANDS covers exactly the 7 canonical bands", () => {
+  expect([...VALID_HOLLOW_ECHO_BANDS].sort()).toEqual([...HOLLOW_ECHO_BANDS].sort());
+});
+
+test("hollow_echo_result with a known band pushes a hollow_echo overlay (AC1)", () => {
+  handleGameEvent({ type: "hollow_echo_result", band: "breach" });
+  const overlays = hudStore.getState().overlays;
+  expect(overlays).toHaveLength(1);
+  expect(overlays[0].type).toBe("hollow_echo");
+  expect(overlays[0].payload.band).toBe("breach");
+});
+
+test("hollow_echo_result dispatches every valid band", () => {
+  for (const band of HOLLOW_ECHO_BANDS) {
+    hudStore.getState().reset();
+    handleGameEvent({ type: "hollow_echo_result", band });
+    expect(hudStore.getState().overlays[0]?.payload.band).toBe(band);
+  }
+});
+
+test("hollow_echo_result with an unknown band is dropped, store uncorrupted (AC3)", () => {
+  handleGameEvent({ type: "hollow_echo_result", band: "cataclysm" });
+  expect(hudStore.getState().overlays).toHaveLength(0);
+});
+
+test("hollow_echo_result with a missing band is dropped (fail-safe)", () => {
+  handleGameEvent({ type: "hollow_echo_result" });
+  expect(hudStore.getState().overlays).toHaveLength(0);
+});
+
+test("veil_ward_changed reflects the active toggle in the store (AC2)", () => {
+  handleGameEvent({ type: "veil_ward_changed", active: true });
+  expect(hudStore.getState().veilWardActive).toBe(true);
+  handleGameEvent({ type: "veil_ward_changed", active: false });
+  expect(hudStore.getState().veilWardActive).toBe(false);
+});
+
+test("veil_ward_changed with a non-boolean active is ignored (fail-safe)", () => {
+  hudStore.getState().setVeilWardActive(true);
+  handleGameEvent({ type: "veil_ward_changed", active: "yes" });
+  // Unchanged — a malformed payload must not corrupt the ward state.
+  expect(hudStore.getState().veilWardActive).toBe(true);
 });
 
 // --- pushOverlay ---
