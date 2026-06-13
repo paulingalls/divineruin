@@ -48,6 +48,20 @@ class ResonanceTrack:
 
 
 @dataclass
+class VeilWardState:
+    """Per-caster Veil Ward carried in the session (story-002, M3.2).
+
+    A ward is a manual activate/dismiss toggle (no auto-expiry in M3.2). ``active``
+    drives the cast-path halving (story-004); ``source`` is the archetype id that raised
+    it, carried for narration/HUD flavor. Synced from players.data by the activation tool
+    (story-003), persisted via db_mutations_veil_ward. Defaults to inactive.
+    """
+
+    active: bool = False
+    source: str | None = None
+
+
+@dataclass
 class CombatParticipant:
     id: str
     name: str
@@ -109,6 +123,7 @@ class SessionData:
     attempted_discoveries: set[str] = field(default_factory=set)
     companion: CompanionState | None = None
     resonance: ResonanceTrack = field(default_factory=ResonanceTrack)
+    veil_ward: VeilWardState = field(default_factory=VeilWardState)
     corruption_level: int = 0
     patron_id: str = "none"
     creation_state: CreationState | None = None
