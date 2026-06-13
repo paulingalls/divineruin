@@ -18,6 +18,7 @@ class TestCombatAgentConfig:
         from environment_tools import play_sound, set_music_state
         from query_tools import query_info
         from spell_casting import cast_spell, get_spell_info
+        from veil_ward_tools import activate_veil_ward
 
         expected = {
             resolve_enemy_turn,
@@ -31,6 +32,7 @@ class TestCombatAgentConfig:
             request_ability_activation,
             cast_spell,
             get_spell_info,
+            activate_veil_ward,
         }
         assert set(COMBAT_AGENT_TOOLS) == expected
 

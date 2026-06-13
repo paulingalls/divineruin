@@ -46,6 +46,11 @@ QUEST_UPDATE = "quest_update"  # client-only alias for QUEST_UPDATED
 # Mirror const in apps/mobile/src/audio/event-types.ts.
 RESONANCE_CHANGED = "resonance_changed"
 
+# Magic (M3.2) — Veil Ward toggle push: carries the minimal {active} only (the HUD shows a
+# glanceable on/off zone indicator; the source archetype is narration the DM voices, not wire
+# state). Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
+VEIL_WARD_CHANGED = "veil_ward_changed"
+
 # World
 HOLLOW_CORRUPTION_CHANGED = "hollow_corruption_changed"
 DISPOSITION_CHANGED = "disposition_changed"
