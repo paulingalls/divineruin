@@ -41,8 +41,8 @@ from creation_rules import select_starting_spells
 _CANTRIP = "arcane_frost_touch"
 _MINOR_A = "arcane_magic_missile"
 _MINOR_B = "arcane_mage_hand"
-_STANDARD = "arcane_hold_person"  # standard tier, unlocks at L4
-_MAJOR = "arcane_fireball"  # major tier, unlocks at L7
+_STANDARD = "arcane_hold_person"  # standard tier, unlocks at L3 (mage)
+_MAJOR = "arcane_fireball"  # major tier, unlocks at L5 (mage)
 
 
 @pytest.fixture(scope="module")
@@ -124,12 +124,13 @@ async def test_learn_scroll_spell_adds_to_library(reset_db_pool: str) -> None:
 
 @pytest.mark.asyncio
 async def test_learn_above_tier_rejected_and_no_write(reset_db_pool: str) -> None:
-    # Tier gate (story-005): a level-3 caster cannot learn a Major spell (unlocks at L7).
+    # Per-archetype tier gate (story-008): a level-3 mage cannot learn a Major spell
+    # (mage unlocks Major at L5).
     pool = await db.get_pool()
     pid = "cap_gate"
     await _seed_caster(pool, pid, level=3)
 
-    with pytest.raises(ToolError, match="level 7"):
+    with pytest.raises(ToolError, match="level 5"):
         await spell_tools._learn_spell_impl(make_context(player_id=pid), _MAJOR, "discovery")
 
     known = await character_spells.get_known(pid, conn=pool)
