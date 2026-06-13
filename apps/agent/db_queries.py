@@ -9,9 +9,12 @@ import logging
 
 import asyncpg
 
+import abilities
+import character_spells
 import db
 import db_activity_queries
 import db_content_queries
+import spells
 from workspace import WorkspaceType
 
 logger = logging.getLogger("divineruin.db")
@@ -439,6 +442,56 @@ async def _enrich_quests_with_scene_hints(quests: list[dict]) -> list[dict]:
     return quests
 
 
+def _enrich_spell_row(spell_id: str, *, is_prepared: bool) -> dict | None:
+    """Catalog-enrich one spell id for the character-sheet payload, or None if unknown.
+
+    Display-only: an unresolvable id (missing catalog entry) is skipped (logged) rather
+    than aborting the whole session payload — the FK + strict loader make this rare.
+    """
+    try:
+        spell = spells.get_spell(spell_id)
+    except ValueError:
+        logger.warning("session_init: skipping unknown spell %r", spell_id)
+        return None
+    return {
+        "spell_id": spell.id,
+        "name": spell.name,
+        "spell_tier": spell.spell_tier,
+        "focus_cost": spell.focus_cost,
+        "is_prepared": is_prepared,
+    }
+
+
+async def _build_player_spells(player_id: str, player: dict | None) -> dict:
+    """Build the {core, learned} spell payload for the character sheet (story-007).
+
+    core = the archetype's always-known spell-backed abilities (always prepared);
+    learned = the character_spells elective library. A learned spell that is also core
+    is deduped out of learned (core is the always-prepared grant). Each row is
+    catalog-enriched to {spell_id, name, spell_tier, focus_cost, is_prepared}.
+    """
+    archetype_id = player.get("class") if player else None
+    core: list[dict] = []
+    core_ids: set[str] = set()
+    if archetype_id:
+        for ability in abilities.get_archetype_abilities(archetype_id):
+            if ability.ability_type == "core" and ability.spell_id:
+                row = _enrich_spell_row(ability.spell_id, is_prepared=True)
+                if row:
+                    core.append(row)
+                    core_ids.add(ability.spell_id)
+
+    learned: list[dict] = []
+    for known in await character_spells.get_known(player_id):
+        if known["spell_id"] in core_ids:
+            continue
+        row = _enrich_spell_row(known["spell_id"], is_prepared=known["is_prepared"])
+        if row:
+            learned.append(row)
+
+    return {"core": core, "learned": learned}
+
+
 async def get_session_init_payload(player_id: str) -> dict:
     """Build the full session_init payload for a player."""
     # Fetch player first (need location_id), then parallelize the rest
@@ -458,6 +511,9 @@ async def get_session_init_payload(player_id: str) -> dict:
     # Build portraits dict
     portraits = db._build_portraits(player, location_id)
 
+    # Character-sheet spell list: core (archetype-fixed) + learned electives (story-007).
+    spell_list = await _build_player_spells(player_id, player)
+
     return {
         "character": player,
         "location": location if location_id else None,
@@ -466,6 +522,7 @@ async def get_session_init_payload(player_id: str) -> dict:
         "map_progress": map_progress,
         "world_state": {"time": "evening"},
         "portraits": portraits,
+        "spells": spell_list,
     }
 
 
