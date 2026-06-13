@@ -11,9 +11,10 @@ forward-compatible with the full Phase-3 Magic catalog.
 
 Tier-unlock ladder (the floor character level at which a tier becomes learnable,
 enforced by story-005's MIN_LEVEL_BY_SPELL_TIER): cantrip/minor L1, standard L4,
-major L7, supreme L13. This tier table is still the ACTIVE learn/cast gate. Spells
-also now carry a per-row level_requirement (the spec "Level" column, M3.3) that no
-reader consumes yet; reconciling the two is tracked as concern 3d7b7bbbd50b.
+major L7, supreme L13. This tier table is the ACTIVE learn/cast gate. (The per-row
+level_requirement / catalog "Level" column was deleted in story-008 as orphaned
+non-gating metadata with no reader — access is gated by the per-archetype tier
+tables in game_mechanics_archetypes.md, not per-spell level.)
 """
 
 import json
@@ -54,7 +55,6 @@ _FIREBALL_ROW = {
     "terrain_effects": {},
     "audio_cue": "CMB-006 (powerful)",
     "concentration": False,
-    "level_requirement": 5,
 }
 
 _BLESS_ROW = {
@@ -69,12 +69,11 @@ _BLESS_ROW = {
     "terrain_effects": {},
     "audio_cue": "",
     "concentration": True,
-    "level_requirement": 1,
 }
 
-# The five M3.3 cast-time fields parse_spell_row requires (strict). Used by the
+# The four M3.3 cast-time fields parse_spell_row requires (strict). Used by the
 # missing-field fail-loud parametrization.
-_M33_FIELDS = ("resonance_by_source", "terrain_effects", "audio_cue", "concentration", "level_requirement")
+_M33_FIELDS = ("resonance_by_source", "terrain_effects", "audio_cue", "concentration")
 
 
 def _seed_from_content() -> None:
@@ -100,7 +99,6 @@ def test_parse_spell_row_exposes_m33_fields():
     assert s.terrain_effects == {}
     assert s.audio_cue == "CMB-006 (powerful)"
     assert s.concentration is False
-    assert s.level_requirement == 5
     # Concentration is a real bool from the row, not coerced.
     conc = parse_spell_row(_BLESS_ROW["id"], _BLESS_ROW)
     assert conc.concentration is True
@@ -114,12 +112,6 @@ def test_parse_spell_row_strict_requires_each_m33_field(missing):
     bad = {k: v for k, v in _FIREBALL_ROW.items() if k != missing}
     with pytest.raises(ValueError, match="arcane_fireball"):
         parse_spell_row("arcane_fireball", bad)
-
-
-def test_parse_spell_row_rejects_bool_level_requirement():
-    bad = {**_FIREBALL_ROW, "level_requirement": True}
-    with pytest.raises(ValueError, match=r"level_requirement"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
 
 
 def test_parse_spell_row_rejects_nonbool_concentration():
@@ -161,7 +153,6 @@ def test_spell_defaults_allow_in_code_construction_without_m33_args():
     assert s.terrain_effects == {}
     assert s.audio_cue == ""
     assert s.concentration is False
-    assert s.level_requirement == 1
 
 
 def test_parse_spell_row_fail_loud_names_the_row():
@@ -266,8 +257,8 @@ def test_content_every_row_parses_and_covers_each_source_and_tier():
 def test_content_spell_tiers_are_gated_by_the_level_table():
     # Every content spell's tier is covered by the level->tier gate
     # (leveling.MIN_LEVEL_BY_SPELL_TIER): unlocked exactly at the tier floor, gated one
-    # level below. This tier table is the ACTIVE gate; the new per-row level_requirement
-    # is not yet a reader (dual-SSOT reconciliation tracked as concern 3d7b7bbbd50b).
+    # level below. This tier table is the sole ACTIVE gate; the per-row level_requirement
+    # was deleted (story-008) as orphaned non-gating metadata, closing the dual-SSOT.
     _seed_from_content()
     raw = json.loads(CONTENT_PATH.read_text())
     for row in raw:

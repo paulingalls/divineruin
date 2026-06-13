@@ -50,7 +50,6 @@ def _spell(
         resonance_by_source={source: focus_cost},
         terrain_effects={},
         concentration=False,
-        level_requirement=1,
     )
 
 
@@ -281,7 +280,7 @@ class TestGetSpellInfo:
         assert info["spell_tier"] == "cantrip"
         assert info["focus_cost"] == 0
         # carries the full M3.3 schema
-        for key in ("mechanics", "narration_cue", "audio_cue", "resonance_by_source", "level_requirement"):
+        for key in ("mechanics", "narration_cue", "audio_cue", "resonance_by_source", "concentration"):
             assert key in info
 
     async def test_unknown_spell_raises_toolerror(self):
