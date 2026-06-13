@@ -8,9 +8,9 @@ parse_number returned float in some, the raw value in others). They live here on
 each loader imports what it needs and keeps only its domain-specific parsers (e.g.
 _parse_attack, _parse_variant, _parse_cost).
 
-These primitives take (raw, ctx). Note that spells.py uses a different (data, key, id)
-idiom (_require_int) and is NOT a drop-in consumer; folding it in is a separate refactor,
-not an import swap.
+These primitives take (raw, ctx). spells.py is also a consumer (parse_int /
+parse_int_dict / parse_str): it extracts data[key] itself and passes the raw value plus
+a row-scoped ctx, so it shares these primitives rather than its old _require_int idiom.
 
 Every function takes the raw value plus a `ctx` string (the dotted field path, e.g.
 "companion_kael.attacks[0].damage") used in the error message, raises ValueError on a type
