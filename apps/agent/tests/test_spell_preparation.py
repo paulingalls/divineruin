@@ -3,11 +3,11 @@
 Preparation is a deterministic Resolve (ADR 0007: no new @function_tool). These pure
 gates enforce the Track 3 rules (game_mechanics_archetypes.md L1255-1283):
   - can only prepare a spell you KNOW (in the library)
-  - can only prepare a tier you have level access to (leveling.is_spell_tier_unlocked)
+  - can only prepare a tier your ARCHETYPE has level access to (leveling.is_spell_tier_unlocked,
+    keyed by (archetype, tier, level)). This subsumes the Major-tier cap: Paladin/Diplomat/
+    Marshal have no Supreme entry, so Supreme is rejected as "not available" at any level.
   - within the elective slot limit (core spells are abilities, slot-free, untouched)
   - Primal casters (Druid/Beastcaller/Warden) may only CHANGE preparation in natural terrain
-  - Paladin/Diplomat/Marshal cap at Major tier (no Supreme) — a strict subset of divine
-    casters, so the cap is an explicit id set, NOT magic_source (cleric/oracle keep Supreme).
 
 Both gates fail loud: they raise ValueError with a specific message on violation and
 return None when the preparation is allowed (mirrors rest_mechanics.swap_elective_on_long_rest).
@@ -18,6 +18,7 @@ M8 story-007 capstone (ADR 0003: real-DB testcontainer fixtures are unreachable 
 
 import json
 from pathlib import Path
+from typing import get_args
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -25,6 +26,7 @@ import pytest
 import leveling
 import rest_mechanics
 import spell_preparation
+from spells import SpellTier
 
 _ARCHETYPES_JSON = Path(__file__).resolve().parents[3] / "content" / "archetypes.json"
 
@@ -88,9 +90,9 @@ def test_can_prepare_unknown_spell_rejected():
 
 
 def test_can_prepare_tier_above_character_level_rejected():
-    # standard unlocks at L4; a level-3 caster cannot prepare it.
+    # A mage unlocks Standard at L3; a level-2 mage cannot prepare it.
     with pytest.raises(ValueError, match="unlock"):
-        _prepare(spell_tier="standard", character_level=3)
+        _prepare(spell_tier="standard", character_level=2)
 
 
 def test_can_prepare_no_open_slot_rejected():
@@ -109,26 +111,27 @@ def test_can_prepare_unknown_tier_fails_loud():
 
 @pytest.mark.parametrize("archetype_id", ["paladin", "diplomat", "marshal"])
 def test_major_capped_archetype_cannot_prepare_supreme(archetype_id):
-    # Level is high enough (Supreme unlocks at L13) so the rejection is the Major cap,
-    # not the level gate.
-    with pytest.raises(ValueError, match="Major"):
+    # paladin/diplomat/marshal have no Supreme entry in the per-archetype gate, so it is
+    # rejected as "not available" at any level (the gate subsumes the old Major cap).
+    with pytest.raises(ValueError, match="not available"):
         _prepare(
             spell_id="divine_judgment",
             spell_tier="supreme",
             archetype_id=archetype_id,
-            character_level=13,
+            character_level=20,
             known_spell_ids={"divine_judgment"},
         )
 
 
 @pytest.mark.parametrize("archetype_id", ["paladin", "diplomat", "marshal"])
 def test_major_capped_archetype_can_prepare_major(archetype_id):
+    # These half-casters unlock Major at L9 (later than a full caster's L5).
     assert (
         _prepare(
             spell_id="divine_smite",
             spell_tier="major",
             archetype_id=archetype_id,
-            character_level=7,
+            character_level=9,
             known_spell_ids={"divine_smite"},
         )
         is None
@@ -151,24 +154,27 @@ def test_uncapped_caster_can_prepare_supreme(archetype_id):
     )
 
 
-# --- Parity: the hardcoded Major-cap set must stay in sync with content/archetypes.json ---
+# --- Parity: the no-Supreme archetypes must stay in sync with content/archetypes.json ---
 # Guards silent drift if a divine archetype is renamed/added in the content SSOT without
-# updating the explicit cap set here. (The primal terrain rule is now derived from
-# magic_source, so it needs no parity guard.)
+# updating the per-archetype gate. (The primal terrain rule is derived from magic_source,
+# so it needs no parity guard.)
 
 
-def test_major_capped_archetypes_are_known_divine_casters():
-    # The Major cap is a strict subset of divine casters (cleric/oracle keep Supreme).
+def test_supreme_capped_archetypes_are_known_divine_casters():
+    # paladin/diplomat/marshal cap at Major — no "supreme" entry in the per-archetype gate.
+    # They are a STRICT subset of divine casters (cleric/oracle keep Supreme).
+    no_supreme = {a for a, tiers in leveling.MIN_LEVEL_BY_ARCHETYPE_TIER.items() if "supreme" not in tiers}
+    assert no_supreme == {"paladin", "diplomat", "marshal"}
     divine_in_content = _archetypes_by_magic_source().get("divine", set())
-    assert divine_in_content >= spell_preparation.MAJOR_TIER_CAPPED_ARCHETYPES
+    assert divine_in_content >= no_supreme
     # ...and a strict superset: at least one divine caster (cleric/oracle) keeps Supreme.
-    assert divine_in_content > spell_preparation.MAJOR_TIER_CAPPED_ARCHETYPES
+    assert divine_in_content > no_supreme
 
 
-def test_spell_tier_order_matches_min_level_tier_vocab():
-    # SPELL_TIER_ORDER (derived from SpellTier) must cover the same closed enum as the
-    # level-gate table, so the two representations cannot silently diverge.
-    assert set(spell_preparation.SPELL_TIER_ORDER) == set(leveling.MIN_LEVEL_BY_SPELL_TIER)
+def test_gate_tier_vocab_matches_spell_tier_literal():
+    # The per-archetype gate's tier vocabulary must cover the same closed enum as the
+    # SpellTier Literal, so the two representations cannot silently diverge.
+    assert set(get_args(SpellTier)) == leveling.SPELL_TIERS
 
 
 # --- AC1/AC4: the async long-rest Resolve (rest_mechanics.prepare_spells_on_long_rest) ---
@@ -296,7 +302,7 @@ async def test_druid_in_natural_terrain_prepares():
 
 async def test_paladin_supreme_in_loadout_refused():
     store = _make_store({"divine_greater_restoration": False})
-    with pytest.raises(ValueError, match="Major"):
+    with pytest.raises(ValueError, match="not available"):
         await _prepare_flow(store, ["divine_greater_restoration"], archetype_id="paladin", character_level=13)
     assert _prepared_ids(store) == set()
 
