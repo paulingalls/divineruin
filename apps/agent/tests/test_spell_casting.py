@@ -10,6 +10,7 @@ two tests exercise the real catalog end-to-end.
 """
 
 import json
+from dataclasses import replace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -37,7 +38,12 @@ def _spell(
     tier: SpellTier = "standard",
     focus_cost: int = 10,
     name: str = "Test Spell",
+    resonance: int = 6,
 ) -> Spell:
+    # resonance_by_source carries the designed per-spell Resonance the cast path reads
+    # (decision resonance-by-source-ssot); default 6 keeps the canonical "flickering"
+    # fixture. Pass resonance= to control it (0 for cantrips, a formula-deviating value
+    # to prove the catalog wins).
     return Spell(
         id=spell_id,
         name=name,
@@ -47,7 +53,7 @@ def _spell(
         mechanics="Deals force damage to one target.",
         narration_cue="A surge of raw power snaps outward.",
         audio_cue="SFX-001",
-        resonance_by_source={source: focus_cost},
+        resonance_by_source={source: resonance},
         terrain_effects={},
         concentration=False,
     )
@@ -153,12 +159,13 @@ class TestCastSpellFocusGate:
                 spells_mod=spells_mod,
             )
 
-    async def test_primal_non_cantrip_without_terrain_fails_loud(self):
-        # A primal non-cantrip needs a terrain; terrain defaults to "normal", which is
-        # NOT in resonance.PRIMAL_TERRAIN_TABLE, so calculate_resonance_generated raises
-        # and the cast fails loud (ToolError) until M3.4 terrain wiring lands. The fail
-        # happens before any Focus deduction. Cantrips and arcane/divine are unaffected.
-        spell = _spell(source="primal", tier="standard", focus_cost=3)
+    async def test_primal_without_catalog_resonance_falls_back_and_fails_loud(self):
+        # The fallback path: a primal spell that carries NO resonance_by_source entry
+        # (an in-code build; catalog rows always do) falls back to the source*terrain
+        # formula. Terrain defaults to "normal", absent from PRIMAL_TERRAIN_TABLE, so the
+        # fallback raises and the cast fails loud (ToolError) BEFORE any Focus deduction.
+        # Catalog primal spells DO carry the baseline and cast fine — see the next test.
+        spell = replace(_spell(source="primal", tier="standard", focus_cost=3), resonance_by_source={})
         ctx = make_context()
         mock_db, _conn = make_db_mod()
         queries = MagicMock()
@@ -193,7 +200,7 @@ class TestCastSpellResonance:
         assert kwargs["focus"] == 7  # 10 - 3
 
     async def test_resonance_accrues_and_persists(self):
-        # AC2: arcane multiplier 0.6 -> ceil(10*0.6)=6 generated; 0 -> 6 = flickering.
+        # AC2: the cast reads the catalog's designed resonance_by_source[arcane]=6; 0 -> 6 = flickering.
         packet, ctx, _p, mutations, events = await _cast(_spell(source="arcane", focus_cost=10), start_resonance=0)
         assert packet["resonance_generated"] == 6
         assert ctx.userdata.resonance.current == 6
@@ -209,7 +216,7 @@ class TestCastSpellResonance:
         # AC3: cantrip (focus_cost 0) -> 0 resonance, no resonance write, damage via
         # cantrip_damage_dice(level). Level 11 -> "3d6".
         packet, ctx, persistence, mutations, events = await _cast(
-            _spell(tier="cantrip", focus_cost=0), focus=10, level=11
+            _spell(tier="cantrip", focus_cost=0, resonance=0), focus=10, level=11
         )
         assert packet["resonance_generated"] == 0
         assert ctx.userdata.resonance.current == 0
@@ -233,6 +240,32 @@ class TestCastSpellResonance:
     async def test_non_cantrip_has_no_damage_dice_key(self):
         packet, _ctx, _p, _m, _ev = await _cast(_spell(tier="standard", focus_cost=3), focus=10)
         assert "damage_dice" not in packet
+
+    async def test_cast_uses_catalog_resonance_over_formula(self):
+        # The catalog's designed resonance_by_source is the SSOT, even when it deviates
+        # from the source*focus formula (12/58 spells do — decision resonance-by-source-ssot).
+        # focus_cost=10 arcane -> formula ceil(10*0.6)=6, but the designed value (3) wins.
+        packet, _ctx, _p, _m, _ev = await _cast(_spell(source="arcane", focus_cost=10, resonance=3), start_resonance=0)
+        assert packet["resonance_generated"] == 3
+
+    async def test_cast_falls_back_to_formula_when_source_unmapped(self):
+        # When a spell carries no resonance_by_source entry for its source (in-code builds;
+        # catalog rows always do), the cast falls back to calculate_resonance_generated.
+        spell = replace(_spell(source="arcane", focus_cost=10), resonance_by_source={})
+        packet, _ctx, _p, _m, _ev = await _cast(spell, start_resonance=0)
+        assert packet["resonance_generated"] == 6  # ceil(10 * 0.6)
+
+    async def test_primal_casts_via_catalog_baseline_resonance(self):
+        # The fix: a primal spell reads its catalog baseline resonance_by_source[primal]
+        # and casts WITHOUT terrain (terrain layering is future). Previously primal
+        # non-cantrips raised on the "normal"-terrain formula; now they generate the
+        # designed baseline.
+        packet, ctx, _p, mutations, _ev = await _cast(
+            _spell(source="primal", tier="standard", focus_cost=3, resonance=2), start_resonance=0
+        )
+        assert packet["resonance_generated"] == 2
+        assert ctx.userdata.resonance.current == 2
+        mutations.update_player_resonance.assert_awaited_once()
 
 
 class TestCastSpellRealCatalog:
