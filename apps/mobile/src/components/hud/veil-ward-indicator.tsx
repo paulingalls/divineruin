@@ -9,6 +9,8 @@ interface VeilWardIndicatorProps {
   // the ResonanceTracker's anchor so the two qualitative pills flank the bottom HUD
   // (resonance right, ward left) without overlapping the combat tracker.
   isCombatActive?: boolean;
+  // The combat tracker's measured height; the badge clears it once known (b52a56bc).
+  combatTrackerHeight?: number;
 }
 
 /**
@@ -18,10 +20,16 @@ interface VeilWardIndicatorProps {
  * hudStore.veilWardActive is true; the source archetype is narration the DM voices,
  * not wire state — the badge is a binary on/off.
  */
-export function VeilWardIndicator({ isCombatActive = false }: VeilWardIndicatorProps) {
+export function VeilWardIndicator({
+  isCombatActive = false,
+  combatTrackerHeight = 0,
+}: VeilWardIndicatorProps) {
   return (
     <View
-      style={[styles.container, { bottom: resonanceTrackerBottom(isCombatActive) }]}
+      style={[
+        styles.container,
+        { bottom: resonanceTrackerBottom(isCombatActive, combatTrackerHeight) },
+      ]}
       testID="veil-ward-indicator"
     >
       <View style={styles.dot} />

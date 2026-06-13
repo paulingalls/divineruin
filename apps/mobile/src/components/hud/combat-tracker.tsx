@@ -11,7 +11,7 @@ import Animated, {
 import { ThemedText } from "@/components/themed-text";
 import { AnimationPresets, BrandColors, FontStyles, Radius, Spacing } from "@/constants/theme";
 import { HUD_ANCHORS } from "@/constants/hud-anchors";
-import type { Combatant, CombatTrackerState } from "@/stores/hud-store";
+import { hudStore, type Combatant, type CombatTrackerState } from "@/stores/hud-store";
 
 function CombatantHpBar({ current, max }: { current: number; max: number }) {
   const ratio = max > 0 ? current / max : 0;
@@ -84,6 +84,9 @@ export function CombatTracker({ state }: CombatTrackerProps) {
         .stiffness(AnimationPresets.overlaySpring.stiffness)}
       exiting={SlideOutDown.duration(250)}
       style={styles.container}
+      // Report the rendered height so the ResonanceTracker / Veil Ward pills lift
+      // clear of a many-combatant tracker rather than a fixed offset (debt b52a56bc).
+      onLayout={(e) => hudStore.getState().setCombatTrackerHeight(e.nativeEvent.layout.height)}
       testID="combat-tracker"
     >
       <View style={styles.header}>

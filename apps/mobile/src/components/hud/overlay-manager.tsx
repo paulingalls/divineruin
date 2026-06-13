@@ -70,6 +70,7 @@ function TapToDismissOverlay({ overlay }: { overlay: OverlayEntry }) {
 export function OverlayManager() {
   const overlays = useStore(hudStore, (s) => s.overlays);
   const combatState = useStore(hudStore, (s) => s.combatState);
+  const combatTrackerHeight = useStore(hudStore, (s) => s.combatTrackerHeight);
   const resonanceState = useStore(hudStore, (s) => s.resonanceState);
   const veilWardActive = useStore(hudStore, (s) => s.veilWardActive);
   const creationCards = useStore(hudStore, (s) => s.creationCards);
@@ -86,8 +87,15 @@ export function OverlayManager() {
       {combatState && <CombatTracker state={combatState} />}
 
       {/* Resonance tracker (M3.1) — qualitative state only; hidden until first push.
-          Offsets above the combat tracker when combat is active (concern 843b). */}
-      {resonanceState && <ResonanceTracker state={resonanceState} isCombatActive={!!combatState} />}
+          Offsets above the combat tracker when combat is active (concern 843b),
+          clearing its measured height once known (b52a56bc). */}
+      {resonanceState && (
+        <ResonanceTracker
+          state={resonanceState}
+          isCombatActive={!!combatState}
+          combatTrackerHeight={combatTrackerHeight}
+        />
+      )}
 
       {/* Creation card row */}
       {creationCards.length > 0 && <CreationCardRow />}
@@ -97,7 +105,12 @@ export function OverlayManager() {
 
       {/* Veil Ward zone indicator (M3.2) — persistent while a ward is active; shares
           the resonance pill's combat-aware anchor (bottom-left vs. bottom-right). */}
-      {veilWardActive && <VeilWardIndicator isCombatActive={!!combatState} />}
+      {veilWardActive && (
+        <VeilWardIndicator
+          isCombatActive={!!combatState}
+          combatTrackerHeight={combatTrackerHeight}
+        />
+      )}
 
       {/* NPC portrait */}
       <NpcPortraitOverlay />
