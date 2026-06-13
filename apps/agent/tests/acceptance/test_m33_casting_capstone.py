@@ -80,7 +80,9 @@ async def test_cast_deducts_focus_and_persists_resonance(reset_db_pool: str) -> 
     await spells.load_spells()
 
     spell = spells.get_spell(_SPELL_ID)
-    expected_gen = resonance.calculate_resonance_generated(spell.focus_cost, spell.source)
+    # Cast reads the catalog's designed value (decision resonance-by-source-ssot), not the
+    # source*focus formula — they coincide for arcane_fireball (3) but the catalog is the SSOT.
+    expected_gen = spell.resonance_by_source[spell.source]
     assert expected_gen > 0  # not a cantrip — a real Resonance accrual
 
     await _cast_spell_impl(_make_ctx(player_id), _SPELL_ID)
@@ -98,9 +100,10 @@ async def test_repeated_casts_cross_resonance_bands(reset_db_pool: str) -> None:
     await spells.load_spells()
 
     spell = spells.get_spell(_SPELL_ID)
-    gen = resonance.calculate_resonance_generated(spell.focus_cost, spell.source)
-    # The band-walk below assumes a 3-Resonance accrual (3 -> 6 -> 9). Guard it so a
-    # catalog re-tune of arcane_fireball fails here with a clear cause, not a band mismatch.
+    # Cast reads the catalog's designed resonance (decision resonance-by-source-ssot). The
+    # band-walk below assumes a 3-Resonance accrual (3 -> 6 -> 9); guard it so a catalog
+    # re-tune of arcane_fireball fails here with a clear cause, not a band mismatch.
+    gen = spell.resonance_by_source[spell.source]
     assert gen == 3
 
     ctx = _make_ctx(player_id)  # one session -> resonance accumulates in-memory + persists
