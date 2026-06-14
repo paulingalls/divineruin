@@ -2,8 +2,9 @@ import { test, expect, describe, mock, beforeEach, afterEach } from "bun:test";
 
 // Set JWT_SECRET before importing auth module
 process.env.JWT_SECRET = "48d10d0851017d6e6d6f40ae66e6e15071a7caa782cb343c5c8dad7d4ffb310c";
-// RESEND_API_KEY is set so the `if (RESEND_API_KEY)` branch in handleRequestCode is exercised;
-// the IS_TEST_ENV guard in auth.ts must still skip the outbound fetch (verified below).
+// RESEND_API_KEY is set so handleRequestCode delegates to the real-keyed branch
+// of the email seam; the seam's IS_TEST_ENV default must still skip the outbound
+// fetch under bun:test (verified below).
 process.env.RESEND_API_KEY = "test_key_must_not_leak_to_resend";
 process.env.RESEND_FROM_EMAIL = "test-sender@example.com";
 
@@ -165,7 +166,8 @@ describe("handleRequestCode", () => {
   });
 
   // Resolves concern 15cb783cf387: AC2 positive side — the dev-code log fallback
-  // still fires under test env when the Resend branch is guarded.
+  // (now emitted by the email seam) still fires under test env when the Resend
+  // branch is mocked.
   test("logs DEV CODE fallback under bun:test instead of calling Resend", async () => {
     setMockResults([], [{ id: "acc-uuid-devlog" }], [], []);
     const logSpy = mock(() => {});
@@ -182,7 +184,7 @@ describe("handleRequestCode", () => {
     const logCalls = logSpy.mock.calls as unknown as [string, ...unknown[]][];
     const devCodeLogs = logCalls.filter(
       (call) =>
-        typeof call[0] === "string" && call[0].includes("[auth] DEV CODE for devlog@example.com:"),
+        typeof call[0] === "string" && call[0].includes("[email] DEV CODE for devlog@example.com:"),
     );
     expect(devCodeLogs.length).toBe(1);
   });
