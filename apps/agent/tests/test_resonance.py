@@ -108,6 +108,32 @@ def test_resonance_state_thresholds(value, expected):
     assert resonance.get_resonance_state(value) == expected
 
 
+# --- Thessyn flickering-threshold shift (M3.4 story-003, spec 270-276) --------
+# Deep Adaptation: +1 to the Flickering threshold shifts the band 5-8 -> 6-9 (stable up to 5,
+# overreach at 10+). The bonus is a pure param; story-006 supplies it from the racial lookup.
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (4, "stable"),
+        (5, "stable"),  # shifted: 5 is now stable (was flickering)
+        (6, "flickering"),
+        (9, "flickering"),  # shifted: 9 is now flickering (was overreach)
+        (10, "overreach"),
+    ],
+)
+def test_resonance_state_with_thessyn_flickering_bonus(value, expected):
+    assert resonance.get_resonance_state(value, flickering_bonus=1) == expected
+
+
+def test_flickering_bonus_defaults_to_zero_unchanged_bands():
+    # Regression guard: the default (no bonus) keeps the canonical 4/8 boundary.
+    assert resonance.get_resonance_state(4) == "stable"
+    assert resonance.get_resonance_state(5) == "flickering"
+    assert resonance.get_resonance_state(9) == "overreach"
+
+
 # --- apply_resonance_decay (spec 126-131) ------------------------------------
 
 
@@ -125,6 +151,30 @@ def test_decay_floors_at_zero():
 
 def test_decay_at_zero_stays_zero():
     assert resonance.apply_resonance_decay(0) == 0
+
+
+# --- apply_primal_reduction (M3.4 story-003, Korath earth-anchored, spec 254-260) ---
+# Korath generates -1 Resonance on primal spells (floor 0). Pure generation-modifier mirroring
+# veil_ward.halve_generation; the reduction value comes from the racial lookup (story-001).
+
+
+def test_primal_reduction_subtracts():
+    assert resonance.apply_primal_reduction(5, 1) == 4
+
+
+def test_primal_reduction_floors_at_zero():
+    assert resonance.apply_primal_reduction(0, 1) == 0
+    assert resonance.apply_primal_reduction(1, 3) == 0  # would be -2 -> floored
+
+
+def test_primal_reduction_rejects_negative_generated():
+    with pytest.raises(ValueError, match="generated"):
+        resonance.apply_primal_reduction(-1, 1)
+
+
+def test_primal_reduction_rejects_negative_reduction():
+    with pytest.raises(ValueError, match="reduction"):
+        resonance.apply_primal_reduction(5, -1)
 
 
 # --- get_state_modifiers (spec 100-106) --------------------------------------

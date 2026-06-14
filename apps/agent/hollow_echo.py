@@ -68,14 +68,23 @@ _BANDS: tuple[tuple[int, str, str, str], ...] = (
 _BREACH = ("breach", "Breach", "1-3 minor Hollow creatures manifest at the spell's location within 1d4 rounds.")
 
 
-def resolve_hollow_echo(d20_roll: int, resonance: int, ward_bonus: int = 0) -> HollowEchoResult:
+def resolve_hollow_echo(
+    d20_roll: int, resonance: int, ward_bonus: int = 0, advantage_roll: int | None = None
+) -> HollowEchoResult:
     """Resolve a Hollow Echo for a d20 roll at the given post-cast Resonance.
+
+    advantage_roll is the second d20 for Vaelti Hyper-awareness (spec magic.md:246-252):
+    when supplied, the base roll is max(d20_roll, advantage_roll) — advantage takes the higher
+    roll, which maps to a milder band (the same "shift milder" direction as ward_bonus). The
+    engine never rolls; the caller supplies both rolls (story-006 rolls the second only for a
+    Vaelti, gated on the echo_save_advantage racial modifier). When None, the single d20_roll
+    is used unchanged.
 
     Adds the Veil Ward bonus (ward_bonus, +4 while a ward is active — spec magic.md:198,
     shifts results milder), then applies the high-Resonance modifier (subtract 3 at 12+,
     subtract 6 at 15+ — the larger wins, they do not stack), and maps the effective roll
     to its band. Fails loud if called below Overreach (the cast path only rolls at 9+),
-    if the raw d20_roll is outside 1-20, or if ward_bonus is negative.
+    if either roll is outside 1-20, or if ward_bonus is negative.
     """
     if resonance < OVERREACH_THRESHOLD:
         raise ValueError(f"Hollow Echo is only rolled at Overreach ({OVERREACH_THRESHOLD}+), got resonance {resonance}")
@@ -84,13 +93,19 @@ def resolve_hollow_echo(d20_roll: int, resonance: int, ward_bonus: int = 0) -> H
     if ward_bonus < 0:
         raise ValueError(f"ward_bonus must be non-negative, got {ward_bonus}")
 
+    base_roll = d20_roll
+    if advantage_roll is not None:
+        if not 1 <= advantage_roll <= 20:
+            raise ValueError(f"advantage_roll must be in 1-20, got {advantage_roll}")
+        base_roll = max(d20_roll, advantage_roll)  # advantage: best of two -> milder band
+
     if resonance >= 15:
         modifier = 6
     elif resonance >= 12:
         modifier = 3
     else:
         modifier = 0
-    effective_roll = d20_roll + ward_bonus - modifier
+    effective_roll = base_roll + ward_bonus - modifier
 
     for floor, band, name, effect in _BANDS:
         if effective_roll >= floor:

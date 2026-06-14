@@ -8,7 +8,36 @@ from combat._helpers import _make_combat_state, _make_context, _make_mock_room
 from livekit.agents.llm import ToolError
 
 import event_types as E
+from check_resolution import AttackResult
 from combat_turn import _resolve_enemy_turn_impl
+
+
+def _fixed_resolver(*, damage: int, hp_remaining: int):
+    """A resolver whose resolve_attack returns a fixed hit — lets the wiring test pin the
+    damage the concentration break-check sees and whether the hit drops the player to 0."""
+    result = AttackResult(
+        hit=True,
+        roll=15,
+        attack_modifier=3,
+        attack_total=18,
+        target_ac=14,
+        damage=damage,
+        damage_type="slashing",
+        critical=False,
+        target_hp_remaining=hp_remaining,
+        target_killed=hp_remaining <= 0,
+        narrative_hint="The blade bites deep.",
+    )
+    resolver = MagicMock()
+    resolver.resolve_attack = MagicMock(return_value=result)
+    return resolver
+
+
+def _break_mod(return_value):
+    """Mock the concentration_break module — its return is what resolve_enemy_turn reports."""
+    mod = MagicMock()
+    mod.break_concentration_on_damage = AsyncMock(return_value=return_value)
+    return mod
 
 
 def _make_resolve_mocks():
@@ -135,6 +164,79 @@ class TestResolveEnemyTurn:
 
         if result["hit"]:
             assert result["target_fallen"] is True
+
+    @pytest.mark.asyncio
+    async def test_player_hit_invokes_break_and_reports_it(self):
+        # A hit on a player routes the damage through the concentration break-check; its result
+        # (the broken spell id) is surfaced in the response for the DM to narrate.
+        mock_mutations = _make_resolve_mocks()
+        ctx = _make_context()
+        ctx.userdata.combat_state = _make_combat_state(player_hp=25)
+        break_mod = _break_mod("arcane_fly")
+
+        result = json.loads(
+            await _resolve_enemy_turn_impl(
+                ctx,
+                enemy_id="goblin_scout_1",
+                action_name="Scimitar",
+                target_id="player_1",
+                mutations=mock_mutations,
+                queries=_make_resolve_queries(),
+                resolver=_fixed_resolver(damage=10, hp_remaining=15),
+                concentration_break_mod=break_mod,
+            )
+        )
+
+        assert result["concentration_broken"] == "arcane_fly"
+        break_mod.break_concentration_on_damage.assert_awaited_once()
+        args, kwargs = break_mod.break_concentration_on_damage.call_args
+        assert args[0] is ctx.userdata  # the session
+        assert args[1] == 10  # the damage dealt
+        assert kwargs["incapacitated"] is False  # 15 HP remaining
+
+    @pytest.mark.asyncio
+    async def test_incapacitating_hit_passes_incapacitated(self):
+        # A hit that drops the player to 0 HP passes incapacitated=True so concentration auto-breaks.
+        mock_mutations = _make_resolve_mocks()
+        ctx = _make_context()
+        ctx.userdata.combat_state = _make_combat_state(player_hp=8)
+        break_mod = _break_mod("arcane_fly")
+
+        await _resolve_enemy_turn_impl(
+            ctx,
+            enemy_id="goblin_scout_1",
+            action_name="Scimitar",
+            target_id="player_1",
+            mutations=mock_mutations,
+            queries=_make_resolve_queries(),
+            resolver=_fixed_resolver(damage=30, hp_remaining=0),
+            concentration_break_mod=break_mod,
+        )
+
+        _args, kwargs = break_mod.break_concentration_on_damage.call_args
+        assert kwargs["incapacitated"] is True
+
+    @pytest.mark.asyncio
+    async def test_no_break_reports_none(self):
+        # When the break-check returns None (held / not concentrating), the response carries None.
+        mock_mutations = _make_resolve_mocks()
+        ctx = _make_context()
+        ctx.userdata.combat_state = _make_combat_state(player_hp=25)
+
+        result = json.loads(
+            await _resolve_enemy_turn_impl(
+                ctx,
+                enemy_id="goblin_scout_1",
+                action_name="Scimitar",
+                target_id="player_1",
+                mutations=mock_mutations,
+                queries=_make_resolve_queries(),
+                resolver=_fixed_resolver(damage=10, hp_remaining=15),
+                concentration_break_mod=_break_mod(None),
+            )
+        )
+
+        assert result["concentration_broken"] is None
 
     @pytest.mark.asyncio
     async def test_error_not_in_combat(self):

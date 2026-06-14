@@ -98,11 +98,25 @@ def calculate_resonance_generated(focus_cost: int, source: str, terrain: str = "
     return math.ceil(focus_cost * multiplier)
 
 
-def get_resonance_state(current_resonance: int) -> ResState:
-    """Classify a Resonance value: stable 0-4, flickering 5-8, overreach 9+ (spec 100-106)."""
-    if current_resonance <= 4:
+# Base state thresholds (spec 100-106): stable 0-4, flickering 5-8, overreach 9+. The Thessyn
+# racial (Deep Adaptation, M3.4) shifts both up by its flickering_bonus.
+STABLE_MAX = 4
+FLICKERING_MAX = 8
+
+
+def get_resonance_state(current_resonance: int, flickering_bonus: int = 0) -> ResState:
+    """Classify a Resonance value: stable 0-4, flickering 5-8, overreach 9+ (spec 100-106).
+
+    flickering_bonus (Thessyn Deep Adaptation, spec 270-276) shifts both thresholds up,
+    moving the flickering band 5-8 -> 6-9 at bonus=1 (stable up to 5, overreach at 10+). The
+    bonus is a pure param; the call site (story-006) supplies it from
+    racial_resonance.get_racial_resonance_modifier(race, "flickering_threshold_bonus") (the
+    engine param stays content-agnostic, hence the shorter name). The default 0 is the
+    canonical band, so existing callers are unchanged.
+    """
+    if current_resonance <= STABLE_MAX + flickering_bonus:
         return "stable"
-    if current_resonance <= 8:
+    if current_resonance <= FLICKERING_MAX + flickering_bonus:
         return "flickering"
     return "overreach"
 
@@ -115,6 +129,21 @@ def apply_resonance_decay(current_resonance: int, racial_modifier: int = 0) -> i
     table; this function only exposes the parameter.
     """
     return max(0, current_resonance - (1 + racial_modifier))
+
+
+def apply_primal_reduction(generated: int, reduction: int) -> int:
+    """Reduce the Resonance a primal cast generates, floored at 0 (Korath Earth-anchored, spec 254-260).
+
+    Pure generation-modifier, the sibling of veil_ward.halve_generation. The Korath-on-primal(-on-
+    earth/stone) gating lives at the call site (story-006); this fn is the mechanic, and `reduction`
+    comes from racial_resonance.get_racial_resonance_modifier("korath", "primal_reduction"). Fails
+    loud on a negative input — generation and the racial reduction are both non-negative.
+    """
+    if generated < 0:
+        raise ValueError(f"generated must be non-negative, got {generated}")
+    if reduction < 0:
+        raise ValueError(f"reduction must be non-negative, got {reduction}")
+    return max(0, generated - reduction)
 
 
 def get_state_modifiers(state: ResState) -> dict[str, int]:

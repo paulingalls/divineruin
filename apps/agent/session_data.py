@@ -38,13 +38,20 @@ class ResonanceTrack:
     source of truth, no cached copy to drift (same discipline as the companion
     HYBRID tier above and the players.data persistence in db_mutations_resonance).
     Defaults to current 0 -> "stable".
+
+    ``flickering_bonus`` (Thessyn Deep Adaptation, M3.4) shifts the band thresholds
+    up; it is a per-caster constant set once from the player's race (story-006), so
+    EVERY derivation of ``state`` — the packet, the HUD push (publish_resonance_changed),
+    the cast path — reads the same single value and cannot diverge. Defaults to 0
+    (the canonical band) for non-Thessyn casters.
     """
 
     current: int = 0
+    flickering_bonus: int = 0
 
     @property
     def state(self) -> resonance.ResState:
-        return resonance.get_resonance_state(self.current)
+        return resonance.get_resonance_state(self.current, flickering_bonus=self.flickering_bonus)
 
 
 @dataclass
@@ -59,6 +66,24 @@ class VeilWardState:
 
     active: bool = False
     source: str | None = None
+
+
+@dataclass
+class ConcentrationState:
+    """Per-caster spell concentration carried in the session (story-002, M3.4).
+
+    A caster sustains at most ONE concentration spell at a time; ``spell_id`` is that spell
+    (None = not concentrating). The cast keystone (story-006) sets it on a concentration cast
+    and ends any prior one (single-concentration enforcement), persisted via
+    db_mutations_concentration. Like ResonanceTrack/VeilWardState, only the authoritative id
+    is stored — ``is_active`` is always derived, no cached flag to drift. Defaults to inactive.
+    """
+
+    spell_id: str | None = None
+
+    @property
+    def is_active(self) -> bool:
+        return self.spell_id is not None
 
 
 @dataclass
@@ -124,6 +149,7 @@ class SessionData:
     companion: CompanionState | None = None
     resonance: ResonanceTrack = field(default_factory=ResonanceTrack)
     veil_ward: VeilWardState = field(default_factory=VeilWardState)
+    concentration: ConcentrationState = field(default_factory=ConcentrationState)
     corruption_level: int = 0
     patron_id: str = "none"
     creation_state: CreationState | None = None
@@ -138,6 +164,10 @@ class SessionData:
     # request_attack does not touch combat_state.
     weapon_used_this_encounter: bool = False
     weapon_crit_vs_heavy: bool = False
+
+    # Draethar Inner Fire is once-per-encounter (story-005, M3.4). Set by the inner_fire tool,
+    # reset at both encounter boundaries beside the weapon flags above.
+    draethar_inner_fire_used: bool = False
 
     # Cached data for hot context (updated by background process, read by voice loop)
     cached_location_name: str = ""

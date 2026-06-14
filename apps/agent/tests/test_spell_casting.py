@@ -15,6 +15,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
+from racial_resonance_config_fixture import load_fixture_config
 from sample_fixtures import make_context, make_db_mod
 
 from spell_casting import _cast_spell_impl, _get_spell_info_impl
@@ -39,11 +40,12 @@ def _spell(
     focus_cost: int = 10,
     name: str = "Test Spell",
     resonance: int = 6,
+    concentration: bool = False,
 ) -> Spell:
     # resonance_by_source carries the designed per-spell Resonance the cast path reads
     # (decision resonance-by-source-ssot); default 6 keeps the canonical "flickering"
     # fixture. Pass resonance= to control it (0 for cantrips, a formula-deviating value
-    # to prove the catalog wins).
+    # to prove the catalog wins). concentration= flags a concentration spell (story-006).
     return Spell(
         id=spell_id,
         name=name,
@@ -55,7 +57,7 @@ def _spell(
         audio_cue="SFX-001",
         resonance_by_source={source: resonance},
         terrain_effects={},
-        concentration=False,
+        concentration=concentration,
     )
 
 
@@ -414,6 +416,188 @@ class TestCastSpellWard:
         assert packet["state"] == "overreach"
         assert packet["hollow_echo"]["band"] == "whisper"
         echo_events.publish_hollow_echo.assert_awaited_once()
+
+
+# --- M3.4 racial Resonance + concentration wiring (story-006) ---
+
+# The seeded spec values (content/racial_resonance_bonuses.json) the cast path reads via
+# racial_resonance.get_racial_resonance_modifier. The stub returns these; the real seeded-table
+# lookup is proven by the story-007 real-PG capstone.
+_RACIAL_SPEC = {
+    ("korath", "primal_reduction"): 1,
+    ("thessyn", "flickering_threshold_bonus"): 1,
+    ("vaelti", "echo_save_advantage"): True,
+}
+
+
+def _racial_mod():
+    """Stub racial_resonance returning the seeded spec values; raises (KeyError) on any
+    unexpected (race, key), so a test fails loud if the cast looks up the wrong modifier."""
+    mod = MagicMock()
+    mod.get_racial_resonance_modifier = MagicMock(side_effect=lambda race, key: _RACIAL_SPEC[(race, key)])
+    return mod
+
+
+def _dice_seq(*totals: int):
+    """A dice module whose successive roll('d20') calls return totals in order — lets the
+    Vaelti advantage test control BOTH the base roll and the advantage roll."""
+    mod = MagicMock()
+    mod.roll = MagicMock(side_effect=[MagicMock(total=t) for t in totals])
+    return mod
+
+
+async def _cast_racial(
+    spell: Spell,
+    *,
+    race: str | None = None,
+    focus: int = 10,
+    level: int = 5,
+    start_resonance: int = 0,
+    start_concentration: str | None = None,
+    d20s: tuple[int, ...] = (10,),
+):
+    """Invoke _cast_spell_impl with the M3.4 racial + concentration mods injected.
+
+    racial_mod is the seeded-spec stub; concentration_mutations_mod is mocked so the persist is
+    asserted without touching the DB; dice_mod is a fixed sequence for deterministic echo rolls.
+    Returns (parsed_packet, ctx, mutations_mock, concentration_mock, echo_events_mock).
+    """
+    ctx = make_context()
+    ctx.userdata.resonance.current = start_resonance
+    ctx.userdata.concentration.spell_id = start_concentration
+    mock_db, _conn = make_db_mod()
+    player = _player(focus, level)
+    if race is not None:
+        player["race"] = race
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value=player)
+    persistence = MagicMock()
+    persistence.update_player_resources = AsyncMock()
+    mutations = MagicMock()
+    mutations.update_player_resonance = AsyncMock()
+    events = MagicMock()
+    events.publish_resonance_changed = AsyncMock()
+    echo_events = MagicMock()
+    echo_events.publish_hollow_echo = AsyncMock()
+    concentration = MagicMock()
+    concentration.update_player_concentration = AsyncMock()
+    spells_mod = MagicMock()
+    spells_mod.get_spell = MagicMock(return_value=spell)
+    raw = await _cast_spell_impl(
+        ctx,
+        spell.id,
+        db_mod=mock_db,
+        queries_mod=queries,
+        persistence_mod=persistence,
+        resonance_mutations_mod=mutations,
+        resonance_events_mod=events,
+        spells_mod=spells_mod,
+        dice_mod=_dice_seq(*d20s),
+        echo_events_mod=echo_events,
+        racial_mod=_racial_mod(),
+        concentration_mutations_mod=concentration,
+    )
+    return json.loads(raw), ctx, mutations, concentration, echo_events
+
+
+def test_racial_spec_stub_matches_seeded_content():
+    # Bind the cast tests' _RACIAL_SPEC stub to the REAL seeded table
+    # (content/racial_resonance_bonuses.json): a seed-value drift breaks these greens here, not
+    # only at the story-007 real-PG capstone. Reads the seed directly (no module-global mutation).
+    config = load_fixture_config()
+    for (race, key), expected in _RACIAL_SPEC.items():
+        assert config[race].modifiers[key] == expected, f"{race}.{key} drifted from the seed"
+
+
+class TestCastSpellRacialResonance:
+    async def test_korath_primal_reduces_generation(self):
+        # AC: Korath Earth-anchored — a primal cast generates -1 (floor 0). 3 -> 2 -> stable.
+        packet, ctx, _m, _c, _e = await _cast_racial(_spell(source="primal", focus_cost=3, resonance=3), race="korath")
+        assert packet["resonance_generated"] == 2
+        assert ctx.userdata.resonance.current == 2
+        assert packet["state"] == "stable"
+
+    async def test_korath_primal_floors_at_zero_and_writes_nothing(self):
+        # generated 1 primal -> 0 after -1; a floored cast persists no Resonance (the -1 flows
+        # through the existing generated>0 write/publish gates) and leaves the track at 0.
+        packet, ctx, mutations, _c, _e = await _cast_racial(
+            _spell(source="primal", focus_cost=3, resonance=1), race="korath"
+        )
+        assert packet["resonance_generated"] == 0
+        assert ctx.userdata.resonance.current == 0
+        mutations.update_player_resonance.assert_not_called()
+
+    async def test_korath_arcane_is_not_reduced(self):
+        # The reduction gates on source==primal: a Korath's ARCANE cast keeps its full generation.
+        packet, _ctx, _m, _c, _e = await _cast_racial(_spell(source="arcane", focus_cost=3, resonance=3), race="korath")
+        assert packet["resonance_generated"] == 3
+
+    async def test_non_korath_primal_is_not_reduced(self):
+        # The reduction gates on race==korath: a Human casting the same primal spell is unreduced.
+        packet, _ctx, _m, _c, _e = await _cast_racial(_spell(source="primal", focus_cost=3, resonance=3), race="human")
+        assert packet["resonance_generated"] == 3
+
+    async def test_thessyn_plus_one_flickering_threshold(self):
+        # AC: Thessyn Deep Adaptation shifts the band up by 1 — resonance 9 classifies as
+        # flickering (vs overreach for any other race), so no Hollow Echo fires.
+        packet, _ctx, _m, _c, echo_events = await _cast_racial(
+            _spell(source="arcane", focus_cost=3, resonance=9), race="thessyn"
+        )
+        assert packet["state"] == "flickering"
+        assert "hollow_echo" not in packet
+        echo_events.publish_hollow_echo.assert_not_awaited()
+
+    async def test_non_thessyn_at_nine_is_overreach(self):
+        # Contrast: the same resonance 9 with no flickering bonus is overreach and rolls an echo.
+        packet, _ctx, _m, _c, echo_events = await _cast_racial(
+            _spell(source="arcane", focus_cost=3, resonance=9), race="human", d20s=(18,)
+        )
+        assert packet["state"] == "overreach"
+        echo_events.publish_hollow_echo.assert_awaited_once()
+
+    async def test_vaelti_resolves_echo_with_advantage(self):
+        # AC: Vaelti Hyper-awareness — the Overreach echo resolves with advantage (best of two
+        # d20s). Rolls [1, 18] -> effective 18 -> "nothing" (a non-Vaelti d20=1 -> "breach").
+        packet, _ctx, _m, _c, echo_events = await _cast_racial(
+            _spell(source="arcane", focus_cost=3, resonance=9), race="vaelti", d20s=(1, 18)
+        )
+        assert packet["state"] == "overreach"
+        assert packet["hollow_echo"]["band"] == "nothing"
+        echo_events.publish_hollow_echo.assert_awaited_once()
+
+
+class TestCastSpellConcentration:
+    async def test_concentration_spell_sets_active(self):
+        # AC: casting a concentration spell persists it as the active concentration and syncs the
+        # in-memory state.
+        _packet, ctx, _m, concentration, _e = await _cast_racial(
+            _spell(spell_id="hold_flame", concentration=True), focus=10
+        )
+        assert ctx.userdata.concentration.spell_id == "hold_flame"
+        concentration.update_player_concentration.assert_awaited_once()
+        args, _kwargs = concentration.update_player_concentration.call_args
+        assert args[0] == "player_1"
+        assert args[1] == "hold_flame"
+
+    async def test_new_concentration_ends_prior(self):
+        # AC: a concentration cast while already concentrating ends the prior — the single-slot
+        # overwrite makes the NEW spell the one active concentration.
+        _packet, ctx, _m, concentration, _e = await _cast_racial(
+            _spell(spell_id="new_spell", concentration=True), start_concentration="old_spell"
+        )
+        assert ctx.userdata.concentration.spell_id == "new_spell"
+        concentration.update_player_concentration.assert_awaited_once()
+        _args, _kwargs = concentration.update_player_concentration.call_args
+        assert _args[1] == "new_spell"
+
+    async def test_non_concentration_spell_leaves_concentration_untouched(self):
+        # A non-concentration cast never breaks an existing concentration (only another
+        # concentration spell does).
+        _packet, ctx, _m, concentration, _e = await _cast_racial(
+            _spell(spell_id="bolt", concentration=False), start_concentration="old_spell"
+        )
+        assert ctx.userdata.concentration.spell_id == "old_spell"
+        concentration.update_player_concentration.assert_not_called()
 
 
 class TestGetSpellInfo:

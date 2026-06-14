@@ -201,6 +201,7 @@ async def _start_combat_impl(
     # (a swing outside combat won't leak into this encounter's end-of-combat accrual).
     session.weapon_used_this_encounter = False
     session.weapon_crit_vs_heavy = False
+    session.draethar_inner_fire_used = False  # Inner Fire is once per encounter (M3.4)
 
     # Build initiative summary once for event + response
     initiative_summary = [

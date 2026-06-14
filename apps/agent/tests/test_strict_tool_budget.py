@@ -42,5 +42,6 @@ def test_exploration_strict_tool_count():
 def test_combat_strict_tool_count():
     # Pins the exact combat tool count so a new registration is a deliberate edit, not a
     # silent pass under the <=MAX_STRICT_TOOLS ceiling. M3.3 added cast_spell + get_spell_info
-    # (9->11); M3.2 story-003 added the single polymorphic activate_veil_ward (11->12).
-    assert len(COMBAT_AGENT_TOOLS) == 12
+    # (9->11); M3.2 story-003 added the single polymorphic activate_veil_ward (11->12);
+    # M3.4 story-005 added the Draethar inner_fire active racial (12->13).
+    assert len(COMBAT_AGENT_TOOLS) == 13

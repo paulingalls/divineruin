@@ -20,9 +20,18 @@ come from the rules engine; the LLM only decides when to cast and how to narrate
 
 Mirrors the ability_tools seam exactly: a thin @function_tool wrapper over an _impl
 with module-injection keyword args (db_mod/queries_mod/persistence_mod/
-resonance_mutations_mod/resonance_events_mod/spells_mod/resonance/leveling_mod, plus
-the M3.2 echo/ward mods veil_ward/hollow_echo/dice_mod/echo_events_mod) for test
-mocking, a single db.transaction() block, and ToolError for every user-facing failure.
+resonance_mutations_mod/resonance_events_mod/spells_mod/resonance/leveling_mod, the M3.2
+echo/ward mods veil_ward/hollow_echo/dice_mod/echo_events_mod, plus the M3.4 racial_mod/
+concentration_mutations_mod) for test mocking, a single db.transaction() block, and
+ToolError for every user-facing failure.
+
+M3.4 racial Resonance (story-006): the cast reads the caster's race (players.data) and
+composes three prior pure primitives — Korath -1 primal generation
+(resonance.apply_primal_reduction), the Thessyn +1 Flickering threshold
+(get_resonance_state flickering_bonus), and the Vaelti Hollow Echo advantage
+(resolve_hollow_echo advantage_roll) — and sets/ends single-active concentration
+(db_mutations_concentration) on a concentration cast. The engines stay untouched; this is
+pure composition.
 
 Terrain note: every catalog spell (primal included) carries a designed
 resonance_by_source baseline, so casts no longer depend on terrain — a primal
@@ -30,7 +39,9 @@ non-cantrip casts via its catalog baseline. The fallback formula
 (calculate_resonance_generated) only reaches the terrain lookup for an in-code
 primal build that carries no resonance_by_source entry, and since no runtime
 location->terrain map exists yet (terrain defaults to "normal"), that one path
-still fails loud as a ToolError until terrain wiring lands (M3.4).
+still fails loud as a ToolError until terrain wiring lands. The same missing
+terrain map means the Korath -1 (spec gates it on earth/stone contact) applies on
+race+source alone — terrain gating is deferred, not modelled here.
 """
 
 import json
@@ -42,12 +53,14 @@ from livekit.agents.voice import RunContext
 
 import ability_persistence
 import db
+import db_mutations_concentration
 import db_mutations_resonance
 import db_queries
 import dice
 import hollow_echo as hollow_echo_mod
 import hollow_echo_events
 import leveling
+import racial_resonance
 import resonance as resonance_mod
 import resonance_events
 import spells
@@ -120,6 +133,8 @@ async def _cast_spell_impl(
     hollow_echo=hollow_echo_mod,
     dice_mod=dice,
     echo_events_mod=hollow_echo_events,
+    racial_mod=racial_resonance,
+    concentration_mutations_mod=db_mutations_concentration,
 ) -> str:
     context.disallow_interruptions()
     _validate_id(spell_id, "spell_id")
@@ -136,6 +151,9 @@ async def _cast_spell_impl(
         player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
         if player is None:
             raise ToolError(f"Unknown player: {player_id}")
+        # The caster's race drives the M3.4 racial Resonance interactions (Korath/Thessyn/Vaelti
+        # below). A player with no race set takes no racial branch.
+        race = player.get("race")
 
         # Focus gate FIRST — reject before any write so an unaffordable cast deducts
         # nothing (AC1). Cantrips (focus_cost 0) skip the gate and the deduction.
@@ -164,6 +182,16 @@ async def _cast_spell_impl(
             except ValueError as e:
                 raise ToolError(f"Cannot cast {spell.name}: {e}") from e
 
+        # Korath Earth-anchored (spec 254-260): a Korath's primal cast generates -1 Resonance
+        # (floor 0), the earth absorbing the Veil disturbance. Applied to the base generation
+        # BEFORE the ward halving, and before accrual so a floored 0 flows through the generated>0
+        # write/publish gates below (no resonance write, no HUD push). The spec's earth/stone
+        # terrain condition is deferred — no runtime terrain map exists yet (cast already defaults
+        # terrain to "normal", see the module docstring), so the reduction gates on race+source only.
+        if race == "korath" and spell.source == "primal" and generated > 0:
+            reduction = racial_mod.get_racial_resonance_modifier("korath", "primal_reduction")
+            generated = resonance.apply_primal_reduction(generated, reduction)
+
         # An active Veil Ward halves the Resonance the cast generates (round down, spec
         # magic.md:197) — so a warded caster reaches Overreach (and Hollow Echoes) less often.
         # Focus cost is NOT halved (the ward dampens generation, not the spell's cost).
@@ -180,9 +208,27 @@ async def _cast_spell_impl(
         if generated > 0:
             await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
 
+        # Casting a concentration spell starts concentration on it and ends any prior one. The
+        # single players.data{concentration,spell_id} slot means this one write IS the "prior
+        # ends" (single-active concentration, spec). Persisted inside the txn so a rollback reverts
+        # it with Focus/Resonance. A non-concentration cast never touches concentration.
+        if spell.concentration:
+            await concentration_mutations_mod.update_player_concentration(player_id, spell_id, conn=conn)
+
     # Transaction committed cleanly — now sync the in-memory SSOT to the persisted value.
     session.resonance.current = new_resonance
-    state = resonance.get_resonance_state(session.resonance.current)
+    if spell.concentration:
+        session.concentration.spell_id = spell_id
+    # Thessyn Deep Adaptation (spec 270-276) shifts the Flickering band up by +1, so a Thessyn
+    # holds Overreach off a point longer. The bonus lives on the ResonanceTrack so EVERY state
+    # derivation (the packet below, the publish_resonance_changed HUD push, any later reader)
+    # shares one value and cannot diverge — DM voice and HUD always agree. Applied by race here;
+    # the spec's "10+ sessions" gate needs a player session counter that does not exist yet
+    # (deferred, concern 70434a66417c).
+    session.resonance.flickering_bonus = (
+        racial_mod.get_racial_resonance_modifier("thessyn", "flickering_threshold_bonus") if race == "thessyn" else 0
+    )
+    state = session.resonance.state
     # Push the new qualitative state to the HUD only when resonance actually moved —
     # a cantrip (generated == 0) leaves the state unchanged, so it pushes nothing (AC6).
     if generated > 0:
@@ -208,10 +254,17 @@ async def _cast_spell_impl(
     # narrate the consequence and pushed to the client's dramatic-dice overlay.
     if state == "overreach":
         roll = dice_mod.roll("d20").total
+        # Vaelti Hyper-awareness (spec 246-252): advantage on the Hollow Echo save — roll a second
+        # d20 and take the better, shifting the result milder. The 1-round advance warning is a
+        # separate deferred-event hook with no consumer yet (concern 7e812546829a).
+        advantage_roll = None
+        if race == "vaelti" and racial_mod.get_racial_resonance_modifier("vaelti", "echo_save_advantage"):
+            advantage_roll = dice_mod.roll("d20").total
         echo = hollow_echo.resolve_hollow_echo(
             roll,
             session.resonance.current,
             ward_bonus=veil_ward.WARD_ECHO_BONUS if ward_active else 0,
+            advantage_roll=advantage_roll,
         )
         packet["hollow_echo"] = {"band": echo.band, "name": echo.name, "effect": echo.effect}
         await echo_events_mod.publish_hollow_echo(session, echo)
