@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-import db_queries
+import db_session_queries
 import event_types
 import hollow_echo
 import hollow_echo_events
@@ -86,7 +86,7 @@ async def test_veil_ward_changed_serializes_to_fixture() -> None:
 
 
 def test_spell_row_builder_matches_fixture() -> None:
-    # The session-init spell row (db_queries._enrich_spell_row) is the drift point for the
+    # The session-init spell row (db_session_queries._enrich_spell_row) is the drift point for the
     # blank-tier bug (82fc): the TS parser coerces a missing spell_tier to "". Pin its keys.
     expected = FIXTURE["spell_row"]
     spell = Spell(
@@ -98,6 +98,6 @@ def test_spell_row_builder_matches_fixture() -> None:
         mechanics="",
         narration_cue="",
     )
-    with patch("db_queries.spells.get_spell", return_value=spell):
-        row = db_queries._enrich_spell_row(expected["spell_id"], is_prepared=expected["is_prepared"])
+    with patch("db_session_queries.spells.get_spell", return_value=spell):
+        row = db_session_queries._enrich_spell_row(expected["spell_id"], is_prepared=expected["is_prepared"])
     assert row == expected

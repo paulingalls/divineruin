@@ -137,7 +137,7 @@ _PAYLOAD = {
 
 class TestFinalizeGrantsStartingSpells:
     @patch("creation_tools.character_spells.record_learned", new_callable=AsyncMock)
-    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_mage_creation_records_two_prepared_electives(self, _create, mock_payload, mock_record):
         mock_payload.return_value = _PAYLOAD
@@ -150,7 +150,7 @@ class TestFinalizeGrantsStartingSpells:
             assert "training" in (list(args) + list(call.kwargs.values()))
 
     @patch("creation_tools.character_spells.record_learned", new_callable=AsyncMock)
-    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_martial_creation_records_no_spells(self, _create, mock_payload, mock_record):
         mock_payload.return_value = _PAYLOAD
