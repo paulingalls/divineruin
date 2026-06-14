@@ -41,10 +41,16 @@ MIN_LEVEL_BY_ARCHETYPE_TIER: dict[str, dict[str, int]] = {
     "warden": _FULL_CASTER,
     "cleric": _FULL_CASTER,
     "oracle": _FULL_CASTER,
+    # Bard Supreme unlocks at L10, not L9 — the lone full-caster outlier (Mass Inspire is
+    # core at L9, Supreme arrives at L10). Ref: game_mechanics_archetypes.md:399-400.
     "bard": {"cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 10},
+    # Half-casters: elective spells start at L3, cap at Major, no Supreme (spec
+    # archetypes.md:807-811 paladin / 1057-1060 diplomat / 1132-1135 marshal).
     "paladin": {"minor": 3, "standard": 5, "major": 9},
     "diplomat": {"minor": 3, "standard": 5, "major": 9},
     "marshal": {"minor": 3, "standard": 5, "major": 9},
+    # Whisper's shadow-magic catalog: the lone caster matching the old global 4/7/13
+    # (spec archetypes.md:983-986).
     "whisper": {"minor": 1, "standard": 4, "major": 7, "supreme": 13},
 }
 

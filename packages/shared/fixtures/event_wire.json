@@ -5,6 +5,15 @@
     "hollow_echo_result": { "type": "hollow_echo_result", "band": "whisper" },
     "veil_ward_changed": { "type": "veil_ward_changed", "active": true }
   },
+  "hollow_echo_bands": [
+    "nothing",
+    "whisper",
+    "veil_scar",
+    "sympathetic",
+    "hollow_attention",
+    "reality_fracture",
+    "breach"
+  ],
   "spell_row": {
     "spell_id": "arcane_fireball",
     "name": "Fireball",

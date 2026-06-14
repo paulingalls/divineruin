@@ -3,7 +3,7 @@ import { test, expect, beforeEach } from "bun:test";
 import FIXTURE from "../../../../packages/shared/fixtures/event_wire.json";
 import { HOLLOW_ECHO_RESULT, RESONANCE_CHANGED, VEIL_WARD_CHANGED } from "@/audio/event-types";
 import { handleGameEvent } from "@/audio/game-event-handler";
-import { hudStore, type ResonanceState } from "@/stores/hud-store";
+import { HOLLOW_ECHO_DISPLAY, hudStore, type ResonanceState } from "@/stores/hud-store";
 import { parseSpellRows } from "@/utils/spell-display";
 
 import { resetStores } from "./use-game-events.helpers";
@@ -24,6 +24,13 @@ test("fixture event types match the TS wire constants", () => {
   expect(EVENTS.resonance_changed.type).toBe(RESONANCE_CHANGED);
   expect(EVENTS.hollow_echo_result.type).toBe(HOLLOW_ECHO_RESULT);
   expect(EVENTS.veil_ward_changed.type).toBe(VEIL_WARD_CHANGED);
+});
+
+test("fixture hollow_echo_bands match the mobile HollowEchoBand vocabulary", () => {
+  // The Python lane pins this same list to the agent resolver bands; pinning it here to the
+  // mobile display map closes the triplication — an agent band the mobile union lacks (which
+  // the handler would silently drop) fails one lane.
+  expect(new Set(FIXTURE.hollow_echo_bands)).toEqual(new Set(Object.keys(HOLLOW_ECHO_DISPLAY)));
 });
 
 // --- The canonical fixtured payloads must be consumed by the TS handlers/parser ---

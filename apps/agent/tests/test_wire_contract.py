@@ -17,6 +17,7 @@ import pytest
 
 import db_queries
 import event_types
+import hollow_echo
 import hollow_echo_events
 import resonance_events
 import veil_ward_tools
@@ -43,6 +44,16 @@ def test_fixture_event_types_match_python_constants() -> None:
     assert FIXTURE["events"]["resonance_changed"]["type"] == event_types.RESONANCE_CHANGED
     assert FIXTURE["events"]["hollow_echo_result"]["type"] == event_types.HOLLOW_ECHO_RESULT
     assert FIXTURE["events"]["veil_ward_changed"]["type"] == event_types.VEIL_WARD_CHANGED
+
+
+def test_fixture_hollow_echo_bands_match_agent_resolver() -> None:
+    # The full 7-band vocabulary is the SSOT both lanes assert against: an agent band the
+    # mobile union lacks would be silently dropped by the fail-safe. Pin the fixture list to
+    # the agent's resolver bands (hollow_echo._BANDS + _BREACH); the TS lane pins it to the
+    # mobile HollowEchoBand vocabulary, so a band added on one side without the other goes red.
+    agent_bands = {band for _floor, band, _name, _effect in hollow_echo._BANDS}
+    agent_bands.add(hollow_echo._BREACH[0])
+    assert set(FIXTURE["hollow_echo_bands"]) == agent_bands
 
 
 @pytest.mark.asyncio
