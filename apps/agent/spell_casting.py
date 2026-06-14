@@ -204,9 +204,23 @@ async def _cast_spell_impl(
         if spell.focus_cost > 0:
             await persistence_mod.update_player_resources(player_id, focus=current_focus - spell.focus_cost, conn=conn)
 
+        # Per-round decay (cast-paced, story-010): a real cast first sheds one round of standing
+        # Resonance — base 1/round, +1 for a Human (Adaptive Resonance, spec 238-244) => 2/round —
+        # before this cast's generation lands. apply_resonance_decay floors at 0, so a cast from 0
+        # (the common path) is unchanged. A cantrip (generated 0) skips decay below, leaving the
+        # state untouched (AC6). Only Human carries a decay_bonus; the base 1 is in the pure fn.
+        decay_modifier = 0
+        if race == "human":
+            decay_modifier = racial_mod.get_racial_resonance_modifier("human", "decay_bonus")
+        base_resonance = (
+            resonance.apply_resonance_decay(session.resonance.current, decay_modifier)
+            if generated > 0
+            else session.resonance.current
+        )
+
         # Persist the new total BEFORE touching the in-memory SSOT, so a failed
         # write/commit rolls back Focus AND leaves session.resonance untouched.
-        new_resonance = session.resonance.current + generated
+        new_resonance = base_resonance + generated
         if generated > 0:
             await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
 

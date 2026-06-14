@@ -148,12 +148,12 @@ async def test_hydrated_thessyn_cast_and_reads_all_agree_flickering(reset_db_poo
     await spells.load_spells()
     await racial_resonance.load_racial_resonance()
 
-    # Land the post-cast Resonance at exactly 9: pre-persist current = 9 - generation, then the
-    # cast's accrual brings it to 9. Read the generation from the catalog (the SSOT) so this is not
-    # coupled to a hardcoded value.
+    # Land the post-cast Resonance at exactly 9: the cast first sheds one round of per-round decay
+    # (story-010; thessyn base 1), then adds generation. Pre-persist 10 - generation so decay ->
+    # (9 - generation), + generation = 9. Read the generation from the catalog (the SSOT).
     spell = spells.get_spell("arcane_invisibility")
     generation = spell.resonance_by_source[spell.source]
-    await db_mutations_resonance.update_player_resonance(player_id, 9 - generation, conn=pool)
+    await db_mutations_resonance.update_player_resonance(player_id, 10 - generation, conn=pool)
 
     ctx = _make_ctx(player_id)
     player = await db_queries.get_player(player_id, conn=pool)

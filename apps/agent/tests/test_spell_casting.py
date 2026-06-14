@@ -427,6 +427,7 @@ _RACIAL_SPEC = {
     ("korath", "primal_reduction"): 1,
     ("thessyn", "flickering_threshold_bonus"): 1,
     ("vaelti", "echo_save_advantage"): True,
+    ("human", "decay_bonus"): 1,
 }
 
 
@@ -599,6 +600,37 @@ class TestCastSpellRacialResonance:
         )
         assert packet["state"] == "overreach"
         warn.publish_vaelti_echo_warning.assert_not_called()
+
+
+class TestCastSpellDecay:
+    """Per-round (cast-paced) Resonance decay (story-010): a real cast sheds one round of
+    standing Resonance — base 1/round, +1 for a Human (Adaptive Resonance) -> 2/round —
+    before this cast's generation lands. apply_resonance_decay floors at 0."""
+
+    async def test_human_decays_two_before_generation(self):
+        # Human start 7 -> decay(7, +1) = 5, + 3 generated = 8 (would be 10 without decay).
+        _packet, ctx, _m, _c, _e = await _cast_racial(
+            _spell(source="arcane", focus_cost=3, resonance=3), race="human", start_resonance=7
+        )
+        assert ctx.userdata.resonance.current == 8
+
+    async def test_non_human_decays_one_universal_base(self):
+        # A race-less caster decays the universal base 1: start 7 -> 6, + 3 = 9.
+        _packet, ctx, _p, _m, _e = await _cast(_spell(source="arcane", focus_cost=3, resonance=3), start_resonance=7)
+        assert ctx.userdata.resonance.current == 9
+
+    async def test_human_decay_floors_at_zero(self):
+        # Human start 1 -> decay(1, +1) = max(0, 1-2) = 0, + 2 generated = 2.
+        _packet, ctx, _m, _c, _e = await _cast_racial(
+            _spell(source="arcane", focus_cost=3, resonance=2), race="human", start_resonance=1
+        )
+        assert ctx.userdata.resonance.current == 2
+
+    async def test_cantrip_skips_decay(self):
+        # A cantrip (generated 0) does not shed a round — standing Resonance is untouched (AC6),
+        # so the decay gate (generated > 0) never fires.
+        _packet, ctx, _p, _m, _e = await _cast(_spell(tier="cantrip", focus_cost=0, resonance=0), start_resonance=9)
+        assert ctx.userdata.resonance.current == 9
 
 
 class TestCastSpellConcentration:
