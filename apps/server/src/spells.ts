@@ -8,9 +8,12 @@ import { asRecord } from "./parse-helpers.ts";
 // spells.json row IS the cross-language contract and each loader owns fail-loud
 // validation. This parser stays structurally symmetric with Python parse_spell_row.
 //
-// SOURCE-keyed, not archetype-keyed: caster CORE spells stay archetype_abilities rows
-// (ability_type=core, seam 235ae150c5d3); this catalog is the ELECTIVE library only.
-// Borrows Phase-3 Magic's M3.3 schema minimally — extra JSONB fields are ignored here.
+// SOURCE-keyed. M3.3 makes spells.json the FULL casting-data SSOT (decision
+// spell-catalog-full-casting-ssot), superseding the M8 elective-only seam (235ae150c5d3):
+// caster core spells now live in the catalog too (archetype_abilities `core` rows stay as
+// the access grant). This TS loader stays lenient — the M3.3 fields (resonance_by_source,
+// terrain_effects, ...) are still ignored here; mirroring Python's strict-require +
+// int-value validation is tracked as concern 26ab12def2a3.
 
 const SPELL_SOURCES = new Set<SpellSource>(["arcane", "divine", "primal"]);
 const SPELL_TIERS = new Set<SpellTier>(["cantrip", "minor", "standard", "major", "supreme"]);

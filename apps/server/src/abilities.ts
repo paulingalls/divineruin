@@ -1,6 +1,7 @@
 import type { Ability, Cost, AbilityType } from "@divineruin/shared";
 import { sql } from "./db.ts";
 import { asRecord } from "./parse-helpers.ts";
+import { getSpell } from "./spells.ts";
 
 // DB-loaded archetype abilities (M2.2). Mirrors archetypes.ts: content/
 // archetype_abilities.json -> archetype_abilities table, loaded at startup, parsed
@@ -76,16 +77,40 @@ export function parseAbilityRow(id: string, raw: unknown): Ability {
   if (typeof data.narration_cue !== "string")
     throw new Error(`${ctx}.narration_cue is not a string`);
 
+  // Fail loud on a present-but-non-string spell_id (parity with Python _resolve_cost) rather
+  // than silently falling back to an authored cost — a malformed row must break identically.
+  if (data.spell_id !== undefined && typeof data.spell_id !== "string") {
+    throw new Error(`${ctx}.spell_id is not a string`);
+  }
+  const spellId = data.spell_id;
   return {
     id,
     archetype_id: data.archetype_id,
     name: data.name,
     ability_type: data.ability_type as AbilityType,
     level_requirement: data.level_requirement,
-    cost: parseCost(data.cost, `${ctx}.cost`),
+    cost: resolveCost(data, spellId, ctx),
     effect: data.effect,
     narration_cue: data.narration_cue,
+    spell_id: spellId,
   };
+}
+
+// Resolve an ability's Cost. The Focus cost is the one piece of cast DATA shared with the
+// spell catalog, so a spell-backed core row (spell_id present) does NOT author its own cost —
+// it composes { stamina: 0, focus: spell.focus_cost, scaling: null } from the catalog, keeping
+// that number single-sourced (no drift between the activation and cast paths, Try 2). effect,
+// narration, and level stay authored per-archetype. getSpell is fail-loud on an unknown/unloaded
+// spell — the catalog MUST load before abilities (loadSpells before loadAbilities, see index.ts).
+function resolveCost(
+  data: Record<string, unknown>,
+  spellId: string | undefined,
+  ctx: string,
+): Cost {
+  if (spellId !== undefined) {
+    return { stamina: 0, focus: getSpell(spellId).focus_cost, scaling: null };
+  }
+  return parseCost(data.cost, `${ctx}.cost`);
 }
 
 export async function loadAbilities(): Promise<void> {

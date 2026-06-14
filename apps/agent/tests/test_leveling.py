@@ -2,17 +2,98 @@
 
 import pytest
 
+from dice import roll
 from hp_scaling import calculate_max_hp
 from leveling import (
     LEVEL_PROGRESSION,
+    MIN_LEVEL_BY_ARCHETYPE_TIER,
+    SPELL_TIERS,
     LevelProgression,
     LevelUpRewards,
     build_level_up_payload,
     build_level_up_payload_for_archetype,
+    cantrip_damage_dice,
     get_level_up_rewards,
     get_milestone_narration,
+    is_spell_tier_unlocked,
+    min_level_for_tier,
 )
 from rules_engine import proficiency_bonus
+
+# Expected per-(archetype, tier) unlock level, sourced from game_mechanics_archetypes.md.
+# None = the tier is never available to that archetype (e.g. paladin Supreme; the
+# half-casters and Whisper have no elective cantrip). Hard-coded (not derived from the
+# production table) so a wrong production value is caught, not mirrored.
+_FULL_CASTER_FLOORS: dict[str, int | None] = {
+    "cantrip": 1,
+    "minor": 1,
+    "standard": 3,
+    "major": 5,
+    "supreme": 9,
+}
+EXPECTED_TIER_FLOORS: dict[str, dict[str, int | None]] = {
+    "mage": _FULL_CASTER_FLOORS,
+    "artificer": _FULL_CASTER_FLOORS,
+    "seeker": _FULL_CASTER_FLOORS,
+    "druid": _FULL_CASTER_FLOORS,
+    "beastcaller": _FULL_CASTER_FLOORS,
+    "warden": _FULL_CASTER_FLOORS,
+    "cleric": _FULL_CASTER_FLOORS,
+    "oracle": _FULL_CASTER_FLOORS,
+    "bard": {"cantrip": 1, "minor": 1, "standard": 3, "major": 5, "supreme": 10},
+    "paladin": {"cantrip": None, "minor": 3, "standard": 5, "major": 9, "supreme": None},
+    "diplomat": {"cantrip": None, "minor": 3, "standard": 5, "major": 9, "supreme": None},
+    "marshal": {"cantrip": None, "minor": 3, "standard": 5, "major": 9, "supreme": None},
+    "whisper": {"cantrip": None, "minor": 1, "standard": 4, "major": 7, "supreme": 13},
+}
+
+
+class TestSpellTierGate:
+    def test_table_covers_exactly_the_expected_archetypes(self) -> None:
+        assert set(MIN_LEVEL_BY_ARCHETYPE_TIER) == set(EXPECTED_TIER_FLOORS)
+
+    def test_spell_tiers_vocab_is_the_five_canonical_tiers(self) -> None:
+        assert frozenset({"cantrip", "minor", "standard", "major", "supreme"}) == SPELL_TIERS
+
+    @pytest.mark.parametrize("archetype", sorted(EXPECTED_TIER_FLOORS))
+    def test_min_level_for_tier_matches_spec(self, archetype: str) -> None:
+        for tier in SPELL_TIERS:
+            assert min_level_for_tier(archetype, tier) == EXPECTED_TIER_FLOORS[archetype][tier]
+
+    @pytest.mark.parametrize("archetype", sorted(EXPECTED_TIER_FLOORS))
+    def test_unlocked_exactly_at_floor_and_gated_below(self, archetype: str) -> None:
+        for tier, floor in EXPECTED_TIER_FLOORS[archetype].items():
+            if floor is None:
+                # Never-available tier: gated at every level, even the cap.
+                assert is_spell_tier_unlocked(archetype, tier, 1) is False
+                assert is_spell_tier_unlocked(archetype, tier, 20) is False
+            else:
+                assert is_spell_tier_unlocked(archetype, tier, floor) is True
+                if floor > 1:
+                    assert is_spell_tier_unlocked(archetype, tier, floor - 1) is False
+
+    def test_full_casters_unlock_standard_major_supreme_at_3_5_9_not_global_4_7_13(self) -> None:
+        # The crux of concern 66fa8bae: the old global gate said 4/7/13.
+        assert min_level_for_tier("mage", "standard") == 3
+        assert min_level_for_tier("mage", "major") == 5
+        assert min_level_for_tier("mage", "supreme") == 9
+
+    def test_half_casters_have_no_supreme_access(self) -> None:
+        for archetype in ("paladin", "diplomat", "marshal"):
+            assert min_level_for_tier(archetype, "supreme") is None
+            assert is_spell_tier_unlocked(archetype, "supreme", 20) is False
+
+    def test_unknown_archetype_fails_loud(self) -> None:
+        with pytest.raises(ValueError, match="archetype"):
+            is_spell_tier_unlocked("warrior", "minor", 5)
+        with pytest.raises(ValueError, match="archetype"):
+            min_level_for_tier("rogue", "minor")
+
+    def test_unknown_tier_fails_loud(self) -> None:
+        with pytest.raises(ValueError, match="tier"):
+            is_spell_tier_unlocked("mage", "legendary", 20)
+        with pytest.raises(ValueError, match="tier"):
+            min_level_for_tier("mage", "legendary")
 
 
 class TestLevelProgressionTable:
@@ -154,6 +235,53 @@ class TestLevelUpE2E:
         milestone = rewards.milestones[0]
         assert milestone["type"] == "archetype_milestone"
         assert len(milestone["description"]) > 20
+
+
+class TestCantripDamageDice:
+    """Numeric cantrip damage scaling — the SSOT cast_spell (story-004) consumes.
+
+    Brackets (03_magic.md L132): 1d6 L1-4, 2d6 L5-10, 3d6 L11-16, 4d6 L17-20.
+    """
+
+    def test_bracket_1d6_levels_1_to_4(self) -> None:
+        for level in range(1, 5):
+            assert cantrip_damage_dice(level) == "1d6", f"L{level} should be 1d6"
+
+    def test_bracket_2d6_levels_5_to_10(self) -> None:
+        for level in range(5, 11):
+            assert cantrip_damage_dice(level) == "2d6", f"L{level} should be 2d6"
+
+    def test_bracket_3d6_levels_11_to_16(self) -> None:
+        for level in range(11, 17):
+            assert cantrip_damage_dice(level) == "3d6", f"L{level} should be 3d6"
+
+    def test_bracket_4d6_levels_17_to_20(self) -> None:
+        for level in range(17, 21):
+            assert cantrip_damage_dice(level) == "4d6", f"L{level} should be 4d6"
+
+    def test_bracket_boundaries(self) -> None:
+        # Lower edge stays in the prior bracket; upper edge crosses into the next.
+        assert cantrip_damage_dice(4) == "1d6"
+        assert cantrip_damage_dice(5) == "2d6"
+        assert cantrip_damage_dice(10) == "2d6"
+        assert cantrip_damage_dice(11) == "3d6"
+        assert cantrip_damage_dice(16) == "3d6"
+        assert cantrip_damage_dice(17) == "4d6"
+
+    def test_level_below_1_raises(self) -> None:
+        with pytest.raises(ValueError):
+            cantrip_damage_dice(0)
+
+    def test_level_above_20_raises(self) -> None:
+        with pytest.raises(ValueError):
+            cantrip_damage_dice(21)
+
+    def test_every_level_returns_rollable_spec_no_gap(self) -> None:
+        # E2E: every level 1-20 yields a dice spec the real roller accepts.
+        for level in range(1, 21):
+            spec = cantrip_damage_dice(level)
+            result = roll(spec)
+            assert result.total >= 1, f"L{level} spec {spec!r} rolled non-positive"
 
 
 class TestArchetypePayload:

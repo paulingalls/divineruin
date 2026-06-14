@@ -127,7 +127,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 
 **Deliverables:**
 - Content file `content/spells.json` with all 87 spell entries: Arcane (30), Divine (28), Primal (29)
-- Each spell entry contains: name, source (Arcane/Divine/Primal), focus_cost, resonance_by_source, terrain_effects (for Primal), spell_tier, level_requirement, mechanics, narration_cue, audio_cue, concentration (boolean)
+- Each spell entry contains: name, source (Arcane/Divine/Primal), focus_cost, resonance_by_source, terrain_effects (for Primal), spell_tier, mechanics, narration_cue, audio_cue, concentration (boolean). (Per-spell level_requirement was dropped in story-008 as orphaned non-gating metadata — access is gated by per-archetype tier tables + leveling.MIN_LEVEL_BY_SPELL_TIER, not per-spell level.)
 - `spell_catalog` DB table seeded from `content/spells.json`
 - Cantrip scaling formula: 1d6 (L1-4), 2d6 (L5-10), 3d6 (L11-16), 4d6 (L17-20)
 - Agent tool `get_spell_info` — looks up spell details for DM narration
@@ -136,8 +136,8 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 
 **Acceptance criteria:**
 - [ ] `content/spells.json` contains exactly 87 spells: 30 Arcane, 28 Divine, 29 Primal
-- [ ] Every spell entry has all required fields: name, source, focus_cost, resonance_by_source, spell_tier, level_requirement, mechanics, narration_cue, audio_cue
-- [ ] `spell_catalog` table is seeded with all 87 entries and queryable by source, tier, and level
+- [ ] Every spell entry has all required fields: name, source, focus_cost, resonance_by_source, spell_tier, mechanics, narration_cue, audio_cue
+- [ ] `spell_catalog` table is seeded with all 87 entries and queryable by source and tier
 - [ ] `cast_spell` deducts Focus cost, calls `calculate_resonance_generated()`, and returns effect + narration cue + audio cue
 - [ ] `cast_spell` rejects casting when Focus is insufficient
 - [ ] Cantrip damage scales correctly at each level bracket (L1-4, L5-10, L11-16, L17-20)

@@ -31,6 +31,7 @@ TABLE_MAP = {
     "archetype_abilities.json": "archetype_abilities",
     "archetype_milestones.json": "archetype_milestones",
     "spells.json": "spells",
+    "racial_resonance_bonuses.json": "racial_resonance_bonuses",
     "mentor_variants.json": "mentor_variants",
     "role_archetypes.json": "role_archetypes",
     "settlement_templates.json": "settlement_templates",

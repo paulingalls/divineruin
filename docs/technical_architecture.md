@@ -213,6 +213,8 @@ These appear when the server pushes relevant events and disappear after a timeou
 
 The Map, Character Sheet, Inventory, and Quest Log. Accessed by a gesture (swipe up from bottom, or tap a persistent bar icon). These slide over the session screen as a modal. The voice connection stays active — the player can keep talking to the DM while browsing their inventory. Swiping down or tapping a close button returns to the session screen.
 
+The Character Sheet shows attributes, skills, equipment, gold, divine favor, and — for casters — the player's **spells**: their always-known core spells and their learned/prepared electives, each a glanceable row (name, tier, focus cost, prepared indicator). This honors `game_mechanics_magic.md` ("spells appear on the character sheet as they're learned and prepared"); spells are read-only here (preparation changes happen in play via the DM), and the no-number Resonance rule does not apply to the spell list. Implemented in story-007 via a `spells` section on the `session_init` payload.
+
 ### Data Flow
 
 The client is **reactive, not requesting.** It doesn't poll for game state. All updates flow from server to client via LiveKit data channels.

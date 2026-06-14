@@ -216,7 +216,7 @@ class TestFinalizeCharacter:
         with pytest.raises(ToolError):
             await _finalize(ctx)
 
-    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_successful_finalize(self, mock_create_player, mock_get_payload):
         mock_get_payload.return_value = {
@@ -251,7 +251,7 @@ class TestFinalizeCharacter:
         assert ctx.userdata.onboarding_beat == 1
         mock_create_player.assert_awaited_once()
 
-    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_finalize_with_deferred_deity(self, mock_create_player, mock_get_payload):
         mock_get_payload.return_value = {
@@ -281,7 +281,7 @@ class TestFinalizeCharacter:
         assert "character" in result
         assert cs.phase == "complete"
 
-    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_finalize_calls_create_player(self, mock_create_player, mock_get_payload):
         mock_get_payload.return_value = {
@@ -313,7 +313,7 @@ class TestFinalizeCharacter:
         assert data["class"] == "guardian"
         assert data["deity"] == "valdris"
 
-    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_finalize_starting_hp_from_chassis(self, mock_create_player, mock_get_payload):
         # story-004: a finalized character's starting HP derives end-to-end from
@@ -344,7 +344,7 @@ class TestFinalizeCharacter:
         assert data["hp"]["current"] == expected
         assert data["hp"]["max"] == expected
 
-    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_finalize_updates_session_location(self, mock_create_player, mock_get_payload):
         mock_get_payload.return_value = {
@@ -383,7 +383,7 @@ class TestFinalizeCharacter:
 class TestFullCreationFlow:
     """End-to-end flow through the creation tools."""
 
-    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_complete_flow(self, mock_create_player, mock_get_payload):
         mock_get_payload.return_value = {
@@ -448,7 +448,7 @@ class TestFullCreationFlow:
         assert data["class"] == "mage"
         assert data["deity"] == "veythar"
 
-    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_each_race_with_representative_class(self, mock_create_player, mock_get_payload):
         mock_get_payload.return_value = {

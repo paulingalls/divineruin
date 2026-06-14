@@ -99,7 +99,7 @@ class TestRequestAttack:
             await _request_attack_impl(
                 ctx,
                 target_id="goblin_1",
-                weapon_or_spell="Longsword",
+                weapon_name="Longsword",
                 queries=mock_queries,
                 mutations=mock_mutations,
             )
@@ -117,7 +117,7 @@ class TestRequestAttack:
             await _request_attack_impl(
                 ctx,
                 target_id="goblin_1",
-                weapon_or_spell="Longsword",
+                weapon_name="Longsword",
                 queries=mock_queries,
             )
 
@@ -130,7 +130,22 @@ class TestRequestAttack:
             await _request_attack_impl(
                 ctx,
                 target_id="goblin_1",
-                weapon_or_spell="Warhammer",
+                weapon_name="Warhammer",
+                queries=mock_queries,
+            )
+
+    @pytest.mark.asyncio
+    async def test_spell_name_is_not_routed_as_weapon(self):
+        # AC5: after the weapon-only split, a spell name does NOT cast — it fails the
+        # equipment lookup like any non-weapon. Spells route through cast_spell instead.
+        mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        ctx = _make_context()
+        with pytest.raises(ToolError, match="not found in equipment"):
+            await _request_attack_impl(
+                ctx,
+                target_id="goblin_1",
+                weapon_name="Arcane Bolt",
                 queries=mock_queries,
             )
 
@@ -144,7 +159,7 @@ class TestRequestAttack:
             await _request_attack_impl(
                 ctx,
                 target_id="ghost",
-                weapon_or_spell="Longsword",
+                weapon_name="Longsword",
                 queries=mock_queries,
             )
 
@@ -160,7 +175,7 @@ class TestRequestAttack:
             await _request_attack_impl(
                 ctx,
                 target_id="goblin_1",
-                weapon_or_spell="Longsword",
+                weapon_name="Longsword",
                 queries=mock_queries,
                 mutations=mock_mutations,
             )
@@ -182,7 +197,7 @@ class TestRequestAttack:
         await _request_attack_impl(
             ctx,
             target_id="goblin_1",
-            weapon_or_spell="Longsword",
+            weapon_name="Longsword",
             queries=mock_queries,
             mutations=mock_mutations,
         )

@@ -125,6 +125,61 @@ test("session_init populates panelStore characterDetail", () => {
   expect(detail!.gold).toBe(50);
 });
 
+test("session_init populates panelStore characterDetail spells (top-level sibling)", () => {
+  handleGameEvent({
+    type: "session_init",
+    character: { player_id: "p1", name: "Lyra", class: "mage" },
+    // spells is a TOP-LEVEL sibling of character (flat-merged payload), not nested.
+    spells: {
+      core: [
+        {
+          spell_id: "arcane_bolt",
+          name: "Arcane Bolt",
+          spell_tier: "cantrip",
+          focus_cost: 0,
+          is_prepared: true,
+        },
+      ],
+      learned: [
+        {
+          spell_id: "arcane_fireball",
+          name: "Fireball",
+          spell_tier: "major",
+          focus_cost: 5,
+          is_prepared: false,
+        },
+      ],
+    },
+    location: null,
+    quests: [],
+    inventory: [],
+  });
+  const detail = panelStore.getState().characterDetail;
+  expect(detail).not.toBeNull();
+  expect(detail!.spells?.core).toEqual([
+    {
+      spell_id: "arcane_bolt",
+      name: "Arcane Bolt",
+      spell_tier: "cantrip",
+      focus_cost: 0,
+      is_prepared: true,
+    },
+  ]);
+  expect(detail!.spells?.learned[0].name).toBe("Fireball");
+  expect(detail!.spells?.learned[0].is_prepared).toBe(false);
+});
+
+test("session_init without a spells sibling leaves spells undefined (no crash)", () => {
+  handleGameEvent({
+    type: "session_init",
+    character: { player_id: "p1", name: "Kael" },
+    location: null,
+    quests: [],
+    inventory: [],
+  });
+  expect(panelStore.getState().characterDetail!.spells).toBeUndefined();
+});
+
 test("session_init populates panelStore inventory", () => {
   handleGameEvent({
     type: "session_init",

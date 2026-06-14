@@ -8,20 +8,13 @@ Both gates fail loud: they raise ValueError with a specific message on violation
 return None when the preparation is allowed (mirrors rest_mechanics.swap_elective_on_long_rest).
 """
 
-from typing import get_args
-
 import leveling
 from spells import SpellTier
 
-# These archetypes cap at Major tier — no Supreme access (spec L803/L1060/L1135). They are
-# a STRICT SUBSET of divine casters (cleric/oracle keep Supreme), so the cap is an explicit
-# id set, not magic_source — consistent with story-003's "explicit set, not magic_source".
-MAJOR_TIER_CAPPED_ARCHETYPES = frozenset({"paladin", "diplomat", "marshal"})
-
-# Canonical low->high tier ordering, derived from the SpellTier Literal so there is a single
-# source of truth (the Literal members are ordered). Used for the Major-cap comparison.
-SPELL_TIER_ORDER = get_args(SpellTier)
-_MAJOR_RANK = SPELL_TIER_ORDER.index("major")
+# The Major-tier cap for paladin/diplomat/marshal (no Supreme access, spec L809/L1060/L1135)
+# is now subsumed by the per-archetype gate in leveling.MIN_LEVEL_BY_ARCHETYPE_TIER: those
+# archetypes simply have no "supreme" entry, so is_spell_tier_unlocked returns False for it
+# at any level — no separate cap set is needed (story-008, closes 66fa8bae).
 
 
 def can_change_preparation(magic_source: str | None, *, in_natural_terrain: bool) -> None:
@@ -47,9 +40,10 @@ def can_prepare(
 ) -> None:
     """Per-spell gate: may this character prepare this elective spell into a slot?
 
-    Enforces, in order: must know the spell, must have level access to its tier, the
-    Major-tier cap for capped archetypes, and an open elective slot. Raises ValueError
-    with a specific message on the first violated rule; returns None when allowed.
+    Enforces, in order: must know the spell, the per-archetype level→tier access gate
+    (which also enforces the Major cap for paladin/diplomat/marshal — they have no Supreme
+    entry), and an open elective slot. Raises ValueError with a specific message on the
+    first violated rule; returns None when allowed.
 
     `prepared_elective_count` counts only ELECTIVE prepared spells — core spells are
     archetype_abilities (a different table), always prepared and slot-free, never counted.
@@ -57,16 +51,17 @@ def can_prepare(
     if spell_id not in known_spell_ids:
         raise ValueError(f"character does not know {spell_id!r}; cannot prepare an unknown spell")
 
-    # Level->tier gate (fails loud on an unknown tier — see leveling.is_spell_tier_unlocked).
-    if not leveling.is_spell_tier_unlocked(spell_tier, character_level):
-        min_level = leveling.MIN_LEVEL_BY_SPELL_TIER[spell_tier]
+    # Per-archetype level->tier gate (fails loud on an unknown tier/archetype — see
+    # leveling.is_spell_tier_unlocked). A tier this archetype can never reach (e.g. paladin
+    # Supreme) has no floor; a too-low character is below the archetype's floor.
+    if not leveling.is_spell_tier_unlocked(archetype_id, spell_tier, character_level):
+        floor = leveling.min_level_for_tier(archetype_id, spell_tier)
+        if floor is None:
+            raise ValueError(f"cannot prepare {spell_id!r}: {spell_tier} spells are not available to {archetype_id!r}")
         raise ValueError(
-            f"cannot prepare {spell_id!r}: {spell_tier} spells unlock at level {min_level}, "
-            f"character is level {character_level}"
+            f"cannot prepare {spell_id!r}: {spell_tier} spells unlock at level {floor} for "
+            f"{archetype_id!r}, character is level {character_level}"
         )
-
-    if archetype_id in MAJOR_TIER_CAPPED_ARCHETYPES and SPELL_TIER_ORDER.index(spell_tier) > _MAJOR_RANK:
-        raise ValueError(f"{archetype_id!r} caps at Major tier and cannot prepare a {spell_tier} spell")
 
     if prepared_elective_count >= slot_limit:
         raise ValueError(f"no open elective slot: {prepared_elective_count} prepared, limit is {slot_limit}")

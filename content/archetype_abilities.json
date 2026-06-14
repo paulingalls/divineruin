@@ -689,8 +689,8 @@
     "archetype_id": "mage",
     "name": "Arcane Bolt",
     "ability_type": "core",
+    "spell_id": "arcane_bolt",
     "level_requirement": 1,
-    "cost": { "stamina": 0, "focus": 0, "scaling": null },
     "effect": "Free baseline ranged arcane attack. Cantrip; scales with level.",
     "narration_cue": "A spoken word, and a lance of raw force snaps outward."
   },
@@ -720,8 +720,8 @@
     "archetype_id": "druid",
     "name": "Thorn Whip",
     "ability_type": "core",
+    "spell_id": "primal_thorn_whip",
     "level_requirement": 1,
-    "cost": { "stamina": 0, "focus": 0, "scaling": null },
     "effect": "Ranged cantrip that lashes and pulls the target toward you.",
     "narration_cue": "A whip of thorned vine cracks out and yanks the foe close."
   },
@@ -730,8 +730,8 @@
     "archetype_id": "druid",
     "name": "Healing Touch",
     "ability_type": "core",
+    "spell_id": "primal_healing_touch",
     "level_requirement": 1,
-    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Heal a touched ally. Core to the Primal source identity.",
     "narration_cue": "Green light blooms beneath your hand and wounds close."
   },
@@ -761,8 +761,8 @@
     "archetype_id": "cleric",
     "name": "Sacred Flame",
     "ability_type": "core",
+    "spell_id": "divine_sacred_flame",
     "level_requirement": 1,
-    "cost": { "stamina": 0, "focus": 0, "scaling": null },
     "effect": "Free divine cantrip. WIS save; ignores armor (divine magic bypasses physical defense).",
     "narration_cue": "A column of pale fire falls from nowhere onto the foe."
   },
@@ -771,8 +771,8 @@
     "archetype_id": "cleric",
     "name": "Heal Wounds",
     "ability_type": "core",
+    "spell_id": "divine_heal_wounds",
     "level_requirement": 1,
-    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Heal a target. The Cleric's primary identity.",
     "narration_cue": "Warm light pours from your palms and flesh mends."
   },
@@ -792,8 +792,8 @@
     "archetype_id": "artificer",
     "name": "Arcane Bolt",
     "ability_type": "core",
+    "spell_id": "arcane_bolt",
     "level_requirement": 1,
-    "cost": { "stamina": 0, "focus": 0, "scaling": null },
     "effect": "Shared Arcane cantrip, fired through a tool or device.",
     "narration_cue": "A device hums, then spits a bolt of arcane force."
   },
@@ -823,8 +823,8 @@
     "archetype_id": "seeker",
     "name": "Arcane Bolt",
     "ability_type": "core",
+    "spell_id": "arcane_bolt",
     "level_requirement": 1,
-    "cost": { "stamina": 0, "focus": 0, "scaling": null },
     "effect": "Cantrip; on hit, learn one mechanical property of the target (AC, lowest save, or HP fraction).",
     "narration_cue": "A probing bolt strikes, and the foe's weakness reveals itself."
   },
@@ -854,8 +854,8 @@
     "archetype_id": "beastcaller",
     "name": "Thorn Whip",
     "ability_type": "core",
+    "spell_id": "primal_thorn_whip",
     "level_requirement": 1,
-    "cost": { "stamina": 0, "focus": 0, "scaling": null },
     "effect": "Cantrip; pull targets toward your companion for Pack Tactics.",
     "narration_cue": "A thorned lash drags the foe into your companion's reach."
   },
@@ -874,8 +874,8 @@
     "archetype_id": "beastcaller",
     "name": "Healing Touch",
     "ability_type": "core",
+    "spell_id": "primal_healing_touch",
     "level_requirement": 1,
-    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Shared Primal healing. Can target yourself or your companion.",
     "narration_cue": "Green warmth flows from your hand into fur or flesh."
   },
@@ -916,8 +916,8 @@
     "archetype_id": "oracle",
     "name": "Sacred Flame",
     "ability_type": "core",
+    "spell_id": "divine_sacred_flame",
     "level_requirement": 1,
-    "cost": { "stamina": 0, "focus": 0, "scaling": null },
     "effect": "Free shared divine cantrip. WIS save; ignores armor.",
     "narration_cue": "A shaft of cold starlight strikes down on the foe."
   },
@@ -1038,8 +1038,8 @@
     "archetype_id": "paladin",
     "name": "Sacred Flame",
     "ability_type": "core",
+    "spell_id": "divine_sacred_flame",
     "level_requirement": 1,
-    "cost": { "stamina": 0, "focus": 0, "scaling": null },
     "effect": "Divine ranged cantrip option.",
     "narration_cue": "A pillar of holy light crashes down on the foe."
   },

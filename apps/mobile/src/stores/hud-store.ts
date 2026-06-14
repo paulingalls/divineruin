@@ -1,5 +1,8 @@
 import { createStore } from "zustand/vanilla";
 
+import { BrandColors } from "@/constants/theme";
+import { HUD_ANCHORS } from "@/constants/hud-anchors";
+
 // --- Types ---
 
 export type OverlayType =
@@ -8,7 +11,8 @@ export type OverlayType =
   | "quest_update"
   | "xp_toast"
   | "level_up"
-  | "divine_favor";
+  | "divine_favor"
+  | "hollow_echo";
 
 export interface OverlayEntry {
   id: string;
@@ -65,6 +69,71 @@ export interface SpecializationChoiceState {
   options: SpecializationOption[];
 }
 
+// Qualitative Resonance state (M3.1). Mirrors the agent's ResState — the HUD shows
+// only this label, never the underlying number (audio-first / no-number spec).
+export type ResonanceState = "stable" | "flickering" | "overreach";
+
+// Qualitative display for each Resonance state — label + accent color, never a
+// number. Calm ash for Stable, the Veil teal (hollow) for Flickering, danger ember
+// for Overreach. Lives here (not resonance-tracker.tsx) so it is unit-testable
+// without importing react-native — the bun suite has no JSX renderer and the RN mock
+// omits View/Text, so a .tsx import throws at module load.
+export const RESONANCE_DISPLAY: Record<ResonanceState, { label: string; color: string }> = {
+  stable: { label: "Stable", color: BrandColors.ash },
+  flickering: { label: "Flickering", color: BrandColors.hollow },
+  overreach: { label: "Overreach", color: BrandColors.ember },
+};
+
+// The seven Hollow Echo bands (M3.2). Mirrors the agent's hollow_echo._BANDS ids —
+// when an Overreach cast tears the Veil, story-004 publishes HOLLOW_ECHO_RESULT
+// {band}; the dramatic overlay flashes this band, never the raw d20 (same no-number
+// discipline as Resonance).
+export type HollowEchoBand =
+  | "nothing"
+  | "whisper"
+  | "veil_scar"
+  | "sympathetic"
+  | "hollow_attention"
+  | "reality_fracture"
+  | "breach";
+
+// Qualitative display for each band: a short label + accent color, scaling from calm
+// (a clean "Nothing stirs") through the Veil teal to danger ember as the Veil tears.
+// Lives here (not hollow-echo-overlay.tsx) so the bun suite can assert it without a
+// .tsx import (mobile-bun-tsx convention).
+export const HOLLOW_ECHO_DISPLAY: Record<HollowEchoBand, { label: string; color: string }> = {
+  nothing: { label: "Nothing Stirs", color: BrandColors.ash },
+  whisper: { label: "Whisper", color: BrandColors.ash },
+  veil_scar: { label: "Veil Scar", color: BrandColors.hollow },
+  sympathetic: { label: "Sympathetic Resonance", color: BrandColors.hollow },
+  hollow_attention: { label: "Hollow Attention", color: BrandColors.ember },
+  reality_fracture: { label: "Reality Fracture", color: BrandColors.ember },
+  breach: { label: "Breach", color: BrandColors.ember },
+};
+
+// Vertical anchor (bottom inset) for the ResonanceTracker (and the Veil Ward pill,
+// which shares it). The CombatTracker is full-width and anchors at bottom:80, so
+// casting during combat — a core Phase-3 scenario where both mount together — would
+// overlap the resonance pill (concern 843b). When combat is active, lift the pill
+// above the combat tracker. A fixed lift can't cover a many-combatant tracker
+// (maxHeight 30% of screen), so once CombatTracker.onLayout reports its real height
+// the pill clears measuredHeight + a gap; until then it uses the fixed fallback
+// (debt b52a56bc). Lives here (not resonance-tracker.tsx) so the bun suite can
+// unit-test it without a .tsx import.
+export const RESONANCE_TRACKER_BOTTOM_DEFAULT = HUD_ANCHORS.bottomToast;
+// Fixed in-combat lift used until the tracker reports its measured height.
+export const RESONANCE_TRACKER_BOTTOM_IN_COMBAT = 140;
+// Clearance (px) between the measured combat tracker top and the lifted pill.
+export const RESONANCE_TRACKER_GAP = 8;
+
+export function resonanceTrackerBottom(isCombatActive: boolean, combatTrackerHeight = 0): number {
+  if (!isCombatActive) return RESONANCE_TRACKER_BOTTOM_DEFAULT;
+  // Before the tracker has measured itself (first frame), use the conservative fixed lift.
+  if (combatTrackerHeight <= 0) return RESONANCE_TRACKER_BOTTOM_IN_COMBAT;
+  // The tracker bottom sits at the default inset and grows upward; clear its full height.
+  return RESONANCE_TRACKER_BOTTOM_DEFAULT + combatTrackerHeight + RESONANCE_TRACKER_GAP;
+}
+
 // --- Store ---
 
 interface HudState {
@@ -73,6 +142,9 @@ interface HudState {
   activeObjective: ActiveObjective | null;
   questObjectiveVisible: boolean;
   combatState: CombatTrackerState | null;
+  combatTrackerHeight: number;
+  resonanceState: ResonanceState | null;
+  veilWardActive: boolean;
   creationCards: CreationCard[];
   selectedCreationCard: string | null;
   specializationChoice: SpecializationChoiceState | null;
@@ -90,6 +162,11 @@ interface HudState {
 
   setCombatState: (state: CombatTrackerState) => void;
   clearCombatState: () => void;
+  setCombatTrackerHeight: (height: number) => void;
+
+  setResonanceState: (state: ResonanceState) => void;
+
+  setVeilWardActive: (active: boolean) => void;
 
   setCreationCards: (cards: CreationCard[]) => void;
   setSelectedCreationCard: (id: string | null) => void;
@@ -113,6 +190,9 @@ const INITIAL: Pick<
   | "activeObjective"
   | "questObjectiveVisible"
   | "combatState"
+  | "combatTrackerHeight"
+  | "resonanceState"
+  | "veilWardActive"
   | "creationCards"
   | "selectedCreationCard"
   | "specializationChoice"
@@ -122,6 +202,9 @@ const INITIAL: Pick<
   activeObjective: null,
   questObjectiveVisible: false,
   combatState: null,
+  combatTrackerHeight: 0,
+  resonanceState: null,
+  veilWardActive: false,
   creationCards: [],
   selectedCreationCard: null,
   specializationChoice: null,
@@ -171,7 +254,12 @@ export const hudStore = createStore<HudState>((set, get) => ({
   setQuestObjectiveVisible: (visible) => set({ questObjectiveVisible: visible }),
 
   setCombatState: (state) => set({ combatState: state }),
-  clearCombatState: () => set({ combatState: null }),
+  clearCombatState: () => set({ combatState: null, combatTrackerHeight: 0 }),
+  setCombatTrackerHeight: (height) => set({ combatTrackerHeight: height }),
+
+  setResonanceState: (state) => set({ resonanceState: state }),
+
+  setVeilWardActive: (active) => set({ veilWardActive: active }),
 
   setCreationCards: (cards) => {
     const current = get().creationCards;

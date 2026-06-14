@@ -17,7 +17,7 @@ from livekit.agents.voice import RunContext
 
 import character_spells
 import db_mutations
-import db_queries
+import db_session_queries
 import event_types as E
 from archetypes import get_archetype_chassis
 from asset_utils import slug_asset_url
@@ -298,7 +298,7 @@ async def finalize_character(context: RunContext) -> str | tuple:
 
     # Publish session_init so client gets character data
     try:
-        payload = await db_queries.get_session_init_payload(sd.player_id)
+        payload = await db_session_queries.get_session_init_payload(sd.player_id)
         await publish_game_event(sd.room, E.SESSION_INIT, payload, sd.event_bus)
     except Exception:
         logger.exception("Failed to publish session_init after creation")

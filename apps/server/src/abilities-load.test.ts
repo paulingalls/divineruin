@@ -1,6 +1,7 @@
-import { test, expect, describe, afterAll } from "bun:test";
+import { test, expect, describe, afterAll, beforeAll } from "bun:test";
 import { parseAbilityRow, getAbility, getArchetypeAbilities, setAbilities } from "./abilities.ts";
-import type { Ability } from "@divineruin/shared";
+import { parseSpellRow, setSpells } from "./spells.ts";
+import type { Ability, Spell } from "@divineruin/shared";
 
 // Drives the production fail-loud parseAbilityRow (apps/server/src/abilities.ts)
 // over content/archetype_abilities.json, proving every entry conforms to the shared
@@ -11,6 +12,20 @@ import type { Ability } from "@divineruin/shared";
 // both sides. Cost is a {stamina, focus, scaling} object (decision m22-cost-object-schema).
 
 const ABILITIES_PATH = new URL("../../../content/archetype_abilities.json", import.meta.url);
+const SPELLS_PATH = new URL("../../../content/spells.json", import.meta.url);
+
+// parseAbilityRow composes the 11 spell-backed caster CORE rows from the spell catalog
+// (getSpell is fail-loud), so the catalog MUST be loaded before any row is parsed — exactly
+// the loadSpells-before-loadAbilities startup order (index.ts). Load the real catalog once.
+beforeAll(async () => {
+  const raw: unknown = await Bun.file(SPELLS_PATH).json();
+  if (!Array.isArray(raw)) throw new Error("content/spells.json is not an array");
+  const map = new Map<string, Spell>();
+  for (const row of raw as Record<string, unknown>[]) {
+    map.set(row.id as string, parseSpellRow(row.id as string, row));
+  }
+  setSpells(map);
+});
 
 // content/archetype_abilities.json is a closed set (story-001): 145 abilities across the
 // 18 archetypes. Exact counts catch both silent attrition from bad merges AND accidental
@@ -45,6 +60,30 @@ describe("content/archetype_abilities.json — parseAbilityRow conformance", () 
     expect(parsed.ability_type).toBe("core");
     expect(parsed.cost.stamina).toBeGreaterThan(0);
     expect(parsed.cost.scaling).toBeNull();
+  });
+
+  test("a spell-backed core row composes its Focus cost from the catalog and keeps its own content", async () => {
+    // mage_arcane_bolt drops its authored `cost` and carries spell_id; the Focus cost — the
+    // one cast number shared with the cast path — composes from the catalog spell arcane_bolt
+    // so it can't drift. effect/level/narration stay per-archetype on the row. Mirrors the
+    // Python _resolve_cost behavior (apps/agent/abilities.py).
+    const abilityRows = await loadAbilitiesJson();
+    const bolt = abilityRows.find((r) => r.id === "mage_arcane_bolt");
+    expect(bolt).toBeDefined();
+    const parsed = parseAbilityRow("mage_arcane_bolt", bolt!);
+
+    const spellRaw: unknown = await Bun.file(SPELLS_PATH).json();
+    const arcaneBolt = (spellRaw as Record<string, unknown>[]).find((s) => s.id === "arcane_bolt");
+    expect(arcaneBolt).toBeDefined();
+    const spell = parseSpellRow("arcane_bolt", arcaneBolt!);
+
+    expect(parsed.spell_id).toBe("arcane_bolt");
+    // Focus cost is single-sourced from the catalog.
+    expect(parsed.cost).toEqual({ stamina: 0, focus: spell.focus_cost, scaling: null });
+    // Per-archetype content stays authored on the row, not flattened to the spell's text.
+    expect(parsed.effect).toBe(bolt!.effect as string);
+    expect(parsed.level_requirement).toBe(bolt!.level_requirement as number);
+    expect(parsed.narration_cue).toBe(bolt!.narration_cue as string);
   });
 
   test("a pool-cost ability keeps cost{0,0} with the rule in scaling", async () => {
@@ -168,6 +207,14 @@ describe("parseAbilityRow — fail-loud validation", () => {
   test("rejects a cost.scaling that is neither string nor null", () => {
     expect(() => parseAbilityRow("x", { ...base, cost: { ...base.cost, scaling: 7 } })).toThrow(
       /abilities\[x\]\.cost\.scaling/,
+    );
+  });
+
+  test("rejects a present-but-non-string spell_id (parity with Python _resolve_cost)", () => {
+    // A malformed spell_id must fail loud, not silently fall back to the authored cost —
+    // identical failure surface to the Python loader.
+    expect(() => parseAbilityRow("x", { ...base, spell_id: 123 })).toThrow(
+      /abilities\[x\]\.spell_id/,
     );
   });
 });

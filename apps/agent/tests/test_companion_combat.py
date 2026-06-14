@@ -102,6 +102,32 @@ class TestCompanionCombatProfile:
             await _run_combat_with_companion(CompanionState(id="companion_ghost", name="Ghost"))
 
     @pytest.mark.asyncio
+    async def test_corrupt_companion_attack_raises_tool_error(self, monkeypatch):
+        # A companion whose profile LOADS but carries a malformed attack (damage with no dice
+        # term) makes companion_attacks_to_action_pool raise ValueError mid-init. That must
+        # surface as the same DM-narratable ToolError as the unknown-id path, not a raw
+        # ValueError that crashes combat init (retro-try combat-init-wrap, decision 4c60aefd).
+        import dataclasses
+
+        import combat_init
+        from companion_profiles import CompanionAttack
+
+        good = get_companion_profile("companion_kael")
+        bad_attack = CompanionAttack(
+            name="Broken",
+            type="melee",
+            reach="5 ft",
+            hit="STR+prof",
+            damage="STR",  # no dice/int term survives stripping -> ValueError on translate
+            damage_type="slashing",
+        )
+        corrupt = dataclasses.replace(good, attacks=(bad_attack,))
+        monkeypatch.setattr(combat_init, "get_companion_profile", lambda _: corrupt)
+
+        with pytest.raises(ToolError):
+            await _run_combat_with_companion(CompanionState(id="companion_kael", name="Kael"))
+
+    @pytest.mark.asyncio
     async def test_combat_stat_block_independent_of_relationship(self):
         # Identical companions differing ONLY in the relationship inputs (session_count/affinity).
         early = CompanionState(id="companion_kael", name="Kael", session_count=0, affinity=0)

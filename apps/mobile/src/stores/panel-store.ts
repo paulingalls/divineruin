@@ -1,5 +1,7 @@
 import { createStore } from "zustand/vanilla";
 
+import type { SpellRow } from "@/utils/spell-display";
+
 export type PanelTab = "character" | "inventory" | "quests" | "map";
 
 export interface CharacterDetail {
@@ -22,6 +24,7 @@ export interface CharacterDetail {
   };
   gold: number;
   divineFavor: { patron: string; level: number; max: number } | null;
+  spells?: { core: SpellRow[]; learned: SpellRow[] };
 }
 
 export type ItemRarity = "common" | "uncommon" | "rare" | "legendary";

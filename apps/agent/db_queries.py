@@ -3,15 +3,12 @@
 All async, accept optional conn parameter.
 """
 
-import asyncio
 import json
 import logging
 
 import asyncpg
 
 import db
-import db_activity_queries
-import db_content_queries
 from workspace import WorkspaceType
 
 logger = logging.getLogger("divineruin.db")
@@ -413,60 +410,6 @@ async def get_player_flag_value(
     if row is None or row["val"] is None:
         return None
     return json.loads(row["val"])
-
-
-async def _enrich_quests_with_scene_hints(quests: list[dict]) -> list[dict]:
-    """Add 'hints' from scene beats to each quest's data for client display."""
-    from scene_tools import _resolve_scene_from_graph
-
-    scene_ids: list[str] = []
-    for q in quests:
-        for entry in q.get("scene_graph", []):
-            sid = entry.get("scene_id")
-            if sid and sid not in scene_ids:
-                scene_ids.append(sid)
-    if not scene_ids:
-        return quests
-
-    scene_cache = await db_content_queries.get_scenes_batch(scene_ids)
-    for q in quests:
-        scene = _resolve_scene_from_graph(scene_cache, q, q.get("current_stage", 0))
-        hints: list[str] = []
-        if scene:
-            for beat in scene.get("beats", []):
-                hints.extend(beat.get("companion_hints", []))
-        q["hints"] = hints
-    return quests
-
-
-async def get_session_init_payload(player_id: str) -> dict:
-    """Build the full session_init payload for a player."""
-    # Fetch player first (need location_id), then parallelize the rest
-    player = await get_player(player_id)
-    location_id = player.get("location_id", "") if player else ""
-
-    location, inventory, quests, map_progress = await asyncio.gather(
-        db_content_queries.get_location(location_id) if location_id else asyncio.sleep(0),
-        get_player_inventory(player_id),
-        get_active_player_quests(player_id),
-        db_activity_queries.get_player_map_progress(player_id),
-    )
-
-    # Enrich quests with scene beat hints for client display
-    quests = await _enrich_quests_with_scene_hints(quests)
-
-    # Build portraits dict
-    portraits = db._build_portraits(player, location_id)
-
-    return {
-        "character": player,
-        "location": location if location_id else None,
-        "quests": quests,
-        "inventory": inventory,
-        "map_progress": map_progress,
-        "world_state": {"time": "evening"},
-        "portraits": portraits,
-    }
 
 
 async def get_last_session_summary(

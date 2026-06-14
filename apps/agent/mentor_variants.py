@@ -22,6 +22,7 @@ import logging
 from dataclasses import dataclass
 
 from abilities import Cost
+from catalog_parse import parse_str
 
 logger = logging.getLogger("divineruin.mentor_variants")
 
@@ -64,15 +65,6 @@ def _parse_cost(raw: object, ctx: str) -> Cost:
     return Cost(stamina=stamina, focus=focus, scaling=scaling)
 
 
-def _parse_str(raw: object, ctx: str) -> str:
-    """Return raw if it's a str, else fail-loud — parity with the TS loader's
-    typeof === 'string' guards (a seeded non-string field must reject identically
-    on both sides)."""
-    if not isinstance(raw, str):
-        raise ValueError(f"{ctx} is not a string")
-    return raw
-
-
 def parse_mentor_variant_row(variant_id: str, data: dict) -> MentorVariant:
     """Parse a raw dict (from JSON file or DB JSONB) into a MentorVariant.
 
@@ -83,12 +75,12 @@ def parse_mentor_variant_row(variant_id: str, data: dict) -> MentorVariant:
     try:
         return MentorVariant(
             id=variant_id,
-            ability_id=_parse_str(data["ability_id"], f"{variant_id}.ability_id"),
-            mentor_id=_parse_str(data["mentor_id"], f"{variant_id}.mentor_id"),
+            ability_id=parse_str(data["ability_id"], f"{variant_id}.ability_id"),
+            mentor_id=parse_str(data["mentor_id"], f"{variant_id}.mentor_id"),
             cost=_parse_cost(data["cost"], f"{variant_id}.cost"),
-            effect=_parse_str(data["effect"], f"{variant_id}.effect"),
-            narration_cue=_parse_str(data["narration_cue"], f"{variant_id}.narration_cue"),
-            cultural_attribution=_parse_str(data["cultural_attribution"], f"{variant_id}.cultural_attribution"),
+            effect=parse_str(data["effect"], f"{variant_id}.effect"),
+            narration_cue=parse_str(data["narration_cue"], f"{variant_id}.narration_cue"),
+            cultural_attribution=parse_str(data["cultural_attribution"], f"{variant_id}.cultural_attribution"),
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed mentor_variants row {variant_id!r}: {e}") from e

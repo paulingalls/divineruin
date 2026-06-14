@@ -142,6 +142,58 @@ def test_cost_roundtrip_preserves_scaling():
     assert a.cost.scaling is not None
 
 
+# --- spell-backed core rows compose their Focus cost from the catalog (Try 2) ---
+
+# A spell-backed core row: the archetype owns its description + narration flavor and
+# carries spell_id, but does NOT author `cost` — the Focus cost (the one number shared
+# with the cast path) composes from content/spells.json so it can't drift. effect,
+# narration_cue, and level stay per-archetype (e.g. the Seeker's reveal-on-hit clause).
+_SPELL_BACKED_SEEKER_ROW = {
+    "id": "seeker_arcane_bolt",
+    "archetype_id": "seeker",
+    "name": "Arcane Bolt",
+    "ability_type": "core",
+    "spell_id": "arcane_bolt",
+    "level_requirement": 1,
+    "effect": "Cantrip; on hit, learn one mechanical property of the target (AC, lowest save, or HP fraction).",
+    "narration_cue": "A probing bolt strikes, and the foe's weakness reveals itself.",
+}
+
+
+def test_spell_backed_row_composes_focus_cost_from_catalog():
+    import spells
+
+    spell = spells.get_spell("arcane_bolt")
+    a = parse_ability_row(_SPELL_BACKED_SEEKER_ROW["id"], _SPELL_BACKED_SEEKER_ROW)
+    # The Focus cost is single-sourced from the catalog — no second authored copy.
+    assert a.cost == Cost(stamina=0, focus=spell.focus_cost, scaling=None)
+    assert a.spell_id == "arcane_bolt"
+    # Per-archetype content is KEPT, not flattened to the spell's generic text.
+    assert a.effect == _SPELL_BACKED_SEEKER_ROW["effect"]  # the Seeker's reveal clause
+    assert a.narration_cue == _SPELL_BACKED_SEEKER_ROW["narration_cue"]
+    assert a.level_requirement == 1
+    assert (a.name, a.ability_type, a.archetype_id) == ("Arcane Bolt", "core", "seeker")
+
+
+def test_spell_backed_row_fails_loud_on_unknown_spell():
+    bad = {**_SPELL_BACKED_SEEKER_ROW, "spell_id": "no_such_spell"}
+    with pytest.raises(ValueError):
+        parse_ability_row(bad["id"], bad)
+
+
+def test_spell_id_must_be_a_string_when_present():
+    # Parity with the TS loader: a present-but-non-string spell_id fails loud rather than
+    # silently falling back to an authored cost (a malformed row breaks identically on both).
+    bad = {**_SPELL_BACKED_SEEKER_ROW, "spell_id": 123}
+    with pytest.raises(ValueError, match="spell_id"):
+        parse_ability_row(bad["id"], bad)
+
+
+def test_non_spell_row_has_no_spell_id():
+    a = parse_ability_row(_CLEAVE_ROW["id"], _CLEAVE_ROW)
+    assert a.spell_id is None
+
+
 # --- accessors -----------------------------------------------------------------
 
 

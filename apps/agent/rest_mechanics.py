@@ -8,7 +8,9 @@ technique, and choose which known elective spells fill their loadout
 (prepare_spells_on_long_rest) — those two are async and mutate the DB.
 """
 
-from typing import Literal
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
 
 import asyncpg
 
@@ -16,8 +18,12 @@ import abilities
 import ability_persistence
 import archetypes
 import character_spells
+import db_mutations_resonance
 import spell_preparation
 import spells
+
+if TYPE_CHECKING:
+    from session_data import SessionData
 
 RestType = Literal["short", "long"]
 
@@ -189,3 +195,24 @@ async def prepare_spells_on_long_rest(
         await character_spells_mod.set_prepared(player_id, spell_id, False, conn=conn)
     for spell_id in loadout_set - currently_prepared:
         await character_spells_mod.set_prepared(player_id, spell_id, True, conn=conn)
+
+
+async def reset_resonance_on_rest(
+    session: SessionData,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    resonance_mutations_mod=db_mutations_resonance,
+) -> None:
+    """Reset this caster's Resonance to stable/0 on a short or long rest.
+
+    M3.1's one live resonance mutation (generation-on-cast arrives in M3.3). Zeroes
+    the in-memory ``session.resonance`` and persists the reset via story-002's
+    reset_player_resonance, keeping the session and players.data in sync.
+
+    Unlike the player_id-based siblings above, this takes the SessionData because it
+    owns the in-memory copy. To make the reset atomic with other long-rest writes,
+    pass a transactional ``conn`` (e.g. from ``db.transaction()``); with ``conn=None``
+    the single persist runs on a pooled connection.
+    """
+    session.resonance.current = 0
+    await resonance_mutations_mod.reset_player_resonance(session.player_id, conn=conn)

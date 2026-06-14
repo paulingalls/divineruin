@@ -78,6 +78,7 @@ async def _end_combat_impl(
             )
     session.weapon_used_this_encounter = False
     session.weapon_crit_vs_heavy = False
+    session.draethar_inner_fire_used = False  # Inner Fire resets each encounter (M3.4)
 
     combat_id = cs.combat_id
 
