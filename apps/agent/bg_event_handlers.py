@@ -6,6 +6,7 @@ import logging
 from typing import TYPE_CHECKING
 
 import event_types as E
+import vaelti_echo_warning
 from bg_speech import PendingSpeech, SpeechPriority
 from god_whisper_data import get_god_profile, should_trigger_whisper
 from sanitize import sanitize_for_prompt
@@ -71,6 +72,12 @@ def handle_events(
     for ev in events:
         if ev.event_type in REBUILD_EVENT_TYPES:
             needs_rebuild = True
+
+        if ev.event_type == E.VAELTI_ECHO_WARNING:
+            # Vaelti Hyper-awareness (story-009): voice the 1-round advance warning a beat
+            # before the Hollow Echo lands. CRITICAL — same urgency band as god whisper.
+            _queue(speech_queue, SpeechPriority.CRITICAL, vaelti_echo_warning.WARNING_INSTRUCTION)
+            continue
 
         if ev.event_type == E.LOCATION_CHANGED:
             new_loc = ev.payload.get("new_location", "")

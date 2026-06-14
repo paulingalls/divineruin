@@ -456,6 +456,7 @@ async def _cast_racial(
     start_flickering_bonus: int = 0,
     start_concentration: str | None = None,
     d20s: tuple[int, ...] = (10,),
+    vaelti_warning=None,
 ):
     """Invoke _cast_spell_impl with the M3.4 racial + concentration mods injected.
 
@@ -497,6 +498,7 @@ async def _cast_racial(
         dice_mod=_dice_seq(*d20s),
         echo_events_mod=echo_events,
         racial_mod=_racial_mod(),
+        vaelti_warning_mod=vaelti_warning or MagicMock(),
         concentration_mutations_mod=concentration,
     )
     return json.loads(raw), ctx, mutations, concentration, echo_events
@@ -577,6 +579,26 @@ class TestCastSpellRacialResonance:
         assert packet["state"] == "overreach"
         assert packet["hollow_echo"]["band"] == "nothing"
         echo_events.publish_hollow_echo.assert_awaited_once()
+
+    async def test_vaelti_overreach_emits_advance_warning(self):
+        # AC (story-009): a Vaelti reaching Overreach fires the 1-round advance warning through
+        # the real deferred-event hook — the emitter is invoked once during the cast.
+        warn = MagicMock()
+        packet, _ctx, _m, _c, _e = await _cast_racial(
+            _spell(source="arcane", focus_cost=3, resonance=9), race="vaelti", d20s=(1, 18), vaelti_warning=warn
+        )
+        assert packet["state"] == "overreach"
+        warn.publish_vaelti_echo_warning.assert_called_once()
+
+    async def test_non_vaelti_overreach_emits_no_warning(self):
+        # The warning gates on race==vaelti (the Hyper-awareness passive): a Human Overreach
+        # rolls an echo but fires no advance warning.
+        warn = MagicMock()
+        packet, _ctx, _m, _c, _e = await _cast_racial(
+            _spell(source="arcane", focus_cost=3, resonance=9), race="human", d20s=(18,), vaelti_warning=warn
+        )
+        assert packet["state"] == "overreach"
+        warn.publish_vaelti_echo_warning.assert_not_called()
 
 
 class TestCastSpellConcentration:
