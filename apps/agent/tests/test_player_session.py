@@ -11,7 +11,7 @@ a top-level key beside {resonance}, mirroring how companions track session_count
 incremented exactly once per FRESH session (story-004 caller), never on reconnect.
 """
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -55,3 +55,13 @@ class TestHydratePlayerSession:
         conn.fetchrow.return_value = None
         with pytest.raises(ValueError):
             await player_session.hydrate_player_session("ghost", conn=conn)
+
+    async def test_falls_back_to_shared_pool_when_conn_omitted(self):
+        # The caller (story-004 session-init) may omit conn -> acquire the shared pool via
+        # db.get_pool(), the same `conn or await db.get_pool()` idiom as db_mutations_resonance.
+        pool = AsyncMock()
+        pool.fetchrow.return_value = {"session_count": 1}
+        with patch.object(player_session.db, "get_pool", AsyncMock(return_value=pool)):
+            count = await player_session.hydrate_player_session("p1")
+        assert count == 1
+        pool.fetchrow.assert_awaited_once()
