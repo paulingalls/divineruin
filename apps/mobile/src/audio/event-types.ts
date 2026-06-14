@@ -39,6 +39,16 @@ export const INVENTORY_UPDATED = "inventory_updated" as const;
 export const QUEST_UPDATE = "quest_update" as const;
 export const QUEST_UPDATED = "quest_updated" as const;
 
+// Magic (M3.1) — mirrors apps/agent/event_types.py RESONANCE_CHANGED.
+// Payload {state, current, max}; the HUD renders only the qualitative state.
+export const RESONANCE_CHANGED = "resonance_changed" as const;
+
+// Magic (M3.2) — mirrors apps/agent/event_types.py. HOLLOW_ECHO_RESULT carries the
+// qualitative {band} only (raw d20 stays server-side, like RESONANCE_CHANGED);
+// VEIL_WARD_CHANGED carries {active} for the glanceable ward zone indicator.
+export const HOLLOW_ECHO_RESULT = "hollow_echo_result" as const;
+export const VEIL_WARD_CHANGED = "veil_ward_changed" as const;
+
 // World
 export const HOLLOW_CORRUPTION_CHANGED = "hollow_corruption_changed" as const;
 export const DISPOSITION_CHANGED = "disposition_changed" as const;

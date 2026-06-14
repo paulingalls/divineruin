@@ -2,9 +2,10 @@
 
 Spells add ZERO new @function_tools (ADR 0007): scroll/mentor acquisition rides
 the existing learn(kind, id, source) verb via a 'spell' kind dispatched to
-spell_tools. A character may not learn a spell above their level allowance —
-leveling.MIN_LEVEL_BY_SPELL_TIER (Cantrip/Minor L1, Standard L4, Major L7,
-Supreme L13) is the enforced gate (shared with story-006's prepare check).
+spell_tools. A character may not learn a spell above their archetype's level
+allowance — leveling.is_spell_tier_unlocked, keyed by (archetype, tier, level),
+is the enforced gate (shared with the prepare check). A full caster unlocks
+standard/major/supreme at L3/L5/L9; the per-archetype matrix is in test_leveling.
 
 The literal real-Postgres AC4 (mentor-taught Minor spell -> character_spells with
 acquisition_track for npc_teaching, one DB) rides the M8 story-007 capstone
@@ -18,7 +19,6 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
-import leveling
 import spell_tools
 from recipe_tools import _learn_impl
 from spells import Spell, SpellSource, SpellTier
@@ -46,31 +46,12 @@ def _spells_mod(spell=None):
     return m
 
 
-def _queries_mod(*, level=20, player_exists=True):
+def _queries_mod(*, level=20, archetype="mage", player_exists=True):
     q = MagicMock()
-    q.get_player = AsyncMock(return_value={"player_id": "player_1", "level": level} if player_exists else None)
+    q.get_player = AsyncMock(
+        return_value={"player_id": "player_1", "level": level, "class": archetype} if player_exists else None
+    )
     return q
-
-
-class TestSpellTierGate:
-    @pytest.mark.parametrize(
-        "tier,min_level",
-        [("cantrip", 1), ("minor", 1), ("standard", 4), ("major", 7), ("supreme", 13)],
-    )
-    def test_unlocked_at_and_above_min_level(self, tier: str, min_level: int):
-        assert leveling.is_spell_tier_unlocked(tier, min_level) is True
-        assert leveling.is_spell_tier_unlocked(tier, min_level + 1) is True
-
-    @pytest.mark.parametrize(
-        "tier,min_level",
-        [("standard", 4), ("major", 7), ("supreme", 13)],
-    )
-    def test_gated_below_min_level(self, tier: str, min_level: int):
-        assert leveling.is_spell_tier_unlocked(tier, min_level - 1) is False
-
-    def test_fails_loud_on_unknown_tier(self):
-        with pytest.raises(ValueError, match="tier"):
-            leveling.is_spell_tier_unlocked("legendary", 20)
 
 
 class TestLearnSpell:
@@ -108,15 +89,15 @@ class TestLearnSpell:
 
     @pytest.mark.asyncio
     async def test_tier_gate_rejects_above_level(self):
-        # AC2: a level-3 character cannot learn a Standard spell (unlocks at L4).
+        # AC2: a level-2 mage cannot learn a Standard spell (mage unlocks Standard at L3).
         cs = MagicMock()
         cs.record_learned = AsyncMock()
-        with pytest.raises(ToolError, match="level 4"):
+        with pytest.raises(ToolError, match="level 3"):
             await spell_tools._learn_spell_impl(
                 make_context(player_id="player_1"),
                 "arcane_fireball",
                 "discovery",
-                queries_mod=_queries_mod(level=3),
+                queries_mod=_queries_mod(level=2, archetype="mage"),
                 spells_mod=_spells_mod(_spell(tier="standard")),
                 character_spells_mod=cs,
             )
@@ -130,11 +111,27 @@ class TestLearnSpell:
             make_context(player_id="player_1"),
             "arcane_fireball",
             "discovery",
-            queries_mod=_queries_mod(level=4),
+            queries_mod=_queries_mod(level=3, archetype="mage"),
             spells_mod=_spells_mod(_spell(tier="standard")),
             character_spells_mod=cs,
         )
         cs.record_learned.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_non_caster_archetype_cannot_learn_spells(self):
+        # A non-caster (no spell-tier table) is rejected with a clear tool error.
+        cs = MagicMock()
+        cs.record_learned = AsyncMock()
+        with pytest.raises(ToolError, match="cannot learn spells"):
+            await spell_tools._learn_spell_impl(
+                make_context(player_id="player_1"),
+                "arcane_fireball",
+                "discovery",
+                queries_mod=_queries_mod(level=20, archetype="warrior"),
+                spells_mod=_spells_mod(_spell(tier="cantrip")),
+                character_spells_mod=cs,
+            )
+        cs.record_learned.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_invalid_source_raises(self):

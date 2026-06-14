@@ -5,6 +5,7 @@ import { CachedImage } from "@/components/cached-image";
 import { ThemedText } from "@/components/themed-text";
 import { characterStore } from "@/stores/character-store";
 import { panelStore } from "@/stores/panel-store";
+import { formatSpellDisplayRow } from "@/utils/spell-display";
 import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 
 const ATTR_ABBREV: Record<string, string> = {
@@ -208,6 +209,39 @@ export function CharacterSheetPanel() {
               </ThemedText>
             </View>
           )}
+
+          {/* Spells (core + learned/prepared) — magic.md:299. A dot tints teal when
+              prepared, ash when not; tier + focus are glanceable right-aligned tags. */}
+          {detail.spells &&
+            (
+              [
+                ["CORE SPELLS", detail.spells.core],
+                ["LEARNED SPELLS", detail.spells.learned],
+              ] as const
+            ).map(([label, rows]) =>
+              rows.length > 0 ? (
+                <View key={label} style={styles.skillGroup}>
+                  <ThemedText style={styles.skillGroupLabel}>{label}</ThemedText>
+                  {rows.map((spell) => {
+                    const display = formatSpellDisplayRow(spell);
+                    return (
+                      <View key={spell.spell_id} style={styles.skillRow}>
+                        <View style={styles.skillLeft}>
+                          <View
+                            style={[styles.spellDot, { backgroundColor: display.preparedColor }]}
+                          />
+                          <ThemedText style={styles.skillName}>{display.name}</ThemedText>
+                        </View>
+                        <View style={styles.spellRight}>
+                          <ThemedText style={styles.spellTag}>{display.tierLabel}</ThemedText>
+                          <ThemedText style={styles.spellTag}>{display.focusBadge}</ThemedText>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : null,
+            )}
         </>
       )}
     </ScrollView>
@@ -301,6 +335,9 @@ const styles = StyleSheet.create({
   },
   skillName: { ...FontStyles.body, fontSize: 14, color: BrandColors.bone },
   skillMod: { ...FontStyles.system, fontSize: 12 },
+  spellDot: { width: 5, height: 5, borderRadius: 2.5 },
+  spellRight: { flexDirection: "row", alignItems: "center", gap: Spacing.two },
+  spellTag: { ...FontStyles.system, fontSize: 11, color: BrandColors.ash },
   section: { marginTop: Spacing.three },
   sectionLabel: {
     ...FontStyles.system,

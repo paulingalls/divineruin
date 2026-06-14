@@ -317,23 +317,23 @@ async def _mark_skill_breakthrough_impl(
 async def request_attack(
     context: RunContext[SessionData],
     target_id: str,
-    weapon_or_spell: str,
+    weapon_name: str,
 ) -> str:
-    """Resolve an attack against an NPC target. Provide the target NPC ID and
-    the name of the weapon or spell being used. Narrate the result using
-    the narrative_hint field."""
-    return await _request_attack_impl(context, target_id, weapon_or_spell)
+    """Resolve a WEAPON attack against an NPC target. Provide the target NPC ID
+    and the name of the weapon being used. For spells, call cast_spell instead —
+    this tool is weapon-only. Narrate the result using the narrative_hint field."""
+    return await _request_attack_impl(context, target_id, weapon_name)
 
 
 async def _request_attack_impl(
     context: RunContext[SessionData],
     target_id: str,
-    weapon_or_spell: str,
+    weapon_name: str,
     *,
     queries=db_queries,
     mutations=db_mutations,
 ) -> str:
-    logger.info("request_attack called: target_id=%s, weapon_or_spell=%s", target_id, weapon_or_spell)
+    logger.info("request_attack called: target_id=%s, weapon_name=%s", target_id, weapon_name)
     session: SessionData = context.userdata
 
     player = await queries.get_player(session.player_id)
@@ -343,12 +343,12 @@ async def _request_attack_impl(
     equipment = player.get("equipment", {})
     weapon = None
     for _slot, item in equipment.items():
-        if isinstance(item, dict) and item.get("name", "").lower() == weapon_or_spell.lower():
+        if isinstance(item, dict) and item.get("name", "").lower() == weapon_name.lower():
             weapon = item
             break
 
     if weapon is None:
-        raise ToolError(f"Weapon '{weapon_or_spell}' not found in equipment.")
+        raise ToolError(f"Weapon '{weapon_name}' not found in equipment.")
 
     target = await queries.get_npc_combat_stats(target_id)
     if target is None:
@@ -383,7 +383,7 @@ async def _request_attack_impl(
     )
 
     hit_miss = "hit" if result.hit else "miss"
-    session.record_event(f"Attack on {target_id} with {weapon_or_spell}: {hit_miss}, {result.damage} damage")
+    session.record_event(f"Attack on {target_id} with {weapon_name}: {hit_miss}, {result.damage} damage")
 
     response = {
         "hit": result.hit,

@@ -20,6 +20,8 @@ import logging
 from dataclasses import dataclass
 from typing import Literal, get_args
 
+import spells
+
 logger = logging.getLogger("divineruin.abilities")
 
 AbilityType = Literal["core", "reaction", "elective"]
@@ -46,6 +48,11 @@ class Ability:
     cost: Cost
     effect: str
     narration_cue: str
+    # Set on caster CORE rows that are spell-backed (Arcane Bolt, Sacred Flame, …).
+    # The row is the archetype ACCESS grant + narration flavor; the cast DATA
+    # (cost/effect/level) is composed from content/spells.json via this id, so the
+    # catalog stays the single source for that data (no drift). None for non-spell rows.
+    spell_id: str | None = None
 
 
 # Module-level runtime-loaded abilities, keyed by ability id. Populated by
@@ -89,12 +96,32 @@ def parse_ability_row(ability_id: str, data: dict) -> Ability:
             name=data["name"],
             ability_type=ability_type,
             level_requirement=level_requirement,
-            cost=_parse_cost(data["cost"], f"{ability_id}.cost"),
+            cost=_resolve_cost(ability_id, data),
             effect=data["effect"],
             narration_cue=data["narration_cue"],
+            spell_id=data.get("spell_id"),
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed archetype_abilities row {ability_id!r}: {e}") from e
+
+
+def _resolve_cost(ability_id: str, data: dict) -> Cost:
+    """Resolve an ability's Cost. The Focus cost is the one piece of cast DATA shared
+    with the spell catalog, so a spell-backed core row (spell_id present) does NOT
+    author its own cost — it composes Cost(0, spell.focus_cost, None) from the catalog,
+    keeping that number single-sourced (no drift between the activation and cast paths,
+    Try 2). Everything else on the row (effect, narration, level) stays per-archetype.
+
+    Fails loud if the spell is unknown/not loaded — the catalog must load before
+    abilities (load_spells before load_abilities at startup; seed_spells before
+    seed_abilities in tests). Spells cost Focus, never Stamina, so stamina is 0.
+    """
+    spell_id = data.get("spell_id")
+    if spell_id is not None:
+        if not isinstance(spell_id, str):
+            raise ValueError(f"ability {ability_id!r} spell_id is not a string")
+        return Cost(stamina=0, focus=spells.get_spell(spell_id).focus_cost, scaling=None)
+    return _parse_cost(data["cost"], f"{ability_id}.cost")
 
 
 def set_abilities(config: dict[str, Ability]) -> None:

@@ -328,7 +328,7 @@ async def _run_request_attack(*, hit, critical, target_ac):
         patch.object(check_tools, "publish_game_event", AsyncMock()),
     ):
         await check_tools._request_attack_impl(
-            ctx, target_id="goblin_1", weapon_or_spell="Longsword", queries=queries, mutations=mutations
+            ctx, target_id="goblin_1", weapon_name="Longsword", queries=queries, mutations=mutations
         )
     return ctx.userdata
 

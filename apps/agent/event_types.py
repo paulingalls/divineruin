@@ -40,6 +40,22 @@ ITEM_DURABILITY_HIT = "item_durability_hit"
 QUEST_UPDATED = "quest_updated"
 QUEST_UPDATE = "quest_update"  # client-only alias for QUEST_UPDATED
 
+# Magic (M3.1)
+# Resonance state push: carries the qualitative {state} only on the game_events topic
+# — the raw number never crosses to the client (no-number spec magic.md:98, story-004).
+# Mirror const in apps/mobile/src/audio/event-types.ts.
+RESONANCE_CHANGED = "resonance_changed"
+
+# Magic (M3.2) — Veil Ward toggle push: carries the minimal {active} only (the HUD shows a
+# glanceable on/off zone indicator; the source archetype is narration the DM voices, not wire
+# state). Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
+VEIL_WARD_CHANGED = "veil_ward_changed"
+
+# Magic (M3.2) — Hollow Echo result push: carries the qualitative {band} only (the dramatic
+# dice overlay maps band -> label/colour; the raw roll stays server-side, no-number discipline).
+# Auto-rolled by cast_spell at Overreach. Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
+HOLLOW_ECHO_RESULT = "hollow_echo_result"
+
 # World
 HOLLOW_CORRUPTION_CHANGED = "hollow_corruption_changed"
 DISPOSITION_CHANGED = "disposition_changed"

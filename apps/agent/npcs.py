@@ -10,40 +10,21 @@ It complements the async db_content_queries.get_npc() (Valkey+Postgres, used by 
 handlers that already await): same source rows, different timing/shape. NPC records
 are static content, so the catalog is loaded once and never invalidated.
 
-Each loader owns its own fail-loud validation — the npcs.json row IS the contract.
-default_disposition is validated against the canonical 5-tier ladder (the shared
-role_archetypes.DISPOSITIONS SSOT), and role_archetype is required: story-004 binds
+Generic field validation comes from the shared catalog_parse module — the npcs.json row
+IS the contract. default_disposition is validated against the canonical 5-tier ladder (the
+shared role_archetypes.DISPOSITIONS SSOT), and role_archetype is required: story-004 binds
 every NPC to a catalog archetype.
 """
 
 import json
 import logging
 
+from catalog_parse import parse_dict, parse_str, parse_str_list
 from role_archetypes import DISPOSITIONS
 
 logger = logging.getLogger("divineruin.npcs")
 
 _npcs: dict[str, dict] = {}
-
-
-def _parse_str(raw: object, ctx: str) -> str:
-    if not isinstance(raw, str):
-        raise ValueError(f"{ctx} is not a string")
-    return raw
-
-
-def _parse_str_list(raw: object, ctx: str) -> list[str]:
-    if not isinstance(raw, list):
-        raise ValueError(f"{ctx} is not a list")
-    for i, x in enumerate(raw):
-        _parse_str(x, f"{ctx}[{i}]")
-    return raw
-
-
-def _parse_dict(raw: object, ctx: str) -> dict:
-    if not isinstance(raw, dict):
-        raise ValueError(f"{ctx} is not an object")
-    return raw
 
 
 def parse_npc_row(npc_id: str, data: dict) -> dict:
@@ -55,16 +36,16 @@ def parse_npc_row(npc_id: str, data: dict) -> dict:
     the row id for context.
     """
     try:
-        _parse_str(data["name"], f"{npc_id}.name")
-        _parse_str(data["role"], f"{npc_id}.role")
-        _parse_str(data["role_archetype"], f"{npc_id}.role_archetype")
-        _parse_str(data["speech_style"], f"{npc_id}.speech_style")
-        _parse_str(data["voice_id"], f"{npc_id}.voice_id")
-        _parse_str(data["faction"], f"{npc_id}.faction")
-        _parse_str_list(data["personality"], f"{npc_id}.personality")
-        _parse_dict(data["knowledge"], f"{npc_id}.knowledge")
-        _parse_dict(data["schedule"], f"{npc_id}.schedule")
-        disposition = _parse_str(data["default_disposition"], f"{npc_id}.default_disposition")
+        parse_str(data["name"], f"{npc_id}.name")
+        parse_str(data["role"], f"{npc_id}.role")
+        parse_str(data["role_archetype"], f"{npc_id}.role_archetype")
+        parse_str(data["speech_style"], f"{npc_id}.speech_style")
+        parse_str(data["voice_id"], f"{npc_id}.voice_id")
+        parse_str(data["faction"], f"{npc_id}.faction")
+        parse_str_list(data["personality"], f"{npc_id}.personality")
+        parse_dict(data["knowledge"], f"{npc_id}.knowledge")
+        parse_dict(data["schedule"], f"{npc_id}.schedule")
+        disposition = parse_str(data["default_disposition"], f"{npc_id}.default_disposition")
         if disposition not in DISPOSITIONS:
             raise ValueError(f"{npc_id}.default_disposition {disposition!r} not in {DISPOSITIONS}")
         return data
