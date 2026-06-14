@@ -334,6 +334,14 @@ async def dm_session(ctx: agents.JobContext) -> None:
             patron_id=patron_id,
         )
 
+        # Fresh session: rehydrate persisted resonance/veil_ward/concentration from players.data,
+        # increment the player session_count once, and set+persist the gated Thessyn flickering_bonus
+        # (M3.5 / story-004). dm_session runs once per fresh session (reconnects reuse SessionData via
+        # _setup_reconnection), so the counter ticks exactly once.
+        from session_hydration import hydrate_session_state
+
+        await hydrate_session_state(userdata, player)
+
         if player.get("flags", {}).get("companion_met"):
             from companion_relationship_queries import hydrate_companion_state
 
