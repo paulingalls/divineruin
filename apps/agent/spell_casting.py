@@ -64,6 +64,7 @@ import racial_resonance
 import resonance as resonance_mod
 import resonance_events
 import spells
+import vaelti_echo_warning
 import veil_ward as veil_ward_mod
 from db_errors import db_tool
 from session_data import SessionData
@@ -134,6 +135,7 @@ async def _cast_spell_impl(
     dice_mod=dice,
     echo_events_mod=hollow_echo_events,
     racial_mod=racial_resonance,
+    vaelti_warning_mod=vaelti_echo_warning,
     concentration_mutations_mod=db_mutations_concentration,
 ) -> str:
     context.disallow_interruptions()
@@ -248,12 +250,14 @@ async def _cast_spell_impl(
     # narrate the consequence and pushed to the client's dramatic-dice overlay.
     if state == "overreach":
         roll = dice_mod.roll("d20").total
-        # Vaelti Hyper-awareness (spec 246-252): advantage on the Hollow Echo save — roll a second
-        # d20 and take the better, shifting the result milder. The 1-round advance warning is a
-        # separate deferred-event hook with no consumer yet (concern 7e812546829a).
+        # Vaelti Hyper-awareness (spec 246-252) has two effects on the same passive: advantage on
+        # the Hollow Echo save (roll a second d20, take the better -> milder band) AND a 1-round
+        # advance warning. The warning is a bus-only deferred event the background process voices a
+        # heartbeat before the echo lands (story-009 consumer; was concern 7e812546829a).
         advantage_roll = None
         if race == "vaelti" and racial_mod.get_racial_resonance_modifier("vaelti", "echo_save_advantage"):
             advantage_roll = dice_mod.roll("d20").total
+            vaelti_warning_mod.publish_vaelti_echo_warning(session)
         echo = hollow_echo.resolve_hollow_echo(
             roll,
             session.resonance.current,
