@@ -1,7 +1,8 @@
 import { StyleSheet, View } from "react-native";
 
+import { pillChassis } from "@/components/hud/pill-chassis";
 import { ThemedText } from "@/components/themed-text";
-import { BrandColors, FontStyles, Radius, Spacing } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 import { RESONANCE_DISPLAY, resonanceTrackerBottom, type ResonanceState } from "@/stores/hud-store";
 
 interface ResonanceTrackerProps {
@@ -36,16 +37,8 @@ export function ResonanceTracker({
 
 const styles = StyleSheet.create({
   container: {
-    position: "absolute",
+    ...pillChassis,
     right: Spacing.three,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.two,
-    backgroundColor: `${BrandColors.ink}E6`, // 90% opacity
-    borderWidth: 1,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 4,
   },
   label: {
     ...FontStyles.system,

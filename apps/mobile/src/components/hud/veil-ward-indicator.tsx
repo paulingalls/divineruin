@@ -1,7 +1,8 @@
 import { StyleSheet, View } from "react-native";
 
+import { pillChassis } from "@/components/hud/pill-chassis";
 import { ThemedText } from "@/components/themed-text";
-import { BrandColors, FontStyles, Radius, Spacing } from "@/constants/theme";
+import { BrandColors, FontStyles, Spacing } from "@/constants/theme";
 import { resonanceTrackerBottom } from "@/stores/hud-store";
 
 interface VeilWardIndicatorProps {
@@ -40,17 +41,9 @@ export function VeilWardIndicator({
 
 const styles = StyleSheet.create({
   container: {
-    position: "absolute",
+    ...pillChassis,
     left: Spacing.three,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.two,
-    backgroundColor: `${BrandColors.ink}E6`, // 90% opacity
-    borderWidth: 1,
     borderColor: BrandColors.hollow,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 4,
   },
   dot: {
     width: 6,
