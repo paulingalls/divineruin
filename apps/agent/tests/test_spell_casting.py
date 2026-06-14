@@ -245,7 +245,7 @@ class TestCastSpellResonance:
 
     async def test_cast_uses_catalog_resonance_over_formula(self):
         # The catalog's designed resonance_by_source is the SSOT, even when it deviates
-        # from the source*focus formula (12/58 spells do — decision resonance-by-source-ssot).
+        # from the source*focus formula (a subset of catalog spells do — decision resonance-by-source-ssot).
         # focus_cost=10 arcane -> formula ceil(10*0.6)=6, but the designed value (3) wins.
         packet, _ctx, _p, _m, _ev = await _cast(_spell(source="arcane", focus_cost=10, resonance=3), start_resonance=0)
         assert packet["resonance_generated"] == 3
