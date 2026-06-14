@@ -151,6 +151,61 @@ def test_negative_ward_bonus_fails_loud():
         hollow_echo.resolve_hollow_echo(10, 9, ward_bonus=-4)
 
 
+# --- Vaelti echo-save advantage: best of two rolls (M3.4 story-004, spec 246-252) ---
+# Advantage = roll two d20s, take the higher (higher -> milder band). The engine takes the
+# second roll (advantage_roll); the caller supplies both (story-006 rolls it for a Vaelti).
+
+
+@pytest.mark.parametrize(
+    "d20_roll,advantage_roll,expected_base,expected_band",
+    [
+        # A Breach-bound low primary is rescued by a high advantage roll (max 18 -> Nothing).
+        (3, 18, 18, "nothing"),
+        # The primary already higher than the advantage roll wins (max stays 14).
+        (14, 5, 14, "whisper"),
+        # Equal rolls behave like a single roll.
+        (8, 8, 8, "sympathetic"),
+    ],
+)
+def test_advantage_takes_the_milder_of_two_rolls(d20_roll, advantage_roll, expected_base, expected_band):
+    result = hollow_echo.resolve_hollow_echo(d20_roll, 9, advantage_roll=advantage_roll)
+    assert result.effective_roll == expected_base  # res 9 -> no modifier, no ward
+    assert result.band == expected_band
+
+
+def test_advantage_is_never_harsher_than_no_advantage():
+    # Advantage only ever helps: across every (primary, advantage) pair the effective roll is
+    # >= the no-advantage roll, so the band is the same or milder.
+    for d20_roll in range(1, 21):
+        plain = hollow_echo.resolve_hollow_echo(d20_roll, 12)  # independent of advantage_roll
+        for advantage_roll in range(1, 21):
+            adv = hollow_echo.resolve_hollow_echo(d20_roll, 12, advantage_roll=advantage_roll)
+            assert adv.effective_roll >= plain.effective_roll
+
+
+def test_advantage_roll_defaults_to_none_unchanged():
+    # Omitting advantage_roll matches the single-roll path (no second die).
+    assert (
+        hollow_echo.resolve_hollow_echo(10, 9).effective_roll
+        == hollow_echo.resolve_hollow_echo(10, 9, advantage_roll=None).effective_roll
+    )
+
+
+@pytest.mark.parametrize("bad_roll", [0, 21, -1])
+def test_advantage_roll_out_of_range_fails_loud(bad_roll):
+    # The second roll is a real d20 — validated 1-20 like the primary.
+    with pytest.raises(ValueError):
+        hollow_echo.resolve_hollow_echo(10, 9, advantage_roll=bad_roll)
+
+
+def test_advantage_still_honors_primary_and_overreach_guards():
+    # The primary d20 range guard and the Overreach floor still fire with advantage supplied.
+    with pytest.raises(ValueError):
+        hollow_echo.resolve_hollow_echo(0, 9, advantage_roll=15)  # bad primary
+    with pytest.raises(ValueError):
+        hollow_echo.resolve_hollow_echo(10, 8, advantage_roll=15)  # below Overreach
+
+
 # --- result shape: each band carries a display name + mechanical descriptor ----
 
 
