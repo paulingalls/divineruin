@@ -158,6 +158,10 @@ class SessionData:
     weapon_used_this_encounter: bool = False
     weapon_crit_vs_heavy: bool = False
 
+    # Draethar Inner Fire is once-per-encounter (story-005, M3.4). Set by the inner_fire tool,
+    # reset at both encounter boundaries beside the weapon flags above.
+    draethar_inner_fire_used: bool = False
+
     # Cached data for hot context (updated by background process, read by voice loop)
     cached_location_name: str = ""
     cached_npc_names: list[str] = field(default_factory=list)
