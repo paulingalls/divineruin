@@ -192,6 +192,14 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if not spells_is_loaded():
         await load_spells()
 
+    # Load the racial Resonance bonus table once per agent process (M3.4 — story-001).
+    # The M3.4 racial cast-time wiring reads it via get_racial_resonance_modifier.
+    from racial_resonance import is_loaded as racial_resonance_is_loaded
+    from racial_resonance import load_racial_resonance
+
+    if not racial_resonance_is_loaded():
+        await load_racial_resonance()
+
     # Load the archetype abilities once per agent process (M2.2). The DM voices
     # ability activations via request_ability_activation, which reads this map.
     from abilities import is_loaded as abilities_is_loaded

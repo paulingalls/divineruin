@@ -314,6 +314,7 @@ async def main() -> None:
     from mentor_variants import load_mentor_variants
     from milestones import load_milestones
     from npcs import load_npcs
+    from racial_resonance import load_racial_resonance
     from role_archetypes import load_role_archetypes
     from spells import load_spells
     from training_rules import load_training_activity_types
@@ -323,6 +324,7 @@ async def main() -> None:
     # Spells before abilities: spell-backed caster CORE rows compose their cast DATA
     # from the spell catalog at parse time (Try 2), so the catalog must load first.
     await load_spells()
+    await load_racial_resonance()
     await load_abilities()
     await load_milestones()
     await load_mentor_variants()

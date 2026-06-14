@@ -1,0 +1,32 @@
+[
+  {
+    "id": "human",
+    "name": "Adaptive Resonance",
+    "modifiers": { "decay_bonus": 1 }
+  },
+  {
+    "id": "korath",
+    "name": "Earth-anchored",
+    "modifiers": { "primal_reduction": 1 }
+  },
+  {
+    "id": "thessyn",
+    "name": "Deep Adaptation",
+    "modifiers": { "flickering_threshold_bonus": 1 }
+  },
+  {
+    "id": "vaelti",
+    "name": "Hyper-awareness",
+    "modifiers": { "echo_save_advantage": true }
+  },
+  {
+    "id": "draethar",
+    "name": "Inner Fire",
+    "modifiers": { "inner_fire_resonance_reduction": 3, "inner_fire_self_damage": "1d6" }
+  },
+  {
+    "id": "elari",
+    "name": "Veil-sense",
+    "modifiers": { "veil_sense": true, "resonance_arcana_bonus": 1 }
+  }
+]
