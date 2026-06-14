@@ -23,6 +23,7 @@ import pytest
 
 from racial_resonance import (
     RacialResonance,
+    compute_flickering_bonus,
     get_racial_resonance_modifier,
     is_loaded,
     load_racial_resonance,
@@ -227,3 +228,33 @@ async def test_load_populates_from_pool(monkeypatch):
     assert is_loaded() is True
     assert get_racial_resonance_modifier("human", "decay_bonus") == 1
     assert get_racial_resonance_modifier("draethar", "inner_fire_self_damage") == "1d6"
+
+
+# --- compute_flickering_bonus gate (Thessyn Deep Adaptation, spec 270-276) -----
+
+
+def test_flickering_bonus_thessyn_at_threshold_returns_seeded_bonus():
+    # Exactly 10 sessions meets the gate -> the seeded flickering_threshold_bonus (1).
+    _seed_from_content()
+    assert compute_flickering_bonus("thessyn", 10) == 1
+
+
+def test_flickering_bonus_thessyn_below_threshold_returns_zero():
+    # 9 sessions is below the gate -> no band-shift yet.
+    _seed_from_content()
+    assert compute_flickering_bonus("thessyn", 9) == 0
+
+
+@pytest.mark.parametrize("race", ["human", "korath", "vaelti", "draethar", "elari"])
+def test_flickering_bonus_non_thessyn_is_zero_at_any_count(race):
+    # The band-shift is Thessyn-only; a non-Thessyn never gets it regardless of session count
+    # (and the gate must not even hit the thessyn lookup for them).
+    _seed_from_content()
+    assert compute_flickering_bonus(race, 50) == 0
+
+
+@pytest.mark.parametrize("session_count,expected", [(0, 0), (9, 0), (10, 1), (50, 1)])
+def test_flickering_bonus_gate_flips_at_ten_for_thessyn(session_count, expected):
+    # The gate flips exactly at 10 across the loaded racial table (AC4 boundary).
+    _seed_from_content()
+    assert compute_flickering_bonus("thessyn", session_count) == expected
