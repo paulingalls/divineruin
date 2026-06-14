@@ -15,7 +15,7 @@ pure and take plain int/bool params; only the call sites read this lookup.
 The table is HETEROGENEOUS — each race carries only its own modifier keys, stored in the
 exact param shapes the downstream engines expect, so a call site forwards the looked-up
 value verbatim (human decay_bonus=1 -> apply_resonance_decay racial_modifier=1; vaelti
-echo_save_advantage=True -> resolve_hollow_echo advantage=True; draethar 3 / "1d6").
+echo_save_advantage=True -> resolve_hollow_echo advantage_roll=<second d20>; draethar 3 / "1d6").
 get_racial_resonance_modifier FAILS LOUD on an unknown race or an unknown modifier_type for
 that race (never a silent default) — call sites guard by race, so the strictness is safe and
 surfaces a wiring defect immediately (fail-fast, fail-loud).
@@ -44,7 +44,7 @@ logger = logging.getLogger("divineruin.racial_resonance")
 #   human decay_bonus      -> apply_resonance_decay(racial_modifier=) : +1 => decay 2/round (exists)
 #   korath primal_reduction-> story-003 primal-reduction helper       : subtract from generation
 #   thessyn flickering_..  -> story-003 ADDS get_resonance_state(flickering_bonus=) : band 5-8 -> 6-9
-#   vaelti echo_save_advantage -> story-004 ADDS resolve_hollow_echo(advantage=)    : best-of-two save
+#   vaelti echo_save_advantage -> story-004 resolve_hollow_echo(advantage_roll=2nd d20): best-of-two save
 #   draethar inner_fire_*  -> story-005 Inner Fire tool               : -3 Resonance, "1d6" self fire
 #   elari veil_sense / resonance_arcana_bonus -> passive sensing narration (no cast consumer yet)
 _EXPECTED_MODIFIERS: dict[str, dict[str, type]] = {
