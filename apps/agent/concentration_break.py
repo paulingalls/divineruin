@@ -49,6 +49,10 @@ async def break_concentration_on_damage(
     save_total = 0
     if not incapacitated:
         player = await queries.get_player(session.player_id)
+        if player is None:
+            # The player row is gone (a data glitch — an in-combat caster should always exist). Fail
+            # safe: don't roll an unfounded save and don't strip their spell; leave concentration as-is.
+            return None
         save_total = resolver.resolve_saving_throw(player, "constitution", dc, "concentration").total
 
     if concentration.concentration_holds(save_total, dc, incapacitated=incapacitated):

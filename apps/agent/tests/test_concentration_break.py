@@ -89,6 +89,21 @@ class TestBreakConcentrationOnDamage:
         resolver.resolve_saving_throw.assert_not_called()
         cm.update_player_concentration.assert_not_called()
 
+    async def test_missing_player_holds_concentration(self):
+        # A vanished player row (data glitch) fails safe: no save rolled, concentration untouched.
+        session = _session("arcane_fly")
+        queries, resolver, cm = _deps(save_total=1)
+        queries.get_player = AsyncMock(return_value=None)
+
+        broken = await break_concentration_on_damage(
+            session, 10, incapacitated=False, queries=queries, resolver=resolver, concentration_mutations=cm
+        )
+
+        assert broken is None
+        assert session.concentration.spell_id == "arcane_fly"
+        resolver.resolve_saving_throw.assert_not_called()
+        cm.update_player_concentration.assert_not_called()
+
     async def test_zero_damage_is_noop(self):
         # A missed attack (0 damage) never threatens concentration — no save rolled.
         session = _session("arcane_fly")
