@@ -1,13 +1,11 @@
 import { timingSafeEqual } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { sql } from "./db.ts";
-import { IS_TEST_ENV } from "./env.ts";
 import { parseJsonBody } from "./middleware.ts";
 import { normalizeEmail } from "./email.ts";
+import { sendVerificationEmail } from "./email-transport.ts";
 
 const JWT_SECRET_HEX = Bun.env.JWT_SECRET ?? "";
-const RESEND_API_KEY = Bun.env.RESEND_API_KEY ?? "";
-const RESEND_FROM_EMAIL = Bun.env.RESEND_FROM_EMAIL ?? "auth@divineruin.com";
 
 const JWT_EXPIRY = "30d";
 const CODE_EXPIRY_MINUTES = 10;
@@ -99,29 +97,10 @@ export async function handleRequestCode(req: Request): Promise<Response> {
     VALUES (${account.id}, ${code}, ${expiresAt})
   `;
 
-  // Send email via Resend
-  if (RESEND_API_KEY && !IS_TEST_ENV) {
-    try {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${RESEND_API_KEY}`,
-        },
-        body: JSON.stringify({
-          from: RESEND_FROM_EMAIL,
-          to: rawEmail,
-          subject: "Divine Ruin - Your verification code",
-          text: `Your verification code is: ${code}\n\nThis code expires in ${CODE_EXPIRY_MINUTES} minutes.`,
-        }),
-        signal: AbortSignal.timeout(5000),
-      });
-    } catch (e) {
-      console.error("[auth] Failed to send email:", e instanceof Error ? e.message : e);
-    }
-  } else if (Bun.env.NODE_ENV !== "production") {
-    console.log(`[auth] DEV CODE for ${rawEmail}: ${code}`);
-  }
+  // Deliver the code through the email edge seam — it owns mock-vs-real
+  // transport selection (and the dev-code log fallback), so no env can route a
+  // test/e2e run to the live Resend API.
+  await sendVerificationEmail(rawEmail, code, CODE_EXPIRY_MINUTES);
 
   return Response.json({ ok: true });
 }

@@ -55,6 +55,11 @@ const serverWebServer = {
       process.env.JWT_SECRET ?? "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
     NODE_ENV: "development",
     RATE_LIMIT_BYPASS: "1",
+    // Never hit the real Resend API from e2e. NODE_ENV=development leaves
+    // IS_TEST_ENV false, so the email seam's auto-mock doesn't engage — set the
+    // transport explicitly. The auth spec reads its code from the DB, so the
+    // outbound send has no test value anyway.
+    EMAIL_TRANSPORT: "mock",
   },
 };
 
