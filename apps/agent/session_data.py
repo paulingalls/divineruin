@@ -62,6 +62,24 @@ class VeilWardState:
 
 
 @dataclass
+class ConcentrationState:
+    """Per-caster spell concentration carried in the session (story-002, M3.4).
+
+    A caster sustains at most ONE concentration spell at a time; ``spell_id`` is that spell
+    (None = not concentrating). The cast keystone (story-006) sets it on a concentration cast
+    and ends any prior one (single-concentration enforcement), persisted via
+    db_mutations_concentration. Like ResonanceTrack/VeilWardState, only the authoritative id
+    is stored — ``is_active`` is always derived, no cached flag to drift. Defaults to inactive.
+    """
+
+    spell_id: str | None = None
+
+    @property
+    def is_active(self) -> bool:
+        return self.spell_id is not None
+
+
+@dataclass
 class CombatParticipant:
     id: str
     name: str
@@ -124,6 +142,7 @@ class SessionData:
     companion: CompanionState | None = None
     resonance: ResonanceTrack = field(default_factory=ResonanceTrack)
     veil_ward: VeilWardState = field(default_factory=VeilWardState)
+    concentration: ConcentrationState = field(default_factory=ConcentrationState)
     corruption_level: int = 0
     patron_id: str = "none"
     creation_state: CreationState | None = None
