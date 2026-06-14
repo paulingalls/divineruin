@@ -28,7 +28,8 @@ Decisions resolved by this story:
 Consumers (later stories/milestones): persistence (story-002) stores the value the
 state derives from; rest wiring (story-003) resets it; M3.3 cast_spell calls
 calculate_resonance_generated and consumes get_state_modifiers for spell damage;
-M3.4 wires the Human racial_modifier into apply_resonance_decay.
+M3.5 story-010 wires apply_resonance_decay into the cast path (cast-paced per-round
+decay), passing the Human racial_modifier from the racial table.
 """
 
 import math
@@ -125,8 +126,9 @@ def apply_resonance_decay(current_resonance: int, racial_modifier: int = 0) -> i
     """Return Resonance after one round of decay; never below 0 (spec 126-131).
 
     Standard decay is 1 per round. The Human racial (Adaptive Resonance) passes
-    racial_modifier=1 to decay 2 per round — M3.4 wires that value from the racial
-    table; this function only exposes the parameter.
+    racial_modifier=1 to decay 2 per round. M3.5 story-010 is the live consumer:
+    spell_casting._cast_spell_impl calls this cast-paced (one round shed per real
+    cast), passing the Human modifier from the racial table.
     """
     return max(0, current_resonance - (1 + racial_modifier))
 
