@@ -2,6 +2,7 @@ import { StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors, FontStyles } from "@/constants/theme";
+import { HUD_ANCHORS } from "@/constants/hud-anchors";
 
 interface DivineFavorToastProps {
   payload: Record<string, unknown>;
@@ -28,7 +29,7 @@ export function DivineFavorToast({ payload }: DivineFavorToastProps) {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    bottom: 80,
+    bottom: HUD_ANCHORS.bottomToast,
     alignSelf: "center",
   },
   text: {

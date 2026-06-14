@@ -11,6 +11,7 @@ from environment_tools import play_sound, set_music_state
 from query_tools import query_info
 from spell_casting import cast_spell, get_spell_info
 from system_prompts import COMBAT_SYSTEM_PROMPT
+from veil_ward_tools import activate_veil_ward
 
 # resolve_milestone is intentionally NOT here: combat never awards XP (end_combat hands
 # back to the exploration agent, which calls award_xp), so milestones never resolve in
@@ -27,6 +28,7 @@ COMBAT_AGENT_TOOLS = [
     request_ability_activation,
     cast_spell,
     get_spell_info,
+    activate_veil_ward,
 ]
 
 

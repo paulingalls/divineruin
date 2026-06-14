@@ -9,13 +9,14 @@ import { parseSpellRows } from "@/utils/spell-display";
 import { sessionStore, type CombatDifficulty, type StoryMoment } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
-import { hudStore } from "@/stores/hud-store";
+import { hudStore, HOLLOW_ECHO_DISPLAY } from "@/stores/hud-store";
 import { panelStore } from "@/stores/panel-store";
 import { portraitStore } from "@/stores/portrait-store";
 import type {
   Combatant,
   CombatTrackerState,
   CreationCard,
+  HollowEchoBand,
   ResonanceState,
 } from "@/stores/hud-store";
 import type {
@@ -54,6 +55,13 @@ export const VALID_RESONANCE_STATES = new Set<ResonanceState>([
   "flickering",
   "overreach",
 ]);
+
+// The 7 Hollow Echo bands (M3.2) — derived from HOLLOW_ECHO_DISPLAY so the band list
+// has a single runtime source of truth (the HollowEchoBand union types the keys). An
+// echo payload whose band isn't one of these is dropped (fail-safe), never rendered.
+export const VALID_HOLLOW_ECHO_BANDS = new Set<HollowEchoBand>(
+  Object.keys(HOLLOW_ECHO_DISPLAY) as HollowEchoBand[],
+);
 
 function parseRarity(value: unknown): ItemRarity {
   return typeof value === "string" && VALID_RARITIES.has(value as ItemRarity)
@@ -119,6 +127,8 @@ const SAFE_API_PATH_RE = /^\/api\/[a-zA-Z0-9/_.-]+$/;
 export const DICE_STINGER_DELAY_MS = 600;
 /** TTL for dice roll overlay — longer than default to account for tumble animation. */
 export const DICE_ROLL_TTL_MS = 5000;
+/** TTL for the dramatic Hollow Echo band overlay — lingers so the band is glanceable. */
+export const HOLLOW_ECHO_TTL_MS = 5000;
 /** Name of the companion character for portrait visibility. */
 const COMPANION_NAME = "Kael";
 let _diceStingerTimer: ReturnType<typeof setTimeout> | null = null;
@@ -469,6 +479,23 @@ export function handleGameEvent(event: DataChannelEvent): void {
       // states are dropped (fail-safe) rather than corrupting the tracker.
       if (VALID_RESONANCE_STATES.has(event.state as ResonanceState)) {
         hudStore.getState().setResonanceState(event.state as ResonanceState);
+      }
+      break;
+
+    case E.HOLLOW_ECHO_RESULT:
+      // An Overreach cast tore the Veil. Flash the dramatic band overlay; only the
+      // qualitative band crosses the wire (raw d20 stays server-side). An unknown
+      // band is dropped (fail-safe) rather than rendering a blank overlay.
+      if (VALID_HOLLOW_ECHO_BANDS.has(event.band as HollowEchoBand)) {
+        hudStore.getState().pushOverlay("hollow_echo", { band: event.band }, HOLLOW_ECHO_TTL_MS);
+      }
+      break;
+
+    case E.VEIL_WARD_CHANGED:
+      // Persistent glanceable zone affordance. Only a boolean toggles it; a
+      // malformed payload leaves the ward state untouched (fail-safe).
+      if (typeof event.active === "boolean") {
+        hudStore.getState().setVeilWardActive(event.active);
       }
       break;
 

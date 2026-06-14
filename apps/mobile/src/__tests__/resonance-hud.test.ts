@@ -7,6 +7,7 @@ import {
   RESONANCE_DISPLAY,
   RESONANCE_TRACKER_BOTTOM_DEFAULT,
   RESONANCE_TRACKER_BOTTOM_IN_COMBAT,
+  RESONANCE_TRACKER_GAP,
   resonanceTrackerBottom,
   type ResonanceState,
 } from "@/stores/hud-store";
@@ -65,6 +66,49 @@ test("resonanceTrackerBottom lifts the pill above the combat tracker during comb
   expect(resonanceTrackerBottom(true)).toBe(RESONANCE_TRACKER_BOTTOM_IN_COMBAT);
   // The combat tracker anchors at bottom:80, so the in-combat offset must clear it.
   expect(RESONANCE_TRACKER_BOTTOM_IN_COMBAT).toBeGreaterThan(RESONANCE_TRACKER_BOTTOM_DEFAULT);
+});
+
+// --- Measured anchor (debt b52a56bc): a tall (many-combatant) tracker can exceed the
+// fixed 140 lift, so once the tracker reports its real height the pill clears it ---
+
+test("resonanceTrackerBottom falls back to the fixed in-combat lift before the tracker is measured", () => {
+  // Unmeasured (height 0) during combat → the conservative fixed fallback.
+  expect(resonanceTrackerBottom(true, 0)).toBe(RESONANCE_TRACKER_BOTTOM_IN_COMBAT);
+});
+
+test("resonanceTrackerBottom clears the measured tracker height plus a gap", () => {
+  // A many-combatant tracker measured at 260px would overflow the fixed 140 lift; the
+  // pill now sits at default + measuredHeight + gap so it can never overlap.
+  expect(resonanceTrackerBottom(true, 260)).toBe(
+    RESONANCE_TRACKER_BOTTOM_DEFAULT + 260 + RESONANCE_TRACKER_GAP,
+  );
+});
+
+test("resonanceTrackerBottom ignores the measured height when no combat is active", () => {
+  expect(resonanceTrackerBottom(false, 260)).toBe(RESONANCE_TRACKER_BOTTOM_DEFAULT);
+});
+
+// --- combatTrackerHeight store field: set by CombatTracker.onLayout, cleared on exit ---
+
+test("combatTrackerHeight defaults to 0 (unmeasured)", () => {
+  expect(hudStore.getState().combatTrackerHeight).toBe(0);
+});
+
+test("setCombatTrackerHeight records the measured height", () => {
+  hudStore.getState().setCombatTrackerHeight(248);
+  expect(hudStore.getState().combatTrackerHeight).toBe(248);
+});
+
+test("clearCombatState resets the measured tracker height", () => {
+  hudStore.getState().setCombatTrackerHeight(248);
+  hudStore.getState().clearCombatState();
+  expect(hudStore.getState().combatTrackerHeight).toBe(0);
+});
+
+test("reset() clears the measured tracker height", () => {
+  hudStore.getState().setCombatTrackerHeight(248);
+  hudStore.getState().reset();
+  expect(hudStore.getState().combatTrackerHeight).toBe(0);
 });
 
 // --- Event dispatch ---

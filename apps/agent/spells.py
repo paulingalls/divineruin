@@ -129,7 +129,8 @@ def get_spells_by_source(source: str) -> tuple[Spell, ...]:
     Empty tuple when the source has none loaded (e.g. an unknown source). Callers
     filter further by spell_tier (the source-keyed analogue of
     abilities.get_archetype_abilities). The level->tier unlock gate lives in
-    leveling.MIN_LEVEL_BY_SPELL_TIER, keyed by tier — spells carry no per-row level.
+    leveling.is_spell_tier_unlocked, keyed by (archetype, tier) — spells carry no
+    per-row level, and the unlock floor varies by the caster's archetype.
     """
     return tuple(s for s in _spells.values() if s.source == source)
 

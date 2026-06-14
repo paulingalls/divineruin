@@ -302,6 +302,120 @@ class TestCastSpellRealCatalog:
         mutations.update_player_resonance.assert_not_called()
 
 
+def _dice_mod(total: int):
+    """A dice module whose roll('d20') returns a fixed total (deterministic echo tests)."""
+    mod = MagicMock()
+    mod.roll = MagicMock(return_value=MagicMock(total=total))
+    return mod
+
+
+async def _cast_echo(
+    spell: Spell,
+    *,
+    focus: int = 10,
+    start_resonance: int = 0,
+    ward_active: bool = False,
+    d20: int = 10,
+):
+    """Invoke _cast_spell_impl with the M3.2 echo/ward mods injected.
+
+    veil_ward + hollow_echo run REAL (pure); dice_mod is fixed for a deterministic roll and
+    echo_events is mocked to assert the publish without touching game_events.
+    Returns (parsed_packet, ctx, echo_events_mock).
+    """
+    ctx = make_context()
+    ctx.userdata.resonance.current = start_resonance
+    ctx.userdata.veil_ward.active = ward_active
+    if ward_active:
+        ctx.userdata.veil_ward.source = "cleric"
+    mock_db, _conn = make_db_mod()
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value=_player(focus))
+    persistence = MagicMock()
+    persistence.update_player_resources = AsyncMock()
+    mutations = MagicMock()
+    mutations.update_player_resonance = AsyncMock()
+    events = MagicMock()
+    events.publish_resonance_changed = AsyncMock()
+    echo_events = MagicMock()
+    echo_events.publish_hollow_echo = AsyncMock()
+    spells_mod = MagicMock()
+    spells_mod.get_spell = MagicMock(return_value=spell)
+    raw = await _cast_spell_impl(
+        ctx,
+        spell.id,
+        db_mod=mock_db,
+        queries_mod=queries,
+        persistence_mod=persistence,
+        resonance_mutations_mod=mutations,
+        resonance_events_mod=events,
+        spells_mod=spells_mod,
+        dice_mod=_dice_mod(d20),
+        echo_events_mod=echo_events,
+    )
+    return json.loads(raw), ctx, echo_events
+
+
+class TestCastSpellHollowEcho:
+    async def test_overreach_cast_rolls_and_returns_band(self):
+        # A cast that lands the caster at Overreach (9+) auto-rolls the Hollow Echo.
+        # resonance=9 -> new 9 -> overreach; d20=18 -> effective 18 -> "nothing".
+        packet, _ctx, echo_events = await _cast_echo(_spell(resonance=9), d20=18)
+        assert packet["state"] == "overreach"
+        assert packet["hollow_echo"]["band"] == "nothing"
+        assert packet["hollow_echo"]["name"] and packet["hollow_echo"]["effect"]
+        echo_events.publish_hollow_echo.assert_awaited_once()
+
+    async def test_below_overreach_does_not_roll(self):
+        # A cast that stays below Overreach rolls no echo and carries no band.
+        packet, _ctx, echo_events = await _cast_echo(_spell(resonance=6))
+        assert packet["state"] == "flickering"
+        assert "hollow_echo" not in packet
+        echo_events.publish_hollow_echo.assert_not_awaited()
+
+    async def test_breach_on_low_roll(self):
+        # E2E: injected d20=1 on a ward-less Overreach cast -> "breach" band + published.
+        packet, _ctx, echo_events = await _cast_echo(_spell(resonance=9), d20=1)
+        assert packet["hollow_echo"]["band"] == "breach"
+        echo_events.publish_hollow_echo.assert_awaited_once()
+
+    async def test_cantrip_at_standing_overreach_still_rolls(self):
+        # Decision: the echo fires for ANY cast that ENDS at Overreach (9+), including a
+        # free cantrip cast while resonance already stands at Overreach. The cantrip adds
+        # 0 (no resonance write, no RESONANCE_CHANGED push), but the state is still
+        # overreach so the Veil still exacts a Hollow Echo.
+        packet, _ctx, echo_events = await _cast_echo(
+            _spell(tier="cantrip", focus_cost=0, resonance=0), start_resonance=9, d20=18
+        )
+        assert packet["resonance_generated"] == 0
+        assert packet["state"] == "overreach"
+        assert packet["hollow_echo"]["band"] == "nothing"
+        echo_events.publish_hollow_echo.assert_awaited_once()
+
+
+class TestCastSpellWard:
+    async def test_active_ward_halves_generation(self):
+        # resonance=6 halved to 3 -> stable; the packet's resonance_generated reflects the halving.
+        packet, ctx, _echo = await _cast_echo(_spell(resonance=6), ward_active=True)
+        assert packet["resonance_generated"] == 3
+        assert ctx.userdata.resonance.current == 3
+        assert packet["state"] == "stable"
+        assert packet["ward_active"] is True
+
+    async def test_active_ward_applies_die_and_dc_penalty(self):
+        # Ward folds -1 damage die / -1 DC into the net resonance_modifiers (stable {0,0} -> {-1,-1}).
+        packet, _ctx, _echo = await _cast_echo(_spell(resonance=6), ward_active=True)
+        assert packet["resonance_modifiers"] == {"damage_dice": -1, "dc": -1}
+
+    async def test_ward_softens_the_echo(self):
+        # resonance=18 halved to 9 -> still Overreach, but the +4 ward bonus softens the roll:
+        # d20=12 -> effective 12+4 = 16 -> "whisper" (vs "veil_scar" without the ward).
+        packet, _ctx, echo_events = await _cast_echo(_spell(resonance=18), ward_active=True, d20=12)
+        assert packet["state"] == "overreach"
+        assert packet["hollow_echo"]["band"] == "whisper"
+        echo_events.publish_hollow_echo.assert_awaited_once()
+
+
 class TestGetSpellInfo:
     async def test_returns_full_catalog_data(self):
         ctx = make_context()
