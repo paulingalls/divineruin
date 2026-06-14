@@ -49,6 +49,17 @@ def test_resonance_state_derives_from_current_band():
     assert session.resonance.state == "overreach"
 
 
+def test_resonance_state_applies_flickering_bonus():
+    # The Thessyn Deep Adaptation bonus (story-006) lives on the track, so EVERY reader of .state
+    # (the cast packet, the HUD push) derives the SAME shifted band and cannot diverge. current=9
+    # with bonus 1 classifies as flickering, where the default bonus 0 gives overreach.
+    session = _session()
+    session.resonance.current = 9
+    assert session.resonance.state == "overreach"  # default bonus 0
+    session.resonance.flickering_bonus = 1
+    assert session.resonance.state == "flickering"
+
+
 async def test_rest_reset_zeroes_in_memory_and_persists():
     session = _session(current=7)
     assert session.resonance.state == "flickering"  # precondition: nonzero

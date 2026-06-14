@@ -38,13 +38,20 @@ class ResonanceTrack:
     source of truth, no cached copy to drift (same discipline as the companion
     HYBRID tier above and the players.data persistence in db_mutations_resonance).
     Defaults to current 0 -> "stable".
+
+    ``flickering_bonus`` (Thessyn Deep Adaptation, M3.4) shifts the band thresholds
+    up; it is a per-caster constant set once from the player's race (story-006), so
+    EVERY derivation of ``state`` — the packet, the HUD push (publish_resonance_changed),
+    the cast path — reads the same single value and cannot diverge. Defaults to 0
+    (the canonical band) for non-Thessyn casters.
     """
 
     current: int = 0
+    flickering_bonus: int = 0
 
     @property
     def state(self) -> resonance.ResState:
-        return resonance.get_resonance_state(self.current)
+        return resonance.get_resonance_state(self.current, flickering_bonus=self.flickering_bonus)
 
 
 @dataclass
