@@ -8,6 +8,7 @@ from livekit.agents.voice import RunContext
 
 import check_resolution
 import combat_resolution
+import concentration_break
 import db_mutations
 import db_queries
 import event_types as E
@@ -58,6 +59,8 @@ async def _resolve_enemy_turn_impl(
     *,
     mutations=db_mutations,
     queries=db_queries,
+    resolver=check_resolution,
+    concentration_break_mod=concentration_break,
 ) -> str:
     logger.info("resolve_enemy_turn called: enemy=%s, action=%s, target=%s", enemy_id, action_name, target_id)
     session: SessionData = context.userdata
@@ -94,7 +97,7 @@ async def _resolve_enemy_turn_impl(
         "level": enemy.level,
     }
 
-    attack_result = check_resolution.resolve_attack(
+    attack_result = resolver.resolve_attack(
         attacker_data,
         action,
         target.ac,
@@ -128,6 +131,16 @@ async def _resolve_enemy_turn_impl(
     # Update DB if target is a player
     if target.type == "player":
         await mutations.update_player_hp(target.id, target.hp_current)
+
+    # Combat damage is the canonical concentration-break trigger: a concentrating player who takes
+    # damage rolls a CON save (DC scales with the damage); failing it — or being dropped to 0 HP
+    # (incapacitated) — ends concentration. The helper no-ops when the player isn't concentrating
+    # or the attack dealt no damage; its return (the broken spell id, or None) is narrated below.
+    concentration_broken = None
+    if target.type == "player":
+        concentration_broken = await concentration_break_mod.break_concentration_on_damage(
+            session, attack_result.damage, incapacitated=target.hp_current <= 0
+        )
 
     # Persist combat state
     await mutations.save_combat_state(cs.combat_id, cs.to_dict())
@@ -185,6 +198,7 @@ async def _resolve_enemy_turn_impl(
         "target_fallen": target.is_fallen,
         "narrative_hint": attack_result.narrative_hint,
         "durability": durability_results,
+        "concentration_broken": concentration_broken,
     }
     logger.info(
         "resolve_enemy_turn result: %s → %s, %s, damage=%d, hp_status=%s",

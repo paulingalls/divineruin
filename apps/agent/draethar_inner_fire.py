@@ -24,6 +24,7 @@ import logging
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import concentration_break
 import db
 import db_mutations
 import db_mutations_resonance
@@ -60,6 +61,7 @@ async def _inner_fire_impl(
     resonance_events_mod=resonance_events,
     racial_mod=racial_resonance,
     dice_mod=dice,
+    concentration_break_mod=concentration_break,
 ) -> str:
     context.disallow_interruptions()
     session: SessionData = context.userdata
@@ -102,11 +104,18 @@ async def _inner_fire_impl(
     await hp_mutations_mod.save_combat_state(session.combat_state.combat_id, session.combat_state.to_dict())
     await resonance_events_mod.publish_resonance_changed(session)
 
+    # The self-inflicted fire damage is still damage: a concentrating Draethar rolls the CON save
+    # like any other combat damage (incapacitated when the burn drops them to 0 HP).
+    concentration_broken = await concentration_break_mod.break_concentration_on_damage(
+        session, fire_damage, incapacitated=new_hp <= 0
+    )
+
     return json.dumps(
         {
             "resonance_reduced": resonance_reduced,
             "fire_damage": fire_damage,
             "hp_remaining": new_hp,
             "state": resonance_mod.get_resonance_state(new_resonance),
+            "concentration_broken": concentration_broken,
         }
     )

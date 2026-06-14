@@ -158,7 +158,13 @@ async def test_draethar_inner_fire_after_overreach_cast_composes(reset_db_pool: 
     assert (await db_mutations_resonance.read_player_resonance(player_id, conn=pool))["current"] == 6
     # Participant (28) syncs from the seeded pool, so the persisted hp is source-agnostic: 28 - rolled.
     assert await _hp_current(player_id) == 28 - fire["fire_damage"]
-    # Concentration survives the inner_fire — the composed state is intact.
-    assert (await db_mutations_concentration.read_player_concentration(player_id, conn=pool))["spell_id"] == (
-        "arcane_invisibility"
-    )
+    # The self-damage now rolls a real concentration CON save (story-008), so the cast's
+    # concentration either holds or is cleanly ended — both are valid composed states. Branch on the
+    # actual outcome (the packet) rather than assuming survival, and cross-check it against the
+    # persisted DB: held -> packet None + spell_id retained; broken -> packet names the spell + DB null.
+    persisted_conc = (await db_mutations_concentration.read_player_concentration(player_id, conn=pool))["spell_id"]
+    if fire["concentration_broken"] is None:
+        assert persisted_conc == "arcane_invisibility"  # the save held — still concentrating
+    else:
+        assert fire["concentration_broken"] == "arcane_invisibility"
+        assert persisted_conc is None  # the save failed — concentration cleanly ended, persisted
