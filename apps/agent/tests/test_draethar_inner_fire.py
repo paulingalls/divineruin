@@ -143,6 +143,65 @@ async def test_persists_combat_state_after_self_damage():
     assert hp_mut.save_combat_state.await_args.args[1]["participants"][0]["hp_current"] == 16
 
 
+# --- concentration break on the self-damage (story-008) --------------------------
+
+
+def _break_mod(return_value):
+    mod = MagicMock()
+    mod.break_concentration_on_damage = AsyncMock(return_value=return_value)
+    return mod
+
+
+async def test_inner_fire_runs_concentration_break_on_self_damage():
+    # The 1d6 self-damage is routed through the concentration break-check, and any break is reported.
+    ctx = _combat_ctx(resonance=9, hp_current=20)
+    session = ctx.userdata
+    session.concentration.spell_id = "arcane_fly"
+    mock_db, queries, hp_mut, res_mut, res_events, dice_mod = _mocks(_player(), roll_total=4)
+    break_mod = _break_mod("arcane_fly")
+
+    result = json.loads(
+        await _inner_fire_impl(
+            ctx,
+            db_mod=mock_db,
+            queries_mod=queries,
+            hp_mutations_mod=hp_mut,
+            resonance_mutations_mod=res_mut,
+            resonance_events_mod=res_events,
+            dice_mod=dice_mod,
+            concentration_break_mod=break_mod,
+        )
+    )
+
+    break_mod.break_concentration_on_damage.assert_awaited_once()
+    args, kwargs = break_mod.break_concentration_on_damage.call_args
+    assert args[0] is session
+    assert args[1] == 4  # the 1d6 fire damage
+    assert kwargs["incapacitated"] is False  # 20 - 4 = 16 HP remaining
+    assert result["concentration_broken"] == "arcane_fly"
+
+
+async def test_inner_fire_self_damage_to_zero_passes_incapacitated():
+    # Self-damage that drops the Draethar to 0 HP marks the break-check incapacitated.
+    ctx = _combat_ctx(hp_current=3)
+    mock_db, queries, hp_mut, res_mut, res_events, dice_mod = _mocks(_player(hp_current=3), roll_total=6)
+    break_mod = _break_mod(None)
+
+    await _inner_fire_impl(
+        ctx,
+        db_mod=mock_db,
+        queries_mod=queries,
+        hp_mutations_mod=hp_mut,
+        resonance_mutations_mod=res_mut,
+        resonance_events_mod=res_events,
+        dice_mod=dice_mod,
+        concentration_break_mod=break_mod,
+    )
+
+    _args, kwargs = break_mod.break_concentration_on_damage.call_args
+    assert kwargs["incapacitated"] is True
+
+
 # --- rejections: ToolError before any write -------------------------------------
 
 
