@@ -38,11 +38,13 @@ logger = logging.getLogger("divineruin.racial_resonance")
 
 # Per-race modifier contract: race id -> {modifier_type -> expected value type}. This is the
 # closed spec table (magic.md 221-293); the content rows and load boundary are validated
-# against it. Values are stored as the additive params downstream engines consume:
-#   human decay_bonus      -> apply_resonance_decay(racial_modifier=) : +1 => decay 2/round
-#   korath primal_reduction-> story-003 primal helper                 : subtract from generation
-#   thessyn flickering_..  -> get_resonance_state(flickering_bonus=)  : shift band 5-8 -> 6-9
-#   vaelti echo_save_advantage -> resolve_hollow_echo(advantage=)     : best-of-two echo save
+# against it. Values are stored as the additive params downstream engines consume. Only the
+# human consumer exists on the current engine; the rest are params the named story ADDS (the
+# signatures below are forward references, not today's interface):
+#   human decay_bonus      -> apply_resonance_decay(racial_modifier=) : +1 => decay 2/round (exists)
+#   korath primal_reduction-> story-003 primal-reduction helper       : subtract from generation
+#   thessyn flickering_..  -> story-003 ADDS get_resonance_state(flickering_bonus=) : band 5-8 -> 6-9
+#   vaelti echo_save_advantage -> story-004 ADDS resolve_hollow_echo(advantage=)    : best-of-two save
 #   draethar inner_fire_*  -> story-005 Inner Fire tool               : -3 Resonance, "1d6" self fire
 #   elari veil_sense / resonance_arcana_bonus -> passive sensing narration (no cast consumer yet)
 _EXPECTED_MODIFIERS: dict[str, dict[str, type]] = {
