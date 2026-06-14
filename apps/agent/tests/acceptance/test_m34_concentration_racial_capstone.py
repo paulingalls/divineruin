@@ -132,8 +132,9 @@ async def test_draethar_inner_fire_after_overreach_cast_composes(reset_db_pool: 
 
     ctx = _make_ctx(player_id)
     # Seed prior accrual: a single concentration cast can't reach Overreach from 0 (max
-    # concentration generation is 4), so start at 7 — +2 from the cast lands exactly at 9.
-    ctx.userdata.resonance.current = 7
+    # concentration generation is 4). Start at 8 — the cast first sheds one round of per-round
+    # decay (story-010; draethar base 1 -> 7), then +2 lands exactly at 9 (Overreach).
+    ctx.userdata.resonance.current = 8
     ctx.userdata.combat_state = CombatState(
         combat_id="cap_m34_combat",
         participants=[
