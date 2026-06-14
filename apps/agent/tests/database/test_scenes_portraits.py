@@ -8,6 +8,7 @@ import pytest
 import db
 import db_content_queries
 import db_queries
+import db_session_queries
 
 
 class TestSessionInitPortraits:
@@ -22,7 +23,7 @@ class TestSessionInitPortraits:
 
         with patch("db.get_pool", return_value=mock_pool):
             with patch("db_content_queries.get_location", return_value={"id": "tavern", "name": "Tavern"}):
-                result = await db_queries.get_session_init_payload("p1")
+                result = await db_session_queries.get_session_init_payload("p1")
 
         assert "portraits" in result
         assert "companion" in result["portraits"]

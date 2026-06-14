@@ -18,7 +18,7 @@ from typing import Any
 from livekit import agents
 
 import db_mutations
-import db_queries
+import db_session_queries
 import event_types as E
 from background_process import BackgroundProcess
 from base_agent import BaseGameAgent
@@ -109,7 +109,7 @@ class ExplorationAgent(BaseGameAgent):
 
     async def _publish_session_init(self, sd: SessionData) -> None:
         try:
-            payload = await db_queries.get_session_init_payload(sd.player_id)
+            payload = await db_session_queries.get_session_init_payload(sd.player_id)
             await publish_game_event(sd.room, E.SESSION_INIT, payload, sd.event_bus)
         except Exception:
             logger.exception("Failed to publish session_init")
