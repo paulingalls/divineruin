@@ -219,15 +219,9 @@ async def _cast_spell_impl(
     session.resonance.current = new_resonance
     if spell.concentration:
         session.concentration.spell_id = spell_id
-    # Thessyn Deep Adaptation (spec 270-276) shifts the Flickering band up by +1, so a Thessyn
-    # holds Overreach off a point longer. The bonus lives on the ResonanceTrack so EVERY state
-    # derivation (the packet below, the publish_resonance_changed HUD push, any later reader)
-    # shares one value and cannot diverge — DM voice and HUD always agree. Applied by race here;
-    # the spec's "10+ sessions" gate needs a player session counter that does not exist yet
-    # (deferred, concern 70434a66417c).
-    session.resonance.flickering_bonus = (
-        racial_mod.get_racial_resonance_modifier("thessyn", "flickering_threshold_bonus") if race == "thessyn" else 0
-    )
+    # flickering_bonus is hydrated + GATED at session-init (story-004, M3.5) and is session-stable,
+    # so the cast trusts the track value instead of re-deriving it ungated here (which re-granted
+    # the +1 to a <10-session Thessyn). state reads it via the ResonanceTrack property — one source.
     state = session.resonance.state
     # Push the new qualitative state to the HUD only when resonance actually moved —
     # a cantrip (generated == 0) leaves the state unchanged, so it pushes nothing (AC6).
