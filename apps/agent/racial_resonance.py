@@ -31,6 +31,7 @@ spell-loader-strict-contract).
 import json
 import logging
 from dataclasses import dataclass
+from typing import cast
 
 from catalog_parse import parse_dict, parse_int, parse_str
 
@@ -131,6 +132,28 @@ def get_racial_resonance_modifier(race: str, modifier_type: str) -> object:
     if modifier_type not in modifiers:
         raise ValueError(f"race {race!r} has no modifier {modifier_type!r}")
     return modifiers[modifier_type]
+
+
+# Thessyn Deep Adaptation (spec game_mechanics_magic.md §270-276): the Flickering band-shift
+# applies only once the player has played this many sessions.
+_THESSYN_DEEP_ADAPTATION_SESSIONS = 10
+
+
+def compute_flickering_bonus(race: str, session_count: int) -> int:
+    """Return the Thessyn Flickering band-shift gated on race + session count.
+
+    The seeded flickering_threshold_bonus (content-driven, never hardcoded) when race is
+    'thessyn' AND session_count >= 10 (Deep Adaptation, spec 270-276); 0 otherwise. Pure and
+    content-agnostic so the agent session-init (story-004) and the cast site (story-005) call
+    it instead of inlining the gate. Non-Thessyn races short-circuit to 0 and never hit the
+    lookup; a misconfigured Thessyn row fails loud via get_racial_resonance_modifier.
+    """
+    if race == "thessyn" and session_count >= _THESSYN_DEEP_ADAPTATION_SESSIONS:
+        bonus = get_racial_resonance_modifier("thessyn", "flickering_threshold_bonus")
+        # _EXPECTED_MODIFIERS validates this as int at load (parse_int, fail-loud), so the
+        # table cannot hold a non-int here; cast for the type-checker (house idiom, db.py:95).
+        return cast(int, bonus)
+    return 0
 
 
 def is_loaded() -> bool:
