@@ -64,6 +64,7 @@ import racial_resonance
 import resonance as resonance_mod
 import resonance_events
 import spells
+import vaelti_echo_warning
 import veil_ward as veil_ward_mod
 from db_errors import db_tool
 from session_data import SessionData
@@ -134,6 +135,7 @@ async def _cast_spell_impl(
     dice_mod=dice,
     echo_events_mod=hollow_echo_events,
     racial_mod=racial_resonance,
+    vaelti_warning_mod=vaelti_echo_warning,
     concentration_mutations_mod=db_mutations_concentration,
 ) -> str:
     context.disallow_interruptions()
@@ -202,9 +204,23 @@ async def _cast_spell_impl(
         if spell.focus_cost > 0:
             await persistence_mod.update_player_resources(player_id, focus=current_focus - spell.focus_cost, conn=conn)
 
+        # Per-round decay (cast-paced, story-010): a real cast first sheds one round of standing
+        # Resonance — base 1/round, +1 for a Human (Adaptive Resonance, spec 238-244) => 2/round —
+        # before this cast's generation lands. apply_resonance_decay floors at 0, so a cast from 0
+        # (the common path) is unchanged. A cantrip (generated 0) skips decay below, leaving the
+        # state untouched (AC6). Only Human carries a decay_bonus; the base 1 is in the pure fn.
+        decay_modifier = 0
+        if race == "human":
+            decay_modifier = racial_mod.get_racial_resonance_modifier("human", "decay_bonus")
+        base_resonance = (
+            resonance.apply_resonance_decay(session.resonance.current, decay_modifier)
+            if generated > 0
+            else session.resonance.current
+        )
+
         # Persist the new total BEFORE touching the in-memory SSOT, so a failed
         # write/commit rolls back Focus AND leaves session.resonance untouched.
-        new_resonance = session.resonance.current + generated
+        new_resonance = base_resonance + generated
         if generated > 0:
             await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
 
@@ -219,15 +235,9 @@ async def _cast_spell_impl(
     session.resonance.current = new_resonance
     if spell.concentration:
         session.concentration.spell_id = spell_id
-    # Thessyn Deep Adaptation (spec 270-276) shifts the Flickering band up by +1, so a Thessyn
-    # holds Overreach off a point longer. The bonus lives on the ResonanceTrack so EVERY state
-    # derivation (the packet below, the publish_resonance_changed HUD push, any later reader)
-    # shares one value and cannot diverge — DM voice and HUD always agree. Applied by race here;
-    # the spec's "10+ sessions" gate needs a player session counter that does not exist yet
-    # (deferred, concern 70434a66417c).
-    session.resonance.flickering_bonus = (
-        racial_mod.get_racial_resonance_modifier("thessyn", "flickering_threshold_bonus") if race == "thessyn" else 0
-    )
+    # flickering_bonus is hydrated + GATED at session-init (story-004, M3.5) and is session-stable,
+    # so the cast trusts the track value instead of re-deriving it ungated here (which re-granted
+    # the +1 to a <10-session Thessyn). state reads it via the ResonanceTrack property — one source.
     state = session.resonance.state
     # Push the new qualitative state to the HUD only when resonance actually moved —
     # a cantrip (generated == 0) leaves the state unchanged, so it pushes nothing (AC6).
@@ -254,12 +264,14 @@ async def _cast_spell_impl(
     # narrate the consequence and pushed to the client's dramatic-dice overlay.
     if state == "overreach":
         roll = dice_mod.roll("d20").total
-        # Vaelti Hyper-awareness (spec 246-252): advantage on the Hollow Echo save — roll a second
-        # d20 and take the better, shifting the result milder. The 1-round advance warning is a
-        # separate deferred-event hook with no consumer yet (concern 7e812546829a).
+        # Vaelti Hyper-awareness (spec 246-252) has two effects on the same passive: advantage on
+        # the Hollow Echo save (roll a second d20, take the better -> milder band) AND a 1-round
+        # advance warning. The warning is a bus-only deferred event the background process voices a
+        # heartbeat before the echo lands (story-009 consumer; was concern 7e812546829a).
         advantage_roll = None
         if race == "vaelti" and racial_mod.get_racial_resonance_modifier("vaelti", "echo_save_advantage"):
             advantage_roll = dice_mod.roll("d20").total
+            vaelti_warning_mod.publish_vaelti_echo_warning(session)
         echo = hollow_echo.resolve_hollow_echo(
             roll,
             session.resonance.current,

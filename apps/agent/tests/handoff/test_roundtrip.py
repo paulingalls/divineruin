@@ -60,7 +60,7 @@ class TestCreationOnboardingCityRoundTrip:
     """Test the full Creation -> OnboardingAgent -> CityAgent handoff chain."""
 
     @pytest.mark.asyncio
-    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_finalize_returns_onboarding_agent(self, mock_create_player, mock_get_payload):
         """finalize_character returns OnboardingAgent at beat 1."""
@@ -117,7 +117,7 @@ class TestCreationOnboardingCityRoundTrip:
 
     @pytest.mark.asyncio
     @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
-    @patch("creation_tools.db_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_full_creation_to_city_roundtrip(self, mock_create_player, mock_get_payload, mock_set_player_flag):
         """Full chain: finalize_character -> OnboardingAgent -> advance through beats -> CityAgent."""

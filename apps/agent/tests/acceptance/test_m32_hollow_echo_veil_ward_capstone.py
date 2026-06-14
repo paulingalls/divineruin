@@ -25,12 +25,14 @@ import db
 import db_mutations_resonance
 import db_mutations_veil_ward
 import db_queries
+import resonance
 import spells
 from session_data import SessionData
 from spell_casting import _cast_spell_impl
 
-# arcane_fireball: focus_cost 5, resonance_by_source.arcane 3 -> 3 casts walk the spec bands
-# stable(3) -> flickering(6) -> overreach(9). Focus 18 funds 3 casts (15 Focus).
+# arcane_fireball: focus_cost 5, resonance_by_source.arcane 3. Under per-round (cast-paced)
+# decay (story-010) each post-first cast nets +2 (3 generated - 1 base decay), so the bands
+# walk 0 -> 3 -> 5 -> 7 -> 9 over 4 casts; Overreach (9) lands on cast 4. Focus 20 funds 4 casts.
 _SPELL_ID = "arcane_fireball"
 
 
@@ -53,7 +55,9 @@ async def test_overreach_cast_fires_hollow_echo_and_persists(reset_db_pool: str)
     persisted Resonance and the cast packet agree at every step (AC1 + AC3 E2E)."""
     pool = await db.get_pool()
     player_id = "cap_m32_overreach"
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
+    # 20 Focus funds 4 casts at focus 5: per-round decay (story-010) makes each post-first cast
+    # net +2, so the Veil tears at Overreach on cast 4, not cast 3.
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=20)
     await spells.load_spells()
 
     spell = spells.get_spell(_SPELL_ID)
@@ -61,25 +65,28 @@ async def test_overreach_cast_fires_hollow_echo_and_persists(reset_db_pool: str)
 
     ctx = _make_ctx(player_id)  # one session -> Resonance accrues in-memory across casts
     cumulative = 0
-    for cast_index in range(3):
+    casts = 4
+    for cast_index in range(casts):
         packet = json.loads(await _cast_spell_impl(ctx, _SPELL_ID))
-        cumulative += gen
+        # Cast-paced decay sheds one round (base 1, race-less player) before this cast
+        # generates: 0 -> 3 -> 5 -> 7 -> 9, crossing stable -> flickering -> overreach.
+        cumulative = resonance.apply_resonance_decay(cumulative, 0) + gen
 
         # The cast packet and the persisted DB Resonance agree at every step.
         persisted = await db_mutations_resonance.read_player_resonance(player_id, conn=pool)
         assert persisted["current"] == cumulative
         assert packet["state"] == persisted["state"]
 
-        if cast_index < 2:
-            assert "hollow_echo" not in packet  # stable(3) / flickering(6) — no echo yet
+        if cast_index < casts - 1:
+            assert "hollow_echo" not in packet  # stable(3)/flickering(5,7) — no echo yet
         else:
-            # Cast 3: Resonance 9 -> Overreach tears the Veil; a Hollow Echo is produced.
+            # Cast 4: Resonance 9 -> Overreach tears the Veil; a Hollow Echo is produced.
             assert packet["state"] == "overreach"
             echo = packet["hollow_echo"]
             assert echo["band"] and echo["name"] and echo["effect"]
 
     # Focus deducted once per cast, nothing halved on the cost (the ward dampens generation).
-    assert await _focus_current(player_id) == 18 - 3 * spell.focus_cost
+    assert await _focus_current(player_id) == 20 - casts * spell.focus_cost
 
 
 async def test_active_veil_ward_halves_resonance_generation(reset_db_pool: str) -> None:

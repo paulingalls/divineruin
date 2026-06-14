@@ -56,6 +56,11 @@ VEIL_WARD_CHANGED = "veil_ward_changed"
 # Auto-rolled by cast_spell at Overreach. Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
 HOLLOW_ECHO_RESULT = "hollow_echo_result"
 
+# Magic (M3.5) — Vaelti Hyper-awareness 1-round advance warning (story-009). Bus-only,
+# server-internal: emitted when a Vaelti's cast reaches Overreach and consumed by
+# bg_event_handlers, which queues the DM warning speech. Not pushed to the client.
+VAELTI_ECHO_WARNING = "vaelti_echo_warning"
+
 # World
 HOLLOW_CORRUPTION_CHANGED = "hollow_corruption_changed"
 DISPOSITION_CHANGED = "disposition_changed"

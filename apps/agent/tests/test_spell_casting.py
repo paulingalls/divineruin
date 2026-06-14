@@ -427,6 +427,7 @@ _RACIAL_SPEC = {
     ("korath", "primal_reduction"): 1,
     ("thessyn", "flickering_threshold_bonus"): 1,
     ("vaelti", "echo_save_advantage"): True,
+    ("human", "decay_bonus"): 1,
 }
 
 
@@ -453,8 +454,10 @@ async def _cast_racial(
     focus: int = 10,
     level: int = 5,
     start_resonance: int = 0,
+    start_flickering_bonus: int = 0,
     start_concentration: str | None = None,
     d20s: tuple[int, ...] = (10,),
+    vaelti_warning=None,
 ):
     """Invoke _cast_spell_impl with the M3.4 racial + concentration mods injected.
 
@@ -464,6 +467,7 @@ async def _cast_racial(
     """
     ctx = make_context()
     ctx.userdata.resonance.current = start_resonance
+    ctx.userdata.resonance.flickering_bonus = start_flickering_bonus
     ctx.userdata.concentration.spell_id = start_concentration
     mock_db, _conn = make_db_mod()
     player = _player(focus, level)
@@ -495,6 +499,7 @@ async def _cast_racial(
         dice_mod=_dice_seq(*d20s),
         echo_events_mod=echo_events,
         racial_mod=_racial_mod(),
+        vaelti_warning_mod=vaelti_warning or MagicMock(),
         concentration_mutations_mod=concentration,
     )
     return json.loads(raw), ctx, mutations, concentration, echo_events
@@ -537,15 +542,26 @@ class TestCastSpellRacialResonance:
         packet, _ctx, _m, _c, _e = await _cast_racial(_spell(source="primal", focus_cost=3, resonance=3), race="human")
         assert packet["resonance_generated"] == 3
 
-    async def test_thessyn_plus_one_flickering_threshold(self):
-        # AC: Thessyn Deep Adaptation shifts the band up by 1 — resonance 9 classifies as
-        # flickering (vs overreach for any other race), so no Hollow Echo fires.
-        packet, _ctx, _m, _c, echo_events = await _cast_racial(
-            _spell(source="arcane", focus_cost=3, resonance=9), race="thessyn"
+    async def test_thessyn_cast_honors_hydrated_flickering_bonus(self):
+        # AC1: the +1 band-shift is hydrated at session-init (story-004) and lives on the track.
+        # A cast must HONOR that pre-set bonus (resonance 9 -> flickering, no echo) and NOT
+        # overwrite it — the cast no longer derives flickering_bonus (story-005).
+        packet, ctx, _m, _c, echo_events = await _cast_racial(
+            _spell(source="arcane", focus_cost=3, resonance=9), race="thessyn", start_flickering_bonus=1
         )
         assert packet["state"] == "flickering"
         assert "hollow_echo" not in packet
         echo_events.publish_hollow_echo.assert_not_awaited()
+        assert ctx.userdata.resonance.flickering_bonus == 1  # cast did not touch it
+
+    async def test_thessyn_cast_without_hydrated_bonus_is_overreach(self):
+        # AC2/AC3: a <10-session Thessyn has flickering_bonus 0 (not hydrated). The cast must NOT
+        # re-grant the band-shift from race — resonance 9 stays overreach and the bonus stays 0.
+        packet, ctx, _m, _c, _e = await _cast_racial(
+            _spell(source="arcane", focus_cost=3, resonance=9), race="thessyn", start_flickering_bonus=0, d20s=(18,)
+        )
+        assert packet["state"] == "overreach"
+        assert ctx.userdata.resonance.flickering_bonus == 0  # no re-grant in the cast path
 
     async def test_non_thessyn_at_nine_is_overreach(self):
         # Contrast: the same resonance 9 with no flickering bonus is overreach and rolls an echo.
@@ -564,6 +580,57 @@ class TestCastSpellRacialResonance:
         assert packet["state"] == "overreach"
         assert packet["hollow_echo"]["band"] == "nothing"
         echo_events.publish_hollow_echo.assert_awaited_once()
+
+    async def test_vaelti_overreach_emits_advance_warning(self):
+        # AC (story-009): a Vaelti reaching Overreach fires the 1-round advance warning through
+        # the real deferred-event hook — the emitter is invoked once during the cast.
+        warn = MagicMock()
+        packet, _ctx, _m, _c, _e = await _cast_racial(
+            _spell(source="arcane", focus_cost=3, resonance=9), race="vaelti", d20s=(1, 18), vaelti_warning=warn
+        )
+        assert packet["state"] == "overreach"
+        warn.publish_vaelti_echo_warning.assert_called_once()
+
+    async def test_non_vaelti_overreach_emits_no_warning(self):
+        # The warning gates on race==vaelti (the Hyper-awareness passive): a Human Overreach
+        # rolls an echo but fires no advance warning.
+        warn = MagicMock()
+        packet, _ctx, _m, _c, _e = await _cast_racial(
+            _spell(source="arcane", focus_cost=3, resonance=9), race="human", d20s=(18,), vaelti_warning=warn
+        )
+        assert packet["state"] == "overreach"
+        warn.publish_vaelti_echo_warning.assert_not_called()
+
+
+class TestCastSpellDecay:
+    """Per-round (cast-paced) Resonance decay (story-010): a real cast sheds one round of
+    standing Resonance — base 1/round, +1 for a Human (Adaptive Resonance) -> 2/round —
+    before this cast's generation lands. apply_resonance_decay floors at 0."""
+
+    async def test_human_decays_two_before_generation(self):
+        # Human start 7 -> decay(7, +1) = 5, + 3 generated = 8 (would be 10 without decay).
+        _packet, ctx, _m, _c, _e = await _cast_racial(
+            _spell(source="arcane", focus_cost=3, resonance=3), race="human", start_resonance=7
+        )
+        assert ctx.userdata.resonance.current == 8
+
+    async def test_non_human_decays_one_universal_base(self):
+        # A race-less caster decays the universal base 1: start 7 -> 6, + 3 = 9.
+        _packet, ctx, _p, _m, _e = await _cast(_spell(source="arcane", focus_cost=3, resonance=3), start_resonance=7)
+        assert ctx.userdata.resonance.current == 9
+
+    async def test_human_decay_floors_at_zero(self):
+        # Human start 1 -> decay(1, +1) = max(0, 1-2) = 0, + 2 generated = 2.
+        _packet, ctx, _m, _c, _e = await _cast_racial(
+            _spell(source="arcane", focus_cost=3, resonance=2), race="human", start_resonance=1
+        )
+        assert ctx.userdata.resonance.current == 2
+
+    async def test_cantrip_skips_decay(self):
+        # A cantrip (generated 0) does not shed a round — standing Resonance is untouched (AC6),
+        # so the decay gate (generated > 0) never fires.
+        _packet, ctx, _p, _m, _e = await _cast(_spell(tier="cantrip", focus_cost=0, resonance=0), start_resonance=9)
+        assert ctx.userdata.resonance.current == 9
 
 
 class TestCastSpellConcentration:

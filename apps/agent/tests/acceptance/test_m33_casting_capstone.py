@@ -89,31 +89,38 @@ async def test_cast_deducts_focus_and_persists_resonance(reset_db_pool: str) -> 
 
     assert await _focus_current(player_id) == 18 - spell.focus_cost
     persisted = await db_mutations_resonance.read_player_resonance(player_id, conn=pool)
-    assert persisted == {"current": expected_gen, "state": resonance.get_resonance_state(expected_gen)}
+    assert persisted == {
+        "current": expected_gen,
+        "flickering_bonus": 0,
+        "state": resonance.get_resonance_state(expected_gen),
+    }
 
 
 async def test_repeated_casts_cross_resonance_bands(reset_db_pool: str) -> None:
     """E2E: seed -> load -> cast x3 -> re-read. Focus, Resonance value, and derived state stay consistent across bands."""
     pool = await db.get_pool()
     player_id = "cap_cast_bands"
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
+    # 20 Focus funds 4 casts at focus 5: under per-round (cast-paced) decay (story-010) each
+    # post-first cast nets +2, so reaching Overreach takes 4 casts, not 3.
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=20)
     await spells.load_spells()
 
     spell = spells.get_spell(_SPELL_ID)
     # Cast reads the catalog's designed resonance (decision resonance-by-source-ssot). The
-    # band-walk below assumes a 3-Resonance accrual (3 -> 6 -> 9); guard it so a catalog
-    # re-tune of arcane_fireball fails here with a clear cause, not a band mismatch.
+    # band-walk below assumes a 3-Resonance accrual; under per-round decay it walks
+    # 0 -> 3 -> 5 -> 7 -> 9. Guard gen so a catalog re-tune fails here with a clear cause.
     gen = spell.resonance_by_source[spell.source]
     assert gen == 3
 
     ctx = _make_ctx(player_id)  # one session -> resonance accumulates in-memory + persists
-    focus_left = 18
+    focus_left = 20
     total = 0
     observed_states = []
-    for _ in range(3):
+    for _ in range(4):
         await _cast_spell_impl(ctx, _SPELL_ID)
         focus_left -= spell.focus_cost
-        total += gen
+        # Cast-paced decay sheds one round (base 1, race-less player) before this cast generates.
+        total = resonance.apply_resonance_decay(total, 0) + gen
         # Focus deducted on real PG.
         assert await _focus_current(player_id) == focus_left
         # Resonance value persisted + round-trips, state derived from the persisted value.
@@ -122,5 +129,5 @@ async def test_repeated_casts_cross_resonance_bands(reset_db_pool: str) -> None:
         assert got["state"] == resonance.get_resonance_state(total)
         observed_states.append(got["state"])
 
-    # Walked the full spec band ladder end-to-end.
-    assert observed_states == ["stable", "flickering", "overreach"]
+    # Walked the full spec band ladder end-to-end (two flickering steps under per-round decay).
+    assert observed_states == ["stable", "flickering", "flickering", "overreach"]

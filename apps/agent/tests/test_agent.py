@@ -244,6 +244,13 @@ class TestExtractPlayerId:
 class TestDMSession:
     """Test dm_session handler."""
 
+    @pytest.fixture(autouse=True)
+    def _stub_session_hydration(self):
+        """The gameplay path calls hydrate_session_state (story-004), which hits the DB. Stub it
+        for every test here; the wiring test requests this fixture's mock to assert the call."""
+        with patch("session_hydration.hydrate_session_state", new_callable=AsyncMock) as mock_hydrate:
+            yield mock_hydrate
+
     @pytest.mark.asyncio
     async def test_dm_session_creates_session_data(self):
         """dm_session should create SessionData — first session (existing player, no summary) starts at market square."""
@@ -291,6 +298,57 @@ class TestDMSession:
                     room=mock_ctx.room,
                     patron_id="none",
                 )
+
+    @pytest.mark.asyncio
+    async def test_dm_session_hydrates_session_state_once_for_returning_player(self, _stub_session_hydration):
+        """dm_session rehydrates persisted resonance/veil_ward/concentration + ticks the session
+        counter exactly once for an existing player (story-004, M3.5)."""
+        mock_hydrate = _stub_session_hydration
+        mock_ctx = MagicMock()
+        mock_ctx.room = MagicMock()
+        mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
+
+        with patch("agent.SessionData") as MockSD:
+            with patch("agent.AgentSession") as MockSession:
+                mock_session_instance = MagicMock()
+                mock_session_instance.start = AsyncMock()
+                mock_session_instance.generate_reply = AsyncMock()
+                MockSession.return_value = mock_session_instance
+
+                with patch("agent.deepgram.STT"):
+                    with patch("agent.anthropic.LLM"):
+                        with patch("agent._make_tts"):
+                            with patch("agent.silero.VAD.load"):
+                                with patch("agent.MultilingualModel"):
+                                    with patch(
+                                        "agent.db_queries.get_player",
+                                        new_callable=AsyncMock,
+                                        return_value=mock_player,
+                                    ):
+                                        with patch(
+                                            "agent.db_queries.get_last_session_summary",
+                                            new_callable=AsyncMock,
+                                            return_value=None,
+                                        ):
+                                            with patch(
+                                                "agent.db_queries.get_player_flag",
+                                                new_callable=AsyncMock,
+                                                return_value=False,
+                                            ):
+                                                with patch(
+                                                    "agent.db_content_queries.get_location",
+                                                    new_callable=AsyncMock,
+                                                    return_value={"region_type": "city"},
+                                                ):
+                                                    from agent import dm_session
+
+                                                    await dm_session(mock_ctx)
+
+                                                    # Hydrated exactly once, with the gameplay
+                                                    # SessionData + the loaded player dict.
+                                                    mock_hydrate.assert_awaited_once_with(
+                                                        MockSD.return_value, mock_player
+                                                    )
 
     @pytest.mark.asyncio
     async def test_dm_session_starts_agent_session_with_city_agent(self):
