@@ -109,8 +109,10 @@ def get_resonance_state(current_resonance: int, flickering_bonus: int = 0) -> Re
 
     flickering_bonus (Thessyn Deep Adaptation, spec 270-276) shifts both thresholds up,
     moving the flickering band 5-8 -> 6-9 at bonus=1 (stable up to 5, overreach at 10+). The
-    bonus is a pure param; the call site (story-006) supplies it from the racial lookup. The
-    default 0 is the canonical band, so existing callers are unchanged.
+    bonus is a pure param; the call site (story-006) supplies it from
+    racial_resonance.get_racial_resonance_modifier(race, "flickering_threshold_bonus") (the
+    engine param stays content-agnostic, hence the shorter name). The default 0 is the
+    canonical band, so existing callers are unchanged.
     """
     if current_resonance <= STABLE_MAX + flickering_bonus:
         return "stable"
