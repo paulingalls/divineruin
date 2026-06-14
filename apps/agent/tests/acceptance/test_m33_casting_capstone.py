@@ -89,7 +89,11 @@ async def test_cast_deducts_focus_and_persists_resonance(reset_db_pool: str) -> 
 
     assert await _focus_current(player_id) == 18 - spell.focus_cost
     persisted = await db_mutations_resonance.read_player_resonance(player_id, conn=pool)
-    assert persisted == {"current": expected_gen, "state": resonance.get_resonance_state(expected_gen)}
+    assert persisted == {
+        "current": expected_gen,
+        "flickering_bonus": 0,
+        "state": resonance.get_resonance_state(expected_gen),
+    }
 
 
 async def test_repeated_casts_cross_resonance_bands(reset_db_pool: str) -> None:
