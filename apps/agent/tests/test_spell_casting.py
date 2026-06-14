@@ -15,6 +15,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
+from racial_resonance_config_fixture import load_fixture_config
 from sample_fixtures import make_context, make_db_mod
 
 from spell_casting import _cast_spell_impl, _get_spell_info_impl
@@ -497,6 +498,15 @@ async def _cast_racial(
         concentration_mutations_mod=concentration,
     )
     return json.loads(raw), ctx, mutations, concentration, echo_events
+
+
+def test_racial_spec_stub_matches_seeded_content():
+    # Bind the cast tests' _RACIAL_SPEC stub to the REAL seeded table
+    # (content/racial_resonance_bonuses.json): a seed-value drift breaks these greens here, not
+    # only at the story-007 real-PG capstone. Reads the seed directly (no module-global mutation).
+    config = load_fixture_config()
+    for (race, key), expected in _RACIAL_SPEC.items():
+        assert config[race].modifiers[key] == expected, f"{race}.{key} drifted from the seed"
 
 
 class TestCastSpellRacialResonance:
