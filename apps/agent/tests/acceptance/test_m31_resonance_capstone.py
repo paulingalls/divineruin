@@ -47,16 +47,17 @@ async def test_resonance_persistence_roundtrip_real_db(reset_db_pool: str) -> No
     await seed_player(pool, player_id=player_id)
 
     initial = await db_mutations_resonance.read_player_resonance(player_id, conn=pool)
-    assert initial == {"current": 0, "state": "stable"}
+    assert initial == {"current": 0, "flickering_bonus": 0, "state": "stable"}
 
     for current, expected_state in _BANDS:
         await db_mutations_resonance.update_player_resonance(player_id, current, conn=pool)
         got = await db_mutations_resonance.read_player_resonance(player_id, conn=pool)
-        assert got == {"current": current, "state": expected_state}
+        assert got == {"current": current, "flickering_bonus": 0, "state": expected_state}
 
     await db_mutations_resonance.reset_player_resonance(player_id, conn=pool)
     assert await db_mutations_resonance.read_player_resonance(player_id, conn=pool) == {
         "current": 0,
+        "flickering_bonus": 0,
         "state": "stable",
     }
 
@@ -73,6 +74,7 @@ async def test_generated_resonance_persists_and_derives_state(reset_db_pool: str
     await db_mutations_resonance.update_player_resonance(player_id, arcane, conn=pool)
     assert await db_mutations_resonance.read_player_resonance(player_id, conn=pool) == {
         "current": 6,
+        "flickering_bonus": 0,
         "state": "flickering",
     }
 
@@ -82,6 +84,7 @@ async def test_generated_resonance_persists_and_derives_state(reset_db_pool: str
     await db_mutations_resonance.update_player_resonance(player_id, primal, conn=pool)
     assert await db_mutations_resonance.read_player_resonance(player_id, conn=pool) == {
         "current": 8,
+        "flickering_bonus": 0,
         "state": "flickering",
     }
 
@@ -106,6 +109,7 @@ async def test_rest_path_resets_and_persists_real_db(reset_db_pool: str) -> None
     # ...and persisted to real PG.
     assert await db_mutations_resonance.read_player_resonance(player_id, conn=pool) == {
         "current": 0,
+        "flickering_bonus": 0,
         "state": "stable",
     }
 
