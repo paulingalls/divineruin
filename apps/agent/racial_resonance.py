@@ -134,8 +134,8 @@ def get_racial_resonance_modifier(race: str, modifier_type: str) -> object:
     return modifiers[modifier_type]
 
 
-# Thessyn Deep Adaptation (spec game_mechanics_magic.md §270-276): the Flickering band-shift
-# applies only once the player has played this many sessions.
+# Thessyn Deep Adaptation (spec docs/game_mechanics/game_mechanics_magic.md §270-276): the
+# Flickering band-shift applies only once the player has played this many sessions.
 _THESSYN_DEEP_ADAPTATION_SESSIONS = 10
 
 
