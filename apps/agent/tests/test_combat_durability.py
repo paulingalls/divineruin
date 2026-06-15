@@ -178,7 +178,7 @@ async def test_accrue_already_broken_skips_write_and_event():
     assert result == {"broken": True, "penalty": {"attack": -2}, "current_hits": 0}
 
 
-# --- armor + shield accrual in resolve_enemy_turn ----------------------------
+# --- armor + shield accrual in _resolve_attack_packet ------------------------
 
 import combat_turn  # noqa: E402
 from session_data import CombatParticipant, CombatState  # noqa: E402
@@ -226,6 +226,13 @@ def _forced_attack(*, hit, critical=False):
 
 
 async def _run_enemy_turn(ctx, inventory, *, shield_reaction=None, hit=True):
+    # Durability accrual now lives in the shared _resolve_attack_packet resolver (the
+    # phase loop's per-packet path, story-003); the enemy attacks the player participant.
+    session = ctx.userdata
+    cs = session.combat_state
+    attacker = cs.get_participant("goblin_1")
+    target = cs.get_participant("p1")
+    action = attacker.action_pool[0]
     mutations = AsyncMock()
     queries = AsyncMock()
     queries.get_player_inventory = AsyncMock(return_value=inventory)
@@ -237,11 +244,11 @@ async def _run_enemy_turn(ctx, inventory, *, shield_reaction=None, hit=True):
             AsyncMock(return_value={"broken": False, "penalty": {}, "current_hits": 9}),
         ) as accrue,
     ):
-        await combat_turn._resolve_enemy_turn_impl(
-            ctx,
-            enemy_id="goblin_1",
-            action_name="Scimitar",
-            target_id="p1",
+        await combat_turn._resolve_attack_packet(
+            session,
+            attacker,
+            action,
+            target,
             shield_reaction=shield_reaction,
             mutations=mutations,
             queries=queries,

@@ -82,6 +82,13 @@ async def _start_combat_impl(
     # Build participant dicts for initiative rolling
     player_hp = player.get("hp", {})
     player_attrs = player.get("attributes", {})
+    # Synthesize the player's combat action_pool from equipped weapons. Each equipment
+    # entry is already resolve_attack-shaped (name/damage/damage_type/properties), so a
+    # player attack declaration resolves through the same packet path as enemies and
+    # companions (story-003 unified resolution). Non-weapon gear (no `damage`) is skipped;
+    # spells/abilities are out-of-band tools in M4.1, not action_pool entries.
+    player_equipment = player.get("equipment", {})
+    player_action_pool = [item for item in player_equipment.values() if isinstance(item, dict) and item.get("damage")]
     initiative_inputs: list[dict] = [
         {
             "id": session.player_id,
@@ -147,6 +154,7 @@ async def _start_combat_impl(
             ac=player.get("ac", 10),
             attributes=player_attrs,
             level=player.get("level", 1),
+            action_pool=player_action_pool,
         ),
     ]
     for enemy in enemies:

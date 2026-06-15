@@ -125,3 +125,96 @@ class TestEndCombat:
 
         with pytest.raises(ToolError, match="Invalid outcome"):
             await _end_combat_impl(ctx, outcome="surrender", mutations=mock_mutations)
+
+
+class TestPhaseLoopExit:
+    """Combat now exits through the phase engine's wrap end-condition (story-003):
+    resolve_phase fires end_combat when the engine reports victory/defeat, rather than
+    the LLM choosing to call end_combat itself. These pin that exit handoff."""
+
+    def _resolution_state_one_hit_from_victory(self):
+        from session_data import CombatParticipant, CombatState
+
+        return CombatState(
+            combat_id="combat_exit_test",
+            participants=[
+                CombatParticipant(
+                    id="player_1",
+                    name="Kael",
+                    type="player",
+                    initiative=15,
+                    hp_current=25,
+                    hp_max=25,
+                    ac=14,
+                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                ),
+                CombatParticipant(
+                    id="goblin_scout_1",
+                    name="Goblin Scout",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=3,
+                    hp_max=7,
+                    ac=13,
+                    action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
+                    xp_value=50,
+                ),
+            ],
+            initiative_order=["player_1", "goblin_scout_1"],
+            location_id="accord_guild_hall",
+            beat="resolution",
+            pending_declarations={
+                "player_1": {"action": "Longsword", "target_id": "goblin_scout_1"},
+                "goblin_scout_1": {"action": "Scimitar", "target_id": "player_1"},
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_victory_wrap_hands_back_to_exploration_agent(self):
+        from unittest.mock import MagicMock
+
+        from check_resolution import AttackResult
+        from combat_turn import _resolve_phase_impl
+        from exploration_agent import ExplorationAgent
+
+        def _kill_resolver(attacker_data, action, target_ac, target_hp):
+            remaining = max(0, target_hp - 3)
+            return AttackResult(
+                hit=True,
+                roll=15,
+                attack_modifier=3,
+                attack_total=18,
+                target_ac=target_ac,
+                damage=3,
+                damage_type="slashing",
+                critical=False,
+                critical_success=False,
+                critical_failure=False,
+                target_hp_remaining=remaining,
+                target_killed=remaining == 0,
+                narrative_hint="Down it goes.",
+            )
+
+        resolver = MagicMock()
+        resolver.resolve_attack = MagicMock(side_effect=_kill_resolver)
+        queries = MagicMock()
+        queries.get_player_inventory = AsyncMock(return_value=[])
+        break_mod = MagicMock()
+        break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
+
+        ctx = _make_context()
+        ctx.userdata.combat_state = self._resolution_state_one_hit_from_victory()
+
+        raw = await _resolve_phase_impl(
+            ctx,
+            mutations=_make_end_combat_mocks(),
+            queries=queries,
+            resolver=resolver,
+            concentration_break_mod=break_mod,
+        )
+
+        assert isinstance(raw, tuple), "a winning wrap should return the (ExplorationAgent, json) handoff"
+        agent_instance, json_str = raw
+        assert isinstance(agent_instance, ExplorationAgent)
+        assert json.loads(json_str)["outcome"] == "victory"
+        assert ctx.userdata.combat_state is None
