@@ -4,9 +4,9 @@ from typing import Any
 
 from ability_tools import request_ability_activation
 from base_agent import BaseGameAgent
-from check_tools import check, request_attack
+from check_tools import check
 from combat_end import end_combat
-from combat_turn import request_death_save, resolve_enemy_turn
+from combat_turn import declare_phase, request_death_save, resolve_phase
 from draethar_inner_fire import inner_fire
 from environment_tools import play_sound, set_music_state
 from query_tools import query_info
@@ -14,12 +14,17 @@ from spell_casting import cast_spell, get_spell_info
 from system_prompts import COMBAT_SYSTEM_PROMPT
 from veil_ward_tools import activate_veil_ward
 
+# The phase-loop drives combat (M4.1, story-003): declare_phase collects a round's
+# declarations, resolve_phase resolves them in initiative order and fires end_combat on
+# the engine's wrap end-condition. The old per-actor resolve_enemy_turn/request_attack
+# verbs are gone — all damage routes through CombatParticipant HP via the packet path.
+#
 # resolve_milestone is intentionally NOT here: combat never awards XP (end_combat hands
 # back to the exploration agent, which calls award_xp), so milestones never resolve in
 # combat. It lives in the exploration agents instead (concern 3c02318dfa99).
 COMBAT_AGENT_TOOLS = [
-    resolve_enemy_turn,
-    request_attack,
+    declare_phase,
+    resolve_phase,
     check,
     request_death_save,
     end_combat,

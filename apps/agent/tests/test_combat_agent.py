@@ -12,18 +12,20 @@ class TestCombatAgentConfig:
 
     def test_combat_tools_are_complete(self):
         from ability_tools import request_ability_activation
-        from check_tools import check, request_attack
+        from check_tools import check
         from combat_end import end_combat
-        from combat_turn import request_death_save, resolve_enemy_turn
+        from combat_turn import declare_phase, request_death_save, resolve_phase
         from draethar_inner_fire import inner_fire
         from environment_tools import play_sound, set_music_state
         from query_tools import query_info
         from spell_casting import cast_spell, get_spell_info
         from veil_ward_tools import activate_veil_ward
 
+        # The phase-loop verbs (declare_phase/resolve_phase) replaced the old per-actor
+        # resolve_enemy_turn + request_attack (story-003, unified packet resolution).
         expected = {
-            resolve_enemy_turn,
-            request_attack,
+            declare_phase,
+            resolve_phase,
             check,
             request_death_save,
             end_combat,

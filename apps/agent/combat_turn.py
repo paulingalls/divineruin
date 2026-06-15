@@ -1,4 +1,5 @@
-"""Combat turn resolution — resolve_enemy_turn and request_death_save tools."""
+"""Combat phase-loop tools — declare_phase, resolve_phase, request_death_save —
+plus the shared _resolve_attack_packet resolver they drive (M4.1, story-003)."""
 
 import json
 import logging
@@ -238,85 +239,6 @@ async def _resolve_one_packet(
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = True
     return summary
-
-
-@function_tool()
-@db_tool
-async def resolve_enemy_turn(
-    context: RunContext[SessionData],
-    enemy_id: str,
-    action_name: str,
-    target_id: str,
-    shield_reaction: str | None = None,
-) -> str:
-    """Resolve an enemy's attack against a target during combat. Provide the
-    enemy's participant ID, which action from their action_pool to use, and
-    the target's participant ID. If the player spends a shield reaction (Shield
-    Bash, Shield Wall, Intercept) against this attack, pass its name as
-    shield_reaction so the shield takes a durability hit. Narrate the result
-    dramatically."""
-    return await _resolve_enemy_turn_impl(context, enemy_id, action_name, target_id, shield_reaction)
-
-
-async def _resolve_enemy_turn_impl(
-    context: RunContext[SessionData],
-    enemy_id: str,
-    action_name: str,
-    target_id: str,
-    shield_reaction: str | None = None,
-    *,
-    mutations=db_mutations,
-    queries=db_queries,
-    resolver=check_resolution,
-    concentration_break_mod=concentration_break,
-) -> str:
-    logger.info("resolve_enemy_turn called: enemy=%s, action=%s, target=%s", enemy_id, action_name, target_id)
-    session: SessionData = context.userdata
-
-    cs = _require_combat(session)
-
-    enemy = cs.get_participant(enemy_id)
-    if enemy is None:
-        raise ToolError(f"Enemy '{enemy_id}' not found in combat.")
-    if enemy.type not in ("enemy", "companion"):
-        raise ToolError(f"'{enemy_id}' is not an enemy or companion.")
-    if enemy.is_fallen:
-        raise ToolError(f"'{enemy.name}' has fallen and cannot act.")
-
-    # Find action
-    action = None
-    for a in enemy.action_pool:
-        if a.get("name", "").lower() == action_name.lower():
-            action = a
-            break
-    if action is None:
-        available = [a.get("name") for a in enemy.action_pool]
-        raise ToolError(f"Action '{action_name}' not found. Available: {available}")
-
-    target = cs.get_participant(target_id)
-    if target is None:
-        raise ToolError(f"Target '{target_id}' not found in combat.")
-    if target.is_fallen:
-        raise ToolError(f"Target '{target.name}' has already fallen.")
-
-    # Resolve the attack against the target participant, then persist once. The shared
-    # packet resolver mutates the target in place and publishes its own HUD events; the
-    # phase loop (story-003) reuses it across all packets, persisting once per phase.
-    response = await _resolve_attack_packet(
-        session,
-        enemy,
-        action,
-        target,
-        shield_reaction=shield_reaction,
-        mutations=mutations,
-        queries=queries,
-        resolver=resolver,
-        concentration_break_mod=concentration_break_mod,
-    )
-
-    await mutations.save_combat_state(cs.combat_id, cs.to_dict())
-
-    return json.dumps(response)
 
 
 async def _resolve_attack_packet(
