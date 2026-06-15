@@ -209,12 +209,19 @@ async def _cast_spell_impl(
         # before this cast's generation lands. apply_resonance_decay floors at 0, so a cast from 0
         # (the common path) is unchanged. A cantrip (generated 0) skips decay below, leaving the
         # state untouched (AC6). Only Human carries a decay_bonus; the base 1 is in the pure fn.
+        #
+        # IN COMBAT this cast-paced shed is SUPPRESSED (story-007). The combat PHASE is the canonical
+        # decay clock (decision resonance-decay-phase-canonical): story-001's wrap beat emits one
+        # resonance_decay per phase. If both the wrap beat and this cast path fired in combat,
+        # Resonance would double-decay — so in combat a cast only GENERATES, never sheds, and
+        # base_resonance stays at the standing value. Out of combat, decay is exactly sprint-017.
+        should_decay = generated > 0 and not session.in_combat
         decay_modifier = 0
         if race == "human":
             decay_modifier = racial_mod.get_racial_resonance_modifier("human", "decay_bonus")
         base_resonance = (
             resonance.apply_resonance_decay(session.resonance.current, decay_modifier)
-            if generated > 0
+            if should_decay
             else session.resonance.current
         )
 

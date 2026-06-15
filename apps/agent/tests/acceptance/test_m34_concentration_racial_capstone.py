@@ -132,9 +132,10 @@ async def test_draethar_inner_fire_after_overreach_cast_composes(reset_db_pool: 
 
     ctx = _make_ctx(player_id)
     # Seed prior accrual: a single concentration cast can't reach Overreach from 0 (max
-    # concentration generation is 4). Start at 8 — the cast first sheds one round of per-round
-    # decay (story-010; draethar base 1 -> 7), then +2 lands exactly at 9 (Overreach).
-    ctx.userdata.resonance.current = 8
+    # concentration generation is 4). Start at 7 — this cast is IN COMBAT, so its cast-paced
+    # per-round shed is SUPPRESSED (story-007, decision resonance-decay-phase-canonical: the
+    # combat phase owns decay, not the cast path), so +2 lands exactly at 9 (Overreach) with no shed.
+    ctx.userdata.resonance.current = 7
     ctx.userdata.combat_state = CombatState(
         combat_id="cap_m34_combat",
         participants=[
@@ -144,7 +145,7 @@ async def test_draethar_inner_fire_after_overreach_cast_composes(reset_db_pool: 
         initiative_order=[player_id, "hollow_1"],
     )
 
-    # Cast arcane_invisibility (concentration, +2): 7 -> 9 = Overreach (the echo auto-rolls).
+    # Cast arcane_invisibility (concentration, +2): 7 + 2 = 9 = Overreach (no in-combat shed; echo auto-rolls).
     cast = json.loads(await _cast_spell_impl(ctx, "arcane_invisibility"))
     assert cast["state"] == "overreach"
     assert (await db_mutations_resonance.read_player_resonance(player_id, conn=pool))["current"] == 9
