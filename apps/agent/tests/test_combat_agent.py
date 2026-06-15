@@ -85,3 +85,47 @@ class TestCombatSystemPrompt:
 
     def test_contains_companion_combat_instructions(self):
         assert "companion" in COMBAT_SYSTEM_PROMPT.lower()
+
+
+class TestCombatBeatContract:
+    """story-004: COMBAT_SYSTEM_PROMPT encodes the 4-beat DM contract for the phase
+    engine — declaration (with hesitation->Defend), silent resolution, narration with
+    reaction windows + dramatic-dice pauses, and wrap. Prompt + contract only."""
+
+    def test_names_four_beats_in_order(self):
+        p = COMBAT_SYSTEM_PROMPT.lower()
+        # Explicit beat headers, in order (the bare beat names also appear in
+        # VOICE_STYLE_PROMPT, e.g. "narration", so anchor on the numbered headers).
+        headers = [p.index("beat 1"), p.index("beat 2"), p.index("beat 3"), p.index("beat 4")]
+        assert headers == sorted(headers), f"beat headers out of order: {headers}"
+        for beat in ("declaration", "resolution", "narration", "wrap"):
+            assert beat in p, f"missing beat name: {beat}"
+
+    def test_declaration_hesitation_falls_back_to_defend(self):
+        p = COMBAT_SYSTEM_PROMPT
+        assert "Defend" in p
+        assert "freeze" in p.lower() or "hesitat" in p.lower()
+
+    def test_resolution_is_silent_before_narration(self):
+        # Beat 2 resolves silently; the Beat-3 narration instruction comes after.
+        p = COMBAT_SYSTEM_PROMPT.lower()
+        assert "silent" in p
+        assert p.index("silent") < p.index("now narrate")
+
+    def test_narration_opens_reaction_windows(self):
+        assert "reaction window" in COMBAT_SYSTEM_PROMPT.lower()
+
+    def test_honors_dramatic_pause(self):
+        # The DM builds tension and pauses for the dramatic dice before a dramatic reveal.
+        p = COMBAT_SYSTEM_PROMPT.lower()
+        assert "dramatic" in p
+        assert "pause" in p
+
+    def test_player_action_must_be_equipped_weapon_name(self):
+        # Concern 4fa8d5aedce6: the player's declare_phase action is the exact name of an
+        # equipped weapon; spells/abilities route to their own tools (cast_spell), not a
+        # declaration — so a player turn is never silently wasted on a name mismatch.
+        p = COMBAT_SYSTEM_PROMPT
+        assert "cast_spell" in p
+        low = p.lower()
+        assert "exact" in low and "weapon" in low
