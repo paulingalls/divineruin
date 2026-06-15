@@ -91,10 +91,49 @@ async def _resolve_enemy_turn_impl(
     if target.is_fallen:
         raise ToolError(f"Target '{target.name}' has already fallen.")
 
-    # Build attacker data from participant's stored attributes
+    # Resolve the attack against the target participant, then persist once. The shared
+    # packet resolver mutates the target in place and publishes its own HUD events; the
+    # phase loop (story-003) reuses it across all packets, persisting once per phase.
+    response = await _resolve_attack_packet(
+        session,
+        enemy,
+        action,
+        target,
+        shield_reaction=shield_reaction,
+        mutations=mutations,
+        queries=queries,
+        resolver=resolver,
+        concentration_break_mod=concentration_break_mod,
+    )
+
+    await mutations.save_combat_state(cs.combat_id, cs.to_dict())
+
+    return json.dumps(response)
+
+
+async def _resolve_attack_packet(
+    session: SessionData,
+    attacker,
+    action: dict,
+    target,
+    *,
+    shield_reaction: str | None = None,
+    mutations=db_mutations,
+    queries=db_queries,
+    resolver=check_resolution,
+    concentration_break_mod=concentration_break,
+) -> dict:
+    """Resolve ONE declared attack against CombatParticipant HP.
+
+    Mutates ``target`` in place (hp_current, is_fallen), publishes the attack's
+    DICE_ROLL, sounds, and any durability hits in strike order, and returns a
+    response dict for the caller (a per-packet narration summary). It does NOT
+    persist — the caller owns one ``save_combat_state`` per phase so the multi-packet
+    phase loop persists exactly once. ``attacker``/``target`` are CombatParticipants;
+    ``action`` is an entry from the attacker's action_pool (weapon-shaped)."""
     attacker_data = {
-        "attributes": enemy.attributes,
-        "level": enemy.level,
+        "attributes": attacker.attributes,
+        "level": attacker.level,
     }
 
     attack_result = resolver.resolve_attack(
@@ -124,7 +163,7 @@ async def _resolve_enemy_turn_impl(
         # Handle companion KO
         if target.type == "companion" and session.companion and target.id == session.companion.id:
             session.companion.is_conscious = False
-            session.record_companion_memory("Kael was knocked unconscious in combat")
+            session.record_companion_memory(f"{target.name} was knocked unconscious in combat")
     elif hp_status in ("bloodied", "critical"):
         sounds.append(SOUND_HEARTBEAT)
 
@@ -142,16 +181,13 @@ async def _resolve_enemy_turn_impl(
             session, attack_result.damage, incapacitated=target.hp_current <= 0
         )
 
-    # Persist combat state
-    await mutations.save_combat_state(cs.combat_id, cs.to_dict())
-
     # Publish events
     await publish_game_event(
         session.room,
         E.DICE_ROLL,
         {
             "roll_type": "attack",
-            "attacker": enemy.name,
+            "attacker": attacker.name,
             "hit": attack_result.hit,
             "roll": attack_result.roll,
             "damage": attack_result.damage,
@@ -181,11 +217,11 @@ async def _resolve_enemy_turn_impl(
                 )
 
     hit_miss = "hit" if attack_result.hit else "miss"
-    session.record_event(f"{enemy.name} attacks {target.name}: {hit_miss}, {attack_result.damage} damage")
+    session.record_event(f"{attacker.name} attacks {target.name}: {hit_miss}, {attack_result.damage} damage")
 
     response = {
-        "attacker": enemy.name,
-        "action": action_name,
+        "attacker": attacker.name,
+        "action": action.get("name", ""),
         "target": target.name,
         "hit": attack_result.hit,
         "roll": attack_result.roll,
@@ -201,14 +237,14 @@ async def _resolve_enemy_turn_impl(
         "concentration_broken": concentration_broken,
     }
     logger.info(
-        "resolve_enemy_turn result: %s → %s, %s, damage=%d, hp_status=%s",
-        enemy.name,
+        "resolve_attack_packet result: %s → %s, %s, damage=%d, hp_status=%s",
+        attacker.name,
         target.name,
         hit_miss,
         attack_result.damage,
         hp_status,
     )
-    return json.dumps(response)
+    return response
 
 
 @function_tool()
