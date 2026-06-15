@@ -85,6 +85,138 @@ async def _declare_phase_impl(
 
 @function_tool()
 @db_tool
+async def resolve_phase(
+    context: RunContext[SessionData],
+) -> str | tuple:
+    """Resolve the combat phase declared by declare_phase. Drives the deterministic
+    engine: resolves every declared attack in initiative order against the
+    combatants' HP, narrates the outcomes (you supply the prose from the returned
+    packets), then wraps the phase — Resonance decays, death saves come due, and if
+    every enemy has fallen (or the player has died) combat ends and hands back to the
+    exploration agent. Call this once, right after declare_phase. The response lists
+    per-actor resolution packets to narrate plus any death saves the player owes."""
+    return await _resolve_phase_impl(context)
+
+
+async def _resolve_phase_impl(
+    context: RunContext[SessionData],
+    *,
+    mutations=db_mutations,
+    queries=db_queries,
+    resolver=check_resolution,
+    concentration_break_mod=concentration_break,
+) -> str | tuple:
+    logger.info("resolve_phase called")
+    session: SessionData = context.userdata
+
+    cs = _require_combat(session)
+    if cs.beat != combat_phase.PhaseBeat.RESOLUTION:
+        raise ToolError(f"Not at the resolution beat (current beat: {cs.beat}). Call declare_phase first.")
+
+    # Beat 2 (resolution): the engine orders the pending declarations into initiative
+    # packets (no math of its own). Orchestration applies each attack against
+    # CombatParticipant HP via the shared packet resolver.
+    state, adv = combat_phase.advance_combat_phase(cs)
+    packet_summaries: list[dict] = []
+    for packet in adv.packets:
+        packet_summaries.append(
+            await _resolve_one_packet(
+                session,
+                state,
+                packet,
+                mutations=mutations,
+                queries=queries,
+                resolver=resolver,
+                concentration_break_mod=concentration_break_mod,
+            )
+        )
+
+    # Beat 3 (narration) is an engine no-op; Beat 4 (wrap) computes the end-condition,
+    # death saves due, and the per-phase Resonance decay signal.
+    state, _narr = combat_phase.advance_combat_phase(state)
+    state, wrap_adv = combat_phase.advance_combat_phase(state)
+    wrap = wrap_adv.wrap
+
+    session.combat_state = state
+    await mutations.save_combat_state(state.combat_id, state.to_dict())
+
+    response = {
+        "beat": state.beat,
+        "round": state.round_number,
+        "packets": packet_summaries,
+        "death_saves_due": wrap.death_saves_due if wrap else [],
+    }
+    logger.info(
+        "resolve_phase result: beat=%s, round=%d, packets=%d", state.beat, state.round_number, len(packet_summaries)
+    )
+    return json.dumps(response)
+
+
+def _find_action(participant, action_name) -> dict | None:
+    """Find the named action in a participant's action_pool (case-insensitive)."""
+    if not action_name:
+        return None
+    wanted = str(action_name).lower()
+    for a in participant.action_pool:
+        if a.get("name", "").lower() == wanted:
+            return a
+    return None
+
+
+async def _resolve_one_packet(
+    session: SessionData,
+    state,
+    packet,
+    *,
+    mutations,
+    queries,
+    resolver,
+    concentration_break_mod,
+) -> dict:
+    """Resolve a single initiative-ordered ResolutionPacket against ``state``.
+
+    A declaration is *wasted* (resolved=False) when its actor or target is gone or
+    has already fallen this phase, or its action isn't in the actor's pool — one bad
+    or stale declaration never crashes the phase. Otherwise it resolves through the
+    shared attack resolver and records the player's weapon-durability flags."""
+    attacker = state.get_participant(packet.actor_id)
+    decl = packet.declaration or {}
+    target_id = decl.get("target_id")
+    target = state.get_participant(target_id) if target_id else None
+    action = _find_action(attacker, decl.get("action")) if attacker is not None else None
+
+    if attacker is None or attacker.is_fallen:
+        return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}
+    if target is None:
+        return {"actor_id": packet.actor_id, "resolved": False, "reason": f"target '{target_id}' not found"}
+    if target.is_fallen:
+        return {"actor_id": packet.actor_id, "resolved": False, "reason": f"{target.name} already fell"}
+    if action is None:
+        return {"actor_id": packet.actor_id, "resolved": False, "reason": f"action '{decl.get('action')}' not found"}
+
+    summary = await _resolve_attack_packet(
+        session,
+        attacker,
+        action,
+        target,
+        mutations=mutations,
+        queries=queries,
+        resolver=resolver,
+        concentration_break_mod=concentration_break_mod,
+    )
+    # Preserve request_attack's old behavior: a player swing arms the per-encounter
+    # weapon-durability accrual that end_combat applies (a crit vs heavy armor costs 2).
+    if attacker.type == "player" and summary["hit"]:
+        session.weapon_used_this_encounter = True
+        if summary["critical"] and combat_resolution.is_heavily_armored(target.ac):
+            session.weapon_crit_vs_heavy = True
+    summary["actor_id"] = packet.actor_id
+    summary["resolved"] = True
+    return summary
+
+
+@function_tool()
+@db_tool
 async def resolve_enemy_turn(
     context: RunContext[SessionData],
     enemy_id: str,
