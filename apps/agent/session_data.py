@@ -135,6 +135,26 @@ class CombatState:
     def to_dict(self) -> dict:
         return asdict(self)
 
+    @classmethod
+    def from_dict(cls, data: dict) -> CombatState:
+        """Rebuild a CombatState from the asdict() shape to_dict() produces (the read-side
+        inverse, M4.1 story-002). Each participant dict is reconstructed into a CombatParticipant
+        so loaded state carries instances, not raw dicts. Phase fields and any field absent from
+        rows written before they existed fall back to the dataclass defaults via data.get(...).
+        ``beat`` stays a plain str — combat_phase is NOT imported here, to avoid the
+        session_data <-> combat_phase cycle the class docstring notes."""
+        return cls(
+            combat_id=data["combat_id"],
+            participants=[CombatParticipant(**p) for p in data["participants"]],
+            initiative_order=data["initiative_order"],
+            round_number=data.get("round_number", 1),
+            current_turn_index=data.get("current_turn_index", 0),
+            location_id=data.get("location_id", ""),
+            beat=data.get("beat", "declaration"),
+            pending_declarations=data.get("pending_declarations", {}),
+            reactions_available=data.get("reactions_available", {}),
+        )
+
 
 @dataclass
 class CreationState:
