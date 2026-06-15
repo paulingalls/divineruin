@@ -13,6 +13,7 @@ import concentration_break
 import db_mutations
 import db_queries
 import event_types as E
+from combat_end import _end_combat_impl
 from combat_support import _accrue_durability, _find_equipped, _publish_sounds, _require_combat
 from db_errors import db_tool
 from game_events import publish_game_event
@@ -138,6 +139,15 @@ async def _resolve_phase_impl(
     wrap = wrap_adv.wrap
 
     session.combat_state = state
+
+    # Beat 4 end-condition: the engine reports victory (all enemies fallen) or defeat
+    # (the player has died). Hand the engine's outcome to end_combat — it awards XP,
+    # accrues weapon durability, clears + deletes combat state, and returns the
+    # (gameplay_agent, json) handoff tuple. The looped state is never persisted here.
+    if wrap is not None and wrap.combat_ended and wrap.outcome:
+        logger.info("resolve_phase: engine end-condition %s -> end_combat", wrap.outcome)
+        return await _end_combat_impl(context, wrap.outcome, mutations=mutations, queries=queries)
+
     await mutations.save_combat_state(state.combat_id, state.to_dict())
 
     response = {

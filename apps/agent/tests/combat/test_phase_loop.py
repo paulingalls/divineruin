@@ -22,6 +22,7 @@ def _make_mutations():
     m = MagicMock()
     m.save_combat_state = AsyncMock()
     m.update_player_hp = AsyncMock()
+    m.delete_combat_state = AsyncMock()
     return m
 
 
@@ -243,3 +244,46 @@ class TestResolvePhaseNonEnding:
 
         with pytest.raises(ToolError, match="resolution beat"):
             await _resolve_phase_impl(ctx, **deps)
+
+
+class TestResolvePhaseEnding:
+    @pytest.mark.asyncio
+    async def test_victory_ends_and_hands_off(self):
+        deps = _resolve_deps(damage=3)
+        ctx = _make_context()
+        # Player (init 15) strikes the goblin for 3; goblin has 3 HP -> it falls before
+        # it can act (its own declaration is wasted). All enemies down -> victory.
+        ctx.userdata.combat_state = _resolution_state(enemy_hp=3)
+
+        raw = await _resolve_phase_impl(ctx, **deps)
+
+        assert isinstance(raw, tuple)  # combat ended -> (gameplay_agent, json) handoff
+        _agent, json_str = raw
+        result = json.loads(json_str)
+        assert result["outcome"] == "victory"
+        assert ctx.userdata.combat_state is None
+        deps["mutations"].delete_combat_state.assert_awaited_once()
+        # The ending phase is never persisted back (state was deleted instead).
+        deps["mutations"].save_combat_state.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_defeat_ends_and_hands_off(self):
+        deps = _resolve_deps()
+        ctx = _make_context()
+        cs = _resolution_state()
+        player = cs.get_participant("player_1")
+        assert player is not None
+        # The player has already burned three failed death saves (from prior request_death_save
+        # calls) and is down; this phase's wrap reads that and ends in defeat.
+        player.is_fallen = True
+        player.hp_current = 0
+        player.death_save_failures = 3
+        cs.pending_declarations = {"goblin_scout_1": {"action": "Scimitar", "target_id": "player_1"}}
+        ctx.userdata.combat_state = cs
+
+        raw = await _resolve_phase_impl(ctx, **deps)
+
+        assert isinstance(raw, tuple)
+        _agent, json_str = raw
+        assert json.loads(json_str)["outcome"] == "defeat"
+        assert ctx.userdata.combat_state is None
