@@ -341,3 +341,46 @@ class TestResolvePhaseResonanceDecay:
         assert isinstance(raw, tuple)  # combat ended
         assert ctx.userdata.resonance.current == 5  # unchanged
         res["resonance_mutations"].update_player_resonance.assert_not_called()
+
+
+class TestPhaseLoopE2E:
+    """AC4: a live encounter advances declaration -> resolution -> narration -> wrap
+    across rounds to victory through the phase tools (declare_phase + resolve_phase),
+    with the engine firing the end-of-combat handoff itself."""
+
+    @pytest.mark.asyncio
+    async def test_full_lifecycle_to_victory(self):
+        deps = _resolve_deps(damage=4)
+        ctx = _make_context()
+        # Start parked at the declaration beat, as combat_init leaves a fresh encounter.
+        cs = _resolution_state(player_hp=25, enemy_hp=7)
+        cs.beat = "declaration"
+        cs.pending_declarations = {}
+        ctx.userdata.combat_state = cs
+
+        decls = {
+            "player_1": {"action": "Longsword", "target_id": "goblin_scout_1"},
+            "goblin_scout_1": {"action": "Scimitar", "target_id": "player_1"},
+        }
+
+        # --- Round 1: declaration -> resolution -> (combat continues) -> declaration ---
+        d1 = json.loads(await _declare_phase_impl(ctx, decls, mutations=deps["mutations"]))
+        assert d1["beat"] == "resolution"
+
+        r1 = await _resolve_phase_impl(ctx, **deps)
+        assert isinstance(r1, str), "round 1 does not end combat"
+        r1j = json.loads(r1)
+        assert r1j["beat"] == "declaration" and r1j["round"] == 2
+        assert len([p for p in r1j["packets"] if p["resolved"]]) == 2
+        goblin = ctx.userdata.combat_state.get_participant("goblin_scout_1")
+        assert goblin is not None and goblin.hp_current == 3  # 7 - 4
+
+        # --- Round 2: declaration -> resolution -> wrap -> victory handoff ---
+        await _declare_phase_impl(ctx, decls, mutations=deps["mutations"])
+        r2 = await _resolve_phase_impl(ctx, **deps)
+
+        assert isinstance(r2, tuple), "the winning wrap returns the (gameplay_agent, json) handoff"
+        _agent, json_str = r2
+        assert json.loads(json_str)["outcome"] == "victory"
+        assert ctx.userdata.combat_state is None
+        deps["mutations"].delete_combat_state.assert_awaited_once()
