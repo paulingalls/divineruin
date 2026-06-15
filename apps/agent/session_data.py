@@ -113,6 +113,19 @@ class CombatState:
     current_turn_index: int = 0
     location_id: str = ""
 
+    # 4-beat phase machine (M4.1, story-001). The deterministic engine lives in
+    # combat_phase.advance_combat_phase; ``beat`` carries the loop position. Typed
+    # ``str`` (not the PhaseBeat enum) to avoid a session_data <-> combat_phase import
+    # cycle — combat_phase owns combat_phase.PhaseBeat (a StrEnum whose members ==
+    # these strings) and compares against it. Defaults to the declaration beat.
+    beat: str = "declaration"
+    # Declarations collected in Beat 1 (actor_id -> opaque declaration dict; typed by
+    # M4.2), consumed in Beat 2, cleared at the wrap loop-back.
+    pending_declarations: dict[str, dict] = field(default_factory=dict)
+    # Reaction availability for the current phase (actor_id -> bool), reset each
+    # declaration beat; consumed by Beat-3 reaction windows (M4.x).
+    reactions_available: dict[str, bool] = field(default_factory=dict)
+
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
             if p.id == participant_id:
