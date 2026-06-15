@@ -94,10 +94,15 @@ class TestCombatBeatContract:
 
     def test_names_four_beats_in_order(self):
         p = COMBAT_SYSTEM_PROMPT.lower()
-        # Explicit beat headers, in order (the bare beat names also appear in
-        # VOICE_STYLE_PROMPT, e.g. "narration", so anchor on the numbered headers).
-        headers = [p.index("beat 1"), p.index("beat 2"), p.index("beat 3"), p.index("beat 4")]
-        assert headers == sorted(headers), f"beat headers out of order: {headers}"
+        # Anchor on a unique body phrase from EACH beat (not the single overview line),
+        # so deleting or reordering a beat body — not just its header — fails the test.
+        bodies = [
+            p.index("call declare_phase"),  # Beat 1 declaration body
+            p.index("call resolve_phase"),  # Beat 2 resolution body
+            p.index("narrate the returned packets"),  # Beat 3 narration body
+            p.index("death saves due"),  # Beat 4 wrap body
+        ]
+        assert bodies == sorted(bodies), f"beat bodies out of order: {bodies}"
         for beat in ("declaration", "resolution", "narration", "wrap"):
             assert beat in p, f"missing beat name: {beat}"
 
@@ -113,19 +118,23 @@ class TestCombatBeatContract:
         assert p.index("silent") < p.index("now narrate")
 
     def test_narration_opens_reaction_windows(self):
-        assert "reaction window" in COMBAT_SYSTEM_PROMPT.lower()
+        # AC2: the window precedes the enemy's blow landing — not bare "reaction window".
+        low = COMBAT_SYSTEM_PROMPT.lower()
+        assert "reaction window" in low
+        assert "before an enemy's blow lands" in low
 
     def test_honors_dramatic_pause(self):
-        # The DM builds tension and pauses for the dramatic dice before a dramatic reveal.
-        p = COMBAT_SYSTEM_PROMPT.lower()
-        assert "dramatic" in p
-        assert "pause" in p
+        # "pause" alone leaks from VOICE_STYLE ("Use pauses") and the Beat-4 death-save
+        # line; anchor on the unique Beat-3 phrase so deleting it actually fails.
+        assert "pause for the dramatic dice" in COMBAT_SYSTEM_PROMPT.lower()
 
     def test_player_action_must_be_equipped_weapon_name(self):
         # Concern 4fa8d5aedce6: the player's declare_phase action is the exact name of an
         # equipped weapon; spells/abilities route to their own tools (cast_spell), not a
         # declaration — so a player turn is never silently wasted on a name mismatch.
-        p = COMBAT_SYSTEM_PROMPT
-        assert "cast_spell" in p
-        low = p.lower()
-        assert "exact" in low and "weapon" in low
+        low = COMBAT_SYSTEM_PROMPT.lower()
+        # The action is the EXACT name of an equipped weapon...
+        assert "exact name" in low and "equipped weapon" in low
+        # ...and spells route to cast_spell, never through declare_phase as a wasted decl.
+        assert "cast_spell" in COMBAT_SYSTEM_PROMPT
+        assert "never through declare_phase" in low

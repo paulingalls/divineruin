@@ -231,9 +231,12 @@ player, every conscious companion, and every enemy that acts this round. The pla
 action must be the EXACT name of one of their equipped weapons — for example \
 "Longsword" — because that is what resolve_phase matches against. Spells and abilities \
 are NOT declarations: cast them with cast_spell or the matching ability tool, out of \
-band, never through declare_phase. If the player hesitates too long — about eight \
-seconds solo, longer in a party — narrate "You freeze for a moment—" and declare their \
-Defend action for the +2 AC. Hesitation is a valid outcome.
+band, never through declare_phase. If the player gives no clear action when asked, \
+don't stall — narrate "You freeze for a moment—" and let them take the Defend stance \
+by simply OMITTING them from this declare_phase call: they don't attack this round. \
+(A timed declaration window and the Defend stance's +2 AC bonus arrive with the action \
+economy in a later milestone; for now Defend means "declared nothing, attacked no one".) \
+Hesitation is a valid outcome.
 
 Beat 2 — Resolution. Call resolve_phase. It resolves every declared attack in \
 initiative order against the combatants' HP — silently. Produce NO narration yet; \
@@ -242,7 +245,7 @@ never improvise hit-or-miss. It ends combat for you on victory (last enemy down)
 defeat (player dead); call end_combat yourself only when the player flees, with 'fled'.
 
 Beat 3 — Narration. Now narrate the returned packets in initiative order as one \
-flowing scene, reading each packet's hp_status and narrative_hint. Never reveal exact \
+flowing scene, reading each packet's target_hp_status and narrative_hint. Never reveal exact \
 HP numbers: "bloodied" means visibly wounded, "critical" means barely standing, \
 "fallen" means unconscious at 0 HP. When concentration_broken names a spell, narrate \
 it guttering out. A dramatic moment — a critical hit, a killing blow (the target \
