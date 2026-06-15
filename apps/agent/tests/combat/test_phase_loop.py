@@ -287,3 +287,57 @@ class TestResolvePhaseEnding:
         _agent, json_str = raw
         assert json.loads(json_str)["outcome"] == "defeat"
         assert ctx.userdata.combat_state is None
+
+
+def _resonance_deps():
+    res_mut = MagicMock()
+    res_mut.update_player_resonance = AsyncMock()
+    res_evt = MagicMock()
+    res_evt.publish_resonance_changed = AsyncMock()
+    return {"resonance_mutations": res_mut, "resonance_events_mod": res_evt}
+
+
+class TestResolvePhaseResonanceDecay:
+    @pytest.mark.asyncio
+    async def test_decays_one_step_on_non_ending_wrap(self):
+        deps = _resolve_deps(damage=3)
+        res = _resonance_deps()
+        ctx = _make_context()
+        ctx.userdata.combat_state = _resolution_state()
+        ctx.userdata.resonance.current = 5
+
+        await _resolve_phase_impl(ctx, **deps, **res)
+
+        # WRAP is the canonical combat decay clock: one step per phase.
+        assert ctx.userdata.resonance.current == 4
+        res["resonance_mutations"].update_player_resonance.assert_awaited_once_with("player_1", 4)
+        res["resonance_events_mod"].publish_resonance_changed.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_no_decay_or_write_at_zero(self):
+        deps = _resolve_deps(damage=3)
+        res = _resonance_deps()
+        ctx = _make_context()
+        ctx.userdata.combat_state = _resolution_state()
+        ctx.userdata.resonance.current = 0
+
+        await _resolve_phase_impl(ctx, **deps, **res)
+
+        assert ctx.userdata.resonance.current == 0
+        res["resonance_mutations"].update_player_resonance.assert_not_called()
+        res["resonance_events_mod"].publish_resonance_changed.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_no_decay_when_combat_ends(self):
+        # Decay happens during the fight, not on the terminal wrap that ends combat.
+        deps = _resolve_deps(damage=3)
+        res = _resonance_deps()
+        ctx = _make_context()
+        ctx.userdata.combat_state = _resolution_state(enemy_hp=3)  # victory this phase
+        ctx.userdata.resonance.current = 5
+
+        raw = await _resolve_phase_impl(ctx, **deps, **res)
+
+        assert isinstance(raw, tuple)  # combat ended
+        assert ctx.userdata.resonance.current == 5  # unchanged
+        res["resonance_mutations"].update_player_resonance.assert_not_called()

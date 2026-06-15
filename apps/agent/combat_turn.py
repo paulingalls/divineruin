@@ -11,8 +11,10 @@ import combat_phase
 import combat_resolution
 import concentration_break
 import db_mutations
+import db_mutations_resonance
 import db_queries
 import event_types as E
+import resonance_events
 from combat_end import _end_combat_impl
 from combat_support import _accrue_durability, _find_equipped, _publish_sounds, _require_combat
 from db_errors import db_tool
@@ -106,6 +108,8 @@ async def _resolve_phase_impl(
     queries=db_queries,
     resolver=check_resolution,
     concentration_break_mod=concentration_break,
+    resonance_mutations=db_mutations_resonance,
+    resonance_events_mod=resonance_events,
 ) -> str | tuple:
     logger.info("resolve_phase called")
     session: SessionData = context.userdata
@@ -147,6 +151,17 @@ async def _resolve_phase_impl(
     if wrap is not None and wrap.combat_ended and wrap.outcome:
         logger.info("resolve_phase: engine end-condition %s -> end_combat", wrap.outcome)
         return await _end_combat_impl(context, wrap.outcome, mutations=mutations, queries=queries)
+
+    # Combat continues: shed one step of Resonance per phase. WRAP is the canonical
+    # combat decay clock (decision resonance-decay-phase-canonical) — cast-paced decay
+    # is already suppressed in combat (spell_casting), so this never double-decays.
+    # Persist + push only when the value actually moved (a 0 floor stays silent).
+    if wrap is not None and wrap.resonance_decay:
+        new_resonance = max(0, session.resonance.current - wrap.resonance_decay)
+        if new_resonance != session.resonance.current:
+            session.resonance.current = new_resonance
+            await resonance_mutations.update_player_resonance(session.player_id, new_resonance)
+            await resonance_events_mod.publish_resonance_changed(session)
 
     await mutations.save_combat_state(state.combat_id, state.to_dict())
 
