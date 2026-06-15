@@ -131,7 +131,15 @@ def advance_combat_phase(
 
 def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:
     """Order pending declarations by initiative (desc; tie: player > companion >
-    enemy, then higher DEX) and wrap each into a ResolutionPacket. No narration."""
+    enemy, then higher DEX) and wrap each into a ResolutionPacket. No narration.
+
+    This is the single source of truth for per-phase RESOLUTION ordering, and it
+    applies the spec tie-break (gm_combat:145) that roll_initiative does not.
+    CombatState.initiative_order (set once by combat_init via roll_initiative,
+    sorted by total only) is the start-of-combat DISPLAY order consumed by the
+    HUD/warm prompts — intentionally NOT the resolution-ordering source, so the
+    two can differ on a tie. Not reconciled here by design.
+    """
     by_id = {p.id: p for p in state.participants}
 
     def sort_key(actor_id: str) -> tuple[int, int, int]:
@@ -162,6 +170,9 @@ def _wrap(state: CombatState) -> WrapOutcome:
     ]
 
     enemies = [p for p in state.participants if p.type == "enemy"]
+    # M4.1 scope seam: defeat keys on a SINGLE player participant. Multiplayer
+    # party-defeat (all players down) and party-wipe handling are M4.4 (Death &
+    # Resurrection); this single-player assumption is intentional for M4.1.
     player = next((p for p in state.participants if p.type == "player"), None)
 
     combat_ended = False
