@@ -7,6 +7,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import combat_phase
 import combat_resolution
 import concentration_break
 import db_mutations
@@ -30,6 +31,56 @@ from tool_support import (
 )
 
 logger = logging.getLogger("divineruin.tools")
+
+
+@function_tool()
+@db_tool
+async def declare_phase(
+    context: RunContext[SessionData],
+    declarations: dict[str, dict],
+) -> str:
+    """Open a combat phase by recording every combatant's declared action for this
+    round, then call resolve_phase to resolve them. Pass a mapping of participant ID
+    to that combatant's declaration, e.g.
+    {"player_1": {"action": "Longsword", "target_id": "goblin_1"},
+     "goblin_1": {"action": "Scimitar", "target_id": "player_1"}}.
+    Include the player, every conscious companion, and every enemy that acts this
+    phase. Call this once per round at the declaration beat; resolve_phase resolves
+    and narrates the whole phase in initiative order."""
+    return await _declare_phase_impl(context, declarations)
+
+
+async def _declare_phase_impl(
+    context: RunContext[SessionData],
+    declarations: dict[str, dict],
+    *,
+    mutations=db_mutations,
+) -> str:
+    logger.info("declare_phase called: %d declarations", len(declarations or {}))
+    session: SessionData = context.userdata
+
+    cs = _require_combat(session)
+    if cs.beat != combat_phase.PhaseBeat.DECLARATION:
+        raise ToolError(f"Not at the declaration beat (current beat: {cs.beat}). Call resolve_phase first.")
+
+    # The pure engine records the declarations and advances DECLARATION -> RESOLUTION.
+    # An empty declarations payload is a ValueError from the engine — surface it as a
+    # ToolError so the DM re-prompts rather than crashing combat.
+    try:
+        next_state, _adv = combat_phase.advance_combat_phase(cs, declarations=declarations)
+    except ValueError as e:
+        raise ToolError(str(e)) from e
+
+    session.combat_state = next_state
+    await mutations.save_combat_state(next_state.combat_id, next_state.to_dict())
+
+    response = {
+        "beat": next_state.beat,
+        "round": next_state.round_number,
+        "accepted_actors": list(next_state.pending_declarations.keys()),
+    }
+    logger.info("declare_phase result: beat=%s, actors=%s", next_state.beat, response["accepted_actors"])
+    return json.dumps(response)
 
 
 @function_tool()
