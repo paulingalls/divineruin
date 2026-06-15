@@ -230,11 +230,12 @@ async def _resolve_one_packet(
         resolver=resolver,
         concentration_break_mod=concentration_break_mod,
     )
-    # Preserve request_attack's old behavior: a player swing arms the per-encounter
-    # weapon-durability accrual that end_combat applies (a crit vs heavy armor costs 2).
-    if attacker.type == "player" and summary["hit"]:
+    # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
+    # per-encounter weapon-durability accrual that end_combat applies. Only the extra
+    # crit-vs-heavy-armor cost (2 hits) is gated on a critical hit landing.
+    if attacker.type == "player":
         session.weapon_used_this_encounter = True
-        if summary["critical"] and combat_resolution.is_heavily_armored(target.ac):
+        if summary["hit"] and summary["critical"] and combat_resolution.is_heavily_armored(target.ac):
             session.weapon_crit_vs_heavy = True
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = True
@@ -260,7 +261,14 @@ async def _resolve_attack_packet(
     response dict for the caller (a per-packet narration summary). It does NOT
     persist — the caller owns one ``save_combat_state`` per phase so the multi-packet
     phase loop persists exactly once. ``attacker``/``target`` are CombatParticipants;
-    ``action`` is an entry from the attacker's action_pool (weapon-shaped)."""
+    ``action`` is an entry from the attacker's action_pool (weapon-shaped).
+
+    ``shield_reaction`` is a forward seam for the M4.x reaction-window feature
+    (combat_phase's ``reactions_available``): when a future declaration spends a
+    shield reaction it threads the shield name here to accrue shield durability. The
+    live phase loop (``_resolve_one_packet``) does not yet declare reactions, so it
+    is always ``None`` on the live path today; the accrual branch is exercised by
+    test_combat_durability."""
     attacker_data = {
         "attributes": attacker.attributes,
         "level": attacker.level,

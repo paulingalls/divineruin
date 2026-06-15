@@ -68,6 +68,31 @@ def _damage_resolver(damage):
     return r
 
 
+def _miss_resolver():
+    """A resolve_attack that always misses — no damage, target HP unchanged."""
+
+    def _resolve(attacker_data, action, target_ac, target_hp):
+        return AttackResult(
+            hit=False,
+            roll=3,
+            attack_modifier=3,
+            attack_total=6,
+            target_ac=target_ac,
+            damage=0,
+            damage_type="slashing",
+            critical=False,
+            critical_success=False,
+            critical_failure=False,
+            target_hp_remaining=target_hp,
+            target_killed=False,
+            narrative_hint="The blade whistles wide.",
+        )
+
+    r = MagicMock()
+    r.resolve_attack = MagicMock(side_effect=_resolve)
+    return r
+
+
 def _resolution_state(player_hp=25, enemy_hp=7):
     """A CombatState parked at the RESOLUTION beat with player+enemy declarations
     pending. The player carries a synthesized weapon action_pool (story-003 step 6
@@ -199,6 +224,21 @@ class TestResolvePhaseNonEnding:
 
         # The player's weapon swung this encounter (end_combat reads this for durability).
         assert ctx.userdata.weapon_used_this_encounter is True
+
+    @pytest.mark.asyncio
+    async def test_sets_weapon_used_even_when_player_misses(self):
+        # Regression: a swing arms the per-encounter durability accrual whether it
+        # hits or misses (the old request_attack set this on any swing). Only the
+        # crit-vs-heavy bonus is gated on a landing crit.
+        deps = _resolve_deps()
+        deps["resolver"] = _miss_resolver()
+        ctx = _make_context()
+        ctx.userdata.combat_state = _resolution_state()
+
+        await _resolve_phase_impl(ctx, **deps)
+
+        assert ctx.userdata.weapon_used_this_encounter is True
+        assert ctx.userdata.weapon_crit_vs_heavy is False
 
     @pytest.mark.asyncio
     async def test_wasted_when_target_already_fell(self):

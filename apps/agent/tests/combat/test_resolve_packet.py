@@ -1,9 +1,9 @@
 """Tests for _resolve_attack_packet: per-attack resolution against CombatParticipant HP.
 
-This is the shared resolver the phase-loop packet path (story-003) and the legacy
-delegating ``_resolve_enemy_turn_impl`` wrapper both call. It mutates the target
-participant in place, publishes its HUD events/sounds in order, and returns a
-response dict — it does NOT persist (the caller owns one save per phase).
+This is the shared resolver the phase-loop packet path (story-003) drives via
+``_resolve_one_packet``. It mutates the target participant in place, publishes its
+HUD events/sounds in order, and returns a response dict — it does NOT persist (the
+caller owns one save per phase).
 """
 
 from unittest.mock import AsyncMock, MagicMock

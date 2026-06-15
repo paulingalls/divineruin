@@ -178,7 +178,7 @@ async def test_accrue_already_broken_skips_write_and_event():
     assert result == {"broken": True, "penalty": {"attack": -2}, "current_hits": 0}
 
 
-# --- armor + shield accrual in resolve_enemy_turn ----------------------------
+# --- armor + shield accrual in _resolve_attack_packet ------------------------
 
 import combat_turn  # noqa: E402
 from session_data import CombatParticipant, CombatState  # noqa: E402
