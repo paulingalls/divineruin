@@ -278,6 +278,31 @@ class TestStartCombat:
         assert len(raw) == 2
 
     @pytest.mark.asyncio
+    async def test_enters_declaration_beat_with_player_action_pool(self):
+        # AC1 (story-003): after initiative the combat is parked at the declaration beat,
+        # and the player participant carries a weapon action_pool synthesized from
+        # equipment so their attack declarations resolve through the same packet path
+        # as enemies/companions.
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+        ctx = _make_context()
+
+        await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Ambush!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+
+        cs = ctx.userdata.combat_state
+        assert cs is not None
+        assert cs.beat == "declaration"
+        player = cs.get_participant("player_1")
+        assert player is not None
+        assert "Longsword" in [a.get("name") for a in player.action_pool]
+
+    @pytest.mark.asyncio
     async def test_rolls_initiative(self):
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
         ctx = _make_context()
