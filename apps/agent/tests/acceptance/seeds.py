@@ -8,8 +8,32 @@ training rows that the scenarios drive against.
 from __future__ import annotations
 
 import json
+from unittest.mock import MagicMock
 
 import asyncpg
+
+from session_data import SessionData
+
+
+def _make_ctx(player_id: str) -> MagicMock:
+    """A RunContext whose userdata is a real SessionData (room=None -> event bus only).
+
+    Shared by the M3.x cast/concentration capstones that drive _cast_spell_impl etc. against
+    a real testcontainer DB; not a DB seed itself, but co-located here as the one acceptance
+    helper module the capstones already import."""
+    ctx = MagicMock()
+    ctx.userdata = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
+    return ctx
+
+
+async def _set_race(pool, player_id: str, race: str) -> None:
+    """Set players.data race the cast path reads (seed_player_with_pools leaves it unset)."""
+    await pool.execute(
+        "UPDATE players SET data = jsonb_set(data, '{race}', $2::jsonb) WHERE player_id = $1",
+        player_id,
+        json.dumps(race),
+    )
+
 
 _DEFAULT_PLAYER = {
     "name": "Acceptance Tester",

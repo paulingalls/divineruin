@@ -17,9 +17,8 @@ cast_spell gates ONLY Focus (story-004), so a Focus-funded player casts any id.
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock
 
-from acceptance.seeds import seed_player_with_pools
+from acceptance.seeds import _make_ctx, seed_player_with_pools
 
 import db
 import db_mutations_resonance
@@ -27,20 +26,12 @@ import db_mutations_veil_ward
 import db_queries
 import resonance
 import spells
-from session_data import SessionData
 from spell_casting import _cast_spell_impl
 
 # arcane_fireball: focus_cost 5, resonance_by_source.arcane 3. Under per-round (cast-paced)
 # decay (story-010) each post-first cast nets +2 (3 generated - 1 base decay), so the bands
 # walk 0 -> 3 -> 5 -> 7 -> 9 over 4 casts; Overreach (9) lands on cast 4. Focus 20 funds 4 casts.
 _SPELL_ID = "arcane_fireball"
-
-
-def _make_ctx(player_id: str) -> MagicMock:
-    """A RunContext whose userdata is a real SessionData (room=None -> event bus only)."""
-    ctx = MagicMock()
-    ctx.userdata = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
-    return ctx
 
 
 async def _focus_current(player_id: str) -> int:

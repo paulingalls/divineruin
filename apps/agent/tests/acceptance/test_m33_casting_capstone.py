@@ -20,16 +20,14 @@ id without archetype/level gating.
 from __future__ import annotations
 
 from dataclasses import asdict
-from unittest.mock import MagicMock
 
-from acceptance.seeds import seed_player_with_pools
+from acceptance.seeds import _make_ctx, seed_player_with_pools
 
 import db
 import db_mutations_resonance
 import db_queries
 import resonance
 import spells
-from session_data import SessionData
 from spell_casting import _cast_spell_impl
 
 # The 4 M3.3 cast-time fields the loader is strict on after story-008 deleted the
@@ -39,13 +37,6 @@ _M33_FIELDS = ("resonance_by_source", "terrain_effects", "audio_cue", "concentra
 # An affordable arcane spell: ceil(5 * 0.6) = 3 Resonance per cast. Three casts walk
 # the spec bands stable(3) -> flickering(6) -> overreach(9). Focus-only gate (story-004).
 _SPELL_ID = "arcane_fireball"
-
-
-def _make_ctx(player_id: str) -> MagicMock:
-    """A RunContext whose userdata is a real SessionData (room=None -> event bus only)."""
-    ctx = MagicMock()
-    ctx.userdata = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
-    return ctx
 
 
 async def _focus_current(player_id: str) -> int:

@@ -23,9 +23,8 @@ branch keys on players.data race, seeded per test.
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock
 
-from acceptance.seeds import seed_player_with_pools
+from acceptance.seeds import _make_ctx, _set_race, seed_player_with_pools
 
 import db
 import db_mutations_concentration
@@ -34,24 +33,8 @@ import db_queries
 import racial_resonance
 import spells
 from draethar_inner_fire import _inner_fire_impl
-from session_data import CombatParticipant, CombatState, SessionData
+from session_data import CombatParticipant, CombatState
 from spell_casting import _cast_spell_impl
-
-
-def _make_ctx(player_id: str) -> MagicMock:
-    """A RunContext whose userdata is a real SessionData (room=None -> event bus only)."""
-    ctx = MagicMock()
-    ctx.userdata = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
-    return ctx
-
-
-async def _set_race(pool, player_id: str, race: str) -> None:
-    """Set players.data race the cast path reads (seed_player_with_pools leaves it unset)."""
-    await pool.execute(
-        "UPDATE players SET data = jsonb_set(data, '{race}', $2::jsonb) WHERE player_id = $1",
-        player_id,
-        json.dumps(race),
-    )
 
 
 async def _hp_current(player_id: str) -> int:
