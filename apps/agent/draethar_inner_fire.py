@@ -31,7 +31,6 @@ import db_mutations_resonance
 import db_queries
 import dice
 import racial_resonance
-import resonance as resonance_mod
 import resonance_events
 from db_errors import db_tool
 from session_data import SessionData
@@ -115,7 +114,10 @@ async def _inner_fire_impl(
             "resonance_reduced": resonance_reduced,
             "fire_damage": fire_damage,
             "hp_remaining": new_hp,
-            "state": resonance_mod.get_resonance_state(new_resonance),
+            # Canonical band: ResonanceTrack.state derives from session.resonance.current (set
+            # above to new_resonance) + flickering_bonus. For a Draethar the bonus is always 0,
+            # so this equals the old get_resonance_state(new_resonance) — one SSOT for the band.
+            "state": session.resonance.state,
             "concentration_broken": concentration_broken,
         }
     )

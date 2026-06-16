@@ -11,6 +11,16 @@ import json
 
 import asyncpg
 
+
+async def _set_race(pool, player_id: str, race: str) -> None:
+    """Set players.data race the cast path reads (seed_player_with_pools leaves it unset)."""
+    await pool.execute(
+        "UPDATE players SET data = jsonb_set(data, '{race}', $2::jsonb) WHERE player_id = $1",
+        player_id,
+        json.dumps(race),
+    )
+
+
 _DEFAULT_PLAYER = {
     "name": "Acceptance Tester",
     "level": 2,

@@ -362,7 +362,7 @@ async def _request_attack_impl(
     # Track per-encounter weapon durability: the weapon was swung this encounter, and
     # a crit against a heavily-armored target costs 2 hits. end_combat reads + resets.
     session.weapon_used_this_encounter = True
-    if result.hit and result.critical and combat_resolution.is_heavily_armored(result.target_ac):
+    if result.hit and result.critical_success and combat_resolution.is_heavily_armored(result.target_ac):
         session.weapon_crit_vs_heavy = True
 
     if result.hit:
@@ -376,7 +376,7 @@ async def _request_attack_impl(
             "hit": result.hit,
             "roll": result.roll,
             "damage": result.damage,
-            "critical": result.critical,
+            "critical": result.critical_success,
             "target_hp_remaining": result.target_hp_remaining,
         },
         event_bus=session.event_bus,
@@ -392,7 +392,7 @@ async def _request_attack_impl(
         "target_ac": result.target_ac,
         "damage": result.damage,
         "damage_type": result.damage_type,
-        "critical": result.critical,
+        "critical": result.critical_success,
         "target_hp_remaining": result.target_hp_remaining,
         "target_killed": result.target_killed,
         "narrative_hint": result.narrative_hint,

@@ -24,9 +24,9 @@ JSON fixture) so compute_flickering_bonus resolves the seeded +1.
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock
 
-from acceptance.seeds import seed_player, seed_player_with_pools
+from acceptance.seeds import _set_race, seed_player, seed_player_with_pools
+from sample_fixtures import make_context
 
 import db
 import db_mutations_resonance
@@ -36,22 +36,6 @@ import session_hydration
 import spells
 from session_data import SessionData
 from spell_casting import _cast_spell_impl
-
-
-def _make_ctx(player_id: str) -> MagicMock:
-    """A RunContext whose userdata is a real SessionData (room=None -> event bus only)."""
-    ctx = MagicMock()
-    ctx.userdata = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
-    return ctx
-
-
-async def _set_race(pool, player_id: str, race: str) -> None:
-    """Set players.data race the hydration/cast path reads (seed_player leaves it unset)."""
-    await pool.execute(
-        "UPDATE players SET data = jsonb_set(data, '{race}', $2::jsonb) WHERE player_id = $1",
-        player_id,
-        json.dumps(race),
-    )
 
 
 async def _set_session_count(pool, player_id: str, n: int) -> None:
@@ -155,7 +139,7 @@ async def test_hydrated_thessyn_cast_and_reads_all_agree_flickering(reset_db_poo
     generation = spell.resonance_by_source[spell.source]
     await db_mutations_resonance.update_player_resonance(player_id, 10 - generation, conn=pool)
 
-    ctx = _make_ctx(player_id)
+    ctx = make_context(player_id)
     player = await db_queries.get_player(player_id, conn=pool)
     assert player is not None  # just seeded above
     await session_hydration.hydrate_session_state(ctx.userdata, player, conn=pool)

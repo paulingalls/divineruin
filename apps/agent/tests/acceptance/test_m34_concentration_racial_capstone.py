@@ -23,9 +23,9 @@ branch keys on players.data race, seeded per test.
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock
 
-from acceptance.seeds import seed_player_with_pools
+from acceptance.seeds import _set_race, seed_player_with_pools
+from sample_fixtures import make_context
 
 import db
 import db_mutations_concentration
@@ -34,24 +34,8 @@ import db_queries
 import racial_resonance
 import spells
 from draethar_inner_fire import _inner_fire_impl
-from session_data import CombatParticipant, CombatState, SessionData
+from session_data import CombatParticipant, CombatState
 from spell_casting import _cast_spell_impl
-
-
-def _make_ctx(player_id: str) -> MagicMock:
-    """A RunContext whose userdata is a real SessionData (room=None -> event bus only)."""
-    ctx = MagicMock()
-    ctx.userdata = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
-    return ctx
-
-
-async def _set_race(pool, player_id: str, race: str) -> None:
-    """Set players.data race the cast path reads (seed_player_with_pools leaves it unset)."""
-    await pool.execute(
-        "UPDATE players SET data = jsonb_set(data, '{race}', $2::jsonb) WHERE player_id = $1",
-        player_id,
-        json.dumps(race),
-    )
 
 
 async def _hp_current(player_id: str) -> int:
@@ -76,7 +60,7 @@ async def test_korath_primal_reduction_persists(reset_db_pool: str) -> None:
     base = spell.resonance_by_source[spell.source]
     assert base == 2  # the reduction is observable: 2 -> 1, not 1 -> 0
 
-    packet = json.loads(await _cast_spell_impl(_make_ctx(player_id), "primal_ice_storm"))
+    packet = json.loads(await _cast_spell_impl(make_context(player_id), "primal_ice_storm"))
     assert packet["resonance_generated"] == base - 1  # 1
 
     # The reduced 1, not the unreduced baseline 2, is what persisted (a non-Korath would persist 2).
@@ -92,7 +76,7 @@ async def test_second_concentration_cast_replaces_the_first(reset_db_pool: str) 
     await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
     await spells.load_spells()
 
-    ctx = _make_ctx(player_id)  # one session -> concentration carried across casts
+    ctx = make_context(player_id)  # one session -> concentration carried across casts
 
     await _cast_spell_impl(ctx, "arcane_fly")  # concentration spell, focus 3
     first = await db_mutations_concentration.read_player_concentration(player_id, conn=pool)
@@ -130,7 +114,7 @@ async def test_draethar_inner_fire_after_overreach_cast_composes(reset_db_pool: 
     await spells.load_spells()
     await racial_resonance.load_racial_resonance()
 
-    ctx = _make_ctx(player_id)
+    ctx = make_context(player_id)
     # Seed prior accrual: a single concentration cast can't reach Overreach from 0 (max
     # concentration generation is 4). Start at 7 — this cast is IN COMBAT, so its cast-paced
     # per-round shed is SUPPRESSED (story-007, decision resonance-decay-phase-canonical: the

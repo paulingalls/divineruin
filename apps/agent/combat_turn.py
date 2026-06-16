@@ -286,7 +286,7 @@ async def _resolve_attack_packet(
 
     # Determine sounds
     sounds: list[str] = []
-    if attack_result.critical:
+    if attack_result.critical_success:
         sounds.append(SOUND_ATTACK_CRITICAL)
     elif attack_result.hit:
         sounds.append(SOUND_ATTACK_HIT)
@@ -329,7 +329,7 @@ async def _resolve_attack_packet(
             "hit": attack_result.hit,
             "roll": attack_result.roll,
             "damage": attack_result.damage,
-            "critical": attack_result.critical,
+            "critical": attack_result.critical_success,
         },
         event_bus=session.event_bus,
     )
@@ -367,7 +367,7 @@ async def _resolve_attack_packet(
         "target_ac": target.ac,
         "damage": attack_result.damage,
         "damage_type": attack_result.damage_type,
-        "critical": attack_result.critical,
+        "critical": attack_result.critical_success,
         "target_hp_status": hp_status,
         "target_fallen": target.is_fallen,
         "narrative_hint": attack_result.narrative_hint,
