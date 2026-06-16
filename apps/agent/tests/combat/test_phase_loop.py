@@ -223,6 +223,21 @@ class TestResolvePhaseNonEnding:
         with pytest.raises(ToolError, match="resolution beat"):
             await _resolve_phase_impl(ctx, **deps)
 
+    @pytest.mark.asyncio
+    async def test_malformed_stored_declaration_raises_tool_error(self):
+        # A combat persisted at the RESOLUTION beat before the explicit-type change has an
+        # untyped pending declaration. resolve_phase re-validates via the engine and must
+        # translate the ValueError into a ToolError (like declare_phase) so the DM re-prompts
+        # instead of crashing the turn with a raw exception.
+        deps = _resolve_deps()
+        ctx = make_context()
+        cs = _resolution_state()
+        cs.pending_declarations = {"goblin_scout_1": {"action": "Scimitar", "target_id": "player_1"}}  # no "type"
+        ctx.userdata.combat_state = cs
+
+        with pytest.raises(ToolError, match="type"):
+            await _resolve_phase_impl(ctx, **deps)
+
 
 class TestResolvePhaseEnding:
     @pytest.mark.asyncio
@@ -408,6 +423,23 @@ class TestResolvePhaseDefend:
             "player_1": {"type": "defend"},
             "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
         }
+        ctx.userdata.combat_state = cs
+
+        await _resolve_phase_impl(ctx, **deps)
+
+        assert ctx.userdata.combat_state.ac_modifiers == {}
+
+    @pytest.mark.asyncio
+    async def test_fallen_defender_grants_no_ac_bonus(self):
+        # A Defend from an actor who has already fallen this phase grants no AC bonus —
+        # the pre-pass mirrors the per-packet "actor unavailable" guard.
+        deps = _resolve_deps()
+        ctx = make_context()
+        cs = _resolution_state()
+        player = cs.get_participant("player_1")
+        assert player is not None
+        player.is_fallen = True
+        cs.pending_declarations = {"player_1": {"type": "defend"}}
         ctx.userdata.combat_state = cs
 
         await _resolve_phase_impl(ctx, **deps)

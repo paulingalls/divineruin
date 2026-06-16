@@ -132,14 +132,24 @@ async def _resolve_phase_impl(
     async with db_mod.transaction() as conn:
         # Beat 2 (resolution): the engine orders the pending declarations into initiative
         # packets (no math of its own). Orchestration applies each attack against
-        # CombatParticipant HP via the shared packet resolver.
-        state, adv = combat_phase.advance_combat_phase(cs)
+        # CombatParticipant HP via the shared packet resolver. A malformed/old-shape
+        # stored declaration (e.g. a combat persisted before the explicit-type change)
+        # raises ValueError here as resolve_declaration re-validates; translate it to
+        # ToolError like declare_phase does so the DM re-prompts instead of crashing.
+        try:
+            state, adv = combat_phase.advance_combat_phase(cs)
+        except ValueError as e:
+            raise ToolError(str(e)) from e
 
         # Defend pre-pass: a Defend declaration grants +AC for the WHOLE phase regardless of
         # initiative order, so apply every Defend's bonus to state.ac_modifiers before any
         # attack packet resolves (otherwise a higher-initiative attacker would bypass it).
+        # A fallen defender grants no bonus — mirror the per-packet "actor unavailable" guard.
         for packet in adv.packets:
-            if packet.declaration.type is DeclarationType.DEFEND and packet.declaration.ac_bonus:
+            if packet.declaration.type is not DeclarationType.DEFEND or not packet.declaration.ac_bonus:
+                continue
+            defender = state.get_participant(packet.actor_id)
+            if defender is not None and not defender.is_fallen:
                 state.ac_modifiers[packet.actor_id] = packet.declaration.ac_bonus
 
         packet_summaries: list[dict] = []
@@ -245,7 +255,12 @@ async def _resolve_one_packet(
         return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}
 
     if decl.type is DeclarationType.DEFEND:
-        return {"actor_id": packet.actor_id, "resolved": True, "declaration_type": "defend", "ac_bonus": decl.ac_bonus}
+        return {
+            "actor_id": packet.actor_id,
+            "resolved": True,
+            "declaration_type": str(decl.type),
+            "ac_bonus": decl.ac_bonus,
+        }
 
     if decl.type is not DeclarationType.ATTACK:
         return {
