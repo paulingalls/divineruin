@@ -17,9 +17,9 @@ cast_spell gates ONLY Focus (story-004), so a Focus-funded player casts any id.
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock
 
 from acceptance.seeds import seed_player_with_pools
+from sample_fixtures import make_context
 
 import db
 import db_mutations_resonance
@@ -27,20 +27,12 @@ import db_mutations_veil_ward
 import db_queries
 import resonance
 import spells
-from session_data import SessionData
 from spell_casting import _cast_spell_impl
 
 # arcane_fireball: focus_cost 5, resonance_by_source.arcane 3. Under per-round (cast-paced)
 # decay (story-010) each post-first cast nets +2 (3 generated - 1 base decay), so the bands
 # walk 0 -> 3 -> 5 -> 7 -> 9 over 4 casts; Overreach (9) lands on cast 4. Focus 20 funds 4 casts.
 _SPELL_ID = "arcane_fireball"
-
-
-def _make_ctx(player_id: str) -> MagicMock:
-    """A RunContext whose userdata is a real SessionData (room=None -> event bus only)."""
-    ctx = MagicMock()
-    ctx.userdata = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
-    return ctx
 
 
 async def _focus_current(player_id: str) -> int:
@@ -63,7 +55,7 @@ async def test_overreach_cast_fires_hollow_echo_and_persists(reset_db_pool: str)
     spell = spells.get_spell(_SPELL_ID)
     gen = spell.resonance_by_source[spell.source]  # 3 per cast (catalog SSOT)
 
-    ctx = _make_ctx(player_id)  # one session -> Resonance accrues in-memory across casts
+    ctx = make_context(player_id)  # one session -> Resonance accrues in-memory across casts
     cumulative = 0
     casts = 4
     for cast_index in range(casts):
@@ -104,7 +96,7 @@ async def test_active_veil_ward_halves_resonance_generation(reset_db_pool: str) 
     base = spell.resonance_by_source[spell.source]  # 3 unwarded baseline
     assert base > 1  # halving is observable (3 -> 1, not 0 -> 0)
 
-    ctx = _make_ctx(player_id)
+    ctx = make_context(player_id)
     ctx.userdata.veil_ward.active = True
     ctx.userdata.veil_ward.source = "mage"
 

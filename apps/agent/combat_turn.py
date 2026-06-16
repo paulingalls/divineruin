@@ -1,4 +1,5 @@
-"""Combat turn resolution — resolve_enemy_turn and request_death_save tools."""
+"""Combat phase-loop tools — declare_phase, resolve_phase, request_death_save —
+plus the shared _resolve_attack_packet resolver they drive (M4.1, story-003)."""
 
 import json
 import logging
@@ -7,11 +8,16 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import combat_phase
 import combat_resolution
 import concentration_break
+import db
 import db_mutations
+import db_mutations_resonance
 import db_queries
 import event_types as E
+import resonance_events
+from combat_end import _end_combat_impl
 from combat_support import _accrue_durability, _find_equipped, _publish_sounds, _require_combat
 from db_errors import db_tool
 from game_events import publish_game_event
@@ -34,67 +40,260 @@ logger = logging.getLogger("divineruin.tools")
 
 @function_tool()
 @db_tool
-async def resolve_enemy_turn(
+async def declare_phase(
     context: RunContext[SessionData],
-    enemy_id: str,
-    action_name: str,
-    target_id: str,
-    shield_reaction: str | None = None,
+    declarations: dict[str, dict],
 ) -> str:
-    """Resolve an enemy's attack against a target during combat. Provide the
-    enemy's participant ID, which action from their action_pool to use, and
-    the target's participant ID. If the player spends a shield reaction (Shield
-    Bash, Shield Wall, Intercept) against this attack, pass its name as
-    shield_reaction so the shield takes a durability hit. Narrate the result
-    dramatically."""
-    return await _resolve_enemy_turn_impl(context, enemy_id, action_name, target_id, shield_reaction)
+    """Open a combat phase by recording every combatant's declared action for this
+    round, then call resolve_phase to resolve them. Pass a mapping of participant ID
+    to that combatant's declaration, e.g.
+    {"player_1": {"action": "Longsword", "target_id": "goblin_1"},
+     "goblin_1": {"action": "Scimitar", "target_id": "player_1"}}.
+    Include the player, every conscious companion, and every enemy that acts this
+    phase. Call this once per round at the declaration beat; resolve_phase resolves
+    and narrates the whole phase in initiative order."""
+    return await _declare_phase_impl(context, declarations)
 
 
-async def _resolve_enemy_turn_impl(
+async def _declare_phase_impl(
     context: RunContext[SessionData],
-    enemy_id: str,
-    action_name: str,
-    target_id: str,
-    shield_reaction: str | None = None,
+    declarations: dict[str, dict],
+    *,
+    mutations=db_mutations,
+) -> str:
+    logger.info("declare_phase called: %d declarations", len(declarations or {}))
+    session: SessionData = context.userdata
+
+    cs = _require_combat(session)
+    if cs.beat != combat_phase.PhaseBeat.DECLARATION:
+        raise ToolError(f"Not at the declaration beat (current beat: {cs.beat}). Call resolve_phase first.")
+
+    # The pure engine records the declarations and advances DECLARATION -> RESOLUTION.
+    # An empty declarations payload is a ValueError from the engine — surface it as a
+    # ToolError so the DM re-prompts rather than crashing combat.
+    try:
+        next_state, _adv = combat_phase.advance_combat_phase(cs, declarations=declarations)
+    except ValueError as e:
+        raise ToolError(str(e)) from e
+
+    session.combat_state = next_state
+    await mutations.save_combat_state(next_state.combat_id, next_state.to_dict())
+
+    response = {
+        "beat": next_state.beat,
+        "round": next_state.round_number,
+        "accepted_actors": list(next_state.pending_declarations.keys()),
+    }
+    logger.info("declare_phase result: beat=%s, actors=%s", next_state.beat, response["accepted_actors"])
+    return json.dumps(response)
+
+
+@function_tool()
+@db_tool
+async def resolve_phase(
+    context: RunContext[SessionData],
+) -> str | tuple:
+    """Resolve the combat phase declared by declare_phase. Drives the deterministic
+    engine: resolves every declared attack in initiative order against the
+    combatants' HP, narrates the outcomes (you supply the prose from the returned
+    packets), then wraps the phase — Resonance decays, death saves come due, and if
+    every enemy has fallen (or the player has died) combat ends and hands back to the
+    exploration agent. Call this once, right after declare_phase. The response lists
+    per-actor resolution packets to narrate plus any death saves the player owes."""
+    return await _resolve_phase_impl(context)
+
+
+async def _resolve_phase_impl(
+    context: RunContext[SessionData],
     *,
     mutations=db_mutations,
     queries=db_queries,
     resolver=check_resolution,
     concentration_break_mod=concentration_break,
-) -> str:
-    logger.info("resolve_enemy_turn called: enemy=%s, action=%s, target=%s", enemy_id, action_name, target_id)
+    resonance_mutations=db_mutations_resonance,
+    resonance_events_mod=resonance_events,
+    db_mod=db,
+) -> str | tuple:
+    logger.info("resolve_phase called")
     session: SessionData = context.userdata
 
     cs = _require_combat(session)
+    if cs.beat != combat_phase.PhaseBeat.RESOLUTION:
+        raise ToolError(f"Not at the resolution beat (current beat: {cs.beat}). Call declare_phase first.")
 
-    enemy = cs.get_participant(enemy_id)
-    if enemy is None:
-        raise ToolError(f"Enemy '{enemy_id}' not found in combat.")
-    if enemy.type not in ("enemy", "companion"):
-        raise ToolError(f"'{enemy_id}' is not an enemy or companion.")
-    if enemy.is_fallen:
-        raise ToolError(f"'{enemy.name}' has fallen and cannot act.")
+    # One transaction spans every DB write of the phase — per-packet HP + durability, the
+    # per-phase Resonance decay, and the trailing save_combat_state — so a mid-phase failure
+    # rolls back atomically and players/items can never diverge from the combat_instances JSONB
+    # SSOT (debt 084c7d0bc457). Event publishes inside the loop stay optimistic: a rolled-back
+    # phase may have emitted DICE_ROLL/ITEM_DURABILITY_HIT, but a mid-phase DB error aborts the
+    # turn regardless. The in-memory Resonance sync + HUD publish run AFTER commit (below).
+    pending_resonance: int | None = None
+    async with db_mod.transaction() as conn:
+        # Beat 2 (resolution): the engine orders the pending declarations into initiative
+        # packets (no math of its own). Orchestration applies each attack against
+        # CombatParticipant HP via the shared packet resolver.
+        state, adv = combat_phase.advance_combat_phase(cs)
+        packet_summaries: list[dict] = []
+        for packet in adv.packets:
+            packet_summaries.append(
+                await _resolve_one_packet(
+                    session,
+                    state,
+                    packet,
+                    mutations=mutations,
+                    queries=queries,
+                    resolver=resolver,
+                    concentration_break_mod=concentration_break_mod,
+                    conn=conn,
+                )
+            )
 
-    # Find action
-    action = None
-    for a in enemy.action_pool:
-        if a.get("name", "").lower() == action_name.lower():
-            action = a
-            break
-    if action is None:
-        available = [a.get("name") for a in enemy.action_pool]
-        raise ToolError(f"Action '{action_name}' not found. Available: {available}")
+        # Beat 3 (narration) is an engine no-op; Beat 4 (wrap) computes the end-condition,
+        # death saves due, and the per-phase Resonance decay signal.
+        state, _narr = combat_phase.advance_combat_phase(state)
+        state, wrap_adv = combat_phase.advance_combat_phase(state)
+        wrap = wrap_adv.wrap
 
-    target = cs.get_participant(target_id)
+        ended_outcome = wrap.outcome if (wrap is not None and wrap.combat_ended and wrap.outcome) else None
+        if ended_outcome is None:
+            # Combat continues: shed one step of Resonance per phase. WRAP is the canonical
+            # combat decay clock (decision resonance-decay-phase-canonical) — cast-paced decay
+            # is already suppressed in combat (spell_casting), so this never double-decays.
+            # Persist only when the value actually moved (a 0 floor stays silent); the in-memory
+            # sync + HUD push happen post-commit so a rolled-back phase shows no decay.
+            if wrap is not None and wrap.resonance_decay:
+                new_resonance = max(0, session.resonance.current - wrap.resonance_decay)
+                if new_resonance != session.resonance.current:
+                    pending_resonance = new_resonance
+                    await resonance_mutations.update_player_resonance(session.player_id, new_resonance, conn=conn)
+            await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+
+    # Sync the looped in-memory state ONLY after the transaction commits. On rollback the
+    # exception skips this line, so session.combat_state stays the pristine pre-phase `cs` —
+    # consistent with the rolled-back DB SSOT — and a retried turn proceeds from committed HP
+    # (engine deep-copies, so `cs` was never mutated).
+    session.combat_state = state
+
+    # Beat 4 end-condition: the engine reports victory (all enemies fallen) or defeat (the player
+    # has died). The looped HP writes are already committed above; end_combat awards XP, accrues
+    # weapon durability, deletes combat state, and returns the (gameplay_agent, json) handoff.
+    if ended_outcome is not None:
+        logger.info("resolve_phase: engine end-condition %s -> end_combat", ended_outcome)
+        return await _end_combat_impl(context, ended_outcome, mutations=mutations, queries=queries)
+
+    if pending_resonance is not None:
+        session.resonance.current = pending_resonance
+        await resonance_events_mod.publish_resonance_changed(session)
+
+    response = {
+        "beat": state.beat,
+        "round": state.round_number,
+        "packets": packet_summaries,
+        "death_saves_due": wrap.death_saves_due if wrap else [],
+    }
+    logger.info(
+        "resolve_phase result: beat=%s, round=%d, packets=%d", state.beat, state.round_number, len(packet_summaries)
+    )
+    return json.dumps(response)
+
+
+def _find_action(participant, action_name) -> dict | None:
+    """Find the named action in a participant's action_pool (case-insensitive)."""
+    if not action_name:
+        return None
+    wanted = str(action_name).lower()
+    for a in participant.action_pool:
+        if a.get("name", "").lower() == wanted:
+            return a
+    return None
+
+
+async def _resolve_one_packet(
+    session: SessionData,
+    state,
+    packet,
+    *,
+    mutations,
+    queries,
+    resolver,
+    concentration_break_mod,
+    conn=None,
+) -> dict:
+    """Resolve a single initiative-ordered ResolutionPacket against ``state``.
+
+    A declaration is *wasted* (resolved=False) when its actor or target is gone or
+    has already fallen this phase, or its action isn't in the actor's pool — one bad
+    or stale declaration never crashes the phase. Otherwise it resolves through the
+    shared attack resolver and records the player's weapon-durability flags."""
+    attacker = state.get_participant(packet.actor_id)
+    decl = packet.declaration or {}
+    target_id = decl.get("target_id")
+    target = state.get_participant(target_id) if target_id else None
+    action = _find_action(attacker, decl.get("action")) if attacker is not None else None
+
+    if attacker is None or attacker.is_fallen:
+        return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}
     if target is None:
-        raise ToolError(f"Target '{target_id}' not found in combat.")
+        return {"actor_id": packet.actor_id, "resolved": False, "reason": f"target '{target_id}' not found"}
     if target.is_fallen:
-        raise ToolError(f"Target '{target.name}' has already fallen.")
+        return {"actor_id": packet.actor_id, "resolved": False, "reason": f"{target.name} already fell"}
+    if action is None:
+        return {"actor_id": packet.actor_id, "resolved": False, "reason": f"action '{decl.get('action')}' not found"}
 
-    # Build attacker data from participant's stored attributes
+    summary = await _resolve_attack_packet(
+        session,
+        attacker,
+        action,
+        target,
+        mutations=mutations,
+        queries=queries,
+        resolver=resolver,
+        concentration_break_mod=concentration_break_mod,
+        conn=conn,
+    )
+    # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
+    # per-encounter weapon-durability accrual that end_combat applies. Only the extra
+    # crit-vs-heavy-armor cost (2 hits) is gated on a critical hit landing.
+    if attacker.type == "player":
+        session.weapon_used_this_encounter = True
+        if summary["hit"] and summary["critical"] and combat_resolution.is_heavily_armored(target.ac):
+            session.weapon_crit_vs_heavy = True
+    summary["actor_id"] = packet.actor_id
+    summary["resolved"] = True
+    return summary
+
+
+async def _resolve_attack_packet(
+    session: SessionData,
+    attacker,
+    action: dict,
+    target,
+    *,
+    shield_reaction: str | None = None,
+    mutations=db_mutations,
+    queries=db_queries,
+    resolver=check_resolution,
+    concentration_break_mod=concentration_break,
+    conn=None,
+) -> dict:
+    """Resolve ONE declared attack against CombatParticipant HP.
+
+    Mutates ``target`` in place (hp_current, is_fallen), publishes the attack's
+    DICE_ROLL, sounds, and any durability hits in strike order, and returns a
+    response dict for the caller (a per-packet narration summary). It does NOT
+    persist — the caller owns one ``save_combat_state`` per phase so the multi-packet
+    phase loop persists exactly once. ``attacker``/``target`` are CombatParticipants;
+    ``action`` is an entry from the attacker's action_pool (weapon-shaped).
+
+    ``shield_reaction`` is a forward seam for the M4.x reaction-window feature
+    (combat_phase's ``reactions_available``): when a future declaration spends a
+    shield reaction it threads the shield name here to accrue shield durability. The
+    live phase loop (``_resolve_one_packet``) does not yet declare reactions, so it
+    is always ``None`` on the live path today; the accrual branch is exercised by
+    test_combat_durability."""
     attacker_data = {
-        "attributes": enemy.attributes,
-        "level": enemy.level,
+        "attributes": attacker.attributes,
+        "level": attacker.level,
     }
 
     attack_result = resolver.resolve_attack(
@@ -109,7 +308,7 @@ async def _resolve_enemy_turn_impl(
 
     # Determine sounds
     sounds: list[str] = []
-    if attack_result.critical:
+    if attack_result.critical_success:
         sounds.append(SOUND_ATTACK_CRITICAL)
     elif attack_result.hit:
         sounds.append(SOUND_ATTACK_HIT)
@@ -124,13 +323,13 @@ async def _resolve_enemy_turn_impl(
         # Handle companion KO
         if target.type == "companion" and session.companion and target.id == session.companion.id:
             session.companion.is_conscious = False
-            session.record_companion_memory("Kael was knocked unconscious in combat")
+            session.record_companion_memory(f"{target.name} was knocked unconscious in combat")
     elif hp_status in ("bloodied", "critical"):
         sounds.append(SOUND_HEARTBEAT)
 
     # Update DB if target is a player
     if target.type == "player":
-        await mutations.update_player_hp(target.id, target.hp_current)
+        await mutations.update_player_hp(target.id, target.hp_current, conn=conn)
 
     # Combat damage is the canonical concentration-break trigger: a concentrating player who takes
     # damage rolls a CON save (DC scales with the damage); failing it — or being dropped to 0 HP
@@ -142,20 +341,17 @@ async def _resolve_enemy_turn_impl(
             session, attack_result.damage, incapacitated=target.hp_current <= 0
         )
 
-    # Persist combat state
-    await mutations.save_combat_state(cs.combat_id, cs.to_dict())
-
     # Publish events
     await publish_game_event(
         session.room,
         E.DICE_ROLL,
         {
             "roll_type": "attack",
-            "attacker": enemy.name,
+            "attacker": attacker.name,
             "hit": attack_result.hit,
             "roll": attack_result.roll,
             "damage": attack_result.damage,
-            "critical": attack_result.critical,
+            "critical": attack_result.critical_success,
         },
         event_bus=session.event_bus,
     )
@@ -166,26 +362,26 @@ async def _resolve_enemy_turn_impl(
     # Runs after the attack's DICE_ROLL so ITEM_DURABILITY_HIT follows the strike.
     durability_results: dict = {}
     if target.type == "player" and attack_result.hit:
-        inventory = await queries.get_player_inventory(target.id)
+        inventory = await queries.get_player_inventory(target.id, conn=conn)
         is_hollow = combat_resolution.is_hollow_zone(session.corruption_level)
         armor = _find_equipped(inventory, "armor")
         if armor is not None:
             durability_results["armor"] = await _accrue_durability(
-                session, target.id, armor, 1, is_hollow_zone=is_hollow
+                session, target.id, armor, 1, is_hollow_zone=is_hollow, conn=conn
             )
         if shield_reaction:
             shield = _find_equipped(inventory, "shield")
             if shield is not None:
                 durability_results["shield"] = await _accrue_durability(
-                    session, target.id, shield, 1, is_hollow_zone=is_hollow
+                    session, target.id, shield, 1, is_hollow_zone=is_hollow, conn=conn
                 )
 
     hit_miss = "hit" if attack_result.hit else "miss"
-    session.record_event(f"{enemy.name} attacks {target.name}: {hit_miss}, {attack_result.damage} damage")
+    session.record_event(f"{attacker.name} attacks {target.name}: {hit_miss}, {attack_result.damage} damage")
 
     response = {
-        "attacker": enemy.name,
-        "action": action_name,
+        "attacker": attacker.name,
+        "action": action.get("name", ""),
         "target": target.name,
         "hit": attack_result.hit,
         "roll": attack_result.roll,
@@ -193,7 +389,7 @@ async def _resolve_enemy_turn_impl(
         "target_ac": target.ac,
         "damage": attack_result.damage,
         "damage_type": attack_result.damage_type,
-        "critical": attack_result.critical,
+        "critical": attack_result.critical_success,
         "target_hp_status": hp_status,
         "target_fallen": target.is_fallen,
         "narrative_hint": attack_result.narrative_hint,
@@ -201,14 +397,14 @@ async def _resolve_enemy_turn_impl(
         "concentration_broken": concentration_broken,
     }
     logger.info(
-        "resolve_enemy_turn result: %s → %s, %s, damage=%d, hp_status=%s",
-        enemy.name,
+        "resolve_attack_packet result: %s → %s, %s, damage=%d, hp_status=%s",
+        attacker.name,
         target.name,
         hit_miss,
         attack_result.damage,
         hp_status,
     )
-    return json.dumps(response)
+    return response
 
 
 @function_tool()

@@ -20,6 +20,7 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
+import resonance as resonance_mod
 from draethar_inner_fire import _inner_fire_impl
 from session_data import CombatParticipant, CombatState
 
@@ -106,6 +107,21 @@ async def test_inner_fire_drops_resonance_and_applies_fire_damage():
     assert result["fire_damage"] == 4
     assert result["hp_remaining"] == 16
     assert result["state"] == "flickering"  # 6 -> flickering (E2E: overreach dropped below 9)
+
+
+async def test_inner_fire_state_matches_canonical_resonance_state():
+    """The packet "state" derives from the post-cast Resonance. The impl reads the canonical
+    session.resonance.state property; for a Draethar (flickering_bonus always 0) that equals
+    resonance.get_resonance_state(new_resonance) — the pre-refactor expression. Locks that
+    boundary so switching to .state can't silently diverge (review b760cbfcd9cd / 8cb769966bba)."""
+    ctx = _combat_ctx(resonance=9, hp_current=20)
+    mock_db, queries, hp_mut, res_mut, res_events, dice_mod = _mocks(_player(), roll_total=4)
+
+    result = await _invoke(ctx, mock_db, queries, hp_mut, res_mut, res_events, dice_mod)
+
+    new_resonance = 6  # 9 - 3 racial reduction
+    assert ctx.userdata.resonance.flickering_bonus == 0  # the equivalence assumption, made explicit
+    assert result["state"] == resonance_mod.get_resonance_state(new_resonance)
 
 
 async def test_resonance_floors_at_zero():

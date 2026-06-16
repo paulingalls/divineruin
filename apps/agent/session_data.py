@@ -113,6 +113,19 @@ class CombatState:
     current_turn_index: int = 0
     location_id: str = ""
 
+    # 4-beat phase machine (M4.1, story-001). The deterministic engine lives in
+    # combat_phase.advance_combat_phase; ``beat`` carries the loop position. Typed
+    # ``str`` (not the PhaseBeat enum) to avoid a session_data <-> combat_phase import
+    # cycle — combat_phase owns combat_phase.PhaseBeat (a StrEnum whose members ==
+    # these strings) and compares against it. Defaults to the declaration beat.
+    beat: str = "declaration"
+    # Declarations collected in Beat 1 (actor_id -> opaque declaration dict; typed by
+    # M4.2), consumed in Beat 2, cleared at the wrap loop-back.
+    pending_declarations: dict[str, dict] = field(default_factory=dict)
+    # Reaction availability for the current phase (actor_id -> bool), reset each
+    # declaration beat; consumed by Beat-3 reaction windows (M4.x).
+    reactions_available: dict[str, bool] = field(default_factory=dict)
+
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
             if p.id == participant_id:
@@ -121,6 +134,26 @@ class CombatState:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> CombatState:
+        """Rebuild a CombatState from the asdict() shape to_dict() produces (the read-side
+        inverse, M4.1 story-002). Each participant dict is reconstructed into a CombatParticipant
+        so loaded state carries instances, not raw dicts. Phase fields and any field absent from
+        rows written before they existed fall back to the dataclass defaults via data.get(...).
+        ``beat`` stays a plain str — combat_phase is NOT imported here, to avoid the
+        session_data <-> combat_phase cycle the class docstring notes."""
+        return cls(
+            combat_id=data["combat_id"],
+            participants=[CombatParticipant(**p) for p in data["participants"]],
+            initiative_order=data["initiative_order"],
+            round_number=data.get("round_number", 1),
+            current_turn_index=data.get("current_turn_index", 0),
+            location_id=data.get("location_id", ""),
+            beat=data.get("beat", "declaration"),
+            pending_declarations=data.get("pending_declarations", {}),
+            reactions_available=data.get("reactions_available", {}),
+        )
 
 
 @dataclass
@@ -159,9 +192,10 @@ class SessionData:
     pre_blacksmith_agent_type: str | None = None
 
     # Per-encounter weapon durability state (story-003). A weapon takes 1 hit per
-    # encounter (2 on a crit vs a heavily-armored target); set during request_attack,
-    # consumed and reset at end_combat. Lives here, not on CombatParticipant, because
-    # request_attack does not touch combat_state.
+    # encounter (2 on a crit vs a heavily-armored target); set during packet
+    # resolution (combat_turn._resolve_attack_packet on any player swing), consumed
+    # and reset at end_combat. Lives here, not on CombatParticipant, because the
+    # flag spans the whole encounter rather than a single combat_state snapshot.
     weapon_used_this_encounter: bool = False
     weapon_crit_vs_heavy: bool = False
 

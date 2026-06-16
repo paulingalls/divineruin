@@ -4,7 +4,14 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _make_combat_state, _make_context, _make_mock_room
+from combat._helpers import (
+    _damage_resolver,
+    _fake_db_mod,
+    _make_combat_state,
+    _make_context,
+    _make_mock_room,
+    _resolution_state,
+)
 from livekit.agents.llm import ToolError
 
 import event_types as E
@@ -125,3 +132,39 @@ class TestEndCombat:
 
         with pytest.raises(ToolError, match="Invalid outcome"):
             await _end_combat_impl(ctx, outcome="surrender", mutations=mock_mutations)
+
+
+class TestPhaseLoopExit:
+    """Combat now exits through the phase engine's wrap end-condition (story-003):
+    resolve_phase fires end_combat when the engine reports victory/defeat, rather than
+    the LLM choosing to call end_combat itself. These pin that exit handoff."""
+
+    @pytest.mark.asyncio
+    async def test_victory_wrap_hands_back_to_exploration_agent(self):
+        from combat_turn import _resolve_phase_impl
+        from exploration_agent import ExplorationAgent
+
+        # enemy_hp=3 is one fixed-damage hit from victory; _damage_resolver(3) lands it.
+        resolver = _damage_resolver(3)
+        queries = MagicMock()
+        queries.get_player_inventory = AsyncMock(return_value=[])
+        break_mod = MagicMock()
+        break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
+
+        ctx = _make_context()
+        ctx.userdata.combat_state = _resolution_state(player_hp=25, enemy_hp=3)
+
+        raw = await _resolve_phase_impl(
+            ctx,
+            mutations=_make_end_combat_mocks(),
+            queries=queries,
+            resolver=resolver,
+            concentration_break_mod=break_mod,
+            db_mod=_fake_db_mod(),
+        )
+
+        assert isinstance(raw, tuple), "a winning wrap should return the (ExplorationAgent, json) handoff"
+        agent_instance, json_str = raw
+        assert isinstance(agent_instance, ExplorationAgent)
+        assert json.loads(json_str)["outcome"] == "victory"
+        assert ctx.userdata.combat_state is None

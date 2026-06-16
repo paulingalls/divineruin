@@ -48,7 +48,7 @@ class TestResolveAttack:
             if rng.randint(1, 20) == 20:
                 rng = random.Random(seed)
                 result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 20, 50, rng=rng)
-                assert result.critical is True
+                assert result.critical_success is True
                 assert result.hit is True
                 # Damage should be two rolls of 1d8
                 assert result.damage >= 2  # minimum 1+1

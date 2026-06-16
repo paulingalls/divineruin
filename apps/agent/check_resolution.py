@@ -59,10 +59,14 @@ class AttackResult:
     target_ac: int
     damage: int
     damage_type: str
-    critical: bool
     target_hp_remaining: int
     target_killed: bool
     narrative_hint: str
+    # Crit flags read from D20CheckCore.critical_success/critical_failure (nat-20 /
+    # nat-1), so every roll-result packet agrees on crits. Defaulted for direct
+    # constructors (tests); the resolver always sets them explicitly.
+    critical_success: bool = False
+    critical_failure: bool = False
 
 
 @dataclass(frozen=True)
@@ -76,6 +80,11 @@ class SavingThrowResult:
     margin: int
     effect_applied: str | None
     narrative_hint: str
+    # Crit flags sourced from the shared CheckResult/D20CheckCore (nat-20 / nat-1),
+    # so every roll-result packet agrees on crits. Defaulted for back-compat with
+    # existing direct constructors; resolve_saving_throw always sets them explicitly.
+    critical_success: bool = False
+    critical_failure: bool = False
 
 
 @dataclass(frozen=True)
@@ -111,6 +120,17 @@ class D20CheckCore:
     success: bool
     margin: int
     narrative_hint: str
+
+    @property
+    def critical_success(self) -> bool:
+        """Natural 20 on the d20. Single source for crit flags across all
+        result packets (CheckResult / AttackResult / SavingThrowResult)."""
+        return self.roll == 20
+
+    @property
+    def critical_failure(self) -> bool:
+        """Natural 1 on the d20. See critical_success."""
+        return self.roll == 1
 
 
 # --- Tier gating ---
@@ -209,8 +229,8 @@ def resolve_check(
         success=core.success,
         auto_fail=False,
         margin=core.margin,
-        critical_success=core.roll == 20,
-        critical_failure=core.roll == 1,
+        critical_success=core.critical_success,
+        critical_failure=core.critical_failure,
         narrative_hint=core.narrative_hint,
     )
 
@@ -313,7 +333,7 @@ def resolve_attack(
     d20 = core.roll
     attack_total = core.total
     hit = core.success
-    critical = d20 == 20
+    critical = core.critical_success
 
     damage = 0
     damage_type = weapon.get("damage_type", "bludgeoning")
@@ -336,7 +356,8 @@ def resolve_attack(
         target_ac=target_ac,
         damage=damage,
         damage_type=damage_type,
-        critical=critical,
+        critical_success=core.critical_success,
+        critical_failure=core.critical_failure,
         target_hp_remaining=new_hp,
         target_killed=new_hp == 0 and hit,
         narrative_hint=core.narrative_hint,
@@ -377,6 +398,8 @@ def resolve_saving_throw(
         dc=dc,
         success=core.success,
         margin=core.margin,
+        critical_success=core.critical_success,
+        critical_failure=core.critical_failure,
         effect_applied=None if core.success else effect_on_fail,
         narrative_hint=core.narrative_hint,
     )

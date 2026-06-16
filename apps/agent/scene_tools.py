@@ -110,7 +110,8 @@ async def enter_location(context: RunContext[SessionData], location_id: str) -> 
     """Get everything about a location in one call: scene details, NPCs present,
     combat targets, and player status. Call this when entering a new area or
     starting a session. Use the returned IDs for follow-up tools like
-    query_info(kind="npc") (for deeper NPC interaction) or request_attack (for combat)."""
+    query_info(kind="npc") (for deeper NPC interaction); the returned targets list
+    surfaces any hostiles present for combat."""
     return await _enter_location_impl(context, location_id)
 
 

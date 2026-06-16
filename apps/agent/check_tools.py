@@ -1,10 +1,10 @@
-"""The `check` verb (skill/discover/save/dice modes) + attack + skill-breakthrough tools.
+"""The `check` verb (skill/discover/save/dice modes) + skill-breakthrough tool.
 
 `check(mode, ...)` is the consolidated uncertain-action verb (M5, ADR 0007, Verbs &
 Stages §7/§10): it folds request_skill_check, discover_hidden_element,
 request_saving_throw, and roll_dice into one mode-discriminated tool, dispatching to
 per-mode sub-impls. Resolution math lives in check_resolution.py / dice.py (reused
-unchanged). `request_attack` and `mark_skill_breakthrough` stay as their own tools.
+unchanged). `mark_skill_breakthrough` stays as its own tool.
 
 Errors raise LiveKit `ToolError` (ADR 0002). The `_*_impl` helpers expose `*_mod=`
 keyword seams for TEST-ONLY injection; production uses the `@function_tool` wrapper.
@@ -17,7 +17,6 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution
-import combat_resolution
 import db_content_queries
 import db_mutations
 import db_queries
@@ -310,102 +309,3 @@ async def _mark_skill_breakthrough_impl(
     await mutations.mark_narrative_moment(session.player_id, skill_lower)
     logger.info("mark_skill_breakthrough: player=%s, skill=%s", session.player_id, skill_lower)
     return json.dumps({"status": "ok", "skill": skill_lower, "narrative_moment_ready": True})
-
-
-@function_tool()
-@db_tool
-async def request_attack(
-    context: RunContext[SessionData],
-    target_id: str,
-    weapon_name: str,
-) -> str:
-    """Resolve a WEAPON attack against an NPC target. Provide the target NPC ID
-    and the name of the weapon being used. For spells, call cast_spell instead —
-    this tool is weapon-only. Narrate the result using the narrative_hint field."""
-    return await _request_attack_impl(context, target_id, weapon_name)
-
-
-async def _request_attack_impl(
-    context: RunContext[SessionData],
-    target_id: str,
-    weapon_name: str,
-    *,
-    queries=db_queries,
-    mutations=db_mutations,
-) -> str:
-    logger.info("request_attack called: target_id=%s, weapon_name=%s", target_id, weapon_name)
-    session: SessionData = context.userdata
-
-    player = await queries.get_player(session.player_id)
-    if player is None:
-        raise ToolError(f"Player '{session.player_id}' not found.")
-
-    equipment = player.get("equipment", {})
-    weapon = None
-    for _slot, item in equipment.items():
-        if isinstance(item, dict) and item.get("name", "").lower() == weapon_name.lower():
-            weapon = item
-            break
-
-    if weapon is None:
-        raise ToolError(f"Weapon '{weapon_name}' not found in equipment.")
-
-    target = await queries.get_npc_combat_stats(target_id)
-    if target is None:
-        raise ToolError(f"Target '{target_id}' not found in combat state.")
-
-    target_ac = target.get("ac", 10)
-    target_hp = target.get("hp", {}).get("current", 0)
-
-    result = check_resolution.resolve_attack(player, weapon, target_ac, target_hp)
-
-    # Track per-encounter weapon durability: the weapon was swung this encounter, and
-    # a crit against a heavily-armored target costs 2 hits. end_combat reads + resets.
-    session.weapon_used_this_encounter = True
-    if result.hit and result.critical and combat_resolution.is_heavily_armored(result.target_ac):
-        session.weapon_crit_vs_heavy = True
-
-    if result.hit:
-        await mutations.update_npc_hp(target_id, result.target_hp_remaining)
-
-    await publish_game_event(
-        session.room,
-        E.DICE_ROLL,
-        {
-            "roll_type": "attack",
-            "hit": result.hit,
-            "roll": result.roll,
-            "damage": result.damage,
-            "critical": result.critical,
-            "target_hp_remaining": result.target_hp_remaining,
-        },
-        event_bus=session.event_bus,
-    )
-
-    hit_miss = "hit" if result.hit else "miss"
-    session.record_event(f"Attack on {target_id} with {weapon_name}: {hit_miss}, {result.damage} damage")
-
-    response = {
-        "hit": result.hit,
-        "roll": result.roll,
-        "attack_total": result.attack_total,
-        "target_ac": result.target_ac,
-        "damage": result.damage,
-        "damage_type": result.damage_type,
-        "critical": result.critical,
-        "target_hp_remaining": result.target_hp_remaining,
-        "target_killed": result.target_killed,
-        "narrative_hint": result.narrative_hint,
-    }
-    logger.info(
-        "request_attack result: d20=%d+%d=%d vs AC %d → %s, damage=%d %s, target HP=%d",
-        result.roll,
-        result.attack_modifier,
-        result.attack_total,
-        result.target_ac,
-        "HIT" if result.hit else "MISS",
-        result.damage,
-        result.damage_type,
-        result.target_hp_remaining,
-    )
-    return json.dumps(response)

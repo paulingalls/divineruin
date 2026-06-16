@@ -48,11 +48,6 @@ class TestExplorationToolset:
         for tool in (check, select, transact, enter_mode, award_xp, award_divine_favor, update_npc_disposition):
             assert tool in EXPLORATION_TOOLS
 
-    def test_excludes_combat_only_tools(self):
-        from check_tools import request_attack
-
-        assert request_attack not in EXPLORATION_TOOLS
-
 
 class TestExplorationFactory:
     def test_factory_returns_exploration_agent_per_region(self):

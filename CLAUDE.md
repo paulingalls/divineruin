@@ -101,6 +101,12 @@ Write for the ear: short sentences, concrete sensory details, sound/smell before
 **Python:** `pytest` with `pytest-asyncio` for async tests
 Rules engine must be exhaustively tested (pure functions, deterministic).
 
+**Run the full Python fast lane via the package script — `bun run test:python` (parallel `-n 8`, ~6.5s), not a bare `uv run pytest -m "not acceptance"` (serial, ~3x slower).** `bun run test:all` runs both the TS and Python fast lanes. Reserve targeted `cd apps/agent && uv run pytest tests/<path>` for the inner TDD loop (sub-2s); use the script for any full-lane check so you exercise the same command CI and the pre-push gate use.
+
+**Python test lanes (placement by directory):**
+- **Fast lane** — everything under `apps/agent/tests/` *except* `tests/acceptance/`. Run by `test:python` / `test:all` (`pytest -m "not acceptance"`). Holds pure-logic tests **and** simple real-PG tests against the shared dev DB at `:55432` — `tests/conftest.py` auto-starts docker compose if it's down (fail-loud if Docker is absent; tests are never silently skipped). Real-PG tests here isolate via unique keys + cleanup (see the `_db_lifecycle` / `dev_db_pool` pattern). Put a real-PG test here when it's a single-table / single-concern round-trip.
+- **Acceptance lane** — `apps/agent/tests/acceptance/` only (marker auto-applied by directory). Run by `test:acceptance` (pre-push). Per-run **testcontainer** Postgres + LiveKit dev-server. Put a test here when it's a multi-system / LiveKit / end-to-end capstone needing per-run isolation.
+
 ## Settled Decisions
 
 Don't revisit: LiveKit, Python (agent), Bun (TS), Expo, PostgreSQL+JSONB, Valkey (Redis-protocol; `Bun.redis`/`redis.asyncio` clients + `REDIS_URL` keep their redis names), Deepgram Nova-3, Inworld TTS, Claude (LLM), zustand, expo-router, uv.

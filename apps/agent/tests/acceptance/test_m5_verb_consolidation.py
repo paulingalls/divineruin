@@ -59,6 +59,12 @@ REMOVED_NOUN_TOOLS = frozenset(
     }
 )
 
+# Combat tools the M4.1 phase-loop rewrite retired: the free-form per-actor swing
+# (request_attack) and enemy turn (resolve_enemy_turn) were replaced by the 4-beat
+# declare_phase/resolve_phase loop (sprint-018 stories 003/009). Guarded here so a
+# re-created tool can't silently re-register on any agent — the verb-fold registry trap.
+REMOVED_COMBAT_TOOLS = frozenset({"request_attack", "resolve_enemy_turn"})
+
 # Every assembled gameplay-agent tool registry. M7 collapsed the three region agents
 # into one exploration registry, so city/wilderness/dungeon are a single "exploration" row.
 AGENT_TOOL_LISTS = [
@@ -89,9 +95,9 @@ VERB_PRESENCE = [
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_no_removed_noun_tool_survives(name: str, tools: list) -> None:
-    """No pre-M5 noun tool is registered on any agent."""
-    leaked = REMOVED_NOUN_TOOLS & {t.__name__ for t in tools}
-    assert not leaked, f"{name} still registers removed noun tool(s): {sorted(leaked)}"
+    """No pre-M5 noun tool (or M4.1-retired combat tool) is registered on any agent."""
+    leaked = (REMOVED_NOUN_TOOLS | REMOVED_COMBAT_TOOLS) & {t.__name__ for t in tools}
+    assert not leaked, f"{name} still registers removed tool(s): {sorted(leaked)}"
 
 
 # --- registry: consolidated verbs present exactly where expected -------------

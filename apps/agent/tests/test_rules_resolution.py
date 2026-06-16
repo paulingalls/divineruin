@@ -6,10 +6,13 @@ import pytest
 from test_rules_core import SAMPLE_PLAYER
 
 from check_resolution import (
+    AttackResult,
     CheckResult,
     D20CheckCore,
+    SavingThrowResult,
     _roll_d20_check,
     attack_modifier,
+    resolve_attack,
     resolve_check,
     resolve_saving_throw,
     resolve_skill_check,
@@ -213,6 +216,54 @@ class TestAttackModifier:
         assert mod == 2
 
 
+# --- resolve_attack ---
+
+
+class TestResolveAttack:
+    WEAPON = {"damage": "1d8", "damage_type": "slashing", "properties": []}
+
+    def test_returns_attack_result(self):
+        result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 20, rng=random.Random(42))
+        assert isinstance(result, AttackResult)
+
+    def test_nat_20_sets_critical_success_flags(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 20:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 50, 20, rng=rng)
+                assert result.roll == 20
+                assert result.hit is True
+                assert result.critical_success is True
+                assert result.critical_failure is False
+                return
+        pytest.fail("Could not find seed for nat 20")
+
+    def test_nat_1_sets_critical_failure_flags(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 1:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 5, 20, rng=rng)
+                assert result.roll == 1
+                assert result.hit is False
+                assert result.critical_failure is True
+                assert result.critical_success is False
+                return
+        pytest.fail("Could not find seed for nat 1")
+
+    def test_normal_roll_no_critical_flags(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if 2 <= rng.randint(1, 20) <= 19:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 20, rng=rng)
+                assert result.critical_success is False
+                assert result.critical_failure is False
+                return
+        pytest.fail("Could not find non-crit seed")
+
+
 # --- resolve_skill_check ---
 
 
@@ -367,6 +418,8 @@ class TestResolveSavingThrow:
                 result = resolve_saving_throw(SAMPLE_PLAYER, "charisma", 25, "stunned", rng=rng)
                 assert result.success is True
                 assert result.effect_applied is None
+                assert result.critical_success is True
+                assert result.critical_failure is False
                 return
         pytest.fail("Could not find seed for nat 20")
 
@@ -378,8 +431,22 @@ class TestResolveSavingThrow:
                 result = resolve_saving_throw(SAMPLE_PLAYER, "strength", 1, "frightened", rng=rng)
                 assert result.success is False
                 assert result.effect_applied == "frightened"
+                assert result.critical_failure is True
+                assert result.critical_success is False
                 return
         pytest.fail("Could not find seed for nat 1")
+
+    def test_normal_roll_no_critical_flags(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if 2 <= rng.randint(1, 20) <= 19:
+                rng = random.Random(seed)
+                result = resolve_saving_throw(SAMPLE_PLAYER, "strength", 13, "knocked prone", rng=rng)
+                assert isinstance(result, SavingThrowResult)
+                assert result.critical_success is False
+                assert result.critical_failure is False
+                return
+        pytest.fail("Could not find non-crit seed")
 
     def test_all_six_attributes(self):
         for attr in ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]:
@@ -461,6 +528,8 @@ class TestRollD20Check:
                 assert result.success is True
                 # margin still reflects raw arithmetic, success is rule-based
                 assert result.margin == 20 - 100
+                assert result.critical_success is True
+                assert result.critical_failure is False
                 return
         pytest.fail("Could not find seed for nat-20")
 
@@ -474,5 +543,7 @@ class TestRollD20Check:
                 assert result.roll == 1
                 assert result.success is False
                 assert result.total == 51
+                assert result.critical_failure is True
+                assert result.critical_success is False
                 return
         pytest.fail("Could not find seed for nat-1")

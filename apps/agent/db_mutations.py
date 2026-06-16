@@ -4,10 +4,14 @@ import json
 import logging
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import asyncpg
 
 import db
+
+if TYPE_CHECKING:
+    from session_data import CombatState
 
 logger = logging.getLogger("divineruin.db")
 
@@ -48,19 +52,6 @@ async def update_player_hp(
         WHERE player_id = $1
         """,
         player_id,
-        json.dumps(current_hp),
-    )
-
-
-async def update_npc_hp(npc_id: str, current_hp: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> None:
-    _conn = conn or await db.get_pool()
-    await _conn.execute(
-        """
-        UPDATE npc_state
-        SET data = jsonb_set(data, '{hp,current}', $2::jsonb)
-        WHERE npc_id = $1
-        """,
-        npc_id,
         json.dumps(current_hp),
     )
 
@@ -371,6 +362,29 @@ async def save_combat_state(
         combat_id,
         json.dumps(data),
     )
+
+
+async def load_combat_state(
+    combat_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> "CombatState | None":
+    """Rehydrate a CombatState from its combat_instances row (the read-side inverse of
+    save_combat_state, M4.1 story-002). Returns None when no row matches.
+
+    combat_instances.data is the single JSONB persistence SSOT, so the whole CombatState
+    (including the phase fields and nested CombatParticipant list) round-trips through
+    CombatState.from_dict. Imported lazily to avoid pulling session_data (and its livekit
+    dependency) into every db_mutations importer. asyncpg returns JSONB as a str unless a
+    codec is registered (none is here), so json.loads it — same shape db_training._to_dict
+    handles. This path is forward-wired; story-003 wires the reconnect-resume caller."""
+    from session_data import CombatState
+
+    _conn = conn or await db.get_pool()
+    row = await _conn.fetchrow("SELECT data FROM combat_instances WHERE combat_id = $1", combat_id)
+    if row is None:
+        return None
+    raw = row["data"]
+    data = json.loads(raw) if isinstance(raw, str) else raw
+    return CombatState.from_dict(data)
 
 
 async def delete_combat_state(combat_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> None:
