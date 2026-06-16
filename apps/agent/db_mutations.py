@@ -56,19 +56,6 @@ async def update_player_hp(
     )
 
 
-async def update_npc_hp(npc_id: str, current_hp: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> None:
-    _conn = conn or await db.get_pool()
-    await _conn.execute(
-        """
-        UPDATE npc_state
-        SET data = jsonb_set(data, '{hp,current}', $2::jsonb)
-        WHERE npc_id = $1
-        """,
-        npc_id,
-        json.dumps(current_hp),
-    )
-
-
 async def update_player_location(
     player_id: str, location_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> None:

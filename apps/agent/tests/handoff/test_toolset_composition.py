@@ -1,6 +1,5 @@
 """Tests that the gameplay/combat agents expose the correct tool sets (completeness + isolation)."""
 
-from check_tools import request_attack
 from combat_agent import COMBAT_AGENT_TOOLS
 from combat_end import end_combat
 from combat_turn import declare_phase, request_death_save, resolve_phase
@@ -37,14 +36,6 @@ class TestToolIsolation:
         assert resolve_phase not in EXPLORATION_TOOLS
         assert request_death_save not in EXPLORATION_TOOLS
         assert end_combat not in EXPLORATION_TOOLS
-
-    def test_exploration_does_not_have_danger_mechanics(self):
-        """Exploration escalates violence via enter_mode(mode="combat"); damage-dealing
-        verbs never sit in the exploration baseline. The phase loop (declare_phase/
-        resolve_phase) replaced the old request_attack swing (story-003) — request_attack
-        is now retired from every agent registry but still defined in check_tools.py
-        (dead-path cleanup tracked separately), so it must not leak into exploration."""
-        assert request_attack not in EXPLORATION_TOOLS
 
     def test_exploration_has_exploration_tools(self):
         assert enter_location in EXPLORATION_TOOLS

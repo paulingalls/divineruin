@@ -133,14 +133,6 @@ async def get_player(
     return data
 
 
-async def get_npc_combat_stats(npc_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> dict | None:
-    _conn = conn or await db.get_pool()
-    row = await _conn.fetchrow("SELECT data FROM npc_state WHERE npc_id = $1", npc_id)
-    if row is None:
-        return None
-    return json.loads(row["data"])
-
-
 async def get_npcs_at_location(
     location_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> list[dict]:
