@@ -10,7 +10,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _damage_resolver, _make_combat_state, _make_context, _resolution_state
+from combat._helpers import _damage_resolver, _fake_db_mod, _make_combat_state, _make_context, _resolution_state
 from livekit.agents.llm import ToolError
 
 from check_resolution import AttackResult
@@ -28,7 +28,8 @@ def _make_mutations():
 
 def _resolve_deps(damage=3):
     """DI bundle for resolve_phase: a deterministic damage resolver plus the
-    mutations/queries/concentration mocks the packet path touches."""
+    mutations/queries/concentration mocks the packet path touches, and a no-op db_mod
+    so the per-phase transaction wrapper runs without a real connection."""
     queries = MagicMock()
     queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items
     break_mod = MagicMock()
@@ -38,6 +39,7 @@ def _resolve_deps(damage=3):
         "queries": queries,
         "resolver": _damage_resolver(damage),
         "concentration_break_mod": break_mod,
+        "db_mod": _fake_db_mod(),
     }
 
 
@@ -281,7 +283,11 @@ class TestResolvePhaseResonanceDecay:
 
         # WRAP is the canonical combat decay clock: one step per phase.
         assert ctx.userdata.resonance.current == 4
-        res["resonance_mutations"].update_player_resonance.assert_awaited_once_with("player_1", 4)
+        # The resonance write runs inside the phase transaction, so it carries the conn the
+        # db_mod.transaction() context yields (not the implicit None default).
+        write = res["resonance_mutations"].update_player_resonance.await_args
+        assert write.args == ("player_1", 4)
+        assert "conn" in write.kwargs
         res["resonance_events_mod"].publish_resonance_changed.assert_awaited_once()
 
     @pytest.mark.asyncio
