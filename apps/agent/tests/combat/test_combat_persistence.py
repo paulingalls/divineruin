@@ -44,24 +44,33 @@ async def dev_db_pool():
             os.environ["DATABASE_URL"] = prior
 
 
+def test_make_combat_state_enemy_fallen_param_sets_is_fallen() -> None:
+    """The enemy_fallen builder param drops the enemy at construction (mirrors player_fallen),
+    so fixtures no longer hand-set is_fallen on the goblin. Pure unit test, no DB."""
+    enemy = _make_combat_state(enemy_fallen=True).get_participant("goblin_scout_1")
+    assert enemy is not None and enemy.is_fallen is True
+    # Default leaves the enemy standing.
+    standing = _make_combat_state().get_participant("goblin_scout_1")
+    assert standing is not None and standing.is_fallen is False
+
+
 def _mid_combat_state(combat_id: str) -> CombatState:
     """A mid-phase CombatState built from the canonical combat fixture, then advanced into a
     state that exercises every field the round-trip must preserve: a non-default beat, populated
     phase dicts, and a fallen enemy carrying death-save counters. Reuses _make_combat_state
     (the shared two-participant builder the rest of tests/combat/ uses) so the round-trip is
     proven against the same shape as the live engine, not a parallel hand-rolled one."""
-    state = _make_combat_state(player_hp=12, enemy_hp=0)
+    state = _make_combat_state(player_hp=12, enemy_hp=0, enemy_fallen=True)
     state.combat_id = combat_id
     state.round_number = 4
     state.current_turn_index = 1
     state.beat = "resolution"
     state.pending_declarations = {"player_1": {"action": "attack", "target": "goblin_scout_1"}}
     state.reactions_available = {"player_1": True, "goblin_scout_1": False}
-    # Drop the enemy: set is_fallen + death-save counters directly (the helper's enemy_fallen
-    # param is not wired through, so don't rely on it).
+    # is_fallen now comes from the enemy_fallen param; death-save counters aren't part of the
+    # builder, so set those directly to exercise the round-trip.
     fallen = state.get_participant("goblin_scout_1")
     assert fallen is not None
-    fallen.is_fallen = True
     fallen.death_save_successes = 2
     fallen.death_save_failures = 1
     return state

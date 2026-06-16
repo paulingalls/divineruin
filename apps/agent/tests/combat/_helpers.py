@@ -50,6 +50,7 @@ def _make_combat_state(player_hp=25, player_fallen=False, enemy_hp=7, enemy_fall
                     },
                 ],
                 xp_value=50,
+                is_fallen=enemy_fallen,
             ),
         ],
         initiative_order=["player_1", "goblin_scout_1"],
