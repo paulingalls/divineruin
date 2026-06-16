@@ -174,7 +174,8 @@ async def test_resolve_phase_rolls_back_player_hp_when_save_combat_state_fails(d
 
     ctx = MagicMock()
     ctx.userdata = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
-    ctx.userdata.combat_state = _rollback_resolution_state(combat_id, player_id, "cap_s010_enemy")
+    pre_phase_state = _rollback_resolution_state(combat_id, player_id, "cap_s010_enemy")
+    ctx.userdata.combat_state = pre_phase_state
 
     try:
         with pytest.raises(RuntimeError, match="boom"):
@@ -186,6 +187,14 @@ async def test_resolve_phase_rolls_back_player_hp_when_save_combat_state_fails(d
             "SELECT (data->'hp'->>'current')::int AS hp FROM players WHERE player_id = $1", player_id
         )
         assert row["hp"] == 25
+
+        # In-memory state must NOT diverge from the rolled-back DB SSOT: session.combat_state is
+        # still the pristine pre-phase object (the engine deep-copies, and the post-commit
+        # session.combat_state assignment is skipped on rollback), with the player at HP 25 — so a
+        # retried turn proceeds from committed state, not the discarded mid-phase HP 22.
+        assert ctx.userdata.combat_state is pre_phase_state
+        player_part = next(p for p in ctx.userdata.combat_state.participants if p.id == player_id)
+        assert player_part.hp_current == 25
     finally:
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
         await db_mutations.delete_combat_state(combat_id, conn=pool)

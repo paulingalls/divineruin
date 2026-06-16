@@ -153,7 +153,6 @@ async def _resolve_phase_impl(
         state, _narr = combat_phase.advance_combat_phase(state)
         state, wrap_adv = combat_phase.advance_combat_phase(state)
         wrap = wrap_adv.wrap
-        session.combat_state = state
 
         ended_outcome = wrap.outcome if (wrap is not None and wrap.combat_ended and wrap.outcome) else None
         if ended_outcome is None:
@@ -168,6 +167,12 @@ async def _resolve_phase_impl(
                     pending_resonance = new_resonance
                     await resonance_mutations.update_player_resonance(session.player_id, new_resonance, conn=conn)
             await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+
+    # Sync the looped in-memory state ONLY after the transaction commits. On rollback the
+    # exception skips this line, so session.combat_state stays the pristine pre-phase `cs` —
+    # consistent with the rolled-back DB SSOT — and a retried turn proceeds from committed HP
+    # (engine deep-copies, so `cs` was never mutated).
+    session.combat_state = state
 
     # Beat 4 end-condition: the engine reports victory (all enemies fallen) or defeat (the player
     # has died). The looped HP writes are already committed above; end_combat awards XP, accrues

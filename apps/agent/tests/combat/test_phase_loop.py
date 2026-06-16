@@ -283,7 +283,11 @@ class TestResolvePhaseResonanceDecay:
 
         # WRAP is the canonical combat decay clock: one step per phase.
         assert ctx.userdata.resonance.current == 4
-        res["resonance_mutations"].update_player_resonance.assert_awaited_once_with("player_1", 4, conn=None)
+        # The resonance write runs inside the phase transaction, so it carries the conn the
+        # db_mod.transaction() context yields (not the implicit None default).
+        write = res["resonance_mutations"].update_player_resonance.await_args
+        assert write.args == ("player_1", 4)
+        assert "conn" in write.kwargs
         res["resonance_events_mod"].publish_resonance_changed.assert_awaited_once()
 
     @pytest.mark.asyncio
