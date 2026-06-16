@@ -20,6 +20,7 @@ import resonance_events
 from combat_end import _end_combat_impl
 from combat_support import _accrue_durability, _find_equipped, _publish_sounds, _require_combat
 from db_errors import db_tool
+from declarations import DeclarationType
 from game_events import publish_game_event
 from session_data import SessionData
 from tool_support import (
@@ -131,8 +132,26 @@ async def _resolve_phase_impl(
     async with db_mod.transaction() as conn:
         # Beat 2 (resolution): the engine orders the pending declarations into initiative
         # packets (no math of its own). Orchestration applies each attack against
-        # CombatParticipant HP via the shared packet resolver.
-        state, adv = combat_phase.advance_combat_phase(cs)
+        # CombatParticipant HP via the shared packet resolver. A malformed/old-shape
+        # stored declaration (e.g. a combat persisted before the explicit-type change)
+        # raises ValueError here as resolve_declaration re-validates; translate it to
+        # ToolError like declare_phase does so the DM re-prompts instead of crashing.
+        try:
+            state, adv = combat_phase.advance_combat_phase(cs)
+        except ValueError as e:
+            raise ToolError(str(e)) from e
+
+        # Defend pre-pass: a Defend declaration grants +AC for the WHOLE phase regardless of
+        # initiative order, so apply every Defend's bonus to state.ac_modifiers before any
+        # attack packet resolves (otherwise a higher-initiative attacker would bypass it).
+        # A fallen defender grants no bonus — mirror the per-packet "actor unavailable" guard.
+        for packet in adv.packets:
+            if packet.declaration.type is not DeclarationType.DEFEND or not packet.declaration.ac_bonus:
+                continue
+            defender = state.get_participant(packet.actor_id)
+            if defender is not None and not defender.is_fallen:
+                state.ac_modifiers[packet.actor_id] = packet.declaration.ac_bonus
+
         packet_summaries: list[dict] = []
         for packet in adv.packets:
             packet_summaries.append(
@@ -223,28 +242,49 @@ async def _resolve_one_packet(
 
     A declaration is *wasted* (resolved=False) when its actor or target is gone or
     has already fallen this phase, or its action isn't in the actor's pool — one bad
-    or stale declaration never crashes the phase. Otherwise it resolves through the
-    shared attack resolver and records the player's weapon-durability flags."""
+    or stale declaration never crashes the phase. Attack resolves through the shared
+    attack resolver (carrying the target's phase AC modifier) and records the player's
+    weapon-durability flags. Defend resolves as a no-op (its +2 AC was applied to
+    state.ac_modifiers in the resolve_phase pre-pass). Ability/Interact/Maneuver/Retreat
+    are modelled + initiative-ordered but their mechanical resolution lands later
+    (Ability → story-007; the rest in M4.x)."""
     attacker = state.get_participant(packet.actor_id)
-    decl = packet.declaration or {}
-    target_id = decl.get("target_id")
-    target = state.get_participant(target_id) if target_id else None
-    action = _find_action(attacker, decl.get("action")) if attacker is not None else None
+    decl = packet.declaration
 
     if attacker is None or attacker.is_fallen:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}
+
+    if decl.type is DeclarationType.DEFEND:
+        return {
+            "actor_id": packet.actor_id,
+            "resolved": True,
+            "declaration_type": str(decl.type),
+            "ac_bonus": decl.ac_bonus,
+        }
+
+    if decl.type is not DeclarationType.ATTACK:
+        return {
+            "actor_id": packet.actor_id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": f"{decl.type} resolution not yet implemented",
+        }
+
+    target = state.get_participant(decl.target_id) if decl.target_id else None
+    action = _find_action(attacker, decl.action)
     if target is None:
-        return {"actor_id": packet.actor_id, "resolved": False, "reason": f"target '{target_id}' not found"}
+        return {"actor_id": packet.actor_id, "resolved": False, "reason": f"target '{decl.target_id}' not found"}
     if target.is_fallen:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": f"{target.name} already fell"}
     if action is None:
-        return {"actor_id": packet.actor_id, "resolved": False, "reason": f"action '{decl.get('action')}' not found"}
+        return {"actor_id": packet.actor_id, "resolved": False, "reason": f"action '{decl.action}' not found"}
 
     summary = await _resolve_attack_packet(
         session,
         attacker,
         action,
         target,
+        target_ac_bonus=state.ac_modifiers.get(target.id, 0),
         mutations=mutations,
         queries=queries,
         resolver=resolver,
@@ -269,6 +309,7 @@ async def _resolve_attack_packet(
     action: dict,
     target,
     *,
+    target_ac_bonus: int = 0,
     shield_reaction: str | None = None,
     mutations=db_mutations,
     queries=db_queries,
@@ -296,10 +337,13 @@ async def _resolve_attack_packet(
         "level": attacker.level,
     }
 
+    # ``target_ac_bonus`` is the target's phase-scoped AC modifier (Defend's +2, M4.2);
+    # the live caller passes state.ac_modifiers[target.id]. Defaults to 0 for direct callers.
+    effective_ac = target.ac + target_ac_bonus
     attack_result = resolver.resolve_attack(
         attacker_data,
         action,
-        target.ac,
+        effective_ac,
         target.hp_current,
     )
 
@@ -386,7 +430,7 @@ async def _resolve_attack_packet(
         "hit": attack_result.hit,
         "roll": attack_result.roll,
         "attack_total": attack_result.attack_total,
-        "target_ac": target.ac,
+        "target_ac": effective_ac,
         "damage": attack_result.damage,
         "damage_type": attack_result.damage_type,
         "critical": attack_result.critical_success,

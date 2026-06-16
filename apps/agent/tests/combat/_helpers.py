@@ -94,8 +94,8 @@ def _resolution_state(player_hp=25, enemy_hp=7):
         location_id="accord_guild_hall",
         beat="resolution",
         pending_declarations={
-            "player_1": {"action": "Longsword", "target_id": "goblin_scout_1"},
-            "goblin_scout_1": {"action": "Scimitar", "target_id": "player_1"},
+            "player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_scout_1"},
+            "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
         },
     )
 

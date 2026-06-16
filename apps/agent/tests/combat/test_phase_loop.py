@@ -70,8 +70,8 @@ def _miss_resolver():
 
 def _declarations():
     return {
-        "player_1": {"action": "Longsword", "target_id": "goblin_scout_1"},
-        "goblin_scout_1": {"action": "Scimitar", "target_id": "player_1"},
+        "player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_scout_1"},
+        "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
     }
 
 
@@ -196,7 +196,11 @@ class TestResolvePhaseNonEnding:
                 action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": ["light"]}],
             )
         )
-        cs.pending_declarations["goblin_scout_2"] = {"action": "Scimitar", "target_id": "goblin_scout_1"}
+        cs.pending_declarations["goblin_scout_2"] = {
+            "type": "attack",
+            "action": "Scimitar",
+            "target_id": "goblin_scout_1",
+        }
         ctx.userdata.combat_state = cs
 
         raw = await _resolve_phase_impl(ctx, **deps)
@@ -217,6 +221,21 @@ class TestResolvePhaseNonEnding:
         ctx.userdata.combat_state = cs
 
         with pytest.raises(ToolError, match="resolution beat"):
+            await _resolve_phase_impl(ctx, **deps)
+
+    @pytest.mark.asyncio
+    async def test_malformed_stored_declaration_raises_tool_error(self):
+        # A combat persisted at the RESOLUTION beat before the explicit-type change has an
+        # untyped pending declaration. resolve_phase re-validates via the engine and must
+        # translate the ValueError into a ToolError (like declare_phase) so the DM re-prompts
+        # instead of crashing the turn with a raw exception.
+        deps = _resolve_deps()
+        ctx = make_context()
+        cs = _resolution_state()
+        cs.pending_declarations = {"goblin_scout_1": {"action": "Scimitar", "target_id": "player_1"}}  # no "type"
+        ctx.userdata.combat_state = cs
+
+        with pytest.raises(ToolError, match="type"):
             await _resolve_phase_impl(ctx, **deps)
 
 
@@ -252,7 +271,7 @@ class TestResolvePhaseEnding:
         player.is_fallen = True
         player.hp_current = 0
         player.death_save_failures = 3
-        cs.pending_declarations = {"goblin_scout_1": {"action": "Scimitar", "target_id": "player_1"}}
+        cs.pending_declarations = {"goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"}}
         ctx.userdata.combat_state = cs
 
         raw = await _resolve_phase_impl(ctx, **deps)
@@ -337,8 +356,8 @@ class TestPhaseLoopE2E:
         ctx.userdata.combat_state = cs
 
         decls = {
-            "player_1": {"action": "Longsword", "target_id": "goblin_scout_1"},
-            "goblin_scout_1": {"action": "Scimitar", "target_id": "player_1"},
+            "player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_scout_1"},
+            "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
         }
 
         # --- Round 1: declaration -> resolution -> (combat continues) -> declaration ---
@@ -362,3 +381,67 @@ class TestPhaseLoopE2E:
         assert json.loads(json_str)["outcome"] == "victory"
         assert ctx.userdata.combat_state is None
         deps["mutations"].delete_combat_state.assert_awaited_once()
+
+
+class TestResolvePhaseDefend:
+    @pytest.mark.asyncio
+    async def test_defend_grants_plus_two_ac_against_attacks_this_phase(self):
+        # Player Defends (init 15, resolves first); the goblin then attacks the player and
+        # must roll against the defended AC (14 base + 2), regardless of initiative order.
+        deps = _resolve_deps(damage=3)
+        ctx = make_context()
+        cs = _resolution_state()  # player ac 14
+        cs.pending_declarations = {
+            "player_1": {"type": "defend"},
+            "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
+        }
+        ctx.userdata.combat_state = cs
+
+        raw = await _resolve_phase_impl(ctx, **deps)
+        assert isinstance(raw, str)
+        result = json.loads(raw)
+        summaries = {s["actor_id"]: s for s in result["packets"]}
+
+        # Defend resolves as a no-op stance carrying the +2 bonus (no attack).
+        assert summaries["player_1"]["resolved"] is True
+        assert summaries["player_1"]["declaration_type"] == "defend"
+        assert summaries["player_1"]["ac_bonus"] == 2
+
+        # The goblin's attack resolves against the defended AC (14 + 2 = 16).
+        assert summaries["goblin_scout_1"]["target_ac"] == 16
+        deps["resolver"].resolve_attack.assert_called_once()
+        assert deps["resolver"].resolve_attack.call_args.args[2] == 16
+
+    @pytest.mark.asyncio
+    async def test_defend_ac_bonus_clears_next_phase(self):
+        # After a Defend phase, the wrap loop-back clears ac_modifiers so the bonus
+        # does not bleed into the next round.
+        deps = _resolve_deps(damage=3)
+        ctx = make_context()
+        cs = _resolution_state()
+        cs.pending_declarations = {
+            "player_1": {"type": "defend"},
+            "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
+        }
+        ctx.userdata.combat_state = cs
+
+        await _resolve_phase_impl(ctx, **deps)
+
+        assert ctx.userdata.combat_state.ac_modifiers == {}
+
+    @pytest.mark.asyncio
+    async def test_fallen_defender_grants_no_ac_bonus(self):
+        # A Defend from an actor who has already fallen this phase grants no AC bonus —
+        # the pre-pass mirrors the per-packet "actor unavailable" guard.
+        deps = _resolve_deps()
+        ctx = make_context()
+        cs = _resolution_state()
+        player = cs.get_participant("player_1")
+        assert player is not None
+        player.is_fallen = True
+        cs.pending_declarations = {"player_1": {"type": "defend"}}
+        ctx.userdata.combat_state = cs
+
+        await _resolve_phase_impl(ctx, **deps)
+
+        assert ctx.userdata.combat_state.ac_modifiers == {}

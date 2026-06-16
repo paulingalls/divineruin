@@ -18,6 +18,7 @@ import random
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from declarations import Declaration, resolve_declaration
 from session_data import CombatState
 
 # Phase-canonical Resonance decay: the wrap beat sheds one step per phase
@@ -49,13 +50,14 @@ class PhaseBeat(StrEnum):
 class ResolutionPacket:
     """One declaration's resolution envelope, ordered by initiative in Beat 2.
 
-    ``declaration`` is opaque in M4.1 (typed by M4.2); ``dramatic`` is a placeholder
-    filled by the dramatic-dice evaluator (M4.5). Mechanical resolution (the attack
-    roll) is applied by orchestration (story-003) via ``resolve_attack``.
+    ``declaration`` is a typed ``Declaration`` (M4.2, story-002): ``_resolve_packets``
+    classifies each pending raw dict through ``resolve_declaration``. ``dramatic`` is a
+    placeholder filled by the dramatic-dice evaluator (M4.5). Mechanical resolution (the
+    attack roll, Defend AC application) is applied by orchestration via ``combat_turn``.
     """
 
     actor_id: str
-    declaration: dict
+    declaration: Declaration
     initiative: int
     dramatic: bool = False
 
@@ -101,6 +103,11 @@ def advance_combat_phase(
     if state.beat == PhaseBeat.DECLARATION:
         if not declarations:
             raise ValueError("declaration beat requires declarations")
+        # Validate every declaration's shape at declare time so a bad one fails loud
+        # here (the tool layer translates ValueError -> ToolError) rather than at the
+        # later resolution beat. Raw dicts are still what's stored/persisted.
+        for raw in declarations.values():
+            resolve_declaration(raw)
         next_state.pending_declarations = dict(declarations)
         next_state.reactions_available = {p.id: True for p in next_state.participants}
         next_state.beat = PhaseBeat.RESOLUTION
@@ -123,6 +130,7 @@ def advance_combat_phase(
             next_state.current_turn_index = 0
             next_state.pending_declarations = {}
             next_state.reactions_available = {}
+            next_state.ac_modifiers = {}  # phase-scoped Defend bonuses expire here
             next_state.beat = PhaseBeat.DECLARATION
         return next_state, PhaseAdvance(beat_completed=PhaseBeat.WRAP, wrap=wrap)
 
@@ -153,7 +161,7 @@ def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:
     return [
         ResolutionPacket(
             actor_id=actor_id,
-            declaration=state.pending_declarations[actor_id],
+            declaration=resolve_declaration(state.pending_declarations[actor_id]),
             initiative=by_id[actor_id].initiative if actor_id in by_id else 0,
         )
         for actor_id in ordered_ids
