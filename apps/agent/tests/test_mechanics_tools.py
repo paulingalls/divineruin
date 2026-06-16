@@ -7,13 +7,12 @@ import pytest
 from livekit.agents.llm import ToolError
 
 import event_types as E
-from check_tools import (
-    _mark_skill_breakthrough_impl,
-    _request_attack_impl,
-)
+from check_tools import _mark_skill_breakthrough_impl
 from environment_tools import play_sound
 from session_data import SessionData
 
+# Exported for reuse by test_hybrid_counter (skill-check path); no longer used in-file
+# after the request_attack tests were removed (story-009).
 SAMPLE_PLAYER = {
     "player_id": "player_1",
     "name": "Kael",
@@ -39,13 +38,6 @@ SAMPLE_PLAYER = {
     },
     "hp": {"current": 25, "max": 25},
     "ac": 14,
-}
-
-SAMPLE_NPC_COMBAT = {
-    "npc_id": "goblin_1",
-    "name": "Goblin Scout",
-    "ac": 12,
-    "hp": {"current": 7, "max": 7},
 }
 
 
@@ -81,130 +73,6 @@ class TestMarkSkillBreakthrough:
         ctx = _make_context()
         with pytest.raises(ToolError):
             await _mark_skill_breakthrough_impl(ctx, skill="flying")
-
-
-# --- request_attack ---
-
-
-class TestRequestAttack:
-    @pytest.mark.asyncio
-    async def test_returns_result(self):
-        mock_queries = MagicMock()
-        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
-        mock_queries.get_npc_combat_stats = AsyncMock(return_value=SAMPLE_NPC_COMBAT)
-        mock_mutations = MagicMock()
-        mock_mutations.update_npc_hp = AsyncMock()
-        ctx = _make_context()
-        result = json.loads(
-            await _request_attack_impl(
-                ctx,
-                target_id="goblin_1",
-                weapon_name="Longsword",
-                queries=mock_queries,
-                mutations=mock_mutations,
-            )
-        )
-        assert "hit" in result
-        assert "damage" in result
-        assert "narrative_hint" in result
-
-    @pytest.mark.asyncio
-    async def test_missing_player(self):
-        mock_queries = MagicMock()
-        mock_queries.get_player = AsyncMock(return_value=None)
-        ctx = _make_context()
-        with pytest.raises(ToolError):
-            await _request_attack_impl(
-                ctx,
-                target_id="goblin_1",
-                weapon_name="Longsword",
-                queries=mock_queries,
-            )
-
-    @pytest.mark.asyncio
-    async def test_missing_weapon(self):
-        mock_queries = MagicMock()
-        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
-        ctx = _make_context()
-        with pytest.raises(ToolError, match="Warhammer"):
-            await _request_attack_impl(
-                ctx,
-                target_id="goblin_1",
-                weapon_name="Warhammer",
-                queries=mock_queries,
-            )
-
-    @pytest.mark.asyncio
-    async def test_spell_name_is_not_routed_as_weapon(self):
-        # AC5: after the weapon-only split, a spell name does NOT cast — it fails the
-        # equipment lookup like any non-weapon. Spells route through cast_spell instead.
-        mock_queries = MagicMock()
-        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
-        ctx = _make_context()
-        with pytest.raises(ToolError, match="not found in equipment"):
-            await _request_attack_impl(
-                ctx,
-                target_id="goblin_1",
-                weapon_name="Arcane Bolt",
-                queries=mock_queries,
-            )
-
-    @pytest.mark.asyncio
-    async def test_missing_target(self):
-        mock_queries = MagicMock()
-        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
-        mock_queries.get_npc_combat_stats = AsyncMock(return_value=None)
-        ctx = _make_context()
-        with pytest.raises(ToolError):
-            await _request_attack_impl(
-                ctx,
-                target_id="ghost",
-                weapon_name="Longsword",
-                queries=mock_queries,
-            )
-
-    @pytest.mark.asyncio
-    async def test_hp_updated_on_hit(self):
-        mock_queries = MagicMock()
-        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
-        mock_queries.get_npc_combat_stats = AsyncMock(return_value=SAMPLE_NPC_COMBAT)
-        mock_mutations = MagicMock()
-        mock_mutations.update_npc_hp = AsyncMock()
-        ctx = _make_context()
-        result = json.loads(
-            await _request_attack_impl(
-                ctx,
-                target_id="goblin_1",
-                weapon_name="Longsword",
-                queries=mock_queries,
-                mutations=mock_mutations,
-            )
-        )
-        if result["hit"]:
-            mock_mutations.update_npc_hp.assert_called_once_with("goblin_1", result["target_hp_remaining"])
-        else:
-            mock_mutations.update_npc_hp.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_publishes_event(self):
-        mock_queries = MagicMock()
-        mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
-        mock_queries.get_npc_combat_stats = AsyncMock(return_value=SAMPLE_NPC_COMBAT)
-        mock_mutations = MagicMock()
-        mock_mutations.update_npc_hp = AsyncMock()
-        room = _make_mock_room()
-        ctx = _make_context(room=room)
-        await _request_attack_impl(
-            ctx,
-            target_id="goblin_1",
-            weapon_name="Longsword",
-            queries=mock_queries,
-            mutations=mock_mutations,
-        )
-        room.local_participant.publish_data.assert_called_once()
-        call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == E.DICE_ROLL
-        assert call_data["roll_type"] == "attack"
 
 
 # --- play_sound ---
