@@ -234,7 +234,6 @@ class TestResolveAttack:
                 result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 50, 20, rng=rng)
                 assert result.roll == 20
                 assert result.hit is True
-                assert result.critical is True
                 assert result.critical_success is True
                 assert result.critical_failure is False
                 return
@@ -248,7 +247,6 @@ class TestResolveAttack:
                 result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 5, 20, rng=rng)
                 assert result.roll == 1
                 assert result.hit is False
-                assert result.critical is False
                 assert result.critical_failure is True
                 assert result.critical_success is False
                 return

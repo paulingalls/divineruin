@@ -187,7 +187,6 @@ class TestPhaseLoopExit:
                 target_ac=target_ac,
                 damage=3,
                 damage_type="slashing",
-                critical=False,
                 critical_success=False,
                 critical_failure=False,
                 target_hp_remaining=remaining,

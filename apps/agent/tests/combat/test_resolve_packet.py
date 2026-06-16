@@ -26,7 +26,6 @@ def _fixed_resolver(*, damage: int, hp_remaining: int):
         target_ac=14,
         damage=damage,
         damage_type="slashing",
-        critical=False,
         critical_success=False,
         critical_failure=False,
         target_hp_remaining=hp_remaining,

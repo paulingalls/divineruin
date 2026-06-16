@@ -59,13 +59,12 @@ class AttackResult:
     target_ac: int
     damage: int
     damage_type: str
-    critical: bool
     target_hp_remaining: int
     target_killed: bool
     narrative_hint: str
     # Crit flags read from D20CheckCore.critical_success/critical_failure (nat-20 /
-    # nat-1), so every roll-result packet agrees on crits. Defaulted for back-compat
-    # with existing direct constructors; the resolver always sets them explicitly.
+    # nat-1), so every roll-result packet agrees on crits. Defaulted for direct
+    # constructors (tests); the resolver always sets them explicitly.
     critical_success: bool = False
     critical_failure: bool = False
 
@@ -357,7 +356,6 @@ def resolve_attack(
         target_ac=target_ac,
         damage=damage,
         damage_type=damage_type,
-        critical=critical,
         critical_success=core.critical_success,
         critical_failure=core.critical_failure,
         target_hp_remaining=new_hp,
