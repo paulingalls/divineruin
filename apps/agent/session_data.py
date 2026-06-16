@@ -125,6 +125,9 @@ class CombatState:
     # Reaction availability for the current phase (actor_id -> bool), reset each
     # declaration beat; consumed by Beat-3 reaction windows (M4.x).
     reactions_available: dict[str, bool] = field(default_factory=dict)
+    # Phase-scoped AC modifiers (actor_id -> bonus), e.g. Defend's +2 (M4.2, story-002).
+    # Set during resolution, cleared at the wrap loop-back so a stance lasts one phase.
+    ac_modifiers: dict[str, int] = field(default_factory=dict)
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
@@ -153,6 +156,7 @@ class CombatState:
             beat=data.get("beat", "declaration"),
             pending_declarations=data.get("pending_declarations", {}),
             reactions_available=data.get("reactions_available", {}),
+            ac_modifiers=data.get("ac_modifiers", {}),
         )
 
 

@@ -70,6 +70,7 @@ def _mid_combat_state(combat_id: str) -> CombatState:
     state.beat = "resolution"
     state.pending_declarations = {"player_1": {"action": "attack", "target": "goblin_scout_1"}}
     state.reactions_available = {"player_1": True, "goblin_scout_1": False}
+    state.ac_modifiers = {"player_1": 2}  # a Defend stance in flight (M4.2, story-002)
     # is_fallen now comes from the enemy_fallen param; death-save counters aren't part of the
     # builder, so set those directly to exercise the round-trip.
     fallen = state.get_participant("goblin_scout_1")
@@ -95,6 +96,7 @@ async def test_load_combat_state_roundtrips_mid_phase_state(dev_db_pool) -> None
         assert loaded.beat == "resolution"
         assert loaded.pending_declarations == original.pending_declarations
         assert loaded.reactions_available == original.reactions_available
+        assert loaded.ac_modifiers == {"player_1": 2}
         fallen = loaded.get_participant("goblin_scout_1")
         assert fallen is not None
         assert fallen.is_fallen is True
