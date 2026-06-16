@@ -9,7 +9,8 @@ caller owns one save per phase).
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _make_combat_state, _make_context, _make_mock_room
+from combat._helpers import _make_combat_state
+from sample_fixtures import make_context, make_mock_room
 
 from check_resolution import AttackResult
 from combat_turn import _resolve_attack_packet
@@ -69,7 +70,7 @@ def _attacker_target_action(cs):
 class TestResolveAttackPacket:
     @pytest.mark.asyncio
     async def test_resolves_attack(self):
-        ctx = _make_context()
+        ctx = make_context()
         cs = _make_combat_state()
         attacker, target, action = _attacker_target_action(cs)
 
@@ -92,7 +93,7 @@ class TestResolveAttackPacket:
     async def test_does_not_persist(self):
         # The packet helper never persists — the caller saves once per phase.
         mock_mutations = _make_mocks()
-        ctx = _make_context()
+        ctx = make_context()
         cs = _make_combat_state()
         attacker, target, action = _attacker_target_action(cs)
 
@@ -110,7 +111,7 @@ class TestResolveAttackPacket:
     @pytest.mark.asyncio
     async def test_mutates_target_hp_on_state(self):
         mock_mutations = _make_mocks()
-        ctx = _make_context()
+        ctx = make_context()
         cs = _make_combat_state(player_hp=25)
         attacker, target, action = _attacker_target_action(cs)
 
@@ -132,7 +133,7 @@ class TestResolveAttackPacket:
     @pytest.mark.asyncio
     async def test_updates_player_hp(self):
         mock_mutations = _make_mocks()
-        ctx = _make_context()
+        ctx = make_context()
         cs = _make_combat_state()
         attacker, target, action = _attacker_target_action(cs)
 
@@ -149,8 +150,8 @@ class TestResolveAttackPacket:
 
     @pytest.mark.asyncio
     async def test_publishes_dice_roll_and_sound(self):
-        room = _make_mock_room()
-        ctx = _make_context(room=room)
+        room = make_mock_room()
+        ctx = make_context(room=room)
         cs = _make_combat_state()
         attacker, target, action = _attacker_target_action(cs)
 
@@ -168,7 +169,7 @@ class TestResolveAttackPacket:
 
     @pytest.mark.asyncio
     async def test_sets_fallen_at_zero_hp(self):
-        ctx = _make_context()
+        ctx = make_context()
         cs = _make_combat_state(player_hp=8)
         attacker, target, action = _attacker_target_action(cs)
 
@@ -187,7 +188,7 @@ class TestResolveAttackPacket:
 
     @pytest.mark.asyncio
     async def test_player_hit_invokes_break_and_reports_it(self):
-        ctx = _make_context()
+        ctx = make_context()
         cs = _make_combat_state(player_hp=25)
         attacker, target, action = _attacker_target_action(cs)
         break_mod = _break_mod("arcane_fly")
@@ -212,7 +213,7 @@ class TestResolveAttackPacket:
 
     @pytest.mark.asyncio
     async def test_incapacitating_hit_passes_incapacitated(self):
-        ctx = _make_context()
+        ctx = make_context()
         cs = _make_combat_state(player_hp=8)
         attacker, target, action = _attacker_target_action(cs)
         break_mod = _break_mod("arcane_fly")
@@ -233,7 +234,7 @@ class TestResolveAttackPacket:
 
     @pytest.mark.asyncio
     async def test_no_break_reports_none(self):
-        ctx = _make_context()
+        ctx = make_context()
         cs = _make_combat_state(player_hp=25)
         attacker, target, action = _attacker_target_action(cs)
 

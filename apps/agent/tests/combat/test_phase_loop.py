@@ -10,8 +10,9 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _damage_resolver, _fake_db_mod, _make_combat_state, _make_context, _resolution_state
+from combat._helpers import _damage_resolver, _fake_db_mod, _make_combat_state, _resolution_state
 from livekit.agents.llm import ToolError
+from sample_fixtures import make_context
 
 from check_resolution import AttackResult
 from combat_turn import _declare_phase_impl, _resolve_phase_impl
@@ -78,7 +79,7 @@ class TestDeclarePhase:
     @pytest.mark.asyncio
     async def test_advances_to_resolution_and_stores_declarations(self):
         mutations = _make_mutations()
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()  # beat defaults to "declaration"
 
         result = json.loads(await _declare_phase_impl(ctx, _declarations(), mutations=mutations))
@@ -93,7 +94,7 @@ class TestDeclarePhase:
     @pytest.mark.asyncio
     async def test_empty_declarations_raises(self):
         mutations = _make_mutations()
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
         with pytest.raises(ToolError):
@@ -103,7 +104,7 @@ class TestDeclarePhase:
     @pytest.mark.asyncio
     async def test_wrong_beat_raises(self):
         mutations = _make_mutations()
-        ctx = _make_context()
+        ctx = make_context()
         cs = _make_combat_state()
         cs.beat = "resolution"  # not the declaration beat
         ctx.userdata.combat_state = cs
@@ -114,7 +115,7 @@ class TestDeclarePhase:
 
     @pytest.mark.asyncio
     async def test_not_in_combat_raises(self):
-        ctx = _make_context()  # no combat_state
+        ctx = make_context()  # no combat_state
 
         with pytest.raises(ToolError, match="Not in combat"):
             await _declare_phase_impl(ctx, _declarations())
@@ -124,7 +125,7 @@ class TestResolvePhaseNonEnding:
     @pytest.mark.asyncio
     async def test_resolves_packets_in_initiative_order_and_loops(self):
         deps = _resolve_deps(damage=3)
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _resolution_state(player_hp=25, enemy_hp=7)
 
         raw = await _resolve_phase_impl(ctx, **deps)
@@ -150,7 +151,7 @@ class TestResolvePhaseNonEnding:
     @pytest.mark.asyncio
     async def test_sets_weapon_flags_on_player_hit(self):
         deps = _resolve_deps(damage=3)
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _resolution_state()
 
         await _resolve_phase_impl(ctx, **deps)
@@ -165,7 +166,7 @@ class TestResolvePhaseNonEnding:
         # crit-vs-heavy bonus is gated on a landing crit.
         deps = _resolve_deps()
         deps["resolver"] = _miss_resolver()
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _resolution_state()
 
         await _resolve_phase_impl(ctx, **deps)
@@ -180,7 +181,7 @@ class TestResolvePhaseNonEnding:
         # but the goblin's own declaration still targets the (living) player and resolves —
         # so instead assert the player's packet kills, and a second enemy's packet wasted.
         deps = _resolve_deps(damage=3)
-        ctx = _make_context()
+        ctx = make_context()
         cs = _resolution_state(enemy_hp=3)
         # Add a second enemy that targets the first goblin (which the player kills first).
         cs.participants.append(
@@ -210,7 +211,7 @@ class TestResolvePhaseNonEnding:
     @pytest.mark.asyncio
     async def test_wrong_beat_raises(self):
         deps = _resolve_deps()
-        ctx = _make_context()
+        ctx = make_context()
         cs = _resolution_state()
         cs.beat = "declaration"  # not the resolution beat
         ctx.userdata.combat_state = cs
@@ -223,7 +224,7 @@ class TestResolvePhaseEnding:
     @pytest.mark.asyncio
     async def test_victory_ends_and_hands_off(self):
         deps = _resolve_deps(damage=3)
-        ctx = _make_context()
+        ctx = make_context()
         # Player (init 15) strikes the goblin for 3; goblin has 3 HP -> it falls before
         # it can act (its own declaration is wasted). All enemies down -> victory.
         ctx.userdata.combat_state = _resolution_state(enemy_hp=3)
@@ -242,7 +243,7 @@ class TestResolvePhaseEnding:
     @pytest.mark.asyncio
     async def test_defeat_ends_and_hands_off(self):
         deps = _resolve_deps()
-        ctx = _make_context()
+        ctx = make_context()
         cs = _resolution_state()
         player = cs.get_participant("player_1")
         assert player is not None
@@ -275,7 +276,7 @@ class TestResolvePhaseResonanceDecay:
     async def test_decays_one_step_on_non_ending_wrap(self):
         deps = _resolve_deps(damage=3)
         res = _resonance_deps()
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _resolution_state()
         ctx.userdata.resonance.current = 5
 
@@ -294,7 +295,7 @@ class TestResolvePhaseResonanceDecay:
     async def test_no_decay_or_write_at_zero(self):
         deps = _resolve_deps(damage=3)
         res = _resonance_deps()
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _resolution_state()
         ctx.userdata.resonance.current = 0
 
@@ -309,7 +310,7 @@ class TestResolvePhaseResonanceDecay:
         # Decay happens during the fight, not on the terminal wrap that ends combat.
         deps = _resolve_deps(damage=3)
         res = _resonance_deps()
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _resolution_state(enemy_hp=3)  # victory this phase
         ctx.userdata.resonance.current = 5
 
@@ -328,7 +329,7 @@ class TestPhaseLoopE2E:
     @pytest.mark.asyncio
     async def test_full_lifecycle_to_victory(self):
         deps = _resolve_deps(damage=4)
-        ctx = _make_context()
+        ctx = make_context()
         # Start parked at the declaration beat, as combat_init leaves a fresh encounter.
         cs = _resolution_state(player_hp=25, enemy_hp=7)
         cs.beat = "declaration"
