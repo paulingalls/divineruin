@@ -4,7 +4,13 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _make_combat_state, _make_context, _make_mock_room
+from combat._helpers import (
+    _damage_resolver,
+    _make_combat_state,
+    _make_context,
+    _make_mock_room,
+    _resolution_state,
+)
 from livekit.agents.llm import ToolError
 
 import event_types as E
@@ -132,77 +138,20 @@ class TestPhaseLoopExit:
     resolve_phase fires end_combat when the engine reports victory/defeat, rather than
     the LLM choosing to call end_combat itself. These pin that exit handoff."""
 
-    def _resolution_state_one_hit_from_victory(self):
-        from session_data import CombatParticipant, CombatState
-
-        return CombatState(
-            combat_id="combat_exit_test",
-            participants=[
-                CombatParticipant(
-                    id="player_1",
-                    name="Kael",
-                    type="player",
-                    initiative=15,
-                    hp_current=25,
-                    hp_max=25,
-                    ac=14,
-                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
-                ),
-                CombatParticipant(
-                    id="goblin_scout_1",
-                    name="Goblin Scout",
-                    type="enemy",
-                    initiative=12,
-                    hp_current=3,
-                    hp_max=7,
-                    ac=13,
-                    action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
-                    xp_value=50,
-                ),
-            ],
-            initiative_order=["player_1", "goblin_scout_1"],
-            location_id="accord_guild_hall",
-            beat="resolution",
-            pending_declarations={
-                "player_1": {"action": "Longsword", "target_id": "goblin_scout_1"},
-                "goblin_scout_1": {"action": "Scimitar", "target_id": "player_1"},
-            },
-        )
-
     @pytest.mark.asyncio
     async def test_victory_wrap_hands_back_to_exploration_agent(self):
-        from unittest.mock import MagicMock
-
-        from check_resolution import AttackResult
         from combat_turn import _resolve_phase_impl
         from exploration_agent import ExplorationAgent
 
-        def _kill_resolver(attacker_data, action, target_ac, target_hp):
-            remaining = max(0, target_hp - 3)
-            return AttackResult(
-                hit=True,
-                roll=15,
-                attack_modifier=3,
-                attack_total=18,
-                target_ac=target_ac,
-                damage=3,
-                damage_type="slashing",
-                critical_success=False,
-                critical_failure=False,
-                target_hp_remaining=remaining,
-                target_killed=remaining == 0,
-                narrative_hint="Down it goes.",
-            )
-
-        resolver = MagicMock()
-        resolver.resolve_attack = MagicMock(side_effect=_kill_resolver)
+        # enemy_hp=3 is one fixed-damage hit from victory; _damage_resolver(3) lands it.
+        resolver = _damage_resolver(3)
         queries = MagicMock()
         queries.get_player_inventory = AsyncMock(return_value=[])
         break_mod = MagicMock()
         break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
 
         ctx = _make_context()
-        ctx.userdata.combat_state = self._resolution_state_one_hit_from_victory()
+        ctx.userdata.combat_state = _resolution_state(player_hp=25, enemy_hp=3)
 
         raw = await _resolve_phase_impl(
             ctx,
