@@ -127,7 +127,7 @@ async def test_accrue_persists_decremented_hits():
         result = await combat_support._accrue_durability(
             _session(), "p1", item, 1, is_hollow_zone=False, mutations=mutations
         )
-    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 9)
+    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 9, conn=None)
     assert result == {"broken": False, "penalty": {}, "current_hits": 9}
 
 
@@ -136,7 +136,7 @@ async def test_accrue_hollow_zone_doubles_loss():
     item = _inv_item("plate_armor", "armor", tier="standard", current_hits=10)
     with patch.object(combat_support, "publish_game_event", AsyncMock()):
         await combat_support._accrue_durability(_session(), "p1", item, 1, is_hollow_zone=True, mutations=mutations)
-    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 8)
+    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 8, conn=None)
 
 
 async def test_accrue_lazy_defaults_missing_current_hits_to_full():
@@ -147,7 +147,7 @@ async def test_accrue_lazy_defaults_missing_current_hits_to_full():
         result = await combat_support._accrue_durability(
             _session(), "p1", item, 1, is_hollow_zone=False, mutations=mutations
         )
-    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 9)
+    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 9, conn=None)
     assert result["current_hits"] == 9
 
 

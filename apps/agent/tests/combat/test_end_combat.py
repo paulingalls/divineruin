@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from combat._helpers import (
     _damage_resolver,
+    _fake_db_mod,
     _make_combat_state,
     _make_context,
     _make_mock_room,
@@ -159,6 +160,7 @@ class TestPhaseLoopExit:
             queries=queries,
             resolver=resolver,
             concentration_break_mod=break_mod,
+            db_mod=_fake_db_mod(),
         )
 
         assert isinstance(raw, tuple), "a winning wrap should return the (ExplorationAgent, json) handoff"

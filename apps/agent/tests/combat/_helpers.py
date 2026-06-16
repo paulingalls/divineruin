@@ -1,9 +1,25 @@
 """Shared helpers for the combat-tools test suite."""
 
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
 
 from check_resolution import AttackResult
 from session_data import CombatParticipant, CombatState, SessionData
+
+
+@asynccontextmanager
+async def _null_transaction():
+    yield None
+
+
+def _fake_db_mod():
+    """A db-module stand-in for resolve_phase unit tests: ``.transaction()`` is a no-op async
+    context manager yielding a sentinel conn, so the per-phase transaction wrapper (story-010)
+    runs without a real DB (the mocked mutations accept + ignore the conn kwarg). Returns a
+    MagicMock so it slots into the db_mod DI seam like the other module-typed mock deps."""
+    m = MagicMock()
+    m.transaction = _null_transaction
+    return m
 
 
 def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None):

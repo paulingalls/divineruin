@@ -11,6 +11,7 @@ import check_resolution
 import combat_phase
 import combat_resolution
 import concentration_break
+import db
 import db_mutations
 import db_mutations_resonance
 import db_queries
@@ -111,6 +112,7 @@ async def _resolve_phase_impl(
     concentration_break_mod=concentration_break,
     resonance_mutations=db_mutations_resonance,
     resonance_events_mod=resonance_events,
+    db_mod=db,
 ) -> str | tuple:
     logger.info("resolve_phase called")
     session: SessionData = context.userdata
@@ -119,52 +121,64 @@ async def _resolve_phase_impl(
     if cs.beat != combat_phase.PhaseBeat.RESOLUTION:
         raise ToolError(f"Not at the resolution beat (current beat: {cs.beat}). Call declare_phase first.")
 
-    # Beat 2 (resolution): the engine orders the pending declarations into initiative
-    # packets (no math of its own). Orchestration applies each attack against
-    # CombatParticipant HP via the shared packet resolver.
-    state, adv = combat_phase.advance_combat_phase(cs)
-    packet_summaries: list[dict] = []
-    for packet in adv.packets:
-        packet_summaries.append(
-            await _resolve_one_packet(
-                session,
-                state,
-                packet,
-                mutations=mutations,
-                queries=queries,
-                resolver=resolver,
-                concentration_break_mod=concentration_break_mod,
+    # One transaction spans every DB write of the phase — per-packet HP + durability, the
+    # per-phase Resonance decay, and the trailing save_combat_state — so a mid-phase failure
+    # rolls back atomically and players/items can never diverge from the combat_instances JSONB
+    # SSOT (debt 084c7d0bc457). Event publishes inside the loop stay optimistic: a rolled-back
+    # phase may have emitted DICE_ROLL/ITEM_DURABILITY_HIT, but a mid-phase DB error aborts the
+    # turn regardless. The in-memory Resonance sync + HUD publish run AFTER commit (below).
+    pending_resonance: int | None = None
+    async with db_mod.transaction() as conn:
+        # Beat 2 (resolution): the engine orders the pending declarations into initiative
+        # packets (no math of its own). Orchestration applies each attack against
+        # CombatParticipant HP via the shared packet resolver.
+        state, adv = combat_phase.advance_combat_phase(cs)
+        packet_summaries: list[dict] = []
+        for packet in adv.packets:
+            packet_summaries.append(
+                await _resolve_one_packet(
+                    session,
+                    state,
+                    packet,
+                    mutations=mutations,
+                    queries=queries,
+                    resolver=resolver,
+                    concentration_break_mod=concentration_break_mod,
+                    conn=conn,
+                )
             )
-        )
 
-    # Beat 3 (narration) is an engine no-op; Beat 4 (wrap) computes the end-condition,
-    # death saves due, and the per-phase Resonance decay signal.
-    state, _narr = combat_phase.advance_combat_phase(state)
-    state, wrap_adv = combat_phase.advance_combat_phase(state)
-    wrap = wrap_adv.wrap
+        # Beat 3 (narration) is an engine no-op; Beat 4 (wrap) computes the end-condition,
+        # death saves due, and the per-phase Resonance decay signal.
+        state, _narr = combat_phase.advance_combat_phase(state)
+        state, wrap_adv = combat_phase.advance_combat_phase(state)
+        wrap = wrap_adv.wrap
+        session.combat_state = state
 
-    session.combat_state = state
+        ended_outcome = wrap.outcome if (wrap is not None and wrap.combat_ended and wrap.outcome) else None
+        if ended_outcome is None:
+            # Combat continues: shed one step of Resonance per phase. WRAP is the canonical
+            # combat decay clock (decision resonance-decay-phase-canonical) — cast-paced decay
+            # is already suppressed in combat (spell_casting), so this never double-decays.
+            # Persist only when the value actually moved (a 0 floor stays silent); the in-memory
+            # sync + HUD push happen post-commit so a rolled-back phase shows no decay.
+            if wrap is not None and wrap.resonance_decay:
+                new_resonance = max(0, session.resonance.current - wrap.resonance_decay)
+                if new_resonance != session.resonance.current:
+                    pending_resonance = new_resonance
+                    await resonance_mutations.update_player_resonance(session.player_id, new_resonance, conn=conn)
+            await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
 
-    # Beat 4 end-condition: the engine reports victory (all enemies fallen) or defeat
-    # (the player has died). Hand the engine's outcome to end_combat — it awards XP,
-    # accrues weapon durability, clears + deletes combat state, and returns the
-    # (gameplay_agent, json) handoff tuple. The looped state is never persisted here.
-    if wrap is not None and wrap.combat_ended and wrap.outcome:
-        logger.info("resolve_phase: engine end-condition %s -> end_combat", wrap.outcome)
-        return await _end_combat_impl(context, wrap.outcome, mutations=mutations, queries=queries)
+    # Beat 4 end-condition: the engine reports victory (all enemies fallen) or defeat (the player
+    # has died). The looped HP writes are already committed above; end_combat awards XP, accrues
+    # weapon durability, deletes combat state, and returns the (gameplay_agent, json) handoff.
+    if ended_outcome is not None:
+        logger.info("resolve_phase: engine end-condition %s -> end_combat", ended_outcome)
+        return await _end_combat_impl(context, ended_outcome, mutations=mutations, queries=queries)
 
-    # Combat continues: shed one step of Resonance per phase. WRAP is the canonical
-    # combat decay clock (decision resonance-decay-phase-canonical) — cast-paced decay
-    # is already suppressed in combat (spell_casting), so this never double-decays.
-    # Persist + push only when the value actually moved (a 0 floor stays silent).
-    if wrap is not None and wrap.resonance_decay:
-        new_resonance = max(0, session.resonance.current - wrap.resonance_decay)
-        if new_resonance != session.resonance.current:
-            session.resonance.current = new_resonance
-            await resonance_mutations.update_player_resonance(session.player_id, new_resonance)
-            await resonance_events_mod.publish_resonance_changed(session)
-
-    await mutations.save_combat_state(state.combat_id, state.to_dict())
+    if pending_resonance is not None:
+        session.resonance.current = pending_resonance
+        await resonance_events_mod.publish_resonance_changed(session)
 
     response = {
         "beat": state.beat,
@@ -198,6 +212,7 @@ async def _resolve_one_packet(
     queries,
     resolver,
     concentration_break_mod,
+    conn=None,
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
 
@@ -229,6 +244,7 @@ async def _resolve_one_packet(
         queries=queries,
         resolver=resolver,
         concentration_break_mod=concentration_break_mod,
+        conn=conn,
     )
     # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
     # per-encounter weapon-durability accrual that end_combat applies. Only the extra
@@ -253,6 +269,7 @@ async def _resolve_attack_packet(
     queries=db_queries,
     resolver=check_resolution,
     concentration_break_mod=concentration_break,
+    conn=None,
 ) -> dict:
     """Resolve ONE declared attack against CombatParticipant HP.
 
@@ -307,7 +324,7 @@ async def _resolve_attack_packet(
 
     # Update DB if target is a player
     if target.type == "player":
-        await mutations.update_player_hp(target.id, target.hp_current)
+        await mutations.update_player_hp(target.id, target.hp_current, conn=conn)
 
     # Combat damage is the canonical concentration-break trigger: a concentrating player who takes
     # damage rolls a CON save (DC scales with the damage); failing it — or being dropped to 0 HP
@@ -340,18 +357,18 @@ async def _resolve_attack_packet(
     # Runs after the attack's DICE_ROLL so ITEM_DURABILITY_HIT follows the strike.
     durability_results: dict = {}
     if target.type == "player" and attack_result.hit:
-        inventory = await queries.get_player_inventory(target.id)
+        inventory = await queries.get_player_inventory(target.id, conn=conn)
         is_hollow = combat_resolution.is_hollow_zone(session.corruption_level)
         armor = _find_equipped(inventory, "armor")
         if armor is not None:
             durability_results["armor"] = await _accrue_durability(
-                session, target.id, armor, 1, is_hollow_zone=is_hollow
+                session, target.id, armor, 1, is_hollow_zone=is_hollow, conn=conn
             )
         if shield_reaction:
             shield = _find_equipped(inventory, "shield")
             if shield is not None:
                 durability_results["shield"] = await _accrue_durability(
-                    session, target.id, shield, 1, is_hollow_zone=is_hollow
+                    session, target.id, shield, 1, is_hollow_zone=is_hollow, conn=conn
                 )
 
     hit_miss = "hit" if attack_result.hit else "miss"

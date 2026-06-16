@@ -75,6 +75,7 @@ async def _accrue_durability(
     *,
     is_hollow_zone: bool,
     mutations=db_mutations_inventory,
+    conn=None,
 ) -> dict:
     """Apply base_hits durability damage to an equipped item, persist the new
     current_hits, and publish ITEM_DURABILITY_HIT. Hollow zones double the loss.
@@ -97,7 +98,7 @@ async def _accrue_durability(
     if new_hits == current_hits and condition["broken"]:
         return {**condition, "current_hits": new_hits}
 
-    await mutations.update_item_durability(player_id, item["id"], new_hits)
+    await mutations.update_item_durability(player_id, item["id"], new_hits, conn=conn)
     await publish_game_event(
         session.room,
         E.ITEM_DURABILITY_HIT,

@@ -15,15 +15,18 @@ but targets the docker-compose dev DB rather than a per-run testcontainer.
 
 from __future__ import annotations
 
+import json
 import os
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from _db_lifecycle import _DEFAULT_DATABASE_URL
-from combat._helpers import _make_combat_state
+from combat._helpers import _damage_resolver, _make_combat_state
 
+import combat_turn
 import db
 import db_mutations
-from session_data import CombatParticipant, CombatState
+from session_data import CombatParticipant, CombatState, SessionData
 
 
 @pytest.fixture
@@ -105,3 +108,84 @@ async def test_load_combat_state_roundtrips_mid_phase_state(dev_db_pool) -> None
 
 async def test_load_combat_state_returns_none_for_unknown_id(dev_db_pool) -> None:
     assert await db_mutations.load_combat_state("combat_does_not_exist_story002", conn=dev_db_pool) is None
+
+
+def _rollback_resolution_state(combat_id: str, player_id: str, enemy_id: str) -> CombatState:
+    """A RESOLUTION-beat state with unique participant ids (dev DB is shared across the -n8
+    fast lane, so player_id must not collide). Enemy declares an attack on the player so
+    resolve_phase writes update_player_hp(player_id) inside the phase transaction."""
+    return CombatState(
+        combat_id=combat_id,
+        participants=[
+            CombatParticipant(
+                id=player_id,
+                name="Kael",
+                type="player",
+                initiative=15,
+                hp_current=25,
+                hp_max=25,
+                ac=14,
+                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+            ),
+            CombatParticipant(
+                id=enemy_id,
+                name="Goblin",
+                type="enemy",
+                initiative=12,
+                hp_current=7,
+                hp_max=7,
+                ac=13,
+                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
+                xp_value=50,
+            ),
+        ],
+        initiative_order=[player_id, enemy_id],
+        beat="resolution",
+        pending_declarations={
+            player_id: {"action": "Longsword", "target_id": enemy_id},
+            enemy_id: {"action": "Scimitar", "target_id": player_id},
+        },
+    )
+
+
+async def test_resolve_phase_rolls_back_player_hp_when_save_combat_state_fails(dev_db_pool, monkeypatch) -> None:
+    """A mid-phase DB failure must NOT leave players.data diverged from the combat_instances SSOT
+    (debt 084c7d0bc457). The enemy packet writes update_player_hp inside the phase transaction; when
+    the trailing save_combat_state raises, the whole phase rolls back and the player's persisted HP
+    is unchanged. Without the transaction the per-packet HP write commits independently and diverges."""
+    pool = dev_db_pool
+    player_id = "cap_s010_rollback_player"
+    combat_id = "combat_s010_rollback"
+
+    # Seed a real player row at HP 25 (update_player_hp jsonb_set needs data.hp to exist).
+    await pool.execute(
+        "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
+        "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
+        player_id,
+        json.dumps({"player_id": player_id, "hp": {"current": 25, "max": 25}}),
+    )
+
+    # Real db_mutations except save_combat_state, which raises after the per-packet HP write.
+    monkeypatch.setattr(db_mutations, "save_combat_state", AsyncMock(side_effect=RuntimeError("boom")))
+    queries = MagicMock()
+    queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items -> no durability writes
+    break_mod = MagicMock()
+    break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
+
+    ctx = MagicMock()
+    ctx.userdata = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
+    ctx.userdata.combat_state = _rollback_resolution_state(combat_id, player_id, "cap_s010_enemy")
+
+    try:
+        with pytest.raises(RuntimeError, match="boom"):
+            await combat_turn._resolve_phase_impl(
+                ctx, queries=queries, resolver=_damage_resolver(3), concentration_break_mod=break_mod
+            )
+        # The enemy's 3-damage hit (25 -> 22) was rolled back with the failed save: HP is still 25.
+        row = await pool.fetchrow(
+            "SELECT (data->'hp'->>'current')::int AS hp FROM players WHERE player_id = $1", player_id
+        )
+        assert row["hp"] == 25
+    finally:
+        await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+        await db_mutations.delete_combat_state(combat_id, conn=pool)
