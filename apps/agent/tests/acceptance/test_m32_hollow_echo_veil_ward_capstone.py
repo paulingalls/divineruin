@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import json
 
-from acceptance.seeds import _make_ctx, seed_player_with_pools
+from acceptance.seeds import seed_player_with_pools
+from sample_fixtures import make_context
 
 import db
 import db_mutations_resonance
@@ -54,7 +55,7 @@ async def test_overreach_cast_fires_hollow_echo_and_persists(reset_db_pool: str)
     spell = spells.get_spell(_SPELL_ID)
     gen = spell.resonance_by_source[spell.source]  # 3 per cast (catalog SSOT)
 
-    ctx = _make_ctx(player_id)  # one session -> Resonance accrues in-memory across casts
+    ctx = make_context(player_id)  # one session -> Resonance accrues in-memory across casts
     cumulative = 0
     casts = 4
     for cast_index in range(casts):
@@ -95,7 +96,7 @@ async def test_active_veil_ward_halves_resonance_generation(reset_db_pool: str) 
     base = spell.resonance_by_source[spell.source]  # 3 unwarded baseline
     assert base > 1  # halving is observable (3 -> 1, not 0 -> 0)
 
-    ctx = _make_ctx(player_id)
+    ctx = make_context(player_id)
     ctx.userdata.veil_ward.active = True
     ctx.userdata.veil_ward.source = "mage"
 

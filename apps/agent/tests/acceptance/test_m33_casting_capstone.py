@@ -21,7 +21,8 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
-from acceptance.seeds import _make_ctx, seed_player_with_pools
+from acceptance.seeds import seed_player_with_pools
+from sample_fixtures import make_context
 
 import db
 import db_mutations_resonance
@@ -76,7 +77,7 @@ async def test_cast_deducts_focus_and_persists_resonance(reset_db_pool: str) -> 
     expected_gen = spell.resonance_by_source[spell.source]
     assert expected_gen > 0  # not a cantrip — a real Resonance accrual
 
-    await _cast_spell_impl(_make_ctx(player_id), _SPELL_ID)
+    await _cast_spell_impl(make_context(player_id), _SPELL_ID)
 
     assert await _focus_current(player_id) == 18 - spell.focus_cost
     persisted = await db_mutations_resonance.read_player_resonance(player_id, conn=pool)
@@ -103,7 +104,7 @@ async def test_repeated_casts_cross_resonance_bands(reset_db_pool: str) -> None:
     gen = spell.resonance_by_source[spell.source]
     assert gen == 3
 
-    ctx = _make_ctx(player_id)  # one session -> resonance accumulates in-memory + persists
+    ctx = make_context(player_id)  # one session -> resonance accumulates in-memory + persists
     focus_left = 20
     total = 0
     observed_states = []
