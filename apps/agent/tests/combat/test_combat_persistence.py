@@ -144,8 +144,8 @@ def _rollback_resolution_state(combat_id: str, player_id: str, enemy_id: str) ->
         initiative_order=[player_id, enemy_id],
         beat="resolution",
         pending_declarations={
-            player_id: {"action": "Longsword", "target_id": enemy_id},
-            enemy_id: {"action": "Scimitar", "target_id": player_id},
+            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
+            enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
         },
     )
 
