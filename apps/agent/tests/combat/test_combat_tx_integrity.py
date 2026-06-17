@@ -9,11 +9,69 @@ Real-PG tests use the dev_db_pool fixture (shared :55432 dev DB, -n8 fast lane) 
 finally-cleanup, mirroring test_combat_persistence.py's forced-rollback harness.
 """
 
-from unittest.mock import AsyncMock
+import json
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+from combat._helpers import _damage_resolver
 
 import combat_events
+import combat_turn
+import db_mutations
+import event_types as E
 from combat_events import BufferedEvent, EventSink, _CombatScratchSnapshot
-from session_data import CompanionState, SessionData
+from session_data import CombatParticipant, CombatState, CompanionState, SessionData
+
+
+def _tx_resolution_state(combat_id: str, player_id: str, enemy_id: str) -> CombatState:
+    """A RESOLUTION-beat state with unique participant ids (the dev DB is shared across the -n8
+    fast lane, so player_id must not collide). Player swings at the enemy and the enemy swings at
+    the player, so the phase publishes player+enemy DICE_ROLL + attack sounds and writes
+    update_player_hp(player_id) inside the tx — the events the seam must buffer."""
+    return CombatState(
+        combat_id=combat_id,
+        participants=[
+            CombatParticipant(
+                id=player_id,
+                name="Kael",
+                type="player",
+                initiative=15,
+                hp_current=25,
+                hp_max=25,
+                ac=14,
+                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+            ),
+            CombatParticipant(
+                id=enemy_id,
+                name="Goblin",
+                type="enemy",
+                initiative=12,
+                hp_current=7,
+                hp_max=7,
+                ac=13,
+                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
+                xp_value=50,
+            ),
+        ],
+        initiative_order=[player_id, enemy_id],
+        beat="resolution",
+        pending_declarations={
+            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
+            enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
+        },
+    )
+
+
+def _no_durability_queries() -> MagicMock:
+    queries = MagicMock()
+    queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items -> no durability events
+    return queries
+
+
+def _no_concentration_break() -> MagicMock:
+    break_mod = MagicMock()
+    break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
+    return break_mod
 
 
 class TestEventSink:
@@ -71,12 +129,15 @@ class TestCombatScratchSnapshot:
         companion.is_conscious = False
         session.record_companion_memory("Brae was knocked unconscious in combat")
 
+        session.record_event("Kael attacks Goblin: hit, 5 damage")
+
         snap.restore(session)
 
         assert session.weapon_used_this_encounter is False
         assert session.weapon_crit_vs_heavy is False
         assert companion.is_conscious is True
         assert companion.session_memories == ["m0", "m1"]
+        assert list(session.recent_events) == []  # the in-loop record_event was reverted
 
     def test_restores_oldest_memory_when_list_at_cap(self) -> None:
         from session_data import MAX_COMPANION_MEMORIES
@@ -103,3 +164,71 @@ class TestCombatScratchSnapshot:
 
         assert session.weapon_used_this_encounter is False
         assert session.companion is None
+
+
+class TestLoopEventBuffering:
+    """Seam 2 (concern 03f2907d9c93): loop events buffer during the tx and reach the client only
+    after commit; a rollback publishes nothing."""
+
+    async def _seed_player(self, pool, player_id: str) -> None:
+        await pool.execute(
+            "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
+            "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
+            player_id,
+            json.dumps({"player_id": player_id, "hp": {"current": 25, "max": 25}}),
+        )
+
+    async def test_resolve_phase_suppresses_loop_events_on_rollback(self, dev_db_pool, monkeypatch) -> None:
+        """A mid-phase DB failure must publish NO loop events — the client never sees a phantom
+        DICE_ROLL / attack sound from a turn that rolled back."""
+        pool = dev_db_pool
+        player_id = "tx_s005_suppress_player"
+        combat_id = "combat_s005_suppress"
+        await self._seed_player(pool, player_id)
+        monkeypatch.setattr(db_mutations, "save_combat_state", AsyncMock(side_effect=RuntimeError("boom")))
+
+        session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
+        ctx = MagicMock()
+        ctx.userdata = session
+        session.combat_state = _tx_resolution_state(combat_id, player_id, "tx_s005_suppress_enemy")
+
+        try:
+            with pytest.raises(RuntimeError, match="boom"):
+                await combat_turn._resolve_phase_impl(
+                    ctx,
+                    queries=_no_durability_queries(),
+                    resolver=_damage_resolver(3),
+                    concentration_break_mod=_no_concentration_break(),
+                )
+            # The tx rolled back; the sink was dropped unflushed, so the bus saw nothing.
+            assert session.event_bus.drain() == []
+        finally:
+            await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+            await db_mutations.delete_combat_state(combat_id, conn=pool)
+
+    async def test_resolve_phase_publishes_loop_events_once_after_commit(self, dev_db_pool) -> None:
+        """A clean phase publishes its loop events exactly once, after the tx commits."""
+        pool = dev_db_pool
+        player_id = "tx_s005_commit_player"
+        combat_id = "combat_s005_commit"
+        await self._seed_player(pool, player_id)
+
+        session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
+        ctx = MagicMock()
+        ctx.userdata = session
+        session.combat_state = _tx_resolution_state(combat_id, player_id, "tx_s005_commit_enemy")
+
+        try:
+            await combat_turn._resolve_phase_impl(
+                ctx,
+                queries=_no_durability_queries(),
+                resolver=_damage_resolver(3),
+                concentration_break_mod=_no_concentration_break(),
+            )
+            kinds = [e.event_type for e in session.event_bus.drain()]
+            # Both swings (player+enemy) each publish one DICE_ROLL and one attack sound.
+            assert kinds.count(E.DICE_ROLL) == 2
+            assert kinds.count(E.PLAY_SOUND) == 2
+        finally:
+            await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+            await db_mutations.delete_combat_state(combat_id, conn=pool)

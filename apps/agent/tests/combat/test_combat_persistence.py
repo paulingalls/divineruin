@@ -16,35 +16,16 @@ but targets the docker-compose dev DB rather than a per-run testcontainer.
 from __future__ import annotations
 
 import json
-import os
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from _db_lifecycle import _DEFAULT_DATABASE_URL
 from combat._helpers import _damage_resolver, _make_combat_state
 
 import combat_turn
-import db
 import db_mutations
 from session_data import CombatParticipant, CombatState, SessionData
 
-
-@pytest.fixture
-async def dev_db_pool():
-    """Point db.get_pool() at the docker-compose dev DB (started by tests/conftest.py), then
-    restore. Mirrors acceptance's reset_db_pool but for the :55432 dev DB the non-acceptance
-    lane already relies on; resolves the DSN the same way _db_lifecycle does."""
-    prior = os.environ.get("DATABASE_URL")
-    os.environ["DATABASE_URL"] = prior or _DEFAULT_DATABASE_URL
-    await db.close_all()
-    try:
-        yield await db.get_pool()
-    finally:
-        await db.close_all()
-        if prior is None:
-            os.environ.pop("DATABASE_URL", None)
-        else:
-            os.environ["DATABASE_URL"] = prior
+# dev_db_pool is provided by tests/combat/conftest.py (shared with the tx-integrity suite).
 
 
 def test_make_combat_state_enemy_fallen_param_sets_is_fallen() -> None:

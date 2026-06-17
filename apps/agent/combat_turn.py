@@ -20,10 +20,17 @@ import db_queries
 import event_types as E
 import resonance_events
 from combat_end import _end_combat_impl
-from combat_support import _accrue_durability, _find_equipped, _publish_sounds, _require_combat
+from combat_events import EventSink, emit_or_publish
+from combat_support import (
+    _accrue_durability,
+    _attach_riders,
+    _find_action,
+    _find_equipped,
+    _publish_sounds,
+    _require_combat,
+)
 from db_errors import db_tool
 from declarations import DeclarationType
-from game_events import publish_game_event
 from session_data import SessionData
 from tool_support import (
     SOUND_ATTACK_CRITICAL,
@@ -126,6 +133,9 @@ async def _resolve_phase_impl(
     # phase may have emitted DICE_ROLL/ITEM_DURABILITY_HIT, but a mid-phase DB error aborts the
     # turn regardless. The in-memory Resonance sync + HUD publish run AFTER commit (below).
     pending_resonance: int | None = None
+    # Buffer every client event the phase emits; flush only AFTER the tx commits so a rolled-back
+    # phase never leaks a phantom DICE_ROLL/ITEM_DURABILITY_HIT/sound (concern 03f2907d9c93).
+    sink = EventSink()
     async with db_mod.transaction() as conn:
         # Beat 2 (resolution): the engine orders the pending declarations into initiative
         # packets (no math of its own). Orchestration applies each attack against
@@ -161,6 +171,7 @@ async def _resolve_phase_impl(
                     resolver=resolver,
                     concentration_break_mod=concentration_break_mod,
                     conn=conn,
+                    sink=sink,
                 )
             )
 
@@ -190,6 +201,9 @@ async def _resolve_phase_impl(
     # (engine deep-copies, so `cs` was never mutated).
     session.combat_state = state
 
+    # The tx committed: now (and only now) release the buffered loop events to the client.
+    await sink.flush()
+
     # Beat 4 end-condition: the engine reports victory (all enemies fallen) or defeat (the player
     # has died). The looped HP writes are already committed above; end_combat awards XP, accrues
     # weapon durability, deletes combat state, and returns the (gameplay_agent, json) handoff.
@@ -213,30 +227,6 @@ async def _resolve_phase_impl(
     return json.dumps(response)
 
 
-def _find_action(participant, action_name) -> dict | None:
-    """Find the named action in a participant's action_pool (case-insensitive)."""
-    if not action_name:
-        return None
-    wanted = str(action_name).lower()
-    for a in participant.action_pool:
-        if a.get("name", "").lower() == wanted:
-            return a
-    return None
-
-
-def _attach_riders(summary: dict, attacker, decl) -> dict:
-    """Add the actor's narrated enhancer riders to a packet summary, if any.
-
-    Riders are descriptive (non-mechanical) — they carry no HP/AC effect, just the DM
-    cue for an enhancer's expansion (Cunning Action's dash/disengage/hide, Hit and Run,
-    Command Lesser, Quick Change). Omitted entirely when the actor has none, so a
-    no-enhancer declaration keeps its flat summary (AC3: no phantom expansion)."""
-    riders = combat_enhancers.declaration_riders(attacker.enhancers, decl)
-    if riders:
-        summary["riders"] = riders
-    return summary
-
-
 async def _resolve_one_packet(
     session: SessionData,
     state,
@@ -247,6 +237,7 @@ async def _resolve_one_packet(
     resolver,
     concentration_break_mod,
     conn=None,
+    sink=None,
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
 
@@ -310,6 +301,7 @@ async def _resolve_one_packet(
             resolver=resolver,
             concentration_break_mod=concentration_break_mod,
             conn=conn,
+            sink=sink,
         )
         attack_summaries.append(sub)
         # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
@@ -357,6 +349,7 @@ async def _resolve_attack_packet(
     resolver=check_resolution,
     concentration_break_mod=concentration_break,
     conn=None,
+    sink=None,
 ) -> dict:
     """Resolve ONE declared attack against CombatParticipant HP.
 
@@ -426,8 +419,9 @@ async def _resolve_attack_packet(
             session, attack_result.damage, incapacitated=target.hp_current <= 0
         )
 
-    # Publish events
-    await publish_game_event(
+    # Publish events (buffered into ``sink`` during the phase tx; released post-commit)
+    await emit_or_publish(
+        sink,
         session.room,
         E.DICE_ROLL,
         {
@@ -440,7 +434,7 @@ async def _resolve_attack_packet(
         },
         event_bus=session.event_bus,
     )
-    await _publish_sounds(session, sounds)
+    await _publish_sounds(session, sounds, sink=sink)
 
     # Accrue durability on the player's equipped armor (1 hit per damage taken),
     # and on a shield when the player spends a shield reaction. Hollow zones double.
@@ -452,13 +446,13 @@ async def _resolve_attack_packet(
         armor = _find_equipped(inventory, "armor")
         if armor is not None:
             durability_results["armor"] = await _accrue_durability(
-                session, target.id, armor, 1, is_hollow_zone=is_hollow, conn=conn
+                session, target.id, armor, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
             )
         if shield_reaction:
             shield = _find_equipped(inventory, "shield")
             if shield is not None:
                 durability_results["shield"] = await _accrue_durability(
-                    session, target.id, shield, 1, is_hollow_zone=is_hollow, conn=conn
+                    session, target.id, shield, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
                 )
 
     hit_miss = "hit" if attack_result.hit else "miss"

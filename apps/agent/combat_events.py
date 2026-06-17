@@ -11,6 +11,7 @@ that atomicity and must be made rollback-safe:
     restore()s it if the tx raises.
 """
 
+from collections import deque
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -59,18 +60,37 @@ class EventSink:
         self.captured.clear()
 
 
+async def emit_or_publish(
+    sink: "EventSink | None",
+    room: "rtc.Room | None",
+    event_type: str,
+    payload: dict,
+    *,
+    event_bus: "EventBus | None" = None,
+) -> None:
+    """Buffer the event in ``sink`` when one is active (the in-transaction combat path), else
+    publish it immediately. Lets the combat publish helpers serve both the buffered phase loop
+    and their existing direct (non-tx) callers with one call site."""
+    if sink is not None:
+        await sink.emit(room, event_type, payload, event_bus=event_bus)
+    else:
+        await publish_game_event(room, event_type, payload, event_bus=event_bus)
+
+
 @dataclass
 class _CombatScratchSnapshot:
     """Pre-transaction snapshot of resolve_phase's in-loop session scratch, restored on rollback.
 
     weapon_used_this_encounter is read IN-tx by end_combat's durability check, so the loop must set
-    it live (not defer it); restore() reverts it — and the companion KO — only when the tx fails.
-    session_memories is captured by CONTENTS (a shallow copy), not length: record_companion_memory
-    caps the list by dropping index 0, so a length-truncate restore would lose the oldest pre-phase
-    memory once the list is at MAX_COMPANION_MEMORIES."""
+    it live (not defer it); restore() reverts it — and the companion KO, plus the per-attack
+    recent_events the loop records — only when the tx fails. Lists are captured by CONTENTS (a
+    shallow copy), not length: record_companion_memory / record_event cap their backing store by
+    dropping the oldest entry, so a length-truncate restore would lose the oldest pre-phase entry
+    once at the cap."""
 
     weapon_used_this_encounter: bool
     weapon_crit_vs_heavy: bool
+    recent_events: list[str]
     companion_is_conscious: bool | None
     companion_memories: list[str] | None
 
@@ -80,6 +100,7 @@ class _CombatScratchSnapshot:
         return cls(
             weapon_used_this_encounter=session.weapon_used_this_encounter,
             weapon_crit_vs_heavy=session.weapon_crit_vs_heavy,
+            recent_events=list(session.recent_events),
             companion_is_conscious=companion.is_conscious if companion is not None else None,
             companion_memories=list(companion.session_memories) if companion is not None else None,
         )
@@ -87,6 +108,7 @@ class _CombatScratchSnapshot:
     def restore(self, session) -> None:
         session.weapon_used_this_encounter = self.weapon_used_this_encounter
         session.weapon_crit_vs_heavy = self.weapon_crit_vs_heavy
+        session.recent_events = deque(self.recent_events, maxlen=session.recent_events.maxlen)
         companion = session.companion
         if companion is not None and self.companion_memories is not None:
             companion.is_conscious = self.companion_is_conscious
