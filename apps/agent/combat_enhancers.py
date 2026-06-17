@@ -28,8 +28,24 @@ QUICK_CHANGE = "quick_change"
 # (assumption 1c110872aa53).
 SHIELD_BASH_ACTION = {"name": "Shield Bash", "damage": "1d4", "damage_type": "bludgeoning", "properties": []}
 
+# Canonical enhancer vocabulary + the order populated lists follow (deterministic, not
+# dict-insertion order).
+ALL_ENHANCERS = (EXTRA_ATTACK, SHIELD_BASH, CUNNING_ACTION, HIT_AND_RUN, COMMAND_LESSER, QUICK_CHANGE)
+
 _VALID_CUNNING_RIDERS = ("dash", "disengage", "hide")
 _DEFAULT_CUNNING_RIDER = "dash"
+
+
+def enhancers_from_flags(flags: dict | None) -> list[str]:
+    """The enhancer keys a player's data.flags grant (truthy), in ALL_ENHANCERS order.
+
+    Combat init calls this to populate CombatParticipant.enhancers. Only extra_attack is
+    grantable today; the other five populate once their grants land (forward-wired,
+    concern 655580cea834). Unknown flag keys are ignored.
+    """
+    if not flags:
+        return []
+    return [e for e in ALL_ENHANCERS if flags.get(e)]
 
 
 def attack_sequence(enhancers: list[str], base_action: dict) -> list[dict]:

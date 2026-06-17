@@ -8,6 +8,7 @@ from combat_enhancers import (
     SHIELD_BASH_ACTION,
     attack_sequence,
     declaration_riders,
+    enhancers_from_flags,
 )
 from declarations import Declaration, DeclarationType
 
@@ -68,3 +69,17 @@ class TestDeclarationRiders:
             "hit_and_run:reposition_15ft",
             "command_lesser:directs_lesser_hollow",
         ]
+
+
+class TestEnhancersFromFlags:
+    def test_maps_truthy_known_flags_only(self) -> None:
+        flags = {"extra_attack": True, "shield_bash": False, "not_an_enhancer": True}
+        assert enhancers_from_flags(flags) == ["extra_attack"]
+
+    def test_empty_or_missing_flags_yield_none(self) -> None:
+        assert enhancers_from_flags({}) == []
+        assert enhancers_from_flags(None) == []
+
+    def test_order_is_deterministic_not_insertion_order(self) -> None:
+        flags = {"quick_change": True, "extra_attack": True, "cunning_action": True}
+        assert enhancers_from_flags(flags) == ["extra_attack", "cunning_action", "quick_change"]

@@ -304,6 +304,35 @@ class TestStartCombat:
         assert "Longsword" in [a.get("name") for a in player.action_pool]
 
     @pytest.mark.asyncio
+    async def test_player_enhancers_populated_from_flags(self):
+        # story-004: the player participant carries the declaration enhancers granted by
+        # players.data.flags, so Extra Attack expands their attack in resolve_phase.
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+        mock_queries.get_player = AsyncMock(
+            return_value={**SAMPLE_PLAYER, "flags": {"extra_attack": True, "shield_bash": False}}
+        )
+        ctx = make_context()
+
+        await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Ambush!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+
+        cs = ctx.userdata.combat_state
+        assert cs is not None
+        player = cs.get_participant("player_1")
+        assert player is not None
+        assert player.enhancers == ["extra_attack"]  # truthy known flags only
+        # Enemies carry no enhancers.
+        enemy = cs.get_participant("goblin_scout_1")
+        assert enemy is not None
+        assert enemy.enhancers == []
+
+    @pytest.mark.asyncio
     async def test_rolls_initiative(self):
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
         ctx = make_context()
