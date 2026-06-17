@@ -1,5 +1,6 @@
-"""Combat phase-loop tools — declare_phase, resolve_phase, request_death_save —
-plus the shared _resolve_attack_packet resolver they drive (M4.1, story-003)."""
+"""Combat phase-loop tools — declare_phase, resolve_phase — plus the shared
+_resolve_attack_packet resolver they drive (M4.1, story-003). request_death_save
+lives in combat_death_save.py (story-004 split, debt faa6dd19ab64)."""
 
 import json
 import logging
@@ -8,6 +9,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import combat_enhancers
 import combat_phase
 import combat_resolution
 import concentration_break
@@ -27,13 +29,8 @@ from tool_support import (
     SOUND_ATTACK_CRITICAL,
     SOUND_ATTACK_HIT,
     SOUND_ATTACK_MISS,
-    SOUND_DEATH_SAVE_CRITICAL,
-    SOUND_DEATH_SAVE_FAIL,
-    SOUND_DEATH_SAVE_SUCCESS,
     SOUND_HEARTBEAT,
-    SOUND_PLAYER_DEATH,
     SOUND_PLAYER_FALLEN,
-    SOUND_PLAYER_STABILIZED,
 )
 
 logger = logging.getLogger("divineruin.tools")
@@ -227,6 +224,19 @@ def _find_action(participant, action_name) -> dict | None:
     return None
 
 
+def _attach_riders(summary: dict, attacker, decl) -> dict:
+    """Add the actor's narrated enhancer riders to a packet summary, if any.
+
+    Riders are descriptive (non-mechanical) — they carry no HP/AC effect, just the DM
+    cue for an enhancer's expansion (Cunning Action's dash/disengage/hide, Hit and Run,
+    Command Lesser, Quick Change). Omitted entirely when the actor has none, so a
+    no-enhancer declaration keeps its flat summary (AC3: no phantom expansion)."""
+    riders = combat_enhancers.declaration_riders(attacker.enhancers, decl)
+    if riders:
+        summary["riders"] = riders
+    return summary
+
+
 async def _resolve_one_packet(
     session: SessionData,
     state,
@@ -263,12 +273,15 @@ async def _resolve_one_packet(
         }
 
     if decl.type is not DeclarationType.ATTACK:
-        return {
+        # Non-attack declarations don't resolve mechanically yet, but a narrated rider
+        # (e.g. Quick Change on a social INTERACT) still surfaces for the DM to voice.
+        summary = {
             "actor_id": packet.actor_id,
             "resolved": False,
             "declaration_type": str(decl.type),
             "reason": f"{decl.type} resolution not yet implemented",
         }
+        return _attach_riders(summary, attacker, decl)
 
     target = state.get_participant(decl.target_id) if decl.target_id else None
     action = _find_action(attacker, decl.action)
@@ -279,28 +292,56 @@ async def _resolve_one_packet(
     if action is None:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": f"action '{decl.action}' not found"}
 
-    summary = await _resolve_attack_packet(
-        session,
-        attacker,
-        action,
-        target,
-        target_ac_bonus=state.ac_modifiers.get(target.id, 0),
-        mutations=mutations,
-        queries=queries,
-        resolver=resolver,
-        concentration_break_mod=concentration_break_mod,
-        conn=conn,
-    )
-    # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
-    # per-encounter weapon-durability accrual that end_combat applies. Only the extra
-    # crit-vs-heavy-armor cost (2 hits) is gated on a critical hit landing.
-    if attacker.type == "player":
-        session.weapon_used_this_encounter = True
-        if summary["hit"] and summary["critical"] and combat_resolution.is_heavily_armored(target.ac):
-            session.weapon_crit_vs_heavy = True
+    # Enhancers EXPAND a single declaration: extra_attack/shield_bash turn one ATTACK into a
+    # short attack sequence (still ONE declaration, never a second), narrated riders attach
+    # below. attack_sequence is [action] when the actor has no mechanical enhancer (AC3: no
+    # phantom expansion → the summary stays the flat single-attack shape).
+    actions = combat_enhancers.attack_sequence(attacker.enhancers, action)
+    attack_summaries: list[dict] = []
+    for act in actions:
+        sub = await _resolve_attack_packet(
+            session,
+            attacker,
+            act,
+            target,
+            target_ac_bonus=state.ac_modifiers.get(target.id, 0),
+            mutations=mutations,
+            queries=queries,
+            resolver=resolver,
+            concentration_break_mod=concentration_break_mod,
+            conn=conn,
+        )
+        attack_summaries.append(sub)
+        # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
+        # per-encounter weapon-durability accrual that end_combat applies. Only the extra
+        # crit-vs-heavy-armor cost (2 hits) is gated on a critical hit landing.
+        if attacker.type == "player":
+            session.weapon_used_this_encounter = True
+            if sub["hit"] and sub["critical"] and combat_resolution.is_heavily_armored(target.ac):
+                session.weapon_crit_vs_heavy = True
+        # An expanded sequence stops once the target drops — no swinging at a fallen foe.
+        if target.is_fallen:
+            break
+
+    summary = dict(attack_summaries[0])
+    if len(attack_summaries) > 1:
+        # Report the expansion: per-attack detail under "attacks", flat keys aggregated.
+        # Damage/hit/critical/concentration accumulate across swings; the target-state keys
+        # (hp_status, fallen) must reflect the FINAL swing — the kill on the second hit, not
+        # the goblin-still-up snapshot from the first — or the DM narrates a fallen foe alive.
+        last = attack_summaries[-1]
+        summary["attacks"] = attack_summaries
+        summary["damage"] = sum(s["damage"] for s in attack_summaries)
+        summary["hit"] = any(s["hit"] for s in attack_summaries)
+        summary["critical"] = any(s["critical"] for s in attack_summaries)
+        summary["target_hp_status"] = last["target_hp_status"]
+        summary["target_fallen"] = last["target_fallen"]
+        summary["concentration_broken"] = next(
+            (s["concentration_broken"] for s in attack_summaries if s["concentration_broken"]), None
+        )
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = True
-    return summary
+    return _attach_riders(summary, attacker, decl)
 
 
 async def _resolve_attack_packet(
@@ -449,99 +490,3 @@ async def _resolve_attack_packet(
         hp_status,
     )
     return response
-
-
-@function_tool()
-@db_tool
-async def request_death_save(
-    context: RunContext[SessionData],
-) -> str:
-    """Roll a death saving throw for the fallen player. Call this when the
-    player is at 0 HP and it's their turn (or when prompted). Nat 20 restores
-    1 HP. Three successes stabilize, three failures mean death."""
-    return await _request_death_save_impl(context)
-
-
-async def _request_death_save_impl(
-    context: RunContext[SessionData],
-    *,
-    mutations=db_mutations,
-) -> str:
-    logger.info("request_death_save called")
-    session: SessionData = context.userdata
-
-    cs = _require_combat(session)
-
-    player_participant = cs.get_participant(session.player_id)
-    if player_participant is None:
-        raise ToolError("Player not found in combat.")
-    if not player_participant.is_fallen:
-        raise ToolError("Player has not fallen. Death saves only apply at 0 HP.")
-
-    result = combat_resolution.resolve_death_save(
-        player_participant.death_save_successes,
-        player_participant.death_save_failures,
-    )
-
-    # Update participant state
-    player_participant.death_save_successes = result.total_successes
-    player_participant.death_save_failures = result.total_failures
-
-    sounds: list[str] = []
-
-    if result.critical_success:
-        # Nat 20: regain 1 HP, no longer fallen
-        player_participant.hp_current = 1
-        player_participant.is_fallen = False
-        player_participant.death_save_successes = 0
-        player_participant.death_save_failures = 0
-        await mutations.update_player_hp(session.player_id, 1)
-        sounds.append(SOUND_DEATH_SAVE_CRITICAL)
-    elif result.stabilized:
-        sounds.append(SOUND_PLAYER_STABILIZED)
-    elif result.dead:
-        sounds.append(SOUND_PLAYER_DEATH)
-    elif result.success:
-        sounds.append(SOUND_DEATH_SAVE_SUCCESS)
-    else:
-        sounds.append(SOUND_DEATH_SAVE_FAIL)
-
-    # Persist
-    await mutations.save_combat_state(cs.combat_id, cs.to_dict())
-
-    # Publish events
-    await publish_game_event(
-        session.room,
-        E.DICE_ROLL,
-        {
-            "roll_type": "death_save",
-            "roll": result.roll,
-            "success": result.success,
-            "critical_success": result.critical_success,
-            "critical_failure": result.critical_failure,
-            "total_successes": result.total_successes,
-            "total_failures": result.total_failures,
-        },
-        event_bus=session.event_bus,
-    )
-    await _publish_sounds(session, sounds)
-
-    outcome = "stabilized" if result.stabilized else "dead" if result.dead else "continuing"
-    if result.critical_success:
-        outcome = "revived"
-    session.record_event(f"Death save: d{result.roll}, {outcome}")
-
-    response = {
-        "roll": result.roll,
-        "success": result.success,
-        "critical_success": result.critical_success,
-        "critical_failure": result.critical_failure,
-        "total_successes": result.total_successes,
-        "total_failures": result.total_failures,
-        "stabilized": result.stabilized,
-        "dead": result.dead,
-        "revived": result.critical_success,
-        "narrative_hint": result.narrative_hint,
-    }
-    logger.info("request_death_save result: d%d, %s", result.roll, outcome)
-    return json.dumps(response)

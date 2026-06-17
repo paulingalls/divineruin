@@ -5,8 +5,9 @@ from typing import Any
 from ability_tools import request_ability_activation
 from base_agent import BaseGameAgent
 from check_tools import check
+from combat_death_save import request_death_save
 from combat_end import end_combat
-from combat_turn import declare_phase, request_death_save, resolve_phase
+from combat_turn import declare_phase, resolve_phase
 from draethar_inner_fire import inner_fire
 from environment_tools import play_sound, set_music_state
 from query_tools import query_info

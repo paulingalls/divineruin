@@ -57,6 +57,27 @@ def test_make_combat_state_enemy_fallen_param_sets_is_fallen() -> None:
     assert standing is not None and standing.is_fallen is False
 
 
+def test_enhancers_field_roundtrips_and_defaults_empty() -> None:
+    """story-004: a participant's enhancers list survives the asdict/from_dict JSONB
+    round-trip, and a row written before the field existed rehydrates to []. Pure, no DB."""
+    state = _make_combat_state()
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.enhancers = ["extra_attack", "cunning_action"]
+
+    rehydrated = CombatState.from_dict(state.to_dict())
+    rp = rehydrated.get_participant("player_1")
+    assert rp is not None
+    assert rp.enhancers == ["extra_attack", "cunning_action"]
+
+    # Backward compat: a participant dict missing 'enhancers' falls back to the empty default.
+    legacy = state.to_dict()
+    for p in legacy["participants"]:
+        p.pop("enhancers", None)
+    legacy_state = CombatState.from_dict(legacy)
+    assert all(p.enhancers == [] for p in legacy_state.participants)
+
+
 def _mid_combat_state(combat_id: str) -> CombatState:
     """A mid-phase CombatState built from the canonical combat fixture, then advanced into a
     state that exercises every field the round-trip must preserve: a non-default beat, populated
