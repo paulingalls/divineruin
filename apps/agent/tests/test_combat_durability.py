@@ -24,6 +24,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+import combat_events
 import combat_resolution
 import combat_support
 import event_types as E
@@ -123,7 +124,7 @@ def _session():
 async def test_accrue_persists_decremented_hits():
     mutations = AsyncMock()
     item = _inv_item("plate_armor", "armor", tier="standard", current_hits=10)
-    with patch.object(combat_support, "publish_game_event", AsyncMock()):
+    with patch.object(combat_events, "publish_game_event", AsyncMock()):
         result = await combat_support._accrue_durability(
             _session(), "p1", item, 1, is_hollow_zone=False, mutations=mutations
         )
@@ -134,7 +135,7 @@ async def test_accrue_persists_decremented_hits():
 async def test_accrue_hollow_zone_doubles_loss():
     mutations = AsyncMock()
     item = _inv_item("plate_armor", "armor", tier="standard", current_hits=10)
-    with patch.object(combat_support, "publish_game_event", AsyncMock()):
+    with patch.object(combat_events, "publish_game_event", AsyncMock()):
         await combat_support._accrue_durability(_session(), "p1", item, 1, is_hollow_zone=True, mutations=mutations)
     mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 8, conn=None)
 
@@ -143,7 +144,7 @@ async def test_accrue_lazy_defaults_missing_current_hits_to_full():
     mutations = AsyncMock()
     # standard tier max_hits == 10; no current_hits on the row -> reads as 10.
     item = _inv_item("plate_armor", "armor", tier="standard", current_hits=None)
-    with patch.object(combat_support, "publish_game_event", AsyncMock()):
+    with patch.object(combat_events, "publish_game_event", AsyncMock()):
         result = await combat_support._accrue_durability(
             _session(), "p1", item, 1, is_hollow_zone=False, mutations=mutations
         )
@@ -154,7 +155,7 @@ async def test_accrue_lazy_defaults_missing_current_hits_to_full():
 async def test_accrue_breaks_at_zero_with_typed_penalty_and_event():
     mutations = AsyncMock()
     item = _inv_item("longsword_guild", "weapon", tier="fragile", current_hits=1)
-    with patch.object(combat_support, "publish_game_event", AsyncMock()) as pub:
+    with patch.object(combat_events, "publish_game_event", AsyncMock()) as pub:
         result = await combat_support._accrue_durability(
             _session(), "p1", item, 1, is_hollow_zone=False, mutations=mutations
         )
@@ -169,7 +170,7 @@ async def test_accrue_breaks_at_zero_with_typed_penalty_and_event():
 async def test_accrue_already_broken_skips_write_and_event():
     mutations = AsyncMock()
     item = _inv_item("longsword_guild", "weapon", tier="fragile", current_hits=0)
-    with patch.object(combat_support, "publish_game_event", AsyncMock()) as pub:
+    with patch.object(combat_events, "publish_game_event", AsyncMock()) as pub:
         result = await combat_support._accrue_durability(
             _session(), "p1", item, 1, is_hollow_zone=False, mutations=mutations
         )
@@ -310,6 +311,8 @@ async def test_shield_reaction_without_shield_equipped_skips():
 
 # --- weapon per-encounter accrual + flag reset in end_combat -----------------
 
+from combat._helpers import _fake_db_mod  # noqa: E402
+
 import combat_end  # noqa: E402
 
 
@@ -322,7 +325,7 @@ async def _run_end_combat(ctx, inventory, *, outcome="victory"):
         "_accrue_durability",
         AsyncMock(return_value={"broken": False, "penalty": {}, "current_hits": 9}),
     ) as accrue:
-        await combat_end._end_combat_impl(ctx, outcome, mutations=mutations, queries=queries)
+        await combat_end._end_combat_impl(ctx, outcome, mutations=mutations, queries=queries, db_mod=_fake_db_mod())
     return accrue
 
 

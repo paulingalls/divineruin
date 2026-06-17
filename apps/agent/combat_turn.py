@@ -19,11 +19,18 @@ import db_mutations_resonance
 import db_queries
 import event_types as E
 import resonance_events
-from combat_end import _end_combat_impl
-from combat_support import _accrue_durability, _find_equipped, _publish_sounds, _require_combat
+from combat_end import _end_combat_db, _end_combat_finish
+from combat_events import EventSink, emit_or_publish, scratch_guard
+from combat_support import (
+    _accrue_durability,
+    _attach_riders,
+    _find_action,
+    _find_equipped,
+    _publish_sounds,
+    _require_combat,
+)
 from db_errors import db_tool
 from declarations import DeclarationType
-from game_events import publish_game_event
 from session_data import SessionData
 from tool_support import (
     SOUND_ATTACK_CRITICAL,
@@ -119,14 +126,19 @@ async def _resolve_phase_impl(
     if cs.beat != combat_phase.PhaseBeat.RESOLUTION:
         raise ToolError(f"Not at the resolution beat (current beat: {cs.beat}). Call declare_phase first.")
 
-    # One transaction spans every DB write of the phase — per-packet HP + durability, the
-    # per-phase Resonance decay, and the trailing save_combat_state — so a mid-phase failure
-    # rolls back atomically and players/items can never diverge from the combat_instances JSONB
-    # SSOT (debt 084c7d0bc457). Event publishes inside the loop stay optimistic: a rolled-back
-    # phase may have emitted DICE_ROLL/ITEM_DURABILITY_HIT, but a mid-phase DB error aborts the
-    # turn regardless. The in-memory Resonance sync + HUD publish run AFTER commit (below).
+    # One transaction spans every DB write of the phase — per-packet HP + durability, the per-phase
+    # Resonance decay, the trailing save_combat_state, and (on the end-condition) end_combat's
+    # durability + combat-row delete — so a mid-phase failure rolls back atomically and players/items
+    # can never diverge from the combat_instances JSONB SSOT (debt 084c7d0bc457, concern 7198554c2d4c).
+    # The in-memory Resonance sync + HUD publish run AFTER commit (below).
     pending_resonance: int | None = None
-    async with db_mod.transaction() as conn:
+    end_data: dict | None = None
+    # Buffer every client event the phase emits; flush only AFTER the tx commits so a rolled-back
+    # phase never leaks a phantom DICE_ROLL/ITEM_DURABILITY_HIT/sound (concern 03f2907d9c93). The
+    # scratch_guard snapshots the in-loop session scratch (weapon flags, companion KO, recent_events)
+    # and restores it if the tx rolls back, so no in-memory state sticks through a failed phase (AC3).
+    sink = EventSink()
+    async with scratch_guard(session), db_mod.transaction() as conn:
         # Beat 2 (resolution): the engine orders the pending declarations into initiative
         # packets (no math of its own). Orchestration applies each attack against
         # CombatParticipant HP via the shared packet resolver. A malformed/old-shape
@@ -161,6 +173,7 @@ async def _resolve_phase_impl(
                     resolver=resolver,
                     concentration_break_mod=concentration_break_mod,
                     conn=conn,
+                    sink=sink,
                 )
             )
 
@@ -183,6 +196,14 @@ async def _resolve_phase_impl(
                     pending_resonance = new_resonance
                     await resonance_mutations.update_player_resonance(session.player_id, new_resonance, conn=conn)
             await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+        else:
+            # Combat ended: end_combat's DB writes (durability accrual + combat-row delete) join THIS
+            # transaction so a mid-end failure rolls the phase back atomically (concern 7198554c2d4c).
+            # Its COMBAT_ENDED + stinger buffer into the shared sink; the in-memory teardown + handoff
+            # run post-commit via _end_combat_finish below.
+            end_data = await _end_combat_db(
+                session, state, ended_outcome, mutations=mutations, queries=queries, conn=conn, sink=sink
+            )
 
     # Sync the looped in-memory state ONLY after the transaction commits. On rollback the
     # exception skips this line, so session.combat_state stays the pristine pre-phase `cs` —
@@ -190,12 +211,16 @@ async def _resolve_phase_impl(
     # (engine deep-copies, so `cs` was never mutated).
     session.combat_state = state
 
+    # The tx committed: now (and only now) release the buffered loop events to the client.
+    await sink.flush()
+
     # Beat 4 end-condition: the engine reports victory (all enemies fallen) or defeat (the player
-    # has died). The looped HP writes are already committed above; end_combat awards XP, accrues
-    # weapon durability, deletes combat state, and returns the (gameplay_agent, json) handoff.
+    # has died). end_combat's DB writes already committed inside the phase tx above; now apply its
+    # in-memory teardown (clear combat_state, reset encounter flags) and return the handoff.
     if ended_outcome is not None:
         logger.info("resolve_phase: engine end-condition %s -> end_combat", ended_outcome)
-        return await _end_combat_impl(context, ended_outcome, mutations=mutations, queries=queries)
+        assert end_data is not None  # set in the tx whenever ended_outcome is not None
+        return _end_combat_finish(session, state, ended_outcome, end_data)
 
     if pending_resonance is not None:
         session.resonance.current = pending_resonance
@@ -213,30 +238,6 @@ async def _resolve_phase_impl(
     return json.dumps(response)
 
 
-def _find_action(participant, action_name) -> dict | None:
-    """Find the named action in a participant's action_pool (case-insensitive)."""
-    if not action_name:
-        return None
-    wanted = str(action_name).lower()
-    for a in participant.action_pool:
-        if a.get("name", "").lower() == wanted:
-            return a
-    return None
-
-
-def _attach_riders(summary: dict, attacker, decl) -> dict:
-    """Add the actor's narrated enhancer riders to a packet summary, if any.
-
-    Riders are descriptive (non-mechanical) — they carry no HP/AC effect, just the DM
-    cue for an enhancer's expansion (Cunning Action's dash/disengage/hide, Hit and Run,
-    Command Lesser, Quick Change). Omitted entirely when the actor has none, so a
-    no-enhancer declaration keeps its flat summary (AC3: no phantom expansion)."""
-    riders = combat_enhancers.declaration_riders(attacker.enhancers, decl)
-    if riders:
-        summary["riders"] = riders
-    return summary
-
-
 async def _resolve_one_packet(
     session: SessionData,
     state,
@@ -247,6 +248,7 @@ async def _resolve_one_packet(
     resolver,
     concentration_break_mod,
     conn=None,
+    sink=None,
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
 
@@ -310,6 +312,7 @@ async def _resolve_one_packet(
             resolver=resolver,
             concentration_break_mod=concentration_break_mod,
             conn=conn,
+            sink=sink,
         )
         attack_summaries.append(sub)
         # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
@@ -357,6 +360,7 @@ async def _resolve_attack_packet(
     resolver=check_resolution,
     concentration_break_mod=concentration_break,
     conn=None,
+    sink=None,
 ) -> dict:
     """Resolve ONE declared attack against CombatParticipant HP.
 
@@ -426,8 +430,9 @@ async def _resolve_attack_packet(
             session, attack_result.damage, incapacitated=target.hp_current <= 0
         )
 
-    # Publish events
-    await publish_game_event(
+    # Publish events (buffered into ``sink`` during the phase tx; released post-commit)
+    await emit_or_publish(
+        sink,
         session.room,
         E.DICE_ROLL,
         {
@@ -440,7 +445,7 @@ async def _resolve_attack_packet(
         },
         event_bus=session.event_bus,
     )
-    await _publish_sounds(session, sounds)
+    await _publish_sounds(session, sounds, sink=sink)
 
     # Accrue durability on the player's equipped armor (1 hit per damage taken),
     # and on a shield when the player spends a shield reaction. Hollow zones double.
@@ -452,13 +457,13 @@ async def _resolve_attack_packet(
         armor = _find_equipped(inventory, "armor")
         if armor is not None:
             durability_results["armor"] = await _accrue_durability(
-                session, target.id, armor, 1, is_hollow_zone=is_hollow, conn=conn
+                session, target.id, armor, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
             )
         if shield_reaction:
             shield = _find_equipped(inventory, "shield")
             if shield is not None:
                 durability_results["shield"] = await _accrue_durability(
-                    session, target.id, shield, 1, is_hollow_zone=is_hollow, conn=conn
+                    session, target.id, shield, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
                 )
 
     hit_miss = "hit" if attack_result.hit else "miss"
