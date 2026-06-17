@@ -42,13 +42,16 @@ class Declaration:
 
     ``action`` names the weapon/ability/item (Attack/Ability/Interact); ``target_id``
     is the declaration's target (required for Attack/Maneuver). ``ac_bonus`` carries
-    the static per-category outcome — only Defend is non-zero today.
+    the static per-category outcome — only Defend is non-zero today. ``rider`` carries
+    an optional chosen enhancer modifier (e.g. Cunning Action's dash/disengage/hide),
+    consumed by enhancer resolution (M4.2, story-004); ``None`` when no rider was chosen.
     """
 
     type: DeclarationType
     action: str | None = None
     target_id: str | None = None
     ac_bonus: int = 0
+    rider: str | None = None
 
 
 def resolve_declaration(raw: dict) -> Declaration:
@@ -82,4 +85,4 @@ def resolve_declaration(raw: dict) -> Declaration:
             raise ValueError("maneuver declaration requires a 'target_id'")
 
     ac_bonus = DEFEND_AC_BONUS if decl_type is DeclarationType.DEFEND else 0
-    return Declaration(type=decl_type, action=action, target_id=target_id, ac_bonus=ac_bonus)
+    return Declaration(type=decl_type, action=action, target_id=target_id, ac_bonus=ac_bonus, rider=raw.get("rider"))
