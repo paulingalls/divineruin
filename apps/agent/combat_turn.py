@@ -326,10 +326,19 @@ async def _resolve_one_packet(
     summary = dict(attack_summaries[0])
     if len(attack_summaries) > 1:
         # Report the expansion: per-attack detail under "attacks", flat keys aggregated.
+        # Damage/hit/critical/concentration accumulate across swings; the target-state keys
+        # (hp_status, fallen) must reflect the FINAL swing — the kill on the second hit, not
+        # the goblin-still-up snapshot from the first — or the DM narrates a fallen foe alive.
+        last = attack_summaries[-1]
         summary["attacks"] = attack_summaries
         summary["damage"] = sum(s["damage"] for s in attack_summaries)
         summary["hit"] = any(s["hit"] for s in attack_summaries)
         summary["critical"] = any(s["critical"] for s in attack_summaries)
+        summary["target_hp_status"] = last["target_hp_status"]
+        summary["target_fallen"] = last["target_fallen"]
+        summary["concentration_broken"] = next(
+            (s["concentration_broken"] for s in attack_summaries if s["concentration_broken"]), None
+        )
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = True
     return _attach_riders(summary, attacker, decl)

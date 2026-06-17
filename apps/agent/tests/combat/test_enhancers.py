@@ -117,6 +117,22 @@ class TestMechanicalEnhancers:
         assert len(summary["attacks"]) == 2
         assert summary["attacks"][1]["action"] == "Shield Bash"
 
+    async def test_extra_attack_kill_on_second_swing_aggregates_final_state(self):
+        # The first swing leaves the goblin up (bloodied), the second drops it. The aggregated
+        # summary must report the FINAL swing's target state — fallen=True, the post-kill
+        # hp_status — not the still-up snapshot from the first swing, or the DM narrates a
+        # fallen foe as alive.
+        cs = _player_attacking(enhancers=["extra_attack"], enemy_hp=8)
+        enemy = cs.get_participant("goblin_scout_1")
+        assert enemy is not None
+        summary = await _resolve(cs, _attack(), _fixed_resolver(5))
+        assert len(summary["attacks"]) == 2
+        assert summary["attacks"][0]["target_fallen"] is False  # first swing: 8 -> 3, still up
+        assert summary["attacks"][1]["target_fallen"] is True  # second swing: 3 -> 0, falls
+        assert summary["target_fallen"] is True
+        assert summary["target_hp_status"] == summary["attacks"][1]["target_hp_status"]
+        assert enemy.is_fallen is True
+
     async def test_extra_attack_stops_when_target_falls(self):
         # The second swing is skipped once the first drops the target (no hitting a corpse).
         cs = _player_attacking(enhancers=["extra_attack"], enemy_hp=5)
