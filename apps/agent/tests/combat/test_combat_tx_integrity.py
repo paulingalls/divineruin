@@ -434,3 +434,185 @@ class TestScratchRollback:
             assert list(session.companion.session_memories) == ["earlier memory"]
         finally:
             await db_mutations.delete_combat_state(combat_id, conn=dev_db_pool)
+
+
+def _tx_e2e_state(combat_id: str, player_id: str, enemy_id: str, companion_id: str) -> CombatState:
+    """A victory phase exercising all three seams at once: the player kills the only enemy (sets
+    weapon_used -> end_combat accrues weapon durability), the enemy KOs the companion (in-loop
+    scratch), and the wrap reports victory (end_combat path: COMBAT_ENDED + combat-row delete)."""
+    return CombatState(
+        combat_id=combat_id,
+        participants=[
+            CombatParticipant(
+                id=player_id,
+                name="Kael",
+                type="player",
+                initiative=12,
+                hp_current=25,
+                hp_max=25,
+                ac=14,
+                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+            ),
+            CombatParticipant(
+                id=enemy_id,
+                name="Goblin",
+                type="enemy",
+                initiative=15,
+                hp_current=7,
+                hp_max=7,
+                ac=13,
+                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
+                xp_value=50,
+            ),
+            CombatParticipant(
+                id=companion_id,
+                name="Brae",
+                type="companion",
+                initiative=10,
+                hp_current=5,
+                hp_max=20,
+                ac=12,
+            ),
+        ],
+        initiative_order=[enemy_id, player_id, companion_id],
+        beat="resolution",
+        pending_declarations={
+            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
+            enemy_id: {"type": "attack", "action": "Scimitar", "target_id": companion_id},
+        },
+    )
+
+
+def _equipped_weapon_queries(weapon_id: str) -> MagicMock:
+    """queries whose get_player_inventory returns one equipped, durable weapon — so end_combat
+    accrues a real (in-tx) durability hit on it."""
+    queries = MagicMock()
+    queries.get_player_inventory = AsyncMock(
+        return_value=[
+            {
+                "id": weapon_id,
+                "type": "weapon",
+                "durability_tier": "standard",
+                "slot_info": {"equipped": True, "current_hits": 10},
+            }
+        ]
+    )
+    return queries
+
+
+class TestEndToEndAllAgree:
+    """AC3 integration gate: after a forced end-path rollback, in-memory state, DB state, and the
+    emitted event stream all agree with the pre-phase state; a clean commit applies all three once."""
+
+    async def _seed_weapon(self, pool, player_id: str, weapon_id: str) -> None:
+        # player_inventory FKs both players and the items catalog, so seed a player row and use a
+        # real catalog weapon id (shortsword_basic). get_player_inventory is mocked, but
+        # update_item_durability writes the real row by (player_id, item_id).
+        await pool.execute(
+            "INSERT INTO players (player_id, data) VALUES ($1, '{}'::jsonb) ON CONFLICT (player_id) DO NOTHING",
+            player_id,
+        )
+        await pool.execute(
+            "INSERT INTO player_inventory (player_id, item_id, data) VALUES ($1, $2, $3::jsonb) "
+            "ON CONFLICT (player_id, item_id) DO UPDATE SET data = $3::jsonb",
+            player_id,
+            weapon_id,
+            json.dumps({"current_hits": 10, "equipped": True}),
+        )
+
+    async def _weapon_hits(self, pool, player_id: str, weapon_id: str) -> int:
+        row = await pool.fetchrow(
+            "SELECT (data->>'current_hits')::int AS h FROM player_inventory WHERE player_id = $1 AND item_id = $2",
+            player_id,
+            weapon_id,
+        )
+        return row["h"]
+
+    async def test_rollback_state_db_events_all_agree(self, dev_db_pool, monkeypatch) -> None:
+        pool = dev_db_pool
+        player_id = "tx_s005_e2e_rb_player"
+        enemy_id = "tx_s005_e2e_rb_enemy"
+        companion_id = "tx_s005_e2e_rb_comp"
+        weapon_id = "shortsword_basic"
+        combat_id = "combat_s005_e2e_rb"
+
+        await self._seed_weapon(pool, player_id, weapon_id)
+        pre_phase_state = _tx_e2e_state(combat_id, player_id, enemy_id, companion_id)
+        await db_mutations.save_combat_state(combat_id, pre_phase_state.to_dict(), conn=pool)
+        # Force the failure at the very end of the phase, after durability accrual.
+        monkeypatch.setattr(db_mutations, "delete_combat_state", AsyncMock(side_effect=RuntimeError("boom")))
+
+        session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
+        session.companion = CompanionState(id=companion_id, name="Brae", session_memories=["earlier"])
+        ctx = MagicMock()
+        ctx.userdata = session
+        session.combat_state = pre_phase_state
+
+        try:
+            with pytest.raises(RuntimeError, match="boom"):
+                await combat_turn._resolve_phase_impl(
+                    ctx,
+                    queries=_equipped_weapon_queries(weapon_id),
+                    resolver=_damage_resolver(7),
+                    concentration_break_mod=_no_concentration_break(),
+                )
+            # (1) in-memory: combat_state pristine, scratch + companion reverted, no stray events recorded.
+            assert session.combat_state is pre_phase_state
+            assert session.weapon_used_this_encounter is False
+            assert session.weapon_crit_vs_heavy is False
+            assert session.companion.is_conscious is True
+            assert list(session.companion.session_memories) == ["earlier"]
+            assert list(session.recent_events) == []
+            # (2) DB: combat row survives, weapon durability unchanged.
+            assert await db_mutations.load_combat_state(combat_id, conn=pool) is not None
+            assert await self._weapon_hits(pool, player_id, weapon_id) == 10
+            # (3) events: nothing reached the client.
+            assert session.event_bus.drain() == []
+        finally:
+            await pool.execute("DELETE FROM player_inventory WHERE player_id = $1", player_id)
+            await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)
+            await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+
+    async def test_commit_state_db_events_all_agree(self, dev_db_pool) -> None:
+        pool = dev_db_pool
+        player_id = "tx_s005_e2e_ok_player"
+        enemy_id = "tx_s005_e2e_ok_enemy"
+        companion_id = "tx_s005_e2e_ok_comp"
+        weapon_id = "shortsword_basic"
+        combat_id = "combat_s005_e2e_ok"
+
+        await self._seed_weapon(pool, player_id, weapon_id)
+        pre_phase_state = _tx_e2e_state(combat_id, player_id, enemy_id, companion_id)
+        await db_mutations.save_combat_state(combat_id, pre_phase_state.to_dict(), conn=pool)
+
+        session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
+        session.companion = CompanionState(id=companion_id, name="Brae", session_memories=["earlier"])
+        ctx = MagicMock()
+        ctx.userdata = session
+        session.combat_state = pre_phase_state
+
+        try:
+            result = await combat_turn._resolve_phase_impl(
+                ctx,
+                queries=_equipped_weapon_queries(weapon_id),
+                resolver=_damage_resolver(7),
+                concentration_break_mod=_no_concentration_break(),
+            )
+            # Victory -> end_combat handoff tuple.
+            assert isinstance(result, tuple)
+            # (1) in-memory: combat cleared, the committed companion KO stands.
+            assert session.combat_state is None
+            assert session.weapon_used_this_encounter is False
+            assert session.companion.is_conscious is False
+            # (2) DB: combat row deleted, weapon durability decremented once (10 -> 9).
+            assert await db_mutations.load_combat_state(combat_id, conn=pool) is None
+            assert await self._weapon_hits(pool, player_id, weapon_id) == 9
+            # (3) events: the end + loop events all published, exactly once.
+            kinds = [e.event_type for e in session.event_bus.drain()]
+            assert kinds.count(E.COMBAT_ENDED) == 1
+            assert E.DICE_ROLL in kinds
+            assert E.ITEM_DURABILITY_HIT in kinds
+        finally:
+            await pool.execute("DELETE FROM player_inventory WHERE player_id = $1", player_id)
+            await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)
+            await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
