@@ -7,16 +7,18 @@ the narrated riders attach a descriptive cue to the summary. A no-enhancer actor
 resolves exactly one base action with no expansion (AC3).
 """
 
+import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _make_combat_state
+from combat._helpers import _fake_db_mod, _make_combat_state
 from sample_fixtures import make_context
 
 import combat_turn
 from check_resolution import AttackResult
 from combat_phase import ResolutionPacket
 from declarations import Declaration, DeclarationType
+from session_data import CombatParticipant, CombatState
 
 pytestmark = pytest.mark.asyncio
 
@@ -158,3 +160,75 @@ class TestNarratedRiders:
         summary = await _resolve(cs, decl, _fixed_resolver(5))
         assert summary["resolved"] is False
         assert summary["riders"] == ["quick_change:identity_swap"]
+
+
+# --- Capstone: each of the 6 enhancers expands its declaration through resolve_phase (AC4) ---
+
+
+def _capstone_state(enhancers: list[str], declaration: dict) -> CombatState:
+    """A RESOLUTION-beat state: player_1 (with the given enhancers + a Longsword) declares
+    `declaration` against a high-HP goblin that takes no declaration, so the phase never ends
+    (combat continues -> resolve_phase returns JSON, not an end handoff)."""
+    player = CombatParticipant(
+        id="player_1",
+        name="Kael",
+        type="player",
+        initiative=20,
+        hp_current=30,
+        hp_max=30,
+        ac=14,
+        action_pool=[dict(_WEAPON)],
+        enhancers=enhancers,
+    )
+    goblin = CombatParticipant(
+        id="goblin_1",
+        name="Goblin",
+        type="enemy",
+        initiative=10,
+        hp_current=50,
+        hp_max=50,
+        ac=13,
+        action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
+        xp_value=50,
+    )
+    return CombatState(
+        combat_id="combat_caps_s004",
+        participants=[player, goblin],
+        initiative_order=["player_1", "goblin_1"],
+        beat="resolution",
+        pending_declarations={"player_1": declaration},
+    )
+
+
+_ATTACK_DECL = {"type": "attack", "action": "Longsword", "target_id": "goblin_1"}
+_INTERACT_DECL = {"type": "interact", "action": "charm the guard"}
+
+# (enhancer, raw declaration, predicate over the player's resolved packet)
+_CAPSTONE_CASES = [
+    ("extra_attack", _ATTACK_DECL, lambda p: len(p.get("attacks", [])) == 2),
+    ("shield_bash", _ATTACK_DECL, lambda p: p.get("attacks", [{}])[-1].get("action") == "Shield Bash"),
+    ("cunning_action", {**_ATTACK_DECL, "rider": "hide"}, lambda p: "cunning_action:hide" in p.get("riders", [])),
+    ("hit_and_run", _ATTACK_DECL, lambda p: "hit_and_run:reposition_15ft" in p.get("riders", [])),
+    ("command_lesser", _ATTACK_DECL, lambda p: "command_lesser:directs_lesser_hollow" in p.get("riders", [])),
+    ("quick_change", _INTERACT_DECL, lambda p: "quick_change:identity_swap" in p.get("riders", [])),
+]
+
+
+@pytest.mark.parametrize("enhancer,declaration,expanded", _CAPSTONE_CASES, ids=[c[0] for c in _CAPSTONE_CASES])
+async def test_resolve_phase_expands_each_enhancer(enhancer, declaration, expanded):
+    ctx = make_context()
+    ctx.userdata.combat_state = _capstone_state([enhancer], declaration)
+
+    raw = await combat_turn._resolve_phase_impl(
+        ctx,
+        mutations=_mutations(),
+        queries=_queries(),
+        resolver=_fixed_resolver(3),
+        concentration_break_mod=_break_mod(),
+        db_mod=_fake_db_mod(),
+    )
+
+    assert isinstance(raw, str)  # enemy survives -> phase loops, returns JSON (not an end handoff)
+    result = json.loads(raw)
+    packet = next(p for p in result["packets"] if p["actor_id"] == "player_1")
+    assert expanded(packet), f"{enhancer} did not expand its declaration: {packet}"
