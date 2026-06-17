@@ -9,6 +9,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import combat_enhancers
 import combat_phase
 import combat_resolution
 import concentration_break
@@ -223,6 +224,19 @@ def _find_action(participant, action_name) -> dict | None:
     return None
 
 
+def _attach_riders(summary: dict, attacker, decl) -> dict:
+    """Add the actor's narrated enhancer riders to a packet summary, if any.
+
+    Riders are descriptive (non-mechanical) — they carry no HP/AC effect, just the DM
+    cue for an enhancer's expansion (Cunning Action's dash/disengage/hide, Hit and Run,
+    Command Lesser, Quick Change). Omitted entirely when the actor has none, so a
+    no-enhancer declaration keeps its flat summary (AC3: no phantom expansion)."""
+    riders = combat_enhancers.declaration_riders(attacker.enhancers, decl)
+    if riders:
+        summary["riders"] = riders
+    return summary
+
+
 async def _resolve_one_packet(
     session: SessionData,
     state,
@@ -259,12 +273,15 @@ async def _resolve_one_packet(
         }
 
     if decl.type is not DeclarationType.ATTACK:
-        return {
+        # Non-attack declarations don't resolve mechanically yet, but a narrated rider
+        # (e.g. Quick Change on a social INTERACT) still surfaces for the DM to voice.
+        summary = {
             "actor_id": packet.actor_id,
             "resolved": False,
             "declaration_type": str(decl.type),
             "reason": f"{decl.type} resolution not yet implemented",
         }
+        return _attach_riders(summary, attacker, decl)
 
     target = state.get_participant(decl.target_id) if decl.target_id else None
     action = _find_action(attacker, decl.action)
@@ -275,28 +292,47 @@ async def _resolve_one_packet(
     if action is None:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": f"action '{decl.action}' not found"}
 
-    summary = await _resolve_attack_packet(
-        session,
-        attacker,
-        action,
-        target,
-        target_ac_bonus=state.ac_modifiers.get(target.id, 0),
-        mutations=mutations,
-        queries=queries,
-        resolver=resolver,
-        concentration_break_mod=concentration_break_mod,
-        conn=conn,
-    )
-    # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
-    # per-encounter weapon-durability accrual that end_combat applies. Only the extra
-    # crit-vs-heavy-armor cost (2 hits) is gated on a critical hit landing.
-    if attacker.type == "player":
-        session.weapon_used_this_encounter = True
-        if summary["hit"] and summary["critical"] and combat_resolution.is_heavily_armored(target.ac):
-            session.weapon_crit_vs_heavy = True
+    # Enhancers EXPAND a single declaration: extra_attack/shield_bash turn one ATTACK into a
+    # short attack sequence (still ONE declaration, never a second), narrated riders attach
+    # below. attack_sequence is [action] when the actor has no mechanical enhancer (AC3: no
+    # phantom expansion → the summary stays the flat single-attack shape).
+    actions = combat_enhancers.attack_sequence(attacker.enhancers, action)
+    attack_summaries: list[dict] = []
+    for act in actions:
+        sub = await _resolve_attack_packet(
+            session,
+            attacker,
+            act,
+            target,
+            target_ac_bonus=state.ac_modifiers.get(target.id, 0),
+            mutations=mutations,
+            queries=queries,
+            resolver=resolver,
+            concentration_break_mod=concentration_break_mod,
+            conn=conn,
+        )
+        attack_summaries.append(sub)
+        # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
+        # per-encounter weapon-durability accrual that end_combat applies. Only the extra
+        # crit-vs-heavy-armor cost (2 hits) is gated on a critical hit landing.
+        if attacker.type == "player":
+            session.weapon_used_this_encounter = True
+            if sub["hit"] and sub["critical"] and combat_resolution.is_heavily_armored(target.ac):
+                session.weapon_crit_vs_heavy = True
+        # An expanded sequence stops once the target drops — no swinging at a fallen foe.
+        if target.is_fallen:
+            break
+
+    summary = dict(attack_summaries[0])
+    if len(attack_summaries) > 1:
+        # Report the expansion: per-attack detail under "attacks", flat keys aggregated.
+        summary["attacks"] = attack_summaries
+        summary["damage"] = sum(s["damage"] for s in attack_summaries)
+        summary["hit"] = any(s["hit"] for s in attack_summaries)
+        summary["critical"] = any(s["critical"] for s in attack_summaries)
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = True
-    return summary
+    return _attach_riders(summary, attacker, decl)
 
 
 async def _resolve_attack_packet(
