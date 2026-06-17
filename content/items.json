@@ -1092,6 +1092,68 @@
     "durability_tier": "standard"
   },
   {
+    "id": "greataxe_basic",
+    "name": "Greataxe",
+    "tier": 2,
+    "type": "weapon",
+    "subtype": "martial melee",
+    "rarity": "common",
+    "description": "A broad crescent of iron on a long haft. It comes down with a whistle and a meaty crunch, asking for both hands and a wide stance.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 7,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "slashing",
+        "properties": [
+          "heavy",
+          "two-handed"
+        ]
+      }
+    ],
+    "value_base": 20,
+    "damage_dice": "1d12",
+    "properties": [
+      "heavy",
+      "two-handed"
+    ],
+    "durability_tier": "standard"
+  },
+  {
+    "id": "halberd_basic",
+    "name": "Halberd",
+    "tier": 2,
+    "type": "weapon",
+    "subtype": "martial melee",
+    "rarity": "common",
+    "description": "Axe-blade and spike on a long pole. It clears space with a low sweep, ringing on armor before it bites.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 6,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "slashing",
+        "properties": [
+          "heavy",
+          "two-handed"
+        ]
+      }
+    ],
+    "value_base": 20,
+    "damage_dice": "1d12",
+    "properties": [
+      "heavy",
+      "two-handed"
+    ],
+    "durability_tier": "standard"
+  },
+  {
     "id": "battleaxe_common",
     "name": "Battleaxe",
     "tier": 1,

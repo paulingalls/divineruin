@@ -295,7 +295,14 @@ def resolve_skill_check_dc(
 # --- Attack resolution ---
 
 
-def attack_modifier(player_data: dict, weapon: dict) -> int:
+def weapon_attribute_modifier(player_data: dict, weapon: dict) -> int:
+    """The governing-attribute modifier for a weapon (no proficiency).
+
+    Shared source of truth for attribute selection: the attack roll adds this on
+    top of proficiency, and damage adds this alone (spec game_mechanics_combat.md
+    — proficiency is attack-roll only, the Weapon Damage table adds just the
+    attribute modifier).
+    """
     attributes = player_data.get("attributes", {})
     governing = weapon.get("governing_attribute")
 
@@ -303,18 +310,19 @@ def attack_modifier(player_data: dict, weapon: dict) -> int:
         # An explicit governing attribute (e.g. a companion's INT spell-attack or a DEX finesse
         # melee, set by companion_attacks_to_action_pool from the attack's hit field) is
         # authoritative — it overrides the melee/ranged/finesse inference below (story-008).
-        attr_mod = attribute_modifier(attributes.get(governing, 10))
-    elif "finesse" in weapon.get("properties", []):
+        return attribute_modifier(attributes.get(governing, 10))
+    if "finesse" in weapon.get("properties", []):
         str_mod = attribute_modifier(attributes.get("strength", 10))
         dex_mod = attribute_modifier(attributes.get("dexterity", 10))
-        attr_mod = max(str_mod, dex_mod)
-    elif weapon.get("ranged", False):
-        attr_mod = attribute_modifier(attributes.get("dexterity", 10))
-    else:
-        attr_mod = attribute_modifier(attributes.get("strength", 10))
+        return max(str_mod, dex_mod)
+    if weapon.get("ranged", False):
+        return attribute_modifier(attributes.get("dexterity", 10))
+    return attribute_modifier(attributes.get("strength", 10))
 
+
+def attack_modifier(player_data: dict, weapon: dict) -> int:
     level = player_data.get("level", 1)
-    return attr_mod + proficiency_bonus(level)
+    return weapon_attribute_modifier(player_data, weapon) + proficiency_bonus(level)
 
 
 def resolve_attack(
@@ -345,6 +353,9 @@ def resolve_attack(
         if critical:
             crit_result = dice_roll(damage_notation, rng=rng)
             damage += crit_result.total
+        # Damage adds the governing-attribute modifier once (even on a crit),
+        # never proficiency (spec: proficiency is attack-roll only).
+        damage += weapon_attribute_modifier(attacker_data, weapon)
 
     new_hp = max(0, target_hp - damage)
 
