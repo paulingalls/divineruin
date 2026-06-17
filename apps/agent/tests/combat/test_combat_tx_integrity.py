@@ -232,3 +232,123 @@ class TestLoopEventBuffering:
         finally:
             await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
             await db_mutations.delete_combat_state(combat_id, conn=pool)
+
+
+def _tx_victory_state(combat_id: str, player_id: str, enemy_id: str) -> CombatState:
+    """A RESOLUTION-beat state where the enemy strikes the player (a committed HP write) and the
+    player then kills the only enemy — so the wrap reports victory and resolve_phase takes the
+    end_combat branch. Enemy has the higher initiative, so its hit lands before the killing blow."""
+    return CombatState(
+        combat_id=combat_id,
+        participants=[
+            CombatParticipant(
+                id=player_id,
+                name="Kael",
+                type="player",
+                initiative=12,
+                hp_current=25,
+                hp_max=25,
+                ac=14,
+                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+            ),
+            CombatParticipant(
+                id=enemy_id,
+                name="Goblin",
+                type="enemy",
+                initiative=15,
+                hp_current=7,
+                hp_max=7,
+                ac=13,
+                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
+                xp_value=50,
+            ),
+        ],
+        initiative_order=[enemy_id, player_id],
+        beat="resolution",
+        pending_declarations={
+            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
+            enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
+        },
+    )
+
+
+class TestEndCombatInPhaseTx:
+    """Seam 1 (concern 7198554c2d4c): end_combat's DB writes participate in the phase transaction,
+    so a failure mid-end rolls the whole phase back instead of leaving combat stuck half-ended."""
+
+    async def _seed_player(self, pool, player_id: str) -> None:
+        await pool.execute(
+            "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
+            "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
+            player_id,
+            json.dumps({"player_id": player_id, "hp": {"current": 25, "max": 25}}),
+        )
+
+    async def test_end_combat_db_writes_roll_back_with_phase(self, dev_db_pool, monkeypatch) -> None:
+        """A failing delete_combat_state on the end path must roll back the whole phase: the
+        combat row survives (combat not stuck half-ended) and the loop's HP write is undone."""
+        pool = dev_db_pool
+        player_id = "tx_s005_endrb_player"
+        enemy_id = "tx_s005_endrb_enemy"
+        combat_id = "combat_s005_endrb"
+        await self._seed_player(pool, player_id)
+        pre_phase_state = _tx_victory_state(combat_id, player_id, enemy_id)
+        # Seed the combat_instances row that end_combat will try (and fail) to delete.
+        await db_mutations.save_combat_state(combat_id, pre_phase_state.to_dict(), conn=pool)
+        monkeypatch.setattr(db_mutations, "delete_combat_state", AsyncMock(side_effect=RuntimeError("boom")))
+
+        session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
+        ctx = MagicMock()
+        ctx.userdata = session
+        session.combat_state = pre_phase_state
+
+        try:
+            with pytest.raises(RuntimeError, match="boom"):
+                await combat_turn._resolve_phase_impl(
+                    ctx,
+                    queries=_no_durability_queries(),
+                    resolver=_damage_resolver(7),
+                    concentration_break_mod=_no_concentration_break(),
+                )
+            # Combat row survives — combat is not stuck in a partially-ended state.
+            assert await db_mutations.load_combat_state(combat_id, conn=pool) is not None
+            # The enemy's 7-damage hit (25 -> 18) rolled back with the failed delete.
+            row = await pool.fetchrow(
+                "SELECT (data->'hp'->>'current')::int AS hp FROM players WHERE player_id = $1", player_id
+            )
+            assert row["hp"] == 25
+            # Nothing reached the client — COMBAT_ENDED was buffered, never flushed.
+            assert session.event_bus.drain() == []
+        finally:
+            await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+            await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)
+
+    async def test_end_combat_in_memory_pristine_on_end_rollback(self, dev_db_pool, monkeypatch) -> None:
+        """On an end-path rollback, the in-memory combat_state stays the pristine pre-phase object
+        (NOT cleared to None) — a retried turn resumes from committed state."""
+        pool = dev_db_pool
+        player_id = "tx_s005_endmem_player"
+        enemy_id = "tx_s005_endmem_enemy"
+        combat_id = "combat_s005_endmem"
+        await self._seed_player(pool, player_id)
+        pre_phase_state = _tx_victory_state(combat_id, player_id, enemy_id)
+        await db_mutations.save_combat_state(combat_id, pre_phase_state.to_dict(), conn=pool)
+        monkeypatch.setattr(db_mutations, "delete_combat_state", AsyncMock(side_effect=RuntimeError("boom")))
+
+        session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
+        ctx = MagicMock()
+        ctx.userdata = session
+        session.combat_state = pre_phase_state
+
+        try:
+            with pytest.raises(RuntimeError, match="boom"):
+                await combat_turn._resolve_phase_impl(
+                    ctx,
+                    queries=_no_durability_queries(),
+                    resolver=_damage_resolver(7),
+                    concentration_break_mod=_no_concentration_break(),
+                )
+            assert session.combat_state is pre_phase_state
+        finally:
+            await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+            await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)

@@ -31,7 +31,7 @@ class TestEndCombat:
         ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
+        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=_fake_db_mod())
         assert isinstance(raw, tuple), "end_combat success should return (DungeonMasterAgent, json_str)"
         _, json_str = raw
         result = json.loads(json_str)
@@ -49,7 +49,7 @@ class TestEndCombat:
         ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
+        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=_fake_db_mod())
         agent_instance, _ = raw
         assert isinstance(agent_instance, ExplorationAgent)
         assert agent_instance._agent_type == "city"
@@ -60,7 +60,7 @@ class TestEndCombat:
         ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
+        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=_fake_db_mod())
         assert isinstance(raw, tuple)
         agent_instance, _ = raw
         # The returned agent should have a chat_ctx with a combat summary
@@ -73,7 +73,7 @@ class TestEndCombat:
         ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        _, json_str = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
+        _, json_str = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=_fake_db_mod())
         result = json.loads(json_str)
 
         assert result["xp_total"] == 50
@@ -85,7 +85,7 @@ class TestEndCombat:
         ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        _, json_str = await _end_combat_impl(ctx, outcome="defeat", mutations=mock_mutations)
+        _, json_str = await _end_combat_impl(ctx, outcome="defeat", mutations=mock_mutations, db_mod=_fake_db_mod())
         result = json.loads(json_str)
 
         assert result["xp_total"] == 0
@@ -97,7 +97,7 @@ class TestEndCombat:
         ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        _, json_str = await _end_combat_impl(ctx, outcome="fled", mutations=mock_mutations)
+        _, json_str = await _end_combat_impl(ctx, outcome="fled", mutations=mock_mutations, db_mod=_fake_db_mod())
         result = json.loads(json_str)
 
         assert result["xp_total"] == 0
@@ -109,7 +109,7 @@ class TestEndCombat:
         ctx = make_context(room=room)
         ctx.userdata.combat_state = _make_combat_state()
 
-        await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
+        await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=_fake_db_mod())
 
         calls = [json.loads(c[0][0]) for c in room.local_participant.publish_data.call_args_list]
         types = [c["type"] for c in calls]
@@ -130,7 +130,7 @@ class TestEndCombat:
         ctx.userdata.combat_state = _make_combat_state()
 
         with pytest.raises(ToolError, match="Invalid outcome"):
-            await _end_combat_impl(ctx, outcome="surrender", mutations=mock_mutations)
+            await _end_combat_impl(ctx, outcome="surrender", mutations=mock_mutations, db_mod=_fake_db_mod())
 
 
 class TestPhaseLoopExit:

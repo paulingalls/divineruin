@@ -4,7 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, mock_txn
+from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, make_db_mod, mock_txn
 
 from exploration_agent import ExplorationAgent
 from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
@@ -258,9 +258,9 @@ class TestCombatRoundTrip:
             location_id="greyvale_south_road",
         )
 
-        with patch("combat_end.publish_game_event", new_callable=AsyncMock):
+        with patch("combat_events.publish_game_event", new_callable=AsyncMock):
             with patch("combat_end._publish_sounds", new_callable=AsyncMock):
-                result = await _end_combat_impl(ctx, "victory", mutations=mock_mutations)
+                result = await _end_combat_impl(ctx, "victory", mutations=mock_mutations, db_mod=make_db_mod()[0])
 
         assert isinstance(result, tuple)
         agent, json_str = result

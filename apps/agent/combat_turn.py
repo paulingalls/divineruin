@@ -19,7 +19,7 @@ import db_mutations_resonance
 import db_queries
 import event_types as E
 import resonance_events
-from combat_end import _end_combat_impl
+from combat_end import _end_combat_db, _end_combat_finish
 from combat_events import EventSink, emit_or_publish
 from combat_support import (
     _accrue_durability,
@@ -133,6 +133,7 @@ async def _resolve_phase_impl(
     # phase may have emitted DICE_ROLL/ITEM_DURABILITY_HIT, but a mid-phase DB error aborts the
     # turn regardless. The in-memory Resonance sync + HUD publish run AFTER commit (below).
     pending_resonance: int | None = None
+    end_data: dict | None = None
     # Buffer every client event the phase emits; flush only AFTER the tx commits so a rolled-back
     # phase never leaks a phantom DICE_ROLL/ITEM_DURABILITY_HIT/sound (concern 03f2907d9c93).
     sink = EventSink()
@@ -194,6 +195,14 @@ async def _resolve_phase_impl(
                     pending_resonance = new_resonance
                     await resonance_mutations.update_player_resonance(session.player_id, new_resonance, conn=conn)
             await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+        else:
+            # Combat ended: end_combat's DB writes (durability accrual + combat-row delete) join THIS
+            # transaction so a mid-end failure rolls the phase back atomically (concern 7198554c2d4c).
+            # Its COMBAT_ENDED + stinger buffer into the shared sink; the in-memory teardown + handoff
+            # run post-commit via _end_combat_finish below.
+            end_data = await _end_combat_db(
+                session, state, ended_outcome, mutations=mutations, queries=queries, conn=conn, sink=sink
+            )
 
     # Sync the looped in-memory state ONLY after the transaction commits. On rollback the
     # exception skips this line, so session.combat_state stays the pristine pre-phase `cs` —
@@ -205,11 +214,12 @@ async def _resolve_phase_impl(
     await sink.flush()
 
     # Beat 4 end-condition: the engine reports victory (all enemies fallen) or defeat (the player
-    # has died). The looped HP writes are already committed above; end_combat awards XP, accrues
-    # weapon durability, deletes combat state, and returns the (gameplay_agent, json) handoff.
+    # has died). end_combat's DB writes already committed inside the phase tx above; now apply its
+    # in-memory teardown (clear combat_state, reset encounter flags) and return the handoff.
     if ended_outcome is not None:
         logger.info("resolve_phase: engine end-condition %s -> end_combat", ended_outcome)
-        return await _end_combat_impl(context, ended_outcome, mutations=mutations, queries=queries)
+        assert end_data is not None  # set in the tx whenever ended_outcome is not None
+        return _end_combat_finish(session, state, ended_outcome, end_data)
 
     if pending_resonance is not None:
         session.resonance.current = pending_resonance
