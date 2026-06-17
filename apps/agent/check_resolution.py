@@ -356,6 +356,10 @@ def resolve_attack(
         # Damage adds the governing-attribute modifier once (even on a crit),
         # never proficiency (spec: proficiency is attack-roll only).
         damage += weapon_attribute_modifier(attacker_data, weapon)
+        # Floor at 0: a low-attribute attacker (e.g. STR 1 → -5) rolling low must
+        # never produce negative damage, which would HEAL the target via the
+        # max(0, hp - damage) below. A hit deals at least 0.
+        damage = max(0, damage)
 
     new_hp = max(0, target_hp - damage)
 

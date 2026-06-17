@@ -71,6 +71,24 @@ class TestDamageMathContract:
             return
         pytest.fail("no nat-20 seed found")
 
+    def test_negative_modifier_never_heals_on_hit(self) -> None:
+        # A low-attribute attacker (STR 1 -> -5, as in content/encounter_templates.json)
+        # rolling a low die would give negative raw damage; floored at 0 so a hit can
+        # never raise the target's HP via max(0, hp - damage).
+        attacker = {"level": 1, "attributes": {"strength": 1}}  # STR 1 -> -5
+        weapon = _str_weapon("1d4")  # max die 4, so 4 - 5 = -1 before flooring
+        target_hp = 50
+        for seed in range(2000):
+            if not 1 < random.Random(seed).randint(1, 20) < 20:
+                continue  # skip nat-1 (auto-miss) and nat-20 (crit)
+            result = resolve_attack(attacker, weapon, 2, target_hp, rng=random.Random(seed))
+            if not result.hit or result.critical_success:
+                continue
+            assert result.damage >= 0, "damage must never be negative"
+            assert result.target_hp_remaining <= target_hp, "a hit must never heal the target"
+            return
+        pytest.fail("no normal-hit seed found for negative-modifier case")
+
     def test_damage_uses_governing_attribute_not_strength(self) -> None:
         # An explicit governing attribute overrides STR for damage, just as it
         # does for the attack roll — proves the attribute selection reaches damage.
