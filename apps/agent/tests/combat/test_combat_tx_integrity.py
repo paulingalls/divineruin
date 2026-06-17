@@ -352,3 +352,85 @@ class TestEndCombatInPhaseTx:
         finally:
             await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
             await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", combat_id)
+
+
+def _tx_companion_ko_state(combat_id: str, player_id: str, enemy_id: str, companion_id: str) -> CombatState:
+    """The player swings at a tanky enemy (sets weapon_used, no kill -> combat continues) while the
+    enemy strikes the companion down (an in-loop companion KO). Combat does not end, so the phase
+    reaches save_combat_state — the forced-failure point that exercises the scratch rollback."""
+    return CombatState(
+        combat_id=combat_id,
+        participants=[
+            CombatParticipant(
+                id=player_id,
+                name="Kael",
+                type="player",
+                initiative=15,
+                hp_current=25,
+                hp_max=25,
+                ac=14,
+                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+            ),
+            CombatParticipant(
+                id=enemy_id,
+                name="Ogre",
+                type="enemy",
+                initiative=12,
+                hp_current=30,
+                hp_max=30,
+                ac=13,
+                action_pool=[{"name": "Club", "damage": "1d10", "damage_type": "bludgeoning"}],
+                xp_value=50,
+            ),
+            CombatParticipant(
+                id=companion_id,
+                name="Brae",
+                type="companion",
+                initiative=10,
+                hp_current=5,
+                hp_max=20,
+                ac=12,
+            ),
+        ],
+        initiative_order=[player_id, enemy_id, companion_id],
+        beat="resolution",
+        pending_declarations={
+            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
+            enemy_id: {"type": "attack", "action": "Club", "target_id": companion_id},
+        },
+    )
+
+
+class TestScratchRollback:
+    """The third in-loop divergence: session scratch (weapon flags + companion KO + recent_events)
+    is reverted on rollback so AC3's in-memory parity holds for every field, not just combat_state."""
+
+    async def test_rollback_reverts_weapon_flags_and_companion_ko(self, dev_db_pool, monkeypatch) -> None:
+        player_id = "tx_s005_scratch_player"
+        enemy_id = "tx_s005_scratch_enemy"
+        companion_id = "tx_s005_scratch_companion"
+        combat_id = "combat_s005_scratch"
+        monkeypatch.setattr(db_mutations, "save_combat_state", AsyncMock(side_effect=RuntimeError("boom")))
+
+        session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
+        session.companion = CompanionState(id=companion_id, name="Brae", session_memories=["earlier memory"])
+        ctx = MagicMock()
+        ctx.userdata = session
+        session.combat_state = _tx_companion_ko_state(combat_id, player_id, enemy_id, companion_id)
+
+        try:
+            with pytest.raises(RuntimeError, match="boom"):
+                await combat_turn._resolve_phase_impl(
+                    ctx,
+                    queries=_no_durability_queries(),
+                    resolver=_damage_resolver(7),
+                    concentration_break_mod=_no_concentration_break(),
+                )
+            # The player's swing armed weapon_used; the enemy's blow KO'd the companion and recorded
+            # a memory. The rolled-back phase must revert all three to their pre-phase values.
+            assert session.weapon_used_this_encounter is False
+            assert session.weapon_crit_vs_heavy is False
+            assert session.companion.is_conscious is True
+            assert list(session.companion.session_memories) == ["earlier memory"]
+        finally:
+            await db_mutations.delete_combat_state(combat_id, conn=dev_db_pool)

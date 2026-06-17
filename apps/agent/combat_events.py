@@ -12,6 +12,7 @@ that atomicity and must be made rollback-safe:
 """
 
 from collections import deque
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -113,3 +114,17 @@ class _CombatScratchSnapshot:
         if companion is not None and self.companion_memories is not None:
             companion.is_conscious = self.companion_is_conscious
             companion.session_memories = list(self.companion_memories)
+
+
+@asynccontextmanager
+async def scratch_guard(session):
+    """Capture resolve_phase's in-loop session scratch on enter, and restore it if the wrapped
+    block raises. Enter this guard OUTSIDE db.transaction() so that on a mid-phase failure the tx
+    rolls back first, then the snapshot reverts the in-memory scratch (weapon flags, companion KO,
+    recent_events) — no in-memory state sticks through a rolled-back phase (story-005, AC3)."""
+    snapshot = _CombatScratchSnapshot.capture(session)
+    try:
+        yield
+    except BaseException:
+        snapshot.restore(session)
+        raise

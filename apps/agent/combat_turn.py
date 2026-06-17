@@ -20,7 +20,7 @@ import db_queries
 import event_types as E
 import resonance_events
 from combat_end import _end_combat_db, _end_combat_finish
-from combat_events import EventSink, emit_or_publish
+from combat_events import EventSink, emit_or_publish, scratch_guard
 from combat_support import (
     _accrue_durability,
     _attach_riders,
@@ -126,18 +126,19 @@ async def _resolve_phase_impl(
     if cs.beat != combat_phase.PhaseBeat.RESOLUTION:
         raise ToolError(f"Not at the resolution beat (current beat: {cs.beat}). Call declare_phase first.")
 
-    # One transaction spans every DB write of the phase — per-packet HP + durability, the
-    # per-phase Resonance decay, and the trailing save_combat_state — so a mid-phase failure
-    # rolls back atomically and players/items can never diverge from the combat_instances JSONB
-    # SSOT (debt 084c7d0bc457). Event publishes inside the loop stay optimistic: a rolled-back
-    # phase may have emitted DICE_ROLL/ITEM_DURABILITY_HIT, but a mid-phase DB error aborts the
-    # turn regardless. The in-memory Resonance sync + HUD publish run AFTER commit (below).
+    # One transaction spans every DB write of the phase — per-packet HP + durability, the per-phase
+    # Resonance decay, the trailing save_combat_state, and (on the end-condition) end_combat's
+    # durability + combat-row delete — so a mid-phase failure rolls back atomically and players/items
+    # can never diverge from the combat_instances JSONB SSOT (debt 084c7d0bc457, concern 7198554c2d4c).
+    # The in-memory Resonance sync + HUD publish run AFTER commit (below).
     pending_resonance: int | None = None
     end_data: dict | None = None
     # Buffer every client event the phase emits; flush only AFTER the tx commits so a rolled-back
-    # phase never leaks a phantom DICE_ROLL/ITEM_DURABILITY_HIT/sound (concern 03f2907d9c93).
+    # phase never leaks a phantom DICE_ROLL/ITEM_DURABILITY_HIT/sound (concern 03f2907d9c93). The
+    # scratch_guard snapshots the in-loop session scratch (weapon flags, companion KO, recent_events)
+    # and restores it if the tx rolls back, so no in-memory state sticks through a failed phase (AC3).
     sink = EventSink()
-    async with db_mod.transaction() as conn:
+    async with scratch_guard(session), db_mod.transaction() as conn:
         # Beat 2 (resolution): the engine orders the pending declarations into initiative
         # packets (no math of its own). Orchestration applies each attack against
         # CombatParticipant HP via the shared packet resolver. A malformed/old-shape
