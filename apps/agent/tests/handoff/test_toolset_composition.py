@@ -1,8 +1,9 @@
 """Tests that the gameplay/combat agents expose the correct tool sets (completeness + isolation)."""
 
 from combat_agent import COMBAT_AGENT_TOOLS
+from combat_death_save import request_death_save
 from combat_end import end_combat
-from combat_turn import declare_phase, request_death_save, resolve_phase
+from combat_turn import declare_phase, resolve_phase
 from exploration_agent import EXPLORATION_TOOLS
 from mode_tools import enter_mode
 from movement_tools import move_player

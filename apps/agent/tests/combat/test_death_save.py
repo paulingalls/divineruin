@@ -9,7 +9,7 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_mock_room
 
 import event_types as E
-from combat_turn import _request_death_save_impl
+from combat_death_save import _request_death_save_impl
 
 
 def _make_death_save_mocks():
