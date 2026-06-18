@@ -159,6 +159,14 @@ async def _resolve_phase_impl(
             if defender is not None and not defender.is_fallen:
                 state.ac_modifiers[packet.actor_id] = packet.declaration.ac_bonus
 
+        # Pre-validate Focus for every player ABILITY BEFORE resolving anything (AC2): an unaffordable
+        # in-combat ability fails loud (ToolError) with no writes — and before any other actor's HP
+        # write, so it never rolls back a phase that already resolved attacks. Returns the for_update
+        # player row (the cast reuses it; the lock is taken once) or None when no player ability.
+        player = await _prevalidate_ability_focus(
+            session, state, adv, conn=conn, queries=queries, cast_resolver=cast_resolver
+        )
+
         # At most one player ABILITY resolves per phase (one declaration per participant); its
         # CastResult lands here for the post-commit apply (resonance seed, concentration sync,
         # deferred events). Stays empty when no ability was declared.
@@ -178,6 +186,7 @@ async def _resolve_phase_impl(
                     sink=sink,
                     cast_resolver=cast_resolver,
                     cast_outcome=cast_outcome,
+                    player=player,
                 )
             )
 
@@ -263,6 +272,33 @@ async def _resolve_phase_impl(
         "resolve_phase result: beat=%s, round=%d, packets=%d", state.beat, state.round_number, len(packet_summaries)
     )
     return json.dumps(response)
+
+
+async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast_resolver):
+    """Pre-validate every player ABILITY declaration's Focus BEFORE the resolution loop (AC2).
+
+    An unaffordable in-combat ability must fail loud (ToolError) with NO state writes — and crucially
+    before any OTHER actor's HP/durability write, so a bad ability never rolls back a phase that has
+    already resolved attacks. Runs the SAME gate as the cast (spell_casting._gate_spell), fetches the
+    player for_update ONCE (the cast reuses the returned row, so the lock is taken a single time), and
+    returns it — or None when no player ability was declared (the common all-attacks phase locks
+    nothing). Non-player abilities are wasted downstream, so they are not gated here."""
+    player_abilities = [
+        p.declaration.action
+        for p in adv.packets
+        if p.declaration.type is DeclarationType.ABILITY
+        and p.declaration.action
+        and (actor := state.get_participant(p.actor_id)) is not None
+        and actor.type == "player"
+    ]
+    if not player_abilities:
+        return None
+    player = await queries.get_player(session.player_id, conn=conn, for_update=True)
+    if player is None:
+        raise ToolError(f"Unknown player: {session.player_id}")
+    for action in player_abilities:
+        cast_resolver._gate_spell(player, action)
+    return player
 
 
 async def _resolve_one_packet(

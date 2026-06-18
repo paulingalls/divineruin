@@ -33,6 +33,9 @@ def _resolve_deps(damage=3):
     so the per-phase transaction wrapper runs without a real connection."""
     queries = MagicMock()
     queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items
+    # The ability Focus pre-validation fetches the player for_update; a sufficient-Focus default so
+    # the happy-path ability tests pass the gate (the all-attacks tests never fetch — no ability).
+    queries.get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 10, "max": 10}})
     break_mod = MagicMock()
     break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
     return {
@@ -588,3 +591,59 @@ class TestResolvePhaseAbilityResonance:
 
         # The cast's own deferred client events (hollow echo, Vaelti warning) fire after commit.
         assert emitted == ["hollow_echo"]
+
+
+class TestResolvePhaseAbilityFocusGate:
+    """story-007 AC2: an in-combat ability with insufficient Focus fails loud (ToolError) with NO
+    state writes, validated BEFORE the resolution loop so no other actor's HP write is rolled back."""
+
+    def _ability_state(self):
+        state = _resolution_state()
+        state.pending_declarations["player_1"] = {"type": "ability", "action": "arcane_shield_spell"}
+        return state
+
+    @pytest.mark.asyncio
+    async def test_insufficient_focus_raises_before_any_write(self):
+        ctx = make_context()
+        ctx.userdata.combat_state = self._ability_state()
+        deps = _resolve_deps(damage=3)
+        # The player can't afford the ability; the pre-validation runs the real cast gate and raises.
+        deps["queries"].get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 0}})
+        res = _resonance_deps()
+        cast_resolver = MagicMock()
+        cast_resolver._gate_spell = MagicMock(side_effect=ToolError("Not enough Focus for Arcane Shield"))
+        cast_resolver._resolve_cast = AsyncMock()
+
+        with pytest.raises(ToolError, match="Focus"):
+            await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps, **res)
+
+        # AC2: nothing was written and the loop never ran — the ability is rejected pre-loop.
+        cast_resolver._resolve_cast.assert_not_called()
+        deps["mutations"].update_player_hp.assert_not_called()
+        deps["mutations"].save_combat_state.assert_not_called()
+        res["resonance_mutations"].update_player_resonance.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_player_row_is_passed_through_to_the_cast(self):
+        # The pre-validation fetches the player for_update ONCE and threads it to the cast, so the
+        # cast does not re-fetch (single lock). The mock cast records the player it was handed.
+        from spell_casting import _UNCHANGED, CastResult
+
+        ctx = make_context()
+        ctx.userdata.combat_state = self._ability_state()
+        deps = _resolve_deps(damage=3)
+        player_row = {"player_id": "player_1", "focus": {"current": 9}}
+        deps["queries"].get_player = AsyncMock(return_value=player_row)
+        res = _resonance_deps()
+        cast_resolver = MagicMock()
+        cast_resolver._gate_spell = MagicMock()  # affordable -> no raise
+        cast_resolver._resolve_cast = AsyncMock(
+            return_value=CastResult(
+                packet={"effect": "ward"}, new_resonance=None, concentration_spell_id=_UNCHANGED, generated=0, events=[]
+            )
+        )
+
+        await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps, **res)
+
+        _args, kwargs = cast_resolver._resolve_cast.call_args
+        assert kwargs["player"] is player_row
