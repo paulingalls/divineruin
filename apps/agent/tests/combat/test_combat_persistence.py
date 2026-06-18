@@ -16,35 +16,16 @@ but targets the docker-compose dev DB rather than a per-run testcontainer.
 from __future__ import annotations
 
 import json
-import os
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from _db_lifecycle import _DEFAULT_DATABASE_URL
 from combat._helpers import _damage_resolver, _make_combat_state
 
 import combat_turn
-import db
 import db_mutations
 from session_data import CombatParticipant, CombatState, SessionData
 
-
-@pytest.fixture
-async def dev_db_pool():
-    """Point db.get_pool() at the docker-compose dev DB (started by tests/conftest.py), then
-    restore. Mirrors acceptance's reset_db_pool but for the :55432 dev DB the non-acceptance
-    lane already relies on; resolves the DSN the same way _db_lifecycle does."""
-    prior = os.environ.get("DATABASE_URL")
-    os.environ["DATABASE_URL"] = prior or _DEFAULT_DATABASE_URL
-    await db.close_all()
-    try:
-        yield await db.get_pool()
-    finally:
-        await db.close_all()
-        if prior is None:
-            os.environ.pop("DATABASE_URL", None)
-        else:
-            os.environ["DATABASE_URL"] = prior
+# dev_db_pool is provided by tests/combat/conftest.py (shared with the tx-integrity suite).
 
 
 def test_make_combat_state_enemy_fallen_param_sets_is_fallen() -> None:
@@ -55,6 +36,27 @@ def test_make_combat_state_enemy_fallen_param_sets_is_fallen() -> None:
     # Default leaves the enemy standing.
     standing = _make_combat_state().get_participant("goblin_scout_1")
     assert standing is not None and standing.is_fallen is False
+
+
+def test_enhancers_field_roundtrips_and_defaults_empty() -> None:
+    """story-004: a participant's enhancers list survives the asdict/from_dict JSONB
+    round-trip, and a row written before the field existed rehydrates to []. Pure, no DB."""
+    state = _make_combat_state()
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.enhancers = ["extra_attack", "cunning_action"]
+
+    rehydrated = CombatState.from_dict(state.to_dict())
+    rp = rehydrated.get_participant("player_1")
+    assert rp is not None
+    assert rp.enhancers == ["extra_attack", "cunning_action"]
+
+    # Backward compat: a participant dict missing 'enhancers' falls back to the empty default.
+    legacy = state.to_dict()
+    for p in legacy["participants"]:
+        p.pop("enhancers", None)
+    legacy_state = CombatState.from_dict(legacy)
+    assert all(p.enhancers == [] for p in legacy_state.participants)
 
 
 def _mid_combat_state(combat_id: str) -> CombatState:
@@ -70,6 +72,7 @@ def _mid_combat_state(combat_id: str) -> CombatState:
     state.beat = "resolution"
     state.pending_declarations = {"player_1": {"action": "attack", "target": "goblin_scout_1"}}
     state.reactions_available = {"player_1": True, "goblin_scout_1": False}
+    state.ac_modifiers = {"player_1": 2}  # a Defend stance in flight (M4.2, story-002)
     # is_fallen now comes from the enemy_fallen param; death-save counters aren't part of the
     # builder, so set those directly to exercise the round-trip.
     fallen = state.get_participant("goblin_scout_1")
@@ -95,6 +98,7 @@ async def test_load_combat_state_roundtrips_mid_phase_state(dev_db_pool) -> None
         assert loaded.beat == "resolution"
         assert loaded.pending_declarations == original.pending_declarations
         assert loaded.reactions_available == original.reactions_available
+        assert loaded.ac_modifiers == {"player_1": 2}
         fallen = loaded.get_participant("goblin_scout_1")
         assert fallen is not None
         assert fallen.is_fallen is True
@@ -142,8 +146,8 @@ def _rollback_resolution_state(combat_id: str, player_id: str, enemy_id: str) ->
         initiative_order=[player_id, enemy_id],
         beat="resolution",
         pending_declarations={
-            player_id: {"action": "Longsword", "target_id": enemy_id},
-            enemy_id: {"action": "Scimitar", "target_id": player_id},
+            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
+            enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
         },
     )
 

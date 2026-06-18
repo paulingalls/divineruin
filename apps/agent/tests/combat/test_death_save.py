@@ -4,11 +4,12 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from combat._helpers import _make_combat_state, _make_context, _make_mock_room
+from combat._helpers import _make_combat_state
 from livekit.agents.llm import ToolError
+from sample_fixtures import make_context, make_mock_room
 
 import event_types as E
-from combat_turn import _request_death_save_impl
+from combat_death_save import _request_death_save_impl
 
 
 def _make_death_save_mocks():
@@ -23,7 +24,7 @@ class TestRequestDeathSave:
     @pytest.mark.asyncio
     async def test_success(self):
         mock_mutations = _make_death_save_mocks()
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state(player_hp=0, player_fallen=True)
 
         result = json.loads(await _request_death_save_impl(ctx, mutations=mock_mutations))
@@ -54,7 +55,7 @@ class TestRequestDeathSave:
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[20], dropped=[], total=20)
 
-            ctx = _make_context()
+            ctx = make_context()
             ctx.userdata.combat_state = _make_combat_state(player_hp=0, player_fallen=True)
 
             result = json.loads(await _request_death_save_impl(ctx, mutations=mock_mutations))
@@ -77,7 +78,7 @@ class TestRequestDeathSave:
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[1], dropped=[], total=1)
 
-            ctx = _make_context()
+            ctx = make_context()
             ctx.userdata.combat_state = _make_combat_state(player_hp=0, player_fallen=True)
 
             result = json.loads(await _request_death_save_impl(ctx, mutations=mock_mutations))
@@ -94,7 +95,7 @@ class TestRequestDeathSave:
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[15], dropped=[], total=15)
 
-            ctx = _make_context()
+            ctx = make_context()
             cs = _make_combat_state(player_hp=0, player_fallen=True)
             # Set 2 existing successes
             cs.participants[0].death_save_successes = 2
@@ -114,7 +115,7 @@ class TestRequestDeathSave:
 
             mock_dice.return_value = DiceResult(notation="d20", rolls=[5], dropped=[], total=5)
 
-            ctx = _make_context()
+            ctx = make_context()
             cs = _make_combat_state(player_hp=0, player_fallen=True)
             cs.participants[0].death_save_failures = 2
             ctx.userdata.combat_state = cs
@@ -126,7 +127,7 @@ class TestRequestDeathSave:
 
     @pytest.mark.asyncio
     async def test_error_if_not_fallen(self):
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state(player_hp=25, player_fallen=False)
 
         with pytest.raises(ToolError, match="not fallen"):
@@ -134,7 +135,7 @@ class TestRequestDeathSave:
 
     @pytest.mark.asyncio
     async def test_error_if_not_in_combat(self):
-        ctx = _make_context()
+        ctx = make_context()
 
         with pytest.raises(ToolError, match="Not in combat"):
             await _request_death_save_impl(ctx)
@@ -142,8 +143,8 @@ class TestRequestDeathSave:
     @pytest.mark.asyncio
     async def test_publishes_events(self):
         mock_mutations = _make_death_save_mocks()
-        room = _make_mock_room()
-        ctx = _make_context(room=room)
+        room = make_mock_room()
+        ctx = make_context(room=room)
         ctx.userdata.combat_state = _make_combat_state(player_hp=0, player_fallen=True)
 
         await _request_death_save_impl(ctx, mutations=mock_mutations)

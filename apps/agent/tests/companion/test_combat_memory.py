@@ -142,7 +142,7 @@ class TestCompanionInCombat:
     async def test_companion_ko_sets_unconscious(self):
         # Companion-KO bookkeeping now lives in the shared _resolve_attack_packet resolver
         # (the phase loop's per-packet path, story-003): the enemy attacks the companion.
-        from combat_turn import _resolve_attack_packet
+        from combat_support import _resolve_attack_packet
 
         ctx = _make_context()
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")

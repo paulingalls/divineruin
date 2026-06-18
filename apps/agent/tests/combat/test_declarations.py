@@ -1,0 +1,103 @@
+"""Tests for the typed declaration model (story-002): DeclarationType + resolve_declaration.
+
+resolve_declaration is a PURE classify+validate function: it turns a raw declaration dict
+(emitted by the DM into declare_phase) into a typed Declaration, or raises ValueError. The
+six categories mirror gm_combat §Action Economy (L99-106); explicit ``type`` is required.
+"""
+
+import pytest
+
+from declarations import DEFEND_AC_BONUS, Declaration, DeclarationType, resolve_declaration
+
+
+class TestResolveDeclarationValid:
+    def test_attack_requires_action_and_target(self):
+        d = resolve_declaration({"type": "attack", "action": "Longsword", "target_id": "goblin_1"})
+        assert d == Declaration(type=DeclarationType.ATTACK, action="Longsword", target_id="goblin_1")
+
+    def test_ability_requires_action_target_optional(self):
+        d = resolve_declaration({"type": "ability", "action": "Fireball"})
+        assert d.type is DeclarationType.ABILITY
+        assert d.action == "Fireball"
+        assert d.target_id is None
+
+    def test_ability_keeps_target_when_present(self):
+        d = resolve_declaration({"type": "ability", "action": "Smite", "target_id": "goblin_1"})
+        assert d.target_id == "goblin_1"
+
+    def test_interact_requires_action(self):
+        d = resolve_declaration({"type": "interact", "action": "healing potion"})
+        assert d.type is DeclarationType.INTERACT
+        assert d.action == "healing potion"
+
+    def test_maneuver_requires_target(self):
+        d = resolve_declaration({"type": "maneuver", "target_id": "goblin_1"})
+        assert d.type is DeclarationType.MANEUVER
+        assert d.target_id == "goblin_1"
+
+    def test_defend_yields_ac_bonus_and_no_attack(self):
+        d = resolve_declaration({"type": "defend"})
+        assert d.type is DeclarationType.DEFEND
+        assert d.ac_bonus == DEFEND_AC_BONUS == 2
+        assert d.action is None
+        assert d.target_id is None
+
+    def test_retreat_needs_no_fields(self):
+        d = resolve_declaration({"type": "retreat"})
+        assert d.type is DeclarationType.RETREAT
+        assert d.ac_bonus == 0
+
+    def test_type_is_case_insensitive(self):
+        d = resolve_declaration({"type": "ATTACK", "action": "Longsword", "target_id": "goblin_1"})
+        assert d.type is DeclarationType.ATTACK
+
+    def test_rider_passes_through_when_present(self):
+        # The chosen enhancer rider (e.g. Cunning Action's dash/disengage/hide) is carried
+        # verbatim into the typed Declaration for downstream resolution (story-004).
+        d = resolve_declaration({"type": "attack", "action": "Dagger", "target_id": "goblin_1", "rider": "hide"})
+        assert d.rider == "hide"
+
+    def test_rider_defaults_none(self):
+        d = resolve_declaration({"type": "attack", "action": "Longsword", "target_id": "goblin_1"})
+        assert d.rider is None
+
+
+class TestResolveDeclarationInvalid:
+    def test_missing_type_raises(self):
+        with pytest.raises(ValueError, match="type"):
+            resolve_declaration({"action": "Longsword", "target_id": "goblin_1"})
+
+    def test_unknown_type_raises(self):
+        with pytest.raises(ValueError, match="unknown declaration type"):
+            resolve_declaration({"type": "teleport"})
+
+    def test_attack_without_target_raises(self):
+        with pytest.raises(ValueError, match="target_id"):
+            resolve_declaration({"type": "attack", "action": "Longsword"})
+
+    def test_attack_without_action_raises(self):
+        with pytest.raises(ValueError, match="action"):
+            resolve_declaration({"type": "attack", "target_id": "goblin_1"})
+
+    def test_ability_without_action_raises(self):
+        with pytest.raises(ValueError, match="action"):
+            resolve_declaration({"type": "ability", "target_id": "goblin_1"})
+
+    def test_interact_without_action_raises(self):
+        with pytest.raises(ValueError, match="action"):
+            resolve_declaration({"type": "interact"})
+
+    def test_maneuver_without_target_raises(self):
+        with pytest.raises(ValueError, match="target_id"):
+            resolve_declaration({"type": "maneuver"})
+
+    def test_empty_dict_raises(self):
+        with pytest.raises(ValueError, match="type"):
+            resolve_declaration({})
+
+
+class TestDeclarationIsImmutable:
+    def test_frozen(self):
+        d = resolve_declaration({"type": "defend"})
+        with pytest.raises((AttributeError, TypeError)):
+            d.ac_bonus = 99  # type: ignore[misc]

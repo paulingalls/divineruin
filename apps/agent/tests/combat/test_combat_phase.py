@@ -17,12 +17,13 @@ from combat_phase import (
     ResolutionPacket,
     advance_combat_phase,
 )
+from declarations import Declaration, DeclarationType
 
 
 def _declarations():
     return {
-        "player_1": {"type": "attack", "target_id": "goblin_scout_1"},
-        "goblin_scout_1": {"type": "attack", "target_id": "player_1"},
+        "player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_scout_1"},
+        "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
     }
 
 
@@ -55,6 +56,14 @@ class TestDeclarationBeat:
         with pytest.raises(ValueError):
             advance_combat_phase(state, None)
 
+    def test_declaration_beat_validates_each_declaration(self):
+        # An attack missing its required target_id fails loud at declare time, not later.
+        state = _make_combat_state()
+        state.beat = PhaseBeat.DECLARATION
+
+        with pytest.raises(ValueError, match="target_id"):
+            advance_combat_phase(state, {"player_1": {"type": "attack", "action": "Longsword"}})
+
 
 class TestResolutionBeat:
     def test_orders_packets_by_initiative_descending(self):
@@ -68,7 +77,7 @@ class TestResolutionBeat:
         assert [p.actor_id for p in advance.packets] == ["player_1", "goblin_scout_1"]
         assert all(isinstance(p, ResolutionPacket) for p in advance.packets)
 
-    def test_packets_carry_declaration_and_dramatic_placeholder(self):
+    def test_packets_carry_typed_declaration_and_dramatic_placeholder(self):
         state = _make_combat_state()
         state.beat = PhaseBeat.RESOLUTION
         state.pending_declarations = _declarations()
@@ -76,7 +85,10 @@ class TestResolutionBeat:
         _, advance = advance_combat_phase(state, None)
 
         player_packet = next(p for p in advance.packets if p.actor_id == "player_1")
-        assert player_packet.declaration == {"type": "attack", "target_id": "goblin_scout_1"}
+        assert player_packet.declaration == Declaration(
+            type=DeclarationType.ATTACK, action="Longsword", target_id="goblin_scout_1"
+        )
+        assert player_packet.declaration.type is DeclarationType.ATTACK
         assert player_packet.dramatic is False
         assert player_packet.initiative == 15
 

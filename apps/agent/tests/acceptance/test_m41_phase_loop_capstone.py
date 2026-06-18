@@ -70,8 +70,8 @@ async def test_full_lifecycle_to_victory_on_real_pg(reset_db_pool: str) -> None:
     result: str | tuple = ""
     for _ in range(6):  # safety bound; expect 2 rounds
         decls = {
-            player_id: {"action": "Longsword", "target_id": enemy.id},
-            enemy.id: {"action": enemy_action, "target_id": player_id},
+            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy.id},
+            enemy.id: {"type": "attack", "action": enemy_action, "target_id": player_id},
         }
         await combat_turn._declare_phase_impl(ctx, decls)
         result = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(11))
@@ -164,8 +164,8 @@ async def test_resolution_packets_carry_dramatic_and_crit_flags(reset_db_pool: s
         await combat_turn._declare_phase_impl(
             ctx,
             {
-                player_id: {"action": "Longsword", "target_id": enemy.id},
-                enemy.id: {"action": enemy.action_pool[0]["name"], "target_id": player_id},
+                player_id: {"type": "attack", "action": "Longsword", "target_id": enemy.id},
+                enemy.id: {"type": "attack", "action": enemy.action_pool[0]["name"], "target_id": player_id},
             },
         )
         result = await combat_turn._resolve_phase_impl(ctx, resolver=_crit_resolver())

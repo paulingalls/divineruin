@@ -13,8 +13,9 @@ class TestCombatAgentConfig:
     def test_combat_tools_are_complete(self):
         from ability_tools import request_ability_activation
         from check_tools import check
+        from combat_death_save import request_death_save
         from combat_end import end_combat
-        from combat_turn import declare_phase, request_death_save, resolve_phase
+        from combat_turn import declare_phase, resolve_phase
         from draethar_inner_fire import inner_fire
         from environment_tools import play_sound, set_music_state
         from query_tools import query_info
@@ -129,12 +130,17 @@ class TestCombatBeatContract:
         assert "pause for the dramatic dice" in COMBAT_SYSTEM_PROMPT.lower()
 
     def test_player_action_must_be_equipped_weapon_name(self):
-        # Concern 4fa8d5aedce6: the player's declare_phase action is the exact name of an
-        # equipped weapon; spells/abilities route to their own tools (cast_spell), not a
-        # declaration — so a player turn is never silently wasted on a name mismatch.
+        # Concern 4fa8d5aedce6: the player's Attack action is the exact name of an equipped
+        # weapon — so a player turn is never silently wasted on a name mismatch.
         low = COMBAT_SYSTEM_PROMPT.lower()
-        # The action is the EXACT name of an equipped weapon...
         assert "exact name" in low and "equipped weapon" in low
-        # ...and spells route to cast_spell, never through declare_phase as a wasted decl.
-        assert "cast_spell" in COMBAT_SYSTEM_PROMPT
-        assert "never through declare_phase" in low
+
+    def test_in_combat_ability_is_a_declaration_not_cast_spell(self):
+        # story-007: an in-combat spell/ability is an Ability declaration through declare_phase;
+        # cast_spell is the OUT-OF-COMBAT entry only. The prompt must teach the new shape so the DM
+        # routes casting through the phase loop (Focus/Resonance accounted) instead of cast_spell.
+        prompt = COMBAT_SYSTEM_PROMPT
+        low = prompt.lower()
+        assert '"type": "ability"' in prompt
+        assert "cast_spell" in prompt
+        assert "only out of combat" in low

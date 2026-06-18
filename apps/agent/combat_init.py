@@ -9,6 +9,7 @@ import uuid
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+import combat_enhancers
 import combat_resolution
 import db_content_queries
 import db_mutations
@@ -155,6 +156,9 @@ async def _start_combat_impl(
             attributes=player_attrs,
             level=player.get("level", 1),
             action_pool=player_action_pool,
+            # Declaration enhancers granted via players.data.flags (M4.2, story-004). Only
+            # extra_attack is grantable today; the rest populate when their grants land.
+            enhancers=combat_enhancers.enhancers_from_flags(player.get("flags")),
         ),
     ]
     for enemy in enemies:

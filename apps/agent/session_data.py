@@ -102,6 +102,12 @@ class CombatParticipant:
     death_save_failures: int = 0
     action_pool: list[dict] = field(default_factory=list)
     xp_value: int = 0
+    # Declaration enhancers this participant has been granted (M4.2, story-004). Keys:
+    # extra_attack, shield_bash, cunning_action, hit_and_run, command_lesser, quick_change.
+    # An enhancer EXPANDS what one declaration resolves into; it never grants a 2nd
+    # declaration. Populated from players.data.flags at combat init; serializes via asdict
+    # and falls back to [] for rows written before the field existed.
+    enhancers: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -125,6 +131,9 @@ class CombatState:
     # Reaction availability for the current phase (actor_id -> bool), reset each
     # declaration beat; consumed by Beat-3 reaction windows (M4.x).
     reactions_available: dict[str, bool] = field(default_factory=dict)
+    # Phase-scoped AC modifiers (actor_id -> bonus), e.g. Defend's +2 (M4.2, story-002).
+    # Set during resolution, cleared at the wrap loop-back so a stance lasts one phase.
+    ac_modifiers: dict[str, int] = field(default_factory=dict)
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
@@ -153,6 +162,7 @@ class CombatState:
             beat=data.get("beat", "declaration"),
             pending_declarations=data.get("pending_declarations", {}),
             reactions_available=data.get("reactions_available", {}),
+            ac_modifiers=data.get("ac_modifiers", {}),
         )
 
 

@@ -1,11 +1,11 @@
 """Shared helpers for the combat-tools test suite."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 from sample_fixtures import make_db_mod
 
 from check_resolution import AttackResult
-from session_data import CombatParticipant, CombatState, SessionData
+from session_data import CombatParticipant, CombatState
 
 
 def _fake_db_mod():
@@ -15,19 +15,6 @@ def _fake_db_mod():
     canonical sample_fixtures.make_db_mod so the transaction plumbing lives in one place."""
     db_mod, _conn = make_db_mod()
     return db_mod
-
-
-def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None):
-    ctx = MagicMock()
-    ctx.userdata = SessionData(player_id=player_id, location_id=location_id, room=room)
-    return ctx
-
-
-def _make_mock_room():
-    room = MagicMock()
-    room.local_participant = MagicMock()
-    room.local_participant.publish_data = AsyncMock()
-    return room
 
 
 def _make_combat_state(player_hp=25, player_fallen=False, enemy_hp=7, enemy_fallen=False):
@@ -107,8 +94,8 @@ def _resolution_state(player_hp=25, enemy_hp=7):
         location_id="accord_guild_hall",
         beat="resolution",
         pending_declarations={
-            "player_1": {"action": "Longsword", "target_id": "goblin_scout_1"},
-            "goblin_scout_1": {"action": "Scimitar", "target_id": "player_1"},
+            "player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_scout_1"},
+            "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
         },
     )
 

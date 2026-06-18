@@ -43,7 +43,7 @@ class TestBreakConcentrationOnDamage:
 
         assert broken == "arcane_fly"  # the broken spell, for DM narration
         assert session.concentration.spell_id is None  # in-memory cleared
-        cm.update_player_concentration.assert_awaited_once_with("player_1", None)
+        cm.update_player_concentration.assert_awaited_once_with("player_1", None, conn=None)
         # the CON save used the canonical resolver against the damage-scaled DC
         _args, _kwargs = resolver.resolve_saving_throw.call_args
         assert _args[1] == "constitution" and _args[2] == 10
@@ -72,7 +72,7 @@ class TestBreakConcentrationOnDamage:
 
         assert broken == "arcane_fly"
         assert session.concentration.spell_id is None
-        cm.update_player_concentration.assert_awaited_once_with("player_1", None)
+        cm.update_player_concentration.assert_awaited_once_with("player_1", None, conn=None)
         queries.get_player.assert_not_called()
         resolver.resolve_saving_throw.assert_not_called()
 
@@ -117,3 +117,26 @@ class TestBreakConcentrationOnDamage:
         assert session.concentration.spell_id == "arcane_fly"
         resolver.resolve_saving_throw.assert_not_called()
         cm.update_player_concentration.assert_not_called()
+
+    async def test_threads_conn_so_break_joins_caller_tx(self):
+        # story-007: in combat the break runs inside the phase transaction, so its DB write must use
+        # the phase conn (else a phase rollback leaves the break committed). The player fetch reads
+        # the in-tx state on the same conn. Incapacitation auto-fails, so this also covers the no-roll
+        # path threading the write conn.
+        session = _session("arcane_fly")
+        queries, resolver, cm = _deps(save_total=9)
+        sentinel_conn = object()
+
+        broken = await break_concentration_on_damage(
+            session,
+            10,
+            incapacitated=False,
+            queries=queries,
+            resolver=resolver,
+            concentration_mutations=cm,
+            conn=sentinel_conn,
+        )
+
+        assert broken == "arcane_fly"
+        queries.get_player.assert_awaited_once_with("player_1", conn=sentinel_conn)
+        cm.update_player_concentration.assert_awaited_once_with("player_1", None, conn=sentinel_conn)

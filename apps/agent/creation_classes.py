@@ -22,6 +22,7 @@ class ClassData:
 # ---------------------------------------------------------------------------
 
 _LONGSWORD = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
+_GREATAXE = {"name": "Greataxe", "damage": "1d12", "damage_type": "slashing", "properties": ["heavy", "two-handed"]}
 _SHORTSWORD = {"name": "Shortsword", "damage": "1d6", "damage_type": "piercing", "properties": ["finesse"]}
 _DAGGER = {"name": "Dagger", "damage": "1d4", "damage_type": "piercing", "properties": ["finesse"]}
 _MACE = {"name": "Mace", "damage": "1d6", "damage_type": "bludgeoning", "properties": []}
@@ -56,7 +57,7 @@ CLASSES: dict[str, ClassData] = {
         ),
         card_description="Front-line combatant. Decisive, aggressive, first to strike.",
         primary_attribute="strength",
-        starting_equipment={"main_hand": _LONGSWORD, "armor": _CHAIN_SHIRT, "shield": _SHIELD},
+        starting_equipment={"main_hand": _GREATAXE, "armor": _CHAIN_SHIRT, "shield": None},
         starting_gold=15,
     ),
     "guardian": ClassData(
