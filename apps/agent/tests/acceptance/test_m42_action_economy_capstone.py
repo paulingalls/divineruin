@@ -41,7 +41,7 @@ from dice import roll as dice_roll
 # A 1d12 Heavy weapon (STR-governed: no finesse/ranged/override). combat_init synthesizes the
 # player's action_pool from equipment entries carrying `damage`, so this becomes the "Greataxe"
 # attack the player declares in combat.
-_GREATAXE = {"name": "Greataxe", "damage": "1d12", "damage_type": "slashing", "properties": ["heavy", "two_handed"]}
+_GREATAXE = {"name": "Greataxe", "damage": "1d12", "damage_type": "slashing", "properties": ["heavy", "two-handed"]}
 _ABILITY_SPELL = "arcane_shield_spell"  # a real catalog spell: focus_cost 1, generates Resonance
 
 
