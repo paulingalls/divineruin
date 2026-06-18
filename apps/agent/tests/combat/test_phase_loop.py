@@ -543,6 +543,33 @@ class TestResolvePhaseAbilityResonance:
         res["resonance_events_mod"].publish_resonance_changed.assert_awaited_once()
 
     @pytest.mark.asyncio
+    async def test_killing_phase_ability_resonance_pushes_hud(self):
+        """Regression (story-007 finding 2): an ability that GENERATES resonance on the same phase
+        that ends combat must still push the qualitative Resonance HUD state. The sync + push run
+        BEFORE the end-of-combat handoff return, so the client never keeps a stale state."""
+        ctx = make_context()
+        ctx.userdata.resonance.current = 3
+        # Enemy already fallen -> the wrap reports victory THIS phase (combat ends).
+        state = _resolution_state()
+        enemy = state.get_participant("goblin_scout_1")
+        assert enemy is not None
+        enemy.is_fallen = True
+        enemy.hp_current = 0
+        state.pending_declarations = {"player_1": {"type": "ability", "action": "arcane_bolt"}}
+        ctx.userdata.combat_state = state
+        cast_resolver = self._cast_resolver(new_resonance=8)
+        deps = _resolve_deps(damage=3)
+        res = _resonance_deps()
+
+        raw = await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps, **res)
+
+        assert isinstance(raw, tuple)  # combat ended -> handoff
+        assert json.loads(raw[1])["outcome"] == "victory"
+        # The generated resonance was synced AND its HUD push fired even though combat ended.
+        assert ctx.userdata.resonance.current == 8
+        res["resonance_events_mod"].publish_resonance_changed.assert_awaited_once()
+
+    @pytest.mark.asyncio
     async def test_cantrip_ability_adds_nothing_but_phase_still_decays(self):
         ctx = make_context()
         ctx.userdata.resonance.current = 3
@@ -570,8 +597,38 @@ class TestResolvePhaseAbilityResonance:
 
         await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps, **res)
 
-        # The cast persisted concentration via conn; the loop syncs the in-memory SSOT post-commit.
+        # The cast persisted concentration via conn; the loop syncs the in-memory SSOT IN-LOOP
+        # (so a same-phase, lower-initiative concentration break sees the just-cast spell).
         assert ctx.userdata.concentration.spell_id == "hold_flame"
+
+    @pytest.mark.asyncio
+    async def test_inphase_concentration_break_sees_just_cast_spell(self):
+        """Regression (story-007 finding 1): a player concentrating on spell A casts a concentration
+        ABILITY for spell B at HIGHER initiative; a lower-initiative enemy hits the player the SAME
+        phase. break_concentration_on_damage runs in-loop and MUST read the just-cast spell B (not the
+        stale A), or it would save against the wrong spell and clear B from the DB while the session
+        forced memory back to B — a silent divergence. The in-loop concentration sync fixes this."""
+        ctx = make_context()
+        ctx.userdata.concentration.spell_id = "spell_a"  # the prior concentration the cast replaces
+        ctx.userdata.combat_state = self._ability_state()
+        cast_resolver = self._cast_resolver(new_resonance=4, concentration="spell_b")
+
+        # Spy break: record what concentration spell it observes when the lower-initiative enemy hits.
+        seen: list[str | None] = []
+
+        async def _spy_break(session, damage, incapacitated, *, conn=None):
+            seen.append(session.concentration.spell_id)
+            return None
+
+        deps = _resolve_deps(damage=3)
+        deps["concentration_break_mod"].break_concentration_on_damage = AsyncMock(side_effect=_spy_break)
+        res = _resonance_deps()
+
+        await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps, **res)
+
+        # The break (enemy attack, initiative 12) ran AFTER the ability cast (initiative 15) and saw
+        # the just-cast spell B in memory — not the stale spell A.
+        assert seen == ["spell_b"]
 
     @pytest.mark.asyncio
     async def test_cast_deferred_events_flushed_post_commit(self):

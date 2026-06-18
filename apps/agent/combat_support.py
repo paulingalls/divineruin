@@ -2,7 +2,7 @@
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from livekit.agents.llm import ToolError
 
@@ -18,6 +18,7 @@ import db_mutations_inventory
 import db_queries
 import durability
 import event_types as E
+import spell_casting
 from combat_events import EventSink, emit_or_publish
 from session_data import CombatParticipant, CombatState, SessionData
 from tool_support import (
@@ -84,6 +85,15 @@ async def _resolve_ability_packet(
         suppress_resonance_changed=True,
     )
     cast_outcome.cast_result = result
+    # Sync concentration into the session SSOT IN-LOOP (not post-commit): a lower-initiative enemy
+    # attack later this same phase runs break_concentration_on_damage, which reads the in-memory
+    # session.concentration to pick which spell to save for and to clear on a failed save. A
+    # post-commit sync would leave it stale — the break would save against the OLD spell and, on a
+    # break, write None to the DB (clearing the just-cast spell) while the post-commit sync forced
+    # memory back to the new spell, diverging from the DB (story-007). _CombatScratchSnapshot
+    # captures concentration, so this in-tx mutation is reverted if the phase rolls back.
+    if result.concentration_spell_id is not spell_casting._UNCHANGED:
+        session.concentration.spell_id = cast("str | None", result.concentration_spell_id)
     summary = {
         "actor_id": attacker.id,
         "resolved": True,

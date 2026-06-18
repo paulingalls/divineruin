@@ -6,7 +6,6 @@ split, debt faa6dd19ab64)."""
 
 import json
 import logging
-from typing import cast
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
@@ -238,16 +237,22 @@ async def _resolve_phase_impl(
     await sink.flush()
 
     # Apply the in-combat ability's deferred effects post-commit (rollback-safe — a rolled-back tx
-    # skipped to here via the re-raise): sync any concentration change into the session SSOT and
-    # flush the cast's own deferred client events (hollow echo, Vaelti warning). The generated
-    # Resonance is synced just below (shared with the decay path). Runs BEFORE the end-of-combat
-    # return so an ability that fires on the killing phase still applies its effects.
+    # skipped to here via the re-raise): flush the cast's own deferred client events (hollow echo,
+    # Vaelti warning). Concentration is synced IN-LOOP by _resolve_ability_packet (not here) so a
+    # same-phase, lower-initiative concentration break sees the just-cast spell (story-007). The
+    # generated Resonance is synced just below (shared with the decay path). Runs BEFORE the
+    # end-of-combat return so an ability that fires on the killing phase still applies its effects.
     if cast_result is not None:
-        if cast_result.concentration_spell_id is not spell_casting._UNCHANGED:
-            session.concentration.spell_id = cast("str | None", cast_result.concentration_spell_id)
         await cast_result.flush_events()
+    # Sync + push the per-phase Resonance change BEFORE the end-of-combat return: an ability can
+    # generate Resonance on the same phase it drops the last enemy, and that qualitative HUD state
+    # must still reach the client even though combat ends. The ability suppressed its own
+    # RESONANCE_CHANGED, so this is the single authoritative push per phase. (Pre-story-007 this was
+    # a no-op on the terminal wrap — only the WRAP-decay branch set pending_resonance, and that
+    # branch never runs when combat ends; now an in-loop ability sets it regardless of end state.)
     if pending_resonance is not None:
         session.resonance.current = pending_resonance
+        await resonance_events_mod.publish_resonance_changed(session)
 
     # Beat 4 end-condition: the engine reports victory (all enemies fallen) or defeat (the player
     # has died). end_combat's DB writes already committed inside the phase tx above; now apply its
@@ -256,11 +261,6 @@ async def _resolve_phase_impl(
         logger.info("resolve_phase: engine end-condition %s -> end_combat", ended_outcome)
         assert end_data is not None  # set in the tx whenever ended_outcome is not None
         return _end_combat_finish(session, state, ended_outcome, end_data)
-
-    # Combat continues: the single authoritative per-phase Resonance HUD push (generation net of
-    # decay). The ability suppressed its own RESONANCE_CHANGED, so this is the only push per phase.
-    if pending_resonance is not None:
-        await resonance_events_mod.publish_resonance_changed(session)
 
     response = {
         "beat": state.beat,
