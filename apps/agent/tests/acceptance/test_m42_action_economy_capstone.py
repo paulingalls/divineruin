@@ -161,7 +161,7 @@ async def test_full_action_economy_lifecycle_on_real_pg(reset_db_pool: str) -> N
 
         # --- AC4: drive the fight to victory; end_combat clears state + deletes the SSOT row in-tx. ---
         result: str | tuple = ""
-        for _ in range(12):  # safety bound; 22 HP / 4-per-attack-phase -> a handful of rounds
+        for _ in range(12):  # safety bound; wisp ~18 HP at 8/phase (4 x 2 swings) -> a few rounds
             await combat_turn._declare_phase_impl(
                 ctx,
                 {player_id: {"type": "attack", "action": "Greataxe", "target_id": enemy.id}, enemy.id: enemy_attack},
@@ -180,7 +180,10 @@ async def test_full_action_economy_lifecycle_on_real_pg(reset_db_pool: str) -> N
 
 def _expected_die_total(seed: int, notation: str, *, crit: bool) -> int:
     """Replay the RNG resolve_attack consumes (d20 first, then the damage die, twice on a crit) so the
-    exact damage dice are predictable — the technique from tests/combat/test_weapon_damage.py."""
+    exact damage dice are predictable — the technique from tests/combat/test_weapon_damage.py.
+
+    Duplicated (not imported) on purpose: test_weapon_damage lives in the fast `tests/combat/` lane,
+    which isn't on the acceptance run's import path — the lanes are isolated by rootdir."""
     rng = random.Random(seed)
     rng.randint(1, 20)  # the attack d20
     total = dice_roll(notation, rng=rng).total
