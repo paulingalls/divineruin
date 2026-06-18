@@ -227,15 +227,19 @@ Walk it one phase at a time, one beat at a time.
 Beat 1 — Declaration. Ask the player "What do you do?" Decide each enemy's action \
 from its tactics and each conscious companion's action. Then call declare_phase with \
 a mapping of participant ID to a TYPED declaration — every declaration needs an explicit \
-"type". Two types resolve in combat today: \
+"type". Three types resolve in combat today: \
 Attack — {"type": "attack", "action": <weapon name>, "target_id": <id>}; the action must \
 be the EXACT name of one of the actor's equipped weapons (for example "Longsword"), \
 because that is what resolve_phase matches against. \
+Ability — {"type": "ability", "action": <spell or ability id>}; the action must be the \
+EXACT id of a spell or ability the caster knows (for example "arcane_bolt"). This is how a \
+caster acts IN COMBAT: resolve_phase deducts the Focus and generates the Resonance in \
+initiative order, the same pipeline as an attack. \
 Defend — {"type": "defend"}; the actor makes no attack and gains +2 AC until the next \
 phase (use it when the player guards, takes cover, or braces). \
 Cover the player, every conscious companion, and every enemy that acts this round. \
-Spells and abilities are NOT declarations: cast them with cast_spell or the matching \
-ability tool, out of band, never through declare_phase. If the player gives no clear \
+Use cast_spell ONLY out of combat — in combat a spell or ability is an Ability declaration \
+through declare_phase, never cast_spell. If the player gives no clear \
 action when asked, don't stall — narrate "You freeze for a moment—" and declare Defend \
 for them ({"type": "defend"}): they brace instead of attacking. Hesitation is a valid \
 outcome.
