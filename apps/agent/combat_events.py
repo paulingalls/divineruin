@@ -87,13 +87,18 @@ class _CombatScratchSnapshot:
     recent_events the loop records — only when the tx fails. Lists are captured by CONTENTS (a
     shallow copy), not length: record_companion_memory / record_event cap their backing store by
     dropping the oldest entry, so a length-truncate restore would lose the oldest pre-phase entry
-    once at the cap."""
+    once at the cap.
+
+    concentration_spell_id is reverted too (story-007): an in-loop ABILITY cast starts a new
+    concentration, and break_concentration_on_damage clears it, both IN memory mid-tx — a rolled-back
+    phase must restore the pre-phase concentration so it can't diverge from the rolled-back DB row."""
 
     weapon_used_this_encounter: bool
     weapon_crit_vs_heavy: bool
     recent_events: list[str]
     companion_is_conscious: bool | None
     companion_memories: list[str] | None
+    concentration_spell_id: str | None
 
     @classmethod
     def capture(cls, session) -> "_CombatScratchSnapshot":
@@ -104,12 +109,14 @@ class _CombatScratchSnapshot:
             recent_events=list(session.recent_events),
             companion_is_conscious=companion.is_conscious if companion is not None else None,
             companion_memories=list(companion.session_memories) if companion is not None else None,
+            concentration_spell_id=session.concentration.spell_id,
         )
 
     def restore(self, session) -> None:
         session.weapon_used_this_encounter = self.weapon_used_this_encounter
         session.weapon_crit_vs_heavy = self.weapon_crit_vs_heavy
         session.recent_events = deque(self.recent_events, maxlen=session.recent_events.maxlen)
+        session.concentration.spell_id = self.concentration_spell_id
         companion = session.companion
         if companion is not None and self.companion_memories is not None:
             companion.is_conscious = self.companion_is_conscious

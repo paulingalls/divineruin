@@ -427,7 +427,7 @@ async def _resolve_attack_packet(
     concentration_broken = None
     if target.type == "player":
         concentration_broken = await concentration_break_mod.break_concentration_on_damage(
-            session, attack_result.damage, incapacitated=target.hp_current <= 0
+            session, attack_result.damage, incapacitated=target.hp_current <= 0, conn=conn
         )
 
     # Publish events (buffered into ``sink`` during the phase tx; released post-commit)
