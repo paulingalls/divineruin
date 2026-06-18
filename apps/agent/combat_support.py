@@ -2,8 +2,12 @@
 
 import logging
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from livekit.agents.llm import ToolError
+
+if TYPE_CHECKING:
+    from spell_casting import CastResult
 
 import check_resolution
 import combat_enhancers
@@ -36,7 +40,7 @@ class AbilityCastOutcome:
     concentration in-memory, and flush the cast's deferred client events — all of which must happen
     after the phase tx commits (story-007). ``cast_result`` stays ``None`` when no ability resolved."""
 
-    cast_result: object | None = None
+    cast_result: "CastResult | None" = None
 
 
 async def _resolve_ability_packet(

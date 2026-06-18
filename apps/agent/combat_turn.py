@@ -6,6 +6,7 @@ split, debt faa6dd19ab64)."""
 
 import json
 import logging
+from typing import cast
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
@@ -129,6 +130,7 @@ async def _resolve_phase_impl(
     # The in-memory Resonance sync + HUD publish run AFTER commit (below).
     pending_resonance: int | None = None
     end_data: dict | None = None
+    cast_result = None  # spell_casting.CastResult when a player ABILITY resolved this phase
     # Buffer every client event the phase emits; flush only AFTER the tx commits so a rolled-back
     # phase never leaks a phantom DICE_ROLL/ITEM_DURABILITY_HIT/sound (concern 03f2907d9c93). The
     # scratch_guard snapshots the in-loop session scratch (weapon flags, companion KO, recent_events)
@@ -185,18 +187,28 @@ async def _resolve_phase_impl(
         state, wrap_adv = combat_phase.advance_combat_phase(state)
         wrap = wrap_adv.wrap
 
+        # An in-combat ability GENERATES Resonance during resolution (beat 2); seed the phase's
+        # pending value with the cast's post-generation total so the WRAP decay below sheds from it
+        # (net = standing + generated - decay), not the stale standing value. new_resonance is None
+        # for a cantrip/floored cast (no write), leaving the standing value as the decay base.
+        cast_result = cast_outcome.cast_result
+        if cast_result is not None and cast_result.new_resonance is not None:
+            pending_resonance = cast_result.new_resonance
+
         ended_outcome = wrap.outcome if (wrap is not None and wrap.combat_ended and wrap.outcome) else None
         if ended_outcome is None:
-            # Combat continues: shed one step of Resonance per phase. WRAP is the canonical
-            # combat decay clock (decision resonance-decay-phase-canonical) — cast-paced decay
-            # is already suppressed in combat (spell_casting), so this never double-decays.
-            # Persist only when the value actually moved (a 0 floor stays silent); the in-memory
-            # sync + HUD push happen post-commit so a rolled-back phase shows no decay.
+            # Combat continues: shed one step of Resonance per phase. WRAP is the canonical combat
+            # decay clock (decision resonance-decay-phase-canonical) — cast-paced decay is suppressed
+            # in combat (spell_casting), so this never double-decays. The decay base is the ability's
+            # generated total when one cast this phase (pending_resonance), else the standing value.
+            # Persist only when the value actually moved (a 0 floor stays silent); the in-memory sync
+            # + HUD push happen post-commit so a rolled-back phase shows no decay.
             if wrap is not None and wrap.resonance_decay:
-                new_resonance = max(0, session.resonance.current - wrap.resonance_decay)
-                if new_resonance != session.resonance.current:
-                    pending_resonance = new_resonance
-                    await resonance_mutations.update_player_resonance(session.player_id, new_resonance, conn=conn)
+                decay_base = pending_resonance if pending_resonance is not None else session.resonance.current
+                decayed = max(0, decay_base - wrap.resonance_decay)
+                if decayed != decay_base:
+                    pending_resonance = decayed
+                    await resonance_mutations.update_player_resonance(session.player_id, decayed, conn=conn)
             await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
         else:
             # Combat ended: end_combat's DB writes (durability accrual + combat-row delete) join THIS
@@ -216,6 +228,18 @@ async def _resolve_phase_impl(
     # The tx committed: now (and only now) release the buffered loop events to the client.
     await sink.flush()
 
+    # Apply the in-combat ability's deferred effects post-commit (rollback-safe — a rolled-back tx
+    # skipped to here via the re-raise): sync any concentration change into the session SSOT and
+    # flush the cast's own deferred client events (hollow echo, Vaelti warning). The generated
+    # Resonance is synced just below (shared with the decay path). Runs BEFORE the end-of-combat
+    # return so an ability that fires on the killing phase still applies its effects.
+    if cast_result is not None:
+        if cast_result.concentration_spell_id is not spell_casting._UNCHANGED:
+            session.concentration.spell_id = cast("str | None", cast_result.concentration_spell_id)
+        await cast_result.flush_events()
+    if pending_resonance is not None:
+        session.resonance.current = pending_resonance
+
     # Beat 4 end-condition: the engine reports victory (all enemies fallen) or defeat (the player
     # has died). end_combat's DB writes already committed inside the phase tx above; now apply its
     # in-memory teardown (clear combat_state, reset encounter flags) and return the handoff.
@@ -224,8 +248,9 @@ async def _resolve_phase_impl(
         assert end_data is not None  # set in the tx whenever ended_outcome is not None
         return _end_combat_finish(session, state, ended_outcome, end_data)
 
+    # Combat continues: the single authoritative per-phase Resonance HUD push (generation net of
+    # decay). The ability suppressed its own RESONANCE_CHANGED, so this is the only push per phase.
     if pending_resonance is not None:
-        session.resonance.current = pending_resonance
         await resonance_events_mod.publish_resonance_changed(session)
 
     response = {

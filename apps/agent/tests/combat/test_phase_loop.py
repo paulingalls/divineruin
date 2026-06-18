@@ -478,8 +478,9 @@ class TestResolvePhaseAbility:
         )
         cast_resolver = self._cast_resolver(result)
         deps = _resolve_deps()
+        res = _resonance_deps()  # the ability generates resonance -> the WRAP write path is exercised
 
-        raw = await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps)
+        raw = await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps, **res)
         assert isinstance(raw, str)  # combat continues -> JSON response (not the end-of-combat tuple)
         packets = json.loads(raw)["packets"]
 
@@ -491,3 +492,99 @@ class TestResolvePhaseAbility:
         # The enemy's attack still resolves the same phase.
         assert packets[1]["actor_id"] == "goblin_scout_1"
         cast_resolver._resolve_cast.assert_awaited_once()
+
+
+class TestResolvePhaseAbilityResonance:
+    """story-007: an in-combat ability GENERATES resonance during resolution (beat 2); the WRAP
+    decay (beat 4) then sheds from the post-generation total, so the phase nets
+    standing + generated - 1. The generated value is persisted by the cast inside the tx (mocked
+    here); the loop seeds the WRAP base with it and syncs/pushes once post-commit."""
+
+    def _ability_state(self):
+        state = _resolution_state()  # enemy hp 7 -> combat continues this phase
+        state.pending_declarations["player_1"] = {"type": "ability", "action": "arcane_bolt"}
+        return state
+
+    def _cast_resolver(self, *, new_resonance, generated=5, concentration=None, events=None):
+        from spell_casting import _UNCHANGED, CastResult
+
+        result = CastResult(
+            packet={"effect": "A bolt of force.", "state": "flickering"},
+            new_resonance=new_resonance,
+            concentration_spell_id=concentration if concentration is not None else _UNCHANGED,
+            generated=generated,
+            events=events or [],
+        )
+        mod = MagicMock()
+        mod._resolve_cast = AsyncMock(return_value=result)
+        return mod
+
+    @pytest.mark.asyncio
+    async def test_generation_then_wrap_decay_nets_correctly(self):
+        ctx = make_context()
+        ctx.userdata.resonance.current = 3  # standing
+        ctx.userdata.combat_state = self._ability_state()
+        # The cast wrote standing(3)+generated(5)=8 inside the tx (mocked as new_resonance=8).
+        cast_resolver = self._cast_resolver(new_resonance=8)
+        deps = _resolve_deps(damage=3)
+        res = _resonance_deps()
+
+        raw = await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps, **res)
+
+        assert isinstance(raw, str)
+        # WRAP decays the post-generation total by 1: 8 -> 7 (NOT standing 3 -> 2).
+        assert ctx.userdata.resonance.current == 7
+        write = res["resonance_mutations"].update_player_resonance.await_args
+        assert write.args == ("player_1", 7)
+        # The single authoritative per-phase HUD push (the ability suppressed its own).
+        res["resonance_events_mod"].publish_resonance_changed.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_cantrip_ability_adds_nothing_but_phase_still_decays(self):
+        ctx = make_context()
+        ctx.userdata.resonance.current = 3
+        ctx.userdata.combat_state = self._ability_state()
+        # A cantrip generates 0 -> the cast wrote no resonance (new_resonance None).
+        cast_resolver = self._cast_resolver(new_resonance=None, generated=0)
+        deps = _resolve_deps(damage=3)
+        res = _resonance_deps()
+
+        await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps, **res)
+
+        # No generation to seed the base, so the phase decays the standing value: 3 -> 2.
+        assert ctx.userdata.resonance.current == 2
+        write = res["resonance_mutations"].update_player_resonance.await_args
+        assert write.args == ("player_1", 2)
+
+    @pytest.mark.asyncio
+    async def test_concentration_change_synced_post_commit(self):
+        ctx = make_context()
+        ctx.userdata.concentration.spell_id = None
+        ctx.userdata.combat_state = self._ability_state()
+        cast_resolver = self._cast_resolver(new_resonance=4, concentration="hold_flame")
+        deps = _resolve_deps(damage=3)
+        res = _resonance_deps()
+
+        await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps, **res)
+
+        # The cast persisted concentration via conn; the loop syncs the in-memory SSOT post-commit.
+        assert ctx.userdata.concentration.spell_id == "hold_flame"
+
+    @pytest.mark.asyncio
+    async def test_cast_deferred_events_flushed_post_commit(self):
+        emitted: list[str] = []
+
+        async def _echo():
+            emitted.append("hollow_echo")
+
+        ctx = make_context()
+        ctx.userdata.resonance.current = 0
+        ctx.userdata.combat_state = self._ability_state()
+        cast_resolver = self._cast_resolver(new_resonance=4, events=[lambda: _echo()])
+        deps = _resolve_deps(damage=3)
+        res = _resonance_deps()
+
+        await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps, **res)
+
+        # The cast's own deferred client events (hollow echo, Vaelti warning) fire after commit.
+        assert emitted == ["hollow_echo"]
