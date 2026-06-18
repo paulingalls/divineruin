@@ -29,6 +29,7 @@ async def break_concentration_on_damage(
     queries=db_queries,
     resolver=check_resolution,
     concentration_mutations=db_mutations_concentration,
+    conn=None,
 ) -> str | None:
     """Resolve a concentrating player's CON save after taking ``damage``; end concentration on a
     failed save or incapacitation. Returns the spell_id that broke (for the DM to narrate), or
@@ -39,6 +40,11 @@ async def break_concentration_on_damage(
     incapacitation auto-fail are the engine's (concentration.concentration_holds). Persists the
     end via concentration_mutations.update_player_concentration(player_id, None) and clears the
     in-memory session state, mirroring how cast_spell sets/ends concentration.
+
+    ``conn`` joins the break to a caller's transaction: in combat the phase loop passes its phase
+    conn so a rolled-back phase reverts the break too (story-007). The player fetch reads the same
+    conn so the save sees the in-tx state. Out of combat (Draethar inner fire) the default ``None``
+    runs the write on its own connection, post-commit, as before.
     """
     spell_id = session.concentration.spell_id
     if spell_id is None or damage <= 0:
@@ -48,7 +54,7 @@ async def break_concentration_on_damage(
     # Incapacitation auto-fails (the engine enforces it) — skip the pointless roll and DB fetch.
     save_total = 0
     if not incapacitated:
-        player = await queries.get_player(session.player_id)
+        player = await queries.get_player(session.player_id, conn=conn)
         if player is None:
             # The player row is gone (a data glitch — an in-combat caster should always exist). Fail
             # safe: don't roll an unfounded save and don't strip their spell; leave concentration as-is.
@@ -61,6 +67,6 @@ async def break_concentration_on_damage(
     # Persist the end BEFORE clearing the in-memory SSOT (mirrors cast_spell's commit-then-sync):
     # a failed write leaves session.concentration intact rather than diverging from the DB, which
     # would otherwise re-populate the old spell on the next session reload.
-    await concentration_mutations.update_player_concentration(session.player_id, None)
+    await concentration_mutations.update_player_concentration(session.player_id, None, conn=conn)
     session.concentration.spell_id = None
     return spell_id

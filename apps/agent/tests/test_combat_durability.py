@@ -181,7 +181,6 @@ async def test_accrue_already_broken_skips_write_and_event():
 
 # --- armor + shield accrual in _resolve_attack_packet ------------------------
 
-import combat_turn  # noqa: E402
 from session_data import CombatParticipant, CombatState  # noqa: E402
 
 
@@ -238,14 +237,14 @@ async def _run_enemy_turn(ctx, inventory, *, shield_reaction=None, hit=True):
     queries = AsyncMock()
     queries.get_player_inventory = AsyncMock(return_value=inventory)
     with (
-        patch.object(combat_turn.check_resolution, "resolve_attack", return_value=_forced_attack(hit=hit)),
+        patch.object(combat_support.check_resolution, "resolve_attack", return_value=_forced_attack(hit=hit)),
         patch.object(
-            combat_turn,
+            combat_support,
             "_accrue_durability",
             AsyncMock(return_value={"broken": False, "penalty": {}, "current_hits": 9}),
         ) as accrue,
     ):
-        await combat_turn._resolve_attack_packet(
+        await combat_support._resolve_attack_packet(
             session,
             attacker,
             action,

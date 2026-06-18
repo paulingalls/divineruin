@@ -165,6 +165,29 @@ class TestCombatScratchSnapshot:
         assert session.weapon_used_this_encounter is False
         assert session.companion is None
 
+    def test_restores_concentration_started_in_loop(self) -> None:
+        # story-007: an in-loop ABILITY cast starts a new concentration in memory; a phase rollback
+        # must revert it (the scratch does not otherwise cover session.concentration).
+        session = SessionData(player_id="p_conc", location_id="loc", room=None)
+        session.concentration.spell_id = "hold_flame"
+        snap = _CombatScratchSnapshot.capture(session)
+
+        session.concentration.spell_id = "new_spell"  # in-loop: ability cast started a new one
+        snap.restore(session)
+
+        assert session.concentration.spell_id == "hold_flame"
+
+    def test_restores_concentration_broken_in_loop(self) -> None:
+        # The break-on-damage path clears concentration in memory mid-loop; a rollback must restore it.
+        session = SessionData(player_id="p_conc", location_id="loc", room=None)
+        session.concentration.spell_id = "hold_flame"
+        snap = _CombatScratchSnapshot.capture(session)
+
+        session.concentration.spell_id = None  # in-loop: a hit broke concentration
+        snap.restore(session)
+
+        assert session.concentration.spell_id == "hold_flame"
+
 
 class TestLoopEventBuffering:
     """Seam 2 (concern 03f2907d9c93): loop events buffer during the tx and reach the client only
