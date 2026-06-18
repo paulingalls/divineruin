@@ -1,6 +1,7 @@
 """Shared helpers for combat tool modules."""
 
 import logging
+from dataclasses import dataclass
 
 from livekit.agents.llm import ToolError
 
@@ -13,6 +14,69 @@ from combat_events import EventSink, emit_or_publish
 from session_data import CombatParticipant, CombatState, SessionData
 
 logger = logging.getLogger("divineruin.tools")
+
+
+@dataclass
+class AbilityCastOutcome:
+    """Side-channel carrying an in-loop ABILITY cast's ``CastResult`` back to the phase loop.
+
+    At most one player ability resolves per phase (one declaration per participant), so a single
+    slot suffices. The loop reads ``cast_result`` post-commit to seed the WRAP resonance, sync
+    concentration in-memory, and flush the cast's deferred client events — all of which must happen
+    after the phase tx commits (story-007). ``cast_result`` stays ``None`` when no ability resolved."""
+
+    cast_result: object | None = None
+
+
+async def _resolve_ability_packet(
+    session: SessionData,
+    attacker: CombatParticipant,
+    decl,
+    *,
+    cast_resolver,
+    conn,
+    player: dict | None,
+    cast_outcome: AbilityCastOutcome,
+) -> dict:
+    """Resolve one in-combat ABILITY declaration through the shared cast logic (story-007).
+
+    Player-gated: only the player carries a Focus pool + resonance track, so a non-player ABILITY
+    (or one missing its action) is a *wasted* packet — enemy/companion casting is later M4.x work.
+    Delegates to ``cast_resolver._resolve_cast`` with the cast's own RESONANCE_CHANGED suppressed
+    (in combat the phase WRAP push is the single authoritative HUD update), stashing the returned
+    CastResult on ``cast_outcome`` for the loop to commit. The returned summary carries the spell
+    packet for the DM plus any narrated enhancer riders."""
+    if attacker.type != "player":
+        return {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": "ability resolution not yet implemented for non-player actors",
+        }
+    if not decl.action:
+        return {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": "ability declaration missing an action",
+        }
+
+    result = await cast_resolver._resolve_cast(
+        session,
+        decl.action,
+        conn=conn,
+        player=player,
+        suppress_resonance_changed=True,
+    )
+    cast_outcome.cast_result = result
+    summary = {
+        "actor_id": attacker.id,
+        "resolved": True,
+        "declaration_type": str(decl.type),
+        "action": decl.action,
+        "cast": result.packet,
+    }
+    return _attach_riders(summary, attacker, decl)
 
 
 def _find_action(participant, action_name) -> dict | None:

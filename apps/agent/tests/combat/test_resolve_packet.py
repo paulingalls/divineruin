@@ -14,6 +14,7 @@ from sample_fixtures import make_context, make_mock_room
 
 from check_resolution import AttackResult
 from combat_turn import _resolve_attack_packet
+from session_data import CombatParticipant
 
 
 def _fixed_resolver(*, damage: int, hp_remaining: int):
@@ -250,3 +251,94 @@ class TestResolveAttackPacket:
         )
 
         assert response["concentration_broken"] is None
+
+
+class TestResolveAbilityPacket:
+    """story-007: an in-combat ABILITY declaration resolves through the shared cast logic.
+
+    Player-gated (only the player has a Focus pool + resonance track); the CastResult is stashed on
+    the AbilityCastOutcome so the phase loop can commit resonance/concentration/events post-commit."""
+
+    def _player(self) -> CombatParticipant:
+        return CombatParticipant(
+            id="player_1", name="Lyra", type="player", initiative=15, hp_current=20, hp_max=20, ac=14
+        )
+
+    def _cast_resolver(self, result):
+        mod = MagicMock()
+        mod._resolve_cast = AsyncMock(return_value=result)
+        return mod
+
+    async def test_player_ability_resolves_and_stashes_castresult(self):
+        from combat_support import AbilityCastOutcome, _resolve_ability_packet
+        from declarations import Declaration, DeclarationType
+        from spell_casting import _UNCHANGED, CastResult
+
+        session = make_context().userdata
+        attacker = self._player()
+        decl = Declaration(type=DeclarationType.ABILITY, action="arcane_bolt")
+        result = CastResult(
+            packet={"effect": "zap", "state": "stable"},
+            new_resonance=6,
+            concentration_spell_id=_UNCHANGED,
+            generated=6,
+            events=[],
+        )
+        cast_resolver = self._cast_resolver(result)
+        outcome = AbilityCastOutcome()
+
+        summary = await _resolve_ability_packet(
+            session, attacker, decl, cast_resolver=cast_resolver, conn=object(), player=None, cast_outcome=outcome
+        )
+
+        assert summary["resolved"] is True
+        assert summary["actor_id"] == "player_1"
+        assert summary["declaration_type"] == "ability"
+        assert summary["action"] == "arcane_bolt"
+        assert summary["cast"] == {"effect": "zap", "state": "stable"}
+        # the CastResult is handed to the loop, not applied here (in-memory sync is post-commit)
+        assert outcome.cast_result is result
+        # routed through the shared cast core with the cast's own RESONANCE_CHANGED suppressed —
+        # in combat the phase WRAP push is the single authoritative HUD update.
+        _args, kwargs = cast_resolver._resolve_cast.call_args
+        assert kwargs["suppress_resonance_changed"] is True
+
+    async def test_non_player_ability_is_wasted(self):
+        from combat_support import AbilityCastOutcome, _resolve_ability_packet
+        from declarations import Declaration, DeclarationType
+
+        session = make_context().userdata
+        enemy = CombatParticipant(
+            id="goblin_1", name="Goblin", type="enemy", initiative=10, hp_current=7, hp_max=7, ac=13
+        )
+        decl = Declaration(type=DeclarationType.ABILITY, action="goblin_hex")
+        cast_resolver = MagicMock()
+        cast_resolver._resolve_cast = AsyncMock()
+        outcome = AbilityCastOutcome()
+
+        summary = await _resolve_ability_packet(
+            session, enemy, decl, cast_resolver=cast_resolver, conn=object(), player=None, cast_outcome=outcome
+        )
+
+        assert summary["resolved"] is False
+        cast_resolver._resolve_cast.assert_not_called()
+        assert outcome.cast_result is None
+
+    async def test_missing_action_is_wasted(self):
+        from combat_support import AbilityCastOutcome, _resolve_ability_packet
+        from declarations import Declaration, DeclarationType
+
+        session = make_context().userdata
+        attacker = self._player()
+        decl = Declaration(type=DeclarationType.ABILITY, action=None)
+        cast_resolver = MagicMock()
+        cast_resolver._resolve_cast = AsyncMock()
+        outcome = AbilityCastOutcome()
+
+        summary = await _resolve_ability_packet(
+            session, attacker, decl, cast_resolver=cast_resolver, conn=object(), player=None, cast_outcome=outcome
+        )
+
+        assert summary["resolved"] is False
+        cast_resolver._resolve_cast.assert_not_called()
+        assert outcome.cast_result is None
