@@ -13,7 +13,7 @@ from combat._helpers import _make_combat_state
 from sample_fixtures import make_context, make_mock_room
 
 from check_resolution import AttackResult
-from combat_turn import _resolve_attack_packet
+from combat_support import _resolve_attack_packet
 from session_data import CombatParticipant
 
 

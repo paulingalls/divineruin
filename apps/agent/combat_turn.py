@@ -1,6 +1,8 @@
-"""Combat phase-loop tools — declare_phase, resolve_phase — plus the shared
-_resolve_attack_packet resolver they drive (M4.1, story-003). request_death_save
-lives in combat_death_save.py (story-004 split, debt faa6dd19ab64)."""
+"""Combat phase-loop tools — declare_phase, resolve_phase — orchestrating the per-phase
+transaction and the initiative-ordered packet loop (M4.1, story-003). The per-packet resolvers
+(_resolve_attack_packet, _resolve_ability_packet) live in combat_support (story-007 split, to keep
+this file under the 500-line ceiling). request_death_save lives in combat_death_save.py (story-004
+split, debt faa6dd19ab64)."""
 
 import json
 import logging
@@ -17,28 +19,21 @@ import db
 import db_mutations
 import db_mutations_resonance
 import db_queries
-import event_types as E
 import resonance_events
+import spell_casting
 from combat_end import _end_combat_db, _end_combat_finish
-from combat_events import EventSink, emit_or_publish, scratch_guard
+from combat_events import EventSink, scratch_guard
 from combat_support import (
-    _accrue_durability,
+    AbilityCastOutcome,
     _attach_riders,
     _find_action,
-    _find_equipped,
-    _publish_sounds,
     _require_combat,
+    _resolve_ability_packet,
+    _resolve_attack_packet,
 )
 from db_errors import db_tool
 from declarations import DeclarationType
 from session_data import SessionData
-from tool_support import (
-    SOUND_ATTACK_CRITICAL,
-    SOUND_ATTACK_HIT,
-    SOUND_ATTACK_MISS,
-    SOUND_HEARTBEAT,
-    SOUND_PLAYER_FALLEN,
-)
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -118,6 +113,7 @@ async def _resolve_phase_impl(
     resonance_mutations=db_mutations_resonance,
     resonance_events_mod=resonance_events,
     db_mod=db,
+    cast_resolver=spell_casting,
 ) -> str | tuple:
     logger.info("resolve_phase called")
     session: SessionData = context.userdata
@@ -161,6 +157,10 @@ async def _resolve_phase_impl(
             if defender is not None and not defender.is_fallen:
                 state.ac_modifiers[packet.actor_id] = packet.declaration.ac_bonus
 
+        # At most one player ABILITY resolves per phase (one declaration per participant); its
+        # CastResult lands here for the post-commit apply (resonance seed, concentration sync,
+        # deferred events). Stays empty when no ability was declared.
+        cast_outcome = AbilityCastOutcome()
         packet_summaries: list[dict] = []
         for packet in adv.packets:
             packet_summaries.append(
@@ -174,6 +174,8 @@ async def _resolve_phase_impl(
                     concentration_break_mod=concentration_break_mod,
                     conn=conn,
                     sink=sink,
+                    cast_resolver=cast_resolver,
+                    cast_outcome=cast_outcome,
                 )
             )
 
@@ -249,6 +251,9 @@ async def _resolve_one_packet(
     concentration_break_mod,
     conn=None,
     sink=None,
+    cast_resolver=spell_casting,
+    cast_outcome=None,
+    player=None,
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
 
@@ -256,10 +261,11 @@ async def _resolve_one_packet(
     has already fallen this phase, or its action isn't in the actor's pool — one bad
     or stale declaration never crashes the phase. Attack resolves through the shared
     attack resolver (carrying the target's phase AC modifier) and records the player's
-    weapon-durability flags. Defend resolves as a no-op (its +2 AC was applied to
-    state.ac_modifiers in the resolve_phase pre-pass). Ability/Interact/Maneuver/Retreat
-    are modelled + initiative-ordered but their mechanical resolution lands later
-    (Ability → story-007; the rest in M4.x)."""
+    weapon-durability flags. Ability resolves through the shared cast logic (story-007,
+    via _resolve_ability_packet), its CastResult stashed on ``cast_outcome`` for the
+    phase loop to commit. Defend resolves as a no-op (its +2 AC was applied to
+    state.ac_modifiers in the resolve_phase pre-pass). Interact/Maneuver/Retreat are
+    modelled + initiative-ordered but their mechanical resolution lands in later M4.x."""
     attacker = state.get_participant(packet.actor_id)
     decl = packet.declaration
 
@@ -273,6 +279,17 @@ async def _resolve_one_packet(
             "declaration_type": str(decl.type),
             "ac_bonus": decl.ac_bonus,
         }
+
+    if decl.type is DeclarationType.ABILITY:
+        return await _resolve_ability_packet(
+            session,
+            attacker,
+            decl,
+            cast_resolver=cast_resolver,
+            conn=conn,
+            player=player,
+            cast_outcome=cast_outcome if cast_outcome is not None else AbilityCastOutcome(),
+        )
 
     if decl.type is not DeclarationType.ATTACK:
         # Non-attack declarations don't resolve mechanically yet, but a narrated rider
@@ -345,153 +362,3 @@ async def _resolve_one_packet(
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = True
     return _attach_riders(summary, attacker, decl)
-
-
-async def _resolve_attack_packet(
-    session: SessionData,
-    attacker,
-    action: dict,
-    target,
-    *,
-    target_ac_bonus: int = 0,
-    shield_reaction: str | None = None,
-    mutations=db_mutations,
-    queries=db_queries,
-    resolver=check_resolution,
-    concentration_break_mod=concentration_break,
-    conn=None,
-    sink=None,
-) -> dict:
-    """Resolve ONE declared attack against CombatParticipant HP.
-
-    Mutates ``target`` in place (hp_current, is_fallen), publishes the attack's
-    DICE_ROLL, sounds, and any durability hits in strike order, and returns a
-    response dict for the caller (a per-packet narration summary). It does NOT
-    persist — the caller owns one ``save_combat_state`` per phase so the multi-packet
-    phase loop persists exactly once. ``attacker``/``target`` are CombatParticipants;
-    ``action`` is an entry from the attacker's action_pool (weapon-shaped).
-
-    ``shield_reaction`` is a forward seam for the M4.x reaction-window feature
-    (combat_phase's ``reactions_available``): when a future declaration spends a
-    shield reaction it threads the shield name here to accrue shield durability. The
-    live phase loop (``_resolve_one_packet``) does not yet declare reactions, so it
-    is always ``None`` on the live path today; the accrual branch is exercised by
-    test_combat_durability."""
-    attacker_data = {
-        "attributes": attacker.attributes,
-        "level": attacker.level,
-    }
-
-    # ``target_ac_bonus`` is the target's phase-scoped AC modifier (Defend's +2, M4.2);
-    # the live caller passes state.ac_modifiers[target.id]. Defaults to 0 for direct callers.
-    effective_ac = target.ac + target_ac_bonus
-    attack_result = resolver.resolve_attack(
-        attacker_data,
-        action,
-        effective_ac,
-        target.hp_current,
-    )
-
-    # Update target HP
-    target.hp_current = attack_result.target_hp_remaining
-
-    # Determine sounds
-    sounds: list[str] = []
-    if attack_result.critical_success:
-        sounds.append(SOUND_ATTACK_CRITICAL)
-    elif attack_result.hit:
-        sounds.append(SOUND_ATTACK_HIT)
-    else:
-        sounds.append(SOUND_ATTACK_MISS)
-
-    # Check HP thresholds
-    hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
-    if target.hp_current <= 0:
-        target.is_fallen = True
-        sounds.append(SOUND_PLAYER_FALLEN)
-        # Handle companion KO
-        if target.type == "companion" and session.companion and target.id == session.companion.id:
-            session.companion.is_conscious = False
-            session.record_companion_memory(f"{target.name} was knocked unconscious in combat")
-    elif hp_status in ("bloodied", "critical"):
-        sounds.append(SOUND_HEARTBEAT)
-
-    # Update DB if target is a player
-    if target.type == "player":
-        await mutations.update_player_hp(target.id, target.hp_current, conn=conn)
-
-    # Combat damage is the canonical concentration-break trigger: a concentrating player who takes
-    # damage rolls a CON save (DC scales with the damage); failing it — or being dropped to 0 HP
-    # (incapacitated) — ends concentration. The helper no-ops when the player isn't concentrating
-    # or the attack dealt no damage; its return (the broken spell id, or None) is narrated below.
-    concentration_broken = None
-    if target.type == "player":
-        concentration_broken = await concentration_break_mod.break_concentration_on_damage(
-            session, attack_result.damage, incapacitated=target.hp_current <= 0, conn=conn
-        )
-
-    # Publish events (buffered into ``sink`` during the phase tx; released post-commit)
-    await emit_or_publish(
-        sink,
-        session.room,
-        E.DICE_ROLL,
-        {
-            "roll_type": "attack",
-            "attacker": attacker.name,
-            "hit": attack_result.hit,
-            "roll": attack_result.roll,
-            "damage": attack_result.damage,
-            "critical": attack_result.critical_success,
-        },
-        event_bus=session.event_bus,
-    )
-    await _publish_sounds(session, sounds, sink=sink)
-
-    # Accrue durability on the player's equipped armor (1 hit per damage taken),
-    # and on a shield when the player spends a shield reaction. Hollow zones double.
-    # Runs after the attack's DICE_ROLL so ITEM_DURABILITY_HIT follows the strike.
-    durability_results: dict = {}
-    if target.type == "player" and attack_result.hit:
-        inventory = await queries.get_player_inventory(target.id, conn=conn)
-        is_hollow = combat_resolution.is_hollow_zone(session.corruption_level)
-        armor = _find_equipped(inventory, "armor")
-        if armor is not None:
-            durability_results["armor"] = await _accrue_durability(
-                session, target.id, armor, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
-            )
-        if shield_reaction:
-            shield = _find_equipped(inventory, "shield")
-            if shield is not None:
-                durability_results["shield"] = await _accrue_durability(
-                    session, target.id, shield, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
-                )
-
-    hit_miss = "hit" if attack_result.hit else "miss"
-    session.record_event(f"{attacker.name} attacks {target.name}: {hit_miss}, {attack_result.damage} damage")
-
-    response = {
-        "attacker": attacker.name,
-        "action": action.get("name", ""),
-        "target": target.name,
-        "hit": attack_result.hit,
-        "roll": attack_result.roll,
-        "attack_total": attack_result.attack_total,
-        "target_ac": effective_ac,
-        "damage": attack_result.damage,
-        "damage_type": attack_result.damage_type,
-        "critical": attack_result.critical_success,
-        "target_hp_status": hp_status,
-        "target_fallen": target.is_fallen,
-        "narrative_hint": attack_result.narrative_hint,
-        "durability": durability_results,
-        "concentration_broken": concentration_broken,
-    }
-    logger.info(
-        "resolve_attack_packet result: %s → %s, %s, damage=%d, hp_status=%s",
-        attacker.name,
-        target.name,
-        hit_miss,
-        attack_result.damage,
-        hp_status,
-    )
-    return response

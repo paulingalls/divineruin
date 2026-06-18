@@ -445,3 +445,49 @@ class TestResolvePhaseDefend:
         await _resolve_phase_impl(ctx, **deps)
 
         assert ctx.userdata.combat_state.ac_modifiers == {}
+
+
+class TestResolvePhaseAbility:
+    """story-007: an in-combat ABILITY declaration resolves via the shared cast resolver and appears
+    as a resolved packet in initiative order alongside attacks. The cast itself is mocked here — the
+    wiring/ordering is under test, not the spell internals (covered by test_spell_casting)."""
+
+    def _ability_state(self):
+        state = _resolution_state()
+        # Player declares an ABILITY instead of an attack; the enemy still swings.
+        state.pending_declarations["player_1"] = {"type": "ability", "action": "arcane_bolt"}
+        return state
+
+    def _cast_resolver(self, result):
+        mod = MagicMock()
+        mod._resolve_cast = AsyncMock(return_value=result)
+        return mod
+
+    @pytest.mark.asyncio
+    async def test_player_ability_resolves_in_initiative_order(self):
+        from spell_casting import _UNCHANGED, CastResult
+
+        ctx = make_context()
+        ctx.userdata.combat_state = self._ability_state()
+        result = CastResult(
+            packet={"effect": "A bolt of force.", "state": "flickering", "resonance_generated": 6},
+            new_resonance=6,
+            concentration_spell_id=_UNCHANGED,
+            generated=6,
+            events=[],
+        )
+        cast_resolver = self._cast_resolver(result)
+        deps = _resolve_deps()
+
+        raw = await _resolve_phase_impl(ctx, cast_resolver=cast_resolver, **deps)
+        assert isinstance(raw, str)  # combat continues -> JSON response (not the end-of-combat tuple)
+        packets = json.loads(raw)["packets"]
+
+        # Player (initiative 15) resolves before the enemy (initiative 12).
+        assert packets[0]["actor_id"] == "player_1"
+        assert packets[0]["resolved"] is True
+        assert packets[0]["declaration_type"] == "ability"
+        assert packets[0]["cast"]["effect"] == "A bolt of force."
+        # The enemy's attack still resolves the same phase.
+        assert packets[1]["actor_id"] == "goblin_scout_1"
+        cast_resolver._resolve_cast.assert_awaited_once()

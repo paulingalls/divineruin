@@ -5,13 +5,24 @@ from dataclasses import dataclass
 
 from livekit.agents.llm import ToolError
 
+import check_resolution
 import combat_enhancers
 import combat_resolution
+import concentration_break
+import db_mutations
 import db_mutations_inventory
+import db_queries
 import durability
 import event_types as E
 from combat_events import EventSink, emit_or_publish
 from session_data import CombatParticipant, CombatState, SessionData
+from tool_support import (
+    SOUND_ATTACK_CRITICAL,
+    SOUND_ATTACK_HIT,
+    SOUND_ATTACK_MISS,
+    SOUND_HEARTBEAT,
+    SOUND_PLAYER_FALLEN,
+)
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -199,3 +210,153 @@ async def _accrue_durability(
         event_bus=session.event_bus,
     )
     return {**condition, "current_hits": new_hits}
+
+
+async def _resolve_attack_packet(
+    session: SessionData,
+    attacker,
+    action: dict,
+    target,
+    *,
+    target_ac_bonus: int = 0,
+    shield_reaction: str | None = None,
+    mutations=db_mutations,
+    queries=db_queries,
+    resolver=check_resolution,
+    concentration_break_mod=concentration_break,
+    conn=None,
+    sink=None,
+) -> dict:
+    """Resolve ONE declared attack against CombatParticipant HP.
+
+    Mutates ``target`` in place (hp_current, is_fallen), publishes the attack's
+    DICE_ROLL, sounds, and any durability hits in strike order, and returns a
+    response dict for the caller (a per-packet narration summary). It does NOT
+    persist — the caller owns one ``save_combat_state`` per phase so the multi-packet
+    phase loop persists exactly once. ``attacker``/``target`` are CombatParticipants;
+    ``action`` is an entry from the attacker's action_pool (weapon-shaped).
+
+    ``shield_reaction`` is a forward seam for the M4.x reaction-window feature
+    (combat_phase's ``reactions_available``): when a future declaration spends a
+    shield reaction it threads the shield name here to accrue shield durability. The
+    live phase loop (``_resolve_one_packet``) does not yet declare reactions, so it
+    is always ``None`` on the live path today; the accrual branch is exercised by
+    test_combat_durability."""
+    attacker_data = {
+        "attributes": attacker.attributes,
+        "level": attacker.level,
+    }
+
+    # ``target_ac_bonus`` is the target's phase-scoped AC modifier (Defend's +2, M4.2);
+    # the live caller passes state.ac_modifiers[target.id]. Defaults to 0 for direct callers.
+    effective_ac = target.ac + target_ac_bonus
+    attack_result = resolver.resolve_attack(
+        attacker_data,
+        action,
+        effective_ac,
+        target.hp_current,
+    )
+
+    # Update target HP
+    target.hp_current = attack_result.target_hp_remaining
+
+    # Determine sounds
+    sounds: list[str] = []
+    if attack_result.critical_success:
+        sounds.append(SOUND_ATTACK_CRITICAL)
+    elif attack_result.hit:
+        sounds.append(SOUND_ATTACK_HIT)
+    else:
+        sounds.append(SOUND_ATTACK_MISS)
+
+    # Check HP thresholds
+    hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
+    if target.hp_current <= 0:
+        target.is_fallen = True
+        sounds.append(SOUND_PLAYER_FALLEN)
+        # Handle companion KO
+        if target.type == "companion" and session.companion and target.id == session.companion.id:
+            session.companion.is_conscious = False
+            session.record_companion_memory(f"{target.name} was knocked unconscious in combat")
+    elif hp_status in ("bloodied", "critical"):
+        sounds.append(SOUND_HEARTBEAT)
+
+    # Update DB if target is a player
+    if target.type == "player":
+        await mutations.update_player_hp(target.id, target.hp_current, conn=conn)
+
+    # Combat damage is the canonical concentration-break trigger: a concentrating player who takes
+    # damage rolls a CON save (DC scales with the damage); failing it — or being dropped to 0 HP
+    # (incapacitated) — ends concentration. The helper no-ops when the player isn't concentrating
+    # or the attack dealt no damage; its return (the broken spell id, or None) is narrated below.
+    concentration_broken = None
+    if target.type == "player":
+        concentration_broken = await concentration_break_mod.break_concentration_on_damage(
+            session, attack_result.damage, incapacitated=target.hp_current <= 0, conn=conn
+        )
+
+    # Publish events (buffered into ``sink`` during the phase tx; released post-commit)
+    await emit_or_publish(
+        sink,
+        session.room,
+        E.DICE_ROLL,
+        {
+            "roll_type": "attack",
+            "attacker": attacker.name,
+            "hit": attack_result.hit,
+            "roll": attack_result.roll,
+            "damage": attack_result.damage,
+            "critical": attack_result.critical_success,
+        },
+        event_bus=session.event_bus,
+    )
+    await _publish_sounds(session, sounds, sink=sink)
+
+    # Accrue durability on the player's equipped armor (1 hit per damage taken),
+    # and on a shield when the player spends a shield reaction. Hollow zones double.
+    # Runs after the attack's DICE_ROLL so ITEM_DURABILITY_HIT follows the strike.
+    durability_results: dict = {}
+    if target.type == "player" and attack_result.hit:
+        inventory = await queries.get_player_inventory(target.id, conn=conn)
+        is_hollow = combat_resolution.is_hollow_zone(session.corruption_level)
+        armor = _find_equipped(inventory, "armor")
+        if armor is not None:
+            durability_results["armor"] = await _accrue_durability(
+                session, target.id, armor, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
+            )
+        if shield_reaction:
+            shield = _find_equipped(inventory, "shield")
+            if shield is not None:
+                durability_results["shield"] = await _accrue_durability(
+                    session, target.id, shield, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
+                )
+
+    hit_miss = "hit" if attack_result.hit else "miss"
+    session.record_event(f"{attacker.name} attacks {target.name}: {hit_miss}, {attack_result.damage} damage")
+
+    response = {
+        "attacker": attacker.name,
+        "action": action.get("name", ""),
+        "target": target.name,
+        "hit": attack_result.hit,
+        "roll": attack_result.roll,
+        "attack_total": attack_result.attack_total,
+        "target_ac": effective_ac,
+        "damage": attack_result.damage,
+        "damage_type": attack_result.damage_type,
+        "critical": attack_result.critical_success,
+        "target_hp_status": hp_status,
+        "target_fallen": target.is_fallen,
+        "narrative_hint": attack_result.narrative_hint,
+        "durability": durability_results,
+        "concentration_broken": concentration_broken,
+    }
+    logger.info(
+        "resolve_attack_packet result: %s → %s, %s, damage=%d, hp_status=%s",
+        attacker.name,
+        target.name,
+        hit_miss,
+        attack_result.damage,
+        hp_status,
+    )
+    return response
