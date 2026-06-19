@@ -17,6 +17,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import check_resolution_save
 import db_content_queries
 import db_mutations
 import db_queries
@@ -133,6 +134,8 @@ async def _check_skill_impl(
             "roll": result.roll,
             "total": result.total,
             "success": result.success,
+            "dramatic": result.dramatic,
+            "context": result.context,
         },
         event_bus=session.event_bus,
     )
@@ -201,7 +204,7 @@ async def _check_save_impl(
         raise ToolError(f"Player '{session.player_id}' not found.")
 
     try:
-        result = check_resolution.resolve_saving_throw(player, save_type, dc, effect_on_fail)
+        result = check_resolution_save.resolve_saving_throw(player, save_type, dc, effect_on_fail)
     except ValueError as e:
         raise ToolError(str(e)) from e
 
@@ -214,6 +217,8 @@ async def _check_save_impl(
             "roll": result.roll,
             "total": result.total,
             "success": result.success,
+            "dramatic": result.dramatic,
+            "context": result.context,
         },
         event_bus=session.event_bus,
     )

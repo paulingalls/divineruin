@@ -4,6 +4,7 @@ import random
 from dataclasses import dataclass
 
 from dice import roll as dice_roll
+from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier
 
 
@@ -27,6 +28,8 @@ class DeathSaveResult:
     stabilized: bool
     dead: bool
     narrative_hint: str
+    dramatic: bool = True
+    context: str = "death_save"
 
 
 def roll_initiative(
@@ -67,6 +70,8 @@ def resolve_death_save(
     Rules: 10+ = success, <10 = failure. Nat 20 = regain 1 HP (critical success).
     Nat 1 = two failures. 3 successes = stabilized, 3 failures = dead.
     """
+    verdict = evaluate_dramatic_context(DramaticContext(roll_type="death_save"))
+
     result = dice_roll("d20", rng=rng)
     d20 = result.total
 
@@ -103,6 +108,8 @@ def resolve_death_save(
         stabilized=stabilized,
         dead=dead,
         narrative_hint=hint,
+        dramatic=verdict.dramatic,
+        context=verdict.context,
     )
 
 

@@ -10,6 +10,10 @@ export const PLAY_SOUND = "play_sound" as const;
 export const SET_MUSIC_STATE = "set_music_state" as const;
 
 // Dice
+// Payload {roll, modifier, total, success, roll_type, narrative}. Optional `dramatic`
+// (boolean): when explicitly true, the HUD plays the full tumble-and-reveal; false/absent
+// suppresses it (scarcity gate, story-006). The agent does not emit `dramatic` until
+// stories 004/005, so live rolls carry no flag yet and stay suppressed in the interim.
 export const DICE_ROLL = "dice_roll" as const;
 export const DICE_RESULT = "dice_result" as const;
 

@@ -15,7 +15,7 @@ from combat._helpers import _fake_db_mod, _make_combat_state
 from sample_fixtures import make_context
 
 import combat_turn
-from check_resolution import AttackResult
+from check_resolution_attack import AttackResult
 from combat_phase import ResolutionPacket
 from declarations import Declaration, DeclarationType
 from session_data import CombatParticipant, CombatState

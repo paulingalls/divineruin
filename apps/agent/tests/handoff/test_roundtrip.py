@@ -4,8 +4,8 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from handoff._helpers import make_context as _make_context
 from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, make_db_mod
+from sample_fixtures import make_context as _make_context
 
 from exploration_agent import ExplorationAgent
 from session_data import CompanionState, SessionData

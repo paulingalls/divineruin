@@ -156,3 +156,22 @@ class TestRequestDeathSave:
         assert E.DICE_ROLL in types
         death_save_event = next(c for c in calls if c.get("type") == E.DICE_ROLL)
         assert death_save_event["roll_type"] == "death_save"
+
+    @pytest.mark.asyncio
+    async def test_dice_roll_and_response_are_always_dramatic(self):
+        # story-004: a death save is ALWAYS dramatic — the DICE_ROLL payload and the tool
+        # response both carry dramatic=True + context="death_save" (the M4.5 contract label),
+        # so the client overlay and the DM both pause for it.
+        mock_mutations = _make_death_save_mocks()
+        room = make_mock_room()
+        ctx = make_context(room=room)
+        ctx.userdata.combat_state = _make_combat_state(player_hp=0, player_fallen=True)
+
+        response = json.loads(await _request_death_save_impl(ctx, mutations=mock_mutations))
+
+        assert response["dramatic"] is True
+        assert response["context"] == "death_save"
+        calls = [json.loads(c[0][0]) for c in room.local_participant.publish_data.call_args_list]
+        dice = next(c for c in calls if c.get("type") == E.DICE_ROLL)
+        assert dice["dramatic"] is True
+        assert dice["context"] == "death_save"

@@ -153,6 +153,39 @@ class TestCheckDiscover:
 
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_dice_roll_carries_dramatic_verdict(self, mock_event):
+        # Discover-mode DICE_ROLL must surface the resolver's dramatic verdict (nat-20),
+        # matching the skill/save emission contract (story-005/006). A nat-20 here is
+        # dramatic with context "natural_20"; the client overlay gates on the flag.
+        content, queries, mutations = _make_discover_mocks()
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(20)):
+            await _check_discover_impl(
+                ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
+            )
+        dice_payload = next(
+            call.args[2] for call in mock_event.call_args_list if call.args[2].get("roll_type") == "skill_check"
+        )
+        assert dice_payload["dramatic"] is True
+        assert dice_payload["context"] == "natural_20"
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_routine_discover_roll_not_dramatic(self, mock_event):
+        content, queries, mutations = _make_discover_mocks()
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(15)):
+            await _check_discover_impl(
+                ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
+            )
+        dice_payload = next(
+            call.args[2] for call in mock_event.call_args_list if call.args[2].get("roll_type") == "skill_check"
+        )
+        assert dice_payload["dramatic"] is False
+        assert dice_payload["context"] == ""
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
     async def test_failed_discovery(self, mock_event):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")

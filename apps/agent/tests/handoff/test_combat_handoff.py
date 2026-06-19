@@ -4,8 +4,8 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from handoff._helpers import make_context as _make_context
 from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, make_db_mod
+from sample_fixtures import make_context as _make_context
 
 from base_agent import BaseGameAgent
 from exploration_agent import ExplorationAgent
@@ -26,7 +26,7 @@ class TestStartCombatHandoff:
         mock_content = MagicMock()
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
-        ctx = _make_context()
+        ctx = _make_context(location_id="greyvale_south_road")
         raw = await _start_combat_impl(
             ctx,
             encounter_id="wolf_pack",

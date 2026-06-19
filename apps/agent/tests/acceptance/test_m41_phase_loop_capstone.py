@@ -29,7 +29,7 @@ import combat_phase
 import combat_turn
 import db
 import db_mutations
-from check_resolution import AttackResult
+from check_resolution_attack import AttackResult
 
 _WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
 

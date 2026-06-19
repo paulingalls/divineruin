@@ -99,6 +99,8 @@ async def _request_death_save_impl(
             "critical_failure": result.critical_failure,
             "total_successes": result.total_successes,
             "total_failures": result.total_failures,
+            "dramatic": result.dramatic,
+            "context": result.context,
         },
         event_bus=session.event_bus,
     )
@@ -120,6 +122,8 @@ async def _request_death_save_impl(
         "dead": result.dead,
         "revived": result.critical_success,
         "narrative_hint": result.narrative_hint,
+        "dramatic": result.dramatic,
+        "context": result.context,
     }
     logger.info("request_death_save result: d%d, %s", result.roll, outcome)
     return json.dumps(response)
