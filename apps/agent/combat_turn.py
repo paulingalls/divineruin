@@ -432,10 +432,12 @@ async def _resolve_one_packet(
         summary["concentration_broken"] = next(
             (s["concentration_broken"] for s in attack_summaries if s["concentration_broken"]), None
         )
-        # Any swing being dramatic makes the declaration dramatic; the swings share one
-        # attack roll's verdict, so the first swing's context is canonical (story-004).
+        # Any swing being dramatic makes the declaration dramatic. Each swing rolls its
+        # own d20 and runs its own killing-blow check, so a later swing can be dramatic
+        # while the first is routine — take the FIRST dramatic swing's context so the
+        # aggregated dramatic flag and its reason label never disagree (story-004).
         summary["dramatic"] = any(s["dramatic"] for s in attack_summaries)
-        summary["context"] = attack_summaries[0]["context"]
+        summary["context"] = next((s["context"] for s in attack_summaries if s["dramatic"]), "")
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = True
     return _attach_riders(summary, attacker, decl)

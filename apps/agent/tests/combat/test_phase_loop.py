@@ -281,6 +281,92 @@ class TestResolvePhaseDramatic:
             assert "dramatic" in p and isinstance(p["dramatic"], bool)
             assert "context" in p
 
+    @pytest.mark.asyncio
+    async def test_multi_swing_later_kill_reports_the_dramatic_swings_context(self):
+        # Regression: an extra_attack expands to two swings; the FIRST is routine
+        # (not dramatic) and the SECOND lands the killing blow (intrinsic dramatic,
+        # context="killing_blow"). The aggregated summary must report dramatic=True
+        # AND the killing swing's context — not the first swing's "" — or the DM
+        # narrates a dramatic moment with no reason label (code-review finding 1).
+        cs = _resolution_state(player_hp=25, enemy_hp=8)
+        # Two enemies standing so neither swing earns the last_enemy promotion, and a
+        # prior attack already resolved so neither earns first_attack — the only
+        # dramatic source is the second swing's intrinsic killing blow.
+        cs.first_attack_resolved = True
+        cs.participants.append(
+            CombatParticipant(
+                id="goblin_scout_2",
+                name="Goblin Scout",
+                type="enemy",
+                initiative=10,
+                hp_current=8,
+                hp_max=8,
+                ac=13,
+                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": ["light"]}],
+                xp_value=50,
+            )
+        )
+        cs.initiative_order = ["player_1", "goblin_scout_1", "goblin_scout_2"]
+        player = cs.get_participant("player_1")
+        assert player is not None
+        player.enhancers = ["extra_attack"]  # two swings from one ATTACK declaration
+        cs.pending_declarations = {
+            "player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_scout_1"},
+        }
+
+        # Stateful resolver: first swing deals 5 (8 -> 3, survives, routine); second swing
+        # deals 5 again (3 -> 0, the intrinsic killing blow fires dramatic="killing_blow").
+        swings = iter(
+            [
+                AttackResult(
+                    hit=True,
+                    roll=12,
+                    attack_modifier=3,
+                    attack_total=15,
+                    target_ac=13,
+                    damage=5,
+                    damage_type="slashing",
+                    critical_success=False,
+                    critical_failure=False,
+                    target_hp_remaining=3,
+                    target_killed=False,
+                    narrative_hint="A solid hit.",
+                ),
+                AttackResult(
+                    hit=True,
+                    roll=14,
+                    attack_modifier=3,
+                    attack_total=17,
+                    target_ac=13,
+                    damage=5,
+                    damage_type="slashing",
+                    critical_success=False,
+                    critical_failure=False,
+                    target_hp_remaining=0,
+                    target_killed=True,
+                    narrative_hint="The finishing blow.",
+                    dramatic=True,
+                    context="killing_blow",
+                ),
+            ]
+        )
+        resolver = MagicMock()
+        resolver.resolve_attack = MagicMock(side_effect=lambda *a, **k: next(swings))
+
+        deps = _resolve_deps()
+        deps["resolver"] = resolver
+        ctx = make_context()
+        ctx.userdata.combat_state = cs
+
+        raw = await _resolve_phase_impl(ctx, **deps)
+        assert isinstance(raw, str)  # one enemy still stands -> non-ending phase
+        result = json.loads(raw)
+
+        player_packet = next(p for p in result["packets"] if p["actor_id"] == "player_1")
+        assert len(player_packet["attacks"]) == 2
+        assert player_packet["dramatic"] is True
+        assert player_packet["context"] == "killing_blow"
+
 
 class TestResolvePhaseEnding:
     @pytest.mark.asyncio
