@@ -171,6 +171,10 @@ export function handleGameEvent(event: DataChannelEvent): void {
           success: event.success,
           rollType: event.roll_type,
           narrative: event.narrative,
+          // Forward the agent's dramatic flag (boolean | undefined) so the overlay can
+          // gate its tumble-and-reveal on it (story-006). Absent until stories 004/005
+          // emit it, so the overlay stays suppressed in the interim — accepted scarcity.
+          dramatic: event.dramatic,
         },
         DICE_ROLL_TTL_MS,
       );

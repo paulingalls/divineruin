@@ -12,6 +12,7 @@ import Animated, {
 import { ThemedText } from "@/components/themed-text";
 import { BrandColors, FontStyles, Radius } from "@/constants/theme";
 import { hapticSuccess, hapticCritical } from "@/audio/haptics";
+import { isDramaticDicePayload } from "@/utils/dice-overlay-dramatic";
 
 /** Duration of the dice tumble spin in ms. */
 const TUMBLE_DURATION_MS = 1500;
@@ -30,9 +31,17 @@ export function DiceRollOverlay({ payload }: DiceRollOverlayProps) {
   const narrative = typeof payload.narrative === "string" ? payload.narrative : null;
   const rollType = typeof payload.rollType === "string" ? payload.rollType : null;
 
-  const scale = useSharedValue(0.8);
+  // Gate the tumble-and-reveal on the agent's dramatic flag (story-006, M4.5). Scarcity
+  // is the point: only an explicitly dramatic roll earns the full animation. A non-dramatic
+  // roll mounts already-revealed — the result number, modifier, and narrative show with no
+  // flicker, spin, or scale spring.
+  const dramatic = isDramaticDicePayload(payload);
+
+  const scale = useSharedValue(dramatic ? 0.8 : 1);
   const rotation = useSharedValue(0);
-  const [displayNumber, setDisplayNumber] = useState(() => Math.floor(Math.random() * 20) + 1);
+  const [displayNumber, setDisplayNumber] = useState(() =>
+    dramatic ? Math.floor(Math.random() * 20) + 1 : total,
+  );
   const revealed = displayNumber === total;
   const flickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -44,6 +53,9 @@ export function DiceRollOverlay({ payload }: DiceRollOverlayProps) {
   }, []);
 
   useEffect(() => {
+    // Non-dramatic rolls skip the tumble-and-reveal entirely — already revealed at mount.
+    if (!dramatic) return;
+
     // Flicker random numbers during tumble
     flickerRef.current = setInterval(() => {
       setDisplayNumber(Math.floor(Math.random() * 20) + 1);
