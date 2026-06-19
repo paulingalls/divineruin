@@ -79,7 +79,7 @@ class TestCompanionCombatProfile:
         # Debt 785f7399 / story-008: Lira's ranged INT Arcane Bolt must resolve its hit on INT, not
         # the ranged-default DEX. The translated action carries governing_attribute=intelligence,
         # and attack_modifier honors it — observable because Lira's INT and DEX modifiers differ.
-        from check_resolution import attack_modifier
+        from check_resolution_attack import attack_modifier
         from rules_engine import attribute_modifier, proficiency_bonus
 
         comp, _ = await _run_combat_with_companion(CompanionState(id="companion_lira", name="Lira"))

@@ -16,7 +16,7 @@ import pytest
 from test_content_validation import _load_json
 from test_rules_core import SAMPLE_PLAYER
 
-from check_resolution import resolve_attack
+from check_resolution_attack import resolve_attack
 from creation_classes import CLASSES
 from dice import roll as dice_roll
 from rules_engine import attribute_modifier

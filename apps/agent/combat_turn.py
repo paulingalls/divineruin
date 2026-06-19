@@ -10,7 +10,7 @@ import logging
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
-import check_resolution
+import check_resolution_attack
 import combat_enhancers
 import combat_phase
 import combat_resolution
@@ -108,7 +108,7 @@ async def _resolve_phase_impl(
     *,
     mutations=db_mutations,
     queries=db_queries,
-    resolver=check_resolution,
+    resolver=check_resolution_attack,
     concentration_break_mod=concentration_break,
     resonance_mutations=db_mutations_resonance,
     resonance_events_mod=resonance_events,

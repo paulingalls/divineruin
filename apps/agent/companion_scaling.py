@@ -68,7 +68,7 @@ def companion_attacks_to_action_pool(profile: Companion) -> list[dict]:
     """Translate a companion's NARRATIVE attacks into the MECHANICAL action dicts combat consumes.
 
     content/companions.json stores attacks human-readably (damage "1d8+STR", hit "STR+prof",
-    type "melee"/"ranged"). The deterministic resolver (check_resolution.resolve_attack) instead
+    type "melee"/"ranged"). The deterministic resolver (check_resolution_attack.resolve_attack) instead
     expects plain dice notation and supplies the attribute/proficiency bonus itself from the
     attacker's attributes. This builds the {name, damage, damage_type, properties,
     governing_attribute[, ranged]} dicts the resolver + combat_turn.py consume.

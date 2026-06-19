@@ -5,7 +5,7 @@ Zero IO, zero async — the deterministic heart of phase-based combat, mirroring
 per call: declaration -> resolution -> narration -> wrap -> (loop to declaration |
 combat_end).
 
-Mechanical attack resolution (``check_resolution.resolve_attack``) and side-effect
+Mechanical attack resolution (``check_resolution_attack.resolve_attack``) and side-effect
 application (Resonance decay, death-save rolls, DB persistence) live in orchestration
 (story-003); this module only computes beat transitions, ordered resolution packets,
 and the wrap beat's effect signals.

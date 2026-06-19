@@ -9,7 +9,7 @@ from livekit.agents.llm import ToolError
 if TYPE_CHECKING:
     from spell_casting import CastResult
 
-import check_resolution
+import check_resolution_attack
 import combat_enhancers
 import combat_resolution
 import concentration_break
@@ -239,7 +239,7 @@ async def _resolve_attack_packet(
     is_first_attack_of_combat: bool = False,
     mutations=db_mutations,
     queries=db_queries,
-    resolver=check_resolution,
+    resolver=check_resolution_attack,
     concentration_break_mod=concentration_break,
     conn=None,
     sink=None,
