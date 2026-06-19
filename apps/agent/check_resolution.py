@@ -7,6 +7,7 @@ import random
 from dataclasses import dataclass
 
 from dice import roll as dice_roll
+from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import (
     ADVANCEMENT_THRESHOLDS,
     SKILL_CAPABILITIES,
@@ -36,6 +37,11 @@ class CheckResult:
     critical_success: bool
     critical_failure: bool
     narrative_hint: str
+    # Intrinsic dramatic-dice verdict (M4.5): nat-20/nat-1 only here, since a
+    # check has no roll_type. Defaulted + appended so encounter-context signals
+    # (story-004 emission sites) stay additive. See dramatic.py.
+    dramatic: bool = False
+    context: str = ""
 
 
 @dataclass(frozen=True)
@@ -67,6 +73,12 @@ class AttackResult:
     # constructors (tests); the resolver always sets them explicitly.
     critical_success: bool = False
     critical_failure: bool = False
+    # Intrinsic dramatic-dice verdict (M4.5): nat-20/nat-1 or killing_blow. The
+    # killing-blow inputs are gated on `hit` in resolve_attack, so this label
+    # equals target_killed by construction. Defaulted + appended so story-004
+    # encounter-context signals stay additive. See dramatic.py.
+    dramatic: bool = False
+    context: str = ""
 
 
 @dataclass(frozen=True)
@@ -85,6 +97,11 @@ class SavingThrowResult:
     # existing direct constructors; resolve_saving_throw always sets them explicitly.
     critical_success: bool = False
     critical_failure: bool = False
+    # Intrinsic dramatic-dice verdict (M4.5): nat-20/nat-1 only — a generic save
+    # passes no roll_type, so it is dramatic only on a crit. Defaulted + appended
+    # so story-004 encounter-context signals stay additive. See dramatic.py.
+    dramatic: bool = False
+    context: str = ""
 
 
 @dataclass(frozen=True)
@@ -206,6 +223,9 @@ def resolve_check(
     total_mod = attr_mod + prof + tier_bonus
 
     if _check_auto_fail(dc, skill_tier):
+        # raw_die=0 → evaluator returns (False, ""); a check has no roll_type,
+        # so only nat-20/nat-1 could ever fire here anyway.
+        verdict = evaluate_dramatic_context(DramaticContext(raw_die=0))
         return CheckResult(
             roll=0,
             modifier=total_mod,
@@ -217,9 +237,12 @@ def resolve_check(
             critical_success=False,
             critical_failure=False,
             narrative_hint="This task is beyond your current ability",
+            dramatic=verdict.dramatic,
+            context=verdict.context,
         )
 
     core = _roll_d20_check(total_mod, dc, rng=rng)
+    verdict = evaluate_dramatic_context(DramaticContext(raw_die=core.roll))
 
     return CheckResult(
         roll=core.roll,
@@ -232,6 +255,8 @@ def resolve_check(
         critical_success=core.critical_success,
         critical_failure=core.critical_failure,
         narrative_hint=core.narrative_hint,
+        dramatic=verdict.dramatic,
+        context=verdict.context,
     )
 
 
@@ -363,6 +388,19 @@ def resolve_attack(
 
     new_hp = max(0, target_hp - damage)
 
+    # Killing-blow inputs are gated on `hit`: pass pre-hit HP + damage only when
+    # the attack landed, else None. This makes the evaluator's killing_blow label
+    # equal target_killed BY CONSTRUCTION (both derive from hit + pre-hit-HP +
+    # damage), so they can never diverge — the evaluator can't fire on a miss.
+    verdict = evaluate_dramatic_context(
+        DramaticContext(
+            raw_die=d20,
+            roll_type="attack",
+            target_hp_remaining=target_hp if hit else None,
+            damage_potential=damage if hit else None,
+        )
+    )
+
     return AttackResult(
         hit=hit,
         roll=d20,
@@ -376,6 +414,8 @@ def resolve_attack(
         target_hp_remaining=new_hp,
         target_killed=new_hp == 0 and hit,
         narrative_hint=core.narrative_hint,
+        dramatic=verdict.dramatic,
+        context=verdict.context,
     )
 
 
@@ -404,6 +444,8 @@ def resolve_saving_throw(
         mod += proficiency_bonus(level)
 
     core = _roll_d20_check(mod, dc, rng=rng)
+    # No roll_type passed: a generic save is dramatic ONLY on nat-1/nat-20.
+    verdict = evaluate_dramatic_context(DramaticContext(raw_die=core.roll))
 
     return SavingThrowResult(
         save_type=save_lower,
@@ -417,6 +459,8 @@ def resolve_saving_throw(
         critical_failure=core.critical_failure,
         effect_applied=None if core.success else effect_on_fail,
         narrative_hint=core.narrative_hint,
+        dramatic=verdict.dramatic,
+        context=verdict.context,
     )
 
 
