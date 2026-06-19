@@ -133,6 +133,8 @@ async def _check_skill_impl(
             "roll": result.roll,
             "total": result.total,
             "success": result.success,
+            "dramatic": result.dramatic,
+            "context": result.context,
         },
         event_bus=session.event_bus,
     )
@@ -214,6 +216,8 @@ async def _check_save_impl(
             "roll": result.roll,
             "total": result.total,
             "success": result.success,
+            "dramatic": result.dramatic,
+            "context": result.context,
         },
         event_bus=session.event_bus,
     )

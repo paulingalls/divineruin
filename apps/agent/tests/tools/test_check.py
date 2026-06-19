@@ -14,7 +14,7 @@ from livekit.agents.llm import ToolError
 
 import event_types as E
 from check_tools import _check_dice_impl, _check_impl, _check_save_impl, _check_skill_impl
-from session_data import SessionData
+from tools._helpers import _make_context, _make_mock_room
 
 SAMPLE_PLAYER = {
     "player_id": "player_1",
@@ -34,19 +34,6 @@ SAMPLE_PLAYER = {
     "hp": {"current": 25, "max": 25},
     "ac": 14,
 }
-
-
-def _make_context(room=None):
-    ctx = MagicMock()
-    ctx.userdata = SessionData(player_id="player_1", location_id="accord_guild_hall", room=room)
-    return ctx
-
-
-def _make_mock_room():
-    room = MagicMock()
-    room.local_participant = MagicMock()
-    room.local_participant.publish_data = AsyncMock()
-    return room
 
 
 def _skill_mocks():

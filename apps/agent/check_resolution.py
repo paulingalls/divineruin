@@ -54,6 +54,12 @@ class SkillCheckResult:
     success: bool
     margin: int
     narrative_hint: str
+    # Intrinsic dramatic-dice verdict (M4.5): nat-20/nat-1 only — an out-of-combat
+    # check has no roll_type / encounter context, so only crits fire. Threaded from
+    # the underlying CheckResult so the skill-check DICE_ROLL packet (story-005)
+    # carries the same verdict as every other roll packet. See dramatic.py.
+    dramatic: bool = False
+    context: str = ""
 
 
 @dataclass(frozen=True)
@@ -291,6 +297,8 @@ def _resolve_skill_check_impl(
         success=check.success,
         margin=check.margin,
         narrative_hint=check.narrative_hint,
+        dramatic=check.dramatic,
+        context=check.context,
     )
 
 
