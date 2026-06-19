@@ -41,6 +41,10 @@ def level_up_payload(room):
 def make_context(player_id="player_1", location_id="accord_guild_hall", room=None):
     ctx = MagicMock()
     ctx.userdata = SessionData(player_id=player_id, location_id=location_id, room=room)
+    # No agent is running in a bare test context; keep current_agent falsy so code that
+    # resolves `getattr(session.current_agent, "_agent_type", DEFAULT)` hits the default
+    # instead of an auto-vivified MagicMock attribute (e.g. combat_init pre_combat_agent_type).
+    ctx.session.current_agent = None
     return ctx
 
 

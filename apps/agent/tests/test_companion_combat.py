@@ -6,9 +6,9 @@ by relationship (spec L871, the negative invariant)."""
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from handoff._helpers import make_context as _make_context
 from livekit.agents.llm import ToolError
 from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER
+from sample_fixtures import make_context as _make_context
 
 from companion_profiles import get_companion_profile
 from companion_scaling import (
@@ -35,7 +35,7 @@ async def _run_combat_with_companion(companion: CompanionState):
     from combat_init import _start_combat_impl
 
     mutations, queries, content = _mocks()
-    ctx = _make_context()
+    ctx = _make_context(location_id="greyvale_south_road")
     ctx.userdata.companion = companion
     await _start_combat_impl(
         ctx,
