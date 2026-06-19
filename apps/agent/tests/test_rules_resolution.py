@@ -160,6 +160,46 @@ class TestResolveCheck:
         assert isinstance(result.narrative_hint, str)
         assert len(result.narrative_hint) > 0
 
+    def test_nat_20_is_dramatic(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 20:
+                rng = random.Random(seed)
+                result = resolve_check(8, 1, "untrained", 12, rng=rng)
+                assert result.dramatic is True
+                assert result.context == "natural_20"
+                return
+        pytest.fail("Could not find seed for nat 20")
+
+    def test_nat_1_is_dramatic(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 1:
+                rng = random.Random(seed)
+                result = resolve_check(20, 14, "master", 5, rng=rng)
+                assert result.dramatic is True
+                assert result.context == "natural_1"
+                return
+        pytest.fail("Could not find seed for nat 1")
+
+    def test_ordinary_roll_not_dramatic(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if 2 <= rng.randint(1, 20) <= 19:
+                rng = random.Random(seed)
+                result = resolve_check(14, 1, "trained", 12, rng=rng)
+                assert result.dramatic is False
+                assert result.context == ""
+                return
+        pytest.fail("Could not find non-crit seed")
+
+    def test_auto_fail_not_dramatic(self):
+        # auto_fail early-exit has roll=0 → evaluator returns (False, "").
+        result = resolve_check(10, 1, "untrained", 24, rng=random.Random(42))
+        assert result.auto_fail is True
+        assert result.dramatic is False
+        assert result.context == ""
+
     def test_auto_fail_narrative(self):
         result = resolve_check(10, 1, "untrained", 24, rng=random.Random(42))
         assert result.auto_fail is True
@@ -262,6 +302,58 @@ class TestResolveAttack:
                 assert result.critical_failure is False
                 return
         pytest.fail("Could not find non-crit seed")
+
+    def test_nat_20_is_dramatic(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 20:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 50, 100, rng=rng)
+                assert result.dramatic is True
+                assert result.context == "natural_20"
+                return
+        pytest.fail("Could not find seed for nat 20")
+
+    def test_killing_blow_is_dramatic(self):
+        # Non-crit hit that drops the target to 0 → killing_blow.
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if 2 <= rng.randint(1, 20) <= 19:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 1, rng=rng)
+                if result.hit:
+                    assert result.target_killed is True
+                    assert result.dramatic is True
+                    assert result.context == "killing_blow"
+                    return
+        pytest.fail("Could not find non-crit hit seed")
+
+    def test_routine_attack_not_dramatic(self):
+        # Non-crit hit that does not kill → not dramatic.
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if 2 <= rng.randint(1, 20) <= 19:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 100, rng=rng)
+                if result.hit:
+                    assert result.target_killed is False
+                    assert result.dramatic is False
+                    assert result.context == ""
+                    return
+        pytest.fail("Could not find non-crit hit seed")
+
+    def test_miss_not_dramatic(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 20 and d20 + 4 < 18:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 18, 1, rng=rng)
+                assert result.hit is False
+                assert result.dramatic is False
+                assert result.context == ""
+                return
+        pytest.fail("Could not find miss seed")
 
 
 # --- resolve_skill_check ---
@@ -470,6 +562,40 @@ class TestResolveSavingThrow:
         result = resolve_saving_throw(SAMPLE_PLAYER, "charisma", 10, "effect", rng=rng)
         # CHA -1, no prof
         assert result.modifier == -1
+
+    def test_nat_20_is_dramatic(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 20:
+                rng = random.Random(seed)
+                result = resolve_saving_throw(SAMPLE_PLAYER, "charisma", 25, "stunned", rng=rng)
+                assert result.dramatic is True
+                assert result.context == "natural_20"
+                return
+        pytest.fail("Could not find seed for nat 20")
+
+    def test_nat_1_is_dramatic(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 1:
+                rng = random.Random(seed)
+                result = resolve_saving_throw(SAMPLE_PLAYER, "strength", 1, "frightened", rng=rng)
+                assert result.dramatic is True
+                assert result.context == "natural_1"
+                return
+        pytest.fail("Could not find seed for nat 1")
+
+    def test_ordinary_save_not_dramatic(self):
+        # A generic save is dramatic ONLY on nat 1/20 (no roll_type passed).
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if 2 <= rng.randint(1, 20) <= 19:
+                rng = random.Random(seed)
+                result = resolve_saving_throw(SAMPLE_PLAYER, "strength", 13, "knocked prone", rng=rng)
+                assert result.dramatic is False
+                assert result.context == ""
+                return
+        pytest.fail("Could not find non-crit seed")
 
 
 # --- _roll_d20_check primitive (story-003 chokepoint extraction) ---
