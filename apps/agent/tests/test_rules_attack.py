@@ -135,6 +135,7 @@ class TestResolveAttack:
                 rng = random.Random(seed)
                 result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 100, rng=rng)
                 if result.hit:
+                    assert result.target_killed is False
                     assert result.dramatic is False
                     assert result.context == ""
                     return
