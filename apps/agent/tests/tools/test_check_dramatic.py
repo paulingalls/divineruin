@@ -8,50 +8,13 @@ story-004 combat-emission contract.
 
 import json
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 import check_resolution
 import event_types as E
 from check_tools import _check_dice_impl, _check_save_impl, _check_skill_impl
-from tools._helpers import _make_context, _make_mock_room
-
-SAMPLE_PLAYER = {
-    "player_id": "player_1",
-    "name": "Kael",
-    "class": "warrior",
-    "level": 1,
-    "attributes": {
-        "strength": 14,
-        "dexterity": 12,
-        "constitution": 13,
-        "intelligence": 10,
-        "wisdom": 11,
-        "charisma": 8,
-    },
-    "proficiencies": ["athletics", "stealth", "perception"],
-    "saving_throw_proficiencies": ["strength", "constitution"],
-    "hp": {"current": 25, "max": 25},
-    "ac": 14,
-}
-
-
-def _skill_mocks():
-    queries = MagicMock()
-    queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
-    queries.get_single_skill_advancement = AsyncMock(
-        return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False},
-    )
-    mutations = MagicMock()
-    mutations.update_skill_advancement = AsyncMock()
-    return queries, mutations
-
-
-def _save_mocks():
-    queries = MagicMock()
-    queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
-    return queries
+from tools._helpers import _make_context, _make_mock_room, _save_mocks, _skill_mocks
 
 
 @pytest.fixture

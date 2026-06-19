@@ -19,6 +19,45 @@ def _make_mock_room():
     return room
 
 
+SAMPLE_PLAYER = {
+    "player_id": "player_1",
+    "name": "Kael",
+    "class": "warrior",
+    "level": 1,
+    "attributes": {
+        "strength": 14,
+        "dexterity": 12,
+        "constitution": 13,
+        "intelligence": 10,
+        "wisdom": 11,
+        "charisma": 8,
+    },
+    "proficiencies": ["athletics", "stealth", "perception"],
+    "saving_throw_proficiencies": ["strength", "constitution"],
+    "hp": {"current": 25, "max": 25},
+    "ac": 14,
+}
+
+
+def _skill_mocks():
+    """Mock queries/mutations for a skill check: untrained, advancement-capable."""
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+    queries.get_single_skill_advancement = AsyncMock(
+        return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False},
+    )
+    mutations = MagicMock()
+    mutations.update_skill_advancement = AsyncMock()
+    return queries, mutations
+
+
+def _save_mocks():
+    """Mock queries for a saving throw (no mutation seam needed)."""
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+    return queries
+
+
 SAMPLE_LOCATION = {
     "id": "accord_guild_hall",
     "name": "Guild Hall",
