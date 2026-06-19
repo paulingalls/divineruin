@@ -122,6 +122,8 @@ async def _check_discover_impl(
             "roll": result.roll,
             "total": result.total,
             "success": result.success,
+            "dramatic": result.dramatic,
+            "context": result.context,
         },
         event_bus=session.event_bus,
     )
