@@ -1,7 +1,7 @@
 """Shared helpers for combat tool modules."""
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, cast
 
 from livekit.agents.llm import ToolError
@@ -20,6 +20,7 @@ import durability
 import event_types as E
 import spell_casting
 from combat_events import EventSink, emit_or_publish
+from dramatic import DramaticContext, evaluate_dramatic_context
 from session_data import CombatParticipant, CombatState, SessionData
 from tool_support import (
     SOUND_ATTACK_CRITICAL,
@@ -234,6 +235,8 @@ async def _resolve_attack_packet(
     *,
     target_ac_bonus: int = 0,
     shield_reaction: str | None = None,
+    enemies_remaining: int | None = None,
+    is_first_attack_of_combat: bool = False,
     mutations=db_mutations,
     queries=db_queries,
     resolver=check_resolution,
@@ -270,6 +273,22 @@ async def _resolve_attack_packet(
         effective_ac,
         target.hp_current,
     )
+
+    # Dramatic-dice (M4.5, story-004): the resolver's intrinsic verdict (nat-20/nat-1/
+    # killing-blow) is the floor. If it didn't fire, PROMOTE on the encounter-context
+    # signals only the caller can see — the last enemy standing, or the opening strike.
+    # The caller supplies these (combat_turn counts non-fallen enemies + tracks first
+    # attack); never downgrade an already-dramatic intrinsic verdict.
+    if not attack_result.dramatic:
+        verdict = evaluate_dramatic_context(
+            DramaticContext(
+                roll_type="attack",
+                enemies_remaining=enemies_remaining,
+                is_first_attack_of_combat=is_first_attack_of_combat,
+            )
+        )
+        if verdict.dramatic:
+            attack_result = replace(attack_result, dramatic=True, context=verdict.context)
 
     # Update target HP
     target.hp_current = attack_result.target_hp_remaining
@@ -321,6 +340,8 @@ async def _resolve_attack_packet(
             "roll": attack_result.roll,
             "damage": attack_result.damage,
             "critical": attack_result.critical_success,
+            "dramatic": attack_result.dramatic,
+            "context": attack_result.context,
         },
         event_bus=session.event_bus,
     )
@@ -364,6 +385,8 @@ async def _resolve_attack_packet(
         "narrative_hint": attack_result.narrative_hint,
         "durability": durability_results,
         "concentration_broken": concentration_broken,
+        "dramatic": attack_result.dramatic,
+        "context": attack_result.context,
     }
     logger.info(
         "resolve_attack_packet result: %s → %s, %s, damage=%d, hp_status=%s",

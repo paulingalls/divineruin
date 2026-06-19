@@ -12,14 +12,18 @@ import pytest
 from combat._helpers import _make_combat_state
 from sample_fixtures import make_context, make_mock_room
 
+import event_types as E
 from check_resolution import AttackResult
+from combat_events import EventSink
 from combat_support import _resolve_attack_packet
 from session_data import CombatParticipant
 
 
-def _fixed_resolver(*, damage: int, hp_remaining: int):
+def _fixed_resolver(*, damage: int, hp_remaining: int, dramatic: bool = False, context: str = ""):
     """A resolver whose resolve_attack returns a fixed hit — pins the damage the
-    concentration break-check sees and whether the hit drops the target to 0."""
+    concentration break-check sees and whether the hit drops the target to 0. The
+    intrinsic dramatic verdict (story-002) is injectable so emission tests can drive
+    both the dramatic and non-dramatic paths."""
     result = AttackResult(
         hit=True,
         roll=15,
@@ -33,10 +37,20 @@ def _fixed_resolver(*, damage: int, hp_remaining: int):
         target_hp_remaining=hp_remaining,
         target_killed=hp_remaining <= 0,
         narrative_hint="The blade bites deep.",
+        dramatic=dramatic,
+        context=context,
     )
     resolver = MagicMock()
     resolver.resolve_attack = MagicMock(return_value=result)
     return resolver
+
+
+def _dice_payload(sink: EventSink) -> dict:
+    """The DICE_ROLL event payload buffered by the sink for the attack (story-004)."""
+    for ev in sink.captured:
+        if ev.event_type == E.DICE_ROLL:
+            return ev.payload
+    raise AssertionError("no DICE_ROLL event was buffered")
 
 
 def _break_mod(return_value):
@@ -251,6 +265,130 @@ class TestResolveAttackPacket:
         )
 
         assert response["concentration_broken"] is None
+
+
+class TestDramaticEmission:
+    """story-004: the attack DICE_ROLL event payload and the returned summary surface the
+    dramatic verdict. The resolver's intrinsic verdict (nat-20/nat-1/killing-blow) is the
+    floor; the emission site PROMOTES a non-dramatic attack on the encounter-context signals
+    last_enemy + first_attack, never downgrading an intrinsic-dramatic one."""
+
+    @pytest.mark.asyncio
+    async def test_intrinsic_dramatic_reaches_payload_and_summary(self):
+        sink = EventSink()
+        ctx = make_context()
+        cs = _make_combat_state(player_hp=25)
+        attacker, target, action = _attacker_target_action(cs)
+
+        response = await _resolve_attack_packet(
+            ctx.userdata,
+            attacker,
+            action,
+            target,
+            mutations=_make_mocks(),
+            queries=_make_queries(),
+            resolver=_fixed_resolver(damage=5, hp_remaining=20, dramatic=True, context="natural_20"),
+            sink=sink,
+        )
+
+        assert response["dramatic"] is True
+        assert response["context"] == "natural_20"
+        payload = _dice_payload(sink)
+        assert payload["dramatic"] is True
+        assert payload["context"] == "natural_20"
+
+    @pytest.mark.asyncio
+    async def test_routine_attack_is_not_dramatic(self):
+        sink = EventSink()
+        ctx = make_context()
+        cs = _make_combat_state(player_hp=25)
+        attacker, target, action = _attacker_target_action(cs)
+
+        response = await _resolve_attack_packet(
+            ctx.userdata,
+            attacker,
+            action,
+            target,
+            mutations=_make_mocks(),
+            queries=_make_queries(),
+            resolver=_fixed_resolver(damage=5, hp_remaining=20),
+            enemies_remaining=3,
+            sink=sink,
+        )
+
+        assert response["dramatic"] is False
+        assert response["context"] == ""
+        assert _dice_payload(sink)["dramatic"] is False
+
+    @pytest.mark.asyncio
+    async def test_last_enemy_promotes_a_routine_attack(self):
+        sink = EventSink()
+        ctx = make_context()
+        cs = _make_combat_state(player_hp=25)
+        attacker, target, action = _attacker_target_action(cs)
+
+        response = await _resolve_attack_packet(
+            ctx.userdata,
+            attacker,
+            action,
+            target,
+            mutations=_make_mocks(),
+            queries=_make_queries(),
+            resolver=_fixed_resolver(damage=5, hp_remaining=20),
+            enemies_remaining=1,
+            sink=sink,
+        )
+
+        assert response["dramatic"] is True
+        assert response["context"] == "last_enemy"
+        assert _dice_payload(sink)["context"] == "last_enemy"
+
+    @pytest.mark.asyncio
+    async def test_first_attack_promotes_a_routine_attack(self):
+        sink = EventSink()
+        ctx = make_context()
+        cs = _make_combat_state(player_hp=25)
+        attacker, target, action = _attacker_target_action(cs)
+
+        response = await _resolve_attack_packet(
+            ctx.userdata,
+            attacker,
+            action,
+            target,
+            mutations=_make_mocks(),
+            queries=_make_queries(),
+            resolver=_fixed_resolver(damage=5, hp_remaining=20),
+            enemies_remaining=3,
+            is_first_attack_of_combat=True,
+            sink=sink,
+        )
+
+        assert response["dramatic"] is True
+        assert response["context"] == "first_attack"
+
+    @pytest.mark.asyncio
+    async def test_intrinsic_verdict_wins_over_encounter_context(self):
+        # A nat-20 that is ALSO the last enemy keeps the higher-severity intrinsic label —
+        # the emission promotes only when the intrinsic verdict was not already dramatic.
+        sink = EventSink()
+        ctx = make_context()
+        cs = _make_combat_state(player_hp=25)
+        attacker, target, action = _attacker_target_action(cs)
+
+        response = await _resolve_attack_packet(
+            ctx.userdata,
+            attacker,
+            action,
+            target,
+            mutations=_make_mocks(),
+            queries=_make_queries(),
+            resolver=_fixed_resolver(damage=5, hp_remaining=20, dramatic=True, context="natural_20"),
+            enemies_remaining=1,
+            is_first_attack_of_combat=True,
+            sink=sink,
+        )
+
+        assert response["context"] == "natural_20"
 
 
 class TestResolveAbilityPacket:

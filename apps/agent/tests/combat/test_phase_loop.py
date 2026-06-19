@@ -242,6 +242,46 @@ class TestResolvePhaseNonEnding:
             await _resolve_phase_impl(ctx, **deps)
 
 
+class TestResolvePhaseDramatic:
+    """story-004: the phase loop surfaces the M4.5 dramatic verdict on each packet summary,
+    layering the encounter-context signals (first_attack, last_enemy) the per-attack resolver
+    can't see. _damage_resolver returns a non-dramatic intrinsic verdict, so a dramatic packet
+    here is purely the emission-site promotion."""
+
+    @pytest.mark.asyncio
+    async def test_opening_strike_is_dramatic_and_flips_the_flag(self):
+        deps = _resolve_deps(damage=3)
+        ctx = make_context()
+        ctx.userdata.combat_state = _resolution_state(player_hp=25, enemy_hp=7)
+        assert ctx.userdata.combat_state.first_attack_resolved is False
+
+        raw = await _resolve_phase_impl(ctx, **deps)
+        assert isinstance(raw, str)  # non-ending phase loops back, returns JSON
+        result = json.loads(raw)
+
+        # The player's opening strike (first attack of the combat) earns the dice; first_attack
+        # outranks last_enemy in the catalog, so that's the surfaced label.
+        player_packet = next(p for p in result["packets"] if p["actor_id"] == "player_1")
+        assert player_packet["dramatic"] is True
+        assert player_packet["context"] == "first_attack"
+        # The combat-scoped flag flipped, so a later attack no longer earns the first-attack dice.
+        assert ctx.userdata.combat_state.first_attack_resolved is True
+
+    @pytest.mark.asyncio
+    async def test_every_packet_summary_carries_the_dramatic_keys(self):
+        deps = _resolve_deps(damage=3)
+        ctx = make_context()
+        ctx.userdata.combat_state = _resolution_state(player_hp=25, enemy_hp=7)
+
+        raw = await _resolve_phase_impl(ctx, **deps)
+        assert isinstance(raw, str)
+        result = json.loads(raw)
+
+        for p in result["packets"]:
+            assert "dramatic" in p and isinstance(p["dramatic"], bool)
+            assert "context" in p
+
+
 class TestResolvePhaseEnding:
     @pytest.mark.asyncio
     async def test_victory_ends_and_hands_off(self):
