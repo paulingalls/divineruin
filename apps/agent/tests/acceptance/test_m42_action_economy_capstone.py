@@ -35,7 +35,7 @@ import combat_init
 import combat_turn
 import db
 import db_mutations
-from check_resolution import attack_modifier, resolve_attack, weapon_attribute_modifier
+from check_resolution_attack import attack_modifier, resolve_attack, weapon_attribute_modifier
 from dice import roll as dice_roll
 
 # A 1d12 Heavy weapon (STR-governed: no finesse/ranged/override). combat_init synthesizes the

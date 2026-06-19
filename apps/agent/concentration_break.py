@@ -9,12 +9,12 @@ self-damage), so the break logic lives here ONCE rather than duplicated at each.
 The pure engine stays content-/IO-agnostic in concentration.py (check_concentration computes the
 DC, concentration_holds owns the keep/break decision incl. the incapacitation auto-fail); this
 module does the I/O the engine can't — the player fetch, the canonical CON save roll
-(check_resolution.resolve_saving_throw, proficiency-aware), and the persisted end. There is no
+(check_resolution_save.resolve_saving_throw, proficiency-aware), and the persisted end. There is no
 concentration HUD element, so the break is returned for the caller to surface in its DM-facing
 response rather than pushed as a (consumer-less) client event.
 """
 
-import check_resolution
+import check_resolution_save
 import concentration
 import db_mutations_concentration
 import db_queries
@@ -27,7 +27,7 @@ async def break_concentration_on_damage(
     incapacitated: bool,
     *,
     queries=db_queries,
-    resolver=check_resolution,
+    resolver=check_resolution_save,
     concentration_mutations=db_mutations_concentration,
     conn=None,
 ) -> str | None:

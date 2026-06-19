@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 from sample_fixtures import make_db_mod
 
-from check_resolution import AttackResult
+from check_resolution_attack import AttackResult
 from session_data import CombatParticipant, CombatState
 
 

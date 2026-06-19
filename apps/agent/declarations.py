@@ -8,7 +8,7 @@ shape. The pure-engine boundary raises ``ValueError``; the tool layer
 (``combat_turn``) translates it to ``ToolError`` (the established idiom).
 
 Resolution of each category lives downstream in orchestration: Attack resolves via
-``check_resolution.resolve_attack``; Defend's ``ac_bonus`` is applied as a phase-scoped
+``check_resolution_attack.resolve_attack``; Defend's ``ac_bonus`` is applied as a phase-scoped
 ``CombatState.ac_modifiers`` entry. ABILITY is modelled here as a first-class category
 (unified-declaration-path decision, supersedes cea4ff06ea31) but its in-combat
 resolution lands in story-007; INTERACT/MANEUVER/RETREAT are modelled now and resolved

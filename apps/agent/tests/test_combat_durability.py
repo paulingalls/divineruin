@@ -237,7 +237,7 @@ async def _run_enemy_turn(ctx, inventory, *, shield_reaction=None, hit=True):
     queries = AsyncMock()
     queries.get_player_inventory = AsyncMock(return_value=inventory)
     with (
-        patch.object(combat_support.check_resolution, "resolve_attack", return_value=_forced_attack(hit=hit)),
+        patch.object(combat_support.check_resolution_attack, "resolve_attack", return_value=_forced_attack(hit=hit)),
         patch.object(
             combat_support,
             "_accrue_durability",
