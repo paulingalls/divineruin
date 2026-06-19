@@ -268,8 +268,8 @@ class TestDMSession:
                 with patch("agent.deepgram.STT"):
                     with patch("agent.anthropic.LLM"):
                         with patch("agent._make_tts"):
-                            with patch("agent.silero.VAD.load"):
-                                with patch("agent.MultilingualModel"):
+                            with patch("agent.inference.VAD"):
+                                with patch("agent.inference.TurnDetector"):
                                     with patch(
                                         "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
                                     ):
@@ -318,8 +318,8 @@ class TestDMSession:
                 with patch("agent.deepgram.STT"):
                     with patch("agent.anthropic.LLM"):
                         with patch("agent._make_tts"):
-                            with patch("agent.silero.VAD.load"):
-                                with patch("agent.MultilingualModel"):
+                            with patch("agent.inference.VAD"):
+                                with patch("agent.inference.TurnDetector"):
                                     with patch(
                                         "agent.db_queries.get_player",
                                         new_callable=AsyncMock,
@@ -367,8 +367,8 @@ class TestDMSession:
                 with patch("agent.deepgram.STT"):
                     with patch("agent.anthropic.LLM"):
                         with patch("agent._make_tts"):
-                            with patch("agent.silero.VAD.load"):
-                                with patch("agent.MultilingualModel"):
+                            with patch("agent.inference.VAD"):
+                                with patch("agent.inference.TurnDetector"):
                                     with patch(
                                         "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
                                     ):
@@ -414,8 +414,8 @@ class TestDMSession:
                 with patch("agent.deepgram.STT"):
                     with patch("agent.anthropic.LLM"):
                         with patch("agent._make_tts"):
-                            with patch("agent.silero.VAD.load"):
-                                with patch("agent.MultilingualModel"):
+                            with patch("agent.inference.VAD"):
+                                with patch("agent.inference.TurnDetector"):
                                     with patch(
                                         "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
                                     ):
@@ -465,8 +465,8 @@ class TestDMSession:
                 with patch("agent.deepgram.STT"):
                     with patch("agent.anthropic.LLM"):
                         with patch("agent._make_tts"):
-                            with patch("agent.silero.VAD.load"):
-                                with patch("agent.MultilingualModel"):
+                            with patch("agent.inference.VAD"):
+                                with patch("agent.inference.TurnDetector"):
                                     with patch(
                                         "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
                                     ):
@@ -504,8 +504,8 @@ class TestDMSession:
                 with patch("agent.deepgram.STT"):
                     with patch("agent.anthropic.LLM"):
                         with patch("agent._make_tts"):
-                            with patch("agent.silero.VAD.load"):
-                                with patch("agent.MultilingualModel"):
+                            with patch("agent.inference.VAD"):
+                                with patch("agent.inference.TurnDetector"):
                                     with patch(
                                         "agent.db_queries.get_player", new_callable=AsyncMock, return_value=mock_player
                                     ):

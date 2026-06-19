@@ -6,9 +6,8 @@ import re
 import time
 
 from livekit import agents, rtc
-from livekit.agents import AgentServer, AgentSession
-from livekit.plugins import anthropic, deepgram, silero
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.agents import AgentServer, AgentSession, inference
+from livekit.plugins import anthropic, deepgram
 
 import db
 import db_content_queries
@@ -278,9 +277,14 @@ async def dm_session(ctx: agents.JobContext) -> None:
             stt=deepgram.STT(model="nova-3", language="en"),
             llm=anthropic.LLM(model=model, temperature=0.8, caching="ephemeral"),
             tts=_make_tts(),
-            vad=silero.VAD.load(min_silence_duration=0.5),
+            vad=inference.VAD(model="silero", min_silence_duration=0.5),
+            # Audio-based end-of-turn detection (livekit-agents 1.6.1+, built in): encodes the user's
+            # audio directly — intonation, pacing, trailing-off — instead of the STT transcript, so
+            # natural mid-thought pauses don't get misread as end-of-turn. Replaces the deprecated
+            # text MultilingualModel. Version auto-selects per environment (v1 full on LiveKit Cloud,
+            # v1-mini local CPU elsewhere, with automatic fallback).
             turn_handling={
-                "turn_detection": MultilingualModel(),
+                "turn_detection": inference.TurnDetector(),
                 "endpointing": {"min_delay": 0.5},
                 "interruption": {"enabled": True},
             },
