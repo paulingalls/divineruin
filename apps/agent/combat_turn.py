@@ -377,6 +377,12 @@ async def _resolve_one_packet(
     # below. attack_sequence is [action] when the actor has no mechanical enhancer (AC3: no
     # phantom expansion → the summary stays the flat single-attack shape).
     actions = combat_enhancers.attack_sequence(attacker.enhancers, action)
+    # Encounter-context dramatic signals (M4.5, story-004) the per-attack resolver can't see:
+    # the count of foes still standing as this declaration is resolved (==1 => last enemy), and
+    # whether any attack has resolved this whole combat yet (the opening strike). Computed once
+    # before the swing loop so all swings of an expanded sequence share one verdict.
+    enemies_remaining = sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen)
+    is_first_attack = not state.first_attack_resolved
     attack_summaries: list[dict] = []
     for act in actions:
         sub = await _resolve_attack_packet(
@@ -385,6 +391,8 @@ async def _resolve_one_packet(
             act,
             target,
             target_ac_bonus=state.ac_modifiers.get(target.id, 0),
+            enemies_remaining=enemies_remaining,
+            is_first_attack_of_combat=is_first_attack,
             mutations=mutations,
             queries=queries,
             resolver=resolver,
@@ -404,6 +412,10 @@ async def _resolve_one_packet(
         if target.is_fallen:
             break
 
+    # The first attack of the combat has now resolved; flips the combat-scoped flag so a
+    # later attack no longer earns the dramatic "first_attack" promotion (story-004).
+    state.first_attack_resolved = True
+
     summary = dict(attack_summaries[0])
     if len(attack_summaries) > 1:
         # Report the expansion: per-attack detail under "attacks", flat keys aggregated.
@@ -420,6 +432,12 @@ async def _resolve_one_packet(
         summary["concentration_broken"] = next(
             (s["concentration_broken"] for s in attack_summaries if s["concentration_broken"]), None
         )
+        # Any swing being dramatic makes the declaration dramatic. Each swing rolls its
+        # own d20 and runs its own killing-blow check, so a later swing can be dramatic
+        # while the first is routine — take the FIRST dramatic swing's context so the
+        # aggregated dramatic flag and its reason label never disagree (story-004).
+        summary["dramatic"] = any(s["dramatic"] for s in attack_summaries)
+        summary["context"] = next((s["context"] for s in attack_summaries if s["dramatic"]), "")
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = True
     return _attach_riders(summary, attacker, decl)

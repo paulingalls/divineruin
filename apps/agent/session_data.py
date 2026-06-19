@@ -134,6 +134,10 @@ class CombatState:
     # Phase-scoped AC modifiers (actor_id -> bonus), e.g. Defend's +2 (M4.2, story-002).
     # Set during resolution, cleared at the wrap loop-back so a stance lasts one phase.
     ac_modifiers: dict[str, int] = field(default_factory=dict)
+    # Combat-scoped (NOT phase-scoped): flips True after the first attack of the whole
+    # encounter resolves, never resets. Feeds the M4.5 dramatic-dice "first_attack"
+    # signal so the opening strike earns the dice (story-004).
+    first_attack_resolved: bool = False
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
@@ -163,6 +167,7 @@ class CombatState:
             pending_declarations=data.get("pending_declarations", {}),
             reactions_available=data.get("reactions_available", {}),
             ac_modifiers=data.get("ac_modifiers", {}),
+            first_attack_resolved=data.get("first_attack_resolved", False),
         )
 
 

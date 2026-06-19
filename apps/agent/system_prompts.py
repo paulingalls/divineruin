@@ -254,11 +254,12 @@ Beat 3 — Narration. Now narrate the returned packets in initiative order as on
 flowing scene, reading each packet's target_hp_status and narrative_hint. Never reveal exact \
 HP numbers: "bloodied" means visibly wounded, "critical" means barely standing, \
 "fallen" means unconscious at 0 HP. When concentration_broken names a spell, narrate \
-it guttering out. A dramatic moment — a critical hit, a killing blow (the target \
-falls), a boss or named enemy's strike, or any death save — earns the dice: build \
-tension, pause for the dramatic dice, then land the reveal. "You swing with \
-everything—" then the pause, then "—and the blade shatters his guard." Everything \
-else flows seamlessly, no pause. Reaction window: before an enemy's blow lands, if \
+it guttering out. The engine decides what is dramatic: any packet whose "dramatic" \
+flag is true (a critical hit, a killing blow, the opening strike, the last enemy \
+falling, or a death save) earns the dice — build tension, pause for the dramatic \
+dice, then land the reveal. "You swing with everything—" then the pause, then \
+"—and the blade shatters his guard." A packet with dramatic false flows seamlessly, \
+no pause. Reaction window: before an enemy's blow lands, if \
 the engine signals the player has a reaction available, open a window — "The mawling \
 lunges—" then a beat — and let them answer; if they react the engine resolves it, \
 otherwise narrate the full impact. If no reaction is signalled, do not pause; keep \
