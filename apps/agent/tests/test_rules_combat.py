@@ -5,6 +5,7 @@ import random
 import pytest
 
 from combat_resolution import (
+    DeathSaveResult,
     calculate_combat_xp,
     hp_threshold_status,
     resolve_death_save,
@@ -71,6 +72,8 @@ class TestResolveDeathSave:
                 assert result.success is True
                 assert result.total_successes == 1
                 assert result.total_failures == 0
+                assert result.dramatic is True
+                assert result.context == "death_save"
                 return
         pytest.fail("Could not find seed for success")
 
@@ -84,6 +87,8 @@ class TestResolveDeathSave:
                 assert result.success is False
                 assert result.total_successes == 0
                 assert result.total_failures == 1
+                assert result.dramatic is True
+                assert result.context == "death_save"
                 return
         pytest.fail("Could not find seed for failure")
 
@@ -96,6 +101,8 @@ class TestResolveDeathSave:
                 assert result.critical_success is True
                 assert result.roll == 20
                 assert "spark" in result.narrative_hint.lower() or "eyes open" in result.narrative_hint.lower()
+                assert result.dramatic is True
+                assert result.context == "death_save"
                 return
         pytest.fail("Could not find seed for nat 20")
 
@@ -107,6 +114,8 @@ class TestResolveDeathSave:
                 result = resolve_death_save(0, 0, rng=rng)
                 assert result.critical_failure is True
                 assert result.total_failures == 2
+                assert result.dramatic is True
+                assert result.context == "death_save"
                 return
         pytest.fail("Could not find seed for nat 1")
 
@@ -118,6 +127,8 @@ class TestResolveDeathSave:
                 result = resolve_death_save(2, 0, rng=rng)
                 assert result.stabilized is True
                 assert result.total_successes >= 3
+                assert result.dramatic is True
+                assert result.context == "death_save"
                 return
         pytest.fail("Could not find seed for stabilize")
 
@@ -130,6 +141,8 @@ class TestResolveDeathSave:
                 result = resolve_death_save(0, 2, rng=rng)
                 assert result.dead is True
                 assert result.total_failures >= 3
+                assert result.dramatic is True
+                assert result.context == "death_save"
                 return
         pytest.fail("Could not find seed for death")
 
@@ -141,8 +154,26 @@ class TestResolveDeathSave:
                 result = resolve_death_save(0, 1, rng=rng)
                 assert result.dead is True
                 assert result.total_failures == 3
+                assert result.dramatic is True
+                assert result.context == "death_save"
                 return
         pytest.fail("Could not find seed for nat 1")
+
+    def test_death_save_result_dramatic_default(self):
+        """The always-dramatic contract: a bare DeathSaveResult defaults dramatic."""
+        result = DeathSaveResult(
+            roll=12,
+            success=True,
+            critical_success=False,
+            critical_failure=False,
+            total_successes=1,
+            total_failures=0,
+            stabilized=False,
+            dead=False,
+            narrative_hint="A shallow breath, clinging to life",
+        )
+        assert result.dramatic is True
+        assert result.context == "death_save"
 
 
 # --- hp_threshold_status ---
