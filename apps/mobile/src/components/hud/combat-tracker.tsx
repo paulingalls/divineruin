@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ComponentProps } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import Animated, {
   useSharedValue,
@@ -8,10 +8,13 @@ import Animated, {
   SlideOutDown,
 } from "react-native-reanimated";
 
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+
 import { ThemedText } from "@/components/themed-text";
 import { AnimationPresets, BrandColors, FontStyles, Radius, Spacing } from "@/constants/theme";
 import { HUD_ANCHORS } from "@/constants/hud-anchors";
 import { hudStore, type Combatant, type CombatTrackerState } from "@/stores/hud-store";
+import { getConditionDisplay } from "@/components/hud/condition-display";
 
 function CombatantHpBar({ current, max }: { current: number; max: number }) {
   const ratio = max > 0 ? current / max : 0;
@@ -56,11 +59,19 @@ function CombatantRow({ combatant, compact = false }: { combatant: Combatant; co
         <ThemedText style={[styles.combatantName, { color: nameColor }]} numberOfLines={1}>
           {combatant.name}
         </ThemedText>
-        {combatant.statusEffects.length > 0 && (
+        {combatant.conditions.length > 0 && (
           <View style={styles.combatantStatuses}>
-            {combatant.statusEffects.map((_, i) => (
-              <View key={i} style={styles.miniStatusDot} />
-            ))}
+            {combatant.conditions.map((condition) => {
+              const display = getConditionDisplay(condition.type);
+              return (
+                <MaterialCommunityIcons
+                  key={`${condition.type}-${condition.source}`}
+                  name={display.icon as ComponentProps<typeof MaterialCommunityIcons>["name"]}
+                  size={12}
+                  color={display.color}
+                />
+              );
+            })}
           </View>
         )}
       </View>
@@ -162,13 +173,8 @@ const styles = StyleSheet.create({
   },
   combatantStatuses: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 3,
-  },
-  miniStatusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: BrandColors.ash,
   },
   compactRow: {
     flexDirection: "row",

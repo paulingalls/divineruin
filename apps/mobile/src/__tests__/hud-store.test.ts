@@ -263,7 +263,7 @@ test("setCombatState sets combat tracker", () => {
         isAlly: true,
         hpCurrent: 20,
         hpMax: 30,
-        statusEffects: [],
+        conditions: [{ type: "exhausted", stacks: 2, source: "march" }],
         isActive: true,
       },
     ],
@@ -272,6 +272,9 @@ test("setCombatState sets combat tracker", () => {
   expect(hudStore.getState().combatState).not.toBeNull();
   expect(hudStore.getState().combatState!.round).toBe(2);
   expect(hudStore.getState().combatState!.combatants).toHaveLength(1);
+  expect(hudStore.getState().combatState!.combatants[0].conditions).toEqual([
+    { type: "exhausted", stacks: 2, source: "march" },
+  ]);
 });
 
 test("clearCombatState clears combat", () => {
