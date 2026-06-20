@@ -98,6 +98,11 @@ class CombatParticipant:
     attributes: dict = field(default_factory=lambda: {"strength": 10, "dexterity": 10})
     level: int = 1
     is_fallen: bool = False
+    # Instant death (M4.4 story-002): a single hit whose overkill (excess damage past 0) >= hp_max
+    # kills outright — skips the Fallen state and death saves entirely. Distinct from is_fallen
+    # (fallen = dying/making saves; dead = gone). Set at the damage site (combat_support); the pure
+    # _wrap ends combat without a death-save beat. Serializes via asdict, defaults False for old rows.
+    is_dead: bool = False
     death_save_successes: int = 0
     death_save_failures: int = 0
     action_pool: list[dict] = field(default_factory=list)

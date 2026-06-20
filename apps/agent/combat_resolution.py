@@ -64,11 +64,17 @@ def resolve_death_save(
     current_successes: int,
     current_failures: int,
     rng: random.Random | None = None,
+    *,
+    bonus: int = 0,
 ) -> DeathSaveResult:
     """Resolve a death saving throw.
 
     Rules: 10+ = success, <10 = failure. Nat 20 = regain 1 HP (critical success).
     Nat 1 = two failures. 3 successes = stabilized, 3 failures = dead.
+
+    ``bonus`` adds to the success threshold check (M4.4 story-004: a Mortaen patron's +2);
+    crit-success/crit-failure stay keyed on the RAW d20, and the reported ``roll`` is the
+    raw die for display. A flat 0 bonus leaves the base mechanic unchanged.
     """
     verdict = evaluate_dramatic_context(DramaticContext(roll_type="death_save"))
 
@@ -77,7 +83,7 @@ def resolve_death_save(
 
     critical_success = d20 == 20
     critical_failure = d20 == 1
-    success = d20 >= 10
+    success = (d20 + bonus) >= 10
 
     new_successes = current_successes
     new_failures = current_failures

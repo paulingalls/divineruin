@@ -14,7 +14,17 @@ from livekit.agents.llm import ToolError
 
 import event_types as E
 from check_tools import _check_dice_impl, _check_impl, _check_save_impl, _check_skill_impl
-from tools._helpers import _make_context, _make_mock_room, _save_mocks, _skill_mocks
+from tools._helpers import SAMPLE_PLAYER, _make_context, _make_mock_room, _save_mocks, _skill_mocks
+
+
+def _corrupt_conditions_queries():
+    """queries whose player carries a corrupt stored conditions row (unknown type)."""
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": [{"type": "bogus"}]})
+    queries.get_single_skill_advancement = AsyncMock(
+        return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False},
+    )
+    return queries
 
 
 class TestCheckSkill:
@@ -48,6 +58,13 @@ class TestCheckSkill:
         queries = MagicMock()
         queries.get_player = AsyncMock(return_value=None)
         with pytest.raises(ToolError):
+            await _check_skill_impl(_make_context(), "athletics", "moderate", "climbing", queries=queries)
+
+    @pytest.mark.asyncio
+    async def test_corrupt_conditions_fail_loud_as_toolerror(self):
+        # M4.4 story-008 (concern 988e3e4f55ea): validate the stored conditions at the boundary.
+        queries = _corrupt_conditions_queries()
+        with pytest.raises(ToolError, match="corrupt stored conditions"):
             await _check_skill_impl(_make_context(), "athletics", "moderate", "climbing", queries=queries)
 
     @pytest.mark.asyncio
@@ -95,6 +112,14 @@ class TestCheckSave:
         queries = _save_mocks()
         with pytest.raises(ToolError):
             await _check_save_impl(_make_context(), "luck", 15, "cursed", queries=queries)
+
+    @pytest.mark.asyncio
+    async def test_corrupt_conditions_fail_loud_as_toolerror(self):
+        # M4.4 story-008 (concern 988e3e4f55ea): a corrupt out-of-combat conditions row must surface
+        # as a DM-narratable ToolError, not the raw KeyError get_condition_effects would raise.
+        queries = _corrupt_conditions_queries()
+        with pytest.raises(ToolError, match="corrupt stored conditions"):
+            await _check_save_impl(_make_context(), "dexterity", 15, "prone", queries=queries)
 
     @pytest.mark.asyncio
     async def test_dc_out_of_range(self):

@@ -12,6 +12,25 @@ from dataclasses import dataclass
 from _gods_content import load_gods
 
 UNBOUND_ID = "none"
+MORTAEN_ID = "mortaen"
+
+
+def patron_death_save_bonus(patron_id: str) -> int:
+    """The flat death-save bonus granted by a patron (M4.4 §M4.4 — Mortaen's faithful get +2).
+
+    Stub until the Phase-8 patron-modifier system; reads only ``patron_id`` so the Phase-8
+    rework can replace it without touching callers."""
+    return 2 if patron_id == MORTAEN_ID else 0
+
+
+def patron_waives_first_death(patron_id: str, prior_death_count: int) -> bool:
+    """Whether the patron waives this death entirely (M4.4 — a Mortaen patron's first-ever
+    death is free: not recorded, not counted, no cost, and skips the Mortaen meeting).
+
+    ``prior_death_count`` is the permanent death count BEFORE this death. Only a Mortaen
+    patron with no prior deaths qualifies; the second death onward is counted normally.
+    Stub until the Phase-8 patron-modifier system."""
+    return patron_id == MORTAEN_ID and prior_death_count == 0
 
 
 @dataclass(frozen=True)

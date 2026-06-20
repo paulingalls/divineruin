@@ -250,6 +250,18 @@ class TestCheckDiscover:
             await _check_discover_impl(ctx, "perception", "bookshelf", content=content)
 
     @pytest.mark.asyncio
+    async def test_corrupt_conditions_fail_loud_as_toolerror(self):
+        # M4.4 story-008 (concern 988e3e4f55ea): a corrupt stored conditions row surfaces as a
+        # DM-narratable ToolError before the resolver hits get_condition_effects.
+        corrupt_player = {**DISCOVER_PLAYER, "conditions": [{"type": "bogus"}]}
+        content, queries, mutations = _make_discover_mocks(player=corrupt_player)
+        ctx = _make_context(location_id="test_location")
+        with pytest.raises(ToolError, match="corrupt stored conditions"):
+            await _check_discover_impl(
+                ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
+            )
+
+    @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
     async def test_repeat_search_finds_nothing_new(self, mock_event):
         # A failed roll exhausts that secret for the session — re-searching the same target

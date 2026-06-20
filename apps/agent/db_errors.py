@@ -10,9 +10,25 @@ from typing import Any, TypeVar
 
 from livekit.agents.llm import ToolError
 
+import conditions
+
 logger = logging.getLogger("divineruin.db_errors")
 
 T = TypeVar("T")
+
+
+def validated_player_conditions(player: dict, player_id: str) -> list[dict]:
+    """Validate a player's stored conditions at a tool boundary, raising a DM-narratable ToolError
+    on a corrupt row (M4.4 story-008, concern 988e3e4f55ea).
+
+    Tolerates a JSON-null value (``conditions`` can be stored null) and returns the validated list.
+    The shared guard for every read site that feeds conditions into get_condition_effects — combat
+    START load and the out-of-combat skill/save/discover resolvers — so a corrupt row fails loud
+    with a friendly message instead of a raw KeyError deep in the resolver."""
+    try:
+        return conditions.validate_conditions(player.get("conditions") or [])
+    except ValueError as e:
+        raise ToolError(f"Player '{player_id}' has corrupt stored conditions: {e}") from e
 
 
 class DatabaseError(Exception):

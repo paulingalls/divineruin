@@ -230,5 +230,28 @@
         "hint_delay_seconds": 90
       }
     ]
+  },
+  {
+    "id": "scene_mortaens_domain",
+    "name": "Mortaen's Domain",
+    "type": "event",
+    "region_type": "city",
+    "instructions": "The character has died. The world falls silent — no combat sounds, no companion, only the god's voice and the character's own breathing. Voice Mortaen, the Threshold: calm, ancient, not unkind, the patience of eternity. Mortaen acknowledges the death, comments on how it happened (the engine supplies the death context — the tier and what was taken), and names the cost without negotiation. The return is automatic; the question was never 'if' but 'at what cost.' At higher death counts Mortaen grows graver — a warning that the threshold weakens each crossing. Then the character wakes at the nearest anchor (the engine has already applied the cost and placed them); narrate the return — time has passed, the body aches, the world is dimmer for what was lost.",
+    "beats": [
+      {
+        "id": "beat_mortaen_threshold",
+        "description": "The character's soul crosses into Mortaen's domain; the god acknowledges the death and names the cost.",
+        "completion_condition": "Mortaen has named the cost and offered the return",
+        "companion_hints": [],
+        "hint_delay_seconds": 0
+      },
+      {
+        "id": "beat_mortaen_return",
+        "description": "The character wakes at the nearest resurrection anchor, changed by what the threshold took.",
+        "completion_condition": "The character is back in the world at the anchor location",
+        "companion_hints": [],
+        "hint_delay_seconds": 0
+      }
+    ]
   }
 ]

@@ -34,7 +34,8 @@ _STABILIZE_LIMIT = 3
 
 # Initiative tie-break: player before companion before enemy, then higher DEX
 # (gm_combat:145). Lower number = higher priority.
-_TYPE_PRIORITY = {"player": 0, "companion": 1, "enemy": 2}
+# A Temporary Hollowed echo (M4.4 story-008) acts in the enemy band — it's a hostile combatant.
+_TYPE_PRIORITY = {"player": 0, "companion": 1, "enemy": 2, "temporary_hollowed": 2}
 
 
 class PhaseBeat(StrEnum):
@@ -189,13 +190,30 @@ def _wrap(state: CombatState) -> WrapOutcome:
         p.conditions = survivors
         tick_conditions_due.extend({"actor_id": p.id, **event} for event in save_events)
 
+    # Companion auto-stabilize (M4.4 story-002): narrative protection — a companion never dies from
+    # the death-save grind. When its failures reach the limit, clamp to the stabilized state (reusing
+    # the stabilized vocabulary, no new field) so it drops out of death_saves_due and never ends combat.
+    for p in state.participants:
+        if p.type == "companion" and p.death_save_failures >= _DEATH_SAVE_LIMIT:
+            p.death_save_failures = _DEATH_SAVE_LIMIT - 1
+            p.death_save_successes = _STABILIZE_LIMIT
+
     death_saves_due = [
         p.id
         for p in state.participants
-        if p.is_fallen and p.death_save_successes < _STABILIZE_LIMIT and p.death_save_failures < _DEATH_SAVE_LIMIT
+        if p.is_fallen
+        and not p.is_dead  # instant-dead (M4.4) skips the Fallen state — never rolls a death save
+        and p.death_save_successes < _STABILIZE_LIMIT
+        and p.death_save_failures < _DEATH_SAVE_LIMIT
     ]
 
     enemies = [p for p in state.participants if p.type == "enemy"]
+    # Temporary Hollowed echoes (M4.4 story-008): a Stage-2+ Hollowed player who fell rose as one of
+    # these in place (the player participant transformed). While any echo lives it blocks combat-end;
+    # once all are destroyed the character finally dies (defeat -> the existing combat-end defeat path
+    # -> trigger_character_death's Hollowed branch). The echo is not type "player", so the player-
+    # defeat gate below stays dormant whenever an echo is present.
+    echoes = [p for p in state.participants if p.type == "temporary_hollowed"]
     # M4.1 scope seam: defeat keys on a SINGLE player participant. Multiplayer
     # party-defeat (all players down) and party-wipe handling are M4.4 (Death &
     # Resurrection); this single-player assumption is intentional for M4.1.
@@ -203,9 +221,13 @@ def _wrap(state: CombatState) -> WrapOutcome:
 
     combat_ended = False
     outcome: str | None = None
-    if enemies and all(p.is_fallen for p in enemies):
+    if echoes and all(e.is_fallen for e in echoes):
+        combat_ended, outcome = True, "defeat"
+    elif echoes:
+        pass  # an undestroyed echo blocks both victory and the (now-moot) player-defeat gate
+    elif enemies and all(p.is_fallen for p in enemies):
         combat_ended, outcome = True, "victory"
-    elif player is not None and player.death_save_failures >= _DEATH_SAVE_LIMIT:
+    elif player is not None and (player.is_dead or player.death_save_failures >= _DEATH_SAVE_LIMIT):
         combat_ended, outcome = True, "defeat"
 
     return WrapOutcome(

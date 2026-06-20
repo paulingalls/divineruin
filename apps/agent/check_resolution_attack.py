@@ -28,6 +28,11 @@ class AttackResult:
     target_hp_remaining: int
     target_killed: bool
     narrative_hint: str
+    # Excess damage past 0 HP (M4.4 story-002): max(0, damage - pre_hit_hp) on a hit, else 0.
+    # target_hp_remaining floors at 0 and loses this, so it's captured here pre-floor — the
+    # instant-death verdict (combat_support) compares it against the target's max HP. Defaulted
+    # for direct constructors (tests); the resolver always sets it explicitly.
+    overkill: int = 0
     # Crit flags read from D20CheckCore.critical_success/critical_failure (nat-20 /
     # nat-1), so every roll-result packet agrees on crits. Defaulted for direct
     # constructors (tests); the resolver always sets them explicitly.
@@ -39,6 +44,11 @@ class AttackResult:
     # encounter-context signals stay additive. See dramatic.py.
     dramatic: bool = False
     context: str = ""
+    # Bonus-damage rider (M4.4 story-008): the necrotic die a Temporary Hollowed attacker adds to a
+    # hit, already folded into ``damage``/``overkill``. Surfaced separately so the DM can narrate
+    # the necrotic bite. 0/None when the attacker grants no rider or the attack missed.
+    bonus_damage: int = 0
+    bonus_damage_type: str | None = None
 
 
 def weapon_attribute_modifier(player_data: dict, weapon: dict) -> int:
@@ -82,7 +92,7 @@ def resolve_attack(
     # Prone/Blinded etc. impose disadvantage (scope "attack"), Enraged adds +2 damage below.
     # The defender's AC modifier (e.g. Enraged -2 AC) is the caller's concern (combat_support),
     # already baked into target_ac here.
-    effects = get_condition_effects(attacker_data.get("conditions", []))
+    effects = get_condition_effects(attacker_data.get("conditions") or [])
     atk_mod = attack_modifier(attacker_data, weapon) + effects.check_modifier
     attack_disadvantage = "attack" in effects.disadvantage_scopes
     attack_advantage = "attack" in effects.advantage_scopes
@@ -100,6 +110,8 @@ def resolve_attack(
 
     damage = 0
     damage_type = weapon.get("damage_type", "bludgeoning")
+    bonus_damage = 0
+    bonus_damage_type: str | None = None
 
     if hit:
         damage_notation = weapon.get("damage", "1d4")
@@ -114,12 +126,22 @@ def resolve_attack(
         # Condition damage modifier (M4.3): Enraged adds +2 damage. Applied once, like
         # the attribute mod, before the floor.
         damage += effects.damage_modifier
+        # Bonus-damage rider die (M4.4 story-008): a Temporary Hollowed attacker adds 1d6 necrotic.
+        # Rolled here — after weapon damage so a fixed-seed weapon roll is unchanged by the rider —
+        # and added before the floor so it counts toward overkill below. Surfaced separately too.
+        if effects.bonus_damage_dice is not None:
+            bonus_damage = dice_roll(effects.bonus_damage_dice, rng=rng).total
+            bonus_damage_type = effects.bonus_damage_type
+            damage += bonus_damage
         # Floor at 0: a low-attribute attacker (e.g. STR 1 → -5) rolling low must
         # never produce negative damage, which would HEAL the target via the
         # max(0, hp - damage) below. A hit deals at least 0.
         damage = max(0, damage)
 
     new_hp = max(0, target_hp - damage)
+    # Excess damage past 0 (M4.4 story-002): computed pre-floor, before new_hp loses it. Drives
+    # the instant-death verdict downstream (combat_support: overkill >= target max HP).
+    overkill = max(0, damage - target_hp) if hit else 0
 
     # Killing-blow inputs are gated on `hit`: pass pre-hit HP + damage only when
     # the attack landed, else None. This makes the evaluator's killing_blow label
@@ -146,7 +168,10 @@ def resolve_attack(
         critical_failure=core.critical_failure,
         target_hp_remaining=new_hp,
         target_killed=new_hp == 0 and hit,
+        overkill=overkill,
         narrative_hint=core.narrative_hint,
         dramatic=verdict.dramatic,
         context=verdict.context,
+        bonus_damage=bonus_damage,
+        bonus_damage_type=bonus_damage_type,
     )

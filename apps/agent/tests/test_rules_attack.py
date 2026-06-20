@@ -221,6 +221,47 @@ class TestResolveAttack:
                 return
         pytest.fail("Could not find miss seed")
 
+    # --- Overkill (M4.4 story-002): excess damage beyond 0 HP, for the instant-death verdict ---
+
+    def test_overkill_is_damage_beyond_target_hp(self):
+        # A hit on a 1-HP target: overkill = damage - 1 (the excess past 0), computed pre-floor.
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 1 and d20 + 4 >= 10:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 1, rng=rng)
+                if result.hit:
+                    assert result.overkill == result.damage - 1
+                    assert result.target_hp_remaining == 0  # floor still applies to HP
+                    return
+        pytest.fail("Could not find seed for hit")
+
+    def test_overkill_zero_when_damage_below_target_hp(self):
+        # A hit that doesn't drop the target to 0 has no overkill.
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 1 and d20 + 4 >= 12:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 100, rng=rng)
+                if result.hit:
+                    assert result.overkill == 0
+                    return
+        pytest.fail("Could not find seed for hit")
+
+    def test_overkill_zero_on_miss(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 20 and d20 + 4 < 18:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 18, 1, rng=rng)
+                assert result.hit is False
+                assert result.overkill == 0
+                return
+        pytest.fail("Could not find miss seed")
+
 
 class TestAttackModifier:
     def test_melee_weapon(self):
@@ -262,3 +303,62 @@ class TestAttackModifier:
         mod = attack_modifier(SAMPLE_PLAYER, weapon)
         # DEX +1 (not STR +2), prof +1 at L1 = +2
         assert mod == 2
+
+
+class TestNecroticRider:
+    """M4.4 story-008: an attacker carrying the temporary_hollowed condition adds a 1d6 necrotic
+    rider to each hit. The rider rolls AFTER weapon damage with the same rng, so for a given seed
+    the weapon roll is identical with/without the condition — the delta isolates the rider."""
+
+    WEAPON = {"name": "Claw", "damage": "1d6", "damage_type": "slashing", "properties": []}
+
+    def _echo_attacker(self):
+        import conditions
+
+        attacker = dict(SAMPLE_PLAYER)
+        attacker["conditions"] = conditions.apply_condition([], "temporary_hollowed")
+        return attacker
+
+    def _hit_seed(self, target_hp):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 1 and d20 + 4 >= 10:
+                return seed
+        pytest.fail("Could not find seed for hit")
+
+    def test_no_rider_without_the_condition(self):
+        seed = self._hit_seed(50)
+        result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 50, rng=random.Random(seed))
+        assert result.hit is True
+        assert result.bonus_damage == 0
+        assert result.bonus_damage_type is None
+
+    def test_rider_adds_1d6_necrotic_to_a_hit(self):
+        seed = self._hit_seed(50)
+        baseline = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 50, rng=random.Random(seed))
+        echo = resolve_attack(self._echo_attacker(), self.WEAPON, 10, 50, rng=random.Random(seed))
+        assert echo.hit is True
+        assert echo.bonus_damage_type == "necrotic"
+        assert 1 <= echo.bonus_damage <= 6
+        # Same seed -> identical weapon roll; the echo's extra damage IS the rider.
+        assert echo.damage == baseline.damage + echo.bonus_damage
+
+    def test_rider_counts_toward_overkill(self):
+        # Same seed, a 1-HP target: both kill, the echo's overkill is larger by exactly the rider.
+        seed = self._hit_seed(1)
+        baseline = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 1, rng=random.Random(seed))
+        echo = resolve_attack(self._echo_attacker(), self.WEAPON, 10, 1, rng=random.Random(seed))
+        assert baseline.hit and echo.hit
+        assert echo.overkill == baseline.overkill + echo.bonus_damage
+
+    def test_rider_not_rolled_on_a_miss(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 20 and d20 + 4 < 18:
+                result = resolve_attack(self._echo_attacker(), self.WEAPON, 18, 20, rng=random.Random(seed))
+                assert result.hit is False
+                assert result.bonus_damage == 0
+                return
+        pytest.fail("Could not find seed for miss")

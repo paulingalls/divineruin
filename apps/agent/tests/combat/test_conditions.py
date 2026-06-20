@@ -13,6 +13,7 @@ from conditions import (
     ConditionSpec,
     apply_condition,
     get_condition_effects,
+    hollowed_stage,
     remove_condition,
     tick_conditions,
 )
@@ -46,9 +47,13 @@ ALL_CONDITIONS = [
 # --- Slice 1: catalog completeness ---
 
 
-def test_catalog_has_all_21_conditions():
-    assert set(CONDITION_CATALOG) == set(ALL_CONDITIONS)
-    assert len(CONDITION_CATALOG) == 21
+def test_catalog_has_all_21_spec_conditions():
+    # The 21 doc §Status Effects conditions are all present. The catalog also carries the
+    # engine-internal "temporary_hollowed" marker (story-008) — not a doc condition.
+    assert set(ALL_CONDITIONS) <= set(CONDITION_CATALOG)
+    assert len(ALL_CONDITIONS) == 21
+    assert "temporary_hollowed" in CONDITION_CATALOG
+    assert len(CONDITION_CATALOG) == 22
 
 
 @pytest.mark.parametrize("condition_type", ALL_CONDITIONS)
@@ -242,3 +247,76 @@ def test_effects_hollowed_stage_3_adds_stat_drain():
     assert "wis" in effects.disadvantage_scopes
     assert "hallucinations" in effects.restrictions
     assert "stat_drain" in effects.restrictions
+
+
+# --- hollowed_stage helper (M4.4 story-008) ---
+
+
+def test_hollowed_stage_zero_when_absent():
+    assert hollowed_stage([]) == 0
+    assert hollowed_stage([{"type": "exhausted", "stacks": 2}]) == 0
+
+
+def test_hollowed_stage_reads_the_stage():
+    assert hollowed_stage(apply_condition([], "hollowed")) == 1
+    stage2 = apply_condition(apply_condition([], "hollowed"), "hollowed")
+    assert hollowed_stage(stage2) == 2
+
+
+def test_hollowed_stage_tolerates_json_null():
+    # players.data.conditions can be stored JSON null; the helper treats it as no Hollowed.
+    assert hollowed_stage(None) == 0
+
+
+# --- temporary_hollowed condition: rider + immunities (M4.4 story-008) ---
+
+
+def test_temporary_hollowed_spec_carries_rider_and_immunities():
+    spec = CONDITION_CATALOG["temporary_hollowed"]
+    assert spec.bonus_damage_dice == "1d6"
+    assert spec.bonus_damage_type == "necrotic"
+    assert set(spec.immunities) == {"charmed", "frightened", "poisoned"}
+    # The echo is combat-local — it never persists onto players.data.
+    assert spec.persists_across_encounters is False
+
+
+def test_effects_surfaces_temporary_hollowed_rider_and_immunities():
+    conds = apply_condition([], "temporary_hollowed")
+    effects = get_condition_effects(conds)
+    assert effects.bonus_damage_dice == "1d6"
+    assert effects.bonus_damage_type == "necrotic"
+    assert effects.immunities == frozenset({"charmed", "frightened", "poisoned"})
+
+
+def test_effects_no_rider_or_immunities_by_default():
+    effects = get_condition_effects([])
+    assert effects.bonus_damage_dice is None
+    assert effects.bonus_damage_type is None
+    assert effects.immunities == frozenset()
+
+
+def test_apply_condition_is_noop_for_an_immune_type():
+    # A Temporary Hollowed is immune to Charmed/Frightened/Poisoned: applying one is a no-op.
+    base = apply_condition([], "temporary_hollowed")
+    for immune in ("charmed", "frightened", "poisoned"):
+        out = apply_condition(base, immune)
+        assert all(c["type"] != immune for c in out)
+
+
+def test_apply_condition_allows_non_immune_type_on_immune_carrier():
+    # Immunity is type-scoped: a Temporary Hollowed can still be Stunned (not on its immune list).
+    base = apply_condition([], "temporary_hollowed")
+    out = apply_condition(base, "stunned")
+    assert any(c["type"] == "stunned" for c in out)
+
+
+def test_apply_condition_immunity_gate_does_not_mutate_input():
+    base = apply_condition([], "temporary_hollowed")
+    before = [dict(c) for c in base]
+    apply_condition(base, "charmed")
+    assert base == before
+
+
+def test_charmed_applies_normally_without_an_immune_carrier():
+    out = apply_condition([], "charmed")
+    assert any(c["type"] == "charmed" for c in out)

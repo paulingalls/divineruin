@@ -28,6 +28,7 @@ from tool_support import (
     SOUND_ATTACK_HIT,
     SOUND_ATTACK_MISS,
     SOUND_HEARTBEAT,
+    SOUND_HOLLOW_RISE,
     SOUND_PLAYER_FALLEN,
 )
 
@@ -296,6 +297,13 @@ async def _resolve_attack_packet(
         if verdict.dramatic:
             attack_result = replace(attack_result, dramatic=True, context=verdict.context)
 
+    # Capture pre-hit Fallen state: the instant-death verdict (below) is scoped to the
+    # live -> 0 transition (spec game_mechanics_combat.md L350 + on_hp_zero pseudocode L554:
+    # "a single source of damage REDUCES HP to 0"). A hit on a target already at 0 is the
+    # distinct "damage while Fallen" mechanic (L369: auto death-save failures), not instant
+    # death — without this guard overkill = damage - 0 = damage would wrongly flag is_dead.
+    was_fallen = target.is_fallen
+
     # Update target HP
     target.hp_current = attack_result.target_hp_remaining
 
@@ -310,13 +318,39 @@ async def _resolve_attack_packet(
 
     # Check HP thresholds
     hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
+    rose_hollowed = False
     if target.hp_current <= 0:
-        target.is_fallen = True
-        sounds.append(SOUND_PLAYER_FALLEN)
-        # Handle companion KO
-        if target.type == "companion" and session.companion and target.id == session.companion.id:
-            session.companion.is_conscious = False
-            session.record_companion_memory(f"{target.name} was knocked unconscious in combat")
+        if not was_fallen and target.type == "player" and conditions.hollowed_stage(target.conditions) >= 2:
+            # Temporary Hollowed rise (M4.4 story-008): a Stage-2+ Hollowed player at 0 HP does NOT
+            # fall — their corpse rises as a hostile Temporary Hollowed combatant (HP=50% of max,
+            # hits add 1d6 necrotic, immune to Charmed/Frightened/Poisoned) that blocks combat-end
+            # until destroyed (combat_phase._wrap). Transform in place: flipping `type` makes the
+            # engine's player-defeat gate go dormant (no player participant) and the echo block
+            # victory, AND it deliberately suppresses the player-HP write + concentration-break +
+            # armor-durability accrual below — the echo's HP is the monster's, not the player's.
+            # The persisted Hollowed condition is left intact; trigger_character_death reads it at
+            # the echo's destruction to mark hollow_killed and clear it.
+            target.type = "temporary_hollowed"
+            target.hp_current = max(1, target.hp_max // 2)
+            target.conditions = conditions.apply_condition(target.conditions, "temporary_hollowed")
+            hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
+            rose_hollowed = True
+            sounds.append(SOUND_HOLLOW_RISE)
+        else:
+            target.is_fallen = True
+            # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills
+            # outright — no Fallen grace, no death saves. is_dead is the stronger state; the pure
+            # _wrap reads it to end combat without a death-save beat. This is the one site with both
+            # attack_result + hp_max. Gated on `not was_fallen` so it fires only on the live -> 0
+            # transition the spec scopes it to; a hit on an already-downed target is the separate
+            # "damage while Fallen" failure mechanic.
+            if not was_fallen and attack_result.overkill >= target.hp_max:
+                target.is_dead = True
+            sounds.append(SOUND_PLAYER_FALLEN)
+            # Handle companion KO
+            if target.type == "companion" and session.companion and target.id == session.companion.id:
+                session.companion.is_conscious = False
+                session.record_companion_memory(f"{target.name} was knocked unconscious in combat")
     elif hp_status in ("bloodied", "critical"):
         sounds.append(SOUND_HEARTBEAT)
 
@@ -393,6 +427,13 @@ async def _resolve_attack_packet(
         "concentration_broken": concentration_broken,
         "dramatic": attack_result.dramatic,
         "context": attack_result.context,
+        # Bonus-damage rider (M4.4 story-008): the necrotic bite a Temporary Hollowed attacker
+        # adds, for the DM to voice. 0/None on a normal hit.
+        "bonus_damage": attack_result.bonus_damage,
+        "bonus_damage_type": attack_result.bonus_damage_type,
+        # Set when this hit raised a Stage-2+ Hollowed target as a Temporary Hollowed echo
+        # instead of felling them — the DM narrates the corpse rising.
+        "target_rose_hollowed": rose_hollowed,
     }
     logger.info(
         "resolve_attack_packet result: %s → %s, %s, damage=%d, hp_status=%s",

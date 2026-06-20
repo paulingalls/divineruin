@@ -12,6 +12,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import combat_resolution
+import creation_deities
 import db_mutations
 import event_types as E
 from combat_support import _publish_sounds, _require_combat
@@ -56,9 +57,13 @@ async def _request_death_save_impl(
     if not player_participant.is_fallen:
         raise ToolError("Player has not fallen. Death saves only apply at 0 HP.")
 
+    # Mortaen patrons roll death saves at +2 (M4.4 story-004). patron_id is populated from
+    # divine_favor at session start; non-patrons resolve at +0 (unchanged base mechanic).
+    bonus = creation_deities.patron_death_save_bonus(session.patron_id)
     result = combat_resolution.resolve_death_save(
         player_participant.death_save_successes,
         player_participant.death_save_failures,
+        bonus=bonus,
     )
 
     # Update participant state

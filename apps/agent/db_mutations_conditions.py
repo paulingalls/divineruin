@@ -19,6 +19,7 @@ import json
 
 import asyncpg
 
+import conditions
 import db
 
 
@@ -42,7 +43,10 @@ async def read_player_conditions(
     if row is None or row["conditions"] is None:
         return []
     stored = row["conditions"]
-    return json.loads(stored) if isinstance(stored, str) else stored
+    parsed = json.loads(stored) if isinstance(stored, str) else stored
+    # Read-boundary validation (story-005): fail loud on a corrupt stored dict (unknown type /
+    # non-int stacks) here, rather than letting it reach and crash a resolver later.
+    return conditions.validate_conditions(parsed)
 
 
 async def save_player_conditions(
