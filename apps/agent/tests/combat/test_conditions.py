@@ -13,6 +13,7 @@ from conditions import (
     ConditionSpec,
     apply_condition,
     get_condition_effects,
+    hollowed_stage,
     remove_condition,
     tick_conditions,
 )
@@ -242,3 +243,22 @@ def test_effects_hollowed_stage_3_adds_stat_drain():
     assert "wis" in effects.disadvantage_scopes
     assert "hallucinations" in effects.restrictions
     assert "stat_drain" in effects.restrictions
+
+
+# --- hollowed_stage helper (M4.4 story-008) ---
+
+
+def test_hollowed_stage_zero_when_absent():
+    assert hollowed_stage([]) == 0
+    assert hollowed_stage([{"type": "exhausted", "stacks": 2}]) == 0
+
+
+def test_hollowed_stage_reads_the_stage():
+    assert hollowed_stage(apply_condition([], "hollowed")) == 1
+    stage2 = apply_condition(apply_condition([], "hollowed"), "hollowed")
+    assert hollowed_stage(stage2) == 2
+
+
+def test_hollowed_stage_tolerates_json_null():
+    # players.data.conditions can be stored JSON null; the helper treats it as no Hollowed.
+    assert hollowed_stage(None) == 0

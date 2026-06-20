@@ -155,7 +155,7 @@ async def _start_combat_impl(
         # malformed companion profile (below) — surface it as a DM-narratable ToolError instead
         # of a raw ValueError. db_tool narrows on JSONDecodeError, so a bare ValueError here would
         # escape uncaught and crash combat init.
-        validated_conditions = conditions.validate_conditions(player.get("conditions", []))
+        validated_conditions = conditions.validate_conditions(player.get("conditions") or [])
     except ValueError as e:
         raise ToolError(f"Player '{session.player_id}' has corrupt stored conditions: {e}") from e
     player_conditions = conditions.cap_exhaustion(

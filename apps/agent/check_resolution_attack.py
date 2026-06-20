@@ -87,7 +87,7 @@ def resolve_attack(
     # Prone/Blinded etc. impose disadvantage (scope "attack"), Enraged adds +2 damage below.
     # The defender's AC modifier (e.g. Enraged -2 AC) is the caller's concern (combat_support),
     # already baked into target_ac here.
-    effects = get_condition_effects(attacker_data.get("conditions", []))
+    effects = get_condition_effects(attacker_data.get("conditions") or [])
     atk_mod = attack_modifier(attacker_data, weapon) + effects.check_modifier
     attack_disadvantage = "attack" in effects.disadvantage_scopes
     attack_advantage = "attack" in effects.advantage_scopes

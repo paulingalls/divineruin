@@ -280,6 +280,16 @@ def remove_condition(conditions: list[dict], condition_type: str) -> list[dict]:
     return [dict(c) for c in conditions if c["type"] != condition_type]
 
 
+def hollowed_stage(conditions: list[dict] | None) -> int:
+    """Return the active Hollowed stage (1-3), or 0 when not Hollowed (M4.4 story-008).
+
+    Tolerates a JSON-null ``conditions`` (players.data.conditions can be stored null) by treating
+    it as no conditions. The combat-engine rise check reads this to gate the Temporary Hollowed
+    on Stage 2+."""
+    existing = _find(conditions or [], "hollowed")
+    return existing["stage"] if existing is not None else 0
+
+
 def tick_conditions(conditions: list[dict]) -> tuple[list[dict], list[dict]]:
     """Advance conditions one phase. Return ``(survivors, save_events)``.
 
