@@ -254,3 +254,34 @@ class TestCombatEndDefeatWiring:
             session, cs, "victory", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
         )
         spy.assert_not_awaited()
+
+
+class TestRecordLastRestedSettlement:
+    """The long-rest hook records the current settlement as the anchor tier-3 last-rested location.
+    (apply_long_rest has no production caller yet, so this is a wired-but-dormant forward-seam.)"""
+
+    @pytest.mark.asyncio
+    async def test_records_when_resting_in_a_settlement(self):
+        import rest_mechanics
+        from session_data import SessionData
+
+        session = SessionData(player_id="p1", location_id="millhaven", room=None)
+        loc_mod = MagicMock(get_location=AsyncMock(return_value={"settlement_tier": "village"}))
+        res_mod = MagicMock(set_last_rested_settlement=AsyncMock())
+        await rest_mechanics.record_last_rested_settlement(
+            session, location_mod=loc_mod, resurrection_mutations_mod=res_mod
+        )
+        res_mod.set_last_rested_settlement.assert_awaited_once_with("p1", "millhaven", conn=None)
+
+    @pytest.mark.asyncio
+    async def test_skips_when_resting_outside_a_settlement(self):
+        import rest_mechanics
+        from session_data import SessionData
+
+        session = SessionData(player_id="p1", location_id="wilds", room=None)
+        loc_mod = MagicMock(get_location=AsyncMock(return_value={"region_type": "wilderness"}))
+        res_mod = MagicMock(set_last_rested_settlement=AsyncMock())
+        await rest_mechanics.record_last_rested_settlement(
+            session, location_mod=loc_mod, resurrection_mutations_mod=res_mod
+        )
+        res_mod.set_last_rested_settlement.assert_not_awaited()
