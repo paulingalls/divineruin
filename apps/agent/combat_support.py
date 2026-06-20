@@ -312,6 +312,11 @@ async def _resolve_attack_packet(
     hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
     if target.hp_current <= 0:
         target.is_fallen = True
+        # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills outright —
+        # no Fallen grace, no death saves. is_dead is the stronger state; the pure _wrap reads it to
+        # end combat without a death-save beat. This is the one site with both attack_result + hp_max.
+        if attack_result.overkill >= target.hp_max:
+            target.is_dead = True
         sounds.append(SOUND_PLAYER_FALLEN)
         # Handle companion KO
         if target.type == "companion" and session.companion and target.id == session.companion.id:
