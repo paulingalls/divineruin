@@ -47,6 +47,12 @@ _ATTRS = {
     "charisma": 8,  # the lowest attribute — where a "lowest"-target death cost lands
 }
 
+# Players die at the off-catalog `off_catalog_wilds` (absent from the seeded locations), so the
+# resurrection anchor falls all the way through to tier-4: the seeded `starting_area`-tagged
+# location. Pin the concrete id so a future catalog retag can't silently shift the anchor and have
+# these tests still pass on the looser `== dc["anchor"]` self-consistency check.
+_STARTER_ZONE = "accord_market_square"
+
 
 async def _seed_player(pool, player_id: str, **overrides) -> None:
     """Upsert a fully-specified players.data row (the default seed_player lacks death_history /
@@ -149,6 +155,7 @@ async def test_defeat_applies_tiered_cost_and_revives_at_anchor(reset_db_pool: s
     assert revived is not None
     assert revived["death_history"]["count"] == 2  # recorded
     assert revived["attributes"][dc["attribute"]] == _ATTRS[dc["attribute"]] - 1  # cost persisted
+    assert dc["anchor"] == _STARTER_ZONE  # off-catalog death -> tier-4 starter zone
     assert revived["location_id"] == dc["anchor"]  # revived at the resolved anchor
     assert revived["hp"]["current"] == dc["revive_hp"]  # clamped to effective max
 
@@ -195,6 +202,7 @@ async def test_overkill_instant_death_and_companion_auto_stabilizes(reset_db_poo
     )
     ctx.userdata.combat_state = cs
 
+    assert player.is_dead is False  # pin the pre-attack state so the transition is real, not vacuous
     # The enemy lands an overkill blow on the player -> instant death (the REAL mechanic).
     await combat_support._resolve_attack_packet(
         ctx.userdata,
@@ -235,8 +243,8 @@ async def test_party_wipe_waives_patron_first_death_others_pay(reset_db_pool: st
     assert by_id[patron_id]["tier"] == "waived" and by_id[patron_id]["attribute_delta"] == 0
     # The non-patron pays independently.
     assert by_id[payer_id]["tier"] == "moderate" and by_id[payer_id]["attribute_delta"] == -1
-    # Both revived at ONE shared anchor.
-    assert by_id[patron_id]["anchor"] == by_id[payer_id]["anchor"]
+    # Both revived at ONE shared anchor (the tier-4 starter zone, since they died off-catalog).
+    assert by_id[patron_id]["anchor"] == by_id[payer_id]["anchor"] == _STARTER_ZONE
 
     revived_patron = await db_queries.get_player(patron_id, conn=pool)
     revived_payer = await db_queries.get_player(payer_id, conn=pool)
@@ -274,6 +282,7 @@ async def test_precombat_exhausted_loads_then_survives_death(reset_db_pool: str)
 
     revived = await db_queries.get_player(player_id, conn=pool)
     assert revived is not None
+    assert end_data["death_context"]["anchor"] == _STARTER_ZONE  # off-catalog death -> tier-4
     assert revived["location_id"] == end_data["death_context"]["anchor"]  # resurrected at anchor
     assert any(c["type"] == "exhausted" for c in (revived.get("conditions") or []))  # Exhausted survived
 
@@ -359,4 +368,5 @@ async def test_hollowed_rise_destroy_then_mortaen_death(reset_db_pool: str) -> N
     assert revived is not None
     assert await dmr.read_hollow_killed(player_id, conn=pool) is True
     assert all(c["type"] != "hollowed" for c in (revived.get("conditions") or []))  # Hollowed cleared
+    assert end_data["death_context"]["anchor"] == _STARTER_ZONE  # off-catalog death -> tier-4
     assert revived["location_id"] == end_data["death_context"]["anchor"]
