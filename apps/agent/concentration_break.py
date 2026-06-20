@@ -59,6 +59,11 @@ async def break_concentration_on_damage(
             # The player row is gone (a data glitch — an in-combat caster should always exist). Fail
             # safe: don't roll an unfounded save and don't strip their spell; leave concentration as-is.
             return None
+        # Thread the caster's in-combat conditions into the CON save (M4.3): Exhausted -1/stack
+        # lowers it, Stunned/Paralyzed auto-fail it. Conditions live on the in-memory
+        # CombatParticipant, not the DB player row; out of combat there are none ([]).
+        participant = session.combat_state.get_participant(session.player_id) if session.combat_state else None
+        player["conditions"] = participant.conditions if participant is not None else []
         save_total = resolver.resolve_saving_throw(player, "constitution", dc, "concentration").total
 
     if concentration.concentration_holds(save_total, dc, incapacitated=incapacitated):
