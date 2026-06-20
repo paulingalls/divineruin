@@ -7,11 +7,12 @@ deterministic source for *what each condition means* (``CONDITION_CATALOG``) and
 the pure functions that apply, remove, tick, and aggregate them. It is pure: it
 reads only its explicit arguments and never touches IO, RNG, DB, or combat state.
 
-An *active* condition is a plain ``dict`` — ``{"type", "duration", "source",
-"stacks", "stage"?}`` — mirroring the serializable-primitive shape of
-``CombatParticipant.enhancers`` so it round-trips through the combat_instances
-JSONB SSOT with no conversion layer (story-004 owns that wiring). The catalog
-metadata is a frozen ``ConditionSpec`` per type, mirroring dramatic.py's style.
+An *active* condition is a plain ``dict`` of JSON-native values — ``{"type",
+"duration", "source", "stacks", "stage"?}`` — so it round-trips through the
+combat_instances JSONB SSOT via ``asdict()`` with no conversion layer, the same
+serialization approach the other ``CombatParticipant`` state fields use (story-004
+owns that wiring). The catalog metadata is a frozen ``ConditionSpec`` per type,
+mirroring dramatic.py's style.
 
 Catalog and ordering mirror docs/game_mechanics/game_mechanics_combat.md
 §Status Effects (L263-322).
