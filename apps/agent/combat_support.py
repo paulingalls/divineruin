@@ -13,6 +13,7 @@ import check_resolution_attack
 import combat_enhancers
 import combat_resolution
 import concentration_break
+import conditions
 import db_mutations
 import db_mutations_inventory
 import db_queries
@@ -262,11 +263,16 @@ async def _resolve_attack_packet(
     attacker_data = {
         "attributes": attacker.attributes,
         "level": attacker.level,
+        # Attacker's active conditions (M4.3): resolve_attack folds Exhausted into the roll,
+        # Prone/Blinded into disadvantage, and Enraged into +2 damage.
+        "conditions": attacker.conditions,
     }
 
     # ``target_ac_bonus`` is the target's phase-scoped AC modifier (Defend's +2, M4.2);
     # the live caller passes state.ac_modifiers[target.id]. Defaults to 0 for direct callers.
-    effective_ac = target.ac + target_ac_bonus
+    # The target's condition AC modifier (M4.3, e.g. Enraged -2 AC) makes them easier to hit.
+    target_condition_ac = conditions.get_condition_effects(target.conditions).ac_modifier
+    effective_ac = target.ac + target_ac_bonus + target_condition_ac
     attack_result = resolver.resolve_attack(
         attacker_data,
         action,
