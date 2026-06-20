@@ -235,6 +235,33 @@ class TestCombatEndDefeatWiring:
         # combat_cleared passed as a keyword (enemies still up on a defeat -> False).
         assert spy.call_args.kwargs["combat_cleared"] is False
 
+    def test_finish_syncs_session_location_to_anchor(self, monkeypatch):
+        """AC3: after a defeat-resurrection, the post-death handoff agent is built at the anchor
+        (where the player was revived), not the stale death site."""
+        import gameplay_agent
+        from combat_end import _end_combat_finish
+        from session_data import SessionData
+
+        captured = {}
+
+        def fake_create(agent_type, location_id, **kwargs):
+            captured["location_id"] = location_id
+            return MagicMock()
+
+        monkeypatch.setattr(gameplay_agent, "create_gameplay_agent", fake_create)
+
+        cs = _make_combat_state(player_fallen=True)
+        session = SessionData(player_id="player_1", location_id="battlefield_danger", room=None)
+        end_data = {
+            "xp_total": 0,
+            "defeated_enemies": [],
+            "weapon_durability": {},
+            "death_context": {"anchor": "camp_r1", "death_count": 1, "tier": "gentle"},
+        }
+        _end_combat_finish(session, cs, "defeat", end_data)
+        assert session.location_id == "camp_r1"
+        assert captured["location_id"] == "camp_r1"
+
     @pytest.mark.asyncio
     async def test_victory_does_not_trigger_character_death(self, monkeypatch):
         import resurrection

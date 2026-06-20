@@ -15,9 +15,10 @@ import json
 import asyncpg
 
 import db
+from catalog_parse import ATTRIBUTE_KEYS
 
-# The six attributes — gate the dynamic jsonb path so a bad key can't be written.
-_VALID_ATTRS = frozenset({"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"})
+# Gate the dynamic jsonb path so a bad key can't be written. Canonical six (catalog_parse SSOT).
+_VALID_ATTRS = frozenset(ATTRIBUTE_KEYS)
 
 
 async def apply_attribute_penalty(

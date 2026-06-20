@@ -11,11 +11,12 @@ story-007.
 import db_content_queries
 import db_mutations_death
 import db_mutations_resurrection
+from catalog_parse import ATTRIBUTE_KEYS
 from creation_classes import CLASSES
 from death_cost import DeathCost, determine_death_cost
 
-# Canonical attribute order — also the deterministic tie-break for lowest/highest selectors.
-_ATTR_ORDER = ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma")
+# Canonical attribute order doubles as the deterministic tie-break for the lowest/highest selectors.
+_ATTR_ORDER = ATTRIBUTE_KEYS
 
 
 def lowest_attribute(attributes: dict) -> str:
@@ -70,9 +71,11 @@ def resolve_resurrection_anchor(
         return death_location
 
     region = death.get("region")
-    settlements = [
-        loc_id for loc_id, loc in locations.items() if loc.get("settlement_tier") and loc.get("region") == region
-    ]
+    settlements = (
+        [loc_id for loc_id, loc in locations.items() if loc.get("settlement_tier") and loc.get("region") == region]
+        if region is not None
+        else []
+    )
     if settlements:
         return min(settlements, key=lambda i: (locations[i].get("danger_level", 99), i))
 

@@ -204,6 +204,13 @@ def _end_combat_finish(
     session.draethar_inner_fire_used = False  # Inner Fire resets each encounter (M3.4)
     session.combat_state = None
 
+    # On a defeat-resurrection the character was revived AT the anchor (resurrect_on_defeat wrote
+    # players.data.location_id = anchor). Sync the live session so the post-death handoff agent is
+    # built at the anchor, not the stale death site — AC3: the character returns at the anchor.
+    death_context = end_data.get("death_context")
+    if death_context is not None:
+        session.location_id = death_context["anchor"]
+
     session.record_event(f"Combat ended: {outcome}")
     if defeated_enemies:
         session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {cs.location_id}: {outcome}")
