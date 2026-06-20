@@ -9,7 +9,7 @@ resolve_saving_throw accepts an optional `rng` for deterministic testing.
 import random
 from dataclasses import dataclass
 
-from check_resolution import _roll_d20_check
+from check_resolution import _ATTR_ABBREV, _apply_condition_modifiers, _roll_d20_check
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier, proficiency_bonus
 
@@ -58,14 +58,38 @@ def resolve_saving_throw(
         level = player_data.get("level", 1)
         mod += proficiency_bonus(level)
 
-    core = _roll_d20_check(mod, dc, rng=rng)
+    # Condition effects (M4.3): a condition can auto-fail this save (Stunned/Paralyzed
+    # auto-fail STR/DEX), flatly modify it (Exhausted -1/stack), or impose disadvantage.
+    scopes = {_ATTR_ABBREV.get(save_lower, save_lower)}
+    flat_mod, advantage, disadvantage, auto_fail = _apply_condition_modifiers(player_data.get("conditions", []), scopes)
+    if auto_fail:
+        return SavingThrowResult(
+            save_type=save_lower,
+            roll=0,
+            # Report the same modifier the rolled path would (mod + condition flat_mod),
+            # so an auto-failed save's packet doesn't understate the penalty when an
+            # auto-fail condition (Stunned) co-exists with a flat one (Exhausted).
+            modifier=mod + flat_mod,
+            total=0,
+            dc=dc,
+            success=False,
+            margin=-dc,
+            critical_success=False,
+            critical_failure=False,
+            effect_applied=effect_on_fail,
+            narrative_hint="The condition leaves you unable to resist.",
+            dramatic=False,
+            context="",
+        )
+
+    core = _roll_d20_check(mod + flat_mod, dc, rng=rng, advantage=advantage, disadvantage=disadvantage)
     # No roll_type passed: a generic save is dramatic ONLY on nat-1/nat-20.
     verdict = evaluate_dramatic_context(DramaticContext(raw_die=core.roll))
 
     return SavingThrowResult(
         save_type=save_lower,
         roll=core.roll,
-        modifier=mod,
+        modifier=mod + flat_mod,
         total=core.total,
         dc=dc,
         success=core.success,

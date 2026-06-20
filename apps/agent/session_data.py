@@ -108,6 +108,12 @@ class CombatParticipant:
     # declaration. Populated from players.data.flags at combat init; serializes via asdict
     # and falls back to [] for rows written before the field existed.
     enhancers: list[str] = field(default_factory=list)
+    # Active status conditions (M4.3, story-002). Each is a plain JSON-native dict
+    # {type, duration, source, stacks, stage?} produced by conditions.apply_condition;
+    # the phase engine's Beat-4 wrap ticks them (combat_phase._wrap). Serializes via asdict
+    # and falls back to [] for rows written before the field existed. Cross-encounter
+    # persistence (Wounded/Exhausted/Hollowed) is story-004's migration-050 concern.
+    conditions: list[dict] = field(default_factory=list)
 
 
 @dataclass

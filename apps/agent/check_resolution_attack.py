@@ -10,6 +10,7 @@ import random
 from dataclasses import dataclass
 
 from check_resolution import _roll_d20_check
+from conditions import get_condition_effects
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier, proficiency_bonus
@@ -77,12 +78,21 @@ def resolve_attack(
     target_hp: int,
     rng: random.Random | None = None,
 ) -> AttackResult:
-    atk_mod = attack_modifier(attacker_data, weapon)
+    # Attacker condition effects (M4.3): Exhausted -1/stack folds into the attack roll,
+    # Prone/Blinded etc. impose disadvantage (scope "attack"), Enraged adds +2 damage below.
+    # The defender's AC modifier (e.g. Enraged -2 AC) is the caller's concern (combat_support),
+    # already baked into target_ac here.
+    effects = get_condition_effects(attacker_data.get("conditions", []))
+    atk_mod = attack_modifier(attacker_data, weapon) + effects.check_modifier
+    attack_disadvantage = "attack" in effects.disadvantage_scopes
+    attack_advantage = "attack" in effects.advantage_scopes
     # Attack uses the same d20+mod-vs-target rule as skill checks/saves: nat-20
     # always hits, nat-1 always misses, else total >= AC. Route through the shared
     # primitive (target_ac is the attack-side DC) so the rule can't drift; attack
     # vocab (hit/critical) and the crit-doubles-damage side-effect stay here.
-    core = _roll_d20_check(mod=atk_mod, dc=target_ac, rng=rng)
+    core = _roll_d20_check(
+        mod=atk_mod, dc=target_ac, rng=rng, advantage=attack_advantage, disadvantage=attack_disadvantage
+    )
     d20 = core.roll
     attack_total = core.total
     hit = core.success
@@ -101,6 +111,9 @@ def resolve_attack(
         # Damage adds the governing-attribute modifier once (even on a crit),
         # never proficiency (spec: proficiency is attack-roll only).
         damage += weapon_attribute_modifier(attacker_data, weapon)
+        # Condition damage modifier (M4.3): Enraged adds +2 damage. Applied once, like
+        # the attribute mod, before the floor.
+        damage += effects.damage_modifier
         # Floor at 0: a low-attribute attacker (e.g. STR 1 → -5) rolling low must
         # never produce negative damage, which would HEAL the target via the
         # max(0, hp - damage) below. A hit deals at least 0.

@@ -34,13 +34,22 @@ export interface ActiveObjective {
   updatedAt: number;
 }
 
+// A single active status condition on a combatant (M4.3, story-005). Mirrors the server
+// condition packet shaped by story-004: a permissive wire shape — the closed condition
+// vocabulary + icon mapping lives in condition-display.ts, not here.
+export interface Condition {
+  type: string;
+  stacks: number;
+  source: string;
+}
+
 export interface Combatant {
   id: string;
   name: string;
   isAlly: boolean;
   hpCurrent: number;
   hpMax: number;
-  statusEffects: string[];
+  conditions: Condition[];
   isActive: boolean;
 }
 

@@ -61,3 +61,18 @@ def get_exhaustion_narrative(stacks: int, has_iron_constitution: bool = False) -
     max_stacks = 3 if has_iron_constitution else 5
     clamped = max(0, min(stacks, max_stacks))
     return _EXHAUSTION_NARRATIVES[clamped]
+
+
+def exhaustion_narrative_for_conditions(conditions: list[dict], has_iron_constitution: bool = False) -> str:
+    """Return the exhaustion flavor for a participant's condition list (M4.3 Beat-3 layer).
+
+    Finds the Exhausted condition (the sole stacking condition) and renders its stacks via
+    get_exhaustion_narrative. Returns "" when there is no Exhausted condition or its stacks
+    are 0/absent — condition dicts may cross the JSONB boundary, so a missing ``stacks`` key
+    fails soft to no narration rather than raising.
+    """
+    for condition in conditions:
+        if condition.get("type") == "exhausted":
+            stacks = condition.get("stacks", 0)
+            return get_exhaustion_narrative(stacks, has_iron_constitution)
+    return ""

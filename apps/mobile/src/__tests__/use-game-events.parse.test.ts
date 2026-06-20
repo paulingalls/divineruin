@@ -40,7 +40,7 @@ test("parseCombatant returns valid combatant from well-formed data", () => {
     isAlly: true,
     hpCurrent: 20,
     hpMax: 30,
-    statusEffects: ["blessed"],
+    conditions: [{ type: "blessed", stacks: 1, source: "cleric" }],
     isActive: true,
   });
   expect(result).not.toBeNull();
@@ -48,7 +48,7 @@ test("parseCombatant returns valid combatant from well-formed data", () => {
   expect(result!.name).toBe("Kael");
   expect(result!.isAlly).toBe(true);
   expect(result!.hpCurrent).toBe(20);
-  expect(result!.statusEffects).toEqual(["blessed"]);
+  expect(result!.conditions).toEqual([{ type: "blessed", stacks: 1, source: "cleric" }]);
 });
 
 test("parseCombatant returns null for null input", () => {
@@ -74,8 +74,25 @@ test("parseCombatant defaults missing optional fields", () => {
   expect(result!.isAlly).toBe(false);
   expect(result!.hpCurrent).toBe(0);
   expect(result!.hpMax).toBe(1);
-  expect(result!.statusEffects).toEqual([]);
+  expect(result!.conditions).toEqual([]);
   expect(result!.isActive).toBe(false);
+});
+
+test("parseCombatant drops malformed conditions and defaults stacks/source", () => {
+  const result = parseCombatant({
+    id: "c1",
+    name: "Kael",
+    conditions: [
+      { type: "exhausted", stacks: 3, source: "march" },
+      { type: "poisoned" }, // missing stacks/source -> defaulted
+      { stacks: 2 }, // missing type -> dropped
+      "not-an-object", // -> dropped
+    ],
+  });
+  expect(result!.conditions).toEqual([
+    { type: "exhausted", stacks: 3, source: "march" },
+    { type: "poisoned", stacks: 1, source: "" },
+  ]);
 });
 
 // --- Security: payload size limit ---

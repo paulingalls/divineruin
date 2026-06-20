@@ -18,6 +18,7 @@ import random
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from conditions import tick_conditions
 from declarations import Declaration, resolve_declaration
 from session_data import CombatState
 
@@ -75,6 +76,12 @@ class WrapOutcome:
     resonance_decay: int
     combat_ended: bool
     outcome: str | None  # "victory" | "defeat" | None
+    # Save-to-clear signals from the Beat-4 condition tick (M4.3, story-002): one
+    # {actor_id, type, save, source} per active save-to-clear condition (Frightened today).
+    # The engine never rolls — orchestration (story-004 combat_turn) resolves the save and
+    # clears the condition on success. Duration-based expiry is already applied to the
+    # returned state's participant.conditions; this carries only what needs a roll.
+    tick_conditions_due: list[dict] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -169,8 +176,19 @@ def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:
 
 
 def _wrap(state: CombatState) -> WrapOutcome:
-    """Compute Beat-4 effect signals and the end-condition. Pure read over
-    participants; mutations/persistence are the orchestrator's job."""
+    """Compute Beat-4 effect signals and the end-condition.
+
+    Applies the per-phase condition tick to ``state.participants`` — conditions live ON
+    CombatState (the SSOT), so the engine owns advancing them, unlike Resonance/HP/DB which
+    live on SessionData and stay the orchestrator's job. ``state`` here is the deep-copied
+    next_state, so this never mutates the caller's input. Surfaces save-to-clear signals in
+    ``tick_conditions_due``; the engine never rolls them."""
+    tick_conditions_due: list[dict] = []
+    for p in state.participants:
+        survivors, save_events = tick_conditions(p.conditions)
+        p.conditions = survivors
+        tick_conditions_due.extend({"actor_id": p.id, **event} for event in save_events)
+
     death_saves_due = [
         p.id
         for p in state.participants
@@ -195,4 +213,5 @@ def _wrap(state: CombatState) -> WrapOutcome:
         resonance_decay=_RESONANCE_DECAY_PER_PHASE,
         combat_ended=combat_ended,
         outcome=outcome,
+        tick_conditions_due=tick_conditions_due,
     )

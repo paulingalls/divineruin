@@ -14,6 +14,7 @@ import { panelStore } from "@/stores/panel-store";
 import { portraitStore } from "@/stores/portrait-store";
 import type {
   Combatant,
+  Condition,
   CombatTrackerState,
   CreationCard,
   HollowEchoBand,
@@ -89,17 +90,31 @@ function parseInventoryItems(rawItems: Record<string, unknown>[]): InventoryItem
   });
 }
 
+function parseCondition(raw: unknown): Condition | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const c = raw as Record<string, unknown>;
+  if (typeof c.type !== "string") return null;
+  return {
+    type: c.type,
+    stacks: typeof c.stacks === "number" ? c.stacks : 1,
+    source: typeof c.source === "string" ? c.source : "",
+  };
+}
+
 export function parseCombatant(raw: unknown): Combatant | null {
   if (typeof raw !== "object" || raw === null) return null;
   const c = raw as Record<string, unknown>;
   if (typeof c.id !== "string" || typeof c.name !== "string") return null;
+  const conditions = Array.isArray(c.conditions)
+    ? c.conditions.map(parseCondition).filter((x): x is Condition => x !== null)
+    : [];
   return {
     id: c.id,
     name: c.name,
     isAlly: typeof c.isAlly === "boolean" ? c.isAlly : false,
     hpCurrent: typeof c.hpCurrent === "number" ? c.hpCurrent : 0,
     hpMax: typeof c.hpMax === "number" ? c.hpMax : 1,
-    statusEffects: Array.isArray(c.statusEffects) ? (c.statusEffects as string[]) : [],
+    conditions,
     isActive: typeof c.isActive === "boolean" ? c.isActive : false,
   };
 }

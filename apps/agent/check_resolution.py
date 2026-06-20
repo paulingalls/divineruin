@@ -6,6 +6,7 @@ All resolution functions accept an optional `rng` for deterministic testing.
 import random
 from dataclasses import dataclass
 
+from conditions import get_condition_effects
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import (
@@ -123,6 +124,42 @@ def _check_auto_fail(dc: int, skill_tier: SkillTier) -> bool:
     return dc >= 24 and rank < _EXPERT_RANK
 
 
+# --- Condition modifiers (M4.3, story-003) ---
+
+# Bridge the resolver's full attribute names to the conditions catalog's 3-letter
+# scope tokens (conditions.py uses "str"/"dex"/"con"/"wis" etc. for disadvantage_scopes
+# and auto_fail_saves). Keeps conditions.py + its tests untouched (out of this domain).
+_ATTR_ABBREV: dict[str, str] = {
+    "strength": "str",
+    "dexterity": "dex",
+    "constitution": "con",
+    "intelligence": "int",
+    "wisdom": "wis",
+    "charisma": "cha",
+}
+
+# Inverse of _ATTR_ABBREV: the catalog's tick_save (conditions.py) and other internals speak the
+# 3-letter abbreviation ("wis"), but resolve_saving_throw validates against the full attribute name.
+# Expand an abbreviation to the full name before handing it to the save resolver.
+_ATTR_FULL: dict[str, str] = {abbrev: full for full, abbrev in _ATTR_ABBREV.items()}
+
+
+def _apply_condition_modifiers(conditions: list[dict], scopes: set[str]) -> tuple[int, bool, bool, bool]:
+    """Resolve active conditions into a roll's mechanical effect for the given scopes.
+
+    Returns ``(flat_modifier, advantage, disadvantage, auto_fail)``. ``flat_modifier`` is the
+    aggregate check_modifier (e.g. Exhausted -1/stack); the three bools are True when ``scopes``
+    intersects the respective ConditionEffects set. ``scopes`` is the roll's relevant tokens —
+    e.g. {"str","athletics"} for a STR skill check, {"attack"} for an attack, {"con"} for a CON
+    save. Pure: a thin scope-matching adapter over conditions.get_condition_effects.
+    """
+    effects = get_condition_effects(conditions)
+    advantage = bool(scopes & effects.advantage_scopes)
+    disadvantage = bool(scopes & effects.disadvantage_scopes)
+    auto_fail = bool(scopes & effects.auto_fail_saves)
+    return effects.check_modifier, advantage, disadvantage, auto_fail
+
+
 # --- Check resolution ---
 
 
@@ -130,16 +167,28 @@ def _roll_d20_check(
     mod: int,
     dc: int,
     rng: random.Random | None = None,
+    *,
+    advantage: bool = False,
+    disadvantage: bool = False,
 ) -> D20CheckCore:
     """Roll a d20, apply the success rule, and compute narrative_hint.
 
-    Single source of truth for the d20+mod-vs-DC contract used by both
-    skill checks (resolve_check) and saving throws (resolve_saving_throw).
-    Returns the raw outcome; per-side wrapping (auto_fail / critical flags /
-    effect_applied / skill or save_type) happens in the calling function.
+    Single source of truth for the d20+mod-vs-DC contract used by skill checks
+    (resolve_check), attacks (resolve_attack), and saving throws
+    (resolve_saving_throw). Returns the raw outcome; per-side wrapping (auto_fail /
+    critical flags / effect_applied / skill or save_type) happens in the caller.
+
+    Advantage/disadvantage (M4.3): roll 2d20 and keep the higher (advantage) or
+    lower (disadvantage). They cancel — both or neither rolls a single d20 (the
+    standard tabletop rule). The kept die drives the success rule, crit flags, and
+    the dramatic raw_die downstream.
     """
-    result = dice_roll("d20", rng=rng)
-    d20 = result.total
+    if advantage != disadvantage:
+        first = dice_roll("d20", rng=rng).total
+        second = dice_roll("d20", rng=rng).total
+        d20 = max(first, second) if advantage else min(first, second)
+    else:
+        d20 = dice_roll("d20", rng=rng).total
     total = d20 + mod
     if d20 == 20:
         success = True
@@ -163,6 +212,9 @@ def resolve_check(
     dc: int,
     *,
     rng: random.Random | None = None,
+    extra_modifier: int = 0,
+    advantage: bool = False,
+    disadvantage: bool = False,
 ) -> CheckResult:
     """Unified d20 resolution. Pure function, no IO.
 
@@ -172,13 +224,15 @@ def resolve_check(
         skill_tier: One of "untrained", "trained", "expert", "master".
         dc: Difficulty class to beat.
         rng: Optional seeded RNG for deterministic testing.
+        extra_modifier: Flat condition modifier folded into the total (M4.3); 0 = none.
+        advantage/disadvantage: Roll-with-(dis)advantage flags from active conditions (M4.3).
     """
     attr_mod = attribute_modifier(attribute_score)
     tier_bonus = SKILL_TIER_BONUS[skill_tier]
 
     prof = 0 if skill_tier == "untrained" else proficiency_bonus(level)
 
-    total_mod = attr_mod + prof + tier_bonus
+    total_mod = attr_mod + prof + tier_bonus + extra_modifier
 
     if _check_auto_fail(dc, skill_tier):
         # raw_die=0 → evaluator returns (False, ""); a check has no roll_type,
@@ -199,7 +253,7 @@ def resolve_check(
             context=verdict.context,
         )
 
-    core = _roll_d20_check(total_mod, dc, rng=rng)
+    core = _roll_d20_check(total_mod, dc, rng=rng, advantage=advantage, disadvantage=disadvantage)
     verdict = evaluate_dramatic_context(DramaticContext(raw_die=core.roll))
 
     return CheckResult(
@@ -238,7 +292,18 @@ def _resolve_skill_check_impl(
     level = player_data.get("level", 1)
     tier = _get_skill_tier(player_data, skill_lower)
 
-    check = resolve_check(score, level, tier, dc, rng=rng)
+    # Condition modifiers (M4.3): a check's scopes are its governing attribute(s) plus the
+    # skill name, so Poisoned (str/dex/con) disadvantages physical skills and Blinded
+    # (perception) the Perception skill. Checks have no auto-fail (that is a saving-throw rule).
+    attr_names = attr if isinstance(attr, tuple) else (attr,)
+    scopes = {_ATTR_ABBREV.get(a, a) for a in attr_names} | {skill_lower}
+    flat_mod, advantage, disadvantage, _auto_fail = _apply_condition_modifiers(
+        player_data.get("conditions", []), scopes
+    )
+
+    check = resolve_check(
+        score, level, tier, dc, rng=rng, extra_modifier=flat_mod, advantage=advantage, disadvantage=disadvantage
+    )
 
     return SkillCheckResult(
         skill=skill_lower,
