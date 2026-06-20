@@ -1,9 +1,10 @@
 """Shared test fixtures — auto-mock agent factories, seed training config."""
 
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from _db_lifecycle import ensure_db_up, stop_if_started
+from _db_lifecycle import _DEFAULT_DATABASE_URL, ensure_db_up, stop_if_started
 from archetype_abilities_config_fixture import setup_archetype_abilities_config_fixture
 from archetype_milestones_config_fixture import setup_archetype_milestones_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
@@ -15,6 +16,8 @@ from role_archetypes_config_fixture import setup_role_archetypes_config_fixture
 from settlement_templates_config_fixture import setup_settlement_templates_config_fixture
 from spells_config_fixture import setup_spells_config_fixture
 from training_config_fixture import setup_training_config_fixture
+
+import db
 
 # Tracks whether THIS process started docker compose, so sessionfinish only
 # stops what sessionstart started.
@@ -257,3 +260,22 @@ def seed_milestones():
     """
     setup_archetype_milestones_config_fixture()
     yield
+
+
+@pytest.fixture
+async def dev_db_pool():
+    """Point db.get_pool() at the docker-compose dev DB (started by pytest_sessionstart), then
+    restore. Mirrors acceptance's reset_db_pool but for the :55432 dev DB the non-acceptance lane
+    already relies on; resolves the DSN the same way _db_lifecycle does. Shared across all fast-lane
+    real-PG tests (combat persistence/tx-integrity, db_mutations_death round-trip)."""
+    prior = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = prior or _DEFAULT_DATABASE_URL
+    await db.close_all()
+    try:
+        yield await db.get_pool()
+    finally:
+        await db.close_all()
+        if prior is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = prior
