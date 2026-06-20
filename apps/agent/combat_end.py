@@ -7,8 +7,10 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import combat_resolution
+import conditions
 import db
 import db_mutations
+import db_mutations_conditions
 import db_queries
 import event_types as E
 from combat_events import EventSink, emit_or_publish
@@ -112,6 +114,23 @@ async def _end_combat_db(
                 conn=conn,
                 sink=sink,
             )
+
+    # Persist the player's cross-encounter conditions (M4.3, story-004): the persists_across_encounters
+    # ones acquired this fight (Wounded/Exhausted/Hollowed) MERGE into players.data; phase-scoped ones
+    # (Prone/Stunned/…) drop with the combat row. Combat only ACCRUES persistent conditions (rest
+    # clears them, a later milestone), and combat-START load is deferred, so we union with the existing
+    # store rather than overwrite — else a fight would clobber a pre-combat Wounded. Skip all DB work
+    # when nothing was acquired (the common case). Same tx as the row delete (atomic).
+    player_part = next((p for p in cs.participants if p.type == "player"), None)
+    if player_part is not None:
+        acquired = [
+            c for c in player_part.conditions if conditions.CONDITION_CATALOG[c["type"]].persists_across_encounters
+        ]
+        if acquired:
+            existing = await db_mutations_conditions.read_player_conditions(session.player_id, conn=conn)
+            existing_types = {c["type"] for c in existing}
+            merged = existing + [c for c in acquired if c["type"] not in existing_types]
+            await db_mutations_conditions.save_player_conditions(session.player_id, merged, conn=conn)
 
     await mutations.delete_combat_state(cs.combat_id, conn=conn)
 
