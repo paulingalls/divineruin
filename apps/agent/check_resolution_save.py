@@ -66,7 +66,10 @@ def resolve_saving_throw(
         return SavingThrowResult(
             save_type=save_lower,
             roll=0,
-            modifier=mod,
+            # Report the same modifier the rolled path would (mod + condition flat_mod),
+            # so an auto-failed save's packet doesn't understate the penalty when an
+            # auto-fail condition (Stunned) co-exists with a flat one (Exhausted).
+            modifier=mod + flat_mod,
             total=0,
             dc=dc,
             success=False,
