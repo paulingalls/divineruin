@@ -191,6 +191,27 @@ class TestHollowedOnDeathBranch:
         assert ctx["hollow_killed"] is True
 
     @pytest.mark.asyncio
+    async def test_null_conditions_does_not_crash(self):
+        # players.data.conditions stored as JSON null -> get_player returns conditions=None.
+        # The branch must treat that as no-conditions, not raise TypeError iterating None.
+        from resurrection import trigger_character_death
+
+        death_mut, res_mut, cond_mut = _death_mocks()
+        player = _dying_player(conditions=None)  # type: ignore[arg-type]
+        ctx = await trigger_character_death(
+            player,
+            _LOCATIONS,
+            combat_cleared=False,
+            death_mutations=death_mut,
+            mutations=res_mut,
+            conditions_mutations=cond_mut,
+            conn=object(),
+        )
+        res_mut.set_hollow_killed.assert_not_awaited()
+        cond_mut.save_player_conditions.assert_not_awaited()
+        assert ctx["hollow_killed"] is False and ctx["hollowed_cleared"] is False
+
+    @pytest.mark.asyncio
     async def test_non_hollowed_death_does_not_mark_or_clear(self):
         import conditions
         from resurrection import trigger_character_death

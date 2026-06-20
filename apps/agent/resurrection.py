@@ -181,7 +181,7 @@ async def trigger_character_death(
     # Hollowed death (story-007): mark Hollow-killed + clear the Hollowed condition (purged past
     # Mortaen's threshold). combat_end persists the participant's conditions BEFORE this runs, so the
     # cleared list is the authoritative post-death store.
-    player_conditions = player.get("conditions", [])
+    player_conditions = player.get("conditions") or []
     hollow_killed = any(c.get("type") == "hollowed" for c in player_conditions)
     if hollow_killed:
         await mutations.set_hollow_killed(player_id, conn=conn)
