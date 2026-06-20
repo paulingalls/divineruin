@@ -296,6 +296,14 @@ def has_iron_constitution(player_data: dict) -> bool:
     return _get_skill_tier(player_data, "endurance") == "master"
 
 
+def exhaustion_stack_cap(player_data: dict) -> int:
+    """The character's Exhausted stack cap: 3 with Iron Constitution (Endurance master), else 5
+    (M4.4 story-005). The named production wiring for has_iron_constitution — consumed at the
+    combat-START condition load to clamp loaded Exhausted (combat_init). When a forced-march/travel
+    producer ships, the gain-side apply site reuses this same cap."""
+    return 3 if has_iron_constitution(player_data) else 5
+
+
 def skill_modifier(player_data: dict, skill: str) -> int:
     skill_lower = skill.lower()
     attr = SKILLS.get(skill_lower)

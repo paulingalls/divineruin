@@ -11,10 +11,12 @@ from livekit.agents.voice import RunContext
 
 import combat_enhancers
 import combat_resolution
+import conditions
 import db_content_queries
 import db_mutations
 import db_queries
 import event_types as E
+import rules_engine
 from combat_support import _participant_summary, _publish_sounds
 from companion_profiles import get_companion_profile
 from companion_scaling import (
@@ -143,6 +145,24 @@ async def _start_combat_impl(
     initiative_order = [e.participant_id for e in initiative_entries]
     initiative_by_id = {e.participant_id: e.total for e in initiative_entries}
 
+    # Load the player's persisted conditions onto the combat participant (M4.4 story-005): a
+    # pre-combat Exhausted/Wounded/Hollowed now affects THIS fight's rolls (the in-combat check
+    # path reads participant.conditions). They ride the already-loaded players.data dict, so no
+    # extra query — validate at this boundary (fail-loud on a corrupt stored dict) and clamp
+    # Exhausted to the iron-constitution cap (the in-scope apply site until a forced-march producer).
+    try:
+        # A corrupt stored condition row is a data-integrity error in the same family as a
+        # malformed companion profile (below) — surface it as a DM-narratable ToolError instead
+        # of a raw ValueError. db_tool narrows on JSONDecodeError, so a bare ValueError here would
+        # escape uncaught and crash combat init.
+        validated_conditions = conditions.validate_conditions(player.get("conditions", []))
+    except ValueError as e:
+        raise ToolError(f"Player '{session.player_id}' has corrupt stored conditions: {e}") from e
+    player_conditions = conditions.cap_exhaustion(
+        validated_conditions,
+        rules_engine.exhaustion_stack_cap(player),
+    )
+
     # Build CombatParticipants
     participants: list[CombatParticipant] = [
         CombatParticipant(
@@ -159,6 +179,7 @@ async def _start_combat_impl(
             # Declaration enhancers granted via players.data.flags (M4.2, story-004). Only
             # extra_attack is grantable today; the rest populate when their grants land.
             enhancers=combat_enhancers.enhancers_from_flags(player.get("flags")),
+            conditions=player_conditions,
         ),
     ]
     for enemy in enemies:

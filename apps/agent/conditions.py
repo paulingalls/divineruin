@@ -177,6 +177,48 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
 _HOLLOWED_MAX_STAGE = 3
 
 
+def validate_condition_dict(c: object) -> dict:
+    """Fail-loud validation for one stored condition dict (M4.4 story-005, JSONB read boundary).
+
+    A condition round-trips through JSONB as {type, duration, source, stacks?|stage?}. Checks the
+    closed-vocab ``type`` against CONDITION_CATALOG and the int-typed fields WHEN PRESENT (``stacks``
+    / ``stage`` are int; ``duration`` is int|None) — well-formed dicts vary by condition, so absent
+    fields are fine. Returns ``c`` on success; raises ValueError on a corrupt dict so a bad row
+    surfaces at the boundary instead of crashing a downstream resolver."""
+    if not isinstance(c, dict):
+        raise ValueError(f"condition entry is not a dict: {c!r}")
+    if "type" not in c:
+        raise ValueError(f"condition dict missing 'type': {c!r}")
+    ctype = c["type"]
+    if ctype not in CONDITION_CATALOG:
+        raise ValueError(f"unknown condition type: {ctype!r}")
+    for int_field in ("stacks", "stage"):
+        if int_field in c and not isinstance(c[int_field], int):
+            raise ValueError(f"condition {ctype!r} {int_field} must be an int, got {c[int_field]!r}")
+    if "duration" in c and c["duration"] is not None and not isinstance(c["duration"], int):
+        raise ValueError(f"condition {ctype!r} duration must be int or None, got {c['duration']!r}")
+    return c
+
+
+def validate_conditions(conditions: list) -> list:
+    """Validate every entry of a stored conditions list (fail-loud); returns it on success."""
+    for c in conditions:
+        validate_condition_dict(c)
+    return conditions
+
+
+def cap_exhaustion(conditions: list[dict], cap: int) -> list[dict]:
+    """Return a new list with the ``exhausted`` entry's ``stacks`` clamped to ``cap`` (M4.4
+    story-005). No-op when no exhausted entry is present or it is already at/below ``cap``. Never
+    mutates the input. Used at the combat-START load boundary to enforce the iron-constitution cap
+    (the in-scope apply site until a forced-march/travel producer ships)."""
+    result = [dict(c) for c in conditions]
+    existing = _find(result, "exhausted")
+    if existing is not None and existing.get("stacks", 0) > cap:
+        existing["stacks"] = cap
+    return result
+
+
 def _find(conditions: list[dict], condition_type: str) -> dict | None:
     """Return the active instance of ``condition_type``, or None."""
     for c in conditions:
