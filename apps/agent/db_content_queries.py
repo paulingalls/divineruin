@@ -28,6 +28,22 @@ async def get_location(location_id: str) -> dict | None:
     return data
 
 
+async def get_all_locations() -> dict[str, dict]:
+    """Return every location keyed by id ({id: data}). Used by the resurrection anchor resolver
+    (M4.4) which needs the catalog to find same-region settlements + the starter zone. Cache-backed
+    as a single blob; locations are static content so a whole-catalog read is cheap and rare."""
+    cache_key = "locations:all"
+    cached = await db._cache_get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
+    pool = await db.get_pool()
+    rows = await pool.fetch("SELECT id, data FROM locations")
+    out = {row["id"]: json.loads(row["data"]) for row in rows}
+    await db._cache_set(cache_key, json.dumps(out))
+    return out
+
+
 async def get_faction(faction_id: str) -> dict | None:
     """Return a faction's content row (incl. reputation_tiers), or None if not found.
 

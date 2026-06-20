@@ -80,7 +80,12 @@ class TestEndCombat:
         assert "Goblin Scout" in result["defeated_enemies"]
 
     @pytest.mark.asyncio
-    async def test_no_xp_on_defeat(self):
+    async def test_no_xp_on_defeat(self, monkeypatch):
+        import db_queries
+
+        # No player row in this unit's mock DB -> resurrection (M4.4 defeat path) skips cleanly;
+        # this test asserts XP only, not the resurrection flow.
+        monkeypatch.setattr(db_queries, "get_player", AsyncMock(return_value=None))
         mock_mutations = _make_end_combat_mocks()
         ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()

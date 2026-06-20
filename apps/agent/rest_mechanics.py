@@ -18,7 +18,9 @@ import abilities
 import ability_persistence
 import archetypes
 import character_spells
+import db_content_queries
 import db_mutations_resonance
+import db_mutations_resurrection
 import spell_preparation
 import spells
 
@@ -216,3 +218,23 @@ async def reset_resonance_on_rest(
     """
     session.resonance.current = 0
     await resonance_mutations_mod.reset_player_resonance(session.player_id, conn=conn)
+
+
+async def record_last_rested_settlement(
+    session: SessionData,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    location_mod=db_content_queries,
+    resurrection_mutations_mod=db_mutations_resurrection,
+) -> None:
+    """On a long rest in a settlement, record it as the player's last-rested settlement —
+    resurrection anchor tier-3 (you wake where you last felt safe). No-op when resting outside a
+    settlement (a location with no settlement_tier). Pass a transactional ``conn`` to make this
+    atomic with the other long-rest writes.
+
+    Forward-seam: apply_long_rest has no production caller yet, so this hook is wired for when a
+    rest tool ships — tier-3 stays dormant in the resolver until then.
+    """
+    location = await location_mod.get_location(session.location_id)
+    if location and location.get("settlement_tier"):
+        await resurrection_mutations_mod.set_last_rested_settlement(session.player_id, session.location_id, conn=conn)
