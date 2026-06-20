@@ -107,6 +107,154 @@ class TestRevivifyGateLive:
         assert packet
 
 
+_LOCATIONS = {
+    "battlefield_danger": {"region": "r1", "danger_level": 3},
+    "camp_r1": {"region": "r1", "settlement_tier": "village", "danger_level": 1},
+    "accord_market_square": {"region": "r9", "settlement_tier": "city", "danger_level": 0, "tags": ["starting_area"]},
+}
+
+_ATTRS = {
+    "strength": 14,
+    "dexterity": 12,
+    "constitution": 13,
+    "intelligence": 10,
+    "wisdom": 11,
+    "charisma": 8,
+}
+
+
+def _dying_player(conditions: list[dict]):
+    return {
+        "player_id": "p1",
+        "class": "warrior",
+        "attributes": dict(_ATTRS),
+        "level": 5,
+        "hp": {"current": 0, "max": 60},
+        "maxhp_override": 0,
+        "location_id": "battlefield_danger",
+        "conditions": conditions,
+    }
+
+
+def _death_mocks(death_count_before=0):
+    death_mut = AsyncMock()
+    death_mut.read_death_history = AsyncMock(return_value={"count": death_count_before, "costs": []})
+    death_mut.record_death = AsyncMock()
+    res_mut = AsyncMock()  # apply_attribute_penalty / apply_maxhp_override_delta / revive_player / set_hollow_killed
+    cond_mut = AsyncMock()  # save_player_conditions
+    return death_mut, res_mut, cond_mut
+
+
+class TestHollowedOnDeathBranch:
+    """trigger_character_death marks + clears Hollowed when the dying character is Hollowed."""
+
+    @pytest.mark.asyncio
+    async def test_hollowed_death_sets_flag_and_clears_condition(self):
+        import conditions
+        from resurrection import trigger_character_death
+
+        death_mut, res_mut, cond_mut = _death_mocks()
+        player = _dying_player(conditions.apply_condition([], "hollowed"))  # stage 1
+        ctx = await trigger_character_death(
+            player,
+            _LOCATIONS,
+            combat_cleared=False,
+            death_mutations=death_mut,
+            mutations=res_mut,
+            conditions_mutations=cond_mut,
+            conn=object(),
+        )
+        res_mut.set_hollow_killed.assert_awaited_once()
+        assert res_mut.set_hollow_killed.call_args.args[0] == "p1"
+        # Hollowed stripped from the persisted conditions.
+        saved = cond_mut.save_player_conditions.call_args
+        assert saved.args[0] == "p1"
+        assert all(c["type"] != "hollowed" for c in saved.args[1])
+        assert ctx["hollow_killed"] is True and ctx["hollowed_cleared"] is True
+
+    @pytest.mark.asyncio
+    async def test_hollowed_death_at_stage_two_also_marks(self):
+        import resurrection
+
+        death_mut, res_mut, cond_mut = _death_mocks()
+        player = _dying_player([{"type": "hollowed", "duration": None, "source": "veil", "stage": 2}])
+        ctx = await resurrection.trigger_character_death(
+            player,
+            _LOCATIONS,
+            combat_cleared=False,
+            death_mutations=death_mut,
+            mutations=res_mut,
+            conditions_mutations=cond_mut,
+            conn=object(),
+        )
+        res_mut.set_hollow_killed.assert_awaited_once()
+        assert ctx["hollow_killed"] is True
+
+    @pytest.mark.asyncio
+    async def test_non_hollowed_death_does_not_mark_or_clear(self):
+        import conditions
+        from resurrection import trigger_character_death
+
+        death_mut, res_mut, cond_mut = _death_mocks()
+        player = _dying_player(conditions.apply_condition([], "exhausted"))  # not hollowed
+        ctx = await trigger_character_death(
+            player,
+            _LOCATIONS,
+            combat_cleared=False,
+            death_mutations=death_mut,
+            mutations=res_mut,
+            conditions_mutations=cond_mut,
+            conn=object(),
+        )
+        res_mut.set_hollow_killed.assert_not_awaited()
+        cond_mut.save_player_conditions.assert_not_awaited()
+        assert ctx.get("hollow_killed") is False and ctx.get("hollowed_cleared") is False
+
+
+class TestHollowedDeathE2E:
+    """Real-PG (dev DB) capstone for the resurrection/spell path: a Hollowed death persists
+    hollow_killed, clears the Hollowed condition, and a subsequent Revivify is refused."""
+
+    @pytest.mark.asyncio
+    async def test_hollowed_death_persists_flag_clears_condition_refuses_revivify(self, dev_db_pool):
+        import db_mutations_conditions
+        import db_mutations_resurrection
+        import db_queries
+        from resurrection import trigger_character_death
+
+        pool = dev_db_pool
+        pid = "s007_e2e_hollow"
+        data = {
+            "player_id": pid,
+            "class": "warrior",
+            "attributes": dict(_ATTRS),
+            "level": 5,
+            "hp": {"current": 0, "max": 60},
+            "maxhp_override": 0,
+            "location_id": "battlefield_danger",
+            "conditions": [{"type": "hollowed", "duration": None, "source": "veil", "stage": 2}],
+        }
+        await pool.execute("DELETE FROM players WHERE player_id = $1", pid)
+        await pool.execute("INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)", pid, json.dumps(data))
+        try:
+            player = await db_queries.get_player(pid, conn=pool)
+            assert player is not None
+            ctx = await trigger_character_death(player, _LOCATIONS, combat_cleared=False, conn=pool)
+            assert ctx["hollow_killed"] is True and ctx["hollowed_cleared"] is True
+
+            # Persisted on the real row: flag set, Hollowed stripped from the stored conditions.
+            assert await db_mutations_resurrection.read_hollow_killed(pid, conn=pool) is True
+            stored = await db_mutations_conditions.read_player_conditions(pid, conn=pool)
+            assert all(c["type"] != "hollowed" for c in stored)
+
+            # A subsequent Revivify is refused — the gate reads the persisted hollow_killed on reload.
+            reloaded = await db_queries.get_player(pid, conn=pool)
+            assert reloaded is not None
+            assert spell_casting.revivify_refused(reloaded) is True
+        finally:
+            await pool.execute("DELETE FROM players WHERE player_id = $1", pid)
+
+
 class TestHollowKilledReadWrite:
     """db_mutations_resurrection.set_hollow_killed / read_hollow_killed (mock-conn units)."""
 
