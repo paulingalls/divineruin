@@ -13,6 +13,7 @@ import pytest
 from combat._helpers import _make_combat_state
 from sample_fixtures import make_context
 
+import combat_phase
 from check_resolution_attack import AttackResult
 from combat_support import _resolve_attack_packet
 
@@ -113,3 +114,42 @@ class TestInstantDeathVerdict:
 
         assert target.is_fallen is False
         assert target.is_dead is False
+
+
+class TestWrapInstantDeath:
+    """The pure Beat-4 wrap ends combat on an instant-dead player without a death-save beat."""
+
+    def test_instant_dead_player_ends_combat_as_defeat(self):
+        cs = _make_combat_state()
+        player = cs.get_participant("player_1")
+        assert player is not None
+        player.is_fallen = True
+        player.is_dead = True
+        player.death_save_failures = 0  # never made a save — instant death bypasses the grind
+
+        wrap = combat_phase._wrap(cs)
+        assert wrap.combat_ended is True
+        assert wrap.outcome == "defeat"
+
+    def test_instant_dead_participant_not_in_death_saves_due(self):
+        cs = _make_combat_state()
+        player = cs.get_participant("player_1")
+        assert player is not None
+        player.is_fallen = True
+        player.is_dead = True
+
+        wrap = combat_phase._wrap(cs)
+        assert "player_1" not in wrap.death_saves_due
+
+    def test_fallen_but_not_dead_player_still_rolls_death_saves(self):
+        # Control: a normally-fallen player (overkill below max HP) still enters the death-save grind.
+        cs = _make_combat_state()
+        player = cs.get_participant("player_1")
+        assert player is not None
+        player.is_fallen = True
+        player.is_dead = False
+        player.death_save_failures = 1
+
+        wrap = combat_phase._wrap(cs)
+        assert "player_1" in wrap.death_saves_due
+        assert wrap.combat_ended is False
