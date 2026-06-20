@@ -6,12 +6,17 @@ DeathCost into the persistence deltas, and resolve_resurrection_anchor's 4-tier 
 orchestration (trigger_character_death) and real-PG round-trip live alongside / in the persistence
 suite. Spec: docs/game_mechanics/game_mechanics_combat.md §The Cost Engine + §Resurrection Location."""
 
+from unittest.mock import AsyncMock
+
+import pytest
+
 from death_cost import determine_death_cost
 from resurrection import (
     apply_death_cost,
     highest_attribute,
     lowest_attribute,
     resolve_resurrection_anchor,
+    trigger_character_death,
 )
 
 # Fixture location map (id -> data), exercising each anchor tier.
@@ -126,3 +131,76 @@ class TestResolveResurrectionAnchor:
         # starting_area-tagged zone. This is the live fall-through the plan-review flagged.
         anchor = resolve_resurrection_anchor("wild_r3", _LOCATIONS, {}, combat_cleared=False)
         assert anchor == "accord_market_square"
+
+
+def _player(*, level=5, maxhp_override=0, cls="warrior"):
+    return {
+        "player_id": "p1",
+        "class": cls,
+        "attributes": dict(_ATTRS),
+        "level": level,
+        "hp": {"current": 0, "max": 60},
+        "maxhp_override": maxhp_override,
+        "location_id": "battlefield_danger",
+    }
+
+
+def _mocks(death_count_before=0):
+    death_mut = AsyncMock()
+    death_mut.read_death_history = AsyncMock(return_value={"count": death_count_before, "costs": []})
+    death_mut.record_death = AsyncMock()
+    res_mut = AsyncMock()
+    return death_mut, res_mut
+
+
+class TestTriggerCharacterDeath:
+    @pytest.mark.asyncio
+    async def test_first_death_records_no_attribute_penalty_and_revives_at_anchor(self):
+        death_mut, res_mut = _mocks(death_count_before=0)
+        ctx = await trigger_character_death(
+            _player(),
+            _LOCATIONS,
+            combat_cleared=False,
+            death_mutations=death_mut,
+            mutations=res_mut,
+            conn=object(),
+        )
+        assert ctx["death_count"] == 1 and ctx["tier"] == "gentle"
+        death_mut.record_death.assert_awaited_once()
+        res_mut.apply_attribute_penalty.assert_not_awaited()  # gentle = no attribute cost
+        # Anchor: battlefield_danger not cleared -> same-region settlement camp_r1.
+        assert ctx["anchor"] == "camp_r1"
+        res_mut.revive_player.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_second_death_penalizes_lowest_attribute(self):
+        death_mut, res_mut = _mocks(death_count_before=1)
+        ctx = await trigger_character_death(
+            _player(),
+            _LOCATIONS,
+            combat_cleared=False,
+            death_mutations=death_mut,
+            mutations=res_mut,
+            conn=object(),
+        )
+        assert ctx["death_count"] == 2 and ctx["tier"] == "moderate"
+        args = res_mut.apply_attribute_penalty.call_args
+        assert args.args[:3] == ("p1", "charisma", -1)  # lowest attribute
+
+    @pytest.mark.asyncio
+    async def test_death_seven_applies_maxhp_override_and_clamps_revive_to_effective_max(self):
+        death_mut, res_mut = _mocks(death_count_before=6)
+        ctx = await trigger_character_death(
+            _player(level=10, maxhp_override=0),
+            _LOCATIONS,
+            combat_cleared=False,
+            death_mutations=death_mut,
+            mutations=res_mut,
+            conn=object(),
+        )
+        assert ctx["death_count"] == 7 and ctx["tier"] == "devastating"
+        # -1 maxHP per level at L10 = -10 override delta applied.
+        assert res_mut.apply_maxhp_override_delta.call_args.args[:2] == ("p1", -10)
+        # Revive HP clamped to effective max = base 60 + override -10 = 50.
+        assert ctx["revive_hp"] == 50
+        assert res_mut.revive_player.call_args.args[2] == 50

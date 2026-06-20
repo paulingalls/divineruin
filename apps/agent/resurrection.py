@@ -8,8 +8,10 @@ free of IO; persistence lives in db_mutations_resurrection. Hollowed-death + Tem
 story-007.
 """
 
+import db_mutations_death
+import db_mutations_resurrection
 from creation_classes import CLASSES
-from death_cost import DeathCost
+from death_cost import DeathCost, determine_death_cost
 
 # Canonical attribute order — also the deterministic tie-break for lowest/highest selectors.
 _ATTR_ORDER = ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma")
@@ -105,4 +107,55 @@ def apply_death_cost(player: dict, cost: DeathCost) -> dict:
         "attribute": attribute,
         "attribute_delta": -cost.attribute_penalty if attribute is not None else 0,
         "maxhp_override_delta": -cost.maxhp_penalty_total,
+    }
+
+
+async def trigger_character_death(
+    player: dict,
+    locations: dict[str, dict],
+    *,
+    combat_cleared: bool,
+    death_mutations=db_mutations_death,
+    mutations=db_mutations_resurrection,
+    conn=None,
+) -> dict:
+    """Orchestrate the full death->cost->anchor->revive loop and return a Mortaen-narration context.
+
+    Reads the permanent death count (story-001), computes + records the escalating cost, applies the
+    attribute/maxHP penalties, resolves the nearest anchor (4-tier), and revives the character there —
+    HP clamped to the post-override effective max so a death-7+ character isn't healed above their
+    reduced ceiling. ``player`` is the players.data dict; writes thread ``conn`` for tx participation
+    (combat-end calls this inside its defeat tx). Hollowed-death handling is story-007.
+    """
+    player_id = player["player_id"]
+    level = player.get("level", 1)
+
+    history = await death_mutations.read_death_history(player_id, conn=conn)
+    death_count = history["count"] + 1
+    cost = determine_death_cost(death_count, level)
+    await death_mutations.record_death(player_id, cost, conn=conn)
+
+    deltas = apply_death_cost(player, cost)
+    if deltas["attribute"] is not None and deltas["attribute_delta"]:
+        await mutations.apply_attribute_penalty(player_id, deltas["attribute"], deltas["attribute_delta"], conn=conn)
+    if deltas["maxhp_override_delta"]:
+        await mutations.apply_maxhp_override_delta(player_id, deltas["maxhp_override_delta"], conn=conn)
+
+    anchor = resolve_resurrection_anchor(
+        player.get("location_id", ""), locations, player, combat_cleared=combat_cleared
+    )
+
+    base_max = player.get("hp", {}).get("max", 1)
+    effective_max = max(1, base_max + player.get("maxhp_override", 0) + deltas["maxhp_override_delta"])
+    revive_hp = effective_max  # Mortaen's return is a full recovery (time passes); clamped to the new max.
+    await mutations.revive_player(player_id, anchor, revive_hp, conn=conn)
+
+    return {
+        "death_count": death_count,
+        "tier": cost.tier,
+        "attribute": deltas["attribute"],
+        "attribute_delta": deltas["attribute_delta"],
+        "maxhp_override_delta": deltas["maxhp_override_delta"],
+        "anchor": anchor,
+        "revive_hp": revive_hp,
     }
