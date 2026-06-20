@@ -163,6 +163,18 @@ def _gate_spell(player: dict, spell_id: str, *, spells_mod=spells):
     return spell
 
 
+# Revival spells refused on a Hollow-killed corpse (M4.4 story-007; content/spells.json
+# divine_revivify "Doesn't work on Hollow-killed"). A set so other revival spells extend here.
+REVIVAL_SPELL_IDS = frozenset({"divine_revivify"})
+
+
+def revivify_refused(character_data: dict) -> bool:
+    """Whether a revival spell must be refused for this character: True when it is Hollow-killed
+    (M4.4 story-007). Pure + target-agnostic — the spell-targeting milestone reuses it unchanged,
+    rerouting the call from the caster row to the target row."""
+    return bool(character_data.get("hollow_killed"))
+
+
 @function_tool()
 @db_tool
 async def cast_spell(
@@ -280,6 +292,12 @@ async def _resolve_cast(
         player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
         if player is None:
             raise ToolError(f"Unknown player: {player_id}")
+
+    # Revivify gate (M4.4 story-007): a revival spell cannot reach a Hollow-killed corpse. Refused
+    # before any Focus/Resonance write. Keyed on the caster row today (cast_spell is self-targeted);
+    # the spell-targeting milestone reroutes revivify_refused to the resolved target.
+    if spell_id in REVIVAL_SPELL_IDS and revivify_refused(player):
+        raise ToolError(f"{spell_id} cannot reach the corpse — it is Hollow-killed.")
     # The caster's race drives the M3.4 racial Resonance interactions (Korath/Thessyn/Vaelti
     # below). A player with no race set takes no racial branch.
     race = player.get("race")
