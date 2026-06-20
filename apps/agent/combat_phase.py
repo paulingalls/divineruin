@@ -189,6 +189,14 @@ def _wrap(state: CombatState) -> WrapOutcome:
         p.conditions = survivors
         tick_conditions_due.extend({"actor_id": p.id, **event} for event in save_events)
 
+    # Companion auto-stabilize (M4.4 story-002): narrative protection — a companion never dies from
+    # the death-save grind. When its failures reach the limit, clamp to the stabilized state (reusing
+    # the stabilized vocabulary, no new field) so it drops out of death_saves_due and never ends combat.
+    for p in state.participants:
+        if p.type == "companion" and p.death_save_failures >= _DEATH_SAVE_LIMIT:
+            p.death_save_failures = _DEATH_SAVE_LIMIT - 1
+            p.death_save_successes = _STABILIZE_LIMIT
+
     death_saves_due = [
         p.id
         for p in state.participants
