@@ -129,7 +129,9 @@ async def resolve_phase(
     packets), then wraps the phase — Resonance decays, death saves come due, and if
     every enemy has fallen (or the player has died) combat ends and hands back to the
     exploration agent. Call this once, right after declare_phase. The response lists
-    per-actor resolution packets to narrate plus any death saves the player owes."""
+    per-actor resolution packets to narrate plus any death saves the player owes.
+    The ``exhaustion_narration`` map (participant ID -> flavor line) gives the
+    weariness cue to weave into the narration for any actor carrying Exhausted stacks."""
     return await _resolve_phase_impl(context)
 
 
