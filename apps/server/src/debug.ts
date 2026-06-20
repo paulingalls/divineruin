@@ -203,7 +203,7 @@ const DEBUG_HTML = /* html */ `<!DOCTYPE html>
     <button class="btn" onclick="send({type:'dice_result',roll:20,modifier:4,total:24,success:true,roll_type:'attack',narrative:'A devastating blow! The blade finds the gap in its armor.'})">Critical Hit (Nat 20)</button>
     <button class="btn" onclick="send({type:'combat_started',difficulty:'moderate'})">Combat Start (Moderate)</button>
     <button class="btn" onclick="send({type:'combat_started',difficulty:'hard'})">Combat Start (Hard)</button>
-    <button class="btn" onclick="send({type:'combat_ui_update',phase:'player_turn',round:2,combatants:[{id:'c1',name:'Kael',isAlly:true,hpCurrent:24,hpMax:30,statusEffects:[],isActive:true},{id:'c2',name:'Goblin Scout',isAlly:false,hpCurrent:8,hpMax:12,statusEffects:[],isActive:false},{id:'c3',name:'Goblin Shaman',isAlly:false,hpCurrent:15,hpMax:18,statusEffects:['shield'],isActive:false}]})">Combat UI Update</button>
+    <button class="btn" onclick="send({type:'combat_ui_update',phase:'player_turn',round:2,combatants:[{id:'c1',name:'Kael',isAlly:true,hpCurrent:24,hpMax:30,conditions:[{type:'exhausted',stacks:2,source:'forced_march'}],isActive:true},{id:'c2',name:'Goblin Scout',isAlly:false,hpCurrent:8,hpMax:12,conditions:[],isActive:false},{id:'c3',name:'Goblin Shaman',isAlly:false,hpCurrent:15,hpMax:18,conditions:[{type:'shielded',stacks:1,source:'spell'}],isActive:false}]})">Combat UI Update</button>
     <button class="btn" onclick="send({type:'combat_ended'})">Combat End (Victory)</button>
   </div>
 </div>
