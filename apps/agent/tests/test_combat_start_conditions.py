@@ -88,6 +88,16 @@ class TestCombatStartLoad:
         assert player_part.conditions == []
 
     @pytest.mark.asyncio
+    async def test_json_null_conditions_loads_empty_without_crashing(self):
+        # M4.4 story-008 (concern 0f475c961261): a stored JSON-null conditions value reaches
+        # validate_conditions(None), which raises TypeError and ESCAPES the surrounding
+        # `except ValueError` — crashing combat init. The `or []` guard must run first.
+        player = _player()
+        player["conditions"] = None
+        player_part = await _run_start(player)
+        assert player_part.conditions == []
+
+    @pytest.mark.asyncio
     async def test_iron_constitution_clamps_loaded_exhausted_to_three(self):
         # AC3: a stored Exhausted at 5 stacks loads clamped to 3 for an Iron Constitution character.
         stored = [{"type": "exhausted", "duration": None, "source": "march", "stacks": 5}]

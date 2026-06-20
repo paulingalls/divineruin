@@ -28,6 +28,7 @@ __all__ = [
     "SOUND_DEATH_SAVE_FAIL",
     "SOUND_DEATH_SAVE_SUCCESS",
     "SOUND_HEARTBEAT",
+    "SOUND_HOLLOW_RISE",
     "SOUND_PLAYER_DEATH",
     "SOUND_PLAYER_FALLEN",
     "SOUND_PLAYER_STABILIZED",
@@ -233,6 +234,7 @@ SOUND_DEATH_SAVE_SUCCESS = "death_save_success"
 SOUND_DEATH_SAVE_FAIL = "death_save_fail"
 SOUND_DEATH_SAVE_CRITICAL = "death_save_critical_success"
 SOUND_PLAYER_FALLEN = "player_fallen"
+SOUND_HOLLOW_RISE = "hollow_rise"
 SOUND_PLAYER_DEATH = "player_death"
 SOUND_PLAYER_STABILIZED = "player_stabilized"
 

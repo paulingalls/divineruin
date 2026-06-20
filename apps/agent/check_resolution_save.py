@@ -61,7 +61,9 @@ def resolve_saving_throw(
     # Condition effects (M4.3): a condition can auto-fail this save (Stunned/Paralyzed
     # auto-fail STR/DEX), flatly modify it (Exhausted -1/stack), or impose disadvantage.
     scopes = {_ATTR_ABBREV.get(save_lower, save_lower)}
-    flat_mod, advantage, disadvantage, auto_fail = _apply_condition_modifiers(player_data.get("conditions", []), scopes)
+    flat_mod, advantage, disadvantage, auto_fail = _apply_condition_modifiers(
+        player_data.get("conditions") or [], scopes
+    )
     if auto_fail:
         return SavingThrowResult(
             save_type=save_lower,

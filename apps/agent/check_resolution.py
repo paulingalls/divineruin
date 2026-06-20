@@ -298,7 +298,7 @@ def _resolve_skill_check_impl(
     attr_names = attr if isinstance(attr, tuple) else (attr,)
     scopes = {_ATTR_ABBREV.get(a, a) for a in attr_names} | {skill_lower}
     flat_mod, advantage, disadvantage, _auto_fail = _apply_condition_modifiers(
-        player_data.get("conditions", []), scopes
+        player_data.get("conditions") or [], scopes
     )
 
     check = resolve_check(

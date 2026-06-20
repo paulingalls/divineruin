@@ -44,6 +44,15 @@ class ConditionSpec:
     auto_fail_saves: tuple[str, ...] = ()
     restrictions: tuple[str, ...] = ()
     tick_save: str | None = None
+    # Bonus damage DIE the attacker's hits add (M4.4 story-008): a dice notation like "1d6" plus
+    # its type (e.g. necrotic), rolled per-hit in resolve_attack. Distinct from the flat
+    # ``damage_modifier`` (Enraged +2) — a rider die, not a constant.
+    bonus_damage_dice: str | None = None
+    bonus_damage_type: str | None = None
+    # Condition types this condition makes its bearer IMMUNE to (M4.4 story-008): apply_condition
+    # no-ops an incoming type listed here. The Temporary Hollowed is immune to Charmed/Frightened/
+    # Poisoned.
+    immunities: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -59,6 +68,11 @@ class ConditionEffects:
     advantage_scopes: frozenset[str] = field(default_factory=frozenset)
     auto_fail_saves: frozenset[str] = field(default_factory=frozenset)
     restrictions: frozenset[str] = field(default_factory=frozenset)
+    # Bonus damage rider (M4.4 story-008): the single die+type an attacker's hits add (only the
+    # Temporary Hollowed grants one today, so this is a scalar, not a sum).
+    bonus_damage_dice: str | None = None
+    bonus_damage_type: str | None = None
+    immunities: frozenset[str] = field(default_factory=frozenset)
 
 
 # The 21-condition catalog. Keys are frozen snake_case labels (same naming
@@ -172,6 +186,17 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         # Stage-distinct effects are resolved in get_condition_effects (story-001
         # decision: single type + stage field, escalated by apply_condition).
     ),
+    # Engine-internal marker (M4.4 story-008), NOT one of the doc's 21 §Status Effects. A Stage-2+
+    # Hollowed player who drops to 0 HP rises as a Temporary Hollowed combatant carrying this: its
+    # hits add 1d6 necrotic and it is immune to Charmed/Frightened/Poisoned. Combat-local — cleared
+    # when the echo is destroyed, never persisted onto players.data.
+    "temporary_hollowed": ConditionSpec(
+        clearance="combat_only_until_destroyed",
+        persists_across_encounters=False,
+        bonus_damage_dice="1d6",
+        bonus_damage_type="necrotic",
+        immunities=("charmed", "frightened", "poisoned"),
+    ),
 }
 
 _HOLLOWED_MAX_STAGE = 3
@@ -248,6 +273,12 @@ def apply_condition(
         raise ValueError(f"Unknown condition type: {condition_type!r}")
 
     result = [dict(c) for c in conditions]
+
+    # Immunity gate (M4.4 story-008): if any active condition makes its bearer immune to
+    # ``condition_type``, applying it is a no-op (e.g. a Temporary Hollowed shrugs off Charmed).
+    if any(condition_type in CONDITION_CATALOG[c["type"]].immunities for c in result):
+        return result
+
     existing = _find(result, condition_type)
 
     if condition_type == "hollowed":
@@ -278,6 +309,16 @@ def remove_condition(conditions: list[dict], condition_type: str) -> list[dict]:
     """Return a new condition list with every instance of ``condition_type`` removed.
     Other conditions are untouched; never mutates the input."""
     return [dict(c) for c in conditions if c["type"] != condition_type]
+
+
+def hollowed_stage(conditions: list[dict] | None) -> int:
+    """Return the active Hollowed stage (1-3), or 0 when not Hollowed (M4.4 story-008).
+
+    Tolerates a JSON-null ``conditions`` (players.data.conditions can be stored null) by treating
+    it as no conditions. The combat-engine rise check reads this to gate the Temporary Hollowed
+    on Stage 2+."""
+    existing = _find(conditions or [], "hollowed")
+    return existing["stage"] if existing is not None else 0
 
 
 def tick_conditions(conditions: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -334,9 +375,18 @@ def get_condition_effects(conditions: list[dict]) -> ConditionEffects:
     advantage: set[str] = set()
     auto_fail: set[str] = set()
     restrictions: set[str] = set()
+    immunities: set[str] = set()
+    bonus_damage_dice: str | None = None
+    bonus_damage_type: str | None = None
 
     for c in conditions:
         spec = CONDITION_CATALOG[c["type"]]
+        immunities.update(spec.immunities)
+        # At most one active condition grants a rider die today (the Temporary Hollowed), so a
+        # scalar last-wins assignment is exact; revisit if two riders ever co-exist.
+        if spec.bonus_damage_dice is not None:
+            bonus_damage_dice = spec.bonus_damage_dice
+            bonus_damage_type = spec.bonus_damage_type
         if c["type"] == "hollowed":
             hol_dis, hol_res = _hollowed_effects(c["stage"])
             disadvantage |= hol_dis
@@ -359,4 +409,7 @@ def get_condition_effects(conditions: list[dict]) -> ConditionEffects:
         advantage_scopes=frozenset(advantage),
         auto_fail_saves=frozenset(auto_fail),
         restrictions=frozenset(restrictions),
+        bonus_damage_dice=bonus_damage_dice,
+        bonus_damage_type=bonus_damage_type,
+        immunities=frozenset(immunities),
     )

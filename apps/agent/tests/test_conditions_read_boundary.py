@@ -104,3 +104,34 @@ class TestReadPlayerConditionsValidation:
         conn = AsyncMock()
         conn.fetchrow.return_value = None
         assert await db_mutations_conditions.read_player_conditions("ghost", conn=conn) == []
+
+
+class TestResolversTolerateJsonNullConditions:
+    """M4.4 story-008 (concern 0f475c961261): players.data.conditions can be stored JSON null.
+    A reader using ``get('conditions', [])`` gets ``None`` (the key IS present, just null) and
+    crashes iterating it. Each condition-reading resolver must treat a null value as no conditions."""
+
+    _ATTRS = {"strength": 12, "dexterity": 12, "constitution": 12, "wisdom": 12, "intelligence": 12, "charisma": 12}
+
+    def test_resolve_skill_check_tolerates_null(self):
+        from check_resolution import resolve_skill_check_dc
+
+        player = {"attributes": self._ATTRS, "level": 3, "conditions": None}
+        # No crash; returns a result (rng-free path is fine — we assert it doesn't raise).
+        result = resolve_skill_check_dc(player, "athletics", 10)
+        assert result is not None
+
+    def test_resolve_saving_throw_tolerates_null(self):
+        from check_resolution_save import resolve_saving_throw
+
+        player = {"attributes": self._ATTRS, "level": 3, "conditions": None}
+        result = resolve_saving_throw(player, "strength", 10, "knocked_prone")
+        assert result is not None
+
+    def test_resolve_attack_tolerates_null(self):
+        from check_resolution_attack import resolve_attack
+
+        attacker = {"attributes": self._ATTRS, "level": 3, "conditions": None}
+        weapon = {"name": "Club", "damage": "1d4", "damage_type": "bludgeoning"}
+        result = resolve_attack(attacker, weapon, target_ac=10, target_hp=10)
+        assert result is not None
