@@ -79,6 +79,38 @@ async def revive_player(
     )
 
 
+async def set_hollow_killed(
+    player_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> None:
+    """Mark the character as Hollow-killed (M4.4 story-007): died under a Hollowed condition, so a
+    divine_revivify cast on the corpse is refused. Sets players.data.hollow_killed = true (1-level
+    jsonb_set, same discipline as the sibling writers). Permanent — never cleared."""
+    _conn = conn or await db.get_pool()
+    await _conn.execute(
+        "UPDATE players SET data = jsonb_set(data, '{hollow_killed}', 'true'::jsonb) WHERE player_id = $1",
+        player_id,
+    )
+
+
+async def read_hollow_killed(
+    player_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> bool:
+    """Whether the character is Hollow-killed (M4.4 story-007). Defaults False when the row/key is
+    absent or null — the Revivify gate treats a missing mark as not-Hollow-killed."""
+    _conn = conn or await db.get_pool()
+    row = await _conn.fetchrow(
+        "SELECT (data->>'hollow_killed')::bool AS hollow_killed FROM players WHERE player_id = $1",
+        player_id,
+    )
+    if row is None:
+        return False
+    return bool(row["hollow_killed"])
+
+
 async def set_last_rested_settlement(
     player_id: str,
     location_id: str,
