@@ -20,10 +20,9 @@ combat_id since the testcontainer DB is shared.
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
 from unittest.mock import patch
 
-from acceptance.seeds import seed_player
+from acceptance._capstone_helpers import _build_state, _d20, _declare_attacks, _enemy, _start_combat
 from sample_fixtures import make_context, make_mock_room
 
 import combat_turn
@@ -31,74 +30,6 @@ import conditions
 import db
 import db_mutations
 import db_mutations_conditions
-from session_data import CombatParticipant, CombatState
-
-_PLAYER_WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
-_ENEMY_ACTION = {"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": ["light"]}
-
-
-def _d20(face: int):
-    """A check_resolution.dice_roll stand-in that forces every d20 (attack + save) to `face`.
-
-    _roll_d20_check reads only `.total`; damage rolls go through the separate
-    check_resolution_attack.dice_roll, which this does NOT touch.
-    """
-    return SimpleNamespace(total=face)
-
-
-def _player(player_id: str, hp: int = 100) -> CombatParticipant:
-    return CombatParticipant(
-        id=player_id,
-        name="Kael",
-        type="player",
-        initiative=15,  # acts before the enemy
-        hp_current=hp,
-        hp_max=hp,
-        ac=14,
-        action_pool=[_PLAYER_WEAPON],
-    )
-
-
-def _enemy(enemy_id: str, hp: int) -> CombatParticipant:
-    return CombatParticipant(
-        id=enemy_id,
-        name=enemy_id.replace("_", " ").title(),
-        type="enemy",
-        initiative=12,
-        hp_current=hp,
-        hp_max=max(hp, 7),
-        ac=10,  # low AC so a forced mid d20 reliably hits
-        action_pool=[_ENEMY_ACTION],
-        xp_value=50,
-    )
-
-
-def _build_state(combat_id: str, player_id: str, enemies: list[CombatParticipant]) -> CombatState:
-    """A declaration-beat CombatState with a player + N enemies, ready for declare/resolve."""
-    participants = [_player(player_id), *enemies]
-    return CombatState(
-        combat_id=combat_id,
-        participants=participants,
-        initiative_order=[player_id, *[e.id for e in enemies]],
-        round_number=1,
-        current_turn_index=0,
-        location_id="accord_guild_hall",
-        beat="declaration",
-    )
-
-
-async def _start_combat(pool, player_id: str, state: CombatState, ctx) -> None:
-    """Seed the real player row + persist the hand-built combat SSOT, then wire the in-memory state."""
-    await seed_player(pool, player_id=player_id, location_id="accord_guild_hall")
-    await db_mutations.save_combat_state(state.combat_id, state.to_dict(), conn=pool)
-    ctx.userdata.combat_state = state
-
-
-async def _declare_attacks(ctx, player_id: str, target_id: str, enemy_ids: list[str]) -> None:
-    decls = {player_id: {"type": "attack", "action": "Longsword", "target_id": target_id}}
-    for eid in enemy_ids:
-        decls[eid] = {"type": "attack", "action": "Scimitar", "target_id": player_id}
-    await combat_turn._declare_phase_impl(ctx, decls)
 
 
 def _player_packet(result: str) -> dict:

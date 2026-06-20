@@ -19,9 +19,18 @@ uses a distinct player_id / combat_id since the testcontainer DB is shared.
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
 from unittest.mock import patch
 
+from acceptance._capstone_helpers import (
+    _build_state,
+    _d20,
+    _declare_attacks,
+    _dice_events,
+    _enemy,
+    _player,
+    _player_attack_events,
+    _start_combat,
+)
 from acceptance.seeds import seed_player
 from sample_fixtures import make_context, make_mock_room
 
@@ -29,90 +38,6 @@ import combat_death_save
 import combat_turn
 import db
 import db_mutations
-import event_types as E
-from session_data import CombatParticipant, CombatState
-
-_PLAYER_WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
-_ENEMY_ACTION = {"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": ["light"]}
-
-
-def _d20(face: int):
-    """A check_resolution.dice_roll stand-in that forces every d20 to `face`.
-
-    _roll_d20_check reads only `.total`; damage rolls go through the separate
-    check_resolution_attack.dice_roll, which this does NOT touch.
-    """
-    return SimpleNamespace(total=face)
-
-
-def _player(player_id: str, hp: int = 100) -> CombatParticipant:
-    return CombatParticipant(
-        id=player_id,
-        name="Kael",
-        type="player",
-        initiative=15,  # acts before the enemies so its reveal lands first
-        hp_current=hp,
-        hp_max=hp,
-        ac=14,
-        action_pool=[_PLAYER_WEAPON],
-    )
-
-
-def _enemy(enemy_id: str, hp: int) -> CombatParticipant:
-    return CombatParticipant(
-        id=enemy_id,
-        name=enemy_id.replace("_", " ").title(),
-        type="enemy",
-        initiative=12,
-        hp_current=hp,
-        hp_max=max(hp, 7),
-        ac=10,  # low AC so a forced mid d20 reliably hits
-        action_pool=[_ENEMY_ACTION],
-        xp_value=50,
-    )
-
-
-def _build_state(combat_id: str, player_id: str, enemies: list[CombatParticipant], *, first_attack_resolved=False):
-    """A declaration-beat CombatState with a player + N enemies, ready for declare/resolve."""
-    participants = [_player(player_id), *enemies]
-    return CombatState(
-        combat_id=combat_id,
-        participants=participants,
-        initiative_order=[player_id, *[e.id for e in enemies]],
-        round_number=1,
-        current_turn_index=0,
-        location_id="accord_guild_hall",
-        beat="declaration",
-        first_attack_resolved=first_attack_resolved,
-    )
-
-
-def _dice_events(room) -> list[dict]:
-    out = []
-    for call in room.local_participant.publish_data.call_args_list:
-        payload = json.loads(call[0][0])
-        if payload.get("type") == E.DICE_ROLL:
-            out.append(payload)
-    return out
-
-
-def _player_attack_events(room) -> list[dict]:
-    return [e for e in _dice_events(room) if e.get("roll_type") == "attack" and e.get("attacker") == "Kael"]
-
-
-async def _start_combat(pool, player_id: str, combat_id: str, state: CombatState, ctx) -> None:
-    """Seed the real player row + persist the hand-built combat SSOT, then wire the in-memory state."""
-    await seed_player(pool, player_id=player_id, location_id="accord_guild_hall")
-    await db_mutations.save_combat_state(combat_id, state.to_dict(), conn=pool)
-    ctx.userdata.combat_state = state
-
-
-async def _declare_attacks(ctx, player_id: str, target_id: str, enemy_ids: list[str]) -> None:
-    decls = {player_id: {"type": "attack", "action": "Longsword", "target_id": target_id}}
-    for eid in enemy_ids:
-        decls[eid] = {"type": "attack", "action": "Scimitar", "target_id": player_id}
-    await combat_turn._declare_phase_impl(ctx, decls)
-
 
 # --- AC1 + AC4: combat DICE_ROLL dramatic chain (evaluator -> packet -> event -> summary) ---
 
@@ -126,7 +51,7 @@ async def test_combat_nat20_crit_is_dramatic_chain(reset_db_pool: str) -> None:
     ctx = make_context(player_id, room=room)
     state = _build_state("combat_cap_m45_nat20", player_id, [_enemy("goblin_a", hp=100)])
     try:
-        await _start_combat(pool, player_id, state.combat_id, state, ctx)
+        await _start_combat(pool, player_id, state, ctx)
         await _declare_attacks(ctx, player_id, "goblin_a", ["goblin_a"])
         with patch("check_resolution.dice_roll", return_value=_d20(20)):
             result = await combat_turn._resolve_phase_impl(ctx)
@@ -155,7 +80,7 @@ async def test_combat_killing_blow_is_dramatic(reset_db_pool: str) -> None:
     # Two enemies so the kill is NOT also the last enemy; target at 1 HP so a mid hit kills.
     state = _build_state("combat_cap_m45_kill", player_id, [_enemy("goblin_a", hp=1), _enemy("goblin_b", hp=100)])
     try:
-        await _start_combat(pool, player_id, state.combat_id, state, ctx)
+        await _start_combat(pool, player_id, state, ctx)
         await _declare_attacks(ctx, player_id, "goblin_a", ["goblin_a", "goblin_b"])
         with patch("check_resolution.dice_roll", return_value=_d20(11)):
             await combat_turn._resolve_phase_impl(ctx)
@@ -183,7 +108,7 @@ async def test_combat_routine_hit_is_not_dramatic(reset_db_pool: str) -> None:
         first_attack_resolved=True,
     )
     try:
-        await _start_combat(pool, player_id, state.combat_id, state, ctx)
+        await _start_combat(pool, player_id, state, ctx)
         await _declare_attacks(ctx, player_id, "goblin_a", ["goblin_a", "goblin_b"])
         with patch("check_resolution.dice_roll", return_value=_d20(11)):
             await combat_turn._resolve_phase_impl(ctx)
@@ -212,7 +137,7 @@ async def test_death_save_is_always_dramatic(reset_db_pool: str) -> None:
     state = _build_state("combat_cap_m45_deathsave", player_id, [_enemy("goblin_a", hp=20)])
     state.participants[0] = fallen
     try:
-        await _start_combat(pool, player_id, state.combat_id, state, ctx)
+        await _start_combat(pool, player_id, state, ctx)
         response = json.loads(await combat_death_save._request_death_save_impl(ctx))
 
         assert response["dramatic"] is True
@@ -269,7 +194,7 @@ async def test_scarcity_bar_holds_over_representative_fight(reset_db_pool: str) 
     # goblin_a is whittled across the fight; goblin_b stays alive so goblin_a is never "last enemy".
     state = _build_state("combat_cap_m45_scarcity", player_id, [_enemy("goblin_a", hp=100), _enemy("goblin_b", hp=100)])
     try:
-        await _start_combat(pool, player_id, state.combat_id, state, ctx)
+        await _start_combat(pool, player_id, state, ctx)
         with patch("check_resolution.dice_roll", return_value=_d20(11)):
             for phase in range(5):
                 cs = ctx.userdata.combat_state
