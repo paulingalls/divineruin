@@ -189,10 +189,21 @@ def _wrap(state: CombatState) -> WrapOutcome:
         p.conditions = survivors
         tick_conditions_due.extend({"actor_id": p.id, **event} for event in save_events)
 
+    # Companion auto-stabilize (M4.4 story-002): narrative protection — a companion never dies from
+    # the death-save grind. When its failures reach the limit, clamp to the stabilized state (reusing
+    # the stabilized vocabulary, no new field) so it drops out of death_saves_due and never ends combat.
+    for p in state.participants:
+        if p.type == "companion" and p.death_save_failures >= _DEATH_SAVE_LIMIT:
+            p.death_save_failures = _DEATH_SAVE_LIMIT - 1
+            p.death_save_successes = _STABILIZE_LIMIT
+
     death_saves_due = [
         p.id
         for p in state.participants
-        if p.is_fallen and p.death_save_successes < _STABILIZE_LIMIT and p.death_save_failures < _DEATH_SAVE_LIMIT
+        if p.is_fallen
+        and not p.is_dead  # instant-dead (M4.4) skips the Fallen state — never rolls a death save
+        and p.death_save_successes < _STABILIZE_LIMIT
+        and p.death_save_failures < _DEATH_SAVE_LIMIT
     ]
 
     enemies = [p for p in state.participants if p.type == "enemy"]
@@ -205,7 +216,7 @@ def _wrap(state: CombatState) -> WrapOutcome:
     outcome: str | None = None
     if enemies and all(p.is_fallen for p in enemies):
         combat_ended, outcome = True, "victory"
-    elif player is not None and player.death_save_failures >= _DEATH_SAVE_LIMIT:
+    elif player is not None and (player.is_dead or player.death_save_failures >= _DEATH_SAVE_LIMIT):
         combat_ended, outcome = True, "defeat"
 
     return WrapOutcome(
