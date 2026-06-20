@@ -22,6 +22,7 @@ import db
 import db_mutations
 import db_mutations_resonance
 import db_queries
+import fatigue_narration
 import resonance_events
 import spell_casting
 from combat_end import _end_combat_db, _end_combat_finish
@@ -222,6 +223,14 @@ async def _resolve_phase_impl(
         # Beat 3 (narration) is an engine no-op; Beat 4 (wrap) computes the end-condition,
         # death saves due, and the per-phase Resonance decay signal.
         state, _narr = combat_phase.advance_combat_phase(state)
+        # Beat-3 display layer (M4.3, story-005): surface exhaustion flavor for every participant
+        # carrying Exhausted stacks so the DM speaks it. Read here (pre-wrap, pre-tick) so a
+        # save-to-clear tick below never erases a participant's narration mid-beat.
+        exhaustion_narration = {
+            p.id: narrative
+            for p in state.participants
+            if (narrative := fatigue_narration.exhaustion_narrative_for_conditions(p.conditions))
+        }
         state, wrap_adv = combat_phase.advance_combat_phase(state)
         wrap = wrap_adv.wrap
 
@@ -303,6 +312,7 @@ async def _resolve_phase_impl(
         "round": state.round_number,
         "packets": packet_summaries,
         "death_saves_due": wrap.death_saves_due if wrap else [],
+        "exhaustion_narration": exhaustion_narration,
     }
     logger.info(
         "resolve_phase result: beat=%s, round=%d, packets=%d", state.beat, state.round_number, len(packet_summaries)
