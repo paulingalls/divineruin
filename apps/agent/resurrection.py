@@ -8,6 +8,7 @@ free of IO; persistence lives in db_mutations_resurrection. Hollowed-death + Tem
 story-007.
 """
 
+import creation_deities
 import db_content_queries
 import db_mutations_death
 import db_mutations_resurrection
@@ -119,6 +120,8 @@ async def trigger_character_death(
     locations: dict[str, dict],
     *,
     combat_cleared: bool,
+    anchor: str | None = None,
+    waive_cost: bool = False,
     death_mutations=db_mutations_death,
     mutations=db_mutations_resurrection,
     conn=None,
@@ -130,24 +133,37 @@ async def trigger_character_death(
     HP clamped to the post-override effective max so a death-7+ character isn't healed above their
     reduced ceiling. ``player`` is the players.data dict; writes thread ``conn`` for tx participation
     (combat-end calls this inside its defeat tx). Hollowed-death handling is story-007.
+
+    ``anchor`` (story-004): when set, skip resolution and revive at the supplied anchor — lets a
+    party wipe share one anchor. ``waive_cost`` (story-004): a free death (a Mortaen patron's
+    first-ever) — the count is read for the return context but NOT incremented or recorded, and no
+    attribute/maxHP cost is applied; the character is still revived.
     """
     player_id = player["player_id"]
     level = player.get("level", 1)
 
     history = await death_mutations.read_death_history(player_id, conn=conn)
-    death_count = history["count"] + 1
-    cost = determine_death_cost(death_count, level)
-    await death_mutations.record_death(player_id, cost, conn=conn)
+    deltas = {"attribute": None, "attribute_delta": 0, "maxhp_override_delta": 0}
+    if waive_cost:
+        death_count = history["count"]  # unchanged — a waived death is not counted
+        tier = "waived"
+    else:
+        death_count = history["count"] + 1
+        cost = determine_death_cost(death_count, level)
+        await death_mutations.record_death(player_id, cost, conn=conn)
+        tier = cost.tier
+        deltas = apply_death_cost(player, cost)
+        if deltas["attribute"] is not None and deltas["attribute_delta"]:
+            await mutations.apply_attribute_penalty(
+                player_id, deltas["attribute"], deltas["attribute_delta"], conn=conn
+            )
+        if deltas["maxhp_override_delta"]:
+            await mutations.apply_maxhp_override_delta(player_id, deltas["maxhp_override_delta"], conn=conn)
 
-    deltas = apply_death_cost(player, cost)
-    if deltas["attribute"] is not None and deltas["attribute_delta"]:
-        await mutations.apply_attribute_penalty(player_id, deltas["attribute"], deltas["attribute_delta"], conn=conn)
-    if deltas["maxhp_override_delta"]:
-        await mutations.apply_maxhp_override_delta(player_id, deltas["maxhp_override_delta"], conn=conn)
-
-    anchor = resolve_resurrection_anchor(
-        player.get("location_id", ""), locations, player, combat_cleared=combat_cleared
-    )
+    if anchor is None:
+        anchor = resolve_resurrection_anchor(
+            player.get("location_id", ""), locations, player, combat_cleared=combat_cleared
+        )
 
     base_max = player.get("hp", {}).get("max", 1)
     effective_max = max(1, base_max + player.get("maxhp_override", 0) + deltas["maxhp_override_delta"])
@@ -156,13 +172,63 @@ async def trigger_character_death(
 
     return {
         "death_count": death_count,
-        "tier": cost.tier,
+        "tier": tier,
         "attribute": deltas["attribute"],
         "attribute_delta": deltas["attribute_delta"],
         "maxhp_override_delta": deltas["maxhp_override_delta"],
         "anchor": anchor,
         "revive_hp": revive_hp,
     }
+
+
+async def resurrect_party_on_defeat(
+    party: list[dict],
+    *,
+    combat_cleared: bool,
+    conn=None,
+    content_queries=db_content_queries,
+    death_mutations=db_mutations_death,
+    mutations=db_mutations_resurrection,
+) -> list[dict]:
+    """Party-wipe engine (story-004): each member's death is recorded + costed independently, and
+    all members revive at ONE shared anchor (spec §Party wipe).
+
+    The shared anchor is resolved once from the party's common death location. Anchor tiers 1/2/4
+    are member-independent and tier-3 (last-rested) is dormant (no rest caller ships yet), so a
+    single resolution IS the shared highest-priority anchor today; per-member tier-3 divergence is
+    a future concern when a rest caller lands. A Mortaen patron's first-ever death is waived
+    (creation_deities.patron_waives_first_death): not recorded, not counted, no cost — still revived.
+
+    Forward-wired: combat is single-player, so prod feeds a 1-member party (resurrect_on_defeat
+    delegates here); the multi-member path is exercised by tests until multiplayer combat lands.
+    Threads ``conn`` so the whole party rides combat-end's defeat transaction.
+    """
+    if not party:
+        return []
+
+    locations = await content_queries.get_all_locations()
+    shared_anchor = resolve_resurrection_anchor(
+        party[0].get("location_id", ""), locations, party[0], combat_cleared=combat_cleared
+    )
+
+    contexts: list[dict] = []
+    for member in party:
+        patron = member.get("divine_favor", {}).get("patron", "none")
+        prior_count = (await death_mutations.read_death_history(member["player_id"], conn=conn))["count"]
+        waive = creation_deities.patron_waives_first_death(patron, prior_count)
+        contexts.append(
+            await trigger_character_death(
+                member,
+                locations,
+                combat_cleared=combat_cleared,
+                anchor=shared_anchor,
+                waive_cost=waive,
+                death_mutations=death_mutations,
+                mutations=mutations,
+                conn=conn,
+            )
+        )
+    return contexts
 
 
 async def resurrect_on_defeat(
@@ -174,18 +240,16 @@ async def resurrect_on_defeat(
     death_mutations=db_mutations_death,
     mutations=db_mutations_resurrection,
 ) -> dict:
-    """combat_end defeat-path entry: load the location catalog, then run the death loop.
-
-    A thin IO wrapper so combat_end has ONE call to stub in tests; the location load is the only
-    extra IO over trigger_character_death, which stays pure-injectable (takes locations) for unit
-    tests. Threads ``conn`` so the whole thing rides combat-end's defeat transaction.
+    """combat_end defeat-path entry: the live single-player defeat path. Delegates to the party
+    engine with a 1-member party so the single and multi-member paths share one implementation,
+    and returns the single death context. Threads ``conn`` for the defeat transaction.
     """
-    locations = await content_queries.get_all_locations()
-    return await trigger_character_death(
-        player,
-        locations,
+    contexts = await resurrect_party_on_defeat(
+        [player],
         combat_cleared=combat_cleared,
         conn=conn,
+        content_queries=content_queries,
         death_mutations=death_mutations,
         mutations=mutations,
     )
+    return contexts[0]
