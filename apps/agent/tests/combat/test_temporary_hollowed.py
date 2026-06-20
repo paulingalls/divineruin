@@ -189,3 +189,91 @@ class TestWrapEchoGating:
         wrap = combat_phase._wrap(cs)
         assert wrap.combat_ended is True
         assert wrap.outcome == "victory"
+
+
+async def test_temporary_hollowed_full_path_e2e(dev_db_pool):
+    """AC3 (real PostgreSQL): a Stage-2 Hollowed player dies -> the echo rises -> is destroyed ->
+    the character enters Mortaen death via the existing defeat path -> resurrected with Hollowed
+    cleared and hollow_killed recorded. Drives the rise/destroy through the combat engine and routes
+    the echo-fall defeat through resurrect_on_defeat exactly as _end_combat_db does."""
+    import json
+
+    import db_mutations_resurrection as dmr
+    import db_queries
+    import resurrection
+
+    pool = dev_db_pool
+    player_id = "s008_temp_hollowed_e2e"
+    await pool.execute(
+        "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
+        "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
+        player_id,
+        json.dumps(
+            {
+                "player_id": player_id,
+                "class": "warrior",
+                "attributes": {"strength": 14, "charisma": 8, "constitution": 13},
+                "level": 5,
+                "hp": {"current": 0, "max": 40},
+                "maxhp_override": 0,
+                "location_id": "off_catalog_wilds",  # off-catalog -> anchor falls to starter zone
+                "death_history": {"count": 0, "costs": []},
+                "conditions": [{"type": "hollowed", "duration": None, "source": "veil", "stage": 2}],
+            }
+        ),
+    )
+    try:
+        # --- Engine side: the player drops to 0 HP and rises as a Temporary Hollowed echo. ---
+        ctx = make_context()
+        cs = _make_combat_state(player_hp=8)
+        enemy = cs.get_participant("goblin_scout_1")
+        player = cs.get_participant("player_1")
+        assert enemy is not None and player is not None
+        player.conditions = [{"type": "hollowed", "duration": None, "source": "veil", "stage": 2}]
+        mutations, queries = _mocks()
+
+        await _resolve_attack_packet(
+            ctx.userdata,
+            enemy,
+            enemy.action_pool[0],
+            player,
+            mutations=mutations,
+            queries=queries,
+            resolver=_resolver(damage=8, hp_remaining=0, overkill=0),
+        )
+        assert player.type == "temporary_hollowed"
+        assert player.is_fallen is False
+        # A live echo blocks combat-end.
+        assert combat_phase._wrap(cs).combat_ended is False
+
+        # --- Destroy the echo; the wrap now reports defeat. ---
+        await _resolve_attack_packet(
+            ctx.userdata,
+            enemy,
+            enemy.action_pool[0],
+            player,
+            mutations=mutations,
+            queries=queries,
+            resolver=_resolver(damage=player.hp_current, hp_remaining=0, overkill=0),
+        )
+        wrap = combat_phase._wrap(cs)
+        assert wrap.combat_ended is True and wrap.outcome == "defeat"
+
+        # --- Defeat path (what _end_combat_db runs): Mortaen death keyed on the player row. ---
+        combat_cleared = bool([p for p in cs.participants if p.type == "enemy" and p.is_fallen])
+        player_row = await db_queries.get_player(player_id, conn=pool)
+        assert player_row is not None
+        death_ctx = await resurrection.resurrect_on_defeat(player_row, combat_cleared=combat_cleared, conn=pool)
+
+        assert death_ctx["hollow_killed"] is True
+        assert death_ctx["hollowed_cleared"] is True
+
+        revived = await db_queries.get_player(player_id, conn=pool)
+        assert revived is not None
+        # Hollow-killed recorded permanently, Hollowed cleared from the store, revived at the anchor.
+        assert await dmr.read_hollow_killed(player_id, conn=pool) is True
+        assert all(c["type"] != "hollowed" for c in (revived.get("conditions") or []))
+        assert revived["location_id"] == death_ctx["anchor"]
+        assert revived["hp"]["current"] == death_ctx["revive_hp"]
+    finally:
+        await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
