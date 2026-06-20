@@ -40,6 +40,47 @@ def _primary_attribute(player: dict) -> str:
     return highest_attribute(player["attributes"])
 
 
+_STARTER_ZONE_FALLBACK = "accord_market_square"
+
+
+def resolve_resurrection_anchor(
+    death_location: str,
+    locations: dict[str, dict],
+    player: dict,
+    *,
+    combat_cleared: bool,
+) -> str:
+    """Pick the resurrection anchor by the spec's 4-tier hierarchy (§Resurrection Location).
+
+    1. Cleared battlefield: the death site, if combat is over AND the area is no longer hostile
+       (danger_level <= 1).
+    2. Nearest allied camp/settlement: a same-region location with a settlement_tier. No map
+       coordinates exist, so "nearest" = same region, preferring safer (lower danger_level) then a
+       stable id sort.
+    3. Last-rested settlement: player.last_rested_settlement_id. NOTE forward-seam — no rest tool
+       writes this yet (apply_long_rest has no production caller), so tier 3 is dormant at runtime
+       and the resolver falls through to tier 4 until a rest caller ships.
+    4. Starter zone: a location tagged "starting_area" (fallback accord_market_square).
+    """
+    death = locations.get(death_location, {})
+    if combat_cleared and death.get("danger_level", 99) <= 1:
+        return death_location
+
+    region = death.get("region")
+    settlements = [
+        loc_id for loc_id, loc in locations.items() if loc.get("settlement_tier") and loc.get("region") == region
+    ]
+    if settlements:
+        return min(settlements, key=lambda i: (locations[i].get("danger_level", 99), i))
+
+    last_rested = player.get("last_rested_settlement_id")
+    if last_rested and last_rested in locations:
+        return last_rested
+
+    starter = next((i for i, loc in locations.items() if "starting_area" in loc.get("tags", [])), None)
+    return starter or _STARTER_ZONE_FALLBACK
+
+
 def apply_death_cost(player: dict, cost: DeathCost) -> dict:
     """Resolve a DeathCost's selectors against the character into concrete persistence deltas.
 
