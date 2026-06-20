@@ -28,6 +28,11 @@ class AttackResult:
     target_hp_remaining: int
     target_killed: bool
     narrative_hint: str
+    # Excess damage past 0 HP (M4.4 story-002): max(0, damage - pre_hit_hp) on a hit, else 0.
+    # target_hp_remaining floors at 0 and loses this, so it's captured here pre-floor — the
+    # instant-death verdict (combat_support) compares it against the target's max HP. Defaulted
+    # for direct constructors (tests); the resolver always sets it explicitly.
+    overkill: int = 0
     # Crit flags read from D20CheckCore.critical_success/critical_failure (nat-20 /
     # nat-1), so every roll-result packet agrees on crits. Defaulted for direct
     # constructors (tests); the resolver always sets them explicitly.
@@ -120,6 +125,9 @@ def resolve_attack(
         damage = max(0, damage)
 
     new_hp = max(0, target_hp - damage)
+    # Excess damage past 0 (M4.4 story-002): computed pre-floor, before new_hp loses it. Drives
+    # the instant-death verdict downstream (combat_support: overkill >= target max HP).
+    overkill = max(0, damage - target_hp) if hit else 0
 
     # Killing-blow inputs are gated on `hit`: pass pre-hit HP + damage only when
     # the attack landed, else None. This makes the evaluator's killing_blow label
@@ -146,6 +154,7 @@ def resolve_attack(
         critical_failure=core.critical_failure,
         target_hp_remaining=new_hp,
         target_killed=new_hp == 0 and hit,
+        overkill=overkill,
         narrative_hint=core.narrative_hint,
         dramatic=verdict.dramatic,
         context=verdict.context,

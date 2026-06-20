@@ -15,7 +15,6 @@ from dataclasses import asdict
 from unittest.mock import AsyncMock
 
 import db_mutations_death
-
 from death_cost import determine_death_cost
 
 

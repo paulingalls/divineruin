@@ -221,6 +221,47 @@ class TestResolveAttack:
                 return
         pytest.fail("Could not find miss seed")
 
+    # --- Overkill (M4.4 story-002): excess damage beyond 0 HP, for the instant-death verdict ---
+
+    def test_overkill_is_damage_beyond_target_hp(self):
+        # A hit on a 1-HP target: overkill = damage - 1 (the excess past 0), computed pre-floor.
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 1 and d20 + 4 >= 10:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 1, rng=rng)
+                if result.hit:
+                    assert result.overkill == result.damage - 1
+                    assert result.target_hp_remaining == 0  # floor still applies to HP
+                    return
+        pytest.fail("Could not find seed for hit")
+
+    def test_overkill_zero_when_damage_below_target_hp(self):
+        # A hit that doesn't drop the target to 0 has no overkill.
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 1 and d20 + 4 >= 12:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 100, rng=rng)
+                if result.hit:
+                    assert result.overkill == 0
+                    return
+        pytest.fail("Could not find seed for hit")
+
+    def test_overkill_zero_on_miss(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 20 and d20 + 4 < 18:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 18, 1, rng=rng)
+                assert result.hit is False
+                assert result.overkill == 0
+                return
+        pytest.fail("Could not find miss seed")
+
 
 class TestAttackModifier:
     def test_melee_weapon(self):
