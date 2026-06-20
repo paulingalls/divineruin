@@ -26,7 +26,7 @@ import event_types as E
 import rules_engine
 import skill_persistence
 from check_discovery import _check_discover_impl
-from db_errors import db_tool
+from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
 from session_data import SessionData
 from tool_support import _cap_str
@@ -122,6 +122,9 @@ async def _check_skill_impl(
     player = await queries.get_player(session.player_id)
     if player is None:
         raise ToolError(f"Player '{session.player_id}' not found.")
+    # Validate the stored conditions at this read boundary (M4.4 story-008): a corrupt row otherwise
+    # reaches get_condition_effects and raises a raw KeyError instead of a DM-narratable ToolError.
+    validated_player_conditions(player, session.player_id)
 
     result = check_resolution.resolve_skill_check(player, skill, difficulty)
 
@@ -202,6 +205,9 @@ async def _check_save_impl(
     player = await queries.get_player(session.player_id)
     if player is None:
         raise ToolError(f"Player '{session.player_id}' not found.")
+    # Validate the stored conditions at this read boundary (M4.4 story-008): a corrupt row otherwise
+    # reaches get_condition_effects and raises a raw KeyError instead of a DM-narratable ToolError.
+    validated_player_conditions(player, session.player_id)
 
     try:
         result = check_resolution_save.resolve_saving_throw(player, save_type, dc, effect_on_fail)

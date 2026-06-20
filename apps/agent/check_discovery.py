@@ -23,6 +23,7 @@ import db_mutations
 import db_queries
 import event_types as E
 import rules_engine
+from db_errors import validated_player_conditions
 from game_events import publish_game_event
 from session_data import SessionData
 from tool_support import _cap_str
@@ -72,6 +73,9 @@ async def _check_discover_impl(
     player = await queries.get_player(session.player_id)
     if player is None:
         raise ToolError(f"Player '{session.player_id}' not found.")
+    # Validate the stored conditions at this read boundary (M4.4 story-008): a corrupt row otherwise
+    # reaches get_condition_effects and raises a raw KeyError instead of a DM-narratable ToolError.
+    validated_player_conditions(player, session.player_id)
 
     # Skill-matched, undiscovered, un-rolled-this-session hidden_elements. The anti-grind gate
     # is keyed on the ELEMENT, not the free-text target, so re-searching the same secret under a
