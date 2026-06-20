@@ -30,6 +30,27 @@ _STINGER_SOUND = {
 }
 
 
+def _merge_persistent_conditions(existing: list[dict], acquired: list[dict]) -> list[dict]:
+    """Union the player's stored cross-encounter conditions with those acquired this fight.
+
+    Combat only ACCRUES (rest clears, a later milestone), so a fight never drops a pre-existing
+    condition. On a type conflict, keep the instance with the higher accrual — more ``stacks``
+    (Exhausted), or higher ``stage`` (Hollowed) — so a fight that deepens an already-persisted
+    Exhausted isn't silently discarded. This is approximate until combat-START load lands (debt
+    1e32d78449ef): the participant doesn't carry the prior store in, so a combat-gained instance
+    counts only this fight's accrual — max() is the safe floor (never lose the worse of the two)."""
+
+    def _severity(c: dict) -> int:
+        return c.get("stacks", c.get("stage", 1))
+
+    merged = {c["type"]: c for c in existing}
+    for c in acquired:
+        prior = merged.get(c["type"])
+        if prior is None or _severity(c) > _severity(prior):
+            merged[c["type"]] = c
+    return list(merged.values())
+
+
 @function_tool()
 @db_tool
 async def end_combat(
@@ -128,8 +149,7 @@ async def _end_combat_db(
         ]
         if acquired:
             existing = await db_mutations_conditions.read_player_conditions(session.player_id, conn=conn)
-            existing_types = {c["type"] for c in existing}
-            merged = existing + [c for c in acquired if c["type"] not in existing_types]
+            merged = _merge_persistent_conditions(existing, acquired)
             await db_mutations_conditions.save_player_conditions(session.player_id, merged, conn=conn)
 
     await mutations.delete_combat_state(cs.combat_id, conn=conn)

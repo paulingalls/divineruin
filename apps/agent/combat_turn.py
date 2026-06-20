@@ -10,6 +10,7 @@ import logging
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import check_resolution
 import check_resolution_attack
 import check_resolution_save
 import combat_enhancers
@@ -58,7 +59,10 @@ def _resolve_tick_saves(state, tick_conditions_due, save_resolver):
         if actor is None:
             continue
         player_data = {"attributes": actor.attributes, "level": actor.level, "conditions": actor.conditions}
-        result = save_resolver.resolve_saving_throw(player_data, event["save"], _CONDITION_CLEAR_DC, event["type"])
+        # The catalog's tick_save is the 3-letter abbreviation ("wis"); resolve_saving_throw
+        # validates against the full attribute name ("wisdom"), so expand before resolving.
+        save_type = check_resolution._ATTR_FULL.get(event["save"], event["save"])
+        result = save_resolver.resolve_saving_throw(player_data, save_type, _CONDITION_CLEAR_DC, event["type"])
         if result.success:
             actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
 

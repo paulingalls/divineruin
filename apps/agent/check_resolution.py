@@ -138,6 +138,11 @@ _ATTR_ABBREV: dict[str, str] = {
     "charisma": "cha",
 }
 
+# Inverse of _ATTR_ABBREV: the catalog's tick_save (conditions.py) and other internals speak the
+# 3-letter abbreviation ("wis"), but resolve_saving_throw validates against the full attribute name.
+# Expand an abbreviation to the full name before handing it to the save resolver.
+_ATTR_FULL: dict[str, str] = {abbrev: full for full, abbrev in _ATTR_ABBREV.items()}
+
 
 def _apply_condition_modifiers(conditions: list[dict], scopes: set[str]) -> tuple[int, bool, bool, bool]:
     """Resolve active conditions into a roll's mechanical effect for the given scopes.

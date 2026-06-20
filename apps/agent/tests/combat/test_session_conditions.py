@@ -102,6 +102,23 @@ def test_tick_save_failure_keeps_condition():
     assert [c["type"] for c in player.conditions] == ["frightened"]
 
 
+def test_tick_save_expands_abbreviated_save_type_for_real_resolver():
+    """Regression: the catalog's tick_save is the abbreviation ("wis") but resolve_saving_throw
+    only accepts full attribute names — the real resolver must not raise on the wrap's save event."""
+    import check_resolution_save
+
+    state = _make_combat_state()
+    player = state.get_participant("player_1")
+    assert player is not None
+    player.attributes = {"wisdom": 14}
+    player.conditions = apply_condition([], "frightened", source="wraith")
+    due = [{"actor_id": "player_1", "type": "frightened", "save": "wis", "source": "wraith"}]
+
+    # Must not raise ValueError("Unknown save type: 'wis'"); the condition either clears or persists.
+    _resolve_tick_saves(state, due, check_resolution_save)
+    assert [c["type"] for c in player.conditions] in ([], ["frightened"])
+
+
 # --- Slice 3: combat-end persists only cross-encounter conditions ---
 
 
@@ -135,6 +152,37 @@ async def test_end_combat_merges_acquired_cross_encounter_conditions(monkeypatch
 
     # Wounded (pre-existing) kept; exhausted (acquired) added; prone (phase-scoped) dropped.
     assert sorted(c["type"] for c in captured["conditions"]) == ["exhausted", "wounded"]
+
+
+async def test_end_combat_keeps_higher_stacks_on_type_conflict(monkeypatch):
+    """A fight that deepens an already-persisted Exhausted must keep the higher stack count,
+    not silently drop the combat-gained accrual (code-review finding, bounded by debt 1e32d78449ef)."""
+    cs = _make_combat_state(enemy_fallen=True)
+    player = cs.get_participant("player_1")
+    assert player is not None
+    # Combat ends with Exhausted at 3 stacks.
+    exhausted_3 = apply_condition(apply_condition(apply_condition([], "exhausted"), "exhausted"), "exhausted")
+    player.conditions = exhausted_3
+
+    # The store already holds Exhausted at 2 stacks.
+    exhausted_2 = apply_condition(apply_condition([], "exhausted"), "exhausted")
+    monkeypatch.setattr(db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=exhausted_2))
+    captured = {}
+
+    async def _capture(player_id, conds, *, conn=None):
+        captured["conditions"] = conds
+
+    monkeypatch.setattr(db_mutations_conditions, "save_player_conditions", _capture)
+
+    session, mutations, queries = _end_combat_mocks()
+    await _end_combat_db(
+        session, cs, "victory", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
+    )
+
+    stored = captured["conditions"]
+    assert len(stored) == 1
+    assert stored[0]["type"] == "exhausted"
+    assert stored[0]["stacks"] == 3  # higher accrual kept, not the store's 2
 
 
 async def test_end_combat_skips_store_when_no_persistent_conditions_acquired(monkeypatch):
