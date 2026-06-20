@@ -107,3 +107,46 @@ async def test_resurrection_writes_roundtrip(dev_db_pool):
         assert player2["maxhp_override"] == -20
     finally:
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+
+
+async def test_resurrect_on_defeat_e2e_persists_cost_and_revives_at_anchor(dev_db_pool):
+    """AC4: death -> escalating cost persisted (death_history + attribute) -> revived at the correct
+    anchor, end-to-end on the real evaluator (only the death-location is off-catalog so the anchor
+    falls through to the deterministic starter zone)."""
+    import resurrection
+
+    pool = dev_db_pool
+    player_id = "s003_resurrect_e2e"
+    await pool.execute(
+        "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
+        "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
+        player_id,
+        json.dumps(
+            {
+                "player_id": player_id,
+                "class": "warrior",
+                "attributes": {"strength": 14, "charisma": 8, "constitution": 13},
+                "level": 5,
+                "hp": {"current": 0, "max": 40},
+                "maxhp_override": 0,
+                "location_id": "off_catalog_wilds",  # not a real location -> anchor falls to starter zone
+                "death_history": {"count": 1, "costs": []},  # this will be death #2 = moderate
+            }
+        ),
+    )
+    try:
+        player = await db_queries.get_player(player_id, conn=pool)
+        assert player is not None
+        ctx = await resurrection.resurrect_on_defeat(player, combat_cleared=False, conn=pool)
+
+        assert ctx["death_count"] == 2 and ctx["tier"] == "moderate"
+        assert ctx["anchor"] == "accord_market_square"  # tier-4 starter fallback
+
+        revived = await db_queries.get_player(player_id, conn=pool)
+        assert revived is not None
+        assert revived["death_history"]["count"] == 2  # recorded
+        assert revived["attributes"]["charisma"] == 7  # moderate -> -1 lowest (charisma)
+        assert revived["location_id"] == "accord_market_square"  # placed at anchor
+        assert revived["hp"]["current"] == 40  # revived to effective max (no override)
+    finally:
+        await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
