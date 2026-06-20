@@ -296,6 +296,13 @@ async def _resolve_attack_packet(
         if verdict.dramatic:
             attack_result = replace(attack_result, dramatic=True, context=verdict.context)
 
+    # Capture pre-hit Fallen state: the instant-death verdict (below) is scoped to the
+    # live -> 0 transition (spec game_mechanics_combat.md L350 + on_hp_zero pseudocode L554:
+    # "a single source of damage REDUCES HP to 0"). A hit on a target already at 0 is the
+    # distinct "damage while Fallen" mechanic (L369: auto death-save failures), not instant
+    # death — without this guard overkill = damage - 0 = damage would wrongly flag is_dead.
+    was_fallen = target.is_fallen
+
     # Update target HP
     target.hp_current = attack_result.target_hp_remaining
 
@@ -315,7 +322,9 @@ async def _resolve_attack_packet(
         # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills outright —
         # no Fallen grace, no death saves. is_dead is the stronger state; the pure _wrap reads it to
         # end combat without a death-save beat. This is the one site with both attack_result + hp_max.
-        if attack_result.overkill >= target.hp_max:
+        # Gated on `not was_fallen` so it fires only on the live -> 0 transition the spec scopes it to;
+        # a hit on an already-downed target is the separate "damage while Fallen" failure mechanic.
+        if not was_fallen and attack_result.overkill >= target.hp_max:
             target.is_dead = True
         sounds.append(SOUND_PLAYER_FALLEN)
         # Handle companion KO

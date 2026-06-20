@@ -96,6 +96,31 @@ class TestInstantDeathVerdict:
         assert target.is_dead is False
 
     @pytest.mark.asyncio
+    async def test_already_fallen_target_is_not_flagged_instant_dead(self):
+        # Spec scopes instant death to the live -> 0 transition (L350). A hit on a target
+        # ALREADY at 0 (Fallen) is the separate "damage while Fallen" mechanic (L369), not
+        # instant death — even though overkill = damage - 0 = damage trivially exceeds max HP.
+        ctx = make_context()
+        cs = _make_combat_state()
+        attacker, target, action = _attacker_target_action(cs)
+        target.hp_current = 0
+        target.is_fallen = True
+        mutations, queries = _mocks()
+
+        await _resolve_attack_packet(
+            ctx.userdata,
+            attacker,
+            action,
+            target,
+            mutations=mutations,
+            queries=queries,
+            resolver=_resolver(damage=target.hp_max * 3, hp_remaining=0, overkill=target.hp_max * 3),
+        )
+
+        assert target.is_fallen is True
+        assert target.is_dead is False
+
+    @pytest.mark.asyncio
     async def test_non_lethal_hit_is_neither_fallen_nor_dead(self):
         ctx = make_context()
         cs = _make_combat_state()
