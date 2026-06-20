@@ -10,11 +10,14 @@ import logging
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import check_resolution
 import check_resolution_attack
+import check_resolution_save
 import combat_enhancers
 import combat_phase
 import combat_resolution
 import concentration_break
+import conditions
 import db
 import db_mutations
 import db_mutations_resonance
@@ -36,6 +39,32 @@ from declarations import DeclarationType
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
+
+# Beat-4 save-to-clear DC (M4.3, story-004): the spec's end-of-turn condition saves (Frightened's
+# WIS save) have no per-condition DC, so use a fixed moderate DC. A seam: a future per-condition DC
+# would replace this constant (assumption f760751a1109).
+_CONDITION_CLEAR_DC = 10
+
+
+def _resolve_tick_saves(state, tick_conditions_due, save_resolver):
+    """Resolve the Beat-4 save-to-clear conditions the wrap surfaced (M4.3, story-004).
+
+    For each {actor_id, type, save, source}, roll the actor's save against the clear DC; on a SUCCESS
+    remove that condition from the actor (it clears), on a failure it persists. Pure in-memory: the
+    removal rides the phase's existing save_combat_state / end-combat write — no extra persist here,
+    no client event (narration-only). The engine never rolls; this is where the roll happens.
+    """
+    for event in tick_conditions_due:
+        actor = state.get_participant(event["actor_id"])
+        if actor is None:
+            continue
+        player_data = {"attributes": actor.attributes, "level": actor.level, "conditions": actor.conditions}
+        # The catalog's tick_save is the 3-letter abbreviation ("wis"); resolve_saving_throw
+        # validates against the full attribute name ("wisdom"), so expand before resolving.
+        save_type = check_resolution._ATTR_FULL.get(event["save"], event["save"])
+        result = save_resolver.resolve_saving_throw(player_data, save_type, _CONDITION_CLEAR_DC, event["type"])
+        if result.success:
+            actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
 
 
 @function_tool()
@@ -109,6 +138,7 @@ async def _resolve_phase_impl(
     mutations=db_mutations,
     queries=db_queries,
     resolver=check_resolution_attack,
+    save_resolver=check_resolution_save,
     concentration_break_mod=concentration_break,
     resonance_mutations=db_mutations_resonance,
     resonance_events_mod=resonance_events,
@@ -194,6 +224,12 @@ async def _resolve_phase_impl(
         state, _narr = combat_phase.advance_combat_phase(state)
         state, wrap_adv = combat_phase.advance_combat_phase(state)
         wrap = wrap_adv.wrap
+
+        # Beat-4 save-to-clear (M4.3, story-004): resolve the saves the wrap surfaced (Frightened's
+        # WIS save). A made save clears the condition on the actor in-memory; the change rides the
+        # save_combat_state / end-combat write below in this same tx.
+        if wrap is not None and wrap.tick_conditions_due:
+            _resolve_tick_saves(state, wrap.tick_conditions_due, save_resolver)
 
         # An in-combat ability GENERATES Resonance during resolution (beat 2); seed the phase's
         # pending value with the cast's post-generation total so the WRAP decay below sheds from it

@@ -7,8 +7,10 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import combat_resolution
+import conditions
 import db
 import db_mutations
+import db_mutations_conditions
 import db_queries
 import event_types as E
 from combat_events import EventSink, emit_or_publish
@@ -26,6 +28,27 @@ _STINGER_SOUND = {
     "defeat": SOUND_COMBAT_DEFEAT,
     "fled": SOUND_COMBAT_FLED,
 }
+
+
+def _merge_persistent_conditions(existing: list[dict], acquired: list[dict]) -> list[dict]:
+    """Union the player's stored cross-encounter conditions with those acquired this fight.
+
+    Combat only ACCRUES (rest clears, a later milestone), so a fight never drops a pre-existing
+    condition. On a type conflict, keep the instance with the higher accrual — more ``stacks``
+    (Exhausted), or higher ``stage`` (Hollowed) — so a fight that deepens an already-persisted
+    Exhausted isn't silently discarded. This is approximate until combat-START load lands (debt
+    1e32d78449ef): the participant doesn't carry the prior store in, so a combat-gained instance
+    counts only this fight's accrual — max() is the safe floor (never lose the worse of the two)."""
+
+    def _severity(c: dict) -> int:
+        return c.get("stacks", c.get("stage", 1))
+
+    merged = {c["type"]: c for c in existing}
+    for c in acquired:
+        prior = merged.get(c["type"])
+        if prior is None or _severity(c) > _severity(prior):
+            merged[c["type"]] = c
+    return list(merged.values())
 
 
 @function_tool()
@@ -112,6 +135,22 @@ async def _end_combat_db(
                 conn=conn,
                 sink=sink,
             )
+
+    # Persist the player's cross-encounter conditions (M4.3, story-004): the persists_across_encounters
+    # ones acquired this fight (Wounded/Exhausted/Hollowed) MERGE into players.data; phase-scoped ones
+    # (Prone/Stunned/…) drop with the combat row. Combat only ACCRUES persistent conditions (rest
+    # clears them, a later milestone), and combat-START load is deferred, so we union with the existing
+    # store rather than overwrite — else a fight would clobber a pre-combat Wounded. Skip all DB work
+    # when nothing was acquired (the common case). Same tx as the row delete (atomic).
+    player_part = next((p for p in cs.participants if p.type == "player"), None)
+    if player_part is not None:
+        acquired = [
+            c for c in player_part.conditions if conditions.CONDITION_CATALOG[c["type"]].persists_across_encounters
+        ]
+        if acquired:
+            existing = await db_mutations_conditions.read_player_conditions(session.player_id, conn=conn)
+            merged = _merge_persistent_conditions(existing, acquired)
+            await db_mutations_conditions.save_player_conditions(session.player_id, merged, conn=conn)
 
     await mutations.delete_combat_state(cs.combat_id, conn=conn)
 
