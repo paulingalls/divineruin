@@ -150,8 +150,16 @@ async def _start_combat_impl(
     # path reads participant.conditions). They ride the already-loaded players.data dict, so no
     # extra query — validate at this boundary (fail-loud on a corrupt stored dict) and clamp
     # Exhausted to the iron-constitution cap (the in-scope apply site until a forced-march producer).
+    try:
+        # A corrupt stored condition row is a data-integrity error in the same family as a
+        # malformed companion profile (below) — surface it as a DM-narratable ToolError instead
+        # of a raw ValueError. db_tool narrows on JSONDecodeError, so a bare ValueError here would
+        # escape uncaught and crash combat init.
+        validated_conditions = conditions.validate_conditions(player.get("conditions", []))
+    except ValueError as e:
+        raise ToolError(f"Player '{session.player_id}' has corrupt stored conditions: {e}") from e
     player_conditions = conditions.cap_exhaustion(
-        conditions.validate_conditions(player.get("conditions", [])),
+        validated_conditions,
         rules_engine.exhaustion_stack_cap(player),
     )
 

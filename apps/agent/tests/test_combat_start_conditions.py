@@ -9,6 +9,7 @@ forced-march/travel producer ships).
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
 import conditions
@@ -101,6 +102,14 @@ class TestCombatStartLoad:
         player_part = await _run_start(_player(stored_conditions=stored))
         exhausted = next(c for c in player_part.conditions if c["type"] == "exhausted")
         assert exhausted["stacks"] == 5
+
+    @pytest.mark.asyncio
+    async def test_corrupt_stored_condition_raises_toolerror_not_valueerror(self):
+        # A corrupt stored row surfaces as a DM-narratable ToolError (db_tool narrows on
+        # JSONDecodeError, so a bare ValueError would escape and crash combat init) — matching
+        # the companion-profile not-found convention in the same function.
+        with pytest.raises(ToolError, match="corrupt stored conditions"):
+            await _run_start(_player(stored_conditions=[{"type": "not_a_condition", "stacks": 1}]))
 
 
 class TestCombatStartE2E:
