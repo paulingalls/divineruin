@@ -9,7 +9,7 @@ execution_plan's 'reset each encounter' claim was found stale — see decision d
 from combat._helpers import _make_combat_state
 
 import combat_phase
-from combat_phase import _DEATH_SAVE_LIMIT, _STABILIZE_LIMIT
+from combat_phase import _DEATH_SAVE_LIMIT, _STABILIZE_LIMIT, advance_combat_phase
 from session_data import CombatParticipant, CombatState
 
 
@@ -86,3 +86,46 @@ class TestDeathSaveCounterPersistence:
         assert rp.death_save_failures == 2
         assert rp.death_save_successes == 1
         assert rp.is_fallen is True
+
+
+class TestInstantDeathE2E:
+    """AC4: through the pure engine entry (advance_combat_phase), an instant-dead player and a
+    companion at the failure limit resolve together in one Beat-4 wrap — player ends combat as
+    defeat (no death-save beat), companion auto-stabilizes."""
+
+    def test_wrap_reports_instant_dead_player_and_stabilized_companion(self):
+        cs = _make_combat_state()  # enemy still alive (hp 7) so victory does not pre-empt defeat
+        player = cs.get_participant("player_1")
+        assert player is not None
+        player.is_fallen = True
+        player.is_dead = True  # an overkill blow this round set this at the damage site
+        player.death_save_failures = 0
+
+        companion = CombatParticipant(
+            id="companion_1",
+            name="Sable",
+            type="companion",
+            initiative=10,
+            hp_current=0,
+            hp_max=18,
+            ac=13,
+            is_fallen=True,
+            death_save_failures=_DEATH_SAVE_LIMIT,
+        )
+        cs.participants.append(companion)
+
+        cs.beat = "wrap"
+        next_state, advance = advance_combat_phase(cs)
+
+        # Player: instant defeat, no death-save beat.
+        assert advance.wrap is not None
+        assert advance.wrap.combat_ended is True
+        assert advance.wrap.outcome == "defeat"
+        assert "player_1" not in advance.wrap.death_saves_due
+
+        # Companion: auto-stabilized on the returned (deep-copied) state, not in death_saves_due.
+        stabilized = next_state.get_participant("companion_1")
+        assert stabilized is not None
+        assert stabilized.death_save_successes == _STABILIZE_LIMIT
+        assert stabilized.is_dead is False
+        assert "companion_1" not in advance.wrap.death_saves_due
