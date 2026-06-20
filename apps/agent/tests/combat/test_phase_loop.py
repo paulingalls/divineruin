@@ -78,6 +78,40 @@ def _declarations():
     }
 
 
+class TestResolvePhaseExhaustionNarration:
+    """M4.3 story-005: resolve_phase surfaces a Beat-3 exhaustion_narration map for the DM to
+    speak, derived from each participant's Exhausted stacks. This is the live caller for the
+    otherwise-dead get_exhaustion_narrative."""
+
+    @pytest.mark.asyncio
+    async def test_exhausted_participant_gets_flavor_text(self):
+        deps = _resolve_deps(damage=3)
+        ctx = make_context()
+        state = _resolution_state(player_hp=25, enemy_hp=7)
+        player = state.get_participant("player_1")
+        assert player is not None
+        player.conditions = [{"type": "exhausted", "duration": 99, "source": "forced_march", "stacks": 2}]
+        ctx.userdata.combat_state = state
+
+        raw = await _resolve_phase_impl(ctx, **deps)
+        assert isinstance(raw, str)
+        result = json.loads(raw)
+
+        assert result["exhaustion_narration"] == {"player_1": "Every movement is an effort"}
+
+    @pytest.mark.asyncio
+    async def test_no_exhaustion_yields_empty_map(self):
+        deps = _resolve_deps(damage=3)
+        ctx = make_context()
+        ctx.userdata.combat_state = _resolution_state(player_hp=25, enemy_hp=7)
+
+        raw = await _resolve_phase_impl(ctx, **deps)
+        assert isinstance(raw, str)
+        result = json.loads(raw)
+
+        assert result["exhaustion_narration"] == {}
+
+
 class TestDeclarePhase:
     @pytest.mark.asyncio
     async def test_advances_to_resolution_and_stores_declarations(self):

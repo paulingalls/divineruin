@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useEffect, useRef, useCallback, useMemo, type ComponentProps } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   useSharedValue,
@@ -20,6 +20,7 @@ import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { hudStore } from "@/stores/hud-store";
 import { panelStore, type PanelTab } from "@/stores/panel-store";
+import { getConditionDisplay, formatConditionLabel } from "@/components/hud/condition-display";
 
 interface PersistentBarProps {
   connectionState: string;
@@ -132,6 +133,37 @@ function StatusEffectIcons() {
   );
 }
 
+// The player's active combat conditions (M4.3, story-005), shown as a compact icon+label row
+// below the HP bar. Derived from the player (isAlly) combatant in combatState — the only client
+// conditions carrier today (the COMBAT_UI_UPDATE packet), so the row appears during combat.
+// Out-of-combat persistent-condition display is forward-wired pending a server conditions packet.
+function PlayerConditionRow() {
+  const combatState = useStore(hudStore, (s) => s.combatState);
+  const conditions = combatState?.combatants.find((c) => c.isAlly)?.conditions ?? [];
+
+  if (conditions.length === 0) return null;
+
+  return (
+    <View style={styles.conditionRow}>
+      {conditions.map((condition) => {
+        const display = getConditionDisplay(condition.type);
+        return (
+          <View key={`${condition.type}-${condition.source}`} style={styles.conditionChip}>
+            <MaterialCommunityIcons
+              name={display.icon as ComponentProps<typeof MaterialCommunityIcons>["name"]}
+              size={12}
+              color={display.color}
+            />
+            <ThemedText style={[styles.conditionLabel, { color: display.color }]} numberOfLines={1}>
+              {formatConditionLabel(condition.type, condition.stacks)}
+            </ThemedText>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 function QuestObjectiveStrip() {
   const activeObjective = useStore(hudStore, (s) => s.activeObjective);
   const visible = useStore(hudStore, (s) => s.questObjectiveVisible);
@@ -223,6 +255,7 @@ export function PersistentBar({ connectionState, agentState: _agentState }: Pers
           <HpBar />
         </View>
       </View>
+      <PlayerConditionRow />
       <QuestObjectiveStrip />
     </View>
   );
@@ -290,6 +323,23 @@ const styles = StyleSheet.create({
   statusEffects: {
     flexDirection: "row",
     gap: 3,
+  },
+  conditionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: Spacing.two,
+    marginTop: -2,
+  },
+  conditionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  conditionLabel: {
+    ...FontStyles.system,
+    fontSize: 10,
+    letterSpacing: 0.5,
   },
   statusDot: {
     width: 16,
