@@ -285,3 +285,20 @@ class TestRecordLastRestedSettlement:
             session, location_mod=loc_mod, resurrection_mutations_mod=res_mod
         )
         res_mod.set_last_rested_settlement.assert_not_awaited()
+
+
+class TestMortaensDomainScene:
+    """The Mortaen's Domain scene exists in content with the shape the scene loader expects."""
+
+    def test_mortaens_domain_scene_is_present_and_wellformed(self):
+        import json
+        import pathlib
+
+        scenes_path = pathlib.Path(__file__).parents[4] / "content" / "scenes.json"
+        scenes = {s["id"]: s for s in json.loads(scenes_path.read_text())}
+        scene = scenes.get("scene_mortaens_domain")
+        assert scene is not None, "Mortaen's Domain scene missing from content/scenes.json"
+        assert scene["type"] == "event"
+        assert scene["name"] == "Mortaen's Domain"
+        assert scene["instructions"].strip()  # non-empty DM narration directive
+        assert isinstance(scene["beats"], list) and scene["beats"]
