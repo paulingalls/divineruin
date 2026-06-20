@@ -6,9 +6,10 @@ DeathCost into the persistence deltas, and resolve_resurrection_anchor's 4-tier 
 orchestration (trigger_character_death) and real-PG round-trip live alongside / in the persistence
 suite. Spec: docs/game_mechanics/game_mechanics_combat.md §The Cost Engine + §Resurrection Location."""
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from combat._helpers import _make_combat_state
 
 from death_cost import determine_death_cost
 from resurrection import (
@@ -204,3 +205,52 @@ class TestTriggerCharacterDeath:
         # Revive HP clamped to effective max = base 60 + override -10 = 50.
         assert ctx["revive_hp"] == 50
         assert res_mut.revive_player.call_args.args[2] == 50
+
+
+class TestCombatEndDefeatWiring:
+    """combat_end wires trigger_character_death into the defeat path (auto-return), not victory."""
+
+    @pytest.mark.asyncio
+    async def test_defeat_triggers_character_death(self, monkeypatch):
+        import resurrection
+        from combat_end import _end_combat_db
+        from combat_events import EventSink
+        from session_data import SessionData
+
+        spy = AsyncMock(return_value={"anchor": "camp_r1", "death_count": 1, "tier": "gentle"})
+        monkeypatch.setattr(resurrection, "resurrect_on_defeat", spy)
+
+        cs = _make_combat_state(player_fallen=True)
+        session = SessionData(player_id="player_1", location_id="battlefield_danger", room=None)
+        queries = MagicMock(
+            get_player=AsyncMock(return_value=_player()),
+            get_player_inventory=AsyncMock(return_value=[]),
+        )
+        mutations = MagicMock(delete_combat_state=AsyncMock())
+
+        await _end_combat_db(
+            session, cs, "defeat", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
+        )
+        spy.assert_awaited_once()
+        # combat_cleared passed as a keyword (enemies still up on a defeat -> False).
+        assert spy.call_args.kwargs["combat_cleared"] is False
+
+    @pytest.mark.asyncio
+    async def test_victory_does_not_trigger_character_death(self, monkeypatch):
+        import resurrection
+        from combat_end import _end_combat_db
+        from combat_events import EventSink
+        from session_data import SessionData
+
+        spy = AsyncMock()
+        monkeypatch.setattr(resurrection, "trigger_character_death", spy)
+
+        cs = _make_combat_state(enemy_fallen=True)
+        session = SessionData(player_id="player_1", location_id="accord_guild_hall", room=None)
+        queries = MagicMock(get_player_inventory=AsyncMock(return_value=[]))
+        mutations = MagicMock(delete_combat_state=AsyncMock())
+
+        await _end_combat_db(
+            session, cs, "victory", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
+        )
+        spy.assert_not_awaited()

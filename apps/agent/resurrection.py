@@ -8,6 +8,7 @@ free of IO; persistence lives in db_mutations_resurrection. Hollowed-death + Tem
 story-007.
 """
 
+import db_content_queries
 import db_mutations_death
 import db_mutations_resurrection
 from creation_classes import CLASSES
@@ -159,3 +160,29 @@ async def trigger_character_death(
         "anchor": anchor,
         "revive_hp": revive_hp,
     }
+
+
+async def resurrect_on_defeat(
+    player: dict,
+    *,
+    combat_cleared: bool,
+    conn=None,
+    content_queries=db_content_queries,
+    death_mutations=db_mutations_death,
+    mutations=db_mutations_resurrection,
+) -> dict:
+    """combat_end defeat-path entry: load the location catalog, then run the death loop.
+
+    A thin IO wrapper so combat_end has ONE call to stub in tests; the location load is the only
+    extra IO over trigger_character_death, which stays pure-injectable (takes locations) for unit
+    tests. Threads ``conn`` so the whole thing rides combat-end's defeat transaction.
+    """
+    locations = await content_queries.get_all_locations()
+    return await trigger_character_death(
+        player,
+        locations,
+        combat_cleared=combat_cleared,
+        conn=conn,
+        death_mutations=death_mutations,
+        mutations=mutations,
+    )

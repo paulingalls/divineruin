@@ -13,6 +13,7 @@ import db_mutations
 import db_mutations_conditions
 import db_queries
 import event_types as E
+import resurrection
 from combat_events import EventSink, emit_or_publish
 from combat_support import _accrue_durability, _find_equipped, _publish_sounds, _require_combat
 from db_errors import db_tool
@@ -154,6 +155,21 @@ async def _end_combat_db(
 
     await mutations.delete_combat_state(cs.combat_id, conn=conn)
 
+    # Death & resurrection (M4.4 story-003): on defeat the player died — auto-return them via Mortaen.
+    # trigger_character_death records the death, applies the escalating cost, resolves the nearest
+    # anchor, and revives the character (atomic with this combat-teardown tx). Hollowed-death is
+    # story-007. combat_cleared = the area is no longer hostile (all enemies down even though the
+    # player fell) — feeds the tier-1 cleared-battlefield anchor.
+    death_context: dict | None = None
+    if outcome == "defeat":
+        enemies = [p for p in cs.participants if p.type == "enemy"]
+        combat_cleared = bool(enemies) and all(p.is_fallen for p in enemies)
+        player_data = await queries.get_player(session.player_id, conn=conn)
+        if player_data is not None:
+            death_context = await resurrection.resurrect_on_defeat(
+                player_data, combat_cleared=combat_cleared, conn=conn
+            )
+
     await emit_or_publish(
         sink,
         session.room,
@@ -163,7 +179,12 @@ async def _end_combat_db(
     )
     await _publish_sounds(session, [_STINGER_SOUND[outcome]], sink=sink)
 
-    return {"xp_total": xp_total, "defeated_enemies": defeated_enemies, "weapon_durability": weapon_durability}
+    return {
+        "xp_total": xp_total,
+        "defeated_enemies": defeated_enemies,
+        "weapon_durability": weapon_durability,
+        "death_context": death_context,
+    }
 
 
 def _end_combat_finish(
