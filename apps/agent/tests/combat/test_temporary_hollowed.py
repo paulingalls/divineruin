@@ -89,6 +89,34 @@ class TestRiseAtDeathSite:
         mutations.update_player_hp.assert_not_awaited()
 
     @pytest.mark.asyncio
+    async def test_stage_2_hollowed_player_rises_even_under_lethal_overkill(self):
+        # Precedence guard: the rise branch is checked BEFORE the instant-death (overkill >= hp_max)
+        # gate. A Stage-2+ Hollowed player struck with massive overkill must still rise as an echo,
+        # never short-circuit to is_dead — the echo is what later routes through the defeat path.
+        ctx = make_context()
+        cs = _make_combat_state()
+        enemy = cs.get_participant("goblin_scout_1")
+        player = cs.get_participant("player_1")
+        assert enemy is not None and player is not None
+        player.conditions = _hollowed(2)
+        mutations, queries = _mocks()
+
+        await _resolve_attack_packet(
+            ctx.userdata,
+            enemy,
+            enemy.action_pool[0],
+            player,
+            mutations=mutations,
+            queries=queries,
+            resolver=_resolver(damage=player.hp_max * 3, hp_remaining=0, overkill=player.hp_max * 2),
+        )
+
+        assert player.type == "temporary_hollowed"
+        assert player.is_dead is False
+        assert player.is_fallen is False
+        assert player.hp_current == player.hp_max // 2
+
+    @pytest.mark.asyncio
     async def test_stage_1_hollowed_player_falls_normally(self):
         ctx = make_context()
         cs = _make_combat_state()
