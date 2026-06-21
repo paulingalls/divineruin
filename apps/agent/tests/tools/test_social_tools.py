@@ -14,6 +14,7 @@ import pytest
 from livekit.agents.llm import ToolError
 
 import event_types as E
+from check_tools import VALID_CHECK_MODES, _check_impl
 from role_archetypes import shift_disposition
 from social_tools import _check_social_impl
 from tools._helpers import SAMPLE_PLAYER, _make_context
@@ -267,3 +268,30 @@ class TestCheckSocialFallbackAndValidation:
                 content=content,
                 rng=_FixedRng(11),
             )
+
+
+class TestCheckSocialDispatch:
+    @pytest.mark.asyncio
+    async def test_check_mode_social_routes_to_social_impl(self):
+        # The consolidated check verb dispatches mode="social" to _check_social_impl.
+        queries, mutations, content = _social_mocks()
+        result = json.loads(
+            await _check_impl(
+                _ctx_with_bus(),
+                "social",
+                skill="persuasion",
+                difficulty="moderate",
+                npc_id="merchant_1",
+                queries=queries,
+                mutations=mutations,
+                content=content,
+            )
+        )
+        # Social-shaped response (narrative_cue + npc_id) confirms the social branch ran.
+        assert result["npc_id"] == "merchant_1"
+        assert "narrative_cue" in result
+        assert "new_disposition" in result
+
+    @pytest.mark.asyncio
+    async def test_social_is_a_registered_mode(self):
+        assert "social" in VALID_CHECK_MODES
