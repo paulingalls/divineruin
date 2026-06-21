@@ -1,7 +1,7 @@
 """Combat phase-loop tools — declare_phase, resolve_phase — orchestrating the per-phase
 transaction and the initiative-ordered packet loop (M4.1, story-003). The per-packet resolvers
-(_resolve_attack_packet, _resolve_ability_packet) live in combat_support (story-007 split, to keep
-this file under the 500-line ceiling). request_death_save lives in combat_death_save.py (story-004
+live in combat_support (_resolve_attack_packet) and combat_ability (_resolve_ability_packet)
+(story-007 split, to keep this file under the 500-line ceiling). request_death_save lives in combat_death_save.py (story-004
 split, debt faa6dd19ab64)."""
 
 import json
