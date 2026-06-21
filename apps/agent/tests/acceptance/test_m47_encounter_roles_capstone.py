@@ -63,7 +63,7 @@ async def _seed_capstone_player(pool, player_id: str) -> None:
 
 
 def _by_id(cs, enemy_id: str):
-    p = next((p for p in cs.participants if p.id == enemy_id), None)
+    p = cs.get_participant(enemy_id)
     assert p is not None, f"{enemy_id} not in combat participants"
     return p
 
@@ -155,7 +155,7 @@ async def test_m47_full_combat_to_victory_grants_role_scaled_rewards(reset_db_po
             if isinstance(result, tuple):
                 break
             # Combat continues: the boss (felled last) carries its per-round legendary budget.
-            boss = next((p for p in ctx.userdata.combat_state.participants if p.id == _BOSS_ID), None)
+            boss = ctx.userdata.combat_state.get_participant(_BOSS_ID)
             if boss is not None and not boss.is_fallen and boss.legendary_actions == 1:
                 boss_legendary_through_rounds = True
 
