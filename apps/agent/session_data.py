@@ -119,6 +119,20 @@ class CombatParticipant:
     # and falls back to [] for rows written before the field existed. Cross-encounter
     # persistence (Wounded/Exhausted/Hollowed) is story-004's migration-050 concern.
     conditions: list[dict] = field(default_factory=list)
+    # Encounter-role overlay (M4.7, story-001). ``role`` is the assigned EncounterRole
+    # (minion/standard/elite/boss/named) and the rest are the role-derived modifiers
+    # encounter_roles.derive_role_stats produces at combat init. ``attack_mod``/``dc_mod``/
+    # ``damage_mult`` are read by the resolver (check_resolution_attack/save) to scale this
+    # participant's to-hit / save-DC / damage; ``legendary_actions`` + ``signature_ability``
+    # scaffold the Boss runtime (firing is story-003). All default to identity so players and
+    # pre-M4.7 enemy rows resolve unchanged, and serialize via asdict / fall back on from_dict
+    # for rows written before the fields existed (same pattern as enhancers/conditions).
+    role: str = "standard"
+    attack_mod: int = 0
+    damage_mult: float = 1.0
+    dc_mod: int = 0
+    legendary_actions: int = 0
+    signature_ability: dict | None = None
 
 
 @dataclass
