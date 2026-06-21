@@ -127,7 +127,9 @@ def _apply_hp(base_hp: int, mod: RoleMod) -> int:
         return max(1, math.floor(scaled))
     if mod.hp_round == "up":
         return math.ceil(scaled)
-    return int(scaled)
+    if mod.hp_round == "exact":
+        return int(scaled)
+    raise ValueError(f"Unknown hp_round {mod.hp_round!r}; valid values are 'down', 'up', 'exact'")
 
 
 def enhance_abilities(actives: list[dict]) -> list[dict]:
@@ -176,7 +178,10 @@ def derive_role_stats(enemy: dict, role: str) -> dict:
         derived["signature_ability"] = None
         return derived
 
-    mod = ROLE_MODIFIERS[role]
+    mod = ROLE_MODIFIERS.get(role)
+    if mod is None:
+        valid = sorted(r.value for r in EncounterRole)
+        raise ValueError(f"Unknown encounter role {role!r}; valid roles are {valid}")
     derived["hp"] = _apply_hp(enemy.get("hp", 1), mod)
     derived["ac"] = enemy.get("ac", 10) + mod.ac_mod
     derived["xp_value"] = int(enemy.get("xp_value", 0) * mod.xp_mult)

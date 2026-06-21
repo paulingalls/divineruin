@@ -4,9 +4,10 @@
 // (minion/standard/elite/boss/named) that encounter_roles.derive_role_stats scales at combat init,
 // and Boss enemies author a `signature_ability` + `legendary_actions`.
 //
-// The Attributes/CombatAction shapes are shared with the role_archetype/Npc combat schema — they
-// match the untyped enemy stat blocks combat_init.py consumes. A Phase-7 Bestiary refactor will
-// promote these to a shared CreatureStatBlock base.
+// Only the `Attributes` shape is reused from the role_archetype/Npc schema. The action shape is
+// local (`EncounterAction`): content actions carry a `description` blurb, distinct from CombatAction's
+// `effect`. These types match the untyped enemy stat blocks combat_init.py consumes; a Phase-7
+// Bestiary refactor will promote them to a shared CreatureStatBlock base.
 
 import type { Attributes } from "./role_archetype";
 
