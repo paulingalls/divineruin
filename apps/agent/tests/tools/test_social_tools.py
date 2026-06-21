@@ -254,6 +254,39 @@ class TestCheckSocialFallbackAndValidation:
             )
 
     @pytest.mark.asyncio
+    async def test_offladder_disposition_fails_loud_as_toolerror(self):
+        # A corrupt npc_dispositions row (off the canonical ladder) must surface as a
+        # DM-narratable ToolError, not a raw ValueError escaping db_tool's narrow catch.
+        queries, mutations, content = _social_mocks(recorded="wary")
+        with pytest.raises(ToolError, match="disposition"):
+            await _check_social_impl(
+                _ctx_with_bus(),
+                "merchant_1",
+                "persuasion",
+                "moderate",
+                queries=queries,
+                mutations=mutations,
+                content=content,
+                rng=_FixedRng(11),
+            )
+
+    @pytest.mark.asyncio
+    async def test_malformed_npc_id_fails_loud(self):
+        # npc_id is an entity id, validated like every other id-taking tool (charset guard).
+        queries, mutations, content = _social_mocks()
+        with pytest.raises(ToolError, match="npc_id"):
+            await _check_social_impl(
+                _ctx_with_bus(),
+                "drop;tables",
+                "persuasion",
+                "moderate",
+                queries=queries,
+                mutations=mutations,
+                content=content,
+                rng=_FixedRng(11),
+            )
+
+    @pytest.mark.asyncio
     async def test_missing_player_fails_loud(self):
         queries, mutations, content = _social_mocks()
         queries.get_player = AsyncMock(return_value=None)

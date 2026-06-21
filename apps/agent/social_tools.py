@@ -26,6 +26,7 @@ from db_errors import validated_player_conditions
 from disposition import resolve_disposition
 from game_events import publish_game_event
 from session_data import SessionData
+from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -48,8 +49,9 @@ async def _check_social_impl(
 ) -> str:
     logger.info("check social: npc=%s, skill=%s, difficulty=%s", npc_id, skill, difficulty)
     skill_lower = skill.lower()
-    if not npc_id:
-        raise ToolError("npc_id is required for a social check.")
+    # npc_id is an entity identifier, not free text: validate charset + length at the
+    # boundary the same way every other id-taking tool does (e.g. crafting_tools npc_id).
+    _validate_id(npc_id, "npc_id")
     if skill_lower not in SOCIAL_SKILLS:
         raise ToolError(f"Unknown social skill: '{skill}'. Valid: {list(SOCIAL_SKILLS)}")
     if difficulty.lower() not in VALID_DIFFICULTIES:
@@ -66,9 +68,15 @@ async def _check_social_impl(
     base_dc = rules_engine.dc_for_tier(difficulty.lower())
     roll = check_resolution.resolve_skill_check_dc(player, skill_lower, base_dc, rng)
     current = await resolve_disposition(npc_id, session.player_id, queries_mod=queries, content_mod=content)
-    outcome = social_resolution.resolve_social_check(
-        disposition=current, skill=skill_lower, roll_total=roll.total, base_dc=base_dc
-    )
+    # The pure resolver fail-louds with ValueError on an off-ladder disposition (a corrupt
+    # npc_dispositions row). db_tool only narrows ValueError-free errors, so convert it to a
+    # DM-narratable ToolError here — the same boundary the skill/save modes apply to their resolvers.
+    try:
+        outcome = social_resolution.resolve_social_check(
+            disposition=current, skill=skill_lower, roll_total=roll.total, base_dc=base_dc
+        )
+    except ValueError as e:
+        raise ToolError(str(e)) from e
 
     await publish_game_event(
         session.room,
