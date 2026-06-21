@@ -196,6 +196,29 @@ async def get_encounter_template(encounter_id: str) -> dict | None:
     return data
 
 
+async def get_loot_table(loot_table_id: str) -> dict | None:
+    """Resolve a loot table by id from the loot_tables catalog (M4.7 story-002).
+
+    Static content read from the pool + Redis cache (no conn param), mirroring
+    get_encounter_template. combat_end calls this on victory — inside its teardown tx — to
+    scale the table's base drops by each defeated enemy's role (encounter_loot.derive_role_loot).
+    Reading from the pool rather than the in-flight tx conn is correct: loot tables are immutable
+    seeded content, independent of the combat-teardown mutations. Returns None for an unknown id."""
+    cache_key = f"loot_table:{loot_table_id}"
+    cached = await db._cache_get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
+    pool = await db.get_pool()
+    row = await pool.fetchrow("SELECT data FROM loot_tables WHERE id = $1", loot_table_id)
+    if row is None:
+        return None
+
+    data = json.loads(row["data"])
+    await db._cache_set(cache_key, json.dumps(data))
+    return data
+
+
 async def get_training_program(program_id: str) -> dict | None:
     cache_key = f"training_program:{program_id}"
     cached = await db._cache_get(cache_key)

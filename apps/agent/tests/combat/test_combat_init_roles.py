@@ -24,6 +24,8 @@ ROLE_ENCOUNTER = {
             "id": "shadeling_1",
             "name": "Shadeling",
             "role": "minion",
+            "category": "hollow_drift",
+            "loot_table_id": "loot_hollow_drift",
             "level": 2,
             "ac": 13,
             "hp": 16,
@@ -38,6 +40,8 @@ ROLE_ENCOUNTER = {
             "id": "warden_1",
             "name": "Hollow Warden",
             "role": "boss",
+            "category": "hollow_rend",
+            "loot_table_id": "loot_hollow_warden",
             "level": 4,
             "ac": 14,
             "hp": 20,
@@ -107,3 +111,22 @@ async def test_player_participant_keeps_identity_role_defaults():
     assert player["attack_mod"] == 0
     assert player["damage_mult"] == 1.0
     assert player["dc_mod"] == 0
+
+
+@pytest.mark.asyncio
+async def test_enemy_participants_carry_category_and_loot_table_id():
+    # story-002: combat_init carries the template enemy's category + loot_table_id onto the
+    # participant so _end_combat_db can roll role-scaled loot/currency on victory.
+    parts = await _run_and_get_participants()
+    assert parts["shadeling_1"]["category"] == "hollow_drift"
+    assert parts["shadeling_1"]["loot_table_id"] == "loot_hollow_drift"
+    assert parts["warden_1"]["category"] == "hollow_rend"
+    assert parts["warden_1"]["loot_table_id"] == "loot_hollow_warden"
+
+
+@pytest.mark.asyncio
+async def test_player_participant_has_empty_loot_fields():
+    # The player carries no loot table — the loot/currency overlay is enemy-only.
+    player = (await _run_and_get_participants())[SAMPLE_PLAYER["player_id"]]
+    assert player["category"] == ""
+    assert player["loot_table_id"] == ""
