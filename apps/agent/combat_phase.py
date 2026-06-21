@@ -77,7 +77,7 @@ class WrapOutcome:
     death_saves_due: list[str]
     resonance_decay: int
     combat_ended: bool
-    outcome: str | None  # "victory" | "defeat" | None
+    outcome: str | None  # "victory" | "defeat" | "deescalated" | None
     # Save-to-clear signals from the Beat-4 condition tick (M4.3, story-002): one
     # {actor_id, type, save, source} per active save-to-clear condition (Frightened today).
     # The engine never rolls — orchestration (story-004 combat_turn) resolves the save and
@@ -287,7 +287,12 @@ def _wrap(state: CombatState) -> WrapOutcome:
 
     combat_ended = False
     outcome: str | None = None
-    if echoes and all(e.is_fallen for e in echoes):
+    # De-escalation (M4.6a story-004) ends combat BEFORE the victory/defeat gates: a
+    # successful Diplomat argument talks the enemies down while they still stand, so it
+    # must take precedence over the enemies-all-fallen check (which would never fire here).
+    if state.deescalated:
+        combat_ended, outcome = True, "deescalated"
+    elif echoes and all(e.is_fallen for e in echoes):
         combat_ended, outcome = True, "defeat"
     elif echoes:
         pass  # an undestroyed echo blocks both victory and the (now-moot) player-defeat gate

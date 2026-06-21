@@ -171,6 +171,12 @@ class CombatState:
     # encounter resolves, never resets. Feeds the M4.5 dramatic-dice "first_attack"
     # signal so the opening strike earns the dice (story-004).
     first_attack_resolved: bool = False
+    # Diplomat de-escalation (M4.6a story-004). Combat-scoped, never reset within an encounter.
+    # ``deescalated`` flips True when a de-escalation argument lands; _wrap reads it to end
+    # combat with outcome "deescalated". ``deescalation_used`` flips True on any attempt
+    # (success or failure) so de-escalate can be tried at most once per encounter (spec L183).
+    deescalated: bool = False
+    deescalation_used: bool = False
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
@@ -201,6 +207,8 @@ class CombatState:
             reactions_available=data.get("reactions_available", {}),
             ac_modifiers=data.get("ac_modifiers", {}),
             first_attack_resolved=data.get("first_attack_resolved", False),
+            deescalated=data.get("deescalated", False),
+            deescalation_used=data.get("deescalation_used", False),
         )
 
 
