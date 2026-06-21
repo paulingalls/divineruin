@@ -352,6 +352,16 @@ class TestPromptToolConsistency:
                 f"{name}: prompt names enter_mode but tool-holding differs"
             )
 
+    def test_combat_prompt_names_consume_legendary_action(self):
+        """story-009: the combat prompt must name consume_legendary_action so the DM knows to spend
+        the Boss's legendary beat resolve_phase surfaces, and the agent must hold the tool."""
+        from combat_agent import COMBAT_AGENT_TOOLS
+        from combat_turn import consume_legendary_action
+        from system_prompts import COMBAT_SYSTEM_PROMPT
+
+        assert "consume_legendary_action" in COMBAT_SYSTEM_PROMPT
+        assert consume_legendary_action in COMBAT_AGENT_TOOLS
+
 
 # NOTE: the training-hall referral moved from the city system prompt to the city
 # REGION_REGISTER (warm layer) in M7 story-002 — asserted in

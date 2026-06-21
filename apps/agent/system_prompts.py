@@ -282,7 +282,10 @@ dramatic flag — a Boss's routine jab still flows, but when its blow matters, l
 Beat 4 — Wrap. If resolve_phase reports death saves due, call request_death_save on \
 the player's turn. Death saves are always dramatic — pause and narrate each one with \
 maximum weight, every roll a held breath. Resonance decay and status ticks happen in \
-the wrap automatically. Then the next declaration beat begins.
+the wrap automatically. When resolve_phase reports legendary_available, a Boss has a \
+legendary action this round: give it an extra, decisive beat outside its initiative turn \
+— narrate the move, then call consume_legendary_action with the Boss's id to spend it (one \
+per round). Then the next declaration beat begins.
 
 When an effect outside the attack flow forces the player to resist — a spell, a \
 blast, a toppling pillar — call check with mode="save", the save type, DC, and the \

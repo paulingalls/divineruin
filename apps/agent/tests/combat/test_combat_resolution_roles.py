@@ -12,7 +12,13 @@ Two engine concerns, both pure/synchronous:
    narrate (never auto-fired); ``consume_legendary_action`` spends it and fails loud on overspend.
 """
 
+import json
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
+from combat._helpers import _damage_resolver, _fake_db_mod
+from livekit.agents.llm import ToolError
+from sample_fixtures import make_context
 
 from combat_phase import (
     PhaseBeat,
@@ -20,6 +26,7 @@ from combat_phase import (
     consume_legendary_action,
 )
 from combat_resolution import calculate_combat_xp
+from combat_turn import _consume_legendary_action_impl, _resolve_phase_impl
 from encounter_roles import EncounterRole, derive_role_stats
 from session_data import CombatParticipant, CombatState
 
@@ -194,3 +201,123 @@ class TestConsumeLegendaryAction:
         state = _boss_combat_state()
         with pytest.raises(ValueError, match="unknown participant"):
             consume_legendary_action(state, "no_such_id")
+
+
+def _boss_resolution_state(*, boss_hp=40):
+    """A RESOLUTION-beat state (player + living Boss, declarations pending) so driving
+    _resolve_phase_impl loops back to the next round and surfaces the Boss's refreshed legendary."""
+    return CombatState(
+        combat_id="combat_boss_live",
+        participants=[
+            CombatParticipant(
+                id="player_1",
+                name="Kael",
+                type="player",
+                initiative=15,
+                hp_current=25,
+                hp_max=25,
+                ac=14,
+                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+            ),
+            CombatParticipant(
+                id="warlord_1",
+                name="Hollow Warlord",
+                type="enemy",
+                initiative=12,
+                hp_current=boss_hp,
+                hp_max=boss_hp,
+                ac=15,
+                xp_value=200,
+                role=EncounterRole.BOSS,
+                legendary_actions=1,
+                signature_ability={"name": "Sundering Roar", "damage": "3d6"},
+                action_pool=[{"name": "Cleaver", "damage": "1d10", "damage_type": "slashing", "properties": []}],
+            ),
+        ],
+        initiative_order=["player_1", "warlord_1"],
+        round_number=1,
+        current_turn_index=0,
+        location_id="accord_guild_hall",
+        beat="resolution",
+        pending_declarations={
+            "player_1": {"type": "attack", "action": "Longsword", "target_id": "warlord_1"},
+            "warlord_1": {"type": "attack", "action": "Cleaver", "target_id": "player_1"},
+        },
+    )
+
+
+def _resolve_deps(damage=3):
+    queries = MagicMock()
+    queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 10, "max": 10}})
+    break_mod = MagicMock()
+    break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
+    mutations = MagicMock()
+    mutations.save_combat_state = AsyncMock()
+    mutations.update_player_hp = AsyncMock()
+    mutations.delete_combat_state = AsyncMock()
+    return {
+        "mutations": mutations,
+        "queries": queries,
+        "resolver": _damage_resolver(damage),
+        "concentration_break_mod": break_mod,
+        "db_mod": _fake_db_mod(),
+    }
+
+
+class TestResolvePhaseSurfacesLegendary:
+    """story-009: the LIVE resolve_phase response surfaces legendary_available so the Boss beat
+    reaches the DM. The pure engine surfaced it on PhaseAdvance, but combat_turn used to drop it."""
+
+    @pytest.mark.asyncio
+    async def test_continuing_round_response_lists_living_boss_legendary(self):
+        ctx = make_context()
+        ctx.userdata.combat_state = _boss_resolution_state(boss_hp=40)
+
+        raw = await _resolve_phase_impl(ctx, **_resolve_deps(damage=3))
+        assert isinstance(raw, str), "the Boss survives 3 damage, so combat continues (not a handoff)"
+        result = json.loads(raw)
+
+        surfaced = result["legendary_available"]
+        assert [s["actor_id"] for s in surfaced] == ["warlord_1"]
+        assert surfaced[0]["legendary_actions"] == 1  # refreshed at the wrap loop-back
+
+
+class TestConsumeLegendaryActionTool:
+    """story-009: the consume_legendary_action TOOL wraps the pure fn — decrements + persists the
+    SSOT, and surfaces the engine's fail-loud as a ToolError so the DM re-prompts."""
+
+    @pytest.mark.asyncio
+    async def test_tool_decrements_and_persists(self):
+        ctx = make_context()
+        ctx.userdata.combat_state = _boss_combat_state(boss_legendary=1)
+        mutations = MagicMock()
+        mutations.save_combat_state = AsyncMock()
+
+        raw = await _consume_legendary_action_impl(ctx, "warlord_1", mutations=mutations)
+
+        assert json.loads(raw) == {"actor_id": "warlord_1", "legendary_actions_remaining": 0}
+        boss = ctx.userdata.combat_state.get_participant("warlord_1")
+        assert boss is not None and boss.legendary_actions == 0
+        mutations.save_combat_state.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_tool_overspend_raises_toolerror(self):
+        ctx = make_context()
+        ctx.userdata.combat_state = _boss_combat_state(boss_legendary=0)
+        mutations = MagicMock()
+        mutations.save_combat_state = AsyncMock()
+
+        with pytest.raises(ToolError, match="no legendary action remaining"):
+            await _consume_legendary_action_impl(ctx, "warlord_1", mutations=mutations)
+        mutations.save_combat_state.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_tool_on_non_boss_raises_toolerror(self):
+        ctx = make_context()
+        ctx.userdata.combat_state = _boss_combat_state()
+        mutations = MagicMock()
+        mutations.save_combat_state = AsyncMock()
+
+        with pytest.raises(ToolError, match="not a Boss"):
+            await _consume_legendary_action_impl(ctx, "grunt_1", mutations=mutations)

@@ -314,11 +314,51 @@ async def _resolve_phase_impl(
         "packets": packet_summaries,
         "death_saves_due": wrap.death_saves_due if wrap else [],
         "exhaustion_narration": exhaustion_narration,
+        # Boss legendary actions available for the round just entered (M4.7, story-009): the engine
+        # reset each living Boss's 1/round budget at this WRAP and surfaced it on wrap_adv. Surface it
+        # to the DM so the Boss's extra beat is narratable; the DM spends it via consume_legendary_action.
+        "legendary_available": wrap_adv.legendary_available,
     }
     logger.info(
         "resolve_phase result: beat=%s, round=%d, packets=%d", state.beat, state.round_number, len(packet_summaries)
     )
     return json.dumps(response)
+
+
+@function_tool()
+@db_tool
+async def consume_legendary_action(
+    context: RunContext[SessionData],
+    boss_id: str,
+) -> str:
+    """Spend one of a Boss's legendary actions to give it an extra beat this round. Call this when
+    resolve_phase's ``legendary_available`` lists a Boss and you want it to act again outside its
+    initiative turn — then narrate that extra action and resolve it through the normal declare/resolve
+    or cast tools. A Boss has ONE legendary action per round (refreshed at the next wrap); calling
+    this when the budget is spent, or on a non-Boss, is rejected. Pass the Boss's participant id."""
+    return await _consume_legendary_action_impl(context, boss_id)
+
+
+async def _consume_legendary_action_impl(
+    context: RunContext[SessionData],
+    boss_id: str,
+    *,
+    mutations=db_mutations,
+) -> str:
+    session: SessionData = context.userdata
+    cs = _require_combat(session)
+    # The pure engine owns the 1/round rule + fail-loud (unknown / not-a-Boss / exhausted); surface
+    # those as a ToolError so the DM re-prompts instead of crashing the turn.
+    try:
+        next_state = combat_phase.consume_legendary_action(cs, boss_id)
+    except ValueError as e:
+        raise ToolError(str(e)) from e
+    session.combat_state = next_state
+    await mutations.save_combat_state(next_state.combat_id, next_state.to_dict())
+    boss = next_state.get_participant(boss_id)
+    remaining = boss.legendary_actions if boss is not None else 0
+    logger.info("consume_legendary_action: %s spent a legendary action (%d remaining)", boss_id, remaining)
+    return json.dumps({"actor_id": boss_id, "legendary_actions_remaining": remaining})
 
 
 async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast_resolver):
