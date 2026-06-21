@@ -141,6 +141,21 @@ class TestRevivifyGateKeysOnTarget:
         with pytest.raises(ToolError, match="Hollow-killed"):
             await _cast(_revival(), caster=_player(hollow_killed=True))
 
+    @pytest.mark.asyncio
+    async def test_explicit_self_target_id_keys_on_caster_no_second_fetch(self):
+        # target_id == player_id: the `!= player_id` short-circuit keys the gate on the already-fetched
+        # caster row (no target re-fetch), yet the packet still carries the explicit id for narration.
+        packet, get_player = await _cast(_revival(), caster=_player("caster_1"), target_id="caster_1")
+        assert packet["target_id"] == "caster_1"
+        assert get_player.await_count == 1  # caster row reused, never re-fetched
+
+    @pytest.mark.asyncio
+    async def test_explicit_self_target_id_hollow_killed_refused(self):
+        # Same equality short-circuit, refusing branch: a Hollow-killed caster targeting their own id
+        # is still refused (the gate read the caster row, not a re-fetched target).
+        with pytest.raises(ToolError, match="Hollow-killed"):
+            await _cast(_revival(), caster=_player("caster_1", hollow_killed=True), target_id="caster_1")
+
 
 class TestRevivifyTargetRerouteE2E:
     """Real-PG (dev DB) e2e: the rerouted Revivify refusal reads the targeted corpse's PERSISTED
