@@ -29,13 +29,14 @@ from check_discovery import _check_discover_impl
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
 from session_data import SessionData
+from social_tools import _check_social_impl
 from tool_support import _cap_str
 
 logger = logging.getLogger("divineruin.tools")
 
 VALID_SKILLS = set(rules_engine.SKILLS.keys())
 VALID_DIFFICULTIES = set(rules_engine.DC_TIERS.keys())
-VALID_CHECK_MODES = ("skill", "discover", "save", "dice")
+VALID_CHECK_MODES = ("skill", "discover", "save", "dice", "social")
 
 
 @function_tool()
@@ -51,12 +52,16 @@ async def check(
     effect_on_fail: str = "",
     notation: str = "",
     context_description: str = "",
+    npc_id: str = "",
 ) -> str:
     """Resolve an uncertain action with a dice roll. Pick a mode:
 
-    - mode="skill": the player attempts something risky (climb, persuade, recall
-      lore). Give skill, difficulty (trivial/easy/moderate/hard/very_hard/extreme/
-      legendary), and context_description.
+    - mode="skill": the player attempts something risky (climb, recall lore). Give
+      skill, difficulty (trivial/easy/moderate/hard/very_hard/extreme/legendary),
+      and context_description.
+    - mode="social": the player tries to sway a specific NPC (persuade, deceive,
+      intimidate). Give npc_id, skill (persuasion/deception/intimidation), and
+      difficulty. The NPC's disposition shifts the DC and may change from the result.
     - mode="discover": the player searches or examines a visible thing. Give the
       skill (the approach, e.g. perception) and target (the visible feature being
       examined, e.g. notice_board). What is hidden — if anything — is revealed by
@@ -65,9 +70,9 @@ async def check(
       attribute), dc, and effect_on_fail.
     - mode="dice": a narrative-only random moment (weather, crowd size). Give notation.
 
-    Narrate the result from narrative_hint. Never speak raw numbers or DCs."""
+    Narrate the result from narrative_hint / narrative_cue. Never speak raw numbers or DCs."""
     return await _check_impl(
-        context, mode, skill, target, difficulty, save_type, dc, effect_on_fail, notation, context_description
+        context, mode, skill, target, difficulty, save_type, dc, effect_on_fail, notation, context_description, npc_id
     )
 
 
@@ -82,6 +87,7 @@ async def _check_impl(
     effect_on_fail: str = "",
     notation: str = "",
     context_description: str = "",
+    npc_id: str = "",
     *,
     queries=db_queries,
     mutations=db_mutations,
@@ -90,6 +96,10 @@ async def _check_impl(
     if mode == "skill":
         return await _check_skill_impl(
             context, skill, difficulty, context_description, queries=queries, mutations=mutations
+        )
+    if mode == "social":
+        return await _check_social_impl(
+            context, npc_id, skill, difficulty, queries=queries, mutations=mutations, content=content
         )
     if mode == "discover":
         return await _check_discover_impl(context, skill, target, content=content, queries=queries, mutations=mutations)
