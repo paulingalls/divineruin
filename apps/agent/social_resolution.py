@@ -95,6 +95,10 @@ ARGUMENT_RESISTANCE: dict[str, dict[str, tuple[str, ...]]] = {
     "honorable": {"vulnerable": ("reason", "evidence"), "resistant": ("bluff", "threat")},
 }
 
+# The canonical personality tags an NPC may carry — the SSOT for content validation
+# (npcs.py) so the authored resistance_tags can't drift from the resolver's keys.
+RESISTANCE_TAGS: tuple[str, ...] = tuple(ARGUMENT_RESISTANCE)
+
 # One disposition-tier of DC swing per vulnerable/resistant match — the spec pins direction,
 # not magnitude, so this mirrors the ±3 granularity of the disposition modifier.
 _ARGUMENT_DC_STEP = 3
