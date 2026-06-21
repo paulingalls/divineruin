@@ -87,7 +87,7 @@ def instantiate_npc_from_template(role: str, tier: str, personality: str, overri
         npc["default_disposition"] = shift_disposition(npc["default_disposition"], disp_delta)
     elif npc["default_disposition"] not in DISPOSITIONS:
         # Overrides win, but a disposition must still be on the canonical ladder — an
-        # override skips _shift_disposition's validation, so guard it here (fail loud).
+        # override skips shift_disposition's validation, so guard it here (fail loud).
         raise ValueError(f"override default_disposition {npc['default_disposition']!r} not in {DISPOSITIONS}")
     if "price_modifier" not in overrides:
         npc["price_modifier"] = npc["price_modifier"] * pers["price_modifier"]
