@@ -9,7 +9,10 @@ RNG, the DB, or combat state, mirroring check_resolution.py.
 Spec: docs/game_mechanics/game_mechanics_combat.md §Social Encounter Resolution (L619-844).
 """
 
-from role_archetypes import DISPOSITIONS
+from dataclasses import dataclass
+
+from dramatic import DramaticContext, evaluate_dramatic_context
+from role_archetypes import DISPOSITIONS, shift_disposition
 
 # Social DC modifier by NPC disposition (spec L668): a friendlier NPC is easier to persuade,
 # so the modifier shrinks (and goes negative) up the ladder. Added to the caller's base DC.
@@ -73,3 +76,63 @@ def disposition_shift(skill: str, margin: int) -> int:
     except KeyError:
         raise ValueError(f"unknown social skill {skill!r}; expected one of {tuple(DISPOSITION_SHIFT)}") from None
     return bands[_outcome_band(margin)]
+
+
+# Narration cue by outcome band (spec get_social_hint, L661): a short qualitative word the DM
+# voices instead of a number. Distinct from rules_engine.narrative_hint (skill-check vocab).
+_SOCIAL_CUE: dict[str, str] = {
+    "success_10": "overwhelming",
+    "success_5": "convincing",
+    "success_bare": "barely",
+    "fail_4": "close but no",
+    "fail_5": "rejected",
+    "fail_10": "backfired",
+}
+
+
+@dataclass(frozen=True)
+class SocialResult:
+    """Outcome of one Tier-1 social check. `dramatic`/`context` come from the M4.5 SSOT;
+    `disposition_shift` is the delta and `new_disposition` is it applied + ladder-clamped."""
+
+    success: bool
+    dc: int
+    margin: int
+    dramatic: bool
+    context: str
+    narrative_cue: str
+    disposition_shift: int
+    new_disposition: str
+
+
+def resolve_social_check(
+    *,
+    disposition: str,
+    skill: str,
+    roll_total: int,
+    base_dc: int,
+    stakes: str = "normal",
+) -> SocialResult:
+    """Resolve a Tier-1 social check (spec L636-687). Pure: the caller supplies `roll_total`
+    (d20 + skill modifier) and the `base_dc`; the NPC disposition modifies the DC.
+
+    `stakes="high"` flags the roll dramatic regardless of margin (a faction leader, a critical
+    secret). The dramatic verdict and its label are delegated to dramatic.evaluate_dramatic_
+    context so the M4.5 catalog stays the single source of truth. Raises ValueError for an
+    off-ladder disposition or a non-social skill.
+    """
+    dc = base_dc + social_dc_modifier(disposition)
+    margin = roll_total - dc
+    success = roll_total >= dc
+    delta = disposition_shift(skill, margin)
+    verdict = evaluate_dramatic_context(DramaticContext(margin=margin, social_stakes=stakes))
+    return SocialResult(
+        success=success,
+        dc=dc,
+        margin=margin,
+        dramatic=verdict.dramatic,
+        context=verdict.context,
+        narrative_cue=_SOCIAL_CUE[_outcome_band(margin)],
+        disposition_shift=delta,
+        new_disposition=shift_disposition(disposition, delta),
+    )

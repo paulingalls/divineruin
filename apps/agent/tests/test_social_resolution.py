@@ -14,7 +14,9 @@ from role_archetypes import DISPOSITIONS
 from social_resolution import (
     DISPOSITION_DC_MODIFIER,
     DISPOSITION_SHIFT,
+    SocialResult,
     disposition_shift,
+    resolve_social_check,
     social_dc_modifier,
 )
 
@@ -82,3 +84,50 @@ class TestDispositionShift:
     def test_unknown_skill_fails_loud(self):
         with pytest.raises(ValueError, match="athletics"):
             disposition_shift("athletics", 5)
+
+
+class TestResolveSocialCheckTier1:
+    """Tier 1 (spec L636-687): dc = base_dc + disposition modifier; success = roll >= dc."""
+
+    def test_disposition_modifier_adds_to_base_dc(self):
+        # Same roll_total against the same base_dc: hostile (+6) is harder than friendly (-3).
+        vs_hostile = resolve_social_check(disposition="hostile", skill="persuasion", roll_total=15, base_dc=12)
+        vs_friendly = resolve_social_check(disposition="friendly", skill="persuasion", roll_total=15, base_dc=12)
+        assert vs_hostile.dc == 18 and not vs_hostile.success  # 15 < 18
+        assert vs_friendly.dc == 9 and vs_friendly.success  # 15 >= 9
+        assert vs_hostile.margin == -3
+        assert vs_friendly.margin == 6
+
+    def test_returns_disposition_shift_and_clamped_new_disposition(self):
+        # Persuasion success by 6 -> +1; neutral shifts to friendly.
+        r = resolve_social_check(disposition="neutral", skill="persuasion", roll_total=18, base_dc=12)
+        assert r.disposition_shift == 1
+        assert r.new_disposition == "friendly"
+
+    def test_new_disposition_clamps_at_ladder_ends(self):
+        # A big failure against an already-hostile NPC cannot fall off the ladder.
+        r = resolve_social_check(disposition="hostile", skill="intimidation", roll_total=1, base_dc=14)
+        assert r.disposition_shift < 0
+        assert r.new_disposition == "hostile"
+
+    def test_dramatic_routes_through_m45_ssot(self):
+        # Razor-thin margin (<=1) is dramatic via dramatic.py, labeled razor_thin.
+        thin = resolve_social_check(disposition="neutral", skill="persuasion", roll_total=12, base_dc=12)
+        assert thin.dramatic and thin.context == "razor_thin"
+        # A comfortable, low-stakes win is not dramatic.
+        calm = resolve_social_check(disposition="friendly", skill="persuasion", roll_total=25, base_dc=10)
+        assert not calm.dramatic
+
+    def test_high_stakes_is_dramatic_even_on_a_wide_margin(self):
+        r = resolve_social_check(disposition="neutral", skill="persuasion", roll_total=25, base_dc=10, stakes="high")
+        assert r.dramatic and r.context == "high_stakes_social"
+
+    def test_every_result_carries_a_narration_cue(self):
+        for total in (30, 18, 12, 9, 2):
+            r = resolve_social_check(disposition="neutral", skill="persuasion", roll_total=total, base_dc=12)
+            assert isinstance(r, SocialResult)
+            assert r.narrative_cue  # non-empty
+
+    def test_off_ladder_disposition_fails_loud(self):
+        with pytest.raises(ValueError, match="wary"):
+            resolve_social_check(disposition="wary", skill="persuasion", roll_total=10, base_dc=10)
