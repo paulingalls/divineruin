@@ -16,10 +16,11 @@ fells its target — a deterministic, bounded loop — and a huge HP pool so it 
 crossfire. Each test uses a distinct player_id since the testcontainer DB is shared.
 
 Note on "Boss used a legendary action": the live combat_turn loop grants/maintains the Boss's
-per-round legendary budget (_reset_legendary_actions inside advance_combat_phase) but does not yet
-propagate `legendary_available` into the resolve response — consuming it is DM-driven and out of
-scope for an automated e2e. The observable here is the Boss participant's legendary_actions budget
-held through the rounds it is alive.
+per-round legendary budget (_reset_legendary_actions inside advance_combat_phase); story-009 also
+surfaces `legendary_available` in the resolve response so the DM can spend it via
+consume_legendary_action. Actually consuming it is DM-driven (out of scope for an automated e2e),
+so the observable here is the Boss participant's legendary_actions budget held through the rounds
+it is alive.
 """
 
 from __future__ import annotations
