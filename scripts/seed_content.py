@@ -22,6 +22,7 @@ TABLE_MAP = {
     "players.json": "players",
     "npc_state.json": "npc_state",
     "encounter_templates.json": "encounter_templates",
+    "loot_tables.json": "loot_tables",
     "events.json": "events",
     "gods.json": "god_agent_state",
     "voice_registry.json": "voice_registry",
@@ -95,7 +96,11 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
         data = json.loads(row["data"])
         exits = data.get("exits", {})
         for direction, exit_info in exits.items():
-            dest = exit_info.get("destination") if isinstance(exit_info, dict) else exit_info
+            dest = (
+                exit_info.get("destination")
+                if isinstance(exit_info, dict)
+                else exit_info
+            )
             if dest not in location_ids:
                 errors.append(
                     f"Location '{row['id']}' exit '{direction}' references "
@@ -106,7 +111,11 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
     for row in npc_rows:
         data = json.loads(row["data"])
         knowledge = data.get("knowledge", {})
-        tier_count = sum(1 for k in knowledge if k in ("free", "disposition >= friendly", "disposition >= trusted"))
+        tier_count = sum(
+            1
+            for k in knowledge
+            if k in ("free", "disposition >= friendly", "disposition >= trusted")
+        )
         if tier_count < 2:
             errors.append(
                 f"NPC '{row['id']}' has only {tier_count} knowledge tier(s), expected >= 2"
@@ -128,8 +137,10 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
     disposition_target_ids = npc_ids | {row["id"] for row in companion_rows}
 
     effect_npc_map = {
-        "torin": "guildmaster_torin", "yanna": "elder_yanna",
-        "emris": "scholar_emris", "companion": "companion_kael",
+        "torin": "guildmaster_torin",
+        "yanna": "elder_yanna",
+        "emris": "scholar_emris",
+        "companion": "companion_kael",
     }
 
     quest_rows = await conn.fetch("SELECT id, data FROM quests")
@@ -175,6 +186,40 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
                             f"unknown disposition target '{resolved}'"
                         )
 
+    # Loot & currency (M4.7 story-002): every enemy must carry a category and a loot_table_id
+    # that resolves to a loot_tables row, and every drop's item_id must exist in items. Fail loud
+    # at seed time so a typo can't ship a combat that grants nothing (or crashes) on victory.
+    loot_rows = await conn.fetch("SELECT id, data FROM loot_tables")
+    loot_table_ids = {row["id"] for row in loot_rows}
+    for row in loot_rows:
+        data = json.loads(row["data"])
+        for drop in data.get("drops", []):
+            item_ref = drop.get("item_id")
+            if item_ref not in item_ids:
+                errors.append(
+                    f"Loot table '{row['id']}' references unknown item '{item_ref}'"
+                )
+
+    encounter_data_rows = await conn.fetch("SELECT id, data FROM encounter_templates")
+    for row in encounter_data_rows:
+        data = json.loads(row["data"])
+        for enemy in data.get("enemies", []):
+            enemy_id = enemy.get("id", "?")
+            if not enemy.get("category"):
+                errors.append(
+                    f"Encounter '{row['id']}' enemy '{enemy_id}' is missing a 'category'"
+                )
+            loot_ref = enemy.get("loot_table_id")
+            if not loot_ref:
+                errors.append(
+                    f"Encounter '{row['id']}' enemy '{enemy_id}' is missing a 'loot_table_id'"
+                )
+            elif loot_ref not in loot_table_ids:
+                errors.append(
+                    f"Encounter '{row['id']}' enemy '{enemy_id}' references unknown "
+                    f"loot_table_id '{loot_ref}'"
+                )
+
     return errors
 
 
@@ -195,7 +240,11 @@ async def seed_map_progress(conn: asyncpg.Connection) -> None:
         exits = loc.get("exits", {})
         connections = []
         for exit_data in exits.values():
-            dest = exit_data.get("destination", "") if isinstance(exit_data, dict) else str(exit_data)
+            dest = (
+                exit_data.get("destination", "")
+                if isinstance(exit_data, dict)
+                else str(exit_data)
+            )
             if dest:
                 connections.append(dest)
 
@@ -209,11 +258,16 @@ async def seed_map_progress(conn: asyncpg.Connection) -> None:
             location_id,
             json.dumps({"connections": connections}),
         )
-        print(f"  map_progress: {player_id} @ {location_id} (connections: {connections})")
+        print(
+            f"  map_progress: {player_id} @ {location_id} (connections: {connections})"
+        )
 
 
 async def main() -> None:
-    database_url = os.environ.get("DATABASE_URL", "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin")
+    database_url = os.environ.get(
+        "DATABASE_URL",
+        "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin",
+    )
     conn = await asyncpg.connect(database_url)
 
     try:

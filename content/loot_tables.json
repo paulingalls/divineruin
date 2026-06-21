@@ -1,0 +1,73 @@
+[
+  {
+    "id": "loot_hollow_drift",
+    "description": "Shared drift-Hollow residue table. Shadelings, drifts, wisps — fragile things that leave only a smear of residue behind.",
+    "drops": [
+      { "item_id": "hollow_residue_t1", "chance": 0.4, "quantity": 1 }
+    ]
+  },
+  {
+    "id": "loot_hollow_rend",
+    "description": "Shared rend-Hollow table. Mawlings, rends, hollowed scouts — they absorbed enough to leave residue and the odd cold bone shard.",
+    "drops": [
+      { "item_id": "hollow_residue_t1", "chance": 0.6, "quantity": 1 },
+      { "item_id": "hollow_bone_fragment", "chance": 0.2, "quantity": 1 }
+    ]
+  },
+  {
+    "id": "loot_humanoid_bandit",
+    "description": "Shared road-bandit table. Pocket steel and the cheap salve they patch themselves with.",
+    "drops": [
+      { "item_id": "dagger_balanced", "chance": 0.3, "quantity": 1 },
+      { "item_id": "healing_salve", "chance": 0.2, "quantity": 1 }
+    ]
+  },
+  {
+    "id": "loot_humanoid_soldier",
+    "description": "Shared disciplined-soldier table. Field rations of medicine, the odd worked bone token.",
+    "drops": [
+      { "item_id": "bone_fang_t1", "chance": 0.2, "quantity": 1 },
+      { "item_id": "healing_potion_minor", "chance": 0.15, "quantity": 1 }
+    ]
+  },
+  {
+    "id": "loot_humanoid_cultist",
+    "description": "Shared cultist table. Ritual scraps — cured hide pulled from old offerings.",
+    "drops": [
+      { "item_id": "hide_pelt_t1", "chance": 0.25, "quantity": 1 }
+    ]
+  },
+  {
+    "id": "loot_bandit_captain",
+    "description": "Bespoke captain table. The spoils of a successful career on the road.",
+    "drops": [
+      { "item_id": "scale_mail", "chance": 0.3, "quantity": 1 },
+      { "item_id": "healing_potion_minor", "chance": 0.4, "quantity": 1 }
+    ]
+  },
+  {
+    "id": "loot_hollow_warden",
+    "description": "Bespoke Warden table. A boss is a headline drop — dense residue, the experimental Hollow-edge blade, and an Aelindran focus the Warden was guarding.",
+    "drops": [
+      { "item_id": "hollow_residue_t2", "chance": 1.0, "quantity": 2 },
+      { "item_id": "hollow_edge_blade", "chance": 0.5, "quantity": 1 },
+      { "item_id": "aelindran_focus_crystal", "chance": 0.25, "quantity": 1 }
+    ]
+  },
+  {
+    "id": "loot_cult_leader",
+    "description": "Bespoke cult-leader table. Arcane reagents from the sigil work and the leader's warded robes.",
+    "drops": [
+      { "item_id": "arcane_component_t2", "chance": 1.0, "quantity": 2 },
+      { "item_id": "warded_robes", "chance": 0.4, "quantity": 1 }
+    ]
+  },
+  {
+    "id": "loot_hollowed_knight",
+    "description": "Bespoke Hollowed-Knight table. Heavy residue and the anti-Hollow plate it was corrupted inside of.",
+    "drops": [
+      { "item_id": "hollow_residue_t2", "chance": 1.0, "quantity": 2 },
+      { "item_id": "hollow_ward_armor", "chance": 0.4, "quantity": 1 }
+    ]
+  }
+]

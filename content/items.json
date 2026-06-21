@@ -3383,5 +3383,123 @@
     ],
     "value_base": 800,
     "audio_cue": "A deep resonant chord that lingers in the chest."
+  },
+  {
+    "id": "hide_pelt_t1",
+    "name": "Cured Hide",
+    "tier": 1,
+    "type": "material",
+    "material_category": "hides",
+    "rarity": "common",
+    "description": "A square of cured hide, stiff at the edges and faintly oily. Smells of tannin and the road.",
+    "tags": [
+      "material",
+      "crafting",
+      "hide"
+    ],
+    "weight": 1.0,
+    "effects": [],
+    "value_base": 2,
+    "craft_value": 12,
+    "value_modifiers": {}
+  },
+  {
+    "id": "bone_fang_t1",
+    "name": "Worked Bone Token",
+    "tier": 1,
+    "type": "material",
+    "material_category": "bones",
+    "rarity": "common",
+    "description": "A polished sliver of bone, drilled through one end. Cold, smooth, and lighter than it looks.",
+    "tags": [
+      "material",
+      "crafting",
+      "bone"
+    ],
+    "weight": 0.2,
+    "effects": [],
+    "value_base": 1,
+    "craft_value": 8,
+    "value_modifiers": {}
+  },
+  {
+    "id": "venom_gland_t1",
+    "name": "Venom Gland",
+    "tier": 1,
+    "type": "material",
+    "material_category": "venom",
+    "rarity": "common",
+    "description": "A taut translucent sac, still beaded with a single amber drop. Handle it like it's awake.",
+    "tags": [
+      "material",
+      "crafting",
+      "venom"
+    ],
+    "weight": 0.1,
+    "effects": [],
+    "value_base": 3,
+    "craft_value": 15,
+    "value_modifiers": {}
+  },
+  {
+    "id": "hollow_residue_t1",
+    "name": "Hollow Residue",
+    "tier": 1,
+    "type": "material",
+    "material_category": "hollow_residue",
+    "rarity": "uncommon",
+    "description": "A pinch of grey dust that drinks the warmth from your fingers. It drifts upward, very slightly, before it settles.",
+    "tags": [
+      "material",
+      "crafting",
+      "hollow"
+    ],
+    "weight": 0.1,
+    "effects": [],
+    "value_base": 10,
+    "craft_value": 50,
+    "value_modifiers": {
+      "npc:scholar_emris": 2.0
+    }
+  },
+  {
+    "id": "hollow_residue_t2",
+    "name": "Dense Hollow Residue",
+    "tier": 2,
+    "type": "material",
+    "material_category": "hollow_residue",
+    "rarity": "rare",
+    "description": "A cold grey clot the size of a thumbnail. It holds its shape, which residue this concentrated should not, and the air around it goes quiet.",
+    "tags": [
+      "material",
+      "crafting",
+      "hollow"
+    ],
+    "weight": 0.2,
+    "effects": [],
+    "value_base": 18,
+    "craft_value": 90,
+    "value_modifiers": {
+      "npc:scholar_emris": 2.0
+    }
+  },
+  {
+    "id": "arcane_component_t2",
+    "name": "Arcane Component",
+    "tier": 2,
+    "type": "material",
+    "material_category": "arcane_components",
+    "rarity": "uncommon",
+    "description": "A knot of silvered wire and a sliver of resonant glass, still humming from the sigil it was pried out of.",
+    "tags": [
+      "material",
+      "crafting",
+      "arcane"
+    ],
+    "weight": 0.2,
+    "effects": [],
+    "value_base": 15,
+    "craft_value": 75,
+    "value_modifiers": {}
   }
 ]

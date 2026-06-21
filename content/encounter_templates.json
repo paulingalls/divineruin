@@ -30,7 +30,9 @@
         ],
         "xp_value": 25,
         "sound_signature": "hollow_static_hiss",
-        "role": "standard"
+        "role": "standard",
+        "category": "hollow_drift",
+        "loot_table_id": "loot_hollow_drift"
       },
       {
         "id": "shadeling_2",
@@ -57,7 +59,9 @@
         ],
         "xp_value": 25,
         "sound_signature": "hollow_static_hiss",
-        "role": "standard"
+        "role": "standard",
+        "category": "hollow_drift",
+        "loot_table_id": "loot_hollow_drift"
       },
       {
         "id": "shadeling_3",
@@ -84,7 +88,9 @@
         ],
         "xp_value": 25,
         "sound_signature": "hollow_static_hiss",
-        "role": "standard"
+        "role": "standard",
+        "category": "hollow_drift",
+        "loot_table_id": "loot_hollow_drift"
       }
     ]
   },
@@ -120,13 +126,17 @@
             "name": "Seizing Grab",
             "damage": "1d4",
             "damage_type": "bludgeoning",
-            "properties": ["grapple"],
+            "properties": [
+              "grapple"
+            ],
             "description": "Wrong-jointed arms reach with terrifying speed, pulling you toward the maw"
           }
         ],
         "xp_value": 100,
         "sound_signature": "hollow_wrong_footsteps",
-        "role": "standard"
+        "role": "standard",
+        "category": "hollow_rend",
+        "loot_table_id": "loot_hollow_rend"
       },
       {
         "id": "mawling_2",
@@ -154,13 +164,17 @@
             "name": "Seizing Grab",
             "damage": "1d4",
             "damage_type": "bludgeoning",
-            "properties": ["grapple"],
+            "properties": [
+              "grapple"
+            ],
             "description": "Wrong-jointed arms reach with terrifying speed, pulling you toward the maw"
           }
         ],
         "xp_value": 100,
         "sound_signature": "hollow_wrong_footsteps",
-        "role": "standard"
+        "role": "standard",
+        "category": "hollow_rend",
+        "loot_table_id": "loot_hollow_rend"
       }
     ]
   },
@@ -209,7 +223,9 @@
         ],
         "xp_value": 250,
         "sound_signature": "hollow_wrong_footsteps",
-        "role": "elite"
+        "role": "elite",
+        "category": "hollow_rend",
+        "loot_table_id": "loot_hollow_rend"
       }
     ]
   },
@@ -251,7 +267,9 @@
         ],
         "xp_value": 200,
         "sound_signature": "hollow_whisper",
-        "role": "standard"
+        "role": "standard",
+        "category": "hollow_drift",
+        "loot_table_id": "loot_hollow_drift"
       }
     ]
   },
@@ -293,7 +311,9 @@
         ],
         "xp_value": 100,
         "sound_signature": "hollow_growl",
-        "role": "standard"
+        "role": "standard",
+        "category": "hollow_rend",
+        "loot_table_id": "loot_hollow_rend"
       },
       {
         "id": "hollow_drift_1",
@@ -320,7 +340,9 @@
         ],
         "xp_value": 50,
         "sound_signature": "hollow_whisper",
-        "role": "minion"
+        "role": "minion",
+        "category": "hollow_drift",
+        "loot_table_id": "loot_hollow_drift"
       },
       {
         "id": "hollow_drift_2",
@@ -347,7 +369,9 @@
         ],
         "xp_value": 50,
         "sound_signature": "hollow_whisper",
-        "role": "minion"
+        "role": "minion",
+        "category": "hollow_drift",
+        "loot_table_id": "loot_hollow_drift"
       }
     ]
   },
@@ -390,7 +414,9 @@
             "name": "Absorb",
             "damage": "1d6",
             "damage_type": "necrotic",
-            "properties": ["healing"],
+            "properties": [
+              "healing"
+            ],
             "description": "The Warden's wounds close as dark energy flows from its victim into its form"
           }
         ],
@@ -402,7 +428,9 @@
           "description": "The Warden tears the room in two and for a heartbeat both versions overlap; anyone caught between them must steady their mind or be flung to the ground.",
           "save": "wisdom"
         },
-        "legendary_actions": 1
+        "legendary_actions": 1,
+        "category": "hollow_rend",
+        "loot_table_id": "loot_hollow_warden"
       }
     ]
   },
@@ -438,13 +466,17 @@
             "name": "Light Crossbow",
             "damage": "1d8",
             "damage_type": "piercing",
-            "properties": ["ranged"],
+            "properties": [
+              "ranged"
+            ],
             "description": "A bolt loosed from cover before the rush"
           }
         ],
         "xp_value": 50,
         "sound_signature": "bandit_snarl",
-        "role": "minion"
+        "role": "minion",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_bandit"
       },
       {
         "id": "bandit_2",
@@ -472,13 +504,17 @@
             "name": "Light Crossbow",
             "damage": "1d8",
             "damage_type": "piercing",
-            "properties": ["ranged"],
+            "properties": [
+              "ranged"
+            ],
             "description": "A bolt loosed from cover before the rush"
           }
         ],
         "xp_value": 50,
         "sound_signature": "bandit_snarl",
-        "role": "minion"
+        "role": "minion",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_bandit"
       },
       {
         "id": "bandit_3",
@@ -506,13 +542,17 @@
             "name": "Light Crossbow",
             "damage": "1d8",
             "damage_type": "piercing",
-            "properties": ["ranged"],
+            "properties": [
+              "ranged"
+            ],
             "description": "A bolt loosed from cover before the rush"
           }
         ],
         "xp_value": 50,
         "sound_signature": "bandit_snarl",
-        "role": "minion"
+        "role": "minion",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_bandit"
       },
       {
         "id": "bandit_4",
@@ -540,13 +580,17 @@
             "name": "Light Crossbow",
             "damage": "1d8",
             "damage_type": "piercing",
-            "properties": ["ranged"],
+            "properties": [
+              "ranged"
+            ],
             "description": "A bolt loosed from cover before the rush"
           }
         ],
         "xp_value": 50,
         "sound_signature": "bandit_snarl",
-        "role": "minion"
+        "role": "minion",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_bandit"
       },
       {
         "id": "bandit_captain",
@@ -574,20 +618,26 @@
             "name": "Heavy Crossbow",
             "damage": "1d10+1",
             "damage_type": "piercing",
-            "properties": ["ranged"],
+            "properties": [
+              "ranged"
+            ],
             "description": "Held back from the line, picking targets"
           },
           {
             "name": "Press the Attack",
             "damage": "0",
             "damage_type": "none",
-            "properties": ["buff"],
+            "properties": [
+              "buff"
+            ],
             "description": "A barked order rallies the bandits to focus their strikes"
           }
         ],
         "xp_value": 200,
         "sound_signature": "bandit_captain_bark",
-        "role": "elite"
+        "role": "elite",
+        "category": "humanoid",
+        "loot_table_id": "loot_bandit_captain"
       }
     ]
   },
@@ -596,7 +646,10 @@
     "name": "Ashmark Patrol",
     "description": "Boots in lockstep, grey tabards stiff with road dust. A Thornwatch patrol fans into a clean line, the sergeant reading you before a word is spoken. Whether their hands stay near their hilts depends entirely on what your name means to the Thornwatch.",
     "difficulty": "moderate",
-    "stance_gate": { "faction": "thornwatch", "allied_at_or_above": "friendly" },
+    "stance_gate": {
+      "faction": "thornwatch",
+      "allied_at_or_above": "friendly"
+    },
     "enemies": [
       {
         "id": "ashmark_soldier_1",
@@ -624,13 +677,17 @@
             "name": "Shield Bash",
             "damage": "1d4+2",
             "damage_type": "bludgeoning",
-            "properties": ["knockback"],
+            "properties": [
+              "knockback"
+            ],
             "description": "A braced shove to break the enemy's footing"
           }
         ],
         "xp_value": 150,
         "sound_signature": "ashmark_soldier_advance",
-        "role": "standard"
+        "role": "standard",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_soldier"
       },
       {
         "id": "ashmark_soldier_2",
@@ -658,13 +715,17 @@
             "name": "Shield Bash",
             "damage": "1d4+2",
             "damage_type": "bludgeoning",
-            "properties": ["knockback"],
+            "properties": [
+              "knockback"
+            ],
             "description": "A braced shove to break the enemy's footing"
           }
         ],
         "xp_value": 150,
         "sound_signature": "ashmark_soldier_advance",
-        "role": "standard"
+        "role": "standard",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_soldier"
       },
       {
         "id": "ashmark_soldier_3",
@@ -692,13 +753,17 @@
             "name": "Shield Bash",
             "damage": "1d4+2",
             "damage_type": "bludgeoning",
-            "properties": ["knockback"],
+            "properties": [
+              "knockback"
+            ],
             "description": "A braced shove to break the enemy's footing"
           }
         ],
         "xp_value": 150,
         "sound_signature": "ashmark_soldier_advance",
-        "role": "standard"
+        "role": "standard",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_soldier"
       },
       {
         "id": "ashmark_soldier_4",
@@ -726,13 +791,17 @@
             "name": "Shield Bash",
             "damage": "1d4+2",
             "damage_type": "bludgeoning",
-            "properties": ["knockback"],
+            "properties": [
+              "knockback"
+            ],
             "description": "A braced shove to break the enemy's footing"
           }
         ],
         "xp_value": 150,
         "sound_signature": "ashmark_soldier_advance",
-        "role": "standard"
+        "role": "standard",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_soldier"
       },
       {
         "id": "ashmark_sergeant",
@@ -760,13 +829,17 @@
             "name": "Rally",
             "damage": "0",
             "damage_type": "none",
-            "properties": ["buff"],
+            "properties": [
+              "buff"
+            ],
             "description": "A sharp command steadies the line and sharpens their focus fire"
           }
         ],
         "xp_value": 250,
         "sound_signature": "ashmark_sergeant_order",
-        "role": "elite"
+        "role": "elite",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_soldier"
       }
     ]
   },
@@ -802,7 +875,9 @@
             "name": "Bless",
             "damage": "0",
             "damage_type": "none",
-            "properties": ["buff"],
+            "properties": [
+              "buff"
+            ],
             "description": "Murmured fervor steadies the cultists' hands"
           },
           {
@@ -815,7 +890,9 @@
         ],
         "xp_value": 150,
         "sound_signature": "cult_chant",
-        "role": "standard"
+        "role": "standard",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_cultist"
       },
       {
         "id": "cult_fanatic_2",
@@ -843,7 +920,9 @@
             "name": "Bless",
             "damage": "0",
             "damage_type": "none",
-            "properties": ["buff"],
+            "properties": [
+              "buff"
+            ],
             "description": "Murmured fervor steadies the cultists' hands"
           },
           {
@@ -856,7 +935,9 @@
         ],
         "xp_value": 150,
         "sound_signature": "cult_chant",
-        "role": "standard"
+        "role": "standard",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_cultist"
       },
       {
         "id": "cultist_1",
@@ -883,7 +964,9 @@
         ],
         "xp_value": 40,
         "sound_signature": "cult_murmur",
-        "role": "minion"
+        "role": "minion",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_cultist"
       },
       {
         "id": "cultist_2",
@@ -910,7 +993,9 @@
         ],
         "xp_value": 40,
         "sound_signature": "cult_murmur",
-        "role": "minion"
+        "role": "minion",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_cultist"
       },
       {
         "id": "cultist_3",
@@ -937,7 +1022,9 @@
         ],
         "xp_value": 40,
         "sound_signature": "cult_murmur",
-        "role": "minion"
+        "role": "minion",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_cultist"
       },
       {
         "id": "cultist_4",
@@ -964,7 +1051,9 @@
         ],
         "xp_value": 40,
         "sound_signature": "cult_murmur",
-        "role": "minion"
+        "role": "minion",
+        "category": "humanoid",
+        "loot_table_id": "loot_humanoid_cultist"
       },
       {
         "id": "cult_leader",
@@ -985,21 +1074,27 @@
             "name": "Shadow Bolt",
             "damage": "2d6",
             "damage_type": "necrotic",
-            "properties": ["ranged"],
+            "properties": [
+              "ranged"
+            ],
             "description": "A lance of cold dark flung from the back of the chamber"
           },
           {
             "name": "Hold Person",
             "damage": "0",
             "damage_type": "none",
-            "properties": ["control"],
+            "properties": [
+              "control"
+            ],
             "description": "A word that locks a victim's limbs mid-step"
           },
           {
             "name": "Dark Pulse",
             "damage": "1d10",
             "damage_type": "necrotic",
-            "properties": ["aoe"],
+            "properties": [
+              "aoe"
+            ],
             "description": "The sigil flares and rot washes outward in a ring"
           }
         ],
@@ -1011,7 +1106,9 @@
           "description": "Shadow pours from the leader's hands, smothering the light and dragging cold through everything living nearby.",
           "save": "constitution"
         },
-        "legendary_actions": 1
+        "legendary_actions": 1,
+        "category": "humanoid",
+        "loot_table_id": "loot_cult_leader"
       }
     ]
   },
@@ -1047,14 +1144,18 @@
             "name": "Command Lesser",
             "damage": "0",
             "damage_type": "none",
-            "properties": ["buff"],
+            "properties": [
+              "buff"
+            ],
             "description": "A silent pulse marshals the shadelings and mawlings to a single target"
           },
           {
             "name": "Despair Aura",
             "damage": "1d6",
             "damage_type": "psychic",
-            "properties": ["aoe"],
+            "properties": [
+              "aoe"
+            ],
             "description": "The weight of what it used to be presses on everyone near"
           }
         ],
@@ -1066,7 +1167,9 @@
           "description": "A silent shockwave of grey rot expands from the knight, and the Hollow reaches for whatever it touches.",
           "save": "constitution"
         },
-        "legendary_actions": 1
+        "legendary_actions": 1,
+        "category": "hollow_rend",
+        "loot_table_id": "loot_hollowed_knight"
       },
       {
         "id": "mawling_1",
@@ -1100,7 +1203,9 @@
         ],
         "xp_value": 75,
         "sound_signature": "hollow_mawling_screech",
-        "role": "standard"
+        "role": "standard",
+        "category": "hollow_rend",
+        "loot_table_id": "loot_hollow_rend"
       },
       {
         "id": "mawling_2",
@@ -1134,7 +1239,9 @@
         ],
         "xp_value": 75,
         "sound_signature": "hollow_mawling_screech",
-        "role": "standard"
+        "role": "standard",
+        "category": "hollow_rend",
+        "loot_table_id": "loot_hollow_rend"
       },
       {
         "id": "mawling_3",
@@ -1168,7 +1275,9 @@
         ],
         "xp_value": 75,
         "sound_signature": "hollow_mawling_screech",
-        "role": "standard"
+        "role": "standard",
+        "category": "hollow_rend",
+        "loot_table_id": "loot_hollow_rend"
       },
       {
         "id": "shadeling_1",
@@ -1195,7 +1304,9 @@
         ],
         "xp_value": 40,
         "sound_signature": "hollow_shadeling_hiss",
-        "role": "minion"
+        "role": "minion",
+        "category": "hollow_drift",
+        "loot_table_id": "loot_hollow_drift"
       },
       {
         "id": "shadeling_2",
@@ -1222,7 +1333,9 @@
         ],
         "xp_value": 40,
         "sound_signature": "hollow_shadeling_hiss",
-        "role": "minion"
+        "role": "minion",
+        "category": "hollow_drift",
+        "loot_table_id": "loot_hollow_drift"
       },
       {
         "id": "shadeling_3",
@@ -1249,7 +1362,9 @@
         ],
         "xp_value": 40,
         "sound_signature": "hollow_shadeling_hiss",
-        "role": "minion"
+        "role": "minion",
+        "category": "hollow_drift",
+        "loot_table_id": "loot_hollow_drift"
       },
       {
         "id": "shadeling_4",
@@ -1276,7 +1391,9 @@
         ],
         "xp_value": 40,
         "sound_signature": "hollow_shadeling_hiss",
-        "role": "minion"
+        "role": "minion",
+        "category": "hollow_drift",
+        "loot_table_id": "loot_hollow_drift"
       },
       {
         "id": "shadeling_5",
@@ -1303,7 +1420,9 @@
         ],
         "xp_value": 40,
         "sound_signature": "hollow_shadeling_hiss",
-        "role": "minion"
+        "role": "minion",
+        "category": "hollow_drift",
+        "loot_table_id": "loot_hollow_drift"
       },
       {
         "id": "shadeling_6",
@@ -1330,7 +1449,9 @@
         ],
         "xp_value": 40,
         "sound_signature": "hollow_shadeling_hiss",
-        "role": "minion"
+        "role": "minion",
+        "category": "hollow_drift",
+        "loot_table_id": "loot_hollow_drift"
       }
     ]
   }
