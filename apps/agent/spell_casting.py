@@ -180,20 +180,26 @@ def revivify_refused(character_data: dict) -> bool:
 async def cast_spell(
     context: RunContext[SessionData],
     spell_id: str,
+    target_id: str | None = None,
 ) -> str:
     """Cast a spell by its id (e.g. 'arcane_bolt'). Call when the caster casts a
     known spell. Validates and deducts the spell's Focus cost (rejecting if the
     caster can't afford it), builds the hidden Resonance the cast generates, and
     returns the effect, narration_cue, and audio_cue to voice plus the resulting
     Resonance state and its combat modifiers. Cantrips are free and scale damage
-    with level — the packet's damage_dice carries the scaled dice."""
-    return await _cast_spell_impl(context, spell_id)
+    with level — the packet's damage_dice carries the scaled dice.
+
+    Pass target_id when the spell is aimed at another entity — a fallen corpse for
+    a revival spell, an ally to buff, an object or area. Omit it (the default) for
+    a self-cast. A revival spell is refused if its target is Hollow-killed."""
+    return await _cast_spell_impl(context, spell_id, target_id=target_id)
 
 
 async def _cast_spell_impl(
     context: RunContext[SessionData],
     spell_id: str,
     *,
+    target_id: str | None = None,
     db_mod=db,
     queries_mod=db_queries,
     persistence_mod=ability_persistence,
@@ -223,6 +229,7 @@ async def _cast_spell_impl(
             session,
             spell_id,
             conn=conn,
+            target_id=target_id,
             queries_mod=queries_mod,
             persistence_mod=persistence_mod,
             resonance_mutations_mod=resonance_mutations_mod,
@@ -255,6 +262,7 @@ async def _resolve_cast(
     spell_id: str,
     *,
     conn,
+    target_id: str | None = None,
     player: dict | None = None,
     suppress_resonance_changed: bool = False,
     queries_mod=db_queries,
@@ -286,6 +294,10 @@ async def _resolve_cast(
     cast's own RESONANCE_CHANGED push — in combat the phase WRAP push is the single authoritative HUD
     update, so the ability must not double-emit."""
     _validate_id(spell_id, "spell_id")
+    # Validate the explicit target id the same way as spell_id, on the shared core so BOTH the
+    # out-of-combat cast and the in-combat ABILITY path are guarded once (concern 8816cdffb757).
+    if target_id is not None:
+        _validate_id(target_id, "target_id")
     player_id = session.player_id
 
     if player is None:
@@ -293,11 +305,20 @@ async def _resolve_cast(
         if player is None:
             raise ToolError(f"Unknown player: {player_id}")
 
-    # Revivify gate (M4.4 story-007): a revival spell cannot reach a Hollow-killed corpse. Refused
-    # before any Focus/Resonance write. Keyed on the caster row today (cast_spell is self-targeted);
-    # the spell-targeting milestone reroutes revivify_refused to the resolved target.
-    if spell_id in REVIVAL_SPELL_IDS and revivify_refused(player):
-        raise ToolError(f"{spell_id} cannot reach the corpse — it is Hollow-killed.")
+    # Revivify gate (M4.4 story-007, rerouted M11): a revival spell cannot reach a Hollow-killed
+    # corpse. The refusal keys on the TARGET row — the resolved target_id when given, else the caster
+    # (self-cast). Only a revival spell validates the target; a non-revival targeted cast is
+    # DM-narrated and skips the fetch (assumption eabd919bf1ca). Refused before any Focus/Resonance
+    # write. revivify_refused stays pure + target-agnostic, reused unchanged.
+    if spell_id in REVIVAL_SPELL_IDS:
+        if target_id is not None and target_id != player_id:
+            gate_row = await queries_mod.get_player(target_id, conn=conn)
+            if gate_row is None:
+                raise ToolError(f"Unknown target: {target_id}")
+        else:
+            gate_row = player
+        if revivify_refused(gate_row):
+            raise ToolError(f"{spell_id} cannot reach the corpse — it is Hollow-killed.")
     # The caster's race drives the M3.4 racial Resonance interactions (Korath/Thessyn/Vaelti
     # below). A player with no race set takes no racial branch.
     race = player.get("race")
@@ -403,6 +424,10 @@ async def _resolve_cast(
         "resonance_modifiers": modifiers,
         "ward_active": ward_active,
     }
+    # Carry the explicit target into the packet for the DM to voice (corpse/ally/object/area).
+    # Additive — a self-cast (target_id None) leaves the packet shape untouched.
+    if target_id is not None:
+        packet["target_id"] = target_id
     # At Overreach the Veil tears: auto-roll a d20 Hollow Echo (spec magic.md:167-185). An active ward
     # adds +4 to the roll (milder result). The echo resolves against the LOCAL effective_resonance
     # (not the unsynced session value).
