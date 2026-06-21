@@ -11,6 +11,7 @@ import random
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from livekit.agents.llm import ToolError
 
 import event_types as E
 from role_archetypes import shift_disposition
@@ -183,3 +184,86 @@ class TestCheckSocialPersistence:
         assert result["new_disposition"] == result["previous_disposition"]
         mutations.set_npc_disposition.assert_not_awaited()
         assert not [e for e in _published(ctx) if e.event_type == E.DISPOSITION_CHANGED]
+
+
+class TestCheckSocialFallbackAndValidation:
+    @pytest.mark.asyncio
+    async def test_falls_back_to_content_default_when_unrecorded(self):
+        # No per-player disposition row -> resolve_disposition reads the NPC's content default.
+        queries, mutations, _ = _social_mocks(recorded=None)
+        content = MagicMock()
+        content.get_npc = AsyncMock(return_value={"id": "elder", "default_disposition": "friendly"})
+        result = json.loads(
+            await _check_social_impl(
+                _ctx_with_bus(),
+                "elder",
+                "persuasion",
+                "moderate",
+                queries=queries,
+                mutations=mutations,
+                content=content,
+                rng=_FixedRng(11),
+            )
+        )
+        assert result["previous_disposition"] == "friendly"
+
+    @pytest.mark.asyncio
+    async def test_non_social_skill_fails_loud(self):
+        queries, mutations, content = _social_mocks()
+        with pytest.raises(ToolError, match="athletics"):
+            await _check_social_impl(
+                _ctx_with_bus(),
+                "merchant_1",
+                "athletics",
+                "moderate",
+                queries=queries,
+                mutations=mutations,
+                content=content,
+                rng=_FixedRng(11),
+            )
+
+    @pytest.mark.asyncio
+    async def test_unknown_difficulty_fails_loud(self):
+        queries, mutations, content = _social_mocks()
+        with pytest.raises(ToolError):
+            await _check_social_impl(
+                _ctx_with_bus(),
+                "merchant_1",
+                "persuasion",
+                "impossible",
+                queries=queries,
+                mutations=mutations,
+                content=content,
+                rng=_FixedRng(11),
+            )
+
+    @pytest.mark.asyncio
+    async def test_empty_npc_id_fails_loud(self):
+        queries, mutations, content = _social_mocks()
+        with pytest.raises(ToolError, match="npc_id"):
+            await _check_social_impl(
+                _ctx_with_bus(),
+                "",
+                "persuasion",
+                "moderate",
+                queries=queries,
+                mutations=mutations,
+                content=content,
+                rng=_FixedRng(11),
+            )
+
+    @pytest.mark.asyncio
+    async def test_missing_player_fails_loud(self):
+        queries, mutations, content = _social_mocks()
+        queries.get_player = AsyncMock(return_value=None)
+        with pytest.raises(ToolError):
+            await _check_social_impl(
+                _ctx_with_bus(),
+                "merchant_1",
+                "persuasion",
+                "moderate",
+                queries=queries,
+                mutations=mutations,
+                content=content,
+                rng=_FixedRng(11),
+            )
