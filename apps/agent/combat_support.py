@@ -280,6 +280,11 @@ async def _resolve_attack_packet(
         action,
         effective_ac,
         target.hp_current,
+        # Encounter-role overlay (M4.7, story-001): a role-derived attacker carries a flat to-hit
+        # bonus and a damage multiplier (Elite/Boss boost, Minion soften). Players carry identity
+        # defaults, so the player attack path is unchanged.
+        attack_mod=attacker.attack_mod,
+        damage_mult=attacker.damage_mult,
     )
 
     # Dramatic-dice (M4.5, story-004): the resolver's intrinsic verdict (nat-20/nat-1/

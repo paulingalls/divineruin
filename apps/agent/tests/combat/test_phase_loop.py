@@ -50,7 +50,7 @@ def _resolve_deps(damage=3):
 def _miss_resolver():
     """A resolve_attack that always misses — no damage, target HP unchanged."""
 
-    def _resolve(attacker_data, action, target_ac, target_hp):
+    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
         return AttackResult(
             hit=False,
             roll=3,

@@ -39,6 +39,27 @@ class TestResolveSavingThrow:
                 return
         pytest.fail("Could not find seed for failure")
 
+    def test_role_dc_mod_raises_the_dc(self):
+        # M4.7 story-001: a Boss ability's flat dc_mod makes its TARGET's save harder. STR save mod
+        # +3; a roll that clears dc=10 (total in [10,14]) fails once dc_mod=+5 lifts the DC to 15.
+        for seed in range(1000):
+            d20 = random.Random(seed).randint(1, 20)
+            total = d20 + 3
+            if d20 not in (1, 20) and 10 <= total < 15:
+                base = resolve_saving_throw(SAMPLE_PLAYER, "strength", 10, "prone", rng=random.Random(seed))
+                harder = resolve_saving_throw(SAMPLE_PLAYER, "strength", 10, "prone", rng=random.Random(seed), dc_mod=5)
+                assert base.success is True
+                assert harder.success is False
+                assert harder.dc == 15  # packet reports the effective DC
+                return
+        pytest.fail("Could not find seed for dc_mod flip")
+
+    def test_dc_mod_defaults_to_identity(self):
+        result = resolve_saving_throw(SAMPLE_PLAYER, "strength", 13, "prone", rng=random.Random(0))
+        identity = resolve_saving_throw(SAMPLE_PLAYER, "strength", 13, "prone", rng=random.Random(0), dc_mod=0)
+        assert result.dc == identity.dc == 13
+        assert result.success == identity.success
+
     def test_nat_20_always_succeeds(self):
         for seed in range(1000):
             rng = random.Random(seed)

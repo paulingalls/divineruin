@@ -29,7 +29,7 @@ def _fixed_resolver(damage: int):
     """resolve_attack stand-in that always hits for a fixed amount, decrementing from the
     target's current HP each call — so an expanded sequence accumulates across swings."""
 
-    def _resolve(_attacker_data, _action, target_ac, target_hp):
+    def _resolve(_attacker_data, _action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
         remaining = max(0, target_hp - damage)
         return AttackResult(
             hit=True,

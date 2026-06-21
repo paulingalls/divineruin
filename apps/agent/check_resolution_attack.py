@@ -87,13 +87,18 @@ def resolve_attack(
     target_ac: int,
     target_hp: int,
     rng: random.Random | None = None,
+    attack_mod: int = 0,
+    damage_mult: float = 1.0,
 ) -> AttackResult:
     # Attacker condition effects (M4.3): Exhausted -1/stack folds into the attack roll,
     # Prone/Blinded etc. impose disadvantage (scope "attack"), Enraged adds +2 damage below.
     # The defender's AC modifier (e.g. Enraged -2 AC) is the caller's concern (combat_support),
     # already baked into target_ac here.
+    # ``attack_mod`` / ``damage_mult`` are the encounter-role overlay (M4.7, story-001): a flat
+    # to-hit bonus and a damage multiplier the role-derived attacker carries (Elite +1/x1.25,
+    # Boss +2/x1.5, Minion x0.75). They default to identity, so the player path is unchanged.
     effects = get_condition_effects(attacker_data.get("conditions") or [])
-    atk_mod = attack_modifier(attacker_data, weapon) + effects.check_modifier
+    atk_mod = attack_modifier(attacker_data, weapon) + effects.check_modifier + attack_mod
     attack_disadvantage = "attack" in effects.disadvantage_scopes
     attack_advantage = "attack" in effects.advantage_scopes
     # Attack uses the same d20+mod-vs-target rule as skill checks/saves: nat-20
@@ -133,6 +138,10 @@ def resolve_attack(
             bonus_damage = dice_roll(effects.bonus_damage_dice, rng=rng).total
             bonus_damage_type = effects.bonus_damage_type
             damage += bonus_damage
+        # Role damage multiplier (M4.7, story-001): scale the FINAL accumulated total (weapon +
+        # crit + attribute + condition + rider) before the floor, so overkill below is computed
+        # from the scaled number and instant-death/never-heal semantics still hold.
+        damage = int(damage * damage_mult)
         # Floor at 0: a low-attribute attacker (e.g. STR 1 → -5) rolling low must
         # never produce negative damage, which would HEAL the target via the
         # max(0, hp - damage) below. A hit deals at least 0.
