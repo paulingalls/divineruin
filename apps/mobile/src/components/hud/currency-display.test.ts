@@ -47,9 +47,16 @@ describe("formatCurrencyChip", () => {
     expect(formatCurrencyChip(15).label).toBe("+15 sp");
   });
 
-  test("floors a fractional amount and clamps a negative to zero", () => {
-    expect(formatCurrencyChip(7.9, "silver").label).toBe("+7 sp");
-    expect(formatCurrencyChip(-4, "silver").label).toBe("+0 sp");
+  test("renders a fractional gold drop to one decimal instead of flooring it away", () => {
+    // A sub-1-gold combat drop (silver converted at the grant boundary, story-008) must stay
+    // glanceable rather than flooring to "+0 gp".
+    expect(formatCurrencyChip(0.8, "gold").label).toBe("+0.8 gp");
+    expect(formatCurrencyChip(5.8, "gold").label).toBe("+5.8 gp");
+  });
+
+  test("renders a whole amount without a decimal and clamps a negative to zero", () => {
+    expect(formatCurrencyChip(12, "gold").label).toBe("+12 gp");
+    expect(formatCurrencyChip(-4, "gold").label).toBe("+0 gp");
   });
 
   test("renders an unmapped currency with its raw suffix", () => {

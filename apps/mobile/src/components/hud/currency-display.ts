@@ -5,10 +5,10 @@ import { BrandColors } from "@/constants/theme";
 // RN mock omits View/Text and @expo/vector-icons, so a .tsx import throws at module load (mirrors
 // condition-display / RESONANCE_DISPLAY, the mobile-bun-tsx convention).
 //
-// Driven by the CURRENCY_GAINED event {amount, currency} (apps/agent/event_types.py). The agent
-// only emits silver today, but the unit map is open so a future gold/copper grant renders without
-// an agent change. `icon` is a plain MaterialCommunityIcons glyph string (kept RN-free); the .tsx
-// consumer casts it to the icon-name prop type.
+// Driven by the CURRENCY_GAINED event {amount, currency} (apps/agent/event_types.py). Combat emits
+// gold (sp converted to gp at the grant boundary, story-008); the unit map is open so a future
+// silver/copper grant renders without a client change. `icon` is a plain MaterialCommunityIcons
+// glyph string (kept RN-free); the .tsx consumer casts it to the icon-name prop type.
 
 // Known currency kinds -> their short HUD suffix. A const map so the union derives from it and the
 // test owns the full set.
@@ -41,13 +41,16 @@ export function currencyUnitSuffix(currency: string): string {
 }
 
 // Build the victory currency chip from a CURRENCY_GAINED payload's {amount, currency}. The label
-// is signed ("+8 sp") because currency is only ever gained on victory in this story. Amount is
-// floored to a whole coin and clamped at 0 so a malformed/negative wire value can't render a
-// nonsensical chip. Never throws — the HUD must keep rendering on any wire value.
+// is signed ("+12 gp") because currency is only ever gained on victory in this story. A whole
+// amount renders without a decimal; a fractional amount (e.g. a sub-1-gold combat drop converted
+// from silver, story-008) shows one decimal so it stays glanceable instead of flooring to "+0".
+// Clamped at 0 and finite-guarded so a malformed/negative wire value can't render a nonsensical
+// chip. Never throws — the HUD must keep rendering on any wire value.
 export function formatCurrencyChip(amount: number, currency: string = "silver"): CurrencyChip {
-  const whole = Number.isFinite(amount) ? Math.max(0, Math.floor(amount)) : 0;
+  const n = Number.isFinite(amount) ? Math.max(0, amount) : 0;
+  const shown = Number.isInteger(n) ? String(n) : n.toFixed(1);
   return {
-    label: `+${whole} ${currencyUnitSuffix(currency)}`,
+    label: `+${shown} ${currencyUnitSuffix(currency)}`,
     icon: CURRENCY_ICON,
     color: CURRENCY_COLOR,
   };

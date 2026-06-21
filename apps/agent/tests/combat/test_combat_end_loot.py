@@ -112,7 +112,8 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool):
         session = SessionData(player_id=_PLAYER_ID, location_id="loc_test", room=None)
         cs = _victory_state()
         sink = EventSink()
-        # die=4, tier=2, humanoid Standard -> currency = 2 * 4 = 8; loot drop guaranteed (chance 1.0).
+        # die=4, tier=2, humanoid Standard -> 8 sp; converted at the grant boundary to gold
+        # (silver_per_gold=10) -> 0.8 gp; loot drop guaranteed (chance 1.0).
         async with db.transaction() as conn:
             end_data = await _end_combat_db(
                 session,
@@ -126,9 +127,9 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool):
                 rng=FakeRng(die=4),
             )
 
-        # Currency added to players.data.gold (5 + 8 = 13).
+        # Currency converted sp -> gp and added to players.data.gold (5 + 0.8 = 5.8).
         player = await db_queries.get_player(_PLAYER_ID, conn=pool)
-        assert player is not None and player["gold"] == 13
+        assert player is not None and player["gold"] == pytest.approx(5.8)
 
         # Loot item granted into inventory at the rolled quantity.
         qty = await pool.fetchval(
@@ -138,17 +139,17 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool):
         )
         assert qty == 1
 
-        # end_data surfaces the haul for the DM narration / response.
-        assert end_data["currency_silver"] == 8
+        # end_data surfaces the haul for the DM narration / response (in the canonical gold unit).
+        assert end_data["currency_gold"] == pytest.approx(0.8)
         assert end_data["loot"] == [{"item_id": _ITEM_ID, "quantity": 1}]
 
         # A single CURRENCY_GAINED chip buffered for the whole haul, plus the ITEM_ACQUIRED chip.
         currency_events = [e for e in sink.captured if e.event_type == E.CURRENCY_GAINED]
         assert len(currency_events) == 1
         payload = currency_events[0].payload
-        assert payload["amount"] == 8
-        assert payload["currency"] == "silver"
-        assert payload["new_balance"] == 13
+        assert payload["amount"] == pytest.approx(0.8)
+        assert payload["currency"] == "gold"
+        assert payload["new_balance"] == pytest.approx(5.8)
         assert payload["player_id"] == _PLAYER_ID
 
         item_events = [e for e in sink.captured if e.event_type == E.ITEM_ACQUIRED]
@@ -196,7 +197,7 @@ async def test_minion_only_victory_grants_no_currency(dev_db_pool):
             )
 
         # D79: no currency, gold untouched, no CURRENCY_GAINED chip.
-        assert end_data["currency_silver"] == 0
+        assert end_data["currency_gold"] == 0
         player = await db_queries.get_player(_PLAYER_ID, conn=pool)
         assert player is not None and player["gold"] == 5
         assert not [e for e in sink.captured if e.event_type == E.CURRENCY_GAINED]

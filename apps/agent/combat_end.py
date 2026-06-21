@@ -16,6 +16,7 @@ import db_mutations_conditions
 import db_queries
 import encounter_loot
 import event_types as E
+import pricing_queries
 import resurrection
 from combat_durability import _accrue_durability, _find_equipped
 from combat_events import EventSink, emit_or_publish
@@ -145,6 +146,7 @@ async def _end_combat_db(
     conn,
     sink: EventSink,
     content=db_content_queries,
+    pricing=pricing_queries,
     rng: random.Random | None = None,
 ) -> dict:
     """The DB-mutating + event-emitting half of end_combat, run INSIDE a transaction (the phase
@@ -161,6 +163,7 @@ async def _end_combat_db(
     defeated_enemies: list[str] = []
     loot_granted: list[dict] = []
     currency_silver = 0
+    currency_gold: float = 0
     if outcome == "victory":
         enemy_dicts = []
         for p in cs.participants:
@@ -173,14 +176,19 @@ async def _end_combat_db(
             )
         xp_total = combat_resolution.calculate_combat_xp(enemy_dicts)
 
-        # Grant the aggregated currency in one read-modify-write on players.data.gold (FOR UPDATE
-        # so concurrent writers can't clobber the balance), then buffer a single CURRENCY_GAINED
-        # chip for the whole haul. Inside this tx — a rollback un-grants the coin and drops the
-        # unflushed event. Minions contribute 0 (D79); a fight of only Minions emits nothing.
+        # The enemy loot rolls accrue silver (the pricing baseline); convert to gold crowns at the
+        # grant boundary — symmetric with how repair/crafting convert sp costs to gp via the same
+        # silver_per_gold SSOT — so the wallet (players.data.gold, gold crowns) stays coherent.
+        # Grant in one read-modify-write (FOR UPDATE so concurrent writers can't clobber the
+        # balance), then buffer a single CURRENCY_GAINED chip for the whole haul. Inside this tx — a
+        # rollback un-grants the coin and drops the unflushed event. Minions contribute 0 (D79); a
+        # fight of only Minions emits nothing.
         if currency_silver > 0:
+            silver_per_gold = (await pricing.get_economy_pricing())["silver_per_gold"]
+            currency_gold = currency_silver / silver_per_gold
             player = await queries.get_player(session.player_id, conn=conn, for_update=True)
             prior_gold = (player or {}).get("gold", 0) or 0
-            new_balance = prior_gold + currency_silver
+            new_balance = prior_gold + currency_gold
             await mutations.update_player_gold(session.player_id, new_balance, conn=conn)
             await emit_or_publish(
                 sink,
@@ -188,8 +196,8 @@ async def _end_combat_db(
                 E.CURRENCY_GAINED,
                 {
                     "player_id": session.player_id,
-                    "amount": currency_silver,
-                    "currency": "silver",
+                    "amount": currency_gold,
+                    "currency": "gold",
                     "source": "combat",
                     "new_balance": new_balance,
                 },
@@ -262,7 +270,7 @@ async def _end_combat_db(
         "weapon_durability": weapon_durability,
         "death_context": death_context,
         "loot": loot_granted,
-        "currency_silver": currency_silver,
+        "currency_gold": currency_gold,
     }
 
 
@@ -295,22 +303,22 @@ def _end_combat_finish(
         session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {cs.location_id}: {outcome}")
 
     loot = end_data.get("loot", [])
-    currency_silver = end_data.get("currency_silver", 0)
+    currency_gold = end_data.get("currency_gold", 0)
     response = {
         "outcome": outcome,
         "xp_total": xp_total,
         "defeated_enemies": defeated_enemies,
         "weapon_durability": end_data["weapon_durability"],
         "loot": loot,
-        "currency_silver": currency_silver,
+        "currency_gold": currency_gold,
         "note": "Call award_xp with the xp_total to grant experience to the player." if xp_total > 0 else None,
     }
     logger.info(
-        "end_combat result: %s, xp=%d, loot=%d item(s), currency=%dsp",
+        "end_combat result: %s, xp=%d, loot=%d item(s), currency=%.1fgp",
         outcome,
         xp_total,
         len(loot),
-        currency_silver,
+        currency_gold,
     )
 
     # Build gameplay agent with combat summary context for handoff
@@ -330,8 +338,8 @@ def _end_combat_finish(
         for drop in loot:
             qty_by_item[drop["item_id"]] = qty_by_item.get(drop["item_id"], 0) + drop["quantity"]
         summary_parts.append("Loot: " + ", ".join(f"{q}x {item}" for item, q in qty_by_item.items()) + ".")
-    if currency_silver > 0:
-        summary_parts.append(f"Currency: {currency_silver} silver.")
+    if currency_gold > 0:
+        summary_parts.append(f"Currency: {currency_gold:.1f} gold.")
 
     summary_ctx = ChatContext()
     summary_ctx.add_message(role="system", content=" ".join(summary_parts))
