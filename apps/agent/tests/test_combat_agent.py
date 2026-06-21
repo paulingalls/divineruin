@@ -15,7 +15,7 @@ class TestCombatAgentConfig:
         from check_tools import check
         from combat_death_save import request_death_save
         from combat_end import end_combat
-        from combat_turn import declare_phase, resolve_phase
+        from combat_turn import consume_legendary_action, declare_phase, resolve_phase
         from draethar_inner_fire import inner_fire
         from environment_tools import play_sound, set_music_state
         from query_tools import query_info
@@ -27,6 +27,7 @@ class TestCombatAgentConfig:
         expected = {
             declare_phase,
             resolve_phase,
+            consume_legendary_action,
             check,
             request_death_save,
             end_combat,
