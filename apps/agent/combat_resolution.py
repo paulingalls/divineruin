@@ -135,7 +135,16 @@ def hp_threshold_status(current_hp: int, max_hp: int) -> str:
 
 
 def calculate_combat_xp(enemies: list[dict]) -> int:
-    """Sum xp_value from a list of enemy dicts. Defaults to 0 if missing."""
+    """Sum xp_value from a list of enemy dicts. Defaults to 0 if missing.
+
+    M4.7 encounter-role contract (story-003): each enemy's ``xp_value`` is ALREADY
+    role-scaled. ``encounter_roles.derive_role_stats`` applies the role ``xp_mult`` once
+    at combat init (``xp_value = int(base * xp_mult)`` — e.g. a Boss is x2, a Minion x0.5),
+    and that pre-scaled value is what each CombatParticipant carries and what combat_end
+    feeds here. This function therefore SUMS the already-multiplied values and must NOT
+    re-apply the multiplier — doing so would double-count the role bonus. The
+    apply-exactly-once invariant is pinned by tests/combat/test_combat_resolution_roles.py.
+    """
     return sum(e.get("xp_value", 0) for e in enemies)
 
 

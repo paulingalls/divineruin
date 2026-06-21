@@ -20,6 +20,7 @@ from enum import StrEnum
 
 from conditions import tick_conditions
 from declarations import Declaration, resolve_declaration
+from encounter_roles import EncounterRole
 from session_data import CombatState
 
 # Phase-canonical Resonance decay: the wrap beat sheds one step per phase
@@ -93,6 +94,13 @@ class PhaseAdvance:
     beat_completed: PhaseBeat
     packets: list[ResolutionPacket] = field(default_factory=list)
     wrap: WrapOutcome | None = None
+    # Boss legendary actions available for the round just entered (M4.7, story-003): one
+    # descriptor per living Boss with budget remaining, populated only on a non-ending WRAP
+    # (after the per-round budget reset). The engine SURFACES the available legendary so the
+    # DM can narrate the extra Boss beat — taken at the end of another creature's turn
+    # (game_mechanics_encounter_roles.md:112-120) — but NEVER auto-fires it. The DM spends it
+    # via consume_legendary_action. Empty for every non-WRAP beat and for a terminal wrap.
+    legendary_available: list[dict] = field(default_factory=list)
 
 
 def advance_combat_phase(
@@ -133,16 +141,74 @@ def advance_combat_phase(
 
     if state.beat == PhaseBeat.WRAP:
         wrap = _wrap(next_state)
+        legendary_available: list[dict] = []
         if not wrap.combat_ended:
             next_state.round_number += 1
             next_state.current_turn_index = 0
             next_state.pending_declarations = {}
             next_state.reactions_available = {}
             next_state.ac_modifiers = {}  # phase-scoped Defend bonuses expire here
+            # Refresh each living Boss's 1/round legendary budget for the round just entered,
+            # then surface what's available so the DM can narrate the extra Boss beat.
+            _reset_legendary_actions(next_state)
+            legendary_available = _boss_legendaries(next_state)
             next_state.beat = PhaseBeat.DECLARATION
-        return next_state, PhaseAdvance(beat_completed=PhaseBeat.WRAP, wrap=wrap)
+        return next_state, PhaseAdvance(
+            beat_completed=PhaseBeat.WRAP, wrap=wrap, legendary_available=legendary_available
+        )
 
     raise ValueError(f"unknown combat beat: {state.beat!r}")
+
+
+def _reset_legendary_actions(state: CombatState) -> None:
+    """Refresh each living Boss's legendary-action budget to 1 for the new round
+    (game_mechanics_encounter_roles.md:112 — a Boss takes one legendary action per round).
+
+    Mutates the deep-copied next_state in place at the WRAP loop-back, like the wrap
+    condition tick. Non-Boss participants have no legendary budget and are left untouched
+    (they stay at the dataclass default of 0). A fallen Boss is skipped — a downed creature
+    takes no legendary actions."""
+    for p in state.participants:
+        if p.role == EncounterRole.BOSS and not p.is_fallen:
+            p.legendary_actions = 1
+
+
+def _boss_legendaries(state: CombatState) -> list[dict]:
+    """Descriptors for every living Boss with a legendary action available this round.
+
+    Surfaced on PhaseAdvance.legendary_available so the DM can narrate the extra Boss beat
+    (taken at the end of another creature's turn). Carries the Boss's id/name and authored
+    ``signature_ability`` so the DM has the move's options; the engine never auto-fires it."""
+    return [
+        {
+            "actor_id": p.id,
+            "name": p.name,
+            "legendary_actions": p.legendary_actions,
+            "signature_ability": p.signature_ability,
+        }
+        for p in state.participants
+        if p.role == EncounterRole.BOSS and not p.is_fallen and p.legendary_actions > 0
+    ]
+
+
+def consume_legendary_action(state: CombatState, boss_id: str) -> CombatState:
+    """Spend one of a Boss's legendary actions — the DM fires the extra Boss beat.
+
+    Pure: returns a NEW (deep-copied) CombatState with the named Boss's ``legendary_actions``
+    decremented by one; never mutates the input. Fails loud (ValueError -> ToolError at the
+    tool layer) if the actor is unknown, not a Boss, or has no legendary action left this
+    round, so the DM can never overspend the 1/round budget. The budget refreshes at the next
+    WRAP via ``_reset_legendary_actions``."""
+    next_state = copy.deepcopy(state)
+    boss = next_state.get_participant(boss_id)
+    if boss is None:
+        raise ValueError(f"unknown participant {boss_id!r}")
+    if boss.role != EncounterRole.BOSS:
+        raise ValueError(f"{boss_id!r} is not a Boss (role={boss.role!r}); only Bosses have legendary actions")
+    if boss.legendary_actions <= 0:
+        raise ValueError(f"Boss {boss_id!r} has no legendary action remaining this round")
+    boss.legendary_actions -= 1
+    return next_state
 
 
 def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:
