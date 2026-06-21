@@ -17,6 +17,7 @@ import db_mutations_resurrection
 from catalog_parse import ATTRIBUTE_KEYS
 from creation_classes import CLASSES
 from death_cost import DeathCost, determine_death_cost
+from starter_zone import get_starter_zone_id
 
 # Canonical attribute order doubles as the deterministic tie-break for the lowest/highest selectors.
 _ATTR_ORDER = ATTRIBUTE_KEYS
@@ -45,9 +46,6 @@ def _primary_attribute(player: dict) -> str:
     if cls is not None:
         return cls.primary_attribute
     return highest_attribute(player["attributes"])
-
-
-_STARTER_ZONE_FALLBACK = "accord_market_square"
 
 
 def resolve_resurrection_anchor(
@@ -86,8 +84,7 @@ def resolve_resurrection_anchor(
     if last_rested and last_rested in locations:
         return last_rested
 
-    starter = next((i for i, loc in locations.items() if "starting_area" in loc.get("tags", [])), None)
-    return starter or _STARTER_ZONE_FALLBACK
+    return get_starter_zone_id(locations)
 
 
 def apply_death_cost(player: dict, cost: DeathCost) -> dict:
