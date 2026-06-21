@@ -14,11 +14,14 @@ from role_archetypes import DISPOSITIONS
 from social_resolution import (
     ARGUMENT_RESISTANCE,
     ARGUMENT_TYPES,
+    CONTESTED_CONSEQUENCE,
     DISPOSITION_DC_MODIFIER,
     DISPOSITION_SHIFT,
+    ContestedResult,
     SocialResult,
     argument_dc_adjust,
     disposition_shift,
+    resolve_contested_social,
     resolve_social_check,
     social_dc_modifier,
 )
@@ -200,3 +203,45 @@ class TestResolveSocialCheckTier3:
             resistance_tags=("pragmatic",),
         )
         assert r.dc > 15
+
+
+class TestResolveContestedSocial:
+    """Tier 2 (spec L689-729): player vs NPC roll, ties to the NPC, always dramatic."""
+
+    def test_player_must_beat_npc_to_succeed(self):
+        assert resolve_contested_social(skill="deception", player_total=18, npc_total=12).success
+        assert not resolve_contested_social(skill="deception", player_total=12, npc_total=18).success
+
+    def test_tie_goes_to_the_npc(self):
+        r = resolve_contested_social(skill="persuasion", player_total=14, npc_total=14)
+        assert not r.success
+        assert r.margin == 0
+
+    def test_contested_is_always_dramatic(self):
+        # Both a blowout win and a razor-thin loss flag dramatic via the M4.5 SSOT.
+        assert resolve_contested_social(skill="intimidation", player_total=25, npc_total=8).dramatic
+        assert resolve_contested_social(skill="intimidation", player_total=10, npc_total=11).dramatic
+
+    def test_success_carries_no_failure_consequence(self):
+        assert resolve_contested_social(skill="deception", player_total=20, npc_total=10).consequence == ""
+
+    def test_failure_consequence_varies_by_skill_and_band(self):
+        # Deception failed by 5+ is harsher than failed by 1-4, and differs from intimidation.
+        mild = resolve_contested_social(skill="deception", player_total=11, npc_total=13)
+        severe = resolve_contested_social(skill="deception", player_total=5, npc_total=18)
+        assert mild.consequence and severe.consequence
+        assert mild.consequence != severe.consequence
+        intim = resolve_contested_social(skill="intimidation", player_total=5, npc_total=18)
+        assert intim.consequence != severe.consequence
+
+    def test_returns_contested_result_with_cue(self):
+        r = resolve_contested_social(skill="insight", player_total=16, npc_total=10)
+        assert isinstance(r, ContestedResult)
+        assert r.narrative_cue
+
+    def test_table_covers_the_four_contested_skills(self):
+        assert set(CONTESTED_CONSEQUENCE) == {"deception", "insight", "persuasion", "intimidation"}
+
+    def test_unknown_contested_skill_fails_loud(self):
+        with pytest.raises(ValueError, match="athletics"):
+            resolve_contested_social(skill="athletics", player_total=10, npc_total=5)

@@ -187,3 +187,86 @@ def resolve_social_check(
         disposition_shift=delta,
         new_disposition=shift_disposition(disposition, delta),
     )
+
+
+# Failure consequence by contested skill and loss band (spec L724-729). A contested exchange
+# is player-skill vs NPC-resist-skill; on a loss the NPC reacts differently per skill, and a
+# wide loss (5+) bites harder than a narrow one. Insight is a contested-only skill (reading
+# motives) and never appears in DISPOSITION_SHIFT.
+CONTESTED_CONSEQUENCE: dict[str, dict[str, str]] = {
+    "deception": {
+        "failed_4": "NPC doesn't believe you, but suspects no malice",
+        "failed_5": "NPC realizes you lied — trust broken, may turn hostile",
+    },
+    "insight": {
+        "failed_4": "You misread the NPC and act on incorrect information",
+        "failed_5": "You misread badly — a convincing but wrong read you act on",
+    },
+    "persuasion": {
+        "failed_4": "NPC declines firmly; no disposition change",
+        "failed_5": "NPC feels manipulated and won't engage on this again",
+    },
+    "intimidation": {
+        "failed_4": "NPC stands firm and calls your bluff",
+        "failed_5": "NPC turns hostile and may attack",
+    },
+}
+
+# Qualitative cue for a contested exchange, keyed off the win/loss margin (player - npc).
+_CONTESTED_CUE: tuple[tuple[int, str], ...] = (
+    (5, "decisive"),
+    (1, "edged out"),
+    (0, "stalemate"),
+    (-4, "outmatched"),
+)
+
+
+@dataclass(frozen=True)
+class ContestedResult:
+    """Outcome of a Tier-2 contested exchange (player skill vs NPC resist skill). Always
+    dramatic; `consequence` is the spec failure text on a loss, empty on a win."""
+
+    success: bool
+    margin: int
+    dramatic: bool
+    context: str
+    narrative_cue: str
+    consequence: str
+
+
+def _contested_band(margin: int) -> str:
+    """Loss band for a contested margin: a 5+ loss is the harsher tier; ties (margin 0) and
+    1-4 losses share the milder tier (a tie goes to the NPC, so it is still a loss)."""
+    return "failed_5" if margin <= -5 else "failed_4"
+
+
+def _contested_cue(margin: int) -> str:
+    for threshold, label in _CONTESTED_CUE:
+        if margin >= threshold:
+            return label
+    return "overpowered"
+
+
+def resolve_contested_social(*, skill: str, player_total: int, npc_total: int) -> ContestedResult:
+    """Resolve a Tier-2 contested social exchange (spec L689-729). Pure: the caller supplies
+    both totals (each d20 + the relevant skill modifier).
+
+    The player must BEAT the NPC — a tie goes to the defender. Contested exchanges are always
+    dramatic (delegated to the M4.5 SSOT via social_stakes="high"). On a loss the result carries
+    the skill-specific consequence text; a win carries none. Raises ValueError for a skill
+    outside the four contested skills.
+    """
+    if skill not in CONTESTED_CONSEQUENCE:
+        raise ValueError(f"unknown contested skill {skill!r}; expected one of {tuple(CONTESTED_CONSEQUENCE)}")
+    margin = player_total - npc_total
+    success = player_total > npc_total
+    verdict = evaluate_dramatic_context(DramaticContext(margin=margin, social_stakes="high"))
+    consequence = "" if success else CONTESTED_CONSEQUENCE[skill][_contested_band(margin)]
+    return ContestedResult(
+        success=success,
+        margin=margin,
+        dramatic=verdict.dramatic,
+        context=verdict.context,
+        narrative_cue=_contested_cue(margin),
+        consequence=consequence,
+    )
