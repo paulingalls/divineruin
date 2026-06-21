@@ -7,7 +7,9 @@ disposition decides whether combat ends. Every de-escalation roll is always-dram
 covered in the sibling test classes below.
 """
 
+from combat_phase import PhaseBeat, advance_combat_phase
 from combat_resolution import DeescalationOutcome, resolve_deescalation
+from tests.combat._helpers import _make_combat_state
 
 
 class TestResolveDeescalation:
@@ -56,3 +58,34 @@ class TestResolveDeescalation:
         )
         assert not hostile.ends_combat  # 16 < 15 + 6
         assert friendly.ends_combat  # 16 >= 15 + 0
+
+
+class TestWrapDeescalationEndCondition:
+    def _wrap_of(self, state):
+        _, advance = advance_combat_phase(state)
+        assert advance.wrap is not None
+        return advance.wrap
+
+    def test_deescalated_ends_combat_while_enemies_still_stand(self):
+        # Precedence: the enemy is alive (no victory), yet a landed argument ends combat.
+        state = _make_combat_state(enemy_fallen=False)
+        state.beat = PhaseBeat.WRAP
+        state.deescalated = True
+        wrap = self._wrap_of(state)
+        assert wrap.combat_ended
+        assert wrap.outcome == "deescalated"
+
+    def test_no_deescalation_leaves_ongoing_combat_unchanged(self):
+        state = _make_combat_state(enemy_fallen=False)
+        state.beat = PhaseBeat.WRAP
+        wrap = self._wrap_of(state)
+        assert not wrap.combat_ended
+        assert wrap.outcome is None
+
+    def test_no_deescalation_still_resolves_victory(self):
+        # Regression: the existing all-enemies-fallen victory path is untouched.
+        state = _make_combat_state(enemy_fallen=True)
+        state.beat = PhaseBeat.WRAP
+        wrap = self._wrap_of(state)
+        assert wrap.combat_ended
+        assert wrap.outcome == "victory"
