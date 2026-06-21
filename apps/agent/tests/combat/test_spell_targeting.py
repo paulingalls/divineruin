@@ -140,3 +140,41 @@ class TestRevivifyGateKeysOnTarget:
         # No target_id: the caster IS the target — a Hollow-killed self-cast stays refused (back-compat).
         with pytest.raises(ToolError, match="Hollow-killed"):
             await _cast(_revival(), caster=_player(hollow_killed=True))
+
+
+class TestRevivifyTargetRerouteE2E:
+    """Real-PG (dev DB) e2e: the rerouted Revivify refusal reads the targeted corpse's PERSISTED
+    hollow_killed — the caster's own flag is irrelevant. Drives the real cast core via
+    _resolve_cast(conn=pool); only get_player touches the DB (the revival spell is focus/resonance
+    0, so no write path runs). Story-001 AC #4."""
+
+    @pytest.mark.asyncio
+    async def test_revival_refused_on_hollow_killed_target_allowed_on_living(self, dev_db_pool):
+        from session_data import SessionData
+
+        pool = dev_db_pool
+        caster_id, corpse_id, ally_id = "m11_caster", "m11_corpse", "m11_ally"
+        rows = {
+            caster_id: {"player_id": caster_id, "class": "cleric", "level": 5, "focus": {"current": 10, "max": 10}},
+            corpse_id: {"player_id": corpse_id, "class": "warrior", "level": 5, "hollow_killed": True},
+            ally_id: {"player_id": ally_id, "class": "scout", "level": 4},
+        }
+        for pid, data in rows.items():
+            await pool.execute("DELETE FROM players WHERE player_id = $1", pid)
+            await pool.execute("INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)", pid, json.dumps(data))
+        spells_mod = MagicMock(get_spell=MagicMock(return_value=_revival()))
+        session = SessionData(player_id=caster_id, location_id="accord_guild_hall", room=None)
+        try:
+            # Targeting the Hollow-killed corpse — refused via the TARGET's persisted flag.
+            with pytest.raises(ToolError, match="Hollow-killed"):
+                await spell_casting._resolve_cast(
+                    session, "divine_revivify", conn=pool, target_id=corpse_id, spells_mod=spells_mod
+                )
+            # Targeting a living ally — resolves; the cast packet names the target.
+            result = await spell_casting._resolve_cast(
+                session, "divine_revivify", conn=pool, target_id=ally_id, spells_mod=spells_mod
+            )
+            assert result.packet["target_id"] == ally_id
+        finally:
+            for pid in rows:
+                await pool.execute("DELETE FROM players WHERE player_id = $1", pid)
