@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier
+from social_resolution import resolve_contested_social, resolve_social_check
 
 
 @dataclass(frozen=True)
@@ -177,3 +178,64 @@ def is_hollow_zone(corruption_level: int) -> bool:
     """Whether the session's corruption level marks a Hollow zone, doubling
     durability loss (corruption_level >= 2)."""
     return corruption_level >= _HOLLOW_ZONE_CORRUPTION
+
+
+# --- Diplomat de-escalation (M4.6a story-004, spec game_mechanics_combat.md:175-183) ---
+
+
+@dataclass(frozen=True)
+class DeescalationOutcome:
+    """Result of one de-escalation attempt: a contested CHA-vs-WIS gate, then (if the
+    enemy pauses) one argument round against the scene-local hostile disposition. Always
+    dramatic (M4.5 de_escalate). ``ends_combat`` drives the engine's combat-end at WRAP."""
+
+    scene_entered: bool
+    success: bool
+    ends_combat: bool
+    narrative_cue: str
+    dramatic: bool = True
+    context: str = "de_escalate"
+
+
+def resolve_deescalation(
+    *,
+    cha_total: int,
+    enemy_wis_total: int,
+    argument_total: int,
+    base_dc: int = 15,
+    enemy_disposition: str = "hostile",
+) -> DeescalationOutcome:
+    """Resolve a Diplomat's de-escalation attempt (pure; the caller rolls the d20s).
+
+    The contested CHA(player) vs WIS(lead enemy) check decides whether the enemy pauses
+    to listen (scene_entered); only then does the single argument round resolve against
+    the scene-local disposition (hostile by default — the hardest DC). Combat ends only
+    when the enemy pauses AND the argument lands. The dramatic verdict is delegated to the
+    M4.5 SSOT via ``ability="de_escalate"`` so the moment always surfaces on the HUD.
+    """
+    verdict = evaluate_dramatic_context(DramaticContext(ability="de_escalate"))
+    contested = resolve_contested_social(skill="persuasion", player_total=cha_total, npc_total=enemy_wis_total)
+    if not contested.success:
+        return DeescalationOutcome(
+            scene_entered=False,
+            success=False,
+            ends_combat=False,
+            narrative_cue="they refuse to even pause",
+            dramatic=verdict.dramatic,
+            context=verdict.context,
+        )
+    argument = resolve_social_check(
+        disposition=enemy_disposition,
+        skill="persuasion",
+        roll_total=argument_total,
+        base_dc=base_dc,
+        stakes="high",
+    )
+    return DeescalationOutcome(
+        scene_entered=True,
+        success=argument.success,
+        ends_combat=argument.success,
+        narrative_cue=argument.narrative_cue,
+        dramatic=verdict.dramatic,
+        context=verdict.context,
+    )
