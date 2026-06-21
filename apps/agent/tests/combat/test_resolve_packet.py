@@ -408,7 +408,7 @@ class TestResolveAbilityPacket:
         return mod
 
     async def test_player_ability_resolves_and_stashes_castresult(self):
-        from combat_support import AbilityCastOutcome, _resolve_ability_packet
+        from combat_ability import AbilityCastOutcome, _resolve_ability_packet
         from declarations import Declaration, DeclarationType
         from spell_casting import _UNCHANGED, CastResult
 
@@ -442,7 +442,7 @@ class TestResolveAbilityPacket:
         assert kwargs["suppress_resonance_changed"] is True
 
     async def test_non_player_ability_is_wasted(self):
-        from combat_support import AbilityCastOutcome, _resolve_ability_packet
+        from combat_ability import AbilityCastOutcome, _resolve_ability_packet
         from declarations import Declaration, DeclarationType
 
         session = make_context().userdata
@@ -463,7 +463,7 @@ class TestResolveAbilityPacket:
         assert outcome.cast_result is None
 
     async def test_missing_action_is_wasted(self):
-        from combat_support import AbilityCastOutcome, _resolve_ability_packet
+        from combat_ability import AbilityCastOutcome, _resolve_ability_packet
         from declarations import Declaration, DeclarationType
 
         session = make_context().userdata

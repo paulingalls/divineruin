@@ -25,16 +25,15 @@ import db_queries
 import fatigue_narration
 import resonance_events
 import spell_casting
-from combat_end import _end_combat_db, _end_combat_finish
-from combat_events import EventSink, scratch_guard
-from combat_support import (
+from combat_ability import (
     AbilityCastOutcome,
     _attach_riders,
     _find_action,
-    _require_combat,
     _resolve_ability_packet,
-    _resolve_attack_packet,
 )
+from combat_end import _end_combat_db, _end_combat_finish
+from combat_events import EventSink, scratch_guard
+from combat_support import _require_combat, _resolve_attack_packet
 from db_errors import db_tool
 from declarations import DeclarationType
 from session_data import SessionData
