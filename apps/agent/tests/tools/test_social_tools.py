@@ -1,0 +1,131 @@
+"""Tests for the social-check mode of the `check` verb (M4.6a / story-002).
+
+`_check_social_impl` (folded into check via mode="social") reads an NPC's disposition,
+rolls the player's social skill, drives the pure social_resolution engine, persists any
+disposition change, and returns a narration cue. These tests drive the impl directly with
+mocked db seams + a fixed rng; the dispatch wiring on `check` is covered at the bottom.
+"""
+
+import json
+import random
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+import event_types as E
+from role_archetypes import shift_disposition
+from social_tools import _check_social_impl
+from tools._helpers import SAMPLE_PLAYER, _make_context
+
+
+class _FixedRng(random.Random):
+    """A random.Random whose d20 is deterministic (dice.roll uses randint(1, n))."""
+
+    def __init__(self, value: int):
+        super().__init__()
+        self._value = value
+
+    def randint(self, a: int, b: int) -> int:
+        return self._value
+
+
+def _social_mocks(recorded: str | None = "neutral"):
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+    queries.get_npc_disposition = AsyncMock(return_value=recorded)
+    mutations = MagicMock()
+    mutations.set_npc_disposition = AsyncMock()
+    content = MagicMock()
+    content.get_npc = AsyncMock(return_value={"id": "merchant_1", "default_disposition": "neutral"})
+    return queries, mutations, content
+
+
+def _ctx_with_bus():
+    ctx = _make_context()
+    ctx.userdata.event_bus = MagicMock()
+    return ctx
+
+
+def _published(ctx):
+    return [call.args[0] for call in ctx.userdata.event_bus.publish.call_args_list]
+
+
+class TestCheckSocialHappyPath:
+    @pytest.mark.asyncio
+    async def test_returns_social_outcome_with_cue(self):
+        queries, mutations, content = _social_mocks(recorded="neutral")
+        result = json.loads(
+            await _check_social_impl(
+                _ctx_with_bus(),
+                "merchant_1",
+                "persuasion",
+                "moderate",
+                queries=queries,
+                mutations=mutations,
+                content=content,
+                rng=_FixedRng(11),
+            )
+        )
+        assert result["npc_id"] == "merchant_1"
+        assert result["skill"] == "persuasion"
+        assert result["outcome"] in ("success", "failure")
+        assert result["narrative_cue"]
+        assert result["previous_disposition"] == "neutral"
+        assert result["new_disposition"] in ("hostile", "unfriendly", "neutral", "friendly", "trusted")
+
+    @pytest.mark.asyncio
+    async def test_dc_includes_disposition_modifier(self):
+        # base moderate DC is 12; a hostile NPC adds +6, a friendly one subtracts 3.
+        queries, mutations, content = _social_mocks(recorded="hostile")
+        hostile = json.loads(
+            await _check_social_impl(
+                _ctx_with_bus(),
+                "thug",
+                "intimidation",
+                "moderate",
+                queries=queries,
+                mutations=mutations,
+                content=content,
+                rng=_FixedRng(11),
+            )
+        )
+        assert hostile["dc"] == 18
+        assert hostile["margin"] == hostile["total"] - hostile["dc"]
+
+    @pytest.mark.asyncio
+    async def test_new_disposition_is_resolver_delta_applied_to_previous(self):
+        # Wiring check: the tool applies exactly the resolver's clamped shift, no extra math.
+        queries, mutations, content = _social_mocks(recorded="neutral")
+        r = json.loads(
+            await _check_social_impl(
+                _ctx_with_bus(),
+                "merchant_1",
+                "persuasion",
+                "moderate",
+                queries=queries,
+                mutations=mutations,
+                content=content,
+                rng=_FixedRng(15),
+            )
+        )
+        assert r["new_disposition"] == shift_disposition(r["previous_disposition"], r["disposition_shift"])
+
+    @pytest.mark.asyncio
+    async def test_emits_dice_roll_event(self):
+        queries, mutations, content = _social_mocks()
+        ctx = _ctx_with_bus()
+        await _check_social_impl(
+            ctx,
+            "merchant_1",
+            "persuasion",
+            "moderate",
+            queries=queries,
+            mutations=mutations,
+            content=content,
+            rng=_FixedRng(11),
+        )
+        events = _published(ctx)
+        assert any(e.event_type == E.DICE_ROLL for e in events)
+        dice = next(e for e in events if e.event_type == E.DICE_ROLL)
+        assert dice.payload["roll_type"] == "social_check"
+        assert dice.payload["skill"] == "persuasion"
