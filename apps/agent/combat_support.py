@@ -85,6 +85,7 @@ async def _resolve_ability_packet(
         decl.action,
         conn=conn,
         player=player,
+        target_id=decl.target_id,
         suppress_resonance_changed=True,
     )
     cast_outcome.cast_result = result
