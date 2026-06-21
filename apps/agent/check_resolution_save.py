@@ -43,11 +43,19 @@ def resolve_saving_throw(
     dc: int,
     effect_on_fail: str,
     rng: random.Random | None = None,
+    dc_mod: int = 0,
 ) -> SavingThrowResult:
     save_lower = save_type.lower()
     valid_saves = {"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
     if save_lower not in valid_saves:
         raise ValueError(f"Unknown save type: '{save_type}'")
+
+    # Encounter-role overlay (M4.7, story-001): a role-boosted SOURCE (e.g. a Boss ability) makes
+    # its target's save harder via dc_mod (Boss +2, Elite +1, Minion -1). Defaults to identity. The
+    # effective DC is reported on the packet so narration/UI see the real threshold. No live caller
+    # threads this yet — enemy abilities don't impose target saves through this resolver until the
+    # ability-firing path lands (story-003); the capability is wired here at the SSOT.
+    dc = dc + dc_mod
 
     attributes = player_data.get("attributes", {})
     score = attributes.get(save_lower, 10)

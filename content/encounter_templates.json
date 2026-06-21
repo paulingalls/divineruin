@@ -29,7 +29,8 @@
           }
         ],
         "xp_value": 25,
-        "sound_signature": "hollow_static_hiss"
+        "sound_signature": "hollow_static_hiss",
+        "role": "standard"
       },
       {
         "id": "shadeling_2",
@@ -55,7 +56,8 @@
           }
         ],
         "xp_value": 25,
-        "sound_signature": "hollow_static_hiss"
+        "sound_signature": "hollow_static_hiss",
+        "role": "standard"
       },
       {
         "id": "shadeling_3",
@@ -81,7 +83,8 @@
           }
         ],
         "xp_value": 25,
-        "sound_signature": "hollow_static_hiss"
+        "sound_signature": "hollow_static_hiss",
+        "role": "standard"
       }
     ]
   },
@@ -122,7 +125,8 @@
           }
         ],
         "xp_value": 100,
-        "sound_signature": "hollow_wrong_footsteps"
+        "sound_signature": "hollow_wrong_footsteps",
+        "role": "standard"
       },
       {
         "id": "mawling_2",
@@ -155,7 +159,8 @@
           }
         ],
         "xp_value": 100,
-        "sound_signature": "hollow_wrong_footsteps"
+        "sound_signature": "hollow_wrong_footsteps",
+        "role": "standard"
       }
     ]
   },
@@ -203,7 +208,8 @@
           }
         ],
         "xp_value": 250,
-        "sound_signature": "hollow_wrong_footsteps"
+        "sound_signature": "hollow_wrong_footsteps",
+        "role": "elite"
       }
     ]
   },
@@ -244,7 +250,8 @@
           }
         ],
         "xp_value": 200,
-        "sound_signature": "hollow_whisper"
+        "sound_signature": "hollow_whisper",
+        "role": "standard"
       }
     ]
   },
@@ -285,7 +292,8 @@
           }
         ],
         "xp_value": 100,
-        "sound_signature": "hollow_growl"
+        "sound_signature": "hollow_growl",
+        "role": "standard"
       },
       {
         "id": "hollow_drift_1",
@@ -311,7 +319,8 @@
           }
         ],
         "xp_value": 50,
-        "sound_signature": "hollow_whisper"
+        "sound_signature": "hollow_whisper",
+        "role": "minion"
       },
       {
         "id": "hollow_drift_2",
@@ -337,7 +346,8 @@
           }
         ],
         "xp_value": 50,
-        "sound_signature": "hollow_whisper"
+        "sound_signature": "hollow_whisper",
+        "role": "minion"
       }
     ]
   },
@@ -385,7 +395,14 @@
           }
         ],
         "xp_value": 450,
-        "sound_signature": "hollow_deep_resonance"
+        "sound_signature": "hollow_deep_resonance",
+        "role": "boss",
+        "signature_ability": {
+          "name": "Reality Collapse",
+          "description": "The Warden tears the room in two and for a heartbeat both versions overlap; anyone caught between them must steady their mind or be flung to the ground.",
+          "save": "wisdom"
+        },
+        "legendary_actions": 1
       }
     ]
   },
@@ -426,7 +443,8 @@
           }
         ],
         "xp_value": 50,
-        "sound_signature": "bandit_snarl"
+        "sound_signature": "bandit_snarl",
+        "role": "minion"
       },
       {
         "id": "bandit_2",
@@ -459,7 +477,8 @@
           }
         ],
         "xp_value": 50,
-        "sound_signature": "bandit_snarl"
+        "sound_signature": "bandit_snarl",
+        "role": "minion"
       },
       {
         "id": "bandit_3",
@@ -492,7 +511,8 @@
           }
         ],
         "xp_value": 50,
-        "sound_signature": "bandit_snarl"
+        "sound_signature": "bandit_snarl",
+        "role": "minion"
       },
       {
         "id": "bandit_4",
@@ -525,7 +545,8 @@
           }
         ],
         "xp_value": 50,
-        "sound_signature": "bandit_snarl"
+        "sound_signature": "bandit_snarl",
+        "role": "minion"
       },
       {
         "id": "bandit_captain",
@@ -565,7 +586,8 @@
           }
         ],
         "xp_value": 200,
-        "sound_signature": "bandit_captain_bark"
+        "sound_signature": "bandit_captain_bark",
+        "role": "elite"
       }
     ]
   },
@@ -607,7 +629,8 @@
           }
         ],
         "xp_value": 150,
-        "sound_signature": "ashmark_soldier_advance"
+        "sound_signature": "ashmark_soldier_advance",
+        "role": "standard"
       },
       {
         "id": "ashmark_soldier_2",
@@ -640,7 +663,8 @@
           }
         ],
         "xp_value": 150,
-        "sound_signature": "ashmark_soldier_advance"
+        "sound_signature": "ashmark_soldier_advance",
+        "role": "standard"
       },
       {
         "id": "ashmark_soldier_3",
@@ -673,7 +697,8 @@
           }
         ],
         "xp_value": 150,
-        "sound_signature": "ashmark_soldier_advance"
+        "sound_signature": "ashmark_soldier_advance",
+        "role": "standard"
       },
       {
         "id": "ashmark_soldier_4",
@@ -706,7 +731,8 @@
           }
         ],
         "xp_value": 150,
-        "sound_signature": "ashmark_soldier_advance"
+        "sound_signature": "ashmark_soldier_advance",
+        "role": "standard"
       },
       {
         "id": "ashmark_sergeant",
@@ -739,7 +765,8 @@
           }
         ],
         "xp_value": 250,
-        "sound_signature": "ashmark_sergeant_order"
+        "sound_signature": "ashmark_sergeant_order",
+        "role": "elite"
       }
     ]
   },
@@ -787,7 +814,8 @@
           }
         ],
         "xp_value": 150,
-        "sound_signature": "cult_chant"
+        "sound_signature": "cult_chant",
+        "role": "standard"
       },
       {
         "id": "cult_fanatic_2",
@@ -827,7 +855,8 @@
           }
         ],
         "xp_value": 150,
-        "sound_signature": "cult_chant"
+        "sound_signature": "cult_chant",
+        "role": "standard"
       },
       {
         "id": "cultist_1",
@@ -853,7 +882,8 @@
           }
         ],
         "xp_value": 40,
-        "sound_signature": "cult_murmur"
+        "sound_signature": "cult_murmur",
+        "role": "minion"
       },
       {
         "id": "cultist_2",
@@ -879,7 +909,8 @@
           }
         ],
         "xp_value": 40,
-        "sound_signature": "cult_murmur"
+        "sound_signature": "cult_murmur",
+        "role": "minion"
       },
       {
         "id": "cultist_3",
@@ -905,7 +936,8 @@
           }
         ],
         "xp_value": 40,
-        "sound_signature": "cult_murmur"
+        "sound_signature": "cult_murmur",
+        "role": "minion"
       },
       {
         "id": "cultist_4",
@@ -931,7 +963,8 @@
           }
         ],
         "xp_value": 40,
-        "sound_signature": "cult_murmur"
+        "sound_signature": "cult_murmur",
+        "role": "minion"
       },
       {
         "id": "cult_leader",
@@ -971,7 +1004,14 @@
           }
         ],
         "xp_value": 300,
-        "sound_signature": "cult_leader_incant"
+        "sound_signature": "cult_leader_incant",
+        "role": "boss",
+        "signature_ability": {
+          "name": "Mantle of Ruin",
+          "description": "Shadow pours from the leader's hands, smothering the light and dragging cold through everything living nearby.",
+          "save": "constitution"
+        },
+        "legendary_actions": 1
       }
     ]
   },
@@ -1019,7 +1059,14 @@
           }
         ],
         "xp_value": 400,
-        "sound_signature": "hollow_knight_groan"
+        "sound_signature": "hollow_knight_groan",
+        "role": "boss",
+        "signature_ability": {
+          "name": "Corruption Pulse",
+          "description": "A silent shockwave of grey rot expands from the knight, and the Hollow reaches for whatever it touches.",
+          "save": "constitution"
+        },
+        "legendary_actions": 1
       },
       {
         "id": "mawling_1",
@@ -1052,7 +1099,8 @@
           }
         ],
         "xp_value": 75,
-        "sound_signature": "hollow_mawling_screech"
+        "sound_signature": "hollow_mawling_screech",
+        "role": "standard"
       },
       {
         "id": "mawling_2",
@@ -1085,7 +1133,8 @@
           }
         ],
         "xp_value": 75,
-        "sound_signature": "hollow_mawling_screech"
+        "sound_signature": "hollow_mawling_screech",
+        "role": "standard"
       },
       {
         "id": "mawling_3",
@@ -1118,7 +1167,8 @@
           }
         ],
         "xp_value": 75,
-        "sound_signature": "hollow_mawling_screech"
+        "sound_signature": "hollow_mawling_screech",
+        "role": "standard"
       },
       {
         "id": "shadeling_1",
@@ -1144,7 +1194,8 @@
           }
         ],
         "xp_value": 40,
-        "sound_signature": "hollow_shadeling_hiss"
+        "sound_signature": "hollow_shadeling_hiss",
+        "role": "minion"
       },
       {
         "id": "shadeling_2",
@@ -1170,7 +1221,8 @@
           }
         ],
         "xp_value": 40,
-        "sound_signature": "hollow_shadeling_hiss"
+        "sound_signature": "hollow_shadeling_hiss",
+        "role": "minion"
       },
       {
         "id": "shadeling_3",
@@ -1196,7 +1248,8 @@
           }
         ],
         "xp_value": 40,
-        "sound_signature": "hollow_shadeling_hiss"
+        "sound_signature": "hollow_shadeling_hiss",
+        "role": "minion"
       },
       {
         "id": "shadeling_4",
@@ -1222,7 +1275,8 @@
           }
         ],
         "xp_value": 40,
-        "sound_signature": "hollow_shadeling_hiss"
+        "sound_signature": "hollow_shadeling_hiss",
+        "role": "minion"
       },
       {
         "id": "shadeling_5",
@@ -1248,7 +1302,8 @@
           }
         ],
         "xp_value": 40,
-        "sound_signature": "hollow_shadeling_hiss"
+        "sound_signature": "hollow_shadeling_hiss",
+        "role": "minion"
       },
       {
         "id": "shadeling_6",
@@ -1274,7 +1329,8 @@
           }
         ],
         "xp_value": 40,
-        "sound_signature": "hollow_shadeling_hiss"
+        "sound_signature": "hollow_shadeling_hiss",
+        "role": "minion"
       }
     ]
   }

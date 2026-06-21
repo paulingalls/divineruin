@@ -59,6 +59,46 @@ def test_enhancers_field_roundtrips_and_defaults_empty() -> None:
     assert all(p.enhancers == [] for p in legacy_state.participants)
 
 
+def test_role_fields_roundtrip_and_default_for_legacy_rows() -> None:
+    """story-001 (M4.7): a participant's encounter-role fields (role, attack_mod, damage_mult,
+    dc_mod, legendary_actions, signature_ability) survive the asdict/from_dict JSONB round-trip,
+    and a row written before they existed rehydrates to the identity defaults. Pure, no DB."""
+    state = _make_combat_state()
+    enemy = state.get_participant("goblin_scout_1")
+    assert enemy is not None
+    enemy.role = "boss"
+    enemy.attack_mod = 2
+    enemy.damage_mult = 1.5
+    enemy.dc_mod = 2
+    enemy.legendary_actions = 1
+    enemy.signature_ability = {"name": "Rally"}
+
+    rehydrated = CombatState.from_dict(state.to_dict())
+    re = rehydrated.get_participant("goblin_scout_1")
+    assert re is not None
+    assert re.role == "boss"
+    assert re.attack_mod == 2
+    assert re.damage_mult == 1.5
+    assert re.dc_mod == 2
+    assert re.legendary_actions == 1
+    assert re.signature_ability == {"name": "Rally"}
+
+    # Backward compat: a row missing the new fields falls back to the identity defaults — players
+    # and pre-M4.7 enemies resolve exactly as before.
+    legacy = state.to_dict()
+    role_fields = ("role", "attack_mod", "damage_mult", "dc_mod", "legendary_actions", "signature_ability")
+    for p in legacy["participants"]:
+        for field_name in role_fields:
+            p.pop(field_name, None)
+    p0 = CombatState.from_dict(legacy).participants[0]
+    assert p0.role == "standard"
+    assert p0.attack_mod == 0
+    assert p0.damage_mult == 1.0
+    assert p0.dc_mod == 0
+    assert p0.legendary_actions == 0
+    assert p0.signature_ability is None
+
+
 def _mid_combat_state(combat_id: str) -> CombatState:
     """A mid-phase CombatState built from the canonical combat fixture, then advanced into a
     state that exercises every field the round-trip must preserve: a non-default beat, populated

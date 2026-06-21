@@ -42,6 +42,48 @@ class TestResolveAttack:
                 return
         pytest.fail("Could not find seed for miss")
 
+    def test_role_attack_mod_raises_to_hit(self):
+        # M4.7 story-001: an Elite/Boss flat attack_mod lands a roll that misses at base. AC 18,
+        # base mod +4 → needs d20>=14; with attack_mod +5 → needs d20>=9. Same seed both runs.
+        for seed in range(1000):
+            d20 = random.Random(seed).randint(1, 20)
+            if 9 <= d20 <= 13:
+                base = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 18, 20, rng=random.Random(seed))
+                boosted = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 18, 20, rng=random.Random(seed), attack_mod=5)
+                assert base.hit is False
+                assert boosted.hit is True
+                return
+        pytest.fail("Could not find seed for attack_mod flip")
+
+    def test_role_damage_mult_scales_damage(self):
+        # M4.7 story-001: damage_mult scales the final rolled total (int-truncated). hp=50 so no kill
+        # interferes; same seed keeps the dice identical across the three runs.
+        for seed in range(1000):
+            d20 = random.Random(seed).randint(1, 20)
+            if d20 != 1 and d20 + 4 >= 12:
+                base = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 50, rng=random.Random(seed))
+                halved = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 50, rng=random.Random(seed), damage_mult=0.75)
+                boosted = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 50, rng=random.Random(seed), damage_mult=1.5)
+                assert base.damage > 0
+                assert halved.damage == int(base.damage * 0.75)
+                assert boosted.damage == int(base.damage * 1.5)
+                return
+        pytest.fail("Could not find seed for damage_mult scaling")
+
+    def test_role_modifiers_default_to_identity(self):
+        # The player path passes no role modifiers; explicit identity must equal the bare call.
+        for seed in range(1000):
+            d20 = random.Random(seed).randint(1, 20)
+            if d20 != 1 and d20 + 4 >= 12:
+                bare = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 50, rng=random.Random(seed))
+                identity = resolve_attack(
+                    SAMPLE_PLAYER, self.WEAPON, 12, 50, rng=random.Random(seed), attack_mod=0, damage_mult=1.0
+                )
+                assert bare.hit == identity.hit
+                assert bare.damage == identity.damage
+                return
+        pytest.fail("Could not find seed for identity check")
+
     def test_critical_hit_doubles_damage(self):
         for seed in range(1000):
             rng = random.Random(seed)
