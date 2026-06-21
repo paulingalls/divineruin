@@ -44,8 +44,9 @@ export const QUEST_UPDATE = "quest_update" as const;
 export const QUEST_UPDATED = "quest_updated" as const;
 
 // Currency (M4.7 story-002) — mirrors apps/agent/event_types.py CURRENCY_GAINED. Coin granted on
-// combat victory. Payload {player_id, amount, currency, source, new_balance}; the HUD renders a
-// glanceable "+N sp" chip from {amount, currency} (see components/hud/currency-display.ts).
+// combat victory, converted sp->gp at the grant boundary (story-008). Payload {player_id, amount,
+// currency, source, new_balance} in gold crowns; the HUD renders a glanceable "+N gp" chip from
+// {amount, currency} (see components/hud/currency-display.ts).
 export const CURRENCY_GAINED = "currency_gained" as const;
 
 // Magic (M3.1) — mirrors apps/agent/event_types.py RESONANCE_CHANGED.

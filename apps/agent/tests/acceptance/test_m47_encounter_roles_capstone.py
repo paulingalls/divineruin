@@ -165,12 +165,13 @@ async def test_m47_full_combat_to_victory_grants_role_scaled_rewards(reset_db_po
     assert payload["outcome"] == "victory"
     # Role XP multiplier applied ONCE across all roles: 2*150 + 4*int(40*0.5) + int(300*2.0) = 980.
     assert payload["xp_total"] == 980
-    # humanoid standards + boss carry coin (minions add 0), so the pooled drop is positive.
-    assert payload["currency_silver"] > 0
+    # humanoid standards + boss carry coin (minions add 0), so the pooled drop is positive (gold,
+    # converted from the silver drop at the grant boundary — story-008).
+    assert payload["currency_gold"] > 0
     assert boss_legendary_through_rounds, "the boss held a legendary action while alive across rounds"
 
     # Currency persisted to the player; the combat SSOT was cleared and deleted.
     player = await db_queries.get_player(player_id, conn=pool)
-    assert (player or {}).get("gold", 0) >= payload["currency_silver"]
+    assert (player or {}).get("gold", 0) >= payload["currency_gold"]
     assert ctx.userdata.combat_state is None
     assert await pool.fetchrow("SELECT 1 FROM combat_instances WHERE combat_id = $1", combat_id) is None
