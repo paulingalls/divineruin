@@ -10,11 +10,14 @@ get_player-based limitation (shared with out-of-combat), unchanged here.
 Forwarding is a mock-resolver unit; the revival-gate-on-target behavior is one real-PG e2e (dev DB).
 """
 
+import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sample_fixtures import make_context
+from livekit.agents.llm import ToolError
+from sample_fixtures import make_context, make_mock_room
 
+import spell_casting
 from combat_support import AbilityCastOutcome, _resolve_ability_packet
 from declarations import Declaration, DeclarationType
 from session_data import CombatParticipant
@@ -79,3 +82,58 @@ class TestAbilityForwardsTargetId:
 
         _args, kwargs = cast_resolver._resolve_cast.call_args
         assert kwargs["target_id"] is None  # self-cast ABILITY stays target-less
+
+
+class TestInCombatRevivalGateE2E:
+    """Real-PG (dev DB) e2e: an in-combat revival ABILITY routes the REAL _resolve_cast (real catalog
+    divine_revivify) and keys the Hollow-killed gate on the TARGET ally — through the in-combat path.
+    Story-003 AC #2/#4."""
+
+    @staticmethod
+    async def _seed(pool, player_id: str, **overrides) -> None:
+        data = {"player_id": player_id, "class": "cleric", "level": 5, "focus": {"current": 10, "max": 10}}
+        data.update(overrides)
+        await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+        await pool.execute("INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)", player_id, json.dumps(data))
+
+    @pytest.mark.asyncio
+    async def test_incombat_revival_keys_gate_on_target(self, dev_db_pool):
+        pool = dev_db_pool
+        caster_id, hollow_ally, living_ally = "s003_caster", "s003_hollow_ally", "s003_living_ally"
+        await self._seed(pool, caster_id)  # living caster, full Focus
+        await self._seed(pool, hollow_ally, hollow_killed=True)
+        await self._seed(pool, living_ally)
+        session = make_context(player_id=caster_id, room=make_mock_room()).userdata
+        caster = CombatParticipant(
+            id=caster_id, name="Lyra", type="player", initiative=15, hp_current=20, hp_max=20, ac=14
+        )
+        try:
+            # Targeting the Hollow-killed ally — refused via the TARGET's persisted flag (caster living).
+            decl_h = Declaration(type=DeclarationType.ABILITY, action="divine_revivify", target_id=hollow_ally)
+            with pytest.raises(ToolError, match="Hollow-killed"):
+                await _resolve_ability_packet(
+                    session,
+                    caster,
+                    decl_h,
+                    cast_resolver=spell_casting,
+                    conn=pool,
+                    player=None,
+                    cast_outcome=AbilityCastOutcome(),
+                )
+
+            # Targeting a living ally — resolves; the in-combat cast packet carries target_id.
+            decl_l = Declaration(type=DeclarationType.ABILITY, action="divine_revivify", target_id=living_ally)
+            summary = await _resolve_ability_packet(
+                session,
+                caster,
+                decl_l,
+                cast_resolver=spell_casting,
+                conn=pool,
+                player=None,
+                cast_outcome=AbilityCastOutcome(),
+            )
+            assert summary["resolved"] is True
+            assert summary["cast"]["target_id"] == living_ally
+        finally:
+            for pid in (caster_id, hollow_ally, living_ally):
+                await pool.execute("DELETE FROM players WHERE player_id = $1", pid)
