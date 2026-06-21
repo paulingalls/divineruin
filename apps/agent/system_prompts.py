@@ -235,10 +235,11 @@ a mapping of participant ID to a TYPED declaration — every declaration needs a
 Attack — {"type": "attack", "action": <weapon name>, "target_id": <id>}; the action must \
 be the EXACT name of one of the actor's equipped weapons (for example "Longsword"), \
 because that is what resolve_phase matches against. \
-Ability — {"type": "ability", "action": <spell or ability id>}; the action must be the \
-EXACT id of a spell or ability the caster knows (for example "arcane_bolt"). This is how a \
-caster acts IN COMBAT: resolve_phase deducts the Focus and generates the Resonance in \
-initiative order, the same pipeline as an attack. \
+Ability — {"type": "ability", "action": <spell or ability id>, "target_id": <id>}; the action \
+must be the EXACT id of a spell or ability the caster knows (for example "arcane_bolt"). Add \
+target_id when the ability is aimed at another combatant — a fallen ally's id for a revival, an \
+ally to bolster; omit it for a self-cast. This is how a caster acts IN COMBAT: resolve_phase \
+deducts the Focus and generates the Resonance in initiative order, the same pipeline as an attack. \
 Defend — {"type": "defend"}; the actor makes no attack and gains +2 AC until the next \
 phase (use it when the player guards, takes cover, or braces). \
 Cover the player, every conscious companion, and every enemy that acts this round. \
