@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_mock_room
 
@@ -69,12 +70,9 @@ async def test_revival_on_hollow_killed_target_refused_caster_untouched(reset_db
     assert await dmr.read_hollow_killed(caster_id, conn=pool) is False  # caster is NOT Hollow-killed
 
     ctx = make_context(player_id=caster_id, room=make_mock_room())
-    try:
+    # Target-keyed: the living caster would NOT be refused under the reverted caster-keyed wire.
+    with pytest.raises(ToolError, match="Hollow-killed"):
         await _cast_spell_impl(ctx, _REVIVAL, target_id=corpse_id)
-        raise AssertionError("expected a Hollow-killed refusal")
-    except ToolError as exc:
-        # Target-keyed: the living caster would NOT be refused under the reverted caster-keyed wire.
-        assert "Hollow-killed" in str(exc)
 
     # The gate fired before any Focus/Resonance write — the caster's Focus is untouched.
     reloaded = await db_queries.get_player(caster_id, conn=pool)
