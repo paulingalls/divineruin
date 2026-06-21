@@ -17,8 +17,9 @@ import db_queries
 import encounter_loot
 import event_types as E
 import resurrection
+from combat_durability import _accrue_durability, _find_equipped
 from combat_events import EventSink, emit_or_publish
-from combat_support import _accrue_durability, _find_equipped, _publish_sounds, _require_combat
+from combat_support import _publish_sounds, _require_combat
 from db_errors import db_tool
 from region_types import REGION_CITY
 from session_data import CombatState, SessionData

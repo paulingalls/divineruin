@@ -27,7 +27,7 @@ from sample_fixtures import make_context, make_mock_room
 import combat_resolution
 import db
 import durability
-from combat_support import _accrue_durability
+from combat_durability import _accrue_durability
 from pricing_queries import get_economy_pricing
 from recipe_validation import validate_magic_item_craft_tier
 from repair_item import _repair_item_impl
