@@ -248,3 +248,71 @@ class TestM62HostileEncounters:
         tiers = self._factions()[gate["faction"]]["reputation_tiers"]
         assert resolve_encounter_stance(gate, 25, tiers) == "allied"
         assert resolve_encounter_stance(gate, -10, tiers) == "hostile"
+
+
+# M4.7 (story-002): role-scaled loot + currency. Mirrors scripts/seed_content.py's strict
+# load-time validation so a bad reference fails the fast lane, not just at seed time.
+_VALID_ENEMY_CATEGORIES = {
+    "humanoid",
+    "beast",
+    "hollow_drift",
+    "hollow_rend",
+    "construct",
+    "undead",
+    "named",
+}
+
+
+class TestLootAndCurrencyContent:
+    def _enemies(self):
+        for enc in _load_json("encounter_templates.json"):
+            for enemy in enc.get("enemies", []):
+                yield enc["id"], enemy
+
+    def test_every_enemy_has_category_and_loot_table_id(self):
+        for enc_id, enemy in self._enemies():
+            assert enemy.get("category"), f"'{enc_id}' enemy '{enemy.get('id', '?')}' missing 'category'"
+            assert enemy.get("loot_table_id"), f"'{enc_id}' enemy '{enemy.get('id', '?')}' missing 'loot_table_id'"
+
+    def test_enemy_categories_are_valid(self):
+        for enc_id, enemy in self._enemies():
+            assert enemy["category"] in _VALID_ENEMY_CATEGORIES, (
+                f"'{enc_id}' enemy '{enemy['id']}' has invalid category '{enemy['category']}'"
+            )
+
+    def test_enemy_loot_table_ids_resolve(self):
+        loot_ids = _load_ids("loot_tables.json")
+        for enc_id, enemy in self._enemies():
+            assert enemy["loot_table_id"] in loot_ids, (
+                f"'{enc_id}' enemy '{enemy['id']}' references unknown loot_table_id '{enemy['loot_table_id']}'"
+            )
+
+    def test_loot_table_drops_reference_real_items(self):
+        item_ids = _load_ids("items.json")
+        for table in _load_json("loot_tables.json"):
+            for drop in table.get("drops", []):
+                assert drop["item_id"] in item_ids, (
+                    f"Loot table '{table['id']}' references unknown item '{drop['item_id']}'"
+                )
+
+    def test_loot_table_drops_have_valid_chance_and_quantity(self):
+        for table in _load_json("loot_tables.json"):
+            for drop in table.get("drops", []):
+                assert 0.0 <= drop["chance"] <= 1.0, (
+                    f"Loot table '{table['id']}' drop '{drop['item_id']}' chance out of [0,1]"
+                )
+                assert drop["quantity"] >= 1, (
+                    f"Loot table '{table['id']}' drop '{drop['item_id']}' quantity must be >= 1"
+                )
+
+    def test_material_sell_value_below_craft_value(self):
+        # D78: selling a raw material is always worth less than crafting with it — the crafting
+        # loop must stay the more rewarding path. Every material that pins a craft_value must have
+        # value_base (the merchant sell floor) strictly below it.
+        materials = [i for i in _load_json("items.json") if "craft_value" in i]
+        assert materials, "expected at least one material item carrying a craft_value"
+        for mat in materials:
+            assert mat["value_base"] < mat["craft_value"], (
+                f"Material '{mat['id']}' sell value_base {mat['value_base']} is not < "
+                f"craft_value {mat['craft_value']} (D78)"
+            )

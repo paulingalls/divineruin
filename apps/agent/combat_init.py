@@ -24,6 +24,7 @@ from companion_scaling import (
     scale_companion_stats_to_player_level,
 )
 from db_errors import validated_player_conditions
+from encounter_roles import derive_role_stats
 from encounter_stance import resolve_encounter_stance
 from game_events import publish_game_event
 from region_types import REGION_CITY
@@ -181,19 +182,36 @@ async def _start_combat_impl(
         ),
     ]
     for enemy in enemies:
+        # Apply the encounter-role overlay (M4.7, story-001): the same base stat block becomes a
+        # Minion (halved, actives stripped) or a Boss (doubled, signature + legendary) per its
+        # ``role`` tag. derive_role_stats is pure and returns a NEW dict; an untagged enemy defaults
+        # to "standard" (identity), so pre-M4.7 templates build exactly as before.
+        derived = derive_role_stats(enemy, enemy.get("role", "standard"))
         participants.append(
             CombatParticipant(
-                id=enemy["id"],
-                name=enemy.get("name", enemy["id"]),
+                id=derived["id"],
+                name=derived.get("name", derived["id"]),
                 type="enemy",
                 initiative=initiative_by_id[enemy["id"]],
-                hp_current=enemy.get("hp", 1),
-                hp_max=enemy.get("hp", 1),
-                ac=enemy.get("ac", 10),
-                attributes=enemy.get("attributes", {}),
-                level=enemy.get("level", 1),
-                action_pool=enemy.get("action_pool", []),
-                xp_value=enemy.get("xp_value", 0),
+                hp_current=derived.get("hp", 1),
+                hp_max=derived.get("hp", 1),
+                ac=derived.get("ac", 10),
+                attributes=derived.get("attributes", {}),
+                level=derived.get("level", 1),
+                action_pool=derived.get("action_pool", []),
+                xp_value=derived.get("xp_value", 0),
+                role=derived["role"],
+                attack_mod=derived["attack_mod"],
+                damage_mult=derived["damage_mult"],
+                dc_mod=derived["dc_mod"],
+                legendary_actions=derived["legendary_actions"],
+                signature_ability=derived["signature_ability"],
+                # Loot/currency overlay (M4.7, story-002): carry the template enemy's category +
+                # loot_table_id onto the participant so _end_combat_db can roll role-scaled loot
+                # and currency on victory. derive_role_stats copies the source enemy, so these ride
+                # through; empty-string defaults keep untagged/pre-M4.7 enemies inert (no drops).
+                category=derived.get("category", ""),
+                loot_table_id=derived.get("loot_table_id", ""),
             )
         )
 

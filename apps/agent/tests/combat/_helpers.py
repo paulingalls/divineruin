@@ -104,15 +104,18 @@ def _damage_resolver(damage):
     """A resolve_attack mock that always hits for a fixed damage, computing the target's
     remaining HP from the call args so multiple packets resolve coherently."""
 
-    def _resolve(attacker_data, action, target_ac, target_hp):
-        remaining = max(0, target_hp - damage)
+    def _resolve(attacker_data, action, target_ac, target_hp, attack_mod=0, damage_mult=1.0):
+        # attack_mod/damage_mult are the M4.7 role-overlay params (story-001). This stub always
+        # hits; it scales the fixed damage by damage_mult so role-modified packets stay coherent.
+        scaled = max(0, int(damage * damage_mult))
+        remaining = max(0, target_hp - scaled)
         return AttackResult(
             hit=True,
             roll=15,
             attack_modifier=3,
             attack_total=18,
             target_ac=target_ac,
-            damage=damage,
+            damage=scaled,
             damage_type="slashing",
             critical_success=False,
             critical_failure=False,

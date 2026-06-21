@@ -40,6 +40,15 @@ ITEM_DURABILITY_HIT = "item_durability_hit"
 QUEST_UPDATED = "quest_updated"
 QUEST_UPDATE = "quest_update"  # client-only alias for QUEST_UPDATED
 
+# Currency (M4.7 story-002) — coin granted on combat victory (role-scaled, calculate_currency_drop).
+# Packet shape: {player_id, amount, currency, source, new_balance} where `amount` is the gold
+# gained this victory (aggregated across all defeated enemies, converted sp->gp at the grant
+# boundary via silver_per_gold — story-008), `currency` is the unit ("gold"), `source` the grant
+# context ("combat"), and `new_balance` the player's resulting players.data.gold (gold crowns).
+# The HUD renders a glanceable "+N gp" chip from {amount, currency}; the DM voices the haul.
+# Mirror const in apps/mobile/src/audio/event-types.ts.
+CURRENCY_GAINED = "currency_gained"
+
 # Magic (M3.1)
 # Resonance state push: carries the qualitative {state} only on the game_events topic
 # — the raw number never crosses to the client (no-number spec magic.md:98, story-004).

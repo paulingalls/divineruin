@@ -1,7 +1,7 @@
 """M11 story-003 — in-combat ABILITY target_id wiring.
 
 story-001 threaded target_id through the out-of-combat cast path; this closes the in-combat seam
-(concern 3fe0ef128425): the in-combat ABILITY caller combat_support._resolve_ability_packet forwards
+(concern 3fe0ef128425): the in-combat ABILITY caller combat_ability._resolve_ability_packet forwards
 the declaration's optional target_id into the shared _resolve_cast, so an in-combat cast carries
 target_id into the packet and a revival ABILITY keys the Hollow-killed gate on the TARGET (not the
 caster) — matching cast_spell. Companion/non-player revival targets keep the pre-existing
@@ -18,7 +18,7 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_mock_room
 
 import spell_casting
-from combat_support import AbilityCastOutcome, _resolve_ability_packet
+from combat_ability import AbilityCastOutcome, _resolve_ability_packet
 from declarations import Declaration, DeclarationType
 from session_data import CombatParticipant
 from spell_casting import _UNCHANGED, CastResult

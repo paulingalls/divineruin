@@ -2,6 +2,7 @@
 
 import json
 import logging
+import random
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
@@ -9,13 +10,17 @@ from livekit.agents.voice import RunContext
 import combat_resolution
 import conditions
 import db
+import db_content_queries
 import db_mutations
 import db_mutations_conditions
 import db_queries
+import encounter_loot
 import event_types as E
+import pricing_queries
 import resurrection
+from combat_durability import _accrue_durability, _find_equipped
 from combat_events import EventSink, emit_or_publish
-from combat_support import _accrue_durability, _find_equipped, _publish_sounds, _require_combat
+from combat_support import _publish_sounds, _require_combat
 from db_errors import db_tool
 from region_types import REGION_CITY
 from session_data import CombatState, SessionData
@@ -50,6 +55,43 @@ def _merge_persistent_conditions(existing: list[dict], acquired: list[dict]) -> 
         if prior is None or _severity(c) > _severity(prior):
             merged[c["type"]] = c
     return list(merged.values())
+
+
+async def _grant_enemy_loot(
+    session: SessionData,
+    p,
+    rng: random.Random,
+    *,
+    mutations,
+    content,
+    conn,
+    sink: EventSink,
+    into: list[dict],
+) -> int:
+    """Roll + grant ONE defeated enemy's role-scaled loot, returning its currency contribution.
+
+    Each rolled drop is added to the player's inventory, appended to ``into`` (for the narration
+    summary), and buffered as an ITEM_ACQUIRED chip. Currency is the role-scaled silver for this
+    enemy (0 for a Minion, D79). Untagged/legacy enemies (no category / loot_table_id) are inert —
+    the empty-string defaults mean pre-story-002 content drops nothing rather than crashing."""
+    currency = 0
+    if p.category:
+        tier = encounter_loot.tier_for_level(p.level)
+        currency = encounter_loot.calculate_currency_drop(p.category, tier, p.role, rng)
+    if p.loot_table_id:
+        table = await content.get_loot_table(p.loot_table_id)
+        if table is not None:
+            for drop in encounter_loot.derive_role_loot(table, p.role, rng):
+                await mutations.add_inventory_item(session.player_id, drop["item_id"], drop["quantity"], conn=conn)
+                into.append(drop)
+                await emit_or_publish(
+                    sink,
+                    session.room,
+                    E.ITEM_ACQUIRED,
+                    {"item_id": drop["item_id"], "quantity": drop["quantity"], "source": "combat_loot"},
+                    event_bus=session.event_bus,
+                )
+    return currency
 
 
 @function_tool()
@@ -103,21 +145,64 @@ async def _end_combat_db(
     queries,
     conn,
     sink: EventSink,
+    content=db_content_queries,
+    pricing=pricing_queries,
+    rng: random.Random | None = None,
 ) -> dict:
     """The DB-mutating + event-emitting half of end_combat, run INSIDE a transaction (the phase
-    tx when invoked from resolve_phase, or end_combat's own). Accrues weapon durability, deletes
-    the combat row, and buffers COMBAT_ENDED + the stinger into ``sink`` (released post-commit).
-    Touches NO in-memory session state — that is _end_combat_finish's job, deferred to post-commit
-    so a rollback leaves the session pristine. Returns the data finish needs to build the response."""
+    tx when invoked from resolve_phase, or end_combat's own). Accrues weapon durability, grants
+    role-scaled loot + currency on victory, deletes the combat row, and buffers COMBAT_ENDED + the
+    stinger into ``sink`` (released post-commit). Touches NO in-memory session state — that is
+    _end_combat_finish's job, deferred to post-commit so a rollback leaves the session pristine.
+    Returns the data finish needs to build the response.
+
+    ``content`` resolves loot tables (db_content_queries by default; injectable for tests);
+    ``rng`` seeds the loot/currency rolls (a fresh system Random by default)."""
+    rng = rng or random.Random()
     xp_total = 0
     defeated_enemies: list[str] = []
+    loot_granted: list[dict] = []
+    currency_silver = 0
+    currency_gold: float = 0
     if outcome == "victory":
         enemy_dicts = []
         for p in cs.participants:
-            if p.type == "enemy":
-                enemy_dicts.append({"xp_value": p.xp_value})
-                defeated_enemies.append(p.name)
+            if p.type != "enemy":
+                continue
+            enemy_dicts.append({"xp_value": p.xp_value})
+            defeated_enemies.append(p.name)
+            currency_silver += await _grant_enemy_loot(
+                session, p, rng, mutations=mutations, content=content, conn=conn, sink=sink, into=loot_granted
+            )
         xp_total = combat_resolution.calculate_combat_xp(enemy_dicts)
+
+        # The enemy loot rolls accrue silver (the pricing baseline); convert to gold crowns at the
+        # grant boundary — symmetric with how repair/crafting convert sp costs to gp via the same
+        # silver_per_gold SSOT — so the wallet (players.data.gold, gold crowns) stays coherent.
+        # Grant in one read-modify-write (FOR UPDATE so concurrent writers can't clobber the
+        # balance), then buffer a single CURRENCY_GAINED chip for the whole haul. Inside this tx — a
+        # rollback un-grants the coin and drops the unflushed event. Minions contribute 0 (D79); a
+        # fight of only Minions emits nothing.
+        if currency_silver > 0:
+            silver_per_gold = (await pricing.get_economy_pricing())["silver_per_gold"]
+            currency_gold = currency_silver / silver_per_gold
+            player = await queries.get_player(session.player_id, conn=conn, for_update=True)
+            prior_gold = (player or {}).get("gold", 0) or 0
+            new_balance = prior_gold + currency_gold
+            await mutations.update_player_gold(session.player_id, new_balance, conn=conn)
+            await emit_or_publish(
+                sink,
+                session.room,
+                E.CURRENCY_GAINED,
+                {
+                    "player_id": session.player_id,
+                    "amount": currency_gold,
+                    "currency": "gold",
+                    "source": "combat",
+                    "new_balance": new_balance,
+                },
+                event_bus=session.event_bus,
+            )
 
     # Accrue per-encounter weapon durability (1 hit, 2 on a crit vs a heavily-armored target),
     # hollow-doubled. Reads weapon_used_this_encounter (set live during the loop); the flag RESET
@@ -184,6 +269,8 @@ async def _end_combat_db(
         "defeated_enemies": defeated_enemies,
         "weapon_durability": weapon_durability,
         "death_context": death_context,
+        "loot": loot_granted,
+        "currency_gold": currency_gold,
     }
 
 
@@ -215,14 +302,24 @@ def _end_combat_finish(
     if defeated_enemies:
         session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {cs.location_id}: {outcome}")
 
+    loot = end_data.get("loot", [])
+    currency_gold = end_data.get("currency_gold", 0)
     response = {
         "outcome": outcome,
         "xp_total": xp_total,
         "defeated_enemies": defeated_enemies,
         "weapon_durability": end_data["weapon_durability"],
+        "loot": loot,
+        "currency_gold": currency_gold,
         "note": "Call award_xp with the xp_total to grant experience to the player." if xp_total > 0 else None,
     }
-    logger.info("end_combat result: %s, xp=%d", outcome, xp_total)
+    logger.info(
+        "end_combat result: %s, xp=%d, loot=%d item(s), currency=%.1fgp",
+        outcome,
+        xp_total,
+        len(loot),
+        currency_gold,
+    )
 
     # Build gameplay agent with combat summary context for handoff
     from livekit.agents.llm import ChatContext
@@ -234,6 +331,15 @@ def _end_combat_finish(
         summary_parts.append(f"XP earned: {xp_total}.")
     if defeated_enemies:
         summary_parts.append(f"Defeated: {', '.join(defeated_enemies)}.")
+    # Surface the haul so the DM can voice it (loot is a headline beat). Quantities collapse per
+    # item id so a "2x Cured Hide" reads naturally rather than as two lines.
+    if loot:
+        qty_by_item: dict[str, int] = {}
+        for drop in loot:
+            qty_by_item[drop["item_id"]] = qty_by_item.get(drop["item_id"], 0) + drop["quantity"]
+        summary_parts.append("Loot: " + ", ".join(f"{q}x {item}" for item, q in qty_by_item.items()) + ".")
+    if currency_gold > 0:
+        summary_parts.append(f"Currency: {currency_gold:.1f} gold.")
 
     summary_ctx = ChatContext()
     summary_ctx.add_message(role="system", content=" ".join(summary_parts))
