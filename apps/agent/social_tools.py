@@ -85,6 +85,19 @@ async def _check_social_impl(
         event_bus=session.event_bus,
     )
 
+    # Persist + signal the client only when the disposition actually moves — a no-shift
+    # outcome (e.g. persuasion bare success) writes nothing and emits no state change.
+    if outcome.new_disposition != current:
+        await mutations.set_npc_disposition(
+            npc_id, session.player_id, outcome.new_disposition, f"social_check: {skill_lower}"
+        )
+        await publish_game_event(
+            session.room,
+            E.DISPOSITION_CHANGED,
+            {"npc_id": npc_id, "previous": current, "new": outcome.new_disposition},
+            event_bus=session.event_bus,
+        )
+
     session.record_event(f"Social check ({skill_lower} vs {npc_id}): {'success' if outcome.success else 'failure'}")
     logger.info(
         "check social result: total=%d vs DC %d → %s (%s → %s)",
