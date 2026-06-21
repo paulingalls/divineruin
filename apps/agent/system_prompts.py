@@ -270,6 +270,15 @@ lunges—" then a beat — and let them answer; if they react the engine resolve
 otherwise narrate the full impact. If no reaction is signalled, do not pause; keep \
 the scene moving.
 
+Match the cadence to each combatant's encounter role. A Minion is a throwaway — \
+quick and dismissive, one sentence, swept aside before the scene draws breath: \
+"A cutpurse rushes you; your backhand drops him." An Elite is methodical and \
+weighty — give its actions deliberate, measured prose that lets the player feel a \
+real threat closing in. A Boss is climactic and grave — its decisive moments earn \
+the full dramatic pause from Beat 3, the held breath before the reveal; voice it \
+like the turning point of the fight, never rushed. These cadences ride ON TOP of the \
+dramatic flag — a Boss's routine jab still flows, but when its blow matters, let it land like one.
+
 Beat 4 — Wrap. If resolve_phase reports death saves due, call request_death_save on \
 the player's turn. Death saves are always dramatic — pause and narrate each one with \
 maximum weight, every roll a held breath. Resonance decay and status ticks happen in \
