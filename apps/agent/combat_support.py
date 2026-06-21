@@ -1,25 +1,18 @@
 """Shared helpers for combat tool modules."""
 
 import logging
-from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, cast
+from dataclasses import replace
 
 from livekit.agents.llm import ToolError
 
-if TYPE_CHECKING:
-    from spell_casting import CastResult
-
 import check_resolution_attack
-import combat_enhancers
 import combat_resolution
 import concentration_break
 import conditions
 import db_mutations
-import db_mutations_inventory
 import db_queries
-import durability
 import event_types as E
-import spell_casting
+from combat_durability import _accrue_durability, _find_equipped
 from combat_events import EventSink, emit_or_publish
 from dramatic import DramaticContext, evaluate_dramatic_context
 from session_data import CombatParticipant, CombatState, SessionData
@@ -33,103 +26,6 @@ from tool_support import (
 )
 
 logger = logging.getLogger("divineruin.tools")
-
-
-@dataclass
-class AbilityCastOutcome:
-    """Side-channel carrying an in-loop ABILITY cast's ``CastResult`` back to the phase loop.
-
-    At most one player ability resolves per phase (one declaration per participant), so a single
-    slot suffices. The loop reads ``cast_result`` post-commit to seed the WRAP resonance, sync
-    concentration in-memory, and flush the cast's deferred client events — all of which must happen
-    after the phase tx commits (story-007). ``cast_result`` stays ``None`` when no ability resolved."""
-
-    cast_result: "CastResult | None" = None
-
-
-async def _resolve_ability_packet(
-    session: SessionData,
-    attacker: CombatParticipant,
-    decl,
-    *,
-    cast_resolver,
-    conn,
-    player: dict | None,
-    cast_outcome: AbilityCastOutcome,
-) -> dict:
-    """Resolve one in-combat ABILITY declaration through the shared cast logic (story-007).
-
-    Player-gated: only the player carries a Focus pool + resonance track, so a non-player ABILITY
-    (or one missing its action) is a *wasted* packet — enemy/companion casting is later M4.x work.
-    Delegates to ``cast_resolver._resolve_cast`` with the cast's own RESONANCE_CHANGED suppressed
-    (in combat the phase WRAP push is the single authoritative HUD update), stashing the returned
-    CastResult on ``cast_outcome`` for the loop to commit. The returned summary carries the spell
-    packet for the DM plus any narrated enhancer riders."""
-    if attacker.type != "player":
-        return {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": "ability resolution not yet implemented for non-player actors",
-        }
-    if not decl.action:
-        return {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": "ability declaration missing an action",
-        }
-
-    result = await cast_resolver._resolve_cast(
-        session,
-        decl.action,
-        conn=conn,
-        player=player,
-        target_id=decl.target_id,
-        suppress_resonance_changed=True,
-    )
-    cast_outcome.cast_result = result
-    # Sync concentration into the session SSOT IN-LOOP (not post-commit): a lower-initiative enemy
-    # attack later this same phase runs break_concentration_on_damage, which reads the in-memory
-    # session.concentration to pick which spell to save for and to clear on a failed save. A
-    # post-commit sync would leave it stale — the break would save against the OLD spell and, on a
-    # break, write None to the DB (clearing the just-cast spell) while the post-commit sync forced
-    # memory back to the new spell, diverging from the DB (story-007). _CombatScratchSnapshot
-    # captures concentration, so this in-tx mutation is reverted if the phase rolls back.
-    if result.concentration_spell_id is not spell_casting._UNCHANGED:
-        session.concentration.spell_id = cast("str | None", result.concentration_spell_id)
-    summary = {
-        "actor_id": attacker.id,
-        "resolved": True,
-        "declaration_type": str(decl.type),
-        "action": decl.action,
-        "cast": result.packet,
-    }
-    return _attach_riders(summary, attacker, decl)
-
-
-def _find_action(participant, action_name) -> dict | None:
-    """Find the named action in a participant's action_pool (case-insensitive)."""
-    if not action_name:
-        return None
-    wanted = str(action_name).lower()
-    for a in participant.action_pool:
-        if a.get("name", "").lower() == wanted:
-            return a
-    return None
-
-
-def _attach_riders(summary: dict, attacker, decl) -> dict:
-    """Add the actor's narrated enhancer riders to a packet summary, if any.
-
-    Riders are descriptive (non-mechanical) — they carry no HP/AC effect, just the DM
-    cue for an enhancer's expansion (Cunning Action's dash/disengage/hide, Hit and Run,
-    Command Lesser, Quick Change). Omitted entirely when the actor has none, so a
-    no-enhancer declaration keeps its flat summary (AC3: no phantom expansion)."""
-    riders = combat_enhancers.declaration_riders(attacker.enhancers, decl)
-    if riders:
-        summary["riders"] = riders
-    return summary
 
 
 def _participant_summary(p: CombatParticipant) -> dict:
@@ -165,69 +61,55 @@ async def _publish_sounds(session: SessionData, sounds: list[str], *, sink: Even
         )
 
 
-def _find_equipped(inventory: list[dict], item_type: str, name: str | None = None) -> dict | None:
-    """Return the equipped inventory item of a given type (optionally matching a
-    name), or None. Inventory dicts are get_player_inventory-shaped: catalog fields
-    top-level, per-instance state under slot_info. Requires a durability_tier so the
-    caller can damage it; an equipped item missing one is skipped (None) rather than
-    blowing up the turn — durability is a side-effect, not worth failing over.
-    Ambiguous matches log and take the first."""
-    matches = [
-        it
-        for it in inventory
-        if it.get("slot_info", {}).get("equipped")
-        and it.get("type") == item_type
-        and it.get("durability_tier")
-        and (name is None or it.get("name", "").lower() == name.lower())
-    ]
-    if not matches:
-        return None
-    if len(matches) > 1:
-        logger.warning("multiple equipped %s items; using first (%s)", item_type, matches[0].get("id"))
-    return matches[0]
-
-
-async def _accrue_durability(
+def _handle_hp_zero(
     session: SessionData,
-    player_id: str,
-    item: dict,
-    base_hits: int,
+    target: CombatParticipant,
+    attack_result,
     *,
-    is_hollow_zone: bool,
-    mutations=db_mutations_inventory,
-    conn=None,
-    sink: EventSink | None = None,
-) -> dict:
-    """Apply base_hits durability damage to an equipped item, persist the new
-    current_hits, and publish ITEM_DURABILITY_HIT. Hollow zones double the loss.
+    was_fallen: bool,
+    hp_status: str,
+    sounds: list[str],
+) -> tuple[str, bool]:
+    """Resolve a target dropped to 0 HP — Hollowed rise, instant death, fall, or companion KO.
 
-    A missing current_hits reads as full (max_hits for the tier) — never-damaged
-    items start undamaged (decision durability-current-hits-lazy-default). When the
-    item is already broken and the loss can't lower it further, the write and event
-    are skipped. Returns {"broken", "penalty", "current_hits"}.
-    """
-    durability_tier = item["durability_tier"]
-    current_hits = item.get("slot_info", {}).get("current_hits")
-    if current_hits is None:
-        current_hits = durability.max_hits(durability_tier)
+    Called from ``_resolve_attack_packet`` only when ``target.hp_current <= 0``. Mutates
+    ``target`` in place (``is_fallen``/``is_dead``, or — on a Hollowed rise — ``type``/
+    ``hp_current``/``conditions``) and appends the fall/rise sound to ``sounds``. Returns
+    ``(hp_status, rose_hollowed)``: ``hp_status`` is recomputed only when a Hollowed rise restores
+    HP (otherwise the caller's pre-computed value passes through unchanged); ``rose_hollowed`` tells
+    the DM to narrate the corpse rising instead of the target falling."""
+    if not was_fallen and target.type == "player" and conditions.hollowed_stage(target.conditions) >= 2:
+        # Temporary Hollowed rise (M4.4 story-008): a Stage-2+ Hollowed player at 0 HP does NOT
+        # fall — their corpse rises as a hostile Temporary Hollowed combatant (HP=50% of max,
+        # hits add 1d6 necrotic, immune to Charmed/Frightened/Poisoned) that blocks combat-end
+        # until destroyed (combat_phase._wrap). Transform in place: flipping `type` makes the
+        # engine's player-defeat gate go dormant (no player participant) and the echo block
+        # victory, AND it deliberately suppresses the player-HP write + concentration-break +
+        # armor-durability accrual below — the echo's HP is the monster's, not the player's.
+        # The persisted Hollowed condition is left intact; trigger_character_death reads it at
+        # the echo's destruction to mark hollow_killed and clear it.
+        target.type = "temporary_hollowed"
+        target.hp_current = max(1, target.hp_max // 2)
+        target.conditions = conditions.apply_condition(target.conditions, "temporary_hollowed")
+        hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
+        sounds.append(SOUND_HOLLOW_RISE)
+        return hp_status, True
 
-    item_state = {"type": item["type"], "durability_tier": durability_tier, "current_hits": current_hits}
-    updated = durability.apply_durability_damage(item_state, base_hits, is_hollow_zone=is_hollow_zone)
-    condition = durability.check_item_condition(updated)
-    new_hits = updated["current_hits"]
-
-    if new_hits == current_hits and condition["broken"]:
-        return {**condition, "current_hits": new_hits}
-
-    await mutations.update_item_durability(player_id, item["id"], new_hits, conn=conn)
-    await emit_or_publish(
-        sink,
-        session.room,
-        E.ITEM_DURABILITY_HIT,
-        {"item_id": item["id"], "item_type": item["type"], "current_hits": new_hits, **condition},
-        event_bus=session.event_bus,
-    )
-    return {**condition, "current_hits": new_hits}
+    target.is_fallen = True
+    # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills
+    # outright — no Fallen grace, no death saves. is_dead is the stronger state; the pure
+    # _wrap reads it to end combat without a death-save beat. This is the one site with both
+    # attack_result + hp_max. Gated on `not was_fallen` so it fires only on the live -> 0
+    # transition the spec scopes it to; a hit on an already-downed target is the separate
+    # "damage while Fallen" failure mechanic.
+    if not was_fallen and attack_result.overkill >= target.hp_max:
+        target.is_dead = True
+    sounds.append(SOUND_PLAYER_FALLEN)
+    # Handle companion KO
+    if target.type == "companion" and session.companion and target.id == session.companion.id:
+        session.companion.is_conscious = False
+        session.record_companion_memory(f"{target.name} was knocked unconscious in combat")
+    return hp_status, False
 
 
 async def _resolve_attack_packet(
@@ -326,37 +208,9 @@ async def _resolve_attack_packet(
     hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
     rose_hollowed = False
     if target.hp_current <= 0:
-        if not was_fallen and target.type == "player" and conditions.hollowed_stage(target.conditions) >= 2:
-            # Temporary Hollowed rise (M4.4 story-008): a Stage-2+ Hollowed player at 0 HP does NOT
-            # fall — their corpse rises as a hostile Temporary Hollowed combatant (HP=50% of max,
-            # hits add 1d6 necrotic, immune to Charmed/Frightened/Poisoned) that blocks combat-end
-            # until destroyed (combat_phase._wrap). Transform in place: flipping `type` makes the
-            # engine's player-defeat gate go dormant (no player participant) and the echo block
-            # victory, AND it deliberately suppresses the player-HP write + concentration-break +
-            # armor-durability accrual below — the echo's HP is the monster's, not the player's.
-            # The persisted Hollowed condition is left intact; trigger_character_death reads it at
-            # the echo's destruction to mark hollow_killed and clear it.
-            target.type = "temporary_hollowed"
-            target.hp_current = max(1, target.hp_max // 2)
-            target.conditions = conditions.apply_condition(target.conditions, "temporary_hollowed")
-            hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
-            rose_hollowed = True
-            sounds.append(SOUND_HOLLOW_RISE)
-        else:
-            target.is_fallen = True
-            # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills
-            # outright — no Fallen grace, no death saves. is_dead is the stronger state; the pure
-            # _wrap reads it to end combat without a death-save beat. This is the one site with both
-            # attack_result + hp_max. Gated on `not was_fallen` so it fires only on the live -> 0
-            # transition the spec scopes it to; a hit on an already-downed target is the separate
-            # "damage while Fallen" failure mechanic.
-            if not was_fallen and attack_result.overkill >= target.hp_max:
-                target.is_dead = True
-            sounds.append(SOUND_PLAYER_FALLEN)
-            # Handle companion KO
-            if target.type == "companion" and session.companion and target.id == session.companion.id:
-                session.companion.is_conscious = False
-                session.record_companion_memory(f"{target.name} was knocked unconscious in combat")
+        hp_status, rose_hollowed = _handle_hp_zero(
+            session, target, attack_result, was_fallen=was_fallen, hp_status=hp_status, sounds=sounds
+        )
     elif hp_status in ("bloodied", "critical"):
         sounds.append(SOUND_HEARTBEAT)
 

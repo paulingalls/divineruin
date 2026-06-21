@@ -1,7 +1,7 @@
 """Combat phase-loop tools — declare_phase, resolve_phase — orchestrating the per-phase
 transaction and the initiative-ordered packet loop (M4.1, story-003). The per-packet resolvers
-(_resolve_attack_packet, _resolve_ability_packet) live in combat_support (story-007 split, to keep
-this file under the 500-line ceiling). request_death_save lives in combat_death_save.py (story-004
+live in combat_support (_resolve_attack_packet) and combat_ability (_resolve_ability_packet)
+(story-007 split, to keep this file under the 500-line ceiling). request_death_save lives in combat_death_save.py (story-004
 split, debt faa6dd19ab64)."""
 
 import json
@@ -25,16 +25,15 @@ import db_queries
 import fatigue_narration
 import resonance_events
 import spell_casting
-from combat_end import _end_combat_db, _end_combat_finish
-from combat_events import EventSink, scratch_guard
-from combat_support import (
+from combat_ability import (
     AbilityCastOutcome,
     _attach_riders,
     _find_action,
-    _require_combat,
     _resolve_ability_packet,
-    _resolve_attack_packet,
 )
+from combat_end import _end_combat_db, _end_combat_finish
+from combat_events import EventSink, scratch_guard
+from combat_support import _require_combat, _resolve_attack_packet
 from db_errors import db_tool
 from declarations import DeclarationType
 from session_data import SessionData

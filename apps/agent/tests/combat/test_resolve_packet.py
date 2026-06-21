@@ -6,17 +6,20 @@ HUD events/sounds in order, and returns a response dict — it does NOT persist 
 caller owns one save per phase).
 """
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from combat._helpers import _make_combat_state
 from sample_fixtures import make_context, make_mock_room
 
+import conditions
 import event_types as E
 from check_resolution_attack import AttackResult
 from combat_events import EventSink
-from combat_support import _resolve_attack_packet
-from session_data import CombatParticipant
+from combat_support import _handle_hp_zero, _resolve_attack_packet
+from session_data import CombatParticipant, CompanionState
+from tool_support import SOUND_HOLLOW_RISE, SOUND_PLAYER_FALLEN
 
 
 def _fixed_resolver(*, damage: int, hp_remaining: int, dramatic: bool = False, context: str = ""):
@@ -408,7 +411,7 @@ class TestResolveAbilityPacket:
         return mod
 
     async def test_player_ability_resolves_and_stashes_castresult(self):
-        from combat_support import AbilityCastOutcome, _resolve_ability_packet
+        from combat_ability import AbilityCastOutcome, _resolve_ability_packet
         from declarations import Declaration, DeclarationType
         from spell_casting import _UNCHANGED, CastResult
 
@@ -442,7 +445,7 @@ class TestResolveAbilityPacket:
         assert kwargs["suppress_resonance_changed"] is True
 
     async def test_non_player_ability_is_wasted(self):
-        from combat_support import AbilityCastOutcome, _resolve_ability_packet
+        from combat_ability import AbilityCastOutcome, _resolve_ability_packet
         from declarations import Declaration, DeclarationType
 
         session = make_context().userdata
@@ -463,7 +466,7 @@ class TestResolveAbilityPacket:
         assert outcome.cast_result is None
 
     async def test_missing_action_is_wasted(self):
-        from combat_support import AbilityCastOutcome, _resolve_ability_packet
+        from combat_ability import AbilityCastOutcome, _resolve_ability_packet
         from declarations import Declaration, DeclarationType
 
         session = make_context().userdata
@@ -480,3 +483,92 @@ class TestResolveAbilityPacket:
         assert summary["resolved"] is False
         cast_resolver._resolve_cast.assert_not_called()
         assert outcome.cast_result is None
+
+
+def _hollowed(stage: int) -> list[dict]:
+    conds: list[dict] = []
+    for _ in range(stage):
+        conds = conditions.apply_condition(conds, "hollowed")
+    return conds
+
+
+class TestHandleHpZero:
+    """story-007: _handle_hp_zero resolves a target dropped to 0 HP — the fall / instant-death /
+    Stage-2+ Hollowed-rise / companion-KO branch extracted from _resolve_attack_packet. It mutates
+    the target + sounds in place and returns (hp_status, rose_hollowed)."""
+
+    def _target(
+        self,
+        *,
+        id: str = "player_1",
+        name: str = "Lyra",
+        type: str = "player",
+        hp_current: int = 0,
+        hp_max: int = 20,
+        is_fallen: bool = False,
+        conditions: list[dict] | None = None,
+    ) -> CombatParticipant:
+        p = CombatParticipant(id=id, name=name, type=type, initiative=15, hp_current=hp_current, hp_max=hp_max, ac=14)
+        p.is_fallen = is_fallen
+        if conditions is not None:
+            p.conditions = conditions
+        return p
+
+    def _attack(self, overkill: int):
+        # _handle_hp_zero reads only attack_result.overkill.
+        return SimpleNamespace(overkill=overkill)
+
+    def test_player_at_zero_falls(self):
+        session = make_context().userdata  # no companion
+        target = self._target(hp_current=0, hp_max=20)
+        sounds: list[str] = []
+        hp_status, rose = _handle_hp_zero(
+            session, target, self._attack(0), was_fallen=False, hp_status="defeated", sounds=sounds
+        )
+        assert target.is_fallen is True
+        assert target.is_dead is False
+        assert rose is False
+        assert SOUND_PLAYER_FALLEN in sounds
+        # non-rise path passes the caller's pre-computed hp_status straight through
+        assert hp_status == "defeated"
+
+    def test_instant_death_when_overkill_ge_hp_max(self):
+        session = make_context().userdata
+        target = self._target(hp_current=-25, hp_max=20)
+        _handle_hp_zero(session, target, self._attack(25), was_fallen=False, hp_status="defeated", sounds=[])
+        assert target.is_fallen is True
+        assert target.is_dead is True
+
+    def test_already_fallen_does_not_flag_dead(self):
+        # The instant-death verdict is scoped to the live -> 0 transition; a hit on an already-downed
+        # target (was_fallen=True) is the separate "damage while Fallen" mechanic, never instant death.
+        session = make_context().userdata
+        target = self._target(hp_current=-25, hp_max=20, is_fallen=True)
+        _handle_hp_zero(session, target, self._attack(25), was_fallen=True, hp_status="defeated", sounds=[])
+        assert target.is_dead is False
+
+    def test_stage2_hollowed_rises_instead_of_falling(self):
+        session = make_context().userdata
+        target = self._target(hp_current=0, hp_max=20, conditions=_hollowed(2))
+        sounds: list[str] = []
+        hp_status, rose = _handle_hp_zero(
+            session, target, self._attack(0), was_fallen=False, hp_status="defeated", sounds=sounds
+        )
+        assert target.type == "temporary_hollowed"
+        assert target.hp_current == 10  # max(1, hp_max // 2)
+        assert any(c["type"] == "temporary_hollowed" for c in target.conditions)
+        assert target.is_fallen is False
+        assert rose is True
+        assert SOUND_HOLLOW_RISE in sounds
+        # rise restores HP, so hp_status is recomputed (no longer the caller's "defeated" sentinel)
+        assert hp_status != "defeated"
+
+    def test_companion_ko_marks_unconscious_and_records_memory(self):
+        session = make_context().userdata
+        session.companion = CompanionState(id="companion_kael", name="Kael")
+        session.companion.is_conscious = True
+        target = self._target(id="companion_kael", name="Kael", type="companion", hp_current=0, hp_max=15)
+        _handle_hp_zero(session, target, self._attack(0), was_fallen=False, hp_status="defeated", sounds=[])
+        assert target.is_fallen is True
+        assert session.companion.is_conscious is False
+        assert any("knocked unconscious" in m for m in session.companion.session_memories)
