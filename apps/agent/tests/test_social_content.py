@@ -56,8 +56,15 @@ class TestNpcCatalogResistanceTags:
     def test_real_catalog_loads_and_tags_are_canonical(self):
         catalog = load_fixture_config()
         for npc_id, npc in catalog.items():
-            tags = npc.get("resistance_tags", [])
+            assert "resistance_tags" in npc, f"{npc_id} missing resistance_tags"
+            tags = npc["resistance_tags"]
             assert isinstance(tags, list), f"{npc_id} resistance_tags not a list"
             for tag in tags:
                 assert tag in RESISTANCE_TAGS, f"{npc_id} has non-canonical tag {tag!r}"
             assert npc["default_disposition"] in DISPOSITIONS
+
+    def test_catalog_exercises_the_full_resistance_surface(self):
+        # Every canonical personality tag is used by at least one NPC, so the resolver's
+        # whole Tier-3 vulnerable/resistant surface has live content behind it.
+        seen = {tag for npc in load_fixture_config().values() for tag in npc.get("resistance_tags", [])}
+        assert seen == set(RESISTANCE_TAGS), f"uncovered tags: {set(RESISTANCE_TAGS) - seen}"
