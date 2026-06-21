@@ -61,6 +61,57 @@ async def _publish_sounds(session: SessionData, sounds: list[str], *, sink: Even
         )
 
 
+def _handle_hp_zero(
+    session: SessionData,
+    target: CombatParticipant,
+    attack_result,
+    *,
+    was_fallen: bool,
+    hp_status: str,
+    sounds: list[str],
+) -> tuple[str, bool]:
+    """Resolve a target dropped to 0 HP — Hollowed rise, instant death, fall, or companion KO.
+
+    Called from ``_resolve_attack_packet`` only when ``target.hp_current <= 0``. Mutates
+    ``target`` in place (``is_fallen``/``is_dead``, or — on a Hollowed rise — ``type``/
+    ``hp_current``/``conditions``) and appends the fall/rise sound to ``sounds``. Returns
+    ``(hp_status, rose_hollowed)``: ``hp_status`` is recomputed only when a Hollowed rise restores
+    HP (otherwise the caller's pre-computed value passes through unchanged); ``rose_hollowed`` tells
+    the DM to narrate the corpse rising instead of the target falling."""
+    if not was_fallen and target.type == "player" and conditions.hollowed_stage(target.conditions) >= 2:
+        # Temporary Hollowed rise (M4.4 story-008): a Stage-2+ Hollowed player at 0 HP does NOT
+        # fall — their corpse rises as a hostile Temporary Hollowed combatant (HP=50% of max,
+        # hits add 1d6 necrotic, immune to Charmed/Frightened/Poisoned) that blocks combat-end
+        # until destroyed (combat_phase._wrap). Transform in place: flipping `type` makes the
+        # engine's player-defeat gate go dormant (no player participant) and the echo block
+        # victory, AND it deliberately suppresses the player-HP write + concentration-break +
+        # armor-durability accrual below — the echo's HP is the monster's, not the player's.
+        # The persisted Hollowed condition is left intact; trigger_character_death reads it at
+        # the echo's destruction to mark hollow_killed and clear it.
+        target.type = "temporary_hollowed"
+        target.hp_current = max(1, target.hp_max // 2)
+        target.conditions = conditions.apply_condition(target.conditions, "temporary_hollowed")
+        hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
+        sounds.append(SOUND_HOLLOW_RISE)
+        return hp_status, True
+
+    target.is_fallen = True
+    # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills
+    # outright — no Fallen grace, no death saves. is_dead is the stronger state; the pure
+    # _wrap reads it to end combat without a death-save beat. This is the one site with both
+    # attack_result + hp_max. Gated on `not was_fallen` so it fires only on the live -> 0
+    # transition the spec scopes it to; a hit on an already-downed target is the separate
+    # "damage while Fallen" failure mechanic.
+    if not was_fallen and attack_result.overkill >= target.hp_max:
+        target.is_dead = True
+    sounds.append(SOUND_PLAYER_FALLEN)
+    # Handle companion KO
+    if target.type == "companion" and session.companion and target.id == session.companion.id:
+        session.companion.is_conscious = False
+        session.record_companion_memory(f"{target.name} was knocked unconscious in combat")
+    return hp_status, False
+
+
 async def _resolve_attack_packet(
     session: SessionData,
     attacker,
@@ -157,37 +208,9 @@ async def _resolve_attack_packet(
     hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
     rose_hollowed = False
     if target.hp_current <= 0:
-        if not was_fallen and target.type == "player" and conditions.hollowed_stage(target.conditions) >= 2:
-            # Temporary Hollowed rise (M4.4 story-008): a Stage-2+ Hollowed player at 0 HP does NOT
-            # fall — their corpse rises as a hostile Temporary Hollowed combatant (HP=50% of max,
-            # hits add 1d6 necrotic, immune to Charmed/Frightened/Poisoned) that blocks combat-end
-            # until destroyed (combat_phase._wrap). Transform in place: flipping `type` makes the
-            # engine's player-defeat gate go dormant (no player participant) and the echo block
-            # victory, AND it deliberately suppresses the player-HP write + concentration-break +
-            # armor-durability accrual below — the echo's HP is the monster's, not the player's.
-            # The persisted Hollowed condition is left intact; trigger_character_death reads it at
-            # the echo's destruction to mark hollow_killed and clear it.
-            target.type = "temporary_hollowed"
-            target.hp_current = max(1, target.hp_max // 2)
-            target.conditions = conditions.apply_condition(target.conditions, "temporary_hollowed")
-            hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
-            rose_hollowed = True
-            sounds.append(SOUND_HOLLOW_RISE)
-        else:
-            target.is_fallen = True
-            # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills
-            # outright — no Fallen grace, no death saves. is_dead is the stronger state; the pure
-            # _wrap reads it to end combat without a death-save beat. This is the one site with both
-            # attack_result + hp_max. Gated on `not was_fallen` so it fires only on the live -> 0
-            # transition the spec scopes it to; a hit on an already-downed target is the separate
-            # "damage while Fallen" failure mechanic.
-            if not was_fallen and attack_result.overkill >= target.hp_max:
-                target.is_dead = True
-            sounds.append(SOUND_PLAYER_FALLEN)
-            # Handle companion KO
-            if target.type == "companion" and session.companion and target.id == session.companion.id:
-                session.companion.is_conscious = False
-                session.record_companion_memory(f"{target.name} was knocked unconscious in combat")
+        hp_status, rose_hollowed = _handle_hp_zero(
+            session, target, attack_result, was_fallen=was_fallen, hp_status=hp_status, sounds=sounds
+        )
     elif hp_status in ("bloodied", "critical"):
         sounds.append(SOUND_HEARTBEAT)
 
