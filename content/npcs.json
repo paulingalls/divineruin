@@ -1,6 +1,7 @@
 [
   {
     "id": "guildmaster_torin",
+    "resistance_tags": ["pragmatic"],
     "name": "Guildmaster Torin",
     "tier": 1,
     "role": "guild hall master, quest giver",
@@ -49,6 +50,7 @@
   },
   {
     "id": "elder_yanna",
+    "resistance_tags": ["suspicious"],
     "name": "Elder Yanna",
     "tier": 1,
     "role": "Millhaven elder, local authority",
@@ -99,6 +101,7 @@
   },
   {
     "id": "scholar_emris",
+    "resistance_tags": ["pragmatic"],
     "name": "Emris of the Diaspora",
     "tier": 1,
     "role": "Aelindran scholar, artifact expert",
@@ -160,6 +163,7 @@
   },
   {
     "id": "wounded_rider",
+    "resistance_tags": ["emotional"],
     "name": "Wounded Rider",
     "tier": 1,
     "role": "scene catalyst, messenger",
@@ -199,6 +203,7 @@
   },
   {
     "id": "innkeeper_maren",
+    "resistance_tags": ["suspicious"],
     "name": "Maren",
     "tier": 1,
     "role": "innkeeper, local information source",
@@ -257,6 +262,7 @@
   },
   {
     "id": "faction_investigator_valdris",
+    "resistance_tags": ["pragmatic"],
     "name": "Investigator Valdris",
     "tier": 1,
     "role": "faction representative, political pressure",
@@ -315,6 +321,7 @@
   },
   {
     "id": "grimjaw_blacksmith",
+    "resistance_tags": ["honorable"],
     "name": "Grimjaw",
     "tier": 1,
     "role": "blacksmith, crafting mentor",
@@ -372,6 +379,7 @@
   },
   {
     "id": "tavern_keeper_bryn",
+    "resistance_tags": ["greedy"],
     "name": "Bryn",
     "tier": 1,
     "role": "tavern keeper, social hub",
@@ -434,6 +442,7 @@
   },
   {
     "id": "temple_warden_selene",
+    "resistance_tags": ["devout"],
     "name": "Warden Selene",
     "tier": 1,
     "role": "temple row representative, divine liaison",
@@ -494,6 +503,7 @@
   },
   {
     "id": "aldric_hollowed",
+    "resistance_tags": ["cowardly"],
     "name": "Aldric",
     "tier": 1,
     "role": "afflicted farmer, mystery subplot",
@@ -552,6 +562,7 @@
   },
   {
     "id": "syrath_operative_nyx",
+    "resistance_tags": ["suspicious"],
     "name": "Nyx",
     "tier": 1,
     "role": "Syrath faction representative, intelligence operative",
@@ -611,6 +622,7 @@
   },
   {
     "id": "veythar_archivist_theron",
+    "resistance_tags": ["emotional"],
     "name": "Archivist Theron",
     "tier": 1,
     "role": "Veythar faction representative, damage control",
@@ -672,6 +684,7 @@
   },
   {
     "id": "aelora_guildmaster_dara",
+    "resistance_tags": ["pragmatic"],
     "name": "Guild Master Dara",
     "tier": 1,
     "role": "Aelora faction representative, practical concerns",
@@ -733,6 +746,7 @@
   },
   {
     "id": "mentor_drathian_warleader",
+    "resistance_tags": ["honorable"],
     "name": "Warleader Hessa Stormhand",
     "tier": 1,
     "role": "Drathian war-band leader, martial mentor",
@@ -796,6 +810,7 @@
   },
   {
     "id": "mentor_keldaran_forgemaster",
+    "resistance_tags": ["pragmatic"],
     "name": "Forge-Master Doran Ironvein",
     "tier": 1,
     "role": "Keldaran forge-master, martial-technique mentor",
@@ -861,6 +876,7 @@
   },
   {
     "id": "mentor_thornwarden_elder",
+    "resistance_tags": ["devout"],
     "name": "Elder Senna Rootwarden",
     "tier": 1,
     "role": "Thornwarden elder, guardian, martial mentor",
@@ -924,6 +940,7 @@
   },
   {
     "id": "mentor_tidecaller_bosun",
+    "resistance_tags": ["pragmatic"],
     "name": "Bosun Marek Tideborn",
     "tier": 1,
     "role": "Tidecaller sailing master, movement and martial mentor",
