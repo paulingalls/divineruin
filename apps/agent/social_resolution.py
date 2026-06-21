@@ -33,3 +33,43 @@ def social_dc_modifier(disposition: str) -> int:
         return DISPOSITION_DC_MODIFIER[disposition]
     except KeyError:
         raise ValueError(f"unknown disposition {disposition!r}; expected one of {DISPOSITIONS}") from None
+
+
+# Disposition shift on success/failure by social skill and outcome band (spec L678-685).
+# The band derives from the check margin (roll_total - dc): success widens the gain,
+# failure widens the loss. Persuasion builds the most goodwill; Deception never wins more
+# than +1; Intimidation's double edge penalizes bare success and every failure (L687).
+DISPOSITION_SHIFT: dict[str, dict[str, int]] = {
+    "persuasion": {"success_10": 2, "success_5": 1, "success_bare": 0, "fail_4": 0, "fail_5": -1, "fail_10": -2},
+    "deception": {"success_10": 1, "success_5": 1, "success_bare": 0, "fail_4": 0, "fail_5": -1, "fail_10": -2},
+    "intimidation": {"success_10": 1, "success_5": 0, "success_bare": -1, "fail_4": -1, "fail_5": -2, "fail_10": -2},
+}
+
+
+def _outcome_band(margin: int) -> str:
+    """Map a check margin (roll_total - dc) to a DISPOSITION_SHIFT band. Boundaries inclusive
+    toward the higher-magnitude band: +10/+5/0/-5/-10 each land in the stronger tier."""
+    if margin >= 10:
+        return "success_10"
+    if margin >= 5:
+        return "success_5"
+    if margin >= 0:
+        return "success_bare"
+    if margin >= -4:
+        return "fail_4"
+    if margin >= -9:
+        return "fail_5"
+    return "fail_10"
+
+
+def disposition_shift(skill: str, margin: int) -> int:
+    """Return the disposition delta for a social `skill` resolved at `margin` (spec L678-685).
+
+    Fail loud for a skill outside the three social skills — only Persuasion/Deception/
+    Intimidation shift disposition, and routing any other skill here is a caller bug.
+    """
+    try:
+        bands = DISPOSITION_SHIFT[skill]
+    except KeyError:
+        raise ValueError(f"unknown social skill {skill!r}; expected one of {tuple(DISPOSITION_SHIFT)}") from None
+    return bands[_outcome_band(margin)]
