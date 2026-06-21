@@ -301,11 +301,20 @@ async def _resolve_cast(
         if player is None:
             raise ToolError(f"Unknown player: {player_id}")
 
-    # Revivify gate (M4.4 story-007): a revival spell cannot reach a Hollow-killed corpse. Refused
-    # before any Focus/Resonance write. Keyed on the caster row today (cast_spell is self-targeted);
-    # the spell-targeting milestone reroutes revivify_refused to the resolved target.
-    if spell_id in REVIVAL_SPELL_IDS and revivify_refused(player):
-        raise ToolError(f"{spell_id} cannot reach the corpse — it is Hollow-killed.")
+    # Revivify gate (M4.4 story-007, rerouted M11): a revival spell cannot reach a Hollow-killed
+    # corpse. The refusal keys on the TARGET row — the resolved target_id when given, else the caster
+    # (self-cast). Only a revival spell validates the target; a non-revival targeted cast is
+    # DM-narrated and skips the fetch (assumption eabd919bf1ca). Refused before any Focus/Resonance
+    # write. revivify_refused stays pure + target-agnostic, reused unchanged.
+    if spell_id in REVIVAL_SPELL_IDS:
+        if target_id is not None and target_id != player_id:
+            gate_row = await queries_mod.get_player(target_id, conn=conn)
+            if gate_row is None:
+                raise ToolError(f"Unknown target: {target_id}")
+        else:
+            gate_row = player
+        if revivify_refused(gate_row):
+            raise ToolError(f"{spell_id} cannot reach the corpse — it is Hollow-killed.")
     # The caster's race drives the M3.4 racial Resonance interactions (Korath/Thessyn/Vaelti
     # below). A player with no race set takes no racial branch.
     race = player.get("race")

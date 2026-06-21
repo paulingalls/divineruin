@@ -2,7 +2,8 @@
 
 A death under any Hollowed stage sets a permanent players.data.hollow_killed mark and clears the
 Hollowed condition (purged past Mortaen's threshold); a divine_revivify cast on a hollow-killed
-corpse is refused (forward-wired gate, keyed on the caster row until spell targeting lands).
+corpse is refused. The gate keys on the cast TARGET (M11) — these cases exercise the self-cast
+branch (caster is the target); the rerouted target-vs-caster coverage lives in test_spell_targeting.
 
 Mock-conn unit tests for the DB layer + pure gate; the death branch with injected mutations; one
 real-PG E2E (dev DB) for the full resurrection/spell path. The combat-engine Temporary Hollowed
@@ -73,7 +74,7 @@ def _player(*, hollow_killed: bool = False) -> dict:
 
 
 class TestRevivifyRefused:
-    """The pure gate helper + REVIVAL_SPELL_IDS membership (forward-wired, keyed on the row)."""
+    """The pure gate helper + REVIVAL_SPELL_IDS membership (target-agnostic; reused unchanged by M11)."""
 
     def test_refused_when_hollow_killed(self):
         assert spell_casting.revivify_refused({"hollow_killed": True}) is True
@@ -88,7 +89,8 @@ class TestRevivifyRefused:
 
 
 class TestRevivifyGateLive:
-    """The gate wired into the cast path: a revival spell on a hollow-killed row is refused."""
+    """The gate wired into the cast path, self-cast branch: a revival spell self-cast on a
+    hollow-killed caster (caster IS the target) is refused."""
 
     @pytest.mark.asyncio
     async def test_revivify_on_hollow_killed_is_refused(self):

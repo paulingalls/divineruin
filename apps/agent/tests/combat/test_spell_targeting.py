@@ -13,6 +13,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
 import spell_casting
@@ -100,3 +101,42 @@ class TestTargetedNonRevival:
         packet, get_player = await _cast(_spell("arcane_bolt"), caster=_player(), target_id=target_id)
         assert packet["target_id"] == target_id
         assert get_player.await_count == 1  # only the caster — non-revival never validates the target
+
+
+def _revival(spell_id: str = "divine_revivify") -> Spell:
+    """A free divine revival spell whose id is in REVIVAL_SPELL_IDS, so the Hollow-killed gate fires."""
+    return _spell(spell_id, source="divine")
+
+
+class TestRevivifyGateKeysOnTarget:
+    """The Revivify Hollow-killed gate keys on the TARGET row, not the caster (closes story-007's
+    forward-wire; assumption ecc7b803b9b5). revivify_refused stays pure + reused unchanged."""
+
+    @pytest.mark.asyncio
+    async def test_refused_when_target_hollow_killed_caster_living(self):
+        # Living caster, Hollow-killed corpse target — refused because the gate reads the target.
+        corpse = _player("corpse_9", hollow_killed=True)
+        with pytest.raises(ToolError, match="Hollow-killed"):
+            await _cast(
+                _revival(), caster=_player(hollow_killed=False), target_id="corpse_9", rows={"corpse_9": corpse}
+            )
+
+    @pytest.mark.asyncio
+    async def test_allowed_when_target_living_caster_hollow_killed(self):
+        # Hollow-killed caster, living ally target — ALLOWED: the refusal moved off the caster.
+        ally = _player("ally_3", hollow_killed=False)
+        packet, _gp = await _cast(
+            _revival(), caster=_player(hollow_killed=True), target_id="ally_3", rows={"ally_3": ally}
+        )
+        assert packet["target_id"] == "ally_3"
+
+    @pytest.mark.asyncio
+    async def test_unknown_target_raises(self):
+        with pytest.raises(ToolError, match="Unknown target"):
+            await _cast(_revival(), caster=_player(), target_id="ghost_x")
+
+    @pytest.mark.asyncio
+    async def test_self_cast_revival_still_keys_on_caster(self):
+        # No target_id: the caster IS the target — a Hollow-killed self-cast stays refused (back-compat).
+        with pytest.raises(ToolError, match="Hollow-killed"):
+            await _cast(_revival(), caster=_player(hollow_killed=True))
