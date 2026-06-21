@@ -180,20 +180,26 @@ def revivify_refused(character_data: dict) -> bool:
 async def cast_spell(
     context: RunContext[SessionData],
     spell_id: str,
+    target_id: str | None = None,
 ) -> str:
     """Cast a spell by its id (e.g. 'arcane_bolt'). Call when the caster casts a
     known spell. Validates and deducts the spell's Focus cost (rejecting if the
     caster can't afford it), builds the hidden Resonance the cast generates, and
     returns the effect, narration_cue, and audio_cue to voice plus the resulting
     Resonance state and its combat modifiers. Cantrips are free and scale damage
-    with level — the packet's damage_dice carries the scaled dice."""
-    return await _cast_spell_impl(context, spell_id)
+    with level — the packet's damage_dice carries the scaled dice.
+
+    Pass target_id when the spell is aimed at another entity — a fallen corpse for
+    a revival spell, an ally to buff, an object or area. Omit it (the default) for
+    a self-cast. A revival spell is refused if its target is Hollow-killed."""
+    return await _cast_spell_impl(context, spell_id, target_id=target_id)
 
 
 async def _cast_spell_impl(
     context: RunContext[SessionData],
     spell_id: str,
     *,
+    target_id: str | None = None,
     db_mod=db,
     queries_mod=db_queries,
     persistence_mod=ability_persistence,
@@ -223,6 +229,7 @@ async def _cast_spell_impl(
             session,
             spell_id,
             conn=conn,
+            target_id=target_id,
             queries_mod=queries_mod,
             persistence_mod=persistence_mod,
             resonance_mutations_mod=resonance_mutations_mod,
@@ -255,6 +262,7 @@ async def _resolve_cast(
     spell_id: str,
     *,
     conn,
+    target_id: str | None = None,
     player: dict | None = None,
     suppress_resonance_changed: bool = False,
     queries_mod=db_queries,
@@ -403,6 +411,10 @@ async def _resolve_cast(
         "resonance_modifiers": modifiers,
         "ward_active": ward_active,
     }
+    # Carry the explicit target into the packet for the DM to voice (corpse/ally/object/area).
+    # Additive — a self-cast (target_id None) leaves the packet shape untouched.
+    if target_id is not None:
+        packet["target_id"] = target_id
     # At Overreach the Veil tears: auto-roll a d20 Hollow Echo (spec magic.md:167-185). An active ward
     # adds +4 to the roll (milder result). The echo resolves against the LOCAL effective_resonance
     # (not the unsynced session value).
