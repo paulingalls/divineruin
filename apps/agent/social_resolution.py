@@ -78,6 +78,52 @@ def disposition_shift(skill: str, margin: int) -> int:
     return bands[_outcome_band(margin)]
 
 
+# Canonical argument categories a player can make in a Tier-3 structured scene (spec L768-777).
+ARGUMENT_TYPES: tuple[str, ...] = ("reason", "emotion", "self_interest", "threat", "bluff", "evidence")
+
+# NPC resistance personality (spec L783-791): each tag makes some argument categories land
+# harder (resistant) or softer (vulnerable). Mapped onto the canonical ARGUMENT_TYPES so a
+# matching argument eases the DC and a resisted one stiffens it. story-003 tags NPC content
+# against these keys.
+ARGUMENT_RESISTANCE: dict[str, dict[str, tuple[str, ...]]] = {
+    "pragmatic": {"vulnerable": ("self_interest", "reason", "evidence"), "resistant": ("emotion", "threat")},
+    "emotional": {"vulnerable": ("emotion",), "resistant": ("reason", "threat")},
+    "suspicious": {"vulnerable": ("evidence",), "resistant": ("reason", "emotion", "self_interest", "threat", "bluff")},
+    "cowardly": {"vulnerable": ("threat",), "resistant": ()},
+    "devout": {"vulnerable": (), "resistant": ("threat",)},
+    "greedy": {"vulnerable": ("self_interest",), "resistant": ("emotion",)},
+    "honorable": {"vulnerable": ("reason", "evidence"), "resistant": ("bluff", "threat")},
+}
+
+# One disposition-tier of DC swing per vulnerable/resistant match — the spec pins direction,
+# not magnitude, so this mirrors the ±3 granularity of the disposition modifier.
+_ARGUMENT_DC_STEP = 3
+
+
+def argument_dc_adjust(argument_type: str | None, resistance_tags: tuple[str, ...]) -> int:
+    """DC swing for a Tier-3 argument against an NPC's resistance tags (spec L783-791).
+
+    `None` argument (a Tier-1 simple check) is always neutral. A vulnerable match eases the DC
+    (negative), a resistant match stiffens it (positive); an NPC carrying conflicting tags nets
+    out. Fail loud on an argument category or personality tag outside the canonical sets.
+    """
+    if argument_type is None:
+        return 0
+    if argument_type not in ARGUMENT_TYPES:
+        raise ValueError(f"unknown argument type {argument_type!r}; expected one of {ARGUMENT_TYPES}")
+    adjust = 0
+    for tag in resistance_tags:
+        try:
+            profile = ARGUMENT_RESISTANCE[tag]
+        except KeyError:
+            raise ValueError(f"unknown personality tag {tag!r}; expected one of {tuple(ARGUMENT_RESISTANCE)}") from None
+        if argument_type in profile["vulnerable"]:
+            adjust -= _ARGUMENT_DC_STEP
+        if argument_type in profile["resistant"]:
+            adjust += _ARGUMENT_DC_STEP
+    return adjust
+
+
 # Narration cue by outcome band (spec get_social_hint, L661): a short qualitative word the DM
 # voices instead of a number. Distinct from rules_engine.narrative_hint (skill-check vocab).
 _SOCIAL_CUE: dict[str, str] = {
@@ -111,17 +157,22 @@ def resolve_social_check(
     skill: str,
     roll_total: int,
     base_dc: int,
+    argument_type: str | None = None,
+    resistance_tags: tuple[str, ...] = (),
     stakes: str = "normal",
 ) -> SocialResult:
-    """Resolve a Tier-1 social check (spec L636-687). Pure: the caller supplies `roll_total`
+    """Resolve a social check (spec L636-687). Pure: the caller supplies `roll_total`
     (d20 + skill modifier) and the `base_dc`; the NPC disposition modifies the DC.
 
-    `stakes="high"` flags the roll dramatic regardless of margin (a faction leader, a critical
-    secret). The dramatic verdict and its label are delegated to dramatic.evaluate_dramatic_
-    context so the M4.5 catalog stays the single source of truth. Raises ValueError for an
-    off-ladder disposition or a non-social skill.
+    Tier 1 leaves `argument_type=None`. Tier 3 passes a structured argument category plus the
+    NPC's `resistance_tags`, which further shift the DC (argument_dc_adjust): a favored argument
+    is easier, a resisted one harder. `stakes="high"` flags the roll dramatic regardless of
+    margin (a faction leader, a critical secret). The dramatic verdict and its label are
+    delegated to dramatic.evaluate_dramatic_context so the M4.5 catalog stays the single source
+    of truth. Raises ValueError for an off-ladder disposition, a non-social skill, or an unknown
+    argument category / personality tag.
     """
-    dc = base_dc + social_dc_modifier(disposition)
+    dc = base_dc + social_dc_modifier(disposition) + argument_dc_adjust(argument_type, resistance_tags)
     margin = roll_total - dc
     success = roll_total >= dc
     delta = disposition_shift(skill, margin)

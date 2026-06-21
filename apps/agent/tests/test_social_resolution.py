@@ -12,9 +12,12 @@ import pytest
 
 from role_archetypes import DISPOSITIONS
 from social_resolution import (
+    ARGUMENT_RESISTANCE,
+    ARGUMENT_TYPES,
     DISPOSITION_DC_MODIFIER,
     DISPOSITION_SHIFT,
     SocialResult,
+    argument_dc_adjust,
     disposition_shift,
     resolve_social_check,
     social_dc_modifier,
@@ -131,3 +134,69 @@ class TestResolveSocialCheckTier1:
     def test_off_ladder_disposition_fails_loud(self):
         with pytest.raises(ValueError, match="wary"):
             resolve_social_check(disposition="wary", skill="persuasion", roll_total=10, base_dc=10)
+
+
+class TestArgumentDcAdjust:
+    """Tier-3 argument categories vs NPC resistance personality (spec L768-791)."""
+
+    def test_no_argument_is_neutral(self):
+        # A Tier-1 simple check passes argument_type=None -> no adjustment.
+        assert argument_dc_adjust(None, ()) == 0
+        assert argument_dc_adjust(None, ("pragmatic",)) == 0
+
+    def test_vulnerable_argument_lowers_dc(self):
+        # Pragmatic NPC is vulnerable to self-interest -> easier (negative adjust).
+        assert argument_dc_adjust("self_interest", ("pragmatic",)) < 0
+
+    def test_resistant_argument_raises_dc(self):
+        # Pragmatic NPC resists emotional appeals -> harder (positive adjust).
+        assert argument_dc_adjust("emotion", ("pragmatic",)) > 0
+
+    def test_unrelated_argument_is_neutral(self):
+        # Cowardly profile neither favors nor resists evidence -> no change.
+        assert argument_dc_adjust("evidence", ("cowardly",)) == 0
+
+    def test_conflicting_tags_net_out(self):
+        # An NPC both pragmatic (resists emotion) and emotional (vulnerable to emotion).
+        assert argument_dc_adjust("emotion", ("pragmatic", "emotional")) == 0
+
+    def test_resistance_map_uses_only_canonical_argument_types(self):
+        for profile in ARGUMENT_RESISTANCE.values():
+            for arg in (*profile["vulnerable"], *profile["resistant"]):
+                assert arg in ARGUMENT_TYPES
+
+    def test_unknown_argument_type_fails_loud(self):
+        with pytest.raises(ValueError, match="flattery"):
+            argument_dc_adjust("flattery", ("pragmatic",))
+
+    def test_unknown_personality_tag_fails_loud(self):
+        with pytest.raises(ValueError, match="grumpy"):
+            argument_dc_adjust("reason", ("grumpy",))
+
+
+class TestResolveSocialCheckTier3:
+    def test_matching_argument_makes_the_check_easier(self):
+        # Same roll vs same NPC: a vulnerable argument succeeds where a bare check would not.
+        plain = resolve_social_check(disposition="neutral", skill="persuasion", roll_total=14, base_dc=15)
+        favored = resolve_social_check(
+            disposition="neutral",
+            skill="persuasion",
+            roll_total=14,
+            base_dc=15,
+            argument_type="self_interest",
+            resistance_tags=("greedy",),
+        )
+        assert not plain.success
+        assert favored.dc < plain.dc
+        assert favored.success
+
+    def test_resistant_argument_makes_the_check_harder(self):
+        r = resolve_social_check(
+            disposition="neutral",
+            skill="persuasion",
+            roll_total=16,
+            base_dc=15,
+            argument_type="emotion",
+            resistance_tags=("pragmatic",),
+        )
+        assert r.dc > 15
