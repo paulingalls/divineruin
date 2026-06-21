@@ -133,6 +133,14 @@ class CombatParticipant:
     dc_mod: int = 0
     legendary_actions: int = 0
     signature_ability: dict | None = None
+    # Loot & currency overlay (M4.7, story-002). ``category`` is the enemy's creature category
+    # (humanoid/beast/hollow_drift/hollow_rend/construct/undead/named) and ``loot_table_id`` points
+    # at its content/loot_tables.json table. combat_init carries both off the template enemy; on
+    # victory _end_combat_db reads them to roll role-scaled loot (derive_role_loot) and currency
+    # (calculate_currency_drop). Empty-string defaults so players/companions and pre-M4.7 enemy
+    # rows serialize via asdict / fall back on from_dict unchanged (same pattern as the role fields).
+    category: str = ""
+    loot_table_id: str = ""
 
 
 @dataclass

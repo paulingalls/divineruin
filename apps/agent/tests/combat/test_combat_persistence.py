@@ -99,6 +99,31 @@ def test_role_fields_roundtrip_and_default_for_legacy_rows() -> None:
     assert p0.signature_ability is None
 
 
+def test_loot_fields_roundtrip_and_default_for_legacy_rows() -> None:
+    """story-002 (M4.7): a participant's loot overlay fields (category, loot_table_id) survive the
+    asdict/from_dict JSONB round-trip, and a row written before they existed rehydrates to the
+    empty-string defaults (players/companions and pre-story-002 enemies). Pure, no DB."""
+    state = _make_combat_state()
+    enemy = state.get_participant("goblin_scout_1")
+    assert enemy is not None
+    enemy.category = "humanoid"
+    enemy.loot_table_id = "loot_humanoid_bandit"
+
+    re = CombatState.from_dict(state.to_dict()).get_participant("goblin_scout_1")
+    assert re is not None
+    assert re.category == "humanoid"
+    assert re.loot_table_id == "loot_humanoid_bandit"
+
+    # Backward compat: a row missing the loot fields falls back to "" — no loot rolled for it.
+    legacy = state.to_dict()
+    for p in legacy["participants"]:
+        p.pop("category", None)
+        p.pop("loot_table_id", None)
+    p0 = CombatState.from_dict(legacy).participants[0]
+    assert p0.category == ""
+    assert p0.loot_table_id == ""
+
+
 def _mid_combat_state(combat_id: str) -> CombatState:
     """A mid-phase CombatState built from the canonical combat fixture, then advanced into a
     state that exercises every field the round-trip must preserve: a non-default beat, populated
