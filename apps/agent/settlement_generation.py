@@ -17,7 +17,7 @@ get_settlement_tier itself keeps its fail-loud contract for unknown sizes.
 
 import random
 
-from role_archetypes import DISPOSITIONS, create_npc_from_archetype
+from role_archetypes import DISPOSITIONS, create_npc_from_archetype, shift_disposition
 from settlement_templates import get_settlement_personality, get_settlement_tier
 
 # keldaran_hold is City-scale (spec lists Keldaran holds as City examples). Normalize to
@@ -58,17 +58,6 @@ def generate_settlement_npcs(tier: str, personality: str, *, rng: random.Random 
     return {role_id: rng.randint(r["min"], r["max"]) for role_id, r in ranges.items()}
 
 
-def _shift_disposition(base: str, delta: int) -> str:
-    """Move `base` along the DISPOSITIONS ladder by `delta`, clamped to its ends.
-
-    A positive delta is friendlier, negative more hostile; the result never falls off the
-    5-tier ladder (so it stays a valid disposition). Raises ValueError if `base` isn't a
-    canonical disposition.
-    """
-    idx = DISPOSITIONS.index(base)
-    return DISPOSITIONS[max(0, min(len(DISPOSITIONS) - 1, idx + delta))]
-
-
 def instantiate_npc_from_template(role: str, tier: str, personality: str, overrides: dict | None = None) -> dict:
     """Build one settlement NPC: create_npc_from_archetype(role, overrides) with the
     settlement's personality modifiers filling in any field the caller did not pin.
@@ -95,7 +84,7 @@ def instantiate_npc_from_template(role: str, tier: str, personality: str, overri
     npc = create_npc_from_archetype(role, overrides)
     if "default_disposition" not in overrides:
         disp_delta = pers["disposition_modifiers"].get(role, 0)
-        npc["default_disposition"] = _shift_disposition(npc["default_disposition"], disp_delta)
+        npc["default_disposition"] = shift_disposition(npc["default_disposition"], disp_delta)
     elif npc["default_disposition"] not in DISPOSITIONS:
         # Overrides win, but a disposition must still be on the canonical ladder — an
         # override skips _shift_disposition's validation, so guard it here (fail loud).

@@ -14,12 +14,14 @@ import pytest
 
 import role_archetypes
 from role_archetypes import (
+    DISPOSITIONS,
     RoleArchetype,
     create_npc_from_archetype,
     get_role_archetype,
     is_loaded,
     parse_role_archetype_row,
     set_role_archetypes,
+    shift_disposition,
 )
 
 _CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "role_archetypes.json"
@@ -151,3 +153,24 @@ class TestCreateNpcFromArchetype:
     def test_unknown_role_fails_loud(self):
         with pytest.raises(ValueError, match="unknown_role"):
             create_npc_from_archetype("unknown_role")
+
+
+class TestShiftDisposition:
+    """shift_disposition lives beside the DISPOSITIONS SSOT — settlement generation and
+    social resolution share this one ladder clamp (extracted from settlement_generation)."""
+
+    def test_shifts_within_ladder(self):
+        assert shift_disposition("neutral", -1) == "unfriendly"
+        assert shift_disposition("neutral", 1) == "friendly"
+
+    def test_clamps_at_both_ends(self):
+        assert shift_disposition("hostile", -3) == "hostile"
+        assert shift_disposition("trusted", 5) == "trusted"
+
+    def test_zero_delta_is_identity_for_every_tier(self):
+        for tier in DISPOSITIONS:
+            assert shift_disposition(tier, 0) == tier
+
+    def test_off_ladder_base_fails_loud(self):
+        with pytest.raises(ValueError):
+            shift_disposition("wary", 1)
