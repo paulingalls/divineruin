@@ -100,6 +100,18 @@ _ROLE_TYPES = ("civilian", "military", "specialist")
 DISPOSITIONS = ("hostile", "unfriendly", "neutral", "friendly", "trusted")
 
 
+def shift_disposition(base: str, delta: int) -> str:
+    """Move `base` along the DISPOSITIONS ladder by `delta`, clamped to its ends.
+
+    A positive delta is friendlier, negative more hostile; the result never falls off the
+    5-tier ladder (so it stays a valid disposition). Raises ValueError if `base` isn't a
+    canonical disposition. Lives beside the DISPOSITIONS SSOT so settlement generation and
+    social resolution share one clamp instead of copying it.
+    """
+    idx = DISPOSITIONS.index(base)
+    return DISPOSITIONS[max(0, min(len(DISPOSITIONS) - 1, idx + delta))]
+
+
 # --- domain-specific parse helpers (generic primitives come from catalog_parse) ---
 
 
