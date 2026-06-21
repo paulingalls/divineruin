@@ -8,12 +8,123 @@ attachment. Consumed by the phase loop (combat_turn)."""
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
+from livekit.agents.llm import ToolError
+
+import ability_persistence
+import check_resolution
 import combat_enhancers
+import combat_resolution
+import event_types as E
 import spell_casting
+from combat_events import emit_or_publish
+from dice import roll as dice_roll
+from rules_engine import attribute_modifier
 from session_data import CombatParticipant, SessionData
 
 if TYPE_CHECKING:
     from spell_casting import CastResult
+
+# Diplomat de-escalation (M4.6a story-004, spec game_mechanics_combat.md:175-183).
+_DEESCALATE_FOCUS_COST = 3
+_DEESCALATE_BASE_DC = 15
+
+
+def _lead_enemy(state):
+    """The living enemy the Diplomat addresses: highest WIS resists hardest (spec L180)."""
+    living = [p for p in state.participants if p.type == "enemy" and not p.is_fallen]
+    if not living:
+        return None
+    return max(living, key=lambda e: e.attributes.get("wisdom", 10))
+
+
+def _gate_deescalation(player: dict, state) -> None:
+    """Declare-time fail-loud gate for de_escalate: one attempt per encounter, 3 Focus.
+
+    Mirrors spell_casting._gate_spell's pre-resolution discipline — validate with NO state
+    writes so a bad attempt never rolls back a phase that already resolved other actors."""
+    if state.deescalation_used:
+        raise ToolError("De-escalate can only be attempted once per encounter.")
+    have = (player.get("focus") or {}).get("current", 0)
+    if have < _DEESCALATE_FOCUS_COST:
+        raise ToolError(f"De-escalate costs {_DEESCALATE_FOCUS_COST} Focus; you have {have}.")
+
+
+async def _resolve_deescalation_packet(
+    session: SessionData,
+    attacker: CombatParticipant,
+    decl,
+    *,
+    conn,
+    player: dict | None,
+    sink=None,
+    persistence=ability_persistence,
+    rng=None,
+) -> dict:
+    """Resolve a de_escalate ABILITY in combat (M4.6a story-004).
+
+    Focus + lockout are pre-validated at declare time (_gate_deescalation); here we spend the
+    3 Focus, roll the contested CHA-vs-lead-enemy-WIS gate plus one argument, set the combat-end
+    flags on CombatState, and emit the always-dramatic de_escalate DICE_ROLL. ``player`` is the
+    for_update row from prevalidation (reused, so the lock is taken once)."""
+    state = session.combat_state
+    if state is None or player is None:
+        return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
+    lead = _lead_enemy(state)
+    if lead is None:
+        return {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": "no living enemy to de-escalate",
+        }
+
+    have = (player.get("focus") or {}).get("current", 0)
+    await persistence.update_player_resources(session.player_id, focus=have - _DEESCALATE_FOCUS_COST, conn=conn)
+
+    attrs = player.get("attributes", {})
+    cha_total = dice_roll("d20", rng=rng).total + attribute_modifier(attrs.get("charisma", 10))
+    enemy_wis_total = dice_roll("d20", rng=rng).total + attribute_modifier(lead.attributes.get("wisdom", 10))
+    argument_total = check_resolution.resolve_skill_check_dc(player, "persuasion", _DEESCALATE_BASE_DC, rng).total
+
+    outcome = combat_resolution.resolve_deescalation(
+        cha_total=cha_total,
+        enemy_wis_total=enemy_wis_total,
+        argument_total=argument_total,
+        base_dc=_DEESCALATE_BASE_DC,
+    )
+    state.deescalation_used = True
+    if outcome.ends_combat:
+        state.deescalated = True
+
+    await emit_or_publish(
+        sink,
+        session.room,
+        E.DICE_ROLL,
+        {
+            "roll_type": "de_escalate",
+            "actor": attacker.name,
+            "scene_entered": outcome.scene_entered,
+            "success": outcome.success,
+            "dramatic": outcome.dramatic,
+            "context": outcome.context,
+        },
+        event_bus=session.event_bus,
+    )
+    session.record_event(
+        f"{attacker.name} attempts de-escalation: {'combat ends' if outcome.ends_combat else 'combat continues'}"
+    )
+    return {
+        "actor_id": attacker.id,
+        "resolved": True,
+        "declaration_type": str(decl.type),
+        "action": "de_escalate",
+        "deescalation": {
+            "scene_entered": outcome.scene_entered,
+            "success": outcome.success,
+            "ends_combat": outcome.ends_combat,
+            "narrative_cue": outcome.narrative_cue,
+        },
+    }
 
 
 @dataclass

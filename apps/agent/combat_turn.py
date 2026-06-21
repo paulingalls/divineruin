@@ -29,7 +29,9 @@ from combat_ability import (
     AbilityCastOutcome,
     _attach_riders,
     _find_action,
+    _gate_deescalation,
     _resolve_ability_packet,
+    _resolve_deescalation_packet,
 )
 from combat_end import _end_combat_db, _end_combat_finish
 from combat_events import EventSink, scratch_guard
@@ -384,7 +386,12 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
     if player is None:
         raise ToolError(f"Unknown player: {session.player_id}")
     for action in player_abilities:
-        cast_resolver._gate_spell(player, action)
+        # De-escalate (M4.6a story-004) is an ABILITY but not a spell — gate its 3-Focus cost
+        # and once-per-encounter lockout here, not through _gate_spell (which looks up a spell).
+        if action.lower() == "de_escalate":
+            _gate_deescalation(player, state)
+        else:
+            cast_resolver._gate_spell(player, action)
     return player
 
 
@@ -429,6 +436,11 @@ async def _resolve_one_packet(
         }
 
     if decl.type is DeclarationType.ABILITY:
+        # De-escalate (M4.6a story-004) is an ABILITY but resolves socially, not as a cast:
+        # contested gate + one argument that can end combat. Its Focus/lockout were pre-gated
+        # in _prevalidate_ability_focus, and ``player`` is the for_update row from there.
+        if (decl.action or "").lower() == "de_escalate":
+            return await _resolve_deescalation_packet(session, attacker, decl, conn=conn, player=player, sink=sink)
         return await _resolve_ability_packet(
             session,
             attacker,
