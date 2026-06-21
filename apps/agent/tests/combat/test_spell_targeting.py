@@ -103,6 +103,24 @@ class TestTargetedNonRevival:
         assert get_player.await_count == 1  # only the caster — non-revival never validates the target
 
 
+class TestTargetIdValidation:
+    """target_id is run through the canonical _validate_id guard in the shared _resolve_cast, so an
+    ill-formed id is rejected on BOTH the out-of-combat and in-combat paths (concern 8816cdffb757)."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("bad_target", ["bad id!", "drop;table", "a.b", ""])
+    async def test_invalid_target_id_rejected(self, bad_target):
+        with pytest.raises(ToolError, match="Invalid target_id"):
+            await _cast(_spell("arcane_bolt"), caster=_player(), target_id=bad_target)
+
+    @pytest.mark.asyncio
+    async def test_object_and_area_ids_accepted(self):
+        # Object/area ids match _ID_RE (alphanumeric + _ -) and pass the guard.
+        for tid in ("altar_object", "blast_area_a3", "goblin-1"):
+            packet, _gp = await _cast(_spell("arcane_bolt"), caster=_player(), target_id=tid)
+            assert packet["target_id"] == tid
+
+
 def _revival(spell_id: str = "divine_revivify") -> Spell:
     """A free divine revival spell whose id is in REVIVAL_SPELL_IDS, so the Hollow-killed gate fires."""
     return _spell(spell_id, source="divine")

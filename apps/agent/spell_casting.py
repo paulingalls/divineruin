@@ -294,6 +294,10 @@ async def _resolve_cast(
     cast's own RESONANCE_CHANGED push — in combat the phase WRAP push is the single authoritative HUD
     update, so the ability must not double-emit."""
     _validate_id(spell_id, "spell_id")
+    # Validate the explicit target id the same way as spell_id, on the shared core so BOTH the
+    # out-of-combat cast and the in-combat ABILITY path are guarded once (concern 8816cdffb757).
+    if target_id is not None:
+        _validate_id(target_id, "target_id")
     player_id = session.player_id
 
     if player is None:
