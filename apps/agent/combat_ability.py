@@ -54,6 +54,7 @@ async def _resolve_deescalation_packet(
     attacker: CombatParticipant,
     decl,
     *,
+    state,
     conn,
     player: dict | None,
     sink=None,
@@ -65,8 +66,9 @@ async def _resolve_deescalation_packet(
     Focus + lockout are pre-validated at declare time (_gate_deescalation); here we spend the
     3 Focus, roll the contested CHA-vs-lead-enemy-WIS gate plus one argument, set the combat-end
     flags on CombatState, and emit the always-dramatic de_escalate DICE_ROLL. ``player`` is the
-    for_update row from prevalidation (reused, so the lock is taken once)."""
-    state = session.combat_state
+    for_update row from prevalidation (reused, so the lock is taken once). The flags are set on
+    the phase loop's working ``state`` (the deep-copied next_state the wrap reads), NOT
+    session.combat_state — that stays the pristine pre-phase copy until the tx commits."""
     if state is None or player is None:
         return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
     lead = _lead_enemy(state)

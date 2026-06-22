@@ -440,7 +440,9 @@ async def _resolve_one_packet(
         # contested gate + one argument that can end combat. Its Focus/lockout were pre-gated
         # in _prevalidate_ability_focus, and ``player`` is the for_update row from there.
         if (decl.action or "").lower() == "de_escalate":
-            return await _resolve_deescalation_packet(session, attacker, decl, conn=conn, player=player, sink=sink)
+            return await _resolve_deescalation_packet(
+                session, attacker, decl, state=state, conn=conn, player=player, sink=sink
+            )
         return await _resolve_ability_packet(
             session,
             attacker,
