@@ -1,6 +1,6 @@
 import { sql } from "./db.ts";
 import { parseJsonb } from "./parse-jsonb.ts";
-import { logError } from "./env.ts";
+import { logError, logDiag } from "./env.ts";
 import {
   computePercentComplete,
   type DecisionOption,
@@ -372,6 +372,18 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
         progress: null,
       });
     }
+
+    logDiag("catchup.feed", () => ({
+      playerId,
+      total: items.length,
+      byType: items.reduce<Record<string, number>>((acc, i) => {
+        acc[i.type] = (acc[i.type] ?? 0) + 1;
+        return acc;
+      }, {}),
+      ids: items.map((i) => i.id),
+      activityRows: rows.length,
+      trainingRows: trainingRows.length,
+    }));
 
     return Response.json({ items });
   } catch (err) {
