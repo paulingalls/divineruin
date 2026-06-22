@@ -117,6 +117,16 @@ export function parseLocationRow(id: string, raw: unknown): Location {
     }
     location.danger_level = data.danger_level;
   }
+  if (data.terrain !== undefined) {
+    // Travel navigation terrain (M4.6b). Shape-only guard here — a non-empty string. The
+    // canonical key set (travel.NAVIGATION_DC) is owned + enforced Python-side (the agent's
+    // navigation_dc fails loud on an unknown key, and test_travel_content asserts content
+    // conformance), so we don't duplicate the vocabulary across languages.
+    if (typeof data.terrain !== "string" || data.terrain.length === 0) {
+      throw new Error(`${ctx}.terrain is not a non-empty string`);
+    }
+    location.terrain = data.terrain;
+  }
   if (data.ambient_sounds !== undefined) {
     if (typeof data.ambient_sounds !== "string") {
       throw new Error(`${ctx}.ambient_sounds is not a string`);

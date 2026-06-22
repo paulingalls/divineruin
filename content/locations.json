@@ -366,7 +366,9 @@
         "destination": "greyvale_wilderness_north"
       }
     },
-    "ambient_sounds": "wind_ruins"
+    "ambient_sounds": "wind_ruins",
+    "danger_level": 1,
+    "terrain": "unmarked_wilderness"
   },
   {
     "id": "greyvale_ruins_inner",
@@ -419,7 +421,8 @@
     },
     "ambient_sounds": "wind_ruins",
     "ambient_sounds_night": "hollow_wrongness",
-    "danger_level": 2
+    "danger_level": 2,
+    "terrain": "dense_forest"
   },
   {
     "id": "greyvale_south_road",
@@ -440,7 +443,8 @@
       }
     },
     "ambient_sounds": "rural_town_uneasy",
-    "danger_level": 0
+    "danger_level": 0,
+    "terrain": "established_road"
   },
   {
     "id": "millhaven_inn",
