@@ -40,6 +40,7 @@ from session_data import SessionData
 from session_summary import generate_session_summary
 from session_tools import end_session, record_story_moment, update_npc_disposition
 from system_prompts import build_system_prompt
+from travel_tools import travel
 from warm_prompts import format_affect_context
 
 logger = logging.getLogger("divineruin.exploration")
@@ -47,7 +48,7 @@ logger = logging.getLogger("divineruin.exploration")
 # The unified verb vocabulary for all exploration (city/wilderness/dungeon). This is
 # the former CITY_TOOLS — city's tool list was already a strict superset of the
 # wilderness and dungeon lists, so one list serves every region. With a single agent
-# there is no per-region ceiling pressure: 15 verbs leave 5 free slots under
+# there is no per-region ceiling pressure: 16 verbs leave 4 free slots under
 # MAX_STRICT_TOOLS (relieves debt e665104c753a). The settlement-flavoured verbs
 # (transact, award_divine_favor, update_npc_disposition) are exposed everywhere; the
 # warm-layer REGISTER (story-002) carries the when-appropriate guidance per ADR 0007 —
@@ -62,6 +63,7 @@ EXPLORATION_TOOLS = [
     set_music_state,
     # Mutation
     move_player,
+    travel,
     transact,
     update_quest,
     award_xp,

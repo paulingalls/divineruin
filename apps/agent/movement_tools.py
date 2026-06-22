@@ -48,6 +48,72 @@ async def move_player(
     return await _move_player_impl(context, destination_id)
 
 
+async def apply_arrival(
+    session: SessionData,
+    destination_id: str,
+    destination_location: dict | None,
+    *,
+    db_mod=db,
+    mutations=db_mutations,
+) -> str:
+    """Apply a player's arrival at `destination_id`: persist location + map progress (atomically),
+    emit LOCATION_CHANGED + corruption tracking, sync session location/corruption, and record the
+    visit + companion memory. Shared by move_player and the travel tool so both surface the same
+    client-facing arrival side-effects (HUD location, visited-map, corruption). Returns the previous
+    location id. Does NOT do exit-requirement gating or scene-context build — callers own those."""
+    previous_location_id = session.location_id
+    pending_events: list[tuple[str, dict]] = []
+
+    destination_exits = destination_location.get("exits", {}) if destination_location else {}
+    exit_connections = db_mod.extract_exit_connections(destination_exits)
+
+    async with db_mod.transaction() as conn:
+        await mutations.update_player_location(session.player_id, destination_id, conn=conn)
+        await mutations.upsert_map_progress(session.player_id, destination_id, exit_connections, conn=conn)
+
+        pending_events.append(
+            (
+                E.LOCATION_CHANGED,
+                {
+                    "previous_location": previous_location_id,
+                    "new_location": destination_id,
+                    "location_name": destination_location.get("name", destination_id)
+                    if destination_location
+                    else destination_id,
+                    "atmosphere": destination_location.get("atmosphere", "") if destination_location else "",
+                    "region": destination_location.get("region", "") if destination_location else "",
+                    "connections": exit_connections,
+                    "ambient_sounds": _resolve_ambient_sounds(destination_location, session.world_time),
+                    "time_of_day": session.world_time,
+                },
+            )
+        )
+
+    # Session state updated ONLY after successful commit
+    session.location_id = destination_id
+
+    # Corruption tracking — location-based, resets on safe areas.
+    new_corruption = LOCATION_CORRUPTION.get(destination_id, 0)
+    previous_corruption = session.corruption_level
+    session.corruption_level = new_corruption
+    if new_corruption != previous_corruption:
+        pending_events.append(
+            (
+                E.HOLLOW_CORRUPTION_CHANGED,
+                {"level": new_corruption, "previous": previous_corruption, "location_id": destination_id},
+            )
+        )
+
+    for event_type, payload in pending_events:
+        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
+
+    loc_name = destination_location.get("name", destination_id) if destination_location else destination_id
+    session.record_companion_memory(f"Traveled to {loc_name}")
+    if destination_id not in session.session_locations_visited:
+        session.session_locations_visited.append(destination_id)
+    return previous_location_id
+
+
 async def _move_player_impl(
     context: RunContext[SessionData],
     destination_id: str,
@@ -96,9 +162,6 @@ async def _move_player_impl(
                 }
             )
 
-    previous_location_id = session.location_id
-    pending_events: list[tuple[str, dict]] = []
-
     destination_location = await content.get_location(destination_id)
 
     # Detect region boundary crossing for handoff
@@ -106,59 +169,11 @@ async def _move_player_impl(
     dest_region = destination_location.get("region_type", REGION_CITY) if destination_location else REGION_CITY
     region_change = current_region != dest_region
 
-    destination_exits = destination_location.get("exits", {}) if destination_location else {}
-    exit_connections = db_mod.extract_exit_connections(destination_exits)
-
-    async with db_mod.transaction() as conn:
-        await mutations.update_player_location(session.player_id, destination_id, conn=conn)
-        await mutations.upsert_map_progress(session.player_id, destination_id, exit_connections, conn=conn)
-
-        pending_events.append(
-            (
-                E.LOCATION_CHANGED,
-                {
-                    "previous_location": previous_location_id,
-                    "new_location": destination_id,
-                    "location_name": destination_location.get("name", destination_id)
-                    if destination_location
-                    else destination_id,
-                    "atmosphere": destination_location.get("atmosphere", "") if destination_location else "",
-                    "region": destination_location.get("region", "") if destination_location else "",
-                    "connections": exit_connections,
-                    "ambient_sounds": _resolve_ambient_sounds(destination_location, session.world_time),
-                    "time_of_day": session.world_time,
-                },
-            )
-        )
-
-    # Session state updated ONLY after successful commit
-    session.location_id = destination_id
-
-    # Corruption tracking — location-based, resets on safe areas.
-    # Updated after commit alongside location_id so both are consistent.
-    new_corruption = LOCATION_CORRUPTION.get(destination_id, 0)
-    previous_corruption = session.corruption_level
-    session.corruption_level = new_corruption
-    if new_corruption != previous_corruption:
-        pending_events.append(
-            (
-                E.HOLLOW_CORRUPTION_CHANGED,
-                {
-                    "level": new_corruption,
-                    "previous": previous_corruption,
-                    "location_id": destination_id,
-                },
-            )
-        )
-
-    for event_type, payload in pending_events:
-        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
-
+    # Shared arrival side-effects (location + map progress + LOCATION_CHANGED + corruption + visit).
+    previous_location_id = await apply_arrival(
+        session, destination_id, destination_location, db_mod=db_mod, mutations=mutations
+    )
     session.record_event(f"Moved to {destination_id}")
-    loc_name = destination_location.get("name", destination_id) if destination_location else destination_id
-    session.record_companion_memory(f"Traveled to {loc_name}")
-    if destination_id not in session.session_locations_visited:
-        session.session_locations_visited.append(destination_id)
 
     from scene_tools import _build_scene_context
 
