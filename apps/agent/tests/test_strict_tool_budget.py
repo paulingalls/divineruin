@@ -32,11 +32,11 @@ def test_agent_within_strict_tool_limit(name, tools):
 
 def test_exploration_strict_tool_count():
     # M5 verb consolidation reclaimed slots on the old CityAgent (20->15 via transact /
-    # check / enter_mode folds). M7's exploration-agent collapse keeps that single 15-verb
-    # list for ALL regions, so the per-region ceiling no longer binds — 5 free slots remain
-    # under MAX_STRICT_TOOLS for the M2.4 spell tools (relieves debt e665104c753a).
-    assert len(EXPLORATION_TOOLS) == 15
-    assert len(EXPLORATION_TOOLS) == MAX_STRICT_TOOLS - 5
+    # check / enter_mode folds). M7's exploration-agent collapse keeps a single list for ALL
+    # regions; M4.6b added the travel verb (15->16), so the per-region ceiling no longer binds —
+    # 4 free slots remain under MAX_STRICT_TOOLS for the M2.4 spell tools (relieves debt e665104c753a).
+    assert len(EXPLORATION_TOOLS) == 16
+    assert len(EXPLORATION_TOOLS) == MAX_STRICT_TOOLS - 4
 
 
 def test_combat_strict_tool_count():
