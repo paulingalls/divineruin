@@ -3,11 +3,12 @@
 `_travel_impl` is the IO half of travel: it reads the player + destination, rolls a Survival
 navigation check, drives the pure `travel_engine.resolve_travel_segment` engine, applies the returned
 exhaustion via the `apply_condition` SSOT (capped by `rules_engine.exhaustion_stack_cap`),
-persists `travel_state`, relocates the player on a successful (non-lost) journey by reusing
-`db_mutations.update_player_location` (the same setter move_player uses — not a parallel
-relocation path), emits a DICE_ROLL event, and returns a narration cue for the DM. Resolution
-math is reused unchanged from travel_engine.py / check_resolution.py; this module only does plumbing + IO,
-mirroring social_tools.py.
+persists `travel_state` (db_mutations_travel), relocates the player on a successful (non-lost)
+journey by reusing `db_mutations.update_player_location` (the same setter move_player uses — not a
+parallel relocation path), emits a DICE_ROLL event, and returns a narration cue for the DM.
+Resolution math is reused unchanged from travel.py (resolve_travel_segment, imported as
+travel_engine) and check_resolution.py (the Survival navigation check); this module only does
+plumbing + IO, mirroring social_tools.py.
 
 Spec: docs/game_mechanics/game_mechanics_combat.md §Travel and Exploration (L852-969).
 """
@@ -24,6 +25,8 @@ import conditions
 import db
 import db_content_queries
 import db_mutations
+import db_mutations_conditions
+import db_mutations_travel
 import db_queries
 import event_types as E
 import rules_engine
@@ -71,6 +74,8 @@ async def _travel_impl(
     *,
     queries=db_queries,
     mutations=db_mutations,
+    conditions_mutations=db_mutations_conditions,
+    travel_mutations=db_mutations_travel,
     content=db_content_queries,
     db_mod=db,
     rng: random.Random | None = None,
@@ -125,7 +130,7 @@ async def _travel_impl(
         new_conditions = player_conditions
         for _ in range(result.exhaustion_delta):
             new_conditions = conditions.apply_condition(new_conditions, "exhausted", source="travel", max_stacks=cap)
-        await mutations.update_player_conditions(session.player_id, new_conditions)
+        await conditions_mutations.save_player_conditions(session.player_id, new_conditions)
 
     arrived = result.success and not result.wrong_area
     if arrived:
@@ -133,10 +138,10 @@ async def _travel_impl(
         # corruption tracking) — not just the location setter — so a travelled arrival updates
         # the client exactly like a walked one.
         await apply_arrival(session, destination_id, destination, db_mod=db_mod, mutations=mutations)
-        await mutations.update_player_travel_state(session.player_id, None)
+        await travel_mutations.update_player_travel_state(session.player_id, None)
     else:
         # Lost: the party is off-course (no relocation); record the journey it was attempting.
-        await mutations.update_player_travel_state(
+        await travel_mutations.update_player_travel_state(
             session.player_id, {"destination": destination_id, "mode": mode_lower, "wrong_area": result.wrong_area}
         )
 

@@ -36,16 +36,25 @@ def _travel_mocks(player=None):
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value=player if player is not None else SAMPLE_PLAYER)
     mutations = MagicMock()
-    mutations.update_player_conditions = AsyncMock()
-    mutations.update_player_travel_state = AsyncMock()
     mutations.update_player_location = AsyncMock()
     mutations.upsert_map_progress = AsyncMock()
+    conditions_mutations = MagicMock()
+    conditions_mutations.save_player_conditions = AsyncMock()
+    travel_mutations = MagicMock()
+    travel_mutations.update_player_travel_state = AsyncMock()
     content = MagicMock()
     content.get_location = AsyncMock(return_value=_location("known_trail"))
     db_mod = MagicMock()
     db_mod.transaction = lambda: mock_txn(MagicMock())
     db_mod.extract_exit_connections = MagicMock(return_value=[])
-    return SimpleNamespace(queries=queries, mutations=mutations, content=content, db_mod=db_mod)
+    return SimpleNamespace(
+        queries=queries,
+        mutations=mutations,
+        conditions_mutations=conditions_mutations,
+        travel_mutations=travel_mutations,
+        content=content,
+        db_mod=db_mod,
+    )
 
 
 def _location(terrain: str):
@@ -72,6 +81,8 @@ async def _run(ctx, m, *, destination_id="dest", mode="scenic", hours=4, forced_
             forced_march=forced_march,
             queries=m.queries,
             mutations=m.mutations,
+            conditions_mutations=m.conditions_mutations,
+            travel_mutations=m.travel_mutations,
             content=m.content,
             db_mod=m.db_mod,
             rng=_FixedRng(rng_val),
@@ -96,8 +107,8 @@ async def test_established_road_auto_arrives_and_clears_travel_state():
     m.mutations.upsert_map_progress.assert_awaited_once()
     assert any(e.event_type == E.LOCATION_CHANGED for e in _published(ctx))
     # travel_state cleared to null on arrival
-    m.mutations.update_player_travel_state.assert_awaited_once()
-    assert m.mutations.update_player_travel_state.await_args.args[1] is None
+    m.travel_mutations.update_player_travel_state.assert_awaited_once()
+    assert m.travel_mutations.update_player_travel_state.await_args.args[1] is None
     # no roll happened → no DICE_ROLL event
     assert not any(e.event_type == E.DICE_ROLL for e in _published(ctx))
 
@@ -135,7 +146,7 @@ async def test_lost_failure_does_not_relocate_and_persists_wrong_area():
     m.mutations.update_player_location.assert_not_awaited()
     # Lost → no arrival side-effects (HUD stays put, map unrecorded).
     assert not any(e.event_type == E.LOCATION_CHANGED for e in _published(ctx))
-    persisted = m.mutations.update_player_travel_state.await_args.args[1]
+    persisted = m.travel_mutations.update_player_travel_state.await_args.args[1]
     assert persisted is not None and persisted["wrong_area"] is True
     assert persisted["destination"] == "dest"
 
@@ -150,7 +161,7 @@ async def test_forced_march_long_journey_applies_exhaustion():
     ctx = _ctx_with_bus()
     result = await _run(ctx, m, mode="dangerous", hours=12, forced_march=True, rng_val=20)
     assert result["exhaustion_gained"] == 1  # 1 stack per extra 4h beyond 8h
-    new_conditions = m.mutations.update_player_conditions.await_args.args[1]
+    new_conditions = m.conditions_mutations.save_player_conditions.await_args.args[1]
     exhausted = next(c for c in new_conditions if c["type"] == "exhausted")
     assert exhausted["stacks"] == 1
 
@@ -166,7 +177,7 @@ async def test_iron_constitution_caps_exhaustion_at_three():
     m.content.get_location = AsyncMock(return_value=_location("underground"))  # DC 16, exhausts on lost
     ctx = _ctx_with_bus()
     await _run(ctx, m, mode="dangerous", rng_val=1)  # lost underground → +1 exhaustion delta
-    new_conditions = m.mutations.update_player_conditions.await_args.args[1]
+    new_conditions = m.conditions_mutations.save_player_conditions.await_args.args[1]
     exhausted = next(c for c in new_conditions if c["type"] == "exhausted")
     assert exhausted["stacks"] == 3  # capped at 3 (Iron Constitution), not 4
 
@@ -177,7 +188,7 @@ async def test_clean_success_applies_no_exhaustion():
     m.content.get_location = AsyncMock(return_value=_location("known_trail"))
     ctx = _ctx_with_bus()
     await _run(ctx, m, mode="scenic", rng_val=20)  # success, no forced march
-    m.mutations.update_player_conditions.assert_not_awaited()
+    m.conditions_mutations.save_player_conditions.assert_not_awaited()
 
 
 # --- Fail-loud boundaries ---

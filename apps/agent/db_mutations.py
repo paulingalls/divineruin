@@ -71,40 +71,6 @@ async def update_player_location(
     )
 
 
-async def update_player_conditions(
-    player_id: str, conditions: list[dict], *, conn: asyncpg.Connection | asyncpg.Pool | None = None
-) -> None:
-    """Persist a player's full conditions list to players.data.conditions (M4.6b). The out-of-combat
-    producer (travel exhaustion) builds the new list via conditions.apply_condition and writes it here."""
-    _conn = conn or await db.get_pool()
-    await _conn.execute(
-        """
-        UPDATE players
-        SET data = jsonb_set(data, '{conditions}', $2::jsonb)
-        WHERE player_id = $1
-        """,
-        player_id,
-        json.dumps(conditions),
-    )
-
-
-async def update_player_travel_state(
-    player_id: str, travel_state: dict | None, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
-) -> None:
-    """Persist players.data.travel_state (M4.6b, migration 055): null when not travelling, or a dict
-    recording an in-flight/lost journey. Accepts None → JSON null (cleared on arrival)."""
-    _conn = conn or await db.get_pool()
-    await _conn.execute(
-        """
-        UPDATE players
-        SET data = jsonb_set(data, '{travel_state}', $2::jsonb)
-        WHERE player_id = $1
-        """,
-        player_id,
-        json.dumps(travel_state),
-    )
-
-
 async def update_player_xp(
     player_id: str, new_xp: int, new_level: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> None:
