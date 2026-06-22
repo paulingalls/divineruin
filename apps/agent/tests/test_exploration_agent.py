@@ -2,8 +2,8 @@
 
 M7 collapses CityAgent/WildernessAgent/DungeonAgent into one ExplorationAgent
 that carries region_type as a per-instance attribute. The unified tool list is
-the former city superset (city ⊇ wilderness, city ⊇ dungeon), so one list of 15
-serves every region with headroom under the strict-tool ceiling.
+the former city superset (city ⊇ wilderness, city ⊇ dungeon) plus the M4.6b travel
+verb, so one list of 16 serves every region with headroom under the strict-tool ceiling.
 """
 
 from base_agent import BaseGameAgent
@@ -29,12 +29,12 @@ class TestExplorationAgentConfig:
 
 
 class TestExplorationToolset:
-    def test_count_at_fifteen_under_ceiling(self):
+    def test_count_at_sixteen_under_ceiling(self):
         from llm_config import MAX_STRICT_TOOLS
 
-        # The unified list is the former CITY_TOOLS (15). With one agent there are
-        # 5 free slots — the per-region ceiling no longer binds (debt e665104c753a).
-        assert len(EXPLORATION_TOOLS) == 15
+        # The unified list is the former CITY_TOOLS (15) + travel (M4.6b) = 16. With one
+        # agent there are 4 free slots — the per-region ceiling no longer binds (debt e665104c753a).
+        assert len(EXPLORATION_TOOLS) == 16
         assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS
 
     def test_holds_unified_superset(self):
