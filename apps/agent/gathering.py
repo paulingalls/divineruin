@@ -106,15 +106,14 @@ def select_materials(
     resource_table: dict[str, tuple[str, ...]],
     result: str,
     skill_tier: str,
-    material_type: str | None,
 ) -> tuple[str, ...]:
     """Pick harvested material ids from a rarity-keyed `resource_table` for a `result` tier.
 
     Deterministic (no RNG, stays pure): walk the accessible rarity buckets from the result tier's
     ceiling downward and take the first non-empty bucket's first material id, repeated by the
     tier's quantity. `nothing` -> (). `partial` downgrades to the common bucket. Returns () when no
-    accessible bucket holds a material (a region with nothing in range). `material_type` is skill
-    routing/flavor only here and does not further filter within a bucket.
+    accessible bucket holds a material (a region with nothing in range). Selection does not filter
+    within a bucket by category — per-category filtering is a later refinement (see module docstring).
     """
     quantity = _QUANTITY_BY_RESULT[result]
     if quantity == 0:
@@ -189,7 +188,7 @@ def resolve_gathering(
     master = skill_tier == "master"
     margin = roll_total - gathering_dc
     result = gathering_result_tier(roll_total, gathering_dc, master=master)
-    materials = select_materials(resource_table, result, skill_tier, material_type)
+    materials = select_materials(resource_table, result, skill_tier)
 
     verdict = evaluate_dramatic_context(DramaticContext(margin=margin, raw_die=raw_die))
     return GatheringResult(

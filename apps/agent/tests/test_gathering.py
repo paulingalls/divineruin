@@ -92,30 +92,30 @@ def test_master_never_returns_nothing():
 
 
 def test_nothing_yields_no_materials():
-    mats = gathering.select_materials(_TABLE, "nothing", "expert", None)
+    mats = gathering.select_materials(_TABLE, "nothing", "expert")
     assert mats == ()
 
 
 def test_partial_yields_a_common_material():
-    mats = gathering.select_materials(_TABLE, "partial", "expert", None)
+    mats = gathering.select_materials(_TABLE, "partial", "expert")
     assert mats == ("medicinal_herbs",)  # downgrade to common bucket
 
 
 def test_success_picks_highest_accessible_bucket():
-    untrained = gathering.select_materials(_TABLE, "success", "untrained", None)
-    trained = gathering.select_materials(_TABLE, "success", "trained", None)
+    untrained = gathering.select_materials(_TABLE, "success", "untrained")
+    trained = gathering.select_materials(_TABLE, "success", "trained")
     assert untrained == ("medicinal_herbs",)  # untrained capped at common
     assert trained == ("iron_ore",)  # trained reaches uncommon
 
 
 def test_rich_find_doubles_quantity():
-    mats = gathering.select_materials(_TABLE, "rich_find", "expert", None)
+    mats = gathering.select_materials(_TABLE, "rich_find", "expert")
     assert mats == ("power_crystal", "power_crystal")  # rare bucket, doubled
 
 
 def test_empty_bucket_falls_back_to_next_lower_accessible():
     table = {"common": ("wood",), "uncommon": (), "rare": ()}
-    mats = gathering.select_materials(table, "rich_find", "master", None)
+    mats = gathering.select_materials(table, "rich_find", "master")
     assert mats == ("wood", "wood")  # rare+uncommon empty -> common, still doubled
 
 
