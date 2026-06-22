@@ -105,7 +105,30 @@ else
     # loud on a port conflict rather than silently collapsing onto a shared
     # (cross-killed) server.
     echo "  E2E tests (local Playwright)..."
-    (cd e2e && bunx playwright test --reporter=list)
+    # Tee combined stdout/stderr (incl. the API server's [diag]/logError lines)
+    # to a durable log, and on failure snapshot it + Playwright's retain-on-
+    # failure artifacts (trace/video/screenshot in test-results/) into a
+    # timestamped, gitignored dir that SURVIVES the retry — test-results/ is
+    # wiped by the next `playwright test` run, so without this the evidence from
+    # a flake is gone before anyone looks. The pipeline's own exit is tee's (~always
+    # 0), so `set -e` won't abort before we read PIPESTATUS[0] — Playwright's REAL
+    # exit code (NOT tee's). Capturing PIPESTATUS[0] must be the statement
+    # immediately after the pipeline (any other command clobbers PIPESTATUS).
+    e2e_dir="$(cd "$(dirname "$0")/../e2e" && pwd)"
+    mkdir -p "$e2e_dir/flake-artifacts"
+    e2e_log="$e2e_dir/flake-artifacts/last-e2e-output.log"
+    (cd "$e2e_dir" && bunx playwright test --reporter=list) 2>&1 | tee "$e2e_log"
+    e2e_rc=${PIPESTATUS[0]}
+    if [ "$e2e_rc" -ne 0 ]; then
+      snap="$e2e_dir/flake-artifacts/$(date +%Y%m%d-%H%M%S)-$(git rev-parse --short HEAD)"
+      mkdir -p "$snap"
+      cp -R "$e2e_dir/test-results" "$snap/test-results" 2>/dev/null || true
+      cp "$e2e_log" "$snap/e2e-output.log" 2>/dev/null || true
+      echo "ERROR: E2E tests failed. Artifacts preserved at:" >&2
+      echo "    $snap" >&2
+      echo "  Inspect a trace with: bunx playwright show-trace $snap/test-results/<test-dir>/trace.zip" >&2
+      exit 1
+    fi
 
     # Propagate the backgrounded acceptance result. Reap + clear bg_pids BEFORE
     # the failure exit (same pattern as the unit barrier) so the trap never kills
