@@ -21,6 +21,7 @@ from livekit.agents.voice import RunContext
 
 import check_resolution
 import conditions
+import db
 import db_content_queries
 import db_mutations
 import db_queries
@@ -29,6 +30,7 @@ import rules_engine
 import travel as travel_engine
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
+from movement_tools import apply_arrival
 from session_data import SessionData
 from tool_support import _validate_id
 
@@ -70,6 +72,7 @@ async def _travel_impl(
     queries=db_queries,
     mutations=db_mutations,
     content=db_content_queries,
+    db_mod=db,
     rng: random.Random | None = None,
 ) -> str:
     logger.info("travel: destination=%s, mode=%s, hours=%d, forced_march=%s", destination_id, mode, hours, forced_march)
@@ -126,8 +129,10 @@ async def _travel_impl(
 
     arrived = result.success and not result.wrong_area
     if arrived:
-        await mutations.update_player_location(session.player_id, destination_id)
-        session.location_id = destination_id
+        # Reuse move_player's full arrival path (LOCATION_CHANGED for the HUD, map progress,
+        # corruption tracking) — not just the location setter — so a travelled arrival updates
+        # the client exactly like a walked one.
+        await apply_arrival(session, destination_id, destination, db_mod=db_mod, mutations=mutations)
         await mutations.update_player_travel_state(session.player_id, None)
     else:
         # Lost: the party is off-course (no relocation); record the journey it was attempting.
