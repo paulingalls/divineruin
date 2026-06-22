@@ -55,7 +55,15 @@ async def _run(session, player, rng):
     persistence.update_player_resources = AsyncMock()
     attacker = session.combat_state.get_participant("player_1")
     result = await _resolve_deescalation_packet(
-        session, attacker, _DECL, conn=None, player=player, sink=None, persistence=persistence, rng=rng
+        session,
+        attacker,
+        _DECL,
+        state=session.combat_state,
+        conn=None,
+        player=player,
+        sink=None,
+        persistence=persistence,
+        rng=rng,
     )
     return result, persistence
 
