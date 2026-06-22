@@ -26,7 +26,6 @@ if TYPE_CHECKING:
 
 # Diplomat de-escalation (M4.6a story-004, spec game_mechanics_combat.md:175-183).
 _DEESCALATE_FOCUS_COST = 3
-_DEESCALATE_BASE_DC = 15
 
 
 def _lead_enemy(state):
@@ -86,13 +85,15 @@ async def _resolve_deescalation_packet(
     attrs = player.get("attributes", {})
     cha_total = dice_roll("d20", rng=rng).total + attribute_modifier(attrs.get("charisma", 10))
     enemy_wis_total = dice_roll("d20", rng=rng).total + attribute_modifier(lead.attributes.get("wisdom", 10))
-    argument_total = check_resolution.resolve_skill_check_dc(player, "persuasion", _DEESCALATE_BASE_DC, rng).total
+    argument_total = check_resolution.resolve_skill_check_dc(
+        player, "persuasion", combat_resolution.DEESCALATE_BASE_DC, rng
+    ).total
 
     outcome = combat_resolution.resolve_deescalation(
         cha_total=cha_total,
         enemy_wis_total=enemy_wis_total,
         argument_total=argument_total,
-        base_dc=_DEESCALATE_BASE_DC,
+        base_dc=combat_resolution.DEESCALATE_BASE_DC,
     )
     state.deescalation_used = True
     if outcome.ends_combat:

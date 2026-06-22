@@ -182,6 +182,10 @@ def is_hollow_zone(corruption_level: int) -> bool:
 
 # --- Diplomat de-escalation (M4.6a story-004, spec game_mechanics_combat.md:175-183) ---
 
+# Single source for the de-escalation argument's base DC (before the +disposition modifier).
+# combat_ability's orchestration reads this same constant, so the two never drift.
+DEESCALATE_BASE_DC = 15
+
 
 @dataclass(frozen=True)
 class DeescalationOutcome:
@@ -202,7 +206,7 @@ def resolve_deescalation(
     cha_total: int,
     enemy_wis_total: int,
     argument_total: int,
-    base_dc: int = 15,
+    base_dc: int = DEESCALATE_BASE_DC,
     enemy_disposition: str = "hostile",
 ) -> DeescalationOutcome:
     """Resolve a Diplomat's de-escalation attempt (pure; the caller rolls the d20s).
