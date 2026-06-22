@@ -388,6 +388,14 @@ export async function handleGetCatchUpFeed(_req: Request, playerId: string): Pro
     return Response.json({ items });
   } catch (err) {
     logError("[catchup] feed failed:", err);
+    // Structured diag on the 500 path too (items is out of scope here): a flake
+    // that surfaces as a hard failure — e.g. the un-.catch'd async_activities
+    // query timing out — gets the same greppable [diag] line, tying the failure
+    // to a playerId, not just logError's free-text message.
+    logDiag("catchup.feed.error", () => ({
+      playerId,
+      error: err instanceof Error ? err.message : String(err),
+    }));
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
