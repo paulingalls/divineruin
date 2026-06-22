@@ -163,21 +163,19 @@ def resolve_travel_segment(
     """
     params = travel_mode_params(mode)
     dc = navigation_dc(terrain)  # None => auto-success (established road)
-    march_exhaustion = forced_march_exhaustion(base_hours) if forced_march else 0
+
+    # Defaults shared by the auto-success and rolled branches; a rolled failure mutates them below.
+    time_cost = base_hours * params.time_multiplier
+    wrong_area = False
+    exhaustion_delta = forced_march_exhaustion(base_hours) if forced_march else 0
 
     if dc is None:
         margin: int | None = None
         success = True
-        time_cost = base_hours * params.time_multiplier
-        wrong_area = False
-        exhaustion_delta = march_exhaustion
         cue = _CUE_UNEVENTFUL
     else:
         margin = roll_total - dc
         success = roll_total >= dc
-        time_cost = base_hours * params.time_multiplier
-        wrong_area = False
-        exhaustion_delta = march_exhaustion
         if success:
             cue = _CUE_ON_COURSE
         else:
