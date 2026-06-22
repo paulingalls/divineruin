@@ -33,6 +33,9 @@ _STINGER_SOUND = {
     "victory": SOUND_COMBAT_VICTORY,
     "defeat": SOUND_COMBAT_DEFEAT,
     "fled": SOUND_COMBAT_FLED,
+    # A Diplomat talked the enemies down (M4.6a story-004): a non-violent end, closest to a
+    # withdrawal — reuse the fled stinger. No loot/resurrection (those gate on victory/defeat).
+    "deescalated": SOUND_COMBAT_FLED,
 }
 
 

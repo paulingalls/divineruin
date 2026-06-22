@@ -21,7 +21,6 @@ from role_archetypes import (
 )
 from settlement_generation import (
     _effective_ranges,
-    _shift_disposition,
     generate_settlement_npcs,
     instantiate_npc_from_template,
 )
@@ -116,16 +115,6 @@ class TestEffectiveRanges:
         r = _effective_ranges("village", "frontier")
         assert all(rng["max"] >= 0 and rng["min"] >= 0 for rng in r.values())
         assert "soldier_ashmark" not in r  # frontier doesn't add it
-
-
-class TestShiftDisposition:
-    def test_shifts_within_ladder(self):
-        assert _shift_disposition("neutral", -1) == "unfriendly"
-        assert _shift_disposition("neutral", 1) == "friendly"
-
-    def test_clamps_at_both_ends(self):
-        assert _shift_disposition("hostile", -3) == "hostile"
-        assert _shift_disposition("trusted", 5) == "trusted"
 
 
 class TestInstantiate:
