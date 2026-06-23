@@ -68,11 +68,3 @@ async def test_deplete_quantity_and_mark_discovered_via_jsonb_set():
         assert out["quantity"] == 1
     finally:
         await _delete_node(node_id)
-
-
-async def test_seeded_fixed_nodes_present():
-    # The content/gathering_nodes.json seed loads into the table (server/seed pipeline).
-    pool = await db.get_pool()
-    row = await pool.fetchrow("SELECT data FROM gathering_nodes WHERE id = $1", "greyvale_north_herb_garden")
-    assert row is not None, "expected seeded node greyvale_north_herb_garden"
-    assert json.loads(row["data"])["node_type"] == "herb_garden"

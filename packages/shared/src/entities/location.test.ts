@@ -50,7 +50,7 @@ const DUNGEON_IDS = ["greyvale_ruins_entrance", "greyvale_ruins_inner", "hollow_
 // Dungeon/wilderness — not settlements; both M6.2 fields stay absent.
 const NON_SETTLEMENT_IDS = [...DUNGEON_IDS, ...WILDERNESS_IDS];
 
-// Canonical rarity buckets — mirrors apps/agent/gathering.py _RARITY_ORDER (the SSOT).
+// Canonical rarity buckets — mirrors apps/agent/gathering.py RARITY_ORDER (the SSOT).
 const RESOURCE_RARITIES = ["common", "uncommon", "rare"];
 
 describe("locations.json — catalog cardinality", () => {

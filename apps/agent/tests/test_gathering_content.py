@@ -40,7 +40,7 @@ def _location_ids() -> set[str]:
     return {loc["id"] for loc in _locations()}
 
 
-# --- Ambient resource_table (mirrors gathering._RARITY_ORDER, materials catalog) ---
+# --- Ambient resource_table (mirrors gathering.RARITY_ORDER, materials catalog) ---
 
 
 def test_wilderness_locations_have_a_resource_table():
@@ -65,9 +65,9 @@ def test_resource_table_keys_are_canonical_rarities():
         if table is None:
             continue
         for rarity in table:
-            if rarity not in gathering._RARITY_ORDER:
+            if rarity not in gathering.RARITY_ORDER:
                 offenders.append((loc["id"], rarity))
-    assert not offenders, f"non-canonical rarity buckets (expect {gathering._RARITY_ORDER}): {offenders}"
+    assert not offenders, f"non-canonical rarity buckets (expect {gathering.RARITY_ORDER}): {offenders}"
 
 
 def test_resource_table_materials_exist_in_catalog():
