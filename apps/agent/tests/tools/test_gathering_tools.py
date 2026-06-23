@@ -9,10 +9,11 @@ test_social_tools.py.
 
 import json
 import random
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
+from sample_fixtures import mock_txn
 
 import event_types as E
 from check_tools import VALID_CHECK_MODES, _check_impl
@@ -65,7 +66,9 @@ def _gather_mocks(player=SAMPLE_PLAYER, location=_WILDERNESS, nodes=None):
     gather_mutations = MagicMock()
     gather_mutations.mark_node_discovered = AsyncMock()
     gather_mutations.deplete_node_quantity = AsyncMock()
-    return queries, mutations, content, gather_mutations
+    db_mod = MagicMock()
+    db_mod.transaction = lambda: mock_txn(MagicMock())
+    return queries, mutations, content, gather_mutations, db_mod
 
 
 def _ctx_with_bus(location_id="greyvale_wilderness_north"):
@@ -79,7 +82,7 @@ def _published(ctx):
 
 
 async def _run(ctx, mocks, *, material_type="", rng_val=11):
-    queries, mutations, content, gather_mutations = mocks
+    queries, mutations, content, gather_mutations, db_mod = mocks
     return json.loads(
         await _check_gather_impl(
             ctx,
@@ -88,6 +91,7 @@ async def _run(ctx, mocks, *, material_type="", rng_val=11):
             mutations=mutations,
             content=content,
             gather_mutations=gather_mutations,
+            db_mod=db_mod,
             rng=_FixedRng(rng_val),
         )
     )
@@ -131,7 +135,7 @@ class TestNodeConsumer:
         result = await _run(ctx, mocks, rng_val=20)  # expert + nat20 vs dc10 -> rich_find
         assert result["discovery"] is True
         assert result["node_revealed"] == "n1"
-        mocks[3].mark_node_discovered.assert_awaited_once_with("n1")
+        mocks[3].mark_node_discovered.assert_awaited_once_with("n1", conn=ANY)
         mocks[3].deplete_node_quantity.assert_awaited_once()
         # node resource granted
         granted = [c.args[1] for c in mocks[1].add_inventory_item.await_args_list]
@@ -155,7 +159,7 @@ class TestNodeConsumer:
         ctx = _ctx_with_bus()
         result = await _run(ctx, mocks, material_type="herbs", rng_val=20)
         assert result["node_revealed"] == "n1"  # the herb garden, not ore1
-        mocks[3].mark_node_discovered.assert_awaited_once_with("n1")
+        mocks[3].mark_node_discovered.assert_awaited_once_with("n1", conn=ANY)
         granted = [c.args[1] for c in mocks[1].add_inventory_item.await_args_list]
         assert "sageroot" in granted  # the herb-garden node resource, not the ore vein's
 
@@ -189,18 +193,10 @@ class TestCheckModeRegistration:
 
     @pytest.mark.asyncio
     async def test_check_dispatches_gather_mode(self):
-        queries, mutations, content, _ = _gather_mocks()
-        # _check_impl injects queries/mutations/content; gather_mutations + rng use defaults,
-        # so patch the gather-mode seams via the dispatch's content/mutations and a real rng.
-        ctx = _ctx_with_bus()
-        out = json.loads(
-            await _check_impl(
-                ctx,
-                "gather",
-                target="",
-                queries=queries,
-                mutations=mutations,
-                content=content,
-            )
-        )
-        assert out["skill"] == "survival"
+        # Proves _check_impl routes mode="gather" to _check_gather_impl. Uses a dungeon (no
+        # resource_table) with no nodes so the impl fail-louds at its guard BEFORE the DB
+        # transaction — keeping this a pure routing assertion (no db_mod injection / real conn).
+        queries, mutations, content, _gm, _db = _gather_mocks(location=_DUNGEON, nodes=[])
+        ctx = _ctx_with_bus(location_id="greyvale_ruins_entrance")
+        with pytest.raises(ToolError, match="forage"):
+            await _check_impl(ctx, "gather", target="", queries=queries, mutations=mutations, content=content)

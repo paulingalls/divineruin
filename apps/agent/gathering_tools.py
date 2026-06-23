@@ -17,6 +17,7 @@ from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import db
 import db_content_queries
 import db_mutations
 import db_mutations_gathering
@@ -52,6 +53,7 @@ async def _check_gather_impl(
     mutations=db_mutations,
     content=db_content_queries,
     gather_mutations=db_mutations_gathering,
+    db_mod=db,
     rng: random.Random | None = None,
 ) -> str:
     logger.info("check gather: material_type=%r", material_type)
@@ -93,24 +95,30 @@ async def _check_gather_impl(
         raw_die=roll.roll,
     )
 
-    granted = list(result.materials)
-    node_revealed = None
     # A rich find reveals + harvests one fixed node (discovery is margin-only, decision
     # gathering-discovery-margin-only). The node is matched to the rolled skill so foraging for
     # herbs surfaces the herb garden, not an unrelated ore vein (falls back to any node if none
-    # match). Gives the gathering_nodes table its live reader/writer.
+    # match). Gives the gathering_nodes table its live reader/writer. select_node is pure.
     node = gathering.select_node(nodes, skill) if result.discovery else None
+    granted = list(result.materials)
+    node_revealed = None
     if node is not None:
-        await gather_mutations.mark_node_discovered(node["id"])
-        await gather_mutations.deplete_node_quantity(node["id"], 1)
         granted.append(node["resource_type"])
         node_revealed = node["id"]
 
     counts: dict[str, int] = {}
     for material_id in granted:
         counts[material_id] = counts.get(material_id, 0) + 1
-    for material_id, qty in counts.items():
-        await mutations.add_inventory_item(session.player_id, material_id, qty)
+
+    # One transaction so the gather commits atomically: a partial write (node depleted but
+    # materials not granted, or granted without depletion) would dupe or lose items in the
+    # persistent economy. The conn= seams on both mutation modules thread the tx connection.
+    async with db_mod.transaction() as conn:
+        if node is not None:
+            await gather_mutations.mark_node_discovered(node["id"], conn=conn)
+            await gather_mutations.deplete_node_quantity(node["id"], 1, conn=conn)
+        for material_id, qty in counts.items():
+            await mutations.add_inventory_item(session.player_id, material_id, qty, conn=conn)
 
     success = result.result != "nothing"
     await publish_game_event(
