@@ -332,9 +332,14 @@ def _resolve_skill_check_impl(
     conditions = player_data.get("conditions") or []
     flat_mod, advantage, disadvantage, _auto_fail = _apply_condition_modifiers(conditions, scopes)
     # Beneficial bonus die (M4.8 story-002): a skill check is roll-kind "check", so Inspired (+1d4 on
-    # any roll) applies but Blessed (attack+save only) does not. Folded into the total via
-    # extra_modifier; the consumed condition is signalled on the packet for story-003 to remove.
-    bonus, consumed = roll_bonus_dice(conditions, "check", rng=rng)
+    # any roll) applies but Blessed (attack+save only) does not. Skip it on a beyond-tier task that
+    # auto-fails without a roll — the die is not spent when it cannot help (mirrors the save auto-fail
+    # gate). Folded into the total via extra_modifier; the consumed condition is signalled for
+    # story-003 to remove.
+    if _check_auto_fail(dc, tier):
+        bonus, consumed = 0, ()
+    else:
+        bonus, consumed = roll_bonus_dice(conditions, "check", rng=rng)
 
     check = resolve_check(
         score,
