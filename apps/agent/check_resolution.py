@@ -61,6 +61,11 @@ class SkillCheckResult:
     # carries the same verdict as every other roll packet. See dramatic.py.
     dramatic: bool = False
     context: str = ""
+    # Beneficial conditions whose +1d4 was rolled into this check and must now be consumed (M4.8
+    # story-002): Inspired applies to any roll; Blessed does not (attack+save only). Additive +
+    # defaulted so existing packets stay valid. story-003 reads this to remove + persist the
+    # condition. Empty when the roller had no applicable beneficial condition.
+    consumed_conditions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -158,6 +163,33 @@ def _apply_condition_modifiers(conditions: list[dict], scopes: set[str]) -> tupl
     disadvantage = bool(scopes & effects.disadvantage_scopes)
     auto_fail = bool(scopes & effects.auto_fail_saves)
     return effects.check_modifier, advantage, disadvantage, auto_fail
+
+
+def roll_bonus_dice(
+    conditions: list[dict] | None,
+    roll_kind: str,
+    rng: random.Random | None = None,
+) -> tuple[int, tuple[str, ...]]:
+    """Roll every active beneficial bonus die whose scopes cover this roll KIND (M4.8 story-002).
+
+    Returns ``(summed_bonus, consumed_condition_types)``. ``roll_kind`` is the roll's kind token —
+    ``"attack"`` / ``"save"`` / ``"check"`` — matched against each ``BonusDie.scopes`` (Blessed =
+    attack+save, Inspired = any). A sibling to ``_apply_condition_modifiers``: that classifies
+    scopes (no rng), this rolls the dice. Shared by all three resolvers (skill/attack/save) so the
+    +1d4 fold is identical.
+
+    Consumes rng ONLY when a die matches — a roller with no beneficial condition rolls nothing, so
+    existing seeded-rng resolver tests are unshifted. Pure: it SIGNALS which conditions were
+    consumed (the caller's result packet carries the signal); the removal/persist is story-003.
+    """
+    effects = get_condition_effects(conditions or [])
+    total = 0
+    consumed: list[str] = []
+    for bonus in effects.bonus_dice:
+        if roll_kind in bonus.scopes:
+            total += dice_roll(bonus.dice, rng=rng).total
+            consumed.append(bonus.source)
+    return total, tuple(consumed)
 
 
 # --- Check resolution ---
@@ -297,12 +329,22 @@ def _resolve_skill_check_impl(
     # (perception) the Perception skill. Checks have no auto-fail (that is a saving-throw rule).
     attr_names = attr if isinstance(attr, tuple) else (attr,)
     scopes = {_ATTR_ABBREV.get(a, a) for a in attr_names} | {skill_lower}
-    flat_mod, advantage, disadvantage, _auto_fail = _apply_condition_modifiers(
-        player_data.get("conditions") or [], scopes
-    )
+    conditions = player_data.get("conditions") or []
+    flat_mod, advantage, disadvantage, _auto_fail = _apply_condition_modifiers(conditions, scopes)
+    # Beneficial bonus die (M4.8 story-002): a skill check is roll-kind "check", so Inspired (+1d4 on
+    # any roll) applies but Blessed (attack+save only) does not. Folded into the total via
+    # extra_modifier; the consumed condition is signalled on the packet for story-003 to remove.
+    bonus, consumed = roll_bonus_dice(conditions, "check", rng=rng)
 
     check = resolve_check(
-        score, level, tier, dc, rng=rng, extra_modifier=flat_mod, advantage=advantage, disadvantage=disadvantage
+        score,
+        level,
+        tier,
+        dc,
+        rng=rng,
+        extra_modifier=flat_mod + bonus,
+        advantage=advantage,
+        disadvantage=disadvantage,
     )
 
     return SkillCheckResult(
@@ -316,6 +358,7 @@ def _resolve_skill_check_impl(
         narrative_hint=check.narrative_hint,
         dramatic=check.dramatic,
         context=check.context,
+        consumed_conditions=consumed,
     )
 
 
