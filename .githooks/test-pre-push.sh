@@ -94,6 +94,33 @@ lane_case "one-lane-fails"  1  "mobile lane failed"  "0:server" "1:mobile" "0:sh
 # Every failing lane is waited + reported, not just the first (rc 1).
 lane_case "multi-lane-fail" 1  "python lane failed"  "1:server" "0:mobile" "0:shared" "1:python"
 
+# --- Lane-log snapshot helper (scripts/lane-utils.sh) ---
+# snapshot_lane_logs must create the dest dir and copy each EXISTING log into it,
+# skipping (not failing on) a missing log — so a flaked lane's durable log is
+# preserved into a timestamped snapshot that survives the next gate run.
+snapshot_case() {
+  local tmp dest ok
+  tmp=$(mktemp -d)
+  printf 'acc output\n' > "$tmp/last-acceptance.log"
+  printf 'py output\n'  > "$tmp/last-python.log"
+  dest="$tmp/snap"
+  # The third path does not exist — it must be skipped, not abort the snapshot.
+  snapshot_lane_logs "$dest" "$tmp/last-acceptance.log" "$tmp/last-python.log" "$tmp/missing.log"
+  ok="yes"
+  [ -f "$dest/last-acceptance.log" ] || ok="no"
+  [ -f "$dest/last-python.log" ]     || ok="no"
+  [ -e "$dest/missing.log" ]         && ok="no"  # the missing log must NOT appear
+  rm -rf "$tmp"
+  if [ "$ok" = "yes" ]; then
+    echo "  PASS: snapshot-lane-logs"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: snapshot-lane-logs"
+    FAIL=$((FAIL + 1))
+  fi
+}
+snapshot_case
+
 # --- Orphan-sweep discrimination (scripts/sweep-test-containers.sh) ---
 # Delegates to the sweep's own Docker-gated harness (skips cleanly without
 # Docker; on pre-push Docker is guaranteed by the gate above). Roll its rc into
