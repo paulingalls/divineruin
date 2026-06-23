@@ -24,6 +24,7 @@ import db
 import db_queries
 import mentor_variants
 from db_errors import db_tool
+from resource_costs import gate_pool
 from session_data import SessionData
 from tool_support import _validate_id
 
@@ -94,26 +95,10 @@ async def _request_ability_activation_impl(
                 raise ToolError(str(e)) from e
         cost = variant.cost if variant is not None else ability.cost
 
-        stamina_pool = player.get("stamina") or {}
-        focus_pool = player.get("focus") or {}
-        current_stamina = stamina_pool.get("current", 0)
-        current_focus = focus_pool.get("current", 0)
-
-        if cost.stamina > 0:
-            if "current" not in stamina_pool:
-                raise ToolError(f"{ability.name} costs Stamina but you have no Stamina pool.")
-            if cost.stamina > current_stamina:
-                raise ToolError(
-                    f"Not enough Stamina for {ability.name}: costs {cost.stamina}, you have {current_stamina}."
-                )
-        if cost.focus > 0:
-            if "current" not in focus_pool:
-                raise ToolError(f"{ability.name} costs Focus but you have no Focus pool.")
-            if cost.focus > current_focus:
-                raise ToolError(f"Not enough Focus for {ability.name}: costs {cost.focus}, you have {current_focus}.")
-
-        new_stamina = current_stamina - cost.stamina if cost.stamina > 0 else None
-        new_focus = current_focus - cost.focus if cost.focus > 0 else None
+        # Gate Stamina then Focus (fail-loud, pure); each returns the post-deduct
+        # value or None when its cost is 0. One write below applies both.
+        new_stamina = gate_pool(player, "stamina", cost.stamina, label=ability.name)
+        new_focus = gate_pool(player, "focus", cost.focus, label=ability.name)
         if new_stamina is not None or new_focus is not None:
             await persistence_mod.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
 

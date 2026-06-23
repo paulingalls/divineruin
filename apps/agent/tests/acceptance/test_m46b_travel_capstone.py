@@ -12,7 +12,7 @@ driving the REAL travel pipeline against real DB writes across a multi-segment j
 - AC3: exhaustion accrues across segments in players.data.conditions and never exceeds the
   character's Iron-Constitution stack cap (3).
 
-Determinism: the d20 navigation check is forced via an injected rng (_FixedRng) — 20 passes,
+Determinism: the d20 navigation check is forced via an injected rng (FixedRng) — 20 passes,
 1 fails. Exhaustion on the seeded terrains comes from forced march (>8h), since only
 underground/hollow_corrupted self-exhaust on a lost failure. Each test uses a distinct
 player_id (the testcontainer DB is shared).
@@ -21,10 +21,9 @@ player_id (the testcontainer DB is shared).
 from __future__ import annotations
 
 import json
-import random
 
 from acceptance.seeds import seed_player
-from sample_fixtures import make_context, make_mock_room
+from sample_fixtures import FixedRng, make_context, make_mock_room, published_payloads
 
 import db
 import db_queries
@@ -35,21 +34,6 @@ import travel_tools
 _ROAD = "greyvale_south_road"  # terrain: established_road (auto-success, no roll)
 _DENSE = "greyvale_wilderness_north"  # terrain: dense_forest (nav DC 14)
 _RUINS = "greyvale_ruins_exterior"  # terrain: unmarked_wilderness (start)
-
-
-class _FixedRng(random.Random):
-    """Force the d20 navigation check to a fixed value (dice.roll uses randint(1, n))."""
-
-    def __init__(self, value: int):
-        super().__init__()
-        self._value = value
-
-    def randint(self, a: int, b: int) -> int:
-        return self._value
-
-
-def _published(room) -> list[dict]:
-    return [json.loads(call[0][0]) for call in room.local_participant.publish_data.call_args_list]
 
 
 async def _set_endurance_master(pool, player_id: str) -> None:
@@ -72,7 +56,7 @@ async def test_m46b_clean_road_segment_arrives_and_clears_travel_state(reset_db_
     await seed_player(pool, player_id=player_id, class_="skirmisher", location_id=_RUINS)
 
     ctx = make_context(player_id, location_id=_RUINS, room=make_mock_room())
-    result = json.loads(await travel_tools._travel_impl(ctx, _ROAD, "compressed", hours=4, rng=_FixedRng(1)))
+    result = json.loads(await travel_tools._travel_impl(ctx, _ROAD, "compressed", hours=4, rng=FixedRng(1)))
 
     assert result["outcome"] == "success"
     assert result["arrived"] is True
@@ -86,7 +70,7 @@ async def test_m46b_clean_road_segment_arrives_and_clears_travel_state(reset_db_
 
     # The HUD follows the arrival (apply_arrival emits LOCATION_CHANGED). established_road has no
     # navigation roll, so NO navigation DICE_ROLL is expected here.
-    events = _published(ctx.userdata.room)
+    events = published_payloads(ctx.userdata.room)
     assert any(e.get("type") == E.LOCATION_CHANGED for e in events)
     assert not [e for e in events if e.get("type") == E.DICE_ROLL]
 
@@ -99,7 +83,7 @@ async def test_m46b_forced_march_failure_is_lost_and_exhausts(reset_db_pool: str
 
     ctx = make_context(player_id, location_id=_RUINS, room=make_mock_room())
     result = json.loads(
-        await travel_tools._travel_impl(ctx, _DENSE, "dangerous", hours=12, forced_march=True, rng=_FixedRng(1))
+        await travel_tools._travel_impl(ctx, _DENSE, "dangerous", hours=12, forced_march=True, rng=FixedRng(1))
     )
 
     assert result["outcome"] == "failure"
@@ -122,7 +106,7 @@ async def test_m46b_forced_march_failure_is_lost_and_exhausts(reset_db_pool: str
     assert exhausted["source"] == "travel"
 
     # dense_forest has a DC, so the navigation roll surfaced on the HUD as a failed check.
-    nav = [e for e in _published(ctx.userdata.room) if e.get("type") == E.DICE_ROLL]
+    nav = [e for e in published_payloads(ctx.userdata.room) if e.get("type") == E.DICE_ROLL]
     assert nav and nav[0]["roll_type"] == "navigation_check" and nav[0]["success"] is False
 
 
@@ -137,7 +121,7 @@ async def test_m46b_exhaustion_accrues_across_segments_and_respects_iron_cap(res
 
     # Segment 1: forced march 12h to the road (established_road auto-succeeds) → +1 stack, arrives.
     r1 = json.loads(
-        await travel_tools._travel_impl(ctx, _ROAD, "dangerous", hours=12, forced_march=True, rng=_FixedRng(20))
+        await travel_tools._travel_impl(ctx, _ROAD, "dangerous", hours=12, forced_march=True, rng=FixedRng(20))
     )
     assert r1["arrived"] is True and r1["exhaustion_gained"] == 1
     player = await db_queries.get_player(player_id, conn=pool)
@@ -148,7 +132,7 @@ async def test_m46b_exhaustion_accrues_across_segments_and_respects_iron_cap(res
 
     # Segment 2: forced march 16h to dense_forest, passing roll (rng 20) → delta 2, 1→3 (capped).
     r2 = json.loads(
-        await travel_tools._travel_impl(ctx, _DENSE, "dangerous", hours=16, forced_march=True, rng=_FixedRng(20))
+        await travel_tools._travel_impl(ctx, _DENSE, "dangerous", hours=16, forced_march=True, rng=FixedRng(20))
     )
     assert r2["arrived"] is True and r2["exhaustion_gained"] == 2
     player = await db_queries.get_player(player_id, conn=pool)
@@ -158,7 +142,7 @@ async def test_m46b_exhaustion_accrues_across_segments_and_respects_iron_cap(res
     assert player["location_id"] == _DENSE
 
     # Segment 3: another 16h forced march (delta 2) → already at cap, stays 3.
-    await travel_tools._travel_impl(ctx, _ROAD, "dangerous", hours=16, forced_march=True, rng=_FixedRng(1))
+    await travel_tools._travel_impl(ctx, _ROAD, "dangerous", hours=16, forced_march=True, rng=FixedRng(1))
     player = await db_queries.get_player(player_id, conn=pool)
     assert player is not None
     exhausted = _exhausted(player)

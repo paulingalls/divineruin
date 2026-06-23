@@ -7,28 +7,17 @@ mocked db seams + a fixed rng; the dispatch wiring on `check` is covered at the 
 """
 
 import json
-import random
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
+from sample_fixtures import FixedRng, published_events
 
 import event_types as E
 from check_tools import VALID_CHECK_MODES, _check_impl
 from role_archetypes import shift_disposition
 from social_tools import _check_social_impl
 from tools._helpers import SAMPLE_PLAYER, _make_context
-
-
-class _FixedRng(random.Random):
-    """A random.Random whose d20 is deterministic (dice.roll uses randint(1, n))."""
-
-    def __init__(self, value: int):
-        super().__init__()
-        self._value = value
-
-    def randint(self, a: int, b: int) -> int:
-        return self._value
 
 
 def _social_mocks(recorded: str | None = "neutral"):
@@ -48,10 +37,6 @@ def _ctx_with_bus():
     return ctx
 
 
-def _published(ctx):
-    return [call.args[0] for call in ctx.userdata.event_bus.publish.call_args_list]
-
-
 class TestCheckSocialHappyPath:
     @pytest.mark.asyncio
     async def test_returns_social_outcome_with_cue(self):
@@ -65,7 +50,7 @@ class TestCheckSocialHappyPath:
                 queries=queries,
                 mutations=mutations,
                 content=content,
-                rng=_FixedRng(11),
+                rng=FixedRng(11),
             )
         )
         assert result["npc_id"] == "merchant_1"
@@ -88,7 +73,7 @@ class TestCheckSocialHappyPath:
                 queries=queries,
                 mutations=mutations,
                 content=content,
-                rng=_FixedRng(11),
+                rng=FixedRng(11),
             )
         )
         assert hostile["dc"] == 18
@@ -107,7 +92,7 @@ class TestCheckSocialHappyPath:
                 queries=queries,
                 mutations=mutations,
                 content=content,
-                rng=_FixedRng(15),
+                rng=FixedRng(15),
             )
         )
         assert r["new_disposition"] == shift_disposition(r["previous_disposition"], r["disposition_shift"])
@@ -124,9 +109,9 @@ class TestCheckSocialHappyPath:
             queries=queries,
             mutations=mutations,
             content=content,
-            rng=_FixedRng(11),
+            rng=FixedRng(11),
         )
-        events = _published(ctx)
+        events = published_events(ctx)
         assert any(e.event_type == E.DICE_ROLL for e in events)
         dice = next(e for e in events if e.event_type == E.DICE_ROLL)
         assert dice.payload["roll_type"] == "social_check"
@@ -148,7 +133,7 @@ class TestCheckSocialPersistence:
                 queries=queries,
                 mutations=mutations,
                 content=content,
-                rng=_FixedRng(18),
+                rng=FixedRng(18),
             )
         )
         assert result["new_disposition"] != result["previous_disposition"]
@@ -156,7 +141,7 @@ class TestCheckSocialPersistence:
         args = mutations.set_npc_disposition.await_args.args
         assert args[0] == "merchant_1"
         assert args[2] == result["new_disposition"]  # the clamped new disposition
-        changed = [e for e in _published(ctx) if e.event_type == E.DISPOSITION_CHANGED]
+        changed = [e for e in published_events(ctx) if e.event_type == E.DISPOSITION_CHANGED]
         assert len(changed) == 1
         assert changed[0].payload == {
             "npc_id": "merchant_1",
@@ -178,13 +163,13 @@ class TestCheckSocialPersistence:
                 queries=queries,
                 mutations=mutations,
                 content=content,
-                rng=_FixedRng(14),
+                rng=FixedRng(14),
             )
         )
         assert result["disposition_shift"] == 0
         assert result["new_disposition"] == result["previous_disposition"]
         mutations.set_npc_disposition.assert_not_awaited()
-        assert not [e for e in _published(ctx) if e.event_type == E.DISPOSITION_CHANGED]
+        assert not [e for e in published_events(ctx) if e.event_type == E.DISPOSITION_CHANGED]
 
 
 class TestCheckSocialFallbackAndValidation:
@@ -203,7 +188,7 @@ class TestCheckSocialFallbackAndValidation:
                 queries=queries,
                 mutations=mutations,
                 content=content,
-                rng=_FixedRng(11),
+                rng=FixedRng(11),
             )
         )
         assert result["previous_disposition"] == "friendly"
@@ -220,7 +205,7 @@ class TestCheckSocialFallbackAndValidation:
                 queries=queries,
                 mutations=mutations,
                 content=content,
-                rng=_FixedRng(11),
+                rng=FixedRng(11),
             )
 
     @pytest.mark.asyncio
@@ -235,7 +220,7 @@ class TestCheckSocialFallbackAndValidation:
                 queries=queries,
                 mutations=mutations,
                 content=content,
-                rng=_FixedRng(11),
+                rng=FixedRng(11),
             )
 
     @pytest.mark.asyncio
@@ -250,7 +235,7 @@ class TestCheckSocialFallbackAndValidation:
                 queries=queries,
                 mutations=mutations,
                 content=content,
-                rng=_FixedRng(11),
+                rng=FixedRng(11),
             )
 
     @pytest.mark.asyncio
@@ -267,7 +252,7 @@ class TestCheckSocialFallbackAndValidation:
                 queries=queries,
                 mutations=mutations,
                 content=content,
-                rng=_FixedRng(11),
+                rng=FixedRng(11),
             )
 
     @pytest.mark.asyncio
@@ -283,7 +268,7 @@ class TestCheckSocialFallbackAndValidation:
                 queries=queries,
                 mutations=mutations,
                 content=content,
-                rng=_FixedRng(11),
+                rng=FixedRng(11),
             )
 
     @pytest.mark.asyncio
@@ -299,7 +284,7 @@ class TestCheckSocialFallbackAndValidation:
                 queries=queries,
                 mutations=mutations,
                 content=content,
-                rng=_FixedRng(11),
+                rng=FixedRng(11),
             )
 
 

@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from combat._helpers import _make_combat_state
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context, make_mock_room
+from sample_fixtures import make_context, make_mock_room, published_payloads
 
 import event_types as E
 from combat_init import _start_combat_impl
@@ -390,7 +390,7 @@ class TestStartCombat:
 
         # Should publish combat_started and play_sound events
         assert room.local_participant.publish_data.call_count == 2
-        calls = [json.loads(c[0][0]) for c in room.local_participant.publish_data.call_args_list]
+        calls = published_payloads(room)
         types = [c["type"] for c in calls]
         assert E.COMBAT_STARTED in types
         assert E.PLAY_SOUND in types

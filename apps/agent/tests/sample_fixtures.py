@@ -1,6 +1,7 @@
 """Shared sample data for tests — import from here instead of duplicating."""
 
 import json
+import random
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
@@ -10,6 +11,19 @@ from milestones import Grant, Milestone, SpecializationOption
 from session_data import SessionData
 
 FIXED_NOW = datetime(2026, 5, 19, 12, 0, 0, tzinfo=UTC)
+
+
+class FixedRng(random.Random):
+    """A random.Random whose every randint is deterministic — forces dice.roll's
+    d20 (randint(1, n)) to a fixed value so check/gather/travel resolvers are
+    boundary-testable. Shared across the resolver test suites; don't re-declare."""
+
+    def __init__(self, value: int):
+        super().__init__()
+        self._value = value
+
+    def randint(self, a: int, b: int) -> int:
+        return self._value
 
 
 @asynccontextmanager
@@ -24,9 +38,22 @@ def make_db_mod():
     return mock_db, mock_conn
 
 
+def published_payloads(room):
+    """Event payloads (decoded JSON dicts) published to a mock room's data channel, in order.
+    The acceptance-capstone shape — asserts on full payloads, not just types."""
+    return [json.loads(call[0][0]) for call in room.local_participant.publish_data.call_args_list]
+
+
 def published_types(room):
     """Event types published to a mock room's data channel, in order."""
-    return [json.loads(call[0][0])["type"] for call in room.local_participant.publish_data.call_args_list]
+    return [payload["type"] for payload in published_payloads(room)]
+
+
+def published_events(ctx):
+    """Event objects published via a mock context's event_bus, in order.
+    The unit-tool shape: tools call ctx.userdata.event_bus.publish(event); this returns
+    those event objects (NOT decoded JSON — that's published_payloads(room))."""
+    return [call.args[0] for call in ctx.userdata.event_bus.publish.call_args_list]
 
 
 def level_up_payload(room):

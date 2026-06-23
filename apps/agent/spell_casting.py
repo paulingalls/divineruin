@@ -69,6 +69,7 @@ import spells
 import vaelti_echo_warning
 import veil_ward as veil_ward_mod
 from db_errors import db_tool
+from resource_costs import gate_pool
 from session_data import SessionData
 from tool_support import _validate_id
 
@@ -145,7 +146,7 @@ class CastResult:
 def _gate_spell(player: dict, spell_id: str, *, spells_mod=spells):
     """Resolve a spell and assert the player can afford its Focus, or raise ToolError.
 
-    Shared by ``_resolve_cast`` and the in-combat Focus pre-validation (combat_turn, story-007) so
+    Shared by ``_resolve_cast`` and the in-combat Focus pre-validation (combat_packet, story-007) so
     both reject an unknown spell or unaffordable cast IDENTICALLY — and, in combat, before any write
     (AC2). Pure (no I/O): the caller supplies the already-fetched player row. Cantrips (focus_cost 0)
     always pass. Returns the resolved Spell."""
@@ -153,13 +154,9 @@ def _gate_spell(player: dict, spell_id: str, *, spells_mod=spells):
         spell = spells_mod.get_spell(spell_id)
     except ValueError as e:
         raise ToolError(str(e)) from e
-    focus_pool = player.get("focus") or {}
-    current_focus = focus_pool.get("current", 0)
-    if spell.focus_cost > 0:
-        if "current" not in focus_pool:
-            raise ToolError(f"{spell.name} costs Focus but you have no Focus pool.")
-        if spell.focus_cost > current_focus:
-            raise ToolError(f"Not enough Focus for {spell.name}: costs {spell.focus_cost}, you have {current_focus}.")
+    # Fail-loud Focus gate (pure); the deduct happens later in _resolve_cast after the
+    # Resonance math, so the returned post-deduct value is unused here.
+    gate_pool(player, "focus", spell.focus_cost, label=spell.name)
     return spell
 
 

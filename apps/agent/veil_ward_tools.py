@@ -32,6 +32,7 @@ import veil_ward
 from db_errors import db_tool
 from event_types import VEIL_WARD_CHANGED
 from game_events import publish_game_event
+from resource_costs import gate_pool
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -98,25 +99,10 @@ async def _activate_veil_ward_impl(
         if (await ward_mutations_mod.read_player_veil_ward(player_id, conn=conn))["active"]:
             raise ToolError("A Veil Ward is already active.")
 
-        focus_pool = player.get("focus") or {}
-        stamina_pool = player.get("stamina") or {}
-        current_focus = focus_pool.get("current", 0)
-        current_stamina = stamina_pool.get("current", 0)
-        if source.focus > 0:
-            if "current" not in focus_pool:
-                raise ToolError("A Veil Ward costs Focus but you have no Focus pool.")
-            if source.focus > current_focus:
-                raise ToolError(f"Not enough Focus for a Veil Ward: costs {source.focus}, you have {current_focus}.")
-        if source.stamina > 0:
-            if "current" not in stamina_pool:
-                raise ToolError("A Veil Ward costs Stamina but you have no Stamina pool.")
-            if source.stamina > current_stamina:
-                raise ToolError(
-                    f"Not enough Stamina for a Veil Ward: costs {source.stamina}, you have {current_stamina}."
-                )
-
-        new_focus = current_focus - source.focus if source.focus > 0 else None
-        new_stamina = current_stamina - source.stamina if source.stamina > 0 else None
+        # Gate Focus then Stamina (fail-loud, pure); each returns the post-deduct
+        # value or None when its cost is 0. One write below applies both.
+        new_focus = gate_pool(player, "focus", source.focus, label="a Veil Ward")
+        new_stamina = gate_pool(player, "stamina", source.stamina, label="a Veil Ward")
         if new_focus is not None or new_stamina is not None:
             await persistence_mod.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
         await ward_mutations_mod.update_player_veil_ward(player_id, True, archetype, conn=conn)

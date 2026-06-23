@@ -11,7 +11,7 @@ from combat._helpers import (
     _resolution_state,
 )
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context, make_mock_room
+from sample_fixtures import make_context, make_mock_room, published_payloads
 
 import event_types as E
 from combat_end import _end_combat_impl
@@ -116,7 +116,7 @@ class TestEndCombat:
 
         await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=_fake_db_mod())
 
-        calls = [json.loads(c[0][0]) for c in room.local_participant.publish_data.call_args_list]
+        calls = published_payloads(room)
         types = [c["type"] for c in calls]
         assert E.COMBAT_ENDED in types
         assert E.PLAY_SOUND in types

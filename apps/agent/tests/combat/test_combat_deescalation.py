@@ -7,12 +7,12 @@ disposition decides whether combat ends. Every de-escalation roll is always-dram
 covered in the sibling test classes below.
 """
 
-import random
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
+from sample_fixtures import FixedRng
 
 from combat_ability import _gate_deescalation, _resolve_deescalation_packet
 from combat_phase import PhaseBeat, advance_combat_phase
@@ -20,18 +20,6 @@ from combat_resolution import DeescalationOutcome, resolve_deescalation
 from declarations import DeclarationType
 from tests.combat._helpers import _make_combat_state
 from tools._helpers import SAMPLE_PLAYER
-
-
-class _FixedRng(random.Random):
-    """A random.Random whose every d20 is deterministic (dice.roll uses randint(1, n))."""
-
-    def __init__(self, value: int):
-        super().__init__()
-        self._value = value
-
-    def randint(self, a: int, b: int) -> int:
-        return self._value
-
 
 _DIPLOMAT = {**SAMPLE_PLAYER, "attributes": {**SAMPLE_PLAYER["attributes"], "charisma": 16}, "focus": {"current": 5}}
 _TIMID = {**SAMPLE_PLAYER, "focus": {"current": 5}}  # charisma 8 -> negative modifier
@@ -168,7 +156,7 @@ class TestResolveDeescalationPacket:
     @pytest.mark.asyncio
     async def test_spends_focus_and_emits_dramatic_dice_roll(self):
         session = _deescalation_session()
-        result, persistence = await _run(session, _DIPLOMAT, _FixedRng(20))
+        result, persistence = await _run(session, _DIPLOMAT, FixedRng(20))
         assert result["resolved"]
         persistence.update_player_resources.assert_awaited_once()
         assert persistence.update_player_resources.await_args.kwargs["focus"] == 2  # 5 - 3
@@ -181,7 +169,7 @@ class TestResolveDeescalationPacket:
     async def test_success_sets_deescalated(self):
         # CHA 16 beats WIS 10 (enters), nat-20 argument clears the hostile DC -> ends combat.
         session = _deescalation_session()
-        result, _ = await _run(session, _DIPLOMAT, _FixedRng(20))
+        result, _ = await _run(session, _DIPLOMAT, FixedRng(20))
         assert result["deescalation"]["ends_combat"]
         assert session.combat_state.deescalated
 
@@ -189,7 +177,7 @@ class TestResolveDeescalationPacket:
     async def test_failed_argument_uses_attempt_without_ending(self):
         # Enters the scene (CHA>WIS) but a low argument roll misses the hostile DC.
         session = _deescalation_session()
-        result, _ = await _run(session, _DIPLOMAT, _FixedRng(3))
+        result, _ = await _run(session, _DIPLOMAT, FixedRng(3))
         assert result["deescalation"]["scene_entered"]
         assert not result["deescalation"]["ends_combat"]
         assert session.combat_state.deescalation_used
@@ -199,7 +187,7 @@ class TestResolveDeescalationPacket:
     async def test_contested_failure_does_not_enter(self):
         # Low CHA (8 -> -1) loses the contested gate; the enemy never pauses.
         session = _deescalation_session()
-        result, _ = await _run(session, _TIMID, _FixedRng(12))
+        result, _ = await _run(session, _TIMID, FixedRng(12))
         assert not result["deescalation"]["scene_entered"]
         assert session.combat_state.deescalation_used
         assert not session.combat_state.deescalated
@@ -207,6 +195,6 @@ class TestResolveDeescalationPacket:
     @pytest.mark.asyncio
     async def test_no_living_enemy_is_wasted(self):
         session = _deescalation_session(enemy_fallen=True)
-        result, persistence = await _run(session, _DIPLOMAT, _FixedRng(20))
+        result, persistence = await _run(session, _DIPLOMAT, FixedRng(20))
         assert not result["resolved"]
         persistence.update_player_resources.assert_not_awaited()
