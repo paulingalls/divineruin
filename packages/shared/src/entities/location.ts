@@ -80,4 +80,10 @@ export interface Location {
   // both. See SettlementSize / SettlementPersonality above.
   settlement_tier?: SettlementSize;
   personality?: SettlementPersonality;
+  // Ambient foraging materials by rarity bucket (M4.6c). Keys are the Python gathering
+  // resolver's rarity vocab (common / uncommon / rare — gathering._RARITY_ORDER, the SSOT);
+  // values are material ids from content/materials_catalog.json. The bucket reflects regional
+  // availability, NOT a material's intrinsic catalog rarity. Present only on wilderness
+  // locations (dungeon foraging uses fixed gathering_nodes); cities omit it.
+  resource_table?: Record<string, string[]>;
 }

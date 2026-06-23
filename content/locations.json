@@ -368,7 +368,12 @@
     },
     "ambient_sounds": "wind_ruins",
     "danger_level": 1,
-    "terrain": "unmarked_wilderness"
+    "terrain": "unmarked_wilderness",
+    "resource_table": {
+      "common": ["medicinal_herb", "oak_wood", "plant_fiber"],
+      "uncommon": ["quality_wood", "iron_ore"],
+      "rare": []
+    }
   },
   {
     "id": "greyvale_ruins_inner",
@@ -422,7 +427,12 @@
     "ambient_sounds": "wind_ruins",
     "ambient_sounds_night": "hollow_wrongness",
     "danger_level": 2,
-    "terrain": "dense_forest"
+    "terrain": "dense_forest",
+    "resource_table": {
+      "common": ["medicinal_herb", "oak_wood", "plant_fiber"],
+      "uncommon": ["quality_wood", "iron_ore"],
+      "rare": []
+    }
   },
   {
     "id": "greyvale_south_road",
@@ -444,7 +454,12 @@
     },
     "ambient_sounds": "rural_town_uneasy",
     "danger_level": 0,
-    "terrain": "established_road"
+    "terrain": "established_road",
+    "resource_table": {
+      "common": ["medicinal_herb", "oak_wood", "plant_fiber"],
+      "uncommon": ["quality_wood", "iron_ore"],
+      "rare": []
+    }
   },
   {
     "id": "millhaven_inn",
