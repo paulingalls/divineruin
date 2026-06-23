@@ -17,8 +17,9 @@ _LOCATIONS = _REPO_ROOT / "content" / "locations.json"
 _MATERIALS = _REPO_ROOT / "content" / "materials_catalog.json"
 _NODES = _REPO_ROOT / "content" / "gathering_nodes.json"
 
-# Canonical fixed-node types (spec §Gathering Nodes, L1024-1040). Content-conformance vocab;
-# the runtime SSOT is promoted to a gathering module when story-003 consumes node_type.
+# Canonical fixed-node types (spec §Gathering Nodes, L1024-1040). Full content-conformance vocab.
+# story-003's gathering.NODE_TYPE_SKILL is the runtime skill-routing SSOT — a *subset* (salvage_site
+# routes via Investigation, not a gathering skill, so it is intentionally absent there).
 _NODE_TYPES = frozenset(
     {"ore_vein", "herb_garden", "crystal_deposit", "timber_stand", "salvage_site", "hollow_residue_pool"}
 )

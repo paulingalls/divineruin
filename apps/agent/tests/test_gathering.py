@@ -225,3 +225,30 @@ def test_resolve_unknown_skill_tier_fails_loud():
         gathering.resolve_gathering(
             material_type=None, skill_tier="demigod", gathering_dc=10, roll_total=10, resource_table=_TABLE
         )
+
+
+# --- select_node: match the uncovered fixed node to the rolled skill ---
+
+_ORE = {"id": "ore1", "node_type": "ore_vein"}
+_HERB = {"id": "herb1", "node_type": "herb_garden"}
+_CRYSTAL = {"id": "crys1", "node_type": "crystal_deposit"}
+
+
+def test_select_node_prefers_skill_match():
+    # nature forager surfaces the herb garden, not the listed-first ore vein
+    assert gathering.select_node([_ORE, _HERB], "nature") is _HERB
+    assert gathering.select_node([_HERB, _CRYSTAL], "arcana") is _CRYSTAL
+
+
+def test_select_node_falls_back_to_first_when_no_match():
+    # arcana roll, only survival/nature nodes present -> still reveal something
+    assert gathering.select_node([_ORE, _HERB], "arcana") is _ORE
+
+
+def test_select_node_none_when_empty():
+    assert gathering.select_node([], "survival") is None
+
+
+def test_select_node_unknown_node_type_falls_back():
+    salvage = {"id": "s1", "node_type": "salvage_site"}  # Investigation, no gathering-skill home
+    assert gathering.select_node([salvage], "survival") is salvage
