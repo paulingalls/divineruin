@@ -53,6 +53,27 @@ class ConditionSpec:
     # no-ops an incoming type listed here. The Temporary Hollowed is immune to Charmed/Frightened/
     # Poisoned.
     immunities: tuple[str, ...] = ()
+    # Beneficial bonus DIE (M4.8 story-001): a flat +Ndk the BEARER adds to their own qualifying roll,
+    # consumed on use. Distinct from advantage (roll-twice) and from bonus_damage_dice (an attacker's
+    # rider on a hit). bonus_die_scopes names the roll KINDS it applies to — a subset of
+    # ("attack", "save", "check"); all three = "any roll". Blessed = attack+save; Inspired = any roll.
+    # The resolver (story-002) matches the roll's kind against these scopes, then rolls and consumes.
+    bonus_die: str | None = None
+    bonus_die_scopes: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class BonusDie:
+    """One beneficial bonus die a bearer adds to a qualifying roll, tagged with the condition that
+    granted it so the resolver can consume that condition on use (M4.8 story-001).
+
+    Unlike the unioned ``*_scopes`` sets, bonus dice are surfaced PER-CONDITION (a tuple, not a
+    union) precisely because each is consumed-on-use — story-002 must know which condition to remove.
+    A bearer who is concurrently Blessed AND Inspired therefore surfaces two distinct dice, not one."""
+
+    source: str  # condition type that granted the die, e.g. "blessed"
+    dice: str  # dice notation, e.g. "1d4"
+    scopes: frozenset[str]  # roll kinds it applies to: subset of {"attack", "save", "check"}
 
 
 @dataclass(frozen=True)
@@ -73,6 +94,9 @@ class ConditionEffects:
     bonus_damage_dice: str | None = None
     bonus_damage_type: str | None = None
     immunities: frozenset[str] = field(default_factory=frozenset)
+    # Beneficial bonus dice (M4.8 story-001): one BonusDie per active beneficial condition (Blessed,
+    # Inspired). Per-condition, not unioned, because each is consumed on use — see BonusDie.
+    bonus_dice: tuple[BonusDie, ...] = ()
 
 
 # The 21-condition catalog. Keys are frozen snake_case labels (same naming
@@ -118,7 +142,11 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
     ),
     "blessed": ConditionSpec(
         clearance="consumed_on_use",
-        advantage_scopes=("next_roll",),
+        # +1d4 on the bearer's next attack or saving throw, consumed on use (M4.8). NOT advantage:
+        # the prior advantage_scopes=("next_roll",) never intersected any resolver scope and
+        # mismodelled a flat die as roll-twice.
+        bonus_die="1d4",
+        bonus_die_scopes=("attack", "save"),
         restrictions=("consumed_on_use",),
     ),
     "shielded": ConditionSpec(
@@ -178,7 +206,11 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
     ),
     "inspired": ConditionSpec(
         clearance="consumed_on_use",
-        restrictions=("bonus_d4_creative_social", "consumed_on_use"),
+        # +1d4 on ANY of the bearer's next rolls, consumed on use (M4.8). Replaces the inert
+        # "bonus_d4_creative_social" restriction string no resolver ever read.
+        bonus_die="1d4",
+        bonus_die_scopes=("attack", "save", "check"),
+        restrictions=("consumed_on_use",),
     ),
     "hollowed": ConditionSpec(
         clearance="greater_restoration_or_sanctified_rest",
@@ -378,6 +410,7 @@ def get_condition_effects(conditions: list[dict]) -> ConditionEffects:
     immunities: set[str] = set()
     bonus_damage_dice: str | None = None
     bonus_damage_type: str | None = None
+    bonus_dice: list[BonusDie] = []
 
     for c in conditions:
         spec = CONDITION_CATALOG[c["type"]]
@@ -387,6 +420,10 @@ def get_condition_effects(conditions: list[dict]) -> ConditionEffects:
         if spec.bonus_damage_dice is not None:
             bonus_damage_dice = spec.bonus_damage_dice
             bonus_damage_type = spec.bonus_damage_type
+        # Beneficial bonus die (M4.8): surfaced per-condition (consumed-on-use needs the source), so
+        # a bearer who is both Blessed and Inspired yields two dice — no silent last-wins drop.
+        if spec.bonus_die is not None:
+            bonus_dice.append(BonusDie(source=c["type"], dice=spec.bonus_die, scopes=frozenset(spec.bonus_die_scopes)))
         if c["type"] == "hollowed":
             hol_dis, hol_res = _hollowed_effects(c["stage"])
             disadvantage |= hol_dis
@@ -412,4 +449,5 @@ def get_condition_effects(conditions: list[dict]) -> ConditionEffects:
         bonus_damage_dice=bonus_damage_dice,
         bonus_damage_type=bonus_damage_type,
         immunities=frozenset(immunities),
+        bonus_dice=tuple(bonus_dice),
     )
