@@ -8,29 +8,16 @@ test_social_tools.py.
 """
 
 import json
-import random
 from unittest.mock import ANY, AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
-from sample_fixtures import mock_txn
+from sample_fixtures import FixedRng, mock_txn, published_events
 
 import event_types as E
 from check_tools import VALID_CHECK_MODES, _check_impl
 from gathering_tools import _check_gather_impl
 from tools._helpers import SAMPLE_PLAYER, _make_context
-
-
-class _FixedRng(random.Random):
-    """A random.Random whose d20 is deterministic (dice.roll uses randint(1, n))."""
-
-    def __init__(self, value: int):
-        super().__init__()
-        self._value = value
-
-    def randint(self, a: int, b: int) -> int:
-        return self._value
-
 
 _WILDERNESS = {
     "id": "greyvale_wilderness_north",
@@ -77,10 +64,6 @@ def _ctx_with_bus(location_id="greyvale_wilderness_north"):
     return ctx
 
 
-def _published(ctx):
-    return [call.args[0] for call in ctx.userdata.event_bus.publish.call_args_list]
-
-
 async def _run(ctx, mocks, *, material_type="", rng_val=11):
     queries, mutations, content, gather_mutations, db_mod = mocks
     return json.loads(
@@ -92,7 +75,7 @@ async def _run(ctx, mocks, *, material_type="", rng_val=11):
             content=content,
             gather_mutations=gather_mutations,
             db_mod=db_mod,
-            rng=_FixedRng(rng_val),
+            rng=FixedRng(rng_val),
         )
     )
 
@@ -106,7 +89,7 @@ class TestAmbientForage:
         assert result["outcome"] == "success"
         assert result["materials"]  # non-empty
         mocks[1].add_inventory_item.assert_awaited()  # mutations
-        dice = next(e for e in _published(ctx) if e.event_type == E.DICE_ROLL)
+        dice = next(e for e in published_events(ctx) if e.event_type == E.DICE_ROLL)
         assert dice.payload["roll_type"] == "gathering_check"
         assert dice.payload["skill"] == "survival"
 

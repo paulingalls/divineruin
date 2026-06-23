@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from combat._helpers import _make_combat_state
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context, make_mock_room
+from sample_fixtures import make_context, make_mock_room, published_payloads
 
 import event_types as E
 from combat_death_save import _request_death_save_impl
@@ -151,7 +151,7 @@ class TestRequestDeathSave:
 
         # dice_roll event + at least one play_sound
         assert room.local_participant.publish_data.call_count >= 2
-        calls = [json.loads(c[0][0]) for c in room.local_participant.publish_data.call_args_list]
+        calls = published_payloads(room)
         types = [c["type"] for c in calls]
         assert E.DICE_ROLL in types
         death_save_event = next(c for c in calls if c.get("type") == E.DICE_ROLL)
@@ -171,7 +171,7 @@ class TestRequestDeathSave:
 
         assert response["dramatic"] is True
         assert response["context"] == "death_save"
-        calls = [json.loads(c[0][0]) for c in room.local_participant.publish_data.call_args_list]
+        calls = published_payloads(room)
         dice = next(c for c in calls if c.get("type") == E.DICE_ROLL)
         assert dice["dramatic"] is True
         assert dice["context"] == "death_save"

@@ -12,7 +12,7 @@ testcontainer (auto-marked `acceptance`), driving the REAL gather pipeline again
 - AC3 / E2E: node depletion is enforced across gathers — a node drained to 0 is no longer
   forageable, so a follow-up gather there (no resource_table) raises "Nothing to forage here.".
 
-Determinism: the d20 gather check is forced via an injected rng (_FixedRng) — 20 → rich_find.
+Determinism: the d20 gather check is forced via an injected rng (FixedRng) — 20 → rich_find.
 Isolation: gathering nodes are GLOBAL world state (unlike per-player travel_state), so node tests
 self-provision a unique node at greyvale_ruins_inner (a seeded dungeon with no seeded node / no
 resource_table) and delete it in finally; inventory state is per-player → distinct player_ids.
@@ -21,12 +21,11 @@ resource_table) and delete it in finally; inventory state is per-player → dist
 from __future__ import annotations
 
 import json
-import random
 
 import pytest
 from acceptance.seeds import seed_player
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context, make_mock_room
+from sample_fixtures import FixedRng, make_context, make_mock_room, published_payloads
 
 import db
 import db_queries
@@ -37,21 +36,6 @@ import gathering_tools
 _AMBIENT = "greyvale_south_road"
 # Clean node stage: a seeded greyvale dungeon with no seeded node and no resource_table.
 _NODE_STAGE = "greyvale_ruins_inner"
-
-
-class _FixedRng(random.Random):
-    """Force the d20 gather check to a fixed value (dice.roll uses randint(1, n))."""
-
-    def __init__(self, value: int):
-        super().__init__()
-        self._value = value
-
-    def randint(self, a: int, b: int) -> int:
-        return self._value
-
-
-def _published(room) -> list[dict]:
-    return [json.loads(call[0][0]) for call in room.local_participant.publish_data.call_args_list]
 
 
 async def _set_skill_tiers(pool, player_id: str, tiers: dict) -> None:
@@ -87,7 +71,7 @@ async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(reset_db
     await _set_skill_tiers(pool, player_id, {"survival": "expert"})
 
     ctx = make_context(player_id, location_id=_AMBIENT, room=make_mock_room())
-    result = json.loads(await gathering_tools._check_gather_impl(ctx, "", rng=_FixedRng(20)))
+    result = json.loads(await gathering_tools._check_gather_impl(ctx, "", rng=FixedRng(20)))
 
     assert result["outcome"] == "success"
     assert result["node_revealed"] is None  # no fixed node at the ambient stage
@@ -101,7 +85,7 @@ async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(reset_db
         item = await db_queries.get_inventory_item(player_id, mid, conn=pool)
         assert item is not None and item["quantity"] == qty
 
-    dice = [e for e in _published(ctx.userdata.room) if e.get("type") == E.DICE_ROLL]
+    dice = [e for e in published_payloads(ctx.userdata.room) if e.get("type") == E.DICE_ROLL]
     assert dice and dice[0]["roll_type"] == "gathering_check"
 
 
@@ -115,7 +99,7 @@ async def test_m46c_rich_find_discovers_and_depletes_node(reset_db_pool: str) ->
     await _insert_node(pool, node_id, location_id=_NODE_STAGE, resource_type="iron_ore", quantity=2)
     try:
         ctx = make_context(player_id, location_id=_NODE_STAGE, room=make_mock_room())
-        result = json.loads(await gathering_tools._check_gather_impl(ctx, "", rng=_FixedRng(20)))
+        result = json.loads(await gathering_tools._check_gather_impl(ctx, "", rng=FixedRng(20)))
 
         assert result["discovery"] is True
         assert result["node_revealed"] == node_id
@@ -141,12 +125,12 @@ async def test_m46c_depleted_node_is_no_longer_forageable(reset_db_pool: str) ->
     try:
         ctx = make_context(player_id, location_id=_NODE_STAGE, room=make_mock_room())
         # First rich-find gather drains the node 1 → 0.
-        first = json.loads(await gathering_tools._check_gather_impl(ctx, "", rng=_FixedRng(20)))
+        first = json.loads(await gathering_tools._check_gather_impl(ctx, "", rng=FixedRng(20)))
         assert first["node_revealed"] == node_id
         assert (await _node_data(pool, node_id))["quantity"] == 0
 
         # No available node (quantity 0 → filtered) and the dungeon has no resource_table → no forage.
         with pytest.raises(ToolError, match="forage"):
-            await gathering_tools._check_gather_impl(ctx, "", rng=_FixedRng(20))
+            await gathering_tools._check_gather_impl(ctx, "", rng=FixedRng(20))
     finally:
         await pool.execute("DELETE FROM gathering_nodes WHERE id = $1", node_id)

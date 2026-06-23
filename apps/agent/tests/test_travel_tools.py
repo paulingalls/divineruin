@@ -8,28 +8,16 @@ fixed rng, mirroring tests/tools/test_social_tools.py.
 """
 
 import json
-import random
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
-from sample_fixtures import mock_txn
+from sample_fixtures import FixedRng, mock_txn, published_events
 
 import event_types as E
 from tools._helpers import SAMPLE_PLAYER, _make_context
 from travel_tools import _travel_impl
-
-
-class _FixedRng(random.Random):
-    """A random.Random whose d20 is deterministic (dice.roll uses randint(1, n))."""
-
-    def __init__(self, value: int):
-        super().__init__()
-        self._value = value
-
-    def randint(self, a: int, b: int) -> int:
-        return self._value
 
 
 def _travel_mocks(player=None):
@@ -67,10 +55,6 @@ def _ctx_with_bus():
     return ctx
 
 
-def _published(ctx):
-    return [call.args[0] for call in ctx.userdata.event_bus.publish.call_args_list]
-
-
 async def _run(ctx, m, *, destination_id="dest", mode="scenic", hours=4, forced_march=False, rng_val=11):
     return json.loads(
         await _travel_impl(
@@ -85,7 +69,7 @@ async def _run(ctx, m, *, destination_id="dest", mode="scenic", hours=4, forced_
             travel_mutations=m.travel_mutations,
             content=m.content,
             db_mod=m.db_mod,
-            rng=_FixedRng(rng_val),
+            rng=FixedRng(rng_val),
         )
     )
 
@@ -105,12 +89,12 @@ async def test_established_road_auto_arrives_and_clears_travel_state():
     # Arrival reuses move_player's full path: map progress + the HUD LOCATION_CHANGED event
     # (regression guard for concern 98d6c624a2f2 — the HUD must follow a travelled arrival).
     m.mutations.upsert_map_progress.assert_awaited_once()
-    assert any(e.event_type == E.LOCATION_CHANGED for e in _published(ctx))
+    assert any(e.event_type == E.LOCATION_CHANGED for e in published_events(ctx))
     # travel_state cleared to null on arrival
     m.travel_mutations.update_player_travel_state.assert_awaited_once()
     assert m.travel_mutations.update_player_travel_state.await_args.args[1] is None
     # no roll happened → no DICE_ROLL event
-    assert not any(e.event_type == E.DICE_ROLL for e in _published(ctx))
+    assert not any(e.event_type == E.DICE_ROLL for e in published_events(ctx))
 
 
 # --- Rolled navigation success: arrives, DICE_ROLL emitted ---
@@ -126,7 +110,7 @@ async def test_rolled_success_arrives_and_emits_dice_roll():
     assert result["arrived"] is True
     assert result["wrong_area"] is False
     m.mutations.update_player_location.assert_awaited_once()
-    dice = next(e for e in _published(ctx) if e.event_type == E.DICE_ROLL)
+    dice = next(e for e in published_events(ctx) if e.event_type == E.DICE_ROLL)
     assert dice.payload["roll_type"] == "navigation_check"
     assert dice.payload["skill"] == "survival"
 
@@ -145,7 +129,7 @@ async def test_lost_failure_does_not_relocate_and_persists_wrong_area():
     assert result["arrived"] is False
     m.mutations.update_player_location.assert_not_awaited()
     # Lost → no arrival side-effects (HUD stays put, map unrecorded).
-    assert not any(e.event_type == E.LOCATION_CHANGED for e in _published(ctx))
+    assert not any(e.event_type == E.LOCATION_CHANGED for e in published_events(ctx))
     persisted = m.travel_mutations.update_player_travel_state.await_args.args[1]
     assert persisted is not None and persisted["wrong_area"] is True
     assert persisted["destination"] == "dest"
