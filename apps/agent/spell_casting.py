@@ -146,7 +146,7 @@ class CastResult:
 def _gate_spell(player: dict, spell_id: str, *, spells_mod=spells):
     """Resolve a spell and assert the player can afford its Focus, or raise ToolError.
 
-    Shared by ``_resolve_cast`` and the in-combat Focus pre-validation (combat_turn, story-007) so
+    Shared by ``_resolve_cast`` and the in-combat Focus pre-validation (combat_packet, story-007) so
     both reject an unknown spell or unaffordable cast IDENTICALLY — and, in combat, before any write
     (AC2). Pure (no I/O): the caller supplies the already-fetched player row. Cantrips (focus_cost 0)
     always pass. Returns the resolved Spell."""

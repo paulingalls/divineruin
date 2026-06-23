@@ -249,7 +249,7 @@ class SessionData:
 
     # Per-encounter weapon durability state (story-003). A weapon takes 1 hit per
     # encounter (2 on a crit vs a heavily-armored target); set during packet
-    # resolution (combat_turn._resolve_attack_packet on any player swing), consumed
+    # resolution (combat_packet._resolve_one_packet on any player swing), consumed
     # and reset at end_combat. Lives here, not on CombatParticipant, because the
     # flag spans the whole encounter rather than a single combat_state snapshot.
     weapon_used_this_encounter: bool = False

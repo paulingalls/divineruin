@@ -14,6 +14,7 @@ import pytest
 from combat._helpers import _fake_db_mod, _make_combat_state
 from sample_fixtures import make_context
 
+import combat_packet
 import combat_turn
 from check_resolution_attack import AttackResult
 from combat_phase import ResolutionPacket
@@ -84,7 +85,7 @@ def _player_attacking(*, enhancers: list[str], enemy_hp: int = 30):
 async def _resolve(cs, decl: Declaration, resolver, actor_id: str = "player_1") -> dict:
     ctx = make_context()
     packet = ResolutionPacket(actor_id=actor_id, declaration=decl, initiative=20)
-    return await combat_turn._resolve_one_packet(
+    return await combat_packet._resolve_one_packet(
         ctx.userdata,
         cs,
         packet,

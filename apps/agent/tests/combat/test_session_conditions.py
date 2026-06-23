@@ -1,7 +1,7 @@
 """Condition persistence + Beat-4 tick-save orchestration (M4.3, story-004).
 
 In-combat conditions ride combat_instances.data via save_combat_state (free, story-002). This
-suite covers the NEW work: (1) the Beat-4 save-to-clear resolution (combat_turn._resolve_tick_saves)
+suite covers the NEW work: (1) the Beat-4 save-to-clear resolution (combat_packet._resolve_tick_saves)
 that clears Frightened on a made save; (2) cross-encounter persistence — combat_end writes the
 player's persists_across_encounters conditions to players.data, and the round-trip is readable via
 db_queries.get_player so out-of-combat checks (story-003 resolvers) apply them.
@@ -20,7 +20,7 @@ import db_queries
 from check_resolution import resolve_skill_check
 from combat_end import _end_combat_db
 from combat_events import EventSink
-from combat_turn import _resolve_tick_saves
+from combat_packet import _resolve_tick_saves
 from conditions import apply_condition
 from session_data import SessionData
 

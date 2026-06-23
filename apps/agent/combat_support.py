@@ -172,8 +172,8 @@ async def _resolve_attack_packet(
     # Dramatic-dice (M4.5, story-004): the resolver's intrinsic verdict (nat-20/nat-1/
     # killing-blow) is the floor. If it didn't fire, PROMOTE on the encounter-context
     # signals only the caller can see — the last enemy standing, or the opening strike.
-    # The caller supplies these (combat_turn counts non-fallen enemies + tracks first
-    # attack); never downgrade an already-dramatic intrinsic verdict.
+    # The caller supplies these (combat_packet._resolve_one_packet counts non-fallen
+    # enemies + tracks first attack); never downgrade an already-dramatic intrinsic verdict.
     if not attack_result.dramatic:
         verdict = evaluate_dramatic_context(
             DramaticContext(
