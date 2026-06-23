@@ -1,0 +1,29 @@
+[
+  {
+    "id": "greyvale_north_herb_garden",
+    "location_id": "greyvale_wilderness_north",
+    "node_type": "herb_garden",
+    "resource_type": "medicinal_herb",
+    "quantity": 3,
+    "discovered": false,
+    "respawn_days": 2
+  },
+  {
+    "id": "greyvale_ruins_salvage",
+    "location_id": "greyvale_ruins_entrance",
+    "node_type": "salvage_site",
+    "resource_type": "iron_ore",
+    "quantity": 2,
+    "discovered": false,
+    "respawn_days": 0
+  },
+  {
+    "id": "hollow_breach_residue_pool",
+    "location_id": "hollow_incursion_site",
+    "node_type": "hollow_residue_pool",
+    "resource_type": "drift_residue",
+    "quantity": 4,
+    "discovered": false,
+    "respawn_days": -1
+  }
+]

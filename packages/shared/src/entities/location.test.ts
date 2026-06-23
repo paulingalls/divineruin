@@ -37,15 +37,21 @@ const ACCORD_IDS = [
 // Millhaven — the threatened Greyvale farming village (one inn, a few farmhouses).
 const MILLHAVEN_IDS = ["millhaven", "millhaven_inn", "yanna_farmhouse"];
 
-// Dungeon/wilderness — not settlements; both new fields stay absent.
-const NON_SETTLEMENT_IDS = [
-  "greyvale_ruins_entrance",
-  "greyvale_ruins_inner",
-  "hollow_incursion_site",
+// Wilderness — open-country foraging spots. Carry an ambient resource_table (M4.6c).
+const WILDERNESS_IDS = [
   "greyvale_ruins_exterior",
   "greyvale_wilderness_north",
   "greyvale_south_road",
 ];
+
+// Dungeon — interiors; foraged via fixed gathering_nodes, not an ambient resource_table.
+const DUNGEON_IDS = ["greyvale_ruins_entrance", "greyvale_ruins_inner", "hollow_incursion_site"];
+
+// Dungeon/wilderness — not settlements; both M6.2 fields stay absent.
+const NON_SETTLEMENT_IDS = [...DUNGEON_IDS, ...WILDERNESS_IDS];
+
+// Canonical rarity buckets — mirrors apps/agent/gathering.py RARITY_ORDER (the SSOT).
+const RESOURCE_RARITIES = ["common", "uncommon", "rare"];
 
 describe("locations.json — catalog cardinality", () => {
   test("19 rows total", () => {
@@ -124,6 +130,36 @@ describe("locations.json — settlement backfill", () => {
       }
       if (l.personality !== undefined) {
         expect(SETTLEMENT_PERSONALITY_VALUES).toContain(l.personality);
+      }
+    }
+  });
+});
+
+describe("locations.json — gathering resource_table (M4.6c)", () => {
+  test("every wilderness location carries a resource_table", () => {
+    for (const id of WILDERNESS_IDS) {
+      const l = byId.get(id)!;
+      expect(l.resource_table).toBeDefined();
+    }
+  });
+
+  test("dungeon and settlement locations omit resource_table", () => {
+    const gatherless = [...DUNGEON_IDS, ...ACCORD_IDS, ...MILLHAVEN_IDS];
+    for (const id of gatherless) {
+      const l = byId.get(id)!;
+      expect(l.resource_table).toBeUndefined();
+    }
+  });
+
+  // Generic guard: any present resource_table uses only canonical rarity keys mapping to
+  // non-empty-id string arrays, so a typo'd bucket key or a non-string material fails here.
+  test("any present resource_table is rarity-keyed arrays of material-id strings", () => {
+    for (const l of catalog) {
+      if (l.resource_table === undefined) continue;
+      for (const [rarity, ids] of Object.entries(l.resource_table)) {
+        expect(RESOURCE_RARITIES).toContain(rarity);
+        expect(Array.isArray(ids)).toBe(true);
+        for (const id of ids) expect(typeof id).toBe("string");
       }
     }
   });

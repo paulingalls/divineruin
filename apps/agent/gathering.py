@@ -49,8 +49,9 @@ def gathering_skill(material_type: str | None) -> str:
         ) from None
 
 
-# Rarity buckets in ascending order — the canonical ordering material selection walks.
-_RARITY_ORDER: tuple[str, ...] = ("common", "uncommon", "rare")
+# Rarity buckets in ascending order — the canonical rarity vocabulary (public SSOT). Material
+# selection walks this; content conformance validates resource_table keys against it.
+RARITY_ORDER: tuple[str, ...] = ("common", "uncommon", "rare")
 
 
 # Which rarities a skill tier can even attempt to gather (spec L1018-1022). Untrained is common
@@ -124,7 +125,7 @@ def select_materials(
         candidates: tuple[str, ...] = (_PARTIAL_RARITY,) if _PARTIAL_RARITY in accessible else ()
     else:
         # Best accessible bucket first: highest rarity the tier can reach, walking down.
-        candidates = tuple(r for r in reversed(_RARITY_ORDER) if r in accessible)
+        candidates = tuple(r for r in reversed(RARITY_ORDER) if r in accessible)
 
     for rarity in candidates:
         bucket = resource_table.get(rarity, ())
