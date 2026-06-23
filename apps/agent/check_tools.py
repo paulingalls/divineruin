@@ -28,6 +28,7 @@ import skill_persistence
 from check_discovery import _check_discover_impl
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
+from gathering_tools import _check_gather_impl
 from session_data import SessionData
 from social_tools import _check_social_impl
 from tool_support import _cap_str
@@ -36,7 +37,7 @@ logger = logging.getLogger("divineruin.tools")
 
 VALID_SKILLS = set(rules_engine.SKILLS.keys())
 VALID_DIFFICULTIES = set(rules_engine.DC_TIERS.keys())
-VALID_CHECK_MODES = ("skill", "discover", "save", "dice", "social")
+VALID_CHECK_MODES = ("skill", "discover", "save", "dice", "social", "gather")
 
 
 @function_tool()
@@ -69,6 +70,10 @@ async def check(
     - mode="save": an effect forces the player to resist. Give save_type (an
       attribute), dc, and effect_on_fail.
     - mode="dice": a narrative-only random moment (weather, crowd size). Give notation.
+    - mode="gather": the player forages for materials at their current location. Optionally
+      give target as a material category (herbs/plant/wood, metals/stone/gems, arcane_components)
+      to route the skill (Nature/Survival/Arcana); omit it for general foraging. A rich find may
+      uncover and harvest a fixed resource node here.
 
     Narrate the result from narrative_hint / narrative_cue. Never speak raw numbers or DCs."""
     return await _check_impl(
@@ -107,6 +112,8 @@ async def _check_impl(
         return await _check_save_impl(context, save_type, dc, effect_on_fail, queries=queries)
     if mode == "dice":
         return await _check_dice_impl(context, notation)
+    if mode == "gather":
+        return await _check_gather_impl(context, target, queries=queries, mutations=mutations, content=content)
     raise ToolError(f"Unknown check mode {mode!r}; expected one of: {', '.join(VALID_CHECK_MODES)}.")
 
 

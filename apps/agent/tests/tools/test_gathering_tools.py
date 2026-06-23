@@ -1,0 +1,193 @@
+"""Tests for the gather mode of the `check` verb (M4.6c / story-003).
+
+`_check_gather_impl` (folded into check via mode="gather") reads the player's current location,
+rolls the gating skill, drives the pure gathering engine, grants materials, consumes a fixed
+gathering_node on a rich find, and emits a DICE_ROLL. Drives the impl directly with mocked db
+seams + a fixed rng; the dispatch wiring on `check` is covered at the bottom. Mirrors
+test_social_tools.py.
+"""
+
+import json
+import random
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+from livekit.agents.llm import ToolError
+
+import event_types as E
+from check_tools import VALID_CHECK_MODES, _check_impl
+from gathering_tools import _check_gather_impl
+from tools._helpers import SAMPLE_PLAYER, _make_context
+
+
+class _FixedRng(random.Random):
+    """A random.Random whose d20 is deterministic (dice.roll uses randint(1, n))."""
+
+    def __init__(self, value: int):
+        super().__init__()
+        self._value = value
+
+    def randint(self, a: int, b: int) -> int:
+        return self._value
+
+
+_WILDERNESS = {
+    "id": "greyvale_wilderness_north",
+    "region": "greyvale",
+    "resource_table": {
+        "common": ["medicinal_herb", "oak_wood"],
+        "uncommon": ["iron_ore"],
+        "rare": [],
+    },
+}
+_DUNGEON = {"id": "greyvale_ruins_entrance", "region": "greyvale"}  # no resource_table
+_NODE = {
+    "id": "n1",
+    "location_id": "greyvale_wilderness_north",
+    "node_type": "herb_garden",
+    "resource_type": "sageroot",
+    "quantity": 3,
+    "discovered": False,
+    "respawn_days": 2,
+}
+
+_EXPERT = {**SAMPLE_PLAYER, "skill_tiers": {"survival": "expert", "nature": "expert"}}
+
+
+def _gather_mocks(player=SAMPLE_PLAYER, location=_WILDERNESS, nodes=None):
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value=player)
+    mutations = MagicMock()
+    mutations.add_inventory_item = AsyncMock()
+    content = MagicMock()
+    content.get_location = AsyncMock(return_value=location)
+    content.get_gathering_nodes_at_location = AsyncMock(return_value=list(nodes or []))
+    gather_mutations = MagicMock()
+    gather_mutations.mark_node_discovered = AsyncMock()
+    gather_mutations.deplete_node_quantity = AsyncMock()
+    return queries, mutations, content, gather_mutations
+
+
+def _ctx_with_bus(location_id="greyvale_wilderness_north"):
+    ctx = _make_context(location_id=location_id)
+    ctx.userdata.event_bus = MagicMock()
+    return ctx
+
+
+def _published(ctx):
+    return [call.args[0] for call in ctx.userdata.event_bus.publish.call_args_list]
+
+
+async def _run(ctx, mocks, *, material_type="", rng_val=11):
+    queries, mutations, content, gather_mutations = mocks
+    return json.loads(
+        await _check_gather_impl(
+            ctx,
+            material_type,
+            queries=queries,
+            mutations=mutations,
+            content=content,
+            gather_mutations=gather_mutations,
+            rng=_FixedRng(rng_val),
+        )
+    )
+
+
+class TestAmbientForage:
+    @pytest.mark.asyncio
+    async def test_success_grants_materials_and_emits_dice_roll(self):
+        mocks = _gather_mocks()
+        ctx = _ctx_with_bus()
+        result = await _run(ctx, mocks, rng_val=20)
+        assert result["outcome"] == "success"
+        assert result["materials"]  # non-empty
+        mocks[1].add_inventory_item.assert_awaited()  # mutations
+        dice = next(e for e in _published(ctx) if e.event_type == E.DICE_ROLL)
+        assert dice.payload["roll_type"] == "gathering_check"
+        assert dice.payload["skill"] == "survival"
+
+    @pytest.mark.asyncio
+    async def test_failed_roll_grants_nothing(self):
+        mocks = _gather_mocks()  # untrained survival, roll 1 -> nothing
+        ctx = _ctx_with_bus()
+        result = await _run(ctx, mocks, rng_val=1)
+        assert result["outcome"] == "failure"
+        assert result["materials"] == []
+        mocks[1].add_inventory_item.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_material_type_routes_skill(self):
+        mocks = _gather_mocks(player=_EXPERT)
+        ctx = _ctx_with_bus()
+        result = await _run(ctx, mocks, material_type="herbs", rng_val=20)
+        assert result["skill"] == "nature"
+
+
+class TestNodeConsumer:
+    @pytest.mark.asyncio
+    async def test_rich_find_discovers_and_depletes_node(self):
+        mocks = _gather_mocks(player=_EXPERT, nodes=[_NODE])
+        ctx = _ctx_with_bus()
+        result = await _run(ctx, mocks, rng_val=20)  # expert + nat20 vs dc10 -> rich_find
+        assert result["discovery"] is True
+        assert result["node_revealed"] == "n1"
+        mocks[3].mark_node_discovered.assert_awaited_once_with("n1")
+        mocks[3].deplete_node_quantity.assert_awaited_once()
+        # node resource granted
+        granted = [c.args[1] for c in mocks[1].add_inventory_item.await_args_list]
+        assert "sageroot" in granted
+
+    @pytest.mark.asyncio
+    async def test_dungeon_yields_only_via_node_on_rich_find(self):
+        mocks = _gather_mocks(player=_EXPERT, location=_DUNGEON, nodes=[_NODE])
+        ctx = _ctx_with_bus(location_id="greyvale_ruins_entrance")
+        result = await _run(ctx, mocks, rng_val=20)
+        assert result["node_revealed"] == "n1"
+        granted = [c.args[1] for c in mocks[1].add_inventory_item.await_args_list]
+        assert granted == ["sageroot"]  # no ambient materials at a dungeon
+
+    @pytest.mark.asyncio
+    async def test_non_rich_success_does_not_touch_node(self):
+        mocks = _gather_mocks(player=SAMPLE_PLAYER, nodes=[_NODE])  # untrained -> at most success
+        ctx = _ctx_with_bus()
+        result = await _run(ctx, mocks, rng_val=11)
+        assert result["discovery"] is False
+        assert result["node_revealed"] is None
+        mocks[3].mark_node_discovered.assert_not_awaited()
+
+
+class TestGuards:
+    @pytest.mark.asyncio
+    async def test_no_resource_table_and_no_nodes_raises(self):
+        mocks = _gather_mocks(location=_DUNGEON, nodes=[])
+        with pytest.raises(ToolError, match="forage"):
+            await _run(_ctx_with_bus(location_id="greyvale_ruins_entrance"), mocks, rng_val=11)
+
+    @pytest.mark.asyncio
+    async def test_unknown_material_category_raises(self):
+        mocks = _gather_mocks()
+        with pytest.raises(ToolError, match="material type"):
+            await _run(_ctx_with_bus(), mocks, material_type="antimatter", rng_val=11)
+
+
+class TestCheckModeRegistration:
+    def test_gather_is_a_valid_check_mode(self):
+        assert "gather" in VALID_CHECK_MODES
+
+    @pytest.mark.asyncio
+    async def test_check_dispatches_gather_mode(self):
+        queries, mutations, content, _ = _gather_mocks()
+        # _check_impl injects queries/mutations/content; gather_mutations + rng use defaults,
+        # so patch the gather-mode seams via the dispatch's content/mutations and a real rng.
+        ctx = _ctx_with_bus()
+        out = json.loads(
+            await _check_impl(
+                ctx,
+                "gather",
+                target="",
+                queries=queries,
+                mutations=mutations,
+                content=content,
+            )
+        )
+        assert out["skill"] == "survival"
