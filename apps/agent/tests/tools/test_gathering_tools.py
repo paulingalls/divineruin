@@ -147,6 +147,19 @@ class TestNodeConsumer:
         assert granted == ["sageroot"]  # no ambient materials at a dungeon
 
     @pytest.mark.asyncio
+    async def test_rich_find_matches_node_to_rolled_skill(self):
+        # location has an ore vein (survival) listed first + an herb garden (nature); foraging for
+        # herbs must surface the herb garden, not the listed-first ore vein.
+        ore = {**_NODE, "id": "ore1", "node_type": "ore_vein", "resource_type": "iron_ore"}
+        mocks = _gather_mocks(player=_EXPERT, nodes=[ore, _NODE])
+        ctx = _ctx_with_bus()
+        result = await _run(ctx, mocks, material_type="herbs", rng_val=20)
+        assert result["node_revealed"] == "n1"  # the herb garden, not ore1
+        mocks[3].mark_node_discovered.assert_awaited_once_with("n1")
+        granted = [c.args[1] for c in mocks[1].add_inventory_item.await_args_list]
+        assert "sageroot" in granted  # the herb-garden node resource, not the ore vein's
+
+    @pytest.mark.asyncio
     async def test_non_rich_success_does_not_touch_node(self):
         mocks = _gather_mocks(player=SAMPLE_PLAYER, nodes=[_NODE])  # untrained -> at most success
         ctx = _ctx_with_bus()

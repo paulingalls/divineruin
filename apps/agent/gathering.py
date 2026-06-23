@@ -49,6 +49,31 @@ def gathering_skill(material_type: str | None) -> str:
         ) from None
 
 
+# Fixed-node type -> the gathering skill that finds it (spec §Gathering Nodes, L1024-1040).
+# Runtime SSOT for the node-type vocab content-conformance validates (test_gathering_content).
+# salvage_site (Investigation) has no gathering-skill home, so it is intentionally absent — it is
+# never matched by a gathering roll and only reachable as the fallback node.
+NODE_TYPE_SKILL: dict[str, str] = {
+    "ore_vein": "survival",
+    "herb_garden": "nature",
+    "crystal_deposit": "arcana",
+    "timber_stand": "survival",
+    "hollow_residue_pool": "arcana",
+}
+
+
+def select_node(nodes: list[dict], skill: str) -> dict | None:
+    """Pick the fixed node a gathering roll on `skill` uncovers. Prefer a node whose type maps to
+    the rolled skill (an herb-forager surfaces the herb garden, not the ore vein); fall back to the
+    first node when none match, so a rich find still reveals *something*. `None` for no nodes."""
+    if not nodes:
+        return None
+    for node in nodes:
+        if NODE_TYPE_SKILL.get(node.get("node_type", "")) == skill:
+            return node
+    return nodes[0]
+
+
 # Rarity buckets in ascending order — the canonical rarity vocabulary (public SSOT). Material
 # selection walks this; content conformance validates resource_table keys against it.
 RARITY_ORDER: tuple[str, ...] = ("common", "uncommon", "rare")

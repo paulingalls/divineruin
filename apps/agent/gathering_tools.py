@@ -96,9 +96,11 @@ async def _check_gather_impl(
     granted = list(result.materials)
     node_revealed = None
     # A rich find reveals + harvests one fixed node (discovery is margin-only, decision
-    # gathering-discovery-margin-only). Gives the gathering_nodes table its live reader/writer.
-    if result.discovery and nodes:
-        node = nodes[0]
+    # gathering-discovery-margin-only). The node is matched to the rolled skill so foraging for
+    # herbs surfaces the herb garden, not an unrelated ore vein (falls back to any node if none
+    # match). Gives the gathering_nodes table its live reader/writer.
+    node = gathering.select_node(nodes, skill) if result.discovery else None
+    if node is not None:
         await gather_mutations.mark_node_discovered(node["id"])
         await gather_mutations.deplete_node_quantity(node["id"], 1)
         granted.append(node["resource_type"])
