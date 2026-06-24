@@ -138,15 +138,32 @@ async def _resolve_one_packet(
             return await _resolve_deescalation_packet(
                 session, attacker, decl, state=state, conn=conn, player=player, sink=sink
             )
-        return await _resolve_ability_packet(
+        outcome = cast_outcome if cast_outcome is not None else AbilityCastOutcome()
+        summary = await _resolve_ability_packet(
             session,
             attacker,
             decl,
             cast_resolver=cast_resolver,
             conn=conn,
             player=player,
-            cast_outcome=cast_outcome if cast_outcome is not None else AbilityCastOutcome(),
+            cast_outcome=outcome,
         )
+        # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half. When the cast produced a
+        # condition (spell.applies_condition surfaces as packet.condition_applied), land it on the
+        # TARGET PARTICIPANT: in combat the working state is the SSOT, so the mutation rides this
+        # phase's save_combat_state (NOT players.data — that out-of-combat write is gated off in
+        # _resolve_cast by session.in_combat). Self-cast (no target_id) falls back to the caster; a
+        # missing target is lenient (never crashes the phase), mirroring the wasted-declaration guards.
+        cast_result = outcome.cast_result
+        if cast_result is not None:
+            cond_type = cast_result.packet.get("condition_applied")
+            if cond_type:
+                cond_target = state.get_participant(decl.target_id or attacker.id)
+                if cond_target is not None:
+                    cond_target.conditions = conditions.apply_condition(
+                        cond_target.conditions, cond_type, source=decl.action
+                    )
+        return summary
 
     if decl.type is not DeclarationType.ATTACK:
         # Non-attack declarations don't resolve mechanically yet, but a narrated rider

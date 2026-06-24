@@ -17,10 +17,15 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from combat._helpers import _damage_resolver
 from sample_fixtures import make_context, make_db_mod
 
+import combat_turn
 import conditions
+import db_mutations
 import spell_casting
+import spells
+from session_data import CombatParticipant, CombatState, SessionData
 from spells import Spell, parse_spell_row
 
 # A divine_bless-shaped catalog row carrying the new structured producer field. Mirrors the
@@ -160,3 +165,105 @@ async def test_ooc_cast_no_applies_condition_does_not_persist():
 
     assert "condition_applied" not in packet
     cond_mut.save_player_conditions.assert_not_awaited()
+
+
+# --- Group C: in-combat producer (real-PG, real divine_bless catalog row) ---
+
+
+async def _seed_caster(pool, player_id: str, *, focus: int = 10) -> None:
+    await pool.execute(
+        "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
+        "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
+        player_id,
+        json.dumps(
+            {"player_id": player_id, "hp": {"current": 25, "max": 25}, "focus": {"current": focus, "max": focus}}
+        ),
+    )
+
+
+def _bless_combat_state(combat_id, caster_id, ally_id, enemy_id, *, target_id) -> CombatState:
+    """RESOLUTION-beat phase: the caster casts divine_bless (targeting `target_id`), an ally defends
+    (no roll, so the produced die isn't immediately consumed), and an enemy survives so combat
+    continues and the working state is persisted via save_combat_state."""
+    decls = {
+        caster_id: {"type": "ability", "action": "divine_bless", "target_id": target_id},
+        ally_id: {"type": "defend"},
+        enemy_id: {"type": "attack", "action": "Scimitar", "target_id": caster_id},
+    }
+    if target_id == caster_id:
+        decls.pop(ally_id)  # self-cast: no separate ally needed
+    return CombatState(
+        combat_id=combat_id,
+        participants=[
+            CombatParticipant(
+                id=caster_id, name="Cleric", type="player", initiative=15, hp_current=25, hp_max=25, ac=14
+            ),
+            CombatParticipant(
+                id=ally_id, name="Ally", type="companion", initiative=10, hp_current=20, hp_max=20, ac=13
+            ),
+            CombatParticipant(
+                id=enemy_id,
+                name="Goblin",
+                type="enemy",
+                initiative=12,
+                hp_current=20,
+                hp_max=20,
+                ac=13,
+                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
+                xp_value=50,
+            ),
+        ],
+        initiative_order=[caster_id, enemy_id, ally_id],
+        beat="resolution",
+        pending_declarations=decls,
+    )
+
+
+async def _run_bless_phase(pool, combat_id, caster_id, ally_id, enemy_id, *, target_id):
+    assert spells.get_spell("divine_bless").applies_condition == "blessed"  # real catalog row
+    await _seed_caster(pool, caster_id)
+    session = SessionData(player_id=caster_id, location_id="accord_guild_hall", room=None)
+    ctx = MagicMock()
+    ctx.userdata = session
+    session.combat_state = _bless_combat_state(combat_id, caster_id, ally_id, enemy_id, target_id=target_id)
+    await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(3))
+    state = session.combat_state  # synced to the persisted working state post-commit
+    assert state is not None
+    return state
+
+
+async def test_incombat_bless_applies_blessed_to_target_participant(dev_db_pool):
+    # In-combat AC: a cast Bless targeting an ally lands Blessed on the TARGET participant (the working
+    # state's SSOT), surviving to the persisted combat state (synced to session.combat_state post-commit).
+    pool = dev_db_pool
+    caster_id, ally_id, enemy_id = "s004_caster", "s004_ally", "s004_enemy"
+    combat_id = "combat_s004_bless"
+    try:
+        state = await _run_bless_phase(pool, combat_id, caster_id, ally_id, enemy_id, target_id=ally_id)
+        ally = state.get_participant(ally_id)
+        assert ally is not None
+        blessed = [c for c in ally.conditions if c["type"] == "blessed"]
+        assert len(blessed) == 1
+        assert blessed[0]["source"] == "divine_bless"
+        # The caster is not the target — Blessed lands only on the declared ally.
+        caster = state.get_participant(caster_id)
+        assert caster is not None
+        assert "blessed" not in [c["type"] for c in caster.conditions]
+    finally:
+        await pool.execute("DELETE FROM players WHERE player_id = $1", caster_id)
+        await db_mutations.delete_combat_state(combat_id, conn=pool)
+
+
+async def test_incombat_bless_self_cast_applies_to_caster_participant(dev_db_pool):
+    # Self-cast (no target_id) lands Blessed on the caster participant via the attacker.id fallback.
+    pool = dev_db_pool
+    caster_id, ally_id, enemy_id = "s004_self_caster", "s004_self_ally", "s004_self_enemy"
+    combat_id = "combat_s004_self"
+    try:
+        state = await _run_bless_phase(pool, combat_id, caster_id, ally_id, enemy_id, target_id=caster_id)
+        caster = state.get_participant(caster_id)
+        assert caster is not None
+        assert "blessed" in [c["type"] for c in caster.conditions]
+    finally:
+        await pool.execute("DELETE FROM players WHERE player_id = $1", caster_id)
+        await db_mutations.delete_combat_state(combat_id, conn=pool)
