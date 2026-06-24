@@ -64,7 +64,11 @@ async def break_concentration_on_damage(
         # CombatParticipant, not the DB player row; out of combat there are none ([]).
         participant = session.combat_state.get_participant(session.player_id) if session.combat_state else None
         player["conditions"] = participant.conditions if participant is not None else []
-        save_total = resolver.resolve_saving_throw(player, "constitution", dc, "concentration").total
+        # Damage-triggered CON save is engine-auto: it never spends the caster's beneficial +1d4
+        # (M4.8 story-003) — only player-initiated saves do.
+        save_total = resolver.resolve_saving_throw(
+            player, "constitution", dc, "concentration", bonus_dice_eligible=False
+        ).total
 
     if concentration.concentration_holds(save_total, dc, incapacitated=incapacitated):
         return None

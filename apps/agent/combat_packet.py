@@ -50,7 +50,10 @@ def _resolve_tick_saves(state, tick_conditions_due, save_resolver):
         # The catalog's tick_save is the 3-letter abbreviation ("wis"); resolve_saving_throw
         # validates against the full attribute name ("wisdom"), so expand before resolving.
         save_type = check_resolution._ATTR_FULL.get(event["save"], event["save"])
-        result = save_resolver.resolve_saving_throw(player_data, save_type, _CONDITION_CLEAR_DC, event["type"])
+        # Engine-auto tick-clear save: never spends the actor's beneficial +1d4 (M4.8 story-003).
+        result = save_resolver.resolve_saving_throw(
+            player_data, save_type, _CONDITION_CLEAR_DC, event["type"], bonus_dice_eligible=False
+        )
         if result.success:
             actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
 
@@ -194,6 +197,13 @@ async def _resolve_one_packet(
             sink=sink,
         )
         attack_summaries.append(sub)
+        # Consume the single-use beneficial die ONCE per declaration (M4.8 story-003): the swing
+        # that rolled it signals consumed_conditions; remove them from the attacker so the next
+        # swing of an expanded sequence sees a clean attacker and rolls no die. The first
+        # consuming swing's removal makes every later swing's consumed_conditions empty, so this
+        # fires at most once. Rides the phase's save_combat_state (no extra persist).
+        if sub.get("consumed_conditions"):
+            attacker.conditions = conditions.remove_conditions(attacker.conditions, sub["consumed_conditions"])
         # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
         # per-encounter weapon-durability accrual that end_combat applies. Only the extra
         # crit-vs-heavy-armor cost (2 hits) is gated on a critical hit landing.

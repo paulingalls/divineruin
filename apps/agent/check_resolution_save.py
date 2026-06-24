@@ -50,7 +50,12 @@ def resolve_saving_throw(
     effect_on_fail: str,
     rng: random.Random | None = None,
     dc_mod: int = 0,
+    *,
+    bonus_dice_eligible: bool = True,
 ) -> SavingThrowResult:
+    # ``bonus_dice_eligible`` gates the beneficial +1d4 fold/consume (M4.8 story-003). Player-initiated
+    # saves keep the default True; engine-auto saves (Beat-4 tick-clear, concentration-break) pass
+    # False so an automatic save never spends the single-use die (customer decision 6102eca13319).
     save_lower = save_type.lower()
     valid_saves = {"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
     if save_lower not in valid_saves:
@@ -101,7 +106,7 @@ def resolve_saving_throw(
     # "save"), folded into the modifier so the total reflects it. Reached only past the auto-fail
     # gate, so an auto-failed save never spends the die. The consumed condition is signalled for
     # story-003 to remove.
-    bonus, consumed = roll_bonus_dice(effects, "save", rng=rng)
+    bonus, consumed = roll_bonus_dice(effects, "save", rng=rng) if bonus_dice_eligible else (0, ())
     save_modifier = mod + flat_mod + bonus
     core = _roll_d20_check(save_modifier, dc, rng=rng, advantage=advantage, disadvantage=disadvantage)
     # No roll_type passed: a generic save is dramatic ONLY on nat-1/nat-20.
