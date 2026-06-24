@@ -13,6 +13,7 @@ keyword seams for TEST-ONLY injection; production uses the `@function_tool` wrap
 import json
 import logging
 
+import asyncpg
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
@@ -120,7 +121,14 @@ async def _check_impl(
     raise ToolError(f"Unknown check mode {mode!r}; expected one of: {', '.join(VALID_CHECK_MODES)}.")
 
 
-async def _consume_beneficial_conditions(player_id, player, consumed, conditions_mutations, *, conn=None):
+async def _consume_beneficial_conditions(
+    player_id: str,
+    player: dict,
+    consumed: tuple[str, ...],
+    conditions_mutations=db_mutations_conditions,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> None:
     """Remove the beneficial conditions a roll consumed and persist the new list (M4.8 story-003).
 
     No-op when nothing was consumed. ``conn`` threads an open transaction so the removal commits
@@ -128,9 +136,7 @@ async def _consume_beneficial_conditions(player_id, player, consumed, conditions
     (its only write). Reads the player's current conditions off the already-fetched row."""
     if not consumed:
         return
-    new_conditions = player.get("conditions") or []
-    for ctype in consumed:
-        new_conditions = conditions.remove_condition(new_conditions, ctype)
+    new_conditions = conditions.remove_conditions(player.get("conditions") or [], consumed)
     await conditions_mutations.save_player_conditions(player_id, new_conditions, conn=conn)
 
 

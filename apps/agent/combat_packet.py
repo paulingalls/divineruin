@@ -202,8 +202,8 @@ async def _resolve_one_packet(
         # swing of an expanded sequence sees a clean attacker and rolls no die. The first
         # consuming swing's removal makes every later swing's consumed_conditions empty, so this
         # fires at most once. Rides the phase's save_combat_state (no extra persist).
-        for ctype in sub.get("consumed_conditions", ()):
-            attacker.conditions = conditions.remove_condition(attacker.conditions, ctype)
+        if sub.get("consumed_conditions"):
+            attacker.conditions = conditions.remove_conditions(attacker.conditions, sub["consumed_conditions"])
         # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
         # per-encounter weapon-durability accrual that end_combat applies. Only the extra
         # crit-vs-heavy-armor cost (2 hits) is gated on a critical hit landing.

@@ -343,6 +343,16 @@ def remove_condition(conditions: list[dict], condition_type: str) -> list[dict]:
     return [dict(c) for c in conditions if c["type"] != condition_type]
 
 
+def remove_conditions(conditions: list[dict], condition_types: tuple[str, ...]) -> list[dict]:
+    """Return a new condition list with every instance of each type in ``condition_types`` removed.
+
+    The plural fold for consume-on-use (M4.8 story-003): a roll can spend more than one beneficial
+    die (a bearer who is both Blessed and Inspired), so remove the whole consumed set in one pass.
+    No-op (a fresh copy) when ``condition_types`` is empty. Never mutates the input."""
+    drop = set(condition_types)
+    return [dict(c) for c in conditions if c["type"] not in drop]
+
+
 def hollowed_stage(conditions: list[dict] | None) -> int:
     """Return the active Hollowed stage (1-3), or 0 when not Hollowed (M4.4 story-008).
 
