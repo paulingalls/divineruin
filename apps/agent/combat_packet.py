@@ -142,6 +142,7 @@ async def _resolve_one_packet(
             session,
             attacker,
             decl,
+            state=state,
             cast_resolver=cast_resolver,
             conn=conn,
             player=player,

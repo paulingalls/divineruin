@@ -29,6 +29,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Literal, get_args
 
+import conditions
 from catalog_parse import parse_int, parse_int_dict, parse_str
 
 logger = logging.getLogger("divineruin.spells")
@@ -63,6 +64,10 @@ class Spell:
     terrain_effects: dict[str, int] = field(default_factory=dict)
     audio_cue: str = ""
     concentration: bool = False
+    # M4.8 story-004: the beneficial condition this spell PRODUCES on its target (e.g. "blessed"),
+    # or None for a spell that applies no condition. Optional + forward-compatible: existing rows
+    # omit it. When present, parse_spell_row fail-louds an unknown type against CONDITION_CATALOG.
+    applies_condition: str | None = None
 
 
 # Module-level runtime-loaded spells, keyed by spell id. Populated by load_spells()
@@ -93,6 +98,11 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
         concentration = data["concentration"]
         if not isinstance(concentration, bool):
             raise ValueError(f"spell {spell_id!r} concentration is not a bool")
+        # Optional producer field (M4.8 story-004): when present it must name a real condition type,
+        # so a typo fails at load (strict-loader convention) instead of silently producing nothing.
+        applies_condition = data.get("applies_condition")
+        if applies_condition is not None and applies_condition not in conditions.CONDITION_CATALOG:
+            raise ValueError(f"spell {spell_id!r} applies_condition {applies_condition!r} is not a known condition")
         return Spell(
             id=spell_id,
             name=data["name"],
@@ -105,6 +115,7 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             terrain_effects=parse_int_dict(data["terrain_effects"], f"spell {spell_id!r} terrain_effects"),
             audio_cue=parse_str(data["audio_cue"], f"spell {spell_id!r} audio_cue"),
             concentration=concentration,
+            applies_condition=applies_condition,
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed spells row {spell_id!r}: {e}") from e

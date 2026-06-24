@@ -552,7 +552,8 @@
     },
     "terrain_effects": {},
     "audio_cue": "Ascending choral tone",
-    "concentration": true
+    "concentration": true,
+    "applies_condition": "blessed"
   },
   {
     "id": "divine_sanctuary",

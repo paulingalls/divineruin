@@ -284,6 +284,12 @@ def _find(conditions: list[dict], condition_type: str) -> dict | None:
     return None
 
 
+def has_condition(conditions: list[dict], condition_type: str) -> bool:
+    """True when ``condition_type`` is active in the list. Lets a producer confirm an
+    ``apply_condition`` actually landed (it no-ops under the immunity gate)."""
+    return _find(conditions, condition_type) is not None
+
+
 def apply_condition(
     conditions: list[dict],
     condition_type: str,
