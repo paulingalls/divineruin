@@ -6,7 +6,7 @@ All resolution functions accept an optional `rng` for deterministic testing.
 import random
 from dataclasses import dataclass
 
-from conditions import get_condition_effects
+from conditions import ConditionEffects, get_condition_effects
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import (
@@ -149,16 +149,16 @@ _ATTR_ABBREV: dict[str, str] = {
 _ATTR_FULL: dict[str, str] = {abbrev: full for full, abbrev in _ATTR_ABBREV.items()}
 
 
-def _apply_condition_modifiers(conditions: list[dict], scopes: set[str]) -> tuple[int, bool, bool, bool]:
-    """Resolve active conditions into a roll's mechanical effect for the given scopes.
+def _apply_condition_modifiers(effects: ConditionEffects, scopes: set[str]) -> tuple[int, bool, bool, bool]:
+    """Classify an already-aggregated ConditionEffects into a roll's mechanical effect for the scopes.
 
     Returns ``(flat_modifier, advantage, disadvantage, auto_fail)``. ``flat_modifier`` is the
     aggregate check_modifier (e.g. Exhausted -1/stack); the three bools are True when ``scopes``
     intersects the respective ConditionEffects set. ``scopes`` is the roll's relevant tokens —
     e.g. {"str","athletics"} for a STR skill check, {"attack"} for an attack, {"con"} for a CON
-    save. Pure: a thin scope-matching adapter over conditions.get_condition_effects.
+    save. Pure: a thin scope-matching adapter. Takes the pre-computed effects so each resolver
+    aggregates conditions exactly once (it shares the effects with roll_bonus_dice).
     """
-    effects = get_condition_effects(conditions)
     advantage = bool(scopes & effects.advantage_scopes)
     disadvantage = bool(scopes & effects.disadvantage_scopes)
     auto_fail = bool(scopes & effects.auto_fail_saves)
@@ -166,7 +166,7 @@ def _apply_condition_modifiers(conditions: list[dict], scopes: set[str]) -> tupl
 
 
 def roll_bonus_dice(
-    conditions: list[dict] | None,
+    effects: ConditionEffects,
     roll_kind: str,
     rng: random.Random | None = None,
 ) -> tuple[int, tuple[str, ...]]:
@@ -176,13 +176,13 @@ def roll_bonus_dice(
     ``"attack"`` / ``"save"`` / ``"check"`` — matched against each ``BonusDie.scopes`` (Blessed =
     attack+save, Inspired = any). A sibling to ``_apply_condition_modifiers``: that classifies
     scopes (no rng), this rolls the dice. Shared by all three resolvers (skill/attack/save) so the
-    +1d4 fold is identical.
+    +1d4 fold is identical. Takes a pre-aggregated ConditionEffects so each resolver computes
+    get_condition_effects exactly once and shares it with the scope classifier.
 
     Consumes rng ONLY when a die matches — a roller with no beneficial condition rolls nothing, so
     existing seeded-rng resolver tests are unshifted. Pure: it SIGNALS which conditions were
     consumed (the caller's result packet carries the signal); the removal/persist is story-003.
     """
-    effects = get_condition_effects(conditions or [])
     total = 0
     consumed: list[str] = []
     for bonus in effects.bonus_dice:
@@ -329,8 +329,8 @@ def _resolve_skill_check_impl(
     # (perception) the Perception skill. Checks have no auto-fail (that is a saving-throw rule).
     attr_names = attr if isinstance(attr, tuple) else (attr,)
     scopes = {_ATTR_ABBREV.get(a, a) for a in attr_names} | {skill_lower}
-    conditions = player_data.get("conditions") or []
-    flat_mod, advantage, disadvantage, _auto_fail = _apply_condition_modifiers(conditions, scopes)
+    effects = get_condition_effects(player_data.get("conditions") or [])
+    flat_mod, advantage, disadvantage, _auto_fail = _apply_condition_modifiers(effects, scopes)
     # Beneficial bonus die (M4.8 story-002): a skill check is roll-kind "check", so Inspired (+1d4 on
     # any roll) applies but Blessed (attack+save only) does not. Skip it on a beyond-tier task that
     # auto-fails without a roll — the die is not spent when it cannot help (mirrors the save auto-fail
@@ -339,7 +339,7 @@ def _resolve_skill_check_impl(
     if _check_auto_fail(dc, tier):
         bonus, consumed = 0, ()
     else:
-        bonus, consumed = roll_bonus_dice(conditions, "check", rng=rng)
+        bonus, consumed = roll_bonus_dice(effects, "check", rng=rng)
 
     check = resolve_check(
         score,

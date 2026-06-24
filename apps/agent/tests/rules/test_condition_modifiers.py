@@ -22,7 +22,7 @@ from check_resolution import (
 from check_resolution_attack import AttackResult, resolve_attack
 from combat_support import _resolve_attack_packet
 from concentration_break import break_concentration_on_damage
-from conditions import apply_condition
+from conditions import apply_condition, get_condition_effects
 from rules_engine import has_iron_constitution
 from session_data import SessionData
 
@@ -64,25 +64,25 @@ def test_advantage_and_disadvantage_cancel_to_single_roll():
 
 
 def test_apply_modifiers_empty():
-    assert _apply_condition_modifiers([], {"str"}) == (0, False, False, False)
+    assert _apply_condition_modifiers(get_condition_effects([]), {"str"}) == (0, False, False, False)
 
 
 def test_apply_modifiers_flat_from_exhausted():
     conds = apply_condition([], "exhausted")
     conds = apply_condition(conds, "exhausted")
-    flat, adv, dis, auto = _apply_condition_modifiers(conds, {"str"})
+    flat, adv, dis, auto = _apply_condition_modifiers(get_condition_effects(conds), {"str"})
     assert flat == -2 and adv is False and dis is False and auto is False
 
 
 def test_apply_modifiers_disadvantage_on_matching_scope():
     conds = apply_condition([], "poisoned")  # str/dex/con
-    _, _, dis, _ = _apply_condition_modifiers(conds, {"str", "athletics"})
+    _, _, dis, _ = _apply_condition_modifiers(get_condition_effects(conds), {"str", "athletics"})
     assert dis is True
 
 
 def test_apply_modifiers_auto_fail_on_matching_save_scope():
     conds = apply_condition([], "stunned")  # auto-fail str/dex
-    _, _, _, auto = _apply_condition_modifiers(conds, {"dex"})
+    _, _, _, auto = _apply_condition_modifiers(get_condition_effects(conds), {"dex"})
     assert auto is True
 
 

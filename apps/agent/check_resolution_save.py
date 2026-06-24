@@ -10,6 +10,7 @@ import random
 from dataclasses import dataclass
 
 from check_resolution import _ATTR_ABBREV, _apply_condition_modifiers, _roll_d20_check, roll_bonus_dice
+from conditions import get_condition_effects
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier, proficiency_bonus
 
@@ -73,9 +74,9 @@ def resolve_saving_throw(
 
     # Condition effects (M4.3): a condition can auto-fail this save (Stunned/Paralyzed
     # auto-fail STR/DEX), flatly modify it (Exhausted -1/stack), or impose disadvantage.
-    conditions = player_data.get("conditions") or []
+    effects = get_condition_effects(player_data.get("conditions") or [])
     scopes = {_ATTR_ABBREV.get(save_lower, save_lower)}
-    flat_mod, advantage, disadvantage, auto_fail = _apply_condition_modifiers(conditions, scopes)
+    flat_mod, advantage, disadvantage, auto_fail = _apply_condition_modifiers(effects, scopes)
     if auto_fail:
         return SavingThrowResult(
             save_type=save_lower,
@@ -100,7 +101,7 @@ def resolve_saving_throw(
     # "save"), folded into the modifier so the total reflects it. Reached only past the auto-fail
     # gate, so an auto-failed save never spends the die. The consumed condition is signalled for
     # story-003 to remove.
-    bonus, consumed = roll_bonus_dice(conditions, "save", rng=rng)
+    bonus, consumed = roll_bonus_dice(effects, "save", rng=rng)
     save_modifier = mod + flat_mod + bonus
     core = _roll_d20_check(save_modifier, dc, rng=rng, advantage=advantage, disadvantage=disadvantage)
     # No roll_type passed: a generic save is dramatic ONLY on nat-1/nat-20.
