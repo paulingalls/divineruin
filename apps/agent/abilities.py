@@ -20,6 +20,7 @@ import logging
 from dataclasses import dataclass
 from typing import Literal, get_args
 
+import conditions
 import spells
 
 logger = logging.getLogger("divineruin.abilities")
@@ -53,6 +54,10 @@ class Ability:
     # (cost/effect/level) is composed from content/spells.json via this id, so the
     # catalog stays the single source for that data (no drift). None for non-spell rows.
     spell_id: str | None = None
+    # M4.8 story-005: the beneficial condition this ability PRODUCES on its target (e.g. "inspired"),
+    # or None for an ability that applies no condition. Optional + forward-compatible: existing rows
+    # omit it. When present, parse_ability_row fail-louds an unknown type against CONDITION_CATALOG.
+    applies_condition: str | None = None
 
 
 # Module-level runtime-loaded abilities, keyed by ability id. Populated by
@@ -90,6 +95,11 @@ def parse_ability_row(ability_id: str, data: dict) -> Ability:
         # bool is a subclass of int — exclude it explicitly, mirroring _parse_cost.
         if not isinstance(level_requirement, int) or isinstance(level_requirement, bool):
             raise ValueError(f"ability {ability_id!r} level_requirement is not an int")
+        # Optional producer field (M4.8 story-005): when present it must name a real condition type,
+        # so a typo fails at load (strict-loader convention) instead of silently producing nothing.
+        applies_condition = data.get("applies_condition")
+        if applies_condition is not None and applies_condition not in conditions.CONDITION_CATALOG:
+            raise ValueError(f"ability {ability_id!r} applies_condition {applies_condition!r} is not a known condition")
         return Ability(
             id=ability_id,
             archetype_id=data["archetype_id"],
@@ -100,6 +110,7 @@ def parse_ability_row(ability_id: str, data: dict) -> Ability:
             effect=data["effect"],
             narration_cue=data["narration_cue"],
             spell_id=data.get("spell_id"),
+            applies_condition=applies_condition,
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed archetype_abilities row {ability_id!r}: {e}") from e

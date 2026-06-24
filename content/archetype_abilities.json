@@ -960,7 +960,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Grant an ally a die to add to any roll. THE Bard ability.",
-    "narration_cue": "A few ringing words, and an ally stands ready to shine."
+    "narration_cue": "A few ringing words, and an ally stands ready to shine.",
+    "applies_condition": "inspired"
   },
   {
     "id": "bard_mass_inspire",
@@ -1231,7 +1232,8 @@
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Shared with Bard: grant an ally a die to add to any roll.",
-    "narration_cue": "A few confident words, and an ally finds their footing."
+    "narration_cue": "A few confident words, and an ally finds their footing.",
+    "applies_condition": "inspired"
   },
   {
     "id": "diplomat_objection",
