@@ -117,12 +117,16 @@ async def _request_ability_activation_impl(
         # Beneficial-condition PRODUCER (M4.8 story-005), out-of-combat half. An ability carrying
         # applies_condition lands it on the target's players.data SSOT — applied AFTER the resource
         # gate so a refused (unaffordable) activation produces nothing, and inside this tx so the
-        # write commits atomically with the deduct. condition_applied is captured here and surfaced
-        # on the response AFTER the block (the response dict is built post-commit). Self-target
-        # (no target_id) reuses the for_update caster row; a non-player target (companion/NPC) has no
-        # players.data store, so it narrates without a write rather than hard-erroring on the missing
-        # row. Mirrors story-004's spell producer (decision applies-condition-producer-contract).
-        if ability.applies_condition is not None:
+        # write commits atomically with the deduct. The OOC persist is gated on not session.in_combat,
+        # mirroring the spell producer (_resolve_cast): in combat the participant is the SSOT and the
+        # declare_phase ability-condition path owns the apply, so an in-combat call here must NOT write
+        # to players.data. condition_applied is captured here and surfaced on the response AFTER the
+        # block (the response dict is built post-commit). Self-target (no target_id) reuses the
+        # for_update caster row; a non-player target (companion/NPC) has no players.data store, so it
+        # narrates without a write rather than hard-erroring on the missing row. The persist only fires
+        # when the condition actually LANDS (has_condition) — an immunity no-op writes nothing.
+        # Mirrors story-004's spell producer (decision applies-condition-producer-contract).
+        if ability.applies_condition is not None and not session.in_combat:
             cond_target_id = target_id if target_id is not None else player_id
             target_row = (
                 player
@@ -133,8 +137,8 @@ async def _request_ability_activation_impl(
                 new_conditions = conditions_mod.apply_condition(
                     target_row.get("conditions", []), ability.applies_condition, source=ability_id
                 )
-                await conditions_mutations_mod.save_player_conditions(cond_target_id, new_conditions, conn=conn)
                 if conditions_mod.has_condition(new_conditions, ability.applies_condition):
+                    await conditions_mutations_mod.save_player_conditions(cond_target_id, new_conditions, conn=conn)
                     condition_applied = ability.applies_condition
             else:
                 condition_applied = ability.applies_condition  # non-player target: narrate-only, no write

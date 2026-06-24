@@ -93,10 +93,20 @@ def _bard(player_id: str = "bard_1", conditions_list: list | None = None) -> dic
     }
 
 
-async def _activate(ability: Ability, *, caster: dict, target_id: str | None = None, rows: dict | None = None):
+async def _activate(
+    ability: Ability,
+    *,
+    caster: dict,
+    target_id: str | None = None,
+    rows: dict | None = None,
+    in_combat: bool = False,
+):
     """Drive _request_ability_activation_impl out of combat. Returns (response, conditions_mutations
-    mock, get_player mock) for producer assertions."""
+    mock, get_player mock) for producer assertions. ``in_combat`` sets a combat_state so the OOC
+    producer's not-in-combat persist gate can be exercised."""
     ctx = make_context(player_id=caster["player_id"])
+    if in_combat:
+        ctx.userdata.combat_state = CombatState(combat_id="c_inspire_guard", participants=[], initiative_order=[])
     mock_db, _conn = make_db_mod()
     table = {caster["player_id"]: caster, **(rows or {})}
 
@@ -172,7 +182,78 @@ async def test_ooc_ability_no_applies_condition_does_not_persist():
     cond_mut.save_player_conditions.assert_not_awaited()
 
 
-# --- Group C: in-combat non-spell ability-condition path (real-PG, real bard_inspire row) ---
+@pytest.mark.asyncio
+async def test_ooc_producer_does_not_persist_in_combat():
+    # In combat the participant is the SSOT and declare_phase owns the apply; an in-combat call to the
+    # OOC tool must NOT write Inspired to players.data (mirrors the spell producer's not-in-combat gate).
+    response, cond_mut, _gp = await _activate(_inspire_ability(), caster=_bard(), in_combat=True)
+
+    assert "condition_applied" not in response
+    cond_mut.save_player_conditions.assert_not_awaited()
+
+
+# --- Group C: in-combat non-spell ability-condition path ---
+
+
+@pytest.mark.asyncio
+async def test_incombat_target_gone_wastes_without_deducting():
+    # A declared target_id that's no longer on the working state wastes the declaration WITHOUT
+    # deducting the ability's cost — a buff that can't land must never burn Focus (mirrors the attack
+    # path's wasted-target guard). resolved:False, no resource write, no condition.
+    import combat_ability
+    from declarations import Declaration, DeclarationType
+
+    caster = CombatParticipant(id="c1", name="Lyra", type="player", initiative=15, hp_current=25, hp_max=25, ac=14)
+    state = CombatState(combat_id="c_gone", participants=[caster], initiative_order=["c1"])
+    decl = Declaration(type=DeclarationType.ABILITY, action="bard_inspire", target_id="ghost")
+    persistence = MagicMock(update_player_resources=AsyncMock())
+
+    summary = await combat_ability._resolve_ability_condition_packet(
+        SessionData(player_id="c1", location_id="accord_guild_hall", room=None),
+        caster,
+        decl,
+        _inspire_ability(),
+        state=state,
+        conn=MagicMock(),
+        player=_bard("c1"),
+        persistence=persistence,
+    )
+
+    assert summary["resolved"] is False
+    assert "condition_applied" not in summary
+    persistence.update_player_resources.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_incombat_fallen_target_wastes_without_deducting():
+    # Can't Inspire a corpse: a fallen target wastes the declaration without deducting the cost.
+    import combat_ability
+    from declarations import Declaration, DeclarationType
+
+    caster = CombatParticipant(id="c1", name="Lyra", type="player", initiative=15, hp_current=25, hp_max=25, ac=14)
+    ally = CombatParticipant(id="a1", name="Ally", type="companion", initiative=10, hp_current=0, hp_max=20, ac=13)
+    ally.is_fallen = True
+    state = CombatState(combat_id="c_fallen", participants=[caster, ally], initiative_order=["c1", "a1"])
+    decl = Declaration(type=DeclarationType.ABILITY, action="bard_inspire", target_id="a1")
+    persistence = MagicMock(update_player_resources=AsyncMock())
+
+    summary = await combat_ability._resolve_ability_condition_packet(
+        SessionData(player_id="c1", location_id="accord_guild_hall", room=None),
+        caster,
+        decl,
+        _inspire_ability(),
+        state=state,
+        conn=MagicMock(),
+        player=_bard("c1"),
+        persistence=persistence,
+    )
+
+    assert summary["resolved"] is False
+    persistence.update_player_resources.assert_not_awaited()
+    assert not [c for c in ally.conditions if c["type"] == "inspired"]
+
+
+# --- Group C (cont.): real-PG, real bard_inspire row ---
 
 
 async def _seed_caster(pool, player_id: str, *, focus: int = 10) -> None:
