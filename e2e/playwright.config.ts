@@ -76,9 +76,21 @@ const serverWebServer = {
 const mobileWebServer = {
   command: "cd apps/mobile && bunx expo start --web --port 8082 --non-interactive",
   cwd: "../",
-  port: 8082,
+  // Wait on an HTTP probe of the served page, NOT a bare TCP port: Expo opens :8082
+  // BEFORE Metro has bundled the web app, so a `port` probe goes ready early and the first
+  // spec's page.goto("/") pays the cold Metro bundle — which, under the pre-push gate's
+  // concurrent CPU load (Docker acceptance + the apps/web build), can exceed the 30s test
+  // timeout (the authenticatedPage-setup goto timeout seen on session-transcript). `url`
+  // polls for a real 200 so Playwright only starts specs once Metro actually serves; the
+  // 120s timeout gives the bundle headroom. Mirrors webWebServer's port-probe-race fix.
+  url: "http://localhost:8082/",
   timeout: 120_000,
   reuseExistingServer: false,
+  // Pipe Expo/Metro stdout into the run output (Playwright pipes only stderr by default), so a
+  // persisted flake log shows Metro's bundling state / errors at the moment of a hang. Without
+  // this the :8082 server produced zero output in flake-artifacts, leaving a goto timeout
+  // undiagnosable. Matches serverWebServer.
+  stdout: "pipe" as const,
   env: {
     EXPO_PUBLIC_API_URL: "http://localhost:3001",
   },
@@ -102,6 +114,9 @@ const webWebServer = {
   // killed run would serve stale (or empty) dist and silently fail the content
   // assertions; always build fresh and fail loud on a real port conflict.
   reuseExistingServer: false,
+  // Pipe the build+serve stdout (Playwright pipes only stderr by default) so a flake log
+  // captures prerender/build progress when this CPU-starved lane stalls under contention.
+  stdout: "pipe" as const,
   env: {
     NODE_ENV: "production",
     PORT: "8085",
