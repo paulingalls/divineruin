@@ -185,3 +185,69 @@ async def test_extra_attack_consumes_beneficial_die_once():
     assert summary["attacks"][0]["consumed_conditions"] == ("blessed",)
     assert summary["attacks"][1]["consumed_conditions"] == ()
     assert "blessed" not in [c["type"] for c in player.conditions]
+
+
+# --- Group C: out-of-combat consume + persist ---
+
+
+@pytest.mark.asyncio
+async def test_save_tool_consumes_and_persists():
+    from check_tools import _check_save_impl
+    from tools._helpers import SAMPLE_PLAYER, _make_context
+
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": apply_condition([], "blessed")})
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    await _check_save_impl(_make_context(), "wisdom", 12, "resist", queries=queries, conditions_mutations=cond_mut)
+
+    cond_mut.save_player_conditions.assert_awaited_once()
+    args, _ = cond_mut.save_player_conditions.call_args
+    assert "blessed" not in [c["type"] for c in args[1]]  # (player_id, conditions)
+
+
+@pytest.mark.asyncio
+async def test_save_tool_no_condition_does_not_persist():
+    from check_tools import _check_save_impl
+    from tools._helpers import SAMPLE_PLAYER, _make_context
+
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": []})
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    await _check_save_impl(_make_context(), "wisdom", 12, "resist", queries=queries, conditions_mutations=cond_mut)
+
+    cond_mut.save_player_conditions.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_skill_tool_consumes_and_persists_atomically():
+    from sample_fixtures import make_db_mod
+
+    from check_tools import _check_skill_impl
+    from tools._helpers import SAMPLE_PLAYER, _make_context, _skill_mocks
+
+    queries, mutations = _skill_mocks()
+    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": apply_condition([], "inspired")})
+    db_mod, conn = make_db_mod()
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    await _check_skill_impl(
+        _make_context(),
+        "athletics",
+        "moderate",
+        "climbing",
+        queries=queries,
+        mutations=mutations,
+        db_mod=db_mod,
+        conditions_mutations=cond_mut,
+    )
+
+    cond_mut.save_player_conditions.assert_awaited_once()
+    args, kwargs = cond_mut.save_player_conditions.call_args
+    assert "inspired" not in [c["type"] for c in args[1]]
+    # Atomic with the skill-advancement write: both run on the transaction's connection.
+    assert kwargs.get("conn") is conn
