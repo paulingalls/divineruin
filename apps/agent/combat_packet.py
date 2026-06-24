@@ -197,6 +197,13 @@ async def _resolve_one_packet(
             sink=sink,
         )
         attack_summaries.append(sub)
+        # Consume the single-use beneficial die ONCE per declaration (M4.8 story-003): the swing
+        # that rolled it signals consumed_conditions; remove them from the attacker so the next
+        # swing of an expanded sequence sees a clean attacker and rolls no die. The first
+        # consuming swing's removal makes every later swing's consumed_conditions empty, so this
+        # fires at most once. Rides the phase's save_combat_state (no extra persist).
+        for ctype in sub.get("consumed_conditions", ()):
+            attacker.conditions = conditions.remove_condition(attacker.conditions, ctype)
         # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
         # per-encounter weapon-durability accrual that end_combat applies. Only the extra
         # crit-vs-heavy-armor cost (2 hits) is gated on a critical hit landing.

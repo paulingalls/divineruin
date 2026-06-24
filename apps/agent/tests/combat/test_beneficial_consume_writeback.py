@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sample_fixtures import FixedRng
 
+import combat_packet
 from check_resolution_save import resolve_saving_throw
 from conditions import apply_condition
 
@@ -88,3 +89,99 @@ async def test_concentration_break_save_passes_eligible_false():
 
     _, kwargs = resolver.resolve_saving_throw.call_args
     assert kwargs.get("bonus_dice_eligible") is False
+
+
+# --- Group B: in-combat consume-once per declaration ---
+
+_WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
+
+
+def _combat_mocks():
+    mutations = MagicMock()
+    mutations.update_player_hp = AsyncMock()
+    mutations.save_combat_state = AsyncMock()
+    queries = MagicMock()
+    queries.get_player_inventory = AsyncMock(return_value=[])
+    break_mod = MagicMock()
+    break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
+    return mutations, queries, break_mod
+
+
+@pytest.mark.asyncio
+async def test_attack_packet_surfaces_consumed_conditions():
+    from combat._helpers import _make_combat_state
+    from sample_fixtures import make_context
+
+    from check_resolution_attack import AttackResult
+    from combat_support import _resolve_attack_packet
+
+    cs = _make_combat_state()
+    attacker, target = cs.get_participant("player_1"), cs.get_participant("goblin_scout_1")
+    resolver = MagicMock()
+    resolver.resolve_attack = MagicMock(
+        return_value=AttackResult(
+            hit=True,
+            roll=15,
+            attack_modifier=3,
+            attack_total=18,
+            target_ac=13,
+            damage=3,
+            damage_type="slashing",
+            critical_success=False,
+            critical_failure=False,
+            target_hp_remaining=4,
+            target_killed=False,
+            narrative_hint="x",
+            consumed_conditions=("blessed",),
+        )
+    )
+    mutations, queries, break_mod = _combat_mocks()
+    resp = await _resolve_attack_packet(
+        make_context().userdata,
+        attacker,
+        dict(_WEAPON),
+        target,
+        mutations=mutations,
+        queries=queries,
+        resolver=resolver,
+        concentration_break_mod=break_mod,
+    )
+    assert resp["consumed_conditions"] == ("blessed",)
+
+
+@pytest.mark.asyncio
+async def test_extra_attack_consumes_beneficial_die_once():
+    # A 2-swing declaration must apply + consume the single-use die ONCE: swing-1 signals + removes
+    # it, swing-2 (clean attacker) gets nothing. Uses the REAL attack resolver.
+    from combat._helpers import _make_combat_state
+    from sample_fixtures import make_context
+
+    import check_resolution_attack
+    from combat_phase import ResolutionPacket
+    from declarations import Declaration, DeclarationType
+
+    cs = _make_combat_state(enemy_hp=40)
+    player = cs.get_participant("player_1")
+    assert player is not None
+    player.action_pool = [dict(_WEAPON)]
+    player.enhancers = ["extra_attack"]
+    player.conditions = apply_condition([], "blessed")
+    mutations, queries, break_mod = _combat_mocks()
+    packet = ResolutionPacket(
+        actor_id="player_1",
+        declaration=Declaration(type=DeclarationType.ATTACK, action="Longsword", target_id="goblin_scout_1"),
+        initiative=20,
+    )
+    summary = await combat_packet._resolve_one_packet(
+        make_context().userdata,
+        cs,
+        packet,
+        mutations=mutations,
+        queries=queries,
+        resolver=check_resolution_attack,
+        concentration_break_mod=break_mod,
+    )
+    assert len(summary["attacks"]) == 2
+    assert summary["attacks"][0]["consumed_conditions"] == ("blessed",)
+    assert summary["attacks"][1]["consumed_conditions"] == ()
+    assert "blessed" not in [c["type"] for c in player.conditions]
