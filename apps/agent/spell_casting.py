@@ -54,8 +54,10 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import ability_persistence
+import conditions
 import db
 import db_mutations_concentration
+import db_mutations_conditions
 import db_mutations_resonance
 import db_queries
 import dice
@@ -212,6 +214,8 @@ async def _cast_spell_impl(
     racial_mod=racial_resonance,
     vaelti_warning_mod=vaelti_echo_warning,
     concentration_mutations_mod=db_mutations_concentration,
+    conditions_mod=conditions,
+    conditions_mutations_mod=db_mutations_conditions,
 ) -> str:
     """Out-of-combat cast entry. Opens its own transaction, delegates the cast to the shared
     ``_resolve_cast`` core, then syncs the in-memory SSOT and flushes the deferred events
@@ -241,6 +245,8 @@ async def _cast_spell_impl(
             racial_mod=racial_mod,
             vaelti_warning_mod=vaelti_warning_mod,
             concentration_mutations_mod=concentration_mutations_mod,
+            conditions_mod=conditions_mod,
+            conditions_mutations_mod=conditions_mutations_mod,
         )
 
     # Transaction committed cleanly — sync the in-memory SSOT to the persisted values, then release
@@ -276,6 +282,8 @@ async def _resolve_cast(
     racial_mod=racial_resonance,
     vaelti_warning_mod=vaelti_echo_warning,
     concentration_mutations_mod=db_mutations_concentration,
+    conditions_mod=conditions,
+    conditions_mutations_mod=db_mutations_conditions,
 ) -> CastResult:
     """Resolve ONE cast against the DB using the caller's ``conn`` (opens no transaction of its own),
     shared by ``cast_spell`` (out-of-combat) and the in-combat ABILITY packet (story-007).
@@ -449,6 +457,26 @@ async def _resolve_cast(
     # damage in `mechanics`, so no scaled dice for them.
     if spell.spell_tier == "cantrip":
         packet["damage_dice"] = leveling_mod.cantrip_damage_dice(player.get("level", 1))
+
+    # Beneficial-condition PRODUCER (M4.8 story-004). A spell carrying applies_condition lands that
+    # condition on its target. condition_applied surfaces in the packet for the DM to voice AND drives
+    # the in-combat participant apply (combat_packet reads it). The PERSIST is out-of-combat only:
+    # there the target's players.data is the SSOT, so apply + save via conn. In combat the participant
+    # is the SSOT (combat_packet mutates it on the working state), so this skips the players.data write
+    # — applied AFTER the Focus/Resonance/revivify gates, so a refused/unaffordable cast produces nothing.
+    if spell.applies_condition is not None:
+        packet["condition_applied"] = spell.applies_condition
+        if not session.in_combat:
+            cond_target_id = target_id if target_id is not None else player_id
+            if cond_target_id == player_id:
+                base_conditions = player.get("conditions", [])  # reuse the for_update caster row
+            else:
+                target_row = await queries_mod.get_player(cond_target_id, conn=conn, for_update=True)
+                if target_row is None:
+                    raise ToolError(f"Unknown target: {cond_target_id}")
+                base_conditions = target_row.get("conditions", [])
+            new_conditions = conditions_mod.apply_condition(base_conditions, spell.applies_condition, source=spell_id)
+            await conditions_mutations_mod.save_player_conditions(cond_target_id, new_conditions, conn=conn)
 
     return CastResult(
         packet=packet,
