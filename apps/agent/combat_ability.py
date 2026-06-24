@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, cast
 
 from livekit.agents.llm import ToolError
 
+import abilities
 import ability_persistence
 import check_resolution
 import combat_enhancers
@@ -19,6 +20,7 @@ import event_types as E
 import spell_casting
 from combat_events import emit_or_publish
 from dice import roll as dice_roll
+from resource_costs import gate_pool
 from rules_engine import attribute_modifier
 from session_data import CombatParticipant, SessionData
 
@@ -129,6 +131,75 @@ async def _resolve_deescalation_packet(
             "narrative_cue": outcome.narrative_cue,
         },
     }
+
+
+def condition_ability(action) -> "abilities.Ability | None":
+    """The non-spell, condition-applying ABILITY for ``action``, or None.
+
+    The in-combat ABILITY path resolves spells by default (via _gate_spell / _resolve_cast); a
+    non-spell ability that PRODUCES a condition (M4.8 story-005, e.g. bard_inspire) takes the
+    dedicated ability-condition path instead. An ability is on that path iff it carries
+    ``applies_condition`` AND has no ``spell_id`` — a spell-backed condition ability keeps the
+    spell path, where story-004's producer block already applies it (assumption 07d1a208794b).
+    Returns None for an unknown action or any spell/non-condition ability."""
+    try:
+        ability = abilities.get_ability(action)
+    except ValueError:
+        return None
+    if ability.applies_condition is not None and ability.spell_id is None:
+        return ability
+    return None
+
+
+def _gate_ability_condition(player: dict, ability) -> None:
+    """Declare-time fail-loud gate for a non-spell condition ability (M4.8 story-005): validate the
+    ability's Stamina/Focus with NO writes, mirroring _gate_deescalation / _gate_spell so a bad
+    declaration never rolls back a phase that already resolved other actors. resource_costs.gate_pool
+    is the sole Focus/Stamina gate; the deduct happens in _resolve_ability_condition_packet."""
+    gate_pool(player, "stamina", ability.cost.stamina, label=ability.name)
+    gate_pool(player, "focus", ability.cost.focus, label=ability.name)
+
+
+async def _resolve_ability_condition_packet(
+    session: SessionData,
+    attacker: CombatParticipant,
+    decl,
+    ability,
+    *,
+    state,
+    conn,
+    player: dict | None,
+    persistence=ability_persistence,
+) -> dict:
+    """Resolve a non-spell condition-applying ABILITY in combat (M4.8 story-005, e.g. bard_inspire).
+
+    Deduct the ability's Stamina/Focus (pre-gated at declare time via _gate_ability_condition), then
+    land its applies_condition on the TARGET participant on the phase's working ``state`` — the
+    mutation rides the phase save_combat_state (no extra write), matching the in-combat-SSOT contract.
+    Self-target (no target_id) falls back to the caster; a target not on the working state, or an
+    apply that no-ops under the immunity gate, leaves condition_applied off (lenient, never crashes
+    the phase). ``player`` is the for_update row from prevalidation, reused so the lock is taken once."""
+    if state is None or player is None:
+        return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
+    new_stamina = gate_pool(player, "stamina", ability.cost.stamina, label=ability.name)
+    new_focus = gate_pool(player, "focus", ability.cost.focus, label=ability.name)
+    if new_stamina is not None or new_focus is not None:
+        await persistence.update_player_resources(session.player_id, stamina=new_stamina, focus=new_focus, conn=conn)
+
+    summary = {
+        "actor_id": attacker.id,
+        "resolved": True,
+        "declaration_type": str(decl.type),
+        "action": ability.id,
+    }
+    cond_target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
+    if cond_target is not None:
+        cond_target.conditions = conditions.apply_condition(
+            cond_target.conditions, ability.applies_condition, source=decl.action
+        )
+        if conditions.has_condition(cond_target.conditions, ability.applies_condition):
+            summary["condition_applied"] = ability.applies_condition
+    return summary
 
 
 @dataclass

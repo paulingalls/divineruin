@@ -19,11 +19,16 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from combat._helpers import _damage_resolver
 from sample_fixtures import make_context, make_db_mod
 
 import ability_tools
+import combat_turn
 import conditions
+import db_mutations
+import db_queries
 from abilities import Ability, Cost, parse_ability_row
+from session_data import CombatParticipant, CombatState, SessionData
 
 # A bard_inspire-shaped catalog row carrying the new structured producer field.
 _INSPIRE_ROW = {
@@ -165,3 +170,88 @@ async def test_ooc_ability_no_applies_condition_does_not_persist():
 
     assert "condition_applied" not in response
     cond_mut.save_player_conditions.assert_not_awaited()
+
+
+# --- Group C: in-combat non-spell ability-condition path (real-PG, real bard_inspire row) ---
+
+
+async def _seed_caster(pool, player_id: str, *, focus: int = 10) -> None:
+    await pool.execute(
+        "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
+        "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
+        player_id,
+        json.dumps(
+            {
+                "player_id": player_id,
+                "class": "bard",
+                "hp": {"current": 25, "max": 25},
+                "focus": {"current": focus, "max": focus},
+                "stamina": {"current": 10, "max": 10},
+            }
+        ),
+    )
+
+
+def _inspire_combat_state(combat_id, caster_id, ally_id, enemy_id) -> CombatState:
+    """RESOLUTION-beat phase: the Bard declares bard_inspire on an ally (who defends, so the produced
+    die isn't immediately consumed), and an enemy survives so combat continues and the working state
+    is persisted via save_combat_state."""
+    return CombatState(
+        combat_id=combat_id,
+        participants=[
+            CombatParticipant(id=caster_id, name="Lyra", type="player", initiative=15, hp_current=25, hp_max=25, ac=14),
+            CombatParticipant(
+                id=ally_id, name="Ally", type="companion", initiative=10, hp_current=20, hp_max=20, ac=13
+            ),
+            CombatParticipant(
+                id=enemy_id,
+                name="Goblin",
+                type="enemy",
+                initiative=12,
+                hp_current=20,
+                hp_max=20,
+                ac=13,
+                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
+                xp_value=50,
+            ),
+        ],
+        initiative_order=[caster_id, enemy_id, ally_id],
+        beat="resolution",
+        pending_declarations={
+            caster_id: {"type": "ability", "action": "bard_inspire", "target_id": ally_id},
+            ally_id: {"type": "defend"},
+            enemy_id: {"type": "attack", "action": "Scimitar", "target_id": caster_id},
+        },
+    )
+
+
+async def test_incombat_inspire_applies_inspired_to_target_participant(dev_db_pool):
+    # AC2: a Bard declaring Inspire (a NON-spell ability) on an ally lands Inspired on the TARGET
+    # participant and deducts the ability's Focus — the in-combat ability-condition path, no longer
+    # rejected as an "Unknown spell".
+    pool = dev_db_pool
+    caster_id, ally_id, enemy_id = "s005_caster", "s005_ally", "s005_enemy"
+    combat_id = "combat_s005_inspire"
+    try:
+        await _seed_caster(pool, caster_id, focus=10)
+        session = SessionData(player_id=caster_id, location_id="accord_guild_hall", room=None)
+        ctx = MagicMock()
+        ctx.userdata = session
+        session.combat_state = _inspire_combat_state(combat_id, caster_id, ally_id, enemy_id)
+        await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(3))
+
+        state = session.combat_state
+        assert state is not None
+        ally = state.get_participant(ally_id)
+        assert ally is not None
+        inspired = [c for c in ally.conditions if c["type"] == "inspired"]
+        assert len(inspired) == 1
+        assert inspired[0]["source"] == "bard_inspire"
+
+        # The Bard's Focus was deducted by the ability cost (2) — proves the ability resolved.
+        row = await db_queries.get_player(caster_id, conn=pool)
+        assert row is not None
+        assert row["focus"]["current"] == 8
+    finally:
+        await pool.execute("DELETE FROM players WHERE player_id = $1", caster_id)
+        await db_mutations.delete_combat_state(combat_id, conn=pool)
