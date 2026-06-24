@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, cast
 
 from livekit.agents.llm import ToolError
 
+import abilities
 import ability_persistence
 import check_resolution
 import combat_enhancers
@@ -19,10 +20,12 @@ import event_types as E
 import spell_casting
 from combat_events import emit_or_publish
 from dice import roll as dice_roll
+from resource_costs import gate_pool
 from rules_engine import attribute_modifier
 from session_data import CombatParticipant, SessionData
 
 if TYPE_CHECKING:
+    from declarations import Declaration
     from spell_casting import CastResult
 
 # Diplomat de-escalation (M4.6a story-004, spec game_mechanics_combat.md:175-183).
@@ -131,6 +134,112 @@ async def _resolve_deescalation_packet(
     }
 
 
+def land_condition_on_participant(
+    state, attacker: CombatParticipant, decl: "Declaration", cond_type: str, source: str
+) -> bool:
+    """Apply a beneficial condition to an in-combat declaration's target participant (M4.8).
+
+    The shared landing rule for both combat producers (the spell path in _resolve_ability_packet and
+    the non-spell ability path in _resolve_ability_condition_packet): self-target (no target_id) falls
+    back to the caster; a given target_id is looked up on the working ``state``. Returns True iff the
+    condition actually landed (conditions.has_condition) — a target not on the state, or an apply that
+    no-ops under the immunity gate, returns False so the caller drops the buff signal rather than
+    narrating a buff that never stuck. The mutation rides the phase's save_combat_state (no extra write)."""
+    cond_target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
+    if cond_target is None:
+        return False
+    cond_target.conditions = conditions.apply_condition(cond_target.conditions, cond_type, source=source)
+    return conditions.has_condition(cond_target.conditions, cond_type)
+
+
+def condition_ability(action: str | None) -> "abilities.Ability | None":
+    """The non-spell, condition-applying ABILITY for ``action``, or None.
+
+    The in-combat ABILITY path resolves spells by default (via _gate_spell / _resolve_cast); a
+    non-spell ability that PRODUCES a condition (M4.8 story-005, e.g. bard_inspire) takes the
+    dedicated ability-condition path instead. An ability is on that path iff it carries
+    ``applies_condition`` AND has no ``spell_id`` — a spell-backed condition ability keeps the
+    spell path, where story-004's producer block already applies it (assumption 07d1a208794b).
+    Returns None for an unknown action or any spell/non-condition ability."""
+    if action is None:
+        return None
+    try:
+        ability = abilities.get_ability(action)
+    except ValueError:
+        return None
+    if ability.applies_condition is not None and ability.spell_id is None:
+        return ability
+    return None
+
+
+def _gate_ability_condition(player: dict, ability: "abilities.Ability") -> None:
+    """Declare-time fail-loud gate for a non-spell condition ability (M4.8 story-005): validate the
+    ability's Stamina/Focus with NO writes, mirroring _gate_deescalation / _gate_spell so a bad
+    declaration never rolls back a phase that already resolved other actors. resource_costs.gate_pool
+    is the sole Focus/Stamina gate; the deduct happens in _resolve_ability_condition_packet."""
+    gate_pool(player, "stamina", ability.cost.stamina, label=ability.name)
+    gate_pool(player, "focus", ability.cost.focus, label=ability.name)
+
+
+async def _resolve_ability_condition_packet(
+    session: SessionData,
+    attacker: CombatParticipant,
+    decl: "Declaration",
+    ability: "abilities.Ability",
+    *,
+    state,
+    conn,
+    player: dict | None,
+    persistence=ability_persistence,
+) -> dict:
+    """Resolve a non-spell condition-applying ABILITY in combat (M4.8 story-005, e.g. bard_inspire).
+
+    Resolve the TARGET participant FIRST: self-target (no target_id) is the caster (always present);
+    a given target_id that's not on the working state, or one already fallen, WASTES the declaration
+    (resolved:False) WITHOUT deducting — you can't buff a target that left or a corpse, and a wasted
+    declaration must never burn the ability's Stamina/Focus (mirrors the attack path's wasted-target
+    guards). Only once a live target is confirmed do we deduct the cost (pre-gated at declare time via
+    _gate_ability_condition) and land applies_condition on it via the shared helper — the mutation
+    rides the phase save_combat_state (no extra write). ``player`` is the for_update row from
+    prevalidation, reused so the lock is taken once."""
+    if state is None or player is None:
+        return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
+
+    cond_target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
+    if cond_target is None:
+        return {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": f"target '{decl.target_id}' not found",
+        }
+    if cond_target.is_fallen:
+        return {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": f"{cond_target.name} already fell",
+        }
+
+    new_stamina = gate_pool(player, "stamina", ability.cost.stamina, label=ability.name)
+    new_focus = gate_pool(player, "focus", ability.cost.focus, label=ability.name)
+    if new_stamina is not None or new_focus is not None:
+        await persistence.update_player_resources(session.player_id, stamina=new_stamina, focus=new_focus, conn=conn)
+
+    summary = {
+        "actor_id": attacker.id,
+        "resolved": True,
+        "declaration_type": str(decl.type),
+        "action": ability.id,
+    }
+    # applies_condition is non-None on this path (condition_ability selected it); narrow for the
+    # helper + use the resolved ability id as the source (== decl.action by the lookup invariant).
+    cond_type = ability.applies_condition
+    if cond_type is not None and land_condition_on_participant(state, attacker, decl, cond_type, source=ability.id):
+        summary["condition_applied"] = cond_type
+    return summary
+
+
 @dataclass
 class AbilityCastOutcome:
     """Side-channel carrying an in-loop ABILITY cast's ``CastResult`` back to the phase loop.
@@ -204,15 +313,9 @@ async def _resolve_ability_packet(
     # spell id (matching the OOC source=spell_id). Resolved here where attacker/decl/result are
     # already in scope — no outcome re-read in the dispatcher.
     cond_type = result.packet.get("condition_applied")
-    if cond_type:
-        cond_target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
-        landed = False
-        if cond_target is not None:
-            cond_target.conditions = conditions.apply_condition(cond_target.conditions, cond_type, source=decl.action)
-            landed = conditions.has_condition(cond_target.conditions, cond_type)
-        if not landed:
-            # Target gone, or apply no-op'd (immunity gate) — don't narrate a buff that never landed.
-            result.packet.pop("condition_applied", None)
+    if cond_type and not land_condition_on_participant(state, attacker, decl, cond_type, source=decl.action):
+        # Target gone, or apply no-op'd (immunity gate) — don't narrate a buff that never landed.
+        result.packet.pop("condition_applied", None)
     summary = {
         "actor_id": attacker.id,
         "resolved": True,

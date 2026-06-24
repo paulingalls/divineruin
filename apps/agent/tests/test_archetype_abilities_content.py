@@ -71,6 +71,12 @@ REQUIRED_KEYS = {
 # `cost` with `spell_id` and keep everything else.
 SPELL_BACKED_KEYS = (REQUIRED_KEYS - {"cost"}) | {"spell_id"}
 
+# Optional producer field (M4.8 story-005): a row that grants a beneficial condition carries
+# applies_condition (Python-agent-only — the TS server loader ignores it). Allowed on top of the
+# required set; the "no typo'd key" guarantee still holds (only this known optional is permitted
+# extra). parse_ability_row fail-louds an unknown condition value separately.
+OPTIONAL_KEYS = {"applies_condition"}
+
 SPELLS_JSON = Path(__file__).resolve().parents[3] / "content" / "spells.json"
 
 ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -129,23 +135,24 @@ def test_elective_pool_sizes(rows):
 def test_each_row_required_keys_and_enums(rows):
     for row in rows:
         rid = row.get("id", "<no id>")
-        # Exact match, not superset: the row shape is the cross-language SSOT
-        # contract for the story-002 (Python) and story-003 (TS) parsers, so a
-        # stray/typo'd key must fail here rather than surface as a strict-parse
-        # break downstream. A spell-backed CORE row REPLACES `cost` with `spell_id`
-        # (the Focus cost composes from the catalog); everything else is identical.
+        # Exact match modulo the known optional producer field: the row shape is the
+        # cross-language SSOT contract for the story-002 (Python) and story-003 (TS)
+        # parsers, so a stray/typo'd key must fail here rather than surface as a
+        # strict-parse break downstream. applies_condition (story-005) is the one allowed
+        # optional. A spell-backed CORE row REPLACES `cost` with `spell_id` (the Focus cost
+        # composes from the catalog); everything else is identical.
+        keys = set(row) - OPTIONAL_KEYS
         if _is_spell_backed(row):
-            assert set(row) == SPELL_BACKED_KEYS, (
-                f"{rid} spell-backed key mismatch: missing {SPELL_BACKED_KEYS - set(row)}, "
-                f"extra {set(row) - SPELL_BACKED_KEYS}"
+            assert keys == SPELL_BACKED_KEYS, (
+                f"{rid} spell-backed key mismatch: missing {SPELL_BACKED_KEYS - keys}, extra {keys - SPELL_BACKED_KEYS}"
             )
             assert row["ability_type"] == "core", f"{rid} spell-backed rows must be ability_type=core"
             assert isinstance(row["spell_id"], str) and ID_RE.match(row["spell_id"]), (
                 f"{rid} spell_id {row['spell_id']!r} must be a well-formed catalog spell id"
             )
         else:
-            assert set(row) == REQUIRED_KEYS, (
-                f"{rid} key mismatch: missing {REQUIRED_KEYS - set(row)}, extra {set(row) - REQUIRED_KEYS}"
+            assert keys == REQUIRED_KEYS, (
+                f"{rid} key mismatch: missing {REQUIRED_KEYS - keys}, extra {keys - REQUIRED_KEYS}"
             )
         # Common to both shapes — every row authors its own level/effect/name/narration.
         assert isinstance(row["level_requirement"], int) and row["level_requirement"] >= 1, (

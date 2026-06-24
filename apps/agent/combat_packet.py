@@ -20,9 +20,12 @@ from combat_ability import (
     AbilityCastOutcome,
     _attach_riders,
     _find_action,
+    _gate_ability_condition,
     _gate_deescalation,
+    _resolve_ability_condition_packet,
     _resolve_ability_packet,
     _resolve_deescalation_packet,
+    condition_ability,
 )
 from combat_support import _resolve_attack_packet
 from declarations import DeclarationType
@@ -81,10 +84,14 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
     if player is None:
         raise ToolError(f"Unknown player: {session.player_id}")
     for action in player_abilities:
-        # De-escalate (M4.6a story-004) is an ABILITY but not a spell — gate its 3-Focus cost
-        # and once-per-encounter lockout here, not through _gate_spell (which looks up a spell).
+        # Three non-spell-vs-spell ABILITY gates (pre-resolution, no writes): de_escalate (M4.6a)
+        # has its own Focus+lockout gate; a non-spell condition ability (M4.8 story-005, e.g.
+        # bard_inspire) gates its catalog Stamina/Focus; everything else is a spell-backed ability
+        # gated against the spell catalog. _gate_spell would raise "Unknown spell" for the first two.
         if action.lower() == "de_escalate":
             _gate_deescalation(player, state)
+        elif (cond_ability := condition_ability(action)) is not None:
+            _gate_ability_condition(player, cond_ability)
         else:
             cast_resolver._gate_spell(player, action)
     return player
@@ -137,6 +144,14 @@ async def _resolve_one_packet(
         if (decl.action or "").lower() == "de_escalate":
             return await _resolve_deescalation_packet(
                 session, attacker, decl, state=state, conn=conn, player=player, sink=sink
+            )
+        # A non-spell condition ability (M4.8 story-005, e.g. bard_inspire) resolves via the dedicated
+        # ability-condition path — deduct its cost and land the condition on the target participant —
+        # NOT through _resolve_ability_packet (which casts a spell). Pre-gated in _prevalidate_ability_focus.
+        cond_ability = condition_ability(decl.action)
+        if cond_ability is not None:
+            return await _resolve_ability_condition_packet(
+                session, attacker, decl, cond_ability, state=state, conn=conn, player=player
             )
         return await _resolve_ability_packet(
             session,

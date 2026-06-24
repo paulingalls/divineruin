@@ -20,7 +20,9 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import ability_persistence
+import conditions
 import db
+import db_mutations_conditions
 import db_queries
 import mentor_variants
 from db_errors import db_tool
@@ -36,28 +38,37 @@ logger = logging.getLogger("divineruin.tools")
 async def request_ability_activation(
     context: RunContext[SessionData],
     ability_id: str,
+    target_id: str | None = None,
 ) -> str:
     """Activate one of the character's archetype abilities.
     Call when the player uses a named ability, technique, spell, or reaction.
     Provide the ability_id (e.g. 'warrior_devastating_strike'). Validates and
     deducts the Stamina/Focus cost, rejecting if the character lacks the resource.
     Returns the narration cue to voice; for pool/variable-cost abilities (e.g. Lay
-    on Hands) the variable_cost field carries the rule for you to track."""
-    return await _request_ability_activation_impl(context, ability_id)
+    on Hands) the variable_cost field carries the rule for you to track.
+
+    Pass target_id when the ability buffs another entity (e.g. Inspire on an ally).
+    Omit it (the default) for a self-targeted ability."""
+    return await _request_ability_activation_impl(context, ability_id, target_id=target_id)
 
 
 async def _request_ability_activation_impl(
     context: RunContext[SessionData],
     ability_id: str,
     *,
+    target_id: str | None = None,
     db_mod=db,
     queries_mod=db_queries,
     persistence_mod=ability_persistence,
     abilities_mod=abilities,
     variants_mod=mentor_variants,
+    conditions_mod=conditions,
+    conditions_mutations_mod=db_mutations_conditions,
 ) -> str:
     context.disallow_interruptions()
     _validate_id(ability_id, "ability_id")
+    if target_id is not None:
+        _validate_id(target_id, "target_id")
     session: SessionData = context.userdata
     player_id = session.player_id
     logger.info("request_ability_activation called: ability=%s player=%s", ability_id, player_id)
@@ -67,6 +78,7 @@ async def _request_ability_activation_impl(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    condition_applied: str | None = None  # the produced condition, surfaced on the response post-commit
     async with db_mod.transaction() as conn:
         player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
         if player is None:
@@ -102,6 +114,35 @@ async def _request_ability_activation_impl(
         if new_stamina is not None or new_focus is not None:
             await persistence_mod.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
 
+        # Beneficial-condition PRODUCER (M4.8 story-005), out-of-combat half. An ability carrying
+        # applies_condition lands it on the target's players.data SSOT — applied AFTER the resource
+        # gate so a refused (unaffordable) activation produces nothing, and inside this tx so the
+        # write commits atomically with the deduct. The OOC persist is gated on not session.in_combat,
+        # mirroring the spell producer (_resolve_cast): in combat the participant is the SSOT and the
+        # declare_phase ability-condition path owns the apply, so an in-combat call here must NOT write
+        # to players.data. condition_applied is captured here and surfaced on the response AFTER the
+        # block (the response dict is built post-commit). Self-target (no target_id) reuses the
+        # for_update caster row; a non-player target (companion/NPC) has no players.data store, so it
+        # narrates without a write rather than hard-erroring on the missing row. The persist only fires
+        # when the condition actually LANDS (has_condition) — an immunity no-op writes nothing.
+        # Mirrors story-004's spell producer (decision applies-condition-producer-contract).
+        if ability.applies_condition is not None and not session.in_combat:
+            cond_target_id = target_id if target_id is not None else player_id
+            target_row = (
+                player
+                if cond_target_id == player_id
+                else await queries_mod.get_player(cond_target_id, conn=conn, for_update=True)
+            )
+            if target_row is not None:
+                new_conditions = conditions_mod.apply_condition(
+                    target_row.get("conditions", []), ability.applies_condition, source=ability_id
+                )
+                if conditions_mod.has_condition(new_conditions, ability.applies_condition):
+                    await conditions_mutations_mod.save_player_conditions(cond_target_id, new_conditions, conn=conn)
+                    condition_applied = ability.applies_condition
+            else:
+                condition_applied = ability.applies_condition  # non-player target: narrate-only, no write
+
     response = {
         "narration_cue": variant.narration_cue if variant is not None else ability.narration_cue,
         "deducted": {"stamina": cost.stamina, "focus": cost.focus},
@@ -112,4 +153,8 @@ async def _request_ability_activation_impl(
     if variant is not None:
         response["effect"] = variant.effect
         response["cultural_attribution"] = variant.cultural_attribution
+    # Producer narration signal (M4.8 story-005) — set only when the condition actually landed
+    # (or a non-player narrate-only target); the apply/persist happened inside the tx above.
+    if condition_applied is not None:
+        response["condition_applied"] = condition_applied
     return json.dumps(response)
