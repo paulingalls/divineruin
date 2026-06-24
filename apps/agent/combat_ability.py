@@ -14,6 +14,7 @@ import ability_persistence
 import check_resolution
 import combat_enhancers
 import combat_resolution
+import conditions
 import event_types as E
 import spell_casting
 from combat_events import emit_or_publish
@@ -147,6 +148,7 @@ async def _resolve_ability_packet(
     attacker: CombatParticipant,
     decl,
     *,
+    state,
     cast_resolver,
     conn,
     player: dict | None,
@@ -193,6 +195,24 @@ async def _resolve_ability_packet(
     # captures concentration, so this in-tx mutation is reverted if the phase rolls back.
     if result.concentration_spell_id is not spell_casting._UNCHANGED:
         session.concentration.spell_id = cast("str | None", result.concentration_spell_id)
+    # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half. _resolve_cast surfaces the
+    # produced condition as packet.condition_applied (the OOC players.data write is gated off in
+    # combat). In combat the working state is the SSOT, so land it on the TARGET participant here —
+    # the mutation rides this phase's save_combat_state. Self-cast (no target_id) falls back to the
+    # caster; a target not on the working state narrates nothing (condition_applied dropped) rather
+    # than crashing the phase, mirroring the wasted-declaration guards. source=decl.action is the
+    # spell id (matching the OOC source=spell_id). Resolved here where attacker/decl/result are
+    # already in scope — no outcome re-read in the dispatcher.
+    cond_type = result.packet.get("condition_applied")
+    if cond_type:
+        cond_target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
+        landed = False
+        if cond_target is not None:
+            cond_target.conditions = conditions.apply_condition(cond_target.conditions, cond_type, source=decl.action)
+            landed = conditions.has_condition(cond_target.conditions, cond_type)
+        if not landed:
+            # Target gone, or apply no-op'd (immunity gate) — don't narrate a buff that never landed.
+            result.packet.pop("condition_applied", None)
     summary = {
         "actor_id": attacker.id,
         "resolved": True,

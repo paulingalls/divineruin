@@ -18,6 +18,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from combat._helpers import _damage_resolver
+from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
 import combat_turn
@@ -70,15 +71,16 @@ def test_parse_unknown_applies_condition_fails_loud():
 # --- Group B: out-of-combat producer (mock-conn) ---
 
 
-def _bless_spell(applies_condition: str | None = "blessed") -> Spell:
-    """A free (focus 0, resonance 0) divine spell so the cast resolves past the Focus/Resonance
-    gates with no side-effects but the producer hook — only applies_condition matters here."""
+def _bless_spell(applies_condition: str | None = "blessed", *, focus_cost: int = 0) -> Spell:
+    """A divine spell (resonance 0, default focus 0) that resolves past the Focus/Resonance gates
+    with no side-effects but the producer hook — only applies_condition matters here. Bump
+    focus_cost to exercise the affordability gate (Spell is frozen, so set it at construction)."""
     return Spell(
         id="divine_bless",
         name="Bless",
         source="divine",
         spell_tier="minor",
-        focus_cost=0,
+        focus_cost=focus_cost,
         mechanics="An ally gains +1d4 on attacks and saves.",
         narration_cue="Warmth settling into bones.",
         audio_cue="",
@@ -165,6 +167,29 @@ async def test_ooc_cast_no_applies_condition_does_not_persist():
 
     assert "condition_applied" not in packet
     cond_mut.save_player_conditions.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_ooc_cast_on_non_player_target_narrates_without_persist():
+    # Regression guard (finding #1): buffing a NON-PLAYER ally (companion/NPC, no players.data row)
+    # must NOT hard-error — it narrates condition_applied for the DM and writes nothing, matching the
+    # pre-producer non-revival behavior (a targeted cast skipped the row fetch). `kael` is absent
+    # from the table, so get_player returns None for it.
+    packet, cond_mut, _gp = await _cast_ooc(_bless_spell(), caster=_caster(), target_id="kael")
+
+    assert packet["condition_applied"] == "blessed"  # DM still voices the buff
+    cond_mut.save_player_conditions.assert_not_awaited()  # no players.data write for a non-player
+
+
+@pytest.mark.asyncio
+async def test_ooc_unaffordable_cast_persists_nothing():
+    # Finding #10: the producer is gated AFTER the Focus check, so a refused/unaffordable cast must
+    # produce no condition. A focus_cost=3 spell against a 2-Focus caster raises ToolError before the
+    # producer hook ever runs — nothing persisted, no packet returned.
+    broke_caster = _caster("broke_1")
+    broke_caster["focus"] = {"current": 2, "max": 10}
+    with pytest.raises(ToolError):
+        await _cast_ooc(_bless_spell(focus_cost=3), caster=broke_caster)
 
 
 # --- Group C: in-combat producer (real-PG, real divine_bless catalog row) ---

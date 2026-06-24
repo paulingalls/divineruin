@@ -459,24 +459,34 @@ async def _resolve_cast(
         packet["damage_dice"] = leveling_mod.cantrip_damage_dice(player.get("level", 1))
 
     # Beneficial-condition PRODUCER (M4.8 story-004). A spell carrying applies_condition lands that
-    # condition on its target. condition_applied surfaces in the packet for the DM to voice AND drives
-    # the in-combat participant apply (combat_packet reads it). The PERSIST is out-of-combat only:
-    # there the target's players.data is the SSOT, so apply + save via conn. In combat the participant
-    # is the SSOT (combat_packet mutates it on the working state), so this skips the players.data write
-    # — applied AFTER the Focus/Resonance/revivify gates, so a refused/unaffordable cast produces nothing.
+    # condition on its target. The OOC PERSIST is gated on not session.in_combat: there the target's
+    # players.data is the SSOT, so apply + save via conn. In combat the participant is the SSOT and
+    # combat_ability._resolve_ability_packet does the apply on the working state. Applied AFTER the
+    # Focus/Resonance/revivify gates, so a refused/unaffordable cast produces nothing.
+    #   condition_applied surfaces in the packet ONLY when the condition actually LANDED — apply_condition
+    # can no-op (immunity gate), so we don't tell the DM a buff stuck when it didn't.
+    #   OOC persist is caster-or-existing-player only: a non-player ally (companion/NPC) has no
+    # players.data conditions store, so it narrates without a write rather than hard-erroring on the
+    # missing row — restoring the pre-producer non-revival behavior (assumption eabd919bf1ca).
     if spell.applies_condition is not None:
-        packet["condition_applied"] = spell.applies_condition
-        if not session.in_combat:
+        if session.in_combat:
+            packet["condition_applied"] = spell.applies_condition  # combat applies + confirms on the participant
+        else:
             cond_target_id = target_id if target_id is not None else player_id
             if cond_target_id == player_id:
-                base_conditions = player.get("conditions", [])  # reuse the for_update caster row
+                target_row = player  # reuse the for_update caster row
             else:
                 target_row = await queries_mod.get_player(cond_target_id, conn=conn, for_update=True)
-                if target_row is None:
-                    raise ToolError(f"Unknown target: {cond_target_id}")
-                base_conditions = target_row.get("conditions", [])
-            new_conditions = conditions_mod.apply_condition(base_conditions, spell.applies_condition, source=spell_id)
-            await conditions_mutations_mod.save_player_conditions(cond_target_id, new_conditions, conn=conn)
+            if target_row is not None:
+                new_conditions = conditions_mod.apply_condition(
+                    target_row.get("conditions", []), spell.applies_condition, source=spell_id
+                )
+                await conditions_mutations_mod.save_player_conditions(cond_target_id, new_conditions, conn=conn)
+                if conditions_mod.has_condition(new_conditions, spell.applies_condition):
+                    packet["condition_applied"] = spell.applies_condition
+            else:
+                # Non-player target (companion/NPC) — no players.data store; narrate-only, no write.
+                packet["condition_applied"] = spell.applies_condition
 
     return CastResult(
         packet=packet,
