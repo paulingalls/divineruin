@@ -7,7 +7,7 @@ is consumed ONCE per multi-swing declaration. Grouped: A) eligibility flag + eng
 B) in-combat consume-once, C) out-of-combat persist."""
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sample_fixtures import FixedRng
@@ -15,6 +15,8 @@ from sample_fixtures import FixedRng
 import combat_packet
 from check_resolution_save import resolve_saving_throw
 from conditions import apply_condition
+from tools._helpers import SAMPLE_PLAYER, _ctx_with_bus, _make_context
+from tools.test_discover import LOCATION_WITH_HIDDEN, _roll
 
 BLESSED = apply_condition([], "blessed")
 _ATTRS = {"strength": 12, "dexterity": 12, "constitution": 12, "wisdom": 12, "charisma": 12, "intelligence": 12}
@@ -251,3 +253,226 @@ async def test_skill_tool_consumes_and_persists_atomically():
     assert "inspired" not in [c["type"] for c in args[1]]
     # Atomic with the skill-advancement write: both run on the transaction's connection.
     assert kwargs.get("conn") is conn
+
+
+# --- Group C (story-009): the remaining 3 modes — social / discover / gather ---
+
+
+@pytest.mark.asyncio
+async def test_gather_tool_consumes_and_persists_atomically():
+    from sample_fixtures import FixedRng, make_db_mod
+
+    from gathering_tools import _check_gather_impl
+
+    player = {**SAMPLE_PLAYER, "conditions": apply_condition([], "inspired")}
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value=player)
+    mutations = MagicMock()
+    mutations.add_inventory_item = AsyncMock()
+    content = MagicMock()
+    content.get_location = AsyncMock(
+        return_value={"id": "greyvale_wilderness_north", "region": "greyvale", "resource_table": {"common": ["herb"]}}
+    )
+    content.get_gathering_nodes_at_location = AsyncMock(return_value=[])
+    db_mod, conn = make_db_mod()
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    await _check_gather_impl(
+        _ctx_with_bus(location_id="greyvale_wilderness_north"),
+        "",
+        queries=queries,
+        mutations=mutations,
+        content=content,
+        gather_mutations=MagicMock(),
+        db_mod=db_mod,
+        conditions_mutations=cond_mut,
+        rng=FixedRng(20),
+    )
+
+    cond_mut.save_player_conditions.assert_awaited_once()
+    args, kwargs = cond_mut.save_player_conditions.call_args
+    assert "inspired" not in [c["type"] for c in args[1]]
+    # Atomic with node depletion + inventory grant: the consume runs on the gather tx connection.
+    assert kwargs.get("conn") is conn
+
+
+@pytest.mark.asyncio
+async def test_gather_tool_no_condition_does_not_persist():
+    from sample_fixtures import FixedRng, make_db_mod
+
+    from gathering_tools import _check_gather_impl
+
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": []})
+    mutations = MagicMock()
+    mutations.add_inventory_item = AsyncMock()
+    content = MagicMock()
+    content.get_location = AsyncMock(
+        return_value={"id": "greyvale_wilderness_north", "region": "greyvale", "resource_table": {"common": ["herb"]}}
+    )
+    content.get_gathering_nodes_at_location = AsyncMock(return_value=[])
+    db_mod, _ = make_db_mod()
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    await _check_gather_impl(
+        _ctx_with_bus(location_id="greyvale_wilderness_north"),
+        "",
+        queries=queries,
+        mutations=mutations,
+        content=content,
+        gather_mutations=MagicMock(),
+        db_mod=db_mod,
+        conditions_mutations=cond_mut,
+        rng=FixedRng(20),
+    )
+
+    cond_mut.save_player_conditions.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+async def test_discover_tool_consumes_and_persists_atomically(_evt):
+    from sample_fixtures import make_db_mod
+
+    from check_discovery import _check_discover_impl
+
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": apply_condition([], "inspired")})
+    content = MagicMock()
+    content.get_location = AsyncMock(return_value=LOCATION_WITH_HIDDEN)
+    mutations = MagicMock()
+    mutations.set_player_flag = AsyncMock()
+    db_mod, conn = make_db_mod()
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    with patch("check_resolution.dice_roll", return_value=_roll(15)):  # >= dc 12 -> discovered
+        await _check_discover_impl(
+            _make_context(location_id="test_location"),
+            "perception",
+            "bookshelf",
+            content=content,
+            queries=queries,
+            mutations=mutations,
+            db_mod=db_mod,
+            conditions_mutations=cond_mut,
+        )
+
+    cond_mut.save_player_conditions.assert_awaited_once()
+    args, kwargs = cond_mut.save_player_conditions.call_args
+    assert "inspired" not in [c["type"] for c in args[1]]
+    # Atomic with the success-only discovery flag write: both run on the transaction's connection.
+    assert kwargs.get("conn") is conn
+    flag_kwargs = mutations.set_player_flag.call_args.kwargs
+    assert flag_kwargs.get("conn") is conn
+
+
+@pytest.mark.asyncio
+@patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+async def test_discover_tool_no_condition_does_not_persist(_evt):
+    from sample_fixtures import make_db_mod
+
+    from check_discovery import _check_discover_impl
+
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": []})
+    content = MagicMock()
+    content.get_location = AsyncMock(return_value=LOCATION_WITH_HIDDEN)
+    mutations = MagicMock()
+    mutations.set_player_flag = AsyncMock()
+    db_mod, _ = make_db_mod()
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    with patch("check_resolution.dice_roll", return_value=_roll(15)):
+        await _check_discover_impl(
+            _make_context(location_id="test_location"),
+            "perception",
+            "bookshelf",
+            content=content,
+            queries=queries,
+            mutations=mutations,
+            db_mod=db_mod,
+            conditions_mutations=cond_mut,
+        )
+
+    cond_mut.save_player_conditions.assert_not_awaited()
+    # No die to consume -> no tx is opened; the success flag write stays the plain (no-conn) path.
+    mutations.set_player_flag.assert_awaited_once()
+    assert mutations.set_player_flag.call_args.kwargs.get("conn") is None
+
+
+def _social_consume_mocks(conditions: list) -> tuple[MagicMock, MagicMock, MagicMock]:
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": conditions})
+    queries.get_npc_disposition = AsyncMock(return_value="neutral")
+    mutations = MagicMock()
+    mutations.set_npc_disposition = AsyncMock()
+    content = MagicMock()
+    content.get_npc = AsyncMock(return_value={"id": "merchant_1", "default_disposition": "neutral"})
+    return queries, mutations, content
+
+
+@pytest.mark.asyncio
+async def test_social_tool_consumes_and_persists_atomically():
+    from sample_fixtures import FixedRng, make_db_mod
+
+    from social_tools import _check_social_impl
+
+    queries, mutations, content = _social_consume_mocks(apply_condition([], "inspired"))
+    db_mod, conn = make_db_mod()
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    # FixedRng(18): persuasion success by 5+ shifts neutral -> friendly (a write fires).
+    await _check_social_impl(
+        _ctx_with_bus(),
+        "merchant_1",
+        "persuasion",
+        "moderate",
+        queries=queries,
+        mutations=mutations,
+        content=content,
+        conditions_mutations=cond_mut,
+        db_mod=db_mod,
+        rng=FixedRng(18),
+    )
+
+    cond_mut.save_player_conditions.assert_awaited_once()
+    args, kwargs = cond_mut.save_player_conditions.call_args
+    assert "inspired" not in [c["type"] for c in args[1]]
+    # Atomic with the disposition-shift write: both run on the transaction's connection.
+    assert kwargs.get("conn") is conn
+    assert mutations.set_npc_disposition.call_args.kwargs.get("conn") is conn
+
+
+@pytest.mark.asyncio
+async def test_social_tool_no_condition_does_not_persist():
+    from sample_fixtures import FixedRng, make_db_mod
+
+    from social_tools import _check_social_impl
+
+    queries, mutations, content = _social_consume_mocks([])
+    db_mod, _ = make_db_mod()
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    await _check_social_impl(
+        _ctx_with_bus(),
+        "merchant_1",
+        "persuasion",
+        "moderate",
+        queries=queries,
+        mutations=mutations,
+        content=content,
+        conditions_mutations=cond_mut,
+        db_mod=db_mod,
+        rng=FixedRng(18),
+    )
+
+    cond_mut.save_player_conditions.assert_not_awaited()
+    # No die consumed -> no tx; the disposition shift stays the plain (no-conn) write.
+    mutations.set_npc_disposition.assert_awaited_once()
+    assert mutations.set_npc_disposition.call_args.kwargs.get("conn") is None

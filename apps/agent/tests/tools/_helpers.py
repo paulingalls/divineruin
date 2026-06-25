@@ -11,6 +11,13 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall", room=No
     return ctx
 
 
+def _ctx_with_bus(location_id="accord_guild_hall"):
+    """A mock RunContext whose SessionData carries an event_bus mock (bus-only narration path)."""
+    ctx = _make_context(location_id=location_id)
+    ctx.userdata.event_bus = MagicMock()
+    return ctx
+
+
 def _make_mock_room():
     """A mock LiveKit room whose local participant captures published data."""
     room = MagicMock()

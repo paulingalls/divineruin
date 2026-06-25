@@ -13,13 +13,11 @@ keyword seams for TEST-ONLY injection; production uses the `@function_tool` wrap
 import json
 import logging
 
-import asyncpg
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution
 import check_resolution_save
-import conditions
 import db
 import db_content_queries
 import db_mutations
@@ -30,6 +28,7 @@ import event_types as E
 import rules_engine
 import skill_persistence
 from check_discovery import _check_discover_impl
+from condition_consume import consume_beneficial_conditions
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
 from gathering_tools import _check_gather_impl
@@ -121,25 +120,6 @@ async def _check_impl(
     raise ToolError(f"Unknown check mode {mode!r}; expected one of: {', '.join(VALID_CHECK_MODES)}.")
 
 
-async def _consume_beneficial_conditions(
-    player_id: str,
-    player: dict,
-    consumed: tuple[str, ...],
-    conditions_mutations=db_mutations_conditions,
-    *,
-    conn: asyncpg.Connection | asyncpg.Pool | None = None,
-) -> None:
-    """Remove the beneficial conditions a roll consumed and persist the new list (M4.8 story-003).
-
-    No-op when nothing was consumed. ``conn`` threads an open transaction so the removal commits
-    atomically with a sibling write (the skill tool's tier-advancement); the save tool passes none
-    (its only write). Reads the player's current conditions off the already-fetched row."""
-    if not consumed:
-        return
-    new_conditions = conditions.remove_conditions(player.get("conditions") or [], consumed)
-    await conditions_mutations.save_player_conditions(player_id, new_conditions, conn=conn)
-
-
 async def _check_skill_impl(
     context: RunContext[SessionData],
     skill: str,
@@ -194,7 +174,7 @@ async def _check_skill_impl(
             adv = await skill_persistence.apply_skill_use_with_persistence(
                 session.player_id, skill, counter_increment=1, conn=conn, queries=queries, mutations=mutations
             )
-            await _consume_beneficial_conditions(
+            await consume_beneficial_conditions(
                 session.player_id, player, result.consumed_conditions, conditions_mutations, conn=conn
             )
     else:
@@ -272,7 +252,7 @@ async def _check_save_impl(
     # Consume the single-use beneficial die (M4.8 story-003): a player-initiated save spends Blessed/
     # Inspired's +1d4, so remove the signalled conditions and persist. One write (no competing
     # mutation here), so no transaction is needed.
-    await _consume_beneficial_conditions(session.player_id, player, result.consumed_conditions, conditions_mutations)
+    await consume_beneficial_conditions(session.player_id, player, result.consumed_conditions, conditions_mutations)
 
     await publish_game_event(
         session.room,
