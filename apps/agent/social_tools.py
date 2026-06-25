@@ -16,12 +16,15 @@ from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import db
 import db_content_queries
 import db_mutations
+import db_mutations_conditions
 import db_queries
 import event_types as E
 import rules_engine
 import social_resolution
+from condition_consume import consume_beneficial_conditions
 from db_errors import validated_player_conditions
 from disposition import resolve_disposition
 from game_events import publish_game_event
@@ -45,6 +48,8 @@ async def _check_social_impl(
     queries=db_queries,
     mutations=db_mutations,
     content=db_content_queries,
+    conditions_mutations=db_mutations_conditions,
+    db_mod=db,
     rng: random.Random | None = None,
 ) -> str:
     logger.info("check social: npc=%s, skill=%s, difficulty=%s", npc_id, skill, difficulty)
@@ -95,10 +100,25 @@ async def _check_social_impl(
 
     # Persist + signal the client only when the disposition actually moves — a no-shift
     # outcome (e.g. persuasion bare success) writes nothing and emits no state change.
-    if outcome.new_disposition != current:
+    shift = outcome.new_disposition != current
+    # The social roll spends Blessed/Inspired's +1d4 (M4.8 story-009). Open a tx ONLY when the die
+    # was consumed, so the removal commits atomically with the shift write (mirrors the skill tool's
+    # conditional tx); the common no-consume path keeps the original plain write exactly as before.
+    if roll.consumed_conditions:
+        async with db_mod.transaction() as conn:
+            if shift:
+                await mutations.set_npc_disposition(
+                    npc_id, session.player_id, outcome.new_disposition, f"social_check: {skill_lower}", conn=conn
+                )
+            await consume_beneficial_conditions(
+                session.player_id, player, roll.consumed_conditions, conditions_mutations, conn=conn
+            )
+    elif shift:
         await mutations.set_npc_disposition(
             npc_id, session.player_id, outcome.new_disposition, f"social_check: {skill_lower}"
         )
+
+    if shift:
         await publish_game_event(
             session.room,
             E.DISPOSITION_CHANGED,

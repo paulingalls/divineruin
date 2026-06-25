@@ -428,3 +428,77 @@ async def test_discover_tool_no_condition_does_not_persist(_evt):
     # No die to consume -> no tx is opened; the success flag write stays the plain (no-conn) path.
     mutations.set_player_flag.assert_awaited_once()
     assert mutations.set_player_flag.call_args.kwargs.get("conn") is None
+
+
+def _social_consume_mocks(conditions):
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": conditions})
+    queries.get_npc_disposition = AsyncMock(return_value="neutral")
+    mutations = MagicMock()
+    mutations.set_npc_disposition = AsyncMock()
+    content = MagicMock()
+    content.get_npc = AsyncMock(return_value={"id": "merchant_1", "default_disposition": "neutral"})
+    return queries, mutations, content
+
+
+@pytest.mark.asyncio
+async def test_social_tool_consumes_and_persists_atomically():
+    from sample_fixtures import FixedRng, make_db_mod
+
+    from social_tools import _check_social_impl
+
+    queries, mutations, content = _social_consume_mocks(apply_condition([], "inspired"))
+    db_mod, conn = make_db_mod()
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    # FixedRng(18): persuasion success by 5+ shifts neutral -> friendly (a write fires).
+    await _check_social_impl(
+        _ctx_bus(),
+        "merchant_1",
+        "persuasion",
+        "moderate",
+        queries=queries,
+        mutations=mutations,
+        content=content,
+        conditions_mutations=cond_mut,
+        db_mod=db_mod,
+        rng=FixedRng(18),
+    )
+
+    cond_mut.save_player_conditions.assert_awaited_once()
+    args, kwargs = cond_mut.save_player_conditions.call_args
+    assert "inspired" not in [c["type"] for c in args[1]]
+    # Atomic with the disposition-shift write: both run on the transaction's connection.
+    assert kwargs.get("conn") is conn
+    assert mutations.set_npc_disposition.call_args.kwargs.get("conn") is conn
+
+
+@pytest.mark.asyncio
+async def test_social_tool_no_condition_does_not_persist():
+    from sample_fixtures import FixedRng, make_db_mod
+
+    from social_tools import _check_social_impl
+
+    queries, mutations, content = _social_consume_mocks([])
+    db_mod, _ = make_db_mod()
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    await _check_social_impl(
+        _ctx_bus(),
+        "merchant_1",
+        "persuasion",
+        "moderate",
+        queries=queries,
+        mutations=mutations,
+        content=content,
+        conditions_mutations=cond_mut,
+        db_mod=db_mod,
+        rng=FixedRng(18),
+    )
+
+    cond_mut.save_player_conditions.assert_not_awaited()
+    # No die consumed -> no tx; the disposition shift stays the plain (no-conn) write.
+    mutations.set_npc_disposition.assert_awaited_once()
+    assert mutations.set_npc_disposition.call_args.kwargs.get("conn") is None
