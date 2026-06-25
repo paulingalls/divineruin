@@ -16,8 +16,11 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import FixedRng, mock_txn, published_events
 
 import event_types as E
+from conditions import apply_condition
 from tools._helpers import SAMPLE_PLAYER, _make_context
 from travel_tools import _travel_impl
+
+_INSPIRED_PLAYER = {**SAMPLE_PLAYER, "conditions": apply_condition([], "inspired")}
 
 
 def _travel_mocks(player=None):
@@ -173,6 +176,38 @@ async def test_clean_success_applies_no_exhaustion():
     ctx = _ctx_with_bus()
     await _run(ctx, m, mode="scenic", rng_val=20)  # success, no forced march
     m.conditions_mutations.save_player_conditions.assert_not_awaited()
+
+
+# --- Beneficial-die consume (M4.8 story-010): the nav check spends Inspired's +1d4 ---
+
+
+@pytest.mark.asyncio
+async def test_inspired_nav_consumes_die_without_exhaustion():
+    # Clean success (no exhaustion) but Inspired folded +1d4 into the nav check: the die is
+    # consumed + persisted (the single conditions write fires for the consume alone).
+    m = _travel_mocks(player=_INSPIRED_PLAYER)
+    m.content.get_location = AsyncMock(return_value=_location("dense_forest"))  # DC 14 -> a roll happens
+    ctx = _ctx_with_bus()
+    await _run(ctx, m, mode="scenic", rng_val=20)  # success, no forced march
+    m.conditions_mutations.save_player_conditions.assert_awaited_once()
+    saved = m.conditions_mutations.save_player_conditions.await_args.args[1]
+    types = [c["type"] for c in saved]
+    assert "inspired" not in types  # die consumed
+    assert "exhausted" not in types  # consume alone drove the save — no exhaustion confound
+
+
+@pytest.mark.asyncio
+async def test_inspired_nav_consume_folds_into_exhaustion_write():
+    # The load-bearing case: a forced march BOTH accrues exhaustion AND consumes the die. Both
+    # mutations must land in ONE save_player_conditions (a second save would clobber the first).
+    m = _travel_mocks(player=_INSPIRED_PLAYER)
+    ctx = _ctx_with_bus()
+    await _run(ctx, m, mode="dangerous", hours=12, forced_march=True, rng_val=20)
+    m.conditions_mutations.save_player_conditions.assert_awaited_once()
+    saved = m.conditions_mutations.save_player_conditions.await_args.args[1]
+    types = [c["type"] for c in saved]
+    assert "exhausted" in types  # exhaustion applied
+    assert "inspired" not in types  # die consumed — neither clobbers the other
 
 
 # --- Fail-loud boundaries ---

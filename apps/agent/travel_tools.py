@@ -123,13 +123,21 @@ async def _travel_impl(
         raw_die=roll.roll if roll else None,
     )
 
-    # Exhaustion producer: apply the raw delta via the SSOT, capped by the character's stack cap
-    # (the Iron-Constitution hook — rules_engine.exhaustion_stack_cap). Persist to players.data.conditions.
+    # Conditions write-back: the exhaustion producer AND the single-use beneficial-die consume
+    # share ONE persist. Both rebuild players.data.conditions from player_conditions, so two
+    # separate save_player_conditions calls would clobber each other (last write wins). Exhaustion
+    # applies the raw delta via the SSOT, capped by the character's stack cap (the Iron-Constitution
+    # hook — rules_engine.exhaustion_stack_cap); the nav roll spends Blessed/Inspired's +1d4
+    # (M4.8 story-010), so remove the signalled conditions on the same rebuilt list.
+    new_conditions = player_conditions
     if result.exhaustion_delta > 0:
         cap = rules_engine.exhaustion_stack_cap(player)
-        new_conditions = player_conditions
         for _ in range(result.exhaustion_delta):
             new_conditions = conditions.apply_condition(new_conditions, "exhausted", source="travel", max_stacks=cap)
+    consumed = roll.consumed_conditions if roll else ()
+    if consumed:
+        new_conditions = conditions.remove_conditions(new_conditions, consumed)
+    if result.exhaustion_delta > 0 or consumed:
         await conditions_mutations.save_player_conditions(session.player_id, new_conditions)
 
     arrived = result.success and not result.wrong_area
