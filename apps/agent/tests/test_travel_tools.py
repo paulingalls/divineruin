@@ -191,7 +191,9 @@ async def test_inspired_nav_consumes_die_without_exhaustion():
     await _run(ctx, m, mode="scenic", rng_val=20)  # success, no forced march
     m.conditions_mutations.save_player_conditions.assert_awaited_once()
     saved = m.conditions_mutations.save_player_conditions.await_args.args[1]
-    assert "inspired" not in [c["type"] for c in saved]
+    types = [c["type"] for c in saved]
+    assert "inspired" not in types  # die consumed
+    assert "exhausted" not in types  # consume alone drove the save — no exhaustion confound
 
 
 @pytest.mark.asyncio
