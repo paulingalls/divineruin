@@ -15,6 +15,7 @@ from sample_fixtures import FixedRng
 import combat_packet
 from check_resolution_save import resolve_saving_throw
 from conditions import apply_condition
+from tools._helpers import SAMPLE_PLAYER, _make_context
 
 BLESSED = apply_condition([], "blessed")
 _ATTRS = {"strength": 12, "dexterity": 12, "constitution": 12, "wisdom": 12, "charisma": 12, "intelligence": 12}
@@ -251,3 +252,85 @@ async def test_skill_tool_consumes_and_persists_atomically():
     assert "inspired" not in [c["type"] for c in args[1]]
     # Atomic with the skill-advancement write: both run on the transaction's connection.
     assert kwargs.get("conn") is conn
+
+
+# --- Group C (story-009): the remaining 3 modes — social / discover / gather ---
+
+
+def _ctx_bus(location_id="greyvale_wilderness_north"):
+    ctx = _make_context(location_id=location_id)
+    ctx.userdata.event_bus = MagicMock()
+    return ctx
+
+
+@pytest.mark.asyncio
+async def test_gather_tool_consumes_and_persists_atomically():
+    from sample_fixtures import FixedRng, make_db_mod
+
+    from gathering_tools import _check_gather_impl
+
+    player = {**SAMPLE_PLAYER, "conditions": apply_condition([], "inspired")}
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value=player)
+    mutations = MagicMock()
+    mutations.add_inventory_item = AsyncMock()
+    content = MagicMock()
+    content.get_location = AsyncMock(
+        return_value={"id": "greyvale_wilderness_north", "region": "greyvale", "resource_table": {"common": ["herb"]}}
+    )
+    content.get_gathering_nodes_at_location = AsyncMock(return_value=[])
+    db_mod, conn = make_db_mod()
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    await _check_gather_impl(
+        _ctx_bus(),
+        "",
+        queries=queries,
+        mutations=mutations,
+        content=content,
+        gather_mutations=MagicMock(),
+        db_mod=db_mod,
+        conditions_mutations=cond_mut,
+        rng=FixedRng(20),
+    )
+
+    cond_mut.save_player_conditions.assert_awaited_once()
+    args, kwargs = cond_mut.save_player_conditions.call_args
+    assert "inspired" not in [c["type"] for c in args[1]]
+    # Atomic with node depletion + inventory grant: the consume runs on the gather tx connection.
+    assert kwargs.get("conn") is conn
+
+
+@pytest.mark.asyncio
+async def test_gather_tool_no_condition_does_not_persist():
+    from sample_fixtures import FixedRng, make_db_mod
+
+    from gathering_tools import _check_gather_impl
+
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": []})
+    mutations = MagicMock()
+    mutations.add_inventory_item = AsyncMock()
+    content = MagicMock()
+    content.get_location = AsyncMock(
+        return_value={"id": "greyvale_wilderness_north", "region": "greyvale", "resource_table": {"common": ["herb"]}}
+    )
+    content.get_gathering_nodes_at_location = AsyncMock(return_value=[])
+    db_mod, _ = make_db_mod()
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    await _check_gather_impl(
+        _ctx_bus(),
+        "",
+        queries=queries,
+        mutations=mutations,
+        content=content,
+        gather_mutations=MagicMock(),
+        db_mod=db_mod,
+        conditions_mutations=cond_mut,
+        rng=FixedRng(20),
+    )
+
+    cond_mut.save_player_conditions.assert_not_awaited()
