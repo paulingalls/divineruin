@@ -151,19 +151,21 @@ async def _check_discover_impl(
         "outcome": outcome,
     }
     element_id = element.get("id")
-    # The discover roll spends Blessed/Inspired's +1d4 (M4.8 story-009). Open a tx ONLY when the
-    # die was consumed, so the removal commits atomically with the success-only discovery-flag
-    # write (mirrors the skill tool's conditional tx); the common no-consume path keeps the
-    # original plain set_player_flag exactly as before.
-    if result.consumed_conditions:
+    # The discover roll spends Blessed/Inspired's +1d4 (M4.8 story-009). Wrap a tx ONLY when BOTH
+    # writes fire — the success discovery-flag AND the die-consume — so they commit atomically; a
+    # lone write (success-only, or consume-only on a failed roll) takes the plain autocommit path,
+    # matching the save tool's single-write precedent (no needless BEGIN/COMMIT). The consume
+    # helper is a no-op when nothing was consumed, so the else branch is safe to call unconditionally.
+    if result.success and result.consumed_conditions:
         async with db_mod.transaction() as conn:
-            if result.success:
-                await mutations.set_player_flag(session.player_id, f"{element_id}.discovered", True, conn=conn)
+            await mutations.set_player_flag(session.player_id, f"{element_id}.discovered", True, conn=conn)
             await consume_beneficial_conditions(
                 session.player_id, player, result.consumed_conditions, conditions_mutations, conn=conn
             )
-    elif result.success:
-        await mutations.set_player_flag(session.player_id, f"{element_id}.discovered", True)
+    else:
+        if result.success:
+            await mutations.set_player_flag(session.player_id, f"{element_id}.discovered", True)
+        await consume_beneficial_conditions(session.player_id, player, result.consumed_conditions, conditions_mutations)
 
     if result.success:
         response["element_id"] = element_id

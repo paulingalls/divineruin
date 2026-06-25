@@ -15,7 +15,8 @@ from sample_fixtures import FixedRng
 import combat_packet
 from check_resolution_save import resolve_saving_throw
 from conditions import apply_condition
-from tools._helpers import SAMPLE_PLAYER, _make_context
+from tools._helpers import SAMPLE_PLAYER, _ctx_with_bus, _make_context
+from tools.test_discover import LOCATION_WITH_HIDDEN, _roll
 
 BLESSED = apply_condition([], "blessed")
 _ATTRS = {"strength": 12, "dexterity": 12, "constitution": 12, "wisdom": 12, "charisma": 12, "intelligence": 12}
@@ -257,12 +258,6 @@ async def test_skill_tool_consumes_and_persists_atomically():
 # --- Group C (story-009): the remaining 3 modes — social / discover / gather ---
 
 
-def _ctx_bus(location_id="greyvale_wilderness_north"):
-    ctx = _make_context(location_id=location_id)
-    ctx.userdata.event_bus = MagicMock()
-    return ctx
-
-
 @pytest.mark.asyncio
 async def test_gather_tool_consumes_and_persists_atomically():
     from sample_fixtures import FixedRng, make_db_mod
@@ -284,7 +279,7 @@ async def test_gather_tool_consumes_and_persists_atomically():
     cond_mut.save_player_conditions = AsyncMock()
 
     await _check_gather_impl(
-        _ctx_bus(),
+        _ctx_with_bus(location_id="greyvale_wilderness_north"),
         "",
         queries=queries,
         mutations=mutations,
@@ -322,7 +317,7 @@ async def test_gather_tool_no_condition_does_not_persist():
     cond_mut.save_player_conditions = AsyncMock()
 
     await _check_gather_impl(
-        _ctx_bus(),
+        _ctx_with_bus(location_id="greyvale_wilderness_north"),
         "",
         queries=queries,
         mutations=mutations,
@@ -336,27 +331,6 @@ async def test_gather_tool_no_condition_does_not_persist():
     cond_mut.save_player_conditions.assert_not_awaited()
 
 
-_DISCOVER_LOC = {
-    "id": "test_location",
-    "name": "Test Location",
-    "description": "A room.",
-    "atmosphere": "plain",
-    "key_features": [],
-    "hidden_elements": [
-        {"id": "secret_door", "discover_skill": "perception", "dc": 12, "description": "A hidden passage"}
-    ],
-    "exits": {},
-    "tags": [],
-    "conditions": {},
-}
-
-
-def _discover_roll(total):
-    from dice import DiceResult
-
-    return DiceResult(notation="d20", rolls=[total], dropped=[], total=total)
-
-
 @pytest.mark.asyncio
 @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
 async def test_discover_tool_consumes_and_persists_atomically(_evt):
@@ -367,14 +341,14 @@ async def test_discover_tool_consumes_and_persists_atomically(_evt):
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": apply_condition([], "inspired")})
     content = MagicMock()
-    content.get_location = AsyncMock(return_value=_DISCOVER_LOC)
+    content.get_location = AsyncMock(return_value=LOCATION_WITH_HIDDEN)
     mutations = MagicMock()
     mutations.set_player_flag = AsyncMock()
     db_mod, conn = make_db_mod()
     cond_mut = MagicMock()
     cond_mut.save_player_conditions = AsyncMock()
 
-    with patch("check_resolution.dice_roll", return_value=_discover_roll(15)):  # >= dc 12 -> discovered
+    with patch("check_resolution.dice_roll", return_value=_roll(15)):  # >= dc 12 -> discovered
         await _check_discover_impl(
             _make_context(location_id="test_location"),
             "perception",
@@ -405,14 +379,14 @@ async def test_discover_tool_no_condition_does_not_persist(_evt):
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": []})
     content = MagicMock()
-    content.get_location = AsyncMock(return_value=_DISCOVER_LOC)
+    content.get_location = AsyncMock(return_value=LOCATION_WITH_HIDDEN)
     mutations = MagicMock()
     mutations.set_player_flag = AsyncMock()
     db_mod, _ = make_db_mod()
     cond_mut = MagicMock()
     cond_mut.save_player_conditions = AsyncMock()
 
-    with patch("check_resolution.dice_roll", return_value=_discover_roll(15)):
+    with patch("check_resolution.dice_roll", return_value=_roll(15)):
         await _check_discover_impl(
             _make_context(location_id="test_location"),
             "perception",
@@ -430,7 +404,7 @@ async def test_discover_tool_no_condition_does_not_persist(_evt):
     assert mutations.set_player_flag.call_args.kwargs.get("conn") is None
 
 
-def _social_consume_mocks(conditions):
+def _social_consume_mocks(conditions: list) -> tuple[MagicMock, MagicMock, MagicMock]:
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": conditions})
     queries.get_npc_disposition = AsyncMock(return_value="neutral")
@@ -454,7 +428,7 @@ async def test_social_tool_consumes_and_persists_atomically():
 
     # FixedRng(18): persuasion success by 5+ shifts neutral -> friendly (a write fires).
     await _check_social_impl(
-        _ctx_bus(),
+        _ctx_with_bus(),
         "merchant_1",
         "persuasion",
         "moderate",
@@ -486,7 +460,7 @@ async def test_social_tool_no_condition_does_not_persist():
     cond_mut.save_player_conditions = AsyncMock()
 
     await _check_social_impl(
-        _ctx_bus(),
+        _ctx_with_bus(),
         "merchant_1",
         "persuasion",
         "moderate",

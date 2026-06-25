@@ -101,22 +101,25 @@ async def _check_social_impl(
     # Persist + signal the client only when the disposition actually moves — a no-shift
     # outcome (e.g. persuasion bare success) writes nothing and emits no state change.
     shift = outcome.new_disposition != current
-    # The social roll spends Blessed/Inspired's +1d4 (M4.8 story-009). Open a tx ONLY when the die
-    # was consumed, so the removal commits atomically with the shift write (mirrors the skill tool's
-    # conditional tx); the common no-consume path keeps the original plain write exactly as before.
-    if roll.consumed_conditions:
+    # The social roll spends Blessed/Inspired's +1d4 (M4.8 story-009). Wrap a tx ONLY when BOTH
+    # writes fire — the disposition shift AND the die-consume — so they commit atomically; a lone
+    # write (shift-only, or consume-only on a no-shift outcome) takes the plain autocommit path,
+    # matching the save tool's single-write precedent (no needless BEGIN/COMMIT). The consume helper
+    # is a no-op when nothing was consumed, so the else branch is safe to call unconditionally.
+    if shift and roll.consumed_conditions:
         async with db_mod.transaction() as conn:
-            if shift:
-                await mutations.set_npc_disposition(
-                    npc_id, session.player_id, outcome.new_disposition, f"social_check: {skill_lower}", conn=conn
-                )
+            await mutations.set_npc_disposition(
+                npc_id, session.player_id, outcome.new_disposition, f"social_check: {skill_lower}", conn=conn
+            )
             await consume_beneficial_conditions(
                 session.player_id, player, roll.consumed_conditions, conditions_mutations, conn=conn
             )
-    elif shift:
-        await mutations.set_npc_disposition(
-            npc_id, session.player_id, outcome.new_disposition, f"social_check: {skill_lower}"
-        )
+    else:
+        if shift:
+            await mutations.set_npc_disposition(
+                npc_id, session.player_id, outcome.new_disposition, f"social_check: {skill_lower}"
+            )
+        await consume_beneficial_conditions(session.player_id, player, roll.consumed_conditions, conditions_mutations)
 
     if shift:
         await publish_game_event(
