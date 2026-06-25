@@ -7,7 +7,7 @@ is consumed ONCE per multi-swing declaration. Grouped: A) eligibility flag + eng
 B) in-combat consume-once, C) out-of-combat persist."""
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sample_fixtures import FixedRng
@@ -334,3 +334,97 @@ async def test_gather_tool_no_condition_does_not_persist():
     )
 
     cond_mut.save_player_conditions.assert_not_awaited()
+
+
+_DISCOVER_LOC = {
+    "id": "test_location",
+    "name": "Test Location",
+    "description": "A room.",
+    "atmosphere": "plain",
+    "key_features": [],
+    "hidden_elements": [
+        {"id": "secret_door", "discover_skill": "perception", "dc": 12, "description": "A hidden passage"}
+    ],
+    "exits": {},
+    "tags": [],
+    "conditions": {},
+}
+
+
+def _discover_roll(total):
+    from dice import DiceResult
+
+    return DiceResult(notation="d20", rolls=[total], dropped=[], total=total)
+
+
+@pytest.mark.asyncio
+@patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+async def test_discover_tool_consumes_and_persists_atomically(_evt):
+    from sample_fixtures import make_db_mod
+
+    from check_discovery import _check_discover_impl
+
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": apply_condition([], "inspired")})
+    content = MagicMock()
+    content.get_location = AsyncMock(return_value=_DISCOVER_LOC)
+    mutations = MagicMock()
+    mutations.set_player_flag = AsyncMock()
+    db_mod, conn = make_db_mod()
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    with patch("check_resolution.dice_roll", return_value=_discover_roll(15)):  # >= dc 12 -> discovered
+        await _check_discover_impl(
+            _make_context(location_id="test_location"),
+            "perception",
+            "bookshelf",
+            content=content,
+            queries=queries,
+            mutations=mutations,
+            db_mod=db_mod,
+            conditions_mutations=cond_mut,
+        )
+
+    cond_mut.save_player_conditions.assert_awaited_once()
+    args, kwargs = cond_mut.save_player_conditions.call_args
+    assert "inspired" not in [c["type"] for c in args[1]]
+    # Atomic with the success-only discovery flag write: both run on the transaction's connection.
+    assert kwargs.get("conn") is conn
+    flag_kwargs = mutations.set_player_flag.call_args.kwargs
+    assert flag_kwargs.get("conn") is conn
+
+
+@pytest.mark.asyncio
+@patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+async def test_discover_tool_no_condition_does_not_persist(_evt):
+    from sample_fixtures import make_db_mod
+
+    from check_discovery import _check_discover_impl
+
+    queries = MagicMock()
+    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": []})
+    content = MagicMock()
+    content.get_location = AsyncMock(return_value=_DISCOVER_LOC)
+    mutations = MagicMock()
+    mutations.set_player_flag = AsyncMock()
+    db_mod, _ = make_db_mod()
+    cond_mut = MagicMock()
+    cond_mut.save_player_conditions = AsyncMock()
+
+    with patch("check_resolution.dice_roll", return_value=_discover_roll(15)):
+        await _check_discover_impl(
+            _make_context(location_id="test_location"),
+            "perception",
+            "bookshelf",
+            content=content,
+            queries=queries,
+            mutations=mutations,
+            db_mod=db_mod,
+            conditions_mutations=cond_mut,
+        )
+
+    cond_mut.save_player_conditions.assert_not_awaited()
+    # No die to consume -> no tx is opened; the success flag write stays the plain (no-conn) path.
+    mutations.set_player_flag.assert_awaited_once()
+    assert mutations.set_player_flag.call_args.kwargs.get("conn") is None
