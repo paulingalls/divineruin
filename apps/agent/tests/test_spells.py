@@ -31,6 +31,7 @@ from spells import (
     load_spells,
     parse_spell_row,
     set_spells,
+    validate_target_count,
 )
 
 CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "spells.json"
@@ -102,6 +103,39 @@ def test_parse_spell_row_exposes_m33_fields():
     # Concentration is a real bool from the row, not coerced.
     conc = parse_spell_row(_BLESS_ROW["id"], _BLESS_ROW)
     assert conc.concentration is True
+
+
+def test_parse_spell_row_max_targets_optional_and_parsed():
+    # M4.8 story-007: max_targets is optional (omitted -> None) and parsed when present.
+    assert parse_spell_row(_FIREBALL_ROW["id"], _FIREBALL_ROW).max_targets is None
+    blessed = parse_spell_row(_BLESS_ROW["id"], {**_BLESS_ROW, "max_targets": 3})
+    assert blessed.max_targets == 3
+
+
+@pytest.mark.parametrize("bad_value", [0, -1, "three", 2.5, True])
+def test_parse_spell_row_rejects_nonpositive_max_targets(bad_value):
+    # Strict loader: a present-but-malformed max_targets fails loud naming the row.
+    bad = {**_BLESS_ROW, "max_targets": bad_value}
+    with pytest.raises(ValueError, match="divine_bless"):
+        parse_spell_row("divine_bless", bad)
+
+
+def test_validate_target_count_at_or_under_max_passes():
+    spell = parse_spell_row("divine_bless", {**_BLESS_ROW, "max_targets": 3})
+    validate_target_count(spell, ["a"])  # under
+    validate_target_count(spell, ["a", "b", "c"])  # exactly at cap — no raise
+
+
+def test_validate_target_count_over_max_raises():
+    spell = parse_spell_row("divine_bless", {**_BLESS_ROW, "max_targets": 3})
+    with pytest.raises(ValueError, match="divine_bless"):
+        validate_target_count(spell, ["a", "b", "c", "d"])
+
+
+def test_validate_target_count_no_cap_is_noop():
+    # A spell with no max_targets imposes no limit.
+    spell = parse_spell_row(_FIREBALL_ROW["id"], _FIREBALL_ROW)
+    validate_target_count(spell, ["a", "b", "c", "d", "e"])  # no raise
 
 
 @pytest.mark.parametrize("missing", _M33_FIELDS)
