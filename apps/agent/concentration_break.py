@@ -16,8 +16,10 @@ response rather than pushed as a (consumer-less) client event.
 
 import check_resolution_save
 import concentration
+import conditions
 import db_mutations_concentration
 import db_queries
+import spells
 from session_data import SessionData
 
 
@@ -29,6 +31,7 @@ async def break_concentration_on_damage(
     queries=db_queries,
     resolver=check_resolution_save,
     concentration_mutations=db_mutations_concentration,
+    spells_mod=spells,
     conn=None,
 ) -> str | None:
     """Resolve a concentrating player's CON save after taking ``damage``; end concentration on a
@@ -78,4 +81,14 @@ async def break_concentration_on_damage(
     # would otherwise re-populate the old spell on the next session reload.
     await concentration_mutations.update_player_concentration(session.player_id, None, conn=conn)
     session.concentration.spell_id = None
+
+    # Concentration→condition lifecycle (M4.8 story-006, risk 0899a89ef0da): a concentration spell
+    # that granted a beneficial condition (Bless → blessed) loses it when the spell ends, so the +1d4
+    # does not outlive the broken concentration. Strip the spell's applies_condition from the
+    # in-combat participants it buffed; the mutation rides the phase loop's save_combat_state (like
+    # the combat-ability consume). OOC breaks (no combat_state) leave OOC buffs as-is.
+    applied = spells_mod.get_spell(spell_id).applies_condition
+    if applied is not None and session.combat_state is not None:
+        for participant in session.combat_state.participants:
+            participant.conditions = conditions.remove_conditions(participant.conditions, (applied,))
     return spell_id

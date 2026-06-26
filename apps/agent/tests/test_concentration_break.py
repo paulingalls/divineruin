@@ -8,10 +8,13 @@ deterministic. The pure keep/break decision (concentration_holds) and the DC (ch
 run REAL — they are pure and already covered by test_concentration.py.
 """
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import conditions
 from concentration_break import break_concentration_on_damage
 from session_data import SessionData
+from tests.combat._helpers import _make_combat_state
 
 
 def _session(spell_id: str | None) -> SessionData:
@@ -140,3 +143,88 @@ class TestBreakConcentrationOnDamage:
         assert broken == "arcane_fly"
         queries.get_player.assert_awaited_once_with("player_1", conn=sentinel_conn)
         cm.update_player_concentration.assert_awaited_once_with("player_1", None, conn=sentinel_conn)
+
+
+class TestBreakRemovesLinkedCondition:
+    """M4.8 story-006 (risk 0899a89ef0da): a concentration spell that grants a beneficial condition
+    (Bless -> blessed) must drop that condition when its concentration breaks, so the +1d4 does not
+    outlive the broken spell. Removal targets the in-combat participants the buff is on."""
+
+    def _bless(self):
+        return SimpleNamespace(applies_condition="blessed", concentration=True)
+
+    def _spells_mod(self, spell):
+        mod = MagicMock()
+        mod.get_spell = MagicMock(return_value=spell)
+        return mod
+
+    def _bless_a_player(self, source: str = "bless") -> SessionData:
+        session = _session("bless")
+        state = _make_combat_state()
+        ally = state.get_participant("player_1")
+        assert ally is not None
+        ally.conditions = conditions.apply_condition(ally.conditions, "blessed", source=source)
+        session.combat_state = state
+        return session
+
+    @staticmethod
+    def _player_blessed(session: SessionData) -> bool:
+        assert session.combat_state is not None
+        ally = session.combat_state.get_participant("player_1")
+        assert ally is not None
+        return conditions.has_condition(ally.conditions, "blessed")
+
+    async def test_break_drops_the_spells_condition_from_participants(self):
+        session = self._bless_a_player()
+        queries, resolver, cm = _deps(save_total=1)  # fails -> breaks
+
+        broken = await break_concentration_on_damage(
+            session,
+            10,
+            incapacitated=False,
+            queries=queries,
+            resolver=resolver,
+            concentration_mutations=cm,
+            spells_mod=self._spells_mod(self._bless()),
+        )
+
+        assert broken == "bless"
+        assert not self._player_blessed(session)
+
+    async def test_held_concentration_keeps_the_condition(self):
+        session = self._bless_a_player()
+        queries, resolver, cm = _deps(save_total=99)  # holds -> no break
+
+        broken = await break_concentration_on_damage(
+            session,
+            10,
+            incapacitated=False,
+            queries=queries,
+            resolver=resolver,
+            concentration_mutations=cm,
+            spells_mod=self._spells_mod(self._bless()),
+        )
+
+        assert broken is None
+        assert self._player_blessed(session)
+
+    async def test_non_condition_spell_break_is_harmless(self):
+        # A concentration spell that applies NO condition (e.g. arcane_fly) breaks without touching
+        # participant conditions and without crashing — an unrelated blessed stays put.
+        session = self._bless_a_player(source="other")
+        session.concentration.spell_id = "arcane_fly"
+        queries, resolver, cm = _deps(save_total=1)
+        no_cond = SimpleNamespace(applies_condition=None, concentration=True)
+
+        broken = await break_concentration_on_damage(
+            session,
+            10,
+            incapacitated=False,
+            queries=queries,
+            resolver=resolver,
+            concentration_mutations=cm,
+            spells_mod=self._spells_mod(no_cond),
+        )
+
+        assert broken == "arcane_fly"
+        assert self._player_blessed(session)
