@@ -26,6 +26,7 @@ import db
 import db_mutations_conditions
 import db_queries
 import mentor_variants
+import spells
 from db_errors import db_tool
 from resource_costs import gate_pool
 from session_data import SessionData
@@ -40,6 +41,7 @@ async def request_ability_activation(
     context: RunContext[SessionData],
     ability_id: str,
     target_id: str | None = None,
+    target_ids: list[str] | None = None,
 ) -> str:
     """Activate one of the character's archetype abilities.
     Call when the player uses a named ability, technique, spell, or reaction.
@@ -48,9 +50,10 @@ async def request_ability_activation(
     Returns the narration cue to voice; for pool/variable-cost abilities (e.g. Lay
     on Hands) the variable_cost field carries the rule for you to track.
 
-    Pass target_id when the ability buffs another entity (e.g. Inspire on an ally).
-    Omit it (the default) for a self-targeted ability."""
-    return await _request_ability_activation_impl(context, ability_id, target_id=target_id)
+    Pass target_id when the ability buffs ONE other entity (e.g. Inspire on an ally).
+    Pass target_ids (a list) for a party-wide buff that names several allies
+    (e.g. Mass Inspire) — not both. Omit both for a self-targeted ability."""
+    return await _request_ability_activation_impl(context, ability_id, target_id=target_id, target_ids=target_ids)
 
 
 async def _request_ability_activation_impl(
@@ -58,6 +61,7 @@ async def _request_ability_activation_impl(
     ability_id: str,
     *,
     target_id: str | None = None,
+    target_ids: list[str] | None = None,
     db_mod=db,
     queries_mod=db_queries,
     persistence_mod=ability_persistence,
@@ -71,6 +75,8 @@ async def _request_ability_activation_impl(
     _validate_id(ability_id, "ability_id")
     if target_id is not None:
         _validate_id(target_id, "target_id")
+    for tid in target_ids or []:
+        _validate_id(tid, "target_id")
     session: SessionData = context.userdata
     player_id = session.player_id
     logger.info("request_ability_activation called: ability=%s player=%s", ability_id, player_id)
@@ -80,7 +86,17 @@ async def _request_ability_activation_impl(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    # Multi-target cap (M4.8 story-017): normalize + validate a party-wide ability target list through
+    # the SAME normalize_target_list SSOT the spell + in-combat-ability paths use (rejects both-args /
+    # over-cap / empty / a single-target ability mass-targeted). BEFORE any resource write.
+    if target_ids is not None:
+        try:
+            target_ids = spells.normalize_target_list(ability, target_id, target_ids)
+        except ValueError as e:
+            raise ToolError(str(e)) from e
+
     condition_applied: str | None = None  # the produced condition, surfaced on the response post-commit
+    condition_targets: list[str] | None = None  # multi-target voiced allies (M4.8 story-017)
     async with db_mod.transaction() as conn:
         player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
         if player is None:
@@ -129,11 +145,14 @@ async def _request_ability_activation_impl(
         # when the condition actually LANDS (has_condition) — an immunity no-op writes nothing.
         # Mirrors story-004's spell producer (decision applies-condition-producer-contract).
         if ability.applies_condition is not None and not session.in_combat:
-            cond_target_id = target_id if target_id is not None else player_id
-            voiced = await condition_produce_mod.apply_beneficial_condition_to_player(
-                cond_target_id,
+            # Route through the shared OOC producer (story-007), which lands on the multi-target list,
+            # the single target_id, or the caster (self) — unifying the OOC ability path with the OOC
+            # spell path. target_ids was already normalized/capped above.
+            voiced = await condition_produce_mod.produce_ooc_condition(
                 ability.applies_condition,
                 ability_id,
+                target_id=None if target_ids else target_id,
+                target_ids=target_ids,
                 caster_row=player,
                 caster_id=player_id,
                 queries_mod=queries_mod,
@@ -143,6 +162,10 @@ async def _request_ability_activation_impl(
             )
             if voiced:
                 condition_applied = ability.applies_condition
+                # Surface the per-ally voiced set only on the multi-target path (audio-first
+                # attribution), mirroring the spell producer; single/self keep just condition_applied.
+                if target_ids:
+                    condition_targets = voiced
 
     response = {
         "narration_cue": variant.narration_cue if variant is not None else ability.narration_cue,
@@ -158,4 +181,6 @@ async def _request_ability_activation_impl(
     # (or a non-player narrate-only target); the apply/persist happened inside the tx above.
     if condition_applied is not None:
         response["condition_applied"] = condition_applied
+    if condition_targets is not None:
+        response["condition_targets"] = condition_targets
     return json.dumps(response)
