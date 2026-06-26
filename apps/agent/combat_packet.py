@@ -94,6 +94,14 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
             _gate_deescalation(player, state)
         elif (cond_ability := condition_ability(action)) is not None:
             _gate_ability_condition(player, cond_ability)
+            # Multi-target cap (M4.8 story-016): reject an over-cap / malformed multi-target ability
+            # (e.g. bard_mass_inspire) HERE, before resolution writes — reusing the SAME targeting
+            # SSOT the spell branch uses (normalize_target_list accepts Spell | Ability).
+            if decl.target_ids:
+                try:
+                    spells.normalize_target_list(cond_ability, decl.target_id, decl.target_ids)
+                except ValueError as e:
+                    raise ToolError(str(e)) from e
         else:
             spell = cast_resolver._gate_spell(player, action)
             # Multi-target cap (M4.8 story-012): reject an over-cap / malformed multi-target spell

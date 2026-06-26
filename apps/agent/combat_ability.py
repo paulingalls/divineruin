@@ -218,6 +218,16 @@ def _gate_ability_condition(player: dict, ability: "abilities.Ability") -> None:
     gate_pool(player, "focus", ability.cost.focus, label=ability.name)
 
 
+async def _deduct_ability_cost(session, player, ability, *, persistence, conn) -> None:
+    """Spend a condition ability's Stamina/Focus via the gate_pool SSOT and persist (M4.8). Shared by
+    the single- and multi-target resolve branches so the deduct lives once; gate_pool fail-louds if
+    the cost can't be paid (already pre-gated at declare time)."""
+    new_stamina = gate_pool(player, "stamina", ability.cost.stamina, label=ability.name)
+    new_focus = gate_pool(player, "focus", ability.cost.focus, label=ability.name)
+    if new_stamina is not None or new_focus is not None:
+        await persistence.update_player_resources(session.player_id, stamina=new_stamina, focus=new_focus, conn=conn)
+
+
 async def _resolve_ability_condition_packet(
     session: SessionData,
     attacker: CombatParticipant,
@@ -242,6 +252,33 @@ async def _resolve_ability_condition_packet(
     if state is None or player is None:
         return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
 
+    # applies_condition is non-None on this path (condition_ability selected it); the resolved
+    # ability id is the source (== decl.action by the lookup invariant).
+    cond_type = ability.applies_condition
+
+    # Multi-target (M4.8 story-016, e.g. bard_mass_inspire): the cap was validated at the
+    # declare-gate (spells.normalize_target_list). Deduct once, land on EACH live ally, and voice
+    # the landed set (condition_targets) — mirroring the multi-target spell path. A target gone by
+    # resolve time is dropped (partial landing); an all-off-state list lands nothing but still
+    # spends the cost (the spell-path convention — the declaration committed to the action).
+    if decl.target_ids:
+        await _deduct_ability_cost(session, player, ability, persistence=persistence, conn=conn)
+        summary = {
+            "actor_id": attacker.id,
+            "resolved": True,
+            "declaration_type": str(decl.type),
+            "action": ability.id,
+        }
+        if cond_type is not None:
+            voiced = land_condition_on_participants(state, attacker, decl, cond_type, source=ability.id)
+            if voiced:
+                summary["condition_applied"] = cond_type
+                summary["condition_targets"] = voiced
+        return summary
+
+    # Single-target (story-005): a given target_id that's not on the working state, or already
+    # fallen, WASTES the declaration (resolved:False) WITHOUT deducting — you can't buff a target
+    # that left or a corpse, and a wasted declaration must never burn the cost.
     cond_target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
     if cond_target is None:
         return {
@@ -258,10 +295,7 @@ async def _resolve_ability_condition_packet(
             "reason": f"{cond_target.name} already fell",
         }
 
-    new_stamina = gate_pool(player, "stamina", ability.cost.stamina, label=ability.name)
-    new_focus = gate_pool(player, "focus", ability.cost.focus, label=ability.name)
-    if new_stamina is not None or new_focus is not None:
-        await persistence.update_player_resources(session.player_id, stamina=new_stamina, focus=new_focus, conn=conn)
+    await _deduct_ability_cost(session, player, ability, persistence=persistence, conn=conn)
 
     summary = {
         "actor_id": attacker.id,
@@ -269,9 +303,6 @@ async def _resolve_ability_condition_packet(
         "declaration_type": str(decl.type),
         "action": ability.id,
     }
-    # applies_condition is non-None on this path (condition_ability selected it); narrow for the
-    # helper + use the resolved ability id as the source (== decl.action by the lookup invariant).
-    cond_type = ability.applies_condition
     if cond_type is not None and land_condition_on_participant(state, attacker, decl, cond_type, source=ability.id):
         summary["condition_applied"] = cond_type
     return summary
