@@ -209,11 +209,16 @@ async def _seed_caster(pool, player_id: str, *, focus: int = 10) -> None:
 def _bless_combat_state(combat_id, caster_id, ally_id, enemy_id, *, target_id) -> CombatState:
     """RESOLUTION-beat phase: the caster casts divine_bless (targeting `target_id`), an ally defends
     (no roll, so the produced die isn't immediately consumed), and an enemy survives so combat
-    continues and the working state is persisted via save_combat_state."""
+    continues and the working state is persisted via save_combat_state.
+
+    The enemy attacks the COMPANION ally (not the caster) on purpose: this test exercises the Bless
+    PRODUCER, so the enemy's only job is to keep combat alive. A hit on the concentrating caster
+    would roll a real (unpatched) CON save that can fail and strip the just-produced Blessed — the
+    concentration-break CONSUMER's behavior, covered separately in test_concentration_break."""
     decls = {
         caster_id: {"type": "ability", "action": "divine_bless", "target_id": target_id},
         ally_id: {"type": "defend"},
-        enemy_id: {"type": "attack", "action": "Scimitar", "target_id": caster_id},
+        enemy_id: {"type": "attack", "action": "Scimitar", "target_id": ally_id},
     }
     if target_id == caster_id:
         decls.pop(ally_id)  # self-cast: no separate ally needed

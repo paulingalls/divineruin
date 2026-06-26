@@ -219,6 +219,7 @@ async def _resolve_one_packet(
             queries=queries,
             resolver=resolver,
             concentration_break_mod=concentration_break_mod,
+            combat_state=state,
             conn=conn,
             sink=sink,
         )

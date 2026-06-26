@@ -32,6 +32,7 @@ async def break_concentration_on_damage(
     resolver=check_resolution_save,
     concentration_mutations=db_mutations_concentration,
     spells_mod=spells,
+    combat_state=None,
     conn=None,
 ) -> str | None:
     """Resolve a concentrating player's CON save after taking ``damage``; end concentration on a
@@ -48,10 +49,20 @@ async def break_concentration_on_damage(
     conn so a rolled-back phase reverts the break too (story-007). The player fetch reads the same
     conn so the save sees the in-tx state. Out of combat (Draethar inner fire) the default ``None``
     runs the write on its own connection, post-commit, as before.
+
+    ``combat_state`` is the WORKING combat state to read/mutate. The phase loop resolves against a
+    deep-copied working state and only adopts it as session.combat_state AFTER the tx commits
+    (combat_turn), so DURING resolution session.combat_state is a DIFFERENT, pristine object — both
+    the caster-conditions lookup (CON save) and the linked-condition strip must hit the working
+    state the loop persists, not the discarded pristine copy. The phase loop threads its working
+    state here; the OOC Draethar path and direct callers pass ``None`` and fall back to
+    session.combat_state (the object they themselves persist), keeping the default path correct.
     """
     spell_id = session.concentration.spell_id
     if spell_id is None or damage <= 0:
         return None
+
+    cstate = combat_state if combat_state is not None else session.combat_state
 
     dc = concentration.check_concentration(damage)
     # Incapacitation auto-fails (the engine enforces it) — skip the pointless roll and DB fetch.
@@ -65,7 +76,7 @@ async def break_concentration_on_damage(
         # Thread the caster's in-combat conditions into the CON save (M4.3): Exhausted -1/stack
         # lowers it, Stunned/Paralyzed auto-fail it. Conditions live on the in-memory
         # CombatParticipant, not the DB player row; out of combat there are none ([]).
-        participant = session.combat_state.get_participant(session.player_id) if session.combat_state else None
+        participant = cstate.get_participant(session.player_id) if cstate else None
         player["conditions"] = participant.conditions if participant is not None else []
         # Damage-triggered CON save is engine-auto: it never spends the caster's beneficial +1d4
         # (M4.8 story-003) — only player-initiated saves do.
@@ -88,7 +99,7 @@ async def break_concentration_on_damage(
     # in-combat participants it buffed; the mutation rides the phase loop's save_combat_state (like
     # the combat-ability consume). OOC breaks (no combat_state) leave OOC buffs as-is.
     applied = spells_mod.get_spell(spell_id).applies_condition
-    if applied is not None and session.combat_state is not None:
-        for participant in session.combat_state.participants:
+    if applied is not None and cstate is not None:
+        for participant in cstate.participants:
             participant.conditions = conditions.remove_conditions(participant.conditions, (applied,))
     return spell_id

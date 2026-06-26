@@ -208,6 +208,36 @@ class TestBreakRemovesLinkedCondition:
         assert broken is None
         assert self._player_blessed(session)
 
+    async def test_break_strips_threaded_working_state_not_session(self):
+        # Regression (working-state-vs-session): the phase loop resolves against a deep-copied WORKING
+        # combat state and only adopts it as session.combat_state AFTER commit, so during resolution
+        # session.combat_state is a DIFFERENT, pristine object. The strip must hit the WORKING state
+        # the caller threads (combat_state=) — the one that actually gets persisted — NOT the pristine
+        # session copy. (The earlier tests masked this by making them the same object.)
+        session = self._bless_a_player()  # session.combat_state: player_1 blessed (pristine copy)
+        working = _make_combat_state()  # the deep-copied state the phase loop persists
+        w_ally = working.get_participant("player_1")
+        assert w_ally is not None
+        w_ally.conditions = conditions.apply_condition(w_ally.conditions, "blessed", source="bless")
+        queries, resolver, cm = _deps(save_total=1)  # fails -> breaks
+
+        broken = await break_concentration_on_damage(
+            session,
+            10,
+            incapacitated=False,
+            queries=queries,
+            resolver=resolver,
+            concentration_mutations=cm,
+            spells_mod=self._spells_mod(self._bless()),
+            combat_state=working,
+        )
+
+        assert broken == "bless"
+        # The strip landed on the threaded WORKING state...
+        assert not conditions.has_condition(w_ally.conditions, "blessed")
+        # ...and left the pristine session.combat_state untouched (it is discarded by the phase loop).
+        assert self._player_blessed(session)
+
     async def test_non_condition_spell_break_is_harmless(self):
         # A concentration spell that applies NO condition (e.g. arcane_fly) breaks without touching
         # participant conditions and without crashing — an unrelated blessed stays put.
