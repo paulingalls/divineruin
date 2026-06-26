@@ -5,11 +5,7 @@
     "name": "Devastating Strike",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "+1d8 bonus damage on a melee attack. Scales: 2d8 at L10, 3d8 at L17.",
     "narration_cue": "Steel meets flesh with a bone-jarring crunch."
   },
@@ -19,11 +15,7 @@
     "name": "Rallying Shout",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "One ally gains advantage on their next attack roll.",
     "narration_cue": "A booming command rings out and an ally's grip tightens."
   },
@@ -33,11 +25,7 @@
     "name": "Shield Bash",
     "ability_type": "core",
     "level_requirement": 2,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Melee attack that stuns for 1 round on hit (CON save negates).",
     "narration_cue": "A shield slams forward and the foe reels, dazed."
   },
@@ -47,11 +35,7 @@
     "name": "Second Wind",
     "ability_type": "core",
     "level_requirement": 6,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "Heal self 1d10 + level HP. Once per combat.",
     "narration_cue": "A ragged breath, a surge of grit, wounds knitting shut."
   },
@@ -61,11 +45,7 @@
     "name": "Brace for Impact",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Reaction when hit: reduce the damage by 1d6 + CON mod.",
     "narration_cue": "Boots dig in, muscles lock, the blow glances off."
   },
@@ -75,11 +55,7 @@
     "name": "Opportunity Strike",
     "ability_type": "reaction",
     "level_requirement": 6,
-    "cost": {
-      "stamina": 1,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 1, "focus": 0, "scaling": null },
     "effect": "Reaction when an enemy moves away: make a free melee attack.",
     "narration_cue": "The enemy turns to flee and a blade catches them mid-step."
   },
@@ -89,11 +65,7 @@
     "name": "Cleaving Blow",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "A single melee attack hits up to 2 adjacent enemies.",
     "narration_cue": "One sweeping arc bites through two foes at once."
   },
@@ -103,11 +75,7 @@
     "name": "Precision Strike",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Gain advantage on your next attack. Best against high-AC targets.",
     "narration_cue": "Eyes narrow, finding the gap in the armor."
   },
@@ -117,11 +85,7 @@
     "name": "Taunt",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Force one enemy to attack you for 1 round (WIS save negates).",
     "narration_cue": "A jeer cuts deep and the foe turns, seeing only you."
   },
@@ -131,11 +95,7 @@
     "name": "Reckless Assault",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Advantage on all attacks this round, but attacks against you also have advantage.",
     "narration_cue": "All caution thrown aside, a furious, open-guard onslaught."
   },
@@ -145,11 +105,7 @@
     "name": "War Cry",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 5,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 5, "focus": 0, "scaling": null },
     "effect": "All enemies in earshot: WIS save or Frightened 1 round.",
     "narration_cue": "A roar that rattles the ribs of everyone who hears it."
   },
@@ -159,11 +115,7 @@
     "name": "Unstoppable Charge",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "Double-speed move in a straight line + attack. Target STR save or knocked prone.",
     "narration_cue": "A thundering rush that bowls the enemy off their feet."
   },
@@ -173,11 +125,7 @@
     "name": "Whirlwind",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 5,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 5, "focus": 0, "scaling": null },
     "effect": "Attack every enemy within melee range (one roll per target).",
     "narration_cue": "A spinning storm of steel, striking all around."
   },
@@ -187,25 +135,18 @@
     "name": "Iron Stance",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Until next turn: can't be moved, advantage on saves, resistance to all damage.",
     "narration_cue": "Feet planted like roots, an immovable wall of iron."
   },
+
   {
     "id": "guardian_protective_strike",
     "archetype_id": "guardian",
     "name": "Protective Strike",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Melee attack; on hit, target has disadvantage attacking anyone but you until next turn.",
     "narration_cue": "A challenging blow that dares the foe to look elsewhere."
   },
@@ -215,11 +156,7 @@
     "name": "Shield Wall",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Until next turn, you and all allies within 5 ft gain +2 AC. Requires shield.",
     "narration_cue": "A shield raised high, and the line holds behind it."
   },
@@ -229,11 +166,7 @@
     "name": "Stand Your Ground",
     "ability_type": "core",
     "level_requirement": 2,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Plant yourself: can't be moved, +2 all saves, but can't move voluntarily. Until next turn.",
     "narration_cue": "Heels dug in, a vow muttered: not one step back."
   },
@@ -243,11 +176,7 @@
     "name": "Rallying Defense",
     "ability_type": "core",
     "level_requirement": 6,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "All allies in earshot gain temp HP equal to CON mod + proficiency bonus until next short rest.",
     "narration_cue": "A steadying shout, and the party stands a little taller."
   },
@@ -257,11 +186,7 @@
     "name": "Intercept",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Reaction when an ally within 5 ft is hit: take the damage instead (your damage reductions apply).",
     "narration_cue": "A body thrown into the path of the blow."
   },
@@ -271,11 +196,7 @@
     "name": "Retaliating Shield",
     "ability_type": "reaction",
     "level_requirement": 6,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Reaction when hit by a melee attack: attacker takes 1d6 + STR mod. Requires shield.",
     "narration_cue": "The shield rebounds, and the attacker grunts in pain."
   },
@@ -285,11 +206,7 @@
     "name": "Taunt",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Force one enemy to attack you for 1 round (WIS save negates).",
     "narration_cue": "A goading bellow that fixes the foe's gaze on you."
   },
@@ -299,11 +216,7 @@
     "name": "Body Block",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Move 10 ft and block a passage. No creature can pass your space until next turn.",
     "narration_cue": "A broad frame fills the doorway; none shall pass."
   },
@@ -313,11 +226,7 @@
     "name": "Challenging Shout",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "All enemies within 15 ft: WIS save or must include you as a target if attacking this round.",
     "narration_cue": "A thunderous challenge that no foe can ignore."
   },
@@ -327,11 +236,7 @@
     "name": "Fortify",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Grant one ally within 30 ft resistance to the next damage instance (half damage).",
     "narration_cue": "A shouted warning braces an ally against the coming hit."
   },
@@ -341,11 +246,7 @@
     "name": "Unbreakable",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 5,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 5, "focus": 0, "scaling": null },
     "effect": "For 2 rounds all damage to you is halved; you can't attack during this time.",
     "narration_cue": "Teeth gritted, weathering the storm by sheer will."
   },
@@ -355,11 +256,7 @@
     "name": "Inspiring Presence",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "All allies in earshot gain +1 to attack rolls. Lasts 3 rounds.",
     "narration_cue": "Your steadiness spreads; the whole party fights bolder."
   },
@@ -369,11 +266,7 @@
     "name": "Avenger's Mark",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "When an ally drops to 0 HP, your next attack deals double damage.",
     "narration_cue": "A comrade falls, and cold fury sharpens your strike."
   },
@@ -383,25 +276,18 @@
     "name": "Living Fortress",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 5,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 5, "focus": 0, "scaling": null },
     "effect": "10 ft zone for 2 rounds: allies +2 AC and advantage on saves, enemies -2 to attacks. Can't move.",
     "narration_cue": "You become the eye of the storm, a bastion of calm."
   },
+
   {
     "id": "skirmisher_hit_and_run",
     "archetype_id": "skirmisher",
     "name": "Hit and Run",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Melee attack, then move 15 ft without provoking reactions.",
     "narration_cue": "A quick strike, then gone before they can answer."
   },
@@ -411,11 +297,7 @@
     "name": "Flanking Strike",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "If an ally is adjacent to the target: advantage + 1d6 damage.",
     "narration_cue": "You slip to the foe's blind side as your ally distracts."
   },
@@ -425,11 +307,7 @@
     "name": "Disengage",
     "ability_type": "core",
     "level_requirement": 2,
-    "cost": {
-      "stamina": 1,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 1, "focus": 0, "scaling": null },
     "effect": "Move at full speed without provoking opportunity attacks.",
     "narration_cue": "A fluid backstep, untouchable as you withdraw."
   },
@@ -439,11 +317,7 @@
     "name": "Momentum",
     "ability_type": "core",
     "level_requirement": 6,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Until end of turn: each enemy hit grants +5 ft movement and +1 to next attack.",
     "narration_cue": "Each hit feeds the next; you blur across the field."
   },
@@ -453,11 +327,7 @@
     "name": "Sidestep",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Reaction when targeted by a melee attack: move 5 ft. If out of range, the attack auto-misses.",
     "narration_cue": "A half-step aside, and the blade finds only air."
   },
@@ -467,11 +337,7 @@
     "name": "Riposte",
     "ability_type": "reaction",
     "level_requirement": 6,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Reaction when an enemy misses a melee attack: make a free melee attack against them.",
     "narration_cue": "Their swing whiffs; your counter does not."
   },
@@ -481,11 +347,7 @@
     "name": "Hamstring",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "On hit, target's speed is halved for 2 rounds (CON save each turn).",
     "narration_cue": "A low cut across the leg; the foe staggers, slowed."
   },
@@ -495,11 +357,7 @@
     "name": "Dual Strike",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Two attacks with light weapons, same or different targets.",
     "narration_cue": "Both blades flash in a single breath."
   },
@@ -509,11 +367,7 @@
     "name": "Throwing Mastery",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Throw a weapon at range with no disadvantage and draw another for free.",
     "narration_cue": "A blade spins out; another's already in hand."
   },
@@ -523,11 +377,7 @@
     "name": "Tumbling Assault",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Move through enemy spaces; each enemy passed takes a free attack at -2.",
     "narration_cue": "You roll and weave through the melee, blade trailing."
   },
@@ -537,11 +387,7 @@
     "name": "Spring Attack",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "Move, attack at any point, then move again. Total up to double speed.",
     "narration_cue": "A darting strike between two bursts of motion."
   },
@@ -551,11 +397,7 @@
     "name": "Whirlwind",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 5,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 5, "focus": 0, "scaling": null },
     "effect": "Attack every enemy in melee range (one roll per target).",
     "narration_cue": "A spinning flurry that touches everyone near."
   },
@@ -565,11 +407,7 @@
     "name": "Predator's Pursuit",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Mark an enemy: always know its position, +1d6 damage against it. Until death or combat ends.",
     "narration_cue": "You lock onto your prey; there is nowhere it can hide."
   },
@@ -579,25 +417,18 @@
     "name": "Evasive Sprint",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "Dash + advantage on DEX saves + 4 AC until next turn.",
     "narration_cue": "A breathless, weaving sprint no attack can pin down."
   },
+
   {
     "id": "rogue_cunning_action",
     "archetype_id": "rogue",
     "name": "Cunning Action",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Dash, disengage, or hide as a quick action (in addition to your main action).",
     "narration_cue": "A flicker of motion, gone into shadow or sprint."
   },
@@ -607,11 +438,7 @@
     "name": "Precise Strike",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Gain advantage on your next attack. Enables Sneak Attack solo.",
     "narration_cue": "You find the soft spot and wait for the opening."
   },
@@ -621,11 +448,7 @@
     "name": "Uncanny Dodge",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Reaction when hit by a visible attack: halve the damage.",
     "narration_cue": "You twist with the blow, robbing it of force."
   },
@@ -635,11 +458,7 @@
     "name": "Slippery",
     "ability_type": "reaction",
     "level_requirement": 5,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Reaction to a restrain/grapple effect: automatically escape.",
     "narration_cue": "A shrug and a slither, and the hold is broken."
   },
@@ -649,11 +468,7 @@
     "name": "Dirty Trick",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Target has disadvantage on their next action.",
     "narration_cue": "Sand in the eyes, a stomped foot, a cheap shot."
   },
@@ -663,11 +478,7 @@
     "name": "Quick Fingers",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Sleight of Hand as a quick action. Steal, plant, or swap mid-combat.",
     "narration_cue": "A hand darts in and out; something has changed."
   },
@@ -677,11 +488,7 @@
     "name": "Smoke Bomb",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "10 ft obscurement cloud; attacks through it have disadvantage. Lasts 1 round.",
     "narration_cue": "A glass vial shatters and grey smoke billows up."
   },
@@ -691,11 +498,7 @@
     "name": "Crippling Strike",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "On hit, target's speed is halved until the end of their next turn.",
     "narration_cue": "A precise cut to the tendon leaves the foe limping."
   },
@@ -705,11 +508,7 @@
     "name": "Shadow Step",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "Move undetected to a new position. Must end in cover or shadow.",
     "narration_cue": "You melt into one shadow and emerge from another."
   },
@@ -719,11 +518,7 @@
     "name": "Exploit Weakness",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "Study for 1 round, then a Sneak Attack deals maximum damage (no roll).",
     "narration_cue": "You watch, you learn, and then you strike true."
   },
@@ -733,11 +528,7 @@
     "name": "Vanish",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 5,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 5, "focus": 0, "scaling": null },
     "effect": "Become fully hidden mid-combat. Break all targeting.",
     "narration_cue": "Between one heartbeat and the next, you simply aren't there."
   },
@@ -747,25 +538,18 @@
     "name": "Blade Flurry",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "3 quick attacks at -2 each. Each can trigger Sneak Attack if conditions are met.",
     "narration_cue": "A rapid triple cut, blades singing."
   },
+
   {
     "id": "spy_honeyed_words",
     "archetype_id": "spy",
     "name": "Honeyed Words",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Advantage on next Deception/Persuasion/Intimidation. In combat: target disadvantage next action (WIS save).",
     "narration_cue": "A warm, disarming smile and words like silk."
   },
@@ -775,12 +559,8 @@
     "name": "Backstab",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
-    "effect": "Attack a creature that considers you an ally: +2d6 + Stunned 1 round (no save \u2014 betrayal).",
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
+    "effect": "Attack a creature that considers you an ally: +2d6 + Stunned 1 round (no save — betrayal).",
     "narration_cue": "A friendly hand on the shoulder, then a blade between the ribs."
   },
   {
@@ -789,11 +569,7 @@
     "name": "Quick Change",
     "ability_type": "core",
     "level_requirement": 2,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Swap to a different identity as a quick action: voice, mannerisms, apparent equipment.",
     "narration_cue": "A turned collar, a new posture, and a different person stands there."
   },
@@ -803,11 +579,7 @@
     "name": "Extract Information",
     "ability_type": "core",
     "level_requirement": 6,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "Conversation: Deception vs Insight. Success reveals one hidden thing; failure, the NPC notices probing.",
     "narration_cue": "An idle question, asked just so, and a secret slips loose."
   },
@@ -817,11 +589,7 @@
     "name": "Plausible Deniability",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Reaction when accused/confronted: Deception. Success: the accuser doubts their evidence.",
     "narration_cue": "A wounded, baffled look: surely you'd never."
   },
@@ -831,11 +599,7 @@
     "name": "Slippery",
     "ability_type": "reaction",
     "level_requirement": 5,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Reaction when restrained/grappled: automatically escape.",
     "narration_cue": "A practiced twist, and the grip closes on nothing."
   },
@@ -845,11 +609,7 @@
     "name": "Poison Craft",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Apply poison to weapon or drink. Next hit: 2d6 poison + Poisoned (CON save).",
     "narration_cue": "A bead of something dark, smeared along the edge."
   },
@@ -859,11 +619,7 @@
     "name": "Misdirection",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Plant false evidence or a trail. Investigators follow the planted lead (Deception vs Investigation).",
     "narration_cue": "A dropped token, a forged note, a trail leading nowhere."
   },
@@ -873,12 +629,8 @@
     "name": "Lip Reading",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 1,
-      "focus": 0,
-      "scaling": null
-    },
-    "effect": "Understand visible conversations you can't hear \u2014 through glass, across rooms.",
+    "cost": { "stamina": 1, "focus": 0, "scaling": null },
+    "effect": "Understand visible conversations you can't hear — through glass, across rooms.",
     "narration_cue": "Across the crowded hall, you read every silent word."
   },
   {
@@ -887,11 +639,7 @@
     "name": "Garrote",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "From hidden: a silent attack that grapples and silences. 1d6/round. STR save to escape.",
     "narration_cue": "A wire loops the throat; no cry escapes."
   },
@@ -901,11 +649,7 @@
     "name": "Double Agent",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 5,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 5, "focus": 0, "scaling": null },
     "effect": "In a cover identity: convince an NPC to switch allegiance for the encounter. Contested CHA.",
     "narration_cue": "A whispered offer, and a loyalty quietly changes hands."
   },
@@ -915,11 +659,7 @@
     "name": "Vanish in Plain Sight",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "End combat by disappearing into a crowd or environment. Requires 3+ non-hostiles or cover.",
     "narration_cue": "You step into the throng and become no one at all."
   },
@@ -929,11 +669,7 @@
     "name": "Whisper Network",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "In a settlement: learn 2 rumors (1 true, 1 partial) and who is asking about you.",
     "narration_cue": "A few coins, a few contacts, and the city starts talking."
   },
@@ -943,14 +679,11 @@
     "name": "Sleeper Strike",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 5,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 5, "focus": 0, "scaling": null },
     "effect": "Social scene: mark a target (Sleight of Hand). Within 1 hour, trigger unconsciousness for 1 min (CON save).",
     "narration_cue": "A brush of contact now; an hour later, they crumple."
   },
+
   {
     "id": "mage_arcane_bolt",
     "archetype_id": "mage",
@@ -967,11 +700,7 @@
     "name": "Shield Spell",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 1,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 1, "scaling": null },
     "effect": "Reaction: raise an arcane barrier against an incoming attack. The unarmored caster's lifeline.",
     "narration_cue": "A shimmering disc of force flares into being just in time."
   },
@@ -981,14 +710,11 @@
     "name": "Counterspell",
     "ability_type": "reaction",
     "level_requirement": 3,
-    "cost": {
-      "stamina": 0,
-      "focus": 3,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 3, "scaling": null },
     "effect": "Reaction: negate an enemy spell as it is cast. The Mage's anti-magic role.",
     "narration_cue": "A sharp counter-word, and the enemy's magic unravels."
   },
+
   {
     "id": "druid_thorn_whip",
     "archetype_id": "druid",
@@ -1015,11 +741,7 @@
     "name": "Bark Skin",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction: skin hardens to bark, reducing an incoming hit. Druid survivability.",
     "narration_cue": "Your skin roughens to ridged bark as the blow lands."
   },
@@ -1029,14 +751,11 @@
     "name": "Wild Shape",
     "ability_type": "core",
     "level_requirement": 5,
-    "cost": {
-      "stamina": 3,
-      "focus": 4,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 4, "scaling": null },
     "effect": "Transform into a beast form. THE Druid identity ability.",
     "narration_cue": "Bone and fur reshape; a beast stands where you stood."
   },
+
   {
     "id": "cleric_sacred_flame",
     "archetype_id": "cleric",
@@ -1063,14 +782,11 @@
     "name": "Shield of Faith",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction: grant an ally +2 AC when attacked. Core divine protection.",
     "narration_cue": "A faint halo of light wraps an ally as the strike comes."
   },
+
   {
     "id": "artificer_arcane_bolt",
     "archetype_id": "artificer",
@@ -1087,11 +803,7 @@
     "name": "Deploy Construct",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 3,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 3, "scaling": null },
     "effect": "Summon a steel defender: HP = 3x level, AC 15, 1d6+INT attack. Acts on your turn. One active. THE Artificer ability.",
     "narration_cue": "Folded metal unfurls into a clanking steel guardian."
   },
@@ -1101,14 +813,11 @@
     "name": "Infuse Item",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": "At L10: +2 instead of +1."
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": "At L10: +2 instead of +1." },
     "effect": "Touch a nonmagical weapon/armor: +1 attack/damage or +1 AC until long rest.",
     "narration_cue": "Runes flare along the steel and settle into a steady glow."
   },
+
   {
     "id": "seeker_arcane_bolt",
     "archetype_id": "seeker",
@@ -1125,11 +834,7 @@
     "name": "Detect Magic",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 1,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 1, "scaling": null },
     "effect": "Reveal active magic, Resonance levels, and Veil integrity.",
     "narration_cue": "The world brightens with threads of unseen power."
   },
@@ -1139,14 +844,11 @@
     "name": "Identify",
     "ability_type": "core",
     "level_requirement": 3,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Touch: learn all magical properties, enchantments, curses, creation history, and Hollow corruption stage.",
     "narration_cue": "Your fingers trace the object and its whole history unfolds."
   },
+
   {
     "id": "beastcaller_thorn_whip",
     "archetype_id": "beastcaller",
@@ -1163,11 +865,7 @@
     "name": "Command Companion",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 1,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 1, "scaling": null },
     "effect": "Direct your companion: Attack (1d6+WIS), Dash, Dodge, Guard, or Scout.",
     "narration_cue": "A sharp word and a gesture; your companion springs to it."
   },
@@ -1181,17 +879,14 @@
     "effect": "Shared Primal healing. Can target yourself or your companion.",
     "narration_cue": "Green warmth flows from your hand into fur or flesh."
   },
+
   {
     "id": "warden_shillelagh",
     "archetype_id": "warden",
     "name": "Shillelagh",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 0, "scaling": null },
     "effect": "Cantrip: your staff uses WIS and deals 1d8 damage. Warden melee identity.",
     "narration_cue": "Your staff thrums with primal weight, heavy as oak."
   },
@@ -1201,11 +896,7 @@
     "name": "Guardian Strike",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Melee attack; on hit, the terrain erupts and the target's next attack has disadvantage.",
     "narration_cue": "The ground buckles at your strike, throwing the foe off-balance."
   },
@@ -1215,14 +906,11 @@
     "name": "Bark Skin",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction: skin hardens to bark, reducing an incoming hit.",
     "narration_cue": "Bark sheathes your skin in an instant of rough armor."
   },
+
   {
     "id": "oracle_sacred_flame",
     "archetype_id": "oracle",
@@ -1239,11 +927,7 @@
     "name": "Fate's Nudge",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "After a d20 is rolled, before narration: add or subtract 1d4 from the result.",
     "narration_cue": "A thread of fate twitches, and the outcome shifts."
   },
@@ -1253,25 +937,18 @@
     "name": "Shield of Faith",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction: grant an ally +2 AC when attacked.",
     "narration_cue": "A whispered prayer and a faint shimmer guards an ally."
   },
+
   {
     "id": "bard_cutting_words",
     "archetype_id": "bard",
     "name": "Cutting Words",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 0, "scaling": null },
     "effect": "Signature cantrip: 1d4 psychic + target -1d4 on their next roll.",
     "narration_cue": "A barbed quip lands harder than any blade."
   },
@@ -1281,11 +958,7 @@
     "name": "Inspire",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Grant an ally a die to add to any roll. THE Bard ability.",
     "narration_cue": "A few ringing words, and an ally stands ready to shine.",
     "applies_condition": "inspired"
@@ -1296,11 +969,7 @@
     "name": "Mass Inspire",
     "ability_type": "core",
     "level_requirement": 9,
-    "cost": {
-      "stamina": 0,
-      "focus": 5,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 5, "scaling": null },
     "effect": "Grant Inspiration to the whole party. The Bard's supreme support moment.",
     "narration_cue": "A soaring refrain lifts every heart in earshot.",
     "applies_condition": "inspired",
@@ -1312,11 +981,7 @@
     "name": "Dissonant Whisper",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Protective reaction: a discordant note disrupts an enemy. Bards disrupt, not block.",
     "narration_cue": "A jarring, off-key whisper makes the foe flinch."
   },
@@ -1326,11 +991,7 @@
     "name": "Countercharm",
     "ability_type": "reaction",
     "level_requirement": 5,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction when an ally is targeted by fear/charm: grant advantage on the save.",
     "narration_cue": "A steadying melody cuts through the fear."
   },
@@ -1340,11 +1001,7 @@
     "name": "Song of Rest",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 0,
-      "focus": 3,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 3, "scaling": null },
     "effect": "During a short rest: all allies regain an extra 1d8 HP. The support bard.",
     "narration_cue": "A soft lullaby eases the aches of the road."
   },
@@ -1354,11 +1011,7 @@
     "name": "Cutting Retort",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "When an enemy hits an ally: deal 1d6 psychic + target has disadvantage on next attack. The combat bard.",
     "narration_cue": "A withering comeback snaps the attacker's focus."
   },
@@ -1368,11 +1021,7 @@
     "name": "Silver Tongue",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Outside combat: advantage on your next Persuasion or Deception check. Reusable. The social bard.",
     "narration_cue": "Words flow like honey; doors and hearts open."
   },
@@ -1382,14 +1031,11 @@
     "name": "Mocking Flourish",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "After an ally hits a target: deal 1d4 psychic and the target can't take reactions. The coordination bard.",
     "narration_cue": "A mocking flourish leaves the foe too rattled to respond."
   },
+
   {
     "id": "paladin_sacred_flame",
     "archetype_id": "paladin",
@@ -1434,11 +1080,7 @@
     "name": "Shield of Faith",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction: grant an ally +2 AC when attacked. Shared divine protection.",
     "narration_cue": "A radiant ward flares around your charge."
   },
@@ -1448,11 +1090,7 @@
     "name": "Shield Bash",
     "ability_type": "core",
     "level_requirement": 2,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Shared martial stun attack: melee, stuns 1 round on hit (CON save negates).",
     "narration_cue": "A holy shield slams home and the foe staggers."
   },
@@ -1462,11 +1100,7 @@
     "name": "Zealous Charge",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Double-speed line move + melee at the end. On hit: +1d6 radiant.",
     "narration_cue": "A headlong, righteous charge trailing holy light."
   },
@@ -1476,11 +1110,7 @@
     "name": "Cleansing Strike",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "On hit: remove one negative condition from yourself.",
     "narration_cue": "The strike lands and a corruption sloughs away from you."
   },
@@ -1490,11 +1120,7 @@
     "name": "Sanctified Ground",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 3,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 3, "scaling": null },
     "effect": "Create a Veil Ward (15 ft, 3 rounds). Emergency Veil reinforcement.",
     "narration_cue": "You plant your blade and hallowed ground spreads outward."
   },
@@ -1504,25 +1130,18 @@
     "name": "Commanding Presence",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "All enemies within 15 ft: WIS save or can't move away for 1 round.",
     "narration_cue": "Your presence roots the foes where they stand."
   },
+
   {
     "id": "whisper_suggestion",
     "archetype_id": "whisper",
     "name": "Suggestion",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Plant a reasonable suggestion in a creature's mind (WIS save). It believes the idea was its own. Lasts 1 hour.",
     "narration_cue": "A quiet word slips in, and the thought feels like their own."
   },
@@ -1532,12 +1151,8 @@
     "name": "Mind Spike",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 0,
-      "scaling": "Damage scales with level."
-    },
-    "effect": "Cantrip: 1d6 psychic + you know the target's location for 1 round. No visible effect \u2014 just a headache.",
+    "cost": { "stamina": 0, "focus": 0, "scaling": "Damage scales with level." },
+    "effect": "Cantrip: 1d6 psychic + you know the target's location for 1 round. No visible effect — just a headache.",
     "narration_cue": "The target winces at a sudden, sourceless pain behind the eyes."
   },
   {
@@ -1546,11 +1161,7 @@
     "name": "Fog of Mind",
     "ability_type": "core",
     "level_requirement": 2,
-    "cost": {
-      "stamina": 0,
-      "focus": 3,
-      "scaling": "At L10+: erase up to 1 minute of memory."
-    },
+    "cost": { "stamina": 0, "focus": 3, "scaling": "At L10+: erase up to 1 minute of memory." },
     "effect": "Target forgets the last 30 seconds (WIS save). On success they feel disoriented but remember.",
     "narration_cue": "The last moments slide out of the target's grasp like water."
   },
@@ -1560,12 +1171,8 @@
     "name": "Redirect Attention",
     "ability_type": "core",
     "level_requirement": 6,
-    "cost": {
-      "stamina": 0,
-      "focus": 3,
-      "scaling": null
-    },
-    "effect": "Up to 3 creatures ignore you or one designated person for 1 minute (WIS save). Not invisible \u2014 simply unimportant.",
+    "cost": { "stamina": 0, "focus": 3, "scaling": null },
+    "effect": "Up to 3 creatures ignore you or one designated person for 1 minute (WIS save). Not invisible — simply unimportant.",
     "narration_cue": "Eyes slide past you as if you were furniture."
   },
   {
@@ -1574,11 +1181,7 @@
     "name": "Thought Shield",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 1,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 1, "scaling": null },
     "effect": "Reaction when targeted by psychic damage or mind-reading: halve the damage or block the read.",
     "narration_cue": "Your thoughts close like a shuttered window."
   },
@@ -1588,25 +1191,18 @@
     "name": "Implant Doubt",
     "ability_type": "reaction",
     "level_requirement": 5,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
-    "effect": "Reaction when an enemy succeeds an attack or ability: WIS save or they hesitate \u2014 reroll with disadvantage.",
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
+    "effect": "Reaction when an enemy succeeds an attack or ability: WIS save or they hesitate — reroll with disadvantage.",
     "narration_cue": "A seed of doubt: was that really the right move?"
   },
+
   {
     "id": "diplomat_compelling_argument",
     "archetype_id": "diplomat",
     "name": "Compelling Argument",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Advantage on next Persuasion/Deception; success improves NPC disposition 1 step (permanent).",
     "narration_cue": "A reasoned, unhurried case that's hard to argue against."
   },
@@ -1616,11 +1212,7 @@
     "name": "De-escalate",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 3,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 3, "scaling": null },
     "effect": "Target a hostile: CHA vs WIS. Success: combat pauses 1 round and you speak. May end combat.",
     "narration_cue": "Open hands, a calm voice: let's not do this."
   },
@@ -1630,11 +1222,7 @@
     "name": "Cutting Words",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 0, "scaling": null },
     "effect": "Cantrip shared with Bard: 1d4 psychic + target -1d4 next roll. Your only reliable combat damage.",
     "narration_cue": "A precise, cutting remark that stings the foe."
   },
@@ -1644,11 +1232,7 @@
     "name": "Inspire",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Shared with Bard: grant an ally a die to add to any roll.",
     "narration_cue": "A few confident words, and an ally finds their footing.",
     "applies_condition": "inspired"
@@ -1659,13 +1243,9 @@
     "name": "Objection",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Reaction when an NPC is about to act against your wishes: Persuasion. Success: NPC hesitates 1 round. No effect on Hollow.",
-    "narration_cue": "A sharp 'Wait \u2014' that gives the room pause."
+    "narration_cue": "A sharp 'Wait —' that gives the room pause."
   },
   {
     "id": "diplomat_countercharm",
@@ -1673,11 +1253,7 @@
     "name": "Countercharm",
     "ability_type": "reaction",
     "level_requirement": 5,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Shared with Bard: ally vs fear/charm gains advantage on the save.",
     "narration_cue": "Steady, reassuring words break the spell's grip."
   },
@@ -1687,11 +1263,7 @@
     "name": "Mediator's Presence",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 0,
-      "focus": 3,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 3, "scaling": null },
     "effect": "Two NPCs in conflict: Persuasion vs both. Success: both accept a compromise. Faction rep unchanged.",
     "narration_cue": "You step between the two and lower the temperature of the room."
   },
@@ -1701,11 +1273,7 @@
     "name": "Intimidating Authority",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Intimidation vs all enemies in earshot. Success: -2 to attacks for 1 round.",
     "narration_cue": "A commanding rebuke that makes foes second-guess themselves."
   },
@@ -1715,11 +1283,7 @@
     "name": "Rumor Mill",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 0,
-      "focus": 3,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 3, "scaling": null },
     "effect": "In a settlement: plant a rumor that spreads within 24 hours. All local NPCs hear it.",
     "narration_cue": "A word here, a word there, and the city starts to talk."
   },
@@ -1729,11 +1293,7 @@
     "name": "Alliance Broker",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 0,
-      "focus": 4,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 4, "scaling": null },
     "effect": "Convince an NPC to ally for one encounter or task. Advantage if you offer something they want.",
     "narration_cue": "A handshake sealed on mutual interest."
   },
@@ -1743,11 +1303,7 @@
     "name": "Treaty",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 0,
-      "focus": 5,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 5, "scaling": null },
     "effect": "Binding agreement between two parties. CHA save to resist. Breaking it: disadvantage on all rolls for 24 hours.",
     "narration_cue": "Terms spoken aloud and sworn; the pact takes hold."
   },
@@ -1757,11 +1313,7 @@
     "name": "Incite",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 0,
-      "focus": 4,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 4, "scaling": null },
     "effect": "Turn a crowd to a specific emotion. Persuasion vs highest WIS. Lasts 10 minutes.",
     "narration_cue": "Your words catch like fire and the crowd ignites."
   },
@@ -1771,11 +1323,7 @@
     "name": "Sanctuary of Words",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 0,
-      "focus": 5,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 5, "scaling": null },
     "effect": "While speaking: no creature in earshot can take a hostile action (WIS save each round). Must keep talking.",
     "narration_cue": "As long as you keep speaking, no blade is drawn."
   },
@@ -1785,27 +1333,20 @@
     "name": "Undermine",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 0,
-      "focus": 4,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 4, "scaling": null },
     "effect": "Target an authority figure: contested CHA. Success: their subordinates doubt their judgment for 1 hour.",
     "narration_cue": "A few well-placed words, and the leader's grip slips."
   },
+
   {
     "id": "marshal_direct_strike",
     "archetype_id": "marshal",
     "name": "Direct Strike",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Name an ally and a target. That ally's next attack against that target has advantage and deals +1d4.",
-    "narration_cue": "'The one on the left \u2014 now!' and your ally pounces."
+    "narration_cue": "'The one on the left — now!' and your ally pounces."
   },
   {
     "id": "marshal_reposition",
@@ -1813,11 +1354,7 @@
     "name": "Reposition",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "Command an ally to move 15 ft without provoking reactions. Resolved immediately.",
     "narration_cue": "'Fall back to the doorway!' and they move as one."
   },
@@ -1827,13 +1364,9 @@
     "name": "Rally",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 3,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 3, "scaling": null },
     "effect": "All allies within 30 ft gain temp HP equal to your CHA mod + level. Lasts until next rest.",
-    "narration_cue": "'Hold the line \u2014 we've got this!' and the party steadies."
+    "narration_cue": "'Hold the line — we've got this!' and the party steadies."
   },
   {
     "id": "marshal_coordinated_assault",
@@ -1841,11 +1374,7 @@
     "name": "Coordinated Assault",
     "ability_type": "core",
     "level_requirement": 2,
-    "cost": {
-      "stamina": 0,
-      "focus": 4,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 4, "scaling": null },
     "effect": "Choose 2 allies. Both gain advantage on their next attack; if both hit the same target, +1d6 each.",
     "narration_cue": "Two allies strike together in a clean pincer."
   },
@@ -1855,11 +1384,7 @@
     "name": "Interceding Order",
     "ability_type": "reaction",
     "level_requirement": 1,
-    "cost": {
-      "stamina": 0,
-      "focus": 2,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 2, "scaling": null },
     "effect": "Reaction when an ally is about to be hit: command them to dodge. +2 AC against that attack.",
     "narration_cue": "'Duck!' and the blow sails over their head."
   },
@@ -1869,11 +1394,7 @@
     "name": "Countermand",
     "ability_type": "reaction",
     "level_requirement": 5,
-    "cost": {
-      "stamina": 0,
-      "focus": 3,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 3, "scaling": null },
     "effect": "Reaction when an enemy uses a command/leadership ability: contested CHA. Success: the enemy's command fails.",
     "narration_cue": "Your voice cuts across theirs and their order dies."
   },
@@ -1883,13 +1404,9 @@
     "name": "Overwatch",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 0,
-      "focus": 3,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 3, "scaling": null },
     "effect": "Designate a 15 ft area. Any ally in it gains +2 AC and advantage on saves until your next turn.",
-    "narration_cue": "'Stay behind that wall \u2014 I've got you covered.'"
+    "narration_cue": "'Stay behind that wall — I've got you covered.'"
   },
   {
     "id": "marshal_exploit_opening",
@@ -1897,13 +1414,9 @@
     "name": "Exploit Opening",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 2,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "When an ally crits: grant a different ally an immediate free attack against the same target.",
-    "narration_cue": "'Now \u2014 while it's staggered!'"
+    "narration_cue": "'Now — while it's staggered!'"
   },
   {
     "id": "marshal_war_cry",
@@ -1911,11 +1424,7 @@
     "name": "War Cry",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 3,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "All enemies within 30 ft: WIS save or Frightened 1 round. Allies also gain +1 to attacks that round.",
     "narration_cue": "A rallying roar that shakes the foe and lifts your own."
   },
@@ -1925,13 +1434,9 @@
     "name": "Field Medic Order",
     "ability_type": "elective",
     "level_requirement": 4,
-    "cost": {
-      "stamina": 0,
-      "focus": 3,
-      "scaling": null
-    },
-    "effect": "Command an ally to use a healing item/ability as a declaration enhancer \u2014 they can attack AND heal in the same phase.",
-    "narration_cue": "'Drink the potion \u2014 I'll cover you.'"
+    "cost": { "stamina": 0, "focus": 3, "scaling": null },
+    "effect": "Command an ally to use a healing item/ability as a declaration enhancer — they can attack AND heal in the same phase.",
+    "narration_cue": "'Drink the potion — I'll cover you.'"
   },
   {
     "id": "marshal_grand_stratagem",
@@ -1939,13 +1444,9 @@
     "name": "Grand Stratagem",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 0,
-      "focus": 5,
-      "scaling": "Requires 1 round of setup."
-    },
+    "cost": { "stamina": 0, "focus": 5, "scaling": "Requires 1 round of setup." },
     "effect": "Declare a tactical plan. For 3 rounds, all allies within 30 ft gain +2 to attacks and +1 AC.",
-    "narration_cue": "'Listen carefully \u2014 on my signal...'"
+    "narration_cue": "'Listen carefully — on my signal...'"
   },
   {
     "id": "marshal_sacrifice_play",
@@ -1953,13 +1454,9 @@
     "name": "Sacrifice Play",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 4,
-      "focus": 0,
-      "scaling": null
-    },
+    "cost": { "stamina": 4, "focus": 0, "scaling": null },
     "effect": "Command an ally to take a risky action: they take 2d6 damage but their next attack automatically crits.",
-    "narration_cue": "'Take the hit \u2014 make it count!'"
+    "narration_cue": "'Take the hit — make it count!'"
   },
   {
     "id": "marshal_inspire_defiance",
@@ -1967,11 +1464,7 @@
     "name": "Inspire Defiance",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 0,
-      "focus": 4,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 4, "scaling": null },
     "effect": "All allies within 30 ft: advantage on saves vs Fear, Charm, and Stun for 2 rounds.",
     "narration_cue": "'They want us afraid? Show them what afraid looks like.'"
   },
@@ -1981,12 +1474,8 @@
     "name": "Tactical Withdrawal",
     "ability_type": "elective",
     "level_requirement": 8,
-    "cost": {
-      "stamina": 0,
-      "focus": 4,
-      "scaling": null
-    },
+    "cost": { "stamina": 0, "focus": 4, "scaling": null },
     "effect": "All allies disengage simultaneously without provoking reactions. The whole party repositions.",
-    "narration_cue": "'Fall back \u2014 now, together!'"
+    "narration_cue": "'Fall back — now, together!'"
   }
 ]
