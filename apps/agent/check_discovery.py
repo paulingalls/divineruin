@@ -168,8 +168,9 @@ async def _check_discover_impl(
     # Block re-rolling THIS element this session (keyed on the element, not the target) — added only
     # AFTER the persist above succeeds (story-014): if a write raised, the exception propagates before
     # this line, so a rolled-back discovery flag leaves the element re-attemptable instead of locked
-    # out until next session. A failed attempt (no success flag, consume a no-op) still reaches here,
-    # so a miss still spends the session attempt.
+    # out until next session. A failed attempt (no success flag; consume is a no-op unless a bonus
+    # die was spent on the d20) still reaches here when its writes succeed, so a miss still spends
+    # the session attempt.
     session.attempted_discoveries.add(f"{skill_lower}:{element_id}")
 
     if result.success:
