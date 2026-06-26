@@ -134,22 +134,51 @@ async def _resolve_deescalation_packet(
     }
 
 
-def land_condition_on_participant(
-    state, attacker: CombatParticipant, decl: "Declaration", cond_type: str, source: str
+def _land_condition_on_one(
+    state, target_id: str | None, attacker: CombatParticipant, cond_type: str, source: str
 ) -> bool:
-    """Apply a beneficial condition to an in-combat declaration's target participant (M4.8).
-
-    The shared landing rule for both combat producers (the spell path in _resolve_ability_packet and
-    the non-spell ability path in _resolve_ability_condition_packet): self-target (no target_id) falls
-    back to the caster; a given target_id is looked up on the working ``state``. Returns True iff the
-    condition actually landed (conditions.has_condition) — a target not on the state, or an apply that
-    no-ops under the immunity gate, returns False so the caller drops the buff signal rather than
-    narrating a buff that never stuck. The mutation rides the phase's save_combat_state (no extra write)."""
-    cond_target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
+    """Land a beneficial condition on ONE in-combat participant (M4.8). Self-target (``target_id``
+    None) falls back to the caster; a given id is looked up on the working ``state``. Returns True
+    iff it actually landed (``has_condition``) — a target not on the state, or an immunity no-op,
+    returns False so the caller drops the buff signal. The mutation rides save_combat_state."""
+    cond_target = attacker if target_id is None else state.get_participant(target_id)
     if cond_target is None:
         return False
     cond_target.conditions = conditions.apply_condition(cond_target.conditions, cond_type, source=source)
     return conditions.has_condition(cond_target.conditions, cond_type)
+
+
+def land_condition_on_participant(
+    state, attacker: CombatParticipant, decl: "Declaration", cond_type: str, source: str
+) -> bool:
+    """Single-target landing rule for the combat producers (the spell path in _resolve_ability_packet
+    and the non-spell ability path in _resolve_ability_condition_packet): land ``cond_type`` on
+    ``decl.target_id`` (self when absent). Returns True iff it landed. Thin wrapper over
+    ``_land_condition_on_one`` (M4.8 story-012 extraction); back-compat for existing callers."""
+    return _land_condition_on_one(state, decl.target_id, attacker, cond_type, source)
+
+
+def land_condition_on_participants(
+    state, attacker: CombatParticipant, decl: "Declaration", cond_type: str, source: str
+) -> list[str]:
+    """Land ``cond_type`` on EACH participant of a multi-target declaration (M4.8 story-012).
+
+    Resolves the target list: ``decl.target_ids`` (order-preserving dedup) when present, else the
+    single ``decl.target_id``, else the caster (self-cast). The cap was already enforced at the
+    declare-gate (combat_packet via spells.normalize_target_list); dedup here just prevents
+    double-voicing the same ally. Returns the participant ids the buff actually LANDED on (an id not
+    on the working state, or an immunity no-op, is dropped) — the subset the DM should name."""
+    if decl.target_ids:
+        targets: list[str | None] = list(dict.fromkeys(decl.target_ids))
+    elif decl.target_id is not None:
+        targets = [decl.target_id]
+    else:
+        targets = [None]  # self-cast
+    voiced: list[str] = []
+    for tid in targets:
+        if _land_condition_on_one(state, tid, attacker, cond_type, source):
+            voiced.append(tid if tid is not None else attacker.id)
+    return voiced
 
 
 def condition_ability(action: str | None) -> "abilities.Ability | None":
@@ -313,9 +342,19 @@ async def _resolve_ability_packet(
     # spell id (matching the OOC source=spell_id). Resolved here where attacker/decl/result are
     # already in scope — no outcome re-read in the dispatcher.
     cond_type = result.packet.get("condition_applied")
-    if cond_type and not land_condition_on_participant(state, attacker, decl, cond_type, source=decl.action):
-        # Target gone, or apply no-op'd (immunity gate) — don't narrate a buff that never landed.
-        result.packet.pop("condition_applied", None)
+    if cond_type:
+        if decl.target_ids:
+            # Multi-target (M4.8 story-012): land on EACH ally participant (cap already enforced at
+            # the declare-gate). Surface the voiced ids so the DM names each blessed companion; drop
+            # the signal entirely if NONE landed (all off-state / immune).
+            voiced = land_condition_on_participants(state, attacker, decl, cond_type, source=decl.action)
+            if voiced:
+                result.packet["condition_targets"] = voiced
+            else:
+                result.packet.pop("condition_applied", None)
+        elif not land_condition_on_participant(state, attacker, decl, cond_type, source=decl.action):
+            # Target gone, or apply no-op'd (immunity gate) — don't narrate a buff that never landed.
+            result.packet.pop("condition_applied", None)
     summary = {
         "actor_id": attacker.id,
         "resolved": True,

@@ -9,6 +9,7 @@ The single-target path stays unchanged when `target_ids` is absent.
 """
 
 import json
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -16,9 +17,14 @@ from combat.test_bless_producer import _caster  # reuse the OOC caster-dict buil
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
+import combat_ability
 import conditions
 import spell_casting
 import spells
+from combat_ability import AbilityCastOutcome, _resolve_ability_packet
+from declarations import Declaration, DeclarationType, resolve_declaration
+from session_data import CombatParticipant, CombatState
+from spell_casting import _UNCHANGED, CastResult
 from spells import Spell
 
 
@@ -209,3 +215,147 @@ async def test_ooc_target_ids_on_uncapped_spell_rejected():
     )
     with pytest.raises(ToolError, match="does not support multiple targets"):
         await _cast_ooc_multi(uncapped, caster=_caster(), target_ids=["ally_1"], rows={"ally_1": _caster("ally_1")})
+
+
+# --- In-combat multi-target (M4.8 story-012): land blessed on each ally participant ---
+
+
+def _combat_state_with_allies() -> CombatState:
+    return CombatState(
+        combat_id="c_mt",
+        participants=[
+            CombatParticipant(
+                id="caster", name="Cleric", type="player", initiative=15, hp_current=25, hp_max=25, ac=14
+            ),
+            CombatParticipant(id="ally_1", name="A1", type="companion", initiative=10, hp_current=20, hp_max=20, ac=13),
+            CombatParticipant(id="ally_2", name="A2", type="companion", initiative=9, hp_current=20, hp_max=20, ac=13),
+            CombatParticipant(id="ally_3", name="A3", type="companion", initiative=8, hp_current=20, hp_max=20, ac=13),
+        ],
+        initiative_order=["caster", "ally_1", "ally_2", "ally_3"],
+    )
+
+
+def _ability_decl(*, target_id=None, target_ids=None) -> Declaration:
+    return Declaration(type=DeclarationType.ABILITY, action="divine_bless", target_id=target_id, target_ids=target_ids)
+
+
+def _p(state: CombatState, pid: str) -> CombatParticipant:
+    p = state.get_participant(pid)
+    assert p is not None
+    return p
+
+
+def test_resolve_declaration_parses_target_ids():
+    decl = resolve_declaration({"type": "ability", "action": "divine_bless", "target_ids": ["ally_1", "ally_2"]})
+    assert decl.target_ids == ["ally_1", "ally_2"]
+    # Absent -> None (single-target declarations unchanged).
+    assert resolve_declaration({"type": "ability", "action": "divine_bless", "target_id": "ally_1"}).target_ids is None
+
+
+def test_land_condition_on_participants_blesses_each():
+    state = _combat_state_with_allies()
+    caster = _p(state, "caster")
+    voiced = combat_ability.land_condition_on_participants(
+        state, caster, _ability_decl(target_ids=["ally_1", "ally_2", "ally_3"]), "blessed", source="divine_bless"
+    )
+    assert voiced == ["ally_1", "ally_2", "ally_3"]
+    for aid in ("ally_1", "ally_2", "ally_3"):
+        assert "blessed" in [c["type"] for c in _p(state, aid).conditions]
+    assert "blessed" not in [c["type"] for c in caster.conditions]  # caster not targeted
+
+
+def test_land_condition_on_participants_dedups_and_drops_off_state():
+    state = _combat_state_with_allies()
+    caster = _p(state, "caster")
+    voiced = combat_ability.land_condition_on_participants(
+        state, caster, _ability_decl(target_ids=["ally_1", "ally_1", "ghost"]), "blessed", source="x"
+    )
+    assert voiced == ["ally_1"]  # dedup (one ally_1) + "ghost" not on state is dropped
+
+
+def test_land_condition_on_participants_single_and_self():
+    state = _combat_state_with_allies()
+    caster = _p(state, "caster")
+    # single target_id (no target_ids) — back-compat with the singular path
+    assert combat_ability.land_condition_on_participants(
+        state, caster, _ability_decl(target_id="ally_1"), "blessed", source="x"
+    ) == ["ally_1"]
+    # no target -> self-cast voices the caster
+    assert combat_ability.land_condition_on_participants(state, caster, _ability_decl(), "blessed", source="x") == [
+        "caster"
+    ]
+
+
+# --- In-combat resolution wiring (_resolve_ability_packet) + declare-gate (_prevalidate_ability_focus) ---
+
+
+def _cast_resolver_returning(packet: dict) -> MagicMock:
+    mod = MagicMock()
+    mod._resolve_cast = AsyncMock(
+        return_value=CastResult(
+            packet=dict(packet), new_resonance=None, concentration_spell_id=_UNCHANGED, generated=0, events=[]
+        )
+    )
+    return mod
+
+
+@pytest.mark.asyncio
+async def test_incombat_resolve_blesses_each_and_names_them():
+    # _resolve_ability_packet with a multi-target Bless declaration lands blessed on EACH target
+    # participant and surfaces the voiced ids in the packet for the DM.
+    state = _combat_state_with_allies()
+    caster = _p(state, "caster")
+    cast_resolver = _cast_resolver_returning({"condition_applied": "blessed"})
+    summary = await _resolve_ability_packet(
+        make_context(player_id="caster").userdata,
+        caster,
+        _ability_decl(target_ids=["ally_1", "ally_2", "ally_3"]),
+        state=state,
+        cast_resolver=cast_resolver,
+        conn=object(),
+        player={"player_id": "caster"},
+        cast_outcome=AbilityCastOutcome(),
+    )
+    assert summary["cast"]["condition_applied"] == "blessed"
+    assert summary["cast"]["condition_targets"] == ["ally_1", "ally_2", "ally_3"]
+    for aid in ("ally_1", "ally_2", "ally_3"):
+        assert "blessed" in [c["type"] for c in _p(state, aid).conditions]
+
+
+@pytest.mark.asyncio
+async def test_incombat_resolve_drops_signal_when_none_land():
+    # All target_ids off the working state -> nothing lands -> condition_applied dropped, no targets key.
+    state = _combat_state_with_allies()
+    caster = _p(state, "caster")
+    cast_resolver = _cast_resolver_returning({"condition_applied": "blessed"})
+    summary = await _resolve_ability_packet(
+        make_context(player_id="caster").userdata,
+        caster,
+        _ability_decl(target_ids=["ghost_1", "ghost_2"]),
+        state=state,
+        cast_resolver=cast_resolver,
+        conn=object(),
+        player={"player_id": "caster"},
+        cast_outcome=AbilityCastOutcome(),
+    )
+    assert "condition_applied" not in summary["cast"]
+    assert "condition_targets" not in summary["cast"]
+
+
+@pytest.mark.asyncio
+async def test_declare_gate_rejects_over_cap_multitarget():
+    # The declare-time spell-aware gate rejects an over-cap multi-target Bless (reuses the SSOT
+    # normalize_target_list) BEFORE the resolution loop — a ToolError, no state write.
+    import combat_packet
+
+    decl = _ability_decl(target_ids=["a", "b", "c", "d"])  # 4 > max_targets 3
+    adv = SimpleNamespace(packets=[SimpleNamespace(declaration=decl, actor_id="caster")])
+    state = _combat_state_with_allies()
+    session = make_context(player_id="caster").userdata
+    queries = MagicMock(get_player=AsyncMock(return_value={"player_id": "caster", "focus": {"current": 10, "max": 10}}))
+    cast_resolver = MagicMock(_gate_spell=MagicMock(return_value=_bless3()))
+
+    with pytest.raises(ToolError, match="at most 3"):
+        await combat_packet._prevalidate_ability_focus(
+            session, state, adv, conn=object(), queries=queries, cast_resolver=cast_resolver
+        )

@@ -50,6 +50,10 @@ class Declaration:
     type: DeclarationType
     action: str | None = None
     target_id: str | None = None
+    # M4.8 story-012: a multi-target spell declaration (e.g. Bless on up to three allies) names
+    # several ally participants at once; None for a single-target/self declaration. The cap is
+    # enforced at the declare-gate (combat_packet) via spells.normalize_target_list, not here.
+    target_ids: list[str] | None = None
     ac_bonus: int = 0
     rider: str | None = None
 
@@ -85,4 +89,11 @@ def resolve_declaration(raw: dict) -> Declaration:
             raise ValueError("maneuver declaration requires a 'target_id'")
 
     ac_bonus = DEFEND_AC_BONUS if decl_type is DeclarationType.DEFEND else 0
-    return Declaration(type=decl_type, action=action, target_id=target_id, ac_bonus=ac_bonus, rider=raw.get("rider"))
+    return Declaration(
+        type=decl_type,
+        action=action,
+        target_id=target_id,
+        target_ids=raw.get("target_ids"),
+        ac_bonus=ac_bonus,
+        rider=raw.get("rider"),
+    )

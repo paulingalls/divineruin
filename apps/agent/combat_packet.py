@@ -16,6 +16,7 @@ import combat_enhancers
 import combat_resolution
 import conditions
 import spell_casting
+import spells
 from combat_ability import (
     AbilityCastOutcome,
     _attach_riders,
@@ -70,20 +71,21 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
     player for_update ONCE (the cast reuses the returned row, so the lock is taken a single time), and
     returns it — or None when no player ability was declared (the common all-attacks phase locks
     nothing). Non-player abilities are wasted downstream, so they are not gated here."""
-    player_abilities = [
-        p.declaration.action
+    player_ability_decls = [
+        p.declaration
         for p in adv.packets
         if p.declaration.type is DeclarationType.ABILITY
         and p.declaration.action
         and (actor := state.get_participant(p.actor_id)) is not None
         and actor.type == "player"
     ]
-    if not player_abilities:
+    if not player_ability_decls:
         return None
     player = await queries.get_player(session.player_id, conn=conn, for_update=True)
     if player is None:
         raise ToolError(f"Unknown player: {session.player_id}")
-    for action in player_abilities:
+    for decl in player_ability_decls:
+        action = decl.action
         # Three non-spell-vs-spell ABILITY gates (pre-resolution, no writes): de_escalate (M4.6a)
         # has its own Focus+lockout gate; a non-spell condition ability (M4.8 story-005, e.g.
         # bard_inspire) gates its catalog Stamina/Focus; everything else is a spell-backed ability
@@ -93,7 +95,15 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
         elif (cond_ability := condition_ability(action)) is not None:
             _gate_ability_condition(player, cond_ability)
         else:
-            cast_resolver._gate_spell(player, action)
+            spell = cast_resolver._gate_spell(player, action)
+            # Multi-target cap (M4.8 story-012): reject an over-cap / malformed multi-target spell
+            # declaration HERE, before the resolution loop writes anything — reusing the targeting
+            # SSOT. Spell-aware, so it belongs with the Focus gate, not in pure resolve_declaration.
+            if decl.target_ids:
+                try:
+                    spells.normalize_target_list(spell, decl.target_id, decl.target_ids)
+                except ValueError as e:
+                    raise ToolError(str(e)) from e
     return player
 
 
