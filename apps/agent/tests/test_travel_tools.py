@@ -265,3 +265,14 @@ async def test_missing_player_raises_tool_error():
     m.queries.get_player = AsyncMock(return_value=None)
     with pytest.raises(ToolError):
         await _run(_ctx_with_bus(), m)
+
+
+@pytest.mark.asyncio
+async def test_corrupt_conditions_fail_loud_as_toolerror():
+    # M4.4 story-008: the nav roll folds Inspired's +1d4 via get_condition_effects, which raw-KeyErrors
+    # on a corrupt stored type — validate up front so corruption is a DM-narratable ToolError (the
+    # same pre-roll guard the peer check tools keep), not an unhandled stack.
+    m = _travel_mocks(player={**SAMPLE_PLAYER, "conditions": [{"type": "bogus"}]})
+    m.content.get_location = AsyncMock(return_value=_location("dense_forest"))  # DC 14 -> a roll happens
+    with pytest.raises(ToolError, match="corrupt stored conditions"):
+        await _run(_ctx_with_bus(), m)

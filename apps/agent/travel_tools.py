@@ -93,6 +93,11 @@ async def _travel_impl(
     player = await queries.get_player(session.player_id)
     if player is None:
         raise ToolError(f"Player '{session.player_id}' not found.")
+    # Read-boundary guard (M4.4 story-008): the nav roll folds Inspired's +1d4 via
+    # get_condition_effects, which raw-KeyErrors on a corrupt stored type. Validate up front (same as
+    # the peer check tools) so corruption becomes a DM-narratable ToolError, not an unhandled stack —
+    # the write-back's locked re-read does its own validation as the rebuild base.
+    validated_player_conditions(player, session.player_id)
 
     destination = await content.get_location(destination_id)
     if destination is None:
