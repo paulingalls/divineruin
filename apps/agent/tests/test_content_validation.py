@@ -316,3 +316,30 @@ class TestLootAndCurrencyContent:
                 f"Material '{mat['id']}' sell value_base {mat['value_base']} is not < "
                 f"craft_value {mat['craft_value']} (D78)"
             )
+
+
+# M4.8 (story-015): gathering node + resource_table refs. Mirrors scripts/seed_content.py's strict
+# load-time validation so a bad gathering reference fails the fast lane, not just at seed time.
+class TestGatheringContent:
+    def test_gathering_node_location_ids_resolve(self):
+        location_ids = _load_ids("locations.json")
+        for node in _load_json("gathering_nodes.json"):
+            assert node["location_id"] in location_ids, (
+                f"Gathering node '{node['id']}' references unknown location_id '{node['location_id']}'"
+            )
+
+    def test_gathering_node_resource_types_resolve(self):
+        material_ids = _load_ids("materials_catalog.json")
+        for node in _load_json("gathering_nodes.json"):
+            assert node["resource_type"] in material_ids, (
+                f"Gathering node '{node['id']}' references unknown resource_type '{node['resource_type']}'"
+            )
+
+    def test_location_resource_table_entries_resolve(self):
+        material_ids = _load_ids("materials_catalog.json")
+        for loc in _load_json("locations.json"):
+            for rarity, material_refs in (loc.get("resource_table") or {}).items():
+                for material_ref in material_refs:
+                    assert material_ref in material_ids, (
+                        f"Location '{loc['id']}' resource_table '{rarity}' references unknown material '{material_ref}'"
+                    )
