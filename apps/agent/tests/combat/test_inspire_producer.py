@@ -98,6 +98,7 @@ async def _activate(
     *,
     caster: dict,
     target_id: str | None = None,
+    target_ids: list[str] | None = None,
     rows: dict | None = None,
     in_combat: bool = False,
 ):
@@ -125,6 +126,7 @@ async def _activate(
         ctx,
         ability.id,
         target_id=target_id,
+        target_ids=target_ids,
         db_mod=mock_db,
         queries_mod=queries,
         persistence_mod=persistence,
@@ -133,6 +135,37 @@ async def _activate(
         conditions_mutations_mod=cond_mut,
     )
     return json.loads(raw), cond_mut, queries.get_player
+
+
+@pytest.mark.asyncio
+async def test_ooc_mass_inspire_multi_target_persists_to_each_and_voices_all():
+    # story-017: an OOC multi-target ability (bard_mass_inspire) lands the condition on EVERY targeted
+    # ally's players.data SSOT and the response names all of them (condition_targets) — completing the
+    # produce matrix (the spell OOC path + the in-combat ability path already do this).
+    a1 = _bard("ally_a", conditions_list=[])
+    a2 = _bard("ally_b", conditions_list=[])
+    response, cond_mut, _gp = await _activate(
+        _mass_inspire_ability(), caster=_bard(), target_ids=["ally_a", "ally_b"], rows={"ally_a": a1, "ally_b": a2}
+    )
+
+    assert response["condition_applied"] == "inspired"
+    assert set(response["condition_targets"]) == {"ally_a", "ally_b"}
+    saved_targets = {c.args[0] for c in cond_mut.save_player_conditions.call_args_list}
+    assert saved_targets == {"ally_a", "ally_b"}  # persisted to each
+
+
+@pytest.mark.asyncio
+async def test_ooc_ability_over_cap_target_ids_rejected_via_ssot():
+    # The cap is enforced through the SAME normalize_target_list SSOT (rejects over-cap / both-args /
+    # empty / a single-target ability mass-targeted) — no resource write, no condition.
+    from livekit.agents.llm import ToolError
+
+    with pytest.raises(ToolError, match="at most 2"):
+        await _activate(_mass_inspire_ability(max_targets=2), caster=_bard(), target_ids=["a", "b", "c"])
+    with pytest.raises(ToolError, match="not both"):
+        await _activate(_mass_inspire_ability(), caster=_bard(), target_id="a", target_ids=["b"])
+    with pytest.raises(ToolError, match="does not support multiple"):
+        await _activate(_inspire_ability(), caster=_bard(), target_ids=["a", "b"])  # single-target ability
 
 
 @pytest.mark.asyncio
