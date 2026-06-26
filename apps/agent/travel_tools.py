@@ -93,9 +93,6 @@ async def _travel_impl(
     player = await queries.get_player(session.player_id)
     if player is None:
         raise ToolError(f"Player '{session.player_id}' not found.")
-    # Read-boundary guard (M4.4 story-008): a corrupt conditions row becomes a DM-narratable error,
-    # and the validated list is the base the exhaustion producer applies onto.
-    player_conditions = validated_player_conditions(player, session.player_id)
 
     destination = await content.get_location(destination_id)
     if destination is None:
@@ -123,22 +120,30 @@ async def _travel_impl(
         raw_die=roll.roll if roll else None,
     )
 
-    # Conditions write-back: the exhaustion producer AND the single-use beneficial-die consume
-    # share ONE persist. Both rebuild players.data.conditions from player_conditions, so two
-    # separate save_player_conditions calls would clobber each other (last write wins). Exhaustion
-    # applies the raw delta via the SSOT, capped by the character's stack cap (the Iron-Constitution
-    # hook — rules_engine.exhaustion_stack_cap); the nav roll spends Blessed/Inspired's +1d4
-    # (M4.8 story-010), so remove the signalled conditions on the same rebuilt list.
-    new_conditions = player_conditions
-    if result.exhaustion_delta > 0:
-        cap = rules_engine.exhaustion_stack_cap(player)
-        for _ in range(result.exhaustion_delta):
-            new_conditions = conditions.apply_condition(new_conditions, "exhausted", source="travel", max_stacks=cap)
+    # Conditions write-back: the exhaustion producer AND the single-use beneficial-die consume share
+    # ONE persist (M4.8 story-010 — two saves would clobber each other). Both rebuild the full
+    # players.data.conditions list, so the read MUST happen under a lock inside the same tx that
+    # writes it (M4.8 story-013): re-read the row FOR UPDATE here — not the stale pre-roll read — so
+    # a condition applied concurrently (the DM background loop landing Poisoned) is not clobbered.
+    # This serializes against condition_produce's matching FOR UPDATE. Exhaustion applies the raw
+    # delta via the SSOT capped by the character's stack cap (Iron-Constitution hook); the nav roll
+    # spends Inspired's +1d4, so remove the signalled conditions on the same rebuilt list.
     consumed = roll.consumed_conditions if roll else ()
-    if consumed:
-        new_conditions = conditions.remove_conditions(new_conditions, consumed)
     if result.exhaustion_delta > 0 or consumed:
-        await conditions_mutations.save_player_conditions(session.player_id, new_conditions)
+        async with db_mod.transaction() as conn:
+            locked = await queries.get_player(session.player_id, conn=conn, for_update=True)
+            # Read-boundary guard (M4.4 story-008): a corrupt conditions row becomes a DM-narratable
+            # error, and the validated list is the base the exhaustion producer applies onto.
+            new_conditions = validated_player_conditions(locked, session.player_id)
+            if result.exhaustion_delta > 0:
+                cap = rules_engine.exhaustion_stack_cap(player)
+                for _ in range(result.exhaustion_delta):
+                    new_conditions = conditions.apply_condition(
+                        new_conditions, "exhausted", source="travel", max_stacks=cap
+                    )
+            if consumed:
+                new_conditions = conditions.remove_conditions(new_conditions, consumed)
+            await conditions_mutations.save_player_conditions(session.player_id, new_conditions, conn=conn)
 
     arrived = result.success and not result.wrong_area
     if arrived:

@@ -210,6 +210,37 @@ async def test_inspired_nav_consume_folds_into_exhaustion_write():
     assert "inspired" not in types  # die consumed — neither clobbers the other
 
 
+@pytest.mark.asyncio
+async def test_travel_rebuilds_conditions_from_locked_reread_preserving_concurrent_write():
+    # story-013: the exhaustion+consume write-back must re-read conditions under FOR UPDATE inside
+    # the tx (not reuse the stale pre-roll read), so a condition applied concurrently (a DM-landed
+    # Poisoned) survives instead of being clobbered by the full-list overwrite. The locked re-read
+    # AND the save must share the SAME tx connection (atomic with the producer's FOR UPDATE).
+    m = _travel_mocks(player=_INSPIRED_PLAYER)
+    poisoned = {"type": "poisoned", "duration": None, "source": "dm", "stacks": 1}
+    fresh = {**_INSPIRED_PLAYER, "conditions": [*_INSPIRED_PLAYER["conditions"], poisoned]}
+    captured: dict = {}
+
+    async def _get_player(_player_id, *, conn=None, for_update=False):
+        if for_update:
+            captured["conn"] = conn
+            return fresh  # the live row — Poisoned landed after the stale pre-roll read
+        return _INSPIRED_PLAYER  # the stale read (drives the nav roll + its consume signal)
+
+    m.queries.get_player = AsyncMock(side_effect=_get_player)
+    ctx = _ctx_with_bus()
+    await _run(ctx, m, mode="dangerous", hours=12, forced_march=True, rng_val=20)
+
+    assert captured.get("conn") is not None  # the locked re-read ran with for_update inside the tx
+    save = m.conditions_mutations.save_player_conditions
+    save.assert_awaited_once()
+    types = [c["type"] for c in save.await_args.args[1]]
+    assert "poisoned" in types  # concurrent write preserved (rebuilt from the fresh locked read)
+    assert "exhausted" in types  # exhaustion applied
+    assert "inspired" not in types  # die consumed
+    assert save.await_args.kwargs.get("conn") is captured["conn"]  # same tx connection (atomic)
+
+
 # --- Fail-loud boundaries ---
 
 
