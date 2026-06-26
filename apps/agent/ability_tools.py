@@ -20,6 +20,7 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import ability_persistence
+import condition_produce
 import conditions
 import db
 import db_mutations_conditions
@@ -64,6 +65,7 @@ async def _request_ability_activation_impl(
     variants_mod=mentor_variants,
     conditions_mod=conditions,
     conditions_mutations_mod=db_mutations_conditions,
+    condition_produce_mod=condition_produce,
 ) -> str:
     context.disallow_interruptions()
     _validate_id(ability_id, "ability_id")
@@ -128,20 +130,19 @@ async def _request_ability_activation_impl(
         # Mirrors story-004's spell producer (decision applies-condition-producer-contract).
         if ability.applies_condition is not None and not session.in_combat:
             cond_target_id = target_id if target_id is not None else player_id
-            target_row = (
-                player
-                if cond_target_id == player_id
-                else await queries_mod.get_player(cond_target_id, conn=conn, for_update=True)
+            voiced = await condition_produce_mod.apply_beneficial_condition_to_player(
+                cond_target_id,
+                ability.applies_condition,
+                ability_id,
+                caster_row=player,
+                caster_id=player_id,
+                queries_mod=queries_mod,
+                conditions_mod=conditions_mod,
+                conditions_mutations_mod=conditions_mutations_mod,
+                conn=conn,
             )
-            if target_row is not None:
-                new_conditions = conditions_mod.apply_condition(
-                    target_row.get("conditions", []), ability.applies_condition, source=ability_id
-                )
-                if conditions_mod.has_condition(new_conditions, ability.applies_condition):
-                    await conditions_mutations_mod.save_player_conditions(cond_target_id, new_conditions, conn=conn)
-                    condition_applied = ability.applies_condition
-            else:
-                condition_applied = ability.applies_condition  # non-player target: narrate-only, no write
+            if voiced:
+                condition_applied = ability.applies_condition
 
     response = {
         "narration_cue": variant.narration_cue if variant is not None else ability.narration_cue,
