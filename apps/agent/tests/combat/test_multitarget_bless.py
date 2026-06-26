@@ -16,9 +16,12 @@ from combat.test_bless_producer import _caster  # reuse the OOC caster-dict buil
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
+import combat_ability
 import conditions
 import spell_casting
 import spells
+from declarations import Declaration, DeclarationType, resolve_declaration
+from session_data import CombatParticipant, CombatState
 from spells import Spell
 
 
@@ -209,3 +212,72 @@ async def test_ooc_target_ids_on_uncapped_spell_rejected():
     )
     with pytest.raises(ToolError, match="does not support multiple targets"):
         await _cast_ooc_multi(uncapped, caster=_caster(), target_ids=["ally_1"], rows={"ally_1": _caster("ally_1")})
+
+
+# --- In-combat multi-target (M4.8 story-012): land blessed on each ally participant ---
+
+
+def _combat_state_with_allies() -> CombatState:
+    return CombatState(
+        combat_id="c_mt",
+        participants=[
+            CombatParticipant(
+                id="caster", name="Cleric", type="player", initiative=15, hp_current=25, hp_max=25, ac=14
+            ),
+            CombatParticipant(id="ally_1", name="A1", type="companion", initiative=10, hp_current=20, hp_max=20, ac=13),
+            CombatParticipant(id="ally_2", name="A2", type="companion", initiative=9, hp_current=20, hp_max=20, ac=13),
+            CombatParticipant(id="ally_3", name="A3", type="companion", initiative=8, hp_current=20, hp_max=20, ac=13),
+        ],
+        initiative_order=["caster", "ally_1", "ally_2", "ally_3"],
+    )
+
+
+def _ability_decl(*, target_id=None, target_ids=None) -> Declaration:
+    return Declaration(type=DeclarationType.ABILITY, action="divine_bless", target_id=target_id, target_ids=target_ids)
+
+
+def _p(state: CombatState, pid: str) -> CombatParticipant:
+    p = state.get_participant(pid)
+    assert p is not None
+    return p
+
+
+def test_resolve_declaration_parses_target_ids():
+    decl = resolve_declaration({"type": "ability", "action": "divine_bless", "target_ids": ["ally_1", "ally_2"]})
+    assert decl.target_ids == ["ally_1", "ally_2"]
+    # Absent -> None (single-target declarations unchanged).
+    assert resolve_declaration({"type": "ability", "action": "divine_bless", "target_id": "ally_1"}).target_ids is None
+
+
+def test_land_condition_on_participants_blesses_each():
+    state = _combat_state_with_allies()
+    caster = _p(state, "caster")
+    voiced = combat_ability.land_condition_on_participants(
+        state, caster, _ability_decl(target_ids=["ally_1", "ally_2", "ally_3"]), "blessed", source="divine_bless"
+    )
+    assert voiced == ["ally_1", "ally_2", "ally_3"]
+    for aid in ("ally_1", "ally_2", "ally_3"):
+        assert "blessed" in [c["type"] for c in _p(state, aid).conditions]
+    assert "blessed" not in [c["type"] for c in caster.conditions]  # caster not targeted
+
+
+def test_land_condition_on_participants_dedups_and_drops_off_state():
+    state = _combat_state_with_allies()
+    caster = _p(state, "caster")
+    voiced = combat_ability.land_condition_on_participants(
+        state, caster, _ability_decl(target_ids=["ally_1", "ally_1", "ghost"]), "blessed", source="x"
+    )
+    assert voiced == ["ally_1"]  # dedup (one ally_1) + "ghost" not on state is dropped
+
+
+def test_land_condition_on_participants_single_and_self():
+    state = _combat_state_with_allies()
+    caster = _p(state, "caster")
+    # single target_id (no target_ids) — back-compat with the singular path
+    assert combat_ability.land_condition_on_participants(
+        state, caster, _ability_decl(target_id="ally_1"), "blessed", source="x"
+    ) == ["ally_1"]
+    # no target -> self-cast voices the caster
+    assert combat_ability.land_condition_on_participants(state, caster, _ability_decl(), "blessed", source="x") == [
+        "caster"
+    ]
