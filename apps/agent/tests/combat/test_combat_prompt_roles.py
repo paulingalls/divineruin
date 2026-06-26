@@ -39,3 +39,17 @@ def test_role_cadence_reaches_the_assembled_system_prompt():
     # COMBAT_PROMPT is embedded in COMBAT_SYSTEM_PROMPT, so the cadence ships to the agent.
     assert "Minion" in COMBAT_SYSTEM_PROMPT
     assert "climactic" in COMBAT_SYSTEM_PROMPT.lower()
+
+
+def test_combat_prompt_instructs_buff_narration():
+    # M4.8 story-006 (assumption b99c818fa7c2): a landed beneficial condition must be VOICED, not
+    # left silently on state. The DM is the beat consumer of the packet's condition_applied /
+    # condition_targets, so the Beat-3 guidance must name those keys and the buff to narrate.
+    lowered = COMBAT_PROMPT.lower()
+    assert "condition_targets" in lowered or "condition_applied" in lowered
+    assert "blessed" in lowered or "inspired" in lowered or "buff" in lowered or "boon" in lowered
+
+
+def test_buff_narration_reaches_the_assembled_system_prompt():
+    lowered = COMBAT_SYSTEM_PROMPT.lower()
+    assert "condition_targets" in lowered or "condition_applied" in lowered
