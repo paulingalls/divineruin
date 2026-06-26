@@ -342,9 +342,19 @@ async def _resolve_ability_packet(
     # spell id (matching the OOC source=spell_id). Resolved here where attacker/decl/result are
     # already in scope — no outcome re-read in the dispatcher.
     cond_type = result.packet.get("condition_applied")
-    if cond_type and not land_condition_on_participant(state, attacker, decl, cond_type, source=decl.action):
-        # Target gone, or apply no-op'd (immunity gate) — don't narrate a buff that never landed.
-        result.packet.pop("condition_applied", None)
+    if cond_type:
+        if decl.target_ids:
+            # Multi-target (M4.8 story-012): land on EACH ally participant (cap already enforced at
+            # the declare-gate). Surface the voiced ids so the DM names each blessed companion; drop
+            # the signal entirely if NONE landed (all off-state / immune).
+            voiced = land_condition_on_participants(state, attacker, decl, cond_type, source=decl.action)
+            if voiced:
+                result.packet["condition_targets"] = voiced
+            else:
+                result.packet.pop("condition_applied", None)
+        elif not land_condition_on_participant(state, attacker, decl, cond_type, source=decl.action):
+            # Target gone, or apply no-op'd (immunity gate) — don't narrate a buff that never landed.
+            result.packet.pop("condition_applied", None)
     summary = {
         "actor_id": attacker.id,
         "resolved": True,
