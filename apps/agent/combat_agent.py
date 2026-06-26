@@ -11,7 +11,8 @@ from combat_turn import consume_legendary_action, declare_phase, resolve_phase
 from draethar_inner_fire import inner_fire
 from environment_tools import play_sound, set_music_state
 from query_tools import query_info
-from spell_casting import cast_spell, get_spell_info
+from spell_casting import cast_spell
+from spell_info_tools import get_spell_info
 from system_prompts import COMBAT_SYSTEM_PROMPT
 from veil_ward_tools import activate_veil_ward
 

@@ -16,8 +16,10 @@ response rather than pushed as a (consumer-less) client event.
 
 import check_resolution_save
 import concentration
+import conditions
 import db_mutations_concentration
 import db_queries
+import spells
 from session_data import SessionData
 
 
@@ -29,6 +31,8 @@ async def break_concentration_on_damage(
     queries=db_queries,
     resolver=check_resolution_save,
     concentration_mutations=db_mutations_concentration,
+    spells_mod=spells,
+    combat_state=None,
     conn=None,
 ) -> str | None:
     """Resolve a concentrating player's CON save after taking ``damage``; end concentration on a
@@ -45,10 +49,20 @@ async def break_concentration_on_damage(
     conn so a rolled-back phase reverts the break too (story-007). The player fetch reads the same
     conn so the save sees the in-tx state. Out of combat (Draethar inner fire) the default ``None``
     runs the write on its own connection, post-commit, as before.
+
+    ``combat_state`` is the WORKING combat state to read/mutate. The phase loop resolves against a
+    deep-copied working state and only adopts it as session.combat_state AFTER the tx commits
+    (combat_turn), so DURING resolution session.combat_state is a DIFFERENT, pristine object — both
+    the caster-conditions lookup (CON save) and the linked-condition strip must hit the working
+    state the loop persists, not the discarded pristine copy. The phase loop threads its working
+    state here; the OOC Draethar path and direct callers pass ``None`` and fall back to
+    session.combat_state (the object they themselves persist), keeping the default path correct.
     """
     spell_id = session.concentration.spell_id
     if spell_id is None or damage <= 0:
         return None
+
+    cstate = combat_state if combat_state is not None else session.combat_state
 
     dc = concentration.check_concentration(damage)
     # Incapacitation auto-fails (the engine enforces it) — skip the pointless roll and DB fetch.
@@ -62,9 +76,13 @@ async def break_concentration_on_damage(
         # Thread the caster's in-combat conditions into the CON save (M4.3): Exhausted -1/stack
         # lowers it, Stunned/Paralyzed auto-fail it. Conditions live on the in-memory
         # CombatParticipant, not the DB player row; out of combat there are none ([]).
-        participant = session.combat_state.get_participant(session.player_id) if session.combat_state else None
+        participant = cstate.get_participant(session.player_id) if cstate else None
         player["conditions"] = participant.conditions if participant is not None else []
-        save_total = resolver.resolve_saving_throw(player, "constitution", dc, "concentration").total
+        # Damage-triggered CON save is engine-auto: it never spends the caster's beneficial +1d4
+        # (M4.8 story-003) — only player-initiated saves do.
+        save_total = resolver.resolve_saving_throw(
+            player, "constitution", dc, "concentration", bonus_dice_eligible=False
+        ).total
 
     if concentration.concentration_holds(save_total, dc, incapacitated=incapacitated):
         return None
@@ -74,4 +92,14 @@ async def break_concentration_on_damage(
     # would otherwise re-populate the old spell on the next session reload.
     await concentration_mutations.update_player_concentration(session.player_id, None, conn=conn)
     session.concentration.spell_id = None
+
+    # Concentration→condition lifecycle (M4.8 story-006, risk 0899a89ef0da): a concentration spell
+    # that granted a beneficial condition (Bless → blessed) loses it when the spell ends, so the +1d4
+    # does not outlive the broken concentration. Strip the spell's applies_condition from the
+    # in-combat participants it buffed; the mutation rides the phase loop's save_combat_state (like
+    # the combat-ability consume). OOC breaks (no combat_state) leave OOC buffs as-is.
+    applied = spells_mod.get_spell(spell_id).applies_condition
+    if applied is not None and cstate is not None:
+        for participant in cstate.participants:
+            participant.conditions = conditions.remove_conditions(participant.conditions, (applied,))
     return spell_id

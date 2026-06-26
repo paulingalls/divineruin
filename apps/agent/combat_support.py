@@ -126,6 +126,7 @@ async def _resolve_attack_packet(
     queries=db_queries,
     resolver=check_resolution_attack,
     concentration_break_mod=concentration_break,
+    combat_state=None,
     conn=None,
     sink=None,
 ) -> dict:
@@ -224,8 +225,16 @@ async def _resolve_attack_packet(
     # or the attack dealt no damage; its return (the broken spell id, or None) is narrated below.
     concentration_broken = None
     if target.type == "player":
+        # Thread the phase loop's WORKING combat state so the concentration break strips the linked
+        # condition (Bless → blessed) from the state that actually gets persisted — during resolution
+        # session.combat_state is still the pristine pre-phase copy (combat_turn adopts the working
+        # state only post-commit). Direct/OOC callers pass None and fall back to session.combat_state.
         concentration_broken = await concentration_break_mod.break_concentration_on_damage(
-            session, attack_result.damage, incapacitated=target.hp_current <= 0, conn=conn
+            session,
+            attack_result.damage,
+            incapacitated=target.hp_current <= 0,
+            combat_state=combat_state,
+            conn=conn,
         )
 
     # Publish events (buffered into ``sink`` during the phase tx; released post-commit)
@@ -291,6 +300,10 @@ async def _resolve_attack_packet(
         # adds, for the DM to voice. 0/None on a normal hit.
         "bonus_damage": attack_result.bonus_damage,
         "bonus_damage_type": attack_result.bonus_damage_type,
+        # Beneficial conditions whose +1d4 this swing rolled into the to-hit (M4.8 story-003). The
+        # caller (_resolve_one_packet) removes these from the attacker so a multi-swing sequence
+        # consumes the single-use die exactly once.
+        "consumed_conditions": attack_result.consumed_conditions,
         # Set when this hit raised a Stage-2+ Hollowed target as a Temporary Hollowed echo
         # instead of felling them — the DM narrates the corpse rising.
         "target_rose_hollowed": rose_hollowed,

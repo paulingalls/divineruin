@@ -9,6 +9,7 @@ import pytest
 
 from conditions import (
     CONDITION_CATALOG,
+    BonusDie,
     ConditionEffects,
     ConditionSpec,
     apply_condition,
@@ -320,3 +321,48 @@ def test_apply_condition_immunity_gate_does_not_mutate_input():
 def test_charmed_applies_normally_without_an_immune_carrier():
     out = apply_condition([], "charmed")
     assert any(c["type"] == "charmed" for c in out)
+
+
+# --- beneficial bonus-die model: Blessed / Inspired (M4.8 story-001) ---
+
+
+def test_blessed_spec_carries_bonus_die_not_advantage():
+    spec = CONDITION_CATALOG["blessed"]
+    assert spec.bonus_die == "1d4"
+    assert spec.bonus_die_scopes == ("attack", "save")
+    # The inert advantage_scopes=("next_roll",) mismodel is gone — +1d4 is a flat die, not advantage.
+    assert spec.advantage_scopes == ()
+
+
+def test_inspired_spec_carries_any_roll_bonus_die():
+    spec = CONDITION_CATALOG["inspired"]
+    assert spec.bonus_die == "1d4"
+    # "Any roll" = all three roll kinds.
+    assert set(spec.bonus_die_scopes) == {"attack", "save", "check"}
+    # The dead bonus_d4_creative_social restriction is replaced by the real bonus_die.
+    assert "bonus_d4_creative_social" not in spec.restrictions
+
+
+def test_effects_surfaces_blessed_bonus_die():
+    effects = get_condition_effects(apply_condition([], "blessed"))
+    assert effects.bonus_dice == (BonusDie(source="blessed", dice="1d4", scopes=frozenset({"attack", "save"})),)
+
+
+def test_effects_surfaces_inspired_bonus_die():
+    effects = get_condition_effects(apply_condition([], "inspired"))
+    assert effects.bonus_dice == (
+        BonusDie(source="inspired", dice="1d4", scopes=frozenset({"attack", "save", "check"})),
+    )
+
+
+def test_effects_surfaces_both_beneficial_dice_concurrently():
+    # A bearer can be Blessed AND Inspired; both dice surface with distinct sources (no silent drop).
+    conds = apply_condition(apply_condition([], "blessed"), "inspired")
+    effects = get_condition_effects(conds)
+    assert {bd.source for bd in effects.bonus_dice} == {"blessed", "inspired"}
+    assert len(effects.bonus_dice) == 2
+
+
+def test_effects_no_bonus_die_for_non_beneficial_condition():
+    effects = get_condition_effects(apply_condition([], "poisoned"))
+    assert effects.bonus_dice == ()

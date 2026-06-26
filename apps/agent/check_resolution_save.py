@@ -9,7 +9,8 @@ resolve_saving_throw accepts an optional `rng` for deterministic testing.
 import random
 from dataclasses import dataclass
 
-from check_resolution import _ATTR_ABBREV, _apply_condition_modifiers, _roll_d20_check
+from check_resolution import _ATTR_ABBREV, _apply_condition_modifiers, _roll_d20_check, roll_bonus_dice
+from conditions import get_condition_effects
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier, proficiency_bonus
 
@@ -35,6 +36,11 @@ class SavingThrowResult:
     # so story-004 encounter-context signals stay additive. See dramatic.py.
     dramatic: bool = False
     context: str = ""
+    # Beneficial conditions whose +1d4 was rolled into this save and must now be consumed (M4.8
+    # story-002): Blessed and Inspired both apply to saves. Additive + defaulted. An auto-failed
+    # save never rolls, so it consumes nothing (the die is not wasted). story-003 reads this to
+    # remove + persist.
+    consumed_conditions: tuple[str, ...] = ()
 
 
 def resolve_saving_throw(
@@ -44,7 +50,12 @@ def resolve_saving_throw(
     effect_on_fail: str,
     rng: random.Random | None = None,
     dc_mod: int = 0,
+    *,
+    bonus_dice_eligible: bool = True,
 ) -> SavingThrowResult:
+    # ``bonus_dice_eligible`` gates the beneficial +1d4 fold/consume (M4.8 story-003). Player-initiated
+    # saves keep the default True; engine-auto saves (Beat-4 tick-clear, concentration-break) pass
+    # False so an automatic save never spends the single-use die (customer decision 6102eca13319).
     save_lower = save_type.lower()
     valid_saves = {"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
     if save_lower not in valid_saves:
@@ -68,10 +79,9 @@ def resolve_saving_throw(
 
     # Condition effects (M4.3): a condition can auto-fail this save (Stunned/Paralyzed
     # auto-fail STR/DEX), flatly modify it (Exhausted -1/stack), or impose disadvantage.
+    effects = get_condition_effects(player_data.get("conditions") or [])
     scopes = {_ATTR_ABBREV.get(save_lower, save_lower)}
-    flat_mod, advantage, disadvantage, auto_fail = _apply_condition_modifiers(
-        player_data.get("conditions") or [], scopes
-    )
+    flat_mod, advantage, disadvantage, auto_fail = _apply_condition_modifiers(effects, scopes)
     if auto_fail:
         return SavingThrowResult(
             save_type=save_lower,
@@ -92,14 +102,20 @@ def resolve_saving_throw(
             context="",
         )
 
-    core = _roll_d20_check(mod + flat_mod, dc, rng=rng, advantage=advantage, disadvantage=disadvantage)
+    # Beneficial bonus die (M4.8 story-002): Blessed/Inspired add +1d4 to the save (roll-kind
+    # "save"), folded into the modifier so the total reflects it. Reached only past the auto-fail
+    # gate, so an auto-failed save never spends the die. The consumed condition is signalled for
+    # story-003 to remove.
+    bonus, consumed = roll_bonus_dice(effects, "save", rng=rng) if bonus_dice_eligible else (0, ())
+    save_modifier = mod + flat_mod + bonus
+    core = _roll_d20_check(save_modifier, dc, rng=rng, advantage=advantage, disadvantage=disadvantage)
     # No roll_type passed: a generic save is dramatic ONLY on nat-1/nat-20.
     verdict = evaluate_dramatic_context(DramaticContext(raw_die=core.roll))
 
     return SavingThrowResult(
         save_type=save_lower,
         roll=core.roll,
-        modifier=mod + flat_mod,
+        modifier=save_modifier,
         total=core.total,
         dc=dc,
         success=core.success,
@@ -110,4 +126,5 @@ def resolve_saving_throw(
         narrative_hint=core.narrative_hint,
         dramatic=verdict.dramatic,
         context=verdict.context,
+        consumed_conditions=consumed,
     )

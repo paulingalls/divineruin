@@ -20,11 +20,13 @@ import check_resolution
 import db
 import db_content_queries
 import db_mutations
+import db_mutations_conditions
 import db_mutations_gathering
 import db_queries
 import event_types as E
 import gathering
 import rules_engine
+from condition_consume import consume_beneficial_conditions
 from db_errors import validated_player_conditions
 from game_events import publish_game_event
 from session_data import SessionData
@@ -53,6 +55,7 @@ async def _check_gather_impl(
     mutations=db_mutations,
     content=db_content_queries,
     gather_mutations=db_mutations_gathering,
+    conditions_mutations=db_mutations_conditions,
     db_mod=db,
     rng: random.Random | None = None,
 ) -> str:
@@ -119,6 +122,12 @@ async def _check_gather_impl(
             await gather_mutations.deplete_node_quantity(node["id"], 1, conn=conn)
         for material_id, qty in counts.items():
             await mutations.add_inventory_item(session.player_id, material_id, qty, conn=conn)
+        # The gather roll spends Blessed/Inspired's +1d4 (M4.8 story-009): remove + persist the
+        # signalled conditions on the SAME tx connection, so the die-consume commits atomically
+        # with the node depletion + inventory grant. No-op when nothing was consumed.
+        await consume_beneficial_conditions(
+            session.player_id, roll.consumed_conditions, conditions_mutations, conn=conn
+        )
 
     success = result.result != "nothing"
     await publish_game_event(

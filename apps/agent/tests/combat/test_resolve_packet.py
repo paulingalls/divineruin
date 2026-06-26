@@ -429,7 +429,14 @@ class TestResolveAbilityPacket:
         outcome = AbilityCastOutcome()
 
         summary = await _resolve_ability_packet(
-            session, attacker, decl, cast_resolver=cast_resolver, conn=object(), player=None, cast_outcome=outcome
+            session,
+            attacker,
+            decl,
+            state=None,
+            cast_resolver=cast_resolver,
+            conn=object(),
+            player=None,
+            cast_outcome=outcome,
         )
 
         assert summary["resolved"] is True
@@ -458,7 +465,14 @@ class TestResolveAbilityPacket:
         outcome = AbilityCastOutcome()
 
         summary = await _resolve_ability_packet(
-            session, enemy, decl, cast_resolver=cast_resolver, conn=object(), player=None, cast_outcome=outcome
+            session,
+            enemy,
+            decl,
+            state=None,
+            cast_resolver=cast_resolver,
+            conn=object(),
+            player=None,
+            cast_outcome=outcome,
         )
 
         assert summary["resolved"] is False
@@ -477,7 +491,14 @@ class TestResolveAbilityPacket:
         outcome = AbilityCastOutcome()
 
         summary = await _resolve_ability_packet(
-            session, attacker, decl, cast_resolver=cast_resolver, conn=object(), player=None, cast_outcome=outcome
+            session,
+            attacker,
+            decl,
+            state=None,
+            cast_resolver=cast_resolver,
+            conn=object(),
+            player=None,
+            cast_outcome=outcome,
         )
 
         assert summary["resolved"] is False

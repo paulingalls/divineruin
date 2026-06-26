@@ -8,10 +8,8 @@ persists it, then returns an effect + narration_cue + audio_cue packet for the D
 to voice. The M3.1 rules engine (resonance.calculate_resonance_generated) is the
 fallback only when a spell carries no entry for its source. Cantrips (focus_cost 0)
 cost no Focus, generate 0 Resonance, and scale their damage via
-leveling.cantrip_damage_dice(level).
-
-get_spell_info is a read-only lookup returning the full catalog data for a spell so
-the DM can describe it before casting.
+leveling.cantrip_damage_dice(level). The read-only get_spell_info lookup lives in
+spell_info_tools (it spends nothing and opens no transaction).
 
 Resonance stays hidden from the player (CLAUDE.md golden rule #3, spec magic.md:98):
 the packet carries the qualitative `state` (stable/flickering/overreach) and the
@@ -47,15 +45,18 @@ race+source alone — terrain gating is deferred, not modelled here.
 import inspect
 import json
 import logging
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import cast
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import ability_persistence
+import condition_produce
+import conditions
 import db
 import db_mutations_concentration
+import db_mutations_conditions
 import db_mutations_resonance
 import db_queries
 import dice
@@ -78,32 +79,6 @@ logger = logging.getLogger("divineruin.tools")
 # Default terrain for resonance generation. Only consulted for PRIMAL non-cantrips
 # (see module docstring); a real location->terrain map is M3.4 work.
 _DEFAULT_TERRAIN = "normal"
-
-
-@function_tool()
-async def get_spell_info(
-    context: RunContext[SessionData],
-    spell_id: str,
-) -> str:
-    """Look up the full details of a spell by its id (e.g. 'arcane_bolt').
-    Call when the player or DM needs a spell's cost, source, tier, mechanics, or
-    narration before casting. Read-only — does not cast or spend anything. Returns
-    the spell's full catalog data as JSON; raises if the spell id is unknown."""
-    return await _get_spell_info_impl(context, spell_id)
-
-
-async def _get_spell_info_impl(
-    context: RunContext[SessionData],
-    spell_id: str,
-    *,
-    spells_mod=spells,
-) -> str:
-    _validate_id(spell_id, "spell_id")
-    try:
-        spell = spells_mod.get_spell(spell_id)
-    except ValueError as e:
-        raise ToolError(str(e)) from e
-    return json.dumps(asdict(spell))
 
 
 # Sentinel for CastResult.concentration_spell_id: a non-concentration cast never touches
@@ -178,6 +153,7 @@ async def cast_spell(
     context: RunContext[SessionData],
     spell_id: str,
     target_id: str | None = None,
+    target_ids: list[str] | None = None,
 ) -> str:
     """Cast a spell by its id (e.g. 'arcane_bolt'). Call when the caster casts a
     known spell. Validates and deducts the spell's Focus cost (rejecting if the
@@ -186,10 +162,14 @@ async def cast_spell(
     Resonance state and its combat modifiers. Cantrips are free and scale damage
     with level — the packet's damage_dice carries the scaled dice.
 
-    Pass target_id when the spell is aimed at another entity — a fallen corpse for
+    Pass target_id when the spell is aimed at a single entity — a fallen corpse for
     a revival spell, an ally to buff, an object or area. Omit it (the default) for
-    a self-cast. A revival spell is refused if its target is Hollow-killed."""
-    return await _cast_spell_impl(context, spell_id, target_id=target_id)
+    a self-cast. A revival spell is refused if its target is Hollow-killed.
+
+    Pass target_ids (a list) when a multi-target spell names several allies at once —
+    e.g. Bless on up to three companions. The spell's own cap is enforced (too many
+    is refused). When a spell allows multiple, prefer target_ids over target_id."""
+    return await _cast_spell_impl(context, spell_id, target_id=target_id, target_ids=target_ids)
 
 
 async def _cast_spell_impl(
@@ -197,6 +177,7 @@ async def _cast_spell_impl(
     spell_id: str,
     *,
     target_id: str | None = None,
+    target_ids: list[str] | None = None,
     db_mod=db,
     queries_mod=db_queries,
     persistence_mod=ability_persistence,
@@ -212,6 +193,9 @@ async def _cast_spell_impl(
     racial_mod=racial_resonance,
     vaelti_warning_mod=vaelti_echo_warning,
     concentration_mutations_mod=db_mutations_concentration,
+    conditions_mod=conditions,
+    conditions_mutations_mod=db_mutations_conditions,
+    condition_produce_mod=condition_produce,
 ) -> str:
     """Out-of-combat cast entry. Opens its own transaction, delegates the cast to the shared
     ``_resolve_cast`` core, then syncs the in-memory SSOT and flushes the deferred events
@@ -227,6 +211,7 @@ async def _cast_spell_impl(
             spell_id,
             conn=conn,
             target_id=target_id,
+            target_ids=target_ids,
             queries_mod=queries_mod,
             persistence_mod=persistence_mod,
             resonance_mutations_mod=resonance_mutations_mod,
@@ -241,6 +226,9 @@ async def _cast_spell_impl(
             racial_mod=racial_mod,
             vaelti_warning_mod=vaelti_warning_mod,
             concentration_mutations_mod=concentration_mutations_mod,
+            conditions_mod=conditions_mod,
+            conditions_mutations_mod=conditions_mutations_mod,
+            condition_produce_mod=condition_produce_mod,
         )
 
     # Transaction committed cleanly — sync the in-memory SSOT to the persisted values, then release
@@ -260,6 +248,7 @@ async def _resolve_cast(
     *,
     conn,
     target_id: str | None = None,
+    target_ids: list[str] | None = None,
     player: dict | None = None,
     suppress_resonance_changed: bool = False,
     queries_mod=db_queries,
@@ -276,6 +265,9 @@ async def _resolve_cast(
     racial_mod=racial_resonance,
     vaelti_warning_mod=vaelti_echo_warning,
     concentration_mutations_mod=db_mutations_concentration,
+    conditions_mod=conditions,
+    conditions_mutations_mod=db_mutations_conditions,
+    condition_produce_mod=condition_produce,
 ) -> CastResult:
     """Resolve ONE cast against the DB using the caller's ``conn`` (opens no transaction of its own),
     shared by ``cast_spell`` (out-of-combat) and the in-combat ABILITY packet (story-007).
@@ -295,6 +287,9 @@ async def _resolve_cast(
     # out-of-combat cast and the in-combat ABILITY path are guarded once (concern 8816cdffb757).
     if target_id is not None:
         _validate_id(target_id, "target_id")
+    if target_ids is not None:
+        for tid in target_ids:
+            _validate_id(tid, "target_id")
     player_id = session.player_id
 
     if player is None:
@@ -324,6 +319,16 @@ async def _resolve_cast(
     # nothing (AC1 out-of-combat; in combat the phase pre-validates this same gate before the loop so
     # nothing else is clobbered). Cantrips (focus_cost 0) always pass.
     spell = _gate_spell(player, spell_id, spells_mod=spells_mod)
+    # Multi-target normalization + cap (M4.8 story-007): reject both-args / empty / over-cap and
+    # dedup BEFORE any Focus/Resonance write, so an invalid cast deducts nothing (same gate-first rule
+    # as affordability). normalize_target_list is the targeting SSOT; convert its ValueError to a
+    # DM-narratable ToolError. Rejecting an uncapped (single-target-only) spell here also closes the
+    # revival Hollow-gate bypass — a revival spell has no max_targets, so target_ids on it is refused.
+    if target_ids is not None:
+        try:
+            target_ids = spells_mod.normalize_target_list(spell, target_id, target_ids)
+        except ValueError as e:
+            raise ToolError(str(e)) from e
     current_focus = (player.get("focus") or {}).get("current", 0)
 
     # Resonance generated by this cast. The catalog's designed per-spell value is the SSOT (decision
@@ -449,6 +454,32 @@ async def _resolve_cast(
     # damage in `mechanics`, so no scaled dice for them.
     if spell.spell_tier == "cantrip":
         packet["damage_dice"] = leveling_mod.cantrip_damage_dice(player.get("level", 1))
+
+    # Beneficial-condition producer (M4.8 story-004/005/007). In combat the participant is the SSOT
+    # (combat_ability applies on the working state); OOC the shared condition_produce helper lands the
+    # condition on each resolved target's players.data, AFTER the Focus/Resonance/revivify gates so a
+    # refused cast produces nothing. condition_applied surfaces iff >=1 target voiced; condition_targets
+    # names the blessed allies on the multi-target path for audio-first per-ally narration.
+    if spell.applies_condition is not None:
+        if session.in_combat:
+            packet["condition_applied"] = spell.applies_condition  # combat applies + confirms on the participant
+        else:
+            voiced = await condition_produce_mod.produce_ooc_condition(
+                spell.applies_condition,
+                spell_id,
+                target_id=target_id,
+                target_ids=target_ids,
+                caster_row=player,
+                caster_id=player_id,
+                conn=conn,
+                queries_mod=queries_mod,
+                conditions_mod=conditions_mod,
+                conditions_mutations_mod=conditions_mutations_mod,
+            )
+            if voiced:
+                packet["condition_applied"] = spell.applies_condition
+                if target_ids is not None:
+                    packet["condition_targets"] = voiced
 
     return CastResult(
         packet=packet,

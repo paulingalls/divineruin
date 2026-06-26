@@ -259,7 +259,10 @@ Beat 3 — Narration. Now narrate the returned packets in initiative order as on
 flowing scene, reading each packet's target_hp_status and narrative_hint. Never reveal exact \
 HP numbers: "bloodied" means visibly wounded, "critical" means barely standing, \
 "fallen" means unconscious at 0 HP. When concentration_broken names a spell, narrate \
-it guttering out. The engine decides what is dramatic: any packet whose "dramatic" \
+it guttering out. When a packet carries condition_applied, a boon landed — voice it on \
+the buffed ally (a Blessed or Inspired glow), and when condition_targets lists several \
+allies, name EACH so every buffed companion is heard, never left silent on the sheet. \
+The engine decides what is dramatic: any packet whose "dramatic" \
 flag is true (a critical hit, a killing blow, the opening strike, the last enemy \
 falling, or a death save) earns the dice — build tension, pause for the dramatic \
 dice, then land the reveal. "You swing with everything—" then the pause, then \

@@ -16,13 +16,17 @@ import combat_enhancers
 import combat_resolution
 import conditions
 import spell_casting
+import spells
 from combat_ability import (
     AbilityCastOutcome,
     _attach_riders,
     _find_action,
+    _gate_ability_condition,
     _gate_deescalation,
+    _resolve_ability_condition_packet,
     _resolve_ability_packet,
     _resolve_deescalation_packet,
+    condition_ability,
 )
 from combat_support import _resolve_attack_packet
 from declarations import DeclarationType
@@ -50,7 +54,10 @@ def _resolve_tick_saves(state, tick_conditions_due, save_resolver):
         # The catalog's tick_save is the 3-letter abbreviation ("wis"); resolve_saving_throw
         # validates against the full attribute name ("wisdom"), so expand before resolving.
         save_type = check_resolution._ATTR_FULL.get(event["save"], event["save"])
-        result = save_resolver.resolve_saving_throw(player_data, save_type, _CONDITION_CLEAR_DC, event["type"])
+        # Engine-auto tick-clear save: never spends the actor's beneficial +1d4 (M4.8 story-003).
+        result = save_resolver.resolve_saving_throw(
+            player_data, save_type, _CONDITION_CLEAR_DC, event["type"], bonus_dice_eligible=False
+        )
         if result.success:
             actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
 
@@ -64,26 +71,47 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
     player for_update ONCE (the cast reuses the returned row, so the lock is taken a single time), and
     returns it — or None when no player ability was declared (the common all-attacks phase locks
     nothing). Non-player abilities are wasted downstream, so they are not gated here."""
-    player_abilities = [
-        p.declaration.action
+    player_ability_decls = [
+        p.declaration
         for p in adv.packets
         if p.declaration.type is DeclarationType.ABILITY
         and p.declaration.action
         and (actor := state.get_participant(p.actor_id)) is not None
         and actor.type == "player"
     ]
-    if not player_abilities:
+    if not player_ability_decls:
         return None
     player = await queries.get_player(session.player_id, conn=conn, for_update=True)
     if player is None:
         raise ToolError(f"Unknown player: {session.player_id}")
-    for action in player_abilities:
-        # De-escalate (M4.6a story-004) is an ABILITY but not a spell — gate its 3-Focus cost
-        # and once-per-encounter lockout here, not through _gate_spell (which looks up a spell).
+    for decl in player_ability_decls:
+        action = decl.action
+        # Three non-spell-vs-spell ABILITY gates (pre-resolution, no writes): de_escalate (M4.6a)
+        # has its own Focus+lockout gate; a non-spell condition ability (M4.8 story-005, e.g.
+        # bard_inspire) gates its catalog Stamina/Focus; everything else is a spell-backed ability
+        # gated against the spell catalog. _gate_spell would raise "Unknown spell" for the first two.
         if action.lower() == "de_escalate":
             _gate_deescalation(player, state)
+        elif (cond_ability := condition_ability(action)) is not None:
+            _gate_ability_condition(player, cond_ability)
+            # Multi-target cap (M4.8 story-016): reject an over-cap / malformed multi-target ability
+            # (e.g. bard_mass_inspire) HERE, before resolution writes — reusing the SAME targeting
+            # SSOT the spell branch uses (normalize_target_list accepts Spell | Ability).
+            if decl.target_ids:
+                try:
+                    spells.normalize_target_list(cond_ability, decl.target_id, decl.target_ids)
+                except ValueError as e:
+                    raise ToolError(str(e)) from e
         else:
-            cast_resolver._gate_spell(player, action)
+            spell = cast_resolver._gate_spell(player, action)
+            # Multi-target cap (M4.8 story-012): reject an over-cap / malformed multi-target spell
+            # declaration HERE, before the resolution loop writes anything — reusing the targeting
+            # SSOT. Spell-aware, so it belongs with the Focus gate, not in pure resolve_declaration.
+            if decl.target_ids:
+                try:
+                    spells.normalize_target_list(spell, decl.target_id, decl.target_ids)
+                except ValueError as e:
+                    raise ToolError(str(e)) from e
     return player
 
 
@@ -135,10 +163,19 @@ async def _resolve_one_packet(
             return await _resolve_deescalation_packet(
                 session, attacker, decl, state=state, conn=conn, player=player, sink=sink
             )
+        # A non-spell condition ability (M4.8 story-005, e.g. bard_inspire) resolves via the dedicated
+        # ability-condition path — deduct its cost and land the condition on the target participant —
+        # NOT through _resolve_ability_packet (which casts a spell). Pre-gated in _prevalidate_ability_focus.
+        cond_ability = condition_ability(decl.action)
+        if cond_ability is not None:
+            return await _resolve_ability_condition_packet(
+                session, attacker, decl, cond_ability, state=state, conn=conn, player=player
+            )
         return await _resolve_ability_packet(
             session,
             attacker,
             decl,
+            state=state,
             cast_resolver=cast_resolver,
             conn=conn,
             player=player,
@@ -190,10 +227,18 @@ async def _resolve_one_packet(
             queries=queries,
             resolver=resolver,
             concentration_break_mod=concentration_break_mod,
+            combat_state=state,
             conn=conn,
             sink=sink,
         )
         attack_summaries.append(sub)
+        # Consume the single-use beneficial die ONCE per declaration (M4.8 story-003): the swing
+        # that rolled it signals consumed_conditions; remove them from the attacker so the next
+        # swing of an expanded sequence sees a clean attacker and rolls no die. The first
+        # consuming swing's removal makes every later swing's consumed_conditions empty, so this
+        # fires at most once. Rides the phase's save_combat_state (no extra persist).
+        if sub.get("consumed_conditions"):
+            attacker.conditions = conditions.remove_conditions(attacker.conditions, sub["consumed_conditions"])
         # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
         # per-encounter weapon-durability accrual that end_combat applies. Only the extra
         # crit-vs-heavy-armor cost (2 hits) is gated on a critical hit landing.
