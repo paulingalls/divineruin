@@ -10,25 +10,23 @@ imports the three leaf tools at top level, so the leaves importing back would cy
 
 import asyncpg
 
-import conditions
 import db_mutations_conditions
 
 
 async def consume_beneficial_conditions(
     player_id: str,
-    player: dict,
     consumed: tuple[str, ...],
     conditions_mutations=db_mutations_conditions,
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
-    """Remove the beneficial conditions a roll consumed and persist the new list (M4.8 story-003).
+    """Remove the beneficial conditions a roll consumed, atomically (M4.8 story-003/013).
 
     No-op when nothing was consumed. ``conn`` threads an open transaction so the removal commits
     atomically with a sibling write (the skill tool's tier-advancement, gather's node depletion);
-    the save tool passes none (its only write). Reads the player's current conditions off the
-    already-fetched row."""
+    the save tool passes none (its only write). The removal is server-side (no read-modify-write of
+    a stale row) so a condition applied concurrently — e.g. the DM background loop landing Poisoned —
+    is never clobbered."""
     if not consumed:
         return
-    new_conditions = conditions.remove_conditions(player.get("conditions") or [], consumed)
-    await conditions_mutations.save_player_conditions(player_id, new_conditions, conn=conn)
+    await conditions_mutations.remove_player_conditions(player_id, consumed, conn=conn)

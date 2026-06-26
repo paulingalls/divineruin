@@ -64,3 +64,45 @@ async def save_player_conditions(
         player_id,
         json.dumps(conditions),
     )
+
+
+# The "drop every element whose type is in the set" contract is shared with the pure-Python SSOT
+# conditions.remove_conditions (conditions.py); keep the two in sync. This server-side variant exists
+# so the beneficial-die consume never read-modify-writes: it filters the LIVE row in one atomic
+# statement, so a condition added concurrently (e.g. a DM-applied Poisoned) is not clobbered (M4.8
+# story-013). jsonb_typeof guards the JSON-null/absent conditions case (a documented stored state) —
+# jsonb_array_elements would raise "cannot extract elements from a scalar" otherwise.
+_REMOVE_CONDITIONS_SQL = """
+UPDATE players
+SET data = jsonb_set(
+    data,
+    '{conditions}',
+    COALESCE(
+        (
+            SELECT jsonb_agg(elem)
+            FROM jsonb_array_elements(data->'conditions') AS elem
+            WHERE NOT (elem->>'type' = ANY($2::text[]))
+        ),
+        '[]'::jsonb
+    )
+)
+WHERE player_id = $1
+  AND jsonb_typeof(data->'conditions') = 'array'
+"""
+
+
+async def remove_player_conditions(
+    player_id: str,
+    types: tuple[str, ...],
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> None:
+    """Atomically remove every condition whose ``type`` is in ``types`` from players.data {conditions}.
+
+    One server-side statement, no read-modify-write — so a concurrent condition write is preserved
+    (M4.8 story-013, the consume-side race fix). No-op when ``types`` is empty, or when the row has no
+    array conditions (the ``jsonb_typeof = 'array'`` guard tolerates a JSON-null/absent key)."""
+    if not types:
+        return
+    _conn = conn or await db.get_pool()
+    await _conn.execute(_REMOVE_CONDITIONS_SQL, player_id, list(types))
