@@ -117,8 +117,6 @@ async def _check_discover_impl(
     # revealed per roll, so its id stays an OUTPUT (never an input) per §7.
     element = min(candidates, key=lambda e: e.get("dc", 13))
     dc = element.get("dc", 13)
-    # Block re-rolling THIS element this session (keyed on the element, not the target).
-    session.attempted_discoveries.add(f"{skill_lower}:{element.get('id')}")
 
     result = check_resolution.resolve_skill_check_dc(player, skill_lower, dc)
 
@@ -166,6 +164,14 @@ async def _check_discover_impl(
         if result.success:
             await mutations.set_player_flag(session.player_id, f"{element_id}.discovered", True)
         await consume_beneficial_conditions(session.player_id, result.consumed_conditions, conditions_mutations)
+
+    # Block re-rolling THIS element this session (keyed on the element, not the target) — added only
+    # AFTER the persist above succeeds (story-014): if a write raised, the exception propagates before
+    # this line, so a rolled-back discovery flag leaves the element re-attemptable instead of locked
+    # out until next session. A failed attempt (no success flag; consume is a no-op unless a bonus
+    # die was spent on the d20) still reaches here when its writes succeed, so a miss still spends
+    # the session attempt.
+    session.attempted_discoveries.add(f"{skill_lower}:{element_id}")
 
     if result.success:
         response["element_id"] = element_id
