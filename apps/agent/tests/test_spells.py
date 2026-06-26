@@ -29,6 +29,7 @@ from spells import (
     get_spells_by_source,
     is_loaded,
     load_spells,
+    normalize_target_list,
     parse_spell_row,
     set_spells,
     validate_target_count,
@@ -136,6 +137,46 @@ def test_validate_target_count_no_cap_is_noop():
     # A spell with no max_targets imposes no limit.
     spell = parse_spell_row(_FIREBALL_ROW["id"], _FIREBALL_ROW)
     validate_target_count(spell, ["a", "b", "c", "d", "e"])  # no raise
+
+
+def _capped(max_targets: int = 3):
+    return parse_spell_row("divine_bless", {**_BLESS_ROW, "max_targets": max_targets})
+
+
+def test_normalize_target_list_dedups_order_preserving():
+    assert normalize_target_list(_capped(), None, ["a", "b", "a", "c", "b"]) == ["a", "b", "c"]
+
+
+def test_normalize_target_list_rejects_both_args():
+    with pytest.raises(ValueError, match="not both"):
+        normalize_target_list(_capped(), "a", ["b"])
+
+
+def test_normalize_target_list_rejects_empty():
+    with pytest.raises(ValueError, match="at least one ally"):
+        normalize_target_list(_capped(), None, [])
+
+
+def test_normalize_target_list_rejects_all_dupes_collapsing_to_empty():
+    # Dedup runs before the empty check, but a non-empty input can't collapse to empty;
+    # an empty list is the only empty case — guarded above. Dupes that collapse to one still pass.
+    assert normalize_target_list(_capped(), None, ["a", "a"]) == ["a"]
+
+
+def test_normalize_target_list_rejects_uncapped_spell():
+    uncapped = parse_spell_row(_FIREBALL_ROW["id"], _FIREBALL_ROW)
+    with pytest.raises(ValueError, match="does not support multiple targets"):
+        normalize_target_list(uncapped, None, ["a"])
+
+
+def test_normalize_target_list_dedups_before_cap():
+    # 4 ids collapsing to 3 pass a cap of 3 (dedup precedes the count check).
+    assert normalize_target_list(_capped(3), None, ["a", "b", "c", "a"]) == ["a", "b", "c"]
+
+
+def test_normalize_target_list_enforces_cap_after_dedup():
+    with pytest.raises(ValueError, match="at most 3"):
+        normalize_target_list(_capped(3), None, ["a", "b", "c", "d"])
 
 
 @pytest.mark.parametrize("missing", _M33_FIELDS)

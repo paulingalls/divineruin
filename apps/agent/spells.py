@@ -144,6 +144,25 @@ def validate_target_count(spell: Spell, target_ids: list[str]) -> None:
         raise ValueError(f"spell {spell.id!r} targets at most {spell.max_targets} (got {len(target_ids)})")
 
 
+def normalize_target_list(spell: Spell, target_id: str | None, target_ids: list[str]) -> list[str]:
+    """Normalize + validate a multi-target cast's ally list (M4.8 story-007) — the targeting SSOT.
+
+    Order, all BEFORE any resource write: reject ambiguous both-args -> order-preserving dedup ->
+    reject empty -> reject a spell with no ``max_targets`` (single-target only; this also closes the
+    revival Hollow-gate bypass) -> enforce the cap. Raises ValueError (the tool boundary converts to a
+    DM-narratable ToolError) so an invalid cast is refused before Focus/Resonance is touched. Returns
+    the deduped list to apply."""
+    if target_id is not None:
+        raise ValueError("pass target_id OR target_ids, not both")
+    deduped = list(dict.fromkeys(target_ids))
+    if not deduped:
+        raise ValueError("name at least one ally")
+    if spell.max_targets is None:
+        raise ValueError(f"{spell.name} does not support multiple targets")
+    validate_target_count(spell, deduped)
+    return deduped
+
+
 def set_spells(config: dict[str, Spell]) -> None:
     """Test seam: populate _spells directly without going through the DB."""
     _spells.clear()

@@ -55,8 +55,12 @@ async def _cast_ooc_multi(spell, *, caster, target_id=None, target_ids=None, row
     persistence = MagicMock(update_player_resources=AsyncMock())
     res_mut = MagicMock(update_player_resonance=AsyncMock())
     events = MagicMock(publish_resonance_changed=AsyncMock())
-    # Wire the REAL cap validator into the mocked catalog so the over-cap path exercises real logic.
-    spells_mod = MagicMock(get_spell=MagicMock(return_value=spell), validate_target_count=spells.validate_target_count)
+    # Wire the REAL targeting validators into the mocked catalog so the gate paths exercise real logic.
+    spells_mod = MagicMock(
+        get_spell=MagicMock(return_value=spell),
+        validate_target_count=spells.validate_target_count,
+        normalize_target_list=spells.normalize_target_list,
+    )
     cond_mut = MagicMock(save_player_conditions=AsyncMock())
     raw = await spell_casting._cast_spell_impl(
         ctx,
@@ -123,3 +127,85 @@ async def test_ooc_mix_nonplayer_narrates_player_persists():
     assert packet["condition_applied"] == "blessed"  # landed on >=1 target
     cond_mut.save_player_conditions.assert_awaited_once()  # only the player ally persisted
     assert cond_mut.save_player_conditions.await_args.args[0] == "ally_1"
+
+
+@pytest.mark.asyncio
+async def test_ooc_multi_target_packet_names_voiced_allies():
+    # Per-target identity: the multi-target packet lists the blessed ally ids so the DM names each one.
+    rows = {f"ally_{i}": _caster(f"ally_{i}", conditions_list=[]) for i in (1, 2, 3)}
+    packet, _cm, _gp = await _cast_ooc_multi(
+        _bless3(), caster=_caster(), target_ids=["ally_1", "ally_2", "ally_3"], rows=rows
+    )
+    assert packet["condition_targets"] == ["ally_1", "ally_2", "ally_3"]
+
+
+@pytest.mark.asyncio
+async def test_ooc_single_target_has_no_condition_targets_key():
+    # The single-target path keeps its shape — condition_targets is multi-target-only.
+    ally = _caster("ally_2", conditions_list=[])
+    packet, _cm, _gp = await _cast_ooc_multi(_bless3(), caster=_caster(), target_id="ally_2", rows={"ally_2": ally})
+    assert "condition_targets" not in packet
+    assert packet["target_id"] == "ally_2"
+
+
+@pytest.mark.asyncio
+async def test_ooc_both_target_args_rejected():
+    # Ambiguous both-args -> ToolError before any write (gate-first), nothing persisted.
+    ally = _caster("ally_1", conditions_list=[])
+    with pytest.raises(ToolError, match="not both"):
+        await _cast_ooc_multi(
+            _bless3(), caster=_caster(), target_id="ally_1", target_ids=["ally_1"], rows={"ally_1": ally}
+        )
+
+
+@pytest.mark.asyncio
+async def test_ooc_empty_target_ids_rejected_no_self_cast():
+    # target_ids=[] must NOT silently self-cast — it raises (name at least one ally).
+    with pytest.raises(ToolError, match="at least one ally"):
+        await _cast_ooc_multi(_bless3(), caster=_caster(), target_ids=[])
+
+
+@pytest.mark.asyncio
+async def test_ooc_all_duplicate_targets_collapsing_to_one_persist():
+    # Dedup is order-preserving and runs before the apply loop: 3 dupes -> ONE write, not three.
+    rows = {"ally_1": _caster("ally_1", conditions_list=[])}
+    packet, cond_mut, _gp = await _cast_ooc_multi(
+        _bless3(), caster=_caster(), target_ids=["ally_1", "ally_1", "ally_1"], rows=rows
+    )
+    assert packet["condition_applied"] == "blessed"
+    cond_mut.save_player_conditions.assert_awaited_once()  # deduped to a single target
+    assert packet["condition_targets"] == ["ally_1"]
+
+
+@pytest.mark.asyncio
+async def test_ooc_dupes_do_not_consume_the_cap():
+    # Dedup happens BEFORE the cap check: 4 ids that dedup to 3 must pass a cap of 3.
+    rows = {f"ally_{i}": _caster(f"ally_{i}", conditions_list=[]) for i in (1, 2, 3)}
+    packet, cond_mut, _gp = await _cast_ooc_multi(
+        _bless3(), caster=_caster(), target_ids=["ally_1", "ally_2", "ally_3", "ally_1"], rows=rows
+    )
+    assert packet["condition_targets"] == ["ally_1", "ally_2", "ally_3"]
+    assert cond_mut.save_player_conditions.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_ooc_target_ids_on_uncapped_spell_rejected():
+    # A spell with no max_targets is single-target only: target_ids is refused (closes the revival
+    # Hollow-gate bypass — revival spells have no max_targets, so multi-target on them is rejected).
+    uncapped = Spell(
+        id="divine_revivify",
+        name="Revivify",
+        source="divine",
+        spell_tier="minor",
+        focus_cost=0,
+        mechanics="Restore a fallen ally.",
+        narration_cue="Breath returns.",
+        audio_cue="",
+        resonance_by_source={"divine": 0},
+        terrain_effects={},
+        concentration=False,
+        applies_condition="blessed",
+        max_targets=None,
+    )
+    with pytest.raises(ToolError, match="does not support multiple targets"):
+        await _cast_ooc_multi(uncapped, caster=_caster(), target_ids=["ally_1"], rows={"ally_1": _caster("ally_1")})

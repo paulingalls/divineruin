@@ -18,7 +18,8 @@ from livekit.agents.llm import ToolError
 from racial_resonance_config_fixture import load_fixture_config
 from sample_fixtures import make_context, make_db_mod
 
-from spell_casting import _cast_spell_impl, _get_spell_info_impl
+from spell_casting import _cast_spell_impl
+from spell_info_tools import _get_spell_info_impl
 from spells import Spell, SpellSource, SpellTier
 
 
