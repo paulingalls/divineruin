@@ -58,6 +58,10 @@ class Ability:
     # or None for an ability that applies no condition. Optional + forward-compatible: existing rows
     # omit it. When present, parse_ability_row fail-louds an unknown type against CONDITION_CATALOG.
     applies_condition: str | None = None
+    # M4.8 story-016: max ally count for a multi-target condition ability (e.g. bard_mass_inspire).
+    # None = single-target only (the same contract as spells.Spell.max_targets, shared via the
+    # normalize_target_list targeting SSOT). A positive int caps the party-wide buff.
+    max_targets: int | None = None
 
 
 # Module-level runtime-loaded abilities, keyed by ability id. Populated by
@@ -100,6 +104,13 @@ def parse_ability_row(ability_id: str, data: dict) -> Ability:
         applies_condition = data.get("applies_condition")
         if applies_condition is not None and applies_condition not in conditions.CONDITION_CATALOG:
             raise ValueError(f"ability {ability_id!r} applies_condition {applies_condition!r} is not a known condition")
+        # Multi-target cap (M4.8 story-016): same validation as spells.parse_spell_row — a positive
+        # int or None (single-target). Rejects 0/negative/bool so a bad cap fails at load.
+        max_targets = data.get("max_targets")
+        if max_targets is not None and (
+            isinstance(max_targets, bool) or not isinstance(max_targets, int) or max_targets < 1
+        ):
+            raise ValueError(f"ability {ability_id!r} max_targets {max_targets!r} must be a positive int")
         return Ability(
             id=ability_id,
             archetype_id=data["archetype_id"],
@@ -111,6 +122,7 @@ def parse_ability_row(ability_id: str, data: dict) -> Ability:
             narration_cue=data["narration_cue"],
             spell_id=data.get("spell_id"),
             applies_condition=applies_condition,
+            max_targets=max_targets,
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed archetype_abilities row {ability_id!r}: {e}") from e

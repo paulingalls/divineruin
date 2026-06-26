@@ -971,7 +971,9 @@
     "level_requirement": 9,
     "cost": { "stamina": 0, "focus": 5, "scaling": null },
     "effect": "Grant Inspiration to the whole party. The Bard's supreme support moment.",
-    "narration_cue": "A soaring refrain lifts every heart in earshot."
+    "narration_cue": "A soaring refrain lifts every heart in earshot.",
+    "applies_condition": "inspired",
+    "max_targets": 6
   },
   {
     "id": "bard_dissonant_whisper",

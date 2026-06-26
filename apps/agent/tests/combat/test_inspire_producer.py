@@ -253,6 +253,88 @@ async def test_incombat_fallen_target_wastes_without_deducting():
     assert not [c for c in ally.conditions if c["type"] == "inspired"]
 
 
+# --- Group D (story-016): multi-target ability-condition path (bard_mass_inspire) ---
+
+
+def _mass_inspire_ability(max_targets: int | None = 6) -> Ability:
+    """A bard_mass_inspire Ability: party-wide Inspire, capped via the targeting SSOT."""
+    return Ability(
+        id="bard_mass_inspire",
+        archetype_id="bard",
+        name="Mass Inspire",
+        ability_type="core",
+        level_requirement=9,
+        cost=Cost(stamina=0, focus=5, scaling=None),
+        effect="Grant Inspiration to the whole party.",
+        narration_cue="every heart in earshot",
+        applies_condition="inspired",
+        max_targets=max_targets,
+    )
+
+
+def test_parse_carries_max_targets():
+    a = parse_ability_row("bard_mass_inspire", {**_INSPIRE_ROW, "id": "bard_mass_inspire", "max_targets": 6})
+    assert a.max_targets == 6
+    # Existing single-target rows default to None (unbounded/single-target).
+    assert parse_ability_row("bard_inspire", _INSPIRE_ROW).max_targets is None
+
+
+def test_parse_bad_max_targets_fails_loud():
+    with pytest.raises(ValueError, match="max_targets"):
+        parse_ability_row("bard_mass_inspire", {**_INSPIRE_ROW, "max_targets": 0})
+
+
+def test_normalize_target_list_caps_ability_targets():
+    # AC: the declare-gate caps a multi-target ability through the SAME normalize_target_list SSOT
+    # the spells use — it now accepts an Ability (Spell | Ability). Over-cap / both-args / empty / a
+    # single-target ability mass-targeted all raise (the gate converts ValueError -> ToolError).
+    import spells
+
+    capped = _mass_inspire_ability(max_targets=2)
+    assert spells.normalize_target_list(capped, None, ["a", "b"]) == ["a", "b"]  # at the cap: ok
+    with pytest.raises(ValueError, match="at most 2"):
+        spells.normalize_target_list(capped, None, ["a", "b", "c"])  # over cap
+    with pytest.raises(ValueError, match="not both"):
+        spells.normalize_target_list(capped, "a", ["b"])  # ambiguous both-args
+    with pytest.raises(ValueError, match="at least one"):
+        spells.normalize_target_list(capped, None, [])  # empty
+    with pytest.raises(ValueError, match="does not support multiple"):
+        spells.normalize_target_list(_inspire_ability(), None, ["a", "b"])  # single-target ability
+
+
+@pytest.mark.asyncio
+async def test_incombat_mass_inspire_lands_on_every_ally_and_voices_them():
+    # AC: a multi-target mass-inspire lands `inspired` on EACH targeted ally and the packet names
+    # all of them (condition_targets), exactly like multi-target Bless — cost deducted once.
+    import combat_ability
+    from declarations import Declaration, DeclarationType
+
+    caster = CombatParticipant(id="c1", name="Lyra", type="player", initiative=15, hp_current=25, hp_max=25, ac=14)
+    a1 = CombatParticipant(id="a1", name="A1", type="companion", initiative=12, hp_current=20, hp_max=20, ac=13)
+    a2 = CombatParticipant(id="a2", name="A2", type="companion", initiative=11, hp_current=20, hp_max=20, ac=13)
+    state = CombatState(combat_id="c_mass", participants=[caster, a1, a2], initiative_order=["c1", "a1", "a2"])
+    decl = Declaration(type=DeclarationType.ABILITY, action="bard_mass_inspire", target_ids=["a1", "a2"])
+    persistence = MagicMock(update_player_resources=AsyncMock())
+
+    summary = await combat_ability._resolve_ability_condition_packet(
+        SessionData(player_id="c1", location_id="accord_guild_hall", room=None),
+        caster,
+        decl,
+        _mass_inspire_ability(),
+        state=state,
+        conn=MagicMock(),
+        player=_bard("c1"),
+        persistence=persistence,
+    )
+
+    assert summary["resolved"] is True
+    assert summary["condition_applied"] == "inspired"
+    assert summary["condition_targets"] == ["a1", "a2"]
+    assert conditions.has_condition(a1.conditions, "inspired")
+    assert conditions.has_condition(a2.conditions, "inspired")
+    persistence.update_player_resources.assert_awaited_once()  # cost deducted exactly once
+
+
 # --- Group C (cont.): real-PG, real bard_inspire row ---
 
 

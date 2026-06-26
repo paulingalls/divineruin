@@ -27,10 +27,13 @@ preparation (story-006).
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Literal, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
 import conditions
 from catalog_parse import parse_int, parse_int_dict, parse_str
+
+if TYPE_CHECKING:
+    from abilities import Ability  # type-only: abilities.py imports spells, so never import at runtime
 
 logger = logging.getLogger("divineruin.spells")
 
@@ -133,10 +136,11 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
         raise ValueError(f"Malformed spells row {spell_id!r}: {e}") from e
 
 
-def validate_target_count(spell: Spell, target_ids: list[str]) -> None:
-    """Fail loud when a multi-target cast names more allies than the spell allows (M4.8 story-007).
+def validate_target_count(spell: "Spell | Ability", target_ids: list[str]) -> None:
+    """Fail loud when a multi-target cast names more allies than the spell/ability allows (M4.8
+    story-007; widened to abilities in story-016 — both carry .id/.name/.max_targets).
 
-    The single cap SSOT: no-op when the spell has no ``max_targets`` (unbounded/single-target).
+    The single cap SSOT: no-op when the action has no ``max_targets`` (unbounded/single-target).
     Raises ValueError (callers at the tool boundary convert to a DM-narratable ToolError) so an
     over-cap cast is rejected before any resource write. Reused unchanged by the in-combat path
     (story-012)."""
@@ -144,8 +148,9 @@ def validate_target_count(spell: Spell, target_ids: list[str]) -> None:
         raise ValueError(f"spell {spell.id!r} targets at most {spell.max_targets} (got {len(target_ids)})")
 
 
-def normalize_target_list(spell: Spell, target_id: str | None, target_ids: list[str]) -> list[str]:
+def normalize_target_list(spell: "Spell | Ability", target_id: str | None, target_ids: list[str]) -> list[str]:
     """Normalize + validate a multi-target cast's ally list (M4.8 story-007) — the targeting SSOT.
+    Accepts a Spell OR a condition-applying Ability (story-016): both expose .id/.name/.max_targets.
 
     Order, all BEFORE any resource write: reject ambiguous both-args -> order-preserving dedup ->
     reject empty -> reject a spell with no ``max_targets`` (single-target only; this also closes the

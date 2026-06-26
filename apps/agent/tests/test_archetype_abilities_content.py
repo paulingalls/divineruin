@@ -71,11 +71,12 @@ REQUIRED_KEYS = {
 # `cost` with `spell_id` and keep everything else.
 SPELL_BACKED_KEYS = (REQUIRED_KEYS - {"cost"}) | {"spell_id"}
 
-# Optional producer field (M4.8 story-005): a row that grants a beneficial condition carries
-# applies_condition (Python-agent-only — the TS server loader ignores it). Allowed on top of the
-# required set; the "no typo'd key" guarantee still holds (only this known optional is permitted
-# extra). parse_ability_row fail-louds an unknown condition value separately.
-OPTIONAL_KEYS = {"applies_condition"}
+# Optional producer fields (Python-agent-only — the TS server loader ignores them): a row that
+# grants a beneficial condition carries applies_condition (M4.8 story-005), and a multi-target
+# condition ability also carries max_targets (M4.8 story-016, e.g. bard_mass_inspire). Allowed on
+# top of the required set; the "no typo'd key" guarantee still holds (only these known optionals are
+# permitted extra). parse_ability_row fail-louds bad values separately.
+OPTIONAL_KEYS = {"applies_condition", "max_targets"}
 
 SPELLS_JSON = Path(__file__).resolve().parents[3] / "content" / "spells.json"
 
