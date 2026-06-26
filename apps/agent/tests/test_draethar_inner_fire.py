@@ -197,6 +197,41 @@ async def test_inner_fire_runs_concentration_break_on_self_damage():
     assert result["concentration_broken"] == "arcane_fly"
 
 
+async def test_inner_fire_persists_combat_state_after_concentration_condition_drop():
+    # story-006: a broken concentration spell that granted a condition strips it from the
+    # participants AFTER the self-damage save_combat_state. The impl must re-persist, or the
+    # dropped +1d4 reappears on the next combat_state reload (heal-by-crash for buffs).
+    ctx = _combat_ctx(resonance=9, hp_current=20)
+    session = ctx.userdata
+    session.combat_state.get_participant("player_1").conditions = [
+        {"type": "blessed", "duration": None, "source": "divine_bless", "stacks": 1}
+    ]
+    mock_db, queries, hp_mut, res_mut, res_events, dice_mod = _mocks(_player(), roll_total=4)
+
+    async def _strip_blessed(sess, _damage, *, incapacitated):
+        for p in sess.combat_state.participants:
+            p.conditions = [c for c in p.conditions if c["type"] != "blessed"]
+        return "divine_bless"
+
+    break_mod = MagicMock()
+    break_mod.break_concentration_on_damage = AsyncMock(side_effect=_strip_blessed)
+
+    await _inner_fire_impl(
+        ctx,
+        db_mod=mock_db,
+        queries_mod=queries,
+        hp_mutations_mod=hp_mut,
+        resonance_mutations_mod=res_mut,
+        resonance_events_mod=res_events,
+        dice_mod=dice_mod,
+        concentration_break_mod=break_mod,
+    )
+
+    # The LAST persisted state reflects the stripped condition (the post-break re-save).
+    last_state = hp_mut.save_combat_state.await_args.args[1]
+    assert last_state["participants"][0]["conditions"] == []
+
+
 async def test_inner_fire_self_damage_to_zero_passes_incapacitated():
     # Self-damage that drops the Draethar to 0 HP marks the break-check incapacitated.
     ctx = _combat_ctx(hp_current=3)

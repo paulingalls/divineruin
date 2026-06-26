@@ -108,6 +108,13 @@ async def _inner_fire_impl(
     concentration_broken = await concentration_break_mod.break_concentration_on_damage(
         session, fire_damage, incapacitated=new_hp <= 0
     )
+    if concentration_broken is not None:
+        # A broken concentration spell that granted a beneficial condition strips it from the
+        # in-combat participants (M4.8 story-006). That mutation lands AFTER the save_combat_state
+        # above, so re-persist — otherwise the dropped +1d4 reappears on the next combat_state
+        # reload. Only fires when concentration actually broke (rare); a no-condition spell makes
+        # this an idempotent re-write of the already-saved state.
+        await hp_mutations_mod.save_combat_state(session.combat_state.combat_id, session.combat_state.to_dict())
 
     return json.dumps(
         {
