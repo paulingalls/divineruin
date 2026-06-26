@@ -126,7 +126,7 @@ async def _check_gather_impl(
         # signalled conditions on the SAME tx connection, so the die-consume commits atomically
         # with the node depletion + inventory grant. No-op when nothing was consumed.
         await consume_beneficial_conditions(
-            session.player_id, player, roll.consumed_conditions, conditions_mutations, conn=conn
+            session.player_id, roll.consumed_conditions, conditions_mutations, conn=conn
         )
 
     success = result.result != "nothing"

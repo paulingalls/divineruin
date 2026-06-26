@@ -112,14 +112,14 @@ async def _check_social_impl(
                 npc_id, session.player_id, outcome.new_disposition, f"social_check: {skill_lower}", conn=conn
             )
             await consume_beneficial_conditions(
-                session.player_id, player, roll.consumed_conditions, conditions_mutations, conn=conn
+                session.player_id, roll.consumed_conditions, conditions_mutations, conn=conn
             )
     else:
         if shift:
             await mutations.set_npc_disposition(
                 npc_id, session.player_id, outcome.new_disposition, f"social_check: {skill_lower}"
             )
-        await consume_beneficial_conditions(session.player_id, player, roll.consumed_conditions, conditions_mutations)
+        await consume_beneficial_conditions(session.player_id, roll.consumed_conditions, conditions_mutations)
 
     if shift:
         await publish_game_event(

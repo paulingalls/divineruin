@@ -175,7 +175,7 @@ async def _check_skill_impl(
                 session.player_id, skill, counter_increment=1, conn=conn, queries=queries, mutations=mutations
             )
             await consume_beneficial_conditions(
-                session.player_id, player, result.consumed_conditions, conditions_mutations, conn=conn
+                session.player_id, result.consumed_conditions, conditions_mutations, conn=conn
             )
     else:
         adv = await skill_persistence.apply_skill_use_with_persistence(
@@ -252,7 +252,7 @@ async def _check_save_impl(
     # Consume the single-use beneficial die (M4.8 story-003): a player-initiated save spends Blessed/
     # Inspired's +1d4, so remove the signalled conditions and persist. One write (no competing
     # mutation here), so no transaction is needed.
-    await consume_beneficial_conditions(session.player_id, player, result.consumed_conditions, conditions_mutations)
+    await consume_beneficial_conditions(session.player_id, result.consumed_conditions, conditions_mutations)
 
     await publish_game_event(
         session.room,

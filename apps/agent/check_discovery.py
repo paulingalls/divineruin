@@ -160,12 +160,12 @@ async def _check_discover_impl(
         async with db_mod.transaction() as conn:
             await mutations.set_player_flag(session.player_id, f"{element_id}.discovered", True, conn=conn)
             await consume_beneficial_conditions(
-                session.player_id, player, result.consumed_conditions, conditions_mutations, conn=conn
+                session.player_id, result.consumed_conditions, conditions_mutations, conn=conn
             )
     else:
         if result.success:
             await mutations.set_player_flag(session.player_id, f"{element_id}.discovered", True)
-        await consume_beneficial_conditions(session.player_id, player, result.consumed_conditions, conditions_mutations)
+        await consume_beneficial_conditions(session.player_id, result.consumed_conditions, conditions_mutations)
 
     if result.success:
         response["element_id"] = element_id
