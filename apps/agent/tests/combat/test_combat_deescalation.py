@@ -17,6 +17,7 @@ from sample_fixtures import FixedRng
 from combat_ability import _gate_deescalation, _resolve_deescalation_packet
 from combat_phase import PhaseBeat, advance_combat_phase
 from combat_resolution import DeescalationOutcome, resolve_deescalation
+from conditions import apply_condition, has_condition
 from declarations import DeclarationType
 from tests.combat._helpers import _make_combat_state
 from tools._helpers import SAMPLE_PLAYER
@@ -198,3 +199,68 @@ class TestResolveDeescalationPacket:
         result, persistence = await _run(session, _DIPLOMAT, FixedRng(20))
         assert not result["resolved"]
         persistence.update_player_resources.assert_not_awaited()
+
+
+class TestDeescalationBeneficialDie:
+    """M4.8 story-011: de_escalate folds an Inspired ally's single-use +1d4 into its argument
+    check and must consume it EXACTLY ONCE, sourced from the in-combat SSOT (the participant),
+    not the stale DB row. FixedRng(9) is the argument boundary: base argument 12 (< hostile DC 21)
+    fails, but +1d4 makes it 21 and clears -> ends_combat flips True iff the die folds + is read
+    from the participant."""
+
+    async def _run_with(self, *, participant_conditions, db_row_conditions, rng):
+        session = _deescalation_session()
+        attacker = session.combat_state.get_participant("player_1")
+        attacker.conditions = participant_conditions
+        player = {**_DIPLOMAT, "conditions": db_row_conditions}
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
+        result = await _resolve_deescalation_packet(
+            session,
+            attacker,
+            _DECL,
+            state=session.combat_state,
+            conn=None,
+            player=player,
+            sink=None,
+            persistence=persistence,
+            rng=rng,
+        )
+        return result, attacker
+
+    @pytest.mark.asyncio
+    async def test_deescalate_inspired_on_participant_folds_and_is_consumed_once(self):
+        # The die is sourced from the participant (in-combat SSOT): +1d4 clears the DC -> combat
+        # ends, AND Inspired is removed from the participant exactly once (no permanent die).
+        result, attacker = await self._run_with(
+            participant_conditions=apply_condition([], "inspired"),
+            db_row_conditions=[],
+            rng=FixedRng(9),
+        )
+        assert result["deescalation"]["ends_combat"]
+        assert not has_condition(attacker.conditions, "inspired")
+
+    @pytest.mark.asyncio
+    async def test_deescalate_no_beneficial_condition_baseline_does_not_end(self):
+        # Same seed, no beneficial die: the bare argument (12) misses the hostile DC (21) -> combat
+        # continues, and the participant's conditions are untouched.
+        result, attacker = await self._run_with(
+            participant_conditions=[],
+            db_row_conditions=[],
+            rng=FixedRng(9),
+        )
+        assert not result["deescalation"]["ends_combat"]
+        assert attacker.conditions == []
+
+    @pytest.mark.asyncio
+    async def test_deescalate_stale_db_row_inspired_does_not_apply(self):
+        # Guards the double-dip fix: an Inspired present only on the stale DB row (not the
+        # participant) must NOT fold -> combat does not end, proving the die is read from the
+        # participant SSOT, not players.data.
+        result, attacker = await self._run_with(
+            participant_conditions=[],
+            db_row_conditions=apply_condition([], "inspired"),
+            rng=FixedRng(9),
+        )
+        assert not result["deescalation"]["ends_combat"]
+        assert attacker.conditions == []
