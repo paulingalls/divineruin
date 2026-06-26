@@ -89,9 +89,17 @@ async def _resolve_deescalation_packet(
     attrs = player.get("attributes", {})
     cha_total = dice_roll("d20", rng=rng).total + attribute_modifier(attrs.get("charisma", 10))
     enemy_wis_total = dice_roll("d20", rng=rng).total + attribute_modifier(lead.attributes.get("wisdom", 10))
-    argument_total = check_resolution.resolve_skill_check_dc(
-        player, "persuasion", combat_resolution.DEESCALATE_BASE_DC, rng
-    ).total
+    # Source the beneficial die (Inspired's +1d4) from the in-combat SSOT — the attacker
+    # participant's conditions — not the stale DB row, so an in-combat-applied Inspired folds and
+    # an OOC one cannot double-dip with a later attack swing (M4.8 story-011). Consume the signalled
+    # die ONCE off the participant (mirrors the attack path, combat_packet.py); the mutation rides
+    # the phase's save_combat_state, so there is no permanent +1d4.
+    argument = check_resolution.resolve_skill_check_dc(
+        {**player, "conditions": attacker.conditions}, "persuasion", combat_resolution.DEESCALATE_BASE_DC, rng
+    )
+    argument_total = argument.total
+    if argument.consumed_conditions:
+        attacker.conditions = conditions.remove_conditions(attacker.conditions, argument.consumed_conditions)
 
     outcome = combat_resolution.resolve_deescalation(
         cha_total=cha_total,
