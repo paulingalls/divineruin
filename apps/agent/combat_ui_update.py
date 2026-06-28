@@ -66,13 +66,12 @@ def build_combat_ui_update(state: CombatState) -> dict:
     Caller emits this at Beat-4 wrap post-tick — by which point
     advance_combat_phase has already transitioned `beat -> "declaration"`
     and incremented `round_number` for the round just entered, so the
-    packet's `phase` and `round` describe the NEW round (not the wrap
-    that just completed). `current_turn_index` has been reset to 0, so
-    `isActive` lights up the next-up actor.
+    packet's `round` describes the NEW round (not the wrap that just
+    completed). `current_turn_index` has been reset to 0, so `isActive`
+    lights up the next-up actor.
     """
     active_id = _active_id(state)
     return {
-        "phase": state.beat,
         "round": state.round_number,
         "combatants": [_project_combatant(p, active_id) for p in state.participants],
     }

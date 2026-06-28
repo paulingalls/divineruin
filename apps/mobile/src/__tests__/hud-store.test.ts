@@ -254,7 +254,6 @@ test("setQuestObjectiveVisible toggles visibility", () => {
 
 test("setCombatState sets combat tracker", () => {
   const combat: CombatTrackerState = {
-    phase: "player_turn",
     round: 2,
     combatants: [
       {
@@ -278,7 +277,7 @@ test("setCombatState sets combat tracker", () => {
 });
 
 test("clearCombatState clears combat", () => {
-  hudStore.getState().setCombatState({ phase: "init", round: 1, combatants: [] });
+  hudStore.getState().setCombatState({ round: 1, combatants: [] });
   hudStore.getState().clearCombatState();
   expect(hudStore.getState().combatState).toBeNull();
 });
@@ -343,7 +342,7 @@ test("reset clears everything", () => {
   hudStore.getState().pushOverlay("dice_result", {});
   hudStore.getState().addStatusEffect({ id: "e1", name: "Buff", category: "buff" });
   hudStore.getState().setActiveObjective({ questName: "Q", objective: "O", updatedAt: 0 });
-  hudStore.getState().setCombatState({ phase: "init", round: 1, combatants: [] });
+  hudStore.getState().setCombatState({ round: 1, combatants: [] });
   hudStore
     .getState()
     .setCreationCards([{ id: "c1", title: "T", description: "D", category: "cat" }]);
