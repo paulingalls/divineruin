@@ -388,12 +388,17 @@ class TestStartCombat:
             content=mock_content,
         )
 
-        # Should publish combat_started and play_sound events
-        assert room.local_participant.publish_data.call_count == 2
+        # Should publish combat_started, combat_ui_update (initial HUD push —
+        # M12 sprint-029 close fix, concern 4045481bfc3e), and play_sound.
+        assert room.local_participant.publish_data.call_count == 3
         calls = published_payloads(room)
         types = [c["type"] for c in calls]
         assert E.COMBAT_STARTED in types
+        assert E.COMBAT_UI_UPDATE in types
         assert E.PLAY_SOUND in types
+        # Ordering: COMBAT_STARTED → COMBAT_UI_UPDATE so mobile session.setCombat(true)
+        # latches before the tracker tries to render the initial packet.
+        assert types.index(E.COMBAT_STARTED) < types.index(E.COMBAT_UI_UPDATE)
 
     @pytest.mark.asyncio
     async def test_error_if_already_in_combat(self):

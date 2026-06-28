@@ -27,6 +27,19 @@ export const LOCATION_CHANGED = "location_changed" as const;
 // Combat
 export const COMBAT_STARTED = "combat_started" as const;
 export const COMBAT_ENDED = "combat_ended" as const;
+// Combat HUD condition + tracker push (M12) — mirrors apps/agent/event_types.py COMBAT_UI_UPDATE.
+// Emitted by the agent at Beat-4 wrap POST-tick (save-cleared conditions are absent) and ONLY when
+// combat does NOT end on the wrap (the terminal wrap path relies on COMBAT_ENDED +
+// hudStore.clearCombatState — a same-flush UI_UPDATE would flash state on then off). The packet
+// rides the buffered EventSink so a rolled-back phase tx publishes nothing.
+//   Packet: {phase, round, combatants:[{id, name, isAlly, hpCurrent, hpMax,
+//           conditions:[{type, stacks, source}], isActive}]}
+// `phase`/`round` reflect the NEW round (the agent's advance_combat_phase has already transitioned
+// the wrap into the next declaration beat and incremented round_number before the emit). `isActive`
+// marks initiative_order[current_turn_index] — the next-up actor. Conditions carry only
+// {type, stacks, source}; agent-side duration/stage stay server-side. parseCombatant + parseCondition
+// (game-event-handler.ts) implement the fail-soft defaults (isAlly default false, stacks default 1,
+// source default ""). Drift guards live in use-game-events.overlays.test.ts.
 export const COMBAT_UI_UPDATE = "combat_ui_update" as const;
 
 // Character
