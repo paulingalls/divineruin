@@ -22,6 +22,18 @@ LOCATION_CHANGED = "location_changed"
 # Combat
 COMBAT_STARTED = "combat_started"
 COMBAT_ENDED = "combat_ended"
+# Combat HUD condition + tracker push (M12 story-001) — emitted by combat_turn._resolve_phase_impl
+# at the Beat-4 wrap, POST-tick (save-cleared conditions are absent), only when combat does NOT end
+# on the wrap (the terminal wrap path relies on COMBAT_ENDED + hudStore.clearCombatState). The packet
+# is built by combat_ui_update.build_combat_ui_update and rides the buffered EventSink, so a
+# rolled-back phase tx publishes nothing.
+#   Packet: {phase, round, combatants:[{id, name, isAlly, hpCurrent, hpMax,
+#           conditions:[{type, stacks, source}], isActive}]}
+# `phase`/`round` reflect the NEW round (advance_combat_phase has already transitioned the wrap into
+# the next declaration beat and incremented round_number). `isActive=True` marks
+# initiative_order[current_turn_index] — the next-up actor. Conditions are projected to {type,
+# stacks, source} only (mobile parseCondition reads no more); duration/stage stay server-side.
+# Mirror const in apps/mobile/src/audio/event-types.ts (story-002 pins the TS docstring).
 COMBAT_UI_UPDATE = "combat_ui_update"
 
 # Character
