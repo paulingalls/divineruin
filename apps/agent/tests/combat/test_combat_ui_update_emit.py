@@ -17,12 +17,12 @@ project convention for resolve_phase tests.
 import json
 from unittest.mock import AsyncMock, MagicMock
 
-from combat._helpers import _damage_resolver
+from combat._helpers import _damage_resolver, _resolution_state
 
 import combat_turn
 import db_mutations
 import event_types as E
-from session_data import CombatParticipant, CombatState, SessionData
+from session_data import SessionData
 
 
 async def _seed_player(pool, player_id: str) -> None:
@@ -31,44 +31,6 @@ async def _seed_player(pool, player_id: str) -> None:
         "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
         player_id,
         json.dumps({"player_id": player_id, "attributes": {"wisdom": 14}, "level": 5}),
-    )
-
-
-def _resolution_state(combat_id, player_id, enemy_id, *, enemy_hp=7, player_conditions=None):
-    return CombatState(
-        combat_id=combat_id,
-        participants=[
-            CombatParticipant(
-                id=player_id,
-                name="Kael",
-                type="player",
-                initiative=15,
-                hp_current=25,
-                hp_max=25,
-                ac=14,
-                attributes={"wisdom": 14},
-                level=5,
-                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
-                conditions=player_conditions or [],
-            ),
-            CombatParticipant(
-                id=enemy_id,
-                name="Goblin",
-                type="enemy",
-                initiative=12,
-                hp_current=enemy_hp,
-                hp_max=7,
-                ac=13,
-                action_pool=[{"name": "Scimitar", "damage": "1d6", "damage_type": "slashing"}],
-                xp_value=50,
-            ),
-        ],
-        initiative_order=[player_id, enemy_id],
-        beat="resolution",
-        pending_declarations={
-            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
-            enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
-        },
     )
 
 
@@ -96,7 +58,14 @@ async def test_resolve_phase_emits_combat_ui_update_at_wrap_with_post_tick_condi
     session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
     ctx = MagicMock()
     ctx.userdata = session
-    session.combat_state = _resolution_state(combat_id, player_id, enemy_id, enemy_hp=7, player_conditions=frightened)
+    session.combat_state = _resolution_state(
+        combat_id=combat_id,
+        player_id=player_id,
+        enemy_id=enemy_id,
+        player_conditions=frightened,
+        player_attributes={"wisdom": 14},
+        player_level=5,
+    )
 
     try:
         await combat_turn._resolve_phase_impl(
@@ -133,13 +102,18 @@ async def test_resolve_phase_skips_combat_ui_update_on_terminal_wrap(dev_db_pool
     ctx = MagicMock()
     ctx.userdata = session
     # Enemy starts at 1 HP; the player's 5-damage swing drops it -> wrap reports victory.
-    session.combat_state = _resolution_state(combat_id, player_id, enemy_id, enemy_hp=1)
+    session.combat_state = _resolution_state(combat_id=combat_id, player_id=player_id, enemy_id=enemy_id, enemy_hp=1)
+
+    # end_combat reads player inventory for durability accrual; no items equipped
+    # in this fixture, so a zero-row stub keeps the path silent.
+    queries = MagicMock()
+    queries.get_player_inventory = AsyncMock(return_value=[])
 
     try:
         await combat_turn._resolve_phase_impl(
             ctx,
             resolver=_damage_resolver(5),
-            queries=_no_inventory_queries(),
+            queries=queries,
         )
         events = [e.event_type for e in session.event_bus.drain()]
         assert E.COMBAT_ENDED in events, f"expected COMBAT_ENDED in {events}"
@@ -148,11 +122,3 @@ async def test_resolve_phase_skips_combat_ui_update_on_terminal_wrap(dev_db_pool
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
         # end_combat already deleted the row; this is the safety net for a partial-run.
         await db_mutations.delete_combat_state(combat_id, conn=pool)
-
-
-def _no_inventory_queries() -> MagicMock:
-    """end_combat reads player inventory for durability accrual; the terminal-wrap test
-    has no items equipped, so a zero-row stub keeps the path silent."""
-    queries = MagicMock()
-    queries.get_player_inventory = AsyncMock(return_value=[])
-    return queries

@@ -32,18 +32,11 @@ import db
 import db_mutations
 import event_types as E
 
-# Mirror the mobile parseCombatant + parseCondition contract (story-002).
-_EXPECTED_PACKET_KEYS = {"phase", "round", "combatants"}
-_EXPECTED_COMBATANT_KEYS = {
-    "id",
-    "name",
-    "isAlly",
-    "hpCurrent",
-    "hpMax",
-    "conditions",
-    "isActive",
-}
-_EXPECTED_CONDITION_KEYS = {"type", "stacks", "source"}
+# Packet/combatant/condition shape pins live in tests/test_combat_ui_update.py
+# (test_packet_top_level_keys, test_combatant_shape_matches_mobile_parser,
+# test_conditions_projected_to_type_stacks_source_only). The capstone trusts
+# those unit-level shape assertions and focuses on the round-trip + post-tick
+# semantics here — a wire-shape drift fails the fast lane first.
 
 
 async def test_m12_combat_ui_update_round_trip_post_tick_conditions(reset_db_pool: str) -> None:
@@ -86,21 +79,12 @@ async def test_m12_combat_ui_update_round_trip_post_tick_conditions(reset_db_poo
         assert len(ui_updates) == 1, f"expected exactly one COMBAT_UI_UPDATE, got {[e.event_type for e in events]}"
 
         packet = ui_updates[0].payload
-
-        # Packet top-level shape — exactly what the mobile handler reads.
-        assert set(packet.keys()) == _EXPECTED_PACKET_KEYS
-
-        # Every combatant matches the parseCombatant contract verbatim.
-        for combatant in packet["combatants"]:
-            assert set(combatant.keys()) == _EXPECTED_COMBATANT_KEYS, (
-                f"combatant {combatant.get('id')} shape drift: {set(combatant.keys())}"
-            )
-
         by_id = {c["id"]: c for c in packet["combatants"]}
         assert set(by_id) == {player_id, "goblin_a"}
 
         # Player end-state: Blessed persists (its duration is None → wrap tick is a no-op),
-        # Frightened gone (forced save). Conditions carry only {type, stacks, source}.
+        # Frightened gone (forced save). Conditions carry the canonical
+        # {type, stacks, source} projection (shape pinned by the unit tests).
         player_combatant = by_id[player_id]
         assert player_combatant["isAlly"] is True
         condition_types = [c["type"] for c in player_combatant["conditions"]]
@@ -108,11 +92,6 @@ async def test_m12_combat_ui_update_round_trip_post_tick_conditions(reset_db_poo
         assert "frightened" not in condition_types, (
             f"frightened survived the forced-success WIS save: {condition_types}"
         )
-        for cond in player_combatant["conditions"]:
-            assert set(cond.keys()) == _EXPECTED_CONDITION_KEYS, (
-                f"condition shape drift (duration/stage leaked to wire?): {cond}"
-            )
-        # Blessed projection is the canonical {type, stacks, source} (stacks default 1).
         blessed = next(c for c in player_combatant["conditions"] if c["type"] == "blessed")
         assert blessed == {"type": "blessed", "stacks": 1, "source": "divine_bless"}
 

@@ -31,14 +31,23 @@ def _project_condition(cond: dict) -> dict:
 
 
 def _active_id(state: CombatState) -> str | None:
-    """The id of the next-up actor (initiative_order[current_turn_index]),
-    or None when there is no resolvable head — pre-initiative state or a
-    degenerate current_turn_index."""
+    """The id of the next-up LIVE actor, scanning forward from current_turn_index.
+
+    initiative_order is never pruned on death — combat_phase keeps fallen / dead
+    participants in the order — so we must skip them here, otherwise the HUD
+    highlights a corpse as the next-up combatant. Returns None when the order is
+    empty, the index is degenerate, or every remaining actor at-or-after the
+    index is is_fallen / is_dead (combat is effectively over)."""
     order = state.initiative_order
     idx = state.current_turn_index
     if not order or idx < 0 or idx >= len(order):
         return None
-    return order[idx]
+    by_id = {p.id: p for p in state.participants}
+    for actor_id in order[idx:]:
+        actor = by_id.get(actor_id)
+        if actor is not None and not actor.is_fallen and not actor.is_dead:
+            return actor_id
+    return None
 
 
 def _project_combatant(p: CombatParticipant, active_id: str | None) -> dict:

@@ -59,25 +59,42 @@ def _make_combat_state(player_hp=25, player_fallen=False, enemy_hp=7, enemy_fall
     )
 
 
-def _resolution_state(player_hp=25, enemy_hp=7):
+def _resolution_state(
+    player_hp=25,
+    enemy_hp=7,
+    *,
+    combat_id="combat_test123",
+    player_id="player_1",
+    enemy_id="goblin_scout_1",
+    player_conditions=None,
+    player_attributes=None,
+    player_level=1,
+):
     """A CombatState parked at the RESOLUTION beat with player+enemy declarations
     pending. The player carries a synthesized weapon action_pool (story-003 step 6
-    builds this at init; constructed inline here)."""
+    builds this at init; constructed inline here).
+
+    Keyword-only overrides let dev-DB tests pass unique ids (required for the
+    shared :55432 fast lane under xdist) and pre-apply conditions / attributes
+    without forking the fixture."""
     return CombatState(
-        combat_id="combat_test123",
+        combat_id=combat_id,
         participants=[
             CombatParticipant(
-                id="player_1",
+                id=player_id,
                 name="Kael",
                 type="player",
                 initiative=15,
                 hp_current=player_hp,
                 hp_max=25,
                 ac=14,
+                attributes=player_attributes if player_attributes is not None else {},
+                level=player_level,
                 action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                conditions=player_conditions or [],
             ),
             CombatParticipant(
-                id="goblin_scout_1",
+                id=enemy_id,
                 name="Goblin Scout",
                 type="enemy",
                 initiative=12,
@@ -88,14 +105,14 @@ def _resolution_state(player_hp=25, enemy_hp=7):
                 xp_value=50,
             ),
         ],
-        initiative_order=["player_1", "goblin_scout_1"],
+        initiative_order=[player_id, enemy_id],
         round_number=1,
         current_turn_index=0,
         location_id="accord_guild_hall",
         beat="resolution",
         pending_declarations={
-            "player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_scout_1"},
-            "goblin_scout_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
+            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy_id},
+            enemy_id: {"type": "attack", "action": "Scimitar", "target_id": player_id},
         },
     )
 

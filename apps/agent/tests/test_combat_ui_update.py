@@ -158,6 +158,54 @@ def test_isActive_all_false_when_initiative_order_empty():
     assert packet["combatants"][0]["isActive"] is False
 
 
+def test_isActive_skips_fallen_actor_at_initiative_head():
+    """An enemy at the top of initiative_order who fell last round is NOT the
+    next-up actor — the HUD must highlight the next LIVE participant in the
+    order. Nothing prunes initiative_order on death, so the producer must skip."""
+    p1 = _participant("p1", p_type="player", initiative=10)
+    e1 = _participant("e1", p_type="enemy", initiative=20)
+    e1.is_fallen = True  # fell last phase
+    e2 = _participant("e2", p_type="enemy", initiative=15)
+    state = _state(
+        [e1, p1, e2],
+        initiative_order=["e1", "e2", "p1"],
+        current_turn_index=0,
+    )
+    packet = build_combat_ui_update(state)
+    by_id = {c["id"]: c for c in packet["combatants"]}
+    assert by_id["e1"]["isActive"] is False, "fallen actor must NOT be marked isActive"
+    assert by_id["e2"]["isActive"] is True, "next live actor in order should be active"
+    assert by_id["p1"]["isActive"] is False
+
+
+def test_isActive_skips_dead_actor_at_initiative_head():
+    """is_dead (instant-death overkill) behaves like is_fallen for HUD purposes."""
+    p1 = _participant("p1", p_type="player", initiative=10)
+    e1 = _participant("e1", p_type="enemy", initiative=20)
+    e1.is_dead = True
+    state = _state(
+        [e1, p1],
+        initiative_order=["e1", "p1"],
+        current_turn_index=0,
+    )
+    packet = build_combat_ui_update(state)
+    by_id = {c["id"]: c for c in packet["combatants"]}
+    assert by_id["e1"]["isActive"] is False
+    assert by_id["p1"]["isActive"] is True
+
+
+def test_isActive_all_false_when_every_actor_is_down():
+    """Degenerate edge case: every participant fallen — no one is active."""
+    p1 = _participant("p1", p_type="player")
+    p1.is_fallen = True
+    e1 = _participant("e1", p_type="enemy")
+    e1.is_fallen = True
+    state = _state([p1, e1], initiative_order=["p1", "e1"], current_turn_index=0)
+    packet = build_combat_ui_update(state)
+    for c in packet["combatants"]:
+        assert c["isActive"] is False
+
+
 # --- conditions projection --------------------------------------------------
 
 
