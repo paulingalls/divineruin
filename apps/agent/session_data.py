@@ -90,7 +90,7 @@ class ConcentrationState:
 class CombatParticipant:
     id: str
     name: str
-    type: str  # "player", "enemy", "companion"
+    type: str  # "player", "enemy", "companion", "temporary_hollowed" — use is_ally for the band check
     initiative: int
     hp_current: int
     hp_max: int
@@ -141,6 +141,17 @@ class CombatParticipant:
     # rows serialize via asdict / fall back on from_dict unchanged (same pattern as the role fields).
     category: str = ""
     loot_table_id: str = ""
+
+    @property
+    def is_ally(self) -> bool:
+        """True when this participant sits on the player's side (player or companion).
+
+        Single source of truth for the ally/enemy band — consumers (HUD packet builder,
+        initiative tie-break, future role logic) read this rather than re-encoding the
+        type taxonomy. Enemies and temporary_hollowed (a Stage-2+ player-turned-echo
+        that fights AGAINST the party) both read False.
+        """
+        return self.type in ("player", "companion")
 
 
 @dataclass

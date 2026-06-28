@@ -93,6 +93,19 @@ def test_packet_phase_round_reflect_post_advance_state():
     assert packet["round"] == 3
 
 
+# --- is_ally: CombatParticipant property (canonical source) -----------------
+
+
+def test_is_ally_property_player_companion_true_enemy_hollowed_false():
+    """CombatParticipant.is_ally is the canonical ally/enemy classifier — all
+    consumers (HUD producer, future role logic) read this instead of re-encoding
+    the type taxonomy. Pinned here so a future type rename surfaces in one place."""
+    assert _participant("p1", p_type="player").is_ally is True
+    assert _participant("c1", p_type="companion").is_ally is True
+    assert _participant("e1", p_type="enemy").is_ally is False
+    assert _participant("th1", p_type="temporary_hollowed").is_ally is False
+
+
 # --- isAlly mapping ---------------------------------------------------------
 
 

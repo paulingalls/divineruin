@@ -13,8 +13,6 @@ publishes nothing.
 
 from session_data import CombatParticipant, CombatState
 
-_ALLY_TYPES = ("player", "companion")
-
 
 def _project_condition(cond: dict) -> dict:
     """Project a participant condition to the minimal wire shape mobile reads.
@@ -54,7 +52,7 @@ def _project_combatant(p: CombatParticipant, active_id: str | None) -> dict:
     return {
         "id": p.id,
         "name": p.name,
-        "isAlly": p.type in _ALLY_TYPES,
+        "isAlly": p.is_ally,
         "hpCurrent": p.hp_current,
         "hpMax": p.hp_max,
         "conditions": [_project_condition(c) for c in p.conditions],
