@@ -18,14 +18,16 @@ import db
 import db_mutations
 import db_mutations_resonance
 import db_queries
+import event_types as E
 import fatigue_narration
 import resonance_events
 import spell_casting
 from combat_ability import AbilityCastOutcome
 from combat_end import _end_combat_db, _end_combat_finish
-from combat_events import EventSink, scratch_guard
+from combat_events import EventSink, emit_or_publish, scratch_guard
 from combat_packet import _prevalidate_ability_focus, _resolve_one_packet, _resolve_tick_saves
 from combat_support import _require_combat
+from combat_ui_update import build_combat_ui_update
 from db_errors import db_tool
 from declarations import DeclarationType
 from session_data import SessionData
@@ -230,6 +232,18 @@ async def _resolve_phase_impl(
                     pending_resonance = decayed
                     await resonance_mutations.update_player_resonance(session.player_id, decayed, conn=conn)
             await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+            # Push the HUD's combat-tracker + condition icons live (M12 story-001). Built from the
+            # post-tick state (save-cleared conditions are gone) and buffered in the sink so the
+            # packet only reaches the client AFTER the phase tx commits — a rolled-back phase
+            # leaves the captured event discarded along with `state`. Skipped on the terminal wrap
+            # (the `else` branch below) because COMBAT_ENDED clears the mobile combat state.
+            await emit_or_publish(
+                sink,
+                session.room,
+                E.COMBAT_UI_UPDATE,
+                build_combat_ui_update(state),
+                event_bus=session.event_bus,
+            )
         else:
             # Combat ended: end_combat's DB writes (durability accrual + combat-row delete) join THIS
             # transaction so a mid-end failure rolls the phase back atomically (concern 7198554c2d4c).
