@@ -79,6 +79,73 @@ test("combat_ui_update filters out malformed combatants", () => {
   expect(combat!.combatants[0].id).toBe("c1");
 });
 
+// Regression guard: a payload shaped like the M12 producer's emit (see
+// apps/agent/event_types.py COMBAT_UI_UPDATE docstring + apps/agent/combat_ui_update.py)
+// round-trips through parseCombatant -> hudStore.setCombatState with conditions
+// preserved verbatim ({type, stacks, source}). Pins parseCondition behaviour against
+// accidental tightening; cross-language wire-shape drift is caught by the story-003
+// capstone, not here.
+test("combat_ui_update preserves producer-shaped conditions through parseCombatant", () => {
+  handleGameEvent({
+    type: "combat_ui_update",
+    phase: "declaration", // post-advance beat the agent emits (PhaseBeat.DECLARATION)
+    round: 2,
+    combatants: [
+      {
+        id: "player_1",
+        name: "Kael",
+        isAlly: true,
+        hpCurrent: 25,
+        hpMax: 25,
+        conditions: [
+          { type: "blessed", stacks: 1, source: "divine_bless" },
+          { type: "frightened", stacks: 1, source: "shaman_aura" },
+        ],
+        isActive: true,
+      },
+    ],
+  });
+  const combat = hudStore.getState().combatState;
+  expect(combat).not.toBeNull();
+  expect(combat!.phase).toBe("declaration");
+  expect(combat!.round).toBe(2);
+  expect(combat!.combatants).toHaveLength(1);
+  const conds = combat!.combatants[0].conditions;
+  expect(conds).toHaveLength(2);
+  expect(conds[0]).toEqual({ type: "blessed", stacks: 1, source: "divine_bless" });
+  expect(conds[1]).toEqual({ type: "frightened", stacks: 1, source: "shaman_aura" });
+});
+
+// Regression guard: parseCombatant fails soft when a combatant omits isAlly —
+// the row survives with isAlly=false rather than being dropped. Mirrors the
+// fail-soft default at game-event-handler.ts (`typeof c.isAlly === "boolean" ? c.isAlly : false`).
+// A future tightening to reject the row would surface here.
+test("combat_ui_update parseCombatant fails soft when isAlly is missing", () => {
+  handleGameEvent({
+    type: "combat_ui_update",
+    phase: "declaration",
+    round: 1,
+    combatants: [
+      {
+        id: "goblin_1",
+        name: "Goblin",
+        // isAlly intentionally omitted
+        hpCurrent: 7,
+        hpMax: 7,
+        conditions: [],
+        isActive: false,
+      },
+    ],
+  });
+  const combat = hudStore.getState().combatState;
+  expect(combat).not.toBeNull();
+  expect(combat!.combatants).toHaveLength(1);
+  const c = combat!.combatants[0];
+  expect(c.id).toBe("goblin_1");
+  expect(c.isAlly).toBe(false);
+  expect(c.hpCurrent).toBe(7);
+});
+
 // --- handleGameEvent: item_acquired ---
 
 test("item_acquired pushes overlay to hudStore", () => {
