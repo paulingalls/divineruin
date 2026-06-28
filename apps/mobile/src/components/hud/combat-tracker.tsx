@@ -101,7 +101,6 @@ export function CombatTracker({ state }: CombatTrackerProps) {
       testID="combat-tracker"
     >
       <View style={styles.header}>
-        <ThemedText style={styles.phaseLabel}>{state.phase.toUpperCase()}</ThemedText>
         <ThemedText style={styles.roundLabel}>ROUND {state.round}</ThemedText>
       </View>
       {player && <CombatantRow key={player.id} combatant={player} />}
@@ -135,12 +134,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: Spacing.two,
-  },
-  phaseLabel: {
-    ...FontStyles.system,
-    fontSize: 10,
-    color: BrandColors.hollow,
-    letterSpacing: 1,
   },
   roundLabel: {
     ...FontStyles.systemLight,

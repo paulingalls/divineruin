@@ -54,7 +54,6 @@ export interface Combatant {
 }
 
 export interface CombatTrackerState {
-  phase: string;
   round: number;
   combatants: Combatant[];
 }

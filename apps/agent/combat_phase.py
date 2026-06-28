@@ -34,7 +34,9 @@ _DEATH_SAVE_LIMIT = 3
 _STABILIZE_LIMIT = 3
 
 # Initiative tie-break: player before companion before enemy, then higher DEX
-# (gm_combat:145). Lower number = higher priority.
+# (gm_combat:145). Lower number = higher priority. The 0/1 band == ally, 2 == enemy
+# — for an ally/enemy classification check use CombatParticipant.is_ally instead;
+# this table additionally orders WITHIN the ally band (player before companion).
 # A Temporary Hollowed echo (M4.4 story-008) acts in the enemy band — it's a hostile combatant.
 _TYPE_PRIORITY = {"player": 0, "companion": 1, "enemy": 2, "temporary_hollowed": 2}
 

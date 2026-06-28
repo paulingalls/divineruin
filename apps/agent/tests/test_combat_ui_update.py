@@ -71,9 +71,9 @@ def _state(
 
 
 def test_packet_top_level_keys():
-    """Top-level packet exposes exactly the three keys mobile reads."""
+    """Top-level packet exposes exactly the two keys mobile reads."""
     packet = build_combat_ui_update(_state([_participant("p1")]))
-    assert set(packet.keys()) == {"phase", "round", "combatants"}
+    assert set(packet.keys()) == {"round", "combatants"}
 
 
 def test_combatant_shape_matches_mobile_parser():
@@ -83,14 +83,26 @@ def test_combatant_shape_matches_mobile_parser():
     assert set(packet["combatants"][0].keys()) == expected
 
 
-def test_packet_phase_round_reflect_post_advance_state():
+def test_packet_round_reflects_post_advance_state():
     """After advance_combat_phase WRAP -> next-round DECLARATION, the emit point
-    sees beat='declaration' and round_number incremented. The packet must
-    surface those values verbatim (not the wrap-beat-that-just-completed)."""
-    state = _state([_participant("p1")], beat="declaration", round_number=3)
+    sees round_number incremented. The packet surfaces that value verbatim
+    (the round just entered, not the wrap that just completed)."""
+    state = _state([_participant("p1")], round_number=3)
     packet = build_combat_ui_update(state)
-    assert packet["phase"] == "declaration"
     assert packet["round"] == 3
+
+
+# --- is_ally: CombatParticipant property (canonical source) -----------------
+
+
+def test_is_ally_property_player_companion_true_enemy_hollowed_false():
+    """CombatParticipant.is_ally is the canonical ally/enemy classifier — all
+    consumers (HUD producer, future role logic) read this instead of re-encoding
+    the type taxonomy. Pinned here so a future type rename surfaces in one place."""
+    assert _participant("p1", p_type="player").is_ally is True
+    assert _participant("c1", p_type="companion").is_ally is True
+    assert _participant("e1", p_type="enemy").is_ally is False
+    assert _participant("th1", p_type="temporary_hollowed").is_ally is False
 
 
 # --- isAlly mapping ---------------------------------------------------------

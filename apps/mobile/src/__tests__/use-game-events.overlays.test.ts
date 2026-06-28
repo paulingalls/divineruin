@@ -26,7 +26,6 @@ test("dice_result pushes overlay to hudStore", () => {
 test("combat_ui_update sets combat state in hudStore", () => {
   handleGameEvent({
     type: "combat_ui_update",
-    phase: "player_turn",
     round: 2,
     combatants: [
       {
@@ -42,13 +41,12 @@ test("combat_ui_update sets combat state in hudStore", () => {
   });
   const combat = hudStore.getState().combatState;
   expect(combat).not.toBeNull();
-  expect(combat!.phase).toBe("player_turn");
   expect(combat!.round).toBe(2);
   expect(combat!.combatants).toHaveLength(1);
 });
 
 test("combat_ended clears hudStore combat state", () => {
-  hudStore.getState().setCombatState({ phase: "init", round: 1, combatants: [] });
+  hudStore.getState().setCombatState({ round: 1, combatants: [] });
   handleGameEvent({ type: "combat_ended" });
   expect(hudStore.getState().combatState).toBeNull();
 });
@@ -56,7 +54,6 @@ test("combat_ended clears hudStore combat state", () => {
 test("combat_ui_update filters out malformed combatants", () => {
   handleGameEvent({
     type: "combat_ui_update",
-    phase: "player_turn",
     round: 1,
     combatants: [
       {
@@ -88,7 +85,6 @@ test("combat_ui_update filters out malformed combatants", () => {
 test("combat_ui_update preserves producer-shaped conditions through parseCombatant", () => {
   handleGameEvent({
     type: "combat_ui_update",
-    phase: "declaration", // post-advance beat the agent emits (PhaseBeat.DECLARATION)
     round: 2,
     combatants: [
       {
@@ -107,7 +103,6 @@ test("combat_ui_update preserves producer-shaped conditions through parseCombata
   });
   const combat = hudStore.getState().combatState;
   expect(combat).not.toBeNull();
-  expect(combat!.phase).toBe("declaration");
   expect(combat!.round).toBe(2);
   expect(combat!.combatants).toHaveLength(1);
   const conds = combat!.combatants[0].conditions;
@@ -123,7 +118,6 @@ test("combat_ui_update preserves producer-shaped conditions through parseCombata
 test("combat_ui_update parseCombatant fails soft when isAlly is missing", () => {
   handleGameEvent({
     type: "combat_ui_update",
-    phase: "declaration",
     round: 1,
     combatants: [
       {

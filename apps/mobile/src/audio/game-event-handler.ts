@@ -449,7 +449,6 @@ export function handleGameEvent(event: DataChannelEvent): void {
         .map(parseCombatant)
         .filter((c): c is Combatant => c !== null);
       const combatState: CombatTrackerState = {
-        phase: typeof event.phase === "string" ? event.phase : "unknown",
         round: typeof event.round === "number" ? event.round : 1,
         combatants,
       };
