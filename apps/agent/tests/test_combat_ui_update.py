@@ -7,8 +7,24 @@ must match exactly — a drift breaks the dead-field render the M4.3 sprint
 shipped (concern 76fc7caa200c).
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from sample_fixtures import make_context
+
+import event_types as E
+from combat_init import _start_combat_impl
 from combat_ui_update import build_combat_ui_update
 from session_data import CombatParticipant, CombatState
+
+_START_ATTRS = {
+    "strength": 14,
+    "dexterity": 12,
+    "constitution": 13,
+    "intelligence": 10,
+    "wisdom": 11,
+    "charisma": 8,
+}
 
 
 def _participant(
@@ -257,3 +273,100 @@ def test_hp_and_name_passthrough():
     assert c["name"] == "Kael"
     assert c["hpCurrent"] == 12
     assert c["hpMax"] == 25
+
+
+# --- start_combat emit (M12 close-cycle fix: concern 4045481bfc3e) ---------
+
+
+def _start_combat_player(stored_conditions=None):
+    return {
+        "player_id": "player_1",
+        "name": "Kael",
+        "class": "warrior",
+        "level": 5,
+        "attributes": dict(_START_ATTRS),
+        "hp": {"current": 25, "max": 25},
+        "ac": 14,
+        "skill_tiers": {},
+        "conditions": stored_conditions if stored_conditions is not None else [],
+    }
+
+
+_START_ENCOUNTER = {
+    "id": "goblin_patrol",
+    "name": "Goblin Patrol",
+    "difficulty": "easy",
+    "enemies": [
+        {
+            "id": "goblin_1",
+            "name": "Goblin",
+            "level": 1,
+            "ac": 13,
+            "hp": 7,
+            "attributes": _START_ATTRS,
+            "action_pool": [],
+        },
+    ],
+}
+
+
+@pytest.mark.asyncio
+@patch("combat_init.publish_game_event", new_callable=AsyncMock)
+@patch("combat_init._publish_sounds", new_callable=AsyncMock)
+async def test_start_combat_emits_combat_ui_update_for_hud_init(_mock_sounds, mock_event):
+    """Without an emit at combat_start, the HUD's combat-tracker stays empty for
+    round 1 (COMBAT_UI_UPDATE only fired at the Beat-4 wrap before this fix).
+    Resolves concern 4045481bfc3e — initial state push so icons/chips render
+    from frame one, not after the first wrap."""
+    mutations = MagicMock(save_combat_state=AsyncMock())
+    queries = MagicMock(get_player=AsyncMock(return_value=_start_combat_player()))
+    content = MagicMock(
+        get_encounter_template=AsyncMock(return_value=_START_ENCOUNTER),
+        get_npc=AsyncMock(return_value=None),
+    )
+    ctx = make_context()
+    await _start_combat_impl(
+        ctx,
+        encounter_id="goblin_patrol",
+        encounter_description="Goblins attack.",
+        mutations=mutations,
+        queries=queries,
+        content=content,
+    )
+
+    ui_calls = [c for c in mock_event.call_args_list if c[0][1] == E.COMBAT_UI_UPDATE]
+    assert len(ui_calls) == 1, (
+        f"expected exactly one COMBAT_UI_UPDATE at combat-start, got {[c[0][1] for c in mock_event.call_args_list]}"
+    )
+    payload = ui_calls[0][0][2]
+    assert payload["round"] == 1
+    by_id = {c["id"]: c for c in payload["combatants"]}
+    assert "player_1" in by_id and "goblin_1" in by_id
+    # Initial state: empty conditions, exactly one active actor (initiative head).
+    assert all(c["conditions"] == [] for c in payload["combatants"])
+    assert sum(1 for c in payload["combatants"] if c["isActive"]) == 1
+
+
+@pytest.mark.asyncio
+@patch("combat_init.publish_game_event", new_callable=AsyncMock)
+@patch("combat_init._publish_sounds", new_callable=AsyncMock)
+async def test_start_combat_ui_update_fires_after_combat_started(_mock_sounds, mock_event):
+    """Event ordering: COMBAT_STARTED must reach the client before
+    COMBAT_UI_UPDATE so the mobile session.setCombat(true) gate latches before
+    the tracker tries to render."""
+    mutations = MagicMock(save_combat_state=AsyncMock())
+    queries = MagicMock(get_player=AsyncMock(return_value=_start_combat_player()))
+    content = MagicMock(
+        get_encounter_template=AsyncMock(return_value=_START_ENCOUNTER),
+        get_npc=AsyncMock(return_value=None),
+    )
+    await _start_combat_impl(
+        make_context(),
+        encounter_id="goblin_patrol",
+        encounter_description="Goblins attack.",
+        mutations=mutations,
+        queries=queries,
+        content=content,
+    )
+    types = [c[0][1] for c in mock_event.call_args_list]
+    assert types.index(E.COMBAT_STARTED) < types.index(E.COMBAT_UI_UPDATE)

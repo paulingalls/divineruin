@@ -18,6 +18,7 @@ import db_queries
 import event_types as E
 import rules_engine
 from combat_support import _participant_summary, _publish_sounds
+from combat_ui_update import build_combat_ui_update
 from companion_profiles import get_companion_profile
 from companion_scaling import (
     companion_attacks_to_action_pool,
@@ -267,6 +268,17 @@ async def _start_combat_impl(
             "difficulty": encounter.get("difficulty", "moderate"),
             "initiative_order": initiative_summary,
         },
+        event_bus=session.event_bus,
+    )
+    # Initial HUD push so the combat-tracker has live combatants from round 1
+    # (M12 sprint-029 close fix, concern 4045481bfc3e). Without this the
+    # producer only fires at Beat-4 wrap, leaving the tracker empty for all of
+    # round 1. Direct publish (no in-tx sink here); ordered AFTER COMBAT_STARTED
+    # so the mobile session.setCombat(true) gate latches before render.
+    await publish_game_event(
+        session.room,
+        E.COMBAT_UI_UPDATE,
+        build_combat_ui_update(combat_state),
         event_bus=session.event_bus,
     )
     await _publish_sounds(session, [SOUND_COMBAT_START])
