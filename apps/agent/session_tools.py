@@ -16,7 +16,7 @@ import event_types as E
 from asset_utils import slug_asset_url
 from db_errors import db_tool
 from game_events import publish_game_event
-from quest_tools import _clamp_disposition_shift
+from role_archetypes import shift_disposition
 from session_data import SessionData
 from tool_preconditions import require_npc_present
 from tool_support import MAX_STORY_MOMENTS_PER_SESSION, STORY_MOMENTS, _cap_str
@@ -71,7 +71,7 @@ async def _update_npc_disposition_impl(
         if current is None:
             current = npc.get("default_disposition", "neutral")
 
-        new_disposition = _clamp_disposition_shift(current, delta)
+        new_disposition = shift_disposition(current, delta, off_ladder="neutral")
 
         await mutations.set_npc_disposition(npc_id, session.player_id, new_disposition, reason, conn=conn)
 

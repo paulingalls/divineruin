@@ -22,6 +22,7 @@ contract, and a malformed row must reject identically on both sides.
 import json
 import logging
 from dataclasses import asdict, dataclass
+from typing import Literal
 
 from catalog_parse import (
     parse_attributes,
@@ -98,17 +99,34 @@ _ROLE_TYPES = ("civilian", "military", "specialist")
 # DISPOSITION_VALUES home in role_archetype.ts). npcs.py and tool_support.py import
 # this so a tier change touches one place, not three.
 DISPOSITIONS = ("hostile", "unfriendly", "neutral", "friendly", "trusted")
+_DISPOSITION_INDEX = {name: i for i, name in enumerate(DISPOSITIONS)}
+_NEUTRAL_INDEX = _DISPOSITION_INDEX["neutral"]
 
 
-def shift_disposition(base: str, delta: int) -> str:
+def shift_disposition(base: str, delta: int, *, off_ladder: Literal["raise", "neutral"] = "raise") -> str:
     """Move `base` along the DISPOSITIONS ladder by `delta`, clamped to its ends.
 
     A positive delta is friendlier, negative more hostile; the result never falls off the
-    5-tier ladder (so it stays a valid disposition). Raises ValueError if `base` isn't a
-    canonical disposition. Lives beside the DISPOSITIONS SSOT so settlement generation and
-    social resolution share one clamp instead of copying it.
+    5-tier ladder (so it stays a valid disposition). The single ladder-clamp SSOT — settlement
+    generation, social resolution, quest world-effects, and session npc mutations all share it
+    instead of copying the arithmetic.
+
+    `off_ladder` sets the contract when `base` isn't a canonical disposition (decision
+    unknown-disposition-contract — off-ladder handling is deliberately per-boundary, not
+    uniform; a naive collapse to one behavior was reverted in story-002):
+
+    - ``"raise"`` (default): fail loud (ValueError) — for TRUSTED inputs (validated content,
+      already-resolved dispositions) where an off-ladder value is a real bug worth surfacing.
+    - ``"neutral"``: treat `base` as neutral (case-insensitively) — for UNTRUSTED live-DB
+      inputs (quest/session npc-disposition mutations) where hand-corrupted npc_dispositions
+      must never 500 live narration.
     """
-    idx = DISPOSITIONS.index(base)
+    if off_ladder == "neutral":
+        idx = _DISPOSITION_INDEX.get(base.lower(), _NEUTRAL_INDEX)
+    elif base in _DISPOSITION_INDEX:
+        idx = _DISPOSITION_INDEX[base]
+    else:
+        raise ValueError(f"{base!r} is not a canonical disposition {DISPOSITIONS}")
     return DISPOSITIONS[max(0, min(len(DISPOSITIONS) - 1, idx + delta))]
 
 
