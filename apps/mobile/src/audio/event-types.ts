@@ -56,18 +56,19 @@ export const QUEST_UPDATE = "quest_update" as const;
 export const QUEST_UPDATED = "quest_updated" as const;
 
 // Currency (M4.7 story-002) — mirrors apps/agent/event_types.py CURRENCY_GAINED. Coin granted on
-// combat victory, converted sp->gp at the grant boundary (story-008). Payload {player_id, amount,
-// currency, source, new_balance} in gold crowns; the HUD renders a glanceable "+N gp" chip from
-// {amount, currency} (see components/hud/currency-display.ts).
+// combat victory, converted sp->gp at the grant boundary (story-008).
+// Packet: {player_id, amount, currency, source, new_balance} in gold crowns; the HUD renders a
+// glanceable "+N gp" chip from {amount, currency} (see components/hud/currency-display.ts).
 export const CURRENCY_GAINED = "currency_gained" as const;
 
 // Magic (M3.1) — mirrors apps/agent/event_types.py RESONANCE_CHANGED.
-// Payload {state, current, max}; the HUD renders only the qualitative state.
+// Packet: {state} — the qualitative state only; the raw number never crosses to the client
+// (no-number spec, magic.md:98). The HUD renders the qualitative state.
 export const RESONANCE_CHANGED = "resonance_changed" as const;
 
-// Magic (M3.2) — mirrors apps/agent/event_types.py. HOLLOW_ECHO_RESULT carries the
-// qualitative {band} only (raw d20 stays server-side, like RESONANCE_CHANGED);
-// VEIL_WARD_CHANGED carries {active} for the glanceable ward zone indicator.
+// Magic (M3.2) — mirrors apps/agent/event_types.py. HOLLOW_ECHO_RESULT Packet: {band} — the
+// qualitative band only (raw d20 stays server-side, like RESONANCE_CHANGED);
+// VEIL_WARD_CHANGED Packet: {active} for the glanceable ward zone indicator.
 export const HOLLOW_ECHO_RESULT = "hollow_echo_result" as const;
 export const VEIL_WARD_CHANGED = "veil_ward_changed" as const;
 

@@ -54,7 +54,7 @@ QUEST_UPDATED = "quest_updated"
 QUEST_UPDATE = "quest_update"  # client-only alias for QUEST_UPDATED
 
 # Currency (M4.7 story-002) — coin granted on combat victory (role-scaled, calculate_currency_drop).
-# Packet shape: {player_id, amount, currency, source, new_balance} where `amount` is the gold
+# Packet: {player_id, amount, currency, source, new_balance} where `amount` is the gold
 # gained this victory (aggregated across all defeated enemies, converted sp->gp at the grant
 # boundary via silver_per_gold — story-008), `currency` is the unit ("gold"), `source` the grant
 # context ("combat"), and `new_balance` the player's resulting players.data.gold (gold crowns).
@@ -63,17 +63,17 @@ QUEST_UPDATE = "quest_update"  # client-only alias for QUEST_UPDATED
 CURRENCY_GAINED = "currency_gained"
 
 # Magic (M3.1)
-# Resonance state push: carries the qualitative {state} only on the game_events topic
-# — the raw number never crosses to the client (no-number spec magic.md:98, story-004).
+# Resonance state push. Packet: {state} — the qualitative state only on the game_events topic;
+# the raw number never crosses to the client (no-number spec magic.md:98, story-004).
 # Mirror const in apps/mobile/src/audio/event-types.ts.
 RESONANCE_CHANGED = "resonance_changed"
 
-# Magic (M3.2) — Veil Ward toggle push: carries the minimal {active} only (the HUD shows a
-# glanceable on/off zone indicator; the source archetype is narration the DM voices, not wire
-# state). Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
+# Magic (M3.2) — Veil Ward toggle push. Packet: {active} — the minimal on/off toggle only (the
+# HUD shows a glanceable ward zone indicator; the source archetype is narration the DM voices,
+# not wire state). Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
 VEIL_WARD_CHANGED = "veil_ward_changed"
 
-# Magic (M3.2) — Hollow Echo result push: carries the qualitative {band} only (the dramatic
+# Magic (M3.2) — Hollow Echo result push. Packet: {band} — the qualitative band only (the dramatic
 # dice overlay maps band -> label/colour; the raw roll stays server-side, no-number discipline).
 # Auto-rolled by cast_spell at Overreach. Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
 HOLLOW_ECHO_RESULT = "hollow_echo_result"
