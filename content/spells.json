@@ -56,7 +56,7 @@
       "arcane": 0
     },
     "terrain_effects": {},
-    "audio_cue": "",
+    "audio_cue": "Faint shimmer + soft chime",
     "concentration": false
   },
   {
@@ -898,7 +898,7 @@
       "primal": 0
     },
     "terrain_effects": {},
-    "audio_cue": "",
+    "audio_cue": "Soft rustle + gentle nature whisper",
     "concentration": false
   },
   {

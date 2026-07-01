@@ -59,8 +59,11 @@ class Spell:
     # working without supplying them; parse_spell_row REQUIRES them in raw rows (strict,
     # decision spell-loader-strict-contract). resonance_by_source maps the spell's magic
     # source to its catalog Resonance value (magic.md Spell-to-Resonance Map); terrain_effects
-    # holds the Primal terrain->Resonance overrides ({} for non-Primal); audio_cue is the SFX
-    # code auto-pushed on cast ("" if silent); concentration gates M3.4. (The catalog "Level"
+    # holds the Primal terrain->Resonance overrides ({} for non-Primal); audio_cue is a free-text
+    # DM audio-direction cue voiced/directed on cast (returned in the cast packet, spell_casting.py)
+    # — NOT a literal client SFX code, nothing maps it to real SFX yet; codes like "CMB-008" are
+    # shorthand within that free text. Required + non-empty per row (test_spells_content guards it,
+    # concern e3af222251df); concentration gates M3.4. (The catalog "Level"
     # column / per-row level_requirement was deleted in story-008: orphaned non-gating metadata
     # with no reader — access is gated by the per-archetype tier tables, not per-spell level.)
     resonance_by_source: dict[str, int] = field(default_factory=dict)

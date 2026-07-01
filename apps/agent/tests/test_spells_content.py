@@ -62,6 +62,15 @@ def test_every_row_parses_through_the_strict_loader(row):
 
 
 @pytest.mark.parametrize("row", _RAW, ids=[r["id"] for r in _RAW])
+def test_every_row_has_a_nonempty_audio_cue(row):
+    # audio_cue is the DM's free-text audio-direction cue, voiced/directed on cast (returned in
+    # the cast packet, spell_casting.py) — NOT a literal client SFX code (nothing maps it to real
+    # SFX yet). Every spell has a sensory signature, so every row must carry a non-empty cue; an
+    # empty string is a content gap that ships a silent spell (concern e3af222251df).
+    assert row["audio_cue"].strip(), f"{row['id']} has an empty audio_cue"
+
+
+@pytest.mark.parametrize("row", _RAW, ids=[r["id"] for r in _RAW])
 def test_resonance_is_keyed_by_the_rows_own_source(row):
     # resonance_by_source maps the spell's magic source to its catalog Resonance.
     assert row["source"] in row["resonance_by_source"]
