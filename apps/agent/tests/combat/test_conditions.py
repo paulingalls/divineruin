@@ -84,6 +84,19 @@ def test_cross_encounter_conditions_persist():
         assert CONDITION_CATALOG[c].persists_across_encounters is True
 
 
+def test_no_condition_is_both_a_persistent_and_a_bonus_die_buff():
+    # combat_end._end_combat_db reconciles the player's conditions back to players.data as
+    # merge(existing_non_buff, acquired) + surviving_buffs, where `acquired` is the
+    # persists_across_encounters set and `surviving_buffs` is the bonus_die set. That is only
+    # correct while the two sets are DISJOINT — a spec with BOTH fields would be written back
+    # twice (once via each path). Pin the invariant so a future catalog entry that breaks it
+    # fails here instead of silently double-counting at combat end (close-review d1bd83f32076).
+    both = [
+        c for c, spec in CONDITION_CATALOG.items() if spec.bonus_die is not None and spec.persists_across_encounters
+    ]
+    assert both == [], f"conditions set both bonus_die and persists_across_encounters: {both}"
+
+
 # --- Slice 2: apply_condition ---
 
 
