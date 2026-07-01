@@ -97,10 +97,21 @@ _role_archetypes: dict[str, RoleArchetype] = {}
 _ROLE_TYPES = ("civilian", "military", "specialist")
 # Canonical 5-tier disposition ladder — the single Python SSOT (mirrors the TS
 # DISPOSITION_VALUES home in role_archetype.ts). npcs.py and tool_support.py import
-# this so a tier change touches one place, not three.
+# this (ladder, index, and rank) so a tier or ranking change touches one place, not three.
 DISPOSITIONS = ("hostile", "unfriendly", "neutral", "friendly", "trusted")
-_DISPOSITION_INDEX = {name: i for i, name in enumerate(DISPOSITIONS)}
-_NEUTRAL_INDEX = _DISPOSITION_INDEX["neutral"]
+DISPOSITION_INDEX = {name: i for i, name in enumerate(DISPOSITIONS)}
+
+
+def disposition_rank(disposition: str) -> int:
+    """Rank `disposition` on the ladder (0=hostile … 4=trusted) — the single ranking SSOT.
+
+    Lowercases and defaults an off-ladder value to neutral: the shared UNTRUSTED-input
+    contract for knowledge-gating (tool_support.filter_knowledge) and disposition mutation
+    (shift_disposition off_ladder='neutral'), so hand-corrupted npc_dispositions never 500
+    live narration. Pricing deliberately fail-louds on an unknown tier instead
+    (workspace.compute_rental_price, decision unknown-disposition-contract).
+    """
+    return DISPOSITION_INDEX.get(disposition.lower(), DISPOSITION_INDEX["neutral"])
 
 
 def shift_disposition(base: str, delta: int, *, off_ladder: Literal["raise", "neutral"] = "raise") -> str:
@@ -122,9 +133,9 @@ def shift_disposition(base: str, delta: int, *, off_ladder: Literal["raise", "ne
       must never 500 live narration.
     """
     if off_ladder == "neutral":
-        idx = _DISPOSITION_INDEX.get(base.lower(), _NEUTRAL_INDEX)
-    elif base in _DISPOSITION_INDEX:
-        idx = _DISPOSITION_INDEX[base]
+        idx = disposition_rank(base)
+    elif base in DISPOSITION_INDEX:
+        idx = DISPOSITION_INDEX[base]
     else:
         raise ValueError(f"{base!r} is not a canonical disposition {DISPOSITIONS}")
     return DISPOSITIONS[max(0, min(len(DISPOSITIONS) - 1, idx + delta))]
