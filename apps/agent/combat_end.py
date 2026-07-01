@@ -45,9 +45,9 @@ def _merge_persistent_conditions(existing: list[dict], acquired: list[dict]) -> 
     Combat only ACCRUES (rest clears, a later milestone), so a fight never drops a pre-existing
     condition. On a type conflict, keep the instance with the higher accrual — more ``stacks``
     (Exhausted), or higher ``stage`` (Hollowed) — so a fight that deepens an already-persisted
-    Exhausted isn't silently discarded. This is approximate until combat-START load lands (debt
-    1e32d78449ef): the participant doesn't carry the prior store in, so a combat-gained instance
-    counts only this fight's accrual — max() is the safe floor (never lose the worse of the two)."""
+    Exhausted isn't silently discarded. combat-START load (M4.4 story-005, combat_init) now carries
+    the prior store onto the participant, so a combat-gained instance already folds in the prior
+    accrual; max() stays the safe floor guarding against ever regressing to the lesser of the two."""
 
     def _severity(c: dict) -> int:
         return c.get("stacks", c.get("stage", 1))
@@ -58,6 +58,16 @@ def _merge_persistent_conditions(existing: list[dict], acquired: list[dict]) -> 
         if prior is None or _severity(c) > _severity(prior):
             merged[c["type"]] = c
     return list(merged.values())
+
+
+def _conditions_changed(before: list[dict], after: list[dict]) -> bool:
+    """True when two condition lists differ as multisets (order-independent). Guards the combat-end
+    writeback from a redundant DB write when a reconciliation leaves the stored set unchanged."""
+
+    def _key(conds: list[dict]) -> list[str]:
+        return sorted(json.dumps(c, sort_keys=True) for c in conds)
+
+    return _key(before) != _key(after)
 
 
 async def _grant_enemy_loot(
@@ -228,18 +238,30 @@ async def _end_combat_db(
     # Persist the player's cross-encounter conditions (M4.3, story-004): the persists_across_encounters
     # ones acquired this fight (Wounded/Exhausted/Hollowed) MERGE into players.data; phase-scoped ones
     # (Prone/Stunned/…) drop with the combat row. Combat only ACCRUES persistent conditions (rest
-    # clears them, a later milestone), and combat-START load is deferred, so we union with the existing
-    # store rather than overwrite — else a fight would clobber a pre-combat Wounded. Skip all DB work
-    # when nothing was acquired (the common case). Same tx as the row delete (atomic).
+    # clears them, a later milestone), so we union with the existing store rather than overwrite — else
+    # a fight would clobber a pre-combat Wounded. The read runs every combat end (a consumed buff
+    # leaves no trace on the participant), but a change-gate skips the write when nothing moved. Same
+    # tx as the row delete (atomic).
     player_part = next((p for p in cs.participants if p.type == "player"), None)
     if player_part is not None:
         acquired = [
             c for c in player_part.conditions if conditions.CONDITION_CATALOG[c["type"]].persists_across_encounters
         ]
-        if acquired:
-            existing = await db_mutations_conditions.read_player_conditions(session.player_id, conn=conn)
-            merged = _merge_persistent_conditions(existing, acquired)
-            await db_mutations_conditions.save_player_conditions(session.player_id, merged, conn=conn)
+        # Reconcile the player's OOC beneficial dice (Blessed/Inspired) back to players.data: they
+        # load from the store onto the participant at combat-start (combat_init, M4.4 story-005) and
+        # are consumed-on-use, so the participant's FINAL set is authoritative — a die spent in combat
+        # must be dropped post-combat, and one granted mid-combat that survives must persist (concern
+        # ab37d4fc61c6). Keyed on bonus_die (the only consumed-on-use character buffs); phase-scoped
+        # combat conditions (Prone/Stunned) carry no bonus_die and correctly stay dropped. Broader
+        # OOC-condition reconciliation (Poisoned/Charmed) waits on an in-combat applier (M13).
+        surviving_buffs = [
+            c for c in player_part.conditions if conditions.CONDITION_CATALOG[c["type"]].bonus_die is not None
+        ]
+        existing = await db_mutations_conditions.read_player_conditions(session.player_id, conn=conn)
+        existing_non_buff = [c for c in existing if conditions.CONDITION_CATALOG[c["type"]].bonus_die is None]
+        reconciled = _merge_persistent_conditions(existing_non_buff, acquired) + surviving_buffs
+        if _conditions_changed(existing, reconciled):
+            await db_mutations_conditions.save_player_conditions(session.player_id, reconciled, conn=conn)
 
     await mutations.delete_combat_state(cs.combat_id, conn=conn)
 

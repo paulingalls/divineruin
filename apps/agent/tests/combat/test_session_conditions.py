@@ -193,11 +193,111 @@ async def test_end_combat_skips_store_when_no_persistent_conditions_acquired(mon
 
     save_spy = AsyncMock()
     monkeypatch.setattr(db_mutations_conditions, "save_player_conditions", save_spy)
-    monkeypatch.setattr(db_mutations_conditions, "read_player_conditions", AsyncMock())
+    monkeypatch.setattr(db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=[]))
 
     session, mutations, queries = _end_combat_mocks()
     await _end_combat_db(
         session, cs, "victory", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
     )
 
-    save_spy.assert_not_awaited()  # no persistent conditions acquired -> no DB write, store untouched
+    save_spy.assert_not_awaited()  # nothing acquired, no buff change -> reconciled == store -> no write
+
+
+# --- Slice 4: combat-end reconciles OOC beneficial dice back to players.data (concern ab37d4fc61c6) ---
+
+
+def _capture_save(monkeypatch) -> dict:
+    """Patch save_player_conditions to record what combat-end writes back, returning the capture dict."""
+    captured: dict = {}
+
+    async def _capture(player_id, conds, *, conn=None):
+        captured["conditions"] = conds
+
+    monkeypatch.setattr(db_mutations_conditions, "save_player_conditions", _capture)
+    return captured
+
+
+async def test_end_combat_drops_ooc_buff_consumed_in_combat(monkeypatch):
+    """A Blessed/Inspired die applied out of combat, loaded onto the participant at combat-start,
+    and CONSUMED mid-fight must be removed from players.data at combat end — otherwise the player
+    keeps a spent buff post-combat (concern ab37d4fc61c6). The participant's final set (no blessed)
+    is authoritative because combat_init loaded the store's conditions in (M4.4 story-005)."""
+    cs = _make_combat_state(enemy_fallen=True)
+    player = cs.get_participant("player_1")
+    assert player is not None
+    player.conditions = []  # blessed was consumed during the fight -> gone from the participant
+
+    monkeypatch.setattr(
+        db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=apply_condition([], "blessed"))
+    )
+    captured = _capture_save(monkeypatch)
+
+    session, mutations, queries = _end_combat_mocks()
+    await _end_combat_db(
+        session, cs, "victory", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
+    )
+
+    assert captured["conditions"] == []  # the spent blessed no longer rides players.data
+
+
+async def test_end_combat_keeps_unconsumed_ooc_buff_without_spurious_write(monkeypatch):
+    """A buff the player carried in and did NOT spend must survive combat — and, since the store
+    already holds it, no redundant write fires (change-detected reconciliation)."""
+    cs = _make_combat_state(enemy_fallen=True)
+    player = cs.get_participant("player_1")
+    assert player is not None
+    player.conditions = apply_condition([], "blessed")  # still Blessed at combat end (unspent)
+
+    monkeypatch.setattr(
+        db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=apply_condition([], "blessed"))
+    )
+    save_spy = AsyncMock()
+    monkeypatch.setattr(db_mutations_conditions, "save_player_conditions", save_spy)
+
+    session, mutations, queries = _end_combat_mocks()
+    await _end_combat_db(
+        session, cs, "victory", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
+    )
+
+    save_spy.assert_not_awaited()  # store already matches -> no churn
+
+
+async def test_end_combat_persists_in_combat_granted_buff(monkeypatch):
+    """A buff GRANTED mid-combat (e.g. a bard Inspires the player) that survives to combat end must
+    persist onto players.data so the player keeps it out of combat — the participant's final set is
+    authoritative in both directions (consume removes, grant adds)."""
+    cs = _make_combat_state(enemy_fallen=True)
+    player = cs.get_participant("player_1")
+    assert player is not None
+    player.conditions = apply_condition([], "inspired")  # granted during the fight, unspent
+
+    monkeypatch.setattr(db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=[]))
+    captured = _capture_save(monkeypatch)
+
+    session, mutations, queries = _end_combat_mocks()
+    await _end_combat_db(
+        session, cs, "victory", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
+    )
+
+    assert [c["type"] for c in captured["conditions"]] == ["inspired"]
+
+
+async def test_end_combat_drops_consumed_buff_but_keeps_acquired_persistent(monkeypatch):
+    """Combined boundary: a spent Blessed is dropped while a fight-acquired Wounded persists —
+    the two reconciliation paths compose without clobbering each other."""
+    cs = _make_combat_state(enemy_fallen=True)
+    player = cs.get_participant("player_1")
+    assert player is not None
+    player.conditions = apply_condition([], "wounded")  # gained Wounded; Blessed was spent (absent)
+
+    monkeypatch.setattr(
+        db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=apply_condition([], "blessed"))
+    )
+    captured = _capture_save(monkeypatch)
+
+    session, mutations, queries = _end_combat_mocks()
+    await _end_combat_db(
+        session, cs, "victory", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
+    )
+
+    assert sorted(c["type"] for c in captured["conditions"]) == ["wounded"]

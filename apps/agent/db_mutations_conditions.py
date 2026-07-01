@@ -30,10 +30,11 @@ async def read_player_conditions(
 ) -> list[dict]:
     """Return the player's persistent conditions list (or [] when the row/key is absent).
 
-    Used by combat_end to MERGE newly-acquired persistent conditions with any already stored — so a
-    fight that leaves you Exhausted doesn't clobber a pre-existing Wounded (combat-START load is
-    deferred, so the participant doesn't carry the prior store in). The out-of-combat check/save read
-    is separate and free via db_queries.get_player (it returns the whole data dict).
+    Used by combat_end to reconcile the player's persistent + beneficial-buff conditions back to
+    players.data: it unions newly-acquired persistent conditions with any already stored (so a fight
+    that leaves you Exhausted doesn't clobber a pre-existing Wounded) and detects a beneficial die
+    (Blessed/Inspired) consumed in combat so its stale copy is dropped. The out-of-combat check/save
+    read is separate and free via db_queries.get_player (it returns the whole data dict).
     """
     _conn = conn or await db.get_pool()
     row = await _conn.fetchrow(
