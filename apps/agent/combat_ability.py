@@ -13,6 +13,7 @@ from livekit.agents.llm import ToolError
 import abilities
 import ability_persistence
 import check_resolution
+import check_resolution_save
 import combat_enhancers
 import combat_resolution
 import conditions
@@ -145,10 +146,11 @@ async def _resolve_deescalation_packet(
 def _land_condition_on_one(
     state, target_id: str | None, attacker: CombatParticipant, cond_type: str, source: str
 ) -> bool:
-    """Land a beneficial condition on ONE in-combat participant (M4.8). Self-target (``target_id``
-    None) falls back to the caster; a given id is looked up on the working ``state``. Returns True
-    iff it actually landed (``has_condition``) — a target not on the state, or an immunity no-op,
-    returns False so the caller drops the buff signal. The mutation rides save_combat_state."""
+    """Land a condition (beneficial or hostile) on ONE in-combat participant (M4.8; M13 story-002
+    adds the hostile caller). Self-target (``target_id`` None) falls back to the caster; a given id
+    is looked up on the working ``state``. Returns True iff it actually landed (``has_condition``) —
+    a target not on the state, or an immunity no-op, returns False so the caller drops the signal.
+    The mutation rides save_combat_state."""
     cond_target = attacker if target_id is None else state.get_participant(target_id)
     if cond_target is None:
         return False
@@ -305,6 +307,62 @@ async def _resolve_ability_condition_packet(
     }
     if cond_type is not None and land_condition_on_participant(state, attacker, decl, cond_type, source=ability.id):
         summary["condition_applied"] = cond_type
+    return summary
+
+
+async def _resolve_enemy_condition_packet(
+    session: SessionData,
+    attacker: CombatParticipant,
+    decl: "Declaration",
+    action: dict,
+    *,
+    state,
+    conn,
+    save_resolver=check_resolution_save,
+) -> dict:
+    """Resolve an ENEMY condition-infliction ABILITY in combat (M13). The enemy action_pool entry
+    carries applies_condition/save/dc. Roll the TARGET's save vs dc; on FAILURE land the condition
+    via the apply_condition SSOT (immunity-gated through _land_condition_on_one), on SUCCESS it's
+    resisted. Enemies have no Focus/Stamina pool — nothing is deducted. The mutation rides the
+    phase save_combat_state; no client event (M12's Beat-4 wrap emit surfaces the applied condition)."""
+    cond_type = action.get("applies_condition")
+    if not cond_type or not decl.action:
+        raise ValueError(f"malformed enemy condition action: {action!r}")
+    target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
+    if target is None:
+        return {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": f"target '{decl.target_id}' not found",
+        }
+    if target.is_fallen:
+        return {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": f"{target.name} already fell",
+        }
+    save_attr = check_resolution._ATTR_FULL.get(action["save"], action["save"])
+    player_data = {"attributes": target.attributes, "level": target.level, "conditions": target.conditions}
+    # bonus_dice_eligible=False mirrors the engine-adjacent tick-clear save (does not spend the
+    # target's stored +1d4). Assumption: a future story may make enemy-condition saves bonus-die-
+    # eligible (decision bfe4bac441d0, scope=save); deferred to avoid coupling to the M4.8 consume plumbing.
+    result = save_resolver.resolve_saving_throw(
+        player_data, save_attr, action["dc"], cond_type, bonus_dice_eligible=False
+    )
+    summary = {
+        "actor_id": attacker.id,
+        "resolved": True,
+        "declaration_type": str(decl.type),
+        "action": decl.action,
+    }
+    if result.success:
+        summary["condition_resisted"] = cond_type
+    elif _land_condition_on_one(state, decl.target_id, attacker, cond_type, source=decl.action):
+        summary["condition_applied"] = cond_type
+    else:
+        summary["condition_immune"] = cond_type  # failed save but immune (temp_hollowed) or off-state
     return summary
 
 
