@@ -141,6 +141,12 @@ class CombatParticipant:
     # rows serialize via asdict / fall back on from_dict unchanged (same pattern as the role fields).
     category: str = ""
     loot_table_id: str = ""
+    # Saving-throw proficiencies (M13 close-fix): the attribute save names this participant is
+    # proficient in (e.g. ["wisdom", "charisma"]), sourced from players.data at combat init for
+    # a player. resolve_saving_throw adds the proficiency bonus when the rolled save is listed —
+    # so a WIS-proficient target resists an enemy-inflicted Frightened as the rules intend.
+    # Defaults to [] (enemies/companions and pre-fix rows carry none; from_dict falls back).
+    saving_throw_proficiencies: list[str] = field(default_factory=list)
 
     @property
     def is_ally(self) -> bool:

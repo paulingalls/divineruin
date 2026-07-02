@@ -50,14 +50,16 @@ def test_tick_save_loop_passes_eligible_false():
     from combat_packet import _resolve_tick_saves
 
     save_resolver = MagicMock()
-    save_resolver.resolve_saving_throw = MagicMock(return_value=SimpleNamespace(success=False, consumed_conditions=()))
-    actor = SimpleNamespace(attributes=_ATTRS, level=3, conditions=apply_condition(BLESSED, "frightened"))
+    save_resolver.roll_participant_save = MagicMock(return_value=SimpleNamespace(success=False, consumed_conditions=()))
+    actor = SimpleNamespace(
+        attributes=_ATTRS, level=3, conditions=apply_condition(BLESSED, "frightened"), saving_throw_proficiencies=[]
+    )
     state = MagicMock()
     state.get_participant = MagicMock(return_value=actor)
 
     _resolve_tick_saves(state, [{"actor_id": "p1", "type": "frightened", "save": "wis", "source": "x"}], save_resolver)
 
-    _, kwargs = save_resolver.resolve_saving_throw.call_args
+    _, kwargs = save_resolver.roll_participant_save.call_args
     assert kwargs.get("bonus_dice_eligible") is False
     # The tick loop only clears the ticked type on success; blessed is never touched here.
     assert "blessed" in [c["type"] for c in actor.conditions]

@@ -11,7 +11,6 @@ state and write through injected mutation/query modules, but own no transaction.
 
 from livekit.agents.llm import ToolError
 
-import check_resolution
 import combat_enhancers
 import combat_resolution
 import conditions
@@ -51,13 +50,11 @@ def _resolve_tick_saves(state, tick_conditions_due, save_resolver):
         actor = state.get_participant(event["actor_id"])
         if actor is None:
             continue
-        player_data = {"attributes": actor.attributes, "level": actor.level, "conditions": actor.conditions}
-        # The catalog's tick_save is the 3-letter abbreviation ("wis"); resolve_saving_throw
-        # validates against the full attribute name ("wisdom"), so expand before resolving.
-        save_type = check_resolution._ATTR_FULL.get(event["save"], event["save"])
+        # Shared participant-save SSOT (roll_participant_save): builds player_data from the actor,
+        # expands the 3-letter tick_save ("wis" -> "wisdom"), and honors the actor's save proficiency.
         # Engine-auto tick-clear save: never spends the actor's beneficial +1d4 (M4.8 story-003).
-        result = save_resolver.resolve_saving_throw(
-            player_data, save_type, _CONDITION_CLEAR_DC, event["type"], bonus_dice_eligible=False
+        result = save_resolver.roll_participant_save(
+            actor, event["save"], _CONDITION_CLEAR_DC, event["type"], bonus_dice_eligible=False
         )
         if result.success:
             actor.conditions = conditions.remove_condition(actor.conditions, event["type"])

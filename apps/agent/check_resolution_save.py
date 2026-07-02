@@ -9,7 +9,7 @@ resolve_saving_throw accepts an optional `rng` for deterministic testing.
 import random
 from dataclasses import dataclass
 
-from check_resolution import _ATTR_ABBREV, _apply_condition_modifiers, _roll_d20_check, roll_bonus_dice
+from check_resolution import _ATTR_ABBREV, _ATTR_FULL, _apply_condition_modifiers, _roll_d20_check, roll_bonus_dice
 from conditions import get_condition_effects
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier, proficiency_bonus
@@ -127,4 +127,43 @@ def resolve_saving_throw(
         dramatic=verdict.dramatic,
         context=verdict.context,
         consumed_conditions=consumed,
+    )
+
+
+def roll_participant_save(
+    participant,
+    save: str,
+    dc: int,
+    effect_on_fail: str,
+    *,
+    dc_mod: int = 0,
+    bonus_dice_eligible: bool = False,
+    rng: random.Random | None = None,
+) -> SavingThrowResult:
+    """Roll a CombatParticipant's saving throw against ``dc`` (+ ``dc_mod``).
+
+    Builds the resolve_saving_throw ``player_data`` from the participant's attributes/level/
+    conditions AND its saving_throw_proficiencies (so a proficient target gets its bonus), and
+    expands a 3-letter save abbreviation ("wis") to the full attribute name ("wisdom").
+    Duck-typed on the participant (no session_data import) to keep this module IO/type-free.
+
+    The single SSOT for a CombatParticipant save: the Beat-4 tick-clear (combat_packet) and the
+    enemy condition-infliction resolver (combat_ability) both call it so their save math can't
+    diverge. ``bonus_dice_eligible`` defaults False (the engine-adjacent callers — tick-clear and
+    enemy-inflicted saves — do not spend the target's single-use +1d4)."""
+    save_type = _ATTR_FULL.get(save, save)
+    player_data = {
+        "attributes": participant.attributes,
+        "level": participant.level,
+        "conditions": participant.conditions,
+        "saving_throw_proficiencies": participant.saving_throw_proficiencies,
+    }
+    return resolve_saving_throw(
+        player_data,
+        save_type,
+        dc,
+        effect_on_fail,
+        rng=rng,
+        dc_mod=dc_mod,
+        bonus_dice_eligible=bonus_dice_eligible,
     )

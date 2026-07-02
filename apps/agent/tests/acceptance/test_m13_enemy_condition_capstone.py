@@ -5,9 +5,15 @@ f9a5d1e88432) shipped the M13 chain in slices with unit / mock-conn coverage. Th
 proves they COMPOSE against ONE seeded testcontainer (auto-marked `acceptance`), driving the
 REAL pipeline: content-driven `combat_init._start_combat_impl` builds participants from the
 seeded `hollow_patrol_greyvale` encounter (running `_validate_enemy_action_conditions`), the
-declare/resolve loop dispatches the enemy `hollow_rend_1`'s "Hollow Shriek" ABILITY through
+declare/resolve loop dispatches the enemy `hollow_rend_1`'s "Hollow Shriek" through
 `combat_packet._resolve_one_packet` to `combat_ability._resolve_enemy_condition_packet`, which
 rolls the target's save and lands the condition via the immunity-gated `apply_condition` SSOT.
+
+The enemy action is declared as an **ATTACK** — the way the DM actually declares an enemy pool
+action (system_prompts.py:235; "Ability" is a spell/ability id the caster knows, which pool
+actions are not). The routing keys on the action's `applies_condition` field, not the declaration
+type, so this is the real live path. (A prior version declared it as ABILITY and was false-green:
+the feature was a no-op under real DM behavior — the close-fix that made routing type-agnostic.)
 
 Determinism: the only seam patched is the d20 (check_resolution.dice_roll -> face 1, so every
 save FAILS, including the Beat-4 tick-clear save — the landed condition survives the phase).
@@ -32,14 +38,14 @@ import db_mutations
 
 _ENCOUNTER = "hollow_patrol_greyvale"
 _ENEMY_ID = "hollow_rend_1"
-_ABILITY = "Hollow Shriek"
+_ACTION = "Hollow Shriek"
 
 
 async def _start_and_declare(ctx, player_id: str) -> None:
     await combat_init._start_combat_impl(ctx, _ENCOUNTER, "The Hollow patrol turns.")
     decls = {
         player_id: {"type": "defend"},
-        _ENEMY_ID: {"type": "ability", "action": _ABILITY, "target_id": player_id},
+        _ENEMY_ID: {"type": "attack", "action": _ACTION, "target_id": player_id},
     }
     await combat_turn._declare_phase_impl(ctx, decls)
 
@@ -91,7 +97,7 @@ async def test_m13_temporary_hollowed_target_no_ops_the_immunity_gate(reset_db_p
 
         decls = {
             player_id: {"type": "defend"},
-            _ENEMY_ID: {"type": "ability", "action": _ABILITY, "target_id": player_id},
+            _ENEMY_ID: {"type": "attack", "action": _ACTION, "target_id": player_id},
         }
         await combat_turn._declare_phase_impl(ctx, decls)
 

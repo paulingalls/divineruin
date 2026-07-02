@@ -47,10 +47,11 @@ def _state_with_enemy_action(action, *, player_conditions=None):
 
 
 def _save_resolver(*, success: bool):
+    # The resolver rolls the target's save via the shared roll_participant_save SSOT.
     result = MagicMock()
     result.success = success
     resolver = MagicMock()
-    resolver.resolve_saving_throw = MagicMock(return_value=result)
+    resolver.roll_participant_save = MagicMock(return_value=result)
     return resolver
 
 
@@ -194,3 +195,60 @@ class TestEnemyAbilityDispatch:
         )
 
         assert summary["resolved"] is False
+
+
+class TestSaveThreading:
+    async def test_resolver_forwards_role_dc_mod_and_passes_target_participant(self):
+        # #3: the attacker's role dc_mod (Boss +2 / Elite +1) must reach the save DC; #4: the
+        # TARGET participant (which carries saving_throw_proficiencies) is what's rolled, so a
+        # proficient target gets its bonus. Both are threaded through roll_participant_save.
+        state = _state_with_enemy_action(_enemy_action())
+        attacker = _get(state, "goblin_scout_1")
+        attacker.dc_mod = 2
+        _get(state, "player_1").saving_throw_proficiencies = ["wisdom"]
+        decl = Declaration(type=DeclarationType.ATTACK, action="Unnerving Gaze", target_id="player_1")
+        session = make_context().userdata
+        resolver = _save_resolver(success=True)
+
+        await _resolve_enemy_condition_packet(
+            session, attacker, decl, _enemy_action(), state=state, conn=object(), save_resolver=resolver
+        )
+
+        call = resolver.roll_participant_save.call_args
+        assert call.kwargs["dc_mod"] == 2
+        assert call.args[0] is _get(state, "player_1")  # target participant carries the proficiencies
+
+    def test_roll_participant_save_honors_dc_mod_and_proficiency(self):
+        # Real save math (no mock): dc_mod raises the effective DC; a proficient target gains the
+        # proficiency bonus. Also exercises the "wis" -> "wisdom" abbreviation expansion.
+        import check_resolution_save
+
+        prof = CombatParticipant(
+            id="prof",
+            name="Prof",
+            type="player",
+            initiative=10,
+            hp_current=10,
+            hp_max=10,
+            ac=12,
+            attributes={"wisdom": 10},
+            level=5,
+            saving_throw_proficiencies=["wisdom"],
+        )
+        plain = CombatParticipant(
+            id="plain",
+            name="Plain",
+            type="player",
+            initiative=10,
+            hp_current=10,
+            hp_max=10,
+            ac=12,
+            attributes={"wisdom": 10},
+            level=5,
+        )
+        with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=10)):
+            r_prof = check_resolution_save.roll_participant_save(prof, "wis", 10, "frightened", dc_mod=3)
+            r_plain = check_resolution_save.roll_participant_save(plain, "wis", 10, "frightened", dc_mod=3)
+
+        assert r_prof.dc == 13 and r_plain.dc == 13  # dc + dc_mod
+        assert r_prof.modifier > r_plain.modifier  # proficiency bonus folded in for the proficient target

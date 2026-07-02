@@ -281,21 +281,9 @@ async def _resolve_ability_condition_packet(
     # Single-target (story-005): a given target_id that's not on the working state, or already
     # fallen, WASTES the declaration (resolved:False) WITHOUT deducting — you can't buff a target
     # that left or a corpse, and a wasted declaration must never burn the cost.
-    cond_target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
-    if cond_target is None:
-        return {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": f"target '{decl.target_id}' not found",
-        }
-    if cond_target.is_fallen:
-        return {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": f"{cond_target.name} already fell",
-        }
+    _, waste = _resolve_condition_target(state, attacker, decl)
+    if waste is not None:
+        return waste
 
     await _deduct_ability_cost(session, player, ability, persistence=persistence, conn=conn)
 
@@ -310,6 +298,31 @@ async def _resolve_ability_condition_packet(
     return summary
 
 
+def _resolve_condition_target(state, attacker: CombatParticipant, decl: "Declaration"):
+    """Resolve the single target of a condition-applying declaration (self when target_id is None).
+
+    Returns ``(target, None)`` for a live target, or ``(None, waste_summary)`` when the target is
+    gone or already fallen — a wasted declaration must never apply the condition or deduct a cost.
+    Shared by the player ability-condition path (_resolve_ability_condition_packet) and the enemy
+    condition-infliction path (_resolve_enemy_condition_packet) so the wasted-target contract lives once."""
+    target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
+    if target is None:
+        return None, {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": f"target '{decl.target_id}' not found",
+        }
+    if target.is_fallen:
+        return None, {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": f"{target.name} already fell",
+        }
+    return target, None
+
+
 async def _resolve_enemy_condition_packet(
     session: SessionData,
     attacker: CombatParticipant,
@@ -320,38 +333,29 @@ async def _resolve_enemy_condition_packet(
     conn,
     save_resolver=check_resolution_save,
 ) -> dict:
-    """Resolve an ENEMY condition-infliction ABILITY in combat (M13). The enemy action_pool entry
-    carries applies_condition/save/dc. Roll the TARGET's save vs dc; on FAILURE land the condition
-    via the apply_condition SSOT (immunity-gated through _land_condition_on_one), on SUCCESS it's
-    resisted. Enemies have no Focus/Stamina pool — nothing is deducted. The mutation rides the
-    phase save_combat_state; no client event (M12's Beat-4 wrap emit surfaces the applied condition)."""
-    cond_type = action.get("applies_condition")
-    if not cond_type or not decl.action:
-        raise ValueError(f"malformed enemy condition action: {action!r}")
-    target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
-    if target is None:
-        return {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": f"target '{decl.target_id}' not found",
-        }
-    if target.is_fallen:
-        return {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": f"{target.name} already fell",
-        }
-    save_attr = check_resolution._ATTR_FULL.get(action["save"], action["save"])
-    player_data = {"attributes": target.attributes, "level": target.level, "conditions": target.conditions}
-    # bonus_dice_eligible=False is a DEFERRAL, not what decision bfe4bac441d0 prescribes: that decision
-    # scopes Blessed/Inspired's +1d4 to real d20 saves, and an enemy-inflicted save IS one — so a
-    # Blessed/Inspired target should get the die here. Threading it needs the consumed_conditions
-    # plumbing the attack path has (this resolver lacks it); flipping to True naively would double-dip.
-    # False is the state-safe interim; the gap is tracked as concern 9ff840717590 for a follow-up.
-    result = save_resolver.resolve_saving_throw(
-        player_data, save_attr, action["dc"], cond_type, bonus_dice_eligible=False
+    """Resolve an ENEMY condition-infliction action in combat (M13). The enemy action_pool entry
+    carries applies_condition/save/dc; the dispatch (combat_packet._resolve_one_packet) routes here
+    for an ATTACK **or** ABILITY declaration whose action has applies_condition — the DM declares
+    enemy pool actions as ATTACK, so routing on the field (not the type) is what makes the feature
+    fire in real play. Roll the TARGET's save vs (dc + the attacker's role dc_mod), honoring the
+    target's save proficiency; on FAILURE land the condition via the apply_condition SSOT
+    (immunity-gated through _land_condition_on_one), on SUCCESS it's resisted. Enemies have no
+    Focus/Stamina pool — nothing is deducted. The mutation rides the phase save_combat_state; no
+    client event (M12's Beat-4 wrap emit surfaces the applied condition).
+
+    Save-based, no to-hit: M13 condition actions are save-gated (Hollow Shriek is a fear shriek,
+    damage 0); this resolver does not apply action['damage']. A damage-bearing condition action
+    (to-hit + save + damage combined) is a follow-up (debt 5b18023ef5a5)."""
+    cond_type = action["applies_condition"]  # dispatch guarantees this is truthy
+    target, waste = _resolve_condition_target(state, attacker, decl)
+    if waste is not None:
+        return waste
+    # dc_mod threads the attacker's role overlay (Boss +2 / Elite +1 / Minion -1) into the target's
+    # DC. bonus_dice_eligible=False keeps the engine-adjacent interim (concern 9ff840717590): a
+    # Blessed/Inspired target should arguably get its +1d4 on this save, but that needs the
+    # consumed_conditions plumbing the attack path has; deferred, not what bfe4bac441d0 prescribes.
+    result = save_resolver.roll_participant_save(
+        target, action["save"], action["dc"], cond_type, dc_mod=attacker.dc_mod, bonus_dice_eligible=False
     )
     summary = {
         "actor_id": attacker.id,
@@ -361,7 +365,7 @@ async def _resolve_enemy_condition_packet(
     }
     if result.success:
         summary["condition_resisted"] = cond_type
-    elif _land_condition_on_one(state, decl.target_id, attacker, cond_type, source=decl.action):
+    elif _land_condition_on_one(state, decl.target_id, attacker, cond_type, source=decl.action or ""):
         summary["condition_applied"] = cond_type
     else:
         summary["condition_immune"] = cond_type  # failed save but immune (temp_hollowed) or off-state

@@ -35,20 +35,31 @@ from tool_support import SOUND_COMBAT_START
 logger = logging.getLogger("divineruin.tools")
 
 
+_VALID_SAVES = frozenset({"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"})
+
+
 def _validate_enemy_action_conditions(enemies: list[dict]) -> None:
-    """Fail loud if any enemy action declares an applies_condition not in CONDITION_CATALOG.
+    """Fail loud if any enemy condition action is malformed — the load-boundary strict guard.
 
     Encounter templates have no strict loader (unlike spells.json / archetype_abilities.json,
-    whose loaders fail-loud on this same field), so this is the load-boundary guard mirroring
-    spells.parse_spell_row / abilities.parse_ability_row — it closes that gap at combat start."""
+    whose loaders fail-loud on applies_condition), so this closes that gap at combat start. For any
+    action that declares ``applies_condition`` it requires: (1) the condition is in CONDITION_CATALOG;
+    (2) ``save`` is a valid attribute name; (3) ``dc`` is an int. The enemy-condition resolver
+    (combat_ability._resolve_enemy_condition_packet) reads ``save``/``dc`` directly, so validating
+    them HERE turns a would-be mid-fight KeyError into a fail-loud error at combat entry."""
     for enemy in enemies:
         for action in enemy.get("action_pool", []):
             cond = action.get("applies_condition")
-            if cond is not None and cond not in conditions.CONDITION_CATALOG:
-                raise ValueError(
-                    f"enemy {enemy.get('id')!r} action {action.get('name')!r} "
-                    f"applies_condition {cond!r} is not a known condition"
-                )
+            if cond is None:
+                continue
+            label = f"enemy {enemy.get('id')!r} action {action.get('name')!r}"
+            if cond not in conditions.CONDITION_CATALOG:
+                raise ValueError(f"{label} applies_condition {cond!r} is not a known condition")
+            save = action.get("save")
+            if not isinstance(save, str) or save.lower() not in _VALID_SAVES:
+                raise ValueError(f"{label} applies_condition needs a valid 'save' attribute, got {save!r}")
+            if not isinstance(action.get("dc"), int):
+                raise ValueError(f"{label} applies_condition needs an int 'dc', got {action.get('dc')!r}")
 
 
 async def _start_combat_impl(
@@ -197,6 +208,10 @@ async def _start_combat_impl(
             # extra_attack is grantable today; the rest populate when their grants land.
             enhancers=combat_enhancers.enhancers_from_flags(player.get("flags")),
             conditions=player_conditions,
+            # Save proficiencies (M13 close-fix): carry the player's proficient saves onto the
+            # participant so resolve_saving_throw adds the bonus when an enemy imposes a save
+            # (e.g. Frightened). Sourced from players.data (creation_rules.py:309).
+            saving_throw_proficiencies=player.get("saving_throw_proficiencies", []),
         ),
     ]
     for enemy in enemies:

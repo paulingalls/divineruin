@@ -23,16 +23,48 @@ class TestValidateEnemyActionConditions:
         with pytest.raises(ValueError, match="not_a_condition"):
             _validate_enemy_action_conditions(enemies)
 
-    def test_known_hostile_condition_does_not_raise(self):
+    def test_known_hostile_condition_with_save_and_dc_does_not_raise(self):
         enemies = [
             {
                 "id": "hollow_rend_1",
                 "action_pool": [
-                    {"name": "Hollow Shriek", "applies_condition": "frightened"},
+                    {"name": "Hollow Shriek", "applies_condition": "frightened", "save": "wisdom", "dc": 12},
                 ],
             }
         ]
         _validate_enemy_action_conditions(enemies)  # no raise
+
+    def test_missing_save_raises_at_load(self):
+        # The resolver hard-reads action["save"]; a missing save must fail loud HERE (combat start),
+        # not as a mid-fight KeyError deep in the phase loop.
+        enemies = [
+            {
+                "id": "hollow_rend_1",
+                "action_pool": [{"name": "Hollow Shriek", "applies_condition": "frightened", "dc": 12}],
+            }
+        ]
+        with pytest.raises(ValueError, match="save"):
+            _validate_enemy_action_conditions(enemies)
+
+    def test_missing_or_nonint_dc_raises_at_load(self):
+        enemies = [
+            {
+                "id": "hollow_rend_1",
+                "action_pool": [{"name": "Hollow Shriek", "applies_condition": "frightened", "save": "wisdom"}],
+            }
+        ]
+        with pytest.raises(ValueError, match="dc"):
+            _validate_enemy_action_conditions(enemies)
+
+    def test_invalid_save_attribute_raises_at_load(self):
+        enemies = [
+            {
+                "id": "hollow_rend_1",
+                "action_pool": [{"name": "Hollow Shriek", "applies_condition": "frightened", "save": "luck", "dc": 12}],
+            }
+        ]
+        with pytest.raises(ValueError, match="save"):
+            _validate_enemy_action_conditions(enemies)
 
     def test_action_with_no_applies_condition_does_not_raise(self):
         enemies = [
