@@ -48,16 +48,33 @@ def _bless3(applies_condition: str | None = "blessed") -> Spell:
     )
 
 
-async def _cast_ooc_multi(spell, *, caster, target_id=None, target_ids=None, rows=None):
-    """Drive _cast_spell_impl out of combat with target_ids. Returns (packet, cond_mut, get_player)."""
-    ctx = make_context(player_id=caster["player_id"])
+async def _cast_ooc_multi(
+    spell,
+    *,
+    caster,
+    target_id=None,
+    target_ids=None,
+    rows=None,
+    party_member_ids=None,
+    companion_id=None,
+):
+    """Drive _cast_spell_impl out of combat with target_ids. Returns (packet, cond_mut, get_player).
+    ``party_member_ids`` (M4.8 story-007 party gate) must include any non-caster target — the OOC
+    producer now refuses a target that is neither a party member nor the caster's companion."""
+    ctx = make_context(player_id=caster["player_id"], party_member_ids=party_member_ids, companion_id=companion_id)
     mock_db, _conn = make_db_mod()
     table = {caster["player_id"]: caster, **(rows or {})}
 
     async def _get_player(pid, *, conn=None, for_update=False):
         return table.get(pid)
 
-    queries = MagicMock(get_player=AsyncMock(side_effect=_get_player))
+    async def _get_players_for_update(pids, *, conn=None):
+        return {pid: table[pid] for pid in pids if pid in table}
+
+    queries = MagicMock(
+        get_player=AsyncMock(side_effect=_get_player),
+        get_players_for_update=AsyncMock(side_effect=_get_players_for_update),
+    )
     persistence = MagicMock(update_player_resources=AsyncMock())
     res_mut = MagicMock(update_player_resonance=AsyncMock())
     events = MagicMock(publish_resonance_changed=AsyncMock())
@@ -67,7 +84,7 @@ async def _cast_ooc_multi(spell, *, caster, target_id=None, target_ids=None, row
         validate_target_count=spells.validate_target_count,
         normalize_target_list=spells.normalize_target_list,
     )
-    cond_mut = MagicMock(save_player_conditions=AsyncMock())
+    cond_mut = MagicMock(save_many_player_conditions=AsyncMock())
     raw = await spell_casting._cast_spell_impl(
         ctx,
         spell.id,
@@ -90,15 +107,19 @@ async def test_ooc_three_allies_each_get_blessed():
     # AC1: name three allies -> each ally's players.data gets blessed persisted.
     rows = {f"ally_{i}": _caster(f"ally_{i}", conditions_list=[]) for i in (1, 2, 3)}
     packet, cond_mut, _gp = await _cast_ooc_multi(
-        _bless3(), caster=_caster(), target_ids=["ally_1", "ally_2", "ally_3"], rows=rows
+        _bless3(),
+        caster=_caster(),
+        target_ids=["ally_1", "ally_2", "ally_3"],
+        rows=rows,
+        party_member_ids=["caster_1", "ally_1", "ally_2", "ally_3"],
     )
 
     assert packet["condition_applied"] == "blessed"
-    assert cond_mut.save_player_conditions.await_count == 3
-    persisted_ids = {call.args[0] for call in cond_mut.save_player_conditions.await_args_list}
-    assert persisted_ids == {"ally_1", "ally_2", "ally_3"}
-    for call in cond_mut.save_player_conditions.await_args_list:
-        assert "blessed" in [c["type"] for c in call.args[1]]
+    cond_mut.save_many_player_conditions.assert_awaited_once()  # ONE batched write, not N
+    written = cond_mut.save_many_player_conditions.call_args.args[0]
+    assert set(written.keys()) == {"ally_1", "ally_2", "ally_3"}
+    for conds in written.values():
+        assert "blessed" in [c["type"] for c in conds]
 
 
 @pytest.mark.asyncio
@@ -116,23 +137,35 @@ async def test_ooc_single_target_path_unchanged():
     # AC3: a single-target cast (target_id, no target_ids) still persists to exactly the one target.
     ally = _caster("ally_2", conditions_list=[])
     packet, cond_mut, _gp = await _cast_ooc_multi(
-        _bless3(), caster=_caster(), target_id="ally_2", rows={"ally_2": ally}
+        _bless3(),
+        caster=_caster(),
+        target_id="ally_2",
+        rows={"ally_2": ally},
+        party_member_ids=["caster_1", "ally_2"],
     )
 
     assert packet["condition_applied"] == "blessed"
-    cond_mut.save_player_conditions.assert_awaited_once()
-    assert cond_mut.save_player_conditions.await_args.args[0] == "ally_2"
+    cond_mut.save_many_player_conditions.assert_awaited_once()
+    assert set(cond_mut.save_many_player_conditions.call_args.args[0].keys()) == {"ally_2"}
 
 
 @pytest.mark.asyncio
 async def test_ooc_mix_nonplayer_narrates_player_persists():
-    # AC4: a non-player ally (absent from the table) narrates without a write; player allies persist.
-    rows = {"ally_1": _caster("ally_1", conditions_list=[])}  # "kael" intentionally absent (non-player)
-    packet, cond_mut, _gp = await _cast_ooc_multi(_bless3(), caster=_caster(), target_ids=["ally_1", "kael"], rows=rows)
+    # AC4: buffing the caster's COMPANION (allowlisted narrate-only, absent from players.data)
+    # narrates without a write; the party-member ally persists (M4.8 story-007 companion allowlist).
+    rows = {"ally_1": _caster("ally_1", conditions_list=[])}
+    packet, cond_mut, _gp = await _cast_ooc_multi(
+        _bless3(),
+        caster=_caster(),
+        target_ids=["ally_1", "kael"],
+        rows=rows,
+        party_member_ids=["caster_1", "ally_1"],
+        companion_id="kael",
+    )
 
     assert packet["condition_applied"] == "blessed"  # landed on >=1 target
-    cond_mut.save_player_conditions.assert_awaited_once()  # only the player ally persisted
-    assert cond_mut.save_player_conditions.await_args.args[0] == "ally_1"
+    cond_mut.save_many_player_conditions.assert_awaited_once()  # only the player ally persisted
+    assert set(cond_mut.save_many_player_conditions.call_args.args[0].keys()) == {"ally_1"}
 
 
 @pytest.mark.asyncio
@@ -140,7 +173,11 @@ async def test_ooc_multi_target_packet_names_voiced_allies():
     # Per-target identity: the multi-target packet lists the blessed ally ids so the DM names each one.
     rows = {f"ally_{i}": _caster(f"ally_{i}", conditions_list=[]) for i in (1, 2, 3)}
     packet, _cm, _gp = await _cast_ooc_multi(
-        _bless3(), caster=_caster(), target_ids=["ally_1", "ally_2", "ally_3"], rows=rows
+        _bless3(),
+        caster=_caster(),
+        target_ids=["ally_1", "ally_2", "ally_3"],
+        rows=rows,
+        party_member_ids=["caster_1", "ally_1", "ally_2", "ally_3"],
     )
     assert packet["condition_targets"] == ["ally_1", "ally_2", "ally_3"]
 
@@ -149,7 +186,9 @@ async def test_ooc_multi_target_packet_names_voiced_allies():
 async def test_ooc_single_target_has_no_condition_targets_key():
     # The single-target path keeps its shape — condition_targets is multi-target-only.
     ally = _caster("ally_2", conditions_list=[])
-    packet, _cm, _gp = await _cast_ooc_multi(_bless3(), caster=_caster(), target_id="ally_2", rows={"ally_2": ally})
+    packet, _cm, _gp = await _cast_ooc_multi(
+        _bless3(), caster=_caster(), target_id="ally_2", rows={"ally_2": ally}, party_member_ids=["caster_1", "ally_2"]
+    )
     assert "condition_targets" not in packet
     assert packet["target_id"] == "ally_2"
 
@@ -176,10 +215,14 @@ async def test_ooc_all_duplicate_targets_collapsing_to_one_persist():
     # Dedup is order-preserving and runs before the apply loop: 3 dupes -> ONE write, not three.
     rows = {"ally_1": _caster("ally_1", conditions_list=[])}
     packet, cond_mut, _gp = await _cast_ooc_multi(
-        _bless3(), caster=_caster(), target_ids=["ally_1", "ally_1", "ally_1"], rows=rows
+        _bless3(),
+        caster=_caster(),
+        target_ids=["ally_1", "ally_1", "ally_1"],
+        rows=rows,
+        party_member_ids=["caster_1", "ally_1"],
     )
     assert packet["condition_applied"] == "blessed"
-    cond_mut.save_player_conditions.assert_awaited_once()  # deduped to a single target
+    cond_mut.save_many_player_conditions.assert_awaited_once()  # deduped to a single target
     assert packet["condition_targets"] == ["ally_1"]
 
 
@@ -188,10 +231,15 @@ async def test_ooc_dupes_do_not_consume_the_cap():
     # Dedup happens BEFORE the cap check: 4 ids that dedup to 3 must pass a cap of 3.
     rows = {f"ally_{i}": _caster(f"ally_{i}", conditions_list=[]) for i in (1, 2, 3)}
     packet, cond_mut, _gp = await _cast_ooc_multi(
-        _bless3(), caster=_caster(), target_ids=["ally_1", "ally_2", "ally_3", "ally_1"], rows=rows
+        _bless3(),
+        caster=_caster(),
+        target_ids=["ally_1", "ally_2", "ally_3", "ally_1"],
+        rows=rows,
+        party_member_ids=["caster_1", "ally_1", "ally_2", "ally_3"],
     )
     assert packet["condition_targets"] == ["ally_1", "ally_2", "ally_3"]
-    assert cond_mut.save_player_conditions.await_count == 3
+    cond_mut.save_many_player_conditions.assert_awaited_once()
+    assert set(cond_mut.save_many_player_conditions.call_args.args[0].keys()) == {"ally_1", "ally_2", "ally_3"}
 
 
 @pytest.mark.asyncio

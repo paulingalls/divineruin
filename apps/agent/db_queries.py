@@ -133,6 +133,37 @@ async def get_player(
     return data
 
 
+async def get_players_for_update(
+    player_ids: list[str], *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> dict[str, dict]:
+    """Batch id-ordered ``FOR UPDATE`` fetch for multiple players. Returns ``{player_id: data}``.
+
+    ``ORDER BY player_id`` is the deterministic lock order for a multi-target batch (M4.8 story-007's
+    OOC condition party-gate batch fetch, replacing N per-target ``get_player`` round-trips; feeds
+    story-008's caster-then-targets lock ordering). Mirrors ``get_npc_dispositions``' ``= ANY($1)``
+    batch shape and reuses ``get_player``'s double-encoded-JSONB guard. An id with no ``players`` row
+    is simply absent from the returned map — callers fail loud on a requested id missing from it.
+    """
+    if not player_ids:
+        return {}
+    _conn = conn or await db.get_pool()
+    rows = await _conn.fetch(
+        "SELECT player_id, data FROM players WHERE player_id = ANY($1) ORDER BY player_id FOR UPDATE",
+        player_ids,
+    )
+    result: dict[str, dict] = {}
+    for row in rows:
+        data = json.loads(row["data"])
+        if isinstance(data, str):
+            logger.warning("Double-encoded player data for %s -- run data migration", row["player_id"])
+            data = json.loads(data)
+        if not isinstance(data, dict):
+            logger.warning("Player %s has non-dict data: %s", row["player_id"], type(data).__name__)
+            continue
+        result[row["player_id"]] = data
+    return result
+
+
 async def get_npcs_at_location(
     location_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> list[dict]:
