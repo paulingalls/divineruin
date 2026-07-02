@@ -345,9 +345,11 @@ async def _resolve_enemy_condition_packet(
         }
     save_attr = check_resolution._ATTR_FULL.get(action["save"], action["save"])
     player_data = {"attributes": target.attributes, "level": target.level, "conditions": target.conditions}
-    # bonus_dice_eligible=False mirrors the engine-adjacent tick-clear save (does not spend the
-    # target's stored +1d4). Assumption: a future story may make enemy-condition saves bonus-die-
-    # eligible (decision bfe4bac441d0, scope=save); deferred to avoid coupling to the M4.8 consume plumbing.
+    # bonus_dice_eligible=False is a DEFERRAL, not what decision bfe4bac441d0 prescribes: that decision
+    # scopes Blessed/Inspired's +1d4 to real d20 saves, and an enemy-inflicted save IS one — so a
+    # Blessed/Inspired target should get the die here. Threading it needs the consumed_conditions
+    # plumbing the attack path has (this resolver lacks it); flipping to True naively would double-dip.
+    # False is the state-safe interim; the gap is tracked as concern 9ff840717590 for a follow-up.
     result = save_resolver.resolve_saving_throw(
         player_data, save_attr, action["dc"], cond_type, bonus_dice_eligible=False
     )
