@@ -67,6 +67,14 @@ class TestCompanionCombatProfile:
         content.get_npc.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_companion_carries_save_proficiencies_from_profile(self):
+        # M13 close-fix: an enemy-inflicted save-based condition must honor the companion's save
+        # proficiencies too (symmetric with the player), so they ride onto the participant.
+        comp, _ = await _run_combat_with_companion(CompanionState(id="companion_kael", name="Kael"))
+        profile = get_companion_profile("companion_kael")
+        assert comp.saving_throw_proficiencies == list(profile.save_proficiencies)
+
+    @pytest.mark.asyncio
     async def test_action_pool_is_mechanical_dice_notation(self):
         comp, _ = await _run_combat_with_companion(CompanionState(id="companion_kael", name="Kael"))
         longsword = next(a for a in comp.action_pool if a["name"] == "Longsword")

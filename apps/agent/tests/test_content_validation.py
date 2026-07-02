@@ -349,11 +349,6 @@ class TestGatheringContent:
 # guard so an unknown/malformed applies_condition fails the fast lane, not just combat entry.
 _HOSTILE_CONDITIONS = frozenset({"charmed", "frightened", "poisoned"})
 
-# The closed save vocabulary resolve_saving_throw (check_resolution_save.py) validates against —
-# full attribute names, lowercased. A save typo here passes as a str but crashes live combat when
-# the enemy ability fires (story-003), so pin the vocabulary at the fast-lane boundary.
-_VALID_SAVES = frozenset({"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"})
-
 
 class TestEnemyHostileConditionContent:
     def _enemy_actions_with_condition(self):
@@ -364,6 +359,7 @@ class TestEnemyHostileConditionContent:
                         yield enc["id"], enemy, action
 
     def test_enemy_applies_condition_is_catalog_key_with_valid_save_and_dc(self):
+        import check_resolution_save
         import conditions
 
         for enc_id, enemy, action in self._enemy_actions_with_condition():
@@ -372,13 +368,11 @@ class TestEnemyHostileConditionContent:
                 f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' "
                 f"applies_condition '{cond}' is not a known condition"
             )
-            save = action.get("save")
-            assert isinstance(save, str), (
-                f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' save must be a str"
-            )
-            assert save.lower() in _VALID_SAVES, (
-                f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' "
-                f"save '{save}' is not one of {sorted(_VALID_SAVES)}"
+            # Use the SAME save-key check the load gate + runtime resolver use (accepts a full name
+            # OR a 3-letter abbrev), so this fast-lane test can't be stricter than what the engine runs.
+            assert check_resolution_save.is_valid_save_key(action.get("save")), (
+                f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' save '{action.get('save')}' "
+                f"is not a valid save key"
             )
             assert isinstance(action.get("dc"), int), (
                 f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' dc must be an int"

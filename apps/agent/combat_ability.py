@@ -308,14 +308,16 @@ def _resolve_condition_target(state, attacker: CombatParticipant, decl: "Declara
     self-target (an ABILITY-declared enemy condition action, which skips ATTACK's target_id
     validation, would otherwise make the enemy inflict on ITSELF). Shared by the player ability-
     condition path and the enemy condition-infliction path so the wasted-target contract lives once."""
-    if decl.target_id is None and not allow_self:
+    target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
+    # allow_self=False wastes ANY self-target: the None fallback OR an explicit target_id equal to
+    # the attacker's own id — a hostile inflict must never land on its own caster.
+    if not allow_self and (decl.target_id is None or (target is not None and target.id == attacker.id)):
         return None, {
             "actor_id": attacker.id,
             "resolved": False,
             "declaration_type": str(decl.type),
-            "reason": "condition action requires a target_id (no self-target)",
+            "reason": "condition action requires a non-self target_id",
         }
-    target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
     if target is None:
         return None, {
             "actor_id": attacker.id,
@@ -362,6 +364,7 @@ async def _resolve_enemy_condition_packet(
     target, waste = _resolve_condition_target(state, attacker, decl, allow_self=False)
     if waste is not None:
         return waste
+    assert target is not None  # waste is None => a live target was resolved
     # dc_mod threads the attacker's role overlay (Boss +2 / Elite +1 / Minion -1) into the target's
     # DC. bonus_dice_eligible=False keeps the engine-adjacent interim (concern 9ff840717590): a
     # Blessed/Inspired target should arguably get its +1d4 on this save, but that needs the
@@ -369,18 +372,23 @@ async def _resolve_enemy_condition_packet(
     result = save_resolver.roll_participant_save(
         target, action["save"], action["dc"], cond_type, dc_mod=attacker.dc_mod, bonus_dice_eligible=False
     )
+    # The HOSTILE inflict uses its OWN summary keys (condition_inflicted / condition_resisted /
+    # condition_immune) + the target's name — NOT the beneficial `condition_applied`, which the DM
+    # system prompt narrates as a boon ("a Blessed/Inspired glow"). A distinct key lets the DM voice
+    # the affliction landing on the TARGET (fear/charm/poison), never inverted as a buff.
     summary = {
         "actor_id": attacker.id,
         "resolved": True,
         "declaration_type": str(decl.type),
         "action": decl.action,
+        "target": target.name,
     }
     if result.success:
         summary["condition_resisted"] = cond_type
     # Reuse the public single-target landing wrapper (the same call the player ability-condition path
     # uses) so the target-id/self-fallback + immunity wiring lives in one place.
     elif land_condition_on_participant(state, attacker, decl, cond_type, source=decl.action or ""):
-        summary["condition_applied"] = cond_type
+        summary["condition_inflicted"] = cond_type
     else:
         summary["condition_immune"] = cond_type  # failed save but immune (temp_hollowed) or off-state
     return summary

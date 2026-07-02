@@ -73,7 +73,7 @@ class TestResolveEnemyConditionPacket:
         )
 
         assert summary["resolved"] is True
-        assert summary["condition_applied"] == "frightened"
+        assert summary["condition_inflicted"] == "frightened"
         assert "condition_resisted" not in summary
         assert any(c["type"] == "frightened" for c in _get(state, "player_1").conditions)
 
@@ -95,7 +95,7 @@ class TestResolveEnemyConditionPacket:
 
         assert summary["resolved"] is True
         assert summary["condition_resisted"] == "frightened"
-        assert "condition_applied" not in summary
+        assert "condition_inflicted" not in summary
         assert not any(c["type"] == "frightened" for c in _get(state, "player_1").conditions)
 
     async def test_immune_target_no_ops_the_gate(self):
@@ -121,7 +121,7 @@ class TestResolveEnemyConditionPacket:
 
         assert summary["resolved"] is True
         assert summary["condition_immune"] == "poisoned"
-        assert "condition_applied" not in summary
+        assert "condition_inflicted" not in summary
         assert not any(c["type"] == "poisoned" for c in _get(state, "player_1").conditions)
 
     async def test_missing_target_id_wastes_and_does_not_self_inflict(self):
@@ -143,8 +143,30 @@ class TestResolveEnemyConditionPacket:
         )
 
         assert summary["resolved"] is False
-        assert "condition_applied" not in summary
+        assert "condition_inflicted" not in summary
         assert not any(c["type"] == "frightened" for c in attacker.conditions)  # enemy not self-inflicted
+
+    async def test_explicit_self_target_id_wastes(self):
+        # allow_self=False must reject an explicit target_id equal to the attacker's OWN id, not just
+        # a None target — a hostile inflict never lands on its own caster.
+        state = _state_with_enemy_action(_enemy_action())
+        attacker = _get(state, "goblin_scout_1")
+        decl = Declaration(type=DeclarationType.ABILITY, action="Unnerving Gaze", target_id="goblin_scout_1")
+        session = make_context().userdata
+
+        summary = await _resolve_enemy_condition_packet(
+            session,
+            attacker,
+            decl,
+            _enemy_action(),
+            state=state,
+            conn=object(),
+            save_resolver=_save_resolver(success=False),
+        )
+
+        assert summary["resolved"] is False
+        assert "condition_inflicted" not in summary
+        assert not any(c["type"] == "frightened" for c in attacker.conditions)
 
 
 class TestEnemyAbilityDispatch:
@@ -191,7 +213,7 @@ class TestEnemyAbilityDispatch:
             )
 
         assert summary["resolved"] is True
-        assert summary["condition_applied"] == "frightened"
+        assert summary["condition_inflicted"] == "frightened"
         assert any(c["type"] == "frightened" for c in _get(state, "player_1").conditions)
 
     async def test_enemy_ability_without_applies_condition_still_wasted(self):

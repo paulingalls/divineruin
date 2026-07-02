@@ -177,6 +177,10 @@ async def _resolve_one_packet(
     # the engine, not the LLM's type choice, decides the effect. Fires for ATTACK or ABILITY; an
     # enemy action WITHOUT applies_condition falls through to the normal attack/ability path.
     if attacker.type != "player" and action is not None and action.get("applies_condition"):
+        # This is the combat's first resolved offensive action if none has resolved yet — consume the
+        # opening-strike beat here too, so an enemy that opens with a condition action doesn't leave
+        # first_attack_resolved False and let a later swing be mis-narrated as the dramatic opener.
+        state.first_attack_resolved = True
         return await _resolve_enemy_condition_packet(session, attacker, decl, action, state=state, conn=conn)
 
     if decl.type is DeclarationType.ABILITY:

@@ -304,6 +304,30 @@ class TestStartCombat:
         assert "Longsword" in [a.get("name") for a in player.action_pool]
 
     @pytest.mark.asyncio
+    async def test_player_save_proficiencies_loaded_onto_participant(self):
+        # M13 close-fix: the player's save proficiencies (players.data) must ride onto the combat
+        # participant so an enemy-inflicted save-based condition honors them (resolve_saving_throw
+        # adds the proficiency bonus). Without this the participant defaults to [] and a proficient
+        # player resists no better than a non-proficient one.
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+        ctx = make_context()
+
+        await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Ambush!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+
+        cs = ctx.userdata.combat_state
+        assert cs is not None
+        player = cs.get_participant("player_1")
+        assert player is not None
+        assert player.saving_throw_proficiencies == ["strength", "constitution"]
+
+    @pytest.mark.asyncio
     async def test_player_enhancers_populated_from_flags(self):
         # story-004: the player participant carries the declaration enhancers granted by
         # players.data.flags, so Extra Attack expands their attack in resolve_phase.

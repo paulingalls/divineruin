@@ -269,6 +269,11 @@ async def _start_combat_impl(
                 attributes=companion_scaled.attributes,
                 level=companion_scaled.level,
                 action_pool=companion_action_pool,
+                # Carry the companion's save proficiencies (M13 close-fix, symmetric with the player
+                # build) so an enemy-inflicted save-based condition honors them — a WIS-proficient
+                # companion resists Frightened like a proficient player. `profile` is bound here
+                # (companion_scaled is not None => the profile-load try succeeded above).
+                saving_throw_proficiencies=list(profile.save_proficiencies),
             )
         )
 

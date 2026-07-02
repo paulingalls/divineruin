@@ -68,7 +68,7 @@ async def test_m13_hostile_condition_lands_through_real_combat_phase(reset_db_po
         assert isinstance(result, str), "combat continues (minions omitted -> no player damage)"
         payload = json.loads(result)
         enemy_packet = next(p for p in payload["packets"] if p["actor_id"] == _ENEMY_ID)
-        assert enemy_packet["condition_applied"] == "frightened"
+        assert enemy_packet["condition_inflicted"] == "frightened"
 
         live = ctx.userdata.combat_state.get_participant(player_id)
         assert live is not None
@@ -108,7 +108,7 @@ async def test_m13_temporary_hollowed_target_no_ops_the_immunity_gate(reset_db_p
         payload = json.loads(result)
         enemy_packet = next(p for p in payload["packets"] if p["actor_id"] == _ENEMY_ID)
         assert enemy_packet["condition_immune"] == "frightened"
-        assert "condition_applied" not in enemy_packet
+        assert "condition_inflicted" not in enemy_packet
 
         live = ctx.userdata.combat_state.get_participant(player_id)
         assert live is not None
