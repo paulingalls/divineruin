@@ -156,16 +156,22 @@ async def _resolve_one_packet(
             "ac_bonus": decl.ac_bonus,
         }
 
+    # Enemy condition-infliction (M13): a non-player actor whose action_pool entry carries
+    # applies_condition inflicts a save-gated condition, routed on the ACTION FIELD, not the
+    # declaration type. The DM declares enemy pool actions as ATTACK (system_prompts.py:235 —
+    # "Ability" is a spell/ability id the caster knows, which pool actions are not), so gating
+    # this on ABILITY alone made the whole feature a no-op in real play. Deterministic mechanics:
+    # the engine, not the LLM's type choice, decides the effect. Fires for ATTACK or ABILITY; an
+    # enemy action WITHOUT applies_condition falls through to the normal attack/ability path.
+    if attacker.type != "player" and decl.type in (DeclarationType.ATTACK, DeclarationType.ABILITY):
+        enemy_action = _find_action(attacker, decl.action)
+        if enemy_action is not None and enemy_action.get("applies_condition"):
+            return await _resolve_enemy_condition_packet(session, attacker, decl, enemy_action, state=state, conn=conn)
+
     if decl.type is DeclarationType.ABILITY:
-        # Enemy condition-infliction ABILITY (M13 story-002): a non-player actor's action_pool
-        # entry carrying applies_condition routes to the dedicated resolver (save-gated, lands
-        # via the immunity-gated apply_condition SSOT) BEFORE the player-oriented de_escalate/
-        # condition_ability/spell branches below, which are all player-only. An enemy ability
-        # WITHOUT applies_condition falls through unchanged and wastes at _resolve_ability_packet.
-        if attacker.type != "player":
-            action = _find_action(attacker, decl.action)
-            if action is not None and action.get("applies_condition"):
-                return await _resolve_enemy_condition_packet(session, attacker, decl, action, state=state, conn=conn)
+        # (Enemy condition-infliction ABILITY is handled by the type-agnostic branch above, which
+        # routes both ATTACK and ABILITY enemy actions carrying applies_condition. The branches
+        # below are the player-oriented paths.)
         # De-escalate (M4.6a story-004) is an ABILITY but resolves socially, not as a cast:
         # contested gate + one argument that can end combat. Its Focus/lockout were pre-gated
         # in _prevalidate_ability_focus, and ``player`` is the for_update row from there.

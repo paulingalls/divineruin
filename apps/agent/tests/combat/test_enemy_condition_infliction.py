@@ -3,11 +3,13 @@
 Homes debt f9a5d1e88432: the temporary_hollowed charmed/frightened/poisoned immunity
 gate in conditions.apply_condition had no live in-combat caller — this is the first one.
 An enemy action_pool entry carrying {applies_condition, save, dc} routes through
-_resolve_one_packet's ABILITY dispatch to _resolve_enemy_condition_packet, which rolls
+_resolve_one_packet's dispatch to _resolve_enemy_condition_packet — for ATTACK *or* ABILITY
+declarations (the DM declares enemy pool actions as ATTACK, system_prompts.py:235) — which rolls
 the target's save and lands the condition via the immunity-gated apply_condition SSOT.
 """
 
-from unittest.mock import MagicMock
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 from combat._helpers import _make_combat_state
 from sample_fixtures import make_context
@@ -144,6 +146,30 @@ class TestEnemyAbilityDispatch:
 
         assert summary["resolved"] is True
         assert summary["declaration_type"] == str(DeclarationType.ABILITY)
+
+    async def test_enemy_condition_action_routes_on_attack_declaration(self):
+        # The DM declares enemy pool actions as ATTACK (system_prompts.py:235), not ABILITY —
+        # the condition MUST inflict on the ATTACK path too, or the feature is a no-op in real
+        # play (the ATTACK path would otherwise resolve a 0-damage swing and drop the condition).
+        state = _state_with_enemy_action(_enemy_action())
+        decl = Declaration(type=DeclarationType.ATTACK, action="Unnerving Gaze", target_id="player_1")
+        packet = MagicMock(actor_id="goblin_scout_1", declaration=decl)
+        session = make_context().userdata
+
+        with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=1)):  # nat-1 -> save fails
+            summary = await _resolve_one_packet(
+                session,
+                state,
+                packet,
+                mutations=MagicMock(),
+                queries=MagicMock(),
+                resolver=MagicMock(),
+                concentration_break_mod=MagicMock(),
+            )
+
+        assert summary["resolved"] is True
+        assert summary["condition_applied"] == "frightened"
+        assert any(c["type"] == "frightened" for c in _get(state, "player_1").conditions)
 
     async def test_enemy_ability_without_applies_condition_still_wasted(self):
         state = _make_combat_state()
