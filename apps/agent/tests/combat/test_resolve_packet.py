@@ -444,8 +444,8 @@ class TestResolveAbilityPacket:
         assert summary["declaration_type"] == "ability"
         assert summary["action"] == "arcane_bolt"
         assert summary["cast"] == {"effect": "zap", "state": "stable"}
-        # the CastResult is handed to the loop, not applied here (in-memory sync is post-commit)
-        assert outcome.cast_result is result
+        # the CastResult is handed to the loop keyed by the caster's id (in-memory sync is post-commit)
+        assert outcome.results["player_1"] is result
         # routed through the shared cast core with the cast's own RESONANCE_CHANGED suppressed —
         # in combat the phase WRAP push is the single authoritative HUD update.
         _args, kwargs = cast_resolver._resolve_cast.call_args
@@ -477,7 +477,7 @@ class TestResolveAbilityPacket:
 
         assert summary["resolved"] is False
         cast_resolver._resolve_cast.assert_not_called()
-        assert outcome.cast_result is None
+        assert outcome.results == {}
 
     async def test_missing_action_is_wasted(self):
         from combat_ability import AbilityCastOutcome, _resolve_ability_packet
@@ -503,7 +503,7 @@ class TestResolveAbilityPacket:
 
         assert summary["resolved"] is False
         cast_resolver._resolve_cast.assert_not_called()
-        assert outcome.cast_result is None
+        assert outcome.results == {}
 
 
 def _hollowed(stage: int) -> list[dict]:
