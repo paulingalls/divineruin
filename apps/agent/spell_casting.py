@@ -464,18 +464,23 @@ async def _resolve_cast(
         if session.in_combat:
             packet["condition_applied"] = spell.applies_condition  # combat applies + confirms on the participant
         else:
-            voiced = await condition_produce_mod.produce_ooc_condition(
-                spell.applies_condition,
-                spell_id,
-                target_id=target_id,
-                target_ids=target_ids,
-                caster_row=player,
-                caster_id=player_id,
-                conn=conn,
-                queries_mod=queries_mod,
-                conditions_mod=conditions_mod,
-                conditions_mutations_mod=conditions_mutations_mod,
-            )
+            try:
+                voiced = await condition_produce_mod.produce_ooc_condition(
+                    spell.applies_condition,
+                    spell_id,
+                    target_id=target_id,
+                    target_ids=target_ids,
+                    caster_row=player,
+                    caster_id=player_id,
+                    party_member_ids=session.party.member_ids,
+                    companion_id=(session.companion.id if session.companion and session.companion.is_present else None),
+                    conn=conn,
+                    queries_mod=queries_mod,
+                    conditions_mod=conditions_mod,
+                    conditions_mutations_mod=conditions_mutations_mod,
+                )
+            except ValueError as e:
+                raise ToolError(str(e)) from e
             if voiced:
                 packet["condition_applied"] = spell.applies_condition
                 if target_ids is not None:

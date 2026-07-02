@@ -148,18 +148,23 @@ async def _request_ability_activation_impl(
             # Route through the shared OOC producer (story-007), which lands on the multi-target list,
             # the single target_id, or the caster (self) — unifying the OOC ability path with the OOC
             # spell path. target_ids was already normalized/capped above.
-            voiced = await condition_produce_mod.produce_ooc_condition(
-                ability.applies_condition,
-                ability_id,
-                target_id=None if target_ids else target_id,
-                target_ids=target_ids,
-                caster_row=player,
-                caster_id=player_id,
-                queries_mod=queries_mod,
-                conditions_mod=conditions_mod,
-                conditions_mutations_mod=conditions_mutations_mod,
-                conn=conn,
-            )
+            try:
+                voiced = await condition_produce_mod.produce_ooc_condition(
+                    ability.applies_condition,
+                    ability_id,
+                    target_id=None if target_ids else target_id,
+                    target_ids=target_ids,
+                    caster_row=player,
+                    caster_id=player_id,
+                    party_member_ids=session.party.member_ids,
+                    companion_id=(session.companion.id if session.companion and session.companion.is_present else None),
+                    queries_mod=queries_mod,
+                    conditions_mod=conditions_mod,
+                    conditions_mutations_mod=conditions_mutations_mod,
+                    conn=conn,
+                )
+            except ValueError as e:
+                raise ToolError(str(e)) from e
             if voiced:
                 condition_applied = ability.applies_condition
                 # Surface the per-ally voiced set only on the multi-target path (audio-first

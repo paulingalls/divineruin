@@ -1,8 +1,11 @@
 """Unit tests for condition_produce — the shared OOC beneficial-condition producer (M4.8 story-007).
 
-The per-target apply -> persist-on-land -> self-row-reuse -> non-player-narrate-only logic was
-extracted out of spell_casting._resolve_cast and ability_tools (which previously duplicated it).
-These tests pin the helper's contract directly, independent of either caller.
+The per-target apply -> persist-on-land -> self-row-reuse -> companion-narrate-only logic lives in
+``produce_ooc_condition`` itself (the former per-target ``apply_beneficial_condition_to_player``
+helper was folded in when the party gate + batched write landed). These tests pin the helper's
+contract directly, independent of either caller (spell_casting / ability_tools). The party-gate
+refusal paths (non-party/non-companion target, missing party row, id-ordered batch fetch) live in
+``test_condition_produce_party_gate.py``.
 """
 
 from unittest.mock import AsyncMock, MagicMock
@@ -10,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 import conditions
-from condition_produce import apply_beneficial_condition_to_player, produce_ooc_condition
+from condition_produce import produce_ooc_condition
 
 
 def _row(player_id: str, conditions_list: list | None = None) -> dict:
@@ -18,13 +21,14 @@ def _row(player_id: str, conditions_list: list | None = None) -> dict:
 
 
 def _mods(table: dict):
-    """Real conditions module + mocked persistence; get_player serves rows from `table`."""
+    """Real conditions module + mocked batched persistence; get_players_for_update serves rows
+    from `table`."""
 
-    async def _get_player(pid, *, conn=None, for_update=False):
-        return table.get(pid)
+    async def _get_players_for_update(player_ids, *, conn=None):
+        return {pid: table[pid] for pid in player_ids if pid in table}
 
-    queries = MagicMock(get_player=AsyncMock(side_effect=_get_player))
-    cond_mut = MagicMock(save_player_conditions=AsyncMock())
+    queries = MagicMock(get_players_for_update=AsyncMock(side_effect=_get_players_for_update))
+    cond_mut = MagicMock(save_many_player_conditions=AsyncMock())
     return queries, cond_mut
 
 
@@ -32,20 +36,24 @@ def _mods(table: dict):
 async def test_apply_self_target_reuses_caster_row_no_fetch():
     caster = _row("c1")
     queries, cond_mut = _mods({})
-    voiced = await apply_beneficial_condition_to_player(
-        "c1",
+    voiced = await produce_ooc_condition(
         "blessed",
         "divine_bless",
+        target_id="c1",
+        target_ids=None,
         caster_row=caster,
         caster_id="c1",
+        party_member_ids=["c1"],
+        companion_id=None,
         queries_mod=queries,
         conditions_mod=conditions,
         conditions_mutations_mod=cond_mut,
     )
-    assert voiced is True
-    queries.get_player.assert_not_awaited()  # self-target reuses the locked caster row
-    cond_mut.save_player_conditions.assert_awaited_once()
-    assert cond_mut.save_player_conditions.await_args.args[0] == "c1"
+    assert voiced == ["c1"]
+    queries.get_players_for_update.assert_not_awaited()  # self-target reuses the locked caster row
+    cond_mut.save_many_player_conditions.assert_awaited_once()
+    written = cond_mut.save_many_player_conditions.await_args.args[0]
+    assert set(written.keys()) == {"c1"}
 
 
 @pytest.mark.asyncio
@@ -53,43 +61,50 @@ async def test_apply_player_target_fetches_and_persists():
     caster = _row("c1")
     ally = _row("a1")
     queries, cond_mut = _mods({"a1": ally})
-    voiced = await apply_beneficial_condition_to_player(
-        "a1",
+    voiced = await produce_ooc_condition(
         "blessed",
         "divine_bless",
+        target_id="a1",
+        target_ids=None,
         caster_row=caster,
         caster_id="c1",
+        party_member_ids=["c1", "a1"],
+        companion_id=None,
         queries_mod=queries,
         conditions_mod=conditions,
         conditions_mutations_mod=cond_mut,
     )
-    assert voiced is True
-    queries.get_player.assert_awaited_once()
-    assert cond_mut.save_player_conditions.await_args.args[0] == "a1"
-    assert "blessed" in [c["type"] for c in cond_mut.save_player_conditions.await_args.args[1]]
+    assert voiced == ["a1"]
+    queries.get_players_for_update.assert_awaited_once()
+    written = cond_mut.save_many_player_conditions.await_args.args[0]
+    assert "blessed" in [c["type"] for c in written["a1"]]
 
 
 @pytest.mark.asyncio
-async def test_apply_non_player_target_narrates_without_write():
-    # Target absent from players: companion/NPC has no players.data store -> narrate-only, no write.
+async def test_apply_companion_target_narrates_without_write():
+    # A companion has no players.data store -> narrate-only, no write, no fetch.
     caster = _row("c1")
-    queries, cond_mut = _mods({})  # "kael" not in the table -> get_player returns None
-    voiced = await apply_beneficial_condition_to_player(
-        "kael",
+    queries, cond_mut = _mods({})
+    voiced = await produce_ooc_condition(
         "blessed",
         "divine_bless",
+        target_id="kael",
+        target_ids=None,
         caster_row=caster,
         caster_id="c1",
+        party_member_ids=["c1"],
+        companion_id="kael",
         queries_mod=queries,
         conditions_mod=conditions,
         conditions_mutations_mod=cond_mut,
     )
-    assert voiced is True
-    cond_mut.save_player_conditions.assert_not_awaited()
+    assert voiced == ["kael"]
+    queries.get_players_for_update.assert_not_awaited()
+    cond_mut.save_many_player_conditions.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_apply_immunity_no_op_returns_false_no_write():
+async def test_apply_immunity_no_op_omits_target_no_write():
     # An immunity no-op (apply lands nothing) writes nothing and is NOT voiced.
     caster = _row("c1")
     ally = _row("a1")
@@ -98,18 +113,21 @@ async def test_apply_immunity_no_op_returns_false_no_write():
         apply_condition=MagicMock(return_value=[]),
         has_condition=MagicMock(return_value=False),
     )
-    voiced = await apply_beneficial_condition_to_player(
-        "a1",
+    voiced = await produce_ooc_condition(
         "blessed",
         "divine_bless",
+        target_id="a1",
+        target_ids=None,
         caster_row=caster,
         caster_id="c1",
+        party_member_ids=["c1", "a1"],
+        companion_id=None,
         queries_mod=queries,
         conditions_mod=no_op_conditions,
         conditions_mutations_mod=cond_mut,
     )
-    assert voiced is False
-    cond_mut.save_player_conditions.assert_not_awaited()
+    assert voiced == []
+    cond_mut.save_many_player_conditions.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -124,12 +142,15 @@ async def test_produce_multi_target_returns_voiced_ids_in_order():
         target_ids=["a1", "a2", "a3"],
         caster_row=caster,
         caster_id="c1",
+        party_member_ids=["c1", "a1", "a2", "a3"],
+        companion_id=None,
         queries_mod=queries,
         conditions_mod=conditions,
         conditions_mutations_mod=cond_mut,
     )
     assert voiced == ["a1", "a2", "a3"]
-    assert cond_mut.save_player_conditions.await_count == 3
+    cond_mut.save_many_player_conditions.assert_awaited_once()  # ONE batched write, not N
+    assert set(cond_mut.save_many_player_conditions.await_args.args[0].keys()) == {"a1", "a2", "a3"}
 
 
 @pytest.mark.asyncio
@@ -151,6 +172,8 @@ async def test_produce_multi_skips_immunity_no_op_target():
         target_ids=["a1", "a2"],
         caster_row=caster,
         caster_id="c1",
+        party_member_ids=["c1", "a1", "a2"],
+        companion_id=None,
         queries_mod=queries,
         conditions_mod=fake,
         conditions_mutations_mod=cond_mut,
@@ -169,12 +192,14 @@ async def test_produce_no_targets_is_self_cast():
         target_ids=None,
         caster_row=caster,
         caster_id="c1",
+        party_member_ids=["c1"],
+        companion_id=None,
         queries_mod=queries,
         conditions_mod=conditions,
         conditions_mutations_mod=cond_mut,
     )
     assert voiced == ["c1"]
-    assert cond_mut.save_player_conditions.await_args.args[0] == "c1"
+    assert set(cond_mut.save_many_player_conditions.await_args.args[0].keys()) == {"c1"}
 
 
 @pytest.mark.asyncio
@@ -188,6 +213,8 @@ async def test_produce_single_target_id():
         target_ids=None,
         caster_row=caster,
         caster_id="c1",
+        party_member_ids=["c1", "a1"],
+        companion_id=None,
         queries_mod=queries,
         conditions_mod=conditions,
         conditions_mutations_mod=cond_mut,
