@@ -111,8 +111,8 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
         # Optional producer field (M4.8 story-004): when present it must name a real condition type,
         # so a typo fails at load (strict-loader convention) instead of silently producing nothing.
         applies_condition = data.get("applies_condition")
-        if applies_condition is not None and applies_condition not in conditions.CONDITION_CATALOG:
-            raise ValueError(f"spell {spell_id!r} applies_condition {applies_condition!r} is not a known condition")
+        if applies_condition is not None:
+            conditions.assert_known_condition(applies_condition, f"spell {spell_id!r}")
         # Optional multi-target cap (M4.8 story-007): when present it must be a positive int (bool is
         # not an int here — reject it), so a typo/0 fails at load instead of silently uncapping.
         max_targets = data.get("max_targets")

@@ -54,8 +54,7 @@ def _validate_enemy_action_conditions(enemies: list[dict]) -> None:
             if cond is None:
                 continue
             label = f"enemy {enemy.get('id')!r} action {action.get('name')!r}"
-            if cond not in conditions.CONDITION_CATALOG:
-                raise ValueError(f"{label} applies_condition {cond!r} is not a known condition")
+            conditions.assert_known_condition(cond, label)
             if not check_resolution_save.is_valid_save_key(action.get("save")):
                 raise ValueError(
                     f"{label} applies_condition needs a valid 'save' attribute, got {action.get('save')!r}"
