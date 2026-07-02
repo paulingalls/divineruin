@@ -124,6 +124,28 @@ class TestResolveEnemyConditionPacket:
         assert "condition_applied" not in summary
         assert not any(c["type"] == "poisoned" for c in _get(state, "player_1").conditions)
 
+    async def test_missing_target_id_wastes_and_does_not_self_inflict(self):
+        # An enemy condition action declared without target_id (ABILITY has no target_id validation)
+        # must WASTE — never self-target, which would frighten the enemy itself.
+        state = _state_with_enemy_action(_enemy_action())
+        attacker = _get(state, "goblin_scout_1")
+        decl = Declaration(type=DeclarationType.ABILITY, action="Unnerving Gaze", target_id=None)
+        session = make_context().userdata
+
+        summary = await _resolve_enemy_condition_packet(
+            session,
+            attacker,
+            decl,
+            _enemy_action(),
+            state=state,
+            conn=object(),
+            save_resolver=_save_resolver(success=False),
+        )
+
+        assert summary["resolved"] is False
+        assert "condition_applied" not in summary
+        assert not any(c["type"] == "frightened" for c in attacker.conditions)  # enemy not self-inflicted
+
 
 class TestEnemyAbilityDispatch:
     async def test_enemy_condition_ability_routes_to_resolver_not_wasted(self):
@@ -252,3 +274,30 @@ class TestSaveThreading:
 
         assert r_prof.dc == 13 and r_plain.dc == 13  # dc + dc_mod
         assert r_prof.modifier > r_plain.modifier  # proficiency bonus folded in for the proficient target
+
+    def test_include_proficiency_false_preserves_tick_clear_odds(self):
+        # The Beat-4 tick-clear passes include_proficiency=False to preserve pre-M13 clear odds:
+        # a proficient participant gets NO proficiency bonus when the flag is off.
+        import check_resolution_save
+
+        prof = CombatParticipant(
+            id="prof",
+            name="Prof",
+            type="player",
+            initiative=10,
+            hp_current=10,
+            hp_max=10,
+            ac=12,
+            attributes={"wisdom": 10},
+            level=5,
+            saving_throw_proficiencies=["wisdom"],
+        )
+        with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=10)):
+            r_incl = check_resolution_save.roll_participant_save(
+                prof, "wis", 10, "frightened", include_proficiency=True
+            )
+            r_excl = check_resolution_save.roll_participant_save(
+                prof, "wis", 10, "frightened", include_proficiency=False
+            )
+
+        assert r_incl.modifier > r_excl.modifier  # proficiency folded in only when include_proficiency=True

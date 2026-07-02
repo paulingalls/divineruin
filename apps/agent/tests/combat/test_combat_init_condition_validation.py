@@ -66,6 +66,49 @@ class TestValidateEnemyActionConditions:
         with pytest.raises(ValueError, match="save"):
             _validate_enemy_action_conditions(enemies)
 
+    def test_abbreviated_save_key_is_accepted(self):
+        # The resolver expands "wis" -> "wisdom" (roll_participant_save), so the load-gate must
+        # accept the same abbreviated form — else content the engine could run fails loud at start.
+        enemies = [
+            {
+                "id": "hollow_rend_1",
+                "action_pool": [{"name": "Hollow Shriek", "applies_condition": "frightened", "save": "wis", "dc": 12}],
+            }
+        ]
+        _validate_enemy_action_conditions(enemies)  # no raise
+
+    def test_damage_bearing_condition_action_raises_at_load(self):
+        # M13 condition actions are save-based; the resolver does not apply damage, so a non-zero
+        # damage on a condition action must fail loud at load (debt 5b18023ef5a5) rather than silently
+        # deal none.
+        enemies = [
+            {
+                "id": "venom_spider",
+                "action_pool": [
+                    {"name": "Venom Bite", "applies_condition": "poisoned", "save": "con", "dc": 12, "damage": "2d6"}
+                ],
+            }
+        ]
+        with pytest.raises(ValueError, match="save-based"):
+            _validate_enemy_action_conditions(enemies)
+
+    def test_zero_damage_condition_action_does_not_raise(self):
+        enemies = [
+            {
+                "id": "hollow_rend_1",
+                "action_pool": [
+                    {
+                        "name": "Hollow Shriek",
+                        "applies_condition": "frightened",
+                        "save": "wisdom",
+                        "dc": 12,
+                        "damage": "0",
+                    }
+                ],
+            }
+        ]
+        _validate_enemy_action_conditions(enemies)  # no raise
+
     def test_action_with_no_applies_condition_does_not_raise(self):
         enemies = [
             {

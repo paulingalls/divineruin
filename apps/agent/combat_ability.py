@@ -347,6 +347,17 @@ async def _resolve_enemy_condition_packet(
     damage 0); this resolver does not apply action['damage']. A damage-bearing condition action
     (to-hit + save + damage combined) is a follow-up (debt 5b18023ef5a5)."""
     cond_type = action["applies_condition"]  # dispatch guarantees this is truthy
+    # A hostile inflict MUST name a target — never self-target. Declaration validation only requires
+    # target_id for ATTACK (declarations.py), so an enemy condition action declared as ABILITY could
+    # arrive with target_id=None; _resolve_condition_target's self-fallback (correct for a player
+    # self-buff) would make the enemy frighten ITSELF. Waste it instead.
+    if decl.target_id is None:
+        return {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": "enemy condition action requires a target_id",
+        }
     target, waste = _resolve_condition_target(state, attacker, decl)
     if waste is not None:
         return waste
