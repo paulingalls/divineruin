@@ -213,7 +213,9 @@ class TestCastSpellResonance:
         # signature: update_player_resonance(player_id, current, *, conn=)
         assert args[1] == 6 or kwargs.get("current") == 6
         # AC6: a resonance-generating cast pushes the new qualitative state to the HUD.
-        events.publish_resonance_changed.assert_awaited_once_with(ctx.userdata)
+        events.publish_resonance_changed.assert_awaited_once_with(
+            ctx.userdata, resonance_track=ctx.userdata.resonance, caster_id="player_1"
+        )
 
     async def test_cantrip_accrues_zero_and_scales_damage(self):
         # AC3: cantrip (focus_cost 0) -> 0 resonance, no resonance write, damage via
@@ -289,7 +291,9 @@ class TestCastSpellRealCatalog:
         assert packet["narration_cue"]  # catalog cue, non-empty
         persistence.update_player_resources.assert_awaited_once()
         mutations.update_player_resonance.assert_awaited_once()
-        events.publish_resonance_changed.assert_awaited_once_with(ctx.userdata)
+        events.publish_resonance_changed.assert_awaited_once_with(
+            ctx.userdata, resonance_track=ctx.userdata.resonance, caster_id="player_1"
+        )
 
     async def test_real_arcane_bolt_cantrip(self):
         import spells as spells_mod
@@ -779,6 +783,50 @@ class TestResolveCast:
         # A non-concentration cast must be distinguishable from "clear concentration" (None).
         assert result.concentration_spell_id is _UNCHANGED
         concentration.update_player_concentration.assert_not_called()
+
+    async def test_non_primary_caster_writes_onto_own_pool_not_primary(self):
+        # M14 story-004: a non-primary caster's Focus/Resonance must key on THAT member, never
+        # the party primary's. Build a 2-member party, cast as player_2, and prove the writes
+        # target player_2 while the primary's in-memory resonance track stays pristine.
+        from spell_casting import _resolve_cast
+
+        spell = _spell(source="arcane", focus_cost=3, resonance=6)
+        ctx = make_context(party_member_ids=["player_2"])
+        ctx.userdata.resonance.current = 0  # the primary (player_1) pool
+        caster = ctx.userdata.party.member("player_2")
+        assert caster is not None
+        caster.resonance.current = 0
+        _mock_db, conn = make_db_mod()
+        queries = MagicMock()
+        # The cast fetches the caster's own for_update row (player_2), not the primary.
+        queries.get_player = AsyncMock(return_value={**_player(focus=10), "player_id": "player_2"})
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
+        mutations = MagicMock()
+        mutations.update_player_resonance = AsyncMock()
+        spells_mod = MagicMock()
+        spells_mod.get_spell = MagicMock(return_value=spell)
+
+        result = await _resolve_cast(
+            ctx.userdata,
+            spell.id,
+            conn=conn,
+            caster=caster,
+            queries_mod=queries,
+            persistence_mod=persistence,
+            resonance_mutations_mod=mutations,
+            spells_mod=spells_mod,
+        )
+
+        # The caster row was fetched by player_2's id (the caster's own pool is locked).
+        assert queries.get_player.await_args.args[0] == "player_2"
+        # Focus + Resonance persist against player_2, never the primary.
+        assert persistence.update_player_resources.await_args.args[0] == "player_2"
+        assert mutations.update_player_resonance.await_args.args[0] == "player_2"
+        # CastResult carries player_2's post-cast total; the primary's in-memory track is untouched.
+        assert result.new_resonance == 6
+        assert ctx.userdata.resonance.current == 0
+        assert caster.resonance.current == 0  # in-memory PURE — caller syncs post-commit
 
 
 class TestGetSpellInfo:

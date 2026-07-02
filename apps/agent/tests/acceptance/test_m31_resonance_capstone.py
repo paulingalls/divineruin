@@ -131,5 +131,6 @@ async def test_rest_reset_then_publish_emits_resonance_changed_event(reset_db_po
     events = session.event_bus.drain()
     resonance_events_published = [e for e in events if e.event_type == RESONANCE_CHANGED]
     assert len(resonance_events_published) == 1
-    # No-number spec (magic.md:98): the wire carries the qualitative state only.
-    assert resonance_events_published[0].payload == {"state": "stable"}
+    # No-number spec (magic.md:98): the wire carries the qualitative state only,
+    # plus the caster_id discriminator (M14 story-004) for multi-player HUD routing.
+    assert resonance_events_published[0].payload == {"caster_id": player_id, "state": "stable"}

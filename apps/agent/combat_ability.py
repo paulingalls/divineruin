@@ -5,7 +5,7 @@ in-combat ABILITY declaration through the shared cast logic, the side-channel th
 carries the cast result back to the phase loop, action lookup, and enhancer-rider
 attachment. Consumed by the phase loop (combat_turn)."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
 from livekit.agents.llm import ToolError
@@ -85,7 +85,8 @@ async def _resolve_deescalation_packet(
         }
 
     have = (player.get("focus") or {}).get("current", 0)
-    await persistence.update_player_resources(session.player_id, focus=have - _DEESCALATE_FOCUS_COST, conn=conn)
+    # Deduct against the declaring member (M14 story-004, was the session primary).
+    await persistence.update_player_resources(attacker.id, focus=have - _DEESCALATE_FOCUS_COST, conn=conn)
 
     attrs = player.get("attributes", {})
     cha_total = dice_roll("d20", rng=rng).total + attribute_modifier(attrs.get("charisma", 10))
@@ -220,14 +221,15 @@ def _gate_ability_condition(player: dict, ability: "abilities.Ability") -> None:
     gate_pool(player, "focus", ability.cost.focus, label=ability.name)
 
 
-async def _deduct_ability_cost(session, player, ability, *, persistence, conn) -> None:
-    """Spend a condition ability's Stamina/Focus via the gate_pool SSOT and persist (M4.8). Shared by
-    the single- and multi-target resolve branches so the deduct lives once; gate_pool fail-louds if
-    the cost can't be paid (already pre-gated at declare time)."""
+async def _deduct_ability_cost(player_id, player, ability, *, persistence, conn) -> None:
+    """Spend a condition ability's Stamina/Focus via the gate_pool SSOT and persist against
+    ``player_id`` (the declaring member — M14 story-004, was the session primary). Shared by the
+    single- and multi-target resolve branches so the deduct lives once; gate_pool fail-louds if the
+    cost can't be paid (already pre-gated at declare time)."""
     new_stamina = gate_pool(player, "stamina", ability.cost.stamina, label=ability.name)
     new_focus = gate_pool(player, "focus", ability.cost.focus, label=ability.name)
     if new_stamina is not None or new_focus is not None:
-        await persistence.update_player_resources(session.player_id, stamina=new_stamina, focus=new_focus, conn=conn)
+        await persistence.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
 
 
 async def _resolve_ability_condition_packet(
@@ -264,7 +266,7 @@ async def _resolve_ability_condition_packet(
     # resolve time is dropped (partial landing); an all-off-state list lands nothing but still
     # spends the cost (the spell-path convention — the declaration committed to the action).
     if decl.target_ids:
-        await _deduct_ability_cost(session, player, ability, persistence=persistence, conn=conn)
+        await _deduct_ability_cost(attacker.id, player, ability, persistence=persistence, conn=conn)
         summary = {
             "actor_id": attacker.id,
             "resolved": True,
@@ -285,7 +287,7 @@ async def _resolve_ability_condition_packet(
     if waste is not None:
         return waste
 
-    await _deduct_ability_cost(session, player, ability, persistence=persistence, conn=conn)
+    await _deduct_ability_cost(attacker.id, player, ability, persistence=persistence, conn=conn)
 
     summary = {
         "actor_id": attacker.id,
@@ -396,14 +398,15 @@ async def _resolve_enemy_condition_packet(
 
 @dataclass
 class AbilityCastOutcome:
-    """Side-channel carrying an in-loop ABILITY cast's ``CastResult`` back to the phase loop.
+    """Side-channel carrying the in-loop ABILITY casts' ``CastResult``s back to the phase loop.
 
-    At most one player ability resolves per phase (one declaration per participant), so a single
-    slot suffices. The loop reads ``cast_result`` post-commit to seed the WRAP resonance, sync
-    concentration in-memory, and flush the cast's deferred client events — all of which must happen
-    after the phase tx commits (story-007). ``cast_result`` stays ``None`` when no ability resolved."""
+    Each party member may declare one ability per phase (M14 story-004), so results are keyed by the
+    caster's participant id (== player_id). The loop reads ``results`` post-commit to seed each
+    member's WRAP resonance, flush their deferred client events, and push per-member HUD state — all
+    of which must happen after the phase tx commits (story-007). ``results`` stays empty when no
+    ability resolved. Concentration is synced IN-LOOP by ``_resolve_ability_packet`` (not here)."""
 
-    cast_result: "CastResult | None" = None
+    results: dict[str, "CastResult"] = field(default_factory=dict)
 
 
 async def _resolve_ability_packet(
@@ -440,24 +443,32 @@ async def _resolve_ability_packet(
             "reason": "ability declaration missing an action",
         }
 
+    # Resolve the declaring member (M14 story-004): the cast reads + writes THAT member's own pool
+    # (resonance/veil_ward/concentration/player_id), never the primary's. attacker.id == the member's
+    # player_id (combat_init builds player participants with id=mid). A missing member falls back to
+    # the primary — the same fallback _resolve_cast applies to caster=None — so solo stays identical.
+    caster = session.party.member(attacker.id) or session.party.primary
     result = await cast_resolver._resolve_cast(
         session,
         decl.action,
         conn=conn,
+        caster=caster,
         player=player,
         target_id=decl.target_id,
         suppress_resonance_changed=True,
     )
-    cast_outcome.cast_result = result
-    # Sync concentration into the session SSOT IN-LOOP (not post-commit): a lower-initiative enemy
+    cast_outcome.results[attacker.id] = result
+    # Sync concentration into the CASTER's SSOT IN-LOOP (not post-commit): a lower-initiative enemy
     # attack later this same phase runs break_concentration_on_damage, which reads the in-memory
-    # session.concentration to pick which spell to save for and to clear on a failed save. A
-    # post-commit sync would leave it stale — the break would save against the OLD spell and, on a
-    # break, write None to the DB (clearing the just-cast spell) while the post-commit sync forced
-    # memory back to the new spell, diverging from the DB (story-007). _CombatScratchSnapshot
-    # captures concentration, so this in-tx mutation is reverted if the phase rolls back.
+    # concentration to pick which spell to save for and to clear on a failed save. A post-commit sync
+    # would leave it stale — the break would save against the OLD spell and, on a break, write None to
+    # the DB (clearing the just-cast spell) while the post-commit sync forced memory back to the new
+    # spell, diverging from the DB (story-007). _CombatScratchSnapshot captures concentration, so this
+    # in-tx mutation is reverted if the phase rolls back. NOTE: break_concentration_on_damage still
+    # reads session.concentration (the primary) — a non-primary caster's break is a known M14 gap
+    # (debt), but the SYNC here correctly targets the caster's own pool.
     if result.concentration_spell_id is not spell_casting._UNCHANGED:
-        session.concentration.spell_id = cast("str | None", result.concentration_spell_id)
+        caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
     # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half. _resolve_cast surfaces the
     # produced condition as packet.condition_applied (the OOC players.data write is gated off in
     # combat). In combat the working state is the SSOT, so land it on the TARGET participant here —
