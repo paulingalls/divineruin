@@ -234,6 +234,19 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
 _HOLLOWED_MAX_STAGE = 3
 
 
+def assert_known_condition(name: str, ctx: str) -> None:
+    """Fail-loud if ``name`` is not a known condition type (``CONDITION_CATALOG``).
+
+    ``ctx`` prefixes the error to name the offending row — e.g. ``f"spell {spell_id!r}"``,
+    ``f"ability {ability_id!r}"``, or ``f"enemy {eid!r} action {aname!r}"``. This is the ONE
+    shared ``applies_condition`` strict-load guard for the spell / ability / encounter loaders,
+    which each carried a byte-identical inline check. The message format is preserved verbatim so
+    callers and their tests are unchanged.
+    """
+    if name not in CONDITION_CATALOG:
+        raise ValueError(f"{ctx} applies_condition {name!r} is not a known condition")
+
+
 def validate_condition_dict(c: object) -> dict:
     """Fail-loud validation for one stored condition dict (M4.4 story-005, JSONB read boundary).
 
