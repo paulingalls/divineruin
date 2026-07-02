@@ -75,9 +75,9 @@ def resolve_saving_throw(
 
     # Encounter-role overlay (M4.7, story-001): a role-boosted SOURCE (e.g. a Boss ability) makes
     # its target's save harder via dc_mod (Boss +2, Elite +1, Minion -1). Defaults to identity. The
-    # effective DC is reported on the packet so narration/UI see the real threshold. No live caller
-    # threads this yet — enemy abilities don't impose target saves through this resolver until the
-    # ability-firing path lands (story-003); the capability is wired here at the SSOT.
+    # effective DC is reported on the packet so narration/UI see the real threshold. The live caller
+    # is the M13 enemy-condition resolver (combat_ability._resolve_enemy_condition_packet), which
+    # threads dc_mod=attacker.dc_mod so an enemy's role scaling reaches the target's save DC.
     dc = dc + dc_mod
 
     attributes = player_data.get("attributes", {})
@@ -166,7 +166,11 @@ def roll_participant_save(
     enemy-inflicted save (an active save the target makes) honors it (default True), while the
     Beat-4 tick-clear passes False to PRESERVE its pre-M13 clear odds — folding proficiency into the
     tick-clear would be an untested M4.3 balance shift, out of scope for the M13 dedup."""
-    save_type = _ATTR_FULL.get(save, save)
+    # Lowercase BEFORE expansion so this matches is_valid_save_key exactly (which lowercases): an
+    # uppercase abbrev like "WIS" (the codebase's house style, e.g. items.json "DC 13 CON") that
+    # passes the load gate must also expand here — else it slips through to resolve_saving_throw
+    # unexpanded and raises "Unknown save type" mid-fight, the load-gate/runtime divergence this SSOT exists to prevent.
+    save_type = _ATTR_FULL.get(save.lower(), save.lower())
     player_data = {
         "attributes": participant.attributes,
         "level": participant.level,

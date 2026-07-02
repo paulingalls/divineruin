@@ -298,13 +298,23 @@ async def _resolve_ability_condition_packet(
     return summary
 
 
-def _resolve_condition_target(state, attacker: CombatParticipant, decl: "Declaration"):
-    """Resolve the single target of a condition-applying declaration (self when target_id is None).
+def _resolve_condition_target(state, attacker: CombatParticipant, decl: "Declaration", *, allow_self: bool = True):
+    """Resolve the single target of a condition-applying declaration.
 
     Returns ``(target, None)`` for a live target, or ``(None, waste_summary)`` when the target is
-    gone or already fallen — a wasted declaration must never apply the condition or deduct a cost.
-    Shared by the player ability-condition path (_resolve_ability_condition_packet) and the enemy
-    condition-infliction path (_resolve_enemy_condition_packet) so the wasted-target contract lives once."""
+    gone / already fallen / disallowed — a wasted declaration must never apply the condition or
+    deduct a cost. ``allow_self`` controls the ``target_id is None`` case: True (default) falls back
+    to the caster (a player self-buff); False WASTES it instead — a hostile inflict must never
+    self-target (an ABILITY-declared enemy condition action, which skips ATTACK's target_id
+    validation, would otherwise make the enemy inflict on ITSELF). Shared by the player ability-
+    condition path and the enemy condition-infliction path so the wasted-target contract lives once."""
+    if decl.target_id is None and not allow_self:
+        return None, {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": "condition action requires a target_id (no self-target)",
+        }
     target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
     if target is None:
         return None, {
@@ -347,18 +357,9 @@ async def _resolve_enemy_condition_packet(
     damage 0); this resolver does not apply action['damage']. A damage-bearing condition action
     (to-hit + save + damage combined) is a follow-up (debt 5b18023ef5a5)."""
     cond_type = action["applies_condition"]  # dispatch guarantees this is truthy
-    # A hostile inflict MUST name a target — never self-target. Declaration validation only requires
-    # target_id for ATTACK (declarations.py), so an enemy condition action declared as ABILITY could
-    # arrive with target_id=None; _resolve_condition_target's self-fallback (correct for a player
-    # self-buff) would make the enemy frighten ITSELF. Waste it instead.
-    if decl.target_id is None:
-        return {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": "enemy condition action requires a target_id",
-        }
-    target, waste = _resolve_condition_target(state, attacker, decl)
+    # allow_self=False: a hostile inflict must never self-target (an ABILITY-declared enemy condition
+    # action can arrive with target_id=None, which the helper would otherwise fall back to the caster).
+    target, waste = _resolve_condition_target(state, attacker, decl, allow_self=False)
     if waste is not None:
         return waste
     # dc_mod threads the attacker's role overlay (Boss +2 / Elite +1 / Minion -1) into the target's
@@ -376,7 +377,9 @@ async def _resolve_enemy_condition_packet(
     }
     if result.success:
         summary["condition_resisted"] = cond_type
-    elif _land_condition_on_one(state, decl.target_id, attacker, cond_type, source=decl.action or ""):
+    # Reuse the public single-target landing wrapper (the same call the player ability-condition path
+    # uses) so the target-id/self-fallback + immunity wiring lives in one place.
+    elif land_condition_on_participant(state, attacker, decl, cond_type, source=decl.action or ""):
         summary["condition_applied"] = cond_type
     else:
         summary["condition_immune"] = cond_type  # failed save but immune (temp_hollowed) or off-state

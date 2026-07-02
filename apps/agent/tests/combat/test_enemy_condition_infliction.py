@@ -301,3 +301,25 @@ class TestSaveThreading:
             )
 
         assert r_incl.modifier > r_excl.modifier  # proficiency folded in only when include_proficiency=True
+
+    def test_uppercase_save_abbrev_does_not_diverge_load_gate_vs_runtime(self):
+        # Regression: is_valid_save_key lowercases, so it accepts "WIS" (the codebase's uppercase
+        # house style) at the load gate; roll_participant_save must expand the same way (lowercase
+        # first) or an uppercase abbrev slips through and crashes mid-fight with "Unknown save type".
+        import check_resolution_save
+
+        assert check_resolution_save.is_valid_save_key("WIS") is True
+        p = CombatParticipant(
+            id="p",
+            name="P",
+            type="player",
+            initiative=10,
+            hp_current=10,
+            hp_max=10,
+            ac=12,
+            attributes={"wisdom": 10},
+            level=3,
+        )
+        with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=10)):
+            r = check_resolution_save.roll_participant_save(p, "WIS", 12, "frightened")  # must NOT raise
+        assert r.save_type == "wisdom"
