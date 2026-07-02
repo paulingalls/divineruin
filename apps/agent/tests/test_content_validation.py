@@ -343,3 +343,50 @@ class TestGatheringContent:
                     assert material_ref in material_ids, (
                         f"Location '{loc['id']}' resource_table '{rarity}' references unknown material '{material_ref}'"
                     )
+
+
+# M13 (sprint-030 story-001): enemy hostile-condition content. Mirrors combat_init's fail-loud
+# guard so an unknown/malformed applies_condition fails the fast lane, not just combat entry.
+_HOSTILE_CONDITIONS = frozenset({"charmed", "frightened", "poisoned"})
+
+# The closed save vocabulary resolve_saving_throw (check_resolution_save.py) validates against —
+# full attribute names, lowercased. A save typo here passes as a str but crashes live combat when
+# the enemy ability fires (story-003), so pin the vocabulary at the fast-lane boundary.
+_VALID_SAVES = frozenset({"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"})
+
+
+class TestEnemyHostileConditionContent:
+    def _enemy_actions_with_condition(self):
+        for enc in _load_json("encounter_templates.json"):
+            for enemy in enc.get("enemies", []):
+                for action in enemy.get("action_pool", []):
+                    if action.get("applies_condition") is not None:
+                        yield enc["id"], enemy, action
+
+    def test_enemy_applies_condition_is_catalog_key_with_valid_save_and_dc(self):
+        import conditions
+
+        for enc_id, enemy, action in self._enemy_actions_with_condition():
+            cond = action["applies_condition"]
+            assert cond in conditions.CONDITION_CATALOG, (
+                f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' "
+                f"applies_condition '{cond}' is not a known condition"
+            )
+            save = action.get("save")
+            assert isinstance(save, str), (
+                f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' save must be a str"
+            )
+            assert save.lower() in _VALID_SAVES, (
+                f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' "
+                f"save '{save}' is not one of {sorted(_VALID_SAVES)}"
+            )
+            assert isinstance(action.get("dc"), int), (
+                f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' dc must be an int"
+            )
+
+    def test_at_least_one_enemy_action_inflicts_a_hostile_condition(self):
+        conditions_seen = {action["applies_condition"] for _, _, action in self._enemy_actions_with_condition()}
+        assert conditions_seen & _HOSTILE_CONDITIONS, (
+            "expected at least one enemy action_pool entry to declare a hostile "
+            f"applies_condition ({sorted(_HOSTILE_CONDITIONS)}), found none"
+        )
