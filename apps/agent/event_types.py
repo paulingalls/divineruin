@@ -63,9 +63,11 @@ QUEST_UPDATE = "quest_update"  # client-only alias for QUEST_UPDATED
 CURRENCY_GAINED = "currency_gained"
 
 # Magic (M3.1)
-# Resonance state push. Packet: {state} — the qualitative state only on the game_events topic;
-# the raw number never crosses to the client (no-number spec magic.md:98, story-004).
-# Mirror const in apps/mobile/src/audio/event-types.ts.
+# Resonance state push. Packet: {state, caster_id} — the qualitative state only on the game_events
+# topic; the raw number never crosses to the client (no-number spec magic.md:98, story-004).
+# `caster_id` (M14 story-004) names WHICH party member the state belongs to so a multi-player client
+# updates its single global HUD tracker only for the local player's pushes (game-event-handler.ts
+# filters on it); it defaults to the session primary. Mirror const in apps/mobile/src/audio/event-types.ts.
 RESONANCE_CHANGED = "resonance_changed"
 
 # Magic (M3.2) — Veil Ward toggle push. Packet: {active} — the minimal on/off toggle only (the

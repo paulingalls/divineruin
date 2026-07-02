@@ -419,7 +419,11 @@ async def _resolve_cast(
     # nothing generated (a cantrip leaves the state unchanged — AC6).
     events: list = []
     if generated > 0 and not suppress_resonance_changed:
-        events.append(lambda: resonance_events_mod.publish_resonance_changed(session))
+        events.append(
+            lambda: resonance_events_mod.publish_resonance_changed(
+                session, resonance_track=caster.resonance, caster_id=caster.player_id
+            )
+        )
 
     # An active ward folds its -1 damage die / -1 DC (spec magic.md:199-200) into the net combat
     # modifiers. get_state_modifiers returns a fresh dict, so this never mutates the shared table.

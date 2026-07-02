@@ -62,8 +62,10 @@ export const QUEST_UPDATED = "quest_updated" as const;
 export const CURRENCY_GAINED = "currency_gained" as const;
 
 // Magic (M3.1) — mirrors apps/agent/event_types.py RESONANCE_CHANGED.
-// Packet: {state} — the qualitative state only; the raw number never crosses to the client
-// (no-number spec, magic.md:98). The HUD renders the qualitative state.
+// Packet: {state, caster_id} — the qualitative state only; the raw number never crosses to the
+// client (no-number spec, magic.md:98). `caster_id` (M14 story-004) names WHICH party member the
+// state belongs to; game-event-handler.ts updates the single global HUD tracker ONLY when caster_id
+// is the local player's, so another member's push never overwrites the local resonance state.
 export const RESONANCE_CHANGED = "resonance_changed" as const;
 
 // Magic (M3.2) — mirrors apps/agent/event_types.py. HOLLOW_ECHO_RESULT Packet: {band} — the

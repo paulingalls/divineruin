@@ -61,6 +61,7 @@ async def test_resonance_changed_serializes_to_fixture() -> None:
     expected = FIXTURE["events"]["resonance_changed"]
     session = MagicMock()
     session.resonance.state = expected["state"]
+    session.player_id = expected["caster_id"]  # caster_id defaults to the session primary
     with patch("resonance_events.publish_game_event", new_callable=AsyncMock) as pub:
         await resonance_events.publish_resonance_changed(session)
     assert _captured_wire(pub) == expected

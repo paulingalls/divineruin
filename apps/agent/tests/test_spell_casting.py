@@ -213,7 +213,9 @@ class TestCastSpellResonance:
         # signature: update_player_resonance(player_id, current, *, conn=)
         assert args[1] == 6 or kwargs.get("current") == 6
         # AC6: a resonance-generating cast pushes the new qualitative state to the HUD.
-        events.publish_resonance_changed.assert_awaited_once_with(ctx.userdata)
+        events.publish_resonance_changed.assert_awaited_once_with(
+            ctx.userdata, resonance_track=ctx.userdata.resonance, caster_id="player_1"
+        )
 
     async def test_cantrip_accrues_zero_and_scales_damage(self):
         # AC3: cantrip (focus_cost 0) -> 0 resonance, no resonance write, damage via
@@ -289,7 +291,9 @@ class TestCastSpellRealCatalog:
         assert packet["narration_cue"]  # catalog cue, non-empty
         persistence.update_player_resources.assert_awaited_once()
         mutations.update_player_resonance.assert_awaited_once()
-        events.publish_resonance_changed.assert_awaited_once_with(ctx.userdata)
+        events.publish_resonance_changed.assert_awaited_once_with(
+            ctx.userdata, resonance_track=ctx.userdata.resonance, caster_id="player_1"
+        )
 
     async def test_real_arcane_bolt_cantrip(self):
         import spells as spells_mod
