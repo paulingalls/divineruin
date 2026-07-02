@@ -35,6 +35,22 @@ from tool_support import SOUND_COMBAT_START
 logger = logging.getLogger("divineruin.tools")
 
 
+def _validate_enemy_action_conditions(enemies: list[dict]) -> None:
+    """Fail loud if any enemy action declares an applies_condition not in CONDITION_CATALOG.
+
+    Encounter templates have no strict loader (unlike spells.json / archetype_abilities.json,
+    whose loaders fail-loud on this same field), so this is the load-boundary guard mirroring
+    spells.parse_spell_row / abilities.parse_ability_row — it closes that gap at combat start."""
+    for enemy in enemies:
+        for action in enemy.get("action_pool", []):
+            cond = action.get("applies_condition")
+            if cond is not None and cond not in conditions.CONDITION_CATALOG:
+                raise ValueError(
+                    f"enemy {enemy.get('id')!r} action {action.get('name')!r} "
+                    f"applies_condition {cond!r} is not a known condition"
+                )
+
+
 async def _start_combat_impl(
     context: RunContext[SessionData],
     encounter_id: str,
@@ -104,6 +120,7 @@ async def _start_combat_impl(
     ]
 
     enemies = encounter.get("enemies", [])
+    _validate_enemy_action_conditions(enemies)
     for enemy in enemies:
         initiative_inputs.append(
             {
