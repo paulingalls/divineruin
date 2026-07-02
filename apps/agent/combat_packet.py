@@ -26,6 +26,7 @@ from combat_ability import (
     _resolve_ability_condition_packet,
     _resolve_ability_packet,
     _resolve_deescalation_packet,
+    _resolve_enemy_condition_packet,
     condition_ability,
 )
 from combat_support import _resolve_attack_packet
@@ -156,6 +157,15 @@ async def _resolve_one_packet(
         }
 
     if decl.type is DeclarationType.ABILITY:
+        # Enemy condition-infliction ABILITY (M13 story-002): a non-player actor's action_pool
+        # entry carrying applies_condition routes to the dedicated resolver (save-gated, lands
+        # via the immunity-gated apply_condition SSOT) BEFORE the player-oriented de_escalate/
+        # condition_ability/spell branches below, which are all player-only. An enemy ability
+        # WITHOUT applies_condition falls through unchanged and wastes at _resolve_ability_packet.
+        if attacker.type != "player":
+            action = _find_action(attacker, decl.action)
+            if action is not None and action.get("applies_condition"):
+                return await _resolve_enemy_condition_packet(session, attacker, decl, action, state=state, conn=conn)
         # De-escalate (M4.6a story-004) is an ABILITY but resolves socially, not as a cast:
         # contested gate + one argument that can end combat. Its Focus/lockout were pre-gated
         # in _prevalidate_ability_focus, and ``player`` is the for_update row from there.
