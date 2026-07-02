@@ -121,20 +121,25 @@ async def _start_combat_impl(
 
     # Build participant dicts for initiative rolling
     player_hp = player.get("hp", {})
-    player_attrs = player.get("attributes", {})
-    # Synthesize the player's combat action_pool from equipped weapons. Each equipment
-    # entry is already resolve_attack-shaped (name/damage/damage_type/properties), so a
-    # player attack declaration resolves through the same packet path as enemies and
-    # companions (story-003 unified resolution). Non-weapon gear (no `damage`) is skipped;
-    # spells/abilities are out-of-band tools in M4.1, not action_pool entries.
-    player_equipment = player.get("equipment", {})
-    player_action_pool = [item for item in player_equipment.values() if isinstance(item, dict) and item.get("damage")]
+
+    # Multi-player combat build (M14 story-003): session.party.member_ids is the SSOT for
+    # combat participation (not the mirrored session.player_id field). A solo party has
+    # exactly one member — the already-fetched primary row — so this reuses `player` rather
+    # than double-querying, and produces the same single participant as before the refactor.
+    member_players: list[tuple[str, dict]] = []
+    for member_id in session.party.member_ids:
+        row = player if member_id == session.player_id else await queries.get_player(member_id)
+        if row is None:
+            raise ToolError(f"Player '{member_id}' not found.")
+        member_players.append((member_id, row))
+
     initiative_inputs: list[dict] = [
         {
-            "id": session.player_id,
-            "name": player.get("name", session.player_id),
-            "attributes": player_attrs,
+            "id": mid,
+            "name": row.get("name", mid),
+            "attributes": row.get("attributes", {}),
         }
+        for mid, row in member_players
     ]
 
     enemies = encounter.get("enemies", [])
@@ -188,44 +193,53 @@ async def _start_combat_impl(
     initiative_order = [e.participant_id for e in initiative_entries]
     initiative_by_id = {e.participant_id: e.total for e in initiative_entries}
 
-    # Load the player's persisted conditions onto the combat participant (M4.4 story-005): a
-    # pre-combat Exhausted/Wounded/Hollowed now affects THIS fight's rolls (the in-combat check
-    # path reads participant.conditions). They ride the already-loaded players.data dict, so no
-    # extra query — validate at this boundary (fail-loud on a corrupt stored dict) and clamp
-    # Exhausted to the iron-constitution cap (the in-scope apply site until a forced-march producer).
-    # A corrupt stored condition row is a data-integrity error in the same family as a malformed
-    # companion profile (below) — the shared boundary guard surfaces it as a DM-narratable ToolError
-    # instead of a raw ValueError (db_tool narrows on JSONDecodeError, so a bare ValueError here
-    # would escape uncaught and crash combat init).
-    validated_conditions = validated_player_conditions(player, session.player_id)
-    player_conditions = conditions.cap_exhaustion(
-        validated_conditions,
-        rules_engine.exhaustion_stack_cap(player),
-    )
-
-    # Build CombatParticipants
-    participants: list[CombatParticipant] = [
-        CombatParticipant(
-            id=session.player_id,
-            name=player.get("name", session.player_id),
-            type="player",
-            initiative=initiative_by_id[session.player_id],
-            hp_current=player_hp.get("current", 1),
-            hp_max=player_hp.get("max", 1),
-            ac=player.get("ac", 10),
-            attributes=player_attrs,
-            level=player.get("level", 1),
-            action_pool=player_action_pool,
-            # Declaration enhancers granted via players.data.flags (M4.2, story-004). Only
-            # extra_attack is grantable today; the rest populate when their grants land.
-            enhancers=combat_enhancers.enhancers_from_flags(player.get("flags")),
-            conditions=player_conditions,
-            # Save proficiencies (M13 close-fix): carry the player's proficient saves onto the
-            # participant so resolve_saving_throw adds the bonus when an enemy imposes a save
-            # (e.g. Frightened). Sourced from players.data (creation_rules.py:309).
-            saving_throw_proficiencies=player.get("saving_throw_proficiencies", []),
-        ),
-    ]
+    # Build CombatParticipants — one per party member (M14 story-003). Each member's
+    # conditions are loaded and Exhaustion-capped independently (M4.4 story-005): a
+    # pre-combat Exhausted/Wounded/Hollowed on ONE member must not bleed onto siblings. They
+    # ride the already-fetched row, so no extra query — validate at this boundary (fail-loud
+    # on a corrupt stored dict) and clamp Exhausted to the iron-constitution cap (the
+    # in-scope apply site until a forced-march producer). A corrupt stored condition row is a
+    # data-integrity error in the same family as a malformed companion profile (below) — the
+    # shared boundary guard surfaces it as a DM-narratable ToolError instead of a raw
+    # ValueError (db_tool narrows on JSONDecodeError, so a bare ValueError here would escape
+    # uncaught and crash combat init).
+    participants: list[CombatParticipant] = []
+    for mid, row in member_players:
+        row_hp = row.get("hp", {})
+        # Synthesize the member's combat action_pool from equipped weapons. Each equipment
+        # entry is already resolve_attack-shaped (name/damage/damage_type/properties), so a
+        # player attack declaration resolves through the same packet path as enemies and
+        # companions (story-003 unified resolution). Non-weapon gear (no `damage`) is skipped;
+        # spells/abilities are out-of-band tools in M4.1, not action_pool entries.
+        row_equipment = row.get("equipment", {})
+        row_action_pool = [item for item in row_equipment.values() if isinstance(item, dict) and item.get("damage")]
+        validated_conditions = validated_player_conditions(row, mid)
+        row_conditions = conditions.cap_exhaustion(
+            validated_conditions,
+            rules_engine.exhaustion_stack_cap(row),
+        )
+        participants.append(
+            CombatParticipant(
+                id=mid,
+                name=row.get("name", mid),
+                type="player",
+                initiative=initiative_by_id[mid],
+                hp_current=row_hp.get("current", 1),
+                hp_max=row_hp.get("max", 1),
+                ac=row.get("ac", 10),
+                attributes=row.get("attributes", {}),
+                level=row.get("level", 1),
+                action_pool=row_action_pool,
+                # Declaration enhancers granted via players.data.flags (M4.2, story-004). Only
+                # extra_attack is grantable today; the rest populate when their grants land.
+                enhancers=combat_enhancers.enhancers_from_flags(row.get("flags")),
+                conditions=row_conditions,
+                # Save proficiencies (M13 close-fix): carry the player's proficient saves onto
+                # the participant so resolve_saving_throw adds the bonus when an enemy imposes
+                # a save (e.g. Frightened). Sourced from players.data (creation_rules.py:309).
+                saving_throw_proficiencies=row.get("saving_throw_proficiencies", []),
+            )
+        )
     for enemy in enemies:
         # Apply the encounter-role overlay (M4.7, story-001): the same base stat block becomes a
         # Minion (halved, actives stripped) or a Boss (doubled, signature + legendary) per its
