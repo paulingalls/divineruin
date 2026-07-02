@@ -208,14 +208,15 @@ async def resurrect_party_on_defeat(
     death_mutations=db_mutations_death,
     mutations=db_mutations_resurrection,
 ) -> list[dict]:
-    """Party-wipe engine (story-004): each member's death is recorded + costed independently, and
-    all members revive at ONE shared anchor (spec §Party wipe).
+    """Party-wipe engine (story-004/005): each member's death is recorded + costed independently,
+    and each member's resurrection anchor is resolved PER MEMBER (§Party wipe / M14).
 
-    The shared anchor is resolved once from the party's common death location. Anchor tiers 1/2/4
-    are member-independent and tier-3 (last-rested) is dormant (no rest caller ships yet), so a
-    single resolution IS the shared highest-priority anchor today; per-member tier-3 divergence is
-    a future concern when a rest caller lands. A Mortaen patron's first-ever death is waived
-    (creation_deities.patron_waives_first_death): not recorded, not counted, no cost — still revived.
+    Anchor resolution runs each member's own 4-tier pick (resolve_resurrection_anchor via
+    trigger_character_death), including that member's own last-rested settlement (tier-3).
+    Tiers 1/2/4 still coincide for co-located members, so members sharing a death location and
+    no divergent last-rested anchor land on the same result; tier-3 is where members diverge.
+    A Mortaen patron's first-ever death is waived (creation_deities.patron_waives_first_death):
+    not recorded, not counted, no cost — still revived.
 
     Forward-wired: combat is single-player, so prod feeds a 1-member party (resurrect_on_defeat
     delegates here); the multi-member path is exercised by tests until multiplayer combat lands.
@@ -225,9 +226,6 @@ async def resurrect_party_on_defeat(
         return []
 
     locations = await content_queries.get_all_locations()
-    shared_anchor = resolve_resurrection_anchor(
-        party[0].get("location_id", ""), locations, party[0], combat_cleared=combat_cleared
-    )
 
     contexts: list[dict] = []
     for member in party:
@@ -239,7 +237,7 @@ async def resurrect_party_on_defeat(
                 member,
                 locations,
                 combat_cleared=combat_cleared,
-                anchor=shared_anchor,
+                anchor=None,
                 waive_cost=waive,
                 death_mutations=death_mutations,
                 mutations=mutations,
