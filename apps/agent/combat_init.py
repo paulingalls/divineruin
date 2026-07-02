@@ -138,7 +138,12 @@ async def _start_combat_impl(
     ]
 
     enemies = encounter.get("enemies", [])
-    _validate_enemy_action_conditions(enemies)
+    # Surface a malformed enemy condition action as a DM-narratable ToolError (the _start_combat_impl
+    # content-error convention, matching the stance-gate above), not a raw ValueError at the tool boundary.
+    try:
+        _validate_enemy_action_conditions(enemies)
+    except ValueError as e:
+        raise ToolError(f"Encounter '{encounter_id}' has a malformed enemy condition action: {e}") from e
     for enemy in enemies:
         initiative_inputs.append(
             {

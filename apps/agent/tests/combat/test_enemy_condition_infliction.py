@@ -216,6 +216,53 @@ class TestEnemyAbilityDispatch:
         assert summary["condition_inflicted"] == "frightened"
         assert any(c["type"] == "frightened" for c in _get(state, "player_1").conditions)
 
+    async def test_condition_action_does_not_consume_opening_strike_beat(self):
+        # A save-based condition action is not an attack roll — it must NOT consume the opening-strike
+        # dramatic beat (first_attack_resolved), so the combat's first real ATTACK still earns the
+        # dramatic opener. (Regression: an earlier fix set the flag in dispatch, even for a wasted action.)
+        state = _state_with_enemy_action(_enemy_action())
+        assert state.first_attack_resolved is False
+        decl = Declaration(type=DeclarationType.ATTACK, action="Unnerving Gaze", target_id="player_1")
+        packet = MagicMock(actor_id="goblin_scout_1", declaration=decl)
+        session = make_context().userdata
+
+        with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=1)):
+            await _resolve_one_packet(
+                session,
+                state,
+                packet,
+                mutations=MagicMock(),
+                queries=MagicMock(),
+                resolver=MagicMock(),
+                concentration_break_mod=MagicMock(),
+            )
+
+        assert state.first_attack_resolved is False
+
+    async def test_ally_condition_action_is_not_routed_to_hostile_resolver(self):
+        # is_ally gate: a companion (ally) action carrying applies_condition must NOT route to the
+        # hostile enemy-condition resolver (which rolls the target's save to RESIST — wrong for a
+        # friendly effect). Latent today (no ally content has applies_condition); guards future content.
+        state = _state_with_enemy_action(_enemy_action())
+        _get(state, "goblin_scout_1").type = "companion"  # an ally (is_ally True)
+        decl = Declaration(type=DeclarationType.ATTACK, action="Unnerving Gaze", target_id="player_1")
+        packet = MagicMock(actor_id="goblin_scout_1", declaration=decl)
+        session = make_context().userdata
+
+        with patch("combat_packet._resolve_enemy_condition_packet") as mock_enemy_cond:
+            with patch("combat_packet._resolve_attack_packet", return_value={"hit": False, "critical": False}):
+                await _resolve_one_packet(
+                    session,
+                    state,
+                    packet,
+                    mutations=MagicMock(),
+                    queries=MagicMock(),
+                    resolver=MagicMock(),
+                    concentration_break_mod=MagicMock(),
+                )
+
+        mock_enemy_cond.assert_not_called()  # ally never routed through the hostile inflict path
+
     async def test_enemy_ability_without_applies_condition_still_wasted(self):
         state = _make_combat_state()
         _get(state, "goblin_scout_1").action_pool = [

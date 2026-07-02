@@ -161,26 +161,24 @@ async def _resolve_one_packet(
 
     # Resolve the actor's pool action ONCE — reused by the enemy-condition branch and the ATTACK
     # path below so an ordinary enemy attack isn't scanned twice. Only ATTACK (any actor) and a
-    # non-player ABILITY (the enemy-condition case) need the pool lookup; a player ABILITY is a
-    # spell/ability id, not a pool action, so it stays None.
+    # hostile-actor ABILITY (the enemy-condition case) need the pool lookup; a player/ally ABILITY is
+    # a spell/ability id, not a pool action, so it stays None.
     action = (
         _find_action(attacker, decl.action)
-        if decl.type is DeclarationType.ATTACK or (attacker.type != "player" and decl.type is DeclarationType.ABILITY)
+        if decl.type is DeclarationType.ATTACK or (not attacker.is_ally and decl.type is DeclarationType.ABILITY)
         else None
     )
 
-    # Enemy condition-infliction (M13): a non-player actor whose action_pool entry carries
-    # applies_condition inflicts a save-gated condition, routed on the ACTION FIELD, not the
-    # declaration type. The DM declares enemy pool actions as ATTACK (system_prompts.py:235 —
-    # "Ability" is a spell/ability id the caster knows, which pool actions are not), so gating
-    # this on ABILITY alone made the whole feature a no-op in real play. Deterministic mechanics:
-    # the engine, not the LLM's type choice, decides the effect. Fires for ATTACK or ABILITY; an
-    # enemy action WITHOUT applies_condition falls through to the normal attack/ability path.
-    if attacker.type != "player" and action is not None and action.get("applies_condition"):
-        # This is the combat's first resolved offensive action if none has resolved yet — consume the
-        # opening-strike beat here too, so an enemy that opens with a condition action doesn't leave
-        # first_attack_resolved False and let a later swing be mis-narrated as the dramatic opener.
-        state.first_attack_resolved = True
+    # Enemy condition-infliction (M13): a HOSTILE actor (is_ally False — enemy or temporary_hollowed,
+    # never a player/companion ally) whose action_pool entry carries applies_condition inflicts a
+    # save-gated condition, routed on the ACTION FIELD, not the declaration type. The DM declares
+    # enemy pool actions as ATTACK (system_prompts.py:235 — "Ability" is a spell/ability id the
+    # caster knows, which pool actions are not), so gating this on ABILITY alone made the whole
+    # feature a no-op in real play. Deterministic mechanics: the engine, not the LLM's type choice,
+    # decides the effect. Fires for ATTACK or ABILITY; an action WITHOUT applies_condition falls
+    # through to the normal attack/ability path. (The opening-strike dramatic beat stays with the
+    # first real ATTACK — a save-based condition is not an attack roll, so it does not consume it.)
+    if not attacker.is_ally and action is not None and action.get("applies_condition"):
         return await _resolve_enemy_condition_packet(session, attacker, decl, action, state=state, conn=conn)
 
     if decl.type is DeclarationType.ABILITY:

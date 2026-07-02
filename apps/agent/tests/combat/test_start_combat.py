@@ -442,3 +442,36 @@ class TestStartCombat:
             await _start_combat_impl(
                 ctx, encounter_id="nonexistent", encounter_description="Nothing", content=mock_content
             )
+
+    @pytest.mark.asyncio
+    async def test_malformed_enemy_condition_action_raises_tool_error(self):
+        # A malformed enemy condition action must surface as a DM-narratable ToolError at the tool
+        # boundary, not a raw ValueError (matching the content-error convention).
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+        mock_content.get_encounter_template = AsyncMock(
+            return_value={
+                "id": "bad_enc",
+                "name": "Bad Encounter",
+                "enemies": [
+                    {
+                        "id": "e1",
+                        "name": "E",
+                        "attributes": {},
+                        "action_pool": [
+                            {"name": "Bad Shriek", "applies_condition": "frightened", "save": "luck", "dc": 12}
+                        ],
+                    }
+                ],
+            }
+        )
+        ctx = make_context()
+
+        with pytest.raises(ToolError, match="malformed enemy condition"):
+            await _start_combat_impl(
+                ctx,
+                encounter_id="bad_enc",
+                encounter_description="x",
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
+            )
