@@ -11,7 +11,6 @@ state and write through injected mutation/query modules, but own no transaction.
 
 from livekit.agents.llm import ToolError
 
-import check_resolution
 import combat_enhancers
 import combat_resolution
 import conditions
@@ -26,6 +25,7 @@ from combat_ability import (
     _resolve_ability_condition_packet,
     _resolve_ability_packet,
     _resolve_deescalation_packet,
+    _resolve_enemy_condition_packet,
     condition_ability,
 )
 from combat_support import _resolve_attack_packet
@@ -50,13 +50,17 @@ def _resolve_tick_saves(state, tick_conditions_due, save_resolver):
         actor = state.get_participant(event["actor_id"])
         if actor is None:
             continue
-        player_data = {"attributes": actor.attributes, "level": actor.level, "conditions": actor.conditions}
-        # The catalog's tick_save is the 3-letter abbreviation ("wis"); resolve_saving_throw
-        # validates against the full attribute name ("wisdom"), so expand before resolving.
-        save_type = check_resolution._ATTR_FULL.get(event["save"], event["save"])
-        # Engine-auto tick-clear save: never spends the actor's beneficial +1d4 (M4.8 story-003).
-        result = save_resolver.resolve_saving_throw(
-            player_data, save_type, _CONDITION_CLEAR_DC, event["type"], bonus_dice_eligible=False
+        # Shared participant-save SSOT (roll_participant_save): builds player_data from the actor and
+        # expands the 3-letter tick_save ("wis" -> "wisdom"). Engine-auto tick-clear: never spends the
+        # actor's +1d4 (bonus_dice_eligible=False, M4.8 story-003), and include_proficiency=False keeps
+        # the pre-M13 clear odds — folding proficiency in here would be an untested M4.3 balance shift.
+        result = save_resolver.roll_participant_save(
+            actor,
+            event["save"],
+            _CONDITION_CLEAR_DC,
+            event["type"],
+            bonus_dice_eligible=False,
+            include_proficiency=False,
         )
         if result.success:
             actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
@@ -155,7 +159,32 @@ async def _resolve_one_packet(
             "ac_bonus": decl.ac_bonus,
         }
 
+    # Resolve the actor's pool action ONCE — reused by the enemy-condition branch and the ATTACK
+    # path below so an ordinary enemy attack isn't scanned twice. Only ATTACK (any actor) and a
+    # hostile-actor ABILITY (the enemy-condition case) need the pool lookup; a player/ally ABILITY is
+    # a spell/ability id, not a pool action, so it stays None.
+    action = (
+        _find_action(attacker, decl.action)
+        if decl.type is DeclarationType.ATTACK or (not attacker.is_ally and decl.type is DeclarationType.ABILITY)
+        else None
+    )
+
+    # Enemy condition-infliction (M13): a HOSTILE actor (is_ally False — enemy or temporary_hollowed,
+    # never a player/companion ally) whose action_pool entry carries applies_condition inflicts a
+    # save-gated condition, routed on the ACTION FIELD, not the declaration type. The DM declares
+    # enemy pool actions as ATTACK (system_prompts.py:235 — "Ability" is a spell/ability id the
+    # caster knows, which pool actions are not), so gating this on ABILITY alone made the whole
+    # feature a no-op in real play. Deterministic mechanics: the engine, not the LLM's type choice,
+    # decides the effect. Fires for ATTACK or ABILITY; an action WITHOUT applies_condition falls
+    # through to the normal attack/ability path. (The opening-strike dramatic beat stays with the
+    # first real ATTACK — a save-based condition is not an attack roll, so it does not consume it.)
+    if not attacker.is_ally and action is not None and action.get("applies_condition"):
+        return await _resolve_enemy_condition_packet(session, attacker, decl, action, state=state, conn=conn)
+
     if decl.type is DeclarationType.ABILITY:
+        # (Enemy condition-infliction ABILITY is handled by the type-agnostic branch above, which
+        # routes both ATTACK and ABILITY enemy actions carrying applies_condition. The branches
+        # below are the player-oriented paths.)
         # De-escalate (M4.6a story-004) is an ABILITY but resolves socially, not as a cast:
         # contested gate + one argument that can end combat. Its Focus/lockout were pre-gated
         # in _prevalidate_ability_focus, and ``player`` is the for_update row from there.
@@ -194,7 +223,7 @@ async def _resolve_one_packet(
         return _attach_riders(summary, attacker, decl)
 
     target = state.get_participant(decl.target_id) if decl.target_id else None
-    action = _find_action(attacker, decl.action)
+    # `action` was resolved once above (the single _find_action for this packet).
     if target is None:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": f"target '{decl.target_id}' not found"}
     if target.is_fallen:

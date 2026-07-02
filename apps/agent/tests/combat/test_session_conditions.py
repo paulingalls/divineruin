@@ -75,8 +75,9 @@ async def test_save_empty_clears_conditions(dev_db_pool):
 
 
 def _save_resolver(success: bool):
+    # _resolve_tick_saves rolls via the shared roll_participant_save SSOT (M13 close-fix dedup).
     resolver = MagicMock()
-    resolver.resolve_saving_throw = MagicMock(return_value=MagicMock(success=success))
+    resolver.roll_participant_save = MagicMock(return_value=MagicMock(success=success))
     return resolver
 
 

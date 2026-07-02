@@ -9,6 +9,7 @@ import uuid
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+import check_resolution_save
 import combat_enhancers
 import combat_resolution
 import conditions
@@ -33,6 +34,39 @@ from session_data import CombatParticipant, CombatState, SessionData
 from tool_support import SOUND_COMBAT_START
 
 logger = logging.getLogger("divineruin.tools")
+
+
+def _validate_enemy_action_conditions(enemies: list[dict]) -> None:
+    """Fail loud if any enemy condition action is malformed — the load-boundary strict guard.
+
+    Encounter templates have no strict loader (unlike spells.json / archetype_abilities.json,
+    whose loaders fail-loud on applies_condition), so this closes that gap at combat start. For any
+    action that declares ``applies_condition`` it requires: (1) the condition is in CONDITION_CATALOG;
+    (2) ``save`` is a valid save key — full name OR 3-letter abbrev, matching what the resolver
+    accepts (check_resolution_save.is_valid_save_key, one SSOT so the load-gate and runtime agree);
+    (3) ``dc`` is an int; (4) ``damage`` is absent or "0" — M13 condition actions are save-based, and
+    the resolver does not apply damage, so a damage-bearing condition action would silently deal none
+    (debt 5b18023ef5a5) until the combined to-hit+save+damage model lands. Validating HERE turns a
+    would-be mid-fight KeyError / silent damage-drop into a fail-loud error at combat entry."""
+    for enemy in enemies:
+        for action in enemy.get("action_pool", []):
+            cond = action.get("applies_condition")
+            if cond is None:
+                continue
+            label = f"enemy {enemy.get('id')!r} action {action.get('name')!r}"
+            if cond not in conditions.CONDITION_CATALOG:
+                raise ValueError(f"{label} applies_condition {cond!r} is not a known condition")
+            if not check_resolution_save.is_valid_save_key(action.get("save")):
+                raise ValueError(
+                    f"{label} applies_condition needs a valid 'save' attribute, got {action.get('save')!r}"
+                )
+            if not isinstance(action.get("dc"), int):
+                raise ValueError(f"{label} applies_condition needs an int 'dc', got {action.get('dc')!r}")
+            if action.get("damage") not in (None, "", "0", 0):
+                raise ValueError(
+                    f"{label} condition action must be save-based (damage absent or '0') until the "
+                    f"combined damage+condition model lands (debt 5b18023ef5a5), got damage {action.get('damage')!r}"
+                )
 
 
 async def _start_combat_impl(
@@ -104,6 +138,12 @@ async def _start_combat_impl(
     ]
 
     enemies = encounter.get("enemies", [])
+    # Surface a malformed enemy condition action as a DM-narratable ToolError (the _start_combat_impl
+    # content-error convention, matching the stance-gate above), not a raw ValueError at the tool boundary.
+    try:
+        _validate_enemy_action_conditions(enemies)
+    except ValueError as e:
+        raise ToolError(f"Encounter '{encounter_id}' has a malformed enemy condition action: {e}") from e
     for enemy in enemies:
         initiative_inputs.append(
             {
@@ -180,6 +220,10 @@ async def _start_combat_impl(
             # extra_attack is grantable today; the rest populate when their grants land.
             enhancers=combat_enhancers.enhancers_from_flags(player.get("flags")),
             conditions=player_conditions,
+            # Save proficiencies (M13 close-fix): carry the player's proficient saves onto the
+            # participant so resolve_saving_throw adds the bonus when an enemy imposes a save
+            # (e.g. Frightened). Sourced from players.data (creation_rules.py:309).
+            saving_throw_proficiencies=player.get("saving_throw_proficiencies", []),
         ),
     ]
     for enemy in enemies:
@@ -230,6 +274,11 @@ async def _start_combat_impl(
                 attributes=companion_scaled.attributes,
                 level=companion_scaled.level,
                 action_pool=companion_action_pool,
+                # Carry the companion's save proficiencies (M13 close-fix, symmetric with the player
+                # build) so an enemy-inflicted save-based condition honors them — a WIS-proficient
+                # companion resists Frightened like a proficient player. `profile` is bound here
+                # (companion_scaled is not None => the profile-load try succeeded above).
+                saving_throw_proficiencies=list(profile.save_proficiencies),
             )
         )
 

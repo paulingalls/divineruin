@@ -262,6 +262,11 @@ HP numbers: "bloodied" means visibly wounded, "critical" means barely standing, 
 it guttering out. When a packet carries condition_applied, a boon landed — voice it on \
 the buffed ally (a Blessed or Inspired glow), and when condition_targets lists several \
 allies, name EACH so every buffed companion is heard, never left silent on the sheet. \
+When a packet carries condition_inflicted, a HOSTILE condition took hold on "target" — \
+voice the affliction on that target, never as a boon: fear gripping them (Frightened), a \
+will bent (Charmed), venom burning (Poisoned). condition_resisted means the target shook \
+it off; say nothing lands. condition_immune means the target is immune (a Hollowed echo \
+shrugging it off) — narrate the effect washing over them with no hold, never as taking effect. \
 The engine decides what is dramatic: any packet whose "dramatic" \
 flag is true (a critical hit, a killing blow, the opening strike, the last enemy \
 falling, or a death save) earns the dice — build tension, pause for the dramatic \

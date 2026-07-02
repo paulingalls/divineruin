@@ -343,3 +343,44 @@ class TestGatheringContent:
                     assert material_ref in material_ids, (
                         f"Location '{loc['id']}' resource_table '{rarity}' references unknown material '{material_ref}'"
                     )
+
+
+# M13 (sprint-030 story-001): enemy hostile-condition content. Mirrors combat_init's fail-loud
+# guard so an unknown/malformed applies_condition fails the fast lane, not just combat entry.
+_HOSTILE_CONDITIONS = frozenset({"charmed", "frightened", "poisoned"})
+
+
+class TestEnemyHostileConditionContent:
+    def _enemy_actions_with_condition(self):
+        for enc in _load_json("encounter_templates.json"):
+            for enemy in enc.get("enemies", []):
+                for action in enemy.get("action_pool", []):
+                    if action.get("applies_condition") is not None:
+                        yield enc["id"], enemy, action
+
+    def test_enemy_applies_condition_is_catalog_key_with_valid_save_and_dc(self):
+        import check_resolution_save
+        import conditions
+
+        for enc_id, enemy, action in self._enemy_actions_with_condition():
+            cond = action["applies_condition"]
+            assert cond in conditions.CONDITION_CATALOG, (
+                f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' "
+                f"applies_condition '{cond}' is not a known condition"
+            )
+            # Use the SAME save-key check the load gate + runtime resolver use (accepts a full name
+            # OR a 3-letter abbrev), so this fast-lane test can't be stricter than what the engine runs.
+            assert check_resolution_save.is_valid_save_key(action.get("save")), (
+                f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' save '{action.get('save')}' "
+                f"is not a valid save key"
+            )
+            assert isinstance(action.get("dc"), int), (
+                f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' dc must be an int"
+            )
+
+    def test_at_least_one_enemy_action_inflicts_a_hostile_condition(self):
+        conditions_seen = {action["applies_condition"] for _, _, action in self._enemy_actions_with_condition()}
+        assert conditions_seen & _HOSTILE_CONDITIONS, (
+            "expected at least one enemy action_pool entry to declare a hostile "
+            f"applies_condition ({sorted(_HOSTILE_CONDITIONS)}), found none"
+        )

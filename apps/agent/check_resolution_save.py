@@ -9,10 +9,23 @@ resolve_saving_throw accepts an optional `rng` for deterministic testing.
 import random
 from dataclasses import dataclass
 
-from check_resolution import _ATTR_ABBREV, _apply_condition_modifiers, _roll_d20_check, roll_bonus_dice
+from check_resolution import _ATTR_ABBREV, _ATTR_FULL, _apply_condition_modifiers, _roll_d20_check, roll_bonus_dice
 from conditions import get_condition_effects
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier, proficiency_bonus
+
+# The six attribute save names (full form) — the SSOT for save-name validation across the resolver
+# (resolve_saving_throw) and the content load-guard (combat_init._validate_enemy_action_conditions),
+# so the two can't disagree on the valid format.
+VALID_SAVE_NAMES = frozenset(_ATTR_FULL.values())
+
+
+def is_valid_save_key(save: object) -> bool:
+    """True if ``save`` is a recognized save key — a full attribute name ("wisdom") OR a 3-letter
+    abbreviation ("wis") that _ATTR_FULL expands. Mirrors exactly what resolve_saving_throw accepts
+    (callers expand via _ATTR_FULL first), so the load-time content guard and the runtime resolver
+    agree — an author's "wis" that the engine would run no longer fails loud at combat start."""
+    return isinstance(save, str) and _ATTR_FULL.get(save.lower(), save.lower()) in VALID_SAVE_NAMES
 
 
 @dataclass(frozen=True)
@@ -57,15 +70,14 @@ def resolve_saving_throw(
     # saves keep the default True; engine-auto saves (Beat-4 tick-clear, concentration-break) pass
     # False so an automatic save never spends the single-use die (customer decision 6102eca13319).
     save_lower = save_type.lower()
-    valid_saves = {"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
-    if save_lower not in valid_saves:
+    if save_lower not in VALID_SAVE_NAMES:
         raise ValueError(f"Unknown save type: '{save_type}'")
 
     # Encounter-role overlay (M4.7, story-001): a role-boosted SOURCE (e.g. a Boss ability) makes
     # its target's save harder via dc_mod (Boss +2, Elite +1, Minion -1). Defaults to identity. The
-    # effective DC is reported on the packet so narration/UI see the real threshold. No live caller
-    # threads this yet — enemy abilities don't impose target saves through this resolver until the
-    # ability-firing path lands (story-003); the capability is wired here at the SSOT.
+    # effective DC is reported on the packet so narration/UI see the real threshold. The live caller
+    # is the M13 enemy-condition resolver (combat_ability._resolve_enemy_condition_packet), which
+    # threads dc_mod=attacker.dc_mod so an enemy's role scaling reaches the target's save DC.
     dc = dc + dc_mod
 
     attributes = player_data.get("attributes", {})
@@ -127,4 +139,50 @@ def resolve_saving_throw(
         dramatic=verdict.dramatic,
         context=verdict.context,
         consumed_conditions=consumed,
+    )
+
+
+def roll_participant_save(
+    participant,
+    save: str,
+    dc: int,
+    effect_on_fail: str,
+    *,
+    dc_mod: int = 0,
+    bonus_dice_eligible: bool = False,
+    include_proficiency: bool = True,
+    rng: random.Random | None = None,
+) -> SavingThrowResult:
+    """Roll a CombatParticipant's saving throw against ``dc`` (+ ``dc_mod``).
+
+    Builds the resolve_saving_throw ``player_data`` from the participant's attributes/level/
+    conditions and expands a 3-letter save abbreviation ("wis") to the full attribute name
+    ("wisdom"). Duck-typed on the participant (no session_data import) to keep this module IO/type-free.
+
+    The single SSOT for a CombatParticipant save: the Beat-4 tick-clear (combat_packet) and the
+    enemy condition-infliction resolver (combat_ability) both call it so their save math can't
+    diverge. ``bonus_dice_eligible`` defaults False (the engine-adjacent callers do not spend the
+    target's single-use +1d4). ``include_proficiency`` gates the save-proficiency bonus: the
+    enemy-inflicted save (an active save the target makes) honors it (default True), while the
+    Beat-4 tick-clear passes False to PRESERVE its pre-M13 clear odds — folding proficiency into the
+    tick-clear would be an untested M4.3 balance shift, out of scope for the M13 dedup."""
+    # Lowercase BEFORE expansion so this matches is_valid_save_key exactly (which lowercases): an
+    # uppercase abbrev like "WIS" (the codebase's house style, e.g. items.json "DC 13 CON") that
+    # passes the load gate must also expand here — else it slips through to resolve_saving_throw
+    # unexpanded and raises "Unknown save type" mid-fight, the load-gate/runtime divergence this SSOT exists to prevent.
+    save_type = _ATTR_FULL.get(save.lower(), save.lower())
+    player_data = {
+        "attributes": participant.attributes,
+        "level": participant.level,
+        "conditions": participant.conditions,
+        "saving_throw_proficiencies": participant.saving_throw_proficiencies if include_proficiency else [],
+    }
+    return resolve_saving_throw(
+        player_data,
+        save_type,
+        dc,
+        effect_on_fail,
+        rng=rng,
+        dc_mod=dc_mod,
+        bonus_dice_eligible=bonus_dice_eligible,
     )

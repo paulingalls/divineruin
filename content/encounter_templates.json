@@ -126,9 +126,7 @@
             "name": "Seizing Grab",
             "damage": "1d4",
             "damage_type": "bludgeoning",
-            "properties": [
-              "grapple"
-            ],
+            "properties": ["grapple"],
             "description": "Wrong-jointed arms reach with terrifying speed, pulling you toward the maw"
           }
         ],
@@ -164,9 +162,7 @@
             "name": "Seizing Grab",
             "damage": "1d4",
             "damage_type": "bludgeoning",
-            "properties": [
-              "grapple"
-            ],
+            "properties": ["grapple"],
             "description": "Wrong-jointed arms reach with terrifying speed, pulling you toward the maw"
           }
         ],
@@ -303,10 +299,13 @@
           },
           {
             "name": "Hollow Shriek",
-            "damage": "1d4",
+            "damage": "0",
             "damage_type": "psychic",
-            "properties": [],
-            "description": "A sound that isn't a sound — pressure behind the eyes, a ringing that tastes of metal"
+            "properties": ["control"],
+            "description": "A sound that isn't a sound — pressure behind the eyes, a ringing that tastes of metal",
+            "applies_condition": "frightened",
+            "save": "wisdom",
+            "dc": 12
           }
         ],
         "xp_value": 100,
@@ -414,9 +413,7 @@
             "name": "Absorb",
             "damage": "1d6",
             "damage_type": "necrotic",
-            "properties": [
-              "healing"
-            ],
+            "properties": ["healing"],
             "description": "The Warden's wounds close as dark energy flows from its victim into its form"
           }
         ],
@@ -466,9 +463,7 @@
             "name": "Light Crossbow",
             "damage": "1d8",
             "damage_type": "piercing",
-            "properties": [
-              "ranged"
-            ],
+            "properties": ["ranged"],
             "description": "A bolt loosed from cover before the rush"
           }
         ],
@@ -504,9 +499,7 @@
             "name": "Light Crossbow",
             "damage": "1d8",
             "damage_type": "piercing",
-            "properties": [
-              "ranged"
-            ],
+            "properties": ["ranged"],
             "description": "A bolt loosed from cover before the rush"
           }
         ],
@@ -542,9 +535,7 @@
             "name": "Light Crossbow",
             "damage": "1d8",
             "damage_type": "piercing",
-            "properties": [
-              "ranged"
-            ],
+            "properties": ["ranged"],
             "description": "A bolt loosed from cover before the rush"
           }
         ],
@@ -580,9 +571,7 @@
             "name": "Light Crossbow",
             "damage": "1d8",
             "damage_type": "piercing",
-            "properties": [
-              "ranged"
-            ],
+            "properties": ["ranged"],
             "description": "A bolt loosed from cover before the rush"
           }
         ],
@@ -618,18 +607,14 @@
             "name": "Heavy Crossbow",
             "damage": "1d10+1",
             "damage_type": "piercing",
-            "properties": [
-              "ranged"
-            ],
+            "properties": ["ranged"],
             "description": "Held back from the line, picking targets"
           },
           {
             "name": "Press the Attack",
             "damage": "0",
             "damage_type": "none",
-            "properties": [
-              "buff"
-            ],
+            "properties": ["buff"],
             "description": "A barked order rallies the bandits to focus their strikes"
           }
         ],
@@ -677,9 +662,7 @@
             "name": "Shield Bash",
             "damage": "1d4+2",
             "damage_type": "bludgeoning",
-            "properties": [
-              "knockback"
-            ],
+            "properties": ["knockback"],
             "description": "A braced shove to break the enemy's footing"
           }
         ],
@@ -715,9 +698,7 @@
             "name": "Shield Bash",
             "damage": "1d4+2",
             "damage_type": "bludgeoning",
-            "properties": [
-              "knockback"
-            ],
+            "properties": ["knockback"],
             "description": "A braced shove to break the enemy's footing"
           }
         ],
@@ -753,9 +734,7 @@
             "name": "Shield Bash",
             "damage": "1d4+2",
             "damage_type": "bludgeoning",
-            "properties": [
-              "knockback"
-            ],
+            "properties": ["knockback"],
             "description": "A braced shove to break the enemy's footing"
           }
         ],
@@ -791,9 +770,7 @@
             "name": "Shield Bash",
             "damage": "1d4+2",
             "damage_type": "bludgeoning",
-            "properties": [
-              "knockback"
-            ],
+            "properties": ["knockback"],
             "description": "A braced shove to break the enemy's footing"
           }
         ],
@@ -829,9 +806,7 @@
             "name": "Rally",
             "damage": "0",
             "damage_type": "none",
-            "properties": [
-              "buff"
-            ],
+            "properties": ["buff"],
             "description": "A sharp command steadies the line and sharpens their focus fire"
           }
         ],
@@ -875,9 +850,7 @@
             "name": "Bless",
             "damage": "0",
             "damage_type": "none",
-            "properties": [
-              "buff"
-            ],
+            "properties": ["buff"],
             "description": "Murmured fervor steadies the cultists' hands"
           },
           {
@@ -920,9 +893,7 @@
             "name": "Bless",
             "damage": "0",
             "damage_type": "none",
-            "properties": [
-              "buff"
-            ],
+            "properties": ["buff"],
             "description": "Murmured fervor steadies the cultists' hands"
           },
           {
@@ -1074,27 +1045,21 @@
             "name": "Shadow Bolt",
             "damage": "2d6",
             "damage_type": "necrotic",
-            "properties": [
-              "ranged"
-            ],
+            "properties": ["ranged"],
             "description": "A lance of cold dark flung from the back of the chamber"
           },
           {
             "name": "Hold Person",
             "damage": "0",
             "damage_type": "none",
-            "properties": [
-              "control"
-            ],
+            "properties": ["control"],
             "description": "A word that locks a victim's limbs mid-step"
           },
           {
             "name": "Dark Pulse",
             "damage": "1d10",
             "damage_type": "necrotic",
-            "properties": [
-              "aoe"
-            ],
+            "properties": ["aoe"],
             "description": "The sigil flares and rot washes outward in a ring"
           }
         ],
@@ -1144,18 +1109,14 @@
             "name": "Command Lesser",
             "damage": "0",
             "damage_type": "none",
-            "properties": [
-              "buff"
-            ],
+            "properties": ["buff"],
             "description": "A silent pulse marshals the shadelings and mawlings to a single target"
           },
           {
             "name": "Despair Aura",
             "damage": "1d6",
             "damage_type": "psychic",
-            "properties": [
-              "aoe"
-            ],
+            "properties": ["aoe"],
             "description": "The weight of what it used to be presses on everyone near"
           }
         ],

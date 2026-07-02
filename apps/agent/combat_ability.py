@@ -13,6 +13,7 @@ from livekit.agents.llm import ToolError
 import abilities
 import ability_persistence
 import check_resolution
+import check_resolution_save
 import combat_enhancers
 import combat_resolution
 import conditions
@@ -145,10 +146,11 @@ async def _resolve_deescalation_packet(
 def _land_condition_on_one(
     state, target_id: str | None, attacker: CombatParticipant, cond_type: str, source: str
 ) -> bool:
-    """Land a beneficial condition on ONE in-combat participant (M4.8). Self-target (``target_id``
-    None) falls back to the caster; a given id is looked up on the working ``state``. Returns True
-    iff it actually landed (``has_condition``) — a target not on the state, or an immunity no-op,
-    returns False so the caller drops the buff signal. The mutation rides save_combat_state."""
+    """Land a condition (beneficial or hostile) on ONE in-combat participant (M4.8; M13 story-002
+    adds the hostile caller). Self-target (``target_id`` None) falls back to the caster; a given id
+    is looked up on the working ``state``. Returns True iff it actually landed (``has_condition``) —
+    a target not on the state, or an immunity no-op, returns False so the caller drops the signal.
+    The mutation rides save_combat_state."""
     cond_target = attacker if target_id is None else state.get_participant(target_id)
     if cond_target is None:
         return False
@@ -279,21 +281,9 @@ async def _resolve_ability_condition_packet(
     # Single-target (story-005): a given target_id that's not on the working state, or already
     # fallen, WASTES the declaration (resolved:False) WITHOUT deducting — you can't buff a target
     # that left or a corpse, and a wasted declaration must never burn the cost.
-    cond_target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
-    if cond_target is None:
-        return {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": f"target '{decl.target_id}' not found",
-        }
-    if cond_target.is_fallen:
-        return {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": f"{cond_target.name} already fell",
-        }
+    _, waste = _resolve_condition_target(state, attacker, decl)
+    if waste is not None:
+        return waste
 
     await _deduct_ability_cost(session, player, ability, persistence=persistence, conn=conn)
 
@@ -305,6 +295,102 @@ async def _resolve_ability_condition_packet(
     }
     if cond_type is not None and land_condition_on_participant(state, attacker, decl, cond_type, source=ability.id):
         summary["condition_applied"] = cond_type
+    return summary
+
+
+def _resolve_condition_target(state, attacker: CombatParticipant, decl: "Declaration", *, allow_self: bool = True):
+    """Resolve the single target of a condition-applying declaration.
+
+    Returns ``(target, None)`` for a live target, or ``(None, waste_summary)`` when the target is
+    gone / already fallen / disallowed — a wasted declaration must never apply the condition or
+    deduct a cost. ``allow_self`` controls the ``target_id is None`` case: True (default) falls back
+    to the caster (a player self-buff); False WASTES it instead — a hostile inflict must never
+    self-target (an ABILITY-declared enemy condition action, which skips ATTACK's target_id
+    validation, would otherwise make the enemy inflict on ITSELF). Shared by the player ability-
+    condition path and the enemy condition-infliction path so the wasted-target contract lives once."""
+    target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
+    # allow_self=False wastes ANY self-target: the None fallback OR an explicit target_id equal to
+    # the attacker's own id — a hostile inflict must never land on its own caster.
+    if not allow_self and (decl.target_id is None or (target is not None and target.id == attacker.id)):
+        return None, {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": "condition action requires a non-self target_id",
+        }
+    if target is None:
+        return None, {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": f"target '{decl.target_id}' not found",
+        }
+    if target.is_fallen:
+        return None, {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": f"{target.name} already fell",
+        }
+    return target, None
+
+
+async def _resolve_enemy_condition_packet(
+    session: SessionData,
+    attacker: CombatParticipant,
+    decl: "Declaration",
+    action: dict,
+    *,
+    state,
+    conn,
+    save_resolver=check_resolution_save,
+) -> dict:
+    """Resolve an ENEMY condition-infliction action in combat (M13). The enemy action_pool entry
+    carries applies_condition/save/dc; the dispatch (combat_packet._resolve_one_packet) routes here
+    for an ATTACK **or** ABILITY declaration whose action has applies_condition — the DM declares
+    enemy pool actions as ATTACK, so routing on the field (not the type) is what makes the feature
+    fire in real play. Roll the TARGET's save vs (dc + the attacker's role dc_mod), honoring the
+    target's save proficiency; on FAILURE land the condition via the apply_condition SSOT
+    (immunity-gated through _land_condition_on_one), on SUCCESS it's resisted. Enemies have no
+    Focus/Stamina pool — nothing is deducted. The mutation rides the phase save_combat_state; no
+    client event (M12's Beat-4 wrap emit surfaces the applied condition).
+
+    Save-based, no to-hit: M13 condition actions are save-gated (Hollow Shriek is a fear shriek,
+    damage 0); this resolver does not apply action['damage']. A damage-bearing condition action
+    (to-hit + save + damage combined) is a follow-up (debt 5b18023ef5a5)."""
+    cond_type = action["applies_condition"]  # dispatch guarantees this is truthy
+    # allow_self=False: a hostile inflict must never self-target (an ABILITY-declared enemy condition
+    # action can arrive with target_id=None, which the helper would otherwise fall back to the caster).
+    target, waste = _resolve_condition_target(state, attacker, decl, allow_self=False)
+    if waste is not None:
+        return waste
+    assert target is not None  # waste is None => a live target was resolved
+    # dc_mod threads the attacker's role overlay (Boss +2 / Elite +1 / Minion -1) into the target's
+    # DC. bonus_dice_eligible=False keeps the engine-adjacent interim (concern 9ff840717590): a
+    # Blessed/Inspired target should arguably get its +1d4 on this save, but that needs the
+    # consumed_conditions plumbing the attack path has; deferred, not what bfe4bac441d0 prescribes.
+    result = save_resolver.roll_participant_save(
+        target, action["save"], action["dc"], cond_type, dc_mod=attacker.dc_mod, bonus_dice_eligible=False
+    )
+    # The HOSTILE inflict uses its OWN summary keys (condition_inflicted / condition_resisted /
+    # condition_immune) + the target's name — NOT the beneficial `condition_applied`, which the DM
+    # system prompt narrates as a boon ("a Blessed/Inspired glow"). A distinct key lets the DM voice
+    # the affliction landing on the TARGET (fear/charm/poison), never inverted as a buff.
+    summary = {
+        "actor_id": attacker.id,
+        "resolved": True,
+        "declaration_type": str(decl.type),
+        "action": decl.action,
+        "target": target.name,
+    }
+    if result.success:
+        summary["condition_resisted"] = cond_type
+    # Reuse the public single-target landing wrapper (the same call the player ability-condition path
+    # uses) so the target-id/self-fallback + immunity wiring lives in one place.
+    elif land_condition_on_participant(state, attacker, decl, cond_type, source=decl.action or ""):
+        summary["condition_inflicted"] = cond_type
+    else:
+        summary["condition_immune"] = cond_type  # failed save but immune (temp_hollowed) or off-state
     return summary
 
 
