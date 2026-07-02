@@ -22,6 +22,7 @@ contract, and a malformed row must reject identically on both sides.
 import json
 import logging
 from dataclasses import asdict, dataclass
+from typing import Literal
 
 from catalog_parse import (
     parse_attributes,
@@ -96,19 +97,47 @@ _role_archetypes: dict[str, RoleArchetype] = {}
 _ROLE_TYPES = ("civilian", "military", "specialist")
 # Canonical 5-tier disposition ladder — the single Python SSOT (mirrors the TS
 # DISPOSITION_VALUES home in role_archetype.ts). npcs.py and tool_support.py import
-# this so a tier change touches one place, not three.
+# this (ladder, index, and rank) so a tier or ranking change touches one place, not three.
 DISPOSITIONS = ("hostile", "unfriendly", "neutral", "friendly", "trusted")
+DISPOSITION_INDEX = {name: i for i, name in enumerate(DISPOSITIONS)}
 
 
-def shift_disposition(base: str, delta: int) -> str:
+def disposition_rank(disposition: str) -> int:
+    """Rank `disposition` on the ladder (0=hostile … 4=trusted) — the single ranking SSOT.
+
+    Lowercases and defaults an off-ladder value to neutral: the shared UNTRUSTED-input
+    contract for knowledge-gating (tool_support.filter_knowledge) and disposition mutation
+    (shift_disposition off_ladder='neutral'), so hand-corrupted npc_dispositions never 500
+    live narration. Pricing deliberately fail-louds on an unknown tier instead
+    (workspace.compute_rental_price, decision unknown-disposition-contract).
+    """
+    return DISPOSITION_INDEX.get(disposition.lower(), DISPOSITION_INDEX["neutral"])
+
+
+def shift_disposition(base: str, delta: int, *, off_ladder: Literal["raise", "neutral"] = "raise") -> str:
     """Move `base` along the DISPOSITIONS ladder by `delta`, clamped to its ends.
 
     A positive delta is friendlier, negative more hostile; the result never falls off the
-    5-tier ladder (so it stays a valid disposition). Raises ValueError if `base` isn't a
-    canonical disposition. Lives beside the DISPOSITIONS SSOT so settlement generation and
-    social resolution share one clamp instead of copying it.
+    5-tier ladder (so it stays a valid disposition). The single ladder-clamp SSOT — settlement
+    generation, social resolution, quest world-effects, and session npc mutations all share it
+    instead of copying the arithmetic.
+
+    `off_ladder` sets the contract when `base` isn't a canonical disposition (decision
+    unknown-disposition-contract — off-ladder handling is deliberately per-boundary, not
+    uniform; a naive collapse to one behavior was reverted in story-002):
+
+    - ``"raise"`` (default): fail loud (ValueError) — for TRUSTED inputs (validated content,
+      already-resolved dispositions) where an off-ladder value is a real bug worth surfacing.
+    - ``"neutral"``: treat `base` as neutral (case-insensitively) — for UNTRUSTED live-DB
+      inputs (quest/session npc-disposition mutations) where hand-corrupted npc_dispositions
+      must never 500 live narration.
     """
-    idx = DISPOSITIONS.index(base)
+    if off_ladder == "neutral":
+        idx = disposition_rank(base)
+    elif base in DISPOSITION_INDEX:
+        idx = DISPOSITION_INDEX[base]
+    else:
+        raise ValueError(f"{base!r} is not a canonical disposition {DISPOSITIONS}")
     return DISPOSITIONS[max(0, min(len(DISPOSITIONS) - 1, idx + delta))]
 
 

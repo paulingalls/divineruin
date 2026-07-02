@@ -18,33 +18,8 @@ from sample_fixtures import (
 from check_tools import _check_dice_impl, _check_save_impl
 from inventory_tools import _transact_impl
 from progression_tools import _award_divine_favor_impl, _award_xp_impl
-from quest_tools import _clamp_disposition_shift
 from session_tools import _update_npc_disposition_impl
 from tool_support import _cap_str, _resolve_ambient_sounds
-
-
-class TestClampDispositionShift:
-    def test_shift_up(self):
-        assert _clamp_disposition_shift("neutral", 1) == "friendly"
-
-    def test_shift_down(self):
-        # canonical ladder (story-004): neutral -1 -> unfriendly (was "wary")
-        assert _clamp_disposition_shift("neutral", -1) == "unfriendly"
-
-    def test_clamp_at_top(self):
-        assert _clamp_disposition_shift("trusted", 2) == "trusted"
-
-    def test_clamp_at_bottom(self):
-        assert _clamp_disposition_shift("hostile", -1) == "hostile"
-
-    def test_shift_multiple(self):
-        assert _clamp_disposition_shift("hostile", 2) == "neutral"
-
-    def test_unknown_defaults_neutral(self):
-        # story-004: retired aliases ("wary"/"cautious") and any unknown value
-        # all default to rank 2 (neutral) via _disposition_rank's .get(..., 2).
-        assert _clamp_disposition_shift("unknown", 1) == "friendly"
-        assert _clamp_disposition_shift("cautious", 1) == "friendly"
 
 
 class TestResolveAmbientSounds:

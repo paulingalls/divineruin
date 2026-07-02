@@ -18,18 +18,11 @@ import progression_tools
 from db_errors import db_tool
 from disposition import resolve_disposition
 from game_events import publish_game_event
+from role_archetypes import shift_disposition
 from session_data import SessionData
 from tool_support import EFFECT_NPC_MAP, _validate_id
 
 logger = logging.getLogger("divineruin.tools")
-
-
-def _clamp_disposition_shift(current: str, delta: int) -> str:
-    from tool_support import DISPOSITION_ORDER, _disposition_rank
-
-    idx = _disposition_rank(current)
-    new_idx = max(0, min(len(DISPOSITION_ORDER) - 1, idx + delta))
-    return DISPOSITION_ORDER[new_idx]
 
 
 _EFFECT_DISPOSITION_RE = re.compile(r"^(\w+)_disposition\s*([+-]\d+)$")
@@ -57,7 +50,7 @@ async def _apply_world_effects(
             current = await resolve_disposition(
                 npc_id, session.player_id, conn=conn, queries_mod=queries, content_mod=content
             )
-            new_disp = _clamp_disposition_shift(current, delta_str)
+            new_disp = shift_disposition(current, delta_str, off_ladder="neutral")
             await mutations.set_npc_disposition(
                 npc_id, session.player_id, new_disp, f"world_effect: {effect_str}", conn=conn
             )

@@ -174,3 +174,32 @@ class TestShiftDisposition:
     def test_off_ladder_base_fails_loud(self):
         with pytest.raises(ValueError):
             shift_disposition("wary", 1)
+
+    def test_off_ladder_raise_is_the_default(self):
+        # The default contract (trusted inputs) is fail-loud — no keyword needed.
+        with pytest.raises(ValueError):
+            shift_disposition("wary", 1, off_ladder="raise")
+
+
+class TestShiftDispositionNeutralMode:
+    """off_ladder='neutral' is the untrusted-live-DB contract (quest world-effects, session
+    npc mutations): a hand-corrupted npc_dispositions value must never 500 live narration, so
+    an off-ladder base is treated as neutral (decision unknown-disposition-contract). This is
+    the leniency formerly owned by quest_tools._clamp_disposition_shift."""
+
+    def test_shifts_within_ladder(self):
+        assert shift_disposition("neutral", 1, off_ladder="neutral") == "friendly"
+        assert shift_disposition("neutral", -1, off_ladder="neutral") == "unfriendly"
+
+    def test_clamps_at_both_ends(self):
+        assert shift_disposition("trusted", 2, off_ladder="neutral") == "trusted"
+        assert shift_disposition("hostile", -1, off_ladder="neutral") == "hostile"
+
+    def test_unknown_base_defaults_to_neutral(self):
+        # retired aliases ("wary"/"cautious") and any unknown value all rank as neutral.
+        assert shift_disposition("unknown", 1, off_ladder="neutral") == "friendly"
+        assert shift_disposition("cautious", 1, off_ladder="neutral") == "friendly"
+
+    def test_case_insensitive(self):
+        # live DB values are lowercased before ranking, mirroring _disposition_rank.
+        assert shift_disposition("Neutral", 1, off_ladder="neutral") == "friendly"
