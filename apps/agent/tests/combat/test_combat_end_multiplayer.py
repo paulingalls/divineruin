@@ -318,6 +318,28 @@ async def test_two_pc_victory_currency_party_multiplier_split_and_lock_order():
     assert lock_order == ["p1", "p2"]
 
 
+async def test_victory_excludes_mid_combat_joiner_from_rewards():
+    # A player who joins the room mid-combat is appended to the party (participant_lifecycle) but is
+    # NOT a combat participant. Loot/currency are keyed on the player PARTICIPANTS who fought, so the
+    # joiner p3 neither dilutes the currency split nor receives a looted item.
+    session = _two_pc_session()  # p1, p2 fought
+    session.party.members.append(_member("p3"))  # mid-combat joiner — in the party, not a combatant
+    cs = _victory_cs([_loot_enemy("g1", category="humanoid", role="standard", level=5)], ["p1", "p2"])
+    drops = [{"item_id": "sword", "chance": 1.0, "quantity": 1}]
+    _end, mutations, _q, _sink = await _run_victory(
+        session, cs, rng=_FixedCurrencyRng(silver=20), drops=drops, gold_by_id={"p1": 0, "p2": 0, "p3": 0}
+    )
+
+    # Currency split across the 2 participants (multiplier(2)=1.5 -> 1.5 gold each), NOT 3 -> p3 excluded.
+    gold_calls = {c.args[0]: c.args[1] for c in mutations.update_player_gold.await_args_list}
+    assert set(gold_calls) == {"p1", "p2"}
+    assert gold_calls["p1"] == pytest.approx(1.5)
+    # The single looted item goes to a participant (ascending seat order -> p1), never the joiner.
+    item_recipients = {c.args[0] for c in mutations.add_inventory_item.await_args_list}
+    assert item_recipients == {"p1"}
+    assert "p3" not in item_recipients
+
+
 class _AllHitRng(random.Random):
     """Every drop-chance gate passes; dice read 1 (quantity math untouched here)."""
 

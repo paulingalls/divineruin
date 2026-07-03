@@ -17,7 +17,7 @@ import logging
 import time
 
 from livekit import rtc
-from livekit.agents import AgentSession
+from livekit.agents import Agent, AgentSession
 
 import db_mutations_concentration
 import db_mutations_resonance
@@ -50,7 +50,7 @@ def _setup_reconnection(
     room: rtc.Room,
     session: AgentSession,
     userdata: SessionData,
-    agent,
+    agent: Agent,
 ) -> None:
     """Register disconnect/reconnect handlers for any agent type."""
     reconnect_task: asyncio.Task | None = None

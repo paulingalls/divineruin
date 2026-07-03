@@ -165,6 +165,17 @@ export function parseGameEvent(payload: Uint8Array): DataChannelEvent | null {
   }
 }
 
+/**
+ * True when a caster-scoped HUD event targets the local player (M14 story-004 / story-006). The
+ * agent pushes each party member's own state under a caster_id; the HUD keeps ONE global indicator,
+ * so it updates only for the local id. A push with no caster_id, or before the local id is known
+ * (pre-SESSION_INIT), is treated as the local player's (single-player back-compat).
+ */
+function isEventForLocalPlayer(casterId: unknown): boolean {
+  const localPlayerId = characterStore.getState().character?.playerId;
+  return typeof casterId !== "string" || !localPlayerId || casterId === localPlayerId;
+}
+
 export function handleGameEvent(event: DataChannelEvent): void {
   switch (event.type) {
     case E.PLAY_SOUND:
@@ -496,14 +507,11 @@ export function handleGameEvent(event: DataChannelEvent): void {
       // HUD shows the qualitative state only; current/max are ignored. Unknown
       // states are dropped (fail-safe) rather than corrupting the tracker.
       // Multi-player (M14 story-004): the agent pushes each party member's own state under a
-      // caster_id. The HUD keeps ONE global resonance tracker, so filter to the local player —
-      // update only when caster_id is the local id. A push with no caster_id, or before the local
-      // id is known (pre-SESSION_INIT), is treated as the local player's (single-player back-compat).
-      const localPlayerId = characterStore.getState().character?.playerId;
-      const casterId = event.caster_id;
-      const isForLocalPlayer =
-        typeof casterId !== "string" || !localPlayerId || casterId === localPlayerId;
-      if (isForLocalPlayer && VALID_RESONANCE_STATES.has(event.state as ResonanceState)) {
+      // caster_id. The HUD keeps ONE global resonance tracker, so filter to the local player.
+      if (
+        isEventForLocalPlayer(event.caster_id) &&
+        VALID_RESONANCE_STATES.has(event.state as ResonanceState)
+      ) {
         hudStore.getState().setResonanceState(event.state as ResonanceState);
       }
       break;
@@ -522,15 +530,9 @@ export function handleGameEvent(event: DataChannelEvent): void {
       // Persistent glanceable zone affordance. Only a boolean toggles it; a
       // malformed payload leaves the ward state untouched (fail-safe).
       // Multi-player (story-006, mirroring RESONANCE_CHANGED M14 story-004): the agent pushes
-      // each party member's own ward state under a caster_id. The HUD keeps ONE global
-      // indicator, so filter to the local player — update only when caster_id is the local id.
-      // A push with no caster_id, or before the local id is known (pre-SESSION_INIT), is
-      // treated as the local player's (single-player back-compat).
-      const localPlayerId = characterStore.getState().character?.playerId;
-      const casterId = event.caster_id;
-      const isForLocalPlayer =
-        typeof casterId !== "string" || !localPlayerId || casterId === localPlayerId;
-      if (isForLocalPlayer && typeof event.active === "boolean") {
+      // each party member's own ward state under a caster_id. The HUD keeps ONE global indicator,
+      // so filter to the local player.
+      if (isEventForLocalPlayer(event.caster_id) && typeof event.active === "boolean") {
         hudStore.getState().setVeilWardActive(event.active);
       }
       break;

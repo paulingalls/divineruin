@@ -206,10 +206,12 @@ async def _end_combat_db(
         xp_total = combat_resolution.calculate_combat_xp(enemy_dicts)
 
         # DISTRIBUTE pass — items: round-robin the shared pool across members in ascending player_id
-        # seat order (customer decision f437f4475a40). Each rolled drop lands in ONE member's
-        # inventory, so items stay scarce (no per-member duplication). Distribution consumes no RNG.
-        # Solo = 1 member, so every drop goes to the primary exactly as before.
-        seat_order = sorted(session.party.member_ids)
+        # seat order (customer decision f437f4475a40). Keyed on the player PARTICIPANTS who fought —
+        # NOT session.party.member_ids — so a mid-combat room joiner (appended to the party by
+        # participant_lifecycle but never a combatant) can't dilute or steal the haul. Each rolled
+        # drop lands in ONE participant's inventory, so items stay scarce (no per-member duplication).
+        # Distribution consumes no RNG. Solo = 1 participant, so every drop goes to the primary.
+        seat_order = sorted(p.id for p in cs.participants if p.type == "player")
         for i, drop in enumerate(loot_pool):
             recipient = seat_order[i % len(seat_order)]
             await mutations.add_inventory_item(recipient, drop["item_id"], drop["quantity"], conn=conn)
@@ -233,8 +235,8 @@ async def _end_combat_db(
         if currency_silver > 0:
             silver_per_gold = (await pricing.get_economy_pricing())["silver_per_gold"]
             share_silver = currency_silver * encounter_loot.party_currency_multiplier(len(seat_order)) / len(seat_order)
+            share_gold = share_silver / silver_per_gold  # loop-invariant — every participant's share is equal
             for pid in seat_order:
-                share_gold = share_silver / silver_per_gold
                 player = await queries.get_player(pid, conn=conn, for_update=True)
                 prior_gold = (player or {}).get("gold", 0) or 0
                 new_balance = prior_gold + share_gold
@@ -317,7 +319,7 @@ async def _end_combat_db(
         missing = [pid for pid, row in fallen if row is None]
         if missing:
             raise RuntimeError(f"Downed player participant(s) {missing} have no players.data row on defeat")
-        party = [(pid, row) for pid, row in fallen if row is not None]
+        party = fallen  # the raise above guarantees every row is present
         contexts = await resurrection.resurrect_party_on_defeat(
             [row for _, row in party], combat_cleared=combat_cleared, conn=conn
         )
