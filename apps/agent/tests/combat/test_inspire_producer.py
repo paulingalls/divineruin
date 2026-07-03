@@ -105,7 +105,7 @@ async def _activate(
     companion_id: str | None = None,
 ):
     """Drive _request_ability_activation_impl out of combat. Returns (response, conditions_mutations
-    mock, get_player mock) for producer assertions. ``in_combat`` sets a combat_state so the OOC
+    mock, get_players_for_update mock) for producer assertions. ``in_combat`` sets a combat_state so the OOC
     producer's not-in-combat persist gate can be exercised. ``party_member_ids`` (M4.8 story-007
     party gate) must include any non-caster target — the OOC producer now refuses a target that is
     neither a party member nor the caster's companion."""
@@ -144,7 +144,7 @@ async def _activate(
         conditions_mod=conditions,
         conditions_mutations_mod=cond_mut,
     )
-    return json.loads(raw), cond_mut, queries.get_player
+    return json.loads(raw), cond_mut, queries.get_players_for_update
 
 
 @pytest.mark.asyncio
@@ -203,15 +203,17 @@ async def test_ooc_inspire_on_ally_persists_inspired_to_target():
 
 @pytest.mark.asyncio
 async def test_ooc_inspire_self_cast_applies_to_caster():
-    # Self-target (no target_id) applies Inspired to the caster, reusing the for_update caster row.
-    response, cond_mut, get_player = await _activate(_inspire_ability(), caster=_bard("bard_1"))
+    # Self-target (no target_id) applies Inspired to the caster, reusing the caster row.
+    response, cond_mut, get_players_for_update = await _activate(_inspire_ability(), caster=_bard("bard_1"))
 
     assert response["condition_applied"] == "inspired"
     cond_mut.save_many_player_conditions.assert_awaited_once()
     written = cond_mut.save_many_player_conditions.call_args.args[0]
     assert set(written.keys()) == {"bard_1"}
     assert "inspired" in [c["type"] for c in written["bard_1"]]
-    assert get_player.await_count == 1  # self-target reuses the caster row — no extra fetch
+    # story-008: self-target locks only the caster via ONE id-ordered batch; the producer reuses
+    # that row (no non-caster target fetch) — so exactly one get_players_for_update call.
+    assert get_players_for_update.await_count == 1
 
 
 @pytest.mark.asyncio
