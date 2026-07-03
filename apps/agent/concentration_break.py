@@ -95,8 +95,8 @@ async def break_concentration_on_damage(
         return None
 
     # Persist the end BEFORE clearing the in-memory SSOT (mirrors cast_spell's commit-then-sync):
-    # a failed write leaves session.concentration intact rather than diverging from the DB, which
-    # would otherwise re-populate the old spell on the next session reload.
+    # a failed write leaves the member's concentration intact rather than diverging from the DB,
+    # which would otherwise re-populate the old spell on the next session reload.
     await concentration_mutations.update_player_concentration(damaged_player_id, None, conn=conn)
     member.concentration.spell_id = None
 
