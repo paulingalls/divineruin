@@ -8,7 +8,7 @@ from livekit import rtc
 
 from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
 from event_bus import EventBus
-from party_state import PartyState
+from party_state import PartyMember, PartyState
 
 MAX_RECENT_EVENTS = 20
 MAX_COMPANION_MEMORIES = 20
@@ -239,29 +239,50 @@ class SessionData:
         self.party = PartyState.solo(self.player_id, patron_id=self.patron_id)
 
     def __setattr__(self, name: str, value: object) -> None:
-        # player_id/patron_id stay real dataclass fields (not delegated @property, unlike
-        # resonance/veil_ward/concentration/corruption_level below) so pyright keeps validating
-        # every ~120 SessionData(...) construction call site by name/type. party.primary is
-        # seeded from them in __post_init__; this override keeps the two copies from drifting
-        # afterward — player_id by rejecting reassignment outright (it's write-once in prod),
-        # patron_id by mirroring writes into party.primary.
+        # Per-member write contract (concern 3ec54e78cae8): resonance/veil_ward/concentration/
+        # corruption_level are all @property read + setter write delegating to party.primary
+        # below — ONE uniform contract over a PartyMember. patron_id is the SINGLE documented
+        # exception: it stays a real dataclass field (like player_id) rather than a delegated
+        # @property so pyright keeps validating every ~120 SessionData(...) construction call
+        # site by name/type — a property has no positional/keyword construction slot to check.
+        # party.primary is seeded from player_id/patron_id in __post_init__; this override keeps
+        # the two copies from drifting afterward — player_id by rejecting reassignment outright
+        # (it's write-once in prod), patron_id by mirroring writes into party.primary. The
+        # sanctioned multi-PC write path for a non-primary caster is member_state(pid), NOT the
+        # session.* facade (which always resolves to the primary member).
         if name == "player_id" and "player_id" in self.__dict__:
             raise AttributeError("player_id is write-once")
         if name == "patron_id" and isinstance(value, str) and "party" in self.__dict__:
             self.party.primary.patron_id = value
         super().__setattr__(name, value)
 
+    # resonance/veil_ward/concentration/corruption_level below share ONE per-member write
+    # contract (concern 3ec54e78cae8): @property read + setter write, each delegating to
+    # party.primary.<field>. The facade resolves to the PRIMARY member — a non-primary
+    # caster's state is reached via member_state(pid), the sanctioned multi-PC accessor.
     @property
     def resonance(self) -> ResonanceTrack:
         return self.party.primary.resonance
+
+    @resonance.setter
+    def resonance(self, value: ResonanceTrack) -> None:
+        self.party.primary.resonance = value
 
     @property
     def veil_ward(self) -> VeilWardState:
         return self.party.primary.veil_ward
 
+    @veil_ward.setter
+    def veil_ward(self, value: VeilWardState) -> None:
+        self.party.primary.veil_ward = value
+
     @property
     def concentration(self) -> ConcentrationState:
         return self.party.primary.concentration
+
+    @concentration.setter
+    def concentration(self, value: ConcentrationState) -> None:
+        self.party.primary.concentration = value
 
     @property
     def corruption_level(self) -> int:
@@ -270,6 +291,20 @@ class SessionData:
     @corruption_level.setter
     def corruption_level(self, value: int) -> None:
         self.party.primary.corruption_level = value
+
+    def member_state(self, player_id: str) -> PartyMember:
+        """Return the PartyMember for ``player_id`` — the sanctioned multi-PC per-member accessor.
+
+        Unlike the resonance/veil_ward/concentration/corruption_level facade properties (which
+        always resolve to the primary member), this reaches ANY party member's isolated state,
+        so a non-primary caster's writes land on their own object. Fails loud on an unknown id
+        (an id not in this session's party is a caller error, not a silent default) — the SSOT is
+        party.member_ids.
+        """
+        member = self.party.member(player_id)
+        if member is None:
+            raise ValueError(f"No party member with player_id {player_id!r}")
+        return member
 
     @property
     def in_onboarding(self) -> bool:
