@@ -35,7 +35,7 @@ _MIRRORED_PACKETS = {
     "CURRENCY_GAINED": "Packet: {player_id, amount, currency, source, new_balance}",
     "RESONANCE_CHANGED": "Packet: {state, caster_id}",
     "HOLLOW_ECHO_RESULT": "Packet: {band}",
-    "VEIL_WARD_CHANGED": "Packet: {active}",
+    "VEIL_WARD_CHANGED": "Packet: {active, caster_id}",
 }
 
 

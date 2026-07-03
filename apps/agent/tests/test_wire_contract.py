@@ -81,6 +81,7 @@ async def test_hollow_echo_result_serializes_to_fixture() -> None:
 async def test_veil_ward_changed_serializes_to_fixture() -> None:
     expected = FIXTURE["events"]["veil_ward_changed"]
     session = MagicMock()
+    session.player_id = expected["caster_id"]  # single-caster tool: caster_id == session.player_id
     with patch("veil_ward_tools.publish_game_event", new_callable=AsyncMock) as pub:
         await veil_ward_tools._publish_veil_ward_changed(session, expected["active"])
     assert _captured_wire(pub) == expected

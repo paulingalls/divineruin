@@ -6,9 +6,10 @@ one polymorphic verb: active=True raises a ward (archetype/level/cost gated), ac
 dismisses it (free). Every user-facing failure is a ToolError raised before any write, so
 an unaffordable/ineligible activation deducts nothing.
 
-The published VEIL_WARD_CHANGED payload is the minimal {active} (mirroring the resonance
-no-number discipline); publish_game_event is patched to assert the wire shape, matching
-test_resonance_session.py.
+The published VEIL_WARD_CHANGED payload is {active, caster_id} (mirroring the resonance
+no-number discipline plus the M14 story-004 caster_id addition); publish_game_event is
+patched to assert the wire shape, matching test_resonance_session.py. The tool is
+single-caster (caster_id always == session.player_id).
 """
 
 import json
@@ -80,7 +81,7 @@ async def test_eligible_cleric_raises_ward():
     pub.assert_awaited_once()
     args = pub.call_args.args
     assert args[1] == E.VEIL_WARD_CHANGED
-    assert args[2] == {"active": True}
+    assert args[2] == {"active": True, "caster_id": "player_1"}
 
 
 async def test_paladin_pays_focus_and_stamina():
@@ -153,7 +154,7 @@ async def test_dismiss_active_ward():
     persistence.update_player_resources.assert_not_awaited()  # dismiss is free
     assert ctx.userdata.veil_ward.active is False
     assert ctx.userdata.veil_ward.source is None
-    assert pub.call_args.args[2] == {"active": False}
+    assert pub.call_args.args[2] == {"active": False, "caster_id": "player_1"}
 
 
 async def test_dismiss_when_inactive_rejected():
