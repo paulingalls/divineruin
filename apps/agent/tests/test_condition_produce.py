@@ -11,9 +11,10 @@ refusal paths (non-party/non-companion target, missing party row, id-ordered bat
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from livekit.agents.llm import ToolError
 
 import conditions
-from condition_produce import produce_ooc_condition
+from condition_produce import lock_ooc_caster_and_targets, produce_ooc_condition, resolve_effective_targets
 
 
 def _row(player_id: str, conditions_list: list | None = None) -> dict:
@@ -220,3 +221,108 @@ async def test_produce_single_target_id():
         conditions_mutations_mod=cond_mut,
     )
     assert voiced == ["a1"]
+
+
+@pytest.mark.asyncio
+async def test_produce_reuses_locked_rows_no_double_fetch():
+    # Story-005: when the caller already locked the target rows, produce_ooc_condition must NOT
+    # re-fetch them via get_players_for_update.
+    caster = _row("c1")
+    ally = _row("a1")
+    queries, cond_mut = _mods({"a1": ally})  # would serve a1 if fetched, but must not be called
+    voiced = await produce_ooc_condition(
+        "blessed",
+        "divine_bless",
+        target_id="a1",
+        target_ids=None,
+        caster_row=caster,
+        caster_id="c1",
+        party_member_ids=["c1", "a1"],
+        companion_id=None,
+        queries_mod=queries,
+        conditions_mod=conditions,
+        conditions_mutations_mod=cond_mut,
+        locked_rows={"c1": caster, "a1": ally},
+    )
+    assert voiced == ["a1"]
+    queries.get_players_for_update.assert_not_awaited()
+    cond_mut.save_many_player_conditions.assert_awaited_once()
+
+
+class TestResolveEffectiveTargets:
+    def test_multi_target_ids_no_dedup(self):
+        assert resolve_effective_targets(["a1", "a2"], None, self_value="c1") == ["a1", "a2"]
+
+    def test_multi_target_ids_dedup_preserves_order(self):
+        assert resolve_effective_targets(["a1", "a2", "a1"], None, self_value="c1", dedup=True) == ["a1", "a2"]
+
+    def test_single_target_id(self):
+        assert resolve_effective_targets(None, "a1", self_value="c1") == ["a1"]
+
+    def test_self_falls_back_to_self_value_caster_id(self):
+        assert resolve_effective_targets(None, None, self_value="c1") == ["c1"]
+
+    def test_self_falls_back_to_self_value_none_sentinel(self):
+        # combat_ability's self-cast sentinel: self_value=None must be preserved, not filtered.
+        assert resolve_effective_targets(None, None, self_value=None) == [None]
+
+
+class TestLockOocCasterAndTargets:
+    @pytest.mark.asyncio
+    async def test_ascending_union_never_caster_first(self):
+        queries = MagicMock(
+            get_players_for_update=AsyncMock(side_effect=lambda ids, conn=None: {pid: _row(pid) for pid in ids})
+        )
+        locked_rows, caster_row = await lock_ooc_caster_and_targets(
+            produces_ooc=True,
+            player_id="zed",
+            target_id=None,
+            target_ids=["alice", "bob"],
+            party_member_ids=["alice", "bob", "zed"],
+            queries_mod=queries,
+        )
+        queries.get_players_for_update.assert_awaited_once_with(["alice", "bob", "zed"], conn=None)
+        assert caster_row == locked_rows["zed"]
+
+    @pytest.mark.asyncio
+    async def test_one_batch_call(self):
+        queries = MagicMock(
+            get_players_for_update=AsyncMock(side_effect=lambda ids, conn=None: {pid: _row(pid) for pid in ids})
+        )
+        await lock_ooc_caster_and_targets(
+            produces_ooc=True,
+            player_id="c1",
+            target_id="a1",
+            target_ids=None,
+            party_member_ids=["c1", "a1"],
+            queries_mod=queries,
+        )
+        assert queries.get_players_for_update.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_empty_targets_when_produces_ooc_false(self):
+        queries = MagicMock(
+            get_players_for_update=AsyncMock(side_effect=lambda ids, conn=None: {pid: _row(pid) for pid in ids})
+        )
+        await lock_ooc_caster_and_targets(
+            produces_ooc=False,
+            player_id="c1",
+            target_id="a1",
+            target_ids=None,
+            party_member_ids=["c1", "a1"],
+            queries_mod=queries,
+        )
+        queries.get_players_for_update.assert_awaited_once_with(["c1"], conn=None)
+
+    @pytest.mark.asyncio
+    async def test_missing_caster_raises_tool_error(self):
+        queries = MagicMock(get_players_for_update=AsyncMock(return_value={}))
+        with pytest.raises(ToolError):
+            await lock_ooc_caster_and_targets(
+                produces_ooc=False,
+                player_id="ghost",
+                target_id=None,
+                target_ids=None,
+                party_member_ids=[],
+                queries_mod=queries,
+            )
