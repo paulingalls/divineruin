@@ -50,7 +50,10 @@ async def _call(
     mock_db, _conn = make_db_mod()
     queries = MagicMock()
     default_player = _player(stamina, focus, class_=ability_id.split("_")[0])
-    queries.get_player = AsyncMock(return_value=default_player if player is None else player)
+    row = default_player if player is None else player
+    # story-008: the caster row now comes from the id-ordered get_players_for_update batch (was a
+    # single caster get_player FOR UPDATE). These self-cast cases lock only the caster.
+    queries.get_players_for_update = AsyncMock(return_value={row["player_id"]: row})
     persistence = MagicMock()
     persistence.update_player_resources = AsyncMock()
     # These tests exercise the base (no active variant) path; the override path has its
@@ -109,8 +112,8 @@ class TestRejection:
         mock_db, _conn = make_db_mod()
         queries = MagicMock()
         # Cleric owns the core heal (class==archetype) — so the rejection is the
-        # insufficient-focus path, not the own-the-base gate.
-        queries.get_player = AsyncMock(return_value=_player(focus=1, class_="cleric"))
+        # insufficient-focus path, not the own-the-base gate. story-008: caster row via the batch.
+        queries.get_players_for_update = AsyncMock(return_value={"player_1": _player(focus=1, class_="cleric")})
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
         persistence.get_active_variant = AsyncMock(return_value=None)
@@ -134,7 +137,8 @@ class TestOwnershipGate:
         ctx = make_context()
         mock_db, _conn = make_db_mod()
         queries = MagicMock()
-        queries.get_player = AsyncMock(return_value=_player(class_="paladin"))
+        # story-008: caster row via the id-ordered batch (self-cast -> caster alone).
+        queries.get_players_for_update = AsyncMock(return_value={"player_1": _player(class_="paladin")})
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
         persistence.get_active_variant = AsyncMock(return_value=None)

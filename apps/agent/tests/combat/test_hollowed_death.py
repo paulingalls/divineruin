@@ -44,7 +44,12 @@ async def _cast(spell: Spell, *, player: dict):
     test_spell_casting._cast). Returns the parsed packet; raises ToolError on a gated cast."""
     ctx = make_context()
     mock_db, _conn = make_db_mod()
-    queries = MagicMock(get_player=AsyncMock(return_value=player))
+    # story-008: the OOC caster row now comes from the id-ordered get_players_for_update batch; the
+    # revivify gate still reads the target via get_player.
+    queries = MagicMock(
+        get_player=AsyncMock(return_value=player),
+        get_players_for_update=AsyncMock(side_effect=lambda ids, *, conn=None: {i: player for i in ids}),
+    )
     persistence = MagicMock(update_player_resources=AsyncMock())
     mutations = MagicMock(update_player_resonance=AsyncMock())
     events = MagicMock(publish_resonance_changed=AsyncMock())

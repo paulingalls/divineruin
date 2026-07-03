@@ -303,7 +303,23 @@ async def _resolve_cast(
     player_id = caster.player_id
 
     if player is None:
-        player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
+        # Deterministic cross-player lock order (M14 story-008, debt 361417d1bea5): on the OOC entry
+        # (the in-combat caller passes `player` — participant is the SSOT, no OOC write), acquire the
+        # caster row AND every non-caster party-member target row in ONE ascending-player_id batch,
+        # matching the ability path (ability_tools) so ability-vs-spell / spell-vs-spell cross-player
+        # casts acquire the same GLOBAL order and can't deadlock. produce_ooc_condition (below)
+        # re-locks a held subset. Only OOC condition-producing party targets are pre-locked; a cast
+        # that produces no OOC condition, or a self/companion target, locks just the caster. The spell
+        # def is resolved via the pure catalog lookup (an unknown id still fails loud at _gate_spell).
+        try:
+            spell_def = spells_mod.get_spell(spell_id)
+        except ValueError:
+            spell_def = None
+        produces_ooc = spell_def is not None and spell_def.applies_condition is not None and not session.in_combat
+        ooc_targets = (target_ids or ([target_id] if target_id else [])) if produces_ooc else []
+        lock_ids = sorted({player_id} | {t for t in ooc_targets if t in session.party.member_ids})
+        locked_rows = await queries_mod.get_players_for_update(lock_ids, conn=conn)
+        player = locked_rows.get(player_id)
         if player is None:
             raise ToolError(f"Unknown player: {player_id}")
 
