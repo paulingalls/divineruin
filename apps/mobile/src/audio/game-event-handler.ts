@@ -518,13 +518,23 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }
       break;
 
-    case E.VEIL_WARD_CHANGED:
+    case E.VEIL_WARD_CHANGED: {
       // Persistent glanceable zone affordance. Only a boolean toggles it; a
       // malformed payload leaves the ward state untouched (fail-safe).
-      if (typeof event.active === "boolean") {
+      // Multi-player (story-006, mirroring RESONANCE_CHANGED M14 story-004): the agent pushes
+      // each party member's own ward state under a caster_id. The HUD keeps ONE global
+      // indicator, so filter to the local player — update only when caster_id is the local id.
+      // A push with no caster_id, or before the local id is known (pre-SESSION_INIT), is
+      // treated as the local player's (single-player back-compat).
+      const localPlayerId = characterStore.getState().character?.playerId;
+      const casterId = event.caster_id;
+      const isForLocalPlayer =
+        typeof casterId !== "string" || !localPlayerId || casterId === localPlayerId;
+      if (isForLocalPlayer && typeof event.active === "boolean") {
         hudStore.getState().setVeilWardActive(event.active);
       }
       break;
+    }
 
     case E.SESSION_END: {
       const store = sessionStore.getState();

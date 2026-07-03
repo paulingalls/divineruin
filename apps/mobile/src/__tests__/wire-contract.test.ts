@@ -61,8 +61,20 @@ test("hollow_echo_result fixture pushes a hollow_echo overlay carrying the band"
 });
 
 test("veil_ward_changed fixture toggles the ward state", () => {
+  // The fixture's caster_id is the local player, so the push updates the indicator.
+  characterStore
+    .getState()
+    .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.veil_ward_changed.caster_id });
   handleGameEvent({ ...EVENTS.veil_ward_changed });
   expect(hudStore.getState().veilWardActive).toBe(EVENTS.veil_ward_changed.active);
+});
+
+test("veil_ward_changed for another party member does NOT touch the local indicator", () => {
+  // Story-006, mirroring RESONANCE_CHANGED (M14 story-004): a push carrying a DIFFERENT
+  // caster_id is ignored — the single global ward indicator belongs to the local player.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
+  handleGameEvent({ ...EVENTS.veil_ward_changed });
+  expect(hudStore.getState().veilWardActive).toBe(false);
 });
 
 test("spell_row fixture parses with its spell_tier intact (not blanked)", () => {
