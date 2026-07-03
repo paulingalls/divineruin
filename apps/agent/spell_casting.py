@@ -302,26 +302,26 @@ async def _resolve_cast(
             _validate_id(tid, "target_id")
     player_id = caster.player_id
 
+    locked_rows: dict[str, dict] | None = None
     if player is None:
-        # Deterministic cross-player lock order (M14 story-008, debt 361417d1bea5): on the OOC entry
-        # (the in-combat caller passes `player` — participant is the SSOT, no OOC write), acquire the
-        # caster row AND every non-caster party-member target row in ONE ascending-player_id batch,
-        # matching the ability path (ability_tools) so ability-vs-spell / spell-vs-spell cross-player
-        # casts acquire the same GLOBAL order and can't deadlock. produce_ooc_condition (below)
-        # re-locks a held subset. Only OOC condition-producing party targets are pre-locked; a cast
-        # that produces no OOC condition, or a self/companion target, locks just the caster. The spell
-        # def is resolved via the pure catalog lookup (an unknown id still fails loud at _gate_spell).
+        # OOC entry only (in-combat passes `player`, no OOC write): pre-lock the caster + any OOC
+        # condition-producing targets via the shared deadlock-safe helper (story-005/008). An
+        # unknown spell id here just yields produces_ooc=False — _gate_spell fails loud on it later.
         try:
             spell_def = spells_mod.get_spell(spell_id)
         except ValueError:
             spell_def = None
         produces_ooc = spell_def is not None and spell_def.applies_condition is not None and not session.in_combat
-        ooc_targets = (target_ids or ([target_id] if target_id else [])) if produces_ooc else []
-        lock_ids = sorted({player_id} | {t for t in ooc_targets if t in session.party.member_ids})
-        locked_rows = await queries_mod.get_players_for_update(lock_ids, conn=conn)
-        player = locked_rows.get(player_id)
-        if player is None:
-            raise ToolError(f"Unknown player: {player_id}")
+        locked_rows, player = await condition_produce_mod.lock_ooc_caster_and_targets(
+            produces_ooc=produces_ooc,
+            player_id=player_id,
+            target_id=target_id,
+            target_ids=target_ids,
+            party_member_ids=session.party.member_ids,
+            queries_mod=queries_mod,
+            conn=conn,
+        )
+        assert player is not None  # guaranteed by lock_ooc_caster_and_targets or it raises
 
     # Revivify gate (M4.4 story-007, rerouted M11): a revival spell cannot reach a Hollow-killed
     # corpse. The refusal keys on the TARGET row — the resolved target_id when given, else the caster
@@ -488,8 +488,7 @@ async def _resolve_cast(
     # Beneficial-condition producer (M4.8 story-004/005/007). In combat the participant is the SSOT
     # (combat_ability applies on the working state); OOC the shared condition_produce helper lands the
     # condition on each resolved target's players.data, AFTER the Focus/Resonance/revivify gates so a
-    # refused cast produces nothing. condition_applied surfaces iff >=1 target voiced; condition_targets
-    # names the blessed allies on the multi-target path for audio-first per-ally narration.
+    # refused cast produces nothing. condition_targets names the blessed allies for per-ally narration.
     if spell.applies_condition is not None:
         if session.in_combat:
             packet["condition_applied"] = spell.applies_condition  # combat applies + confirms on the participant
@@ -508,6 +507,7 @@ async def _resolve_cast(
                     queries_mod=queries_mod,
                     conditions_mod=conditions_mod,
                     conditions_mutations_mod=conditions_mutations_mod,
+                    locked_rows=locked_rows,
                 )
             except ValueError as e:
                 raise ToolError(str(e)) from e
