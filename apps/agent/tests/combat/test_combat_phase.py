@@ -18,6 +18,7 @@ from combat_phase import (
     advance_combat_phase,
 )
 from declarations import Declaration, DeclarationType
+from session_data import CombatParticipant, CombatState
 
 
 def _declarations():
@@ -166,6 +167,153 @@ class TestWrapBeat:
         assert advance.wrap is not None
         assert advance.wrap.combat_ended is True
         assert advance.wrap.outcome == "defeat"
+
+    def test_multi_player_defeat_only_when_all_down(self):
+        # Two players both terminally down + an alive enemy -> combat ends in defeat
+        state = CombatState(
+            combat_id="combat_multi",
+            participants=[
+                CombatParticipant(
+                    id="player_1",
+                    name="Kael",
+                    type="player",
+                    initiative=15,
+                    hp_current=0,
+                    hp_max=25,
+                    ac=14,
+                    is_dead=True,
+                ),
+                CombatParticipant(
+                    id="player_2",
+                    name="Vyx",
+                    type="player",
+                    initiative=14,
+                    hp_current=0,
+                    hp_max=20,
+                    ac=13,
+                    is_fallen=True,
+                    death_save_failures=3,
+                ),
+                CombatParticipant(
+                    id="goblin_scout_1",
+                    name="Goblin Scout",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=5,
+                    hp_max=7,
+                    ac=13,
+                ),
+            ],
+            initiative_order=["player_1", "player_2", "goblin_scout_1"],
+            round_number=1,
+            current_turn_index=0,
+            location_id="accord_guild_hall",
+        )
+        state.beat = PhaseBeat.WRAP
+
+        _, advance = advance_combat_phase(state, None)
+
+        assert advance.wrap is not None
+        assert advance.wrap.combat_ended is True
+        assert advance.wrap.outcome == "defeat"
+
+    def test_multi_player_one_down_one_standing_continues(self):
+        # Player A terminally down, Player B standing -> combat continues
+        state = CombatState(
+            combat_id="combat_multi",
+            participants=[
+                CombatParticipant(
+                    id="player_1",
+                    name="Kael",
+                    type="player",
+                    initiative=15,
+                    hp_current=0,
+                    hp_max=25,
+                    ac=14,
+                    is_fallen=True,
+                    death_save_failures=3,
+                ),
+                CombatParticipant(
+                    id="player_2",
+                    name="Vyx",
+                    type="player",
+                    initiative=14,
+                    hp_current=15,
+                    hp_max=20,
+                    ac=13,
+                ),
+                CombatParticipant(
+                    id="goblin_scout_1",
+                    name="Goblin Scout",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=5,
+                    hp_max=7,
+                    ac=13,
+                ),
+            ],
+            initiative_order=["player_1", "player_2", "goblin_scout_1"],
+            round_number=1,
+            current_turn_index=0,
+            location_id="accord_guild_hall",
+        )
+        state.beat = PhaseBeat.WRAP
+
+        _, advance = advance_combat_phase(state, None)
+
+        assert advance.wrap is not None
+        assert advance.wrap.combat_ended is False
+        assert advance.wrap.outcome is None
+
+    def test_multi_player_one_down_one_rolling_saves_continues(self):
+        # Player A down, Player B fallen but still rolling saves -> combat continues
+        state = CombatState(
+            combat_id="combat_multi",
+            participants=[
+                CombatParticipant(
+                    id="player_1",
+                    name="Kael",
+                    type="player",
+                    initiative=15,
+                    hp_current=0,
+                    hp_max=25,
+                    ac=14,
+                    is_dead=True,
+                ),
+                CombatParticipant(
+                    id="player_2",
+                    name="Vyx",
+                    type="player",
+                    initiative=14,
+                    hp_current=0,
+                    hp_max=20,
+                    ac=13,
+                    is_fallen=True,
+                    death_save_failures=1,
+                ),
+                CombatParticipant(
+                    id="goblin_scout_1",
+                    name="Goblin Scout",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=5,
+                    hp_max=7,
+                    ac=13,
+                ),
+            ],
+            initiative_order=["player_1", "player_2", "goblin_scout_1"],
+            round_number=1,
+            current_turn_index=0,
+            location_id="accord_guild_hall",
+        )
+        state.beat = PhaseBeat.WRAP
+
+        _, advance = advance_combat_phase(state, None)
+
+        assert advance.wrap is not None
+        assert advance.wrap.combat_ended is False
+        assert advance.wrap.outcome is None
+        assert "player_2" in advance.wrap.death_saves_due
 
 
 class TestPurityAndDeterminism:
