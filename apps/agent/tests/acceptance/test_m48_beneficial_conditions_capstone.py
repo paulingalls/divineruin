@@ -40,10 +40,28 @@ async def _read_types(pool, player_id: str) -> list[str]:
     return _types(await db_mutations_conditions.read_player_conditions(player_id, conn=pool))
 
 
-async def _produce(pool, caster_id, condition, source, *, target_id=None, target_ids=None) -> list[str]:
-    """Land a beneficial condition through the REAL OOC producer (cast/ability landing helper)."""
+async def _produce(
+    pool,
+    caster_id,
+    condition,
+    source,
+    *,
+    target_id=None,
+    target_ids=None,
+    party_member_ids=None,
+    companion_id=None,
+) -> list[str]:
+    """Land a beneficial condition through the REAL OOC producer (cast/ability landing helper).
+
+    ``party_member_ids`` (M4.8 story-007 party gate) defaults to the caster plus every requested
+    target — every capstone target is a seeded party ally, admitted via the party path — unless a
+    caller opts into the companion allowlist instead via ``companion_id``.
+    """
     caster_row = await db_queries.get_player(caster_id, conn=pool)
     assert caster_row is not None
+    if party_member_ids is None:
+        targets = target_ids if target_ids else ([target_id] if target_id is not None else [])
+        party_member_ids = [caster_id, *targets]
     return await condition_produce.produce_ooc_condition(
         condition,
         source,
@@ -51,6 +69,8 @@ async def _produce(pool, caster_id, condition, source, *, target_id=None, target
         target_ids=target_ids,
         caster_row=caster_row,
         caster_id=caster_id,
+        party_member_ids=party_member_ids,
+        companion_id=companion_id,
         conn=pool,
     )
 

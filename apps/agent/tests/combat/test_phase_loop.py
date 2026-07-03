@@ -426,9 +426,12 @@ class TestResolvePhaseEnding:
     async def test_defeat_ends_and_hands_off(self, monkeypatch):
         import resurrection
 
-        # Stub the M4.4 defeat-path resurrection; this test asserts the defeat handoff, not the
-        # resurrection flow.
-        monkeypatch.setattr(resurrection, "resurrect_on_defeat", AsyncMock(return_value=None))
+        # Stub the defeat-path resurrection; this test asserts the defeat handoff, not the
+        # resurrection flow. The defeat router now routes fallen players through
+        # resurrect_party_on_defeat (M14 story-006) — one fallen player -> a one-context list.
+        monkeypatch.setattr(
+            resurrection, "resurrect_party_on_defeat", AsyncMock(return_value=[{"anchor": "accord_guild_hall"}])
+        )
         deps = _resolve_deps()
         ctx = make_context()
         cs = _resolution_state()

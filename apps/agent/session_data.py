@@ -6,8 +6,9 @@ from dataclasses import asdict, dataclass, field
 
 from livekit import rtc
 
-import resonance
+from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
 from event_bus import EventBus
+from party_state import PartyState
 
 MAX_RECENT_EVENTS = 20
 MAX_COMPANION_MEMORIES = 20
@@ -27,63 +28,6 @@ class CompanionState:
     affinity: int = 0
     session_memories: list[str] = field(default_factory=list)
     last_speech_time: float = 0.0
-
-
-@dataclass
-class ResonanceTrack:
-    """Per-caster Resonance carried in the session (story-003, M3.1).
-
-    Only ``current`` (the authoritative int) is stored; the stable/flickering/
-    overreach STATE is always derived via resonance.get_resonance_state — single
-    source of truth, no cached copy to drift (same discipline as the companion
-    HYBRID tier above and the players.data persistence in db_mutations_resonance).
-    Defaults to current 0 -> "stable".
-
-    ``flickering_bonus`` (Thessyn Deep Adaptation, M3.4) shifts the band thresholds
-    up; it is a per-caster constant set once from the player's race (story-006), so
-    EVERY derivation of ``state`` — the packet, the HUD push (publish_resonance_changed),
-    the cast path — reads the same single value and cannot diverge. Defaults to 0
-    (the canonical band) for non-Thessyn casters.
-    """
-
-    current: int = 0
-    flickering_bonus: int = 0
-
-    @property
-    def state(self) -> resonance.ResState:
-        return resonance.get_resonance_state(self.current, flickering_bonus=self.flickering_bonus)
-
-
-@dataclass
-class VeilWardState:
-    """Per-caster Veil Ward carried in the session (story-002, M3.2).
-
-    A ward is a manual activate/dismiss toggle (no auto-expiry in M3.2). ``active``
-    drives the cast-path halving (story-004); ``source`` is the archetype id that raised
-    it, carried for narration/HUD flavor. Synced from players.data by the activation tool
-    (story-003), persisted via db_mutations_veil_ward. Defaults to inactive.
-    """
-
-    active: bool = False
-    source: str | None = None
-
-
-@dataclass
-class ConcentrationState:
-    """Per-caster spell concentration carried in the session (story-002, M3.4).
-
-    A caster sustains at most ONE concentration spell at a time; ``spell_id`` is that spell
-    (None = not concentrating). The cast keystone (story-006) sets it on a concentration cast
-    and ends any prior one (single-concentration enforcement), persisted via
-    db_mutations_concentration. Like ResonanceTrack/VeilWardState, only the authoritative id
-    is stored — ``is_active`` is always derived, no cached flag to drift. Defaults to inactive.
-    """
-
-    spell_id: str | None = None
-
-    @property
-    def is_active(self) -> bool:
-        return self.spell_id is not None
 
 
 @dataclass
@@ -243,6 +187,7 @@ class CreationState:
 class SessionData:
     player_id: str
     location_id: str
+    party: PartyState = field(init=False)
     session_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     room: rtc.Room | None = field(default=None, repr=False)
     event_bus: EventBus = field(default_factory=EventBus)
@@ -253,10 +198,6 @@ class SessionData:
     recent_events: deque[str] = field(default_factory=lambda: deque(maxlen=MAX_RECENT_EVENTS))
     attempted_discoveries: set[str] = field(default_factory=set)
     companion: CompanionState | None = None
-    resonance: ResonanceTrack = field(default_factory=ResonanceTrack)
-    veil_ward: VeilWardState = field(default_factory=VeilWardState)
-    concentration: ConcentrationState = field(default_factory=ConcentrationState)
-    corruption_level: int = 0
     patron_id: str = "none"
     creation_state: CreationState | None = None
     onboarding_beat: int | None = None
@@ -293,6 +234,42 @@ class SessionData:
     ending_requested: bool = False
     player_disconnected: bool = False
     disconnect_time: float = 0.0
+
+    def __post_init__(self) -> None:
+        self.party = PartyState.solo(self.player_id, patron_id=self.patron_id)
+
+    def __setattr__(self, name: str, value: object) -> None:
+        # player_id/patron_id stay real dataclass fields (not delegated @property, unlike
+        # resonance/veil_ward/concentration/corruption_level below) so pyright keeps validating
+        # every ~120 SessionData(...) construction call site by name/type. party.primary is
+        # seeded from them in __post_init__; this override keeps the two copies from drifting
+        # afterward — player_id by rejecting reassignment outright (it's write-once in prod),
+        # patron_id by mirroring writes into party.primary.
+        if name == "player_id" and "player_id" in self.__dict__:
+            raise AttributeError("player_id is write-once")
+        if name == "patron_id" and isinstance(value, str) and "party" in self.__dict__:
+            self.party.primary.patron_id = value
+        super().__setattr__(name, value)
+
+    @property
+    def resonance(self) -> ResonanceTrack:
+        return self.party.primary.resonance
+
+    @property
+    def veil_ward(self) -> VeilWardState:
+        return self.party.primary.veil_ward
+
+    @property
+    def concentration(self) -> ConcentrationState:
+        return self.party.primary.concentration
+
+    @property
+    def corruption_level(self) -> int:
+        return self.party.primary.corruption_level
+
+    @corruption_level.setter
+    def corruption_level(self, value: int) -> None:
+        self.party.primary.corruption_level = value
 
     @property
     def in_onboarding(self) -> bool:

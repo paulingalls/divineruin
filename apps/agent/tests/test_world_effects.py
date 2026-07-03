@@ -22,8 +22,8 @@ from tool_support import EFFECT_NPC_MAP
 _mock_conn = MagicMock(name="mock_txn_conn")
 
 
-def _make_session(location_id: str = "accord_guild_hall", **kwargs: object) -> SessionData:
-    sd = SessionData(player_id="player_1", location_id=location_id)
+def _make_session(location_id: str = "accord_guild_hall", player_id: str = "player_1", **kwargs: object) -> SessionData:
+    sd = SessionData(player_id=player_id, location_id=location_id)
     for key, value in kwargs.items():
         setattr(sd, key, value)
     return sd

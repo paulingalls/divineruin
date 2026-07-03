@@ -217,8 +217,10 @@ class TestCombatEndDefeatWiring:
         from combat_events import EventSink
         from session_data import SessionData
 
-        spy = AsyncMock(return_value={"anchor": "camp_r1", "death_count": 1, "tier": "gentle"})
-        monkeypatch.setattr(resurrection, "resurrect_on_defeat", spy)
+        # M14 story-006: the defeat path collects fallen players and routes them through the party
+        # engine (resurrect_party_on_defeat), not the single-player resurrect_on_defeat.
+        spy = AsyncMock(return_value=[{"anchor": "camp_r1", "death_count": 1, "tier": "gentle"}])
+        monkeypatch.setattr(resurrection, "resurrect_party_on_defeat", spy)
 
         cs = _make_combat_state(player_fallen=True)
         session = SessionData(player_id="player_1", location_id="battlefield_danger", room=None)
@@ -232,7 +234,9 @@ class TestCombatEndDefeatWiring:
             session, cs, "defeat", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
         )
         spy.assert_awaited_once()
-        # combat_cleared passed as a keyword (enemies still up on a defeat -> False).
+        # The collected party is the single fallen player, and combat_cleared is a keyword
+        # (enemies still up on a defeat -> False).
+        assert len(spy.call_args.args[0]) == 1
         assert spy.call_args.kwargs["combat_cleared"] is False
 
     def test_finish_syncs_session_location_to_anchor(self, monkeypatch):

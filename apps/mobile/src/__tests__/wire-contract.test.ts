@@ -3,10 +3,11 @@ import { test, expect, beforeEach } from "bun:test";
 import FIXTURE from "../../../../packages/shared/fixtures/event_wire.json";
 import { HOLLOW_ECHO_RESULT, RESONANCE_CHANGED, VEIL_WARD_CHANGED } from "@/audio/event-types";
 import { handleGameEvent } from "@/audio/game-event-handler";
+import { characterStore } from "@/stores/character-store";
 import { HOLLOW_ECHO_DISPLAY, hudStore, type ResonanceState } from "@/stores/hud-store";
 import { parseSpellRows } from "@/utils/spell-display";
 
-import { resetStores } from "./use-game-events.helpers";
+import { resetStores, SAMPLE_CHARACTER } from "./use-game-events.helpers";
 
 // packages/shared/fixtures/event_wire.json is the cross-language SSOT wire shape. The
 // Python lane (apps/agent/tests/test_wire_contract.py) asserts each publisher serializes
@@ -36,8 +37,20 @@ test("fixture hollow_echo_bands match the mobile HollowEchoBand vocabulary", () 
 // --- The canonical fixtured payloads must be consumed by the TS handlers/parser ---
 
 test("resonance_changed fixture drives the resonance state into the store", () => {
+  // The fixture's caster_id is the local player, so the push updates the tracker.
+  characterStore
+    .getState()
+    .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.resonance_changed.caster_id });
   handleGameEvent({ ...EVENTS.resonance_changed });
   expect(hudStore.getState().resonanceState).toBe(EVENTS.resonance_changed.state as ResonanceState);
+});
+
+test("resonance_changed for another party member does NOT touch the local tracker", () => {
+  // M14 story-004: a push carrying a DIFFERENT caster_id is ignored — the single global tracker
+  // belongs to the local player, so a teammate's resonance never overwrites the local HUD.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
+  handleGameEvent({ ...EVENTS.resonance_changed });
+  expect(hudStore.getState().resonanceState).toBeNull();
 });
 
 test("hollow_echo_result fixture pushes a hollow_echo overlay carrying the band", () => {

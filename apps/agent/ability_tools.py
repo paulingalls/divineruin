@@ -97,8 +97,20 @@ async def _request_ability_activation_impl(
 
     condition_applied: str | None = None  # the produced condition, surfaced on the response post-commit
     condition_targets: list[str] | None = None  # multi-target voiced allies (M4.8 story-017)
+
+    # Deterministic cross-player lock order (M14 story-008, debt 361417d1bea5): acquire the caster row
+    # AND every non-caster party-member target row in ONE ascending-player_id batch
+    # (get_players_for_update -> ORDER BY player_id FOR UPDATE), so two concurrent cross-player
+    # activations acquire the same GLOBAL order and can't deadlock. produce_ooc_condition below
+    # re-locks a held subset (no new out-of-order lock). Only OOC party targets are pre-locked — an
+    # in-combat call (participant is the SSOT, no OOC write) or a self / companion / no-target cast
+    # locks just the caster, identical to the pre-story-008 single caster FOR UPDATE.
+    produces_ooc = ability.applies_condition is not None and not session.in_combat
+    ooc_targets = (target_ids or ([target_id] if target_id else [])) if produces_ooc else []
+    lock_ids = sorted({player_id} | {t for t in ooc_targets if t in session.party.member_ids})
     async with db_mod.transaction() as conn:
-        player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
+        locked_rows = await queries_mod.get_players_for_update(lock_ids, conn=conn)
+        player = locked_rows.get(player_id)
         if player is None:
             raise ToolError(f"Unknown player: {player_id}")
 
@@ -148,18 +160,23 @@ async def _request_ability_activation_impl(
             # Route through the shared OOC producer (story-007), which lands on the multi-target list,
             # the single target_id, or the caster (self) — unifying the OOC ability path with the OOC
             # spell path. target_ids was already normalized/capped above.
-            voiced = await condition_produce_mod.produce_ooc_condition(
-                ability.applies_condition,
-                ability_id,
-                target_id=None if target_ids else target_id,
-                target_ids=target_ids,
-                caster_row=player,
-                caster_id=player_id,
-                queries_mod=queries_mod,
-                conditions_mod=conditions_mod,
-                conditions_mutations_mod=conditions_mutations_mod,
-                conn=conn,
-            )
+            try:
+                voiced = await condition_produce_mod.produce_ooc_condition(
+                    ability.applies_condition,
+                    ability_id,
+                    target_id=None if target_ids else target_id,
+                    target_ids=target_ids,
+                    caster_row=player,
+                    caster_id=player_id,
+                    party_member_ids=session.party.member_ids,
+                    companion_id=(session.companion.id if session.companion and session.companion.is_present else None),
+                    queries_mod=queries_mod,
+                    conditions_mod=conditions_mod,
+                    conditions_mutations_mod=conditions_mutations_mod,
+                    conn=conn,
+                )
+            except ValueError as e:
+                raise ToolError(str(e)) from e
             if voiced:
                 condition_applied = ability.applies_condition
                 # Surface the per-ally voiced set only on the multi-target path (audio-first

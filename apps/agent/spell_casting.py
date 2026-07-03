@@ -70,6 +70,7 @@ import spells
 import vaelti_echo_warning
 import veil_ward as veil_ward_mod
 from db_errors import db_tool
+from party_state import PartyMember
 from resource_costs import gate_pool
 from session_data import SessionData
 from tool_support import _validate_id
@@ -247,6 +248,7 @@ async def _resolve_cast(
     spell_id: str,
     *,
     conn,
+    caster: PartyMember | None = None,
     target_id: str | None = None,
     target_ids: list[str] | None = None,
     player: dict | None = None,
@@ -278,10 +280,18 @@ async def _resolve_cast(
     does not cover resonance). All client events are DEFERRED into ``result.events`` for the caller to
     flush after commit (a rollback drops them, leaking nothing).
 
+    ``caster`` is the PartyMember whose OWN pool (resonance/veil_ward/concentration) and player_id the
+    cast reads and writes — defaulting to ``session.party.primary`` so the OOC path (which passes none)
+    stays byte-identical to single-player. In multi-player combat the phase loop passes the declaring
+    member, so a non-primary caster's Focus/Resonance/concentration land on THAT member, never the
+    primary's (M14 story-004). ``session.resonance``/``session.veil_ward``/``session.concentration``
+    delegate to the primary, so for a solo party ``caster`` == the primary is the same objects.
+
     ``player`` lets the caller pass a pre-fetched for-update row (the phase path locks it once for
     Focus pre-validation); when ``None`` the cast fetches it. ``suppress_resonance_changed`` omits the
     cast's own RESONANCE_CHANGED push — in combat the phase WRAP push is the single authoritative HUD
     update, so the ability must not double-emit."""
+    caster = caster or session.party.primary
     _validate_id(spell_id, "spell_id")
     # Validate the explicit target id the same way as spell_id, on the shared core so BOTH the
     # out-of-combat cast and the in-combat ABILITY path are guarded once (concern 8816cdffb757).
@@ -290,10 +300,26 @@ async def _resolve_cast(
     if target_ids is not None:
         for tid in target_ids:
             _validate_id(tid, "target_id")
-    player_id = session.player_id
+    player_id = caster.player_id
 
     if player is None:
-        player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
+        # Deterministic cross-player lock order (M14 story-008, debt 361417d1bea5): on the OOC entry
+        # (the in-combat caller passes `player` — participant is the SSOT, no OOC write), acquire the
+        # caster row AND every non-caster party-member target row in ONE ascending-player_id batch,
+        # matching the ability path (ability_tools) so ability-vs-spell / spell-vs-spell cross-player
+        # casts acquire the same GLOBAL order and can't deadlock. produce_ooc_condition (below)
+        # re-locks a held subset. Only OOC condition-producing party targets are pre-locked; a cast
+        # that produces no OOC condition, or a self/companion target, locks just the caster. The spell
+        # def is resolved via the pure catalog lookup (an unknown id still fails loud at _gate_spell).
+        try:
+            spell_def = spells_mod.get_spell(spell_id)
+        except ValueError:
+            spell_def = None
+        produces_ooc = spell_def is not None and spell_def.applies_condition is not None and not session.in_combat
+        ooc_targets = (target_ids or ([target_id] if target_id else [])) if produces_ooc else []
+        lock_ids = sorted({player_id} | {t for t in ooc_targets if t in session.party.member_ids})
+        locked_rows = await queries_mod.get_players_for_update(lock_ids, conn=conn)
+        player = locked_rows.get(player_id)
         if player is None:
             raise ToolError(f"Unknown player: {player_id}")
 
@@ -358,7 +384,7 @@ async def _resolve_cast(
     # An active Veil Ward halves the Resonance the cast generates (round down, spec magic.md:197) —
     # so a warded caster reaches Overreach (and Hollow Echoes) less often. Focus cost is NOT halved
     # (the ward dampens generation, not the spell's cost).
-    ward_active = session.veil_ward.active
+    ward_active = caster.veil_ward.active
     if ward_active and generated > 0:
         generated = veil_ward.halve_generation(generated)
 
@@ -376,9 +402,9 @@ async def _resolve_cast(
     if race == "human":
         decay_modifier = racial_mod.get_racial_resonance_modifier("human", "decay_bonus")
     base_resonance = (
-        resonance.apply_resonance_decay(session.resonance.current, decay_modifier)
+        resonance.apply_resonance_decay(caster.resonance.current, decay_modifier)
         if should_decay
-        else session.resonance.current
+        else caster.resonance.current
     )
 
     # The post-cast total. Persist it via conn but keep it LOCAL — the caller syncs session.resonance
@@ -402,14 +428,18 @@ async def _resolve_cast(
     # until the caller commits) via the pure get_resonance_state, so nothing sticks on rollback.
     # flickering_bonus is hydrated + GATED at session-init (story-004) and session-stable — read it
     # from the track so every derivation (packet, HUD, cast) shares one value.
-    state = resonance.get_resonance_state(effective_resonance, flickering_bonus=session.resonance.flickering_bonus)
+    state = resonance.get_resonance_state(effective_resonance, flickering_bonus=caster.resonance.flickering_bonus)
 
     # Defer every client event so the caller flushes them post-commit (rollback-safe). The cast's own
     # RESONANCE_CHANGED is omitted when suppressed (in combat the WRAP push is authoritative) and when
     # nothing generated (a cantrip leaves the state unchanged — AC6).
     events: list = []
     if generated > 0 and not suppress_resonance_changed:
-        events.append(lambda: resonance_events_mod.publish_resonance_changed(session))
+        events.append(
+            lambda: resonance_events_mod.publish_resonance_changed(
+                session, resonance_track=caster.resonance, caster_id=caster.player_id
+            )
+        )
 
     # An active ward folds its -1 damage die / -1 DC (spec magic.md:199-200) into the net combat
     # modifiers. get_state_modifiers returns a fresh dict, so this never mutates the shared table.
@@ -464,18 +494,23 @@ async def _resolve_cast(
         if session.in_combat:
             packet["condition_applied"] = spell.applies_condition  # combat applies + confirms on the participant
         else:
-            voiced = await condition_produce_mod.produce_ooc_condition(
-                spell.applies_condition,
-                spell_id,
-                target_id=target_id,
-                target_ids=target_ids,
-                caster_row=player,
-                caster_id=player_id,
-                conn=conn,
-                queries_mod=queries_mod,
-                conditions_mod=conditions_mod,
-                conditions_mutations_mod=conditions_mutations_mod,
-            )
+            try:
+                voiced = await condition_produce_mod.produce_ooc_condition(
+                    spell.applies_condition,
+                    spell_id,
+                    target_id=target_id,
+                    target_ids=target_ids,
+                    caster_row=player,
+                    caster_id=player_id,
+                    party_member_ids=session.party.member_ids,
+                    companion_id=(session.companion.id if session.companion and session.companion.is_present else None),
+                    conn=conn,
+                    queries_mod=queries_mod,
+                    conditions_mod=conditions_mod,
+                    conditions_mutations_mod=conditions_mutations_mod,
+                )
+            except ValueError as e:
+                raise ToolError(str(e)) from e
             if voiced:
                 packet["condition_applied"] = spell.applies_condition
                 if target_ids is not None:

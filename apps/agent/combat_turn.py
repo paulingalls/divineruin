@@ -126,10 +126,11 @@ async def _resolve_phase_impl(
     # Resonance decay, the trailing save_combat_state, and (on the end-condition) end_combat's
     # durability + combat-row delete — so a mid-phase failure rolls back atomically and players/items
     # can never diverge from the combat_instances JSONB SSOT (debt 084c7d0bc457, concern 7198554c2d4c).
-    # The in-memory Resonance sync + HUD publish run AFTER commit (below).
-    pending_resonance: int | None = None
+    # The in-memory Resonance sync + HUD publish run AFTER commit (below). pending_by_member holds
+    # each member's post-cast/decay Resonance total for THIS phase, keyed by player_id (M14 story-004)
+    # — the WRAP decays each member against their OWN pool, never a shared value.
+    pending_by_member: dict[str, int] = {}
     end_data: dict | None = None
-    cast_result = None  # spell_casting.CastResult when a player ABILITY resolved this phase
     # Buffer every client event the phase emits; flush only AFTER the tx commits so a rolled-back
     # phase never leaks a phantom DICE_ROLL/ITEM_DURABILITY_HIT/sound (concern 03f2907d9c93). The
     # scratch_guard snapshots the in-loop session scratch (weapon flags, companion KO, recent_events)
@@ -162,13 +163,13 @@ async def _resolve_phase_impl(
         # in-combat ability fails loud (ToolError) with no writes — and before any other actor's HP
         # write, so it never rolls back a phase that already resolved attacks. Returns the for_update
         # player row (the cast reuses it; the lock is taken once) or None when no player ability.
-        player = await _prevalidate_ability_focus(
+        players_by_id = await _prevalidate_ability_focus(
             session, state, adv, conn=conn, queries=queries, cast_resolver=cast_resolver
         )
 
-        # At most one player ABILITY resolves per phase (one declaration per participant); its
-        # CastResult lands here for the post-commit apply (resonance seed, concentration sync,
-        # deferred events). Stays empty when no ability was declared.
+        # Each declaring member's ABILITY CastResult lands here (keyed by player_id) for the
+        # post-commit apply (per-member resonance seed, concentration sync, deferred events). Stays
+        # empty when no ability was declared.
         cast_outcome = AbilityCastOutcome()
         packet_summaries: list[dict] = []
         for packet in adv.packets:
@@ -185,7 +186,7 @@ async def _resolve_phase_impl(
                     sink=sink,
                     cast_resolver=cast_resolver,
                     cast_outcome=cast_outcome,
-                    player=player,
+                    players_by_id=players_by_id,
                 )
             )
 
@@ -209,28 +210,31 @@ async def _resolve_phase_impl(
         if wrap is not None and wrap.tick_conditions_due:
             _resolve_tick_saves(state, wrap.tick_conditions_due, save_resolver)
 
-        # An in-combat ability GENERATES Resonance during resolution (beat 2); seed the phase's
+        # Each in-combat ability GENERATES Resonance during resolution (beat 2); seed each caster's
         # pending value with the cast's post-generation total so the WRAP decay below sheds from it
         # (net = standing + generated - decay), not the stale standing value. new_resonance is None
-        # for a cantrip/floored cast (no write), leaving the standing value as the decay base.
-        cast_result = cast_outcome.cast_result
-        if cast_result is not None and cast_result.new_resonance is not None:
-            pending_resonance = cast_result.new_resonance
+        # for a cantrip/floored cast (no write) — that member is omitted, leaving its standing value
+        # as the decay base.
+        pending_by_member = {
+            mid: cr.new_resonance for mid, cr in cast_outcome.results.items() if cr.new_resonance is not None
+        }
 
         ended_outcome = wrap.outcome if (wrap is not None and wrap.combat_ended and wrap.outcome) else None
         if ended_outcome is None:
-            # Combat continues: shed one step of Resonance per phase. WRAP is the canonical combat
+            # Combat continues: shed one step of Resonance per phase, per member against their OWN
+            # pool (M14 story-004) — never a shared value, never double. WRAP is the canonical combat
             # decay clock (decision resonance-decay-phase-canonical) — cast-paced decay is suppressed
-            # in combat (spell_casting), so this never double-decays. The decay base is the ability's
-            # generated total when one cast this phase (pending_resonance), else the standing value.
-            # Persist only when the value actually moved (a 0 floor stays silent); the in-memory sync
-            # + HUD push happen post-commit so a rolled-back phase shows no decay.
+            # in combat (spell_casting), so this never double-decays. Each member's decay base is its
+            # ability-generated total when it cast this phase (pending_by_member), else its standing
+            # value. Persist only when the value actually moved (a 0 floor stays silent); the in-memory
+            # sync + HUD push happen post-commit so a rolled-back phase shows no decay.
             if wrap is not None and wrap.resonance_decay:
-                decay_base = pending_resonance if pending_resonance is not None else session.resonance.current
-                decayed = max(0, decay_base - wrap.resonance_decay)
-                if decayed != decay_base:
-                    pending_resonance = decayed
-                    await resonance_mutations.update_player_resonance(session.player_id, decayed, conn=conn)
+                for m in session.party.members:
+                    base = pending_by_member.get(m.player_id, m.resonance.current)
+                    decayed = max(0, base - wrap.resonance_decay)
+                    if decayed != base:
+                        pending_by_member[m.player_id] = decayed
+                        await resonance_mutations.update_player_resonance(m.player_id, decayed, conn=conn)
             await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
             # Push the HUD's combat-tracker + condition icons live (M12 story-001). Built from the
             # post-tick state (save-cleared conditions are gone) and buffered in the sink so the
@@ -262,23 +266,26 @@ async def _resolve_phase_impl(
     # The tx committed: now (and only now) release the buffered loop events to the client.
     await sink.flush()
 
-    # Apply the in-combat ability's deferred effects post-commit (rollback-safe — a rolled-back tx
-    # skipped to here via the re-raise): flush the cast's own deferred client events (hollow echo,
+    # Apply each in-combat ability's deferred effects post-commit (rollback-safe — a rolled-back tx
+    # skipped to here via the re-raise): flush every caster's own deferred client events (hollow echo,
     # Vaelti warning). Concentration is synced IN-LOOP by _resolve_ability_packet (not here) so a
     # same-phase, lower-initiative concentration break sees the just-cast spell (story-007). The
     # generated Resonance is synced just below (shared with the decay path). Runs BEFORE the
     # end-of-combat return so an ability that fires on the killing phase still applies its effects.
-    if cast_result is not None:
-        await cast_result.flush_events()
-    # Sync + push the per-phase Resonance change BEFORE the end-of-combat return: an ability can
-    # generate Resonance on the same phase it drops the last enemy, and that qualitative HUD state
-    # must still reach the client even though combat ends. The ability suppressed its own
-    # RESONANCE_CHANGED, so this is the single authoritative push per phase. (Pre-story-007 this was
-    # a no-op on the terminal wrap — only the WRAP-decay branch set pending_resonance, and that
-    # branch never runs when combat ends; now an in-loop ability sets it regardless of end state.)
-    if pending_resonance is not None:
-        session.resonance.current = pending_resonance
-        await resonance_events_mod.publish_resonance_changed(session)
+    for cr in cast_outcome.results.values():
+        await cr.flush_events()
+    # Sync + push the per-phase Resonance change per member BEFORE the end-of-combat return (M14
+    # story-004): an ability can generate Resonance on the same phase it drops the last enemy, and
+    # that qualitative HUD state must still reach the client even though combat ends. Each ability
+    # suppressed its own RESONANCE_CHANGED, so this is the single authoritative push per member per
+    # phase — pushed under the member's OWN resonance_track + caster_id so the client filters it to
+    # the right player. Only members that actually moved this phase (in pending_by_member) sync/push.
+    for m in session.party.members:
+        if m.player_id in pending_by_member:
+            m.resonance.current = pending_by_member[m.player_id]
+            await resonance_events_mod.publish_resonance_changed(
+                session, resonance_track=m.resonance, caster_id=m.player_id
+            )
 
     # Beat 4 end-condition: the engine reports victory (all enemies fallen) or defeat (the player
     # has died). end_combat's DB writes already committed inside the phase tx above; now apply its

@@ -188,6 +188,32 @@ class TestCombatScratchSnapshot:
 
         assert session.concentration.spell_id == "hold_flame"
 
+    def test_restores_non_primary_member_concentration(self) -> None:
+        # M14 story-004: the in-loop concentration sync moved per-member (caster.concentration), so a
+        # phase rollback must restore EACH member's concentration, not just the primary's — else a
+        # non-primary caster's in-memory concentration diverges from the rolled-back DB row.
+        from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+        from party_state import PartyMember
+
+        session = SessionData(player_id="p1", location_id="loc", room=None)
+        session.party.members.append(
+            PartyMember(
+                player_id="p2",
+                resonance=ResonanceTrack(),
+                veil_ward=VeilWardState(),
+                concentration=ConcentrationState(),
+            )
+        )
+        p2 = session.party.member("p2")
+        assert p2 is not None
+        p2.concentration.spell_id = "hold_flame"  # p2's pre-phase concentration
+        snap = _CombatScratchSnapshot.capture(session)
+
+        p2.concentration.spell_id = "new_spell"  # in-loop: p2's ability recast
+        snap.restore(session)
+
+        assert p2.concentration.spell_id == "hold_flame"
+
 
 class TestLoopEventBuffering:
     """Seam 2 (concern 03f2907d9c93): loop events buffer during the tx and reach the client only

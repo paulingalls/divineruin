@@ -96,7 +96,10 @@ async def _cast(
         ctx.userdata.combat_state = _combat_state()
     mock_db, _conn = make_db_mod()
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value=_player(race=race))
+    _lock_row = _player(race=race)
+    queries.get_player = AsyncMock(return_value=_lock_row)
+    # story-008: the OOC caster row now comes from the id-ordered get_players_for_update batch.
+    queries.get_players_for_update = AsyncMock(side_effect=lambda ids, *, conn=None: {i: _lock_row for i in ids})
     persistence = MagicMock()
     persistence.update_player_resources = AsyncMock()
     mutations = MagicMock()

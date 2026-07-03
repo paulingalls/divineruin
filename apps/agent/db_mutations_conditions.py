@@ -67,6 +67,32 @@ async def save_player_conditions(
     )
 
 
+async def save_many_player_conditions(
+    mapping: dict[str, list[dict]],
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> None:
+    """Batched ``{player_id: conditions_list}`` write — ONE round-trip for N targets (M4.8 story-007,
+    replacing the N-write per-target loop). ``unnest`` zips the id/conds arrays into a values set that
+    drives one ``UPDATE ... FROM`` statement, applying the same ``jsonb_set(data,'{conditions}',...)``
+    discipline as ``save_player_conditions`` to every row in a single execute. No-op on an empty mapping."""
+    if not mapping:
+        return
+    _conn = conn or await db.get_pool()
+    player_ids = list(mapping.keys())
+    conds_json = [json.dumps(v) for v in mapping.values()]
+    await _conn.execute(
+        """
+        UPDATE players AS p
+        SET data = jsonb_set(p.data, '{conditions}', v.conds::jsonb)
+        FROM unnest($1::text[], $2::text[]) AS v(pid, conds)
+        WHERE p.player_id = v.pid
+        """,
+        player_ids,
+        conds_json,
+    )
+
+
 # The "drop every element whose type is in the set" contract is shared with the pure-Python SSOT
 # conditions.remove_conditions (conditions.py); keep the two in sync. This server-side variant exists
 # so the beneficial-die consume never read-modify-writes: it filters the LIVE row in one atomic

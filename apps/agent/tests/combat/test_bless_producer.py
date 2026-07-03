@@ -102,22 +102,38 @@ def _caster(player_id: str = "caster_1", conditions_list: list | None = None) ->
     }
 
 
-async def _cast_ooc(spell: Spell, *, caster: dict, target_id: str | None = None, rows: dict | None = None):
+async def _cast_ooc(
+    spell: Spell,
+    *,
+    caster: dict,
+    target_id: str | None = None,
+    rows: dict | None = None,
+    party_member_ids: list[str] | None = None,
+    companion_id: str | None = None,
+):
     """Drive _cast_spell_impl out of combat (make_context -> no combat_state -> in_combat False).
-    Returns (packet, conditions_mutations mock, get_player mock) for producer assertions."""
-    ctx = make_context(player_id=caster["player_id"])
+    Returns (packet, conditions_mutations mock, get_player mock) for producer assertions.
+    ``party_member_ids`` (M4.8 story-007 party gate) must include any non-caster target — the OOC
+    producer now refuses a target that is neither a party member nor the caster's companion."""
+    ctx = make_context(player_id=caster["player_id"], party_member_ids=party_member_ids, companion_id=companion_id)
     mock_db, _conn = make_db_mod()
     table = {caster["player_id"]: caster, **(rows or {})}
 
     async def _get_player(pid, *, conn=None, for_update=False):
         return table.get(pid)
 
-    queries = MagicMock(get_player=AsyncMock(side_effect=_get_player))
+    async def _get_players_for_update(pids, *, conn=None):
+        return {pid: table[pid] for pid in pids if pid in table}
+
+    queries = MagicMock(
+        get_player=AsyncMock(side_effect=_get_player),
+        get_players_for_update=AsyncMock(side_effect=_get_players_for_update),
+    )
     persistence = MagicMock(update_player_resources=AsyncMock())
     res_mut = MagicMock(update_player_resonance=AsyncMock())
     events = MagicMock(publish_resonance_changed=AsyncMock())
     spells_mod = MagicMock(get_spell=MagicMock(return_value=spell))
-    cond_mut = MagicMock(save_player_conditions=AsyncMock())
+    cond_mut = MagicMock(save_many_player_conditions=AsyncMock())
     raw = await spell_casting._cast_spell_impl(
         ctx,
         spell.id,
@@ -131,33 +147,41 @@ async def _cast_ooc(spell: Spell, *, caster: dict, target_id: str | None = None,
         conditions_mod=conditions,
         conditions_mutations_mod=cond_mut,
     )
-    return json.loads(raw), cond_mut, queries.get_player
+    return json.loads(raw), cond_mut, queries.get_players_for_update
 
 
 @pytest.mark.asyncio
 async def test_ooc_cast_on_ally_persists_blessed_to_target():
     # AC1: cast Bless on an ally -> Blessed persisted to the TARGET's conditions SSOT; packet signals it.
     ally = _caster("ally_2", conditions_list=[])
-    packet, cond_mut, _gp = await _cast_ooc(_bless_spell(), caster=_caster(), target_id="ally_2", rows={"ally_2": ally})
+    packet, cond_mut, _gp = await _cast_ooc(
+        _bless_spell(),
+        caster=_caster(),
+        target_id="ally_2",
+        rows={"ally_2": ally},
+        party_member_ids=["caster_1", "ally_2"],
+    )
 
     assert packet["condition_applied"] == "blessed"
-    cond_mut.save_player_conditions.assert_awaited_once()
-    args, _kwargs = cond_mut.save_player_conditions.call_args
-    assert args[0] == "ally_2"  # persisted to the target, not the caster
-    assert "blessed" in [c["type"] for c in args[1]]
+    cond_mut.save_many_player_conditions.assert_awaited_once()
+    written = cond_mut.save_many_player_conditions.call_args.args[0]
+    assert set(written.keys()) == {"ally_2"}  # persisted to the target, not the caster
+    assert "blessed" in [c["type"] for c in written["ally_2"]]
 
 
 @pytest.mark.asyncio
 async def test_ooc_self_cast_applies_to_caster():
-    # AC2: a self-cast (no target_id) applies Blessed to the caster, reusing the for_update caster row.
-    packet, cond_mut, get_player = await _cast_ooc(_bless_spell(), caster=_caster("caster_1"))
+    # AC2: a self-cast (no target_id) applies Blessed to the caster, reusing the caster row.
+    packet, cond_mut, get_players_for_update = await _cast_ooc(_bless_spell(), caster=_caster("caster_1"))
 
     assert packet["condition_applied"] == "blessed"
-    cond_mut.save_player_conditions.assert_awaited_once()
-    args, _kwargs = cond_mut.save_player_conditions.call_args
-    assert args[0] == "caster_1"
-    assert "blessed" in [c["type"] for c in args[1]]
-    assert get_player.await_count == 1  # self-cast reuses the caster row — no extra target fetch
+    cond_mut.save_many_player_conditions.assert_awaited_once()
+    written = cond_mut.save_many_player_conditions.call_args.args[0]
+    assert set(written.keys()) == {"caster_1"}
+    assert "blessed" in [c["type"] for c in written["caster_1"]]
+    # story-008: self-cast locks only the caster via ONE id-ordered batch; the producer reuses that
+    # row (no non-caster target fetch) — so exactly one get_players_for_update call.
+    assert get_players_for_update.await_count == 1
 
 
 @pytest.mark.asyncio
@@ -166,19 +190,19 @@ async def test_ooc_cast_no_applies_condition_does_not_persist():
     packet, cond_mut, _gp = await _cast_ooc(_bless_spell(applies_condition=None), caster=_caster())
 
     assert "condition_applied" not in packet
-    cond_mut.save_player_conditions.assert_not_awaited()
+    cond_mut.save_many_player_conditions.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_ooc_cast_on_non_player_target_narrates_without_persist():
-    # Regression guard (finding #1): buffing a NON-PLAYER ally (companion/NPC, no players.data row)
-    # must NOT hard-error — it narrates condition_applied for the DM and writes nothing, matching the
-    # pre-producer non-revival behavior (a targeted cast skipped the row fetch). `kael` is absent
-    # from the table, so get_player returns None for it.
-    packet, cond_mut, _gp = await _cast_ooc(_bless_spell(), caster=_caster(), target_id="kael")
+    # Regression guard (finding #1): buffing the caster's COMPANION (an allowlisted narrate-only
+    # target, no players.data row) must NOT hard-error — it narrates condition_applied for the DM
+    # and writes nothing (M4.8 story-007's companion allowlist, replacing the old any-absent-id
+    # narrate-only fallback the party gate now closes).
+    packet, cond_mut, _gp = await _cast_ooc(_bless_spell(), caster=_caster(), target_id="kael", companion_id="kael")
 
     assert packet["condition_applied"] == "blessed"  # DM still voices the buff
-    cond_mut.save_player_conditions.assert_not_awaited()  # no players.data write for a non-player
+    cond_mut.save_many_player_conditions.assert_not_awaited()  # no players.data write for a companion
 
 
 @pytest.mark.asyncio

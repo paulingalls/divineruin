@@ -492,13 +492,22 @@ export function handleGameEvent(event: DataChannelEvent): void {
       }
       break;
 
-    case E.RESONANCE_CHANGED:
+    case E.RESONANCE_CHANGED: {
       // HUD shows the qualitative state only; current/max are ignored. Unknown
       // states are dropped (fail-safe) rather than corrupting the tracker.
-      if (VALID_RESONANCE_STATES.has(event.state as ResonanceState)) {
+      // Multi-player (M14 story-004): the agent pushes each party member's own state under a
+      // caster_id. The HUD keeps ONE global resonance tracker, so filter to the local player —
+      // update only when caster_id is the local id. A push with no caster_id, or before the local
+      // id is known (pre-SESSION_INIT), is treated as the local player's (single-player back-compat).
+      const localPlayerId = characterStore.getState().character?.playerId;
+      const casterId = event.caster_id;
+      const isForLocalPlayer =
+        typeof casterId !== "string" || !localPlayerId || casterId === localPlayerId;
+      if (isForLocalPlayer && VALID_RESONANCE_STATES.has(event.state as ResonanceState)) {
         hudStore.getState().setResonanceState(event.state as ResonanceState);
       }
       break;
+    }
 
     case E.HOLLOW_ECHO_RESULT:
       // An Overreach cast tore the Veil. Flash the dramatic band overlay; only the

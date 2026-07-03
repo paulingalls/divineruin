@@ -89,16 +89,19 @@ class _CombatScratchSnapshot:
     dropping the oldest entry, so a length-truncate restore would lose the oldest pre-phase entry
     once at the cap.
 
-    concentration_spell_id is reverted too (story-007): an in-loop ABILITY cast starts a new
-    concentration, and break_concentration_on_damage clears it, both IN memory mid-tx — a rolled-back
-    phase must restore the pre-phase concentration so it can't diverge from the rolled-back DB row."""
+    concentration is reverted too (story-007): an in-loop ABILITY cast starts a new concentration,
+    and break_concentration_on_damage clears it, both IN memory mid-tx — a rolled-back phase must
+    restore the pre-phase concentration so it can't diverge from the rolled-back DB row. Captured
+    PER PARTY MEMBER (M14 story-004): the in-loop concentration sync moved to the declaring caster's
+    own pool, so a multi-PC rollback must revert every member's concentration, not just the primary's
+    (solo = 1 member, so this is byte-identical to the single-player revert)."""
 
     weapon_used_this_encounter: bool
     weapon_crit_vs_heavy: bool
     recent_events: list[str]
     companion_is_conscious: bool | None
     companion_memories: list[str] | None
-    concentration_spell_id: str | None
+    concentration_spell_ids: dict[str, str | None]
 
     @classmethod
     def capture(cls, session) -> "_CombatScratchSnapshot":
@@ -109,14 +112,17 @@ class _CombatScratchSnapshot:
             recent_events=list(session.recent_events),
             companion_is_conscious=companion.is_conscious if companion is not None else None,
             companion_memories=list(companion.session_memories) if companion is not None else None,
-            concentration_spell_id=session.concentration.spell_id,
+            concentration_spell_ids={m.player_id: m.concentration.spell_id for m in session.party.members},
         )
 
     def restore(self, session) -> None:
         session.weapon_used_this_encounter = self.weapon_used_this_encounter
         session.weapon_crit_vs_heavy = self.weapon_crit_vs_heavy
         session.recent_events = deque(self.recent_events, maxlen=session.recent_events.maxlen)
-        session.concentration.spell_id = self.concentration_spell_id
+        for player_id, spell_id in self.concentration_spell_ids.items():
+            member = session.party.member(player_id)
+            if member is not None:
+                member.concentration.spell_id = spell_id
         companion = session.companion
         if companion is not None and self.companion_memories is not None:
             companion.is_conscious = self.companion_is_conscious

@@ -56,7 +56,10 @@ async def _call(
     ctx = make_context()
     mock_db, _conn = make_db_mod()
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value=_player(stamina, focus))
+    # story-008: the caster row now comes from the id-ordered get_players_for_update batch (self-cast
+    # here -> the caster alone).
+    row = _player(stamina, focus)
+    queries.get_players_for_update = AsyncMock(return_value={row["player_id"]: row})
     persistence = MagicMock()
     persistence.update_player_resources = AsyncMock()
     persistence.get_active_variant = AsyncMock(return_value=active_variant_id)

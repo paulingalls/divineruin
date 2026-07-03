@@ -101,11 +101,15 @@ async def _activate(
     target_ids: list[str] | None = None,
     rows: dict | None = None,
     in_combat: bool = False,
+    party_member_ids: list[str] | None = None,
+    companion_id: str | None = None,
 ):
     """Drive _request_ability_activation_impl out of combat. Returns (response, conditions_mutations
-    mock, get_player mock) for producer assertions. ``in_combat`` sets a combat_state so the OOC
-    producer's not-in-combat persist gate can be exercised."""
-    ctx = make_context(player_id=caster["player_id"])
+    mock, get_players_for_update mock) for producer assertions. ``in_combat`` sets a combat_state so the OOC
+    producer's not-in-combat persist gate can be exercised. ``party_member_ids`` (M4.8 story-007
+    party gate) must include any non-caster target — the OOC producer now refuses a target that is
+    neither a party member nor the caster's companion."""
+    ctx = make_context(player_id=caster["player_id"], party_member_ids=party_member_ids, companion_id=companion_id)
     if in_combat:
         ctx.userdata.combat_state = CombatState(combat_id="c_inspire_guard", participants=[], initiative_order=[])
     mock_db, _conn = make_db_mod()
@@ -114,14 +118,20 @@ async def _activate(
     async def _get_player(pid, *, conn=None, for_update=False):
         return table.get(pid)
 
-    queries = MagicMock(get_player=AsyncMock(side_effect=_get_player))
+    async def _get_players_for_update(pids, *, conn=None):
+        return {pid: table[pid] for pid in pids if pid in table}
+
+    queries = MagicMock(
+        get_player=AsyncMock(side_effect=_get_player),
+        get_players_for_update=AsyncMock(side_effect=_get_players_for_update),
+    )
     persistence = MagicMock(
         update_player_resources=AsyncMock(),
         get_active_variant=AsyncMock(return_value=None),
         owns_elective=AsyncMock(return_value=False),
     )
     abilities_mod = MagicMock(get_ability=MagicMock(return_value=ability), owns_ability=MagicMock(return_value=True))
-    cond_mut = MagicMock(save_player_conditions=AsyncMock())
+    cond_mut = MagicMock(save_many_player_conditions=AsyncMock())
     raw = await ability_tools._request_ability_activation_impl(
         ctx,
         ability.id,
@@ -134,7 +144,7 @@ async def _activate(
         conditions_mod=conditions,
         conditions_mutations_mod=cond_mut,
     )
-    return json.loads(raw), cond_mut, queries.get_player
+    return json.loads(raw), cond_mut, queries.get_players_for_update
 
 
 @pytest.mark.asyncio
@@ -145,13 +155,17 @@ async def test_ooc_mass_inspire_multi_target_persists_to_each_and_voices_all():
     a1 = _bard("ally_a", conditions_list=[])
     a2 = _bard("ally_b", conditions_list=[])
     response, cond_mut, _gp = await _activate(
-        _mass_inspire_ability(), caster=_bard(), target_ids=["ally_a", "ally_b"], rows={"ally_a": a1, "ally_b": a2}
+        _mass_inspire_ability(),
+        caster=_bard(),
+        target_ids=["ally_a", "ally_b"],
+        rows={"ally_a": a1, "ally_b": a2},
+        party_member_ids=["bard_1", "ally_a", "ally_b"],
     )
 
     assert response["condition_applied"] == "inspired"
     assert set(response["condition_targets"]) == {"ally_a", "ally_b"}
-    saved_targets = {c.args[0] for c in cond_mut.save_player_conditions.call_args_list}
-    assert saved_targets == {"ally_a", "ally_b"}  # persisted to each
+    written = cond_mut.save_many_player_conditions.call_args.args[0]
+    assert set(written.keys()) == {"ally_a", "ally_b"}  # persisted to each
 
 
 @pytest.mark.asyncio
@@ -173,37 +187,44 @@ async def test_ooc_inspire_on_ally_persists_inspired_to_target():
     # AC1: Inspire on an ally -> Inspired persisted to the TARGET's conditions SSOT; response signals it.
     ally = _bard("ally_2", conditions_list=[])
     response, cond_mut, _gp = await _activate(
-        _inspire_ability(), caster=_bard(), target_id="ally_2", rows={"ally_2": ally}
+        _inspire_ability(),
+        caster=_bard(),
+        target_id="ally_2",
+        rows={"ally_2": ally},
+        party_member_ids=["bard_1", "ally_2"],
     )
 
     assert response["condition_applied"] == "inspired"
-    cond_mut.save_player_conditions.assert_awaited_once()
-    args, _kwargs = cond_mut.save_player_conditions.call_args
-    assert args[0] == "ally_2"
-    assert "inspired" in [c["type"] for c in args[1]]
+    cond_mut.save_many_player_conditions.assert_awaited_once()
+    written = cond_mut.save_many_player_conditions.call_args.args[0]
+    assert set(written.keys()) == {"ally_2"}
+    assert "inspired" in [c["type"] for c in written["ally_2"]]
 
 
 @pytest.mark.asyncio
 async def test_ooc_inspire_self_cast_applies_to_caster():
-    # Self-target (no target_id) applies Inspired to the caster, reusing the for_update caster row.
-    response, cond_mut, get_player = await _activate(_inspire_ability(), caster=_bard("bard_1"))
+    # Self-target (no target_id) applies Inspired to the caster, reusing the caster row.
+    response, cond_mut, get_players_for_update = await _activate(_inspire_ability(), caster=_bard("bard_1"))
 
     assert response["condition_applied"] == "inspired"
-    cond_mut.save_player_conditions.assert_awaited_once()
-    args, _kwargs = cond_mut.save_player_conditions.call_args
-    assert args[0] == "bard_1"
-    assert "inspired" in [c["type"] for c in args[1]]
-    assert get_player.await_count == 1  # self-target reuses the caster row — no extra fetch
+    cond_mut.save_many_player_conditions.assert_awaited_once()
+    written = cond_mut.save_many_player_conditions.call_args.args[0]
+    assert set(written.keys()) == {"bard_1"}
+    assert "inspired" in [c["type"] for c in written["bard_1"]]
+    # story-008: self-target locks only the caster via ONE id-ordered batch; the producer reuses
+    # that row (no non-caster target fetch) — so exactly one get_players_for_update call.
+    assert get_players_for_update.await_count == 1
 
 
 @pytest.mark.asyncio
 async def test_ooc_inspire_non_player_target_narrates_without_persist():
-    # Regression guard (mirrors story-004): a non-player ally (no players.data row) narrates
-    # condition_applied but writes nothing — never hard-errors. `kael` is absent from the table.
-    response, cond_mut, _gp = await _activate(_inspire_ability(), caster=_bard(), target_id="kael")
+    # Regression guard (mirrors story-004): buffing the caster's COMPANION (allowlisted
+    # narrate-only, no players.data row) narrates condition_applied but writes nothing — never
+    # hard-errors (M4.8 story-007's companion allowlist).
+    response, cond_mut, _gp = await _activate(_inspire_ability(), caster=_bard(), target_id="kael", companion_id="kael")
 
     assert response["condition_applied"] == "inspired"
-    cond_mut.save_player_conditions.assert_not_awaited()
+    cond_mut.save_many_player_conditions.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -212,7 +233,7 @@ async def test_ooc_ability_no_applies_condition_does_not_persist():
     response, cond_mut, _gp = await _activate(_inspire_ability(applies_condition=None), caster=_bard())
 
     assert "condition_applied" not in response
-    cond_mut.save_player_conditions.assert_not_awaited()
+    cond_mut.save_many_player_conditions.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -222,7 +243,7 @@ async def test_ooc_producer_does_not_persist_in_combat():
     response, cond_mut, _gp = await _activate(_inspire_ability(), caster=_bard(), in_combat=True)
 
     assert "condition_applied" not in response
-    cond_mut.save_player_conditions.assert_not_awaited()
+    cond_mut.save_many_player_conditions.assert_not_awaited()
 
 
 # --- Group C: in-combat non-spell ability-condition path ---

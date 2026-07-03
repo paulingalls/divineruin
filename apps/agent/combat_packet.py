@@ -66,29 +66,40 @@ def _resolve_tick_saves(state, tick_conditions_due, save_resolver):
             actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
 
 
-async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast_resolver):
-    """Pre-validate every player ABILITY declaration's Focus BEFORE the resolution loop (AC2).
+async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast_resolver) -> dict[str, dict]:
+    """Pre-validate EVERY player ABILITY declaration's Focus BEFORE the resolution loop (AC2), one
+    per declaring member (M14 story-004).
 
     An unaffordable in-combat ability must fail loud (ToolError) with NO state writes — and crucially
     before any OTHER actor's HP/durability write, so a bad ability never rolls back a phase that has
-    already resolved attacks. Runs the SAME gate as the cast (spell_casting._gate_spell), fetches the
-    player for_update ONCE (the cast reuses the returned row, so the lock is taken a single time), and
-    returns it — or None when no player ability was declared (the common all-attacks phase locks
-    nothing). Non-player abilities are wasted downstream, so they are not gated here."""
-    player_ability_decls = [
-        p.declaration
+    already resolved attacks. For each player-ability packet, fetch THAT actor's OWN for_update row
+    (pid == packet.actor_id == player_id, since combat_init builds player participants with id=mid),
+    locking each player once (deduped across a member's declarations), gate that declaration against
+    its own row, and return {pid: row} for the loop to thread to each cast. Returns ``{}`` when no
+    player ability was declared (the common all-attacks phase locks nothing). Non-player abilities are
+    wasted downstream, so they are not gated here.
+
+    The per-player locks are taken in initiative order within the phase tx (adv.packets is ordered),
+    once per player — the deterministic ordering story-008's caster-vs-target locking builds on."""
+    player_ability_packets = [
+        (p.actor_id, p.declaration)
         for p in adv.packets
         if p.declaration.type is DeclarationType.ABILITY
         and p.declaration.action
         and (actor := state.get_participant(p.actor_id)) is not None
         and actor.type == "player"
     ]
-    if not player_ability_decls:
-        return None
-    player = await queries.get_player(session.player_id, conn=conn, for_update=True)
-    if player is None:
-        raise ToolError(f"Unknown player: {session.player_id}")
-    for decl in player_ability_decls:
+    if not player_ability_packets:
+        return {}
+    players_by_id: dict[str, dict] = {}
+    for actor_id, decl in player_ability_packets:
+        player = players_by_id.get(actor_id)
+        if player is None:
+            # Lock this member's row once (a member with two ability declarations reuses the lock).
+            player = await queries.get_player(actor_id, conn=conn, for_update=True)
+            if player is None:
+                raise ToolError(f"Unknown player: {actor_id}")
+            players_by_id[actor_id] = player
         action = decl.action
         # Three non-spell-vs-spell ABILITY gates (pre-resolution, no writes): de_escalate (M4.6a)
         # has its own Focus+lockout gate; a non-spell condition ability (M4.8 story-005, e.g.
@@ -116,7 +127,7 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
                     spells.normalize_target_list(spell, decl.target_id, decl.target_ids)
                 except ValueError as e:
                     raise ToolError(str(e)) from e
-    return player
+    return players_by_id
 
 
 async def _resolve_one_packet(
@@ -132,7 +143,7 @@ async def _resolve_one_packet(
     sink=None,
     cast_resolver=spell_casting,
     cast_outcome=None,
-    player=None,
+    players_by_id=None,
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
 
@@ -147,6 +158,10 @@ async def _resolve_one_packet(
     modelled + initiative-ordered but their mechanical resolution lands in later M4.x."""
     attacker = state.get_participant(packet.actor_id)
     decl = packet.declaration
+    # This actor's own pre-validated for_update row (M14 story-004): the ability branches below thread
+    # it to the cast/deduct so a non-primary caster's Focus/Resonance land on ITS pool. None for a
+    # non-caster packet (attack/defend) or an actor with no player ability — those branches ignore it.
+    player = players_by_id.get(packet.actor_id) if players_by_id else None
 
     if attacker is None or attacker.is_fallen:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}

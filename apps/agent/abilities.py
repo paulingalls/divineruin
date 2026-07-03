@@ -102,8 +102,8 @@ def parse_ability_row(ability_id: str, data: dict) -> Ability:
         # Optional producer field (M4.8 story-005): when present it must name a real condition type,
         # so a typo fails at load (strict-loader convention) instead of silently producing nothing.
         applies_condition = data.get("applies_condition")
-        if applies_condition is not None and applies_condition not in conditions.CONDITION_CATALOG:
-            raise ValueError(f"ability {ability_id!r} applies_condition {applies_condition!r} is not a known condition")
+        if applies_condition is not None:
+            conditions.assert_known_condition(applies_condition, f"ability {ability_id!r}")
         # Multi-target cap (M4.8 story-016): same validation as spells.parse_spell_row — a positive
         # int or None (single-target). Rejects 0/negative/bool so a bad cap fails at load.
         max_targets = data.get("max_targets")
