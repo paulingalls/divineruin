@@ -20,6 +20,7 @@ import conditions
 import event_types as E
 import spell_casting
 from combat_events import emit_or_publish
+from condition_produce import resolve_effective_targets
 from dice import roll as dice_roll
 from resource_costs import gate_pool
 from rules_engine import attribute_modifier
@@ -179,12 +180,7 @@ def land_condition_on_participants(
     declare-gate (combat_packet via spells.normalize_target_list); dedup here just prevents
     double-voicing the same ally. Returns the participant ids the buff actually LANDED on (an id not
     on the working state, or an immunity no-op, is dropped) — the subset the DM should name."""
-    if decl.target_ids:
-        targets: list[str | None] = list(dict.fromkeys(decl.target_ids))
-    elif decl.target_id is not None:
-        targets = [decl.target_id]
-    else:
-        targets = [None]  # self-cast
+    targets = resolve_effective_targets(decl.target_ids, decl.target_id, self_value=None, dedup=True)
     voiced: list[str] = []
     for tid in targets:
         if _land_condition_on_one(state, tid, attacker, cond_type, source):

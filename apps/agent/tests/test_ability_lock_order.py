@@ -21,6 +21,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sample_fixtures import make_context, make_db_mod
 
+import condition_produce
 from ability_tools import _request_ability_activation_impl
 from spell_casting import _resolve_cast
 from spells import Spell
@@ -151,7 +152,11 @@ async def _cast(*, caster: str, party: list[str], target_id: str | None):
     resonance_mut = MagicMock(update_player_resonance=AsyncMock())
     resonance_evt = MagicMock(publish_resonance_changed=AsyncMock())
     spells_mod = MagicMock(get_spell=MagicMock(return_value=spell))
-    produce = MagicMock(produce_ooc_condition=AsyncMock(return_value=[target_id] if target_id else [caster]))
+    # wraps=condition_produce so lock_ooc_caster_and_targets runs FOR REAL (it's what drives
+    # queries.get_players_for_update, the very call these tests assert on) while produce_ooc_condition
+    # itself stays mocked out (its own contract is covered by test_condition_produce.py).
+    produce = MagicMock(wraps=condition_produce)
+    produce.produce_ooc_condition = AsyncMock(return_value=[target_id] if target_id else [caster])
     await _resolve_cast(
         ctx.userdata,
         spell.id,
