@@ -334,7 +334,7 @@ class TestReconnectionAllAgentTypes:
     """Verify _setup_reconnection works for all agent types."""
 
     def test_registers_for_prologue(self):
-        from agent import _setup_reconnection
+        from participant_lifecycle import _setup_reconnection
 
         room = MagicMock()
         session = MagicMock()
@@ -348,7 +348,7 @@ class TestReconnectionAllAgentTypes:
         assert "participant_connected" in on_calls
 
     def test_registers_for_gameplay(self):
-        from agent import _setup_reconnection
+        from participant_lifecycle import _setup_reconnection
 
         room = MagicMock()
         session = MagicMock()

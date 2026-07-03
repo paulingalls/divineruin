@@ -5,7 +5,7 @@ import os
 import re
 import time
 
-from livekit import agents, rtc
+from livekit import agents
 from livekit.agents import AgentServer, AgentSession, inference
 from livekit.plugins import anthropic, deepgram
 
@@ -13,6 +13,7 @@ import db
 import db_content_queries
 import db_queries
 from base_agent import _make_tts
+from participant_lifecycle import _setup_party_join, _setup_reconnection
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
 from token_tracker import TokenTracker
@@ -103,70 +104,6 @@ def _build_recap_instruction(last_summary: dict | None) -> str:
         return ""
 
     return " " + " ".join(parts)
-
-
-def _build_reconnect_instruction(sd: SessionData) -> str:
-    """Build a context-rich reconnection greeting instruction."""
-    parts = ["The player reconnected after a brief drop."]
-    loc_name = sd.cached_location_name or sd.location_id
-    if loc_name:
-        parts.append(f"They are at {loc_name}.")
-    if sd.companion and sd.companion.is_present:
-        parts.append(f"{sd.companion.name} is with them.")
-    if sd.combat_state:
-        parts.append("They are in combat.")
-    parts.append("Welcome them back naturally in one short sentence and remind them where they were.")
-    return " ".join(parts)
-
-
-RECONNECT_GRACE_S = 120  # 2 minutes
-
-
-def _setup_reconnection(
-    room: rtc.Room,
-    session: AgentSession,
-    userdata: SessionData,
-    agent,
-) -> None:
-    """Register disconnect/reconnect handlers for any agent type."""
-    reconnect_task: asyncio.Task | None = None
-    player_id = userdata.player_id
-
-    @room.on("participant_disconnected")
-    def _on_disconnect(participant: rtc.RemoteParticipant):
-        nonlocal reconnect_task
-        if participant.identity != player_id:
-            return
-        userdata.player_disconnected = True
-        userdata.disconnect_time = time.time()
-        bg = getattr(agent, "_background", None)
-        if bg:
-            bg.pause()
-        reconnect_task = asyncio.create_task(_grace_timeout())
-
-    @room.on("participant_connected")
-    def _on_reconnect(participant: rtc.RemoteParticipant):
-        nonlocal reconnect_task
-        if participant.identity != player_id or not userdata.player_disconnected:
-            return
-        userdata.player_disconnected = False
-        if reconnect_task and not reconnect_task.done():
-            reconnect_task.cancel()
-            reconnect_task = None
-        bg = getattr(agent, "_background", None)
-        if bg:
-            bg.resume()
-        fire = getattr(agent, "_fire_and_forget", None)
-        reconnect_reply = session.generate_reply(instructions=_build_reconnect_instruction(userdata))
-        if fire:
-            fire(reconnect_reply)
-        else:
-            _handle = reconnect_reply  # SpeechHandle is already started
-
-    async def _grace_timeout():
-        await asyncio.sleep(RECONNECT_GRACE_S)
-        logger.info("Reconnect grace period expired for %s", player_id)
-        await session.aclose()
 
 
 @server.rtc_session(agent_name="divineruin-dm")
@@ -384,6 +321,10 @@ async def dm_session(ctx: agents.JobContext) -> None:
         )
 
         _setup_reconnection(ctx.room, session, userdata, gameplay_agent)
+        # Live multi-PC party trigger (M18 story-001) — a 2nd participant joining THIS room
+        # becomes a PartyMember. Wired at gameplay start ONLY: prologue/onboarding are single-PC
+        # flows, and reconnection (above) owns the primary re-joining.
+        _setup_party_join(ctx.room, userdata)
 
         # --- Initial greeting ---
         if is_first_session:
