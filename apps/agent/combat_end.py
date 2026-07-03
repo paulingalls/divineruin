@@ -99,41 +99,24 @@ def _conditions_changed(before: list[dict], after: list[dict]) -> bool:
     return _key(before) != _key(after)
 
 
-async def _grant_enemy_loot(
-    session: SessionData,
-    p,
-    rng: random.Random,
-    *,
-    mutations,
-    content,
-    conn,
-    sink: EventSink,
-    into: list[dict],
-) -> int:
-    """Roll + grant ONE defeated enemy's role-scaled loot, returning its currency contribution.
+async def _roll_enemy_loot(p, rng: random.Random, *, content) -> tuple[int, list[dict]]:
+    """Roll ONE defeated enemy's role-scaled currency + loot drops WITHOUT granting them.
 
-    Each rolled drop is added to the player's inventory, appended to ``into`` (for the narration
-    summary), and buffered as an ITEM_ACQUIRED chip. Currency is the role-scaled silver for this
-    enemy (0 for a Minion, D79). Untagged/legacy enemies (no category / loot_table_id) are inert —
-    the empty-string defaults mean pre-story-002 content drops nothing rather than crashing."""
+    Returns (silver, drops). Currency is rolled BEFORE loot, preserving the pre-M18 per-enemy RNG
+    consumption order so a seeded run is byte-identical — the caller distributes the returned drops
+    across the party (M18 story-003), which consumes no RNG. Currency is 0 for a Minion (D79).
+    Untagged/legacy enemies (no category / loot_table_id) are inert — the empty-string defaults mean
+    pre-story-002 content drops nothing rather than crashing."""
     currency = 0
     if p.category:
         tier = encounter_loot.tier_for_level(p.level)
         currency = encounter_loot.calculate_currency_drop(p.category, tier, p.role, rng)
+    drops: list[dict] = []
     if p.loot_table_id:
         table = await content.get_loot_table(p.loot_table_id)
         if table is not None:
-            for drop in encounter_loot.derive_role_loot(table, p.role, rng):
-                await mutations.add_inventory_item(session.player_id, drop["item_id"], drop["quantity"], conn=conn)
-                into.append(drop)
-                await emit_or_publish(
-                    sink,
-                    session.room,
-                    E.ITEM_ACQUIRED,
-                    {"item_id": drop["item_id"], "quantity": drop["quantity"], "source": "combat_loot"},
-                    event_bus=session.event_bus,
-                )
-    return currency
+            drops = encounter_loot.derive_role_loot(table, p.role, rng)
+    return currency, drops
 
 
 @function_tool()
@@ -207,44 +190,69 @@ async def _end_combat_db(
     currency_silver = 0
     currency_gold: float = 0
     if outcome == "victory":
+        # ROLL pass (M18 story-003): iterate the defeated enemies in participant order, rolling each
+        # one's currency + loot into a SHARED pool. Rolling is kept fully upstream of distribution so
+        # the RNG consumption sequence is byte-identical to the pre-M18 per-enemy path.
         enemy_dicts = []
+        loot_pool: list[dict] = []
         for p in cs.participants:
             if p.type != "enemy":
                 continue
             enemy_dicts.append({"xp_value": p.xp_value})
             defeated_enemies.append(p.name)
-            currency_silver += await _grant_enemy_loot(
-                session, p, rng, mutations=mutations, content=content, conn=conn, sink=sink, into=loot_granted
-            )
+            enemy_silver, enemy_drops = await _roll_enemy_loot(p, rng, content=content)
+            currency_silver += enemy_silver
+            loot_pool.extend(enemy_drops)
         xp_total = combat_resolution.calculate_combat_xp(enemy_dicts)
 
-        # The enemy loot rolls accrue silver (the pricing baseline); convert to gold crowns at the
-        # grant boundary — symmetric with how repair/crafting convert sp costs to gp via the same
-        # silver_per_gold SSOT — so the wallet (players.data.gold, gold crowns) stays coherent.
-        # Grant in one read-modify-write (FOR UPDATE so concurrent writers can't clobber the
-        # balance), then buffer a single CURRENCY_GAINED chip for the whole haul. Inside this tx — a
-        # rollback un-grants the coin and drops the unflushed event. Minions contribute 0 (D79); a
-        # fight of only Minions emits nothing.
-        if currency_silver > 0:
-            silver_per_gold = (await pricing.get_economy_pricing())["silver_per_gold"]
-            currency_gold = currency_silver / silver_per_gold
-            player = await queries.get_player(session.player_id, conn=conn, for_update=True)
-            prior_gold = (player or {}).get("gold", 0) or 0
-            new_balance = prior_gold + currency_gold
-            await mutations.update_player_gold(session.player_id, new_balance, conn=conn)
+        # DISTRIBUTE pass — items: round-robin the shared pool across members in ascending player_id
+        # seat order (customer decision f437f4475a40). Each rolled drop lands in ONE member's
+        # inventory, so items stay scarce (no per-member duplication). Distribution consumes no RNG.
+        # Solo = 1 member, so every drop goes to the primary exactly as before.
+        seat_order = sorted(session.party.member_ids)
+        for i, drop in enumerate(loot_pool):
+            recipient = seat_order[i % len(seat_order)]
+            await mutations.add_inventory_item(recipient, drop["item_id"], drop["quantity"], conn=conn)
+            loot_granted.append(drop)
             await emit_or_publish(
                 sink,
                 session.room,
-                E.CURRENCY_GAINED,
-                {
-                    "player_id": session.player_id,
-                    "amount": currency_gold,
-                    "currency": "gold",
-                    "source": "combat",
-                    "new_balance": new_balance,
-                },
+                E.ITEM_ACQUIRED,
+                {"item_id": drop["item_id"], "quantity": drop["quantity"], "source": "combat_loot"},
                 event_bus=session.event_bus,
             )
+
+        # DISTRIBUTE pass — currency: the party's enemy-silver haul gets a party multiplier (rewards
+        # grouping without N x farming, customer decision f437f4475a40) then splits evenly; each
+        # member's share converts to gold crowns at its own grant boundary (the silver_per_gold SSOT,
+        # symmetric with repair/crafting). Each grant is a FOR UPDATE read-modify-write; the locks
+        # are acquired in ASCENDING player_id order (deadlock-free SSOT 5da95d657255). One
+        # CURRENCY_GAINED per member; end_data.currency_gold is the summed party haul for the DM
+        # narration line. Inside this tx — a rollback un-grants the coin and drops the unflushed
+        # events. Minions contribute 0 (D79). Solo N=1 -> multiplier 1.0, one member: byte-identical.
+        if currency_silver > 0:
+            silver_per_gold = (await pricing.get_economy_pricing())["silver_per_gold"]
+            share_silver = currency_silver * encounter_loot.party_currency_multiplier(len(seat_order)) / len(seat_order)
+            for pid in seat_order:
+                share_gold = share_silver / silver_per_gold
+                player = await queries.get_player(pid, conn=conn, for_update=True)
+                prior_gold = (player or {}).get("gold", 0) or 0
+                new_balance = prior_gold + share_gold
+                await mutations.update_player_gold(pid, new_balance, conn=conn)
+                currency_gold += share_gold
+                await emit_or_publish(
+                    sink,
+                    session.room,
+                    E.CURRENCY_GAINED,
+                    {
+                        "player_id": pid,
+                        "amount": share_gold,
+                        "currency": "gold",
+                        "source": "combat",
+                        "new_balance": new_balance,
+                    },
+                    event_bus=session.event_bus,
+                )
 
     # Accrue per-encounter weapon durability (1 hit, 2 on a crit vs a heavily-armored target),
     # hollow-doubled. Reads each member's own weapon flags (set live during the loop); the flag
