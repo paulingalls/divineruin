@@ -113,6 +113,11 @@ def _setup_party_join(
     MagicMock-room unit test can supply AsyncMocks.
     """
 
+    # Retain a strong reference to each spawned join task until it finishes. asyncio only holds a
+    # weak reference to the task, so an unreferenced create_task() can be garbage-collected mid-await
+    # — silently dropping the member append/hydrate (a fail-silent violation of the fail-loud rule).
+    _pending_joins: set[asyncio.Task] = set()
+
     @room.on("participant_connected")
     def _on_join(participant: rtc.RemoteParticipant) -> None:
         identity = participant.identity
@@ -120,7 +125,9 @@ def _setup_party_join(
         # no-op. Both are cheap sync checks BEFORE spawning any DB work.
         if identity == userdata.player_id or userdata.party.contains(identity):
             return
-        asyncio.create_task(_join_member(identity))  # noqa: RUF006 — fire-and-forget, mirrors _setup_reconnection
+        task = asyncio.create_task(_join_member(identity))
+        _pending_joins.add(task)
+        task.add_done_callback(_pending_joins.discard)
 
     async def _join_member(pid: str) -> None:
         row = await queries.get_player(pid)
