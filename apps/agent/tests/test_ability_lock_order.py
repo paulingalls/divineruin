@@ -22,6 +22,8 @@ import pytest
 from sample_fixtures import make_context, make_db_mod
 
 from ability_tools import _request_ability_activation_impl
+from spell_casting import _resolve_cast
+from spells import Spell
 
 
 def _player_row(player_id: str, *, class_: str = "bard") -> dict:
@@ -104,3 +106,92 @@ class TestAbilityLockOrder:
         assert _first_lock_ids(queries) == ["alice"]
         # Only the caster union lock — no non-caster target batch inside produce_ooc_condition.
         assert queries.get_players_for_update.call_count == 1
+
+
+# --- Spell path (scope expansion, decision story-008-scope-both-paths): _resolve_cast's OOC entry
+# imposes the SAME global id-order union lock, so spell-vs-spell and ability-vs-spell cross-player
+# casts acquire the identical order as ability-vs-ability. ---
+
+
+def _bless_spell() -> Spell:
+    """A condition-producing spell (applies_condition set) so _resolve_cast reaches the OOC producer
+    and the union pre-lock covers {caster + targets}. Source/tier kept arcane-simple; the condition
+    value is irrelevant here (the real producer is mocked out)."""
+    return Spell(
+        id="test_bless",
+        name="Test Bless",
+        source="arcane",
+        spell_tier="standard",
+        focus_cost=2,
+        mechanics="Bless an ally.",
+        narration_cue="A warm light settles.",
+        resonance_by_source={"arcane": 6},
+        terrain_effects={},
+        audio_cue="SFX-002",
+        concentration=False,
+        applies_condition="blessed",
+        max_targets=3,
+    )
+
+
+async def _cast(*, caster: str, party: list[str], target_id: str | None):
+    """Drive _resolve_cast's OOC path with the lock spy + a mocked producer, so the union pre-lock is
+    the only get_players_for_update call. Returns the queries mock."""
+    ctx = make_context(player_id=caster, party_member_ids=party)
+    ctx.userdata.resonance.current = 0
+    _mock_db, conn = make_db_mod()
+    spell = _bless_spell()
+    queries = MagicMock()
+
+    async def _batch(player_ids, *, conn=None):
+        return {pid: _player_row(pid) for pid in player_ids}
+
+    queries.get_players_for_update = AsyncMock(side_effect=_batch)
+    persistence = MagicMock(update_player_resources=AsyncMock())
+    resonance_mut = MagicMock(update_player_resonance=AsyncMock())
+    resonance_evt = MagicMock(publish_resonance_changed=AsyncMock())
+    spells_mod = MagicMock(get_spell=MagicMock(return_value=spell))
+    produce = MagicMock(produce_ooc_condition=AsyncMock(return_value=[target_id] if target_id else [caster]))
+    await _resolve_cast(
+        ctx.userdata,
+        spell.id,
+        conn=conn,
+        target_id=target_id,
+        queries_mod=queries,
+        persistence_mod=persistence,
+        resonance_mutations_mod=resonance_mut,
+        resonance_events_mod=resonance_evt,
+        spells_mod=spells_mod,
+        condition_produce_mod=produce,
+    )
+    return queries
+
+
+class TestSpellLockOrder:
+    @pytest.mark.asyncio
+    async def test_caster_and_target_locked_in_one_ascending_batch(self):
+        """AC1 (spell): the OOC cast locks {caster, target} in ONE ascending-player_id batch; the
+        caster is not separately locked via get_player(for_update=True)."""
+        queries = await _cast(caster="alice", party=["bob"], target_id="bob")
+        assert _first_lock_ids(queries) == ["alice", "bob"]
+        queries.get_player.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_role_swap_and_cross_path_identical_order(self):
+        """AC2 (spell + ability-vs-spell): spell alice-on-bob, spell bob-on-alice, AND ability bob-on-alice
+        all compute the IDENTICAL global order — a mixed ability/spell pair can't deadlock either."""
+        q_spell_ab = await _cast(caster="alice", party=["bob"], target_id="bob")
+        q_spell_ba = await _cast(caster="bob", party=["alice"], target_id="alice")
+        _r, q_ability_ba = await _activate(caster="bob", party=["alice"], ability_id="bard_inspire", target_id="alice")
+        assert (
+            _first_lock_ids(q_spell_ab)
+            == _first_lock_ids(q_spell_ba)
+            == _first_lock_ids(q_ability_ba)
+            == ["alice", "bob"]
+        )
+
+    @pytest.mark.asyncio
+    async def test_self_cast_locks_only_the_caster(self):
+        """AC3 (spell): a self-cast (no target) locks only the caster row."""
+        queries = await _cast(caster="alice", party=[], target_id=None)
+        assert _first_lock_ids(queries) == ["alice"]

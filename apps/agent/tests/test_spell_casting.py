@@ -81,7 +81,10 @@ async def _cast(
     ctx.userdata.resonance.current = start_resonance
     mock_db, _conn = make_db_mod()
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value=player if player is not None else _player(focus, level))
+    _lock_row = player if player is not None else _player(focus, level)
+    queries.get_player = AsyncMock(return_value=_lock_row)
+    # story-008: the OOC caster row now comes from the id-ordered get_players_for_update batch.
+    queries.get_players_for_update = AsyncMock(side_effect=lambda ids, *, conn=None: {i: _lock_row for i in ids})
     persistence = MagicMock()
     persistence.update_player_resources = AsyncMock()
     mutations = MagicMock()
@@ -115,6 +118,9 @@ class TestCastSpellFocusGate:
         mock_db, _conn = make_db_mod()
         queries = MagicMock()
         queries.get_player = AsyncMock(return_value=_player(focus=2))
+        queries.get_players_for_update = AsyncMock(
+            side_effect=lambda ids, *, conn=None: {i: _player(focus=2) for i in ids}
+        )
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
         mutations = MagicMock()
@@ -145,6 +151,7 @@ class TestCastSpellFocusGate:
         mock_db, _conn = make_db_mod()
         queries = MagicMock()
         queries.get_player = AsyncMock(return_value=None)
+        queries.get_players_for_update = AsyncMock(return_value={})  # unknown player -> empty batch
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
         mutations = MagicMock()
@@ -173,6 +180,10 @@ class TestCastSpellFocusGate:
         mock_db, _conn = make_db_mod()
         queries = MagicMock()
         queries.get_player = AsyncMock(return_value=_player(focus=10))
+        # story-008: the OOC caster row now comes from the id-ordered get_players_for_update batch.
+        queries.get_players_for_update = AsyncMock(
+            side_effect=lambda ids, *, conn=None: {i: _player(focus=10) for i in ids}
+        )
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
         mutations = MagicMock()
@@ -337,7 +348,9 @@ async def _cast_echo(
         ctx.userdata.veil_ward.source = "cleric"
     mock_db, _conn = make_db_mod()
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value=_player(focus))
+    _lock_row = _player(focus)
+    queries.get_player = AsyncMock(return_value=_lock_row)
+    queries.get_players_for_update = AsyncMock(side_effect=lambda ids, *, conn=None: {i: _lock_row for i in ids})
     persistence = MagicMock()
     persistence.update_player_resources = AsyncMock()
     mutations = MagicMock()
@@ -480,6 +493,7 @@ async def _cast_racial(
         player["race"] = race
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value=player)
+    queries.get_players_for_update = AsyncMock(side_effect=lambda ids, *, conn=None: {i: player for i in ids})
     persistence = MagicMock()
     persistence.update_player_resources = AsyncMock()
     mutations = MagicMock()
@@ -689,6 +703,10 @@ class TestResolveCast:
         _mock_db, conn = make_db_mod()
         queries = MagicMock()
         queries.get_player = AsyncMock(return_value=_player(focus=10))
+        # story-008: the OOC caster row now comes from the id-ordered get_players_for_update batch.
+        queries.get_players_for_update = AsyncMock(
+            side_effect=lambda ids, *, conn=None: {i: _player(focus=10) for i in ids}
+        )
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
         mutations = MagicMock()
@@ -726,6 +744,10 @@ class TestResolveCast:
         _mock_db, conn = make_db_mod()
         queries = MagicMock()
         queries.get_player = AsyncMock(return_value=_player(focus=10))
+        # story-008: the OOC caster row now comes from the id-ordered get_players_for_update batch.
+        queries.get_players_for_update = AsyncMock(
+            side_effect=lambda ids, *, conn=None: {i: _player(focus=10) for i in ids}
+        )
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
         mutations = MagicMock()
@@ -760,6 +782,10 @@ class TestResolveCast:
         _mock_db, conn = make_db_mod()
         queries = MagicMock()
         queries.get_player = AsyncMock(return_value=_player(focus=10))
+        # story-008: the OOC caster row now comes from the id-ordered get_players_for_update batch.
+        queries.get_players_for_update = AsyncMock(
+            side_effect=lambda ids, *, conn=None: {i: _player(focus=10) for i in ids}
+        )
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
         mutations = MagicMock()
@@ -798,8 +824,11 @@ class TestResolveCast:
         caster.resonance.current = 0
         _mock_db, conn = make_db_mod()
         queries = MagicMock()
-        # The cast fetches the caster's own for_update row (player_2), not the primary.
-        queries.get_player = AsyncMock(return_value={**_player(focus=10), "player_id": "player_2"})
+        # The cast fetches the caster's own for_update row (player_2), not the primary. story-008:
+        # via the id-ordered get_players_for_update batch (a non-primary caster casting on self).
+        _lock_row = {**_player(focus=10), "player_id": "player_2"}
+        queries.get_player = AsyncMock(return_value=_lock_row)
+        queries.get_players_for_update = AsyncMock(side_effect=lambda ids, *, conn=None: {i: _lock_row for i in ids})
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
         mutations = MagicMock()
@@ -818,8 +847,9 @@ class TestResolveCast:
             spells_mod=spells_mod,
         )
 
-        # The caster row was fetched by player_2's id (the caster's own pool is locked).
-        assert queries.get_player.await_args.args[0] == "player_2"
+        # The caster row was locked by player_2's id (its own pool), via the story-008 id-ordered
+        # batch — a self-cast, so the union is exactly {player_2}.
+        assert list(queries.get_players_for_update.await_args.args[0]) == ["player_2"]
         # Focus + Resonance persist against player_2, never the primary.
         assert persistence.update_player_resources.await_args.args[0] == "player_2"
         assert mutations.update_player_resonance.await_args.args[0] == "player_2"

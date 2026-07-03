@@ -147,7 +147,7 @@ async def _cast_ooc(
         conditions_mod=conditions,
         conditions_mutations_mod=cond_mut,
     )
-    return json.loads(raw), cond_mut, queries.get_player
+    return json.loads(raw), cond_mut, queries.get_players_for_update
 
 
 @pytest.mark.asyncio
@@ -171,15 +171,17 @@ async def test_ooc_cast_on_ally_persists_blessed_to_target():
 
 @pytest.mark.asyncio
 async def test_ooc_self_cast_applies_to_caster():
-    # AC2: a self-cast (no target_id) applies Blessed to the caster, reusing the for_update caster row.
-    packet, cond_mut, get_player = await _cast_ooc(_bless_spell(), caster=_caster("caster_1"))
+    # AC2: a self-cast (no target_id) applies Blessed to the caster, reusing the caster row.
+    packet, cond_mut, get_players_for_update = await _cast_ooc(_bless_spell(), caster=_caster("caster_1"))
 
     assert packet["condition_applied"] == "blessed"
     cond_mut.save_many_player_conditions.assert_awaited_once()
     written = cond_mut.save_many_player_conditions.call_args.args[0]
     assert set(written.keys()) == {"caster_1"}
     assert "blessed" in [c["type"] for c in written["caster_1"]]
-    assert get_player.await_count == 1  # self-cast reuses the caster row — no extra target fetch
+    # story-008: self-cast locks only the caster via ONE id-ordered batch; the producer reuses that
+    # row (no non-caster target fetch) — so exactly one get_players_for_update call.
+    assert get_players_for_update.await_count == 1
 
 
 @pytest.mark.asyncio

@@ -52,8 +52,10 @@ def _player(player_id: str = "caster_1", *, hollow_killed: bool = False) -> dict
 
 async def _cast(spell: Spell, *, caster: dict, target_id: str | None = None, rows: dict | None = None):
     """Drive _cast_spell_impl for caster `caster`, optionally targeting target_id. `rows` maps
-    player_id -> row for the get_player side_effect (defaults to just the caster). Returns the
-    parsed packet plus the get_player mock for call-count assertions; raises ToolError on a gate."""
+    player_id -> row for the fetch side_effects (defaults to just the caster). Returns the parsed
+    packet plus the queries mock for call assertions; raises ToolError on a gate. story-008: the
+    caster row now comes from the id-ordered get_players_for_update batch; the revival gate still
+    reads the TARGET via get_player."""
     ctx = make_context(player_id=caster["player_id"])
     mock_db, _conn = make_db_mod()
     table = {caster["player_id"]: caster, **(rows or {})}
@@ -61,7 +63,13 @@ async def _cast(spell: Spell, *, caster: dict, target_id: str | None = None, row
     async def _get_player(pid, *, conn=None, for_update=False):
         return table.get(pid)
 
-    queries = MagicMock(get_player=AsyncMock(side_effect=_get_player))
+    async def _get_players_for_update(pids, *, conn=None):
+        return {pid: table[pid] for pid in pids if pid in table}
+
+    queries = MagicMock(
+        get_player=AsyncMock(side_effect=_get_player),
+        get_players_for_update=AsyncMock(side_effect=_get_players_for_update),
+    )
     persistence = MagicMock(update_player_resources=AsyncMock())
     mutations = MagicMock(update_player_resonance=AsyncMock())
     events = MagicMock(publish_resonance_changed=AsyncMock())
@@ -77,7 +85,7 @@ async def _cast(spell: Spell, *, caster: dict, target_id: str | None = None, row
         resonance_events_mod=events,
         spells_mod=spells_mod,
     )
-    return json.loads(raw), queries.get_player
+    return json.loads(raw), queries
 
 
 class TestSelfTargetDefault:
@@ -85,10 +93,12 @@ class TestSelfTargetDefault:
 
     @pytest.mark.asyncio
     async def test_no_target_id_self_targets_single_fetch(self):
-        packet, get_player = await _cast(_spell("arcane_bolt"), caster=_player())
+        packet, queries = await _cast(_spell("arcane_bolt"), caster=_player())
         assert packet  # resolved
         assert "target_id" not in packet  # self-cast packet shape unchanged (additive only when set)
-        assert get_player.await_count == 1  # caster only, no target fetch
+        # story-008: the caster is locked via the id-ordered batch (just itself); no get_player fetch.
+        assert list(queries.get_players_for_update.await_args.args[0]) == ["caster_1"]
+        queries.get_player.assert_not_called()
 
 
 class TestTargetedNonRevival:
@@ -98,9 +108,11 @@ class TestTargetedNonRevival:
     @pytest.mark.asyncio
     @pytest.mark.parametrize("target_id", ["ally_2", "altar_object", "blast_area_a3"])
     async def test_packet_carries_target_id_no_target_fetch(self, target_id):
-        packet, get_player = await _cast(_spell("arcane_bolt"), caster=_player(), target_id=target_id)
+        packet, queries = await _cast(_spell("arcane_bolt"), caster=_player(), target_id=target_id)
         assert packet["target_id"] == target_id
-        assert get_player.await_count == 1  # only the caster — non-revival never validates the target
+        # A non-revival cast never validates the target; the caster is locked via the batch (story-008),
+        # so get_player is not called at all.
+        queries.get_player.assert_not_called()
 
 
 class TestTargetIdValidation:
@@ -163,9 +175,11 @@ class TestRevivifyGateKeysOnTarget:
     async def test_explicit_self_target_id_keys_on_caster_no_second_fetch(self):
         # target_id == player_id: the `!= player_id` short-circuit keys the gate on the already-fetched
         # caster row (no target re-fetch), yet the packet still carries the explicit id for narration.
-        packet, get_player = await _cast(_revival(), caster=_player("caster_1"), target_id="caster_1")
+        packet, queries = await _cast(_revival(), caster=_player("caster_1"), target_id="caster_1")
         assert packet["target_id"] == "caster_1"
-        assert get_player.await_count == 1  # caster row reused, never re-fetched
+        # target_id == player_id: the gate reuses the already-locked caster row (no target re-fetch),
+        # and story-008 locks the caster via the id-ordered batch — so get_player is never called.
+        queries.get_player.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_explicit_self_target_id_hollow_killed_refused(self):
