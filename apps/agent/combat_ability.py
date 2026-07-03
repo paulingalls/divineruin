@@ -460,9 +460,9 @@ async def _resolve_ability_packet(
     # would leave it stale — the break would save against the OLD spell and, on a break, write None to
     # the DB (clearing the just-cast spell) while the post-commit sync forced memory back to the new
     # spell, diverging from the DB (story-007). _CombatScratchSnapshot captures concentration, so this
-    # in-tx mutation is reverted if the phase rolls back. NOTE: break_concentration_on_damage still
-    # reads session.concentration (the primary) — a non-primary caster's break is a known M14 gap
-    # (debt), but the SYNC here correctly targets the caster's own pool.
+    # in-tx mutation is reverted if the phase rolls back. break_concentration_on_damage now reads the
+    # DAMAGED member's own concentration (via damaged_player_id, M18 story-004), so a non-primary
+    # caster's break resolves against their own pool — matching this per-member SYNC.
     if result.concentration_spell_id is not spell_casting._UNCHANGED:
         caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
     # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half. _resolve_cast surfaces the

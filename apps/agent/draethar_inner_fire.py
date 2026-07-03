@@ -106,7 +106,7 @@ async def _inner_fire_impl(
     # The self-inflicted fire damage is still damage: a concentrating Draethar rolls the CON save
     # like any other combat damage (incapacitated when the burn drops them to 0 HP).
     concentration_broken = await concentration_break_mod.break_concentration_on_damage(
-        session, fire_damage, incapacitated=new_hp <= 0
+        session, fire_damage, incapacitated=new_hp <= 0, damaged_player_id=player_id
     )
     if concentration_broken is not None:
         # A broken concentration spell that granted a beneficial condition strips it from the

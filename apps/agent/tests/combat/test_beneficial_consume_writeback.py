@@ -79,12 +79,16 @@ async def test_concentration_break_save_passes_eligible_false():
     session = MagicMock()
     session.player_id = "p1"
     session.concentration = SimpleNamespace(spell_id="divine_bless")
+    session.member_state = MagicMock(
+        return_value=SimpleNamespace(concentration=SimpleNamespace(spell_id="divine_bless"))
+    )
     session.combat_state = None
 
     await concentration_break.break_concentration_on_damage(
         session,
         damage=10,
         incapacitated=False,
+        damaged_player_id="p1",
         conn=None,
         queries=queries,
         resolver=resolver,
