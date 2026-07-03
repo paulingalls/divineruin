@@ -41,10 +41,13 @@ logger = logging.getLogger("divineruin.tools")
 async def _publish_veil_ward_changed(session: SessionData, active: bool) -> None:
     """Push the ward's on/off state to the client as a VEIL_WARD_CHANGED event.
 
-    The payload is the minimal {active} (the HUD shows a glanceable zone indicator); the
-    source archetype is narration the DM voices, not wire state.
+    The payload is {active, caster_id} (the HUD shows a glanceable zone indicator); the
+    source archetype is narration the DM voices, not wire state. caster_id is always
+    session.player_id — the tool is single-caster, unlike resonance's per-member combat loop.
     """
-    await publish_game_event(session.room, VEIL_WARD_CHANGED, {"active": active}, session.event_bus)
+    await publish_game_event(
+        session.room, VEIL_WARD_CHANGED, {"active": active, "caster_id": session.player_id}, session.event_bus
+    )
 
 
 @function_tool()

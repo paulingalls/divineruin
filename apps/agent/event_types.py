@@ -70,9 +70,11 @@ CURRENCY_GAINED = "currency_gained"
 # filters on it); it defaults to the session primary. Mirror const in apps/mobile/src/audio/event-types.ts.
 RESONANCE_CHANGED = "resonance_changed"
 
-# Magic (M3.2) — Veil Ward toggle push. Packet: {active} — the minimal on/off toggle only (the
+# Magic (M3.2) — Veil Ward toggle push. Packet: {active, caster_id} — the on/off toggle (the
 # HUD shows a glanceable ward zone indicator; the source archetype is narration the DM voices,
-# not wire state). Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
+# not wire state) plus WHICH party member it belongs to (story-006, mirroring RESONANCE_CHANGED's
+# caster_id). The tool is single-caster, so caster_id is always session.player_id.
+# Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
 VEIL_WARD_CHANGED = "veil_ward_changed"
 
 # Magic (M3.2) — Hollow Echo result push. Packet: {band} — the qualitative band only (the dramatic
