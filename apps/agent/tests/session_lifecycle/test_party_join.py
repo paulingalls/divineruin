@@ -20,8 +20,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from agent import _setup_party_join
 from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from participant_lifecycle import _setup_party_join
 from party_state import PartyMember
 from session_data import SessionData
 
