@@ -32,21 +32,22 @@ import veil_ward
 from db_errors import db_tool
 from event_types import VEIL_WARD_CHANGED
 from game_events import publish_game_event
+from party_state import PartyMember
 from resource_costs import gate_pool
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
 
 
-async def _publish_veil_ward_changed(session: SessionData, active: bool) -> None:
+async def _publish_veil_ward_changed(session: SessionData, active: bool, caster_id: str) -> None:
     """Push the ward's on/off state to the client as a VEIL_WARD_CHANGED event.
 
     The payload is {active, caster_id} (the HUD shows a glanceable zone indicator); the
-    source archetype is narration the DM voices, not wire state. caster_id is always
-    session.player_id — the tool is single-caster, unlike resonance's per-member combat loop.
+    source archetype is narration the DM voices, not wire state. caster_id is the resolved
+    caster (default primary, or an explicit non-primary member — see activate_veil_ward).
     """
     await publish_game_event(
-        session.room, VEIL_WARD_CHANGED, {"active": active, "caster_id": session.player_id}, session.event_bus
+        session.room, VEIL_WARD_CHANGED, {"active": active, "caster_id": caster_id}, session.event_bus
     )
 
 
@@ -55,20 +56,23 @@ async def _publish_veil_ward_changed(session: SessionData, active: bool) -> None
 async def activate_veil_ward(
     context: RunContext[SessionData],
     active: bool = True,
+    caster_id: str | None = None,
 ) -> str:
     """Raise or dismiss a Veil Ward. Call when the caster reinforces the Veil to cast more
     safely (active=true, the default) or drops the ward (active=false). Raising requires a
     ward-capable archetype (Cleric, Druid, Paladin) at sufficient level and deducts its
     Focus/Stamina cost, rejecting if the caster is ineligible or can't afford it. While a ward
     is active, casting generates half the Resonance and Hollow Echo rolls are milder.
-    Dismissing is free and requires an active ward."""
-    return await _activate_veil_ward_impl(context, active)
+    Dismissing is free and requires an active ward. caster_id defaults to the speaking player;
+    pass a party member's id when a non-primary member raises/dismisses their own ward."""
+    return await _activate_veil_ward_impl(context, active, caster_id=caster_id)
 
 
 async def _activate_veil_ward_impl(
     context: RunContext[SessionData],
     active: bool = True,
     *,
+    caster_id: str | None = None,
     db_mod=db,
     queries_mod=db_queries,
     persistence_mod=ability_persistence,
@@ -77,16 +81,22 @@ async def _activate_veil_ward_impl(
 ) -> str:
     context.disallow_interruptions()
     session: SessionData = context.userdata
-    player_id = session.player_id
-    logger.info("activate_veil_ward called: active=%s player=%s", active, player_id)
+    pid = caster_id or session.player_id
+    # caster_id is untrusted LLM input at the tool boundary; member_state fails loud (ValueError)
+    # on a non-party id — convert to the sanctioned narratable ToolError so the DM can recover.
+    try:
+        caster = session.member_state(pid)
+    except ValueError as e:
+        raise ToolError(f"Unknown party member: {pid}") from e
+    logger.info("activate_veil_ward called: active=%s player=%s", active, pid)
 
     if not active:
-        return await _dismiss_impl(session, player_id, db_mod=db_mod, ward_mutations_mod=ward_mutations_mod)
+        return await _dismiss_impl(session, caster, pid, db_mod=db_mod, ward_mutations_mod=ward_mutations_mod)
 
     async with db_mod.transaction() as conn:
-        player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
+        player = await queries_mod.get_player(pid, conn=conn, for_update=True)
         if player is None:
-            raise ToolError(f"Unknown player: {player_id}")
+            raise ToolError(f"Unknown player: {pid}")
 
         # Eligibility gates FIRST, all before any write (AC: ineligible/unaffordable deducts
         # nothing). Archetype + level come from the already-fetched player; the already-active
@@ -99,7 +109,7 @@ async def _activate_veil_ward_impl(
         if level < source.min_level:
             raise ToolError(f"A Veil Ward requires level {source.min_level}; you are level {level}.")
 
-        if (await ward_mutations_mod.read_player_veil_ward(player_id, conn=conn))["active"]:
+        if (await ward_mutations_mod.read_player_veil_ward(pid, conn=conn))["active"]:
             raise ToolError("A Veil Ward is already active.")
 
         # Gate Focus then Stamina (fail-loud, pure); each returns the post-deduct
@@ -107,26 +117,26 @@ async def _activate_veil_ward_impl(
         new_focus = gate_pool(player, "focus", source.focus, label="a Veil Ward")
         new_stamina = gate_pool(player, "stamina", source.stamina, label="a Veil Ward")
         if new_focus is not None or new_stamina is not None:
-            await persistence_mod.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
-        await ward_mutations_mod.update_player_veil_ward(player_id, True, archetype, conn=conn)
+            await persistence_mod.update_player_resources(pid, stamina=new_stamina, focus=new_focus, conn=conn)
+        await ward_mutations_mod.update_player_veil_ward(pid, True, archetype, conn=conn)
 
-    # Transaction committed — sync the in-memory SSOT and push the HUD toggle.
-    session.veil_ward.active = True
-    session.veil_ward.source = archetype
-    await _publish_veil_ward_changed(session, True)
+    # Transaction committed — sync the caster's in-memory SSOT and push the HUD toggle.
+    caster.veil_ward.active = True
+    caster.veil_ward.source = archetype
+    await _publish_veil_ward_changed(session, True, pid)
     return json.dumps(
         {"active": True, "source": archetype, "deducted": {"focus": source.focus, "stamina": source.stamina}}
     )
 
 
-async def _dismiss_impl(session: SessionData, player_id: str, *, db_mod, ward_mutations_mod) -> str:
+async def _dismiss_impl(session: SessionData, caster: PartyMember, pid: str, *, db_mod, ward_mutations_mod) -> str:
     """Dismiss an active ward (free). Fails loud when no ward is active."""
     async with db_mod.transaction() as conn:
-        if not (await ward_mutations_mod.read_player_veil_ward(player_id, conn=conn))["active"]:
+        if not (await ward_mutations_mod.read_player_veil_ward(pid, conn=conn))["active"]:
             raise ToolError("No Veil Ward is active to dismiss.")
-        await ward_mutations_mod.update_player_veil_ward(player_id, False, None, conn=conn)
+        await ward_mutations_mod.update_player_veil_ward(pid, False, None, conn=conn)
 
-    session.veil_ward.active = False
-    session.veil_ward.source = None
-    await _publish_veil_ward_changed(session, False)
+    caster.veil_ward.active = False
+    caster.veil_ward.source = None
+    await _publish_veil_ward_changed(session, False, pid)
     return json.dumps({"active": False})
