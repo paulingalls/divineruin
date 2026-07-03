@@ -292,15 +292,23 @@ async def _end_combat_db(
     if outcome == "defeat":
         enemies = [p for p in cs.participants if p.type == "enemy"]
         combat_cleared = bool(enemies) and all(p.is_fallen for p in enemies)
-        # M14 story-006: a party wipe collects EVERY fallen player participant so ALL of them are
+        # M14 story-006: a party wipe collects EVERY downed player participant so ALL of them are
         # resurrected — each at their own 4-tier anchor (resurrect_party_on_defeat, story-005) —
         # not just the primary. For a player participant id == player_id (combat_init). A member
         # who survived the wipe is left alive (not collected); solo defeat collects exactly one.
+        # M18 story-003: collect is_fallen OR is_dead — an overkill INSTANT death (is_dead, never
+        # Fallen) is still a death to resurrect (concern ecb8bc708dc2), previously missed.
         fallen = [
             (p.id, await queries.get_player(p.id, conn=conn))
             for p in cs.participants
-            if p.type == "player" and p.is_fallen
+            if p.type == "player" and (p.is_fallen or p.is_dead)
         ]
+        # Fail-loud on a missing row (concern 2a646ecf0b4b): a downed player participant with no
+        # players.data row is data corruption — resurrection can't proceed and a silent skip would
+        # strand the character at the death site. Raise inside the tx so it rolls back atomically.
+        missing = [pid for pid, row in fallen if row is None]
+        if missing:
+            raise RuntimeError(f"Downed player participant(s) {missing} have no players.data row on defeat")
         party = [(pid, row) for pid, row in fallen if row is not None]
         contexts = await resurrection.resurrect_party_on_defeat(
             [row for _, row in party], combat_cleared=combat_cleared, conn=conn
@@ -319,10 +327,13 @@ async def _end_combat_db(
         # defeat tx. Skipped when the primary was already collected above.
         if death_context is None:
             primary_row = await queries.get_player(session.player_id, conn=conn)
-            if primary_row is not None:
-                death_context = await resurrection.resurrect_on_defeat(
-                    primary_row, combat_cleared=combat_cleared, conn=conn
-                )
+            # Fail-loud (concern 2a646ecf0b4b): on a defeat the primary is always down (all-players-
+            # down gate), so a missing row here is corruption — raise rather than skip resurrection.
+            if primary_row is None:
+                raise RuntimeError(f"Primary player {session.player_id!r} has no players.data row on defeat")
+            death_context = await resurrection.resurrect_on_defeat(
+                primary_row, combat_cleared=combat_cleared, conn=conn
+            )
 
     await emit_or_publish(
         sink,
