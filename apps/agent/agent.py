@@ -11,8 +11,13 @@ from livekit.plugins import anthropic, deepgram
 
 import db
 import db_content_queries
+import db_mutations_concentration
+import db_mutations_resonance
+import db_mutations_veil_ward
 import db_queries
 from base_agent import _make_tts
+from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from party_state import PartyMember
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
 from token_tracker import TokenTracker
@@ -167,6 +172,75 @@ def _setup_reconnection(
         await asyncio.sleep(RECONNECT_GRACE_S)
         logger.info("Reconnect grace period expired for %s", player_id)
         await session.aclose()
+
+
+def _setup_party_join(
+    room: rtc.Room,
+    userdata: SessionData,
+    *,
+    queries=db_queries,
+    resonance_mod=db_mutations_resonance,
+    veil_ward_mod=db_mutations_veil_ward,
+    concentration_mod=db_mutations_concentration,
+) -> None:
+    """Register the live participant-join trigger: a SECOND player connecting to the room becomes
+    a PartyMember (M18 story-001). This is what makes a >1-member party reachable in prod — every
+    session starts solo (1 member) until a real 2nd participant joins.
+
+    Distinct from _setup_reconnection, whose participant_connected handler only handles the PRIMARY
+    reconnecting. The sync handler early-returns for the primary identity (reconnection's job) and
+    for an already-present member (idempotent — no double-add), else spawns the async DB work as a
+    task (a sync LiveKit handler can't await). queries + the read-helper modules are injectable so a
+    MagicMock-room unit test can supply AsyncMocks.
+    """
+
+    @room.on("participant_connected")
+    def _on_join(participant: rtc.RemoteParticipant) -> None:
+        identity = participant.identity
+        # The primary (re)connecting is _setup_reconnection's job; an already-present member is a
+        # no-op. Both are cheap sync checks BEFORE spawning any DB work.
+        if identity == userdata.player_id or userdata.party.contains(identity):
+            return
+        asyncio.create_task(_join_member(identity))  # noqa: RUF006 — fire-and-forget, mirrors _setup_reconnection
+
+    async def _join_member(pid: str) -> None:
+        row = await queries.get_player(pid)
+        if row is None:
+            # Boundary/external-input case: a stray participant with no players row must NOT
+            # fail-loud the whole room (unlike combat_init's internal-SSOT fail-loud). Log + skip.
+            logger.warning("Party-join: no players row for %r; skipping append", pid)
+            return
+        # Race guard: a second participant_connected for the same pid may have appended during the
+        # await above (both events passed the sync contains() check before either task ran).
+        if userdata.party.contains(pid):
+            return
+        member = PartyMember(
+            player_id=pid,
+            resonance=ResonanceTrack(),
+            veil_ward=VeilWardState(),
+            concentration=ConcentrationState(),
+        )
+        userdata.party.members.append(member)  # IN PLACE — never reassign userdata.party (f4f16c93076e)
+
+        # Hydrate ALL FIVE per-member sub-states onto the new member.
+        # resonance/veil_ward/concentration: the player_id-parameterized read helpers, applied the
+        # same way session_hydration.hydrate_session_state applies them onto the primary.
+        res = await resonance_mod.read_player_resonance(pid)
+        ward = await veil_ward_mod.read_player_veil_ward(pid)
+        conc = await concentration_mod.read_player_concentration(pid)
+        member.resonance.current = res["current"]
+        member.resonance.flickering_bonus = res["flickering_bonus"]
+        member.veil_ward.active = ward["active"]
+        member.veil_ward.source = ward["source"]
+        member.concentration.spell_id = conc["spell_id"]
+        # patron_id is per-member: read from the joiner's OWN row (mirrors dm_session's primary read).
+        divine_favor = row.get("divine_favor") or {}
+        member.patron_id = divine_favor.get("patron", "none")
+        # corruption_level is NOT DB-persisted — it is runtime location-derived (movement_tools.py's
+        # LOCATION_CORRUPTION). A joining player enters the party's room, so they are co-located;
+        # adopt the party's current location corruption rather than a default 0.
+        member.corruption_level = userdata.party.primary.corruption_level
+        logger.info("Party-join: appended %r; party now %s", pid, userdata.party.member_ids)
 
 
 @server.rtc_session(agent_name="divineruin-dm")
@@ -384,6 +458,10 @@ async def dm_session(ctx: agents.JobContext) -> None:
         )
 
         _setup_reconnection(ctx.room, session, userdata, gameplay_agent)
+        # Live multi-PC party trigger (M18 story-001) — a 2nd participant joining THIS room
+        # becomes a PartyMember. Wired at gameplay start ONLY: prologue/onboarding are single-PC
+        # flows, and reconnection (above) owns the primary re-joining.
+        _setup_party_join(ctx.room, userdata)
 
         # --- Initial greeting ---
         if is_first_session:
