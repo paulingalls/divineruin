@@ -285,11 +285,14 @@ async def _resolve_one_packet(
             attacker.conditions = conditions.remove_conditions(attacker.conditions, sub["consumed_conditions"])
         # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
         # per-encounter weapon-durability accrual that end_combat applies. Only the extra
-        # crit-vs-heavy-armor cost (2 hits) is gated on a critical hit landing.
+        # crit-vs-heavy-armor cost (2 hits) is gated on a critical hit landing. M18 story-003:
+        # arm the SWINGING member's own flags (attacker.id == that player's id, combat_init), so a
+        # non-primary member's swings accrue THEIR weapon's durability, not the primary's.
         if attacker.type == "player":
-            session.weapon_used_this_encounter = True
+            member = session.member_state(attacker.id)
+            member.weapon_used = True
             if sub["hit"] and sub["critical"] and combat_resolution.is_heavily_armored(target.ac):
-                session.weapon_crit_vs_heavy = True
+                member.weapon_crit_vs_heavy = True
         # An expanded sequence stops once the target drops — no swinging at a fallen foe.
         if target.is_fallen:
             break

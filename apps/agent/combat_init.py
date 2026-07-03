@@ -314,9 +314,11 @@ async def _start_combat_impl(
     session.combat_state = combat_state
 
     # Reset per-encounter weapon durability flags so each encounter is self-contained
-    # (a swing outside combat won't leak into this encounter's end-of-combat accrual).
-    session.weapon_used_this_encounter = False
-    session.weapon_crit_vs_heavy = False
+    # (a swing outside combat won't leak into this encounter's end-of-combat accrual). M18
+    # story-003: every party member's own flags reset, so no member's prior-encounter swing leaks.
+    for member in session.party.members:
+        member.weapon_used = False
+        member.weapon_crit_vs_heavy = False
     session.draethar_inner_fire_used = False  # Inner Fire is once per encounter (M3.4)
 
     # Build initiative summary once for event + response

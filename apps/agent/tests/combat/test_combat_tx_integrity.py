@@ -124,8 +124,8 @@ class TestCombatScratchSnapshot:
         snap = _CombatScratchSnapshot.capture(session)
 
         # Simulate the in-loop mutations the engine makes during a phase.
-        session.weapon_used_this_encounter = True
-        session.weapon_crit_vs_heavy = True
+        session.party.primary.weapon_used = True
+        session.party.primary.weapon_crit_vs_heavy = True
         companion.is_conscious = False
         session.record_companion_memory("Brae was knocked unconscious in combat")
 
@@ -133,8 +133,8 @@ class TestCombatScratchSnapshot:
 
         snap.restore(session)
 
-        assert session.weapon_used_this_encounter is False
-        assert session.weapon_crit_vs_heavy is False
+        assert session.party.primary.weapon_used is False
+        assert session.party.primary.weapon_crit_vs_heavy is False
         assert companion.is_conscious is True
         assert companion.session_memories == ["m0", "m1"]
         assert list(session.recent_events) == []  # the in-loop record_event was reverted
@@ -158,11 +158,11 @@ class TestCombatScratchSnapshot:
     def test_capture_handles_no_companion(self) -> None:
         session = SessionData(player_id="p_solo", location_id="loc", room=None)
         snap = _CombatScratchSnapshot.capture(session)  # pre-phase: weapon_used False, no companion
-        session.weapon_used_this_encounter = True  # in-loop mutation
+        session.party.primary.weapon_used = True  # in-loop mutation
 
         snap.restore(session)  # must not raise with companion=None
 
-        assert session.weapon_used_this_encounter is False
+        assert session.party.primary.weapon_used is False
         assert session.companion is None
 
     def test_restores_concentration_started_in_loop(self) -> None:
@@ -213,6 +213,33 @@ class TestCombatScratchSnapshot:
         snap.restore(session)
 
         assert p2.concentration.spell_id == "hold_flame"
+
+    def test_restores_non_primary_member_weapon_flags(self) -> None:
+        # M18 story-003: a swing arms the SWINGING member's own weapon flags (combat_packet), so a
+        # phase rollback must revert EACH member's flags, not just the primary's — else a
+        # non-primary member's in-memory weapon_used diverges from the rolled-back combat row.
+        from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+        from party_state import PartyMember
+
+        session = SessionData(player_id="p1", location_id="loc", room=None)
+        session.party.members.append(
+            PartyMember(
+                player_id="p2",
+                resonance=ResonanceTrack(),
+                veil_ward=VeilWardState(),
+                concentration=ConcentrationState(),
+            )
+        )
+        snap = _CombatScratchSnapshot.capture(session)  # pre-phase: both members' flags False
+
+        p2 = session.party.member("p2")
+        assert p2 is not None
+        p2.weapon_used = True  # in-loop: p2 swung
+        p2.weapon_crit_vs_heavy = True
+        snap.restore(session)
+
+        assert p2.weapon_used is False
+        assert p2.weapon_crit_vs_heavy is False
 
 
 class TestLoopEventBuffering:
@@ -477,8 +504,8 @@ class TestScratchRollback:
                 )
             # The player's swing armed weapon_used; the enemy's blow KO'd the companion and recorded
             # a memory. The rolled-back phase must revert all three to their pre-phase values.
-            assert session.weapon_used_this_encounter is False
-            assert session.weapon_crit_vs_heavy is False
+            assert session.party.primary.weapon_used is False
+            assert session.party.primary.weapon_crit_vs_heavy is False
             assert session.companion.is_conscious is True
             assert list(session.companion.session_memories) == ["earlier memory"]
         finally:
@@ -607,8 +634,8 @@ class TestEndToEndAllAgree:
                 )
             # (1) in-memory: combat_state pristine, scratch + companion reverted, no stray events recorded.
             assert session.combat_state is pre_phase_state
-            assert session.weapon_used_this_encounter is False
-            assert session.weapon_crit_vs_heavy is False
+            assert session.party.primary.weapon_used is False
+            assert session.party.primary.weapon_crit_vs_heavy is False
             assert session.companion.is_conscious is True
             assert list(session.companion.session_memories) == ["earlier"]
             assert list(session.recent_events) == []
@@ -651,7 +678,7 @@ class TestEndToEndAllAgree:
             assert isinstance(result, tuple)
             # (1) in-memory: combat cleared, the committed companion KO stands.
             assert session.combat_state is None
-            assert session.weapon_used_this_encounter is False
+            assert session.party.primary.weapon_used is False
             assert session.companion.is_conscious is False
             # (2) DB: combat row deleted, weapon durability decremented once (10 -> 9).
             assert await db_mutations.load_combat_state(combat_id, conn=pool) is None

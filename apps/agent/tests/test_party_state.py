@@ -297,3 +297,76 @@ class TestPartyStateSerialize:
         assert [m.player_id for m in restored.members] == ["p1", "p2"]
         assert restored.members[0].resonance.current == 1
         assert restored.members[1].resonance.current == 2
+
+
+class TestPartyMemberWeaponFlags:
+    """Per-member weapon-durability flags (M18 story-003): the swing that arms end-of-combat
+    durability accrual is recorded on the SWINGING member, not the session, so a non-primary
+    member's swings accrue their OWN weapon's durability."""
+
+    def test_weapon_flags_default_false(self):
+        member = party_state.PartyMember(
+            player_id="p1",
+            resonance=caster_state.ResonanceTrack(),
+            veil_ward=caster_state.VeilWardState(),
+            concentration=caster_state.ConcentrationState(),
+        )
+        assert member.weapon_used is False
+        assert member.weapon_crit_vs_heavy is False
+
+    def test_weapon_flags_custom(self):
+        member = party_state.PartyMember(
+            player_id="p1",
+            resonance=caster_state.ResonanceTrack(),
+            veil_ward=caster_state.VeilWardState(),
+            concentration=caster_state.ConcentrationState(),
+            weapon_used=True,
+            weapon_crit_vs_heavy=True,
+        )
+        assert member.weapon_used is True
+        assert member.weapon_crit_vs_heavy is True
+
+    def test_to_dict_includes_weapon_flags(self):
+        p = party_state.PartyMember(
+            player_id="p1",
+            resonance=caster_state.ResonanceTrack(),
+            veil_ward=caster_state.VeilWardState(),
+            concentration=caster_state.ConcentrationState(),
+            weapon_used=True,
+            weapon_crit_vs_heavy=True,
+        )
+        d = party_state.PartyState([p]).to_dict()
+        assert d["members"][0]["weapon_used"] is True
+        assert d["members"][0]["weapon_crit_vs_heavy"] is True
+
+    def test_roundtrip_weapon_flags(self):
+        p = party_state.PartyMember(
+            player_id="p1",
+            resonance=caster_state.ResonanceTrack(),
+            veil_ward=caster_state.VeilWardState(),
+            concentration=caster_state.ConcentrationState(),
+            weapon_used=True,
+            weapon_crit_vs_heavy=True,
+        )
+        restored = party_state.PartyState.from_dict(party_state.PartyState([p]).to_dict())
+        assert restored.members[0].weapon_used is True
+        assert restored.members[0].weapon_crit_vs_heavy is True
+
+    def test_from_dict_defaults_weapon_flags_when_absent(self):
+        # A party dict persisted before M18 has no weapon flags; from_dict must default them to
+        # False rather than KeyError, so old sessions load clean.
+        data = {
+            "members": [
+                {
+                    "player_id": "p1",
+                    "resonance": {"current": 0, "flickering_bonus": 0},
+                    "veil_ward": {"active": False, "source": None},
+                    "concentration": {"spell_id": None},
+                    "corruption_level": 0,
+                    "patron_id": "none",
+                }
+            ]
+        }
+        member = party_state.PartyState.from_dict(data).members[0]
+        assert member.weapon_used is False
+        assert member.weapon_crit_vs_heavy is False

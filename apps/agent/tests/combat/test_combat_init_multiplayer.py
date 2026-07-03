@@ -143,3 +143,24 @@ async def test_combat_started_event_lists_both_players():
 
     state_dict = await _run(ctx, mock_mutations, mock_queries, mock_content)
     assert set(state_dict["initiative_order"]) >= {"player_1", "player_2"}
+
+
+@pytest.mark.asyncio
+async def test_combat_init_resets_weapon_flags_for_every_member():
+    # M18 story-003: the per-encounter weapon-flag reset loops EVERY member, so a non-primary
+    # member's stale swing from a prior encounter can't leak into this encounter's accrual.
+    mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+    ctx = make_context()
+    _add_second_member(ctx)
+    _mock_non_primary_batch(mock_queries, {"player_2": _second_member_row()})
+
+    ctx.userdata.party.primary.weapon_used = True
+    p2 = ctx.userdata.party.member("player_2")
+    p2.weapon_used = True
+    p2.weapon_crit_vs_heavy = True
+
+    await _run(ctx, mock_mutations, mock_queries, mock_content)
+
+    assert ctx.userdata.party.primary.weapon_used is False
+    assert p2.weapon_used is False
+    assert p2.weapon_crit_vs_heavy is False
