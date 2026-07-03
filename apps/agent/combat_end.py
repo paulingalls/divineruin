@@ -274,11 +274,37 @@ async def _end_combat_db(
     if outcome == "defeat":
         enemies = [p for p in cs.participants if p.type == "enemy"]
         combat_cleared = bool(enemies) and all(p.is_fallen for p in enemies)
-        player_data = await queries.get_player(session.player_id, conn=conn)
-        if player_data is not None:
-            death_context = await resurrection.resurrect_on_defeat(
-                player_data, combat_cleared=combat_cleared, conn=conn
-            )
+        # M14 story-006: a party wipe collects EVERY fallen player participant so ALL of them are
+        # resurrected — each at their own 4-tier anchor (resurrect_party_on_defeat, story-005) —
+        # not just the primary. For a player participant id == player_id (combat_init). A member
+        # who survived the wipe is left alive (not collected); solo defeat collects exactly one.
+        fallen = [
+            (p.id, await queries.get_player(p.id, conn=conn))
+            for p in cs.participants
+            if p.type == "player" and p.is_fallen
+        ]
+        party = [(pid, row) for pid, row in fallen if row is not None]
+        contexts = await resurrection.resurrect_party_on_defeat(
+            [row for _, row in party], combat_cleared=combat_cleared, conn=conn
+        )
+        # The session's location follows the PRIMARY's anchor (single-session handoff, synced in
+        # _end_combat_finish); non-primary members revive at their own anchors in the DB. Contexts
+        # align with `party` by order (the engine iterates the list it was passed).
+        death_context = next(
+            (ctx for (pid, _), ctx in zip(party, contexts, strict=True) if pid == session.player_id), None
+        )
+        # Preserve the pre-M14 invariant that the session's PRIMARY is always resurrected on a
+        # defeat, even when it isn't a plain fallen `player` participant. A Stage-2+ Hollowed rise
+        # flips the primary's type to `temporary_hollowed` in place (combat_support, keeping
+        # id == player_id), so the `player` collector above excludes it — yet the echo's destruction
+        # IS the player's death. Resurrect it here (records hollow_killed, revives) inside this same
+        # defeat tx. Skipped when the primary was already collected above.
+        if death_context is None:
+            primary_row = await queries.get_player(session.player_id, conn=conn)
+            if primary_row is not None:
+                death_context = await resurrection.resurrect_on_defeat(
+                    primary_row, combat_cleared=combat_cleared, conn=conn
+                )
 
     await emit_or_publish(
         sink,
