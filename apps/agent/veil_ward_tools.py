@@ -32,6 +32,7 @@ import veil_ward
 from db_errors import db_tool
 from event_types import VEIL_WARD_CHANGED
 from game_events import publish_game_event
+from party_state import PartyMember
 from resource_costs import gate_pool
 from session_data import SessionData
 
@@ -128,7 +129,7 @@ async def _activate_veil_ward_impl(
     )
 
 
-async def _dismiss_impl(session: SessionData, caster, pid: str, *, db_mod, ward_mutations_mod) -> str:
+async def _dismiss_impl(session: SessionData, caster: PartyMember, pid: str, *, db_mod, ward_mutations_mod) -> str:
     """Dismiss an active ward (free). Fails loud when no ward is active."""
     async with db_mod.transaction() as conn:
         if not (await ward_mutations_mod.read_player_veil_ward(pid, conn=conn))["active"]:
