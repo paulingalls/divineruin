@@ -218,22 +218,30 @@ async def _end_combat_db(
             )
 
     # Accrue per-encounter weapon durability (1 hit, 2 on a crit vs a heavily-armored target),
-    # hollow-doubled. Reads weapon_used_this_encounter (set live during the loop); the flag RESET
-    # is deferred to _end_combat_finish so a rolled-back phase keeps it set for the retry.
+    # hollow-doubled. Reads each member's own weapon flags (set live during the loop); the flag
+    # RESET is deferred to _end_combat_finish so a rolled-back phase keeps them set for the retry.
+    # M18 story-003: EVERY player member who swung accrues their OWN equipped weapon's durability,
+    # keyed on their own corruption_level for the hollow-zone doubling. The primary's result is
+    # surfaced in the response (single-session handoff); non-primary accrual lands in the DB.
     weapon_durability: dict = {}
-    if session.weapon_used_this_encounter:
-        inventory = await queries.get_player_inventory(session.player_id, conn=conn)
+    for member in session.party.members:
+        if not member.weapon_used:
+            continue
+        inventory = await queries.get_player_inventory(member.player_id, conn=conn)
         weapon = _find_equipped(inventory, "weapon")
-        if weapon is not None:
-            weapon_durability = await _accrue_durability(
-                session,
-                session.player_id,
-                weapon,
-                combat_resolution.weapon_hits_for_encounter(session.weapon_crit_vs_heavy),
-                is_hollow_zone=combat_resolution.is_hollow_zone(session.corruption_level),
-                conn=conn,
-                sink=sink,
-            )
+        if weapon is None:
+            continue
+        member_durability = await _accrue_durability(
+            session,
+            member.player_id,
+            weapon,
+            combat_resolution.weapon_hits_for_encounter(member.weapon_crit_vs_heavy),
+            is_hollow_zone=combat_resolution.is_hollow_zone(member.corruption_level),
+            conn=conn,
+            sink=sink,
+        )
+        if member.player_id == session.player_id:
+            weapon_durability = member_durability
 
     # Persist the player's cross-encounter conditions (M4.3, story-004): the persists_across_encounters
     # ones acquired this fight (Wounded/Exhausted/Hollowed) MERGE into players.data; phase-scoped ones
@@ -337,8 +345,10 @@ def _end_combat_finish(
     xp_total = end_data["xp_total"]
     defeated_enemies = end_data["defeated_enemies"]
 
-    session.weapon_used_this_encounter = False
-    session.weapon_crit_vs_heavy = False
+    # M18 story-003: reset EVERY member's per-encounter weapon flags (mirror combat_init).
+    for member in session.party.members:
+        member.weapon_used = False
+        member.weapon_crit_vs_heavy = False
     session.draethar_inner_fire_used = False  # Inner Fire resets each encounter (M3.4)
     session.combat_state = None
 

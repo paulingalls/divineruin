@@ -205,16 +205,13 @@ class SessionData:
     pre_dispatch_agent_type: str | None = None
     pre_blacksmith_agent_type: str | None = None
 
-    # Per-encounter weapon durability state (story-003). A weapon takes 1 hit per
-    # encounter (2 on a crit vs a heavily-armored target); set during packet
-    # resolution (combat_packet._resolve_one_packet on any player swing), consumed
-    # and reset at end_combat. Lives here, not on CombatParticipant, because the
-    # flag spans the whole encounter rather than a single combat_state snapshot.
-    weapon_used_this_encounter: bool = False
-    weapon_crit_vs_heavy: bool = False
+    # Per-encounter weapon durability state moved PER MEMBER onto PartyMember (M18 story-003):
+    # a weapon takes 1 hit per encounter (2 on a crit vs a heavily-armored target), armed on the
+    # SWINGING member (combat_packet) and accrued per-member at end_combat, so a non-primary
+    # member's swings accrue their own weapon. See PartyMember.weapon_used / weapon_crit_vs_heavy.
 
     # Draethar Inner Fire is once-per-encounter (story-005, M3.4). Set by the inner_fire tool,
-    # reset at both encounter boundaries beside the weapon flags above.
+    # reset at both encounter boundaries beside the per-member weapon flags.
     draethar_inner_fire_used: bool = False
 
     # Cached data for hot context (updated by background process, read by voice loop)

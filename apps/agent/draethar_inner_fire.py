@@ -5,7 +5,7 @@ caster's skin flares and the inner fire purges Veil disturbance — reduce curre
 but take 1d6 unpreventable self fire damage. The -3 / "1d6" values are read from the racial
 table (racial_resonance, story-001), not hardcoded. Unlike the passive racials this is an active
 combat action, so it ships as a combat @function_tool and is gated to once per encounter via
-session.draethar_inner_fire_used (reset at encounter boundaries, like weapon_used_this_encounter).
+session.draethar_inner_fire_used (reset at encounter boundaries, beside the per-member weapon flags).
 
 It is combat-scoped (the "encounter" is a combat): a player's HP lives in two places during
 combat — the in-memory CombatParticipant.hp_current and persisted players.data — so this writes

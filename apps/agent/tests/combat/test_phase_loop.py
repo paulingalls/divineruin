@@ -194,7 +194,7 @@ class TestResolvePhaseNonEnding:
         await _resolve_phase_impl(ctx, **deps)
 
         # The player's weapon swung this encounter (end_combat reads this for durability).
-        assert ctx.userdata.weapon_used_this_encounter is True
+        assert ctx.userdata.party.primary.weapon_used is True
 
     @pytest.mark.asyncio
     async def test_sets_weapon_used_even_when_player_misses(self):
@@ -208,8 +208,8 @@ class TestResolvePhaseNonEnding:
 
         await _resolve_phase_impl(ctx, **deps)
 
-        assert ctx.userdata.weapon_used_this_encounter is True
-        assert ctx.userdata.weapon_crit_vs_heavy is False
+        assert ctx.userdata.party.primary.weapon_used is True
+        assert ctx.userdata.party.primary.weapon_crit_vs_heavy is False
 
     @pytest.mark.asyncio
     async def test_wasted_when_target_already_fell(self):
