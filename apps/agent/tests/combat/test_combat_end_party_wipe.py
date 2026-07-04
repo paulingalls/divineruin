@@ -4,7 +4,8 @@ into a party and routes them through resurrection.resurrect_party_on_defeat (M14
 Proves against the dev Postgres at :55432 (dev_db_pool) that a 2-PC party wipe resurrects BOTH
 members — each at their own 4-tier anchor — inside the one defeat transaction, while solo defeat
 stays unchanged (exactly one player), a survivor is left alive, and a Stage-2+ Hollowed primary
-that has transformed to a temporary_hollowed echo is still resurrected via the primary fallback.
+that has transformed to a temporary_hollowed echo is still resurrected — via the M20 story-004
+outcome-independent dead-life collector (which catches any temporary_hollowed participant).
 
 Each member seeds an off-catalog death location (region-less -> no tier-2 settlement) plus a
 distinct real last_rested_settlement_id, so tier-3 gives divergent anchors. Cleanup removes the
@@ -248,8 +249,9 @@ async def test_missing_player_row_on_defeat_raises(dev_db_pool):
 @pytest.mark.asyncio
 async def test_hollowed_echo_primary_still_resurrected(dev_db_pool):
     """Review concern ea3b4a268fd3: a Stage-2+ Hollowed primary whose participant has transformed
-    to a temporary_hollowed echo (type flipped, id == player_id) is NOT a `player` participant, so
-    the collector skips it — the primary fallback must still resurrect it, marking hollow_killed."""
+    to a temporary_hollowed echo (type flipped, id == player_id) is NOT a `player` participant, but
+    the M20 story-004 dead-life collector catches it by its temporary_hollowed type and resurrects
+    it, marking hollow_killed (previously handled by a now-removed special-case primary fallback)."""
     pool = dev_db_pool
     hollowed = conditions.apply_condition([], "hollowed")  # stage 1; any stage marks hollow_killed
     await _seed_player(pool, _PRIMARY, _PRIMARY_ANCHOR, conditions_list=hollowed)
