@@ -191,6 +191,43 @@ test("item_acquired without image_url has undefined image_url in payload", () =>
   expect(overlay.payload.image_url).toBeUndefined();
 });
 
+test("item_acquired for the local player's own player_id fires the overlay", () => {
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "p1" });
+  handleGameEvent({
+    type: "item_acquired",
+    name: "Rusty Sword",
+    description: "A worn blade",
+    rarity: "common",
+    player_id: "p1",
+  });
+  expect(hudStore.getState().overlays).toHaveLength(1);
+});
+
+test("item_acquired for a different party member's player_id suppresses the overlay", () => {
+  // M20 story-001: the loot HUD leak — a round-robinned drop granted to a teammate must not
+  // show on the local player's HUD.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "p1" });
+  handleGameEvent({
+    type: "item_acquired",
+    name: "Rusty Sword",
+    description: "A worn blade",
+    rarity: "common",
+    player_id: "p2",
+  });
+  expect(hudStore.getState().overlays).toHaveLength(0);
+});
+
+test("item_acquired with no player_id fires the overlay (back-compat: solo / non-combat rewards)", () => {
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "p1" });
+  handleGameEvent({
+    type: "item_acquired",
+    name: "Rations",
+    description: "Food",
+    rarity: "common",
+  });
+  expect(hudStore.getState().overlays).toHaveLength(1);
+});
+
 // --- handleGameEvent: quest_update ---
 
 test("quest_update pushes overlay and sets active objective", () => {
