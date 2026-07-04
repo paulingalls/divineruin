@@ -200,10 +200,14 @@ class TestWrapEchoGating:
         echo.is_fallen = echo_fallen
         return cs
 
-    def test_live_echo_blocks_victory_even_with_all_enemies_fallen(self):
+    def test_solo_living_echo_all_enemies_fallen_resolves_defeat(self):
+        # story-005 finding 5: a solo living echo (no other players) with all enemies fallen is
+        # stranded — nobody left to destroy it, no enemy to fight — so combat resolves to defeat
+        # (party lost), NOT a hang. A living echo with a living enemy still blocks.
         cs = self._state_with_echo(echo_fallen=False, enemies_fallen=True)
         wrap = combat_phase._wrap(cs)
-        assert wrap.combat_ended is False
+        assert wrap.combat_ended is True
+        assert wrap.outcome == "defeat"
 
     def test_destroyed_echo_ends_combat_as_defeat(self):
         cs = self._state_with_echo(echo_fallen=True, enemies_fallen=False)
@@ -257,22 +261,30 @@ class TestWrapEchoGating:
         assert wrap.combat_ended is True
         assert wrap.outcome == "defeat"
 
-    def test_destroyed_echo_mutual_kill_resolves_victory(self):
-        # story-004 finding 2: echoes destroyed + all non-echo players down + all enemies fallen
-        # resolves VICTORY (matching the echo-free mutual-KO tie-break), not defeat — victory is
-        # checked before the echo-defeat gate. The dead echo-primary is still resurrected by
-        # combat_end's outcome-independent dead-life collector.
+    def test_destroyed_echo_mutual_kill_resolves_defeat(self):
+        # story-005 (decision mutual-ko-is-defeat): echoes destroyed + all non-echo players down +
+        # all enemies fallen is a party wipe -> DEFEAT (was victory pre-story-005). The dead
+        # echo-primary is still resurrected by combat_end's dead-life collector.
         cs = self._state_with_echo(echo_fallen=True, enemies_fallen=True)
         self._add_standing_ally(cs, dead=True)
         wrap = combat_phase._wrap(cs)
         assert wrap.combat_ended is True
-        assert wrap.outcome == "victory"
+        assert wrap.outcome == "defeat"
+
+    def test_multi_pc_wipe_with_living_echo_and_living_enemy_blocks(self):
+        # cc6fee7df67d: multi-PC — all real players down, a living echo AND a living enemy. Combat
+        # blocks (not auto-defeat): the DM plays out the echo's last stand against the remaining
+        # enemy; a later phase resolves it (echo destroyed -> defeat, or all enemies fall -> defeat).
+        cs = self._state_with_echo(echo_fallen=False, enemies_fallen=False)  # living echo + living enemy
+        self._add_standing_ally(cs, dead=True)  # the only non-echo ally is down
+        wrap = combat_phase._wrap(cs)
+        assert wrap.combat_ended is False
 
     def test_living_echo_with_all_enemies_and_allies_down_defeats_no_hang(self):
-        # story-004 finding 3: a living echo blocks combat-end, but when all enemies are fallen AND
-        # every non-echo ally is also down, no one is left to destroy the echo -> the party is wiped
-        # -> DEFEAT (no WRAP-beat hang). Solo living echo (no other players) still blocks — see
-        # test_live_echo_blocks_victory_even_with_all_enemies_fallen.
+        # story-004/005 finding 3/5: a living echo blocks combat-end, but when all enemies are fallen
+        # AND every non-echo ally is also down, no one is left to destroy the echo -> the party is
+        # wiped -> DEFEAT (no WRAP-beat hang). A solo living echo with all enemies fallen likewise
+        # resolves defeat — see test_solo_living_echo_all_enemies_fallen_resolves_defeat.
         cs = self._state_with_echo(echo_fallen=False, enemies_fallen=True)
         self._add_standing_ally(cs, dead=True)
         wrap = combat_phase._wrap(cs)

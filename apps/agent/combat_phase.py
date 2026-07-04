@@ -244,6 +244,14 @@ def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:
     ]
 
 
+def is_terminally_down(p) -> bool:
+    """A player-life is terminally down when it can no longer act or be saved: instant-death
+    (``is_dead``, overkill) OR three failed death saves (``death_save_failures >= _DEATH_SAVE_LIMIT``,
+    where the 2-flag death model leaves ``is_dead`` False). Shared with ``combat_end``'s dead-life
+    partition so the phase gate and the resurrection collector never disagree on who is dead."""
+    return p.is_dead or p.death_save_failures >= _DEATH_SAVE_LIMIT
+
+
 def _wrap(state: CombatState) -> WrapOutcome:
     """Compute Beat-4 effect signals and the end-condition.
 
@@ -276,20 +284,21 @@ def _wrap(state: CombatState) -> WrapOutcome:
     ]
 
     enemies = [p for p in state.participants if p.type == "enemy"]
-    # Temporary Hollowed echoes (M4.4 story-008): a Stage-2+ Hollowed player who fell rose as one of
-    # these in place (the player participant transformed) — an echo is an ALREADY-DEAD player wearing
-    # a hostile monster's HP. A LIVING echo is an active hostile on the board that must be destroyed;
-    # a DESTROYED echo is a dead player-life awaiting Mortaen (combat_end resurrects it on any outcome).
+    living_enemies = any(not e.is_fallen for e in enemies)
+    all_enemies_fallen = bool(enemies) and all(e.is_fallen for e in enemies)
+    # Temporary Hollowed echoes (M4.4 story-008): a Stage-2+ Hollowed player who fell rose in place —
+    # an echo is an ALREADY-DEAD player wearing a hostile monster's HP. A LIVING echo is an active
+    # hostile that must be destroyed; a DESTROYED echo is a dead player-life awaiting Mortaen
+    # (combat_end resurrects ANY echo on ANY outcome).
     echoes = [p for p in state.participants if p.type == "temporary_hollowed"]
     living_echoes = [e for e in echoes if not e.is_fallen]
-    # M18 multi-PC party defeat: the party is lost only when ALL non-echo player participants are
-    # terminally down (is_dead or death_save_failures >= _DEATH_SAVE_LIMIT). all([]) is True, so the
-    # solo case (primary transformed into the echo, no other players) reports non_echo_players_down.
+    # The party is lost only when ALL non-echo players are terminally down. all([]) is True, so the
+    # solo primary-became-echo case reports non_echo_players_down. any_player_standing is False with no
+    # players or all down — it gates the victory branch so a total-party-kill (mutual-KO) is a DEFEAT,
+    # not a victory (decision mutual-ko-is-defeat / M20 story-005).
     players = [p for p in state.participants if p.type == "player"]
-    non_echo_players_down = all(p.is_dead or p.death_save_failures >= _DEATH_SAVE_LIMIT for p in players)
-    # real_players_down: non-echo players EXIST and are all down. Distinct from non_echo_players_down
-    # (which is vacuously True for the solo-echo case) — it is False when there are no non-echo players.
-    real_players_down = bool(players) and non_echo_players_down
+    non_echo_players_down = all(is_terminally_down(p) for p in players)
+    any_player_standing = any(not is_terminally_down(p) for p in players)
 
     combat_ended = False
     outcome: str | None = None
@@ -299,21 +308,21 @@ def _wrap(state: CombatState) -> WrapOutcome:
     if state.deescalated:
         combat_ended, outcome = True, "deescalated"
     elif living_echoes:
-        # A living echo (the primary as a Hollowed monster) blocks combat-end while a real ally can
-        # still act to destroy it, or — in the solo case (no other players) — the DM plays out the
-        # echo's last stand. Only when every real ally is ALSO down does the party wipe: no one is
-        # left to destroy the echo -> defeat (M20 story-004 finding 3; no WRAP-beat hang).
-        if real_players_down:
+        # A living echo blocks combat-end WHILE it can still be resolved — a standing non-echo ally
+        # can destroy it, or a living enemy keeps the fight going. With neither, the echo is stranded
+        # (no one to destroy it, no enemy to fight) and the party is lost -> defeat (M20 story-005
+        # finding 5; no WRAP-beat hang).
+        if not (any_player_standing or living_enemies):
             combat_ended, outcome = True, "defeat"
-        # else: block — a standing ally, or the solo echo last-stand, keeps combat alive.
-    elif enemies and all(p.is_fallen for p in enemies):
-        # All hostiles (enemies + echoes; no living echo reaches here) are cleared -> victory. A
-        # mutual KO (every non-echo player also down) still resolves victory, matching the echo-free
-        # tie-break (M20 story-004 finding 2); the dead echo-primary is resurrected by combat_end.
+        # else: block — a standing ally or a living enemy keeps combat alive.
+    elif all_enemies_fallen and any_player_standing:
+        # All hostiles down AND >=1 non-echo player still stands to claim it -> victory. A mutual-KO
+        # (no survivor) is NOT a victory (decision mutual-ko-is-defeat) — it falls to the party-wipe
+        # defeat below, so combat_end never runs the victory-loot path on an empty seat_order.
         combat_ended, outcome = True, "victory"
     elif (echoes or players) and non_echo_players_down:
-        # Party wipe with hostiles remaining: echo-defeat (all echoes destroyed + party down) or a
-        # plain player wipe. Solo destroyed echo (players == []) -> all([]) is True -> defeat.
+        # Party wipe: every non-echo player-life is down — a mutual-KO, an echo-defeat (all echoes
+        # destroyed + party down), or a plain player wipe. combat_end resurrects each per-member.
         combat_ended, outcome = True, "defeat"
 
     return WrapOutcome(

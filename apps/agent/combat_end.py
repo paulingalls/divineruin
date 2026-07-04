@@ -20,6 +20,7 @@ import pricing_queries
 import resurrection
 from combat_durability import _accrue_durability, _find_equipped
 from combat_events import EventSink, emit_or_publish
+from combat_phase import is_terminally_down
 from combat_support import _publish_sounds, _require_combat
 from db_errors import db_tool
 from region_types import REGION_CITY
@@ -29,11 +30,6 @@ from tool_support import SOUND_COMBAT_DEFEAT, SOUND_COMBAT_FLED, SOUND_COMBAT_VI
 logger = logging.getLogger("divineruin.tools")
 
 _VALID_OUTCOMES = ("victory", "defeat", "fled")
-# A character dies on the death-save grind at 3 failures (combat_resolution.resolve_death_save sets
-# dead=True there) — but the 2-flag model never sets is_dead in that case (is_dead is overkill-only).
-# combat-end's dead-life partition must count that as truly dead, matching combat_phase._wrap's
-# terminally-down predicate (is_dead OR death_save_failures >= this limit).
-_DEATH_SAVE_LIMIT = 3
 _STINGER_SOUND = {
     "victory": SOUND_COMBAT_VICTORY,
     "defeat": SOUND_COMBAT_DEFEAT,
@@ -217,7 +213,11 @@ async def _end_combat_db(
         # drop lands in ONE participant's inventory, so items stay scarce (no per-member duplication).
         # Distribution consumes no RNG. Solo = 1 participant, so every drop goes to the primary.
         seat_order = sorted(p.id for p in cs.participants if p.type == "player")
-        for i, drop in enumerate(loot_pool):
+        # Defensive (concern ab4ced4c2110): _wrap guarantees >=1 standing player on an auto victory
+        # (any_player_standing gate), but a MANUAL end_combat('victory') is ungated — a solo primary
+        # that rose as an echo leaves seat_order empty. Skip distribution rather than divide by zero:
+        # there is no player-life to receive the haul.
+        for i, drop in enumerate(loot_pool if seat_order else []):
             recipient = seat_order[i % len(seat_order)]
             await mutations.add_inventory_item(recipient, drop["item_id"], drop["quantity"], conn=conn)
             if recipient == session.player_id:
@@ -245,7 +245,7 @@ async def _end_combat_db(
         # haul (story-001), never the summed party gold. Inside this tx — a rollback un-grants the
         # coin and drops the unflushed events. Minions contribute 0 (D79). Solo N=1 -> multiplier
         # 1.0, one member: byte-identical.
-        if currency_silver > 0:
+        if currency_silver > 0 and seat_order:  # seat_order guard: see the loot-distribution note above
             silver_per_gold = (await pricing.get_economy_pricing())["silver_per_gold"]
             share_silver = currency_silver * encounter_loot.party_currency_multiplier(len(seat_order)) / len(seat_order)
             share_gold = share_silver / silver_per_gold  # loop-invariant — every participant's share is equal
@@ -316,37 +316,36 @@ async def _end_combat_db(
 
     await mutations.delete_combat_state(cs.combat_id, conn=conn)
 
-    # Death, resurrection & stabilization (M4.4 story-003; M20 story-004): a player-life leaves
-    # combat one of three ways. TRULY DEAD lives — an is_dead player (instant-death overkill) and ANY
-    # temporary_hollowed echo (a player who already died to rise as a Hollowed monster) — return via
-    # Mortaen on ANY outcome: trigger_character_death records the death + escalating cost + nearest
-    # anchor + revive, and marks hollow_killed from an echo's persisted Hollowed condition. On a
-    # DEFEAT (party wipe) the merely-FALLEN also die — no ally was left to drag them clear. On a WON
-    # fight a merely-fallen (savable) ally is instead STABILIZED by the party (comes to at 1 HP;
-    # combat wrote their players.data HP to 0 per-hit, so this is a real write, not a no-op).
-    # combat_cleared (all enemies down) feeds the tier-1 cleared-battlefield anchor. Atomic with the
-    # combat-teardown tx.
+    # Death, resurrection & stabilization (M4.4 story-003; M20 story-004/005):
+    # - TRULY DEAD lives — an is_terminally_down player (is_dead overkill OR 3 failed death saves) and
+    #   ANY temporary_hollowed echo (a player who already died to rise as a Hollowed monster) — return
+    #   via Mortaen on ANY outcome (death always returns the character). trigger_character_death records
+    #   the death + escalating cost + nearest anchor + revive, and marks hollow_killed from an echo's
+    #   persisted Hollowed condition. Scoping this to victory/defeat would STRAND a destroyed
+    #   echo-primary on a fled/deescalated end — the character loss this saga exists to fix.
+    # - On a DEFEAT (party wipe) the merely-FALLEN also die — no ally was left to drag them clear.
+    # - On a VICTORY (and only victory) a merely-fallen (savable) ally is instead STABILIZED by the
+    #   party (comes to at 1 HP; combat wrote their players.data HP to 0 per-hit, so this is a real
+    #   write). fled/deescalated do NOT stabilize (fleeing is not winning; story-005 finding 2).
+    # combat_cleared (all enemies down) feeds the tier-1 cleared-battlefield anchor. Atomic with the tx.
     enemies = [p for p in cs.participants if p.type == "enemy"]
     combat_cleared = bool(enemies) and all(p.is_fallen for p in enemies)
 
     def _is_truly_dead(p) -> bool:
-        # A player is truly dead on instant-death overkill (is_dead) OR after failing 3 death saves
-        # (death_save_failures >= limit — the 2-flag model leaves is_dead False there). Any echo is a
-        # player who already died to rise. Mirrors _wrap's terminally-down predicate.
-        return (
-            p.type == "player" and (p.is_dead or p.death_save_failures >= _DEATH_SAVE_LIMIT)
-        ) or p.type == "temporary_hollowed"
+        # A player is truly dead when terminally down; any echo already died to rise. Shares
+        # combat_phase.is_terminally_down so the wrap gate and this collector never disagree.
+        return (p.type == "player" and is_terminally_down(p)) or p.type == "temporary_hollowed"
 
     def _fallen_savable(p) -> bool:
-        # Dying but still savable: fell to 0 with death saves NOT yet exhausted and not instant-dead.
-        # A member who died on the grind (dsf >= limit) is _is_truly_dead, not savable.
-        return p.type == "player" and p.is_fallen and not p.is_dead and p.death_save_failures < _DEATH_SAVE_LIMIT
+        # Dying but still savable: fell to 0 (is_fallen) and NOT terminally down. A member who died on
+        # the grind or to overkill is _is_truly_dead, not savable.
+        return p.type == "player" and p.is_fallen and not is_terminally_down(p)
 
     death_context: dict | None = None
-    # Outcome-independent dead-life collector. It picks up the primary echo (id == player_id,
-    # temporary_hollowed) DIRECTLY — the Stage-2+ Hollowed rise flips the primary's type in place
-    # (combat_support), so no special-case primary rescue is needed — AND any non-primary echo, which
-    # the old defeat-only `player` collector stranded. On defeat the merely-fallen are added (wipe).
+    # Dead-life collector (any outcome). Picks up the primary echo (id == player_id, temporary_hollowed)
+    # DIRECTLY — the Stage-2+ Hollowed rise flips the primary's type in place (combat_support), so no
+    # special-case primary rescue is needed — AND any non-primary echo. On defeat the merely-fallen are
+    # added (party wipe — nobody left to save them).
     dead_lives = [p for p in cs.participants if _is_truly_dead(p) or (outcome == "defeat" and _fallen_savable(p))]
     if dead_lives:
         # Fail-loud on a missing row (concern 2a646ecf0b4b): a dead player participant with no
@@ -367,9 +366,18 @@ async def _end_combat_db(
             (ctx for (pid, _), ctx in zip(rows, contexts, strict=True) if pid == session.player_id), None
         )
 
-    # Non-defeat outcome: a merely-fallen (savable) ally is stabilized by the party, not Mortaen-
-    # killed — they come to at 1 HP and normal regen/rest handles the gradual recovery.
-    if outcome != "defeat":
+    # Standing-primary defeat (story-005 finding 4): a DM-declared defeat (end_combat(outcome='defeat'))
+    # can leave the primary standing — not collected above. Preserve the invariant that a defeat always
+    # returns the primary via Mortaen: resurrect it here when the collector didn't already.
+    if outcome == "defeat" and death_context is None:
+        primary_row = await queries.get_player(session.player_id, conn=conn)
+        if primary_row is None:
+            raise RuntimeError(f"Primary player {session.player_id!r} has no players.data row on defeat")
+        death_context = await resurrection.resurrect_on_defeat(primary_row, combat_cleared=combat_cleared, conn=conn)
+
+    # VICTORY only: a merely-fallen (savable) ally is stabilized by the party (comes to at 1 HP); normal
+    # regen/rest handles the gradual recovery. A flee/de-escalation does not stabilize (finding 2).
+    if outcome == "victory":
         for p in cs.participants:
             if _fallen_savable(p):
                 await mutations.update_player_hp(p.id, 1, conn=conn)
@@ -412,9 +420,10 @@ def _end_combat_finish(
     session.draethar_inner_fire_used = False  # Inner Fire resets each encounter (M3.4)
     session.combat_state = None
 
-    # On a defeat-resurrection the character was revived AT the anchor (resurrect_on_defeat wrote
-    # players.data.location_id = anchor). Sync the live session so the post-death handoff agent is
-    # built at the anchor, not the stale death site — AC3: the character returns at the anchor.
+    # When the primary died (any outcome — the dead-life collector or the standing-primary defeat
+    # fallback set death_context), it was revived AT its anchor (players.data.location_id = anchor).
+    # Sync the live session so the post-death handoff agent is built at the anchor, not the stale
+    # death site — the character returns at the anchor. death_context is None on a clean survival.
     death_context = end_data.get("death_context")
     if death_context is not None:
         session.location_id = death_context["anchor"]
