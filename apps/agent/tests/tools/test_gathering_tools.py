@@ -41,7 +41,17 @@ _NODE = {
     "respawn_days": 2,
 }
 
-_EXPERT = {**SAMPLE_PLAYER, "skill_tiers": {"survival": "expert", "nature": "expert"}}
+_PERSISTENT_NODE = {
+    "id": "pool1",
+    "location_id": "greyvale_wilderness_north",
+    "node_type": "hollow_residue_pool",
+    "resource_type": "drift_residue",
+    "quantity": 4,
+    "discovered": False,
+    "respawn_days": -1,
+}
+
+_EXPERT = {**SAMPLE_PLAYER, "skill_tiers": {"survival": "expert", "nature": "expert", "arcana": "expert"}}
 
 
 def _gather_mocks(player=SAMPLE_PLAYER, location=_WILDERNESS, nodes=None):
@@ -147,6 +157,20 @@ class TestNodeConsumer:
         mocks[3].mark_node_discovered.assert_awaited_once_with("n1", conn=ANY)
         granted = [c.args[1] for c in mocks[1].add_inventory_item.await_args_list]
         assert "sageroot" in granted  # the herb-garden node resource, not the ore vein's
+
+    @pytest.mark.asyncio
+    async def test_persistent_node_is_discovered_but_never_depleted(self):
+        # A respawn_days == -1 node is infinite (the hollow residue pool): a rich find reveals it
+        # and grants its resource, but must NOT deplete quantity — nothing respawns it, so a
+        # depletion would drain it to 0 permanently.
+        mocks = _gather_mocks(player=_EXPERT, nodes=[_PERSISTENT_NODE])
+        ctx = _ctx_with_bus()
+        result = await _run(ctx, mocks, material_type="arcane_components", rng_val=20)  # arcana rich_find
+        assert result["node_revealed"] == "pool1"
+        mocks[3].mark_node_discovered.assert_awaited_once_with("pool1", conn=ANY)
+        mocks[3].deplete_node_quantity.assert_not_awaited()
+        granted = [c.args[1] for c in mocks[1].add_inventory_item.await_args_list]
+        assert "drift_residue" in granted  # still harvestable
 
     @pytest.mark.asyncio
     async def test_non_rich_success_does_not_touch_node(self):

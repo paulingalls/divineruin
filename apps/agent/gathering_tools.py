@@ -28,7 +28,7 @@ import gathering
 import rules_engine
 from condition_consume import consume_beneficial_conditions
 from db_errors import validated_player_conditions
-from game_events import publish_game_event
+from game_events import publish_game_event, publish_hidden_revealed
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -119,7 +119,11 @@ async def _check_gather_impl(
     async with db_mod.transaction() as conn:
         if node is not None:
             await gather_mutations.mark_node_discovered(node["id"], conn=conn)
-            await gather_mutations.deplete_node_quantity(node["id"], 1, conn=conn)
+            # A persistent node (respawn_days == -1) never depletes — it's infinite by design
+            # (gathering_respawn contract; e.g. the hollow residue pool). Still discoverable, so
+            # mark_node_discovered fires, but skip the depletion write.
+            if node.get("respawn_days") != -1:
+                await gather_mutations.deplete_node_quantity(node["id"], 1, conn=conn)
         for material_id, qty in counts.items():
             await mutations.add_inventory_item(session.player_id, material_id, qty, conn=conn)
         # The gather roll spends Blessed/Inspired's +1d4 (M4.8 story-009): remove + persist the
@@ -146,15 +150,12 @@ async def _check_gather_impl(
     )
 
     if node is not None and not node.get("discovered"):
-        await publish_game_event(
+        await publish_hidden_revealed(
             session.room,
-            E.HIDDEN_REVEALED,
-            {
-                "element_id": node["id"],
-                "attaches_to": node.get("location_id"),
-                "description": f"a {node['node_type'].replace('_', ' ')} ({node['resource_type']})",
-                "skill": skill,
-            },
+            element_id=node["id"],
+            attaches_to=node.get("location_id"),
+            description=f"a {node['node_type'].replace('_', ' ')} ({node['resource_type']})",
+            skill=skill,
             event_bus=session.event_bus,
         )
 

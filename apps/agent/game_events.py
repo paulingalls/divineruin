@@ -61,3 +61,31 @@ async def publish_game_event(
 
         event_bus.publish(GameEvent(event_type=event_type, payload=payload))
         logger.debug("Published %s event to event bus", event_type)
+
+
+async def publish_hidden_revealed(
+    room: rtc.Room | None,
+    *,
+    element_id: str,
+    attaches_to: str | None,
+    description: str,
+    skill: str,
+    event_bus: EventBus | None = None,
+) -> None:
+    """Emit E.HIDDEN_REVEALED with the canonical reveal payload. Single source of truth for the
+    4-key wire contract (element_id / attaches_to / description / skill) consumed by
+    bg_event_handlers — both the gather rich-find and the discover check reveal paths route here so
+    the payload shape can't drift between producers."""
+    import event_types as E
+
+    await publish_game_event(
+        room,
+        E.HIDDEN_REVEALED,
+        {
+            "element_id": element_id,
+            "attaches_to": attaches_to,
+            "description": description,
+            "skill": skill,
+        },
+        event_bus=event_bus,
+    )
