@@ -604,15 +604,17 @@ export function handleGameEvent(event: DataChannelEvent): void {
     }
 
     case E.ITEM_ACQUIRED:
-      hudStore.getState().pushOverlay("item_acquired", {
-        name: event.name,
-        description: event.description,
-        rarity: event.rarity,
-        stats: event.stats,
-        image_url: typeof event.image_url === "string" ? event.image_url : undefined,
-      });
-      playSfx("item_pickup");
-      hapticItemAcquired();
+      if (isEventForLocalPlayer(event.player_id)) {
+        hudStore.getState().pushOverlay("item_acquired", {
+          name: event.name,
+          description: event.description,
+          rarity: event.rarity,
+          stats: event.stats,
+          image_url: typeof event.image_url === "string" ? event.image_url : undefined,
+        });
+        playSfx("item_pickup");
+        hapticItemAcquired();
+      }
       break;
 
     case E.QUEST_UPDATE:

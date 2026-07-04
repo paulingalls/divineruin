@@ -146,9 +146,10 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool):
         )
         assert qty == 1
 
-        # end_data surfaces the haul for the DM narration / response (in the canonical gold unit).
-        assert end_data["currency_gold"] == pytest.approx(0.8)
-        assert end_data["loot"] == [{"item_id": _ITEM_ID, "quantity": 1}]
+        # end_data surfaces the primary's own haul for the DM narration / response (solo: the
+        # primary is the only participant, so primary_* equals the whole haul).
+        assert end_data["primary_currency_gold"] == pytest.approx(0.8)
+        assert end_data["primary_loot"] == [{"item_id": _ITEM_ID, "quantity": 1}]
 
         # A single CURRENCY_GAINED chip buffered for the whole haul, plus the ITEM_ACQUIRED chip.
         currency_events = [e for e in sink.captured if e.event_type == E.CURRENCY_GAINED]
@@ -161,7 +162,12 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool):
 
         item_events = [e for e in sink.captured if e.event_type == E.ITEM_ACQUIRED]
         assert len(item_events) == 1
-        assert item_events[0].payload == {"item_id": _ITEM_ID, "quantity": 1, "source": "combat_loot"}
+        assert item_events[0].payload == {
+            "item_id": _ITEM_ID,
+            "quantity": 1,
+            "source": "combat_loot",
+            "player_id": _PLAYER_ID,
+        }
     finally:
         await _cleanup(pool)
 
@@ -209,7 +215,7 @@ async def test_minion_only_victory_grants_no_currency(dev_db_pool):
             )
 
         # D79: no currency, gold untouched, no CURRENCY_GAINED chip.
-        assert end_data["currency_gold"] == 0
+        assert end_data["primary_currency_gold"] == 0
         player = await db_queries.get_player(_PLAYER_ID, conn=pool)
         assert player is not None and player["gold"] == 5
         assert not [e for e in sink.captured if e.event_type == E.CURRENCY_GAINED]

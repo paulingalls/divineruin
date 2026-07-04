@@ -270,12 +270,17 @@ async def test_solo_victory_loot_currency_unchanged_seeded_regression():
     end_data, _m, _q, sink = await _run_victory(session, cs, rng=random.Random(1234), drops=drops)
 
     # Pinned deterministic output (seed 1234) — reordering the currency/loot rolls changes these.
-    assert end_data["currency_gold"] == pytest.approx(_SEEDED_SOLO_GOLD)
-    assert [d["item_id"] for d in end_data["loot"]] == _SEEDED_SOLO_ITEMS
+    # Solo: the primary receives the whole haul, so primary_* equals the full haul.
+    assert end_data["primary_currency_gold"] == pytest.approx(_SEEDED_SOLO_GOLD)
+    assert [d["item_id"] for d in end_data["primary_loot"]] == _SEEDED_SOLO_ITEMS
     # Solo: exactly one CURRENCY_GAINED for the primary.
     currency_events = [e for e in sink.captured if e.event_type == E.CURRENCY_GAINED]
     assert len(currency_events) == 1
     assert currency_events[0].payload["player_id"] == "p1"
+    # Solo: the single ITEM_ACQUIRED carries the primary's own player_id (back-compat AC).
+    item_events = [e for e in sink.captured if e.event_type == E.ITEM_ACQUIRED]
+    assert len(item_events) == 1
+    assert item_events[0].payload["player_id"] == "p1"
 
 
 async def test_two_pc_victory_rounds_robin_loot_ascending_seat():
@@ -289,10 +294,19 @@ async def test_two_pc_victory_rounds_robin_loot_ascending_seat():
         {"item_id": "shield", "chance": 1.0, "quantity": 1},
         {"item_id": "potion", "chance": 1.0, "quantity": 1},
     ]
-    _end, mutations, _q, _sink = await _run_victory(session, cs, rng=_AllHitRng(), drops=drops)
+    end_data, mutations, _q, sink = await _run_victory(session, cs, rng=_AllHitRng(), drops=drops)
 
     grants = [(c.args[0], c.args[1]) for c in mutations.add_inventory_item.await_args_list]
     assert grants == [("p1", "sword"), ("p2", "shield"), ("p1", "potion")]
+    # Each ITEM_ACQUIRED carries the round-robinned recipient's player_id (mirroring CURRENCY_GAINED).
+    item_events = [e for e in sink.captured if e.event_type == E.ITEM_ACQUIRED]
+    assert [(e.payload["item_id"], e.payload["player_id"]) for e in item_events] == [
+        ("sword", "p1"),
+        ("shield", "p2"),
+        ("potion", "p1"),
+    ]
+    # The primary's own loot is only their own drops — not the party's whole haul.
+    assert [d["item_id"] for d in end_data["primary_loot"]] == ["sword", "potion"]
 
 
 async def test_two_pc_victory_currency_party_multiplier_split_and_lock_order():
@@ -308,8 +322,8 @@ async def test_two_pc_victory_currency_party_multiplier_split_and_lock_order():
     # base 20 silver * 1.5 = 30 silver total; /2 = 15 silver each; /10 spg = 1.5 gold each.
     gold_calls = {c.args[0]: c.args[1] for c in mutations.update_player_gold.await_args_list}
     assert gold_calls == {"p1": pytest.approx(1.5), "p2": pytest.approx(1.5)}
-    # aggregate reported to the DM is the summed party haul (3.0 gold).
-    assert end_data["currency_gold"] == pytest.approx(3.0)
+    # the primary's own haul is only THEIR share (1.5 gold), never the summed party total (3.0).
+    assert end_data["primary_currency_gold"] == pytest.approx(1.5)
     # one CURRENCY_GAINED per member.
     currency_ids = [e.payload["player_id"] for e in sink.captured if e.event_type == E.CURRENCY_GAINED]
     assert currency_ids == ["p1", "p2"]

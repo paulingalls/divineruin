@@ -186,9 +186,9 @@ async def _end_combat_db(
     rng = rng or random.Random()
     xp_total = 0
     defeated_enemies: list[str] = []
-    loot_granted: list[dict] = []
+    primary_loot: list[dict] = []
     currency_silver = 0
-    currency_gold: float = 0
+    primary_currency_gold: float = 0
     if outcome == "victory":
         # ROLL pass (M18 story-003): iterate the defeated enemies in participant order, rolling each
         # one's currency + loot into a SHARED pool. Rolling is kept fully upstream of distribution so
@@ -215,12 +215,18 @@ async def _end_combat_db(
         for i, drop in enumerate(loot_pool):
             recipient = seat_order[i % len(seat_order)]
             await mutations.add_inventory_item(recipient, drop["item_id"], drop["quantity"], conn=conn)
-            loot_granted.append(drop)
+            if recipient == session.player_id:
+                primary_loot.append(drop)
             await emit_or_publish(
                 sink,
                 session.room,
                 E.ITEM_ACQUIRED,
-                {"item_id": drop["item_id"], "quantity": drop["quantity"], "source": "combat_loot"},
+                {
+                    "item_id": drop["item_id"],
+                    "quantity": drop["quantity"],
+                    "source": "combat_loot",
+                    "player_id": recipient,
+                },
                 event_bus=session.event_bus,
             )
 
@@ -229,9 +235,11 @@ async def _end_combat_db(
         # member's share converts to gold crowns at its own grant boundary (the silver_per_gold SSOT,
         # symmetric with repair/crafting). Each grant is a FOR UPDATE read-modify-write; the locks
         # are acquired in ASCENDING player_id order (deadlock-free SSOT 5da95d657255). One
-        # CURRENCY_GAINED per member; end_data.currency_gold is the summed party haul for the DM
-        # narration line. Inside this tx — a rollback un-grants the coin and drops the unflushed
-        # events. Minions contribute 0 (D79). Solo N=1 -> multiplier 1.0, one member: byte-identical.
+        # CURRENCY_GAINED per member; end_data.primary_currency_gold is only the PRIMARY's own
+        # share, not the party total — the DM's single-session handoff narrates the primary's own
+        # haul (story-001), never the summed party gold. Inside this tx — a rollback un-grants the
+        # coin and drops the unflushed events. Minions contribute 0 (D79). Solo N=1 -> multiplier
+        # 1.0, one member: byte-identical.
         if currency_silver > 0:
             silver_per_gold = (await pricing.get_economy_pricing())["silver_per_gold"]
             share_silver = currency_silver * encounter_loot.party_currency_multiplier(len(seat_order)) / len(seat_order)
@@ -241,7 +249,8 @@ async def _end_combat_db(
                 prior_gold = (player or {}).get("gold", 0) or 0
                 new_balance = prior_gold + share_gold
                 await mutations.update_player_gold(pid, new_balance, conn=conn)
-                currency_gold += share_gold
+                if pid == session.player_id:
+                    primary_currency_gold = share_gold
                 await emit_or_publish(
                     sink,
                     session.room,
@@ -368,8 +377,8 @@ async def _end_combat_db(
         "defeated_enemies": defeated_enemies,
         "weapon_durability": weapon_durability,
         "death_context": death_context,
-        "loot": loot_granted,
-        "currency_gold": currency_gold,
+        "primary_loot": primary_loot,
+        "primary_currency_gold": primary_currency_gold,
     }
 
 
@@ -403,8 +412,8 @@ def _end_combat_finish(
     if defeated_enemies:
         session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {cs.location_id}: {outcome}")
 
-    loot = end_data.get("loot", [])
-    currency_gold = end_data.get("currency_gold", 0)
+    loot = end_data.get("primary_loot", [])
+    currency_gold = end_data.get("primary_currency_gold", 0)
     response = {
         "outcome": outcome,
         "xp_total": xp_total,
