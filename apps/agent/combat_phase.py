@@ -21,7 +21,7 @@ from enum import StrEnum
 from conditions import tick_conditions
 from declarations import Declaration, resolve_declaration
 from encounter_roles import EncounterRole
-from session_data import CombatState
+from session_data import CombatParticipant, CombatState
 
 # Phase-canonical Resonance decay: the wrap beat sheds one step per phase
 # (gm_combat:191). Casting must NOT also decay in combat — see decision
@@ -244,7 +244,7 @@ def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:
     ]
 
 
-def is_terminally_down(p) -> bool:
+def is_terminally_down(p: CombatParticipant) -> bool:
     """A player-life is terminally down when it can no longer act or be saved: instant-death
     (``is_dead``, overkill) OR three failed death saves (``death_save_failures >= _DEATH_SAVE_LIMIT``,
     where the 2-flag death model leaves ``is_dead`` False). Shared with ``combat_end``'s dead-life

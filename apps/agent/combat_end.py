@@ -380,6 +380,11 @@ async def _end_combat_db(
     if outcome == "victory":
         for p in cs.participants:
             if _fallen_savable(p):
+                # Fail-loud on a missing row (concern 2a646ecf0b4b), symmetric with the resurrection
+                # collector: a downed player with no players.data row is corruption — a blind UPDATE
+                # would silently no-op and strand the ally at 0 HP. Raise inside the tx (rollback).
+                if await queries.get_player(p.id, conn=conn) is None:
+                    raise RuntimeError(f"Fallen player {p.id!r} has no players.data row to stabilize")
                 await mutations.update_player_hp(p.id, 1, conn=conn)
 
     await emit_or_publish(
