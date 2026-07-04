@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 
 from livekit import rtc
 
+import event_types as E
+
 if TYPE_CHECKING:
     from event_bus import EventBus
 
@@ -76,8 +78,6 @@ async def publish_hidden_revealed(
     4-key wire contract (element_id / attaches_to / description / skill) consumed by
     bg_event_handlers — both the gather rich-find and the discover check reveal paths route here so
     the payload shape can't drift between producers."""
-    import event_types as E
-
     await publish_game_event(
         room,
         E.HIDDEN_REVEALED,
