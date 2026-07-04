@@ -8,6 +8,13 @@ export function buildInviteUrl(code: string): string {
   return `${INVITE_SCHEME}://${INVITE_JOIN_PATH}?code=${encodeURIComponent(code)}`;
 }
 
+// expo-router surfaces a repeated query key (?code=A&code=B) as string[]; take
+// the first. Single home for the coercion the deep-link screens (join/session)
+// both need before redeeming.
+export function firstInviteCode(code: string | string[] | undefined): string | undefined {
+  return Array.isArray(code) ? code[0] : code;
+}
+
 export async function fetchInviteUrl(
   roomName: string,
   apiBase: string,

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { buildInviteUrl, fetchInviteUrl } from "@/utils/invite-link";
+import { buildInviteUrl, fetchInviteUrl, firstInviteCode } from "@/utils/invite-link";
 
 describe("buildInviteUrl", () => {
   test("builds a divineruin://join deep link with the code", () => {
@@ -17,6 +17,20 @@ describe("buildInviteUrl", () => {
 // is no custom parser. This asserts buildInviteUrl produces a URL the standard
 // parser (what expo-router uses under the hood) resolves to the `join` route
 // with the code recoverable as a query param — the real join-route compatibility.
+describe("firstInviteCode", () => {
+  test("passes a scalar code through", () => {
+    expect(firstInviteCode("abc")).toBe("abc");
+  });
+
+  test("takes the first element when expo-router yields a repeated key as string[]", () => {
+    expect(firstInviteCode(["A", "B"])).toBe("A");
+  });
+
+  test("returns undefined for a missing code", () => {
+    expect(firstInviteCode(undefined)).toBeUndefined();
+  });
+});
+
 describe("buildInviteUrl join-route contract", () => {
   test("targets the join route and the code survives standard URL parsing", () => {
     const code = "aB3-_xyz09"; // base64url shape, matching server generateCode()

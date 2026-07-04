@@ -7,6 +7,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { authStore } from "@/stores/auth-store";
 import { pendingInviteStore } from "@/stores/pending-invite-store";
+import { firstInviteCode } from "@/utils/invite-link";
 import { BrandColors, Spacing } from "@/constants/theme";
 
 // Deep-link target for divineruin://join?code=<code> (see utils/invite-link.ts
@@ -16,9 +17,7 @@ import { BrandColors, Spacing } from "@/constants/theme";
 export default function JoinScreen() {
   const router = useRouter();
   const { code } = useLocalSearchParams<{ code?: string | string[] }>();
-  // A repeated query key (?code=A&code=B) surfaces as string[]; take the first
-  // so we forward/stash a scalar code rather than an array.
-  const inviteCode = Array.isArray(code) ? code[0] : code;
+  const inviteCode = firstInviteCode(code);
   const phase = useStore(authStore, (s) => s.phase);
 
   useEffect(() => {

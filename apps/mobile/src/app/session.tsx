@@ -11,6 +11,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Image } from "expo-image";
 import { ThemedText } from "@/components/themed-text";
 import { InviteButton } from "@/components/invite-button";
+import { firstInviteCode } from "@/utils/invite-link";
 import { TranscriptView } from "@/components/transcript-view";
 import { AtmosphericBackground } from "@/components/atmospheric-background";
 import { LocationArtBackground } from "@/components/location-art-background";
@@ -218,9 +219,7 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
 export default function SessionScreen() {
   const router = useRouter();
   const { code } = useLocalSearchParams<{ code?: string | string[] }>();
-  // A repeated query key (?code=A&code=B) surfaces as string[]; take the first
-  // so redeemInvite always posts a scalar code instead of an array (which 404s).
-  const inviteCode = Array.isArray(code) ? code[0] : code;
+  const inviteCode = firstInviteCode(code);
   const { state, error, token, serverUrl, fetchToken, redeemInvite, reset } = useSessionToken();
 
   useEffect(() => {
