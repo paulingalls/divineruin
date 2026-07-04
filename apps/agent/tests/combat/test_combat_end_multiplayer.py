@@ -502,3 +502,113 @@ async def test_victory_resurrects_death_save_failed_ally_not_stabilized(monkeypa
     assert len(resurrect.await_args.args[0]) == 1  # p2 is the only dead life
     hp_calls = [(c.args[0], c.args[1]) for c in mutations.update_player_hp.await_args_list]
     assert ("p2", 1) not in hp_calls  # NOT stabilized — it truly died
+
+
+# --- story-005: outcome-scoped stabilize/resurrect ---
+
+
+async def _run_outcome(session, cs, outcome, monkeypatch, *, resurrect_return=None):
+    import resurrection
+
+    party = AsyncMock(return_value=resurrect_return if resurrect_return is not None else [])
+    on_def = AsyncMock(return_value={"anchor": "anchor_x", "revive_hp": 10})
+    monkeypatch.setattr(resurrection, "resurrect_party_on_defeat", party)
+    monkeypatch.setattr(resurrection, "resurrect_on_defeat", on_def)
+    db_mutations_conditions.read_player_conditions = AsyncMock(return_value=[])  # type: ignore[assignment]
+    db_mutations_conditions.save_player_conditions = AsyncMock()  # type: ignore[assignment]
+    mutations = AsyncMock()
+    queries = AsyncMock()
+    queries.get_player = AsyncMock(return_value={"player_id": session.player_id, "gold": 0})
+    queries.get_player_inventory = AsyncMock(return_value=[])
+    end_data = await _end_combat_db(
+        session,
+        cs,
+        outcome,
+        mutations=mutations,
+        queries=queries,
+        conn=MagicMock(),
+        sink=EventSink(),
+        content=MagicMock(),
+        pricing=MagicMock(),
+        rng=FakeRng(),
+    )
+    return end_data, mutations, party, on_def
+
+
+async def test_fled_does_not_stabilize_fallen_ally(monkeypatch):
+    # story-005 finding 2: stabilization is VICTORY-only. A savable fallen ally on a 'fled' end is
+    # NOT revived to 1 HP for free (fleeing is not winning).
+    session = _two_pc_session()
+    cs = CombatState(
+        combat_id="c1",
+        participants=[
+            _player_participant("p1", "Kael", []),  # primary alive
+            CombatParticipant(
+                id="p2", name="Bren", type="player", initiative=12, hp_current=0, hp_max=20, ac=14, is_fallen=True
+            ),
+            CombatParticipant(
+                id="g1", name="Goblin", type="enemy", initiative=8, hp_current=5, hp_max=7, ac=13
+            ),  # alive
+        ],
+        initiative_order=["p1", "p2", "g1"],
+        round_number=2,
+        current_turn_index=0,
+        location_id="loc1",
+    )
+    _end, mutations, party, _on_def = await _run_outcome(session, cs, "fled", monkeypatch)
+    hp_calls = [(c.args[0], c.args[1]) for c in mutations.update_player_hp.await_args_list]
+    assert ("p2", 1) not in hp_calls  # not stabilized on a flee
+    party.assert_not_awaited()  # a merely-fallen ally is not resurrected either
+
+
+async def test_defeat_with_standing_primary_still_resurrects_it(monkeypatch):
+    # story-005 finding 4: a DM-declared defeat with the primary still standing must still record the
+    # death + anchor via the standing-primary fallback (restored after story-004 deleted it).
+    session = _two_pc_session()  # primary p1
+    cs = CombatState(
+        combat_id="c1",
+        participants=[
+            _player_participant("p1", "Kael", []),  # primary STANDING
+            CombatParticipant(id="g1", name="Goblin", type="enemy", initiative=8, hp_current=5, hp_max=7, ac=13),
+        ],
+        initiative_order=["p1", "g1"],
+        round_number=2,
+        current_turn_index=0,
+        location_id="loc1",
+    )
+    end_data, _mutations, party, on_def = await _run_outcome(session, cs, "defeat", monkeypatch)
+    party.assert_not_awaited()  # no down/dead participant collected
+    on_def.assert_awaited_once()  # the standing primary is resurrected via the defeat fallback
+    assert end_data["death_context"] is not None
+
+
+async def test_destroyed_echo_primary_resurrected_even_on_fled(monkeypatch):
+    # story-005 (plan-review concern): an echo is a dead player and MUST return via Mortaen on ANY
+    # outcome — a destroyed echo-primary is still resurrected on a 'fled' end, never stranded.
+    session = _two_pc_session()  # primary p1
+    cs = CombatState(
+        combat_id="c1",
+        participants=[
+            CombatParticipant(
+                id="p1",
+                name="Kael",
+                type="temporary_hollowed",
+                initiative=15,
+                hp_current=0,
+                hp_max=20,
+                ac=14,
+                is_fallen=True,
+            ),
+            _player_participant("p2", "Bren", []),  # ally alive
+            CombatParticipant(id="g1", name="Goblin", type="enemy", initiative=8, hp_current=5, hp_max=7, ac=13),
+        ],
+        initiative_order=["p1", "p2", "g1"],
+        round_number=2,
+        current_turn_index=0,
+        location_id="loc1",
+    )
+    end_data, _mutations, party, _on_def = await _run_outcome(
+        session, cs, "fled", monkeypatch, resurrect_return=[{"anchor": "anchor_x"}]
+    )
+    party.assert_awaited_once()  # the destroyed echo-primary returns via Mortaen even on a flee
+    assert end_data["death_context"] is not None
