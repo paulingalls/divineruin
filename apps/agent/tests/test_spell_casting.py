@@ -476,14 +476,18 @@ async def _cast_racial(
     start_concentration: str | None = None,
     d20s: tuple[int, ...] = (10,),
     vaelti_warning=None,
+    caster_id: str | None = None,
+    party_member_ids: list[str] | None = None,
 ):
     """Invoke _cast_spell_impl with the M3.4 racial + concentration mods injected.
 
     racial_mod is the seeded-spec stub; concentration_mutations_mod is mocked so the persist is
     asserted without touching the DB; dice_mod is a fixed sequence for deterministic echo rolls.
+    ``caster_id``/``party_member_ids`` (story-003) drive a non-primary caster through the same
+    entry as the public tool, so the post-commit sync lands on that member, not the primary.
     Returns (parsed_packet, ctx, mutations_mock, concentration_mock, echo_events_mock).
     """
-    ctx = make_context()
+    ctx = make_context(party_member_ids=party_member_ids)
     ctx.userdata.resonance.current = start_resonance
     ctx.userdata.resonance.flickering_bonus = start_flickering_bonus
     ctx.userdata.concentration.spell_id = start_concentration
@@ -491,6 +495,8 @@ async def _cast_racial(
     player = _player(focus, level)
     if race is not None:
         player["race"] = race
+    if caster_id is not None:
+        player["player_id"] = caster_id
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value=player)
     queries.get_players_for_update = AsyncMock(side_effect=lambda ids, *, conn=None: {i: player for i in ids})
@@ -509,6 +515,7 @@ async def _cast_racial(
     raw = await _cast_spell_impl(
         ctx,
         spell.id,
+        caster_id=caster_id,
         db_mod=mock_db,
         queries_mod=queries,
         persistence_mod=persistence,
@@ -684,6 +691,27 @@ class TestCastSpellConcentration:
         )
         assert ctx.userdata.concentration.spell_id == "old_spell"
         concentration.update_player_concentration.assert_not_called()
+
+    async def test_non_primary_caster_syncs_onto_own_member_not_primary(self):
+        # story-003 (debt b8169bbe83eb): the OOC post-commit sync must land on the RESOLVED
+        # caster's own PartyMember, not the session's primary facade — mirrors combat_ability's
+        # caster-resolve-then-sync idiom. player_2 casts a concentration spell that also
+        # generates resonance; the primary's pools must stay untouched.
+        _packet, ctx, _m, concentration, _e = await _cast_racial(
+            _spell(spell_id="hold_flame", concentration=True, resonance=6),
+            caster_id="player_2",
+            party_member_ids=["player_2"],
+        )
+        caster = ctx.userdata.party.member("player_2")
+        assert caster is not None
+        assert caster.concentration.spell_id == "hold_flame"
+        assert caster.resonance.current == 6
+        concentration.update_player_concentration.assert_awaited_once()
+        assert concentration.update_player_concentration.await_args.args[0] == "player_2"
+
+        primary = ctx.userdata.party.primary
+        assert primary.concentration.spell_id is None
+        assert primary.resonance.current == 0
 
 
 class TestResolveCast:
