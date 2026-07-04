@@ -73,7 +73,8 @@ RESONANCE_CHANGED = "resonance_changed"
 # Magic (M3.2) — Veil Ward toggle push. Packet: {active, caster_id} — the on/off toggle (the
 # HUD shows a glanceable ward zone indicator; the source archetype is narration the DM voices,
 # not wire state) plus WHICH party member it belongs to (story-006, mirroring RESONANCE_CHANGED's
-# caster_id). The tool is single-caster, so caster_id is always session.player_id.
+# caster_id). caster_id is the resolving caster — the session primary by default, or a non-primary
+# party member when activate_veil_ward is called with an explicit caster_id (story-008).
 # Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
 VEIL_WARD_CHANGED = "veil_ward_changed"
 

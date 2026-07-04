@@ -387,6 +387,7 @@ async def test_end_combat_resets_flags_even_when_no_weapon_equipped():
 def _add_member(session, player_id: str):
     from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
     from party_state import PartyMember
+    from session_data import CombatParticipant
 
     session.party.members.append(
         PartyMember(
@@ -396,6 +397,14 @@ def _add_member(session, player_id: str):
             concentration=ConcentrationState(),
         )
     )
+    # Also register as a combat PARTICIPANT (as combat_init builds it): a member who never entered
+    # combat can't have swung, and combat-end durability keys on the participants who fought.
+    if session.combat_state is not None:
+        session.combat_state.participants.append(
+            CombatParticipant(
+                id=player_id, name=player_id, type="player", initiative=10, hp_current=20, hp_max=20, ac=14
+            )
+        )
     return session.party.member(player_id)
 
 

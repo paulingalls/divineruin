@@ -259,12 +259,21 @@ async def _end_combat_db(
     # Accrue per-encounter weapon durability (1 hit, 2 on a crit vs a heavily-armored target),
     # hollow-doubled. Reads each member's own weapon flags (set live during the loop); the flag
     # RESET is deferred to _end_combat_finish so a rolled-back phase keeps them set for the retry.
-    # M18 story-003: EVERY player member who swung accrues their OWN equipped weapon's durability,
-    # keyed on their own corruption_level for the hollow-zone doubling. The primary's result is
-    # surfaced in the response (single-session handoff); non-primary accrual lands in the DB.
+    # M18 story-003: EVERY player PARTICIPANT who swung accrues their OWN equipped weapon's
+    # durability, keyed on their own corruption_level for the hollow-zone doubling. Iterates the
+    # combat participants (uniform with the loot/currency/conditions/resurrection recipient sets),
+    # so a mid-combat joiner is excluded. The primary's result is surfaced in the response
+    # (single-session handoff); non-primary accrual lands in the DB.
     weapon_durability: dict = {}
-    for member in session.party.members:
-        if not member.weapon_used:
+    for p in cs.participants:
+        if p.type != "player":
+            continue
+        # Durability needs the PartyMember (weapon_used / corruption_level live there, unlike the
+        # other paths that key on the participant id directly). Non-raising member() + skip: a
+        # player participant is a party member in prod (combat_init), but skipping a stray one is a
+        # fail-safe for a non-critical accrual rather than aborting the whole combat-end tx.
+        member = session.party.member(p.id)
+        if member is None or not member.weapon_used:
             continue
         inventory = await queries.get_player_inventory(member.player_id, conn=conn)
         weapon = _find_equipped(inventory, "weapon")
