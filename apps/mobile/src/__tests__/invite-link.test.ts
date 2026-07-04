@@ -12,6 +12,25 @@ describe("buildInviteUrl", () => {
   });
 });
 
+// Contract guard for the story-002 <-> story-003 seam: expo-router owns URL
+// parsing at runtime (join.tsx reads `code` via useLocalSearchParams), so there
+// is no custom parser. This asserts buildInviteUrl produces a URL the standard
+// parser (what expo-router uses under the hood) resolves to the `join` route
+// with the code recoverable as a query param — the real join-route compatibility.
+describe("buildInviteUrl join-route contract", () => {
+  test("targets the join route and the code survives standard URL parsing", () => {
+    const code = "aB3-_xyz09"; // base64url shape, matching server generateCode()
+    const url = buildInviteUrl(code);
+    expect(url.startsWith("divineruin://join?")).toBe(true);
+    expect(new URL(url).searchParams.get("code")).toBe(code);
+  });
+
+  test("a code needing percent-encoding still decodes back to the original", () => {
+    const code = "a b/c+d";
+    expect(new URL(buildInviteUrl(code)).searchParams.get("code")).toBe(code);
+  });
+});
+
 describe("fetchInviteUrl", () => {
   const originalFetch = globalThis.fetch;
 
