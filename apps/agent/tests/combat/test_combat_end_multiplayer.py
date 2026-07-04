@@ -270,12 +270,17 @@ async def test_solo_victory_loot_currency_unchanged_seeded_regression():
     end_data, _m, _q, sink = await _run_victory(session, cs, rng=random.Random(1234), drops=drops)
 
     # Pinned deterministic output (seed 1234) — reordering the currency/loot rolls changes these.
-    assert end_data["currency_gold"] == pytest.approx(_SEEDED_SOLO_GOLD)
-    assert [d["item_id"] for d in end_data["loot"]] == _SEEDED_SOLO_ITEMS
+    # Solo: the primary receives the whole haul, so primary_* equals the full haul.
+    assert end_data["primary_currency_gold"] == pytest.approx(_SEEDED_SOLO_GOLD)
+    assert [d["item_id"] for d in end_data["primary_loot"]] == _SEEDED_SOLO_ITEMS
     # Solo: exactly one CURRENCY_GAINED for the primary.
     currency_events = [e for e in sink.captured if e.event_type == E.CURRENCY_GAINED]
     assert len(currency_events) == 1
     assert currency_events[0].payload["player_id"] == "p1"
+    # Solo: the single ITEM_ACQUIRED carries the primary's own player_id (back-compat AC).
+    item_events = [e for e in sink.captured if e.event_type == E.ITEM_ACQUIRED]
+    assert len(item_events) == 1
+    assert item_events[0].payload["player_id"] == "p1"
 
 
 async def test_two_pc_victory_rounds_robin_loot_ascending_seat():
@@ -289,10 +294,19 @@ async def test_two_pc_victory_rounds_robin_loot_ascending_seat():
         {"item_id": "shield", "chance": 1.0, "quantity": 1},
         {"item_id": "potion", "chance": 1.0, "quantity": 1},
     ]
-    _end, mutations, _q, _sink = await _run_victory(session, cs, rng=_AllHitRng(), drops=drops)
+    end_data, mutations, _q, sink = await _run_victory(session, cs, rng=_AllHitRng(), drops=drops)
 
     grants = [(c.args[0], c.args[1]) for c in mutations.add_inventory_item.await_args_list]
     assert grants == [("p1", "sword"), ("p2", "shield"), ("p1", "potion")]
+    # Each ITEM_ACQUIRED carries the round-robinned recipient's player_id (mirroring CURRENCY_GAINED).
+    item_events = [e for e in sink.captured if e.event_type == E.ITEM_ACQUIRED]
+    assert [(e.payload["item_id"], e.payload["player_id"]) for e in item_events] == [
+        ("sword", "p1"),
+        ("shield", "p2"),
+        ("potion", "p1"),
+    ]
+    # The primary's own loot is only their own drops — not the party's whole haul.
+    assert [d["item_id"] for d in end_data["primary_loot"]] == ["sword", "potion"]
 
 
 async def test_two_pc_victory_currency_party_multiplier_split_and_lock_order():
@@ -308,8 +322,8 @@ async def test_two_pc_victory_currency_party_multiplier_split_and_lock_order():
     # base 20 silver * 1.5 = 30 silver total; /2 = 15 silver each; /10 spg = 1.5 gold each.
     gold_calls = {c.args[0]: c.args[1] for c in mutations.update_player_gold.await_args_list}
     assert gold_calls == {"p1": pytest.approx(1.5), "p2": pytest.approx(1.5)}
-    # aggregate reported to the DM is the summed party haul (3.0 gold).
-    assert end_data["currency_gold"] == pytest.approx(3.0)
+    # the primary's own haul is only THEIR share (1.5 gold), never the summed party total (3.0).
+    assert end_data["primary_currency_gold"] == pytest.approx(1.5)
     # one CURRENCY_GAINED per member.
     currency_ids = [e.payload["player_id"] for e in sink.captured if e.event_type == E.CURRENCY_GAINED]
     assert currency_ids == ["p1", "p2"]
@@ -363,3 +377,287 @@ class _FixedCurrencyRng(random.Random):
 
     def randint(self, a: int, b: int) -> int:
         return self._die
+
+
+# --- story-004: echo-primary fate + fallen-ally stabilization across outcomes ---
+
+
+async def test_victory_stabilizes_fallen_ally_without_mortaen(monkeypatch):
+    # story-004: a merely-fallen (savable, not is_dead, non-echo) ally on a VICTORY is STABILIZED
+    # (revived to 1 HP), not Mortaen-killed. Mortaen is reserved for the truly dead, so a savable
+    # ally on a won fight never triggers resurrection.
+    import resurrection
+
+    resurrect = AsyncMock(return_value=[])
+    monkeypatch.setattr(resurrection, "resurrect_party_on_defeat", resurrect)
+
+    session = _two_pc_session()
+    cs = CombatState(
+        combat_id="c1",
+        participants=[
+            _player_participant("p1", "Kael", []),  # primary, alive
+            CombatParticipant(
+                id="p2", name="Bren", type="player", initiative=12, hp_current=0, hp_max=20, ac=14, is_fallen=True
+            ),  # dying but savable
+            CombatParticipant(
+                id="g1", name="Goblin", type="enemy", initiative=8, hp_current=0, hp_max=7, ac=13, is_fallen=True
+            ),
+        ],
+        initiative_order=["p1", "p2", "g1"],
+        round_number=2,
+        current_turn_index=0,
+        location_id="loc1",
+    )
+    _end, mutations, _q, _sink = await _run_victory(session, cs, rng=FakeRng(), drops=[])
+
+    hp_calls = [(c.args[0], c.args[1]) for c in mutations.update_player_hp.await_args_list]
+    assert ("p2", 1) in hp_calls  # fallen ally comes to at 1 HP
+    resurrect.assert_not_awaited()  # NOT Mortaen-killed on a won fight
+
+
+async def test_victory_resurrects_destroyed_echo_primary_only(monkeypatch):
+    # story-004 (the character-loss fix): a destroyed temporary_hollowed echo-primary IS Mortaen-
+    # resurrected on VICTORY (an echo is a dead player, resurrected regardless of outcome), while a
+    # merely-fallen ally on the same victory is stabilized — only the echo lands in the dead-life set.
+    import resurrection
+
+    resurrect = AsyncMock(return_value=[{"anchor": "anchor_x", "revive_hp": 20, "hollow_killed": True}])
+    monkeypatch.setattr(resurrection, "resurrect_party_on_defeat", resurrect)
+
+    session = _two_pc_session()  # primary p1
+    cs = CombatState(
+        combat_id="c1",
+        participants=[
+            CombatParticipant(
+                id="p1",
+                name="Kael",
+                type="temporary_hollowed",
+                initiative=15,
+                hp_current=0,
+                hp_max=20,
+                ac=14,
+                is_fallen=True,
+            ),  # destroyed echo-primary
+            CombatParticipant(
+                id="p2", name="Bren", type="player", initiative=12, hp_current=0, hp_max=20, ac=14, is_fallen=True
+            ),  # dying ally (savable)
+            CombatParticipant(
+                id="g1", name="Goblin", type="enemy", initiative=8, hp_current=0, hp_max=7, ac=13, is_fallen=True
+            ),
+        ],
+        initiative_order=["p1", "p2", "g1"],
+        round_number=2,
+        current_turn_index=0,
+        location_id="loc1",
+    )
+    end_data, mutations, _q, _sink = await _run_victory(session, cs, rng=FakeRng(), drops=[])
+
+    resurrect.assert_awaited_once()
+    assert resurrect.await_args is not None
+    rows = resurrect.await_args.args[0]
+    assert len(rows) == 1  # only the destroyed echo-primary, NOT the savable fallen ally
+    hp_calls = [(c.args[0], c.args[1]) for c in mutations.update_player_hp.await_args_list]
+    assert ("p2", 1) in hp_calls  # the ally is stabilized, not resurrected
+    assert end_data.get("death_context") is not None  # the primary's death context is surfaced
+
+
+async def test_victory_resurrects_death_save_failed_ally_not_stabilized(monkeypatch):
+    # story-004 (concern 8cdb51bd0ef5): an ally who DIED on the death-save grind (3 failures — the
+    # 2-flag model leaves is_dead False) is TRULY DEAD, so on a VICTORY it is Mortaen-resurrected, NOT
+    # stabilized for free. This matches _wrap's terminally-down predicate (is_dead OR dsf >= limit).
+    import resurrection
+
+    resurrect = AsyncMock(return_value=[{"anchor": "anchor_x"}])
+    monkeypatch.setattr(resurrection, "resurrect_party_on_defeat", resurrect)
+
+    session = _two_pc_session()
+    cs = CombatState(
+        combat_id="c1",
+        participants=[
+            _player_participant("p1", "Kael", []),  # primary, alive
+            CombatParticipant(
+                id="p2",
+                name="Bren",
+                type="player",
+                initiative=12,
+                hp_current=0,
+                hp_max=20,
+                ac=14,
+                is_fallen=True,
+                death_save_failures=3,
+            ),  # died on the death-save grind (is_dead stays False)
+            CombatParticipant(
+                id="g1", name="Goblin", type="enemy", initiative=8, hp_current=0, hp_max=7, ac=13, is_fallen=True
+            ),
+        ],
+        initiative_order=["p1", "p2", "g1"],
+        round_number=2,
+        current_turn_index=0,
+        location_id="loc1",
+    )
+    _end, mutations, _q, _sink = await _run_victory(session, cs, rng=FakeRng(), drops=[])
+
+    resurrect.assert_awaited_once()
+    assert resurrect.await_args is not None
+    assert len(resurrect.await_args.args[0]) == 1  # p2 is the only dead life
+    hp_calls = [(c.args[0], c.args[1]) for c in mutations.update_player_hp.await_args_list]
+    assert ("p2", 1) not in hp_calls  # NOT stabilized — it truly died
+
+
+# --- story-005: outcome-scoped stabilize/resurrect ---
+
+
+async def _run_outcome(session, cs, outcome, monkeypatch, *, resurrect_return=None):
+    import resurrection
+
+    party = AsyncMock(return_value=resurrect_return if resurrect_return is not None else [])
+    on_def = AsyncMock(return_value={"anchor": "anchor_x", "revive_hp": 10})
+    monkeypatch.setattr(resurrection, "resurrect_party_on_defeat", party)
+    monkeypatch.setattr(resurrection, "resurrect_on_defeat", on_def)
+    db_mutations_conditions.read_player_conditions = AsyncMock(return_value=[])  # type: ignore[assignment]
+    db_mutations_conditions.save_player_conditions = AsyncMock()  # type: ignore[assignment]
+    mutations = AsyncMock()
+    queries = AsyncMock()
+    queries.get_player = AsyncMock(return_value={"player_id": session.player_id, "gold": 0})
+    queries.get_player_inventory = AsyncMock(return_value=[])
+    end_data = await _end_combat_db(
+        session,
+        cs,
+        outcome,
+        mutations=mutations,
+        queries=queries,
+        conn=MagicMock(),
+        sink=EventSink(),
+        content=MagicMock(),
+        pricing=MagicMock(),
+        rng=FakeRng(),
+    )
+    return end_data, mutations, party, on_def
+
+
+async def test_fled_does_not_stabilize_fallen_ally(monkeypatch):
+    # story-005 finding 2: stabilization is VICTORY-only. A savable fallen ally on a 'fled' end is
+    # NOT revived to 1 HP for free (fleeing is not winning).
+    session = _two_pc_session()
+    cs = CombatState(
+        combat_id="c1",
+        participants=[
+            _player_participant("p1", "Kael", []),  # primary alive
+            CombatParticipant(
+                id="p2", name="Bren", type="player", initiative=12, hp_current=0, hp_max=20, ac=14, is_fallen=True
+            ),
+            CombatParticipant(
+                id="g1", name="Goblin", type="enemy", initiative=8, hp_current=5, hp_max=7, ac=13
+            ),  # alive
+        ],
+        initiative_order=["p1", "p2", "g1"],
+        round_number=2,
+        current_turn_index=0,
+        location_id="loc1",
+    )
+    _end, mutations, party, _on_def = await _run_outcome(session, cs, "fled", monkeypatch)
+    hp_calls = [(c.args[0], c.args[1]) for c in mutations.update_player_hp.await_args_list]
+    assert ("p2", 1) not in hp_calls  # not stabilized on a flee
+    party.assert_not_awaited()  # a merely-fallen ally is not resurrected either
+
+
+async def test_defeat_with_standing_primary_still_resurrects_it(monkeypatch):
+    # story-005 finding 4: a DM-declared defeat with the primary still standing must still record the
+    # death + anchor via the standing-primary fallback (restored after story-004 deleted it).
+    session = _two_pc_session()  # primary p1
+    cs = CombatState(
+        combat_id="c1",
+        participants=[
+            _player_participant("p1", "Kael", []),  # primary STANDING
+            CombatParticipant(id="g1", name="Goblin", type="enemy", initiative=8, hp_current=5, hp_max=7, ac=13),
+        ],
+        initiative_order=["p1", "g1"],
+        round_number=2,
+        current_turn_index=0,
+        location_id="loc1",
+    )
+    end_data, _mutations, party, on_def = await _run_outcome(session, cs, "defeat", monkeypatch)
+    party.assert_not_awaited()  # no down/dead participant collected
+    on_def.assert_awaited_once()  # the standing primary is resurrected via the defeat fallback
+    assert end_data["death_context"] is not None
+
+
+async def test_destroyed_echo_primary_resurrected_even_on_fled(monkeypatch):
+    # story-005 (plan-review concern): an echo is a dead player and MUST return via Mortaen on ANY
+    # outcome — a destroyed echo-primary is still resurrected on a 'fled' end, never stranded.
+    session = _two_pc_session()  # primary p1
+    cs = CombatState(
+        combat_id="c1",
+        participants=[
+            CombatParticipant(
+                id="p1",
+                name="Kael",
+                type="temporary_hollowed",
+                initiative=15,
+                hp_current=0,
+                hp_max=20,
+                ac=14,
+                is_fallen=True,
+            ),
+            _player_participant("p2", "Bren", []),  # ally alive
+            CombatParticipant(id="g1", name="Goblin", type="enemy", initiative=8, hp_current=5, hp_max=7, ac=13),
+        ],
+        initiative_order=["p1", "p2", "g1"],
+        round_number=2,
+        current_turn_index=0,
+        location_id="loc1",
+    )
+    end_data, _mutations, party, _on_def = await _run_outcome(
+        session, cs, "fled", monkeypatch, resurrect_return=[{"anchor": "anchor_x"}]
+    )
+    party.assert_awaited_once()  # the destroyed echo-primary returns via Mortaen even on a flee
+    assert end_data["death_context"] is not None
+
+
+async def test_manual_victory_empty_seat_order_does_not_crash(monkeypatch):
+    # concern ab4ced4c2110: a MANUAL end_combat('victory') can bypass _wrap's any_player_standing
+    # gate — e.g. a solo primary risen as a temporary_hollowed echo leaves NO player participant, so
+    # seat_order is empty. The loot/currency distribution must skip (nobody to receive it), not divide
+    # by zero. The echo-primary still resurrects.
+    session = SessionData(player_id="p1", location_id="loc1", room=None)  # solo
+    cs = CombatState(
+        combat_id="c1",
+        participants=[
+            CombatParticipant(
+                id="p1",
+                name="Kael",
+                type="temporary_hollowed",
+                initiative=15,
+                hp_current=0,
+                hp_max=20,
+                ac=14,
+                is_fallen=True,
+            ),
+            # a currency-bearing enemy (no loot_table -> currency only) so currency_silver > 0
+            CombatParticipant(
+                id="g1",
+                name="Goblin",
+                type="enemy",
+                initiative=8,
+                hp_current=0,
+                hp_max=7,
+                ac=13,
+                is_fallen=True,
+                category="humanoid",
+                role="standard",
+                level=5,
+                xp_value=50,
+            ),
+        ],
+        initiative_order=["p1", "g1"],
+        round_number=2,
+        current_turn_index=0,
+        location_id="loc1",
+    )
+    end_data, _mutations, party, _on_def = await _run_outcome(
+        session, cs, "victory", monkeypatch, resurrect_return=[{"anchor": "anchor_x"}]
+    )
+    # No crash; nothing distributed to an empty seat_order.
+    assert end_data["primary_loot"] == []
+    assert end_data["primary_currency_gold"] == 0
+    party.assert_awaited_once()  # the echo-primary still returns via Mortaen

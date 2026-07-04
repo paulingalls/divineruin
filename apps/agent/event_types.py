@@ -47,6 +47,12 @@ DIVINE_FAVOR_CHANGED = "divine_favor_changed"
 PLAYER_PORTRAIT_READY = "player_portrait_ready"
 
 # Inventory & quests
+# ITEM_ACQUIRED combat-loot packet (M20 story-001) gains `player_id` — the recipient party member
+# a round-robinned drop was granted to (combat_end.py), mirroring CURRENCY_GAINED's player_id so
+# the mobile HUD filters an item overlay to the local recipient via isEventForLocalPlayer. Non-combat
+# emitters (quest rewards, etc.) may omit it — the client treats an absent id as the local player's
+# (back-compat, same convention as RESONANCE_CHANGED/VEIL_WARD_CHANGED's caster_id default).
+# Mirror const in apps/mobile/src/audio/event-types.ts.
 ITEM_ACQUIRED = "item_acquired"
 INVENTORY_UPDATED = "inventory_updated"
 ITEM_DURABILITY_HIT = "item_durability_hit"
