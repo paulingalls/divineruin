@@ -70,6 +70,28 @@ async def test_restore_node_quantity_caps_at_capacity_and_is_idempotent():
         await _delete_node(node_id)
 
 
+async def test_restore_node_quantity_no_ops_on_capacity_less_row():
+    # A legacy row predating the capacity field must not be corrupted: LEAST(NULL, x) would
+    # null-write quantity, so the COALESCE(capacity, quantity) guard makes the restore a no-op.
+    pool = await db.get_pool()
+    node_id = f"test_node_{uuid.uuid4().hex}"
+    data = {
+        "location_id": "greyvale_wilderness_north",
+        "node_type": "herb_garden",
+        "resource_type": "medicinal_herb",
+        "quantity": 1,
+        "discovered": False,
+        "respawn_days": 2,
+    }  # NOTE: no "capacity" key
+    try:
+        await pool.execute("INSERT INTO gathering_nodes (id, data) VALUES ($1, $2)", node_id, json.dumps(data))
+        await db_mutations_gathering.restore_node_quantity(node_id, 3, conn=pool)
+        row = await pool.fetchrow("SELECT data FROM gathering_nodes WHERE id = $1", node_id)
+        assert json.loads(row["data"])["quantity"] == 1  # unchanged, not null
+    finally:
+        await _delete_node(node_id)
+
+
 async def test_deplete_quantity_and_mark_discovered_via_jsonb_set():
     # The two mutations story-003's consumer will issue against a fixed node.
     pool = await db.get_pool()
