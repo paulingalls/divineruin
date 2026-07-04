@@ -7,14 +7,19 @@ import { useInvite } from "@/hooks/use-invite";
 export function InviteButton() {
   const { state, share } = useInvite();
   const fetching = state === "fetching";
+  const failed = state === "error";
 
   return (
     <Pressable
-      style={[styles.button, fetching && styles.buttonFetching]}
+      style={[styles.button, fetching && styles.buttonFetching, failed && styles.buttonError]}
       onPress={() => void share()}
       disabled={fetching}
     >
-      <ThemedText style={[styles.label, fetching && styles.labelFetching]}>Invite</ThemedText>
+      <ThemedText
+        style={[styles.label, fetching && styles.labelFetching, failed && styles.labelError]}
+      >
+        {failed ? "Retry invite" : "Invite"}
+      </ThemedText>
     </Pressable>
   );
 }
@@ -32,10 +37,16 @@ const styles = StyleSheet.create({
   buttonFetching: {
     opacity: 0.5,
   },
+  buttonError: {
+    borderColor: BrandColors.ember,
+  },
   label: {
     color: BrandColors.hollow,
   },
   labelFetching: {
     color: BrandColors.ash,
+  },
+  labelError: {
+    color: BrandColors.ember,
   },
 });

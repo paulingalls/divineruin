@@ -98,6 +98,9 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false, animation: "none" }}>
             <Stack.Screen name="auth" />
             <Stack.Screen name="index" redirect />
+            {/* join must resolve pre-auth: a cold-start invite deep-links here,
+                stashes the code, and routes to sign-in (see join.tsx). */}
+            <Stack.Screen name="join" />
           </Stack>
           <GrainOverlay />
         </GestureHandlerRootView>
@@ -112,6 +115,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false, animation: "none" }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="auth" redirect />
+          <Stack.Screen name="join" />
           <Stack.Screen name="session" />
           {__DEV__ && <Stack.Screen name="session-test" />}
           <Stack.Screen name="session-summary" options={{ presentation: "modal" }} />

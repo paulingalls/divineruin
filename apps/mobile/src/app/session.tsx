@@ -1,7 +1,8 @@
 import { useEffect, useRef, useCallback, useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import * as Crypto from "expo-crypto";
 import { LiveKitRoom, useConnectionState, useLocalParticipant, useVoiceAssistant } from "@/livekit";
 import { ConnectionState } from "livekit-client";
 import { useStore } from "zustand";
@@ -9,6 +10,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 import { Image } from "expo-image";
 import { ThemedText } from "@/components/themed-text";
+import { InviteButton } from "@/components/invite-button";
 import { TranscriptView } from "@/components/transcript-view";
 import { AtmosphericBackground } from "@/components/atmospheric-background";
 import { LocationArtBackground } from "@/components/location-art-background";
@@ -47,8 +49,13 @@ function LoadingShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+// The room name is the capability secret for M19 invites (decision
+// m19-room-name-capability): a guest can only reach the host's room via a
+// server-minted invite code, so the name must be unguessable. randomUUID() is
+// cryptographically random and satisfies the server's id validation
+// (/^[a-zA-Z0-9_-]+$/, <=128).
 function makeRoomName(): string {
-  return `divineruin-session-${Date.now().toString(36)}`;
+  return `divineruin-${Crypto.randomUUID()}`;
 }
 const RECONNECT_TIMEOUT_MS = 2 * 60 * 1000;
 const SWIPE_UP_THRESHOLD = -50;
@@ -195,6 +202,8 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
         <Pressable style={[styles.buttonBase, styles.leaveButton]} onPress={onLeave}>
           <ThemedText style={[styles.buttonText, styles.leaveText]}>Leave</ThemedText>
         </Pressable>
+
+        <InviteButton />
       </View>
 
       <SwipeUpTrigger />
@@ -208,13 +217,20 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
 
 export default function SessionScreen() {
   const router = useRouter();
-  const { state, error, token, serverUrl, fetchToken, reset } = useSessionToken();
+  const { code } = useLocalSearchParams<{ code?: string }>();
+  const { state, error, token, serverUrl, fetchToken, redeemInvite, reset } = useSessionToken();
 
   useEffect(() => {
     sessionStore.getState().setPhase("connecting");
     configureAudioSession().catch((err) => console.error("[session] Audio config failed:", err));
-    void fetchToken(makeRoomName());
-  }, [fetchToken]);
+    if (code) {
+      // Guest: redeem the invite code for a token scoped to the host's room.
+      void redeemInvite(code);
+    } else {
+      // Host: mint a fresh, unguessable room.
+      void fetchToken(makeRoomName());
+    }
+  }, [code, fetchToken, redeemInvite]);
 
   const handleLeave = useCallback(() => {
     const currentPhase = sessionStore.getState().phase;

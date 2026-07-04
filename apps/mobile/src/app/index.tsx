@@ -15,6 +15,7 @@ import { useCharacter } from "@/hooks/use-character";
 import { useCatchUp } from "@/hooks/use-catchup";
 import { useActivityActions } from "@/hooks/use-activity-actions";
 import { characterStore } from "@/stores/character-store";
+import { pendingInviteStore } from "@/stores/pending-invite-store";
 import { playNarration, stopNarration, onNarrationStateChange } from "@/audio/narration-player";
 import { configureAudioSession } from "@/audio/audio-config";
 import { getPlayerId, API_BASE } from "@/utils/api";
@@ -35,6 +36,16 @@ export default function HomeScreen() {
   const { submitDecision, startActivity, decisionLoading } = useActivityActions();
 
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
+
+  // Cold-start invite: a guest who tapped divineruin://join?code=X while signed
+  // out had the code stashed (join.tsx) and was routed through sign-in. On
+  // landing here post-auth, consume it and drop straight into the host's room.
+  useEffect(() => {
+    const pendingCode = pendingInviteStore.getState().consumePendingCode();
+    if (pendingCode) {
+      router.replace({ pathname: "/session", params: { code: pendingCode } });
+    }
+  }, [router]);
 
   useEffect(() => {
     return onNarrationStateChange((state) => {
