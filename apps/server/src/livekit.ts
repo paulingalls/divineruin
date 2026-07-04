@@ -23,7 +23,7 @@ interface LivekitClients {
 
 let _clients: LivekitClients | null = null;
 
-function getLivekitClients(): LivekitClients | null {
+export function getLivekitClients(): LivekitClients | null {
   if (_clients) return _clients;
   const url = Bun.env.LIVEKIT_URL;
   const apiKey = Bun.env.LIVEKIT_API_KEY;
@@ -46,7 +46,7 @@ export function getRoomService(): RoomServiceClient | null {
 const VALID_ID = /^[a-zA-Z0-9_-]+$/;
 const MAX_ID_LENGTH = 128;
 
-function validateId(value: string, field: string): string | null {
+export function validateId(value: string, field: string): string | null {
   if (value.length > MAX_ID_LENGTH) {
     return `${field} exceeds maximum length of ${MAX_ID_LENGTH} characters`;
   }
@@ -54,6 +54,28 @@ function validateId(value: string, field: string): string | null {
     return `${field} contains invalid characters (allowed: a-z, A-Z, 0-9, _, -)`;
   }
   return null;
+}
+
+/** Mint a room-join JWT for the given identity. Never triggers DM dispatch. */
+export async function mintParticipantToken(
+  clients: LivekitClients,
+  roomName: string,
+  identity: string,
+): Promise<string> {
+  const token = new AccessToken(clients.apiKey, clients.apiSecret, {
+    identity,
+    name: identity,
+  });
+  token.addGrant({
+    roomJoin: true,
+    room: roomName,
+    canPublish: true,
+    canSubscribe: true,
+    canPublishData: true,
+    canPublishSources: [TrackSource.MICROPHONE],
+  });
+
+  return await token.toJwt();
 }
 
 export async function handleLivekitToken(req: Request, playerId: string): Promise<Response> {
@@ -95,20 +117,7 @@ export async function handleLivekitToken(req: Request, playerId: string): Promis
     }
   }
 
-  const token = new AccessToken(clients.apiKey, clients.apiSecret, {
-    identity: player_id,
-    name: player_id,
-  });
-  token.addGrant({
-    roomJoin: true,
-    room: room_name,
-    canPublish: true,
-    canSubscribe: true,
-    canPublishData: true,
-    canPublishSources: [TrackSource.MICROPHONE],
-  });
-
-  const jwt = await token.toJwt();
+  const jwt = await mintParticipantToken(clients, room_name, player_id);
 
   try {
     await clients.dispatchClient.createDispatch(room_name, "divineruin-dm", {
