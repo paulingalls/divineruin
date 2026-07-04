@@ -282,9 +282,11 @@ class TestWrapEchoGating:
 
 async def test_temporary_hollowed_full_path_e2e(dev_db_pool):
     """AC3 (real PostgreSQL): a Stage-2 Hollowed player dies -> the echo rises -> is destroyed ->
-    the character enters Mortaen death via the existing defeat path -> resurrected with Hollowed
-    cleared and hollow_killed recorded. Drives the rise/destroy through the combat engine and routes
-    the echo-fall defeat through resurrect_on_defeat exactly as _end_combat_db does."""
+    the character enters Mortaen death -> resurrected with Hollowed cleared and hollow_killed
+    recorded. Drives the rise/destroy through the combat engine and routes the echo-fall death
+    through resurrect_on_defeat (M20 story-004: _end_combat_db reaches the same resurrection via its
+    outcome-independent dead-life collector, exercised end-to-end by
+    test_echo_primary_resurrected_on_victory_e2e below)."""
     import json
 
     import db_mutations_resurrection as dmr
@@ -366,3 +368,102 @@ async def test_temporary_hollowed_full_path_e2e(dev_db_pool):
         assert revived["hp"]["current"] == death_ctx["revive_hp"]
     finally:
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+
+
+async def test_echo_primary_resurrected_on_victory_e2e(dev_db_pool):
+    """M20 story-004 (real PostgreSQL): a destroyed temporary_hollowed echo-primary + a surviving
+    ally win the fight -> _end_combat_db resolves outcome='victory' yet still Mortaen-resurrects the
+    echo-primary through its outcome-independent dead-life collector (hollow_killed recorded, Hollowed
+    cleared, revived at an anchor). The living ally is untouched (no death recorded). Proves the
+    character-loss fix end-to-end through the real combat-end path — not the defeat-only branch."""
+    import json
+
+    from sample_fixtures import make_context, make_mock_room
+
+    import db_mutations
+    import db_mutations_resurrection as dmr
+    import db_queries
+    from combat_end import _end_combat_db
+    from combat_events import EventSink
+    from session_data import CombatParticipant, CombatState
+
+    pool = dev_db_pool
+    primary_id = "s004_echo_primary_victory"
+    ally_id = "s004_ally_survivor"
+
+    async def _seed(pid, *, hp_current, conditions):
+        await pool.execute(
+            "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
+            "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
+            pid,
+            json.dumps(
+                {
+                    "player_id": pid,
+                    "class": "warrior",
+                    "attributes": {"strength": 14, "charisma": 8, "constitution": 13},
+                    "level": 5,
+                    "hp": {"current": hp_current, "max": 40},
+                    "maxhp_override": 0,
+                    "location_id": "off_catalog_wilds",  # off-catalog -> anchor falls to starter zone
+                    "death_history": {"count": 0, "costs": []},
+                    "conditions": conditions,
+                }
+            ),
+        )
+
+    await _seed(
+        primary_id, hp_current=0, conditions=[{"type": "hollowed", "duration": None, "source": "veil", "stage": 2}]
+    )
+    await _seed(ally_id, hp_current=20, conditions=[])
+    try:
+        session = make_context(
+            primary_id, location_id="off_catalog_wilds", room=make_mock_room(), party_member_ids=[ally_id]
+        ).userdata
+        cs = CombatState(
+            combat_id="s004_victory_combat",
+            participants=[
+                # The primary transformed into a Hollowed echo and was then destroyed (a dead player).
+                CombatParticipant(
+                    id=primary_id,
+                    name="Echo",
+                    type="temporary_hollowed",
+                    initiative=15,
+                    hp_current=0,
+                    hp_max=40,
+                    ac=14,
+                    is_fallen=True,
+                    conditions=[{"type": "hollowed", "duration": None, "source": "veil", "stage": 2}],
+                ),
+                # The ally survived and cleared the last enemy -> victory.
+                CombatParticipant(
+                    id=ally_id, name="Ally", type="player", initiative=12, hp_current=18, hp_max=20, ac=14
+                ),
+                CombatParticipant(
+                    id="g1", name="Goblin", type="enemy", initiative=8, hp_current=0, hp_max=7, ac=13, is_fallen=True
+                ),
+            ],
+            initiative_order=[primary_id, ally_id, "g1"],
+            round_number=3,
+            current_turn_index=0,
+            location_id="off_catalog_wilds",
+        )
+
+        end_data = await _end_combat_db(
+            session, cs, "victory", mutations=db_mutations, queries=db_queries, conn=pool, sink=EventSink()
+        )
+
+        # The echo-primary died and returned via Mortaen despite the VICTORY.
+        assert end_data["death_context"] is not None
+        revived = await db_queries.get_player(primary_id, conn=pool)
+        assert revived is not None
+        assert await dmr.read_hollow_killed(primary_id, conn=pool) is True
+        assert all(c["type"] != "hollowed" for c in (revived.get("conditions") or []))
+        assert revived["death_history"]["count"] == 1
+        assert revived["location_id"] != "off_catalog_wilds"  # revived at a resolved anchor
+        assert revived["location_id"] == end_data["death_context"]["anchor"]
+
+        # The surviving ally is untouched — no death recorded.
+        ally = await db_queries.get_player(ally_id, conn=pool)
+        assert ally is not None and ally["death_history"]["count"] == 0
+    finally:
+        await pool.execute("DELETE FROM players WHERE player_id = ANY($1::text[])", [primary_id, ally_id])
