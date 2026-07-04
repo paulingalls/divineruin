@@ -1,6 +1,6 @@
 import { test, expect, describe, mock, beforeEach, beforeAll } from "bun:test";
 import "./test-env.ts";
-import { dispatchSpy, resetDispatchSpy } from "./test-env.ts";
+import { dispatchSpy, resetDispatchSpy, mintedTokens, resetMintedTokens } from "./test-env.ts";
 
 // Functional in-memory invite store (unlike invite.test.ts's fixed mock) so
 // this capstone proves the round-trip: the code createInvite mints is the
@@ -18,6 +18,7 @@ void mock.module("./invite-store.ts", () => ({
 beforeEach(() => {
   invites = new Map<string, string>();
   resetDispatchSpy();
+  resetMintedTokens();
 });
 
 function jsonReq(path: string, body: Record<string, unknown>): Request {
@@ -62,8 +63,18 @@ describe("invite → redeem capstone", () => {
 
     expect(body.room_name).toBe(room);
     expect(dispatchSpy).toHaveBeenCalledTimes(1);
-    expect(guest).not.toBe(host);
-    expect(validateId(guest, "id")).toBeNull();
+
+    // Assert from the ACTUAL minted tokens (endpoint output), not test inputs:
+    // both tokens grant the same room, with distinct identities, and the
+    // redeemed identity is a valid players PK (satisfies M18 _on_join).
+    expect(mintedTokens).toHaveLength(2);
+    const [hostToken, redeemToken] = mintedTokens;
+    expect(hostToken!.room).toBe(room);
+    expect(redeemToken!.room).toBe(room);
+    expect(hostToken!.identity).toBe(host);
+    expect(redeemToken!.identity).toBe(guest);
+    expect(redeemToken!.identity).not.toBe(hostToken!.identity);
+    expect(validateId(redeemToken!.identity, "id")).toBeNull();
   });
 
   test("an unknown/expired code redeems to 404 with no extra dispatch", async () => {
@@ -75,5 +86,6 @@ describe("invite → redeem capstone", () => {
     );
     expect(redeemRes.status).toBe(404);
     expect(dispatchSpy).not.toHaveBeenCalled();
+    expect(mintedTokens).toHaveLength(0); // no token minted for an unknown code
   });
 });

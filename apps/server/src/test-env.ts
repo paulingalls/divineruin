@@ -15,6 +15,17 @@ export function resetDispatchSpy(): void {
   dispatchSpy = mock((..._args: unknown[]) => Promise.resolve({}));
 }
 
+// Each minted token's identity (AccessToken ctor) + granted room (addGrant), so
+// tests can assert the ACTUAL endpoint output — e.g. the invite→redeem capstone
+// proving both tokens grant the same room with distinct identities. Push-only;
+// tests reset it in beforeEach.
+export const mintedTokens: Array<{ identity: string; room: string | undefined }> = [];
+
+/** Clear the minted-token capture (call in beforeEach). */
+export function resetMintedTokens(): void {
+  mintedTokens.length = 0;
+}
+
 // Mock livekit-server-sdk so tests never make real HTTP calls.
 void mock.module("livekit-server-sdk", () => ({
   RoomServiceClient: class {
@@ -34,7 +45,13 @@ void mock.module("livekit-server-sdk", () => ({
     }
   },
   AccessToken: class {
-    addGrant() {}
+    identity: string | undefined;
+    constructor(_apiKey: string, _apiSecret: string, opts?: { identity?: string }) {
+      this.identity = opts?.identity;
+    }
+    addGrant(grant?: { room?: string }) {
+      mintedTokens.push({ identity: this.identity ?? "", room: grant?.room });
+    }
     toJwt() {
       return Promise.resolve("mock-jwt-token");
     }
