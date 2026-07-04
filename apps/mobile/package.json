@@ -32,7 +32,7 @@
     "expo-asset": "55.0.17",
     "expo-audio": "55.0.14",
     "expo-constants": "55.0.16",
-    "expo-crypto": "~55.0.16",
+    "expo-crypto": "55.0.16",
     "expo-dev-client": "55.0.32",
     "expo-device": "55.0.16",
     "expo-disable-pods-indexing": "github:paulingalls/expo-disable-pods-indexing",
