@@ -43,6 +43,11 @@ export function getRoomService(): RoomServiceClient | null {
   return getLivekitClients()?.roomService ?? null;
 }
 
+/** Clear the cached LiveKit clients (for testing the unconfigured/503 path). */
+export function _resetLivekitClientsForTesting(): void {
+  _clients = null;
+}
+
 const VALID_ID = /^[a-zA-Z0-9_-]+$/;
 const MAX_ID_LENGTH = 128;
 

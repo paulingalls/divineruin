@@ -1,6 +1,6 @@
-import { validateId } from "./livekit.ts";
+import { validateId, getLivekitClients, mintParticipantToken } from "./livekit.ts";
 import { parseJsonBody } from "./middleware.ts";
-import { putInvite } from "./invite-store.ts";
+import { putInvite, getInvite } from "./invite-store.ts";
 
 const INVITE_TTL_SECONDS = 1800;
 
@@ -29,4 +29,33 @@ export async function handleCreateInvite(req: Request, _playerId: string): Promi
   await putInvite(code, room_name, INVITE_TTL_SECONDS);
 
   return Response.json({ code, expires_in: INVITE_TTL_SECONDS });
+}
+
+export async function handleRedeemInvite(req: Request, playerId: string): Promise<Response> {
+  const clients = getLivekitClients();
+  if (!clients) {
+    return Response.json(
+      { error: "LiveKit is not configured (LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET)" },
+      { status: 503 },
+    );
+  }
+
+  const body = await parseJsonBody<{ code?: string }>(req);
+  if (!body) {
+    return Response.json({ error: "Invalid Content-Type" }, { status: 415 });
+  }
+
+  const code = body.code;
+  if (!code) {
+    return Response.json({ error: "code is required" }, { status: 400 });
+  }
+
+  const room_name = await getInvite(code);
+  if (!room_name) {
+    return Response.json({ error: "Invite code not found or expired" }, { status: 404 });
+  }
+
+  const token = await mintParticipantToken(clients, room_name, playerId);
+
+  return Response.json({ token, room_name, url: clients.url });
 }
