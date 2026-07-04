@@ -145,6 +145,19 @@ async def _check_gather_impl(
         event_bus=session.event_bus,
     )
 
+    if node is not None and not node.get("discovered"):
+        await publish_game_event(
+            session.room,
+            E.HIDDEN_REVEALED,
+            {
+                "element_id": node["id"],
+                "attaches_to": node.get("location_id"),
+                "description": f"a {node['node_type'].replace('_', ' ')} ({node['resource_type']})",
+                "skill": skill,
+            },
+            event_bus=session.event_bus,
+        )
+
     session.record_event(f"Gather ({skill}): {result.narrative_cue}")
     return json.dumps(
         {

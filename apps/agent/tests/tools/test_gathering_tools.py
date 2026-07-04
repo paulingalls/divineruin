@@ -170,6 +170,47 @@ class TestGuards:
             await _run(_ctx_with_bus(), mocks, material_type="antimatter", rng_val=11)
 
 
+class TestNodeRevealSignal:
+    @pytest.mark.asyncio
+    async def test_first_reveal_emits_hidden_revealed(self):
+        """Undiscovered node + rich find should emit HIDDEN_REVEALED alongside DICE_ROLL."""
+        mocks = _gather_mocks(player=_EXPERT, nodes=[_NODE])
+        ctx = _ctx_with_bus()
+        await _run(ctx, mocks, rng_val=20)  # expert + nat20 -> rich_find
+        events = published_events(ctx)
+        dice_roll = next(e for e in events if e.event_type == E.DICE_ROLL)
+        assert dice_roll is not None
+        hidden = next((e for e in events if e.event_type == E.HIDDEN_REVEALED), None)
+        assert hidden is not None
+        assert hidden.payload["element_id"] == "n1"
+        assert hidden.payload["skill"] == "survival"
+
+    @pytest.mark.asyncio
+    async def test_already_discovered_omits_hidden_revealed(self):
+        """Already-discovered node should NOT emit HIDDEN_REVEALED (first-reveal-only gate)."""
+        discovered_node = {**_NODE, "discovered": True}
+        mocks = _gather_mocks(player=_EXPERT, nodes=[discovered_node])
+        ctx = _ctx_with_bus()
+        await _run(ctx, mocks, rng_val=20)  # expert + nat20 -> rich_find
+        events = published_events(ctx)
+        dice_roll = next(e for e in events if e.event_type == E.DICE_ROLL)
+        assert dice_roll is not None
+        hidden = next((e for e in events if e.event_type == E.HIDDEN_REVEALED), None)
+        assert hidden is None  # no HIDDEN_REVEALED for already-discovered
+
+    @pytest.mark.asyncio
+    async def test_non_rich_success_omits_hidden_revealed(self):
+        """Non-rich success should emit only DICE_ROLL, no HIDDEN_REVEALED."""
+        mocks = _gather_mocks(player=SAMPLE_PLAYER, nodes=[_NODE])  # untrained -> no rich find
+        ctx = _ctx_with_bus()
+        await _run(ctx, mocks, rng_val=11)
+        events = published_events(ctx)
+        dice_roll = next(e for e in events if e.event_type == E.DICE_ROLL)
+        assert dice_roll is not None
+        hidden = next((e for e in events if e.event_type == E.HIDDEN_REVEALED), None)
+        assert hidden is None  # no HIDDEN_REVEALED for non-rich
+
+
 class TestCheckModeRegistration:
     def test_gather_is_a_valid_check_mode(self):
         assert "gather" in VALID_CHECK_MODES
