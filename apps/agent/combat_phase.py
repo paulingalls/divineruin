@@ -277,15 +277,18 @@ def _wrap(state: CombatState) -> WrapOutcome:
 
     enemies = [p for p in state.participants if p.type == "enemy"]
     # Temporary Hollowed echoes (M4.4 story-008): a Stage-2+ Hollowed player who fell rose as one of
-    # these in place (the player participant transformed). While any echo lives it blocks combat-end;
-    # once all are destroyed the character finally dies (defeat -> the existing combat-end defeat path
-    # -> trigger_character_death's Hollowed branch). The echo is not type "player", so the player-
-    # defeat gate below stays dormant whenever an echo is present.
+    # these in place (the player participant transformed). While any echo lives it blocks combat-end.
+    # M20 (399dddd57cae): a destroyed echo only ends combat in defeat once every OTHER (non-echo)
+    # player is also terminally down — a standing or still-rolling ally can keep fighting or revive
+    # the fallen echo, so the echo's destruction alone must not end a multi-PC combat. Solo case
+    # (players == []) falls through all([]) is True -> defeat, unchanged from before M20.
     echoes = [p for p in state.participants if p.type == "temporary_hollowed"]
+    living_echoes = [e for e in echoes if not e.is_fallen]
     # M18 multi-PC party defeat: combat ends in defeat only when ALL player participants are
     # terminally down (is_dead or death_save_failures >= _DEATH_SAVE_LIMIT). A standing or
     # still-rolling player keeps combat alive.
     players = [p for p in state.participants if p.type == "player"]
+    non_echo_players_down = all(p.is_dead or p.death_save_failures >= _DEATH_SAVE_LIMIT for p in players)
 
     combat_ended = False
     outcome: str | None = None
@@ -294,13 +297,13 @@ def _wrap(state: CombatState) -> WrapOutcome:
     # must take precedence over the enemies-all-fallen check (which would never fire here).
     if state.deescalated:
         combat_ended, outcome = True, "deescalated"
-    elif echoes and all(e.is_fallen for e in echoes):
+    elif living_echoes:
+        pass  # a Hollowed echo still fights — blocks victory AND defeat
+    elif echoes and non_echo_players_down:
         combat_ended, outcome = True, "defeat"
-    elif echoes:
-        pass  # an undestroyed echo blocks both victory and the (now-moot) player-defeat gate
     elif enemies and all(p.is_fallen for p in enemies):
         combat_ended, outcome = True, "victory"
-    elif players and all(p.is_dead or p.death_save_failures >= _DEATH_SAVE_LIMIT for p in players):
+    elif players and non_echo_players_down:
         combat_ended, outcome = True, "defeat"
 
     return WrapOutcome(

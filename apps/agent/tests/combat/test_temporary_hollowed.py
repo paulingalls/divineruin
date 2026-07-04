@@ -218,6 +218,45 @@ class TestWrapEchoGating:
         assert wrap.combat_ended is True
         assert wrap.outcome == "victory"
 
+    def _add_standing_ally(self, cs, *, dead=False):
+        from session_data import CombatParticipant
+
+        ally = CombatParticipant(
+            id="player_2",
+            name="Ally",
+            type="player",
+            initiative=10,
+            hp_current=0 if dead else 20,
+            hp_max=20,
+            ac=14,
+            is_dead=dead,
+        )
+        cs.participants.append(ally)
+        cs.initiative_order.append("player_2")
+        return cs
+
+    def test_destroyed_echo_does_not_defeat_when_ally_still_stands(self):
+        # M20 (399dddd57cae): destroying the echo must not end combat while a non-echo
+        # ally still stands — that ally can keep fighting or revive the fallen echo.
+        cs = self._state_with_echo(echo_fallen=True, enemies_fallen=False)
+        self._add_standing_ally(cs)
+        wrap = combat_phase._wrap(cs)
+        assert wrap.combat_ended is False
+
+    def test_destroyed_echo_ends_combat_as_defeat_when_all_non_echo_players_down(self):
+        cs = self._state_with_echo(echo_fallen=True, enemies_fallen=False)
+        self._add_standing_ally(cs, dead=True)
+        wrap = combat_phase._wrap(cs)
+        assert wrap.combat_ended is True
+        assert wrap.outcome == "defeat"
+
+    def test_destroyed_echo_with_solo_player_still_defeats(self):
+        # Back-compat: no other player participants -> all([]) is True -> defeat, unchanged.
+        cs = self._state_with_echo(echo_fallen=True, enemies_fallen=False)
+        wrap = combat_phase._wrap(cs)
+        assert wrap.combat_ended is True
+        assert wrap.outcome == "defeat"
+
 
 async def test_temporary_hollowed_full_path_e2e(dev_db_pool):
     """AC3 (real PostgreSQL): a Stage-2 Hollowed player dies -> the echo rises -> is destroyed ->

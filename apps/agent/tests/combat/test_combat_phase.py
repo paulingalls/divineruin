@@ -315,6 +315,85 @@ class TestWrapBeat:
         assert advance.wrap.outcome is None
         assert "player_2" in advance.wrap.death_saves_due
 
+    def test_living_echo_blocks_both_victory_and_defeat(self):
+        # A living temporary_hollowed echo takes precedence over an all-enemies-fallen victory
+        # AND over an all-non-echo-players-down defeat — combat cannot end while it still fights.
+        state = CombatState(
+            combat_id="combat_echo_gate",
+            participants=[
+                CombatParticipant(
+                    id="player_1",
+                    name="Kael-Echo",
+                    type="temporary_hollowed",
+                    initiative=15,
+                    hp_current=10,
+                    hp_max=20,
+                    ac=14,
+                ),
+                CombatParticipant(
+                    id="goblin_scout_1",
+                    name="Goblin Scout",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=0,
+                    hp_max=7,
+                    ac=13,
+                    is_fallen=True,
+                ),
+            ],
+            initiative_order=["player_1", "goblin_scout_1"],
+            round_number=1,
+            current_turn_index=0,
+            location_id="accord_guild_hall",
+        )
+        state.beat = PhaseBeat.WRAP
+
+        _, advance = advance_combat_phase(state, None)
+
+        assert advance.wrap is not None
+        assert advance.wrap.combat_ended is False
+        assert advance.wrap.outcome is None
+
+    def test_no_echo_mutual_kill_still_resolves_victory(self):
+        # All enemies fallen AND all players down, no echo present -> victory still wins
+        # (gate ordering preserved: victory is checked before player-defeat).
+        state = CombatState(
+            combat_id="combat_mutual_kill",
+            participants=[
+                CombatParticipant(
+                    id="player_1",
+                    name="Kael",
+                    type="player",
+                    initiative=15,
+                    hp_current=0,
+                    hp_max=25,
+                    ac=14,
+                    is_dead=True,
+                ),
+                CombatParticipant(
+                    id="goblin_scout_1",
+                    name="Goblin Scout",
+                    type="enemy",
+                    initiative=12,
+                    hp_current=0,
+                    hp_max=7,
+                    ac=13,
+                    is_fallen=True,
+                ),
+            ],
+            initiative_order=["player_1", "goblin_scout_1"],
+            round_number=1,
+            current_turn_index=0,
+            location_id="accord_guild_hall",
+        )
+        state.beat = PhaseBeat.WRAP
+
+        _, advance = advance_combat_phase(state, None)
+
+        assert advance.wrap is not None
+        assert advance.wrap.combat_ended is True
+        assert advance.wrap.outcome == "victory"
+
 
 class TestPurityAndDeterminism:
     def test_does_not_mutate_input_state(self):
