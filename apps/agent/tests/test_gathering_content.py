@@ -104,6 +104,10 @@ def test_node_fields_have_correct_shape():
         assert isinstance(n["quantity"], int) and n["quantity"] > 0, f"{n['id']}: quantity must be positive int"
         assert isinstance(n["discovered"], bool), f"{n['id']}: discovered must be bool"
         assert isinstance(n["respawn_days"], int), f"{n['id']}: respawn_days must be int (cadence config)"
+        assert isinstance(n["capacity"], int) and n["capacity"] > 0, f"{n['id']}: capacity must be positive int"
+        # capacity is the immutable ceiling; quantity is the depletable amount. A partially-depleted
+        # seed (quantity < capacity) is legitimate — only quantity > capacity is invalid.
+        assert n["capacity"] >= n["quantity"], f"{n['id']}: capacity is the ceiling for quantity"
 
 
 def test_node_resource_types_exist_in_catalog():

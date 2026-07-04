@@ -336,29 +336,27 @@ class TestCheckDiscover:
         assert "dc" not in dice_calls[0][0][2]
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_successful_discovery_emits_hidden_revealed(self, mock_event):
+    @patch("check_discovery.publish_hidden_revealed", new_callable=AsyncMock)
+    async def test_successful_discovery_emits_hidden_revealed(self, mock_reveal):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         with patch("check_resolution.dice_roll", return_value=_roll(15)):
             await _check_discover_impl(
                 ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
             )
-        revealed = [c for c in mock_event.call_args_list if c[0][1] == E.HIDDEN_REVEALED]
-        assert len(revealed) == 1
-        assert revealed[0][0][2]["element_id"] == "secret_door"
+        mock_reveal.assert_awaited_once()
+        assert mock_reveal.await_args.kwargs["element_id"] == "secret_door"
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_failed_discovery_emits_no_reveal(self, mock_event):
+    @patch("check_discovery.publish_hidden_revealed", new_callable=AsyncMock)
+    async def test_failed_discovery_emits_no_reveal(self, mock_reveal):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         with patch("check_resolution.dice_roll", return_value=_roll(3)):
             await _check_discover_impl(
                 ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
             )
-        revealed = [c for c in mock_event.call_args_list if c[0][1] == E.HIDDEN_REVEALED]
-        assert revealed == []
+        mock_reveal.assert_not_awaited()
 
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)

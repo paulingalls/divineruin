@@ -6,7 +6,8 @@
     "resource_type": "medicinal_herb",
     "quantity": 3,
     "discovered": false,
-    "respawn_days": 2
+    "respawn_days": 2,
+    "capacity": 3
   },
   {
     "id": "greyvale_ruins_salvage",
@@ -15,7 +16,8 @@
     "resource_type": "iron_ore",
     "quantity": 2,
     "discovered": false,
-    "respawn_days": 0
+    "respawn_days": 0,
+    "capacity": 2
   },
   {
     "id": "hollow_breach_residue_pool",
@@ -24,6 +26,7 @@
     "resource_type": "drift_residue",
     "quantity": 4,
     "discovered": false,
-    "respawn_days": -1
+    "respawn_days": -1,
+    "capacity": 4
   }
 ]

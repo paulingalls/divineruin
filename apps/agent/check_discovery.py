@@ -27,7 +27,7 @@ import event_types as E
 import rules_engine
 from condition_consume import consume_beneficial_conditions
 from db_errors import validated_player_conditions
-from game_events import publish_game_event
+from game_events import publish_game_event, publish_hidden_revealed
 from session_data import SessionData
 from tool_support import _cap_str
 
@@ -180,15 +180,12 @@ async def _check_discover_impl(
         session.record_companion_memory(f"Discovered {element.get('description', element_id)} at {loc_name}")
         # Close the Act->Resolve->Stage edge: emit the reveal so story-003's background
         # consumer can rebuild the warm layer and record this id for the hot layer.
-        await publish_game_event(
+        await publish_hidden_revealed(
             session.room,
-            E.HIDDEN_REVEALED,
-            {
-                "element_id": element_id,
-                "attaches_to": element.get("attaches_to"),
-                "description": element.get("description", ""),
-                "skill": skill_lower,
-            },
+            element_id=element_id,
+            attaches_to=element.get("attaches_to"),
+            description=element.get("description", ""),
+            skill=skill_lower,
             event_bus=session.event_bus,
         )
 

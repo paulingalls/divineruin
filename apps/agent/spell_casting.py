@@ -177,6 +177,7 @@ async def _cast_spell_impl(
     context: RunContext[SessionData],
     spell_id: str,
     *,
+    caster_id: str | None = None,
     target_id: str | None = None,
     target_ids: list[str] | None = None,
     db_mod=db,
@@ -205,12 +206,14 @@ async def _cast_spell_impl(
     _validate_id(spell_id, "spell_id")
     session: SessionData = context.userdata
     logger.info("cast_spell called: spell=%s player=%s", spell_id, session.player_id)
+    caster = session.member_state(caster_id) if caster_id else session.party.primary
 
     async with db_mod.transaction() as conn:
         result = await _resolve_cast(
             session,
             spell_id,
             conn=conn,
+            caster=caster,
             target_id=target_id,
             target_ids=target_ids,
             queries_mod=queries_mod,
@@ -236,9 +239,9 @@ async def _cast_spell_impl(
     # the deferred client events. A rolled-back tx skips this (the `async with` re-raises), so the
     # session stays pristine and no event fires.
     if result.new_resonance is not None:
-        session.resonance.current = result.new_resonance
+        caster.resonance.current = result.new_resonance
     if result.concentration_spell_id is not _UNCHANGED:
-        session.concentration.spell_id = cast("str | None", result.concentration_spell_id)
+        caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
     await result.flush_events()
     return json.dumps(result.packet)
 
