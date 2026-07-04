@@ -257,6 +257,28 @@ class TestWrapEchoGating:
         assert wrap.combat_ended is True
         assert wrap.outcome == "defeat"
 
+    def test_destroyed_echo_mutual_kill_resolves_victory(self):
+        # story-004 finding 2: echoes destroyed + all non-echo players down + all enemies fallen
+        # resolves VICTORY (matching the echo-free mutual-KO tie-break), not defeat — victory is
+        # checked before the echo-defeat gate. The dead echo-primary is still resurrected by
+        # combat_end's outcome-independent dead-life collector.
+        cs = self._state_with_echo(echo_fallen=True, enemies_fallen=True)
+        self._add_standing_ally(cs, dead=True)
+        wrap = combat_phase._wrap(cs)
+        assert wrap.combat_ended is True
+        assert wrap.outcome == "victory"
+
+    def test_living_echo_with_all_enemies_and_allies_down_defeats_no_hang(self):
+        # story-004 finding 3: a living echo blocks combat-end, but when all enemies are fallen AND
+        # every non-echo ally is also down, no one is left to destroy the echo -> the party is wiped
+        # -> DEFEAT (no WRAP-beat hang). Solo living echo (no other players) still blocks — see
+        # test_live_echo_blocks_victory_even_with_all_enemies_fallen.
+        cs = self._state_with_echo(echo_fallen=False, enemies_fallen=True)
+        self._add_standing_ally(cs, dead=True)
+        wrap = combat_phase._wrap(cs)
+        assert wrap.combat_ended is True
+        assert wrap.outcome == "defeat"
+
 
 async def test_temporary_hollowed_full_path_e2e(dev_db_pool):
     """AC3 (real PostgreSQL): a Stage-2 Hollowed player dies -> the echo rises -> is destroyed ->
