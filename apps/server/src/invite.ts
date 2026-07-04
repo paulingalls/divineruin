@@ -55,6 +55,11 @@ export async function handleRedeemInvite(req: Request, playerId: string): Promis
     return Response.json({ error: "Invite code not found or expired" }, { status: 404 });
   }
 
+  const playerIdError = validateId(playerId, "player_id");
+  if (playerIdError) {
+    return Response.json({ error: playerIdError }, { status: 400 });
+  }
+
   const token = await mintParticipantToken(clients, room_name, playerId);
 
   return Response.json({ token, room_name, url: clients.url });

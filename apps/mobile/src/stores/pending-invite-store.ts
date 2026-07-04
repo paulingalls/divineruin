@@ -17,9 +17,7 @@ export const pendingInviteStore = createStore<PendingInviteState>((set, get) => 
   setPendingCode: (code) => set({ code }),
   consumePendingCode: () => {
     const { code } = get();
-    if (code !== null) {
-      set({ code: null });
-    }
+    set({ code: null });
     return code;
   },
 }));

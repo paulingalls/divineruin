@@ -217,20 +217,23 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
 
 export default function SessionScreen() {
   const router = useRouter();
-  const { code } = useLocalSearchParams<{ code?: string }>();
+  const { code } = useLocalSearchParams<{ code?: string | string[] }>();
+  // A repeated query key (?code=A&code=B) surfaces as string[]; take the first
+  // so redeemInvite always posts a scalar code instead of an array (which 404s).
+  const inviteCode = Array.isArray(code) ? code[0] : code;
   const { state, error, token, serverUrl, fetchToken, redeemInvite, reset } = useSessionToken();
 
   useEffect(() => {
     sessionStore.getState().setPhase("connecting");
     configureAudioSession().catch((err) => console.error("[session] Audio config failed:", err));
-    if (code) {
+    if (inviteCode) {
       // Guest: redeem the invite code for a token scoped to the host's room.
-      void redeemInvite(code);
+      void redeemInvite(inviteCode);
     } else {
       // Host: mint a fresh, unguessable room.
       void fetchToken(makeRoomName());
     }
-  }, [code, fetchToken, redeemInvite]);
+  }, [inviteCode, fetchToken, redeemInvite]);
 
   const handleLeave = useCallback(() => {
     const currentPhase = sessionStore.getState().phase;

@@ -15,23 +15,26 @@ import { BrandColors, Spacing } from "@/constants/theme";
 // so a cold-start (unauthenticated) invite resolves here too.
 export default function JoinScreen() {
   const router = useRouter();
-  const { code } = useLocalSearchParams<{ code?: string }>();
+  const { code } = useLocalSearchParams<{ code?: string | string[] }>();
+  // A repeated query key (?code=A&code=B) surfaces as string[]; take the first
+  // so we forward/stash a scalar code rather than an array.
+  const inviteCode = Array.isArray(code) ? code[0] : code;
   const phase = useStore(authStore, (s) => s.phase);
 
   useEffect(() => {
     if (phase === "loading") return; // wait for stored-token load to resolve
-    if (!code) {
+    if (!inviteCode) {
       router.replace("/"); // malformed link — nothing to join
       return;
     }
     if (phase === "authenticated") {
-      router.replace({ pathname: "/session", params: { code } });
+      router.replace({ pathname: "/session", params: { code: inviteCode } });
     } else {
       // Cold start: stash the code through sign-in; index.tsx redeems it post-auth.
-      pendingInviteStore.getState().setPendingCode(code);
+      pendingInviteStore.getState().setPendingCode(inviteCode);
       router.replace("/auth");
     }
-  }, [phase, code, router]);
+  }, [phase, inviteCode, router]);
 
   return (
     <ThemedView style={styles.container}>
