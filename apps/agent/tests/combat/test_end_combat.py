@@ -82,10 +82,15 @@ class TestEndCombat:
     @pytest.mark.asyncio
     async def test_no_xp_on_defeat(self, monkeypatch):
         import db_queries
+        import resurrection
 
-        # No player row in this unit's mock DB -> resurrection (M4.4 defeat path) skips cleanly;
-        # this test asserts XP only, not the resurrection flow.
-        monkeypatch.setattr(db_queries, "get_player", AsyncMock(return_value=None))
+        # This test asserts XP only, not the resurrection flow. Give the primary a valid row and
+        # stub resurrect_on_defeat (M18 story-003 made a MISSING row on defeat fail-loud, so a None
+        # here would now correctly raise — that path is covered in test_combat_end_party_wipe).
+        monkeypatch.setattr(db_queries, "get_player", AsyncMock(return_value={"player_id": "player_1"}))
+        monkeypatch.setattr(
+            resurrection, "resurrect_on_defeat", AsyncMock(return_value={"anchor": "accord_guild_hall"})
+        )
         mock_mutations = _make_end_combat_mocks()
         ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()

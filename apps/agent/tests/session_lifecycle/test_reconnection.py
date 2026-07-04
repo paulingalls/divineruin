@@ -10,7 +10,7 @@ class TestReconnectionSetup:
     """Test _setup_reconnection registers handlers for any agent type."""
 
     def test_setup_reconnection_registers_handlers(self):
-        from agent import _setup_reconnection
+        from participant_lifecycle import _setup_reconnection
 
         room = MagicMock()
         session = MagicMock()
@@ -27,7 +27,7 @@ class TestReconnectionSetup:
 
     def test_setup_reconnection_works_without_background(self):
         """Creation/onboarding agents have no background process."""
-        from agent import _setup_reconnection
+        from participant_lifecycle import _setup_reconnection
 
         room = MagicMock()
         session = MagicMock()

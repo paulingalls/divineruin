@@ -122,12 +122,16 @@ async def _start_combat_impl(
     player_hp = player.get("hp", {})
 
     # Multi-player combat build (M14 story-003): session.party.member_ids is the SSOT for
-    # combat participation (not the mirrored session.player_id field). A solo party has
-    # exactly one member — the already-fetched primary row — so this reuses `player` rather
-    # than double-querying, and produces the same single participant as before the refactor.
+    # combat participation (not the mirrored session.player_id field). The primary reuses the
+    # already-fetched `player` row; every NON-primary member loads in ONE batched
+    # get_players_for_update call (M18 story-001) rather than a serial get_player per member —
+    # the same id-ordered lock batch story-008 relies on. A solo party has an empty non-primary
+    # set, so it skips the batch entirely and produces the same single participant as before.
+    non_primary_ids = [m for m in session.party.member_ids if m != session.player_id]
+    fetched = await queries.get_players_for_update(non_primary_ids) if non_primary_ids else {}
     member_players: list[tuple[str, dict]] = []
     for member_id in session.party.member_ids:
-        row = player if member_id == session.player_id else await queries.get_player(member_id)
+        row = player if member_id == session.player_id else fetched.get(member_id)
         if row is None:
             raise ToolError(f"Player '{member_id}' not found.")
         member_players.append((member_id, row))
@@ -310,9 +314,11 @@ async def _start_combat_impl(
     session.combat_state = combat_state
 
     # Reset per-encounter weapon durability flags so each encounter is self-contained
-    # (a swing outside combat won't leak into this encounter's end-of-combat accrual).
-    session.weapon_used_this_encounter = False
-    session.weapon_crit_vs_heavy = False
+    # (a swing outside combat won't leak into this encounter's end-of-combat accrual). M18
+    # story-003: every party member's own flags reset, so no member's prior-encounter swing leaks.
+    for member in session.party.members:
+        member.weapon_used = False
+        member.weapon_crit_vs_heavy = False
     session.draethar_inner_fire_used = False  # Inner Fire is once per encounter (M3.4)
 
     # Build initiative summary once for event + response

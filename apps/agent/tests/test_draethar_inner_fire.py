@@ -194,6 +194,8 @@ async def test_inner_fire_runs_concentration_break_on_self_damage():
     assert args[0] is session
     assert args[1] == 4  # the 1d6 fire damage
     assert kwargs["incapacitated"] is False  # 20 - 4 = 16 HP remaining
+    # AC 3: the break resolves against the CASTER's own concentration (M18 story-004).
+    assert kwargs["damaged_player_id"] == "player_1"
     assert result["concentration_broken"] == "arcane_fly"
 
 
@@ -208,7 +210,7 @@ async def test_inner_fire_persists_combat_state_after_concentration_condition_dr
     ]
     mock_db, queries, hp_mut, res_mut, res_events, dice_mod = _mocks(_player(), roll_total=4)
 
-    async def _strip_blessed(sess, _damage, *, incapacitated):
+    async def _strip_blessed(sess, _damage, *, incapacitated, damaged_player_id):
         for p in sess.combat_state.participants:
             p.conditions = [c for c in p.conditions if c["type"] != "blessed"]
         return "divine_bless"

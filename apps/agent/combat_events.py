@@ -82,12 +82,17 @@ async def emit_or_publish(
 class _CombatScratchSnapshot:
     """Pre-transaction snapshot of resolve_phase's in-loop session scratch, restored on rollback.
 
-    weapon_used_this_encounter is read IN-tx by end_combat's durability check, so the loop must set
-    it live (not defer it); restore() reverts it — and the companion KO, plus the per-attack
-    recent_events the loop records — only when the tx fails. Lists are captured by CONTENTS (a
-    shallow copy), not length: record_companion_memory / record_event cap their backing store by
-    dropping the oldest entry, so a length-truncate restore would lose the oldest pre-phase entry
-    once at the cap.
+    The weapon-durability flags are read IN-tx by end_combat's per-member durability check, so the
+    loop must set them live (not defer them); restore() reverts them — and the companion KO, plus
+    the per-attack recent_events the loop records — only when the tx fails. Lists are captured by
+    CONTENTS (a shallow copy), not length: record_companion_memory / record_event cap their backing
+    store by dropping the oldest entry, so a length-truncate restore would lose the oldest pre-phase
+    entry once at the cap.
+
+    The weapon flags are captured PER PARTY MEMBER (M18 story-003): a swing arms the SWINGING
+    member's own flags (combat_packet), so a multi-PC rollback must revert every member's flags, not
+    just the primary's — mirroring the concentration snapshot below. Solo = 1 member, so this is
+    byte-identical to the single-player revert.
 
     concentration is reverted too (story-007): an in-loop ABILITY cast starts a new concentration,
     and break_concentration_on_damage clears it, both IN memory mid-tx — a rolled-back phase must
@@ -96,8 +101,8 @@ class _CombatScratchSnapshot:
     own pool, so a multi-PC rollback must revert every member's concentration, not just the primary's
     (solo = 1 member, so this is byte-identical to the single-player revert)."""
 
-    weapon_used_this_encounter: bool
-    weapon_crit_vs_heavy: bool
+    weapon_used: dict[str, bool]
+    weapon_crit_vs_heavy: dict[str, bool]
     recent_events: list[str]
     companion_is_conscious: bool | None
     companion_memories: list[str] | None
@@ -107,8 +112,8 @@ class _CombatScratchSnapshot:
     def capture(cls, session) -> "_CombatScratchSnapshot":
         companion = session.companion
         return cls(
-            weapon_used_this_encounter=session.weapon_used_this_encounter,
-            weapon_crit_vs_heavy=session.weapon_crit_vs_heavy,
+            weapon_used={m.player_id: m.weapon_used for m in session.party.members},
+            weapon_crit_vs_heavy={m.player_id: m.weapon_crit_vs_heavy for m in session.party.members},
             recent_events=list(session.recent_events),
             companion_is_conscious=companion.is_conscious if companion is not None else None,
             companion_memories=list(companion.session_memories) if companion is not None else None,
@@ -116,9 +121,12 @@ class _CombatScratchSnapshot:
         )
 
     def restore(self, session) -> None:
-        session.weapon_used_this_encounter = self.weapon_used_this_encounter
-        session.weapon_crit_vs_heavy = self.weapon_crit_vs_heavy
         session.recent_events = deque(self.recent_events, maxlen=session.recent_events.maxlen)
+        for player_id, used in self.weapon_used.items():
+            member = session.party.member(player_id)
+            if member is not None:
+                member.weapon_used = used
+                member.weapon_crit_vs_heavy = self.weapon_crit_vs_heavy[player_id]
         for player_id, spell_id in self.concentration_spell_ids.items():
             member = session.party.member(player_id)
             if member is not None:

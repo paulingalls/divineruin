@@ -5,7 +5,7 @@ caster's skin flares and the inner fire purges Veil disturbance — reduce curre
 but take 1d6 unpreventable self fire damage. The -3 / "1d6" values are read from the racial
 table (racial_resonance, story-001), not hardcoded. Unlike the passive racials this is an active
 combat action, so it ships as a combat @function_tool and is gated to once per encounter via
-session.draethar_inner_fire_used (reset at encounter boundaries, like weapon_used_this_encounter).
+session.draethar_inner_fire_used (reset at encounter boundaries, beside the per-member weapon flags).
 
 It is combat-scoped (the "encounter" is a combat): a player's HP lives in two places during
 combat — the in-memory CombatParticipant.hp_current and persisted players.data — so this writes
@@ -106,7 +106,7 @@ async def _inner_fire_impl(
     # The self-inflicted fire damage is still damage: a concentrating Draethar rolls the CON save
     # like any other combat damage (incapacitated when the burn drops them to 0 HP).
     concentration_broken = await concentration_break_mod.break_concentration_on_damage(
-        session, fire_damage, incapacitated=new_hp <= 0
+        session, fire_damage, incapacitated=new_hp <= 0, damaged_player_id=player_id
     )
     if concentration_broken is not None:
         # A broken concentration spell that granted a beneficial condition strips it from the

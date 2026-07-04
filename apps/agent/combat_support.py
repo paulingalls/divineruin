@@ -233,6 +233,7 @@ async def _resolve_attack_packet(
             session,
             attack_result.damage,
             incapacitated=target.hp_current <= 0,
+            damaged_player_id=target.id,
             combat_state=combat_state,
             conn=conn,
         )

@@ -282,10 +282,10 @@ def _wrap(state: CombatState) -> WrapOutcome:
     # -> trigger_character_death's Hollowed branch). The echo is not type "player", so the player-
     # defeat gate below stays dormant whenever an echo is present.
     echoes = [p for p in state.participants if p.type == "temporary_hollowed"]
-    # M4.1 scope seam: defeat keys on a SINGLE player participant. Multiplayer
-    # party-defeat (all players down) and party-wipe handling are M4.4 (Death &
-    # Resurrection); this single-player assumption is intentional for M4.1.
-    player = next((p for p in state.participants if p.type == "player"), None)
+    # M18 multi-PC party defeat: combat ends in defeat only when ALL player participants are
+    # terminally down (is_dead or death_save_failures >= _DEATH_SAVE_LIMIT). A standing or
+    # still-rolling player keeps combat alive.
+    players = [p for p in state.participants if p.type == "player"]
 
     combat_ended = False
     outcome: str | None = None
@@ -300,7 +300,7 @@ def _wrap(state: CombatState) -> WrapOutcome:
         pass  # an undestroyed echo blocks both victory and the (now-moot) player-defeat gate
     elif enemies and all(p.is_fallen for p in enemies):
         combat_ended, outcome = True, "victory"
-    elif player is not None and (player.is_dead or player.death_save_failures >= _DEATH_SAVE_LIMIT):
+    elif players and all(p.is_dead or p.death_save_failures >= _DEATH_SAVE_LIMIT for p in players):
         combat_ended, outcome = True, "defeat"
 
     return WrapOutcome(

@@ -20,6 +20,7 @@ import conditions
 import event_types as E
 import spell_casting
 from combat_events import emit_or_publish
+from condition_produce import resolve_effective_targets
 from dice import roll as dice_roll
 from resource_costs import gate_pool
 from rules_engine import attribute_modifier
@@ -179,12 +180,7 @@ def land_condition_on_participants(
     declare-gate (combat_packet via spells.normalize_target_list); dedup here just prevents
     double-voicing the same ally. Returns the participant ids the buff actually LANDED on (an id not
     on the working state, or an immunity no-op, is dropped) — the subset the DM should name."""
-    if decl.target_ids:
-        targets: list[str | None] = list(dict.fromkeys(decl.target_ids))
-    elif decl.target_id is not None:
-        targets = [decl.target_id]
-    else:
-        targets = [None]  # self-cast
+    targets = resolve_effective_targets(decl.target_ids, decl.target_id, self_value=None, dedup=True)
     voiced: list[str] = []
     for tid in targets:
         if _land_condition_on_one(state, tid, attacker, cond_type, source):
@@ -464,9 +460,9 @@ async def _resolve_ability_packet(
     # would leave it stale — the break would save against the OLD spell and, on a break, write None to
     # the DB (clearing the just-cast spell) while the post-commit sync forced memory back to the new
     # spell, diverging from the DB (story-007). _CombatScratchSnapshot captures concentration, so this
-    # in-tx mutation is reverted if the phase rolls back. NOTE: break_concentration_on_damage still
-    # reads session.concentration (the primary) — a non-primary caster's break is a known M14 gap
-    # (debt), but the SYNC here correctly targets the caster's own pool.
+    # in-tx mutation is reverted if the phase rolls back. break_concentration_on_damage now reads the
+    # DAMAGED member's own concentration (via damaged_player_id, M18 story-004), so a non-primary
+    # caster's break resolves against their own pool — matching this per-member SYNC.
     if result.concentration_spell_id is not spell_casting._UNCHANGED:
         caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
     # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half. _resolve_cast surfaces the

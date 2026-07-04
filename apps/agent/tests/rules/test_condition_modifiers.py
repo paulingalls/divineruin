@@ -253,7 +253,13 @@ async def test_concentration_break_threads_caster_conditions_into_save():
     cm = MagicMock(update_player_concentration=AsyncMock())
 
     await break_concentration_on_damage(
-        session, 10, incapacitated=False, queries=queries, resolver=resolver, concentration_mutations=cm
+        session,
+        10,
+        incapacitated=False,
+        damaged_player_id="player_1",
+        queries=queries,
+        resolver=resolver,
+        concentration_mutations=cm,
     )
 
     passed_player = resolver.resolve_saving_throw.call_args.args[0]

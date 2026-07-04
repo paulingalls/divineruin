@@ -98,21 +98,21 @@ async def _request_ability_activation_impl(
     condition_applied: str | None = None  # the produced condition, surfaced on the response post-commit
     condition_targets: list[str] | None = None  # multi-target voiced allies (M4.8 story-017)
 
-    # Deterministic cross-player lock order (M14 story-008, debt 361417d1bea5): acquire the caster row
-    # AND every non-caster party-member target row in ONE ascending-player_id batch
-    # (get_players_for_update -> ORDER BY player_id FOR UPDATE), so two concurrent cross-player
-    # activations acquire the same GLOBAL order and can't deadlock. produce_ooc_condition below
-    # re-locks a held subset (no new out-of-order lock). Only OOC party targets are pre-locked — an
-    # in-combat call (participant is the SSOT, no OOC write) or a self / companion / no-target cast
-    # locks just the caster, identical to the pre-story-008 single caster FOR UPDATE.
+    # Deterministic cross-player lock order (M14 story-008, debt 361417d1bea5), via the shared
+    # deadlock-safe helper (story-005): pre-lock the caster + any OOC condition-producing targets in
+    # ONE ascending-player_id batch — an in-combat call, or a self / companion / no-target activation,
+    # locks just the caster.
     produces_ooc = ability.applies_condition is not None and not session.in_combat
-    ooc_targets = (target_ids or ([target_id] if target_id else [])) if produces_ooc else []
-    lock_ids = sorted({player_id} | {t for t in ooc_targets if t in session.party.member_ids})
     async with db_mod.transaction() as conn:
-        locked_rows = await queries_mod.get_players_for_update(lock_ids, conn=conn)
-        player = locked_rows.get(player_id)
-        if player is None:
-            raise ToolError(f"Unknown player: {player_id}")
+        locked_rows, player = await condition_produce_mod.lock_ooc_caster_and_targets(
+            produces_ooc=produces_ooc,
+            player_id=player_id,
+            target_id=target_id,
+            target_ids=target_ids,
+            party_member_ids=session.party.member_ids,
+            queries_mod=queries_mod,
+            conn=conn,
+        )
 
         # Own-the-base gate (story-006): reject an ability the player hasn't learned
         # BEFORE any resource deduction. Core/reaction are always-known for the
@@ -173,6 +173,7 @@ async def _request_ability_activation_impl(
                     queries_mod=queries_mod,
                     conditions_mod=conditions_mod,
                     conditions_mutations_mod=conditions_mutations_mod,
+                    locked_rows=locked_rows,
                     conn=conn,
                 )
             except ValueError as e:

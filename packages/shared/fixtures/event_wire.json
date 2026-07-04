@@ -7,7 +7,7 @@
       "caster_id": "player_1"
     },
     "hollow_echo_result": { "type": "hollow_echo_result", "band": "whisper" },
-    "veil_ward_changed": { "type": "veil_ward_changed", "active": true }
+    "veil_ward_changed": { "type": "veil_ward_changed", "active": true, "caster_id": "player_1" }
   },
   "hollow_echo_bands": [
     "nothing",

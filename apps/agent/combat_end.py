@@ -60,6 +60,35 @@ def _merge_persistent_conditions(existing: list[dict], acquired: list[dict]) -> 
     return list(merged.values())
 
 
+async def _reconcile_member_conditions(player_part, *, conn) -> None:
+    """Reconcile one player participant's cross-encounter conditions + beneficial dice into THEIR
+    own players.data row (keyed on ``player_part.id`` == that member's player_id).
+
+    The persists_across_encounters conditions acquired this fight (Wounded/Exhausted/Hollowed)
+    MERGE into the member's store; phase-scoped ones (Prone/Stunned/…) drop with the combat row.
+    Combat only ACCRUES persistent conditions (rest clears them, a later milestone), so we union
+    with the existing store rather than overwrite — else a fight would clobber a pre-combat Wounded.
+
+    Beneficial OOC dice (Blessed/Inspired) load from the store onto the participant at combat-start
+    (combat_init, M4.4 story-005) and are consumed-on-use, so the participant's FINAL set is
+    authoritative — a die spent in combat must be dropped post-combat, and one granted mid-combat
+    that survives must persist (concern ab37d4fc61c6). Keyed on bonus_die (the only consumed-on-use
+    character buffs); phase-scoped combat conditions carry no bonus_die and correctly stay dropped.
+    Broader OOC-condition reconciliation (Poisoned/Charmed) waits on an in-combat applier (M13).
+
+    The read runs every combat end (a consumed buff leaves no trace on the participant), but a
+    change-gate skips the write when nothing moved."""
+    acquired = [c for c in player_part.conditions if conditions.CONDITION_CATALOG[c["type"]].persists_across_encounters]
+    surviving_buffs = [
+        c for c in player_part.conditions if conditions.CONDITION_CATALOG[c["type"]].bonus_die is not None
+    ]
+    existing = await db_mutations_conditions.read_player_conditions(player_part.id, conn=conn)
+    existing_non_buff = [c for c in existing if conditions.CONDITION_CATALOG[c["type"]].bonus_die is None]
+    reconciled = _merge_persistent_conditions(existing_non_buff, acquired) + surviving_buffs
+    if _conditions_changed(existing, reconciled):
+        await db_mutations_conditions.save_player_conditions(player_part.id, reconciled, conn=conn)
+
+
 def _conditions_changed(before: list[dict], after: list[dict]) -> bool:
     """True when two condition lists differ as multisets (order-independent). Guards the combat-end
     writeback from a redundant DB write when a reconciliation leaves the stored set unchanged."""
@@ -70,41 +99,24 @@ def _conditions_changed(before: list[dict], after: list[dict]) -> bool:
     return _key(before) != _key(after)
 
 
-async def _grant_enemy_loot(
-    session: SessionData,
-    p,
-    rng: random.Random,
-    *,
-    mutations,
-    content,
-    conn,
-    sink: EventSink,
-    into: list[dict],
-) -> int:
-    """Roll + grant ONE defeated enemy's role-scaled loot, returning its currency contribution.
+async def _roll_enemy_loot(p, rng: random.Random, *, content) -> tuple[int, list[dict]]:
+    """Roll ONE defeated enemy's role-scaled currency + loot drops WITHOUT granting them.
 
-    Each rolled drop is added to the player's inventory, appended to ``into`` (for the narration
-    summary), and buffered as an ITEM_ACQUIRED chip. Currency is the role-scaled silver for this
-    enemy (0 for a Minion, D79). Untagged/legacy enemies (no category / loot_table_id) are inert —
-    the empty-string defaults mean pre-story-002 content drops nothing rather than crashing."""
+    Returns (silver, drops). Currency is rolled BEFORE loot, preserving the pre-M18 per-enemy RNG
+    consumption order so a seeded run is byte-identical — the caller distributes the returned drops
+    across the party (M18 story-003), which consumes no RNG. Currency is 0 for a Minion (D79).
+    Untagged/legacy enemies (no category / loot_table_id) are inert — the empty-string defaults mean
+    pre-story-002 content drops nothing rather than crashing."""
     currency = 0
     if p.category:
         tier = encounter_loot.tier_for_level(p.level)
         currency = encounter_loot.calculate_currency_drop(p.category, tier, p.role, rng)
+    drops: list[dict] = []
     if p.loot_table_id:
         table = await content.get_loot_table(p.loot_table_id)
         if table is not None:
-            for drop in encounter_loot.derive_role_loot(table, p.role, rng):
-                await mutations.add_inventory_item(session.player_id, drop["item_id"], drop["quantity"], conn=conn)
-                into.append(drop)
-                await emit_or_publish(
-                    sink,
-                    session.room,
-                    E.ITEM_ACQUIRED,
-                    {"item_id": drop["item_id"], "quantity": drop["quantity"], "source": "combat_loot"},
-                    event_bus=session.event_bus,
-                )
-    return currency
+            drops = encounter_loot.derive_role_loot(table, p.role, rng)
+    return currency, drops
 
 
 @function_tool()
@@ -178,90 +190,115 @@ async def _end_combat_db(
     currency_silver = 0
     currency_gold: float = 0
     if outcome == "victory":
+        # ROLL pass (M18 story-003): iterate the defeated enemies in participant order, rolling each
+        # one's currency + loot into a SHARED pool. Rolling is kept fully upstream of distribution so
+        # the RNG consumption sequence is byte-identical to the pre-M18 per-enemy path.
         enemy_dicts = []
+        loot_pool: list[dict] = []
         for p in cs.participants:
             if p.type != "enemy":
                 continue
             enemy_dicts.append({"xp_value": p.xp_value})
             defeated_enemies.append(p.name)
-            currency_silver += await _grant_enemy_loot(
-                session, p, rng, mutations=mutations, content=content, conn=conn, sink=sink, into=loot_granted
-            )
+            enemy_silver, enemy_drops = await _roll_enemy_loot(p, rng, content=content)
+            currency_silver += enemy_silver
+            loot_pool.extend(enemy_drops)
         xp_total = combat_resolution.calculate_combat_xp(enemy_dicts)
 
-        # The enemy loot rolls accrue silver (the pricing baseline); convert to gold crowns at the
-        # grant boundary — symmetric with how repair/crafting convert sp costs to gp via the same
-        # silver_per_gold SSOT — so the wallet (players.data.gold, gold crowns) stays coherent.
-        # Grant in one read-modify-write (FOR UPDATE so concurrent writers can't clobber the
-        # balance), then buffer a single CURRENCY_GAINED chip for the whole haul. Inside this tx — a
-        # rollback un-grants the coin and drops the unflushed event. Minions contribute 0 (D79); a
-        # fight of only Minions emits nothing.
-        if currency_silver > 0:
-            silver_per_gold = (await pricing.get_economy_pricing())["silver_per_gold"]
-            currency_gold = currency_silver / silver_per_gold
-            player = await queries.get_player(session.player_id, conn=conn, for_update=True)
-            prior_gold = (player or {}).get("gold", 0) or 0
-            new_balance = prior_gold + currency_gold
-            await mutations.update_player_gold(session.player_id, new_balance, conn=conn)
+        # DISTRIBUTE pass — items: round-robin the shared pool across members in ascending player_id
+        # seat order (customer decision f437f4475a40). Keyed on the player PARTICIPANTS who fought —
+        # NOT session.party.member_ids — so a mid-combat room joiner (appended to the party by
+        # participant_lifecycle but never a combatant) can't dilute or steal the haul. Each rolled
+        # drop lands in ONE participant's inventory, so items stay scarce (no per-member duplication).
+        # Distribution consumes no RNG. Solo = 1 participant, so every drop goes to the primary.
+        seat_order = sorted(p.id for p in cs.participants if p.type == "player")
+        for i, drop in enumerate(loot_pool):
+            recipient = seat_order[i % len(seat_order)]
+            await mutations.add_inventory_item(recipient, drop["item_id"], drop["quantity"], conn=conn)
+            loot_granted.append(drop)
             await emit_or_publish(
                 sink,
                 session.room,
-                E.CURRENCY_GAINED,
-                {
-                    "player_id": session.player_id,
-                    "amount": currency_gold,
-                    "currency": "gold",
-                    "source": "combat",
-                    "new_balance": new_balance,
-                },
+                E.ITEM_ACQUIRED,
+                {"item_id": drop["item_id"], "quantity": drop["quantity"], "source": "combat_loot"},
                 event_bus=session.event_bus,
             )
 
-    # Accrue per-encounter weapon durability (1 hit, 2 on a crit vs a heavily-armored target),
-    # hollow-doubled. Reads weapon_used_this_encounter (set live during the loop); the flag RESET
-    # is deferred to _end_combat_finish so a rolled-back phase keeps it set for the retry.
-    weapon_durability: dict = {}
-    if session.weapon_used_this_encounter:
-        inventory = await queries.get_player_inventory(session.player_id, conn=conn)
-        weapon = _find_equipped(inventory, "weapon")
-        if weapon is not None:
-            weapon_durability = await _accrue_durability(
-                session,
-                session.player_id,
-                weapon,
-                combat_resolution.weapon_hits_for_encounter(session.weapon_crit_vs_heavy),
-                is_hollow_zone=combat_resolution.is_hollow_zone(session.corruption_level),
-                conn=conn,
-                sink=sink,
-            )
+        # DISTRIBUTE pass — currency: the party's enemy-silver haul gets a party multiplier (rewards
+        # grouping without N x farming, customer decision f437f4475a40) then splits evenly; each
+        # member's share converts to gold crowns at its own grant boundary (the silver_per_gold SSOT,
+        # symmetric with repair/crafting). Each grant is a FOR UPDATE read-modify-write; the locks
+        # are acquired in ASCENDING player_id order (deadlock-free SSOT 5da95d657255). One
+        # CURRENCY_GAINED per member; end_data.currency_gold is the summed party haul for the DM
+        # narration line. Inside this tx — a rollback un-grants the coin and drops the unflushed
+        # events. Minions contribute 0 (D79). Solo N=1 -> multiplier 1.0, one member: byte-identical.
+        if currency_silver > 0:
+            silver_per_gold = (await pricing.get_economy_pricing())["silver_per_gold"]
+            share_silver = currency_silver * encounter_loot.party_currency_multiplier(len(seat_order)) / len(seat_order)
+            share_gold = share_silver / silver_per_gold  # loop-invariant — every participant's share is equal
+            for pid in seat_order:
+                player = await queries.get_player(pid, conn=conn, for_update=True)
+                prior_gold = (player or {}).get("gold", 0) or 0
+                new_balance = prior_gold + share_gold
+                await mutations.update_player_gold(pid, new_balance, conn=conn)
+                currency_gold += share_gold
+                await emit_or_publish(
+                    sink,
+                    session.room,
+                    E.CURRENCY_GAINED,
+                    {
+                        "player_id": pid,
+                        "amount": share_gold,
+                        "currency": "gold",
+                        "source": "combat",
+                        "new_balance": new_balance,
+                    },
+                    event_bus=session.event_bus,
+                )
 
-    # Persist the player's cross-encounter conditions (M4.3, story-004): the persists_across_encounters
-    # ones acquired this fight (Wounded/Exhausted/Hollowed) MERGE into players.data; phase-scoped ones
-    # (Prone/Stunned/…) drop with the combat row. Combat only ACCRUES persistent conditions (rest
-    # clears them, a later milestone), so we union with the existing store rather than overwrite — else
-    # a fight would clobber a pre-combat Wounded. The read runs every combat end (a consumed buff
-    # leaves no trace on the participant), but a change-gate skips the write when nothing moved. Same
-    # tx as the row delete (atomic).
-    player_part = next((p for p in cs.participants if p.type == "player"), None)
-    if player_part is not None:
-        acquired = [
-            c for c in player_part.conditions if conditions.CONDITION_CATALOG[c["type"]].persists_across_encounters
-        ]
-        # Reconcile the player's OOC beneficial dice (Blessed/Inspired) back to players.data: they
-        # load from the store onto the participant at combat-start (combat_init, M4.4 story-005) and
-        # are consumed-on-use, so the participant's FINAL set is authoritative — a die spent in combat
-        # must be dropped post-combat, and one granted mid-combat that survives must persist (concern
-        # ab37d4fc61c6). Keyed on bonus_die (the only consumed-on-use character buffs); phase-scoped
-        # combat conditions (Prone/Stunned) carry no bonus_die and correctly stay dropped. Broader
-        # OOC-condition reconciliation (Poisoned/Charmed) waits on an in-combat applier (M13).
-        surviving_buffs = [
-            c for c in player_part.conditions if conditions.CONDITION_CATALOG[c["type"]].bonus_die is not None
-        ]
-        existing = await db_mutations_conditions.read_player_conditions(session.player_id, conn=conn)
-        existing_non_buff = [c for c in existing if conditions.CONDITION_CATALOG[c["type"]].bonus_die is None]
-        reconciled = _merge_persistent_conditions(existing_non_buff, acquired) + surviving_buffs
-        if _conditions_changed(existing, reconciled):
-            await db_mutations_conditions.save_player_conditions(session.player_id, reconciled, conn=conn)
+    # Accrue per-encounter weapon durability (1 hit, 2 on a crit vs a heavily-armored target),
+    # hollow-doubled. Reads each member's own weapon flags (set live during the loop); the flag
+    # RESET is deferred to _end_combat_finish so a rolled-back phase keeps them set for the retry.
+    # M18 story-003: EVERY player PARTICIPANT who swung accrues their OWN equipped weapon's
+    # durability, keyed on their own corruption_level for the hollow-zone doubling. Iterates the
+    # combat participants (uniform with the loot/currency/conditions/resurrection recipient sets),
+    # so a mid-combat joiner is excluded. The primary's result is surfaced in the response
+    # (single-session handoff); non-primary accrual lands in the DB.
+    weapon_durability: dict = {}
+    for p in cs.participants:
+        if p.type != "player":
+            continue
+        # Durability needs the PartyMember (weapon_used / corruption_level live there, unlike the
+        # other paths that key on the participant id directly). Non-raising member() + skip: a
+        # player participant is a party member in prod (combat_init), but skipping a stray one is a
+        # fail-safe for a non-critical accrual rather than aborting the whole combat-end tx.
+        member = session.party.member(p.id)
+        if member is None or not member.weapon_used:
+            continue
+        inventory = await queries.get_player_inventory(member.player_id, conn=conn)
+        weapon = _find_equipped(inventory, "weapon")
+        if weapon is None:
+            continue
+        member_durability = await _accrue_durability(
+            session,
+            member.player_id,
+            weapon,
+            combat_resolution.weapon_hits_for_encounter(member.weapon_crit_vs_heavy),
+            is_hollow_zone=combat_resolution.is_hollow_zone(member.corruption_level),
+            conn=conn,
+            sink=sink,
+        )
+        if member.player_id == session.player_id:
+            weapon_durability = member_durability
+
+    # Persist cross-encounter conditions (M4.3, story-004; per-member M18 story-003): reconcile
+    # EVERY player member's persistent conditions + surviving beneficial dice into their OWN
+    # players.data row, not just the primary's — see _reconcile_member_conditions. Same tx as the
+    # row delete (atomic). Solo = one player participant, byte-identical to the single-player path.
+    for player_part in cs.participants:
+        if player_part.type != "player":
+            continue
+        await _reconcile_member_conditions(player_part, conn=conn)
 
     await mutations.delete_combat_state(cs.combat_id, conn=conn)
 
@@ -274,16 +311,24 @@ async def _end_combat_db(
     if outcome == "defeat":
         enemies = [p for p in cs.participants if p.type == "enemy"]
         combat_cleared = bool(enemies) and all(p.is_fallen for p in enemies)
-        # M14 story-006: a party wipe collects EVERY fallen player participant so ALL of them are
+        # M14 story-006: a party wipe collects EVERY downed player participant so ALL of them are
         # resurrected — each at their own 4-tier anchor (resurrect_party_on_defeat, story-005) —
         # not just the primary. For a player participant id == player_id (combat_init). A member
         # who survived the wipe is left alive (not collected); solo defeat collects exactly one.
+        # M18 story-003: collect is_fallen OR is_dead — an overkill INSTANT death (is_dead, never
+        # Fallen) is still a death to resurrect (concern ecb8bc708dc2), previously missed.
         fallen = [
             (p.id, await queries.get_player(p.id, conn=conn))
             for p in cs.participants
-            if p.type == "player" and p.is_fallen
+            if p.type == "player" and (p.is_fallen or p.is_dead)
         ]
-        party = [(pid, row) for pid, row in fallen if row is not None]
+        # Fail-loud on a missing row (concern 2a646ecf0b4b): a downed player participant with no
+        # players.data row is data corruption — resurrection can't proceed and a silent skip would
+        # strand the character at the death site. Raise inside the tx so it rolls back atomically.
+        missing = [pid for pid, row in fallen if row is None]
+        if missing:
+            raise RuntimeError(f"Downed player participant(s) {missing} have no players.data row on defeat")
+        party = fallen  # the raise above guarantees every row is present
         contexts = await resurrection.resurrect_party_on_defeat(
             [row for _, row in party], combat_cleared=combat_cleared, conn=conn
         )
@@ -301,10 +346,13 @@ async def _end_combat_db(
         # defeat tx. Skipped when the primary was already collected above.
         if death_context is None:
             primary_row = await queries.get_player(session.player_id, conn=conn)
-            if primary_row is not None:
-                death_context = await resurrection.resurrect_on_defeat(
-                    primary_row, combat_cleared=combat_cleared, conn=conn
-                )
+            # Fail-loud (concern 2a646ecf0b4b): on a defeat the primary is always down (all-players-
+            # down gate), so a missing row here is corruption — raise rather than skip resurrection.
+            if primary_row is None:
+                raise RuntimeError(f"Primary player {session.player_id!r} has no players.data row on defeat")
+            death_context = await resurrection.resurrect_on_defeat(
+                primary_row, combat_cleared=combat_cleared, conn=conn
+            )
 
     await emit_or_publish(
         sink,
@@ -337,8 +385,10 @@ def _end_combat_finish(
     xp_total = end_data["xp_total"]
     defeated_enemies = end_data["defeated_enemies"]
 
-    session.weapon_used_this_encounter = False
-    session.weapon_crit_vs_heavy = False
+    # M18 story-003: reset EVERY member's per-encounter weapon flags (mirror combat_init).
+    for member in session.party.members:
+        member.weapon_used = False
+        member.weapon_crit_vs_heavy = False
     session.draethar_inner_fire_used = False  # Inner Fire resets each encounter (M3.4)
     session.combat_state = None
 

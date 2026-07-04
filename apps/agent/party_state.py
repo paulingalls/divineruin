@@ -23,6 +23,11 @@ class PartyMember:
     concentration: ConcentrationState
     corruption_level: int = 0
     patron_id: str = "none"
+    # Per-encounter weapon-durability scratch (M18 story-003): set live when THIS member swings
+    # in combat, read at combat-end to accrue their own equipped weapon's durability. Reset each
+    # encounter (combat_init). Not long-lived state — persists only for a live combat's duration.
+    weapon_used: bool = False
+    weapon_crit_vs_heavy: bool = False
 
 
 @dataclass
@@ -100,6 +105,10 @@ class PartyState:
                 concentration=ConcentrationState(**m_data["concentration"]),
                 corruption_level=m_data.get("corruption_level", 0),
                 patron_id=m_data.get("patron_id", "none"),
+                # Default False when absent: a party dict persisted before M18 carries no weapon
+                # flags, so an old session loads clean rather than KeyError-ing.
+                weapon_used=m_data.get("weapon_used", False),
+                weapon_crit_vs_heavy=m_data.get("weapon_crit_vs_heavy", False),
             )
             members.append(member)
         return cls(members=members)

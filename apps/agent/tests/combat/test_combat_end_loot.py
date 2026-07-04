@@ -100,7 +100,14 @@ def _victory_state() -> CombatState:
         category="humanoid",
         loot_table_id=_LOOT_TABLE_ID,
     )
-    return CombatState(combat_id="s002_loot_combat", participants=[enemy], initiative_order=[enemy.id])
+    # The player who fought is a participant (as combat_init builds it) — loot/currency key on the
+    # player participants, so a realistic victory state must include the primary.
+    player = CombatParticipant(
+        id=_PLAYER_ID, name="Loot Hero", type="player", initiative=15, hp_current=20, hp_max=20, ac=14
+    )
+    return CombatState(
+        combat_id="s002_loot_combat", participants=[player, enemy], initiative_order=[_PLAYER_ID, enemy.id]
+    )
 
 
 @pytest.mark.asyncio
@@ -181,7 +188,12 @@ async def test_minion_only_victory_grants_no_currency(dev_db_pool):
             category="humanoid",  # would carry coin at any other role, but D79 zeroes a Minion
             loot_table_id=_LOOT_TABLE_ID,
         )
-        cs = CombatState(combat_id="s002_minion_combat", participants=[enemy], initiative_order=[enemy.id])
+        player = CombatParticipant(
+            id=_PLAYER_ID, name="Loot Hero", type="player", initiative=15, hp_current=20, hp_max=20, ac=14
+        )
+        cs = CombatState(
+            combat_id="s002_minion_combat", participants=[player, enemy], initiative_order=[_PLAYER_ID, enemy.id]
+        )
         sink = EventSink()
         async with db.transaction() as conn:
             end_data = await _end_combat_db(

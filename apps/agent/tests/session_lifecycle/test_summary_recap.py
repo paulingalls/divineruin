@@ -115,7 +115,7 @@ class TestReconnectInstruction:
     """Test _build_reconnect_instruction includes location and companion."""
 
     def test_includes_location(self):
-        from agent import _build_reconnect_instruction
+        from participant_lifecycle import _build_reconnect_instruction
         from session_data import SessionData
 
         sd = SessionData(player_id="p1", location_id="accord_guild_hall")
@@ -124,7 +124,7 @@ class TestReconnectInstruction:
         assert "Guild Hall" in instruction
 
     def test_includes_companion(self):
-        from agent import _build_reconnect_instruction
+        from participant_lifecycle import _build_reconnect_instruction
         from session_data import CompanionState, SessionData
 
         sd = SessionData(player_id="p1", location_id="accord_guild_hall")
@@ -133,7 +133,7 @@ class TestReconnectInstruction:
         assert "Kael" in instruction
 
     def test_includes_combat_state(self):
-        from agent import _build_reconnect_instruction
+        from participant_lifecycle import _build_reconnect_instruction
         from session_data import CombatState, SessionData
 
         sd = SessionData(player_id="p1", location_id="greyvale_south_road")
@@ -147,7 +147,7 @@ class TestReconnectInstruction:
         assert "combat" in instruction.lower()
 
     def test_minimal_session_data(self):
-        from agent import _build_reconnect_instruction
+        from participant_lifecycle import _build_reconnect_instruction
         from session_data import SessionData
 
         sd = SessionData(player_id="p1", location_id="unknown")

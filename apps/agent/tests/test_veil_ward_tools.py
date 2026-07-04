@@ -6,9 +6,11 @@ one polymorphic verb: active=True raises a ward (archetype/level/cost gated), ac
 dismisses it (free). Every user-facing failure is a ToolError raised before any write, so
 an unaffordable/ineligible activation deducts nothing.
 
-The published VEIL_WARD_CHANGED payload is the minimal {active} (mirroring the resonance
-no-number discipline); publish_game_event is patched to assert the wire shape, matching
-test_resonance_session.py.
+The published VEIL_WARD_CHANGED payload is {active, caster_id} (mirroring the resonance
+no-number discipline plus the M14 story-004 caster_id addition); publish_game_event is
+patched to assert the wire shape, matching test_resonance_session.py. caster_id (M18
+story-008) defaults to session.player_id but resolves to any party member via
+session.member_state(caster_id), letting a non-primary member raise/dismiss their own ward.
 """
 
 import json
@@ -23,9 +25,9 @@ import veil_ward_tools
 from veil_ward_tools import _activate_veil_ward_impl
 
 
-def _player(class_: str = "cleric", level: int = 7, focus: int = 10, stamina: int = 10) -> dict:
+def _player(class_: str = "cleric", level: int = 7, focus: int = 10, stamina: int = 10, player_id="player_1") -> dict:
     return {
-        "player_id": "player_1",
+        "player_id": player_id,
         "name": "Mara",
         "class": class_,
         "level": level,
@@ -34,8 +36,8 @@ def _player(class_: str = "cleric", level: int = 7, focus: int = 10, stamina: in
     }
 
 
-def _mocks(player: dict, *, ward_active: bool = False):
-    ctx = make_context()
+def _mocks(player: dict, *, ward_active: bool = False, party_member_ids=None):
+    ctx = make_context(party_member_ids=party_member_ids)
     mock_db, _conn = make_db_mod()
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value=player)
@@ -49,11 +51,12 @@ def _mocks(player: dict, *, ward_active: bool = False):
     return ctx, mock_db, queries, persistence, ward_mut
 
 
-async def _invoke(ctx, mock_db, queries, persistence, ward_mut, active=True):
+async def _invoke(ctx, mock_db, queries, persistence, ward_mut, active=True, caster_id=None):
     with patch.object(veil_ward_tools, "publish_game_event", AsyncMock()) as pub:
         raw = await _activate_veil_ward_impl(
             ctx,
             active,
+            caster_id=caster_id,
             db_mod=mock_db,
             queries_mod=queries,
             persistence_mod=persistence,
@@ -80,7 +83,7 @@ async def test_eligible_cleric_raises_ward():
     pub.assert_awaited_once()
     args = pub.call_args.args
     assert args[1] == E.VEIL_WARD_CHANGED
-    assert args[2] == {"active": True}
+    assert args[2] == {"active": True, "caster_id": "player_1"}
 
 
 async def test_paladin_pays_focus_and_stamina():
@@ -153,11 +156,51 @@ async def test_dismiss_active_ward():
     persistence.update_player_resources.assert_not_awaited()  # dismiss is free
     assert ctx.userdata.veil_ward.active is False
     assert ctx.userdata.veil_ward.source is None
-    assert pub.call_args.args[2] == {"active": False}
+    assert pub.call_args.args[2] == {"active": False, "caster_id": "player_1"}
 
 
 async def test_dismiss_when_inactive_rejected():
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), ward_active=False)
     with pytest.raises(ToolError):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False)
+    ward_mut.update_player_veil_ward.assert_not_awaited()
+
+
+# --- non-primary caster: resolves via member_state(caster_id), not the primary facade -----
+
+
+async def test_non_primary_member_raises_own_ward():
+    player = _player("cleric", level=7, focus=10, player_id="player_2")
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(player, party_member_ids=["player_2"])
+    result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, caster_id="player_2")
+
+    assert result["active"] is True
+    queries.get_player.assert_awaited_once_with("player_2", conn=ANY, for_update=True)
+    persistence.update_player_resources.assert_awaited_once_with("player_2", stamina=None, focus=6, conn=ANY)
+    ward_mut.update_player_veil_ward.assert_awaited_once_with("player_2", True, "cleric", conn=ANY)
+    # Non-primary member's own state is set, primary's is untouched.
+    assert ctx.userdata.member_state("player_2").veil_ward.active is True
+    assert ctx.userdata.veil_ward.active is False
+    assert pub.call_args.args[2] == {"active": True, "caster_id": "player_2"}
+
+
+async def test_non_primary_member_dismisses_own_ward():
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(
+        _player("cleric", level=7, player_id="player_2"), ward_active=True, party_member_ids=["player_2"]
+    )
+    result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False, caster_id="player_2")
+
+    assert result["active"] is False
+    ward_mut.update_player_veil_ward.assert_awaited_once_with("player_2", False, None, conn=ANY)
+    assert ctx.userdata.member_state("player_2").veil_ward.active is False
+    assert pub.call_args.args[2] == {"active": False, "caster_id": "player_2"}
+
+
+async def test_unknown_caster_id_raises_tool_error_not_value_error():
+    # caster_id is untrusted LLM input: a non-party id must surface as a narratable ToolError
+    # (not a raw member_state ValueError) and touch nothing.
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7))
+    with pytest.raises(ToolError):
+        await _invoke(ctx, mock_db, queries, persistence, ward_mut, caster_id="not_in_party")
+    queries.get_player.assert_not_awaited()
     ward_mut.update_player_veil_ward.assert_not_awaited()

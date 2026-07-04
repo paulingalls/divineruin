@@ -70,7 +70,8 @@ export const RESONANCE_CHANGED = "resonance_changed" as const;
 
 // Magic (M3.2) — mirrors apps/agent/event_types.py. HOLLOW_ECHO_RESULT Packet: {band} — the
 // qualitative band only (raw d20 stays server-side, like RESONANCE_CHANGED);
-// VEIL_WARD_CHANGED Packet: {active} for the glanceable ward zone indicator.
+// VEIL_WARD_CHANGED Packet: {active, caster_id} for the glanceable ward zone indicator plus
+// WHICH party member it belongs to (story-006, mirroring RESONANCE_CHANGED's caster_id).
 export const HOLLOW_ECHO_RESULT = "hollow_echo_result" as const;
 export const VEIL_WARD_CHANGED = "veil_ward_changed" as const;
 

@@ -11,8 +11,12 @@ run REAL — they are pure and already covered by test_concentration.py.
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 import conditions
+from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
 from concentration_break import break_concentration_on_damage
+from party_state import PartyMember
 from session_data import SessionData
 from tests.combat._helpers import _make_combat_state
 
@@ -20,6 +24,22 @@ from tests.combat._helpers import _make_combat_state
 def _session(spell_id: str | None) -> SessionData:
     session = SessionData(player_id="player_1", location_id="accord_guild_hall", room=None)
     session.concentration.spell_id = spell_id
+    return session
+
+
+def _two_pc_session(primary_spell_id: str | None, member_spell_id: str | None) -> SessionData:
+    """A 2-member party (M18): primary "player_1" concentrating on ``primary_spell_id``, non-primary
+    "player_2" concentrating on ``member_spell_id`` — so a test can assert the break resolves against
+    the DAMAGED member only, leaving the other's concentration untouched."""
+    session = _session(primary_spell_id)
+    session.party.members.append(
+        PartyMember(
+            player_id="player_2",
+            resonance=ResonanceTrack(),
+            veil_ward=VeilWardState(),
+            concentration=ConcentrationState(spell_id=member_spell_id),
+        )
+    )
     return session
 
 
@@ -41,7 +61,13 @@ class TestBreakConcentrationOnDamage:
         queries, resolver, cm = _deps(save_total=9)
 
         broken = await break_concentration_on_damage(
-            session, 10, incapacitated=False, queries=queries, resolver=resolver, concentration_mutations=cm
+            session,
+            10,
+            incapacitated=False,
+            damaged_player_id="player_1",
+            queries=queries,
+            resolver=resolver,
+            concentration_mutations=cm,
         )
 
         assert broken == "arcane_fly"  # the broken spell, for DM narration
@@ -57,7 +83,13 @@ class TestBreakConcentrationOnDamage:
         queries, resolver, cm = _deps(save_total=10)
 
         broken = await break_concentration_on_damage(
-            session, 10, incapacitated=False, queries=queries, resolver=resolver, concentration_mutations=cm
+            session,
+            10,
+            incapacitated=False,
+            damaged_player_id="player_1",
+            queries=queries,
+            resolver=resolver,
+            concentration_mutations=cm,
         )
 
         assert broken is None
@@ -70,7 +102,13 @@ class TestBreakConcentrationOnDamage:
         queries, resolver, cm = _deps(save_total=20)
 
         broken = await break_concentration_on_damage(
-            session, 8, incapacitated=True, queries=queries, resolver=resolver, concentration_mutations=cm
+            session,
+            8,
+            incapacitated=True,
+            damaged_player_id="player_1",
+            queries=queries,
+            resolver=resolver,
+            concentration_mutations=cm,
         )
 
         assert broken == "arcane_fly"
@@ -84,7 +122,13 @@ class TestBreakConcentrationOnDamage:
         queries, resolver, cm = _deps(save_total=1)
 
         broken = await break_concentration_on_damage(
-            session, 10, incapacitated=False, queries=queries, resolver=resolver, concentration_mutations=cm
+            session,
+            10,
+            incapacitated=False,
+            damaged_player_id="player_1",
+            queries=queries,
+            resolver=resolver,
+            concentration_mutations=cm,
         )
 
         assert broken is None
@@ -99,7 +143,13 @@ class TestBreakConcentrationOnDamage:
         queries.get_player = AsyncMock(return_value=None)
 
         broken = await break_concentration_on_damage(
-            session, 10, incapacitated=False, queries=queries, resolver=resolver, concentration_mutations=cm
+            session,
+            10,
+            incapacitated=False,
+            damaged_player_id="player_1",
+            queries=queries,
+            resolver=resolver,
+            concentration_mutations=cm,
         )
 
         assert broken is None
@@ -113,7 +163,13 @@ class TestBreakConcentrationOnDamage:
         queries, resolver, cm = _deps(save_total=1)
 
         broken = await break_concentration_on_damage(
-            session, 0, incapacitated=False, queries=queries, resolver=resolver, concentration_mutations=cm
+            session,
+            0,
+            incapacitated=False,
+            damaged_player_id="player_1",
+            queries=queries,
+            resolver=resolver,
+            concentration_mutations=cm,
         )
 
         assert broken is None
@@ -134,6 +190,7 @@ class TestBreakConcentrationOnDamage:
             session,
             10,
             incapacitated=False,
+            damaged_player_id="player_1",
             queries=queries,
             resolver=resolver,
             concentration_mutations=cm,
@@ -143,6 +200,69 @@ class TestBreakConcentrationOnDamage:
         assert broken == "arcane_fly"
         queries.get_player.assert_awaited_once_with("player_1", conn=sentinel_conn)
         cm.update_player_concentration.assert_awaited_once_with("player_1", None, conn=sentinel_conn)
+
+
+class TestBreakResolvesAgainstDamagedMember:
+    """M18 story-004: the break must key off the DAMAGED member (``damaged_player_id``), not the
+    primary — a non-primary caster's spell breaks on their own damage, and the primary's
+    concentration is untouched by a hit on someone else."""
+
+    async def test_non_primary_break_leaves_primary_untouched(self):
+        # AC 1: the non-primary ("player_2") takes the damage and rolls the save; the primary's
+        # own concentration (a DIFFERENT spell) is never touched.
+        session = _two_pc_session(primary_spell_id="divine_bless", member_spell_id="arcane_fly")
+        queries, resolver, cm = _deps(save_total=1)  # fails -> breaks
+
+        broken = await break_concentration_on_damage(
+            session,
+            10,
+            incapacitated=False,
+            damaged_player_id="player_2",
+            queries=queries,
+            resolver=resolver,
+            concentration_mutations=cm,
+        )
+
+        assert broken == "arcane_fly"
+        assert session.member_state("player_2").concentration.spell_id is None
+        assert session.member_state("player_1").concentration.spell_id == "divine_bless"
+        queries.get_player.assert_awaited_once_with("player_2", conn=None)
+        cm.update_player_concentration.assert_awaited_once_with("player_2", None, conn=None)
+
+    async def test_primary_break_is_unchanged_by_a_second_member(self):
+        # AC 2: the primary takes the damage — solo-path-identical break, even with a party member
+        # present whose own (untouched) concentration must survive.
+        session = _two_pc_session(primary_spell_id="divine_bless", member_spell_id="arcane_fly")
+        queries, resolver, cm = _deps(save_total=1)  # fails -> breaks
+
+        broken = await break_concentration_on_damage(
+            session,
+            10,
+            incapacitated=False,
+            damaged_player_id="player_1",
+            queries=queries,
+            resolver=resolver,
+            concentration_mutations=cm,
+        )
+
+        assert broken == "divine_bless"
+        assert session.member_state("player_1").concentration.spell_id is None
+        assert session.member_state("player_2").concentration.spell_id == "arcane_fly"
+
+    async def test_unknown_damaged_player_id_fails_loud(self):
+        session = _two_pc_session(primary_spell_id="divine_bless", member_spell_id="arcane_fly")
+        queries, resolver, cm = _deps(save_total=1)
+
+        with pytest.raises(ValueError):
+            await break_concentration_on_damage(
+                session,
+                10,
+                incapacitated=False,
+                damaged_player_id="not_a_member",
+                queries=queries,
+                resolver=resolver,
+                concentration_mutations=cm,
+            )
 
 
 class TestBreakRemovesLinkedCondition:
@@ -182,6 +302,7 @@ class TestBreakRemovesLinkedCondition:
             session,
             10,
             incapacitated=False,
+            damaged_player_id="player_1",
             queries=queries,
             resolver=resolver,
             concentration_mutations=cm,
@@ -199,6 +320,7 @@ class TestBreakRemovesLinkedCondition:
             session,
             10,
             incapacitated=False,
+            damaged_player_id="player_1",
             queries=queries,
             resolver=resolver,
             concentration_mutations=cm,
@@ -225,6 +347,7 @@ class TestBreakRemovesLinkedCondition:
             session,
             10,
             incapacitated=False,
+            damaged_player_id="player_1",
             queries=queries,
             resolver=resolver,
             concentration_mutations=cm,
@@ -250,6 +373,7 @@ class TestBreakRemovesLinkedCondition:
             session,
             10,
             incapacitated=False,
+            damaged_player_id="player_1",
             queries=queries,
             resolver=resolver,
             concentration_mutations=cm,

@@ -332,7 +332,7 @@ async def _run_end_combat(ctx, inventory, *, outcome="victory"):
 
 async def test_end_combat_accrues_one_weapon_hit_per_encounter():
     ctx = _combat_ctx(corruption_level=0)
-    ctx.userdata.weapon_used_this_encounter = True
+    ctx.userdata.party.primary.weapon_used = True
     weapon = _inv_item("longsword_guild", "weapon", current_hits=10)
     accrue = await _run_end_combat(ctx, [weapon])
     accrue.assert_awaited_once()
@@ -343,8 +343,8 @@ async def test_end_combat_accrues_one_weapon_hit_per_encounter():
 
 async def test_end_combat_crit_vs_heavy_accrues_two_weapon_hits():
     ctx = _combat_ctx()
-    ctx.userdata.weapon_used_this_encounter = True
-    ctx.userdata.weapon_crit_vs_heavy = True
+    ctx.userdata.party.primary.weapon_used = True
+    ctx.userdata.party.primary.weapon_crit_vs_heavy = True
     weapon = _inv_item("longsword_guild", "weapon", current_hits=10)
     accrue = await _run_end_combat(ctx, [weapon])
     assert accrue.await_args is not None
@@ -353,7 +353,7 @@ async def test_end_combat_crit_vs_heavy_accrues_two_weapon_hits():
 
 async def test_end_combat_hollow_zone_doubles_via_flag():
     ctx = _combat_ctx(corruption_level=2)
-    ctx.userdata.weapon_used_this_encounter = True
+    ctx.userdata.party.primary.weapon_used = True
     weapon = _inv_item("longsword_guild", "weapon", current_hits=10)
     accrue = await _run_end_combat(ctx, [weapon])
     assert accrue.await_args is not None
@@ -362,23 +362,83 @@ async def test_end_combat_hollow_zone_doubles_via_flag():
 
 async def test_end_combat_no_weapon_used_skips_accrual():
     ctx = _combat_ctx()
-    # weapon_used_this_encounter stays False
+    # party.primary.weapon_used stays False
     accrue = await _run_end_combat(ctx, [_inv_item("longsword_guild", "weapon", current_hits=10)])
     accrue.assert_not_awaited()
 
 
 async def test_end_combat_resets_weapon_flags():
     ctx = _combat_ctx()
-    ctx.userdata.weapon_used_this_encounter = True
-    ctx.userdata.weapon_crit_vs_heavy = True
+    ctx.userdata.party.primary.weapon_used = True
+    ctx.userdata.party.primary.weapon_crit_vs_heavy = True
     await _run_end_combat(ctx, [_inv_item("longsword_guild", "weapon", current_hits=10)])
-    assert ctx.userdata.weapon_used_this_encounter is False
-    assert ctx.userdata.weapon_crit_vs_heavy is False
+    assert ctx.userdata.party.primary.weapon_used is False
+    assert ctx.userdata.party.primary.weapon_crit_vs_heavy is False
 
 
 async def test_end_combat_resets_flags_even_when_no_weapon_equipped():
     ctx = _combat_ctx()
-    ctx.userdata.weapon_used_this_encounter = True
+    ctx.userdata.party.primary.weapon_used = True
     accrue = await _run_end_combat(ctx, [])  # no weapon in inventory
     accrue.assert_not_awaited()
-    assert ctx.userdata.weapon_used_this_encounter is False
+    assert ctx.userdata.party.primary.weapon_used is False
+
+
+def _add_member(session, player_id: str):
+    from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+    from party_state import PartyMember
+    from session_data import CombatParticipant
+
+    session.party.members.append(
+        PartyMember(
+            player_id=player_id,
+            resonance=ResonanceTrack(),
+            veil_ward=VeilWardState(),
+            concentration=ConcentrationState(),
+        )
+    )
+    # Also register as a combat PARTICIPANT (as combat_init builds it): a member who never entered
+    # combat can't have swung, and combat-end durability keys on the participants who fought.
+    if session.combat_state is not None:
+        session.combat_state.participants.append(
+            CombatParticipant(
+                id=player_id, name=player_id, type="player", initiative=10, hp_current=20, hp_max=20, ac=14
+            )
+        )
+    return session.party.member(player_id)
+
+
+async def test_end_combat_accrues_per_member_only_swinging_member():
+    # M18 story-003: in a 2-PC party where only the NON-primary member swung, durability accrues
+    # against THAT member's weapon (player_id p2), not the primary's.
+    ctx = _combat_ctx()
+    p2 = _add_member(ctx.userdata, "p2")
+    p2.weapon_used = True  # only p2 swung; primary p1 did not
+    accrue = await _run_end_combat(ctx, [_inv_item("longsword_guild", "weapon", current_hits=10)])
+    accrue.assert_awaited_once()
+    assert accrue.await_args is not None
+    assert accrue.await_args.args[1] == "p2"  # accrued against p2, not the primary
+
+
+async def test_end_combat_accrues_each_member_that_swung():
+    # Both members swung -> two accruals, one per member.
+    ctx = _combat_ctx()
+    ctx.userdata.party.primary.weapon_used = True
+    p2 = _add_member(ctx.userdata, "p2")
+    p2.weapon_used = True
+    accrue = await _run_end_combat(ctx, [_inv_item("longsword_guild", "weapon", current_hits=10)])
+    assert accrue.await_count == 2
+    accrued_ids = {call.args[1] for call in accrue.await_args_list}
+    assert accrued_ids == {"p1", "p2"}
+
+
+async def test_end_combat_resets_every_member_weapon_flags():
+    # combat-end reset loops every member, not just the primary.
+    ctx = _combat_ctx()
+    ctx.userdata.party.primary.weapon_used = True
+    p2 = _add_member(ctx.userdata, "p2")
+    p2.weapon_used = True
+    p2.weapon_crit_vs_heavy = True
+    await _run_end_combat(ctx, [_inv_item("longsword_guild", "weapon", current_hits=10)])
+    assert p2.weapon_used is False
+    assert p2.weapon_crit_vs_heavy is False

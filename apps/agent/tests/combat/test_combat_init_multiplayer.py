@@ -44,6 +44,13 @@ def _add_second_member(ctx, player_id="player_2"):
     )
 
 
+def _mock_non_primary_batch(mock_queries, rows_by_id):
+    """Mock the batched non-primary fetch: combat_init loads every non-primary member in ONE
+    get_players_for_update(non_primary_ids) call returning {player_id: row}, not N serial
+    get_player round-trips. The primary still rides the already-fetched get_player row."""
+    mock_queries.get_players_for_update = AsyncMock(return_value=rows_by_id)
+
+
 async def _run(ctx, mock_mutations, mock_queries, mock_content):
     await _start_combat_impl(
         ctx,
@@ -64,11 +71,7 @@ async def test_two_member_party_builds_two_player_participants():
     ctx = make_context()
     _add_second_member(ctx)
     row2 = _second_member_row()
-
-    async def get_player(player_id):
-        return row2 if player_id == "player_2" else SAMPLE_PLAYER
-
-    mock_queries.get_player = AsyncMock(side_effect=get_player)
+    _mock_non_primary_batch(mock_queries, {"player_2": row2})
 
     state_dict = await _run(ctx, mock_mutations, mock_queries, mock_content)
     players = [p for p in state_dict["participants"] if p["type"] == "player"]
@@ -82,6 +85,24 @@ async def test_two_member_party_builds_two_player_participants():
 
 
 @pytest.mark.asyncio
+async def test_non_primary_members_fetched_in_one_batched_call():
+    """The non-primary rows load via a SINGLE get_players_for_update(non_primary_ids) call,
+    not a serial get_player per member — and the primary is never re-fetched through the batch."""
+    mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+    ctx = make_context()
+    _add_second_member(ctx)
+    _mock_non_primary_batch(mock_queries, {"player_2": _second_member_row()})
+
+    await _run(ctx, mock_mutations, mock_queries, mock_content)
+
+    mock_queries.get_players_for_update.assert_called_once_with(["player_2"])
+    # player_2 rides the batch; only the primary is fetched via get_player (no serial 2nd query).
+    fetched_ids = [call.args[0] for call in mock_queries.get_player.call_args_list]
+    assert "player_2" not in fetched_ids
+    assert fetched_ids == ["player_1"]
+
+
+@pytest.mark.asyncio
 async def test_solo_party_builds_exactly_one_player_participant():
     mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
     ctx = make_context()
@@ -91,6 +112,8 @@ async def test_solo_party_builds_exactly_one_player_participant():
     assert len(players) == 1
     assert players[0]["id"] == "player_1"
     assert "player_1" in state_dict["initiative_order"]
+    # Byte-identical solo path: an empty non-primary set skips the batch query entirely.
+    mock_queries.get_players_for_update.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -100,11 +123,7 @@ async def test_only_member_with_exhausted_stack_carries_capped_condition():
     _add_second_member(ctx)
     row2 = _second_member_row()
     row2["conditions"] = [{"type": "exhausted", "stacks": 9}]
-
-    async def get_player(player_id):
-        return row2 if player_id == "player_2" else SAMPLE_PLAYER
-
-    mock_queries.get_player = AsyncMock(side_effect=get_player)
+    _mock_non_primary_batch(mock_queries, {"player_2": row2})
 
     state_dict = await _run(ctx, mock_mutations, mock_queries, mock_content)
     players = {p["id"]: p for p in state_dict["participants"] if p["type"] == "player"}
@@ -120,12 +139,28 @@ async def test_combat_started_event_lists_both_players():
     mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
     ctx = make_context()
     _add_second_member(ctx)
-    row2 = _second_member_row()
-
-    async def get_player(player_id):
-        return row2 if player_id == "player_2" else SAMPLE_PLAYER
-
-    mock_queries.get_player = AsyncMock(side_effect=get_player)
+    _mock_non_primary_batch(mock_queries, {"player_2": _second_member_row()})
 
     state_dict = await _run(ctx, mock_mutations, mock_queries, mock_content)
     assert set(state_dict["initiative_order"]) >= {"player_1", "player_2"}
+
+
+@pytest.mark.asyncio
+async def test_combat_init_resets_weapon_flags_for_every_member():
+    # M18 story-003: the per-encounter weapon-flag reset loops EVERY member, so a non-primary
+    # member's stale swing from a prior encounter can't leak into this encounter's accrual.
+    mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+    ctx = make_context()
+    _add_second_member(ctx)
+    _mock_non_primary_batch(mock_queries, {"player_2": _second_member_row()})
+
+    ctx.userdata.party.primary.weapon_used = True
+    p2 = ctx.userdata.party.member("player_2")
+    p2.weapon_used = True
+    p2.weapon_crit_vs_heavy = True
+
+    await _run(ctx, mock_mutations, mock_queries, mock_content)
+
+    assert ctx.userdata.party.primary.weapon_used is False
+    assert p2.weapon_used is False
+    assert p2.weapon_crit_vs_heavy is False

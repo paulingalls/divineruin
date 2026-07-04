@@ -205,7 +205,7 @@ async def test_breaking_bless_concentration_drops_blessed(reset_db_pool: str) ->
         session.concentration.spell_id = "divine_bless"
         with patch("check_resolution.dice_roll", return_value=_d20(1)):  # CON save fails -> breaks
             broken = await concentration_break.break_concentration_on_damage(
-                session, 20, incapacitated=False, conn=pool
+                session, 20, incapacitated=False, damaged_player_id=player_id, conn=pool
             )
         assert broken == "divine_bless"
         live = state.get_participant(player_id)
