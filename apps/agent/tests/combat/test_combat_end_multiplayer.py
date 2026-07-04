@@ -612,3 +612,52 @@ async def test_destroyed_echo_primary_resurrected_even_on_fled(monkeypatch):
     )
     party.assert_awaited_once()  # the destroyed echo-primary returns via Mortaen even on a flee
     assert end_data["death_context"] is not None
+
+
+async def test_manual_victory_empty_seat_order_does_not_crash(monkeypatch):
+    # concern ab4ced4c2110: a MANUAL end_combat('victory') can bypass _wrap's any_player_standing
+    # gate — e.g. a solo primary risen as a temporary_hollowed echo leaves NO player participant, so
+    # seat_order is empty. The loot/currency distribution must skip (nobody to receive it), not divide
+    # by zero. The echo-primary still resurrects.
+    session = SessionData(player_id="p1", location_id="loc1", room=None)  # solo
+    cs = CombatState(
+        combat_id="c1",
+        participants=[
+            CombatParticipant(
+                id="p1",
+                name="Kael",
+                type="temporary_hollowed",
+                initiative=15,
+                hp_current=0,
+                hp_max=20,
+                ac=14,
+                is_fallen=True,
+            ),
+            # a currency-bearing enemy (no loot_table -> currency only) so currency_silver > 0
+            CombatParticipant(
+                id="g1",
+                name="Goblin",
+                type="enemy",
+                initiative=8,
+                hp_current=0,
+                hp_max=7,
+                ac=13,
+                is_fallen=True,
+                category="humanoid",
+                role="standard",
+                level=5,
+                xp_value=50,
+            ),
+        ],
+        initiative_order=["p1", "g1"],
+        round_number=2,
+        current_turn_index=0,
+        location_id="loc1",
+    )
+    end_data, _mutations, party, _on_def = await _run_outcome(
+        session, cs, "victory", monkeypatch, resurrect_return=[{"anchor": "anchor_x"}]
+    )
+    # No crash; nothing distributed to an empty seat_order.
+    assert end_data["primary_loot"] == []
+    assert end_data["primary_currency_gold"] == 0
+    party.assert_awaited_once()  # the echo-primary still returns via Mortaen

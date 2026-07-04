@@ -271,6 +271,15 @@ class TestWrapEchoGating:
         assert wrap.combat_ended is True
         assert wrap.outcome == "defeat"
 
+    def test_multi_pc_wipe_with_living_echo_and_living_enemy_blocks(self):
+        # cc6fee7df67d: multi-PC — all real players down, a living echo AND a living enemy. Combat
+        # blocks (not auto-defeat): the DM plays out the echo's last stand against the remaining
+        # enemy; a later phase resolves it (echo destroyed -> defeat, or all enemies fall -> defeat).
+        cs = self._state_with_echo(echo_fallen=False, enemies_fallen=False)  # living echo + living enemy
+        self._add_standing_ally(cs, dead=True)  # the only non-echo ally is down
+        wrap = combat_phase._wrap(cs)
+        assert wrap.combat_ended is False
+
     def test_living_echo_with_all_enemies_and_allies_down_defeats_no_hang(self):
         # story-004/005 finding 3/5: a living echo blocks combat-end, but when all enemies are fallen
         # AND every non-echo ally is also down, no one is left to destroy the echo -> the party is

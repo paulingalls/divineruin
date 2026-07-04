@@ -213,7 +213,11 @@ async def _end_combat_db(
         # drop lands in ONE participant's inventory, so items stay scarce (no per-member duplication).
         # Distribution consumes no RNG. Solo = 1 participant, so every drop goes to the primary.
         seat_order = sorted(p.id for p in cs.participants if p.type == "player")
-        for i, drop in enumerate(loot_pool):
+        # Defensive (concern ab4ced4c2110): _wrap guarantees >=1 standing player on an auto victory
+        # (any_player_standing gate), but a MANUAL end_combat('victory') is ungated — a solo primary
+        # that rose as an echo leaves seat_order empty. Skip distribution rather than divide by zero:
+        # there is no player-life to receive the haul.
+        for i, drop in enumerate(loot_pool if seat_order else []):
             recipient = seat_order[i % len(seat_order)]
             await mutations.add_inventory_item(recipient, drop["item_id"], drop["quantity"], conn=conn)
             if recipient == session.player_id:
@@ -241,7 +245,7 @@ async def _end_combat_db(
         # haul (story-001), never the summed party gold. Inside this tx — a rollback un-grants the
         # coin and drops the unflushed events. Minions contribute 0 (D79). Solo N=1 -> multiplier
         # 1.0, one member: byte-identical.
-        if currency_silver > 0:
+        if currency_silver > 0 and seat_order:  # seat_order guard: see the loot-distribution note above
             silver_per_gold = (await pricing.get_economy_pricing())["silver_per_gold"]
             share_silver = currency_silver * encounter_loot.party_currency_multiplier(len(seat_order)) / len(seat_order)
             share_gold = share_silver / silver_per_gold  # loop-invariant — every participant's share is equal
