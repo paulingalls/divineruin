@@ -34,3 +34,21 @@ async def deplete_node_quantity(
         node_id,
         amount,
     )
+
+
+async def restore_node_quantity(
+    node_id: str, quantity: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> None:
+    """Set a gathering node's data.quantity to `quantity`, capped at data.capacity (M16's
+    gathering_respawn.compute_node_respawn decides the target; this persists it). COALESCEs to
+    the current quantity when a row predates the capacity field, so a capacity-less row no-ops
+    instead of null-writing quantity (LEAST(NULL, x) would corrupt it)."""
+    _conn = conn or await db.get_pool()
+    await _conn.execute(
+        "UPDATE gathering_nodes SET data = jsonb_set("
+        "data, '{quantity}', "
+        "to_jsonb(LEAST(COALESCE((data->>'capacity')::int, (data->>'quantity')::int), $2))) "
+        "WHERE id = $1",
+        node_id,
+        quantity,
+    )

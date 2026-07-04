@@ -37,6 +37,20 @@ class TestDepleteNodeQuantity:
         assert params == ["node_1", 2]
 
 
+class TestRestoreNodeQuantity:
+    async def test_restores_capped_at_capacity_via_jsonb_set(self):
+        conn = AsyncMock()
+        await db_mutations_gathering.restore_node_quantity("node_1", 3, conn=conn)
+        sql, *params = conn.execute.call_args.args
+        assert "UPDATE gathering_nodes" in sql
+        assert "jsonb_set" in sql
+        assert "'{quantity}'" in sql
+        assert "LEAST" in sql
+        assert "COALESCE" in sql
+        assert "'capacity'" in sql
+        assert params == ["node_1", 3]
+
+
 class TestGetGatheringNodesAtLocation:
     async def test_queries_by_location_id_and_parses_rows(self):
         pool = AsyncMock()
