@@ -11,9 +11,9 @@
     "test:e2e:mobile": "bun run ../../scripts/maestro-acceptance.ts"
   },
   "dependencies": {
+    "@config-plugins/react-native-webrtc": "14.0.0",
     "@divineruin/design-tokens": "workspace:*",
     "@divineruin/shared": "workspace:*",
-    "@config-plugins/react-native-webrtc": "14.0.0",
     "@expo-google-fonts/cormorant-garamond": "^0.4.1",
     "@expo-google-fonts/crimson-pro": "^0.4.2",
     "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
@@ -32,6 +32,7 @@
     "expo-asset": "55.0.17",
     "expo-audio": "55.0.14",
     "expo-constants": "55.0.16",
+    "expo-crypto": "~55.0.16",
     "expo-dev-client": "55.0.32",
     "expo-device": "55.0.16",
     "expo-disable-pods-indexing": "github:paulingalls/expo-disable-pods-indexing",

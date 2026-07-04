@@ -43,6 +43,7 @@
         "expo-asset": "55.0.17",
         "expo-audio": "55.0.14",
         "expo-constants": "55.0.16",
+        "expo-crypto": "~55.0.16",
         "expo-dev-client": "55.0.32",
         "expo-device": "55.0.16",
         "expo-disable-pods-indexing": "github:paulingalls/expo-disable-pods-indexing",
@@ -985,6 +986,8 @@
     "expo-audio": ["expo-audio@55.0.14", "", { "peerDependencies": { "expo": "*", "expo-asset": "*", "react": "*", "react-native": "*" } }, "sha512-Biy6ffKXrnKHgcWSVWLKVdWLNhV/pj1JWJeotY6nDR6fVe8mjXQDCvi6EbaSFPdffVHym6UB2siKzWUNSnG+kQ=="],
 
     "expo-constants": ["expo-constants@55.0.16", "", { "dependencies": { "@expo/env": "~2.1.2" }, "peerDependencies": { "expo": "*", "react-native": "*" } }, "sha512-Z15/No94UHoogD+pulxjudGAeOHTEIWZgb/vnX48Wx5D+apWTeCbnKxQZZtGQlosvduYL5kaic2/W8U+NHfBQQ=="],
+
+    "expo-crypto": ["expo-crypto@55.0.16", "", { "peerDependencies": { "expo": "*" } }, "sha512-kvb7SaDJRhAdYq5WJR6Jv9uNBZkrbKvWNUUAd+RGpILyf+6H7ZM2Bmmo/x/tBd2AEBZRpjSRaU2szHf9CAC96Q=="],
 
     "expo-dev-client": ["expo-dev-client@55.0.32", "", { "dependencies": { "expo-dev-launcher": "55.0.33", "expo-dev-menu": "55.0.27", "expo-dev-menu-interface": "55.0.2", "expo-manifests": "~55.0.16", "expo-updates-interface": "~55.1.6" }, "peerDependencies": { "expo": "*" } }, "sha512-rfZ0Xpgbw3RPymkivvLSQ2Koqefj+oVOReqNLN3JXDlqdC2jOr3MCqfTaJs5VFNzFKk7pOPyE60jh03UdvsHCQ=="],
 
