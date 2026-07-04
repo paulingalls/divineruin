@@ -15,8 +15,10 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import FixedRng, mock_txn, published_events
 
 import event_types as E
+from bg_event_handlers import handle_events
 from check_tools import VALID_CHECK_MODES, _check_impl
 from gathering_tools import _check_gather_impl
+from session_data import SessionData
 from tools._helpers import SAMPLE_PLAYER, _make_context
 
 _WILDERNESS = {
@@ -168,6 +170,64 @@ class TestGuards:
         mocks = _gather_mocks()
         with pytest.raises(ToolError, match="material type"):
             await _run(_ctx_with_bus(), mocks, material_type="antimatter", rng_val=11)
+
+
+class TestNodeRevealSignal:
+    @pytest.mark.asyncio
+    async def test_first_reveal_emits_hidden_revealed(self):
+        """Undiscovered node + rich find should emit HIDDEN_REVEALED alongside DICE_ROLL."""
+        mocks = _gather_mocks(player=_EXPERT, nodes=[_NODE])
+        ctx = _ctx_with_bus()
+        await _run(ctx, mocks, rng_val=20)  # expert + nat20 -> rich_find
+        events = published_events(ctx)
+        dice_roll = next(e for e in events if e.event_type == E.DICE_ROLL)
+        assert dice_roll is not None
+        hidden = next((e for e in events if e.event_type == E.HIDDEN_REVEALED), None)
+        assert hidden is not None
+        assert hidden.payload["element_id"] == "n1"
+        assert hidden.payload["skill"] == "survival"
+
+    @pytest.mark.asyncio
+    async def test_already_discovered_omits_hidden_revealed(self):
+        """Already-discovered node should NOT emit HIDDEN_REVEALED (first-reveal-only gate)."""
+        discovered_node = {**_NODE, "discovered": True}
+        mocks = _gather_mocks(player=_EXPERT, nodes=[discovered_node])
+        ctx = _ctx_with_bus()
+        await _run(ctx, mocks, rng_val=20)  # expert + nat20 -> rich_find
+        events = published_events(ctx)
+        dice_roll = next(e for e in events if e.event_type == E.DICE_ROLL)
+        assert dice_roll is not None
+        hidden = next((e for e in events if e.event_type == E.HIDDEN_REVEALED), None)
+        assert hidden is None  # no HIDDEN_REVEALED for already-discovered
+
+    @pytest.mark.asyncio
+    async def test_non_rich_success_omits_hidden_revealed(self):
+        """Non-rich success should emit only DICE_ROLL, no HIDDEN_REVEALED."""
+        mocks = _gather_mocks(player=SAMPLE_PLAYER, nodes=[_NODE])  # untrained -> no rich find
+        ctx = _ctx_with_bus()
+        await _run(ctx, mocks, rng_val=11)
+        events = published_events(ctx)
+        dice_roll = next(e for e in events if e.event_type == E.DICE_ROLL)
+        assert dice_roll is not None
+        hidden = next((e for e in events if e.event_type == E.HIDDEN_REVEALED), None)
+        assert hidden is None  # no HIDDEN_REVEALED for non-rich
+
+    @pytest.mark.asyncio
+    async def test_emitted_event_feeds_real_handler_roundtrip(self):
+        """AC#3: the exact event the gather path emits, fed through the REAL bg_event_handlers
+        handler, must trigger a warm rebuild AND land the node id in recently_revealed_element_ids
+        — pinning the emit-side payload against the consume-side contract in one test (mirrors
+        check_discovery.py's mode=discover reveal path)."""
+        mocks = _gather_mocks(player=_EXPERT, nodes=[_NODE])
+        ctx = _ctx_with_bus()
+        await _run(ctx, mocks, rng_val=20)  # expert + nat20 -> rich_find
+        hidden = next(e for e in published_events(ctx) if e.event_type == E.HIDDEN_REVEALED)
+
+        sd = SessionData(player_id="player_1", location_id="greyvale_wilderness_north")
+        needs_rebuild, _ = handle_events([hidden], sd, [], False, {}, [])
+
+        assert needs_rebuild is True
+        assert sd.recently_revealed_element_ids == ["n1"]
 
 
 class TestCheckModeRegistration:
