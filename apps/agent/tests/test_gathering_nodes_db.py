@@ -13,6 +13,7 @@ import uuid
 import pytest
 
 import db
+import db_mutations_gathering
 
 pytestmark = pytest.mark.usefixtures("dev_db_pool")
 
@@ -38,6 +39,33 @@ async def test_node_row_round_trips_all_data_fields():
         row = await pool.fetchrow("SELECT data FROM gathering_nodes WHERE id = $1", node_id)
         assert row is not None
         assert json.loads(row["data"]) == data
+    finally:
+        await _delete_node(node_id)
+
+
+async def test_restore_node_quantity_caps_at_capacity_and_is_idempotent():
+    pool = await db.get_pool()
+    node_id = f"test_node_{uuid.uuid4().hex}"
+    data = {
+        "location_id": "greyvale_wilderness_north",
+        "node_type": "herb_garden",
+        "resource_type": "medicinal_herb",
+        "quantity": 0,
+        "capacity": 3,
+        "discovered": False,
+        "respawn_days": 2,
+    }
+    try:
+        await pool.execute("INSERT INTO gathering_nodes (id, data) VALUES ($1, $2)", node_id, json.dumps(data))
+
+        await db_mutations_gathering.restore_node_quantity(node_id, 3, conn=pool)
+        row = await pool.fetchrow("SELECT data FROM gathering_nodes WHERE id = $1", node_id)
+        assert json.loads(row["data"])["quantity"] == 3
+
+        # A repeated restore call never exceeds capacity (idempotent cap).
+        await db_mutations_gathering.restore_node_quantity(node_id, 3, conn=pool)
+        row = await pool.fetchrow("SELECT data FROM gathering_nodes WHERE id = $1", node_id)
+        assert json.loads(row["data"])["quantity"] == 3
     finally:
         await _delete_node(node_id)
 
