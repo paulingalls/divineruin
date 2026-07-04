@@ -69,6 +69,8 @@ const buckets = new Map<string, RateBucket>();
 
 const RATE_LIMITS: Record<string, number> = {
   "/api/livekit/token": 10,
+  "/api/livekit/invite": 10,
+  "/api/livekit/redeem": 10,
   "/api/auth/request-code": 3,
   "/api/auth/verify-code": 5,
   "/api/waitlist": 5,

@@ -85,6 +85,26 @@ describe("Rate Limiting", () => {
     expect(blocked!.status).toBe(429);
   });
 
+  test("enforces stricter limit on invite endpoint (10/min)", () => {
+    for (let i = 0; i < 10; i++) {
+      const result = checkRateLimit("127.0.0.1", "/api/livekit/invite");
+      expect(result).toBeNull();
+    }
+    const blocked = checkRateLimit("127.0.0.1", "/api/livekit/invite");
+    expect(blocked).not.toBeNull();
+    expect(blocked!.status).toBe(429);
+  });
+
+  test("enforces stricter limit on redeem endpoint (10/min)", () => {
+    for (let i = 0; i < 10; i++) {
+      const result = checkRateLimit("127.0.0.1", "/api/livekit/redeem");
+      expect(result).toBeNull();
+    }
+    const blocked = checkRateLimit("127.0.0.1", "/api/livekit/redeem");
+    expect(blocked).not.toBeNull();
+    expect(blocked!.status).toBe(429);
+  });
+
   test("different IPs have independent limits", () => {
     for (let i = 0; i < 10; i++) {
       checkRateLimit("10.0.0.1", "/api/livekit/token");
