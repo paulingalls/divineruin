@@ -29,6 +29,11 @@ from tool_support import SOUND_COMBAT_DEFEAT, SOUND_COMBAT_FLED, SOUND_COMBAT_VI
 logger = logging.getLogger("divineruin.tools")
 
 _VALID_OUTCOMES = ("victory", "defeat", "fled")
+# A character dies on the death-save grind at 3 failures (combat_resolution.resolve_death_save sets
+# dead=True there) — but the 2-flag model never sets is_dead in that case (is_dead is overkill-only).
+# combat-end's dead-life partition must count that as truly dead, matching combat_phase._wrap's
+# terminally-down predicate (is_dead OR death_save_failures >= this limit).
+_DEATH_SAVE_LIMIT = 3
 _STINGER_SOUND = {
     "victory": SOUND_COMBAT_VICTORY,
     "defeat": SOUND_COMBAT_DEFEAT,
@@ -325,10 +330,17 @@ async def _end_combat_db(
     combat_cleared = bool(enemies) and all(p.is_fallen for p in enemies)
 
     def _is_truly_dead(p) -> bool:
-        return (p.type == "player" and p.is_dead) or p.type == "temporary_hollowed"
+        # A player is truly dead on instant-death overkill (is_dead) OR after failing 3 death saves
+        # (death_save_failures >= limit — the 2-flag model leaves is_dead False there). Any echo is a
+        # player who already died to rise. Mirrors _wrap's terminally-down predicate.
+        return (
+            p.type == "player" and (p.is_dead or p.death_save_failures >= _DEATH_SAVE_LIMIT)
+        ) or p.type == "temporary_hollowed"
 
     def _fallen_savable(p) -> bool:
-        return p.type == "player" and p.is_fallen and not p.is_dead
+        # Dying but still savable: fell to 0 with death saves NOT yet exhausted and not instant-dead.
+        # A member who died on the grind (dsf >= limit) is _is_truly_dead, not savable.
+        return p.type == "player" and p.is_fallen and not p.is_dead and p.death_save_failures < _DEATH_SAVE_LIMIT
 
     death_context: dict | None = None
     # Outcome-independent dead-life collector. It picks up the primary echo (id == player_id,
