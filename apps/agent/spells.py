@@ -45,6 +45,21 @@ SpellTier = Literal["cantrip", "minor", "standard", "major", "supreme"]
 _SPELL_SOURCES = frozenset(get_args(SpellSource))
 _SPELL_TIERS = frozenset(get_args(SpellTier))
 
+# story-003: the frozen 7-key spell-cast SFX palette (docs/audio_sfx_pipeline.md §4).
+# sound_id is the machine-playable key the Python emit (story-004) + mobile registry
+# resolve; audio_cue stays free-text DM direction prose, a separate field.
+SPELL_SOUND_KEYS = frozenset(
+    {
+        "spell_fire",
+        "spell_ice",
+        "spell_arcane_force",
+        "spell_heal",
+        "spell_radiant",
+        "spell_nature",
+        "spell_generic",
+    }
+)
+
 
 @dataclass(frozen=True)
 class Spell:
@@ -78,6 +93,12 @@ class Spell:
     # or None for an unbounded/single-target spell. Optional + forward-compatible. validate_target_count
     # is the single cap SSOT enforced at both the OOC cast and (story-012) the in-combat declaration.
     max_targets: int | None = None
+    # M17 story-003: the machine-playable SFX key (one of SPELL_SOUND_KEYS), read by the
+    # Python cast-emit (story-004) + resolved by the mobile sound registry. Distinct from
+    # audio_cue (free-text director prose); NOT mirrored into the TS Spell type (reader-gated,
+    # decision spell-ts-reader-gated) since the TS server never reads it. Default keeps in-code
+    # Spell(...) builds working; parse_spell_row REQUIRES it from raw rows (strict).
+    sound_id: str = ""
 
 
 # Module-level runtime-loaded spells, keyed by spell id. Populated by load_spells()
@@ -120,6 +141,9 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             isinstance(max_targets, bool) or not isinstance(max_targets, int) or max_targets < 1
         ):
             raise ValueError(f"spell {spell_id!r} max_targets {max_targets!r} must be a positive int")
+        sound_id = data["sound_id"]
+        if sound_id not in SPELL_SOUND_KEYS:
+            raise ValueError(f"spell {spell_id!r} sound_id {sound_id!r} not in {sorted(SPELL_SOUND_KEYS)}")
         return Spell(
             id=spell_id,
             name=data["name"],
@@ -134,6 +158,7 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             concentration=concentration,
             applies_condition=applies_condition,
             max_targets=max_targets,
+            sound_id=sound_id,
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed spells row {spell_id!r}: {e}") from e
