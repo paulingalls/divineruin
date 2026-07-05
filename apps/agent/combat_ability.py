@@ -18,12 +18,11 @@ import combat_enhancers
 import combat_resolution
 import conditions
 import event_types as E
+import social_resolution
 import spell_casting
 from combat_events import emit_or_publish
 from condition_produce import resolve_effective_targets
-from dice import roll as dice_roll
 from resource_costs import gate_pool
-from rules_engine import attribute_modifier
 from session_data import CombatParticipant, SessionData
 
 if TYPE_CHECKING:
@@ -32,10 +31,17 @@ if TYPE_CHECKING:
 
 # Diplomat de-escalation (M4.6a story-004, spec game_mechanics_combat.md:175-183).
 _DEESCALATE_FOCUS_COST = 3
+# Tier-3 scene round cap (M15 story-002, spec §Social Encounter Resolution): a full de-escalation
+# argues over several rounds, but a group that hasn't yielded by here has stopped listening.
+MAX_DEESCALATION_ROUNDS = 4
 
 
 def _lead_enemy(state):
-    """The living enemy the Diplomat addresses: highest WIS resists hardest (spec L180)."""
+    """The living enemy the Diplomat addresses: highest WIS resists hardest (spec L180).
+
+    Superseded by the M15 story-002 group loop (the Tier-3 scene argues EVERY living enemy, not a
+    single lead); kept alongside combat_resolution.resolve_deescalation until the MVP path retires
+    (debt cab11f1f32f3)."""
     living = [p for p in state.participants if p.type == "enemy" and not p.is_fallen]
     if not living:
         return None
@@ -43,12 +49,15 @@ def _lead_enemy(state):
 
 
 def _gate_deescalation(player: dict, state) -> None:
-    """Declare-time fail-loud gate for de_escalate: one attempt per encounter, 3 Focus.
+    """Declare-time fail-loud gate for de_escalate: round cap + 3 Focus, with NO state writes.
 
-    Mirrors spell_casting._gate_spell's pre-resolution discipline — validate with NO state
-    writes so a bad attempt never rolls back a phase that already resolved other actors."""
-    if state.deescalation_used:
-        raise ToolError("De-escalate can only be attempted once per encounter.")
+    Mirrors spell_casting._gate_spell's pre-resolution discipline — validate with NO state writes so
+    a bad attempt never rolls back a phase that already resolved other actors. The Tier-3 scene runs
+    multiple rounds (M15 story-002), so the once-per-encounter MVP lockout becomes a per-round cap:
+    once the scene has run MAX_DEESCALATION_ROUNDS rounds the group won't hear more. Focus is still
+    spent (and gated) per round."""
+    if state.deescalation_scene.round_counter >= MAX_DEESCALATION_ROUNDS:
+        raise ToolError("The enemies have stopped listening — no more arguments will land.")
     have = (player.get("focus") or {}).get("current", 0)
     if have < _DEESCALATE_FOCUS_COST:
         raise ToolError(f"De-escalate costs {_DEESCALATE_FOCUS_COST} Focus; you have {have}.")
@@ -66,18 +75,24 @@ async def _resolve_deescalation_packet(
     persistence=ability_persistence,
     rng=None,
 ) -> dict:
-    """Resolve a de_escalate ABILITY in combat (M4.6a story-004).
+    """Resolve ONE round of a Tier-3 GROUP de-escalation in combat (M15 story-002).
 
-    Focus + lockout are pre-validated at declare time (_gate_deescalation); here we spend the
-    3 Focus, roll the contested CHA-vs-lead-enemy-WIS gate plus one argument, set the combat-end
-    flags on CombatState, and emit the always-dramatic de_escalate DICE_ROLL. ``player`` is the
-    for_update row from prevalidation (reused, so the lock is taken once). The flags are set on
-    the phase loop's working ``state`` (the deep-copied next_state the wrap reads), NOT
-    session.combat_state — that stays the pristine pre-phase copy until the tx commits."""
+    A Diplomat argues the WHOLE living enemy group at once: Focus + the round cap are pre-validated
+    at declare time (_gate_deescalation); here we spend the 3 Focus, roll ONE persuasion total for
+    the round, then apply that same argument to EACH living enemy INDEPENDENTLY — every enemy's
+    disposition shifts by its own resistance profile (combat_resolution.resolve_argument_round),
+    accumulating per enemy across rounds in ``state.deescalation_scene``. When the whole living group
+    has crossed the surrender threshold, ``state.deescalated`` flips and the phase _wrap ends combat
+    "deescalated"; a partial group leaves it False and the scene rides to the next round. ``player``
+    is the for_update row from prevalidation (reused, so the lock is taken once).
+
+    All mutations land on the phase loop's working ``state`` (the deep-copied next_state the wrap
+    reads) — the flags AND the scene maps ride the phase's save_combat_state; we never write
+    session.combat_state directly (it stays the pristine pre-phase copy until the tx commits)."""
     if state is None or player is None:
         return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
-    lead = _lead_enemy(state)
-    if lead is None:
+    living = [p for p in state.participants if p.type == "enemy" and not p.is_fallen]
+    if not living:
         return {
             "actor_id": attacker.id,
             "resolved": False,
@@ -85,18 +100,22 @@ async def _resolve_deescalation_packet(
             "reason": "no living enemy to de-escalate",
         }
 
+    # Validate the Tier-3 argument category at the PACKET boundary (resolve_declaration threads it
+    # shape-only). None is a Tier-1 neutral argument (no DC swing); a non-None value must be canonical
+    # or the roll is a DM error — fail loud as a ToolError so the DM re-prompts, before any Focus spend.
+    argument_type = getattr(decl, "argument_type", None)
+    if argument_type is not None and argument_type not in social_resolution.ARGUMENT_TYPES:
+        raise ToolError(f"Unknown argument_type {argument_type!r}; expected one of {social_resolution.ARGUMENT_TYPES}.")
+
     have = (player.get("focus") or {}).get("current", 0)
-    # Deduct against the declaring member (M14 story-004, was the session primary).
+    # Deduct against the declaring member (M14 story-004, was the session primary), per round.
     await persistence.update_player_resources(attacker.id, focus=have - _DEESCALATE_FOCUS_COST, conn=conn)
 
-    attrs = player.get("attributes", {})
-    cha_total = dice_roll("d20", rng=rng).total + attribute_modifier(attrs.get("charisma", 10))
-    enemy_wis_total = dice_roll("d20", rng=rng).total + attribute_modifier(lead.attributes.get("wisdom", 10))
-    # Source the beneficial die (Inspired's +1d4) from the in-combat SSOT — the attacker
-    # participant's conditions — not the stale DB row, so an in-combat-applied Inspired folds and
-    # an OOC one cannot double-dip with a later attack swing (M4.8 story-011). Consume the signalled
-    # die ONCE off the participant (mirrors the attack path, combat_packet.py); the mutation rides
-    # the phase's save_combat_state, so there is no permanent +1d4.
+    # ONE persuasion roll for the round, applied to every enemy. Source the beneficial die (Inspired's
+    # +1d4) from the in-combat SSOT — the attacker participant's conditions — not the stale DB row, so
+    # an in-combat-applied Inspired folds and an OOC one cannot double-dip with a later attack swing
+    # (M4.8 story-011). Consume the signalled die ONCE off the participant; the mutation rides the
+    # phase's save_combat_state, so there is no permanent +1d4 and it applies to at most one round.
     argument = check_resolution.resolve_skill_check_dc(
         {**player, "conditions": attacker.conditions}, "persuasion", combat_resolution.DEESCALATE_BASE_DC, rng
     )
@@ -104,16 +123,39 @@ async def _resolve_deescalation_packet(
     if argument.consumed_conditions:
         attacker.conditions = conditions.remove_conditions(attacker.conditions, argument.consumed_conditions)
 
-    outcome = combat_resolution.resolve_deescalation(
-        cha_total=cha_total,
-        enemy_wis_total=enemy_wis_total,
-        argument_total=argument_total,
-        base_dc=combat_resolution.DEESCALATE_BASE_DC,
-    )
-    state.deescalation_used = True
-    if outcome.ends_combat:
+    # Per-enemy INDEPENDENT resolution: each enemy argues from its OWN accumulated disposition +
+    # cumulative shift, swung by its OWN resistance_tags. Write the running maps back onto the scene.
+    scene = state.deescalation_scene
+    per_enemy: list[dict] = []
+    for e in living:
+        disposition = scene.enemy_dispositions.get(e.id, "hostile")
+        outcome = combat_resolution.resolve_argument_round(
+            disposition=disposition,
+            argument_type=argument_type,
+            resistance_tags=tuple(e.resistance_tags),
+            roll_total=argument_total,
+            cumulative_shift=scene.cumulative_shift.get(e.id, 0),
+        )
+        scene.cumulative_shift[e.id] = outcome.new_cumulative_shift
+        scene.enemy_dispositions[e.id] = outcome.new_disposition
+        per_enemy.append(
+            {
+                "id": e.id,
+                "disposition": outcome.new_disposition,
+                "cumulative_shift": outcome.new_cumulative_shift,
+                "surrendered": outcome.surrendered,
+            }
+        )
+
+    scene.round_counter += 1
+    # Whole-group surrender: combat ends only when EVERY living enemy has crossed the threshold
+    # (spec §Social Encounter Resolution). A partial group leaves ``deescalated`` False — the scene
+    # persists and the next round argues the holdouts from their accumulated dispositions.
+    if all(scene.cumulative_shift.get(e.id, 0) >= combat_resolution.SURRENDER_THRESHOLD for e in living):
         state.deescalated = True
 
+    surrendered_count = sum(1 for pe in per_enemy if pe["surrendered"])
+    # Always-dramatic (M4.5 de_escalate): every round of the scene surfaces on the HUD.
     await emit_or_publish(
         sink,
         session.room,
@@ -121,15 +163,18 @@ async def _resolve_deescalation_packet(
         {
             "roll_type": "de_escalate",
             "actor": attacker.name,
-            "scene_entered": outcome.scene_entered,
-            "success": outcome.success,
-            "dramatic": outcome.dramatic,
-            "context": outcome.context,
+            "round": scene.round_counter,
+            "surrendered": surrendered_count,
+            "living": len(living),
+            "ends_combat": state.deescalated,
+            "dramatic": True,
+            "context": "de_escalate",
         },
         event_bus=session.event_bus,
     )
     session.record_event(
-        f"{attacker.name} attempts de-escalation: {'combat ends' if outcome.ends_combat else 'combat continues'}"
+        f"{attacker.name} argues the group down (round {scene.round_counter}): "
+        f"{surrendered_count}/{len(living)} yielding" + (" — combat ends" if state.deescalated else "")
     )
     return {
         "actor_id": attacker.id,
@@ -137,10 +182,9 @@ async def _resolve_deescalation_packet(
         "declaration_type": str(decl.type),
         "action": "de_escalate",
         "deescalation": {
-            "scene_entered": outcome.scene_entered,
-            "success": outcome.success,
-            "ends_combat": outcome.ends_combat,
-            "narrative_cue": outcome.narrative_cue,
+            "round": scene.round_counter,
+            "ends_combat": state.deescalated,
+            "per_enemy": per_enemy,
         },
     }
 
