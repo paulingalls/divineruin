@@ -91,6 +91,14 @@ class CombatParticipant:
     # so a WIS-proficient target resists an enemy-inflicted Frightened as the rules intend.
     # Defaults to [] (enemies/companions and pre-fix rows carry none; from_dict falls back).
     saving_throw_proficiencies: list[str] = field(default_factory=list)
+    # Tier-3 social resistance personality (M15 story-002): the argument-resistance tags
+    # (social_resolution.RESISTANCE_TAGS — pragmatic/emotional/suspicious/...) an enemy carries,
+    # loaded from the encounter template at combat init and validated there. The de-escalation
+    # orchestrator (combat_ability) reads them per enemy so each disposition shifts by its OWN
+    # profile — a matching argument eases that enemy's DC, a resisted one stiffens it. Empty for
+    # players/companions and untagged/pre-M15 enemy rows (from_dict uses CombatParticipant(**p),
+    # so the default covers legacy rows), mirroring enhancers/conditions/saving_throw_proficiencies.
+    resistance_tags: list[str] = field(default_factory=list)
 
     @property
     def is_ally(self) -> bool:
@@ -102,6 +110,19 @@ class CombatParticipant:
         that fights AGAINST the party) both read False.
         """
         return self.type in ("player", "companion")
+
+
+@dataclass
+class DeEscalationState:
+    """Tier-3 structured de-escalation scene state (M15 story-001). Scene-scoped, nested on
+    CombatState. ``cumulative_shift`` is the per-enemy net ladder-step accumulator the
+    surrender gate (combat_resolution.resolve_argument_round) reads; ``enemy_dispositions``
+    is the per-enemy ladder-clamped disposition each round's DC derives from. round_counter
+    advancement and enemy iteration are story-002 orchestration concerns."""
+
+    round_counter: int = 0
+    enemy_dispositions: dict[str, str] = field(default_factory=dict)
+    cumulative_shift: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -134,10 +155,11 @@ class CombatState:
     first_attack_resolved: bool = False
     # Diplomat de-escalation (M4.6a story-004). Combat-scoped, never reset within an encounter.
     # ``deescalated`` flips True when a de-escalation argument lands; _wrap reads it to end
-    # combat with outcome "deescalated". ``deescalation_used`` flips True on any attempt
-    # (success or failure) so de-escalate can be tried at most once per encounter (spec L183).
+    # combat with outcome "deescalated".
     deescalated: bool = False
-    deescalation_used: bool = False
+    # Tier-3 structured de-escalation scene (M15 story-001). Additive to the MVP flags above —
+    # multi-round argument state (round_counter + per-enemy disposition/cumulative-shift maps).
+    deescalation_scene: DeEscalationState = field(default_factory=DeEscalationState)
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
@@ -169,7 +191,7 @@ class CombatState:
             ac_modifiers=data.get("ac_modifiers", {}),
             first_attack_resolved=data.get("first_attack_resolved", False),
             deescalated=data.get("deescalated", False),
-            deescalation_used=data.get("deescalation_used", False),
+            deescalation_scene=DeEscalationState(**data.get("deescalation_scene", {})),
         )
 
 

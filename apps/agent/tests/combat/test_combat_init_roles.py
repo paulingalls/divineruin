@@ -35,6 +35,7 @@ ROLE_ENCOUNTER = {
                 {"name": "Wail", "damage": "0", "damage_type": "none", "properties": ["debuff"]},
             ],
             "xp_value": 50,
+            "resistance_tags": ["cowardly"],
         },
         {
             "id": "warden_1",
@@ -122,6 +123,16 @@ async def test_enemy_participants_carry_category_and_loot_table_id():
     assert parts["shadeling_1"]["loot_table_id"] == "loot_hollow_drift"
     assert parts["warden_1"]["category"] == "hollow_rend"
     assert parts["warden_1"]["loot_table_id"] == "loot_hollow_warden"
+
+
+@pytest.mark.asyncio
+async def test_enemy_participants_carry_resistance_tags():
+    # M15 story-002: combat_init carries the template enemy's Tier-3 resistance_tags onto the
+    # participant so the de-escalation orchestrator shifts each enemy's disposition by its own
+    # profile. An untagged enemy defaults to [] (un-de-escalatable).
+    parts = await _run_and_get_participants()
+    assert parts["shadeling_1"]["resistance_tags"] == ["cowardly"]
+    assert parts["warden_1"]["resistance_tags"] == []
 
 
 @pytest.mark.asyncio

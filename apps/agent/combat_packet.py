@@ -26,6 +26,7 @@ from combat_ability import (
     _resolve_ability_packet,
     _resolve_deescalation_packet,
     _resolve_enemy_condition_packet,
+    _validate_argument_type,
     condition_ability,
 )
 from combat_support import _resolve_attack_packet
@@ -107,6 +108,10 @@ async def _prevalidate_ability_focus(session, state, adv, *, conn, queries, cast
         # gated against the spell catalog. _gate_spell would raise "Unknown spell" for the first two.
         if action.lower() == "de_escalate":
             _gate_deescalation(player, state)
+            # Validate the Tier-3 argument category HERE (declare-time, no writes) so a bad category
+            # fails loud before ANY packet resolves — never rolling back a phase that already wrote
+            # other actors' HP/Focus (the packet re-checks defensively for direct callers).
+            _validate_argument_type(decl)
         elif (cond_ability := condition_ability(action)) is not None:
             _gate_ability_condition(player, cond_ability)
             # Multi-target cap (M4.8 story-016): reject an over-cap / malformed multi-target ability

@@ -61,6 +61,22 @@ class TestResolveDeclarationValid:
         d = resolve_declaration({"type": "attack", "action": "Longsword", "target_id": "goblin_1"})
         assert d.rider is None
 
+    def test_argument_type_passes_through_for_de_escalate(self):
+        # M15 story-002: a de_escalate ABILITY carries the argument category the Diplomat makes.
+        # resolve_declaration is shape-only — it threads argument_type verbatim; the value is
+        # validated against social_resolution.ARGUMENT_TYPES at the packet boundary, not here.
+        d = resolve_declaration({"type": "ability", "action": "de_escalate", "argument_type": "reason"})
+        assert d.argument_type == "reason"
+
+    def test_argument_type_defaults_none(self):
+        d = resolve_declaration({"type": "ability", "action": "Fireball"})
+        assert d.argument_type is None
+
+    def test_argument_type_not_validated_at_shape_boundary(self):
+        # Shape-only: an unknown category is NOT rejected here (the packet boundary owns that).
+        d = resolve_declaration({"type": "ability", "action": "de_escalate", "argument_type": "nonsense"})
+        assert d.argument_type == "nonsense"
+
 
 class TestResolveDeclarationInvalid:
     def test_missing_type_raises(self):

@@ -26,6 +26,27 @@ else
     echo "  Pre-push hook self-test..."
     bash "$(dirname "$0")/test-pre-push.sh"
 
+    # Validate the pre-commit hook's worktree-skip + .env-guard precedence.
+    echo "  Pre-commit hook self-test..."
+    bash "$(dirname "$0")/../scripts/test-precommit-worktree-skip.sh"
+
+    # Typecheck + lint backstop. The pre-commit hook SKIPS the TS/ESLint/Prettier/ruff suite on a
+    # fresh worktree (no node_modules), so without this block lint/typecheck errors could reach a
+    # shared branch unchecked. The pre-push gate runs from the deps-installed checkout at merge-push
+    # time, so it is the genuine backstop the pre-commit notice promises. Fast-fail here (set -e),
+    # BEFORE standing up the Docker/testcontainer lanes below — a typo shouldn't cost minutes.
+    echo "  Typecheck (root, mobile, server, web)..."
+    bun run typecheck
+    bun run typecheck:mobile
+    bun run typecheck:server
+    bun run typecheck:web
+    echo "  ESLint..."
+    bunx eslint --max-warnings 0 .
+    echo "  Prettier..."
+    bunx prettier --check 'apps/**/*.{ts,tsx}' 'apps/web/**/*.{html,css}' 'packages/**/*.ts'
+    echo "  Python ruff check..."
+    bun run lint:python
+
     # Acceptance tests require Docker — hard gate (no silent skip on pre-push).
     echo "  Acceptance prerequisite: Docker..."
     if ! docker info >/dev/null 2>&1; then

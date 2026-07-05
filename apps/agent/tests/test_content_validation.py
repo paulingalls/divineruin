@@ -128,6 +128,20 @@ class TestContentIntegrity:
         for enc in encounters:
             assert len(enc.get("enemies", [])) > 0, f"Encounter '{enc['id']}' has no enemies"
 
+    def test_enemy_resistance_tags_are_canonical(self):
+        # M15 story-002: authored Tier-3 de-escalation resistance_tags must be canonical
+        # social_resolution.RESISTANCE_TAGS — combat_init fails loud on a bad tag, and this pins
+        # the content so drift is caught in the fast lane, not only at combat entry.
+        from social_resolution import RESISTANCE_TAGS
+
+        for enc in _load_json("encounter_templates.json"):
+            for enemy in enc.get("enemies", []):
+                for tag in enemy.get("resistance_tags", []):
+                    assert tag in RESISTANCE_TAGS, (
+                        f"Encounter '{enc['id']}' enemy '{enemy.get('id')}' has unknown "
+                        f"resistance_tag '{tag}' (expected one of {RESISTANCE_TAGS})"
+                    )
+
     def test_items_have_required_fields(self):
         items = _load_json("items.json")
         for item in items:

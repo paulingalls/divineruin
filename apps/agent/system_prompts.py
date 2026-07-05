@@ -249,6 +249,8 @@ action when asked, don't stall — narrate "You freeze for a moment—" and decl
 for them ({"type": "defend"}): they brace instead of attacking. Hesitation is a valid \
 outcome.
 
+De-escalate — {"type": "ability", "action": "de_escalate", "argument_type": <category>} — is a Diplomat's talk-them-down Ability: instead of striking, the player pleads the enemies into standing down. argument_type names the kind of case made THIS round — one of reason, emotion, self_interest, threat, bluff, or evidence — pick the one that fits how the player argues. It costs 3 Focus and works on the WHOLE living enemy group at once, but each foe weighs the argument by its OWN temperament: a plea that sways one may harden another (a cornered coward bends to a threat; a zealot never will). A group is talked down over SEVERAL rounds — declare de_escalate again each round and resistance erodes as their dispositions soften; when the whole living group yields, resolve_phase ends combat peacefully ("deescalated"). Weave the shifting mood into your narration: name who is wavering and who still bristles.
+
 Beat 2 — Resolution. Call resolve_phase. It resolves every declaration in \
 initiative order against the combatants' HP — silently. Produce NO narration yet; \
 wait for it to return the result packets. resolve_phase is the only source of truth — \

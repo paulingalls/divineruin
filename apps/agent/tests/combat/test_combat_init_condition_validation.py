@@ -7,7 +7,7 @@ against an in-memory enemies list, no DB.
 
 import pytest
 
-from combat_init import _validate_enemy_action_conditions
+from combat_init import _validate_enemy_action_conditions, _validate_enemy_resistance_tags
 
 
 class TestValidateEnemyActionConditions:
@@ -119,3 +119,27 @@ class TestValidateEnemyActionConditions:
             }
         ]
         _validate_enemy_action_conditions(enemies)  # no raise
+
+
+class TestValidateEnemyResistanceTags:
+    """M15 story-002: enemy resistance_tags are Tier-3 de-escalation content with no strict loader,
+    so this load-boundary guard fails loud on a tag outside social_resolution.RESISTANCE_TAGS
+    (mirroring npcs.py) — an unknown tag would otherwise silently no-op the argument DC swing."""
+
+    def test_known_tags_do_not_raise(self):
+        enemies = [{"id": "mawling_1", "resistance_tags": ["pragmatic", "suspicious"]}]
+        _validate_enemy_resistance_tags(enemies)  # no raise
+
+    def test_missing_field_does_not_raise(self):
+        # resistance_tags is optional — an enemy without it is un-de-escalatable, not an error.
+        _validate_enemy_resistance_tags([{"id": "goblin", "action_pool": []}])  # no raise
+
+    def test_unknown_tag_raises(self):
+        enemies = [{"id": "mawling_1", "resistance_tags": ["pragmatic", "grumpy"]}]
+        with pytest.raises(ValueError, match="grumpy"):
+            _validate_enemy_resistance_tags(enemies)
+
+    def test_non_list_tags_raises(self):
+        enemies = [{"id": "mawling_1", "resistance_tags": "pragmatic"}]
+        with pytest.raises(ValueError, match="resistance_tags"):
+            _validate_enemy_resistance_tags(enemies)
