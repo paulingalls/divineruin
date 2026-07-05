@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier
-from social_resolution import resolve_contested_social, resolve_social_check
+from social_resolution import resolve_social_check
 
 
 @dataclass(frozen=True)
@@ -187,64 +187,6 @@ def is_hollow_zone(corruption_level: int) -> bool:
 DEESCALATE_BASE_DC = 15
 
 
-@dataclass(frozen=True)
-class DeescalationOutcome:
-    """Result of one de-escalation attempt: a contested CHA-vs-WIS gate, then (if the
-    enemy pauses) one argument round against the scene-local hostile disposition. Always
-    dramatic (M4.5 de_escalate). ``ends_combat`` drives the engine's combat-end at WRAP."""
-
-    scene_entered: bool
-    success: bool
-    ends_combat: bool
-    narrative_cue: str
-    dramatic: bool = True
-    context: str = "de_escalate"
-
-
-def resolve_deescalation(
-    *,
-    cha_total: int,
-    enemy_wis_total: int,
-    argument_total: int,
-    base_dc: int = DEESCALATE_BASE_DC,
-    enemy_disposition: str = "hostile",
-) -> DeescalationOutcome:
-    """Resolve a Diplomat's de-escalation attempt (pure; the caller rolls the d20s).
-
-    The contested CHA(player) vs WIS(lead enemy) check decides whether the enemy pauses
-    to listen (scene_entered); only then does the single argument round resolve against
-    the scene-local disposition (hostile by default — the hardest DC). Combat ends only
-    when the enemy pauses AND the argument lands. The dramatic verdict is delegated to the
-    M4.5 SSOT via ``ability="de_escalate"`` so the moment always surfaces on the HUD.
-    """
-    verdict = evaluate_dramatic_context(DramaticContext(ability="de_escalate"))
-    contested = resolve_contested_social(skill="persuasion", player_total=cha_total, npc_total=enemy_wis_total)
-    if not contested.success:
-        return DeescalationOutcome(
-            scene_entered=False,
-            success=False,
-            ends_combat=False,
-            narrative_cue="they refuse to even pause",
-            dramatic=verdict.dramatic,
-            context=verdict.context,
-        )
-    argument = resolve_social_check(
-        disposition=enemy_disposition,
-        skill="persuasion",
-        roll_total=argument_total,
-        base_dc=base_dc,
-        stakes="high",
-    )
-    return DeescalationOutcome(
-        scene_entered=True,
-        success=argument.success,
-        ends_combat=argument.success,
-        narrative_cue=argument.narrative_cue,
-        dramatic=verdict.dramatic,
-        context=verdict.context,
-    )
-
-
 # --- Tier-3 structured de-escalation scene (M15 story-001, spec game_mechanics_combat.md
 # §Social Encounter Resolution L768-844). Extends the M4.6a MVP above into multi-round
 # argument phases with cumulative disposition per enemy. ---
@@ -266,9 +208,6 @@ class ArgumentRoundOutcome:
     new_cumulative_shift: int
     new_disposition: str
     surrendered: bool
-    dramatic: bool
-    context: str
-    narrative_cue: str
 
 
 def resolve_argument_round(
@@ -296,14 +235,15 @@ def resolve_argument_round(
         resistance_tags=resistance_tags,
         stakes="high",
     )
-    new_cumulative = cumulative_shift + result.disposition_shift
+    # Floor the accumulator at 0 so a negative-delta round at the hostile floor can't drive
+    # cumulative_shift below the ladder-clamped disposition (which never drops past "hostile").
+    # Otherwise a run of bad rounds would bank negative progress the enemy must first climb back
+    # through before any surrender could land — diverging from the narrated disposition (finding #1).
+    new_cumulative = max(0, cumulative_shift + result.disposition_shift)
     return ArgumentRoundOutcome(
         margin=result.margin,
         delta=result.disposition_shift,
         new_cumulative_shift=new_cumulative,
         new_disposition=result.new_disposition,
         surrendered=new_cumulative >= SURRENDER_THRESHOLD,
-        dramatic=result.dramatic,
-        context=result.context,
-        narrative_cue=result.narrative_cue,
     )

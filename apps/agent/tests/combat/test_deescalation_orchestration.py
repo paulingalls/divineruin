@@ -8,6 +8,7 @@ packet resolver directly (mirroring test_combat_deescalation's _resolve_deescala
 driver) with a MULTI-ENEMY state builder; the end-to-end phase-loop drive lives in the E2E class.
 """
 
+import copy
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -203,6 +204,80 @@ class TestWholeGroupSurrender:
         assert scene.cumulative_shift["enemy_a"] >= combat_resolution.SURRENDER_THRESHOLD
         assert scene.cumulative_shift["enemy_b"] < combat_resolution.SURRENDER_THRESHOLD
         assert state.deescalated is False
+
+
+class TestSurrenderLatch:
+    """Finding #2: a surrendered enemy is LATCHED — left out of later argued rounds so a bad roll can
+    never regress it below the threshold, which is what lets the whole-group gate actually coincide."""
+
+    @pytest.mark.asyncio
+    async def test_surrendered_enemy_is_not_re_argued_and_cannot_regress(self):
+        # enemy_a has already crossed +2 (latched, neutral). A later terrible-roll round that WOULD
+        # push a negative delta is simply never applied to it — it's excluded from the argued targets.
+        state = _make_group_state(tags_a=("pragmatic",), tags_b=("suspicious",))
+        state.deescalation_scene.cumulative_shift["enemy_a"] = combat_resolution.SURRENDER_THRESHOLD
+        state.deescalation_scene.enemy_dispositions["enemy_a"] = "neutral"
+        result, _p, _s = await _resolve_round(state, _DIPLOMAT, FixedRng(1))  # d20 1 + 3 = a failing 4
+
+        scene = state.deescalation_scene
+        assert scene.cumulative_shift["enemy_a"] == combat_resolution.SURRENDER_THRESHOLD  # never regressed
+        argued = [pe["id"] for pe in result["deescalation"]["per_enemy"]]
+        assert "enemy_a" not in argued  # latched enemy left untouched
+        assert "enemy_b" in argued  # the holdout is still argued
+        assert state.deescalated is False  # enemy_b hasn't crossed -> group hasn't yielded
+
+
+class TestDeescalatedEarlyOut:
+    """Finding #4: once an earlier de_escalate packet this phase ended the scene, a second Diplomat's
+    packet is a no-op — no Focus spent, no roll, the round not advanced."""
+
+    @pytest.mark.asyncio
+    async def test_second_packet_after_group_stood_down_is_a_noop(self):
+        state = _make_group_state()
+        state.deescalated = True  # an earlier packet this phase already ended the scene
+        result, persistence, _s = await _resolve_round(state, _DIPLOMAT, FixedRng(20))
+        assert result["resolved"] is False
+        persistence.update_player_resources.assert_not_awaited()  # no Focus spent
+        assert state.deescalation_scene.round_counter == 0  # scene not advanced
+        assert state.deescalation_scene.cumulative_shift == {}  # no roll applied
+
+
+class TestRoundCounterAdvancesOncePerPhase:
+    """Finding #3: the round_counter models SCENE rounds (phases), not de_escalate packets. Two
+    Diplomats declaring in ONE phase argue the SAME round — the counter must advance at most once, or
+    the pair would push it past the declare-time cap. ``session.combat_state`` is the pristine pre-phase
+    copy during resolution (the working ``state`` is a deep copy), so the second packet — seeing the
+    working counter already ahead of the pristine value — skips the increment."""
+
+    @pytest.mark.asyncio
+    async def test_two_packets_in_one_phase_advance_round_once(self):
+        pristine = _make_group_state(tags_a=("suspicious",), tags_b=("suspicious",))  # neither surrenders
+        working = copy.deepcopy(pristine)  # the phase's working next_state (deep copy, per resolve_phase)
+        session = MagicMock()
+        session.room = None
+        session.event_bus = MagicMock()
+        session.record_event = MagicMock()
+        session.combat_state = pristine  # a REAL CombatState -> the pre-phase guard engages
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
+        attacker = working.get_participant("player_1")
+        assert attacker is not None
+
+        for _ in range(2):  # two Diplomats' packets resolve against the SAME working state this phase
+            await _resolve_deescalation_packet(
+                session,
+                attacker,
+                _decl(),
+                state=working,
+                conn=None,
+                player=_DIPLOMAT,
+                sink=None,
+                persistence=persistence,
+                rng=FixedRng(1),
+            )
+
+        assert working.deescalation_scene.round_counter == 1  # advanced once, not twice -> cap intact
+        assert persistence.update_player_resources.await_count == 2  # both still argued + spent Focus
 
 
 def _e2e_group_state(combat_id, player_id, enemy_ids_tags):

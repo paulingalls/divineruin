@@ -22,6 +22,32 @@ class TestCumulativeAccumulation:
         assert out.delta == 2
         assert out.new_cumulative_shift == 0 + out.delta
 
+    def test_negative_margin_round_floors_cumulative_at_zero(self):
+        # A failing round has a negative delta, but the accumulator floors at 0 (finding #1) — a
+        # hostile holdout at the ladder floor never banks negative progress it must first climb back
+        # through. hostile dc 21; roll_total 12 -> margin -9 -> failure band -> delta -1.
+        out = resolve_argument_round(
+            disposition="hostile",
+            argument_type=None,
+            resistance_tags=(),
+            roll_total=12,
+            cumulative_shift=0,
+        )
+        assert out.delta < 0
+        assert out.new_cumulative_shift == 0  # not -1: floored
+        assert not out.surrendered
+
+    def test_negative_delta_reduces_but_never_below_zero_from_low_base(self):
+        # From a small positive base, a negative delta that would cross below 0 still floors at 0.
+        out = resolve_argument_round(
+            disposition="hostile",
+            argument_type=None,
+            resistance_tags=(),
+            roll_total=12,  # margin -9 -> delta -1
+            cumulative_shift=0,
+        )
+        assert out.new_cumulative_shift == max(0, 0 + out.delta) == 0
+
 
 class TestResistanceTagDcSwing:
     def test_vulnerable_argument_lands_with_larger_margin_than_resistant(self):

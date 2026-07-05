@@ -1,10 +1,10 @@
-"""Diplomat combat de-escalation MVP (M4.6a / story-004).
+"""Diplomat combat de-escalation (M4.6a MVP -> M15 Tier-3 scene).
 
-resolve_deescalation composes the spec's spine (gm_combat L175-183): a contested
-CHA-vs-WIS gate enters the scene, then one argument round against a scene-local hostile
-disposition decides whether combat ends. Every de-escalation roll is always-dramatic
-(M4.5 ability="de_escalate"). The _wrap end-condition + combat_turn orchestration are
-covered in the sibling test classes below.
+The _wrap end-condition, the declare-time gate, the group packet resolver, and the
+beneficial-die folding are covered in the sibling test classes below. Every de-escalation
+roll is always-dramatic (M4.5 ability="de_escalate"). The pure per-round resolver lives in
+tests/combat/test_deescalation_scene.py; the multi-round GROUP orchestration in
+tests/combat/test_deescalation_orchestration.py.
 """
 
 from types import SimpleNamespace
@@ -16,7 +16,6 @@ from sample_fixtures import FixedRng
 
 from combat_ability import _gate_deescalation, _resolve_deescalation_packet
 from combat_phase import PhaseBeat, advance_combat_phase
-from combat_resolution import DeescalationOutcome, resolve_deescalation
 from conditions import apply_condition, has_condition
 from declarations import DeclarationType
 from session_data import CombatParticipant, CombatState
@@ -55,54 +54,6 @@ async def _run(session, player, rng):
         rng=rng,
     )
     return result, persistence
-
-
-class TestResolveDeescalation:
-    # base_dc 15 + hostile modifier (+6) = effective argument DC 21.
-
-    def test_contested_failure_does_not_enter_or_end(self):
-        out = resolve_deescalation(cha_total=10, enemy_wis_total=14, argument_total=30)
-        assert isinstance(out, DeescalationOutcome)
-        assert not out.scene_entered
-        assert not out.ends_combat
-        assert not out.success
-
-    def test_contested_tie_loses_to_the_enemy(self):
-        # resolve_contested_social: player must BEAT the enemy; a tie does not enter.
-        out = resolve_deescalation(cha_total=14, enemy_wis_total=14, argument_total=30)
-        assert not out.scene_entered
-
-    def test_entered_and_argument_succeeds_ends_combat(self):
-        out = resolve_deescalation(cha_total=18, enemy_wis_total=10, argument_total=22)
-        assert out.scene_entered
-        assert out.ends_combat
-        assert out.success
-
-    def test_entered_but_argument_fails_does_not_end(self):
-        out = resolve_deescalation(cha_total=18, enemy_wis_total=10, argument_total=12)
-        assert out.scene_entered
-        assert not out.ends_combat
-        assert not out.success
-
-    def test_always_dramatic_with_de_escalate_context(self):
-        for cha, wis, arg in ((10, 14, 30), (18, 10, 22), (18, 10, 12)):
-            out = resolve_deescalation(cha_total=cha, enemy_wis_total=wis, argument_total=arg)
-            assert out.dramatic
-            assert out.context == "de_escalate"
-
-    def test_every_outcome_carries_a_cue(self):
-        for cha, wis, arg in ((10, 14, 30), (18, 10, 22), (18, 10, 12)):
-            out = resolve_deescalation(cha_total=cha, enemy_wis_total=wis, argument_total=arg)
-            assert out.narrative_cue
-
-    def test_base_dc_and_disposition_shift_the_argument_threshold(self):
-        # A friendlier scene disposition (lower modifier) makes the same argument land.
-        hostile = resolve_deescalation(cha_total=18, enemy_wis_total=10, argument_total=16)
-        friendly = resolve_deescalation(
-            cha_total=18, enemy_wis_total=10, argument_total=16, enemy_disposition="neutral"
-        )
-        assert not hostile.ends_combat  # 16 < 15 + 6
-        assert friendly.ends_combat  # 16 >= 15 + 0
 
 
 class TestWrapDeescalationEndCondition:
@@ -233,12 +184,17 @@ class TestDeescalationBeneficialDie:
     its ONE per-round persuasion total and must consume it EXACTLY ONCE, sourced from the in-combat
     SSOT (the participant), not the stale DB row. FixedRng(9) fixes both the d20 AND the d4 to 9:
     the folded +1d4 lifts the round's argument_total, so the enemy's cumulative_shift is HIGHER with
-    the die than the baseline — the observable proof the die folded and was read from the participant."""
+    the die than the baseline — the observable proof the die folded and was read from the participant.
+
+    The enemy starts at cumulative_shift 1 so the fold-vs-baseline delta stays observable AFTER the
+    accumulator floors at 0 (finding #1): fold delta 0 -> 1, baseline delta -1 -> 0."""
 
     _ENEMY = "goblin_scout_1"
+    _BASE_SHIFT = 1  # < SURRENDER_THRESHOLD, so the enemy is still argued this round
 
     async def _run_with(self, *, participant_conditions, db_row_conditions, rng):
         session = _deescalation_session()
+        session.combat_state.deescalation_scene.cumulative_shift[self._ENEMY] = self._BASE_SHIFT
         attacker = session.combat_state.get_participant("player_1")
         attacker.conditions = participant_conditions
         player = {**_DIPLOMAT, "conditions": db_row_conditions}
@@ -267,29 +223,30 @@ class TestDeescalationBeneficialDie:
             db_row_conditions=[],
             rng=FixedRng(9),
         )
-        assert shift == 0  # 9 + cha_mod 3 + d4 9 = 21 vs hostile DC 21 -> margin 0 -> +0
+        assert shift == 1  # base 1 + delta 0 (9 + cha_mod 3 + d4 9 = 21 vs hostile DC 21 -> margin 0)
         assert not has_condition(attacker.conditions, "inspired")
 
     @pytest.mark.asyncio
     async def test_no_beneficial_condition_baseline(self):
-        # Same seed, no die: bare argument 12 vs hostile DC 21 -> margin -9 -> -1; conditions untouched.
+        # Same seed, no die: bare argument 12 vs hostile DC 21 -> margin -9 -> -1; base 1 + (-1),
+        # floored, = 0. Conditions untouched.
         shift, attacker = await self._run_with(
             participant_conditions=[],
             db_row_conditions=[],
             rng=FixedRng(9),
         )
-        assert shift == -1
+        assert shift == 0
         assert attacker.conditions == []
 
     @pytest.mark.asyncio
     async def test_stale_db_row_inspired_does_not_apply(self):
         # Guards the double-dip fix: an Inspired present only on the stale DB row (not the
-        # participant) must NOT fold -> the enemy shifts by the baseline -1, proving the die is
-        # read from the participant SSOT, not players.data.
+        # participant) must NOT fold -> the enemy shifts by the baseline -1 (base 1 -> floored 0),
+        # proving the die is read from the participant SSOT, not players.data.
         shift, attacker = await self._run_with(
             participant_conditions=[],
             db_row_conditions=apply_condition([], "inspired"),
             rng=FixedRng(9),
         )
-        assert shift == -1
+        assert shift == 0
         assert attacker.conditions == []

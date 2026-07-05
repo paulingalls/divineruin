@@ -23,7 +23,7 @@ import spell_casting
 from combat_events import emit_or_publish
 from condition_produce import resolve_effective_targets
 from resource_costs import gate_pool
-from session_data import CombatParticipant, SessionData
+from session_data import CombatParticipant, CombatState, SessionData
 
 if TYPE_CHECKING:
     from declarations import Declaration
@@ -34,18 +34,6 @@ _DEESCALATE_FOCUS_COST = 3
 # Tier-3 scene round cap (M15 story-002, spec §Social Encounter Resolution): a full de-escalation
 # argues over several rounds, but a group that hasn't yielded by here has stopped listening.
 MAX_DEESCALATION_ROUNDS = 4
-
-
-def _lead_enemy(state):
-    """The living enemy the Diplomat addresses: highest WIS resists hardest (spec L180).
-
-    Superseded by the M15 story-002 group loop (the Tier-3 scene argues EVERY living enemy, not a
-    single lead); kept alongside combat_resolution.resolve_deescalation until the MVP path retires
-    (debt cab11f1f32f3)."""
-    living = [p for p in state.participants if p.type == "enemy" and not p.is_fallen]
-    if not living:
-        return None
-    return max(living, key=lambda e: e.attributes.get("wisdom", 10))
 
 
 def _gate_deescalation(player: dict, state) -> None:
@@ -105,6 +93,18 @@ async def _resolve_deescalation_packet(
     session.combat_state directly (it stays the pristine pre-phase copy until the tx commits)."""
     if state is None or player is None:
         return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
+
+    # Early-out (finding #4): an earlier de_escalate packet this phase (a second Diplomat) may have
+    # already ended the scene. Once ``deescalated`` is set, a further argument is a no-op — never spend
+    # Focus or roll for a group that has already stood down.
+    if state.deescalated:
+        return {
+            "actor_id": attacker.id,
+            "resolved": False,
+            "declaration_type": str(decl.type),
+            "reason": "the group has already stood down",
+        }
+
     living = [p for p in state.participants if p.type == "enemy" and not p.is_fallen]
     if not living:
         return {
@@ -139,8 +139,13 @@ async def _resolve_deescalation_packet(
     # Per-enemy INDEPENDENT resolution: each enemy argues from its OWN accumulated disposition +
     # cumulative shift, swung by its OWN resistance_tags. Write the running maps back onto the scene.
     scene = state.deescalation_scene
+    # Argue ONLY the not-yet-surrendered enemies (finding #2): once an enemy has crossed the surrender
+    # threshold it is LATCHED — leaving it out of this round means a later bad roll can never regress it
+    # below the threshold, so the whole-group gate can actually coincide. Combined with the resolver's
+    # floor-at-0 (finding #1), a hostile holdout's progress can't bank negative either.
+    targets = [e for e in living if scene.cumulative_shift.get(e.id, 0) < combat_resolution.SURRENDER_THRESHOLD]
     per_enemy: list[dict] = []
-    for e in living:
+    for e in targets:
         disposition = scene.enemy_dispositions.get(e.id, "hostile")
         outcome = combat_resolution.resolve_argument_round(
             disposition=disposition,
@@ -160,14 +165,32 @@ async def _resolve_deescalation_packet(
             }
         )
 
-    scene.round_counter += 1
+    # Advance the SCENE round AT MOST ONCE per phase (finding #3): the round_counter models scene
+    # rounds (phases), not de_escalate packets. Two Diplomats declaring in one phase argue the SAME
+    # round — if each packet incremented, they would together push round_counter past the declare-time
+    # cap. ``session.combat_state`` is the pristine pre-phase copy during resolution (the working
+    # ``state`` is a deep copy), so a working counter still equal to the pre-phase value means no
+    # earlier de_escalate advanced it this phase. When the session isn't a real CombatState (unit
+    # drivers that pass ``state`` directly), fall back to always advancing — one packet per call there.
+    pre_phase_round = (
+        session.combat_state.deescalation_scene.round_counter
+        if isinstance(session.combat_state, CombatState)
+        else scene.round_counter
+    )
+    if scene.round_counter == pre_phase_round:
+        scene.round_counter += 1
     # Whole-group surrender: combat ends only when EVERY living enemy has crossed the threshold
     # (spec §Social Encounter Resolution). A partial group leaves ``deescalated`` False — the scene
     # persists and the next round argues the holdouts from their accumulated dispositions.
-    if all(scene.cumulative_shift.get(e.id, 0) >= combat_resolution.SURRENDER_THRESHOLD for e in living):
-        state.deescalated = True
+    state.deescalated = bool(living) and all(
+        scene.cumulative_shift.get(e.id, 0) >= combat_resolution.SURRENDER_THRESHOLD for e in living
+    )
 
-    surrendered_count = sum(1 for pe in per_enemy if pe["surrendered"])
+    # Total living enemies at/over the threshold this round — includes latched holdouts not re-argued,
+    # so the DM hears true group progress, not just this round's fresh yields.
+    surrendered_count = sum(
+        1 for e in living if scene.cumulative_shift.get(e.id, 0) >= combat_resolution.SURRENDER_THRESHOLD
+    )
     # Always-dramatic (M4.5 de_escalate): every round of the scene surfaces on the HUD.
     await emit_or_publish(
         sink,

@@ -155,10 +155,8 @@ class CombatState:
     first_attack_resolved: bool = False
     # Diplomat de-escalation (M4.6a story-004). Combat-scoped, never reset within an encounter.
     # ``deescalated`` flips True when a de-escalation argument lands; _wrap reads it to end
-    # combat with outcome "deescalated". ``deescalation_used`` flips True on any attempt
-    # (success or failure) so de-escalate can be tried at most once per encounter (spec L183).
+    # combat with outcome "deescalated".
     deescalated: bool = False
-    deescalation_used: bool = False
     # Tier-3 structured de-escalation scene (M15 story-001). Additive to the MVP flags above —
     # multi-round argument state (round_counter + per-enemy disposition/cumulative-shift maps).
     deescalation_scene: DeEscalationState = field(default_factory=DeEscalationState)
@@ -193,7 +191,6 @@ class CombatState:
             ac_modifiers=data.get("ac_modifiers", {}),
             first_attack_resolved=data.get("first_attack_resolved", False),
             deescalated=data.get("deescalated", False),
-            deescalation_used=data.get("deescalation_used", False),
             deescalation_scene=DeEscalationState(**data.get("deescalation_scene", {})),
         )
 
