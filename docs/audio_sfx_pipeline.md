@@ -122,6 +122,52 @@ Confirm the model-card commercial terms at the same time as the license check
 above (both are the same Community License, but verify the SFX model's card
 explicitly).
 
+### 2.5.2 Beyond spell SFX — one pipeline for SFX + ambience + music + foley
+
+M17's *scope* is spell SFX, but the game's full audio need (per
+`docs/audio_design.md` Asset Inventory L528+) spans several categories, and the
+prior harness already produced most of them with a single model. Two credible
+"one solution for everything" strategies, with the swap-models-in-and-out axis
+front and center:
+
+**Option A — Stable Audio 3.0 family, self-hosted, one harness, swap models by id.**
+`stable-audio-tools` / `stable-audio-3` load any family member by id, so the same
+`generate_divine_ruin.py`-style harness swaps a purpose-built model per category:
+
+| Game audio need (design inventory) | Stable Audio 3.0 model | Notes |
+|---|---|---|
+| Combat/spell SFX, foley (footsteps, impacts, one-shots) | **`stable-audio-3-small-sfx`** | SFX-specialized, CPU-capable, ≤120s |
+| Environmental soundscapes / ambient loops (ENV), Hollow drones (HLW) | `stable-audio-3-medium` (or Small) | Open 1.0 already did the ENV loops; medium extends to 6-min |
+| Music stems (MUS), stingers (STG) | `stable-audio-3-small` (music) / `medium` | ≤2min small, ≤6min medium |
+| Voice (DM/NPC) | — **not supported** (no singing/voice) | N/A — Divine Ruin already uses Inworld TTS for voice |
+
+Small SFX + Small + Medium are open-weight under the Community License; **Large is
+API/enterprise-only, not open**. Strengths: zero marginal cost, fully
+"generatable-in-repo" (weights + prompts + seeds = deterministic re-gen), one
+harness, CPU-viable. Trade-off: quality ceiling below the best hosted product;
+you own the model-serving/deps; a category may need a different family member
+(the swap the customer asked about — supported, but it *is* a per-category model
+choice, not one model for all).
+
+**Option B — ElevenLabs, one hosted API for (almost) everything.** By 2026
+ElevenLabs is a consolidated "audio layer": **ElevenMusic** (full music from
+text), **Sound Effects + Ambient Audio** (SFX, soundscapes, foley — game-dev is
+a named use case), plus **Voice/TTS**, all under one API, trained on licensed
+data, **cleared for commercial use** (no sync/clearance fees), with a built-in
+mixer. One account/key covers SFX + ambience + music + foley + voice — the widest
+single-vendor coverage. Trade-off: recurring cost + account + network dependency;
+assets are less "generatable-in-repo" (you re-hit a hosted API, not local
+weights); it's a third-party runtime dependency for asset production.
+
+**Read for Divine Ruin:** voice is already Inworld TTS, so Stable Audio's
+no-voice gap is irrelevant to the *generatable-asset* pipeline. The "Audio Must
+Be Generatable" principle (repo = SSOT, deterministic re-gen) favors **Option A
+(Stable Audio 3.0, swap models per category)** as the default, with **Option B
+(ElevenLabs)** as the quality/convenience upgrade for categories where the open
+weights disappoint or a one-stop hosted workflow is worth the spend. Either way,
+start with spell SFX (M17) via `stable-audio-3-small-sfx`; the same decision
+generalizes to ENV/MUS/foley later without re-litigating the pipeline.
+
 ## 3. Recommendation
 
 **Primary: reuse the existing harness, upgraded to Stable Audio 3.0 Small SFX
