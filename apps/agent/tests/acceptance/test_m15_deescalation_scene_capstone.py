@@ -7,7 +7,7 @@ This capstone proves they COMPOSE on ONE seeded testcontainer, driving the REAL 
 
 - A Diplomat argues a 2-enemy hostile GROUP down over MULTIPLE rounds. Each enemy shifts INDEPENDENTLY
   by its own resistance profile — a `cowardly` foe (vulnerable to a `threat` argument) folds faster
-  than an `honorable` one (resistant to it) — until the WHOLE living group crosses the +2 surrender
+  than a `greedy` one (unmoved by it, threat-neutral) — until the WHOLE living group crosses the +2 surrender
   threshold and combat ends "deescalated".
 - A DOWNED savable ally, present in the party, is STABILIZED to 1 HP on that deescalated end (never
   killed), proving the story-003 combat-end outcome fires from the real phase loop.
@@ -156,7 +156,7 @@ async def test_m15_group_deescalation_stabilizes_fallen_ally(reset_db_pool: str)
         assert rounds >= 2, f"expected a multi-round scene, ended in {rounds}"
 
         # story-001/002 per-enemy INDEPENDENCE: same argument, different resistance profile — the
-        # vulnerable cowardly foe accumulates more than the resistant honorable one mid-scene.
+        # vulnerable cowardly foe accumulates more than the threat-neutral greedy one mid-scene.
         assert shifts_mid_scene is not None
         assert shifts_mid_scene["cultist_a"] > shifts_mid_scene["cultist_b"], shifts_mid_scene
 
