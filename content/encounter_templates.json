@@ -134,7 +134,8 @@
         "sound_signature": "hollow_wrong_footsteps",
         "role": "standard",
         "category": "hollow_rend",
-        "loot_table_id": "loot_hollow_rend"
+        "loot_table_id": "loot_hollow_rend",
+        "resistance_tags": ["cowardly"]
       },
       {
         "id": "mawling_2",
@@ -170,7 +171,8 @@
         "sound_signature": "hollow_wrong_footsteps",
         "role": "standard",
         "category": "hollow_rend",
-        "loot_table_id": "loot_hollow_rend"
+        "loot_table_id": "loot_hollow_rend",
+        "resistance_tags": ["pragmatic"]
       }
     ]
   },

@@ -31,6 +31,7 @@ from encounter_stance import resolve_encounter_stance
 from game_events import publish_game_event
 from region_types import REGION_CITY
 from session_data import CombatParticipant, CombatState, SessionData
+from social_resolution import RESISTANCE_TAGS
 from tool_support import SOUND_COMBAT_START
 
 logger = logging.getLogger("divineruin.tools")
@@ -66,6 +67,27 @@ def _validate_enemy_action_conditions(enemies: list[dict]) -> None:
                     f"{label} condition action must be save-based (damage absent or '0') until the "
                     f"combined damage+condition model lands (debt 5b18023ef5a5), got damage {action.get('damage')!r}"
                 )
+
+
+def _validate_enemy_resistance_tags(enemies: list[dict]) -> None:
+    """Fail loud if any enemy's Tier-3 ``resistance_tags`` are malformed — the load-boundary guard.
+
+    Encounter templates have no strict loader, so this closes the gap for the M15 de-escalation
+    resistance profile the same way ``_validate_enemy_action_conditions`` does for condition actions
+    (and mirroring npcs.py's default_disposition/resistance_tags guard). ``resistance_tags`` is
+    optional (an enemy without it simply can't be de-escalated); when present it must be a list of
+    canonical ``social_resolution.RESISTANCE_TAGS`` — an unknown tag would silently no-op the
+    argument DC swing in the resolver, so surface it as a fail-loud error at combat entry."""
+    for enemy in enemies:
+        tags = enemy.get("resistance_tags")
+        if tags is None:
+            continue
+        label = f"enemy {enemy.get('id')!r}"
+        if not isinstance(tags, list):
+            raise ValueError(f"{label} resistance_tags must be a list, got {tags!r}")
+        for tag in tags:
+            if tag not in RESISTANCE_TAGS:
+                raise ValueError(f"{label} resistance_tags {tag!r} not in {RESISTANCE_TAGS}")
 
 
 async def _start_combat_impl(
@@ -146,12 +168,14 @@ async def _start_combat_impl(
     ]
 
     enemies = encounter.get("enemies", [])
-    # Surface a malformed enemy condition action as a DM-narratable ToolError (the _start_combat_impl
-    # content-error convention, matching the stance-gate above), not a raw ValueError at the tool boundary.
+    # Surface malformed enemy content (condition actions, resistance tags) as a DM-narratable
+    # ToolError (the _start_combat_impl content-error convention, matching the stance-gate above),
+    # not a raw ValueError at the tool boundary. The inner {e} names the specific defect.
     try:
         _validate_enemy_action_conditions(enemies)
+        _validate_enemy_resistance_tags(enemies)
     except ValueError as e:
-        raise ToolError(f"Encounter '{encounter_id}' has a malformed enemy condition action: {e}") from e
+        raise ToolError(f"Encounter '{encounter_id}' has malformed enemy data: {e}") from e
     for enemy in enemies:
         initiative_inputs.append(
             {
@@ -274,6 +298,12 @@ async def _start_combat_impl(
                 # through; empty-string defaults keep untagged/pre-M4.7 enemies inert (no drops).
                 category=derived.get("category", ""),
                 loot_table_id=derived.get("loot_table_id", ""),
+                # Tier-3 de-escalation resistance profile (M15 story-002): carry the template
+                # enemy's resistance_tags onto the participant so the orchestrator shifts each
+                # enemy's disposition by its OWN profile. Validated at the load boundary above;
+                # derive_role_stats copies the source enemy, so the tags ride through. Empty
+                # default keeps untagged/pre-M15 enemies un-de-escalatable (no argument DC swing).
+                resistance_tags=derived.get("resistance_tags", []),
             )
         )
 

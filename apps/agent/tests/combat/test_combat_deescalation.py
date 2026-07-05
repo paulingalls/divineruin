@@ -19,6 +19,7 @@ from combat_phase import PhaseBeat, advance_combat_phase
 from combat_resolution import DeescalationOutcome, resolve_deescalation
 from conditions import apply_condition, has_condition
 from declarations import DeclarationType
+from session_data import CombatParticipant, CombatState
 from tests.combat._helpers import _make_combat_state
 from tools._helpers import SAMPLE_PLAYER
 
@@ -134,6 +135,39 @@ class TestWrapDeescalationEndCondition:
         wrap = self._wrap_of(state)
         assert wrap.combat_ended
         assert wrap.outcome == "victory"
+
+
+class TestParticipantResistanceTags:
+    """M15 story-002: CombatParticipant carries the per-enemy Tier-3 resistance_tags,
+    loaded at combat init and serialized like enhancers/conditions."""
+
+    def test_resistance_tags_round_trip(self):
+        state = _make_combat_state()
+        enemy = state.get_participant("goblin_scout_1")
+        assert enemy is not None
+        enemy.resistance_tags = ["pragmatic", "suspicious"]
+        rebuilt = CombatState.from_dict(state.to_dict())
+        rebuilt_enemy = rebuilt.get_participant("goblin_scout_1")
+        assert rebuilt_enemy is not None
+        assert rebuilt_enemy.resistance_tags == ["pragmatic", "suspicious"]
+
+    def test_legacy_row_without_field_defaults_empty(self):
+        # A participant row written before the field existed omits it; from_dict rebuilds via
+        # CombatParticipant(**p), so the default_factory covers the missing key.
+        state = _make_combat_state()
+        data = state.to_dict()
+        for p in data["participants"]:
+            p.pop("resistance_tags", None)
+        rebuilt = CombatState.from_dict(data)
+        assert rebuilt.get_participant("goblin_scout_1").resistance_tags == []
+
+    def test_default_is_empty_list(self):
+        assert (
+            CombatParticipant(
+                id="e", name="E", type="enemy", initiative=1, hp_current=1, hp_max=1, ac=1
+            ).resistance_tags
+            == []
+        )
 
 
 class TestGateDeescalation:
