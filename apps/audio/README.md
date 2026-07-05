@@ -36,12 +36,14 @@ The generator (`scripts/audio/generate_spell_sfx_stableaudio.py`) holds no
 prompts of its own — it imports the frozen `PROMPTS` table from
 `generate_spell_sfx.py`. It needs the `stable-audio-3` package in a **dedicated
 venv** (not a repo dependency) and a HuggingFace token with the model's gated
-terms accepted:
+terms accepted. Bootstrap the env reproducibly from the repo (pinned
+`stable-audio-3` commit, gitignored venv path — no ad-hoc temp folders):
 
 ```bash
-uv venv /tmp/sa3 --python 3.11
-uv pip install --python /tmp/sa3/bin/python "git+https://github.com/Stability-AI/stable-audio-3.git"
-/tmp/sa3/bin/python scripts/audio/generate_spell_sfx_stableaudio.py --out-dir apps/audio/spell_sfx
+scripts/audio/setup_sfx_env.sh                 # one-time: venv at scripts/audio/.venv-sa3
+# accept gated terms at https://huggingface.co/stabilityai/stable-audio-3-small-sfx (once)
+scripts/audio/.venv-sa3/bin/python scripts/audio/generate_spell_sfx_stableaudio.py \
+  --out-dir apps/audio/spell_sfx
 ```
 
 Text-to-audio is generative, so regeneration reproduces the palette via the same
