@@ -466,7 +466,7 @@ class TestStartCombat:
         )
         ctx = make_context()
 
-        with pytest.raises(ToolError, match="malformed enemy condition"):
+        with pytest.raises(ToolError, match="malformed enemy data"):
             await _start_combat_impl(
                 ctx,
                 encounter_id="bad_enc",

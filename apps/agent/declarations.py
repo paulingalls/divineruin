@@ -56,6 +56,11 @@ class Declaration:
     target_ids: list[str] | None = None
     ac_bonus: int = 0
     rider: str | None = None
+    # M15 story-002: the Tier-3 argument category a de_escalate ABILITY makes (one of
+    # social_resolution.ARGUMENT_TYPES — reason/emotion/self_interest/threat/bluff/evidence). Carried
+    # verbatim here (shape-only); the value is validated at the packet boundary (combat_ability),
+    # not in this pure classifier. None for every non-de_escalate declaration.
+    argument_type: str | None = None
 
 
 def resolve_declaration(raw: dict) -> Declaration:
@@ -96,4 +101,5 @@ def resolve_declaration(raw: dict) -> Declaration:
         target_ids=raw.get("target_ids"),
         ac_bonus=ac_bonus,
         rider=raw.get("rider"),
+        argument_type=raw.get("argument_type"),
     )

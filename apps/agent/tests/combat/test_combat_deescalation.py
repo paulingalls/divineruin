@@ -19,11 +19,11 @@ from combat_phase import PhaseBeat, advance_combat_phase
 from combat_resolution import DeescalationOutcome, resolve_deescalation
 from conditions import apply_condition, has_condition
 from declarations import DeclarationType
+from session_data import CombatParticipant, CombatState
 from tests.combat._helpers import _make_combat_state
 from tools._helpers import SAMPLE_PLAYER
 
 _DIPLOMAT = {**SAMPLE_PLAYER, "attributes": {**SAMPLE_PLAYER["attributes"], "charisma": 16}, "focus": {"current": 5}}
-_TIMID = {**SAMPLE_PLAYER, "focus": {"current": 5}}  # charisma 8 -> negative modifier
 
 
 def _deescalation_session(enemy_fallen=False):
@@ -136,11 +136,47 @@ class TestWrapDeescalationEndCondition:
         assert wrap.outcome == "victory"
 
 
-class TestGateDeescalation:
-    def test_lockout_after_one_attempt(self):
+class TestParticipantResistanceTags:
+    """M15 story-002: CombatParticipant carries the per-enemy Tier-3 resistance_tags,
+    loaded at combat init and serialized like enhancers/conditions."""
+
+    def test_resistance_tags_round_trip(self):
         state = _make_combat_state()
-        state.deescalation_used = True
-        with pytest.raises(ToolError, match="once per encounter"):
+        enemy = state.get_participant("goblin_scout_1")
+        assert enemy is not None
+        enemy.resistance_tags = ["pragmatic", "suspicious"]
+        rebuilt = CombatState.from_dict(state.to_dict())
+        rebuilt_enemy = rebuilt.get_participant("goblin_scout_1")
+        assert rebuilt_enemy is not None
+        assert rebuilt_enemy.resistance_tags == ["pragmatic", "suspicious"]
+
+    def test_legacy_row_without_field_defaults_empty(self):
+        # A participant row written before the field existed omits it; from_dict rebuilds via
+        # CombatParticipant(**p), so the default_factory covers the missing key.
+        state = _make_combat_state()
+        data = state.to_dict()
+        for p in data["participants"]:
+            p.pop("resistance_tags", None)
+        rebuilt = CombatState.from_dict(data)
+        assert rebuilt.get_participant("goblin_scout_1").resistance_tags == []
+
+    def test_default_is_empty_list(self):
+        assert (
+            CombatParticipant(
+                id="e", name="E", type="enemy", initiative=1, hp_current=1, hp_max=1, ac=1
+            ).resistance_tags
+            == []
+        )
+
+
+class TestGateDeescalation:
+    """M15 story-002: the once-per-encounter MVP lockout became a per-round cap (MAX 4 rounds);
+    Focus (3) is still gated per round, with NO state writes at declare time."""
+
+    def test_round_cap_blocks_further_attempts(self):
+        state = _make_combat_state()
+        state.deescalation_scene.round_counter = 4  # MAX_DEESCALATION_ROUNDS
+        with pytest.raises(ToolError, match="stopped listening"):
             _gate_deescalation(_DIPLOMAT, state)
 
     def test_insufficient_focus_fails_loud(self):
@@ -149,11 +185,17 @@ class TestGateDeescalation:
         with pytest.raises(ToolError, match="Focus"):
             _gate_deescalation(broke, state)
 
-    def test_affordable_first_attempt_passes(self):
-        _gate_deescalation(_DIPLOMAT, _make_combat_state())  # no raise
+    def test_affordable_first_round_passes(self):
+        _gate_deescalation(_DIPLOMAT, _make_combat_state())  # round_counter 0 -> no raise
 
 
 class TestResolveDeescalationPacket:
+    """M15 story-002: the packet resolves ONE round of a group argument — spends Focus, rolls one
+    persuasion total, shifts each living enemy independently, advances round_counter, and emits an
+    always-dramatic de_escalate roll. Whole-group surrender (ends_combat True) is covered in
+    tests/combat/test_deescalation_orchestration.py; here a single hostile no-tag enemy needs more
+    than one round, so this round ends_combat False."""
+
     @pytest.mark.asyncio
     async def test_spends_focus_and_emits_dramatic_dice_roll(self):
         session = _deescalation_session()
@@ -164,33 +206,16 @@ class TestResolveDeescalationPacket:
         events = [c.args[0] for c in session.event_bus.publish.call_args_list]
         dice = next(e for e in events if e.payload.get("roll_type") == "de_escalate")
         assert dice.payload["dramatic"] and dice.payload["context"] == "de_escalate"
-        assert session.combat_state.deescalation_used
 
     @pytest.mark.asyncio
-    async def test_success_sets_deescalated(self):
-        # CHA 16 beats WIS 10 (enters), nat-20 argument clears the hostile DC -> ends combat.
+    async def test_packet_reports_round_and_per_enemy_breakdown(self):
         session = _deescalation_session()
         result, _ = await _run(session, _DIPLOMAT, FixedRng(20))
-        assert result["deescalation"]["ends_combat"]
-        assert session.combat_state.deescalated
-
-    @pytest.mark.asyncio
-    async def test_failed_argument_uses_attempt_without_ending(self):
-        # Enters the scene (CHA>WIS) but a low argument roll misses the hostile DC.
-        session = _deescalation_session()
-        result, _ = await _run(session, _DIPLOMAT, FixedRng(3))
-        assert result["deescalation"]["scene_entered"]
-        assert not result["deescalation"]["ends_combat"]
-        assert session.combat_state.deescalation_used
-        assert not session.combat_state.deescalated
-
-    @pytest.mark.asyncio
-    async def test_contested_failure_does_not_enter(self):
-        # Low CHA (8 -> -1) loses the contested gate; the enemy never pauses.
-        session = _deescalation_session()
-        result, _ = await _run(session, _TIMID, FixedRng(12))
-        assert not result["deescalation"]["scene_entered"]
-        assert session.combat_state.deescalation_used
+        deesc = result["deescalation"]
+        assert deesc["round"] == 1  # round_counter advanced
+        assert deesc["ends_combat"] is False  # one hostile enemy can't cross +2 in a single round
+        assert [pe["id"] for pe in deesc["per_enemy"]] == ["goblin_scout_1"]
+        assert session.combat_state.deescalation_scene.round_counter == 1
         assert not session.combat_state.deescalated
 
     @pytest.mark.asyncio
@@ -202,11 +227,13 @@ class TestResolveDeescalationPacket:
 
 
 class TestDeescalationBeneficialDie:
-    """M4.8 story-011: de_escalate folds an Inspired ally's single-use +1d4 into its argument
-    check and must consume it EXACTLY ONCE, sourced from the in-combat SSOT (the participant),
-    not the stale DB row. FixedRng(9) is the argument boundary: base argument 12 (< hostile DC 21)
-    fails, but +1d4 makes it 21 and clears -> ends_combat flips True iff the die folds + is read
-    from the participant."""
+    """M4.8 story-011 carried into M15: de_escalate folds an Inspired ally's single-use +1d4 into
+    its ONE per-round persuasion total and must consume it EXACTLY ONCE, sourced from the in-combat
+    SSOT (the participant), not the stale DB row. FixedRng(9) fixes both the d20 AND the d4 to 9:
+    the folded +1d4 lifts the round's argument_total, so the enemy's cumulative_shift is HIGHER with
+    the die than the baseline — the observable proof the die folded and was read from the participant."""
+
+    _ENEMY = "goblin_scout_1"
 
     async def _run_with(self, *, participant_conditions, db_row_conditions, rng):
         session = _deescalation_session()
@@ -226,41 +253,41 @@ class TestDeescalationBeneficialDie:
             persistence=persistence,
             rng=rng,
         )
-        return result, attacker
+        shift = next(pe["cumulative_shift"] for pe in result["deescalation"]["per_enemy"] if pe["id"] == self._ENEMY)
+        return shift, attacker
 
     @pytest.mark.asyncio
-    async def test_deescalate_inspired_on_participant_folds_and_is_consumed_once(self):
-        # The die is sourced from the participant (in-combat SSOT): +1d4 clears the DC -> combat
-        # ends, AND Inspired is removed from the participant exactly once (no permanent die).
-        result, attacker = await self._run_with(
+    async def test_inspired_on_participant_folds_and_is_consumed_once(self):
+        # +1d4 lifts the argument_total, so the enemy softens more than baseline (delta 0 vs -1),
+        # AND Inspired is removed from the participant exactly once (no permanent die).
+        shift, attacker = await self._run_with(
             participant_conditions=apply_condition([], "inspired"),
             db_row_conditions=[],
             rng=FixedRng(9),
         )
-        assert result["deescalation"]["ends_combat"]
+        assert shift == 0  # 9 + cha_mod 3 + d4 9 = 21 vs hostile DC 21 -> margin 0 -> +0
         assert not has_condition(attacker.conditions, "inspired")
 
     @pytest.mark.asyncio
-    async def test_deescalate_no_beneficial_condition_baseline_does_not_end(self):
-        # Same seed, no beneficial die: the bare argument (12) misses the hostile DC (21) -> combat
-        # continues, and the participant's conditions are untouched.
-        result, attacker = await self._run_with(
+    async def test_no_beneficial_condition_baseline(self):
+        # Same seed, no die: bare argument 12 vs hostile DC 21 -> margin -9 -> -1; conditions untouched.
+        shift, attacker = await self._run_with(
             participant_conditions=[],
             db_row_conditions=[],
             rng=FixedRng(9),
         )
-        assert not result["deescalation"]["ends_combat"]
+        assert shift == -1
         assert attacker.conditions == []
 
     @pytest.mark.asyncio
-    async def test_deescalate_stale_db_row_inspired_does_not_apply(self):
+    async def test_stale_db_row_inspired_does_not_apply(self):
         # Guards the double-dip fix: an Inspired present only on the stale DB row (not the
-        # participant) must NOT fold -> combat does not end, proving the die is read from the
-        # participant SSOT, not players.data.
-        result, attacker = await self._run_with(
+        # participant) must NOT fold -> the enemy shifts by the baseline -1, proving the die is
+        # read from the participant SSOT, not players.data.
+        shift, attacker = await self._run_with(
             participant_conditions=[],
             db_row_conditions=apply_condition([], "inspired"),
             rng=FixedRng(9),
         )
-        assert not result["deescalation"]["ends_combat"]
+        assert shift == -1
         assert attacker.conditions == []
