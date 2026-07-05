@@ -170,6 +170,14 @@ generalizes to ENV/MUS/foley later without re-litigating the pipeline.
 
 ## 3. Recommendation
 
+> **Decision (2026-07-05):** quality-first. The customer is provisioning an
+> **ElevenLabs** account/key as the leading candidate (best-in-class quality +
+> one hosted pipeline for SFX/ambient/music/foley; voice stays Inworld). The
+> §3.1 bake-off still runs once the key lands — ElevenLabs vs the upgraded
+> Stable Audio 3.0 vs the Open 1.0 baseline — to confirm it clears the bar before
+> the full palette is generated. This bake-off + final vendor lock-in is
+> **story-002** work, gated on the key. story-001 (this research doc) is complete.
+
 **Decision rule: quality is the gate; a single pipeline is a strong tiebreaker,
 not an override.** The customer's steer is explicit — standardizing on one audio
 pipeline is desirable for simplicity, but the audio meeting the quality bar is the
