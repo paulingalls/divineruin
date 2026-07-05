@@ -19,7 +19,7 @@ from sample_fixtures import FixedRng, make_context
 
 import combat_resolution
 import combat_turn
-from combat_ability import MAX_DEESCALATION_ROUNDS, _gate_deescalation, _resolve_deescalation_packet
+from combat_deescalation import MAX_DEESCALATION_ROUNDS, _gate_deescalation, _resolve_deescalation_packet
 from declarations import DeclarationType
 from session_data import CombatParticipant, CombatState
 from tools._helpers import SAMPLE_PLAYER
