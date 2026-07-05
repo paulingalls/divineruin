@@ -51,8 +51,8 @@ Stable Audio 1.0/3.0 hosted API. `stable-audio-tools` code is **MIT**
 (`LICENSE`). (This corrects §2's "Stable Audio 3.0" framing: the team's real
 prior work used **Open 1.0**, self-hosted.)
 
-**Harness** (`generate_divine_ruin.py`, ~70KB): a single `ASSETS` list of ~84
-assets across 9 categories (environments/hollow/combat/dice/music/stingers/ui/
+**Harness** (`generate_divine_ruin.py`, ~70KB): a single `ASSETS` list of ~89
+assets across 8 categories (environments/hollow/combat/dice/music/stingers/ui/
 sable), each `{id, category, name, prompt, duration, variants}`. Per-category
 generation presets (`PARAM_PRESETS`): all `sampler_type="dpmpp-3m-sde"`,
 `sigma_min=0.03`, `sigma_max=1000`, 200 steps (music 250); **combat uses
@@ -238,8 +238,9 @@ machine field, story-003) are separate. `sound_id` is keyed by **effect family**
 — the acoustically distinct axis — because that's what the ear actually
 distinguishes; `source` (arcane/divine/primal) is an optional timbre modifier only
 where the *same* effect family sounds meaningfully different by source (none of
-the 87 spells currently need a source-prefixed variant — see the "notes" column
-below for the one candidate, healing, where MVP still collapses to one key).
+the 87 spells currently need a source-prefixed variant — the one candidate is
+healing, where divine and primal casts both collapse to the single `spell_heal`
+key for MVP).
 
 ### MVP Palette (7 keys)
 
