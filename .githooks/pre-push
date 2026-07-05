@@ -26,6 +26,10 @@ else
     echo "  Pre-push hook self-test..."
     bash "$(dirname "$0")/test-pre-push.sh"
 
+    # Validate the pre-commit hook's worktree-skip + .env-guard precedence.
+    echo "  Pre-commit hook self-test..."
+    bash "$(dirname "$0")/../scripts/test-precommit-worktree-skip.sh"
+
     # Acceptance tests require Docker — hard gate (no silent skip on pre-push).
     echo "  Acceptance prerequisite: Docker..."
     if ! docker info >/dev/null 2>&1; then

@@ -4,6 +4,12 @@ set -euo pipefail
 # Test that the pre-commit hook skips the lint suite when node_modules is absent,
 # and that the .env security guard still fires regardless.
 
+# Resolve the hook from this script's location so the test runs correctly
+# regardless of the invoking CWD (e.g. from the pre-push gate). Mirrors the
+# path-resolution pattern in .githooks/test-pre-push.sh.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+HOOK="$SCRIPT_DIR/../.githooks/pre-commit"
+
 TEMP_REPO=$(mktemp -d)
 trap "rm -rf $TEMP_REPO" EXIT
 
@@ -11,7 +17,7 @@ echo "Setting up test repo at $TEMP_REPO..."
 
 # Copy the hook into the temp repo
 mkdir -p "$TEMP_REPO/.githooks"
-cp .githooks/pre-commit "$TEMP_REPO/.githooks/pre-commit"
+cp "$HOOK" "$TEMP_REPO/.githooks/pre-commit"
 chmod +x "$TEMP_REPO/.githooks/pre-commit"
 
 # Initialize git repo in temp location
