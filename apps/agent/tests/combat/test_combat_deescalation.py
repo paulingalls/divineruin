@@ -14,7 +14,7 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import FixedRng
 
-from combat_ability import _gate_deescalation, _resolve_deescalation_packet
+from combat_deescalation import _gate_deescalation, _resolve_deescalation_packet
 from combat_phase import PhaseBeat, advance_combat_phase
 from conditions import apply_condition, has_condition
 from declarations import DeclarationType

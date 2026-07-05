@@ -38,7 +38,7 @@ from session_data import CombatParticipant, CombatState
 _PRIMARY = "cap_m15_primary"
 _ALLY = "cap_m15_ally"
 _ANCHOR = "millhaven"  # a real seeded settlement (present on the ally row; unused by the stabilize path)
-_MAX_ROUNDS = 4  # combat_ability.MAX_DEESCALATION_ROUNDS
+_MAX_ROUNDS = 4  # combat_deescalation.MAX_DEESCALATION_ROUNDS
 
 
 async def _raise_charisma(pool, player_id: str, score: int) -> None:
