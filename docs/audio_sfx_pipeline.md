@@ -34,38 +34,131 @@ Evaluated four options. Figures below were pulled from the vendors' live pages o
 
 Sources: `elevenlabs.io/pricing/api`, `elevenlabs.io/sound-effects`, `stability.ai/license` (fetched 2026-07-05). Stability's hosted per-credit pricing page did not render for automated fetch; the $0.01/credit, ~20 credits/gen figures are carried from prior team research and are flagged above as needing a manual re-check before any purchase.
 
+## 2.5 Existing Divine Ruin Audio Pipeline (prior work — the actual recommended path)
+
+**The project already built and ran a generation pipeline** at
+`~/src/clones/stable-audio-tools/` (a clone of Stability's `stable-audio-tools`
+with a custom Divine Ruin asset harness). This supersedes the theoretical
+service evaluation above: we don't need to *choose* a service — we already have a
+working one, keyed to the exact same `CMB-###` ids that `content/spells.json`'s
+`audio_cue` fields use, with spell-cast assets already generated.
+
+**Model: Stable Audio Open 1.0** — `stabilityai/stable-audio-open-1.0`
+(open-weight, ~1.2B-param latent diffusion; T5 text encoder + DiT + VAE). Runs
+**locally** (MPS/CUDA/CPU auto-detect, `PYTORCH_ENABLE_MPS_FALLBACK=1` on Mac),
+loading a user-supplied local `model.safetensors` + `model_config.json` — not the
+Stable Audio 1.0/3.0 hosted API. `stable-audio-tools` code is **MIT**
+(`LICENSE`). (This corrects §2's "Stable Audio 3.0" framing: the team's real
+prior work used **Open 1.0**, self-hosted.)
+
+**Harness** (`generate_divine_ruin.py`, ~70KB): a single `ASSETS` list of ~84
+assets across 9 categories (environments/hollow/combat/dice/music/stingers/ui/
+sable), each `{id, category, name, prompt, duration, variants}`. Per-category
+generation presets (`PARAM_PRESETS`): all `sampler_type="dpmpp-3m-sde"`,
+`sigma_min=0.03`, `sigma_max=1000`, 200 steps (music 250); **combat uses
+`cfg_scale=9.0`**. Seeds are deterministic (`seed = 42 + variant + seed_offset`),
+so regeneration is reproducible — squarely satisfying the "Audio Must Be
+Generatable" principle. Output is 44.1kHz PCM_16 WAV, later transcoded to
+192kbps MP3. `generate_oneshots.py` is a smaller sibling for ambient one-shots
+(not spell-related).
+
+**Already-generated spell-cast assets** live in
+`~/src/clones/stable-audio-tools/divine_ruin_audio_v2/combat/` (the fuller v2
+regen, **6 variants each**, MP3). ⚠️ **They are NOT committed to git** — untracked
+local working files in the clone. Reuse = copy the files, not pull from history.
+The four spell-cast prompts map 1:1 to four palette keys:
+
+| Palette key | Source asset | Reuse |
+|---|---|---|
+| `spell_fire` | CMB-006 "Spell Cast, Fire" (whoosh→ignition→roar, explosive release) | **Direct** — `spell_cast_fire_v1..v6_CMB-006.mp3` |
+| `spell_ice` | CMB-007 "Spell Cast, Ice" (glassy hiss→crystalline crack→brittle scatter) | **Direct** — `spell_cast_ice_v1..v6_CMB-007.mp3` |
+| `spell_arcane_force` | CMB-008 "Spell Cast, Force/Arcane" (subsonic hum→concussive thump) | **Direct** — `spell_cast_force_arcane_v1..v6_CMB-008.mp3` |
+| `spell_heal` | CMB-009 "Spell Cast, Healing" (warm rising choir note→chime tail) | **Direct** — `spell_cast_healing_v1..v6_CMB-009.mp3` |
+| `spell_radiant` | *(no cast prompt)* — closest is CMB-017 "Status: Blessed" (cathedral-like golden chime, dur 2) | **Partial** — borrow, or generate a dedicated "radiant/holy smite" cast |
+| `spell_generic` | alias CMB-008 Force/Arcane (element-neutral "pure energy discharge") | **Proxy** |
+| `spell_nature` | **none exists** — no nature/growth/vine cast prompt anywhere | **Gap — generate a new prompt** |
+
+So **4 of 7 keys have ready-made, 6-variant source audio today**; `spell_radiant`
+borrows Blessed/Healing; `spell_generic` aliases Force/Arcane; **only
+`spell_nature` needs a brand-new generation** (add a combat-category ASSETS entry:
+cfg 9.0, ~3s, e.g. "growth/vine/rustling-earth-and-thorn cast"). See
+`md/divine_ruin_missing_prompts.md` in the clone for richer per-variant prompt
+text.
+
+**Licensing (the load-bearing open item):** the harness *code* is MIT, but the
+**generated audio** is governed by the model-weight license, the **Stability AI
+Community License** (free commercial use while org revenue < $1M/yr; Enterprise
+License required above). This is **not evidenced in the clone** — story-002 MUST
+confirm the current terms on the HF model card (`huggingface.co/stabilityai/
+stable-audio-open-1.0`) before shipping these assets in the product, since Divine
+Ruin is a commercial product. Flag as a compliance checkpoint, not a blocker.
+
+### 2.5.1 Quality upgrade — move the harness to Stable Audio 3.0 Small SFX
+
+The known weakness of the prior work is quality: **Open 1.0 is a general,
+music-leaning model**, so punchy game SFX come out mediocre. Stability has since
+shipped an **SFX-specialized open-weight model — `stabilityai/stable-audio-3-small-sfx`**
+(~433M params, up to 120s, **CPU-capable** — generates in seconds on an Apple M4,
+no GPU required; open weights under the same Stability AI Community License). It
+is purpose-built for sound effects, so it should materially outperform Open 1.0
+on the fire/ice/arcane/heal/nature cast palette.
+
+**Upgrading is low-effort and doable:** the existing `stable_audio_tools` library
+already supports the 3.0 family via `get_pretrained_model("stabilityai/stable-audio-3-small-sfx")`
+(the same entrypoint `run_gradio.py` uses), so the change is mostly (1) bump the
+`stable-audio-tools` version (the clone pins 0.0.19, which predates 3.0), (2)
+swap the model id / `--pretrained-name` (or the local ckpt path) from Open 1.0 to
+`stable-audio-3-small-sfx`, (3) re-run `generate_divine_ruin.py` on the combat
+category to regenerate the palette. A newer standalone package
+(`stable_audio_3`, `StableAudioModel.from_pretrained("small-sfx")`) is the
+vendor's "primary" path if the tools-library route hits a config mismatch. Either
+way the `generate_divine_ruin.py` ASSETS list + `CMB-###` keying is reused
+unchanged — only the model weights swap.
+
+**Recommendation for story-002:** regenerate the 7-key palette with
+`stable-audio-3-small-sfx` and A/B a couple of casts against the Open 1.0 v2
+assets before committing; keep Open 1.0 assets only where the SFX model regresses.
+Confirm the model-card commercial terms at the same time as the license check
+above (both are the same Community License, but verify the SFX model's card
+explicitly).
+
 ## 3. Recommendation
 
-**Primary: ElevenLabs SFX V2, if the customer provisions an account + paid API key
-(~$6/mo Starter).** It is purpose-built for exactly this pipeline — short prose
-prompt in, short polished SFX out, 48kHz, seamless looping, royalty-free
-commercial use on any paid tier. For ~90 spell/combat SFX generated once (not
-per-session, not per-player), this is a one-time few-dollar-to-tens-of-dollars
-spend, not a recurring meaningful cost. **Yes, it's worth it** — the quality gap
-between a purpose-built SFX model and either open-weight alternative or hand-built
-procedural synth is large for anything beyond simple tones (fire whoosh, ice
-shatter, organic tearing, whip crack).
+**Primary: reuse the existing harness, upgraded to Stable Audio 3.0 Small SFX
+(§2.5 + §2.5.1).** The team already did the hard part — a working local
+generation harness (`generate_divine_ruin.py`) keyed to the same `CMB-###` ids as
+the spell catalog. The prior audio's quality was weak because Open 1.0 is a
+general music model; swapping the weights to the SFX-specialized, CPU-capable
+`stabilityai/stable-audio-3-small-sfx` (a small, reused-entrypoint change) should
+fix that. Zero marginal cost, all local compute, **no new account.** Story-002's
+job: (1) confirm the Stability Community License permits commercial shipping (the
+one open compliance item), (2) bump `stable-audio-tools` + swap the model id to
+`stable-audio-3-small-sfx` and regenerate the combat palette, (3) A/B the new
+casts against the Open 1.0 v2 assets, keeping whichever wins per key, (4) generate
+the missing `spell_nature` (and optionally a dedicated `spell_radiant`) cast, (5)
+copy the chosen assets into the repo (`apps/audio/` + `apps/mobile/assets/sounds/`)
+and collapse variants to the 7 palette keys.
 
-**Secondary / no-account alternative: Stability's open-weight "Stable Audio 3.0
-Small SFX".** Free to download and self-host under the Community License (covers
-commercial use under $1M revenue), so it's the "generatable-in-repo" option if the
-customer does *not* want to provision a paid third-party key — no ongoing account,
-no API cost, just local/CI compute. Lower quality ceiling than the hosted
-ElevenLabs product and needs a model-serving story (weights, inference deps) this
-project doesn't have yet — treat as a fallback-of-the-fallback, not the MVP path.
+**Secondary (only if Open 1.0's license/quality disqualifies it): ElevenLabs SFX
+V2**, if the customer provisions a paid key (~$6/mo Starter). Purpose-built for
+prose→SFX, 48kHz, royalty-free on paid tiers; a one-time few-dollars spend for
+~90 assets. Worth it *only* if the existing Open 1.0 assets can't be used — the
+prior work already covers most of the palette, so this is a fallback, not the
+default.
 
 **Fallback (always available, zero dependency): stdlib procedural synth.** Keeps
-M17 deliverable with **no account, no key, no third-party dependency at all** —
-just Python's built-in `wave` module generating tones/noise/envelopes. This is
-the right choice for the *sprint's* zero-dependency constraint (per the sprint's
-own assumption that the pipeline must be deliverable without an account) and
-remains the reference recipe below. Meta AudioGen/AudioCraft was evaluated and
-rejected outright — no viable commercial license.
+M17 deliverable with **no account, no key, no model weights, no third-party
+dependency at all** — Python's built-in `wave` module generating
+tones/noise/envelopes. Right for the sprint's zero-dependency constraint if the
+Open 1.0 weights aren't handy in CI; remains the reference recipe in §5(c). Meta
+AudioGen/AudioCraft was evaluated and rejected outright — research-only license,
+no commercial path.
 
-**Bottom line:** if/when the customer provisions the ElevenLabs key, regenerate
-the palette with it for final quality; ship and test with the stdlib synth
-fallback in the meantime — the keying scheme (§4) and file layout (§6) are
-identical either way, only the generation step changes.
+**Bottom line:** the palette (§4) and file layout (§6) are identical across all
+three generation paths — only the generation step changes. Ship with the existing
+Open 1.0 assets (pending the license check); fall back to stdlib synth for
+`spell_nature`/CI if the weights aren't available; reach for ElevenLabs only if
+Open 1.0 is disqualified.
 
 ## 4. Keying Scheme (FROZEN CONTRACT for stories 002/003)
 
@@ -208,7 +301,33 @@ option as a story-003 judgment call, not a blocker.
 
 ## 5. Regenerate Recipe
 
-### (a) Recommended service — ElevenLabs SFX V2
+### (a) Recommended path — existing Stable Audio Open 1.0 harness
+
+This is the actual recommended generator (§2.5). Regenerate any spell-cast SFX
+from its prompt via the existing harness, keyed by `CMB-###` id:
+
+```bash
+cd ~/src/clones/stable-audio-tools
+PYTORCH_ENABLE_MPS_FALLBACK=1 python generate_divine_ruin.py \
+    --ckpt-path <path>/model.safetensors \
+    --model-config <path>/model_config.json \
+    --output-dir ./divine_ruin_audio_v2 \
+    --asset-id CMB-006          # one asset; or --category combat for all
+    # --seed-offset 10          # shift deterministic seeds for fresh takes
+    # --list                    # dry-run the asset list, generate nothing
+```
+
+The core inference (deterministic given the seed): a
+`{"prompt", "seconds_start": 0, "seconds_total": duration}` conditioning →
+`generate_diffusion_cond(..., cfg_scale=9.0, steps=200, sampler_type="dpmpp-3m-sde",
+seed=42+variant+seed_offset)` → peak-normalized WAV PCM_16 at 44.1kHz. To add the
+missing `spell_nature` key, append a combat-category entry to the `ASSETS` list
+with a growth/vine/earth prompt and run `--asset-id <new-id>`. Requires the
+Open 1.0 weights + PyTorch ≥2.5 locally (MPS/CUDA/CPU); slow on CPU/MPS but $0.
+For quick ad-hoc prompting, `run_gradio.py --pretrained-name
+stabilityai/stable-audio-open-1.0` (needs HF terms acceptance + token).
+
+### (b) Secondary service — ElevenLabs SFX V2 (only if Open 1.0 is disqualified)
 
 Worked example: regenerating `spell_fire` from `arcane_fireball`'s audio_cue
 ("A bead of flame detonates — heat, light, the roar of air consumed") via
@@ -242,7 +361,7 @@ with open("apps/audio/sfx/spell_fire_01.mp3", "wb") as f:
 confirm against their docs before wiring into a script, since SFX endpoints have
 moved before.)
 
-### (b) Fallback — stdlib procedural synth (no numpy/ffmpeg)
+### (c) Fallback — stdlib procedural synth (no numpy/ffmpeg)
 
 Worked example: a `spell_heal` stand-in — a warm rising tone with a gentle chime,
 matching `CMB-009`'s description, built from pure sine synthesis via Python's
