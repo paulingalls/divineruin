@@ -63,6 +63,20 @@ def _gate_deescalation(player: dict, state) -> None:
         raise ToolError(f"De-escalate costs {_DEESCALATE_FOCUS_COST} Focus; you have {have}.")
 
 
+def _validate_argument_type(decl) -> str | None:
+    """Fail-loud (NO writes) validation of a de_escalate declaration's Tier-3 argument category.
+
+    Returns the category (None is a Tier-1 neutral argument, no DC swing); a non-None value must be
+    canonical (social_resolution.ARGUMENT_TYPES) or the DM erred — raise a ToolError so the DM
+    re-prompts. Called at the declare-time gate (before any actor resolves) so a bad category never
+    rolls back a phase that already wrote other actors' HP/Focus; the packet re-checks defensively
+    for direct callers."""
+    argument_type = getattr(decl, "argument_type", None)
+    if argument_type is not None and argument_type not in social_resolution.ARGUMENT_TYPES:
+        raise ToolError(f"Unknown argument_type {argument_type!r}; expected one of {social_resolution.ARGUMENT_TYPES}.")
+    return argument_type
+
+
 async def _resolve_deescalation_packet(
     session: SessionData,
     attacker: CombatParticipant,
@@ -100,12 +114,11 @@ async def _resolve_deescalation_packet(
             "reason": "no living enemy to de-escalate",
         }
 
-    # Validate the Tier-3 argument category at the PACKET boundary (resolve_declaration threads it
-    # shape-only). None is a Tier-1 neutral argument (no DC swing); a non-None value must be canonical
-    # or the roll is a DM error — fail loud as a ToolError so the DM re-prompts, before any Focus spend.
-    argument_type = getattr(decl, "argument_type", None)
-    if argument_type is not None and argument_type not in social_resolution.ARGUMENT_TYPES:
-        raise ToolError(f"Unknown argument_type {argument_type!r}; expected one of {social_resolution.ARGUMENT_TYPES}.")
+    # Re-validate the Tier-3 argument category (shape-only threaded by resolve_declaration). In real
+    # play this already fired at the declare-time gate (_prevalidate_ability_focus) with NO writes, so
+    # a bad category never reaches here mid-phase; the check stays for direct callers/tests as a
+    # defensive fail-loud boundary before any Focus spend.
+    argument_type = _validate_argument_type(decl)
 
     have = (player.get("focus") or {}).get("current", 0)
     # Deduct against the declaring member (M14 story-004, was the session primary), per round.
