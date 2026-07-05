@@ -7,15 +7,16 @@ the REAL pipeline against real DB writes:
 
 - AC1: the check mode="social" tool reads an NPC's recorded disposition, resolves a persuasion
   check (disposition-as-DC), and PERSISTS the clamped shift back to npc_dispositions.
-- AC2: a Diplomat declares de_escalate in a live combat phase; the contested gate + argument land
-  and combat ENDS via the phase loop with outcome "deescalated" and an always-dramatic de_escalate
-  roll on the HUD.
+- AC2: a Diplomat declares de_escalate over several live combat phases; the M15 Tier-3 scene
+  accumulates a per-enemy disposition shift (resolve_argument_round + DeEscalationState) and combat
+  ENDS via the phase loop with outcome "deescalated" and an always-dramatic de_escalate roll on the
+  HUD once the enemy crosses the +2 surrender threshold.
 
-Determinism: the d20 seams are patched to face 20 (check_resolution.dice_roll for the social/
-argument checks; combat_ability.dice_roll for the de-escalation CHA-vs-WIS contest). A seeded
-Diplomat with charisma 18 (+4) beats a hand-built enemy's WIS 10 (+0) on equal d20s, and the
-forced 20 clears the hostile argument DC (15 + 6). Each test uses a distinct player_id since the
-testcontainer DB is shared.
+Determinism: the argument d20 seam is patched to face 20 (check_resolution.dice_roll). A seeded
+Diplomat with charisma 18 argues a `cowardly` foe — vulnerable to a `threat` argument (-3 DC) — down
+over a couple of rounds within the MAX_DEESCALATION_ROUNDS cap. (M15 replaced the single-round
+CHA-vs-WIS contest, so combat_ability.dice_roll is no longer a seam.) Each test uses a distinct
+player_id since the testcontainer DB is shared.
 """
 
 from __future__ import annotations
@@ -77,35 +78,54 @@ async def test_m46a_social_check_shifts_and_persists_disposition(reset_db_pool: 
 
 
 async def test_m46a_diplomat_deescalation_ends_combat(reset_db_pool: str) -> None:
-    """AC2: a Diplomat de_escalate declaration ends an active combat via the phase loop."""
+    """AC2: a Diplomat argues an enemy down over multiple rounds; the M15 Tier-3 scene accumulates
+    a per-enemy disposition shift and combat ENDS "deescalated" once the enemy crosses +2.
+
+    M15 (story-002) replaced the single-round contested-gate MVP with a multi-round cumulative scene
+    (combat_resolution.resolve_argument_round + DeEscalationState). The Diplomat spends 3 Focus per
+    round and shifts the enemy by its own resistance profile; a `cowardly` foe is VULNERABLE to a
+    `threat` argument, so a forced 20 lands progress each round until it stands down within the
+    MAX_DEESCALATION_ROUNDS cap. Determinism: check_resolution.dice_roll (the persuasion roll) is
+    pinned to 20; there is no longer a combat_ability CHA-vs-WIS contest to patch."""
     pool = await db.get_pool()
     player_id = "cap_m46a_deesc"
-    # A Diplomat with a Focus pool (de_escalate costs 3) and the charisma to win the contest.
-    await seed_player_with_pools(pool, player_id=player_id, class_="diplomat", focus_current=5)
+    # A Diplomat with enough Focus for several rounds (3/round) and the charisma to argue well.
+    await seed_player_with_pools(pool, player_id=player_id, class_="diplomat", focus_current=12)
     await _raise_charisma(pool, player_id, 18)
 
-    state = _build_state("combat_cap_m46a_deesc", player_id, [_enemy("cultist_1", hp=10)])
+    # A cowardly foe is vulnerable to a `threat` argument (social_resolution.ARGUMENT_RESISTANCE),
+    # so each landed round moves its disposition and the scene reliably reaches +2 within the cap.
+    cultist = _enemy("cultist_1", hp=10)
+    cultist.resistance_tags = ["cowardly"]
+    state = _build_state("combat_cap_m46a_deesc", player_id, [cultist])
     ctx = make_context(player_id, room=make_mock_room())
     await db_mutations.save_combat_state(state.combat_id, state.to_dict(), conn=pool)
     ctx.userdata.combat_state = state
     try:
         decls = {
-            player_id: {"type": "ability", "action": "de_escalate", "target_id": "cultist_1"},
+            player_id: {
+                "type": "ability",
+                "action": "de_escalate",
+                "argument_type": "threat",
+                "target_id": "cultist_1",
+            },
             "cultist_1": {"type": "attack", "action": "Scimitar", "target_id": player_id},
         }
-        await combat_turn._declare_phase_impl(ctx, decls)
-        with (
-            patch("check_resolution.dice_roll", return_value=_d20(20)),
-            patch("combat_ability.dice_roll", return_value=_d20(20)),
-        ):
-            result = await combat_turn._resolve_phase_impl(ctx)
+        # Argue round by round until the enemy surrenders (combat_turn hands back a tuple on end).
+        result = None
+        for _round in range(4):  # MAX_DEESCALATION_ROUNDS
+            await combat_turn._declare_phase_impl(ctx, decls)
+            with patch("check_resolution.dice_roll", return_value=_d20(20)):
+                result = await combat_turn._resolve_phase_impl(ctx)
+            if isinstance(result, tuple):
+                break
 
-        assert isinstance(result, tuple), "a successful de-escalation fires end_combat and hands back"
+        assert isinstance(result, tuple), "the accumulated de-escalation fires end_combat and hands back"
         _agent, json_str = result
         payload = json.loads(json_str)
         assert payload["outcome"] == "deescalated"
 
-        # The de-escalation roll surfaced on the HUD as an always-dramatic de_escalate moment.
+        # Each de-escalation round surfaced on the HUD as an always-dramatic de_escalate moment.
         deesc = [e for e in _dice_events(ctx.userdata.room) if e.get("roll_type") == "de_escalate"]
         assert deesc, "a de_escalate DICE_ROLL was published"
         assert deesc[0]["dramatic"] is True and deesc[0]["context"] == "de_escalate"
