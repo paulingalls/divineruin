@@ -243,3 +243,67 @@ def resolve_deescalation(
         dramatic=verdict.dramatic,
         context=verdict.context,
     )
+
+
+# --- Tier-3 structured de-escalation scene (M15 story-001, spec game_mechanics_combat.md
+# §Social Encounter Resolution L768-844). Extends the M4.6a MVP above into multi-round
+# argument phases with cumulative disposition per enemy. ---
+
+# Net ladder-step accumulation (across rounds, one enemy) at which the enemy stands down —
+# e.g. hostile -> neutral (spec L820ish).
+SURRENDER_THRESHOLD = 2
+
+
+@dataclass(frozen=True)
+class ArgumentRoundOutcome:
+    """Result of one Tier-3 argument round against a scene-local enemy disposition.
+    ``new_cumulative_shift`` is the running per-enemy accumulator the caller threads into
+    the next round; ``new_disposition`` is the ladder-clamped disposition that round's DC
+    should derive from."""
+
+    margin: int
+    delta: int
+    new_cumulative_shift: int
+    new_disposition: str
+    surrendered: bool
+    dramatic: bool
+    context: str
+    narrative_cue: str
+
+
+def resolve_argument_round(
+    *,
+    disposition: str,
+    argument_type: str | None,
+    resistance_tags: tuple[str, ...],
+    roll_total: int,
+    cumulative_shift: int,
+    base_dc: int = DEESCALATE_BASE_DC,
+) -> ArgumentRoundOutcome:
+    """Resolve one round of a Tier-3 structured argument (pure; caller supplies roll_total).
+
+    A thin wrapper over ``social_resolution.resolve_social_check`` — re-derives no DC or
+    disposition math. ``stakes="high"`` keeps every round always-dramatic (M4.5). The caller
+    (story-002 orchestration) threads ``new_cumulative_shift``/``new_disposition`` into the
+    next round and reads ``surrendered`` as the scene's end condition.
+    """
+    result = resolve_social_check(
+        disposition=disposition,
+        skill="persuasion",
+        roll_total=roll_total,
+        base_dc=base_dc,
+        argument_type=argument_type,
+        resistance_tags=resistance_tags,
+        stakes="high",
+    )
+    new_cumulative = cumulative_shift + result.disposition_shift
+    return ArgumentRoundOutcome(
+        margin=result.margin,
+        delta=result.disposition_shift,
+        new_cumulative_shift=new_cumulative,
+        new_disposition=result.new_disposition,
+        surrendered=new_cumulative >= SURRENDER_THRESHOLD,
+        dramatic=result.dramatic,
+        context=result.context,
+        narrative_cue=result.narrative_cue,
+    )

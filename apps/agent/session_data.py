@@ -105,6 +105,19 @@ class CombatParticipant:
 
 
 @dataclass
+class DeEscalationState:
+    """Tier-3 structured de-escalation scene state (M15 story-001). Scene-scoped, nested on
+    CombatState. ``cumulative_shift`` is the per-enemy net ladder-step accumulator the
+    surrender gate (combat_resolution.resolve_argument_round) reads; ``enemy_dispositions``
+    is the per-enemy ladder-clamped disposition each round's DC derives from. round_counter
+    advancement and enemy iteration are story-002 orchestration concerns."""
+
+    round_counter: int = 0
+    enemy_dispositions: dict[str, str] = field(default_factory=dict)
+    cumulative_shift: dict[str, int] = field(default_factory=dict)
+
+
+@dataclass
 class CombatState:
     combat_id: str
     participants: list[CombatParticipant]
@@ -138,6 +151,9 @@ class CombatState:
     # (success or failure) so de-escalate can be tried at most once per encounter (spec L183).
     deescalated: bool = False
     deescalation_used: bool = False
+    # Tier-3 structured de-escalation scene (M15 story-001). Additive to the MVP flags above —
+    # multi-round argument state (round_counter + per-enemy disposition/cumulative-shift maps).
+    deescalation_scene: DeEscalationState = field(default_factory=DeEscalationState)
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
@@ -170,6 +186,7 @@ class CombatState:
             first_attack_resolved=data.get("first_attack_resolved", False),
             deescalated=data.get("deescalated", False),
             deescalation_used=data.get("deescalation_used", False),
+            deescalation_scene=DeEscalationState(**data.get("deescalation_scene", {})),
         )
 
 
