@@ -316,7 +316,7 @@ async def _end_combat_db(
 
     await mutations.delete_combat_state(cs.combat_id, conn=conn)
 
-    # Death, resurrection & stabilization (M4.4 story-003; M20 story-004/005):
+    # Death, resurrection & stabilization (M4.4 story-003; M20 story-004/005; M15 story-003):
     # - TRULY DEAD lives — an is_terminally_down player (is_dead overkill OR 3 failed death saves) and
     #   ANY temporary_hollowed echo (a player who already died to rise as a Hollowed monster) — return
     #   via Mortaen on ANY outcome (death always returns the character). trigger_character_death records
@@ -324,9 +324,10 @@ async def _end_combat_db(
     #   persisted Hollowed condition. Scoping this to victory/defeat would STRAND a destroyed
     #   echo-primary on a fled/deescalated end — the character loss this saga exists to fix.
     # - On a DEFEAT (party wipe) the merely-FALLEN also die — no ally was left to drag them clear.
+    # - On a FLED the merely-FALLEN also die — left behind when the party withdrew (M15 decision 498f0df12b14).
     # - On a VICTORY (and only victory) a merely-fallen (savable) ally is instead STABILIZED by the
     #   party (comes to at 1 HP; combat wrote their players.data HP to 0 per-hit, so this is a real
-    #   write). fled/deescalated do NOT stabilize (fleeing is not winning; story-005 finding 2).
+    #   write). deescalated also stabilizes (peaceful win, party holds the field).
     # combat_cleared (all enemies down) feeds the tier-1 cleared-battlefield anchor. Atomic with the tx.
     enemies = [p for p in cs.participants if p.type == "enemy"]
     combat_cleared = bool(enemies) and all(p.is_fallen for p in enemies)
@@ -344,9 +345,11 @@ async def _end_combat_db(
     death_context: dict | None = None
     # Dead-life collector (any outcome). Picks up the primary echo (id == player_id, temporary_hollowed)
     # DIRECTLY — the Stage-2+ Hollowed rise flips the primary's type in place (combat_support), so no
-    # special-case primary rescue is needed — AND any non-primary echo. On defeat the merely-fallen are
-    # added (party wipe — nobody left to save them).
-    dead_lives = [p for p in cs.participants if _is_truly_dead(p) or (outcome == "defeat" and _fallen_savable(p))]
+    # special-case primary rescue is needed — AND any non-primary echo. On defeat and fled the merely-fallen
+    # are added (party wipe/abandonment — nobody left to save them).
+    dead_lives = [
+        p for p in cs.participants if _is_truly_dead(p) or (outcome in ("defeat", "fled") and _fallen_savable(p))
+    ]
     if dead_lives:
         # Fail-loud on a missing row (concern 2a646ecf0b4b): a dead player participant with no
         # players.data row is corruption — resurrection can't proceed and a silent skip would strand
@@ -375,9 +378,10 @@ async def _end_combat_db(
             raise RuntimeError(f"Primary player {session.player_id!r} has no players.data row on defeat")
         death_context = await resurrection.resurrect_on_defeat(primary_row, combat_cleared=combat_cleared, conn=conn)
 
-    # VICTORY only: a merely-fallen (savable) ally is stabilized by the party (comes to at 1 HP); normal
-    # regen/rest handles the gradual recovery. A flee/de-escalation does not stabilize (finding 2).
-    if outcome == "victory":
+    # VICTORY and DEESCALATED: a merely-fallen (savable) ally is stabilized by the party (comes to at 1 HP);
+    # normal regen/rest handles the gradual recovery (M15 decision 498f0df12b14: deescalated stabilizes like victory,
+    # a peaceful win where the party holds the field). Fled and defeat do not stabilize.
+    if outcome in ("victory", "deescalated"):
         for p in cs.participants:
             if _fallen_savable(p):
                 # Fail-loud on a missing row (concern 2a646ecf0b4b), symmetric with the resurrection
