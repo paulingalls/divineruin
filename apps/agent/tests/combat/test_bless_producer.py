@@ -43,6 +43,7 @@ _BLESS_ROW = {
     "terrain_effects": {},
     "audio_cue": "",
     "concentration": True,
+    "sound_id": "spell_radiant",
 }
 
 
