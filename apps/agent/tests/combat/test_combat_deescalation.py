@@ -158,7 +158,9 @@ class TestParticipantResistanceTags:
         for p in data["participants"]:
             p.pop("resistance_tags", None)
         rebuilt = CombatState.from_dict(data)
-        assert rebuilt.get_participant("goblin_scout_1").resistance_tags == []
+        rebuilt_enemy = rebuilt.get_participant("goblin_scout_1")
+        assert rebuilt_enemy is not None
+        assert rebuilt_enemy.resistance_tags == []
 
     def test_default_is_empty_list(self):
         assert (
