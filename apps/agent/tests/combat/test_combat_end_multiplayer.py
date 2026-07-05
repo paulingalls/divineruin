@@ -535,9 +535,11 @@ async def _run_outcome(session, cs, outcome, monkeypatch, *, resurrect_return=No
     return end_data, mutations, party, on_def
 
 
-async def test_fled_does_not_stabilize_fallen_ally(monkeypatch):
-    # story-005 finding 2: stabilization is VICTORY-only. A savable fallen ally on a 'fled' end is
-    # NOT revived to 1 HP for free (fleeing is not winning).
+async def test_fled_abandons_fallen_ally_to_mortaen(monkeypatch):
+    # M15 story-003 (decision 498f0df12b14): a flee LEAVES a downed ally behind. A savable fallen
+    # ally on a 'fled' end is NOT stabilized to 1 HP for free (fleeing is not winning), but is no
+    # longer stranded at 0 HP — it DIES and returns via Mortaen (resurrect_party_on_defeat), the same
+    # death path as a defeat-fallen. Supersedes the earlier victory-only contract (story-005 finding 2).
     session = _two_pc_session()
     cs = CombatState(
         combat_id="c1",
@@ -555,10 +557,14 @@ async def test_fled_does_not_stabilize_fallen_ally(monkeypatch):
         current_turn_index=0,
         location_id="loc1",
     )
-    _end, mutations, party, _on_def = await _run_outcome(session, cs, "fled", monkeypatch)
+    # One down ally (Bren) is collected into the death path, so resurrect_party_on_defeat receives one
+    # row and must return one context (strict-zip'd against rows in _end_combat_db).
+    _end, mutations, party, _on_def = await _run_outcome(
+        session, cs, "fled", monkeypatch, resurrect_return=[{"anchor": "anchor_x", "revive_hp": 10}]
+    )
     hp_calls = [(c.args[0], c.args[1]) for c in mutations.update_player_hp.await_args_list]
-    assert ("p2", 1) not in hp_calls  # not stabilized on a flee
-    party.assert_not_awaited()  # a merely-fallen ally is not resurrected either
+    assert ("p2", 1) not in hp_calls  # not stabilized to 1 HP on a flee (fleeing is not winning)
+    party.assert_awaited_once()  # the abandoned downed ally dies -> Mortaen, never stranded at 0 HP
 
 
 async def test_defeat_with_standing_primary_still_resurrects_it(monkeypatch):
