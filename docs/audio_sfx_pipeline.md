@@ -170,41 +170,58 @@ generalizes to ENV/MUS/foley later without re-litigating the pipeline.
 
 ## 3. Recommendation
 
-**Primary: reuse the existing harness, upgraded to Stable Audio 3.0 Small SFX
-(§2.5 + §2.5.1).** The team already did the hard part — a working local
-generation harness (`generate_divine_ruin.py`) keyed to the same `CMB-###` ids as
-the spell catalog. The prior audio's quality was weak because Open 1.0 is a
-general music model; swapping the weights to the SFX-specialized, CPU-capable
-`stabilityai/stable-audio-3-small-sfx` (a small, reused-entrypoint change) should
-fix that. Zero marginal cost, all local compute, **no new account.** Story-002's
-job: (1) confirm the Stability Community License permits commercial shipping (the
-one open compliance item), (2) bump `stable-audio-tools` + swap the model id to
-`stable-audio-3-small-sfx` and regenerate the combat palette, (3) A/B the new
-casts against the Open 1.0 v2 assets, keeping whichever wins per key, (4) generate
-the missing `spell_nature` (and optionally a dedicated `spell_radiant`) cast, (5)
-copy the chosen assets into the repo (`apps/audio/` + `apps/mobile/assets/sounds/`)
-and collapse variants to the 7 palette keys.
+**Decision rule: quality is the gate; a single pipeline is a strong tiebreaker,
+not an override.** The customer's steer is explicit — standardizing on one audio
+pipeline is desirable for simplicity, but the audio meeting the quality bar is the
+hard requirement. Quality can't be settled from spec sheets, so **the vendor
+choice is decided by a listening bake-off (§3.1), not declared here.** What this
+doc fixes is the method and the candidates; the ear picks the winner.
 
-**Secondary (only if Open 1.0's license/quality disqualifies it): ElevenLabs SFX
-V2**, if the customer provisions a paid key (~$6/mo Starter). Purpose-built for
-prose→SFX, 48kHz, royalty-free on paid tiers; a one-time few-dollars spend for
-~90 assets. Worth it *only* if the existing Open 1.0 assets can't be used — the
-prior work already covers most of the palette, so this is a fallback, not the
-default.
+**Leading candidate — ElevenLabs (consolidated hosted API).** Under quality-first
+it moves to the front: it is the purpose-built, best-in-class commercial product
+AND a single pipeline for SFX + ambient + music + foley (voice stays Inworld), all
+commercial-cleared (§2.5.2 Option B). So it can satisfy *both* the quality bar and
+the single-pipeline preference at once. Costs: a paid account/key and a recurring
+subscription, and assets regenerate via a hosted API rather than committed weights.
+For one-time asset generation the spend is modest; if it clears the bar it is the
+simplest quality-first answer.
 
-**Fallback (always available, zero dependency): stdlib procedural synth.** Keeps
-M17 deliverable with **no account, no key, no model weights, no third-party
-dependency at all** — Python's built-in `wave` module generating
-tones/noise/envelopes. Right for the sprint's zero-dependency constraint if the
-Open 1.0 weights aren't handy in CI; remains the reference recipe in §5(c). Meta
-AudioGen/AudioCraft was evaluated and rejected outright — research-only license,
-no commercial path.
+**Leading generatable/self-hosted candidate — Stable Audio 3.0 (family, one
+harness).** The team's existing `generate_divine_ruin.py` harness, upgraded off
+the weak Open 1.0 general model to the SFX-specialized `stable-audio-3-small-sfx`
+(and `-medium` for ambience/music), keyed to the same `CMB-###` ids (§2.5.1 +
+§2.5.2 Option A). Zero marginal cost, fully generatable-in-repo, CPU-viable — the
+strongest fit for the "Audio Must Be Generatable" principle. It wins only if the
+upgraded model actually clears the quality bar in the bake-off; the prior Open 1.0
+audio did not, which is the whole reason the bake-off exists.
 
-**Bottom line:** the palette (§4) and file layout (§6) are identical across all
-three generation paths — only the generation step changes. Ship with the existing
-Open 1.0 assets (pending the license check); fall back to stdlib synth for
-`spell_nature`/CI if the weights aren't available; reach for ElevenLabs only if
-Open 1.0 is disqualified.
+**Fallback (zero dependency): stdlib procedural synth** (§5(c)) — no account, no
+weights, Python `wave` only. Keeps CI/`spell_nature` unblocked, but it will not
+clear a real quality bar for complex textures; treat as scaffolding, not the
+shipped palette. Meta AudioGen/AudioCraft is rejected outright (research-only
+license).
+
+**Bottom line:** run the §3.1 bake-off. If ElevenLabs clears the bar, it likely
+wins on quality *and* single-pipeline simplicity. If the upgraded Stable Audio 3.0
+also clears the bar, prefer it for the generatable principle + zero cost. The
+palette (§4) and repo file layout (§6) are invariant across every path, so the
+vendor choice stays swappable and is not a one-way door.
+
+### 3.1 Quality bake-off (the deciding step for story-002)
+
+Before committing a vendor, generate the **same** small representative prompt set
+with each surviving candidate and have the customer listen and score against the
+bar. Cover one prompt per audio *category* so the winner generalizes beyond spell
+SFX: a spell cast (e.g. CMB-006 fire), a foley one-shot (footstep/impact), an
+ambient loop (a tavern or forest ENV), and a short music/stinger. Candidates:
+(1) ElevenLabs (SFX + Ambient + Music), (2) Stable Audio 3.0 `small-sfx`/`medium`
+via the existing harness, (3) the retained Open 1.0 v2 assets as the "current
+quality" baseline. Score each on clarity, punch, and fit-to-prompt; pick the
+first pipeline that clears the bar across categories, preferring the single-vendor
++ generatable options on ties. Record the outcome + the chosen vendor back into
+this doc (§3) so the keying/wiring stories build on a settled choice. Note: the
+bake-off needs real generation — an ElevenLabs key and/or the Stable Audio weights
+downloaded locally — so it is gated on the customer provisioning at least one.
 
 ## 4. Keying Scheme (FROZEN CONTRACT for stories 002/003)
 
