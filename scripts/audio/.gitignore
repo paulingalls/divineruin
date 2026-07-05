@@ -1,0 +1,2 @@
+# SFX generation venv (bootstrapped by setup_sfx_env.sh) — heavy, not a repo dep.
+.venv-sa3/
