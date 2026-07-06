@@ -44,6 +44,28 @@ def test_no_wav_files_in_spell_sfx_source_dir() -> None:
     assert not wavs, f"uncompressed .wav found in spell_sfx source dir: {wavs}"
 
 
+# Source dirs whose committed .mp3s must stay byte-identical to a bundled family dir.
+# The regenerate pipeline writes both copies; nothing else asserts they match, so a
+# regen that updates the source and forgets the bundled copy (or vice versa) would ship
+# stale audio while every other lane stays green. Fail loud on that drift. (Sole owner
+# of this assertion after story-006 removed the capstone's byte-equality copy.)
+_SOURCE_MIRRORS: dict[Path, Path] = {
+    _AUDIO_SRC_DIR: _SOUNDS_DIR,  # spell_sfx source palette -> bundled root copy
+}
+
+
+def test_committed_source_mirror_is_byte_equal_to_bundled() -> None:
+    for source_dir, bundled_dir in _SOURCE_MIRRORS.items():
+        sources = sorted(source_dir.glob("*.mp3"))
+        assert sources, f"no source .mp3 under {source_dir} -- mirror guard would be a no-op"
+        for src in sources:
+            bundled = bundled_dir / src.name
+            assert bundled.exists(), f"bundled mirror missing: {bundled}"
+            assert src.read_bytes() == bundled.read_bytes(), (
+                f"{src.name} differs between source ({src}) and bundled ({bundled}) -- regenerate both"
+            )
+
+
 def _bundled_stems_by_dir() -> dict[str, set[str]]:
     """Map each family dir (top-level '.' plus each subdir name) to its stem set."""
     families: dict[str, set[str]] = {}
