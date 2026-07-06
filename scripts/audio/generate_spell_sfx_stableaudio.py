@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Generate bundled audio via Stable Audio 3.0 Small SFX (M17 spell bake-off origin).
+"""Generate the M17 spell-cast SFX palette with Stable Audio 3.0 Small SFX (story-002 bake-off).
 
 Free/open-weight counterpart to generate_spell_sfx.py (ElevenLabs), for the
-quality bake-off: the same shared prompt table (whose frozen 7-key spell palette
-was the original bake-off subject), a different engine, so the customer can A/B
-them and pick the vendor — preferring this one if it clears the bar (no
-subscription, self-hosted, Stability AI Community License).
+quality bake-off: same frozen 7-key prompt table, a different engine, so the
+customer can A/B them and pick the vendor — preferring this one if it clears the
+bar (no subscription, self-hosted, Stability AI Community License).
 
 Reuses the PROMPTS table and out_path helper from generate_spell_sfx.py (the
 single prompt SSOT); this script writes .wav, the ElevenLabs generator writes .mp3.
@@ -40,16 +39,10 @@ def _load_generator():
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Generate the spell-cast palette via Stable Audio 3.0 Small SFX."
-    )
+    parser = argparse.ArgumentParser(description="Generate the spell-cast palette via Stable Audio 3.0 Small SFX.")
     parser.add_argument("--out-dir", required=True, type=Path)
-    parser.add_argument(
-        "--keys", nargs="*", help="subset of palette keys (default: all keys)"
-    )
-    parser.add_argument(
-        "--variants", type=int, default=1, help="takes per key (default 1)"
-    )
+    parser.add_argument("--keys", nargs="*", help="subset of palette keys (default: all 7)")
+    parser.add_argument("--variants", type=int, default=1, help="takes per key (default 1)")
     parser.add_argument("--duration", type=float, default=2.0, help="seconds")
     args = parser.parse_args(argv)
 
