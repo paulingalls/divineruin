@@ -41,6 +41,48 @@ def _write_silent_wav(path: Path, *, duration_s: float = 0.5, sample_rate: int =
         wav_file.writeframes(b"\x00\x00" * n_frames)
 
 
+def test_parser_defaults_pin_the_approved_m17_recipe() -> None:
+    """steps=8 / cfg_scale=1.0 rendered the customer-approved M17 palette.
+
+    Higher cfg overdrives the output (clipping, buzz) — see
+    docs/audio_sa3_noise_investigation.md §12. Guard the defaults so a future
+    param tweak is a deliberate, test-visible decision.
+    """
+    gen = _load_generator()
+    args = gen.build_parser().parse_args(["--out-dir", "/tmp/unused"])
+    assert args.steps == 8
+    assert args.cfg_scale == 1.0
+    assert args.duration == 2.0
+    assert args.format == "mp3"
+
+
+class _FakeTensor:
+    """Duck-types the one tensor method the noise guard uses (torch-free lane)."""
+
+    def __init__(self, std: float) -> None:
+        self._std = std
+
+    def std(self) -> float:
+        return self._std
+
+
+def test_noise_guard_rejects_clamped_gaussian_renders() -> None:
+    """The SA3 transient failure emits clamped N(0,1) audio (std ~0.83); good
+
+    takes at the approved recipe measure std ~0.01-0.05. Guard aborts instead
+    of silently writing garbage for audition — see
+    docs/audio_sa3_noise_investigation.md §12.
+    """
+    gen = _load_generator()
+    with pytest.raises(RuntimeError, match="noise"):
+        gen.assert_take_is_not_noise(_FakeTensor(0.83), "spell_fire")
+
+
+def test_noise_guard_passes_normal_renders() -> None:
+    gen = _load_generator()
+    gen.assert_take_is_not_noise(_FakeTensor(0.05), "spell_fire")
+
+
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not on PATH")
 def test_transcode_to_mp3_produces_valid_mpeg_file(tmp_path: Path) -> None:
     gen = _load_generator()

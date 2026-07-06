@@ -15,6 +15,7 @@ export default tseslint.config(
       "apps/agent/",
       "e2e/",
       ".claude/worktrees/",
+      "**/.venv*/",
     ],
   },
 
