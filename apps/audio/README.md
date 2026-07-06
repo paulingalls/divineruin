@@ -9,8 +9,9 @@ prompts) is the SSOT so every asset is **regenerable from a written prompt**
 
 The frozen 7-key source-by-effect palette (`docs/audio_sfx_pipeline.md` §4):
 `spell_fire`, `spell_ice`, `spell_arcane_force`, `spell_heal`, `spell_radiant`,
-`spell_nature`, `spell_generic`. One `.wav` per key (2s, stereo, 44.1kHz, Int16
-PCM). story-003 maps each spell's `sound_id` to one of these keys and wires the
+`spell_nature`, `spell_generic`. One `.mp3` per key (2s, 44.1kHz, 128kbps —
+transcoded from the SA3 model's raw Int16 PCM WAV output). story-003 maps each
+spell's `sound_id` to one of these keys and wires the
 client registry; story-004 emits `PLAY_SOUND(sound_id)` deterministically on cast.
 
 ### Engine — Stable Audio 3.0 Small SFX (chosen via bake-off)
@@ -49,4 +50,6 @@ scripts/audio/.venv-sa3/bin/python scripts/audio/generate_spell_sfx_stableaudio.
 Text-to-audio is generative, so regeneration reproduces the palette via the same
 pipeline (model + prompts + params), **not** byte-for-byte. The committed files
 are the specific takes signed off in the bake-off; regenerating replaces them
-with fresh takes. Emits Int16 PCM WAV directly (matching the committed format).
+with fresh takes. The generator renders Int16 PCM WAV, then transcodes to
+`.mp3` (128kbps, via ffmpeg) and removes the intermediate WAV — the default
+`--format mp3` path. `--format wav` keeps the raw SA3 output if needed.

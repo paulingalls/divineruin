@@ -2,7 +2,7 @@
 
 M17 shipped the spell-audio pipeline across stories 001-004: a machine-playable
 ``sound_id`` on every ``content/spells.json`` row (strict Python loader,
-``spells.SPELL_SOUND_KEYS``), the 7-key ``.wav`` palette committed to
+``spells.SPELL_SOUND_KEYS``), the 7-key ``.mp3`` palette committed to
 ``apps/mobile/assets/sounds/``, the cross-language sound registry
 (``apps/mobile/src/audio/sound-registry.ts``), and a deterministic
 ``PLAY_SOUND(sound_id)`` emit at cast resolution
@@ -12,7 +12,7 @@ This capstone proves those seams hold TOGETHER against a real Postgres
 testcontainer (auto-marked ``acceptance`` by tests/acceptance/conftest.py):
 
   1. Every seeded catalog spell maps to a registry-valid ``sound_id`` whose
-     bundled ``.wav`` asset exists on disk (no orphan key, no missing file).
+     bundled ``.mp3`` asset exists on disk (no orphan key, no missing file).
   2. The TS registry itself resolves every catalog ``sound_id`` to a bundled
      asset -- run in-band via the story-003 cross-language guard under ``bun``.
   3. A REAL cast (the entry point ``cast_spell`` delegates to) deterministically
@@ -76,7 +76,7 @@ async def test_every_spell_maps_to_registry_key_and_bundled_asset(reset_db_pool:
         assert spell.sound_id in spells.SPELL_SOUND_KEYS, (
             f"{spell.id}: sound_id {spell.sound_id!r} is not a registry key"
         )
-        asset = _SOUNDS_DIR / f"{spell.sound_id}.wav"
+        asset = _SOUNDS_DIR / f"{spell.sound_id}.mp3"
         assert asset.exists(), f"{spell.id}: bundled asset missing at {asset}"
 
 
@@ -90,12 +90,12 @@ def test_source_and_bundled_palette_are_byte_identical() -> None:
     regeneration that updates the source and forgets the bundled copy (or vice versa) would ship
     stale audio while every other lane stays green. This guard fails loud on that drift."""
     for key in sorted(spells.SPELL_SOUND_KEYS):
-        src = _AUDIO_SRC_DIR / f"{key}.wav"
-        bundled = _SOUNDS_DIR / f"{key}.wav"
+        src = _AUDIO_SRC_DIR / f"{key}.mp3"
+        bundled = _SOUNDS_DIR / f"{key}.mp3"
         assert src.exists(), f"source asset missing: {src}"
         assert bundled.exists(), f"bundled asset missing: {bundled}"
         assert src.read_bytes() == bundled.read_bytes(), (
-            f"{key}.wav differs between source ({src}) and bundled ({bundled}) -- regenerate both"
+            f"{key}.mp3 differs between source ({src}) and bundled ({bundled}) -- regenerate both"
         )
 
 
@@ -144,4 +144,4 @@ async def test_real_cast_emits_deterministic_play_sound(reset_db_pool: str, spel
     # The whole chain ties here: cast -> emit -> registry-valid key -> committed asset.
     assert emitted == spell.sound_id
     assert emitted in spells.SPELL_SOUND_KEYS
-    assert (_SOUNDS_DIR / f"{emitted}.wav").exists()
+    assert (_SOUNDS_DIR / f"{emitted}.mp3").exists()
