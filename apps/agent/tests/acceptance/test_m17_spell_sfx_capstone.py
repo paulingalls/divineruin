@@ -38,7 +38,6 @@ from spell_casting import _cast_spell_impl
 # tests/acceptance/<this file> -> parents[3] is the repo's apps/ dir.
 _APPS_DIR = Path(__file__).resolve().parents[3]
 _SOUNDS_DIR = _APPS_DIR / "mobile" / "assets" / "sounds"  # bundled copy the app loads
-_AUDIO_SRC_DIR = _APPS_DIR / "audio" / "spell_sfx"  # committed source palette (regenerate target)
 _MOBILE_DIR = _APPS_DIR / "mobile"
 
 # One clean cantrip per spell source (focus_cost 0, non-concentration) so the real
@@ -78,25 +77,6 @@ async def test_every_spell_maps_to_registry_key_and_bundled_asset(reset_db_pool:
         )
         asset = _SOUNDS_DIR / f"{spell.sound_id}.mp3"
         assert asset.exists(), f"{spell.id}: bundled asset missing at {asset}"
-
-
-# --- 1b. The source palette and the bundled copy stay byte-identical (AC1, no stale-audio drift) ---
-
-
-def test_source_and_bundled_palette_are_byte_identical() -> None:
-    """apps/audio/spell_sfx (source SSOT) and apps/mobile/assets/sounds (bundled) must match.
-
-    They are committed as byte-identical copies; nothing else asserts they stay in sync, so a
-    regeneration that updates the source and forgets the bundled copy (or vice versa) would ship
-    stale audio while every other lane stays green. This guard fails loud on that drift."""
-    for key in sorted(spells.SPELL_SOUND_KEYS):
-        src = _AUDIO_SRC_DIR / f"{key}.mp3"
-        bundled = _SOUNDS_DIR / f"{key}.mp3"
-        assert src.exists(), f"source asset missing: {src}"
-        assert bundled.exists(), f"bundled asset missing: {bundled}"
-        assert src.read_bytes() == bundled.read_bytes(), (
-            f"{key}.mp3 differs between source ({src}) and bundled ({bundled}) -- regenerate both"
-        )
 
 
 # --- 2. The TS registry resolves every catalog sound_id to a bundled asset (AC1, "against the registry") ---
