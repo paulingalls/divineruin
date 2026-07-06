@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Generate the M17 spell-cast SFX palette via ElevenLabs Text-to-Sound (story-002).
+"""Generate the full non-spell + spell audio inventory via ElevenLabs Text-to-Sound.
 
-The 7-key source-by-effect palette is frozen in docs/audio_sfx_pipeline.md §4 and
-guarded by apps/agent/tests/test_generate_spell_sfx.py. This is the ElevenLabs
-(.mp3) bake-off generator, and it owns the shared PROMPTS table + _out_path helper
+PROMPTS is the single prompt SSOT for every bundled sound in
+apps/mobile/assets/sounds/ (SFX, spell SFX, music, soundscapes, textures),
+guarded by apps/agent/tests/test_generate_spell_sfx.py for full asset parity.
+The original 7-key spell-cast palette (M17, story-002) is frozen within this
+table — see docs/audio_sfx_pipeline.md §4. This is the ElevenLabs (.mp3)
+bake-off generator, and it owns the shared PROMPTS table + _out_path helper
 — the single prompt SSOT that generate_spell_sfx_stableaudio.py imports.
 
 NOTE ON THE COMMITTED PALETTE: the shipped assets are the .wav files produced by
@@ -33,11 +36,16 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-# The frozen 7-key palette. Prompts for the four "direct" keys carry the
+# The full bundled-audio prompt SSOT. The first 7 keys are the frozen M17
+# spell-cast palette (prompts for the four "direct" keys carry the
 # CMB-006/007/008/009 language from the prior harness
-# (~/src/clones/stable-audio-tools/generate_divine_ruin.py); the last three are
-# new casts (radiant/nature/generic) that had no prior prompt. Each is tuned as a
-# short, dry, punchy game SFX so it lands in the gaps between DM narration.
+# ~/src/clones/stable-audio-tools/generate_divine_ruin.py; the last three are
+# new casts (radiant/nature/generic) that had no prior prompt) — each tuned as a
+# short, dry, punchy game SFX so it lands in the gaps between DM narration. The
+# remaining keys (story-001, M22) extend the table to every other bundled
+# stem: top-level SFX and textures/ stay dry one-shots; sting stems are
+# melodic musical flourishes exempt from the dry style; music/ and
+# soundscapes/ are tonal loops/beds, not dry SFX.
 PROMPTS: dict[str, str] = {
     "spell_fire": (
         "Fantasy fire spell being cast and released. A soft inward whoosh as energy "
@@ -79,6 +87,225 @@ PROMPTS: dict[str, str] = {
         "with a soft chime as energy gathers and releases, no specific element. Short "
         "game sound effect, dry, no music."
     ),
+    # --- SFX (top-level, story-001 M22 extension) ---
+    # Sting stems (level_up, success, fail, quest, critical_hit, god_whisper) are
+    # idiomatically melodic musical flourishes, not dry SFX — no "no music" guard.
+    "dice_roll": (
+        "Several polyhedral tabletop dice tumbling and clattering across a wooden table, "
+        "hard plastic clicks with a final settling rattle. Short, dry, no music."
+    ),
+    "sword_clash": (
+        "Two steel sword blades clashing together in combat, a sharp ringing metallic "
+        "clang with a brief bright resonant tail. Short, punchy game sound effect, dry, "
+        "no music."
+    ),
+    "tavern": (
+        "A single warm tavern door chime, a soft wooden clunk with a small brass bell "
+        "tap as it swings. Short, dry, no music."
+    ),
+    "quest_sting": (
+        "A short heroic musical fanfare marking a new quest accepted. A bright rising "
+        "brass and string flourish resolving to a confident major chord, uplifting and "
+        "purposeful. Brief tonal stinger."
+    ),
+    "level_up_sting": (
+        "A triumphant short musical stinger for a character leveling up. An ascending "
+        "arpeggio of bright bell and chime tones resolving into a glowing major chord, "
+        "rewarding and celebratory. Brief tonal stinger."
+    ),
+    "item_pickup": (
+        "A small item being picked up, a soft high pitched twinkling chime with a "
+        "quick upward pop. Short, dry, no music."
+    ),
+    "notification": (
+        "A gentle UI notification alert, a clean two-tone soft chime, polite and unobtrusive. Short, dry, no music."
+    ),
+    "success_sting": (
+        "A short satisfying musical stinger marking a successful action. A quick "
+        "bright ascending three-note chime landing on a warm resolved tone, positive "
+        "and light. Brief tonal stinger."
+    ),
+    "fail_sting": (
+        "A short musical stinger marking a failed action. A brief descending minor "
+        "phrase on low muted tones, deflating but not harsh. Brief tonal stinger."
+    ),
+    "menu_open": (
+        "A UI menu opening, a soft airy whoosh with a light upward pop, unobtrusive "
+        "interface sound. Short, dry, no music."
+    ),
+    "menu_close": (
+        "A UI menu closing, a soft airy whoosh with a light downward pop, unobtrusive "
+        "interface sound. Short, dry, no music."
+    ),
+    "arrow_loose": (
+        "A bow being drawn and an arrow loosed, a taut string creak releasing into a "
+        "sharp elastic thwip and fading air-cutting whistle. Short, punchy game sound "
+        "effect, dry, no music."
+    ),
+    "hit_taken": (
+        "A character taking a physical hit in combat, a dull heavy thud impact with a "
+        "short pained grunt undertone. Short, punchy game sound effect, dry, no music."
+    ),
+    "critical_hit_sting": (
+        "An emphatic musical stinger marking a critical hit. A sharp bright orchestral "
+        "hit accented with a fast rising brass swell, dramatic and forceful. Brief "
+        "tonal stinger."
+    ),
+    "spell_cast": (
+        "A generic magic spell being cast, a rising arcane shimmer with a soft "
+        "whooshing release, no specific element. Short, punchy game sound effect, "
+        "dry, no music."
+    ),
+    "shield_block": (
+        "A raised shield absorbing a blow, a solid metallic clank with a brief low "
+        "resonant thud. Short, punchy game sound effect, dry, no music."
+    ),
+    "potion_use": (
+        "A potion bottle being uncorked and drunk, a soft glass clink, a light liquid "
+        "gulp, and a satisfied exhale. Short, dry, no music."
+    ),
+    "door_creak": (
+        "A heavy wooden door creaking open on old hinges, a slow groaning wood and metal strain. Short, dry, no music."
+    ),
+    "discovery_chime": (
+        "A moment of discovery, a bright sparkling ascending chime with a light "
+        "shimmering tail, curious and rewarding. Short, dry, no music."
+    ),
+    "god_whisper_stinger": (
+        "An eerie musical stinger for a god's whisper reaching the player. A low "
+        "sustained choir drone swelling with a faint dissonant shimmer, reverent and "
+        "unsettling. Brief tonal stinger."
+    ),
+    # --- MUSIC (music/, short loop or stinger, tonal — NOT "no music") ---
+    "exploration": (
+        "A calm exploration music loop for wandering a fantasy world. Gentle acoustic "
+        "strings and soft woodwind melody over a light steady pulse, curious and "
+        "unhurried. Seamless short musical loop."
+    ),
+    "tension": (
+        "A tense underscore music loop for a suspenseful moment. Low sustained strings "
+        "with a slow uneasy pulse and sparse dissonant accents, wary and watchful. "
+        "Seamless short musical loop."
+    ),
+    "combat_standard": (
+        "A driving combat music loop for a standard fantasy battle. Fast percussive "
+        "strings and brass stabs over an urgent rhythmic pulse, aggressive and "
+        "propulsive. Seamless short musical loop."
+    ),
+    "combat_boss": (
+        "An intense boss battle music loop. Heavy low brass and pounding percussion "
+        "with a dramatic rising motif, epic and menacing. Seamless short musical loop."
+    ),
+    "wonder": (
+        "A music loop evoking awe and wonder at a marvel of the world. Shimmering "
+        "high strings and soft choir swelling gently, expansive and luminous. Seamless "
+        "short musical loop."
+    ),
+    "sorrow": (
+        "A somber music loop for a moment of loss or grief. A slow mournful solo "
+        "string melody over sparse low sustained tones, quiet and aching. Seamless "
+        "short musical loop."
+    ),
+    "hollow_dissolution": (
+        "An unsettling music loop for the Hollow's reality-warping intrusion. Detuned "
+        "sustained tones sliding out of tune beneath a faint broken melodic fragment, "
+        "wrong and dissonant. Seamless short musical loop."
+    ),
+    "title": (
+        "A short heroic title theme stinger for the game's opening. A bold rising "
+        "orchestral fanfare of brass and strings resolving into a grand sustained "
+        "chord, epic and inviting. Brief tonal stinger."
+    ),
+    # --- SOUNDSCAPES (soundscapes/, seamless layered ambient bed) ---
+    "market_bustle": (
+        "A bustling fantasy market square. Overlapping distant vendor chatter, "
+        "footsteps on cobblestone, and the occasional clink of coins and creak of "
+        "wooden stalls. Seamless layered ambient bed."
+    ),
+    "harbor_quiet": (
+        "A quiet fantasy harbor at rest. Gentle lapping water against wooden hulls, "
+        "distant creaking ropes, and a soft sea breeze. Seamless layered ambient bed."
+    ),
+    "harbor_activity": (
+        "A busy fantasy harbor at work. Overlapping dockworker shouts, creaking ship "
+        "rigging, lapping water, and crates being dragged over wood. Seamless layered "
+        "ambient bed."
+    ),
+    "rural_town_uneasy": (
+        "A small rural town under quiet unease. Sparse distant voices, a slow wind "
+        "through empty streets, and an occasional wary silence. Seamless layered "
+        "ambient bed."
+    ),
+    "dungeon_ancient_hum": (
+        "A deep ancient dungeon chamber. A low sustained stone resonance, distant "
+        "dripping water, and a faint echoing hum from unseen depths. Seamless layered "
+        "ambient bed."
+    ),
+    "dungeon_resonance_deep": (
+        "A vast deep dungeon cavern. A heavy low resonant drone, distant echoing "
+        "drips, and faint far-off stone settling. Seamless layered ambient bed."
+    ),
+    "hollow_wrongness": (
+        "A space touched by the Hollow's wrongness. A faint detuned drone beneath "
+        "silence, occasional inverted echoes, and an unnatural absence of expected "
+        "sound. Seamless layered ambient bed."
+    ),
+    "guild_hall_bustle": (
+        "A busy adventurers' guild hall. Overlapping conversation, the clink of "
+        "tankards, shuffling parchment, and a crackling hearth fire. Seamless layered "
+        "ambient bed."
+    ),
+    "temple_row_chanting": (
+        "A row of temples with distant devotional chanting. Layered low choral "
+        "murmurs, soft echoing stone acoustics, and the faint ring of a temple bell. "
+        "Seamless layered ambient bed."
+    ),
+    "tavern_busy": (
+        "A lively crowded tavern. Overlapping laughter and chatter, clinking mugs, a "
+        "creaking floor, and a faint background lute melody. Seamless layered ambient "
+        "bed."
+    ),
+    "wind_ruins": (
+        "Wind moving through ancient crumbling ruins. A steady hollow wind whistling "
+        "through broken stone, with occasional loose debris shifting. Seamless "
+        "layered ambient bed."
+    ),
+    # --- TEXTURES (textures/, short dry foley one-shots) ---
+    "bird_call_01": (
+        "A single bright songbird call in a forest, a short clear chirping trill. Short, dry, no music."
+    ),
+    "bird_call_02": (
+        "A single distinct songbird call, a short warbling two-note whistle. Short, dry, no music."
+    ),
+    "bird_call_03": (
+        "A single distant songbird call, a short soft fluting chirp. Short, dry, no music."
+    ),
+    "cart_wheel": (
+        "A wooden cart wheel creaking and rolling over a rutted dirt road, a rhythmic "
+        "wood and axle groan. Short, dry, no music."
+    ),
+    "water_drip": (
+        "A single water droplet falling and landing in a still pool, a small clear "
+        "plink with a faint echo. Short, dry, no music."
+    ),
+    "footstep_stone": (
+        "A single footstep on a hard stone floor, a crisp solid footfall tap. Short, dry, no music."
+    ),
+    "wind_gust": (
+        "A sudden gust of wind sweeping past, a short rushing air whoosh rising and fading. Short, dry, no music."
+    ),
+    "dog_bark_distant": (
+        "A dog barking from far away, a short muffled distant bark with a faint echo. Short, dry, no music."
+    ),
+    "insect_buzz": (
+        "A single insect buzzing past close by, a brief high-pitched droning flutter. Short, dry, no music."
+    ),
+    "fire_crackle": (
+        "A small campfire crackling, a short burst of wood pops and a soft crackling hiss. Short, dry, no music."
+    ),
+    "branch_crack": (
+        "A dry tree branch snapping underfoot, a single sharp brittle wood crack. Short, dry, no music."
+    ),
 }
 
 _API_URL = "https://api.elevenlabs.io/v1/sound-generation"
@@ -90,11 +317,15 @@ _ENV_KEY = "ELEVEN_LABS_API_KEY"
 def _require_api_key() -> str:
     key = os.environ.get(_ENV_KEY, "").strip()
     if not key:
-        sys.exit(f"{_ENV_KEY} is not set. `source ~/.zprofile` (or export it) before running.")
+        sys.exit(
+            f"{_ENV_KEY} is not set. `source ~/.zprofile` (or export it) before running."
+        )
     return key
 
 
-def _generate_one(text: str, *, duration: float, prompt_influence: float, loop: bool, api_key: str) -> bytes:
+def _generate_one(
+    text: str, *, duration: float, prompt_influence: float, loop: bool, api_key: str
+) -> bytes:
     """POST one prompt to ElevenLabs and return the MP3 bytes. Fail-loud on any HTTP error."""
     body = json.dumps(
         {
@@ -123,7 +354,9 @@ def _generate_one(text: str, *, duration: float, prompt_influence: float, loop: 
         sys.exit(f"ElevenLabs HTTP {e.code} for prompt: {text[:60]!r}...\n{detail}")
 
 
-def out_path(out_dir: Path, key: str, variant: int, total_variants: int, ext: str = ".mp3") -> Path:
+def out_path(
+    out_dir: Path, key: str, variant: int, total_variants: int, ext: str = ".mp3"
+) -> Path:
     """Shared palette-file namer. ext is the engine's format (.mp3 here, .wav for Stable Audio)."""
     name = f"{key}{ext}" if total_variants == 1 else f"{key}_v{variant}{ext}"
     return out_dir / name
@@ -163,15 +396,19 @@ def generate(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Generate the M17 spell-cast SFX palette.")
+    parser = argparse.ArgumentParser(
+        description="Generate the full bundled audio prompt inventory."
+    )
     parser.add_argument("--out-dir", required=True, type=Path)
     parser.add_argument(
         "--keys",
         nargs="*",
         default=sorted(PROMPTS),
-        help="subset of palette keys (default: all 7)",
+        help=f"subset of palette keys (default: all {len(PROMPTS)})",
     )
-    parser.add_argument("--variants", type=int, default=1, help="takes per key (default 1)")
+    parser.add_argument(
+        "--variants", type=int, default=1, help="takes per key (default 1)"
+    )
     parser.add_argument("--duration", type=float, default=2.0, help="seconds, 0.5-30")
     parser.add_argument("--prompt-influence", type=float, default=0.5)
     parser.add_argument("--loop", action="store_true", help="request a seamless loop")
