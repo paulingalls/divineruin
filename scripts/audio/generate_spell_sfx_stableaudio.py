@@ -16,7 +16,9 @@ gated terms accepted:
     uv venv /tmp/sa3 --python 3.11 && /tmp/sa3/bin/pip install stable-audio-3
     /tmp/sa3/bin/python scripts/audio/generate_spell_sfx_stableaudio.py --out-dir /tmp/bakeoff/stableaudio
 
-Model: stabilityai/stable-audio-3-small-sfx (open weights, ~433M params, CPU/MPS).
+Model: stabilityai/stable-audio-3-small-sfx by default (open weights, ~433M
+params, CPU/MPS); --model {small-sfx,small-music,medium} selects the variant —
+small-music/medium are the music models (stories 004/008).
 """
 
 from __future__ import annotations
@@ -89,16 +91,36 @@ def assert_take_is_not_noise(audio, key: str) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Generate the spell-cast palette via Stable Audio 3.0 Small SFX.")
+    parser = argparse.ArgumentParser(
+        description="Generate the spell-cast palette via Stable Audio 3.0 Small SFX."
+    )
     parser.add_argument("--out-dir", required=True, type=Path)
-    parser.add_argument("--keys", nargs="*", help="subset of palette keys (default: all 7)")
-    parser.add_argument("--variants", type=int, default=1, help="takes per key (default 1)")
+    # Picks the SA3 variant loaded at render time. These must be valid
+    # stable_audio_3.all_models keys (from_pretrained rejects unknown names):
+    # small-sfx = the SFX palette (default, unchanged); small-music = the music
+    # model (story-004); medium = long-form music (story-008, GPU-preferred).
+    parser.add_argument(
+        "--model", choices=("small-sfx", "small-music", "medium"), default=_MODEL_NAME
+    )
+    parser.add_argument(
+        "--keys", nargs="*", help="subset of palette keys (default: all 7)"
+    )
+    parser.add_argument(
+        "--variants", type=int, default=1, help="takes per key (default 1)"
+    )
     parser.add_argument("--duration", type=float, default=2.0, help="seconds")
     # steps=8 / cfg_scale=1.0 are the SA3 defaults and the recipe behind the
     # customer-approved M17 palette. Higher cfg overdrives the output (clipping,
     # buzz) — see docs/audio_sa3_noise_investigation.md §12.
-    parser.add_argument("--steps", type=int, default=8, help="diffusion steps (default 8)")
-    parser.add_argument("--cfg-scale", type=float, default=1.0, help="classifier-free guidance (default 1.0)")
+    parser.add_argument(
+        "--steps", type=int, default=8, help="diffusion steps (default 8)"
+    )
+    parser.add_argument(
+        "--cfg-scale",
+        type=float,
+        default=1.0,
+        help="classifier-free guidance (default 1.0)",
+    )
     parser.add_argument(
         "--format",
         choices=("wav", "mp3"),
@@ -123,18 +145,22 @@ def main(argv: list[str] | None = None) -> int:
     import torchaudio  # type: ignore
     from stable_audio_3 import StableAudioModel  # type: ignore
 
-    print(f"loading stabilityai/stable-audio-3-{_MODEL_NAME} ...")
-    model = StableAudioModel.from_pretrained(_MODEL_NAME)
+    print(f"loading stabilityai/stable-audio-3-{args.model} ...")
+    model = StableAudioModel.from_pretrained(args.model)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     for key in keys:
         for v in range(1, args.variants + 1):
             final_ext = ".mp3" if args.format == "mp3" else ".wav"
-            final_path = generator.out_path(args.out_dir, key, v, args.variants, ext=final_ext)
+            final_path = generator.out_path(
+                args.out_dir, key, v, args.variants, ext=final_ext
+            )
             if final_path.exists():
                 print(f"skip (exists): {final_path}")
                 continue
-            wav_path = final_path if args.format == "wav" else final_path.with_suffix(".wav")
+            wav_path = (
+                final_path if args.format == "wav" else final_path.with_suffix(".wav")
+            )
             audio = model.generate(
                 prompt=prompts[key],
                 duration=args.duration,
