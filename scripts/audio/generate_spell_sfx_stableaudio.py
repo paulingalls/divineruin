@@ -102,6 +102,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--model", choices=("small-sfx", "small-music", "medium"), default=_MODEL_NAME
     )
+    # Where the model runs: auto (default) lets from_pretrained pick — MPS on
+    # Apple Silicon; mps/cpu force the backend (story-008: probe medium on the
+    # GPU, fall back to CPU if MPS runs out of unified memory).
+    parser.add_argument("--device", choices=("auto", "mps", "cpu"), default="auto")
     parser.add_argument(
         "--keys", nargs="*", help="subset of palette keys (default: all 7)"
     )
@@ -145,8 +149,9 @@ def main(argv: list[str] | None = None) -> int:
     import torchaudio  # type: ignore
     from stable_audio_3 import StableAudioModel  # type: ignore
 
-    print(f"loading stabilityai/stable-audio-3-{args.model} ...")
-    model = StableAudioModel.from_pretrained(args.model)
+    device = None if args.device == "auto" else args.device
+    print(f"loading stabilityai/stable-audio-3-{args.model} (device={args.device}) ...")
+    model = StableAudioModel.from_pretrained(args.model, device=device)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     for key in keys:
