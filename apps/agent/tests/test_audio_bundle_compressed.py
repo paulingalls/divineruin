@@ -108,6 +108,13 @@ def _probe(path: Path) -> tuple[int, int]:
 _FAMILY_DIRS = sorted(_bundled_stems_by_dir().keys())
 
 
+def test_family_discovery_is_non_empty() -> None:
+    """Fail loud if discovery finds no families -- an empty _FAMILY_DIRS silently
+    turns the parametrized signature guard into a skipped ('empty parameter set')
+    no-op. Mirrors the _SOURCE_MIRRORS non-empty assertion."""
+    assert _FAMILY_DIRS, f"no bundled audio families discovered under {_SOUNDS_DIR}"
+
+
 @pytest.mark.parametrize("family_dir", _FAMILY_DIRS)
 def test_bundled_family_stems_match_pipeline_transcode_signature(family_dir: str) -> None:
     """Every bundled stem in every family must carry the SA3 pipeline's transcode
