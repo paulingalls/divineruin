@@ -5,6 +5,7 @@ import type { MusicState } from "./music-registry";
 import * as E from "./event-types";
 import Constants from "expo-constants";
 import { getApiBase, resolveApiUrl } from "@/utils/base-url";
+import type { ReceivedDataMessage } from "@/livekit";
 import { parseSpellRows } from "@/utils/spell-display";
 import { sessionStore, type CombatDifficulty, type StoryMoment } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
@@ -162,6 +163,21 @@ export function parseGameEvent(payload: Uint8Array): DataChannelEvent | null {
   } catch {
     console.warn("[game-events] Failed to parse message");
     return null;
+  }
+}
+
+// Trust only the DM/agent participant. A player co-participant is Standard-kind;
+// isAgent gates out forged game_events (fake HP/XP) from other players.
+export function isDmSender(from: { isAgent?: boolean } | undefined): boolean {
+  return from?.isAgent === true;
+}
+
+export function handleGameEventMessage(msg: ReceivedDataMessage): void {
+  if (!isDmSender(msg.from)) return;
+  const event = parseGameEvent(msg.payload);
+  if (event) {
+    console.log("[game-events] received:", event.type);
+    handleGameEvent(event);
   }
 }
 

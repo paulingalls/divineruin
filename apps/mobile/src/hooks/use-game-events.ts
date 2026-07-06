@@ -1,15 +1,6 @@
-import { useCallback } from "react";
-import { useDataChannel, type ReceivedDataMessage } from "@/livekit";
-import { parseGameEvent, handleGameEvent } from "@/audio/game-event-handler";
+import { useDataChannel } from "@/livekit";
+import { handleGameEventMessage } from "@/audio/game-event-handler";
 
 export function useGameEvents(): void {
-  const onMessage = useCallback((msg: ReceivedDataMessage) => {
-    const event = parseGameEvent(msg.payload);
-    if (event) {
-      console.log("[game-events] received:", event.type);
-      handleGameEvent(event);
-    }
-  }, []);
-
-  useDataChannel("game_events", onMessage);
+  useDataChannel("game_events", handleGameEventMessage);
 }
