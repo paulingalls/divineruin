@@ -21,13 +21,15 @@ from combat_ability import (
     _attach_riders,
     _find_action,
     _gate_ability_condition,
-    _gate_deescalation,
     _resolve_ability_condition_packet,
     _resolve_ability_packet,
-    _resolve_deescalation_packet,
     _resolve_enemy_condition_packet,
-    _validate_argument_type,
     condition_ability,
+)
+from combat_deescalation import (
+    _gate_deescalation,
+    _resolve_deescalation_packet,
+    _validate_argument_type,
 )
 from combat_support import _resolve_attack_packet
 from declarations import DeclarationType

@@ -1,5 +1,6 @@
 [loader]
 ".mp3" = "file"
+".wav" = "file"
 
 [test]
 preload = ["./test-preload.ts"]

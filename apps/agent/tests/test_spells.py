@@ -57,6 +57,7 @@ _FIREBALL_ROW = {
     "terrain_effects": {},
     "audio_cue": "CMB-006 (powerful)",
     "concentration": False,
+    "sound_id": "spell_fire",
 }
 
 _BLESS_ROW = {
@@ -71,11 +72,16 @@ _BLESS_ROW = {
     "terrain_effects": {},
     "audio_cue": "",
     "concentration": True,
+    "sound_id": "spell_radiant",
 }
 
 # The four M3.3 cast-time fields parse_spell_row requires (strict). Used by the
 # missing-field fail-loud parametrization.
 _M33_FIELDS = ("resonance_by_source", "terrain_effects", "audio_cue", "concentration")
+
+# story-003: sound_id is a fifth strict-required field (the playable SFX key), tested
+# separately below alongside its closed-vocabulary check (mirrors source/spell_tier).
+_M33_FIELDS_WITH_SOUND_ID = (*_M33_FIELDS, "sound_id")
 
 
 def _seed_from_content() -> None:
@@ -179,7 +185,7 @@ def test_normalize_target_list_enforces_cap_after_dedup():
         normalize_target_list(_capped(3), None, ["a", "b", "c", "d"])
 
 
-@pytest.mark.parametrize("missing", _M33_FIELDS)
+@pytest.mark.parametrize("missing", _M33_FIELDS_WITH_SOUND_ID)
 def test_parse_spell_row_strict_requires_each_m33_field(missing):
     # Strict loader (decision spell-loader-strict-contract): absence of any known M3.3
     # field fails loud naming the row — the 87-row catalog + content guard guarantee
@@ -187,6 +193,21 @@ def test_parse_spell_row_strict_requires_each_m33_field(missing):
     bad = {k: v for k, v in _FIREBALL_ROW.items() if k != missing}
     with pytest.raises(ValueError, match="arcane_fireball"):
         parse_spell_row("arcane_fireball", bad)
+
+
+def test_parse_spell_row_rejects_unknown_sound_id():
+    # story-003: sound_id must be one of the frozen 7-key SFX palette (SPELL_SOUND_KEYS).
+    bad = {**_FIREBALL_ROW, "sound_id": "spell_explosion"}
+    with pytest.raises(ValueError, match=r"sound_id"):
+        parse_spell_row(_FIREBALL_ROW["id"], bad)
+
+
+def test_parse_spell_row_accepts_each_palette_sound_id():
+    from spells import SPELL_SOUND_KEYS
+
+    for key in SPELL_SOUND_KEYS:
+        s = parse_spell_row(_FIREBALL_ROW["id"], {**_FIREBALL_ROW, "sound_id": key})
+        assert s.sound_id == key
 
 
 def test_parse_spell_row_rejects_nonbool_concentration():

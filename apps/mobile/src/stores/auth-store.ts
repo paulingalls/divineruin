@@ -1,5 +1,6 @@
 import { createStore } from "zustand/vanilla";
 import { getItem, setItem, removeItem } from "@/utils/secure-kv";
+import { pendingInviteStore } from "@/stores/pending-invite-store";
 
 export type AuthPhase = "loading" | "unauthenticated" | "authenticated";
 
@@ -66,6 +67,7 @@ export const authStore = createStore<AuthState>((set) => ({
       removeItem(PLAYER_ID_KEY),
       removeItem(EMAIL_KEY),
     ]);
+    pendingInviteStore.getState().clearPendingCode();
     set({
       phase: "unauthenticated",
       token: null,

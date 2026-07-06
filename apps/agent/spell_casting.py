@@ -60,6 +60,7 @@ import db_mutations_conditions
 import db_mutations_resonance
 import db_queries
 import dice
+import event_types as E
 import hollow_echo as hollow_echo_mod
 import hollow_echo_events
 import leveling
@@ -70,6 +71,7 @@ import spells
 import vaelti_echo_warning
 import veil_ward as veil_ward_mod
 from db_errors import db_tool
+from game_events import publish_game_event
 from party_state import PartyMember
 from resource_costs import gate_pool
 from session_data import SessionData
@@ -437,6 +439,11 @@ async def _resolve_cast(
     # RESONANCE_CHANGED is omitted when suppressed (in combat the WRAP push is authoritative) and when
     # nothing generated (a cantrip leaves the state unchanged — AC6).
     events: list = []
+    events.append(
+        lambda: publish_game_event(
+            session.room, E.PLAY_SOUND, {"sound_name": spell.sound_id}, event_bus=session.event_bus
+        )
+    )
     if generated > 0 and not suppress_resonance_changed:
         events.append(
             lambda: resonance_events_mod.publish_resonance_changed(

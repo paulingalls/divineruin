@@ -10,6 +10,8 @@ interface PendingInviteState {
   setPendingCode: (code: string) => void;
   /** Return the pending code (or null) and clear it — single-shot consumption. */
   consumePendingCode: () => string | null;
+  /** Clear the pending code without consuming. */
+  clearPendingCode: () => void;
 }
 
 export const pendingInviteStore = createStore<PendingInviteState>((set, get) => ({
@@ -20,4 +22,5 @@ export const pendingInviteStore = createStore<PendingInviteState>((set, get) => 
     set({ code: null });
     return code;
   },
+  clearPendingCode: () => set({ code: null }),
 }));

@@ -24,4 +24,17 @@ describe("pending-invite-store", () => {
     expect(pendingInviteStore.getState().consumePendingCode()).toBe("XYZ");
     expect(pendingInviteStore.getState().consumePendingCode()).toBeNull();
   });
+
+  test("clearPendingCode drops a set code", () => {
+    pendingInviteStore.getState().setPendingCode("ABC123");
+    expect(pendingInviteStore.getState().code).toBe("ABC123");
+
+    pendingInviteStore.getState().clearPendingCode();
+    expect(pendingInviteStore.getState().code).toBeNull();
+  });
+
+  test("clearPendingCode when empty is a no-op", () => {
+    pendingInviteStore.getState().clearPendingCode();
+    expect(pendingInviteStore.getState().code).toBeNull();
+  });
 });
