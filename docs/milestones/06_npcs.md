@@ -23,14 +23,14 @@ Builds the NPC mechanical layer: stat block schemas, settlement population templ
 - Pure function: `create_npc_from_archetype(role, overrides)` returning a complete stat block
 
 **Acceptance criteria:**
-- [ ] NPC stat block schema validates all required fields including social/economic/mentor layers
-- [ ] All 12 role archetypes defined with default combat stats, services, inventory pools, and knowledge domains
-- [ ] Merchant subtypes have distinct inventory pools and price_modifier ranges
-- [ ] Disposition supports base value, modifier list, and gated knowledge thresholds
-- [ ] `create_npc_from_archetype` produces valid stat blocks for every archetype
-- [ ] Existing NPCs in `content/npcs.json` migrated to expanded schema without data loss
-- [ ] DB migration runs cleanly and schema matches entity definitions
-- [ ] Tests cover all 12 archetypes and Merchant subtypes
+- [x] NPC stat block schema validates all required fields including social/economic/mentor layers
+- [x] All 12 role archetypes defined with default combat stats, services, inventory pools, and knowledge domains
+- [x] Merchant subtypes have distinct inventory pools and price_modifier ranges
+- [x] Disposition supports base value, modifier list, and gated knowledge thresholds
+- [x] `create_npc_from_archetype` produces valid stat blocks for every archetype
+- [x] Existing NPCs in `content/npcs.json` migrated to expanded schema without data loss
+- [x] DB migration runs cleanly and schema matches entity definitions
+- [x] Tests cover all 12 archetypes and Merchant subtypes
 
 **Key references:**
 - *Game Mechanics NPCs — NPC Stat Block Schema*
@@ -41,7 +41,9 @@ Builds the NPC mechanical layer: stat block schemas, settlement population templ
 
 <!-- see audit/phase-6-schema-archetypes.md -->
 
-**Status: DESIGNED.** Narrative/social NPC layer is shipped — 14-entry `content/npcs.json` rides `packages/shared/src/entities/npc.ts:17-39`, `npc_dispositions` table persists per-player disposition, and `apps/agent/tool_support.py:86-105` `filter_knowledge` enforces disposition-gated knowledge with test coverage. The mechanical archetype layer is unshipped: `services[]`, `price_modifier`, `mentor{}`, and `role_archetype` template-link fields are absent from the schema and content; no `role_archetypes` template store exists (no JSON file, no DB table, no Python module); no `create_npc_from_archetype` function. 14 shipped NPCs are all Tier-1 authored; 0 of 12 archetype templates seeded.
+**Status: DELIVERED.** Superseded — the Sprint-005 snapshot below is stale. The mechanical archetype layer shipped: `content/role_archetypes.json` (19 archetypes: 12 base incl. Shipwright + 7 Merchant subtypes) + migration `039_role_archetypes.sql` + `apps/agent/role_archetypes.py` (`RoleArchetype` schema, `create_npc_from_archetype`, 5-tier disposition SSOT). `content/npcs.json` migrated to 17 NPCs each carrying a resolvable `role_archetype`; Merchant subtypes have distinct `inventory_pool` + `price_modifier` (1.0–1.5); `mentor{}` blocks carry culture/training_cycles/requirements. Verified by capstone `tests/acceptance/test_story_005_m6_npc_archetype_capstone.py` (both language surfaces) + green unit tests (`test_role_archetypes.py`, `test_npc_migration.py`). All 8 ACs met.
+
+The Sprint-005 audit paragraph below is retained for history only.
 
 | Section | BUILT | DESIGNED | NOT_SHIPPED |
 | --- | --- | --- | --- |
@@ -89,13 +91,13 @@ See `audit/phase-6-schema-archetypes.md` for the full coverage matrix.
 
 **Acceptance criteria:**
 - [ ] All 5 settlement tiers defined with correct NPC role distributions
-- [ ] All 8 personality traits modify NPC disposition baselines and inventory pools
-- [ ] `generate_settlement_npcs` produces correct role counts for every tier
-- [ ] `instantiate_npc_from_template` applies settlement tier and personality modifiers to archetype defaults
+- [x] All 8 personality traits modify NPC disposition baselines and inventory pools
+- [x] `generate_settlement_npcs` produces correct role counts for every tier
+- [x] `instantiate_npc_from_template` applies settlement tier and personality modifiers to archetype defaults
 - [ ] Generated NPCs have unique names, varied personalities within archetype constraints
-- [ ] Agent tool `get_settlement_npc_population` returns valid NPC list for any location
-- [ ] Settlement personality "Corrupt" increases Fence/Black Market frequency and reduces Guard disposition
-- [ ] Tests cover all tier/personality combinations
+- [x] Agent tool `get_settlement_npc_population` returns valid NPC list for any location
+- [x] Settlement personality "Corrupt" increases Fence/Black Market frequency and reduces Guard disposition
+- [x] Tests cover all tier/personality combinations
 
 **Key references:**
 - *Game Mechanics NPCs — Settlement Templates*
@@ -106,7 +108,9 @@ See `audit/phase-6-schema-archetypes.md` for the full coverage matrix.
 
 <!-- see audit/phase-6-settlements.md -->
 
-**Status: NOT_STARTED.** M6.2 is entirely unshipped. No settlement_tier ladder (Hamlet/Village/Town/City/Capital) in code or content — `packages/shared/src/entities/location.ts:28` `tier: 1 \| 2` is the entity authored/template flag, not the settlement size enum. No personality-trait enum (the 8 spec traits are not constants, not enum members, not seed data). The three generation surfaces (`generate_settlement_npcs`, `instantiate_npc_from_template`, `get_settlement_npc_population`) return 0 grep hits. No `settlement_templates` migration. The 4 spec hostile-encounter templates (Bandit Ambush, Ashmark Patrol, Cult Cell, Hollow-Corrupted Settlement) are NOT in `content/encounter_templates.json` (6 shipped entries are all Hollow-themed); the `encounter_templates` storage table itself ships in migration 001, content does not.
+**Status: DELIVERED (capstone `test_m62_settlement_capstone.py` passes; 2 ACs deferred).** Superseded — the Sprint-005 snapshot below is stale. Shipped: `content/settlement_templates.json` (4 tiers hamlet/village/town/city + 8 personalities) + migration `040_settlement_templates.sql` + `apps/agent/settlement_templates.py` / `settlement_generation.py` (`generate_settlement_npcs`, `instantiate_npc_from_template`). Agent tool ships as `query_settlement_population` in `apps/agent/query_tools.py` (fail-loud for non-settlements). Corrupt personality raises fence/black-market frequency and lowers guard disposition. The 4 hostile-encounter templates (bandit_ambush, ashmark_patrol, cult_cell, hollow_corrupted_settlement) now ship in `content/encounter_templates.json`. Deferred (left unchecked): AC1 Capital tier — only 4 tiers seeded (spec: no in-world Capitals exist post-Sundering); AC5 unique per-NPC name generation — the engine returns role→count populations, not individually-named NPCs.
+
+The Sprint-005 audit paragraph below is retained for history only.
 
 | Section | BUILT | DESIGNED | NOT_SHIPPED |
 | --- | --- | --- | --- |
@@ -155,15 +159,15 @@ See `audit/phase-6-settlements.md` for the full coverage matrix.
 - Agent tools: `check_mentor_requirements` (query), `enroll_mentor_training` (mutation — starts training cycle)
 
 **Acceptance criteria:**
-- [ ] Mentor registry covers all Warrior L4 and L8 technique variants (8+ mentors)
-- [ ] Rogue mentors cover 5+ technique variants
+- [x] Mentor registry covers all Warrior L4 and L8 technique variants (8+ mentors)
+- [x] Rogue mentors cover 5+ technique variants
 - [ ] Guardian, Skirmisher, Bard, and Spy archetypes each have at least 2 representative mentors
-- [ ] `check_mentor_requirements` correctly evaluates disposition threshold, quest completion, gold, and skill tier
-- [ ] `check_mentor_requirements` returns specific unmet requirements (not just pass/fail)
-- [ ] `enroll_mentor_training` validates requirements before enrollment and returns error if unmet
-- [ ] Training cycles are tracked per player per variant
-- [ ] Mentor data links correctly to Phase 2 M2.5 ability definitions
-- [ ] Tests cover requirement combinations (all met, one unmet, multiple unmet)
+- [x] `check_mentor_requirements` correctly evaluates disposition threshold, quest completion, gold, and skill tier
+- [x] `check_mentor_requirements` returns specific unmet requirements (not just pass/fail)
+- [x] `enroll_mentor_training` validates requirements before enrollment and returns error if unmet
+- [x] Training cycles are tracked per player per variant
+- [x] Mentor data links correctly to Phase 2 M2.5 ability definitions
+- [x] Tests cover requirement combinations (all met, one unmet, multiple unmet)
 
 **Key references:**
 - *Game Mechanics NPCs — Mentor Registry*
@@ -174,7 +178,9 @@ See `audit/phase-6-settlements.md` for the full coverage matrix.
 
 <!-- see audit/phase-6-mentors.md -->
 
-**Status: NOT_STARTED.** Mentor registry is almost entirely unshipped, but the training-cycle infrastructure underneath it is real. What ships: generic 5-state async-training state machine (migration 016 `training_activities`), 8 activity types including `technique_mentor` (migration 017 + `content/training_activity_types.json`), 4 training programs with `mentor_id` field referencing 2 NPC narration shims (`guildmaster_torin`, `scholar_emris`). What does NOT ship: mentor-variant registry table, 0 of 21+ named spec mentors seeded (Warrior 16 variants, Rogue 6 variants, other archetypes 5), `check_mentor_requirements` / `enroll_mentor_training` surfaces, per-variant cycle persistence, and the M2.5 ability symbols (Cleaving Blow, Precision Strike, etc.) the registry would link to. Compound dependency: per sprint-002 audit, M2.5 itself is 0/1/6 — bullet 8 (M2.5 link) is structurally NOT_SHIPPED because M2.5's ability surface is itself NOT_SHIPPED.
+**Status: DELIVERED (culture-mentor model; 1 AC deferred).** Superseded — the Sprint-005 snapshot below is stale. The mentor-variant registry shipped as a culture-mentor model: `content/mentor_variants.json` (80 variants = 4 culture-mentors × 20; all 8 Warrior + all 8 Rogue + Guardian/Skirmisher/Spy techniques carry cultural variants) + migrations `035_mentor_variants.sql` / `036_character_mentor_variants.sql` + `apps/agent/mentor_variants.py`, `mentor_requirements.py` (evaluates disposition/quest/gold/skill and returns a specific unmet list), `mentor_variant_progress.py` (per-player-per-variant cycle tracking), and the `learn(variant)` agent tool in `mentor_variant_tools.py` (co-location + requirement gates, ToolError on unmet). Variants link to real base abilities and override them on activation. Verified by capstones `tests/acceptance/test_mentor_variants.py` + `test_mentor_gating_e2e.py` and green unit tests (`test_mentor_requirements.py`, `test_mentor_variant_progress.py`, `test_mentor_binding_content.py`). Deferred (left unchecked): AC3 — no Bard mentors seeded (Guardian/Skirmisher/Spy are covered; the shipped model uses 4 culture-mentors rather than 2 named mentors per archetype).
+
+The Sprint-005 audit paragraph below is retained for history only.
 
 | Section | BUILT | DESIGNED | NOT_SHIPPED |
 | --- | --- | --- | --- |
@@ -232,15 +238,15 @@ See `audit/phase-6-mentors.md` for the full coverage matrix.
 - Content: companion profiles in `content/companions.json`
 
 **Acceptance criteria:**
-- [ ] All 4 companions have complete combat profiles with distinct tactical identities
+- [x] All 4 companions have complete combat profiles with distinct tactical identities
 - [ ] Each companion has correct count of attacks (2-4), passives (2-3), actives (2-3), reactions (0-1)
-- [ ] `scale_companion_stats_to_player_level` produces HP at 75% of player HP for levels 1-20
-- [ ] All 5 relationship tiers defined with narrative content gates
-- [ ] Relationship tier does NOT affect combat stats or ability availability
-- [ ] Hostile encounter templates reference correct companion combat behaviors
-- [ ] Companion stat blocks pass same validation as NPC stat blocks (shared schema base)
-- [ ] Tests cover scaling at level boundaries (1, 5, 10, 15, 20) and all relationship tier transitions
-- [ ] `content/companions.json` contains all 4 companions with full data
+- [x] `scale_companion_stats_to_player_level` produces HP at 75% of player HP for levels 1-20
+- [x] All 5 relationship tiers defined with narrative content gates
+- [x] Relationship tier does NOT affect combat stats or ability availability
+- [x] Hostile encounter templates reference correct companion combat behaviors
+- [x] Companion stat blocks pass same validation as NPC stat blocks (shared schema base)
+- [x] Tests cover scaling at level boundaries (1, 5, 10, 15, 20) and all relationship tier transitions
+- [x] `content/companions.json` contains all 4 companions with full data
 
 **Key references:**
 - *Game Mechanics NPCs — Companion Archetypes*
@@ -252,7 +258,9 @@ See `audit/phase-6-mentors.md` for the full coverage matrix.
 
 <!-- see audit/phase-6-companions.md -->
 
-**Status: PARTIAL.** Richest partial-implementation surface in sprint-005. **One acceptance bullet genuinely BUILT** (bullet 5 — relationship tier does NOT affect combat, negative-condition honored by absence of coupling code: `combat_stats` is read from content independent of `CompanionState.relationship_tier`). **Three DESIGNED**: bullet 1 (Kael partial in `content/npcs.json:147-223`, Lira/Tam/Sable narration shims only); bullet 4 (5 relationship tiers — int tracker `apps/agent/session_data.py:22` + display `warm_prompts.py:180` + errand bonus `async_rules.py:143-147`; named tiers + narrative gates absent); bullet 7 (companion validates-as-NPC, but only because M6.4 ability-bucket fields aren't there to validate). **Five NOT_SHIPPED**: typed ability buckets, HP scaling function, hostile encounter integration (cross-ref M6.2), scaling+tier tests, `content/companions.json`.
+**Status: DELIVERED (capstone `test_m6_4_companion_chain_capstone.py` passes; 1 AC deferred).** Superseded — the Sprint-005 snapshot below is stale. Shipped: `content/companions.json` (all 4 companions — Kael/Lira/Tam/Sable — with typed `attacks`/`passives`/`actives`/`reactions` buckets, `scaling_rules`, `relationship_unlocks`) + migrations `042_companions.sql` / `043_companion_affinity.sql` + `apps/agent/companion_profiles.py`, `companion_scaling.py` / `hp_scaling.py` (`scale_companion_stats_to_player_level`, HP at hp_factor of player max — 0.75, Sable 0.50), `companion_relationship.py` (5 named tiers New/Warming/Trusted/Bonded/Legendary gating narrative unlocks only). Combat stat block proven relationship-independent through the real `_start_combat_impl` path. The 4 hostile-encounter templates ship in `content/encounter_templates.json`. Deferred (left unchecked): AC2 — Lira and Sable each carry 1 attack, below the stated 2–4 range (intentional support/glass-cannon profiles), so the strict count criterion is not met.
+
+The Sprint-005 audit paragraph below is retained for history only.
 
 | Section | BUILT | DESIGNED | NOT_SHIPPED |
 | --- | --- | --- | --- |

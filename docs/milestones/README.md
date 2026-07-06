@@ -4,6 +4,26 @@
 
 These milestones define the deep game mechanics implementation, building on the existing voice pipeline, client app, and basic game systems already in the codebase. Each phase maps to one game mechanics design doc.
 
+## Phase Completion Status
+
+*Reflects delivery as of sprint-037. Per-milestone detail lives in each phase doc + `execution_plan.json`.*
+
+| Phase | Doc | Status | Delivered | Notes |
+|---|---|---|---|---|
+| 0 · Doc Updates | [00_doc_updates.md](00_doc_updates.md) | ✅ Delivered | 18/23 ACs | Doc-update backlog; ongoing housekeeping. |
+| 1 · Core Systems | [01_core_systems.md](01_core_systems.md) | ✅ Delivered | 42/43 ACs | Core resolution/rules engine — the foundation all phases build on. |
+| 2 · Archetypes | [02_archetypes.md](02_archetypes.md) | 🟡 Partial | 30/34 ACs | M2.1/M2.4 done; missing M2.2 reaction-window (Phase 4), M2.3 L20 companion unlock, M2.5 supplement-choice. |
+| 3 · Magic | [03_magic.md](03_magic.md) | ✅ Delivered | 34/34 ACs | m31–m34 capstones (resonance, hollow-echo/wards, spell catalog, concentration/racial). |
+| 4 · Combat | [04_combat.md](04_combat.md) | ✅ Delivered | 65/65 ACs | m41–m46 capstones + M11–M20 extensions (targeting, HUD, MP combat, SFX). |
+| 5 · Crafting | [05_crafting.md](05_crafting.md) | ✅ Delivered | 44/45 ACs | m52 workspace + m53 quality-pass capstones. |
+| 6 · NPCs & Companions | [06_npcs.md](06_npcs.md) | ✅ Delivered | 30/34 ACs | m62/m64 capstones; missing Capital tier, unique NPC names, Bard mentors, Lira/Sable attack count. |
+| 7 · Bestiary | [07_bestiary.md](07_bestiary.md) | ⬜ Not started | 0/41 ACs | No creatures.json / creatures table / stat-block schema. |
+| 8 · Patrons | [08_patrons.md](08_patrons.md) | ⬜ Not started | 0/34 ACs | gods.json mechanical layers are null stubs; no favor-tier/ability/synergy code. |
+| 9 · Economy | [09_economy.md](09_economy.md) | 🟡 Partial | 2/80 ACs | Only M9.4 loot/currency-drop shipped (byproduct of M4.7); integration sink, planned last. |
+| 10 · Terrain | [10_terrain.md](10_terrain.md) | ⬜ Not started | 0/17 ACs | No TerrainType enum; consumers remain terrain-blind. |
+| 11 · World Loop | [11_world_loop.md](11_world_loop.md) | ⬜ Not started | 0/46 ACs | Planned; supersedes the retired M21. |
+| 12 · Story Content | [12_story_content.md](12_story_content.md) | ⬜ Not started | 0/34 ACs | Planned. |
+
 ## Dependency Graph
 
 Primary spine (top-down):

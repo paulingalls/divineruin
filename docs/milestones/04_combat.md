@@ -8,7 +8,7 @@ Redesigns the existing basic combat state machine into a 4-beat phase-based syst
 
 <!-- see audit/phase-4-combat.md and audit/phase-encounter-roles.md -->
 
-**Status: DEFERRED / NOT_STARTED.** Combat is the largest aspirational surface in the project. Shipped: turn-based free-form LLM tool loop in `apps/agent/combat_agent.py:26-44` driving `apps/agent/session_data.py:46-52` (`round_number`, `current_turn_index`, `initiative_order`) plus core math (`calculate_ac`, `resolve_attack`, `resolve_saving_throw`, death save mechanic). NOT shipped: 4-beat phase machine, condition system, dramatic-dice flag, social/travel/gathering, Mortaen scene wiring.
+**Status: DELIVERED.** (The Sprint-003 audit below is retained for historical context; its "DEFERRED / NOT_STARTED" assessment is now superseded.) Combat shipped across sprints 018-037. M4.1-M4.8 are all delivered and each is proven end-to-end by a passing acceptance capstone (`apps/agent/tests/acceptance/test_m4*_capstone.py`): the 4-beat phase machine, action economy, 21-condition system, death/dying/resurrection + Mortaen scene + Hollowed death, dramatic-dice signal, and social/travel/gathering. The combat/multiplayer/social/audio extensions M11-M20 (spell targeting, combat-HUD conditions, enemy conditions, multiplayer combat, social/de-escalation scenes, node respawn, audio SFX, multiplayer completeness, room join, MP combat II) also shipped and are tracked in `execution_plan.json` (plan `plan-phase-4-combat`) with their own capstones.
 
 | Milestone | Confirmed | Partial | Divergent | Aspirational |
 | --- | --- | --- | --- | --- |
@@ -58,17 +58,17 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - DB migration: `combat_encounters` table updated with phase tracking columns
 
 **Acceptance criteria:**
-- [ ] `narrative_hint()` fixed: no longer returns "critical success" for non-nat-20 rolls
-- [ ] `resolve_attack` and `resolve_saving_throw` use `CheckResult` critical flags
-- [ ] Combat state machine transitions through all states in correct order
-- [ ] Initiative roll uses `d20 + DEX modifier` and correctly orders resolution within a phase
-- [ ] Beat 1 collects declarations from player, companions, and enemies before any resolution
-- [ ] Beat 2 resolves all actions without emitting narration, produces result packets with dramatic flags
-- [ ] Beat 3 narration includes reaction windows where DM pauses for dramatic dice
-- [ ] Beat 4 processes death saves, stamina regen, and condition tick-downs
-- [ ] Phase loop repeats until combat_end is triggered (all enemies defeated, retreat, etc.)
-- [ ] `advance_combat_phase` is a pure function with no side effects
-- [ ] Tests cover full combat lifecycle from encounter_start through combat_end
+- [x] `narrative_hint()` fixed: no longer returns "critical success" for non-nat-20 rolls
+- [x] `resolve_attack` and `resolve_saving_throw` use `CheckResult` critical flags
+- [x] Combat state machine transitions through all states in correct order
+- [x] Initiative roll uses `d20 + DEX modifier` and correctly orders resolution within a phase
+- [x] Beat 1 collects declarations from player, companions, and enemies before any resolution
+- [x] Beat 2 resolves all actions without emitting narration, produces result packets with dramatic flags
+- [x] Beat 3 narration includes reaction windows where DM pauses for dramatic dice
+- [x] Beat 4 processes death saves, stamina regen, and condition tick-downs
+- [x] Phase loop repeats until combat_end is triggered (all enemies defeated, retreat, etc.)
+- [x] `advance_combat_phase` is a pure function with no side effects
+- [x] Tests cover full combat lifecycle from encounter_start through combat_end
 
 **Key references:**
 - *Game Mechanics Combat — 4-Beat Phase Structure*
@@ -97,17 +97,17 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - Pure function: `resolve_declaration(declaration_type, actor, targets, context)` → resolution result
 
 **Acceptance criteria:**
-- [ ] All 6 declaration types are defined with validation rules
-- [ ] Only one declaration per actor per phase (enhancers expand resolution, not declaration count)
-- [ ] Attack roll correctly applies proficiency bonus when weapon-proficient
-- [ ] AC calculation is correct for all armor categories (unarmored, light, medium, heavy)
-- [ ] Weapon damage ranges from 1d4 to 1d12 + correct attribute modifier
-- [ ] Critical hit (natural 20) doubles damage dice
-- [ ] `request_attack` returns structured result with hit/miss/crit, damage, and dramatic flag
-- [ ] `request_save` returns structured result with success/fail and margin
-- [ ] Declaration enhancers (Cunning Action, Extra Attack) correctly expand single declarations
-- [ ] All combat math functions are pure with no side effects
-- [ ] Tests cover all declaration types, armor categories, and weapon damage ranges
+- [x] All 6 declaration types are defined with validation rules
+- [x] Only one declaration per actor per phase (enhancers expand resolution, not declaration count)
+- [x] Attack roll correctly applies proficiency bonus when weapon-proficient
+- [x] AC calculation is correct for all armor categories (unarmored, light, medium, heavy)
+- [x] Weapon damage ranges from 1d4 to 1d12 + correct attribute modifier
+- [x] Critical hit (natural 20) doubles damage dice
+- [x] `request_attack` returns structured result with hit/miss/crit, damage, and dramatic flag
+- [x] `request_save` returns structured result with success/fail and margin
+- [x] Declaration enhancers (Cunning Action, Extra Attack) correctly expand single declarations
+- [x] All combat math functions are pure with no side effects
+- [x] Tests cover all declaration types, armor categories, and weapon damage ranges
 
 **Key references:**
 - *Game Mechanics Combat — Action Economy*
@@ -138,16 +138,16 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - Client component: condition icons in combat tracker and persistent status bar
 
 **Acceptance criteria:**
-- [ ] All 20+ conditions defined with mechanical effect, clearance method, and stack behavior
-- [ ] `apply_condition` correctly adds condition to character state with duration and source tracking
-- [ ] `remove_condition` correctly removes specific condition instances
-- [ ] `tick_conditions` decrements duration-based conditions in Beat 4 (Wrap) and removes expired ones
-- [ ] Conditions requiring saves to clear trigger save checks during tick
-- [ ] `get_condition_effects` correctly aggregates effects from multiple simultaneous conditions
-- [ ] Hollowed condition has unique behavior distinct from standard conditions
-- [ ] DB migration creates `character_conditions` table with correct schema
-- [ ] Client displays condition icons in combat tracker and persistent bar
-- [ ] Tests cover applying, stacking, ticking, and clearing every condition type
+- [x] All 20+ conditions defined with mechanical effect, clearance method, and stack behavior
+- [x] `apply_condition` correctly adds condition to character state with duration and source tracking
+- [x] `remove_condition` correctly removes specific condition instances
+- [x] `tick_conditions` decrements duration-based conditions in Beat 4 (Wrap) and removes expired ones
+- [x] Conditions requiring saves to clear trigger save checks during tick
+- [x] `get_condition_effects` correctly aggregates effects from multiple simultaneous conditions
+- [x] Hollowed condition has unique behavior distinct from standard conditions
+- [x] DB migration creates `character_conditions` table with correct schema
+- [x] Client displays condition icons in combat tracker and persistent bar
+- [x] Tests cover applying, stacking, ticking, and clearing every condition type
 
 **Key references:**
 - *Game Mechanics Combat — Status Conditions*
@@ -183,18 +183,18 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - Agent tool: `trigger_character_death(character_id)` → initiates Mortaen scene, applies cost, handles resurrection
 
 **Acceptance criteria:**
-- [ ] 0 HP triggers Fallen state with death save requirement each phase
-- [ ] Death save uses d20 with no modifiers; 10+ is success, <10 is failure
-- [ ] 3 successes stabilizes; 3 failures triggers death
-- [ ] Instant death fires when excess damage >= max HP
-- [ ] Hollowed Death (Stage 2+) creates DM-controlled Temporary Hollowed with character abilities + 1d6 necrotic
-- [ ] Death cost correctly escalates across all tiers (Gentle through Devastating)
-- [ ] Mortaen patron characters get +2 death saves and skip first death cost
-- [ ] Resurrection places character at nearest valid anchor point with correct priority fallback
-- [ ] Party wipe processes all deaths independently and resurrects at shared anchor
-- [ ] Companion death auto-stabilizes without permanent consequences
-- [ ] DB migrations create all three tables with correct schemas
-- [ ] Tests cover every death tier, Hollowed death, instant death, party wipe, and companion death
+- [x] 0 HP triggers Fallen state with death save requirement each phase
+- [x] Death save uses d20 with no modifiers; 10+ is success, <10 is failure
+- [x] 3 successes stabilizes; 3 failures triggers death
+- [x] Instant death fires when excess damage >= max HP
+- [x] Hollowed Death (Stage 2+) creates DM-controlled Temporary Hollowed with character abilities + 1d6 necrotic
+- [x] Death cost correctly escalates across all tiers (Gentle through Devastating)
+- [x] Mortaen patron characters get +2 death saves and skip first death cost
+- [x] Resurrection places character at nearest valid anchor point with correct priority fallback
+- [x] Party wipe processes all deaths independently and resurrects at shared anchor
+- [x] Companion death auto-stabilizes without permanent consequences
+- [x] DB migrations create all three tables with correct schemas
+- [x] Tests cover every death tier, Hollowed death, instant death, party wipe, and companion death
 
 **Key references:**
 - *Game Mechanics Combat — Death & Dying*
@@ -221,15 +221,15 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - DM narration pauses: Beat 3 reaction windows timed to dramatic roll reveals
 
 **Acceptance criteria:**
-- [ ] `evaluate_dramatic_context` returns `True` for all always-dramatic scenarios
-- [ ] `evaluate_dramatic_context` returns `True` for contextually dramatic scenarios when conditions met
-- [ ] `evaluate_dramatic_context` returns `False` for never-dramatic scenarios
-- [ ] All roll result packets include `dramatic` flag and `context` dict
-- [ ] Existing dice_result events updated to include dramatic flag without breaking consumers
-- [ ] Client animated d20 overlay fires only when `dramatic: True`
-- [ ] DM pauses narration during Beat 3 for dramatic roll reveals
-- [ ] `evaluate_dramatic_context` is a pure function with no side effects
-- [ ] Tests cover all always/contextual/never categories with representative game states
+- [x] `evaluate_dramatic_context` returns `True` for all always-dramatic scenarios
+- [x] `evaluate_dramatic_context` returns `True` for contextually dramatic scenarios when conditions met
+- [x] `evaluate_dramatic_context` returns `False` for never-dramatic scenarios
+- [x] All roll result packets include `dramatic` flag and `context` dict
+- [x] Existing dice_result events updated to include dramatic flag without breaking consumers
+- [x] Client animated d20 overlay fires only when `dramatic: True`
+- [x] DM pauses narration during Beat 3 for dramatic roll reveals
+- [x] `evaluate_dramatic_context` is a pure function with no side effects
+- [x] Tests cover all always/contextual/never categories with representative game states
 
 **Key references:**
 - *Game Mechanics Combat — Dramatic Dice System*
@@ -267,18 +267,18 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - Agent tool: `resolve_gathering(character_id, location_id)` → gathered resources
 
 **Acceptance criteria:**
-- [ ] Social DC correctly derived from NPC disposition (0-10 scale)
-- [ ] Social encounters follow structured tension curve with distinct phases
-- [ ] Diplomat archetype can attempt de-escalation during combat encounters
-- [ ] All 3 travel modes produce correct encounter rates and foraging availability
-- [ ] Navigation failure leads to lost time or wrong-area consequences
-- [ ] Exhaustion accumulates over extended travel and affects checks
-- [ ] Gathering checks are gated by appropriate skills (Perception, Survival, Nature)
-- [ ] Regional resource tables return location-appropriate resources
-- [ ] Discovery moments trigger narrative beats for rare resource finds
-- [ ] DB migrations create `travel_state` and `gathering_nodes` tables
-- [ ] All resolution functions are pure with no side effects
-- [ ] Tests cover social disposition ranges, all travel modes, and gathering skill gates
+- [x] Social DC correctly derived from NPC disposition (0-10 scale)
+- [x] Social encounters follow structured tension curve with distinct phases
+- [x] Diplomat archetype can attempt de-escalation during combat encounters
+- [x] All 3 travel modes produce correct encounter rates and foraging availability
+- [x] Navigation failure leads to lost time or wrong-area consequences
+- [x] Exhaustion accumulates over extended travel and affects checks
+- [x] Gathering checks are gated by appropriate skills (Perception, Survival, Nature)
+- [x] Regional resource tables return location-appropriate resources
+- [x] Discovery moments trigger narrative beats for rare resource finds
+- [x] DB migrations create `travel_state` and `gathering_nodes` tables
+- [x] All resolution functions are pure with no side effects
+- [x] Tests cover social disposition ranges, all travel modes, and gathering skill gates
 
 **Key references:**
 - *Game Mechanics Combat — Social Encounter Resolution*
