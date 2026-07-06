@@ -526,3 +526,22 @@ produces `.wav`. Both drop straight into `apps/mobile/assets/sounds/` as-is.
   (`scripts/seed_content.py` + `scripts/migrations/032_spells.sql`), so adding the
   new `sound_id` field to `content/spells.json` requires editing the JSON and
   re-seeding — no schema migration.
+
+### Family Coverage Matrix (story-006)
+
+Every bundled audio family is covered by a signature guard and a PROMPT-parity
+guard; a family with a committed source mirror adds a third byte-equality guard
+(only Spell SFX today). Each guard has a single owner — no duplicated enforcement:
+
+| Family | Count | Bundled dir | Source mirror? | Signature guard | PROMPT parity | Byte-equal |
+|---|---|---|---|---|---|---|
+| Spell SFX | 7 | `apps/mobile/assets/sounds/` (root) | Yes — `apps/audio/spell_sfx/` | `test_audio_bundle_compressed.py::test_bundled_family_stems_match_pipeline_transcode_signature[.]` | `test_generate_spell_sfx.py` | `test_audio_bundle_compressed.py::test_committed_source_mirror_is_byte_equal_to_bundled` |
+| Legacy SFX | 20 | `apps/mobile/assets/sounds/` (root) | No | same `[.]` case as above | `test_generate_spell_sfx.py` | — |
+| Music | 8 | `apps/mobile/assets/sounds/music/` | No | `...transcode_signature[music]` | `test_generate_spell_sfx.py` | — |
+| Soundscapes | 11 | `apps/mobile/assets/sounds/soundscapes/` | No | `...transcode_signature[soundscapes]` | `test_generate_spell_sfx.py` | — |
+| Textures | 11 | `apps/mobile/assets/sounds/textures/` | No | `...transcode_signature[textures]` | `test_generate_spell_sfx.py` | — |
+
+The signature guard's family/stem sets are discovered from the bundled directory
+listing (not a hand-maintained key list), so a newly regenerated family or stem
+auto-extends coverage. The byte-equal guard is table-driven
+(`_SOURCE_MIRRORS`) — a future committed source mirror is one table entry.
