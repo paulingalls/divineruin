@@ -56,6 +56,25 @@ def test_parser_defaults_pin_the_approved_m17_recipe() -> None:
     assert args.format == "mp3"
 
 
+def test_model_selector_defaults_to_small_sfx_and_accepts_music_models() -> None:
+    """--model picks the SA3 variant loaded at render time.
+
+    small-sfx (SFX palette, the default) keeps the existing behavior; small-music
+    is the music model (story-004); medium is the long-form music exploration
+    (story-008). These MUST be valid stable_audio_3.all_models keys — from_pretrained
+    rejects unknown names, so an invalid choice would fail only at torch-load time
+    (out of this fast lane). Guarding the choices here catches a name typo early.
+    """
+    gen = _load_generator()
+    default = gen.build_parser().parse_args(["--out-dir", "/tmp/unused"])
+    assert default.model == "small-sfx"
+    for name in ("small-sfx", "small-music", "medium"):
+        args = gen.build_parser().parse_args(["--out-dir", "/tmp/unused", "--model", name])
+        assert args.model == name
+    with pytest.raises(SystemExit):
+        gen.build_parser().parse_args(["--out-dir", "/tmp/unused", "--model", "not-a-model"])
+
+
 class _FakeTensor:
     """Duck-types the one tensor method the noise guard uses (torch-free lane)."""
 
