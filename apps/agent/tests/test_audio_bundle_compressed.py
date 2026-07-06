@@ -106,3 +106,66 @@ def test_legacy_sa3_stems_match_pipeline_transcode_signature() -> None:
             f"{key}: bit_rate {bit_rate} exceeds the transcode_to_mp3 ceiling — "
             "looks hand-sourced, not SA3-pipeline output"
         )
+
+
+# story-005 file_domain: the 11 texture foley one-shots regenerated via SA3 small-sfx.
+_TEXTURE_SA3_KEYS = (
+    "bird_call_01",
+    "bird_call_02",
+    "bird_call_03",
+    "branch_crack",
+    "cart_wheel",
+    "dog_bark_distant",
+    "fire_crackle",
+    "footstep_stone",
+    "insect_buzz",
+    "water_drip",
+    "wind_gust",
+)
+_TEXTURES_DIR = _SOUNDS_DIR / "textures"
+
+
+def test_texture_stems_match_pipeline_transcode_signature() -> None:
+    """Discriminating story-005 acceptance (concern fc59229f86a0): the regenerated
+
+    texture foley one-shots must carry the SA3 pipeline's transcode signature —
+    44.1kHz, <=160kbps — which the ~198kbps hand-sourced takes did not. Fails if any
+    texture stem regresses to a non-pipeline (hand-sourced) file. Mirrors the legacy
+    guard above; story-006 consolidates both into one parametrized family guard.
+
+    Fail-loud on missing ffprobe (no skip): a skip would silently drop the
+    texture provenance enforcement.
+    """
+    if shutil.which("ffprobe") is None:
+        pytest.fail(
+            "ffprobe (ffmpeg) is required to enforce the texture-SFX provenance guard — "
+            "install it (brew install ffmpeg); skipping would silently drop the check"
+        )
+    for key in _TEXTURE_SA3_KEYS:
+        path = _TEXTURES_DIR / f"{key}.mp3"
+        assert path.exists(), f"missing bundled texture stem: {path}"
+        probe = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "a:0",
+                "-show_entries",
+                "stream=sample_rate:format=bit_rate",
+                "-of",
+                "json",
+                str(path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        info = json.loads(probe.stdout)
+        sample_rate = int(info["streams"][0]["sample_rate"])
+        bit_rate = int(info["format"]["bit_rate"])
+        assert sample_rate == _PIPELINE_SAMPLE_RATE, f"{key}: sample_rate {sample_rate}"
+        assert bit_rate <= _PIPELINE_MAX_BITRATE, (
+            f"{key}: bit_rate {bit_rate} exceeds the transcode_to_mp3 ceiling — "
+            "looks hand-sourced, not SA3-pipeline output"
+        )
