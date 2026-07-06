@@ -2,14 +2,19 @@
 """Generate the M17 spell-cast SFX palette via ElevenLabs Text-to-Sound (story-002).
 
 The 7-key source-by-effect palette is frozen in docs/audio_sfx_pipeline.md §4 and
-guarded by apps/agent/tests/test_generate_spell_sfx.py. This is the single
-generation SSOT for both the quality bake-off and the committed palette: the
-prompts below + the model id are the repo's regenerate recipe (the "Audio Must Be
-Generatable" principle), with the ElevenLabs API key the only external input.
+guarded by apps/agent/tests/test_generate_spell_sfx.py. This is the ElevenLabs
+(.mp3) bake-off generator, and it owns the shared PROMPTS table + _out_path helper
+— the single prompt SSOT that generate_spell_sfx_stableaudio.py imports.
+
+NOTE ON THE COMMITTED PALETTE: the shipped assets are the .wav files produced by
+generate_spell_sfx_stableaudio.py (Stable Audio 3.0 Small SFX), the vendor that
+won the story-002 bake-off. To REGENERATE the committed palette, run that script,
+not this one. Use this ElevenLabs generator for A/B comparison or as the
+alternative engine — both share the frozen prompts, so they stay comparable ("Audio
+Must Be Generatable"; regeneration is generative, not byte-for-byte).
 
 Stdlib only (urllib) — no third-party deps. Reads ELEVEN_LABS_API_KEY from the
-environment (fail-loud). Text-to-sound is generative, so regeneration reproduces
-the palette via the same pipeline, not byte-for-byte.
+environment (fail-loud), the only external input.
 
 Usage:
     export ELEVEN_LABS_API_KEY=...            # or `source ~/.zprofile`
@@ -118,8 +123,9 @@ def _generate_one(text: str, *, duration: float, prompt_influence: float, loop: 
         sys.exit(f"ElevenLabs HTTP {e.code} for prompt: {text[:60]!r}...\n{detail}")
 
 
-def _out_path(out_dir: Path, key: str, variant: int, total_variants: int) -> Path:
-    name = f"{key}.mp3" if total_variants == 1 else f"{key}_v{variant}.mp3"
+def out_path(out_dir: Path, key: str, variant: int, total_variants: int, ext: str = ".mp3") -> Path:
+    """Shared palette-file namer. ext is the engine's format (.mp3 here, .wav for Stable Audio)."""
+    name = f"{key}{ext}" if total_variants == 1 else f"{key}_v{variant}{ext}"
     return out_dir / name
 
 
@@ -139,7 +145,7 @@ def generate(
     for key in keys:
         prompt = PROMPTS[key]
         for v in range(1, variants + 1):
-            path = _out_path(out_dir, key, v, variants)
+            path = out_path(out_dir, key, v, variants)
             if path.exists():
                 print(f"skip (exists): {path}")
                 continue

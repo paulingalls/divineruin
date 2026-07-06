@@ -6,7 +6,8 @@ quality bake-off: same frozen 7-key prompt table, a different engine, so the
 customer can A/B them and pick the vendor — preferring this one if it clears the
 bar (no subscription, self-hosted, Stability AI Community License).
 
-Reuses the PROMPTS table from generate_spell_sfx.py (the single prompt SSOT).
+Reuses the PROMPTS table and out_path helper from generate_spell_sfx.py (the
+single prompt SSOT); this script writes .wav, the ElevenLabs generator writes .mp3.
 Requires the `stable-audio-3` package + torch/torchaudio in a DEDICATED venv (not
 a repo dependency) and a HuggingFace token with the model's gated terms accepted:
 
@@ -23,23 +24,18 @@ import importlib.util
 from pathlib import Path
 
 _THIS_DIR = Path(__file__).resolve().parent
-_PROMPTS_PATH = _THIS_DIR / "generate_spell_sfx.py"
+_GENERATOR_PATH = _THIS_DIR / "generate_spell_sfx.py"
 _MODEL_NAME = "small-sfx"
 _SAMPLE_RATE = 44100
 
 
-def _load_prompts() -> dict[str, str]:
-    """Import the frozen PROMPTS table from the ElevenLabs generator (the prompt SSOT)."""
-    spec = importlib.util.spec_from_file_location("generate_spell_sfx", _PROMPTS_PATH)
-    assert spec and spec.loader, f"cannot load prompts from {_PROMPTS_PATH}"
+def _load_generator():
+    """Import the ElevenLabs generator module for its frozen PROMPTS table + out_path helper (the shared SSOT)."""
+    spec = importlib.util.spec_from_file_location("generate_spell_sfx", _GENERATOR_PATH)
+    assert spec and spec.loader, f"cannot load {_GENERATOR_PATH}"
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.PROMPTS
-
-
-def _out_path(out_dir: Path, key: str, variant: int, total_variants: int) -> Path:
-    name = f"{key}.wav" if total_variants == 1 else f"{key}_v{variant}.wav"
-    return out_dir / name
+    return module
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -50,7 +46,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--duration", type=float, default=2.0, help="seconds")
     args = parser.parse_args(argv)
 
-    prompts = _load_prompts()
+    generator = _load_generator()
+    prompts = generator.PROMPTS
     keys = args.keys or sorted(prompts)
     unknown = [k for k in keys if k not in prompts]
     if unknown:
@@ -66,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     for key in keys:
         for v in range(1, args.variants + 1):
-            path = _out_path(args.out_dir, key, v, args.variants)
+            path = generator.out_path(args.out_dir, key, v, args.variants, ext=".wav")
             if path.exists():
                 print(f"skip (exists): {path}")
                 continue
