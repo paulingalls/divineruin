@@ -256,9 +256,10 @@ PROMPTS: dict[str, str] = {
         "ambient bed."
     ),
     "temple_row_chanting": (
-        "A row of temples with distant devotional chanting. Layered low choral "
-        "murmurs, soft echoing stone acoustics, and the faint ring of a temple bell. "
-        "Seamless layered ambient bed."
+        "Devotional temple chanting — a chorus of low male voices chanting in slow "
+        "rhythmic unison, prominent and sustained throughout, over soft echoing stone "
+        "acoustics and the occasional faint ring of a temple bell. Seamless layered "
+        "ambient bed."
     ),
     "tavern_busy": (
         "A lively crowded tavern. Overlapping laughter and chatter, clinking mugs, a "
