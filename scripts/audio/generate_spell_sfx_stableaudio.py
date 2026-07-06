@@ -67,18 +67,49 @@ def transcode_to_mp3(src_wav: Path, dst_mp3: Path, *, bitrate: str = "128k") -> 
     )
 
 
-def main(argv: list[str] | None = None) -> int:
+# Clamped-N(0,1) noise renders measure std ~0.83; good takes at the approved
+# recipe measure ~0.01-0.05 (overdriven cfg=7 takes peaked at ~0.56).
+_NOISE_STD_THRESHOLD = 0.7
+
+
+def assert_take_is_not_noise(audio, key: str) -> None:
+    """Abort when a render matches the transient SA3 failure's noise signature.
+
+    That failure emits the initial diffusion noise essentially un-denoised
+    (docs/audio_sa3_noise_investigation.md §12) and is otherwise silent — the
+    file writes fine and only audition catches it. Fail loud instead.
+    """
+    std = float(audio.std())
+    if std > _NOISE_STD_THRESHOLD:
+        raise RuntimeError(
+            f"{key}: render std {std:.3f} exceeds {_NOISE_STD_THRESHOLD} — matches the SA3"
+            " transient noise signature (docs/audio_sa3_noise_investigation.md §12);"
+            " aborting instead of writing a garbage take"
+        )
+
+
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Generate the spell-cast palette via Stable Audio 3.0 Small SFX.")
     parser.add_argument("--out-dir", required=True, type=Path)
     parser.add_argument("--keys", nargs="*", help="subset of palette keys (default: all 7)")
     parser.add_argument("--variants", type=int, default=1, help="takes per key (default 1)")
     parser.add_argument("--duration", type=float, default=2.0, help="seconds")
+    # steps=8 / cfg_scale=1.0 are the SA3 defaults and the recipe behind the
+    # customer-approved M17 palette. Higher cfg overdrives the output (clipping,
+    # buzz) — see docs/audio_sa3_noise_investigation.md §12.
+    parser.add_argument("--steps", type=int, default=8, help="diffusion steps (default 8)")
+    parser.add_argument("--cfg-scale", type=float, default=1.0, help="classifier-free guidance (default 1.0)")
     parser.add_argument(
         "--format",
         choices=("wav", "mp3"),
         default="mp3",
         help="mp3 (default) transcodes+removes the rendered wav via ffmpeg; wav keeps the raw SA3 output",
     )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
     args = parser.parse_args(argv)
 
     generator = _load_generator()
@@ -104,7 +135,13 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"skip (exists): {final_path}")
                 continue
             wav_path = final_path if args.format == "wav" else final_path.with_suffix(".wav")
-            audio = model.generate(prompt=prompts[key], duration=args.duration)
+            audio = model.generate(
+                prompt=prompts[key],
+                duration=args.duration,
+                steps=args.steps,
+                cfg_scale=args.cfg_scale,
+            )
+            assert_take_is_not_noise(audio, key)
             # torchaudio.save wants a 2-D [channels, frames] tensor; squeeze a leading batch dim.
             if hasattr(audio, "dim") and audio.dim() == 3:
                 audio = audio.squeeze(0)

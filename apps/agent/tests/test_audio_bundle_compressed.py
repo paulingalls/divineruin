@@ -10,12 +10,47 @@ under either directory. Regeneration stories 003-005 do not flip this scope
 
 from __future__ import annotations
 
+import json
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 # This file lives at apps/agent/tests/<this>; parents[2] is the repo's apps/ dir.
 _APPS_DIR = Path(__file__).resolve().parents[2]
 _SOUNDS_DIR = _APPS_DIR / "mobile" / "assets" / "sounds"
 _AUDIO_SRC_DIR = _APPS_DIR / "audio" / "spell_sfx"
+
+# story-003 file_domain: the 20 legacy stems regenerated via SA3 + transcode_to_mp3.
+_LEGACY_SA3_KEYS = (
+    "arrow_loose",
+    "critical_hit_sting",
+    "dice_roll",
+    "discovery_chime",
+    "door_creak",
+    "fail_sting",
+    "god_whisper_stinger",
+    "hit_taken",
+    "item_pickup",
+    "level_up_sting",
+    "menu_close",
+    "menu_open",
+    "notification",
+    "potion_use",
+    "quest_sting",
+    "shield_block",
+    "spell_cast",
+    "success_sting",
+    "sword_clash",
+    "tavern",
+)
+
+# transcode_to_mp3 encodes 128k nominal (~132kbps actual); the hand-sourced
+# takes it replaced ran ~198kbps, so this ceiling discriminates the swap
+# (red before story-003's regeneration, green after).
+_PIPELINE_MAX_BITRATE = 160_000
+_PIPELINE_SAMPLE_RATE = 44_100
 
 
 def test_no_wav_files_in_bundled_sounds_dir() -> None:
@@ -26,3 +61,48 @@ def test_no_wav_files_in_bundled_sounds_dir() -> None:
 def test_no_wav_files_in_spell_sfx_source_dir() -> None:
     wavs = sorted(_AUDIO_SRC_DIR.glob("*.wav"))
     assert not wavs, f"uncompressed .wav found in spell_sfx source dir: {wavs}"
+
+
+def test_legacy_sa3_stems_match_pipeline_transcode_signature() -> None:
+    """Discriminating story-003 acceptance (concern 5eae0258e48c): the regenerated
+
+    legacy stems must carry the SA3 pipeline's transcode signature — 44.1kHz,
+    <=160kbps — which the ~198kbps hand-sourced takes did not. Fails if any
+    legacy stem regresses to a non-pipeline (hand-sourced) file.
+
+    Fail-loud on missing ffprobe (no skip): this is an acceptance guard, and a
+    skip would silently drop AC1's provenance enforcement (concern 2c0c3026b0e4).
+    """
+    if shutil.which("ffprobe") is None:
+        pytest.fail(
+            "ffprobe (ffmpeg) is required to enforce the legacy-SFX provenance guard — "
+            "install it (brew install ffmpeg); skipping would silently drop AC1 enforcement"
+        )
+    for key in _LEGACY_SA3_KEYS:
+        path = _SOUNDS_DIR / f"{key}.mp3"
+        assert path.exists(), f"missing bundled legacy stem: {path}"
+        probe = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "a:0",
+                "-show_entries",
+                "stream=sample_rate:format=bit_rate",
+                "-of",
+                "json",
+                str(path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        info = json.loads(probe.stdout)
+        sample_rate = int(info["streams"][0]["sample_rate"])
+        bit_rate = int(info["format"]["bit_rate"])
+        assert sample_rate == _PIPELINE_SAMPLE_RATE, f"{key}: sample_rate {sample_rate}"
+        assert bit_rate <= _PIPELINE_MAX_BITRATE, (
+            f"{key}: bit_rate {bit_rate} exceeds the transcode_to_mp3 ceiling — "
+            "looks hand-sourced, not SA3-pipeline output"
+        )
