@@ -231,6 +231,25 @@ this doc (§3) so the keying/wiring stories build on a settled choice. Note: the
 bake-off needs real generation — an ElevenLabs key and/or the Stable Audio weights
 downloaded locally — so it is gated on the customer provisioning at least one.
 
+### 3.2 SA3-medium on this Mac — spike findings (story-008)
+
+M22 music ships via `small-music` (story-004). story-008 spiked whether the larger
+`stable-audio-3-medium` model can render **non-noise** audio on this Mac, to seed a
+later medium-vs-small A/B for the long-form music/ambience layers.
+
+**Result: medium renders non-noise on the Apple GPU (MPS) at the pinned recipe.**
+
+| Aspect | Finding |
+|---|---|
+| Device | **MPS** (`--device mps`) — no CPU fallback needed. `stable_audio_3` is PyTorch-based; medium loads through the same loader as `small-music`, just heavier weights (~11 GB, one-time HF download). |
+| Recipe | **Pinned defaults hold** — `--steps 8 --cfg-scale 1.0`, no sweep required. |
+| Non-noise proof | `assert_take_is_not_noise` (std ≤ 0.7) passed on every take. Probe `wonder` (10s) std **0.122**; `wonder`/`exploration` (30s mp3) std **0.111 / 0.110**. |
+| Misfiring warning | `from_pretrained` prints "not designed to run on cpu" whenever CUDA is absent — it fires even on MPS and can be ignored (it only disables `model_half`, which is correct for non-CUDA). |
+| Sample seeds | `/tmp/m22-music-medium/{wonder,exploration}.mp3` — staged for the main-agent A/B vs the shipped `small-music`. |
+
+Enabler: story-004's `--model medium` choice + story-008's `--device {auto,mps,cpu}`
+selector. The medium-vs-small A/B and any bundle swap are a follow-up (outside story-008).
+
 ## 4. Keying Scheme (FROZEN CONTRACT for stories 002/003)
 
 `audio_cue` (free-text, director prose + generation prompt) and `sound_id` (new
