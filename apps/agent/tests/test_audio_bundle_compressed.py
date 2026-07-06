@@ -63,14 +63,21 @@ def test_no_wav_files_in_spell_sfx_source_dir() -> None:
     assert not wavs, f"uncompressed .wav found in spell_sfx source dir: {wavs}"
 
 
-@pytest.mark.skipif(shutil.which("ffprobe") is None, reason="ffprobe not on PATH")
 def test_legacy_sa3_stems_match_pipeline_transcode_signature() -> None:
     """Discriminating story-003 acceptance (concern 5eae0258e48c): the regenerated
 
     legacy stems must carry the SA3 pipeline's transcode signature — 44.1kHz,
     <=160kbps — which the ~198kbps hand-sourced takes did not. Fails if any
     legacy stem regresses to a non-pipeline (hand-sourced) file.
+
+    Fail-loud on missing ffprobe (no skip): this is an acceptance guard, and a
+    skip would silently drop AC1's provenance enforcement (concern 2c0c3026b0e4).
     """
+    if shutil.which("ffprobe") is None:
+        pytest.fail(
+            "ffprobe (ffmpeg) is required to enforce the legacy-SFX provenance guard — "
+            "install it (brew install ffmpeg); skipping would silently drop AC1 enforcement"
+        )
     for key in _LEGACY_SA3_KEYS:
         path = _SOUNDS_DIR / f"{key}.mp3"
         assert path.exists(), f"missing bundled legacy stem: {path}"
