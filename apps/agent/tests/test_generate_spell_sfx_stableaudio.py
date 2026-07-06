@@ -75,6 +75,24 @@ def test_model_selector_defaults_to_small_sfx_and_accepts_music_models() -> None
         gen.build_parser().parse_args(["--out-dir", "/tmp/unused", "--model", "not-a-model"])
 
 
+def test_device_selector_defaults_to_auto_and_accepts_mps_and_cpu() -> None:
+    """--device pins where the SA3 model runs (story-008 medium spike).
+
+    auto (the default) lets from_pretrained pick — MPS on Apple Silicon; mps/cpu
+    force the backend so the medium model can be probed on the GPU and retried
+    on CPU when MPS runs out of unified memory. An unknown device must fail at
+    parse time, not at torch-load time.
+    """
+    gen = _load_generator()
+    default = gen.build_parser().parse_args(["--out-dir", "/tmp/unused"])
+    assert default.device == "auto"
+    for name in ("auto", "mps", "cpu"):
+        args = gen.build_parser().parse_args(["--out-dir", "/tmp/unused", "--device", name])
+        assert args.device == name
+    with pytest.raises(SystemExit):
+        gen.build_parser().parse_args(["--out-dir", "/tmp/unused", "--device", "cuda:0"])
+
+
 class _FakeTensor:
     """Duck-types the one tensor method the noise guard uses (torch-free lane)."""
 
