@@ -12,6 +12,8 @@ prompt table with no network call (generation only happens in main()).
 import importlib.util
 from pathlib import Path
 
+from audio_bundle_stems import bundled_stems_by_dir
+
 # scripts/audio/generate_spell_sfx.py, relative to the repo root (three parents
 # up from this test file: apps/agent/tests -> apps/agent -> apps -> repo root).
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -90,17 +92,6 @@ def _load_generator():
     return module
 
 
-def _bundled_stems_by_dir() -> dict[str, set[str]]:
-    """Map each family dir (top-level '.' plus each subdir name) to its stem set."""
-    families: dict[str, set[str]] = {}
-    for path in _SOUNDS_DIR.glob("**/*"):
-        if path.suffix not in (".mp3", ".wav"):
-            continue
-        family = path.parent.relative_to(_SOUNDS_DIR).as_posix()
-        families.setdefault(family, set()).add(path.stem)
-    return families
-
-
 def test_generator_file_exists():
     assert _GENERATOR_PATH.is_file(), f"missing generator: {_GENERATOR_PATH}"
 
@@ -121,21 +112,21 @@ def test_every_prompt_is_a_nonempty_string():
 
 def test_every_bundled_asset_stem_has_a_prompt():
     gen = _load_generator()
-    all_stems = {stem for stems in _bundled_stems_by_dir().values() for stem in stems}
+    all_stems = {stem for stems in bundled_stems_by_dir(_SOUNDS_DIR).values() for stem in stems}
     missing = sorted(all_stems - set(gen.PROMPTS.keys()))
     assert not missing, f"bundled asset stems with no PROMPTS entry: {missing}"
 
 
 def test_no_prompt_without_a_bundled_asset():
     gen = _load_generator()
-    all_stems = {stem for stems in _bundled_stems_by_dir().values() for stem in stems}
+    all_stems = {stem for stems in bundled_stems_by_dir(_SOUNDS_DIR).values() for stem in stems}
     orphaned = sorted(set(gen.PROMPTS.keys()) - all_stems)
     assert not orphaned, f"PROMPTS keys with no bundled asset (typo or stale entry?): {orphaned}"
 
 
 def test_sfx_family_prompts_are_dry():
     gen = _load_generator()
-    families = _bundled_stems_by_dir()
+    families = bundled_stems_by_dir(_SOUNDS_DIR)
     dry_families = {"."} | {d for d in families if d.startswith("textures")}
     dry_stems = {stem for family in dry_families for stem in families.get(family, set())}
     dry_stems -= STING_KEYS

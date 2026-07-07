@@ -18,6 +18,8 @@ Not re-asserted here (owned elsewhere, dedup):
   -> apps/agent/tests/test_generate_spell_sfx.py::test_no_prompt_without_a_bundled_asset
 - source==bundled byte-equality -> apps/agent/tests/test_audio_bundle_compressed.py (story-006)
 - per-stem transcode signature (44.1kHz/<=160kbps) -> test_audio_bundle_compressed.py
+- no uncompressed .wav in the bundle
+  -> test_audio_bundle_compressed.py::test_no_wav_files_in_bundled_sounds_dir (fast lane owns it)
 """
 
 from __future__ import annotations
@@ -113,9 +115,3 @@ def test_every_bundled_stem_is_generatable() -> None:
     bundled = {p.stem for p in _SOUNDS_DIR.glob("**/*.mp3")}
     ungeneratable = sorted(bundled - set(prompts))
     assert not ungeneratable, f"bundled stems with no PROMPT regenerate recipe (not generatable): {ungeneratable}"
-
-
-def test_no_uncompressed_wav_in_bundle() -> None:
-    """No uncompressed .wav anywhere in the bundle (AC1, standalone E2E sanity)."""
-    wavs = sorted(_SOUNDS_DIR.glob("**/*.wav"))
-    assert not wavs, f"uncompressed .wav found in the bundle: {wavs}"

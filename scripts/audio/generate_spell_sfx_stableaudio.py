@@ -11,10 +11,16 @@ single prompt SSOT); this script's model renders raw .wav, then `transcode_to_mp
 (ffmpeg, no torch) compresses it to the bundle's .mp3 convention (--format mp3,
 the default). Requires the `stable-audio-3` package + torch/torchaudio in a
 DEDICATED venv (not a repo dependency) and a HuggingFace token with the model's
-gated terms accepted:
+gated terms accepted. `stable-audio-3` is NOT on PyPI; bootstrap the pinned venv
+with setup_sfx_env.sh (see scripts/audio/README.md), not `pip install`:
 
-    uv venv /tmp/sa3 --python 3.11 && /tmp/sa3/bin/pip install stable-audio-3
-    /tmp/sa3/bin/python scripts/audio/generate_spell_sfx_stableaudio.py --out-dir /tmp/bakeoff/stableaudio
+    scripts/audio/setup_sfx_env.sh
+    scripts/audio/.venv-sa3/bin/python scripts/audio/generate_spell_sfx_stableaudio.py --out-dir /tmp/takes
+
+A bare run (no --keys) renders EVERY PROMPTS key (all 57 bundled stems), not just
+the 7 spell SFX. The default --duration 2.0 suits the short SFX; music /
+soundscape / ambience stems need a longer --duration (they render as 2s clips
+otherwise).
 
 Model: stabilityai/stable-audio-3-small-sfx by default (open weights, ~433M
 params, CPU/MPS); --model {small-sfx,small-music,medium} selects the variant —
@@ -91,34 +97,33 @@ def assert_take_is_not_noise(audio, key: str) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Generate the spell-cast palette via Stable Audio 3.0 Small SFX."
-    )
+    parser = argparse.ArgumentParser(description="Generate the spell-cast palette via Stable Audio 3.0 Small SFX.")
     parser.add_argument("--out-dir", required=True, type=Path)
     # Picks the SA3 variant loaded at render time. These must be valid
     # stable_audio_3.all_models keys (from_pretrained rejects unknown names):
     # small-sfx = the SFX palette (default, unchanged); small-music = the music
     # model (story-004); medium = long-form music (story-008, GPU-preferred).
-    parser.add_argument(
-        "--model", choices=("small-sfx", "small-music", "medium"), default=_MODEL_NAME
-    )
+    parser.add_argument("--model", choices=("small-sfx", "small-music", "medium"), default=_MODEL_NAME)
     # Where the model runs: auto (default) lets from_pretrained pick — MPS on
     # Apple Silicon; mps/cpu force the backend (story-008: probe medium on the
     # GPU, fall back to CPU if MPS runs out of unified memory).
     parser.add_argument("--device", choices=("auto", "mps", "cpu"), default="auto")
     parser.add_argument(
-        "--keys", nargs="*", help="subset of palette keys (default: all 7)"
+        "--keys",
+        nargs="*",
+        help="subset of PROMPTS keys (default: ALL 57 bundled stems, not just the 7 spell SFX)",
     )
+    parser.add_argument("--variants", type=int, default=1, help="takes per key (default 1)")
     parser.add_argument(
-        "--variants", type=int, default=1, help="takes per key (default 1)"
+        "--duration",
+        type=float,
+        default=2.0,
+        help="seconds (default 2.0 suits SFX; music/soundscape/ambience need longer)",
     )
-    parser.add_argument("--duration", type=float, default=2.0, help="seconds")
     # steps=8 / cfg_scale=1.0 are the SA3 defaults and the recipe behind the
     # customer-approved M17 palette. Higher cfg overdrives the output (clipping,
     # buzz) — see docs/audio_sa3_noise_investigation.md §12.
-    parser.add_argument(
-        "--steps", type=int, default=8, help="diffusion steps (default 8)"
-    )
+    parser.add_argument("--steps", type=int, default=8, help="diffusion steps (default 8)")
     parser.add_argument(
         "--cfg-scale",
         type=float,
@@ -157,15 +162,11 @@ def main(argv: list[str] | None = None) -> int:
     for key in keys:
         for v in range(1, args.variants + 1):
             final_ext = ".mp3" if args.format == "mp3" else ".wav"
-            final_path = generator.out_path(
-                args.out_dir, key, v, args.variants, ext=final_ext
-            )
+            final_path = generator.out_path(args.out_dir, key, v, args.variants, ext=final_ext)
             if final_path.exists():
                 print(f"skip (exists): {final_path}")
                 continue
-            wav_path = (
-                final_path if args.format == "wav" else final_path.with_suffix(".wav")
-            )
+            wav_path = final_path if args.format == "wav" else final_path.with_suffix(".wav")
             audio = model.generate(
                 prompt=prompts[key],
                 duration=args.duration,

@@ -21,6 +21,9 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from audio_bundle_stems import bundled_stems_by_dir
+
+from spells import SPELL_SOUND_KEYS
 
 # This file lives at apps/agent/tests/<this>; parents[2] is the repo's apps/ dir.
 _APPS_DIR = Path(__file__).resolve().parents[2]
@@ -49,32 +52,35 @@ def test_no_wav_files_in_spell_sfx_source_dir() -> None:
 # regen that updates the source and forgets the bundled copy (or vice versa) would ship
 # stale audio while every other lane stays green. Fail loud on that drift. (Sole owner
 # of this assertion after story-006 removed the capstone's byte-equality copy.)
-_SOURCE_MIRRORS: dict[Path, Path] = {
-    _AUDIO_SRC_DIR: _SOUNDS_DIR,  # spell_sfx source palette -> bundled root copy
+#
+# Each mirror also pins the FULL expected source key-set: the byte-equal loop globs
+# only files that exist, so a *deleted* source take would silently pass (the glob just
+# omits it, the byte-equal check never sees it, and the M17 capstone only checks the
+# still-present bundled copy). The key-set assertion below is what actually enforces
+# that every customer-approved take is still on disk in the source SSOT.
+_SOURCE_MIRRORS: dict[Path, tuple[Path, frozenset[str]]] = {
+    # spell_sfx source palette -> bundled root copy; the 7 frozen spell keys must all be present.
+    _AUDIO_SRC_DIR: (_SOUNDS_DIR, SPELL_SOUND_KEYS),
 }
 
 
 def test_committed_source_mirror_is_byte_equal_to_bundled() -> None:
-    for source_dir, bundled_dir in _SOURCE_MIRRORS.items():
+    for source_dir, (bundled_dir, expected_keys) in _SOURCE_MIRRORS.items():
         sources = sorted(source_dir.glob("*.mp3"))
         assert sources, f"no source .mp3 under {source_dir} -- mirror guard would be a no-op"
+        source_stems = {src.stem for src in sources}
+        missing = sorted(expected_keys - source_stems)
+        assert not missing, (
+            f"source palette under {source_dir} is missing keys {missing} -- a deleted "
+            "source take passes the byte-equal glob silently; the source SSOT must hold "
+            "every approved take"
+        )
         for src in sources:
             bundled = bundled_dir / src.name
             assert bundled.exists(), f"bundled mirror missing: {bundled}"
             assert src.read_bytes() == bundled.read_bytes(), (
                 f"{src.name} differs between source ({src}) and bundled ({bundled}) -- regenerate both"
             )
-
-
-def _bundled_stems_by_dir() -> dict[str, set[str]]:
-    """Map each family dir (top-level '.' plus each subdir name) to its stem set."""
-    families: dict[str, set[str]] = {}
-    for path in _SOUNDS_DIR.glob("**/*"):
-        if path.suffix not in (".mp3", ".wav"):
-            continue
-        family = path.parent.relative_to(_SOUNDS_DIR).as_posix()
-        families.setdefault(family, set()).add(path.stem)
-    return families
 
 
 def _probe(path: Path) -> tuple[int, int]:
@@ -105,7 +111,7 @@ def _probe(path: Path) -> tuple[int, int]:
 # Discovered at collection time from the bundled directory listing -- covers root
 # (legacy 20 + 7 spell stems), music, soundscapes, textures with no hand-maintained
 # key tuple. A future regenerated family auto-extends this parametrization.
-_FAMILY_DIRS = sorted(_bundled_stems_by_dir().keys())
+_FAMILY_DIRS = sorted(bundled_stems_by_dir(_SOUNDS_DIR).keys())
 
 
 def test_family_discovery_is_non_empty() -> None:
@@ -131,7 +137,7 @@ def test_bundled_family_stems_match_pipeline_transcode_signature(family_dir: str
             "install it (brew install ffmpeg); skipping would silently drop enforcement"
         )
     base = _SOUNDS_DIR if family_dir == "." else _SOUNDS_DIR / family_dir
-    stems = _bundled_stems_by_dir()[family_dir]
+    stems = bundled_stems_by_dir(_SOUNDS_DIR)[family_dir]
     for key in sorted(stems):
         path = base / f"{key}.mp3"
         assert path.exists(), f"missing bundled stem: {path}"
