@@ -1,5 +1,9 @@
 import { test, expect } from "bun:test";
-import { lookupSoundscape, knownSoundscapeNames } from "@/audio/soundscape-registry";
+import {
+  lookupSoundscape,
+  knownSoundscapeNames,
+  knownTextureNames,
+} from "@/audio/soundscape-registry";
 
 test("lookupSoundscape returns entry for known tags", () => {
   const names = knownSoundscapeNames();
@@ -29,6 +33,27 @@ test("knownSoundscapeNames returns all 11 tags", () => {
   expect(names).toContain("tavern_busy");
   expect(names).toContain("wind_ruins");
   expect(names).toContain("dungeon_resonance_deep");
+});
+
+test("knownTextureNames returns all 11 texture names", () => {
+  const names = knownTextureNames();
+  expect(names.length).toBe(11);
+  const expected = [
+    "bird_call_01",
+    "bird_call_02",
+    "bird_call_03",
+    "cart_wheel",
+    "water_drip",
+    "footstep_stone",
+    "wind_gust",
+    "dog_bark_distant",
+    "insect_buzz",
+    "fire_crackle",
+    "branch_crack",
+  ];
+  for (const n of expected) {
+    expect(names).toContain(n);
+  }
 });
 
 test("soundscape entries have texture configs", () => {

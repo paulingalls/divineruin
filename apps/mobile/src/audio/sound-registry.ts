@@ -52,13 +52,13 @@ const SOUNDS: Record<SoundName, SoundAsset> = {
   door_creak: require("@/assets/sounds/door_creak.mp3"),
   discovery_chime: require("@/assets/sounds/discovery_chime.mp3"),
   god_whisper_stinger: require("@/assets/sounds/god_whisper_stinger.mp3"),
-  spell_fire: require("@/assets/sounds/spell_fire.wav"),
-  spell_ice: require("@/assets/sounds/spell_ice.wav"),
-  spell_arcane_force: require("@/assets/sounds/spell_arcane_force.wav"),
-  spell_heal: require("@/assets/sounds/spell_heal.wav"),
-  spell_radiant: require("@/assets/sounds/spell_radiant.wav"),
-  spell_nature: require("@/assets/sounds/spell_nature.wav"),
-  spell_generic: require("@/assets/sounds/spell_generic.wav"),
+  spell_fire: require("@/assets/sounds/spell_fire.mp3"),
+  spell_ice: require("@/assets/sounds/spell_ice.mp3"),
+  spell_arcane_force: require("@/assets/sounds/spell_arcane_force.mp3"),
+  spell_heal: require("@/assets/sounds/spell_heal.mp3"),
+  spell_radiant: require("@/assets/sounds/spell_radiant.mp3"),
+  spell_nature: require("@/assets/sounds/spell_nature.mp3"),
+  spell_generic: require("@/assets/sounds/spell_generic.mp3"),
 };
 /* eslint-enable @typescript-eslint/no-unsafe-assignment */
 

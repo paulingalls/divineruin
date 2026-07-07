@@ -231,6 +231,25 @@ this doc (§3) so the keying/wiring stories build on a settled choice. Note: the
 bake-off needs real generation — an ElevenLabs key and/or the Stable Audio weights
 downloaded locally — so it is gated on the customer provisioning at least one.
 
+### 3.2 SA3-medium on this Mac — spike findings (story-008)
+
+M22 music ships via `small-music` (story-004). story-008 spiked whether the larger
+`stable-audio-3-medium` model can render **non-noise** audio on this Mac, to seed a
+later medium-vs-small A/B for the long-form music/ambience layers.
+
+**Result: medium renders non-noise on the Apple GPU (MPS) at the pinned recipe.**
+
+| Aspect | Finding |
+|---|---|
+| Device | **MPS** (`--device mps`) — no CPU fallback needed. `stable_audio_3` is PyTorch-based; medium loads through the same loader as `small-music`, just heavier weights (~11 GB, one-time HF download). |
+| Recipe | **Pinned defaults hold** — `--steps 8 --cfg-scale 1.0`, no sweep required. |
+| Non-noise proof | `assert_take_is_not_noise` (std ≤ 0.7) passed on every take. Probe `wonder` (10s) std **0.122**; `wonder`/`exploration` (30s mp3) std **0.111 / 0.110**. |
+| Misfiring warning | `from_pretrained` prints "not designed to run on cpu" whenever CUDA is absent — it fires even on MPS and can be ignored (it only disables `model_half`, which is correct for non-CUDA). |
+| Sample seeds | `/tmp/m22-music-medium/{wonder,exploration}.mp3` — staged for the main-agent A/B vs the shipped `small-music`. |
+
+Enabler: story-004's `--model medium` choice + story-008's `--device {auto,mps,cpu}`
+selector. The medium-vs-small A/B and any bundle swap are a follow-up (outside story-008).
+
 ## 4. Keying Scheme (FROZEN CONTRACT for stories 002/003)
 
 `audio_cue` (free-text, director prose + generation prompt) and `sound_id` (new
@@ -507,3 +526,22 @@ produces `.wav`. Both drop straight into `apps/mobile/assets/sounds/` as-is.
   (`scripts/seed_content.py` + `scripts/migrations/032_spells.sql`), so adding the
   new `sound_id` field to `content/spells.json` requires editing the JSON and
   re-seeding — no schema migration.
+
+### Family Coverage Matrix (story-006)
+
+Every bundled audio family is covered by a signature guard and a PROMPT-parity
+guard; a family with a committed source mirror adds a third byte-equality guard
+(only Spell SFX today). Each guard has a single owner — no duplicated enforcement:
+
+| Family | Count | Bundled dir | Source mirror? | Signature guard | PROMPT parity | Byte-equal |
+|---|---|---|---|---|---|---|
+| Spell SFX | 7 | `apps/mobile/assets/sounds/` (root) | Yes — `apps/audio/spell_sfx/` | `test_audio_bundle_compressed.py::test_bundled_family_stems_match_pipeline_transcode_signature[.]` | `test_generate_spell_sfx.py` | `test_audio_bundle_compressed.py::test_committed_source_mirror_is_byte_equal_to_bundled` |
+| Legacy SFX | 20 | `apps/mobile/assets/sounds/` (root) | No | same `[.]` case as above | `test_generate_spell_sfx.py` | — |
+| Music | 8 | `apps/mobile/assets/sounds/music/` | No | `...transcode_signature[music]` | `test_generate_spell_sfx.py` | — |
+| Soundscapes | 11 | `apps/mobile/assets/sounds/soundscapes/` | No | `...transcode_signature[soundscapes]` | `test_generate_spell_sfx.py` | — |
+| Textures | 11 | `apps/mobile/assets/sounds/textures/` | No | `...transcode_signature[textures]` | `test_generate_spell_sfx.py` | — |
+
+The signature guard's family/stem sets are discovered from the bundled directory
+listing (not a hand-maintained key list), so a newly regenerated family or stem
+auto-extends coverage. The byte-equal guard is table-driven
+(`_SOURCE_MIRRORS`) — a future committed source mirror is one table entry.
