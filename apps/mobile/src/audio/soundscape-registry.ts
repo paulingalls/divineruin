@@ -151,3 +151,9 @@ export function lookupSoundscape(tag: string): SoundscapeEntry | null {
 export function knownSoundscapeNames(): SoundscapeName[] {
   return SOUNDSCAPE_NAMES;
 }
+
+const TEXTURE_NAMES = Object.keys(TEXTURE_ASSETS) as (keyof typeof TEXTURE_ASSETS)[];
+
+export function knownTextureNames(): string[] {
+  return TEXTURE_NAMES;
+}

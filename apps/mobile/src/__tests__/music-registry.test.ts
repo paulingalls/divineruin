@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { lookupMusic, type MusicState } from "@/audio/music-registry";
+import { lookupMusic, knownMusicStates, type MusicState } from "@/audio/music-registry";
 
 test("lookupMusic returns null for silence", () => {
   expect(lookupMusic("silence")).toBeNull();
@@ -55,6 +55,25 @@ test("lookupMusic returns entry for title", () => {
   expect(entry).not.toBeNull();
   expect(entry!.loop).toBe(true);
   expect(entry!.durationMs).toBe(120_000);
+});
+
+test("knownMusicStates returns the 8 playable states, excluding silence", () => {
+  const states = knownMusicStates();
+  expect(states.length).toBe(8);
+  expect(states).not.toContain("silence");
+  const expected: MusicState[] = [
+    "exploration",
+    "tension",
+    "combat_standard",
+    "combat_boss",
+    "wonder",
+    "sorrow",
+    "hollow_dissolution",
+    "title",
+  ];
+  for (const s of expected) {
+    expect(states).toContain(s);
+  }
 });
 
 test("all non-silence states have a defined asset", () => {
