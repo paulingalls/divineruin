@@ -9,8 +9,9 @@ table — see docs/audio_sfx_pipeline.md §4. This is the ElevenLabs (.mp3)
 bake-off generator, and it owns the shared PROMPTS table + _out_path helper
 — the single prompt SSOT that generate_spell_sfx_stableaudio.py imports.
 
-NOTE ON THE COMMITTED PALETTE: the shipped assets are the .wav files produced by
-generate_spell_sfx_stableaudio.py (Stable Audio 3.0 Small SFX), the vendor that
+NOTE ON THE COMMITTED PALETTE: the shipped assets are the compressed .mp3 files
+produced by generate_spell_sfx_stableaudio.py (Stable Audio 3.0 Small SFX, which
+transcodes its render to .mp3 and unlinks the .wav — story-006), the vendor that
 won the story-002 bake-off. To REGENERATE the committed palette, run that script,
 not this one. Use this ElevenLabs generator for A/B comparison or as the
 alternative engine — both share the frozen prompts, so they stay comparable ("Audio
@@ -358,7 +359,7 @@ def _generate_one(
 def out_path(
     out_dir: Path, key: str, variant: int, total_variants: int, ext: str = ".mp3"
 ) -> Path:
-    """Shared palette-file namer. ext is the engine's format (.mp3 here, .wav for Stable Audio)."""
+    """Shared palette-file namer. ext is the output format (.mp3 for both engines; the SA3 generator renders .wav then transcodes to .mp3)."""
     name = f"{key}{ext}" if total_variants == 1 else f"{key}_v{variant}{ext}"
     return out_dir / name
 
