@@ -14,7 +14,8 @@ owned by test_m17_spell_sfx_capstone.py). Lives in the acceptance lane for the
 cross-language bun subprocess + end-to-end roll-up, not a DB.
 
 Not re-asserted here (owned elsewhere, dedup):
-- bundled<->PROMPT parity, both directions -> apps/agent/tests/test_generate_spell_sfx.py
+- the reverse orphan-PROMPT direction (a PROMPTS key with no bundled asset)
+  -> apps/agent/tests/test_generate_spell_sfx.py::test_no_prompt_without_a_bundled_asset
 - source==bundled byte-equality -> apps/agent/tests/test_audio_bundle_compressed.py (story-006)
 - per-stem transcode signature (44.1kHz/<=160kbps) -> test_audio_bundle_compressed.py
 """
