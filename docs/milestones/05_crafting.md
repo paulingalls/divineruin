@@ -64,6 +64,7 @@ Implements the full crafting pipeline from recipe acquisition through workspace 
 - M5.1 → Phase 1 M1.2 (skill tiers): slot capacity and tier gating read player Crafting tier (registered at `apps/agent/rules_engine.py:102`).
 - M5.1 → Phase 1 M1.5 (async training): the Training acquisition track consumes async cycles via the `recipe_study` training activity type. (The per-tier `tier_cycles` cost-mapping adapter — `get_recipe_study_cycles`/`parse_recipe_study_cycles` — was forward-laid but never wired to a production learn path; it and its `tier_cycles` content map were deleted at sprint-013 close per the delete-if-unwired gate. Re-derive the cost mapping when the recipe_study-learn path is actually built.)
 - M5.1 → M5.4 catalog: recipes name material ids that must resolve against the items catalog.
+- **M5.1 → M24 Veil Ward (full realization):** the Artificer **Veil Anchor** (`magic.md:207`) is a crafted, deployable placed-object ward (1-hour duration, the tactical/plannable ward source). The full-spec ward is area/encounter-scoped, party-wide, duration-bound (SMM `veil-ward-scope-decision`). **M24 (execution_plan.json) OWNS the Veil Anchor recipe** — because this phase is Delivered and won't reopen, M24 absorbs it; the recipe reuses the shipped M5.1 recipe infra and feeds M24's scope model.
 
 **Spec/milestone conflict to record:** Untrained recipe slots — milestone bullet says "Untrained: 0"; spec at `game_mechanics_crafting.md:158` says "Untrained 3". Tracked in `audit/README.md` Sprint-spec-cleanup.
 
