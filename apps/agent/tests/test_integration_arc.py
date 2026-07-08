@@ -129,13 +129,15 @@ class TestQuestArcProgression:
 
     @pytest.mark.asyncio
     async def test_stage_5_effects(self):
-        """Stage 4→5: emris_disposition +4, event:faction_interest_triggered, event:god_whisper:player_patron."""
+        """Stage 5 completion: emris_disposition +4, faction_interest, god_whisper, and the
+        accord_guild reputation grant (story-002 inc 4b) — all now live via inc 4a."""
         quest = _load_greyvale_quest()
         stage_4 = quest["stages"][4]
         effects = stage_4["on_complete"].get("world_effects", [])
         assert "emris_disposition +4" in effects
         assert "event:faction_interest_triggered" in effects
         assert "event:god_whisper:player_patron" in effects
+        assert "accord_guild_reputation completed_faction_quest" in effects
 
         session = _make_session()
         pending: list[tuple[str, dict]] = []
@@ -146,6 +148,8 @@ class TestQuestArcProgression:
         mock_mutations.set_npc_disposition = AsyncMock()
         mock_content = MagicMock()
         mock_content.get_npc = AsyncMock(return_value={"default_disposition": "neutral"})
+        mock_reputation = MagicMock()
+        mock_reputation.adjust_player_faction_reputation = AsyncMock(return_value=5)
 
         await _apply_world_effects(
             effects,
@@ -154,9 +158,13 @@ class TestQuestArcProgression:
             queries=mock_queries,
             mutations=mock_mutations,
             content=mock_content,
+            reputation_mutations=mock_reputation,
         )
 
         mock_mutations.set_npc_disposition.assert_called_once()
+        mock_reputation.adjust_player_faction_reputation.assert_awaited_once()
+        rep_args = mock_reputation.adjust_player_faction_reputation.await_args.args
+        assert rep_args[1] == "accord_guild" and rep_args[2] == 5
         world_events = [e for e in pending if e[0] == E.WORLD_EVENT]
         event_ids = {e[1]["event_id"] for e in world_events}
         assert "faction_interest_triggered" in event_ids
