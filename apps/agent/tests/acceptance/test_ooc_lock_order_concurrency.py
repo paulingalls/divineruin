@@ -45,14 +45,20 @@ PARTY = [ALICE, BOB]
 # A regression (circular wait) must fail FAST rather than hang the acceptance lane.
 GATHER_TIMEOUT_S = 10.0
 
+# asyncpg types a `pool.acquire()`d proxy distinctly from Connection. `_QueryConn` covers anything
+# that can run a query (Pool included, for a plain fetchval); `_TxnConn` excludes Pool because only
+# a single connection can open a `.transaction()`.
+_QueryConn = asyncpg.Connection | asyncpg.Pool | asyncpg.pool.PoolConnectionProxy
+_TxnConn = asyncpg.Connection | asyncpg.pool.PoolConnectionProxy
 
-async def _read_casts_landed(conn: asyncpg.Connection | asyncpg.Pool, player_id: str) -> int:
+
+async def _read_casts_landed(conn: _QueryConn, player_id: str) -> int:
     """The ``casts_landed`` counter on a player's JSONB row (absent on a freshly seeded row)."""
     raw = await conn.fetchval("SELECT data->>'casts_landed' FROM players WHERE player_id = $1", player_id)
     return int(raw) if raw is not None else 0
 
 
-async def _cast(conn: asyncpg.Connection, barrier: asyncio.Barrier, *, caster: str, target: str) -> list[str]:
+async def _cast(conn: _TxnConn, barrier: asyncio.Barrier, *, caster: str, target: str) -> list[str]:
     """One OOC cast in its own transaction: BEGIN, rendezvous, take the real batch lock, write.
 
     The barrier gates BEFORE the helper call — never mid-statement, which the single-statement
