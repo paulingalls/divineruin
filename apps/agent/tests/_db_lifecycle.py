@@ -5,9 +5,13 @@ at :55432 (the canonical dev DB). When that DB isn't running, a bare `pytest`
 fails with connection errors. This helper, driven by conftest's
 pytest_sessionstart/sessionfinish hooks (gated to the xdist controller),
 detects reachability and — only if the DB is down — runs `docker compose up -d`
-and waits for readiness, then stops ONLY what this run started on session end.
-It never runs `down -v`, so a pre-existing dev DB (and its volumes) is left
-untouched.
+and waits for readiness, then tears down ONLY what this run started on session
+end via `docker compose down` (never -v, so named volumes and pre-existing dev
+DB are left untouched).
+
+If a leftover stopped container causes an "already in use" conflict, ensure_db_up
+self-heals by issuing `docker compose down` (no -v), then retrying `up` once.
+Any other failure is fatal.
 
 The acceptance lane manages its own testcontainers (see tests/acceptance/) and
 is unaffected: if the dev DB is already up, ensure_db_up() is a fast no-op.
@@ -84,12 +88,24 @@ def ensure_db_up() -> bool:
         return False
 
     print(f"\n[db-lifecycle] Postgres not reachable at {host}:{port} — starting docker compose...")
-    result = _compose("up", "-d")
+    result = _compose("up", "-d", "--remove-orphans")
     if result.returncode != 0:
-        raise RuntimeError(
-            f"`docker compose up -d` failed (exit {result.returncode}): "
-            f"{result.stderr.strip() or result.stdout.strip()}"
-        )
+        combined = f"{result.stderr}\n{result.stdout}".lower()
+        # A leftover STOPPED container with the same explicit container_name makes `up -d` fail
+        # with "container name already in use" instead of restarting it. Self-heal: `down` (never
+        # -v, so named-volume data survives) clears the stale containers, then retry `up -d` once.
+        # Any other failure is genuinely fatal.
+        if "already in use" in combined or "conflict" in combined:
+            print(
+                "[db-lifecycle] Stale container-name conflict — `docker compose down` (keeps volumes), retrying up..."
+            )
+            _compose("down")
+            result = _compose("up", "-d", "--remove-orphans")
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"`docker compose up -d` failed (exit {result.returncode}): "
+                f"{result.stderr.strip() or result.stdout.strip()}"
+            )
 
     deadline = time.monotonic() + _READY_TIMEOUT_SECONDS
     while time.monotonic() < deadline:
@@ -101,8 +117,8 @@ def ensure_db_up() -> bool:
 
 
 def stop_if_started(started: bool) -> None:
-    """Stop the compose services iff this run started them. Never `down -v`."""
+    """Down the compose services iff this run started them. Never `down -v`."""
     if not started:
         return
-    print("[db-lifecycle] Stopping docker compose services this run started...")
-    _compose("stop")
+    print("[db-lifecycle] Tearing down docker compose services this run started...")
+    _compose("down")
