@@ -123,10 +123,11 @@ async def test_ac2_tool_ceiling_no_longer_binds() -> None:
     from exploration_agent import EXPLORATION_TOOLS
     from llm_config import MAX_STRICT_TOOLS
 
-    # One unified list (the former city superset + the M4.6b travel verb) with real headroom —
-    # not pinned at the 20-strict-tool ceiling that drove the region split (debt e665104c753a).
+    # One unified list (the former city superset + the M4.6b travel verb + the M23 story-002
+    # adjust_faction_reputation verb) with real headroom — not pinned at the 20-strict-tool
+    # ceiling that drove the region split (debt e665104c753a).
     assert len(EXPLORATION_TOOLS) < MAX_STRICT_TOOLS
-    assert MAX_STRICT_TOOLS - len(EXPLORATION_TOOLS) >= 4
+    assert MAX_STRICT_TOOLS - len(EXPLORATION_TOOLS) >= 3
 
     # The per-region agent modules are gone — collapse, not coexistence.
     for module_name in ("city_agent", "wilderness_agent", "dungeon_agent"):
