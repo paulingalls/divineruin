@@ -156,6 +156,17 @@ describe("handleRedeemInvite", () => {
     expect(redeemRes.status).toBe(200);
     expect(dispatchSpy).toHaveBeenCalledTimes(1);
   });
+
+  test("rejects malformed player_id (invalid characters)", async () => {
+    mockGetInvite = mock((_code: string) => Promise.resolve("room-shared"));
+    const res = await handleRedeemInvite(
+      jsonReq("/api/livekit/redeem", { code: "valid-code" }),
+      "bad id!",
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error?: string };
+    expect(body.error).toContain("player_id contains invalid characters");
+  });
 });
 
 describe("generateCode", () => {
