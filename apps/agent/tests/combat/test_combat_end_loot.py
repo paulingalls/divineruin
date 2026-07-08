@@ -221,3 +221,96 @@ async def test_minion_only_victory_grants_no_currency(dev_db_pool):
         assert not [e for e in sink.captured if e.event_type == E.CURRENCY_GAINED]
     finally:
         await _cleanup(pool)
+
+
+# --- Combat outcome -> faction reputation (story-002 inc 5) ---------------------------
+# Killing an encounter faction's members on victory lowers the player's standing with it,
+# keyed on cs.faction_id (set at combat_init from the stance gate). One aggregate shift.
+
+
+def _faction_victory_state(faction_id):
+    """A victory with one loot-free fallen enemy (no category/loot_table_id -> no loot/currency,
+    so no item seeding needed) plus the primary; the encounter is tagged with a faction."""
+    enemy = CombatParticipant(
+        id="s002_rep_enemy",
+        name="Patrol",
+        type="enemy",
+        initiative=10,
+        hp_current=0,
+        hp_max=10,
+        ac=12,
+        level=2,
+        xp_value=30,
+        is_fallen=True,
+    )
+    player = CombatParticipant(
+        id=_PLAYER_ID, name="Hero", type="player", initiative=15, hp_current=20, hp_max=20, ac=14
+    )
+    cs = CombatState(combat_id="s002_rep_combat", participants=[player, enemy], initiative_order=[_PLAYER_ID, enemy.id])
+    cs.faction_id = faction_id
+    return cs
+
+
+async def _run_end(cs, reputation_mutations, *, outcome="victory"):
+    session = SessionData(player_id=_PLAYER_ID, location_id="loc_test", room=None)
+    sink = EventSink()
+    async with db.transaction() as conn:
+        await _end_combat_db(
+            session,
+            cs,
+            outcome,
+            mutations=db_mutations,
+            queries=db_queries,
+            conn=conn,
+            sink=sink,
+            content=_content_stub(),
+            reputation_mutations=reputation_mutations,
+            rng=FakeRng(die=4),
+        )
+
+
+@pytest.mark.asyncio
+async def test_victory_lowers_faction_reputation(dev_db_pool):
+    pool = dev_db_pool
+    await _seed_player(pool, gold=0)
+    try:
+        rep = MagicMock()
+        rep.adjust_player_faction_reputation = AsyncMock(return_value=-3)
+        await _run_end(_faction_victory_state("thornwatch"), rep)
+        rep.adjust_player_faction_reputation.assert_awaited_once()
+        args = rep.adjust_player_faction_reputation.await_args.args
+        # killed_faction_member -> -3, attributed to the encounter faction.
+        assert args[0] == _PLAYER_ID and args[1] == "thornwatch" and args[2] == -3
+    finally:
+        await _cleanup(pool)
+
+
+@pytest.mark.asyncio
+async def test_victory_without_faction_shifts_no_reputation(dev_db_pool):
+    pool = dev_db_pool
+    await _seed_player(pool, gold=0)
+    try:
+        rep = MagicMock()
+        rep.adjust_player_faction_reputation = AsyncMock()
+        await _run_end(_faction_victory_state(None), rep)
+        rep.adjust_player_faction_reputation.assert_not_awaited()
+    finally:
+        await _cleanup(pool)
+
+
+@pytest.mark.asyncio
+async def test_deescalation_raises_faction_reputation(dev_db_pool):
+    # A peaceful de-escalation of a faction's members raises standing (spared, not slain).
+    pool = dev_db_pool
+    await _seed_player(pool, gold=0)
+    try:
+        cs = _faction_victory_state("thornwatch")
+        cs.participants[1].is_fallen = False  # de-escalated enemies are spared, alive
+        cs.participants[1].hp_current = 8
+        rep = MagicMock()
+        rep.adjust_player_faction_reputation = AsyncMock(return_value=3)
+        await _run_end(cs, rep, outcome="deescalated")
+        args = rep.adjust_player_faction_reputation.await_args.args
+        assert args[1] == "thornwatch" and args[2] == 3  # deescalated_faction -> +3
+    finally:
+        await _cleanup(pool)

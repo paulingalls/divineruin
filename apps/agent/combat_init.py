@@ -329,6 +329,14 @@ async def _start_combat_impl(
             )
         )
 
+    # Carry the encounter's faction onto CombatState so combat_end can attribute the outcome
+    # to faction reputation (story-002 inc 5). An explicit encounter `faction` wins; otherwise
+    # the stance_gate faction (a gated encounter reaching combat resolved hostile). None when
+    # the encounter has no faction — no reputation shift on such a fight.
+    combat_faction_id = encounter.get("faction")
+    if combat_faction_id is None and stance_gate is not None:
+        combat_faction_id = stance_gate.get("faction")
+
     combat_id = f"combat_{uuid.uuid4().hex[:8]}"
     combat_state = CombatState(
         combat_id=combat_id,
@@ -337,6 +345,7 @@ async def _start_combat_impl(
         round_number=1,
         current_turn_index=0,
         location_id=session.location_id,
+        faction_id=combat_faction_id,
     )
 
     # Persist and update session

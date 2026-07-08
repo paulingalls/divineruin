@@ -11,6 +11,7 @@ from livekit.agents.voice import RunContext
 import db
 import db_content_queries
 import db_mutations
+import db_mutations_reputation
 import db_queries
 import event_types as E
 import milestones
@@ -18,6 +19,7 @@ import progression_tools
 from db_errors import db_tool
 from disposition import resolve_disposition
 from game_events import publish_game_event
+from reputation import reputation_shift
 from role_archetypes import shift_disposition
 from session_data import SessionData
 from tool_support import EFFECT_NPC_MAP, _validate_id
@@ -29,6 +31,10 @@ _EFFECT_DISPOSITION_RE = re.compile(r"^(\w+)_disposition\s*([+-]\d+)$")
 _EFFECT_CORRUPTION_RE = re.compile(r"^greyvale_corruption\s*([+-]\d+)$")
 _EFFECT_EVENT_RE = re.compile(r"^event:(.+)$")
 _EFFECT_MORALE_RE = re.compile(r"^(\w+)_morale\s*([+-]\d+)$")
+# "<faction_id>_reputation <named_event>" — the faction-scoped analogue of the per-NPC
+# disposition shorthand, but the magnitude comes from the named event (reputation_shift),
+# not an inline number, so the delta lives in one place (story-002 inc 4b).
+_EFFECT_REPUTATION_RE = re.compile(r"^(\w+)_reputation\s+(\w+)$")
 
 
 async def _apply_world_effects(
@@ -40,6 +46,7 @@ async def _apply_world_effects(
     mutations=db_mutations,
     queries=db_queries,
     content=db_content_queries,
+    reputation_mutations=db_mutations_reputation,
 ) -> None:
     """Parse and apply deterministic world_effects from quest on_complete."""
     for effect_str in effects:
@@ -56,6 +63,23 @@ async def _apply_world_effects(
             )
             pending_events.append((E.DISPOSITION_CHANGED, {"npc_id": npc_id, "previous": current, "new": new_disp}))
             logger.info("World effect: %s disposition %s → %s", npc_id, current, new_disp)
+            continue
+
+        m = _EFFECT_REPUTATION_RE.match(effect_str)
+        if m:
+            faction_id, event_type = m.group(1), m.group(2)
+            try:
+                delta = reputation_shift(event_type)
+            except ValueError:
+                # A typo'd event in authored content: warn and skip rather than crash the
+                # whole quest-stage transaction over one bad effect string.
+                logger.warning("Unknown reputation event in world effect: %s", effect_str)
+                continue
+            new_value = await reputation_mutations.adjust_player_faction_reputation(
+                session.player_id, faction_id, delta, f"world_effect: {effect_str}", conn=conn
+            )
+            session.record_event(f"{faction_id} reputation {delta:+d} → {new_value} ({event_type})")
+            logger.info("World effect: %s reputation %+d → %s", faction_id, delta, new_value)
             continue
 
         m = _EFFECT_CORRUPTION_RE.match(effect_str)
@@ -123,8 +147,14 @@ async def _update_quest_impl(
         raise ToolError(f"Quest '{quest_id}' not found.")
 
     stages = quest.get("stages", [])
-    if new_stage_id < 0 or new_stage_id >= len(stages):
-        raise ToolError(f"Invalid stage {new_stage_id} for quest '{quest_id}'. Valid: 0-{len(stages) - 1}.")
+    # new_stage_id == len(stages) is the COMPLETION transition: it fires the FINAL stage's
+    # on_complete (dead before story-002 inc 4a — the guard used to reject it) and writes
+    # status=completed. Only > len(stages) is out of range.
+    if new_stage_id < 0 or new_stage_id > len(stages):
+        raise ToolError(
+            f"Invalid stage {new_stage_id} for quest '{quest_id}'. Valid: 0-{len(stages)} ({len(stages)} completes)."
+        )
+    is_completion = new_stage_id == len(stages)
 
     rewards_applied = []
     pending_events: list[tuple[str, dict]] = []
@@ -190,11 +220,17 @@ async def _update_quest_impl(
                     content=content,
                 )
 
-        new_stage = stages[new_stage_id]
-        quest_data = {
+        # On completion there is no stages[len]; an empty dict makes the objective/target
+        # lookups below return their defaults with no extra branching.
+        new_stage = stages[new_stage_id] if not is_completion else {}
+        quest_data: dict = {
             "current_stage": new_stage_id,
             "quest_name": quest.get("name", quest_id),
         }
+        # status=completed drops the quest from get_active_player_quests (COALESCE 'active'
+        # filter) — nothing wrote this before, so completed quests lingered as active.
+        if is_completion:
+            quest_data["status"] = "completed"
         await mutations.set_player_quest(session.player_id, quest_id, quest_data, conn=conn)
 
         quest_updated_payload: dict = {
@@ -203,6 +239,8 @@ async def _update_quest_impl(
             "new_stage": new_stage_id,
             "objective": new_stage.get("objective", ""),
         }
+        if is_completion:
+            quest_updated_payload["completed"] = True
         target_loc = new_stage.get("target_location_id")
         if target_loc:
             quest_updated_payload["target_location_id"] = target_loc
@@ -229,8 +267,12 @@ async def _update_quest_impl(
         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
 
     quest_name = quest.get("name", quest_id)
-    session.record_event(f"Quest '{quest_name}' advanced to stage {new_stage_id}")
-    session.record_companion_memory(f"Quest '{quest_name}' progressed to: {new_stage.get('objective', '')}")
+    if is_completion:
+        session.record_event(f"Quest '{quest_name}' completed")
+        session.record_companion_memory(f"Quest '{quest_name}' completed")
+    else:
+        session.record_event(f"Quest '{quest_name}' advanced to stage {new_stage_id}")
+        session.record_companion_memory(f"Quest '{quest_name}' progressed to: {new_stage.get('objective', '')}")
     if quest_id not in session.session_quests_progressed:
         session.session_quests_progressed.append(quest_id)
 
@@ -239,6 +281,7 @@ async def _update_quest_impl(
         "quest_name": quest_name,
         "new_stage": new_stage_id,
         "objective": new_stage.get("objective", ""),
+        "completed": is_completion,
         "rewards_applied": rewards_applied,
         # Surface the milestone grant + L5 fork cue so the DM voices them on a quest-stage
         # level-up, mirroring award_xp (the DM narrates from the tool response, not the bus).
@@ -254,7 +297,7 @@ async def _update_quest_impl(
     from scene_tools import detect_scene_transition
 
     transition = None
-    if quest.get("scene_graph"):
+    if not is_completion and quest.get("scene_graph"):
         scene_ids = [e["scene_id"] for e in quest["scene_graph"]]
         scene_cache = await content.get_scenes_batch(scene_ids)
         transition = detect_scene_transition(scene_cache, quest, current_stage, new_stage_id)
