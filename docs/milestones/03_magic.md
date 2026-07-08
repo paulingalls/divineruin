@@ -36,7 +36,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
   - Veil Fracture event at 15+ (`magic.md:134`) — narrative-scale consequence.
   - Resonance Sensing tiers for Non-Elari via Arcana ladder (`magic.md:280-293`) — Untrained/Trained/Expert/Master.
   - Druid preparation constraint ("only change spell preparation in natural terrain", `magic.md:458`).
-  - Veil Ward per-archetype sources table (`magic.md:204-210`) — Cleric/Druid/Artificer/Paladin/Sacred sites with distinct costs, levels, durations.
+  - Veil Ward per-archetype sources table (`magic.md:204-210`) — Cleric/Druid/Artificer/Paladin/Sacred sites with distinct costs, levels, durations. **→ M24 (execution_plan.json) OWNS this.** The shipped ward is a per-player boolean; the full-spec ward (area/encounter-scoped, party-wide, duration-bound, multi-source) is decided (SMM `veil-ward-scope-decision`). The Cleric/Druid/Paladin cost+level table already ships in `veil_ward.py`; the deferred bit is the **per-source durations + area scope**, which M24 absorbs because this phase is Delivered and won't reopen.
 
 ### Cross-doc dependencies
 
