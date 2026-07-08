@@ -5,6 +5,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from livekit.agents.llm import ToolError
 from sample_fixtures import (
     _WARRIOR_MILESTONES,
     GUILD_PLAYER,
@@ -149,3 +150,70 @@ async def test_quest_stage_no_levelup_has_empty_grants_and_no_fork():
     assert response["milestone_grants"] == []
     assert response["specialization_fork"] is False
     mutations.set_player_flag.assert_not_awaited()
+
+
+# --- Terminal-stage completion (story-002 inc 4a, debt 7918cd848e90) -----------------
+# update_quest never fired the FINAL stage's on_complete (guard rejected new_stage >=
+# len(stages)), so terminal rewards were dead. The completion transition — new_stage_id ==
+# len(stages) — fires the final on_complete and writes status=completed.
+
+_COMPLETION_QUEST = {
+    "id": "cq",
+    "name": "Completion Quest",
+    "stages": [
+        {"id": 0, "objective": "start", "on_complete": {}},
+        {"id": 1, "objective": "finish", "on_complete": {"rewards": [{"item": "prize", "quantity": 1}]}},
+    ],
+}
+
+
+def _completion_mocks(current_stage: int):
+    room = make_mock_room()
+    mock_db, mock_conn = make_db_mod()
+    content = MagicMock()
+    content.get_quest = AsyncMock(return_value=_COMPLETION_QUEST)
+    content.get_item = AsyncMock(return_value={"name": "Prize"})
+    content.get_scenes_batch = AsyncMock(return_value={})
+    queries = MagicMock()
+    queries.get_player_quest = AsyncMock(return_value={"current_stage": current_stage})
+    queries.get_player = AsyncMock(return_value=GUILD_PLAYER)
+    mutations = MagicMock()
+    mutations.set_player_quest = AsyncMock()
+    mutations.add_inventory_item = AsyncMock()
+    return make_context(room=room), mock_db, mock_conn, content, queries, mutations
+
+
+@pytest.mark.asyncio
+async def test_completing_final_stage_fires_its_on_complete():
+    # Player at the final stage (1) of a 2-stage quest; completing (-> len==2) fires
+    # stage-1's on_complete, so the previously-dead terminal item reward lands.
+    ctx, mock_db, conn, content, queries, mutations = _completion_mocks(current_stage=1)
+    raw = await _update_quest_impl(ctx, "cq", 2, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
+    response = json.loads(raw)
+    mutations.add_inventory_item.assert_awaited_once_with("player_1", "prize", 1, conn=conn)
+    assert response["completed"] is True
+
+
+@pytest.mark.asyncio
+async def test_completion_writes_status_completed():
+    ctx, mock_db, _conn, content, queries, mutations = _completion_mocks(current_stage=1)
+    await _update_quest_impl(ctx, "cq", 2, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
+    data = mutations.set_player_quest.await_args.args[2]
+    assert data["status"] == "completed"
+    assert data["current_stage"] == 2
+
+
+@pytest.mark.asyncio
+async def test_advancing_into_final_stage_does_not_fire_its_on_complete():
+    # Advancing 0 -> 1 fires stage-0's (empty) on_complete, NOT stage-1's — the terminal
+    # reward waits for the explicit completion transition.
+    ctx, mock_db, _, content, queries, mutations = _completion_mocks(current_stage=0)
+    await _update_quest_impl(ctx, "cq", 1, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
+    mutations.add_inventory_item.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stage_beyond_completion_rejected():
+    ctx, mock_db, _, content, queries, mutations = _completion_mocks(current_stage=1)
+    with pytest.raises(ToolError, match="Invalid stage"):
+        await _update_quest_impl(ctx, "cq", 3, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
