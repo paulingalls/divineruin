@@ -23,9 +23,7 @@
         },
         "on_complete": {
           "xp": 50,
-          "world_effects": [
-            "torin_disposition +1"
-          ],
+          "world_effects": ["torin_disposition +1"],
           "narrative_beat": "You arrive in Millhaven. It's quieter than a farming town should be."
         }
       },
@@ -41,14 +39,8 @@
         ],
         "completion_conditions": {
           "type": "knowledge_acquired",
-          "required_info": [
-            "hollow_sighting_details",
-            "ruins_light_reports"
-          ],
-          "sources": [
-            "elder_yanna",
-            "millhaven_inn_npcs"
-          ]
+          "required_info": ["hollow_sighting_details", "ruins_light_reports"],
+          "sources": ["elder_yanna", "millhaven_inn_npcs"]
         },
         "on_complete": {
           "xp": 75,
@@ -79,10 +71,7 @@
               "quantity": 1
             }
           ],
-          "world_effects": [
-            "millhaven_morale +2",
-            "yanna_disposition +2"
-          ],
+          "world_effects": ["millhaven_morale +2", "yanna_disposition +2"],
           "narrative_beat": "The creatures are dead — or gone, or dispersed, you're not sure anything that wrong can really die. At the incursion site, you notice something. The residual energy doesn't match normal Hollow signatures. It's structured. Almost deliberate."
         }
       },
@@ -98,9 +87,7 @@
         ],
         "completion_conditions": {
           "type": "item_discovered",
-          "items": [
-            "ruins_journal_fragment"
-          ],
+          "items": ["ruins_journal_fragment"],
           "location": "greyvale_ruins_entrance"
         },
         "on_complete": {
@@ -111,26 +98,18 @@
               "quantity": 1
             }
           ],
-          "world_effects": [
-            "greyvale_corruption +1",
-            "event:ruins_discovery_ripple"
-          ],
+          "world_effects": ["greyvale_corruption +1", "event:ruins_discovery_ripple"],
           "narrative_beat": "You hold the journal page. The notation is academic, precise. You can't read all of it, but some phrases are clear: 'resonance thinning,' 'controlled aperture,' 'acceptable threshold.' Someone was doing this on purpose. Your companion is very quiet."
         },
         "branches": {
           "keep_artifact": {
             "description": "Keep the artifact. Don't show it to anyone yet.",
-            "effects": [
-              "player_has_veythar_artifact: true"
-            ],
+            "effects": ["player_has_veythar_artifact: true"],
             "next_stage": "stage_5_return"
           },
           "show_companion": {
             "description": "Show the artifact to your companion immediately.",
-            "effects": [
-              "companion_knows_artifact: true",
-              "companion_disposition +3"
-            ],
+            "effects": ["companion_knows_artifact: true", "companion_disposition +3"],
             "next_stage": "stage_5_return"
           }
         }
@@ -155,7 +134,8 @@
           "world_effects": [
             "emris_disposition +4",
             "event:faction_interest_triggered",
-            "event:god_whisper:player_patron"
+            "event:god_whisper:player_patron",
+            "accord_guild_reputation completed_faction_quest"
           ],
           "narrative_beat": "Emris takes the journal page with trembling hands. They read it once. Then again. Their face goes through recognition, confusion, and something that looks a lot like fear. 'Where did you find this?' they ask, very quietly. 'Where exactly?'"
         }
@@ -164,33 +144,23 @@
     "scene_graph": [
       {
         "scene_id": "scene_road_to_millhaven",
-        "stage_refs": [
-          0
-        ]
+        "stage_refs": [0]
       },
       {
         "scene_id": "scene_millhaven_investigation",
-        "stage_refs": [
-          1
-        ]
+        "stage_refs": [1]
       },
       {
         "scene_id": "scene_first_hollow_encounter",
-        "stage_refs": [
-          2
-        ]
+        "stage_refs": [2]
       },
       {
         "scene_id": "scene_ruins_exploration",
-        "stage_refs": [
-          3
-        ]
+        "stage_refs": [3]
       },
       {
         "scene_id": "scene_return_to_accord",
-        "stage_refs": [
-          4
-        ]
+        "stage_refs": [4]
       }
     ],
     "failure_conditions": {
@@ -220,14 +190,8 @@
         ],
         "completion_conditions": {
           "type": "knowledge_acquired",
-          "required_info": [
-            "aldric_went_to_ruins",
-            "aldric_came_back_changed"
-          ],
-          "sources": [
-            "elder_yanna",
-            "innkeeper_maren"
-          ]
+          "required_info": ["aldric_went_to_ruins", "aldric_came_back_changed"],
+          "sources": ["elder_yanna", "innkeeper_maren"]
         },
         "on_complete": {
           "xp": 50,
@@ -252,9 +216,7 @@
         },
         "on_complete": {
           "xp": 75,
-          "world_effects": [
-            "yanna_disposition +2"
-          ],
+          "world_effects": ["yanna_disposition +2"],
           "narrative_beat": "Aldric's eyes focus on you for one terrible second. 'The lights know you're looking,' he says. Then he's gone again, staring at nothing, fingers tracing symbols you've seen before."
         }
       },
@@ -270,9 +232,7 @@
         ],
         "completion_conditions": {
           "type": "item_discovered",
-          "items": [
-            "aldric_strange_stone"
-          ],
+          "items": ["aldric_strange_stone"],
           "location": "millhaven"
         },
         "on_complete": {
@@ -283,9 +243,7 @@
               "quantity": 1
             }
           ],
-          "world_effects": [
-            "yanna_disposition +3"
-          ],
+          "world_effects": ["yanna_disposition +3"],
           "narrative_beat": "Yanna reaches into her pocket with a shaking hand. The stone is warm. It hums. And when you hold it, for one vertiginous second, the world looks thin — as if you could see through it to something vast and dark beyond."
         }
       }
@@ -313,14 +271,8 @@
         ],
         "completion_conditions": {
           "type": "knowledge_acquired",
-          "required_info": [
-            "millhaven_north_vulnerability",
-            "millhaven_resources"
-          ],
-          "sources": [
-            "elder_yanna",
-            "exploration"
-          ]
+          "required_info": ["millhaven_north_vulnerability", "millhaven_resources"],
+          "sources": ["elder_yanna", "exploration"]
         },
         "on_complete": {
           "xp": 50,
@@ -341,45 +293,27 @@
         "completion_conditions": {
           "type": "decision_made",
           "decision": "fortification_choice",
-          "options": [
-            "north_barricade",
-            "watchtower",
-            "evacuation_supplies"
-          ]
+          "options": ["north_barricade", "watchtower", "evacuation_supplies"]
         },
         "on_complete": {
           "xp": 100,
-          "world_effects": [
-            "set_flag:millhaven_fortification:player_choice"
-          ],
+          "world_effects": ["set_flag:millhaven_fortification:player_choice"],
           "narrative_beat": "The townsfolk work through the night. By dawn, it's done — not much, but something. A line drawn in dirt and hope."
         },
         "branches": {
           "north_barricade": {
             "description": "Build barricades on the north side to slow any attack.",
-            "effects": [
-              "millhaven_defense:+3",
-              "millhaven_warning:0",
-              "millhaven_evacuation:0"
-            ],
+            "effects": ["millhaven_defense:+3", "millhaven_warning:0", "millhaven_evacuation:0"],
             "next_stage": null
           },
           "watchtower": {
             "description": "Build a watchtower for early warning.",
-            "effects": [
-              "millhaven_defense:0",
-              "millhaven_warning:+3",
-              "millhaven_evacuation:0"
-            ],
+            "effects": ["millhaven_defense:0", "millhaven_warning:+3", "millhaven_evacuation:0"],
             "next_stage": null
           },
           "evacuation_supplies": {
             "description": "Prepare evacuation supplies and escape routes.",
-            "effects": [
-              "millhaven_defense:0",
-              "millhaven_warning:0",
-              "millhaven_evacuation:+3"
-            ],
+            "effects": ["millhaven_defense:0", "millhaven_warning:0", "millhaven_evacuation:+3"],
             "next_stage": null
           }
         }
@@ -413,9 +347,7 @@
         },
         "on_complete": {
           "xp": 100,
-          "world_effects": [
-            "emris_disposition +2"
-          ],
+          "world_effects": ["emris_disposition +2"],
           "narrative_beat": "Emris spreads their notes across every surface. 'Look — this notation. My mentor used this exact system. No one else did. This is personal scholarship. Private. Someone was working on something they didn't want the academy to know about.'"
         }
       },
@@ -436,9 +368,7 @@
         },
         "on_complete": {
           "xp": 150,
-          "world_effects": [
-            "emris_disposition +3"
-          ],
+          "world_effects": ["emris_disposition +3"],
           "narrative_beat": "Emris unfolds the letter with trembling hands. The last words their mentor ever wrote: 'A discovery that changes everything. The barrier is not what we thought. It was made. And it can be unmade. I will write more when I understand.' They never wrote again."
         }
       }

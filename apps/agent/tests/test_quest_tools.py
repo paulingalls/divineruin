@@ -217,3 +217,57 @@ async def test_stage_beyond_completion_rejected():
     ctx, mock_db, _, content, queries, mutations = _completion_mocks(current_stage=1)
     with pytest.raises(ToolError, match="Invalid stage"):
         await _update_quest_impl(ctx, "cq", 3, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
+
+
+# --- Quest -> reputation world effect (story-002 inc 4b) ------------------------------
+# A "<faction>_reputation <event_type>" world effect routes through reputation_shift +
+# the writer, the faction-scoped analogue of the "<npc>_disposition +N" shorthand.
+
+
+@pytest.mark.asyncio
+async def test_reputation_world_effect_applies_via_writer():
+    from quest_tools import _apply_world_effects
+
+    session = make_context().userdata
+    rm = MagicMock()
+    rm.adjust_player_faction_reputation = AsyncMock(return_value=5)
+    await _apply_world_effects(
+        ["accord_guild_reputation completed_faction_quest"],
+        session,
+        [],
+        conn=None,
+        reputation_mutations=rm,
+    )
+    # completed_faction_quest -> +5; faction_id parsed off the "_reputation" suffix; the
+    # stage-transaction conn is threaded through to the writer.
+    rm.adjust_player_faction_reputation.assert_awaited_once_with(
+        session.player_id,
+        "accord_guild",
+        5,
+        "world_effect: accord_guild_reputation completed_faction_quest",
+        conn=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_reputation_world_effect_unknown_event_skips():
+    from quest_tools import _apply_world_effects
+
+    session = make_context().userdata
+    rm = MagicMock()
+    rm.adjust_player_faction_reputation = AsyncMock()
+    await _apply_world_effects(["accord_guild_reputation bogus_event"], session, [], reputation_mutations=rm)
+    rm.adjust_player_faction_reputation.assert_not_awaited()
+
+
+def test_greyvale_completion_authors_accord_reputation():
+    # The terminal stage (now reachable via inc 4a) grants Accord standing on quest
+    # completion — the semantically correct home ("report to the Accord").
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parents[3]
+    quests = json.loads((root / "content" / "quests.json").read_text())
+    greyvale = next(q for q in quests if q["id"] == "greyvale_anomaly")
+    final = greyvale["stages"][-1]
+    assert final["id"] == "stage_5_return"
+    assert "accord_guild_reputation completed_faction_quest" in final["on_complete"]["world_effects"]

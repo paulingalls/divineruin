@@ -11,6 +11,7 @@ from livekit.agents.voice import RunContext
 import db
 import db_content_queries
 import db_mutations
+import db_mutations_reputation
 import db_queries
 import event_types as E
 import milestones
@@ -18,6 +19,7 @@ import progression_tools
 from db_errors import db_tool
 from disposition import resolve_disposition
 from game_events import publish_game_event
+from reputation import reputation_shift
 from role_archetypes import shift_disposition
 from session_data import SessionData
 from tool_support import EFFECT_NPC_MAP, _validate_id
@@ -29,6 +31,10 @@ _EFFECT_DISPOSITION_RE = re.compile(r"^(\w+)_disposition\s*([+-]\d+)$")
 _EFFECT_CORRUPTION_RE = re.compile(r"^greyvale_corruption\s*([+-]\d+)$")
 _EFFECT_EVENT_RE = re.compile(r"^event:(.+)$")
 _EFFECT_MORALE_RE = re.compile(r"^(\w+)_morale\s*([+-]\d+)$")
+# "<faction_id>_reputation <named_event>" — the faction-scoped analogue of the per-NPC
+# disposition shorthand, but the magnitude comes from the named event (reputation_shift),
+# not an inline number, so the delta lives in one place (story-002 inc 4b).
+_EFFECT_REPUTATION_RE = re.compile(r"^(\w+)_reputation\s+(\w+)$")
 
 
 async def _apply_world_effects(
@@ -40,6 +46,7 @@ async def _apply_world_effects(
     mutations=db_mutations,
     queries=db_queries,
     content=db_content_queries,
+    reputation_mutations=db_mutations_reputation,
 ) -> None:
     """Parse and apply deterministic world_effects from quest on_complete."""
     for effect_str in effects:
@@ -56,6 +63,23 @@ async def _apply_world_effects(
             )
             pending_events.append((E.DISPOSITION_CHANGED, {"npc_id": npc_id, "previous": current, "new": new_disp}))
             logger.info("World effect: %s disposition %s → %s", npc_id, current, new_disp)
+            continue
+
+        m = _EFFECT_REPUTATION_RE.match(effect_str)
+        if m:
+            faction_id, event_type = m.group(1), m.group(2)
+            try:
+                delta = reputation_shift(event_type)
+            except ValueError:
+                # A typo'd event in authored content: warn and skip rather than crash the
+                # whole quest-stage transaction over one bad effect string.
+                logger.warning("Unknown reputation event in world effect: %s", effect_str)
+                continue
+            new_value = await reputation_mutations.adjust_player_faction_reputation(
+                session.player_id, faction_id, delta, f"world_effect: {effect_str}", conn=conn
+            )
+            session.record_event(f"{faction_id} reputation {delta:+d} → {new_value} ({event_type})")
+            logger.info("World effect: %s reputation %+d → %s", faction_id, delta, new_value)
             continue
 
         m = _EFFECT_CORRUPTION_RE.match(effect_str)
