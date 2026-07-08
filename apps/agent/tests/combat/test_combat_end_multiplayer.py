@@ -140,6 +140,41 @@ async def test_victory_reconciles_beneficial_dice_per_member():
     assert [c["type"] for c in saved["p2"]] == ["inspired"]
 
 
+async def test_victory_drops_consumed_beneficial_die_from_row():
+    # Complement of test_victory_reconciles_beneficial_dice_per_member (the surviving direction):
+    # p1's STORED row carries a Blessed die, but the participant CONSUMED it in combat (M4.8 consume
+    # path — no longer on participant.conditions). The combat-end reconcile must DROP the consumed
+    # buff from the row, not re-persist it (AC "a consumed die is not re-persisted"). A stored
+    # non-buff (Wounded) on the same row must SURVIVE that reconcile — pins that the buff-vs-non-buff
+    # partition, not a blanket wipe, is what drops the die.
+    session = _two_pc_session()
+    cs = CombatState(
+        combat_id="c1",
+        participants=[
+            _player_participant("p1", "Kael", []),  # consumed the buff mid-combat: no live buff
+            _player_participant("p2", "Bren", []),
+            CombatParticipant(id="g1", name="Goblin", type="enemy", initiative=8, hp_current=0, hp_max=7, ac=13),
+        ],
+        initiative_order=["p1", "p2", "g1"],
+        round_number=2,
+        current_turn_index=0,
+        location_id="loc1",
+    )
+    save = AsyncMock()
+    await _run_end_combat_db(
+        session,
+        cs,
+        "victory",
+        save_mock=save,
+        read_side_effect=lambda pid, conn=None: [_cond("blessed"), _cond("wounded")] if pid == "p1" else [],
+    )
+
+    saved = {call.args[0]: call.args[1] for call in save.await_args_list}
+    p1_types = [c["type"] for c in saved["p1"]]
+    assert "blessed" not in p1_types  # consumed in combat -> dropped from the row, not re-persisted
+    assert "wounded" in p1_types  # stored non-buff survives the same reconcile
+
+
 async def test_non_primary_reconcile_reads_its_own_store():
     # The existing-store read is keyed on the member id, so a non-primary member's prior Wounded
     # merges with its own combat-gained Exhausted — not the primary's store.
