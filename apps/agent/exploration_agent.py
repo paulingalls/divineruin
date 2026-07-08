@@ -35,6 +35,7 @@ from progression_tools import award_divine_favor, award_xp
 from query_tools import query_info
 from quest_tools import update_quest
 from region_types import REGION_CITY
+from reputation_tools import adjust_faction_reputation
 from scene_tools import enter_location
 from session_data import SessionData
 from session_summary import generate_session_summary
@@ -69,6 +70,7 @@ EXPLORATION_TOOLS = [
     award_xp,
     award_divine_favor,
     update_npc_disposition,
+    adjust_faction_reputation,
     record_story_moment,
     end_session,
     # Choice resolution: the L5 specialization fork (surfaced by award_xp on level-up)

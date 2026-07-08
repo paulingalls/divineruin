@@ -29,12 +29,13 @@ class TestExplorationAgentConfig:
 
 
 class TestExplorationToolset:
-    def test_count_at_sixteen_under_ceiling(self):
+    def test_count_at_seventeen_under_ceiling(self):
         from llm_config import MAX_STRICT_TOOLS
 
-        # The unified list is the former CITY_TOOLS (15) + travel (M4.6b) = 16. With one
-        # agent there are 4 free slots — the per-region ceiling no longer binds (debt e665104c753a).
-        assert len(EXPLORATION_TOOLS) == 16
+        # The unified list is the former CITY_TOOLS (15) + travel (M4.6b, 16) +
+        # adjust_faction_reputation (M23 story-002, 17). With one agent there are 3 free
+        # slots — the per-region ceiling no longer binds (debt e665104c753a).
+        assert len(EXPLORATION_TOOLS) == 17
         assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS
 
     def test_holds_unified_superset(self):
@@ -43,9 +44,19 @@ class TestExplorationToolset:
         from inventory_tools import transact
         from mode_tools import enter_mode
         from progression_tools import award_divine_favor, award_xp
+        from reputation_tools import adjust_faction_reputation
         from session_tools import update_npc_disposition
 
-        for tool in (check, select, transact, enter_mode, award_xp, award_divine_favor, update_npc_disposition):
+        for tool in (
+            check,
+            select,
+            transact,
+            enter_mode,
+            award_xp,
+            award_divine_favor,
+            update_npc_disposition,
+            adjust_faction_reputation,
+        ):
             assert tool in EXPLORATION_TOOLS
 
 
