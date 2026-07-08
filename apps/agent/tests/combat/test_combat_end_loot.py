@@ -296,3 +296,21 @@ async def test_victory_without_faction_shifts_no_reputation(dev_db_pool):
         rep.adjust_player_faction_reputation.assert_not_awaited()
     finally:
         await _cleanup(pool)
+
+
+@pytest.mark.asyncio
+async def test_deescalation_raises_faction_reputation(dev_db_pool):
+    # A peaceful de-escalation of a faction's members raises standing (spared, not slain).
+    pool = dev_db_pool
+    await _seed_player(pool, gold=0)
+    try:
+        cs = _faction_victory_state("thornwatch")
+        cs.participants[1].is_fallen = False  # de-escalated enemies are spared, alive
+        cs.participants[1].hp_current = 8
+        rep = MagicMock()
+        rep.adjust_player_faction_reputation = AsyncMock(return_value=3)
+        await _run_end(cs, rep, outcome="deescalated")
+        args = rep.adjust_player_faction_reputation.await_args.args
+        assert args[1] == "thornwatch" and args[2] == 3  # deescalated_faction -> +3
+    finally:
+        await _cleanup(pool)

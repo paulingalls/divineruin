@@ -394,16 +394,19 @@ async def _end_combat_db(
                     raise RuntimeError(f"Fallen player {p.id!r} has no players.data row to stabilize")
                 await mutations.update_player_hp(p.id, 1, conn=conn)
 
-    # Faction reputation from the combat OUTCOME (story-002 inc 5): killing an encounter
-    # faction's members lowers the player's standing with it. Keyed on cs.faction_id (set at
-    # combat_init from the stance gate); one aggregate shift per fight, atomic with the end tx.
-    # A victory always defeats the enemies, so `enemies` gates out a factionless/enemyless end.
-    if cs.faction_id and outcome == "victory" and enemies:
+    # Faction reputation from the combat OUTCOME (story-002 inc 5/6): killing an encounter
+    # faction's members (victory) lowers standing; talking them down (deescalated) raises it.
+    # Keyed on cs.faction_id (set at combat_init from the stance gate); one aggregate shift per
+    # fight, atomic with the end tx. `enemies` gates out a factionless/enemyless end. Homed here
+    # rather than in combat_deescalation because the outcome-driven write belongs with the end
+    # transaction (player_id + faction_id + conn all in scope), not mid-combat.
+    if cs.faction_id and outcome in ("victory", "deescalated") and enemies:
+        rep_event = "deescalated_faction" if outcome == "deescalated" else "killed_faction_member"
         await reputation_mutations.adjust_player_faction_reputation(
             session.player_id,
             cs.faction_id,
-            reputation_shift("killed_faction_member"),
-            "combat_victory",
+            reputation_shift(rep_event),
+            f"combat_{outcome}",
             conn=conn,
         )
 
