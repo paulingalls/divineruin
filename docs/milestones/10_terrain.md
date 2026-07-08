@@ -31,7 +31,7 @@ Reconciled against `game_mechanics_decisions.md` Decisions 129–132 and the ter
 
 ### Cross-doc dependencies
 
-- **Terrain → Phase 3 Magic.** M10.2 edits three live functions: `calculate_resonance_generated` (`resonance.py`), `activate_veil_ward` (`veil_ward.py`), and the Korath reduction in `spell_casting.py:187-195`. `03_magic.md` M3.1 already declares `calculate_resonance_generated(focus_cost, source, terrain=None)` — this phase enumerates the terrain table M3.1 referenced but never listed, and un-deads the routing. Add pointers from `03_magic.md` M3.1 / M3.2 / M3.4 to this milestone so the magic doc isn't silently incomplete.
+- **Terrain → Phase 3 Magic.** M10.2 edits three live functions: `calculate_resonance_generated` (`resonance.py`), `activate_veil_ward` (`veil_ward_tools.py`), and the Korath reduction in `spell_casting.py:187-195`. `03_magic.md` M3.1 already declares `calculate_resonance_generated(focus_cost, source, terrain=None)` — this phase enumerates the terrain table M3.1 referenced but never listed, and un-deads the routing. Add pointers from `03_magic.md` M3.1 / M3.2 / M3.4 to this milestone so the magic doc isn't silently incomplete.
 - **Terrain → Phase 8 Patrons.** Thyra's natural-terrain Resonance modifier (Layer 2) reads `is_natural`; lands whenever the patron mechanical layer is built (`08_patrons.md` M8.2 is aspirational per `audit/phase-8-patrons.md`).
 - **Terrain → Phase 4 Combat.** M10.3 caches resolved terrain on `CombatState` at encounter start.
 - **Tactical terrain carve-out.** "Difficult" / "narrow" terrain is a combat-local, position-level feature (Decision 129) and must **never** enter the `Location` terrain enum.
@@ -86,7 +86,7 @@ Reconciled against `game_mechanics_decisions.md` Decisions 129–132 and the ter
 
 **Deliverables:**
 - **Primal Resonance** — in `calculate_resonance_generated` (`resonance.py`), route `source == "primal"` through `resonance_base(terrain)` adjusted by a corruption level (`corruption` defaults to 0 — the deferred dynamic seam, Decision 131). Un-dead the routing path; remove the catalog-baseline bypass for primal. **Remove `_DEFAULT_TERRAIN = "normal"`** (`spell_casting.py:76-77`). Decompose `PRIMAL_TERRAIN_TABLE`: bottom 5 bands → `resonance_base`; top 3 → corruption levels.
-- **Druid Veil Ward** — in `activate_veil_ward` (`veil_ward.py:41-50`), gate the `druid` source on `is_natural(terrain)`. The "stronger in old-growth / sacred groves" bonus applies only to `ancient_forest`. **→ M24 pointer:** the full-spec ward is now area/encounter-scoped, party-wide, duration-bound (SMM `veil-ward-scope-decision`); this terrain gate targets the **M24-reworked scope model**, not the interim per-player boolean — sequence after M24 or re-home the gate onto the reworked activation path.
+- **Druid Veil Ward** — in `activate_veil_ward` (`veil_ward_tools.py:56`; `druid` source constant at `veil_ward.py:48`), gate the `druid` source on `is_natural(terrain)`. The "stronger in old-growth / sacred groves" bonus applies only to `ancient_forest`. **→ M24 pointer:** the full-spec ward is now area/encounter-scoped, party-wide, duration-bound (SMM `veil-ward-scope-decision`); this terrain gate targets the **M24-reworked scope model**, not the interim per-player boolean — sequence after M24 or re-home the gate onto the reworked activation path.
 - **Korath earth-anchored** — in `spell_casting.py:187-195`, gate the −1 primal reduction on `is_earth_or_stone(terrain)` (excludes `coast`, `wetland`). Remove the deferral comment.
 
 **Acceptance criteria:**
