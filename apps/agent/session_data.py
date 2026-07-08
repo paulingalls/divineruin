@@ -133,6 +133,11 @@ class CombatState:
     round_number: int = 1
     current_turn_index: int = 0
     location_id: str = ""
+    # Encounter faction (story-002 inc 5): the faction the enemies belong to, sourced at
+    # combat_init from the encounter's stance_gate.faction (or an explicit encounter faction).
+    # Read at combat_end to attribute the outcome to faction reputation — killing its members
+    # lowers standing, a peaceful de-escalation raises it. None when the encounter has no faction.
+    faction_id: str | None = None
 
     # 4-beat phase machine (M4.1, story-001). The deterministic engine lives in
     # combat_phase.advance_combat_phase; ``beat`` carries the loop position. Typed
@@ -185,6 +190,7 @@ class CombatState:
             round_number=data.get("round_number", 1),
             current_turn_index=data.get("current_turn_index", 0),
             location_id=data.get("location_id", ""),
+            faction_id=data.get("faction_id"),
             beat=data.get("beat", "declaration"),
             pending_declarations=data.get("pending_declarations", {}),
             reactions_available=data.get("reactions_available", {}),

@@ -13,6 +13,7 @@ import db
 import db_content_queries
 import db_mutations
 import db_mutations_conditions
+import db_mutations_reputation
 import db_queries
 import encounter_loot
 import event_types as E
@@ -24,6 +25,7 @@ from combat_phase import is_terminally_down
 from combat_support import _publish_sounds, _require_combat
 from db_errors import db_tool
 from region_types import REGION_CITY
+from reputation import reputation_shift
 from session_data import CombatState, SessionData
 from tool_support import SOUND_COMBAT_DEFEAT, SOUND_COMBAT_FLED, SOUND_COMBAT_VICTORY
 
@@ -173,6 +175,7 @@ async def _end_combat_db(
     sink: EventSink,
     content=db_content_queries,
     pricing=pricing_queries,
+    reputation_mutations=db_mutations_reputation,
     rng: random.Random | None = None,
 ) -> dict:
     """The DB-mutating + event-emitting half of end_combat, run INSIDE a transaction (the phase
@@ -390,6 +393,19 @@ async def _end_combat_db(
                 if await queries.get_player(p.id, conn=conn) is None:
                     raise RuntimeError(f"Fallen player {p.id!r} has no players.data row to stabilize")
                 await mutations.update_player_hp(p.id, 1, conn=conn)
+
+    # Faction reputation from the combat OUTCOME (story-002 inc 5): killing an encounter
+    # faction's members lowers the player's standing with it. Keyed on cs.faction_id (set at
+    # combat_init from the stance gate); one aggregate shift per fight, atomic with the end tx.
+    # A victory always defeats the enemies, so `enemies` gates out a factionless/enemyless end.
+    if cs.faction_id and outcome == "victory" and enemies:
+        await reputation_mutations.adjust_player_faction_reputation(
+            session.player_id,
+            cs.faction_id,
+            reputation_shift("killed_faction_member"),
+            "combat_victory",
+            conn=conn,
+        )
 
     await emit_or_publish(
         sink,
