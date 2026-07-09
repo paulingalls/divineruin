@@ -62,6 +62,29 @@ def compute_generated_resonance(spell: Spell, race: str | None, *, resonance, ra
     return generated
 
 
+def compute_effective_resonance(
+    generated: int, current_resonance: int, race: str | None, in_combat: bool, *, resonance, racial_mod
+) -> int:
+    """The post-cast Resonance total: shed one round of standing decay, then accrue this cast.
+
+    Per-round decay is cast-paced (story-010): a real cast first sheds one round of standing
+    Resonance — base 1/round, +1 for a Human (Adaptive Resonance) => 2/round — before this cast's
+    generation lands. ``apply_resonance_decay`` floors at 0. A cantrip (``generated`` 0) skips decay
+    entirely, leaving the standing value untouched.
+
+    IN COMBAT the cast-paced shed is SUPPRESSED (story-007): the phase WRAP beat is the canonical
+    decay clock (decision resonance-decay-phase-canonical), so an in-combat cast only GENERATES.
+    """
+    should_decay = generated > 0 and not in_combat
+    decay_modifier = 0
+    if race == "human":
+        decay_modifier = racial_mod.get_racial_resonance_modifier("human", "decay_bonus")
+    base_resonance = (
+        resonance.apply_resonance_decay(current_resonance, decay_modifier) if should_decay else current_resonance
+    )
+    return base_resonance + generated
+
+
 def apply_ward_halving(generated: int, ward_active: bool, *, veil_ward) -> int:
     """Halve generated Resonance (round down) under an active Veil Ward; Focus cost is not halved.
 

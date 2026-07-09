@@ -380,26 +380,19 @@ async def _resolve_cast(
     if spell.focus_cost > 0:
         await persistence_mod.update_player_resources(player_id, focus=current_focus - spell.focus_cost, conn=conn)
 
-    # Per-round decay (cast-paced, story-010): a real cast first sheds one round of standing Resonance
-    # — base 1/round, +1 for a Human (Adaptive Resonance) => 2/round — before this cast's generation
-    # lands. apply_resonance_decay floors at 0. A cantrip (generated 0) skips decay, leaving the state
-    # untouched (AC6). IN COMBAT this cast-paced shed is SUPPRESSED (story-007) via session.in_combat:
-    # the phase WRAP beat is the canonical decay clock (decision resonance-decay-phase-canonical), so
-    # an in-combat cast only GENERATES — the WRAP applies the single per-phase decay.
-    should_decay = generated > 0 and not session.in_combat
-    decay_modifier = 0
-    if race == "human":
-        decay_modifier = racial_mod.get_racial_resonance_modifier("human", "decay_bonus")
-    base_resonance = (
-        resonance.apply_resonance_decay(caster.resonance.current, decay_modifier)
-        if should_decay
-        else caster.resonance.current
+    # The post-cast total: shed one cast-paced decay round (suppressed in combat, where the WRAP beat
+    # is the canonical clock), then accrue this cast — pure (cast_modifiers). Persist it via conn but
+    # keep it LOCAL: the caller syncs session.resonance post-commit, so a rollback leaves the
+    # in-memory track untouched. new_resonance is None when nothing generated (no write), so the
+    # caller leaves the standing value alone.
+    effective_resonance = cast_modifiers.compute_effective_resonance(
+        generated,
+        caster.resonance.current,
+        race,
+        session.in_combat,
+        resonance=resonance,
+        racial_mod=racial_mod,
     )
-
-    # The post-cast total. Persist it via conn but keep it LOCAL — the caller syncs session.resonance
-    # post-commit, so a rollback leaves the in-memory track untouched. new_resonance is None when
-    # nothing generated (no write), so the caller leaves the standing value alone.
-    effective_resonance = base_resonance + generated
     new_resonance = effective_resonance if generated > 0 else None
     if generated > 0:
         await resonance_mutations_mod.update_player_resonance(player_id, effective_resonance, conn=conn)
