@@ -1,11 +1,11 @@
 """Tests for SessionData's delegation to a PartyState backing store (story-002).
 
-Covers solo parity (session.resonance/veil_ward/concentration/corruption_level/patron_id
+Covers solo parity (session.resonance/concentration/corruption_level/patron_id
 all resolve through party.primary, byte-for-byte identical to pre-refactor behavior),
 in-place mutation propagation, and 2-member independence.
 """
 
-from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember, PartyState
 from session_data import CombatState, CreationState, SessionData
 
@@ -15,7 +15,6 @@ def test_solo_parity_defaults():
 
     assert session.party.member_ids == ["p1"]
     assert session.resonance == ResonanceTrack()
-    assert session.veil_ward == VeilWardState()
     assert session.concentration == ConcentrationState()
     assert session.corruption_level == 0
     assert session.patron_id == "none"
@@ -36,18 +35,6 @@ def test_resonance_in_place_mutation_propagates():
 
     assert session.resonance.current == 7
     assert session.party.primary.resonance is r
-
-
-def test_veil_ward_in_place_mutation_propagates():
-    session = SessionData(player_id="p1", location_id="loc")
-
-    vw = session.veil_ward
-    vw.active = True
-    vw.source = "test-source"
-
-    assert session.veil_ward.active is True
-    assert session.veil_ward.source == "test-source"
-    assert session.party.primary.veil_ward is vw
 
 
 def test_concentration_in_place_mutation_propagates():
@@ -89,7 +76,6 @@ def test_two_member_party_independence():
             PartyMember(
                 player_id="p2",
                 resonance=ResonanceTrack(),
-                veil_ward=VeilWardState(),
                 concentration=ConcentrationState(),
             ),
         ]

@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass, field
 
 from livekit import rtc
 
-from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from caster_state import ConcentrationState, ResonanceTrack
 from event_bus import EventBus
 from party_state import PartyMember, PartyState
 
@@ -316,14 +316,6 @@ class SessionData:
     @resonance.setter
     def resonance(self, value: ResonanceTrack) -> None:
         self.party.primary.resonance = value
-
-    @property
-    def veil_ward(self) -> VeilWardState:
-        return self.party.primary.veil_ward
-
-    @veil_ward.setter
-    def veil_ward(self, value: VeilWardState) -> None:
-        self.party.primary.veil_ward = value
 
     @property
     def concentration(self) -> ConcentrationState:

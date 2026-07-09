@@ -22,7 +22,7 @@ from livekit.agents import Agent, AgentSession
 import db_mutations_concentration
 import db_mutations_resonance
 import db_queries
-from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember
 from session_data import SessionData
 
@@ -141,7 +141,6 @@ def _setup_party_join(
         member = PartyMember(
             player_id=pid,
             resonance=ResonanceTrack(),
-            veil_ward=VeilWardState(),
             concentration=ConcentrationState(),
         )
         userdata.party.members.append(member)  # IN PLACE — never reassign userdata.party (f4f16c93076e)

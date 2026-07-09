@@ -8,8 +8,8 @@ per-archetype ward-source costs are code constants, not DB-loaded content. No IO
 these are plain unit tests with no fixtures or pool.
 
 The activation tool (story-003) and the cast-time halving (story-004) consume these
-primitives; the persisted ward state lives in db_mutations_veil_ward + the
-VeilWardState session field (tested here for its defaults).
+primitives; the persisted ward state lives in db_mutations_veil_ward (the veil_wards table)
+and on CombatState for the encounter scope.
 
 Spec source: docs/game_mechanics/game_mechanics_magic.md §Veil Ward (189-217):
 generation halved (round down), +4 echo bonus, -1 damage die, -1 DC; sources
@@ -21,7 +21,6 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 import veil_ward
-from session_data import VeilWardState
 from veil_ward import WardDuration, WardDurationKind, WardScope, WardScopeKind
 
 # --- WardDuration: legal construction of each kind (story-002) ----------------
@@ -267,15 +266,6 @@ def test_ward_effect_constants_unchanged_by_m24():
 )
 def test_halve_generation_unchanged_by_m24(generated, expected):
     assert veil_ward.halve_generation(generated) == expected
-
-
-# --- VeilWardState in-memory defaults ----------------------------------------
-
-
-def test_veil_ward_state_defaults_inactive():
-    state = VeilWardState()
-    assert state.active is False
-    assert state.source is None
 
 
 # --- WardScope: a ward is owned by a scope, never by a caster (story-003) -----

@@ -192,7 +192,7 @@ class TestCombatScratchSnapshot:
         # M14 story-004: the in-loop concentration sync moved per-member (caster.concentration), so a
         # phase rollback must restore EACH member's concentration, not just the primary's — else a
         # non-primary caster's in-memory concentration diverges from the rolled-back DB row.
-        from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+        from caster_state import ConcentrationState, ResonanceTrack
         from party_state import PartyMember
 
         session = SessionData(player_id="p1", location_id="loc", room=None)
@@ -200,7 +200,6 @@ class TestCombatScratchSnapshot:
             PartyMember(
                 player_id="p2",
                 resonance=ResonanceTrack(),
-                veil_ward=VeilWardState(),
                 concentration=ConcentrationState(),
             )
         )
@@ -218,7 +217,7 @@ class TestCombatScratchSnapshot:
         # M18 story-003: a swing arms the SWINGING member's own weapon flags (combat_packet), so a
         # phase rollback must revert EACH member's flags, not just the primary's — else a
         # non-primary member's in-memory weapon_used diverges from the rolled-back combat row.
-        from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+        from caster_state import ConcentrationState, ResonanceTrack
         from party_state import PartyMember
 
         session = SessionData(player_id="p1", location_id="loc", room=None)
@@ -226,7 +225,6 @@ class TestCombatScratchSnapshot:
             PartyMember(
                 player_id="p2",
                 resonance=ResonanceTrack(),
-                veil_ward=VeilWardState(),
                 concentration=ConcentrationState(),
             )
         )

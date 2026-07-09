@@ -72,7 +72,6 @@ async def test_explicit_track_and_caster_id_push_that_member():
     member = PartyMember(
         player_id="p2",
         resonance=ResonanceTrack(current=9),  # overreach
-        veil_ward=session.veil_ward,
         concentration=session.concentration,
     )
     with patch.object(resonance_events, "publish_game_event", AsyncMock()) as pub:

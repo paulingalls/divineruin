@@ -21,7 +21,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 import db_mutations_veil_ward
-from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from caster_state import ConcentrationState, ResonanceTrack
 from participant_lifecycle import _setup_party_join
 from party_state import PartyMember
 from session_data import SessionData
@@ -169,7 +169,6 @@ async def test_idempotent_when_member_already_present():
         PartyMember(
             player_id="player_2",
             resonance=ResonanceTrack(),
-            veil_ward=VeilWardState(),
             concentration=ConcentrationState(),
         )
     )

@@ -1,11 +1,11 @@
 """Unified per-member write contract on SessionData (concern 3ec54e78cae8).
 
 Before this story SessionData exposed per-member state through THREE inconsistent
-contracts: resonance/veil_ward/concentration were read-only properties (mutate the
+contracts: resonance/concentration were read-only properties (mutate the
 returned object in place), corruption_level was a property + setter, patron_id was a
 real field mirrored via __setattr__. This suite pins the unified contract:
 
-  - resonance / veil_ward / concentration / corruption_level are all @property read +
+  - resonance / concentration / corruption_level are all @property read +
     setter write, each delegating to session.party.primary.<field>.
   - patron_id stays the single documented exception (real dataclass field mirrored via
     __setattr__ so pyright validates the ~120 SessionData(...) construction sites).
@@ -17,7 +17,7 @@ real field mirrored via __setattr__. This suite pins the unified contract:
 
 import pytest
 
-from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember
 from session_data import SessionData
 
@@ -40,17 +40,6 @@ def test_resonance_setter_delegates_to_primary():
     assert session.resonance.current == 5
 
 
-def test_veil_ward_setter_delegates_to_primary():
-    session = _fresh_session()
-    ward = VeilWardState(active=True, source="arch_1")
-
-    session.veil_ward = ward
-
-    assert session.party.primary.veil_ward is ward
-    assert session.veil_ward.active is True
-    assert session.veil_ward.source == "arch_1"
-
-
 def test_concentration_setter_delegates_to_primary():
     session = _fresh_session()
     conc = ConcentrationState(spell_id="fireball")
@@ -68,7 +57,6 @@ def test_setters_mutate_party_in_place():
     party_id, members_id = id(session.party), id(session.party.members)
 
     session.resonance = ResonanceTrack(current=3)
-    session.veil_ward = VeilWardState(active=True)
     session.concentration = ConcentrationState(spell_id="s")
 
     assert id(session.party) == party_id
@@ -89,7 +77,6 @@ def test_member_state_returns_the_named_member_in_a_party():
     second = PartyMember(
         player_id="p2",
         resonance=ResonanceTrack(),
-        veil_ward=VeilWardState(),
         concentration=ConcentrationState(),
     )
     session.party.members.append(second)
@@ -126,7 +113,6 @@ def test_solo_facade_reads_are_the_primary_objects():
     session = _fresh_session()
 
     assert session.resonance is session.party.primary.resonance
-    assert session.veil_ward is session.party.primary.veil_ward
     assert session.concentration is session.party.primary.concentration
     assert session.corruption_level == session.party.primary.corruption_level
     assert session.member_state("p1") is session.party.primary

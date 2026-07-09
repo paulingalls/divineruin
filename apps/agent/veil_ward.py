@@ -8,9 +8,9 @@ Resonance and Hollow Echo engines this is a deterministic closed-table mechanic
 costs are code constants, not DB-loaded content (same call as resonance.py).
 
 This module owns the ward's pure effects, its scope types, and its source table. The persisted
-ward state lives in db_mutations_veil_ward (the veil_wards table) and the in-memory
-VeilWardState lives on SessionData; the activation tool (story-003) and the cast-time
-halving (story-004) compose these primitives.
+ward state lives in db_mutations_veil_ward (the veil_wards table) and on CombatState for the
+encounter scope; ward_resolution.resolve_scope_ward is the one place the two are resolved.
+The activation tool and the cast-time halving compose these primitives.
 
 Spec source: docs/game_mechanics/game_mechanics_magic.md §Veil Ward (189-217):
 generation halved (round down), +4 echo, -1 damage die, -1 DC; sources Cleric L7 4F /
