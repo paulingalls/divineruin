@@ -11,6 +11,7 @@ import db_content_queries
 import db_mutations
 import db_queries
 import event_types as E
+import ward_resolution
 from db_errors import db_tool
 from game_events import publish_game_event
 from region_types import REGION_CITY
@@ -71,6 +72,15 @@ async def apply_arrival(
         await mutations.update_player_location(session.player_id, destination_id, conn=conn)
         await mutations.upsert_map_progress(session.player_id, destination_id, exit_connections, conn=conn)
 
+        # The Veil Ward is scope-owned (M24), so moving can change it: a party that walks out of a
+        # warded location is no longer warded, and one that walks into a Sacred site is. Nothing
+        # else re-reads the ward between casts, so without this the HUD indicator would keep lying.
+        #
+        # Resolved HERE, inside the transaction, against the DESTINATION: conn closes below and
+        # session.location_id is not updated until after the commit, so the session still names the
+        # location we are leaving.
+        arrival_ward = await ward_resolution.resolve_scope_ward(session, conn=conn, location_id=destination_id)
+
         pending_events.append(
             (
                 E.LOCATION_CHANGED,
@@ -102,6 +112,15 @@ async def apply_arrival(
                 E.HOLLOW_CORRUPTION_CHANGED,
                 {"level": new_corruption, "previous": previous_corruption, "location_id": destination_id},
             )
+        )
+
+    # Ward tracking — scope-based, mirrors the corruption block above: compute, compare, append only
+    # on change. `active` is the RESOLVED state (§3), which is exactly what resolve_scope_ward returns.
+    previously_warded = session.location_ward is not None
+    session.location_ward = arrival_ward
+    if (arrival_ward is not None) != previously_warded:
+        pending_events.append(
+            (E.VEIL_WARD_CHANGED, {"active": arrival_ward is not None, "caster_id": session.player_id})
         )
 
     for event_type, payload in pending_events:
