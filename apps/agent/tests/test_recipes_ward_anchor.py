@@ -65,17 +65,15 @@ def test_artificer_ward_source_duration_matches_anchor_small():
     """
     artificer_source = WARD_SOURCES["artificer"]
 
-    # Verify it's REAL_TIME (not ENCOUNTER, ROUNDS, or PERMANENT)
     assert artificer_source.duration.kind == WardDurationKind.REAL_TIME, (
         f"artificer WardSource duration kind is '{artificer_source.duration.kind}' instead of REAL_TIME"
     )
-
-    # Verify it's 3600 seconds (1 hour)
     assert artificer_source.duration.seconds == 3600, (
         f"artificer WardSource duration is {artificer_source.duration.seconds}s instead of 3600s (1 hour)"
     )
 
-    # Pin the content half: the small anchor item must advertise the same "1 hour" the constant encodes.
+    # The hour count is DERIVED from the constant, not hardcoded: change the constant to 2 hours and
+    # this goes red until the item text follows. That is what makes it a join rather than two pins.
     anchor_item = _find_by_id(_load_content("items.json"), "veil_ward_anchor_small", "items.json")
     effect_text = " ".join(effect.get("description", "") for effect in anchor_item.get("effects", []))
     hours = artificer_source.duration.seconds // 3600
@@ -84,7 +82,7 @@ def test_artificer_ward_source_duration_matches_anchor_small():
         f"{hours}h duration the artificer WardSource constant ({artificer_source.duration.seconds}s) encodes"
     )
 
-    # Verify tool_raisable is False (anchor is placed, not raised in combat)
+    # An anchor is placed, never willed into being — story-005's gate depends on this being False.
     assert artificer_source.tool_raisable is False, (
         f"artificer WardSource tool_raisable is {artificer_source.tool_raisable} instead of False"
     )
