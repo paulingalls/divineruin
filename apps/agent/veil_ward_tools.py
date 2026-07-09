@@ -29,12 +29,14 @@ the session's game_events channel post-commit, mirroring cast_spell.
 
 import json
 import logging
+from datetime import UTC, datetime
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import ability_persistence
 import db
+import db_mutations
 import db_mutations_veil_ward
 import db_queries
 import veil_ward
@@ -42,6 +44,7 @@ import veil_ward_events
 from db_errors import db_tool
 from resource_costs import gate_pool
 from session_data import SessionData
+from veil_ward import WardDurationKind
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -73,6 +76,7 @@ async def _activate_veil_ward_impl(
     persistence_mod=ability_persistence,
     ward_mutations_mod=db_mutations_veil_ward,
     ward_mod=veil_ward,
+    combat_mod=db_mutations,
 ) -> str:
     context.disallow_interruptions()
     session: SessionData = context.userdata
@@ -85,12 +89,21 @@ async def _activate_veil_ward_impl(
         raise ToolError(f"Unknown party member: {pid}") from e
     logger.info("activate_veil_ward called: active=%s player=%s", active, pid)
 
-    # The ward belongs to the scope the party stands in, never to the caster. story-005 adds
-    # encounter targeting when in combat; today every raise is location-scoped.
-    scope = veil_ward.WardScope.location(session.location_id)
+    # The ward belongs to the scope the party stands in, never to the caster. In a fight that is
+    # the ENCOUNTER (it dies with the combat row); otherwise it is the LOCATION.
+    combat = session.combat_state
+    scope = (
+        veil_ward.WardScope.encounter(combat.combat_id)
+        if combat is not None
+        else veil_ward.WardScope.location(session.location_id)
+    )
 
     if not active:
-        return await _dismiss_impl(session, pid, scope, db_mod=db_mod, ward_mutations_mod=ward_mutations_mod)
+        # Dismissal still targets the location scope; scope-aware dismissal is the next increment.
+        location_scope = veil_ward.WardScope.location(session.location_id)
+        return await _dismiss_impl(session, pid, location_scope, db_mod=db_mod, ward_mutations_mod=ward_mutations_mod)
+
+    expires_at: datetime | None = None  # a location ward's absolute clock; None for encounter wards
 
     async with db_mod.transaction() as conn:
         player = await queries_mod.get_player(pid, conn=conn, for_update=True)
@@ -113,9 +126,21 @@ async def _activate_veil_ward_impl(
         if level < source.min_level:
             raise ToolError(f"A Veil Ward requires level {source.min_level}; you are level {level}.")
 
+        # A ROUNDS ward is combat-only: 3 rounds are meaningless where no rounds elapse (§4).
+        # This must precede the write — location_expires_at RAISES on a ROUNDS duration, so
+        # without this gate an out-of-combat Paladin gets a crash instead of a narratable refusal.
+        if source.duration.kind is WardDurationKind.ROUNDS and combat is None:
+            raise ToolError(f"A {archetype}'s Veil Ward lasts a few rounds; raise it in combat.")
+
         # The ward is scope-owned: an already-warded SCOPE refuses a second raise, whichever
         # member attempts it. Two casters cannot double-charge themselves for one shared ward.
-        if await ward_mutations_mod.read_active_ward(scope, conn=conn) is not None:
+        # The encounter ward's one home is CombatState, so it is read there, not from veil_wards.
+        already_warded = (
+            combat.veil_ward is not None
+            if combat is not None
+            else await ward_mutations_mod.read_active_ward(scope, conn=conn) is not None
+        )
+        if already_warded:
             raise ToolError("A Veil Ward is already active.")
 
         # Gate Focus then Stamina (fail-loud, pure); each returns the post-deduct
@@ -124,17 +149,29 @@ async def _activate_veil_ward_impl(
         new_stamina = gate_pool(player, "stamina", source.stamina, label="a Veil Ward")
         if new_focus is not None or new_stamina is not None:
             await persistence_mod.update_player_resources(pid, stamina=new_stamina, focus=new_focus, conn=conn)
-        # No absolute expiry, dismissible — today's manual-dismiss behavior, unchanged. The
-        # source's duration is deliberately NOT consulted: Paladin's is ROUNDS, which has no
-        # absolute clock. Per-source durations and encounter targeting arrive in story-005.
-        await ward_mutations_mod.write_ward(scope, archetype, None, dismissible=True, conn=conn)
 
-    # Transaction committed — refresh the session's HUD mirror and push the toggle. The ward is
-    # scope-owned, so it lands on the session, not on the caster who paid for it.
-    session.location_ward = {"source": archetype, "expires_at": None, "dismissible": True}
+        if combat is not None:
+            # rounds_remaining seeds the WRAP-beat clock story-006 ticks. Non-ROUNDS sources have
+            # no round clock and carry None — the fight's end is their expiry either way.
+            combat.veil_ward = {"source": archetype, "rounds_remaining": source.duration.rounds}
+            await combat_mod.save_combat_state(combat.combat_id, combat.to_dict(), conn=conn)
+        else:
+            expires_at = ward_mod.location_expires_at(source.duration, datetime.now(UTC))
+            await ward_mutations_mod.write_ward(scope, archetype, expires_at, dismissible=True, conn=conn)
+
+    # Transaction committed — push the toggle. The ward is scope-owned, so it lands on the
+    # session, not on the caster who paid for it. location_ward is a LOCATION mirror: an
+    # encounter ward already has its one home on CombatState and must not be copied into it.
+    if combat is None:
+        session.location_ward = {"source": archetype, "expires_at": expires_at, "dismissible": True}
     await veil_ward_events.publish_veil_ward_changed(session, True, pid)
     return json.dumps(
-        {"active": True, "source": archetype, "deducted": {"focus": source.focus, "stamina": source.stamina}}
+        {
+            "active": True,
+            "source": archetype,
+            "scope": scope.kind.value,
+            "deducted": {"focus": source.focus, "stamina": source.stamina},
+        }
     )
 
 

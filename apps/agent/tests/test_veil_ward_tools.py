@@ -28,10 +28,18 @@ from sample_fixtures import make_context, make_db_mod
 
 import event_types as E
 import veil_ward_events
+from session_data import CombatState
 from veil_ward import WardScope
 from veil_ward_tools import _activate_veil_ward_impl
 
 _SCOPE = WardScope.location("accord_guild_hall")  # make_context's default location
+_COMBAT_ID = "combat_veil_ward_tools"  # scope-unique to this file, so no cross-file scope leak
+
+
+def _in_combat(ctx) -> CombatState:
+    """Put the session in a fight, so the tool targets the ENCOUNTER scope."""
+    ctx.userdata.combat_state = CombatState(combat_id=_COMBAT_ID, participants=[], initiative_order=[])
+    return ctx.userdata.combat_state
 
 
 def _player(class_: str = "cleric", level: int = 7, focus: int = 10, stamina: int = 10, player_id="player_1") -> dict:
@@ -67,7 +75,14 @@ def _mocks(player: dict, *, ward_active: bool = False, party_member_ids=None, di
     return ctx, mock_db, queries, persistence, ward_mut
 
 
-async def _invoke(ctx, mock_db, queries, persistence, ward_mut, active=True, caster_id=None):
+def _combat_mod():
+    """Mock of db_mutations for the encounter write path (save_combat_state)."""
+    combat = MagicMock()
+    combat.save_combat_state = AsyncMock()
+    return combat
+
+
+async def _invoke(ctx, mock_db, queries, persistence, ward_mut, active=True, caster_id=None, combat_mod=None):
     with patch.object(veil_ward_events, "publish_game_event", AsyncMock()) as pub:
         raw = await _activate_veil_ward_impl(
             ctx,
@@ -77,6 +92,7 @@ async def _invoke(ctx, mock_db, queries, persistence, ward_mut, active=True, cas
             queries_mod=queries,
             persistence_mod=persistence,
             ward_mutations_mod=ward_mut,
+            combat_mod=combat_mod or _combat_mod(),
         )
     return json.loads(raw), pub
 
@@ -104,12 +120,12 @@ async def test_eligible_cleric_raises_ward():
 
 
 async def test_raise_writes_no_absolute_expiry_and_stays_dismissible():
-    """story-003 preserves manual-dismiss: no expiry, dismissible. Durations arrive in story-005.
+    """A Cleric's ENCOUNTER duration, raised out of combat, has no absolute clock: warded until
+    dismissed (§4). location_expires_at returns None for it, so the row's expires_at is NULL.
 
-    A source's duration must NOT be consulted here — Paladin's is ROUNDS, and location_expires_at
-    raises on ROUNDS by design.
+    A Paladin cannot stand in for the Cleric here — its ROUNDS duration is refused out of combat.
     """
-    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("paladin", level=10))
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7))
     await _invoke(ctx, mock_db, queries, persistence, ward_mut)
     _scope, _source, expires_at = ward_mut.write_ward.call_args.args
     assert expires_at is None
@@ -118,10 +134,63 @@ async def test_raise_writes_no_absolute_expiry_and_stays_dismissible():
 
 async def test_paladin_pays_focus_and_stamina():
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("paladin", level=10, focus=10, stamina=10))
+    _in_combat(ctx)  # a ROUNDS ward is combat-only
     result, _pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut)
 
     assert result["deducted"] == {"focus": 3, "stamina": 3}
     persistence.update_player_resources.assert_awaited_once_with("player_1", stamina=7, focus=7, conn=ANY)
+
+
+# --- raise path: scope targeting + per-source durations (story-005) --------------
+
+
+async def test_cleric_in_combat_raises_encounter_ward():
+    """In a fight the ward belongs to the ENCOUNTER, which lives on CombatState — never in
+    veil_wards (write_ward fails loud on an encounter scope by design)."""
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7))
+    combat = _in_combat(ctx)
+    combat_mod = _combat_mod()
+    result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, combat_mod=combat_mod)
+
+    assert result["active"] is True
+    assert combat.veil_ward == {"source": "cleric", "rounds_remaining": None}
+    combat_mod.save_combat_state.assert_awaited_once()
+    ward_mut.write_ward.assert_not_awaited()
+    # location_ward is a LOCATION mirror; an encounter ward must never be written into it.
+    assert ctx.userdata.location_ward is None
+    persistence.update_player_resources.assert_awaited_once_with("player_1", stamina=None, focus=6, conn=ANY)
+    # The raiser's HUD still lights in combat (party-wide fan-out is story-008).
+    pub.assert_awaited_once()
+    assert pub.call_args.args[2] == {"active": True, "caster_id": "player_1"}
+
+
+async def test_paladin_in_combat_seeds_the_round_clock():
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("paladin", level=10))
+    combat = _in_combat(ctx)
+    await _invoke(ctx, mock_db, queries, persistence, ward_mut)
+    assert combat.veil_ward == {"source": "paladin", "rounds_remaining": 3}
+
+
+async def test_rounds_source_out_of_combat_refused():
+    """A Paladin's 3 rounds are meaningless where no rounds elapse (§4). Refuse rather than
+    write a ward with no clock — and refuse BEFORE any deduction."""
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("paladin", level=10))
+    assert ctx.userdata.combat_state is None
+    with pytest.raises(ToolError, match="combat"):
+        await _invoke(ctx, mock_db, queries, persistence, ward_mut)
+    persistence.update_player_resources.assert_not_awaited()
+    ward_mut.write_ward.assert_not_awaited()
+
+
+async def test_cleric_out_of_combat_raises_a_location_ward():
+    """The same source targets a different scope depending on the fight (AC6)."""
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7))
+    combat_mod = _combat_mod()
+    await _invoke(ctx, mock_db, queries, persistence, ward_mut, combat_mod=combat_mod)
+
+    ward_mut.write_ward.assert_awaited_once_with(_SCOPE, "cleric", None, dismissible=True, conn=ANY)
+    combat_mod.save_combat_state.assert_not_awaited()
+    assert ctx.userdata.location_ward["source"] == "cleric"
 
 
 async def test_druid_raises_ward_for_five_focus():
@@ -184,7 +253,9 @@ async def test_insufficient_focus_rejected():
 
 async def test_insufficient_stamina_rejected():
     # Paladin is the only stamina-costing source (3F+3S): enough Focus, too little Stamina.
+    # In combat, or the ROUNDS gate would refuse first and mask the affordability gate under test.
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("paladin", level=10, focus=10, stamina=2))
+    _in_combat(ctx)
     with pytest.raises(ToolError, match="Stamina"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut)
     persistence.update_player_resources.assert_not_awaited()
