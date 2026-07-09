@@ -20,6 +20,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+import db_mutations_veil_ward
 from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
 from participant_lifecycle import _setup_party_join
 from party_state import PartyMember
@@ -53,7 +54,6 @@ def _make_mods(
     row,
     *,
     resonance=None,
-    veil_ward=None,
     concentration=None,
 ):
     """Build the injectable DI (queries + the three read-helper modules) as AsyncMocks."""
@@ -63,23 +63,18 @@ def _make_mods(
     res_mod.read_player_resonance = AsyncMock(
         return_value=resonance or {"current": 0, "flickering_bonus": 0, "state": "stable"}
     )
-    ward_mod = MagicMock()
-    # Scope-keyed read (story-003): the joining member resolves the party's covering
-    # location ward, or None when the location is unwarded.
-    ward_mod.read_active_ward = AsyncMock(return_value=veil_ward)
     conc_mod = MagicMock()
     conc_mod.read_player_concentration = AsyncMock(return_value=concentration or {"spell_id": None})
-    return queries, res_mod, ward_mod, conc_mod
+    return queries, res_mod, conc_mod
 
 
 def _wire(room, handlers, sd, mods):
-    queries, res_mod, ward_mod, conc_mod = mods
+    queries, res_mod, conc_mod = mods
     _setup_party_join(
         room,
         sd,
         queries=queries,
         resonance_mod=res_mod,
-        veil_ward_mod=ward_mod,
         concentration_mod=conc_mod,
     )
     return handlers["participant_connected"]
@@ -102,12 +97,34 @@ def test_registers_participant_connected_handler():
 
 
 @pytest.mark.asyncio
+async def test_joining_member_reads_no_ward_of_its_own(monkeypatch):
+    """AC: the ward is scope-owned, so the joining member resolves the party's, reading nothing.
+
+    Before M24 this hydrated a per-member ward from the joiner's own row. That code is gone — a
+    per-member read could only ever disagree with the scope — so participant_lifecycle no longer
+    takes a ward module at all. Patch the DB accessor itself and prove it is never touched.
+    """
+    read_spy = AsyncMock()
+    monkeypatch.setattr(db_mutations_veil_ward, "read_active_ward", read_spy)
+
+    mods = _make_mods({"player_id": "player_2"})
+    room, handlers = _recording_room()
+    sd = SessionData(player_id="player_1", location_id="loc")
+    handler = _wire(room, handlers, sd, mods)
+
+    handler(_participant("player_2"))
+    await _drain()
+
+    assert sd.party.member("player_2") is not None  # the join really happened
+    read_spy.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_second_player_join_appends_and_hydrates_all_five_substates():
     row2 = {"player_id": "player_2", "divine_favor": {"patron": "syrath"}}
     mods = _make_mods(
         row2,
         resonance={"current": 6, "flickering_bonus": 1, "state": "flickering"},
-        veil_ward={"source": "arch_x", "expires_at": None, "dismissible": True},
         concentration={"spell_id": "spell_y"},
     )
     room, handlers = _recording_room()
@@ -123,8 +140,6 @@ async def test_second_player_join_appends_and_hydrates_all_five_substates():
     assert m is not None
     assert m.resonance.current == 6
     assert m.resonance.flickering_bonus == 1
-    assert m.veil_ward.active is True
-    assert m.veil_ward.source == "arch_x"
     assert m.concentration.spell_id == "spell_y"
     assert m.patron_id == "syrath"  # per-member: from the joiner's OWN row, not the primary
     assert m.corruption_level == 4  # co-located: mirrors the party's current location corruption

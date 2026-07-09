@@ -60,10 +60,17 @@ class TestHydrateSessionState:
         assert scope == WardScope.location("thornwatch_keep")
 
     async def test_unwarded_scope_hydrates_to_no_ward(self):
+        """AC: an unwarded scope hydrates to no ward — None, not a default-inactive placeholder."""
         session = SessionData(player_id="p1", location_id="loc")
         await _hydrate(session, {"race": "human"}, _mods(active=False))
-        assert session.veil_ward.active is False
-        assert session.veil_ward.source is None
+        assert session.location_ward is None
+
+    async def test_warded_scope_hydrates_the_location_mirror(self):
+        """AC: the in-memory ward matches the persisted scope ward."""
+        session = SessionData(player_id="p1", location_id="loc")
+        await _hydrate(session, {"race": "human"}, _mods(active=True, source="cleric"))
+        assert session.location_ward is not None
+        assert session.location_ward["source"] == "cleric"
 
     async def test_rehydrates_all_three_persisted_states_not_defaults(self):
         # AC1: the SessionData reflects the persisted current/active/spell_id, not the defaults.
@@ -71,8 +78,7 @@ class TestHydrateSessionState:
         mods = _mods(current=7, active=True, source="druid", spell_id="frost", count=3)
         await _hydrate(session, {"race": "human"}, mods)
         assert session.resonance.current == 7
-        assert session.veil_ward.active is True
-        assert session.veil_ward.source == "druid"
+        assert session.location_ward is not None and session.location_ward["source"] == "druid"
         assert session.concentration.spell_id == "frost"
 
     async def test_thessyn_at_threshold_sets_and_persists_bonus_1(self):
