@@ -20,10 +20,8 @@ from ._end_multiplayer_helpers import (
     _member,
     _restore_condition_module,  # noqa: F401
     _run_victory,
-    _silver_per_gold,
     _two_pc_session,
 )
-
 
 _ITEM_ID = "s003_mp_item"
 

@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
+from session_data import CombatParticipant, CombatState
+
 from ._end_multiplayer_helpers import (
     _cond,
     _player_participant,
@@ -19,7 +21,6 @@ from ._end_multiplayer_helpers import (
     _run_end_combat_db,
     _two_pc_session,
 )
-from session_data import CombatParticipant, CombatState
 
 
 async def test_victory_reconciles_persistent_conditions_per_member():

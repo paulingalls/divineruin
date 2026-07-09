@@ -15,7 +15,7 @@ from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
 from combat_end import _end_combat_db
 from combat_events import EventSink
 from party_state import PartyMember
-from session_data import CombatParticipant, CombatState, SessionData
+from session_data import CombatParticipant, SessionData
 
 
 class FakeRng(random.Random):
