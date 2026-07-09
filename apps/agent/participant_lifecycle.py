@@ -26,6 +26,7 @@ import db_queries
 from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
 from party_state import PartyMember
 from session_data import SessionData
+from veil_ward import WardScope
 
 logger = logging.getLogger("divineruin.dm")
 
@@ -152,12 +153,14 @@ def _setup_party_join(
         # resonance/veil_ward/concentration: the player_id-parameterized read helpers, applied the
         # same way session_hydration.hydrate_session_state applies them onto the primary.
         res = await resonance_mod.read_player_resonance(pid)
-        ward = await veil_ward_mod.read_player_veil_ward(pid)
+        # The joining member walks into the party's location and resolves the ward already
+        # covering it — the ward is scope-owned, so it is not read from their own row (M24).
+        ward = await veil_ward_mod.read_active_ward(WardScope.location(userdata.location_id))
         conc = await concentration_mod.read_player_concentration(pid)
         member.resonance.current = res["current"]
         member.resonance.flickering_bonus = res["flickering_bonus"]
-        member.veil_ward.active = ward["active"]
-        member.veil_ward.source = ward["source"]
+        member.veil_ward.active = ward is not None
+        member.veil_ward.source = ward["source"] if ward else None
         member.concentration.spell_id = conc["spell_id"]
         # patron_id is per-member: read from the joiner's OWN row (mirrors dm_session's primary read).
         divine_favor = row.get("divine_favor") or {}

@@ -1,4 +1,4 @@
-"""Tests for activate_veil_ward (veil_ward_tools.py, story-003, M3.2).
+"""Tests for activate_veil_ward (veil_ward_tools.py, story-003 cut-over, M24).
 
 Drives the tool's _impl directly with a mock RunContext + injected mock
 queries/persistence/ward-mutations mods, mirroring test_ability_tools.py. The tool is
@@ -6,11 +6,16 @@ one polymorphic verb: active=True raises a ward (archetype/level/cost gated), ac
 dismisses it (free). Every user-facing failure is a ToolError raised before any write, so
 an unaffordable/ineligible activation deducts nothing.
 
-The published VEIL_WARD_CHANGED payload is {active, caster_id} (mirroring the resonance
-no-number discipline plus the M14 story-004 caster_id addition); publish_game_event is
-patched to assert the wire shape, matching test_resonance_session.py. caster_id (M18
-story-008) defaults to session.player_id but resolves to any party member via
-session.member_state(caster_id), letting a non-primary member raise/dismiss their own ward.
+M24 story-003 moves the ward off the caster's row onto the LOCATION scope. The resource cost
+stays per-caster (gate_pool deducts from the raiser alone); the ward it buys is shared, so
+"already active" is now a property of the location and dismissal is by scope, not by player.
+
+Encounter-vs-location targeting and per-source durations are story-005: every raise here writes
+a location ward with no absolute expiry and dismissible=True, preserving the manual-dismiss
+behavior this tool has always had.
+
+The published VEIL_WARD_CHANGED payload is {active, caster_id}; publish_game_event is patched to
+assert the wire shape. (story-008 rebuilds the payload as scope-membership.)
 """
 
 import json
@@ -22,7 +27,10 @@ from sample_fixtures import make_context, make_db_mod
 
 import event_types as E
 import veil_ward_tools
+from veil_ward import WardScope
 from veil_ward_tools import _activate_veil_ward_impl
+
+_SCOPE = WardScope.location("accord_guild_hall")  # make_context's default location
 
 
 def _player(class_: str = "cleric", level: int = 7, focus: int = 10, stamina: int = 10, player_id="player_1") -> dict:
@@ -36,7 +44,7 @@ def _player(class_: str = "cleric", level: int = 7, focus: int = 10, stamina: in
     }
 
 
-def _mocks(player: dict, *, ward_active: bool = False, party_member_ids=None):
+def _mocks(player: dict, *, ward_active: bool = False, party_member_ids=None, dismissed: int = 1):
     ctx = make_context(party_member_ids=party_member_ids)
     mock_db, _conn = make_db_mod()
     queries = MagicMock()
@@ -44,10 +52,11 @@ def _mocks(player: dict, *, ward_active: bool = False, party_member_ids=None):
     persistence = MagicMock()
     persistence.update_player_resources = AsyncMock()
     ward_mut = MagicMock()
-    ward_mut.read_player_veil_ward = AsyncMock(
-        return_value={"active": ward_active, "source": "cleric" if ward_active else None}
+    ward_mut.read_active_ward = AsyncMock(
+        return_value={"source": "cleric", "expires_at": None, "dismissible": True} if ward_active else None
     )
-    ward_mut.update_player_veil_ward = AsyncMock()
+    ward_mut.write_ward = AsyncMock()
+    ward_mut.dismiss_ward = AsyncMock(return_value=dismissed)
     return ctx, mock_db, queries, persistence, ward_mut
 
 
@@ -65,7 +74,7 @@ async def _invoke(ctx, mock_db, queries, persistence, ward_mut, active=True, cas
     return json.loads(raw), pub
 
 
-# --- raise path: eligible casters deduct + flip state + publish -----------------
+# --- raise path: eligible casters deduct + write a scope ward + publish ----------
 
 
 async def test_eligible_cleric_raises_ward():
@@ -76,14 +85,27 @@ async def test_eligible_cleric_raises_ward():
     assert result["source"] == "cleric"
     assert result["deducted"] == {"focus": 4, "stamina": 0}
     persistence.update_player_resources.assert_awaited_once_with("player_1", stamina=None, focus=6, conn=ANY)
-    ward_mut.update_player_veil_ward.assert_awaited_once_with("player_1", True, "cleric", conn=ANY)
-    # session synced + event published with the minimal {active} payload.
+    # The ward is written to the session's LOCATION scope, not to the caster's row.
+    ward_mut.write_ward.assert_awaited_once_with(_SCOPE, "cleric", None, dismissible=True, conn=ANY)
     assert ctx.userdata.veil_ward.active is True
     assert ctx.userdata.veil_ward.source == "cleric"
     pub.assert_awaited_once()
     args = pub.call_args.args
     assert args[1] == E.VEIL_WARD_CHANGED
     assert args[2] == {"active": True, "caster_id": "player_1"}
+
+
+async def test_raise_writes_no_absolute_expiry_and_stays_dismissible():
+    """story-003 preserves manual-dismiss: no expiry, dismissible. Durations arrive in story-005.
+
+    A source's duration must NOT be consulted here — Paladin's is ROUNDS, and location_expires_at
+    raises on ROUNDS by design.
+    """
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("paladin", level=10))
+    await _invoke(ctx, mock_db, queries, persistence, ward_mut)
+    _scope, _source, expires_at = ward_mut.write_ward.call_args.args
+    assert expires_at is None
+    assert ward_mut.write_ward.call_args.kwargs["dismissible"] is True
 
 
 async def test_paladin_pays_focus_and_stamina():
@@ -108,7 +130,7 @@ async def test_non_ward_archetype_rejected():
     with pytest.raises(ToolError, match="mage"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut)
     persistence.update_player_resources.assert_not_awaited()
-    ward_mut.update_player_veil_ward.assert_not_awaited()
+    ward_mut.write_ward.assert_not_awaited()
 
 
 async def test_below_required_level_rejected():
@@ -116,7 +138,7 @@ async def test_below_required_level_rejected():
     with pytest.raises(ToolError):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut)
     persistence.update_player_resources.assert_not_awaited()
-    ward_mut.update_player_veil_ward.assert_not_awaited()
+    ward_mut.write_ward.assert_not_awaited()
 
 
 async def test_insufficient_focus_rejected():
@@ -124,7 +146,7 @@ async def test_insufficient_focus_rejected():
     with pytest.raises(ToolError, match="Focus"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut)
     persistence.update_player_resources.assert_not_awaited()
-    ward_mut.update_player_veil_ward.assert_not_awaited()
+    ward_mut.write_ward.assert_not_awaited()
 
 
 async def test_insufficient_stamina_rejected():
@@ -133,18 +155,31 @@ async def test_insufficient_stamina_rejected():
     with pytest.raises(ToolError, match="Stamina"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut)
     persistence.update_player_resources.assert_not_awaited()
-    ward_mut.update_player_veil_ward.assert_not_awaited()
+    ward_mut.write_ward.assert_not_awaited()
 
 
-async def test_already_active_ward_rejected_no_double_charge():
+async def test_already_warded_scope_rejected_no_double_charge():
+    """The ward is scope-owned: a scope already carrying one cannot be warded again."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), ward_active=True)
     with pytest.raises(ToolError, match="already active"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut)
+    ward_mut.read_active_ward.assert_awaited_once_with(_SCOPE, conn=ANY)
     persistence.update_player_resources.assert_not_awaited()
-    ward_mut.update_player_veil_ward.assert_not_awaited()
+    ward_mut.write_ward.assert_not_awaited()
 
 
-# --- dismiss path: free, flips inactive -----------------------------------------
+async def test_second_member_cannot_re_raise_a_warded_scope():
+    """A ward raised by one member covers the whole scope; another member's raise is refused free."""
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(
+        _player("druid", level=9, player_id="player_2"), ward_active=True, party_member_ids=["player_2"]
+    )
+    with pytest.raises(ToolError, match="already active"):
+        await _invoke(ctx, mock_db, queries, persistence, ward_mut, caster_id="player_2")
+    persistence.update_player_resources.assert_not_awaited()
+    ward_mut.write_ward.assert_not_awaited()
+
+
+# --- dismiss path: free, scope-wide ---------------------------------------------
 
 
 async def test_dismiss_active_ward():
@@ -152,24 +187,30 @@ async def test_dismiss_active_ward():
     result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False)
 
     assert result["active"] is False
-    ward_mut.update_player_veil_ward.assert_awaited_once_with("player_1", False, None, conn=ANY)
+    # Dismissal is by SCOPE, not by player — the ward is not the raiser's to hold (§5).
+    ward_mut.dismiss_ward.assert_awaited_once_with(_SCOPE, conn=ANY)
     persistence.update_player_resources.assert_not_awaited()  # dismiss is free
     assert ctx.userdata.veil_ward.active is False
     assert ctx.userdata.veil_ward.source is None
     assert pub.call_args.args[2] == {"active": False, "caster_id": "player_1"}
 
 
-async def test_dismiss_when_inactive_rejected():
-    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), ward_active=False)
-    with pytest.raises(ToolError):
+async def test_dismiss_when_no_dismissible_ward_rejected():
+    """Nothing deleted means nothing dismissible covered the scope — fail loud, never silently no-op.
+
+    This also covers a scope held only by a permanent ward (a Sacred site is not the party's to
+    dispel): dismiss_ward deletes 0 rows and the tool refuses.
+    """
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), dismissed=0)
+    with pytest.raises(ToolError, match="dismiss"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False)
-    ward_mut.update_player_veil_ward.assert_not_awaited()
 
 
 # --- non-primary caster: resolves via member_state(caster_id), not the primary facade -----
 
 
-async def test_non_primary_member_raises_own_ward():
+async def test_non_primary_member_raises_scope_ward_and_pays_alone():
+    """Cost is per-caster; the ward it buys is scope-owned."""
     player = _player("cleric", level=7, focus=10, player_id="player_2")
     ctx, mock_db, queries, persistence, ward_mut = _mocks(player, party_member_ids=["player_2"])
     result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, caster_id="player_2")
@@ -177,21 +218,20 @@ async def test_non_primary_member_raises_own_ward():
     assert result["active"] is True
     queries.get_player.assert_awaited_once_with("player_2", conn=ANY, for_update=True)
     persistence.update_player_resources.assert_awaited_once_with("player_2", stamina=None, focus=6, conn=ANY)
-    ward_mut.update_player_veil_ward.assert_awaited_once_with("player_2", True, "cleric", conn=ANY)
-    # Non-primary member's own state is set, primary's is untouched.
+    ward_mut.write_ward.assert_awaited_once_with(_SCOPE, "cleric", None, dismissible=True, conn=ANY)
+    # The in-memory mirror is still per-member in story-003; story-004 consolidates it.
     assert ctx.userdata.member_state("player_2").veil_ward.active is True
-    assert ctx.userdata.veil_ward.active is False
     assert pub.call_args.args[2] == {"active": True, "caster_id": "player_2"}
 
 
-async def test_non_primary_member_dismisses_own_ward():
+async def test_non_primary_member_dismisses_scope_ward():
     ctx, mock_db, queries, persistence, ward_mut = _mocks(
         _player("cleric", level=7, player_id="player_2"), ward_active=True, party_member_ids=["player_2"]
     )
     result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False, caster_id="player_2")
 
     assert result["active"] is False
-    ward_mut.update_player_veil_ward.assert_awaited_once_with("player_2", False, None, conn=ANY)
+    ward_mut.dismiss_ward.assert_awaited_once_with(_SCOPE, conn=ANY)
     assert ctx.userdata.member_state("player_2").veil_ward.active is False
     assert pub.call_args.args[2] == {"active": False, "caster_id": "player_2"}
 
@@ -203,4 +243,4 @@ async def test_unknown_caster_id_raises_tool_error_not_value_error():
     with pytest.raises(ToolError):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut, caster_id="not_in_party")
     queries.get_player.assert_not_awaited()
-    ward_mut.update_player_veil_ward.assert_not_awaited()
+    ward_mut.write_ward.assert_not_awaited()

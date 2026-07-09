@@ -26,6 +26,7 @@ import db_mutations_veil_ward
 import player_session
 import racial_resonance
 from session_data import SessionData
+from veil_ward import WardScope
 
 
 async def hydrate_session_state(
@@ -41,14 +42,18 @@ async def hydrate_session_state(
 ) -> None:
     """Rehydrate a FRESH session's persisted state and set+persist the gated Thessyn bonus.
 
-    Loads resonance/veil_ward/concentration from players.data onto ``session``, increments the
-    player session_count once, and computes the session-gated flickering_bonus which it BOTH sets
-    on ResonanceTrack AND persists — so the DB-read path and the in-memory session derive one band.
-    A None/non-Thessyn race short-circuits the gate to 0 (still persisted — a harmless 0).
+    Loads resonance/concentration from players.data onto ``session`` and the veil ward from the
+    session's LOCATION scope (M24: the ward is scope-owned, so it is not on the player row),
+    increments the player session_count once, and computes the session-gated flickering_bonus
+    which it BOTH sets on ResonanceTrack AND persists — so the DB-read path and the in-memory
+    session derive one band. A None/non-Thessyn race short-circuits the gate to 0 (still
+    persisted — a harmless 0).
     """
     player_id = session.player_id
     res = await resonance_mutations_mod.read_player_resonance(player_id, conn=conn)
-    ward = await veil_ward_mutations_mod.read_player_veil_ward(player_id, conn=conn)
+    # The ward is read from the LOCATION the session starts in, never from the player row (M24).
+    # A fresh session is never in combat, so a location scope is the only one that can cover it.
+    ward = await veil_ward_mutations_mod.read_active_ward(WardScope.location(session.location_id), conn=conn)
     conc = await concentration_mutations_mod.read_player_concentration(player_id, conn=conn)
     session_count = await player_session_mod.hydrate_player_session(player_id, conn=conn)
 
@@ -63,6 +68,7 @@ async def hydrate_session_state(
 
     session.resonance.current = res["current"]
     session.resonance.flickering_bonus = bonus
-    session.veil_ward.active = ward["active"]
-    session.veil_ward.source = ward["source"]
+    # read_active_ward returns None for an unwarded scope — absence, not a default-inactive row.
+    session.veil_ward.active = ward is not None
+    session.veil_ward.source = ward["source"] if ward else None
     session.concentration.spell_id = conc["spell_id"]

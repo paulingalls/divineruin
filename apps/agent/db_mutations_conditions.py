@@ -4,7 +4,7 @@ Its own module (not db_mutations.py, at the 500-line cap) keeps the conditions f
 same shape as db_mutations_concentration / db_mutations_resonance / db_mutations_veil_ward.
 Persistent conditions (Wounded/Exhausted/Hollowed — those whose catalog spec marks
 persists_across_encounters) live in players.data JSONB at {conditions}: a list of condition dicts
-({type, duration, source, stacks?, stage?}), beside {resonance}, {veil_ward}, {concentration}. No
+({type, duration, source, stacks?, stage?}), beside {resonance} and {concentration}. No
 new table — see decision persistent-conditions-jsonb (player-scoped, whole-set reads, frequent
 mutation = the JSONB sweet spot).
 

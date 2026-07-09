@@ -64,7 +64,9 @@ def _make_mods(
         return_value=resonance or {"current": 0, "flickering_bonus": 0, "state": "stable"}
     )
     ward_mod = MagicMock()
-    ward_mod.read_player_veil_ward = AsyncMock(return_value=veil_ward or {"active": False, "source": None})
+    # Scope-keyed read (story-003): the joining member resolves the party's covering
+    # location ward, or None when the location is unwarded.
+    ward_mod.read_active_ward = AsyncMock(return_value=veil_ward)
     conc_mod = MagicMock()
     conc_mod.read_player_concentration = AsyncMock(return_value=concentration or {"spell_id": None})
     return queries, res_mod, ward_mod, conc_mod
@@ -105,7 +107,7 @@ async def test_second_player_join_appends_and_hydrates_all_five_substates():
     mods = _make_mods(
         row2,
         resonance={"current": 6, "flickering_bonus": 1, "state": "flickering"},
-        veil_ward={"active": True, "source": "arch_x"},
+        veil_ward={"source": "arch_x", "expires_at": None, "dismissible": True},
         concentration={"spell_id": "spell_y"},
     )
     room, handlers = _recording_room()

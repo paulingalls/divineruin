@@ -1,16 +1,21 @@
-"""Veil Ward activation tool for the DM agent (story-003, M3.2).
+"""Veil Ward activation tool for the DM agent (M24 story-003 cut-over).
 
 activate_veil_ward is one polymorphic verb (decision veil-ward-one-tool): active=True raises
 a ward, active=False dismisses it. Raising gates the caster's archetype (must be a WARD_SOURCES
-caster), level, and Focus/Stamina cost, deducts on success, flips the persisted + in-memory
-ward state, and pushes a VEIL_WARD_CHANGED event; every user-facing failure is a ToolError
-raised BEFORE any write, so an ineligible/unaffordable activation deducts nothing. Dismissing is
-free and only requires an active ward. The cast path (story-004) reads session.veil_ward.active
-to halve generation.
+caster), level, and Focus/Stamina cost, deducts on success, writes the scope ward, and pushes a
+VEIL_WARD_CHANGED event; every user-facing failure is a ToolError raised BEFORE any write, so an
+ineligible/unaffordable activation deducts nothing.
 
-Scope (M3.2): the Focus/Stamina caster sources (Cleric/Druid/Paladin) in veil_ward.WARD_SOURCES.
-Artificer crafted-item and Sacred-site passive (area-scoped world entity) sources are deferred,
-as is auto-clear on rest/end_combat — explicit dismiss is the M3.2 off-switch.
+The ward is SCOPE-owned (veil_ward_scope_model.md §1). The Focus/Stamina cost is per-caster —
+gate_pool deducts from the raiser alone — but the ward it buys covers every caster in the scope.
+So an already-warded scope refuses a second raise (no double charge for one shared ward), and
+dismissal is by scope: any in-scope member may drop it, for free, because it was never the
+raiser's to hold (§5).
+
+Scope (story-003): every raise writes a LOCATION ward with no absolute expiry, dismissible —
+preserving the manual-dismiss behavior this tool has always had. Encounter targeting and the
+per-source durations are story-005; the Artificer crafted-item and Sacred-site passive sources
+land there too.
 
 Mirrors the ability_tools seam: a thin @function_tool wrapper over an _impl with module-injection
 keyword args (db_mod/queries_mod/persistence_mod/ward_mutations_mod/ward_mod) for test mocking, a
@@ -90,8 +95,12 @@ async def _activate_veil_ward_impl(
         raise ToolError(f"Unknown party member: {pid}") from e
     logger.info("activate_veil_ward called: active=%s player=%s", active, pid)
 
+    # The ward belongs to the scope the party stands in, never to the caster. story-005 adds
+    # encounter targeting when in combat; today every raise is location-scoped.
+    scope = veil_ward.WardScope.location(session.location_id)
+
     if not active:
-        return await _dismiss_impl(session, caster, pid, db_mod=db_mod, ward_mutations_mod=ward_mutations_mod)
+        return await _dismiss_impl(session, caster, pid, scope, db_mod=db_mod, ward_mutations_mod=ward_mutations_mod)
 
     async with db_mod.transaction() as conn:
         player = await queries_mod.get_player(pid, conn=conn, for_update=True)
@@ -109,7 +118,9 @@ async def _activate_veil_ward_impl(
         if level < source.min_level:
             raise ToolError(f"A Veil Ward requires level {source.min_level}; you are level {level}.")
 
-        if (await ward_mutations_mod.read_player_veil_ward(pid, conn=conn))["active"]:
+        # The ward is scope-owned: an already-warded SCOPE refuses a second raise, whichever
+        # member attempts it. Two casters cannot double-charge themselves for one shared ward.
+        if await ward_mutations_mod.read_active_ward(scope, conn=conn) is not None:
             raise ToolError("A Veil Ward is already active.")
 
         # Gate Focus then Stamina (fail-loud, pure); each returns the post-deduct
@@ -118,7 +129,10 @@ async def _activate_veil_ward_impl(
         new_stamina = gate_pool(player, "stamina", source.stamina, label="a Veil Ward")
         if new_focus is not None or new_stamina is not None:
             await persistence_mod.update_player_resources(pid, stamina=new_stamina, focus=new_focus, conn=conn)
-        await ward_mutations_mod.update_player_veil_ward(pid, True, archetype, conn=conn)
+        # No absolute expiry, dismissible — today's manual-dismiss behavior, unchanged. The
+        # source's duration is deliberately NOT consulted: Paladin's is ROUNDS, which has no
+        # absolute clock. Per-source durations and encounter targeting arrive in story-005.
+        await ward_mutations_mod.write_ward(scope, archetype, None, dismissible=True, conn=conn)
 
     # Transaction committed — sync the caster's in-memory SSOT and push the HUD toggle.
     caster.veil_ward.active = True
@@ -129,12 +143,18 @@ async def _activate_veil_ward_impl(
     )
 
 
-async def _dismiss_impl(session: SessionData, caster: PartyMember, pid: str, *, db_mod, ward_mutations_mod) -> str:
-    """Dismiss an active ward (free). Fails loud when no ward is active."""
+async def _dismiss_impl(
+    session: SessionData, caster: PartyMember, pid: str, scope, *, db_mod, ward_mutations_mod
+) -> str:
+    """Dismiss the scope's ward (free). Fails loud when nothing dismissible covers the caster.
+
+    Any in-scope member may dismiss — the ward is not the raiser's to hold (§5). The delete
+    count, not a prior read, is the authority: a scope covered only by a permanent ward
+    (a Sacred site) deletes nothing, and refusing is the honest answer.
+    """
     async with db_mod.transaction() as conn:
-        if not (await ward_mutations_mod.read_player_veil_ward(pid, conn=conn))["active"]:
+        if not await ward_mutations_mod.dismiss_ward(scope, conn=conn):
             raise ToolError("No Veil Ward is active to dismiss.")
-        await ward_mutations_mod.update_player_veil_ward(pid, False, None, conn=conn)
 
     caster.veil_ward.active = False
     caster.veil_ward.source = None

@@ -6,7 +6,7 @@ fast-lane round-trip (single-concern, per the CLAUDE.md test-lane guidance) prov
 accumulation + the cost ledger against the dev DB at :55432.
 
 Storage shape: players.data.death_history = {"count": int, "costs": [<DeathCost dict>, ...]},
-a top-level JSONB key beside {conditions}, {resonance}, {veil_ward}. The permanent death count
+a top-level JSONB key beside {conditions} and {resonance}. The permanent death count
 never resets; record_death takes a pre-computed DeathCost (count authoritative — no self-increment).
 """
 

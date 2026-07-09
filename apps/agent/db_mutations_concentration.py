@@ -3,7 +3,7 @@
 Its own module (not db_mutations.py, at the 500-line cap) keeps the concentration feature
 cohesive — same call as db_mutations_resonance / db_mutations_veil_ward. The active
 concentration spell lives in players.data JSONB at {concentration,spell_id} (no new table),
-beside {resonance} and {veil_ward}. `spell_id` (str) is the single concentration spell the
+beside {resonance}. `spell_id` (str) is the single concentration spell the
 caster is sustaining; NULL means not concentrating.
 
 read returns {spell_id}; update writes it (None ends concentration -> JSON null). The cast
