@@ -572,7 +572,9 @@ class TestWrapTicksVeilWard:
             if p.type == "enemy":
                 p.is_fallen = True
         next_state, advance = advance_combat_phase(state, None)
+        assert advance.wrap is not None
         assert advance.wrap.combat_ended is True
+        assert next_state.veil_ward is not None
         assert next_state.veil_ward["rounds_remaining"] == 2
 
     def test_wrap_does_not_mutate_the_input_states_ward(self):

@@ -16,10 +16,16 @@ import hollow_echo
 import racial_resonance as racial_mod
 import resonance
 import veil_ward
-from spells import Spell
+from spells import Spell, SpellSource
 
 
-def _spell(*, source="arcane", focus_cost=10, resonance_value=6, spell_id="test_spell") -> Spell:
+def _spell(
+    *,
+    source: SpellSource = "arcane",
+    focus_cost: int = 10,
+    resonance_value: int | None = 6,
+    spell_id: str = "test_spell",
+) -> Spell:
     return Spell(
         id=spell_id,
         name="Test Spell",
