@@ -61,20 +61,32 @@ test("hollow_echo_result fixture pushes a hollow_echo overlay carrying the band"
 });
 
 test("veil_ward_changed fixture toggles the ward state", () => {
-  // The fixture's caster_id is the local player, so the push updates the indicator.
-  characterStore
-    .getState()
-    .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.veil_ward_changed.caster_id });
   handleGameEvent({ ...EVENTS.veil_ward_changed });
   expect(hudStore.getState().veilWardActive).toBe(EVENTS.veil_ward_changed.active);
 });
 
-test("veil_ward_changed for another party member does NOT touch the local indicator", () => {
-  // Story-006, mirroring RESONANCE_CHANGED (M14 story-004): a push carrying a DIFFERENT
-  // caster_id is ignored — the single global ward indicator belongs to the local player.
+test("veil_ward_changed lights the indicator on a client that did NOT raise it", () => {
+  // Story-008 (scope_model.md §6): the ward is scope-owned, so it lights EVERY in-scope client.
   characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
   handleGameEvent({ ...EVENTS.veil_ward_changed });
-  expect(hudStore.getState().veilWardActive).toBe(false);
+  expect(hudStore.getState().veilWardActive).toBe(true);
+});
+
+test("veil_ward_changed ignores a caster_id even if one is present", () => {
+  // NON-VACUITY. The test above cannot fail against the OLD caster_id filter: the fixture no
+  // longer carries a caster_id, and isEventForLocalPlayer(undefined) returned true, so the old
+  // handler would light the indicator anyway. This one smuggles a foreign caster_id into the
+  // payload: the old filter drops it and leaves the indicator dark; the new handler must not
+  // consult the field at all. It is the assertion that actually pins the filter's removal.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
+  handleGameEvent({ ...EVENTS.veil_ward_changed, caster_id: "the_raiser" });
+  expect(hudStore.getState().veilWardActive).toBe(true);
+});
+
+test("veil_ward_changed payload carries no caster_id to filter on", () => {
+  // The asymmetry, pinned: RESONANCE_CHANGED is per-caster and keeps its filter; the ward is not.
+  expect(EVENTS.veil_ward_changed).not.toHaveProperty("caster_id");
+  expect(EVENTS.resonance_changed).toHaveProperty("caster_id");
 });
 
 test("spell_row fixture parses with its spell_tier intact (not blanked)", () => {

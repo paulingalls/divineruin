@@ -23,6 +23,7 @@ import resonance_events
 import veil_ward_events
 from hollow_echo import HollowEchoResult
 from spells import Spell
+from veil_ward import WardScope
 
 FIXTURE_PATH = Path(__file__).resolve().parents[3] / "packages" / "shared" / "fixtures" / "event_wire.json"
 FIXTURE = json.loads(FIXTURE_PATH.read_text())
@@ -79,13 +80,22 @@ async def test_hollow_echo_result_serializes_to_fixture() -> None:
 
 @pytest.mark.asyncio
 async def test_veil_ward_changed_serializes_to_fixture() -> None:
+    # story-008: {active, scope_kind, scope_id, source} — no caster_id. The ward is scope-owned, so
+    # every in-scope client lights up and there is nothing to filter on (scope_model.md §6).
     expected = FIXTURE["events"]["veil_ward_changed"]
+    ward = {"source": expected["source"], "expires_at": None, "dismissible": True}
+    scope = WardScope.location(expected["scope_id"])
     session = MagicMock()
-    session.player_id = expected["caster_id"]  # caster_id defaults to the session primary
-    # The push moved to veil_ward_events in story-004 (arrival needs it too). Payload unchanged.
     with patch("veil_ward_events.publish_game_event", new_callable=AsyncMock) as pub:
-        await veil_ward_events.publish_veil_ward_changed(session, expected["active"], expected["caster_id"])
+        await veil_ward_events.publish_veil_ward_changed(session, ward, scope)
     assert _captured_wire(pub) == expected
+
+
+def test_veil_ward_fixture_carries_no_caster_id() -> None:
+    """The asymmetry, pinned in the fixture itself: RESONANCE_CHANGED filters per-caster; the ward
+    does not. A reader who 'restores consistency' by adding caster_id back fails here."""
+    assert "caster_id" not in FIXTURE["events"]["veil_ward_changed"]
+    assert "caster_id" in FIXTURE["events"]["resonance_changed"]
 
 
 def test_spell_row_builder_matches_fixture() -> None:

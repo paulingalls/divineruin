@@ -17,6 +17,7 @@ from game_events import publish_game_event
 from region_types import REGION_CITY
 from session_data import SessionData
 from tool_support import LOCATION_CORRUPTION, _resolve_ambient_sounds, _validate_id
+from veil_ward_events import veil_ward_payload
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -79,7 +80,9 @@ async def apply_arrival(
         # Resolved HERE, inside the transaction, against the DESTINATION: conn closes below and
         # session.location_id is not updated until after the commit, so the session still names the
         # location we are leaving.
-        arrival_ward = await ward_resolution.resolve_scope_ward(session, conn=conn, location_id=destination_id)
+        arrival_ward, arrival_scope = await ward_resolution.resolve_scope_ward_with_scope(
+            session, conn=conn, location_id=destination_id
+        )
 
         pending_events.append(
             (
@@ -119,9 +122,7 @@ async def apply_arrival(
     previously_warded = session.location_ward is not None
     session.location_ward = arrival_ward
     if (arrival_ward is not None) != previously_warded:
-        pending_events.append(
-            (E.VEIL_WARD_CHANGED, {"active": arrival_ward is not None, "caster_id": session.player_id})
-        )
+        pending_events.append((E.VEIL_WARD_CHANGED, veil_ward_payload(arrival_ward, arrival_scope)))
 
     for event_type, payload in pending_events:
         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
