@@ -34,26 +34,13 @@ import db
 import db_mutations_veil_ward
 import db_queries
 import veil_ward
+import veil_ward_events
 from db_errors import db_tool
-from event_types import VEIL_WARD_CHANGED
-from game_events import publish_game_event
 from party_state import PartyMember
 from resource_costs import gate_pool
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
-
-
-async def _publish_veil_ward_changed(session: SessionData, active: bool, caster_id: str) -> None:
-    """Push the ward's on/off state to the client as a VEIL_WARD_CHANGED event.
-
-    The payload is {active, caster_id} (the HUD shows a glanceable zone indicator); the
-    source archetype is narration the DM voices, not wire state. caster_id is the resolved
-    caster (default primary, or an explicit non-primary member — see activate_veil_ward).
-    """
-    await publish_game_event(
-        session.room, VEIL_WARD_CHANGED, {"active": active, "caster_id": caster_id}, session.event_bus
-    )
 
 
 @function_tool()
@@ -137,7 +124,7 @@ async def _activate_veil_ward_impl(
     # Transaction committed — sync the caster's in-memory SSOT and push the HUD toggle.
     caster.veil_ward.active = True
     caster.veil_ward.source = archetype
-    await _publish_veil_ward_changed(session, True, pid)
+    await veil_ward_events.publish_veil_ward_changed(session, True, pid)
     return json.dumps(
         {"active": True, "source": archetype, "deducted": {"focus": source.focus, "stamina": source.stamina}}
     )
@@ -158,5 +145,5 @@ async def _dismiss_impl(
 
     caster.veil_ward.active = False
     caster.veil_ward.source = None
-    await _publish_veil_ward_changed(session, False, pid)
+    await veil_ward_events.publish_veil_ward_changed(session, False, pid)
     return json.dumps({"active": False})

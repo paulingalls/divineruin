@@ -14,8 +14,9 @@ Encounter-vs-location targeting and per-source durations are story-005: every ra
 a location ward with no absolute expiry and dismissible=True, preserving the manual-dismiss
 behavior this tool has always had.
 
-The published VEIL_WARD_CHANGED payload is {active, caster_id}; publish_game_event is patched to
-assert the wire shape. (story-008 rebuilds the payload as scope-membership.)
+The published VEIL_WARD_CHANGED payload is {active, caster_id}; veil_ward_events.publish_game_event
+is patched to assert the wire shape (the push moved to its own module in story-004 because arrival
+needs it too). story-008 rebuilds the payload as scope-membership.
 """
 
 import json
@@ -26,7 +27,7 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
 import event_types as E
-import veil_ward_tools
+import veil_ward_events
 from veil_ward import WardScope
 from veil_ward_tools import _activate_veil_ward_impl
 
@@ -61,7 +62,7 @@ def _mocks(player: dict, *, ward_active: bool = False, party_member_ids=None, di
 
 
 async def _invoke(ctx, mock_db, queries, persistence, ward_mut, active=True, caster_id=None):
-    with patch.object(veil_ward_tools, "publish_game_event", AsyncMock()) as pub:
+    with patch.object(veil_ward_events, "publish_game_event", AsyncMock()) as pub:
         raw = await _activate_veil_ward_impl(
             ctx,
             active,
