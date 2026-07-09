@@ -41,6 +41,7 @@ import db_mutations_veil_ward
 import db_queries
 import veil_ward
 import veil_ward_events
+import ward_resolution
 from db_errors import db_tool
 from resource_costs import gate_pool
 from session_data import SessionData
@@ -77,6 +78,7 @@ async def _activate_veil_ward_impl(
     ward_mutations_mod=db_mutations_veil_ward,
     ward_mod=veil_ward,
     combat_mod=db_mutations,
+    resolution_mod=ward_resolution,
 ) -> str:
     context.disallow_interruptions()
     session: SessionData = context.userdata
@@ -132,15 +134,14 @@ async def _activate_veil_ward_impl(
         if source.duration.kind is WardDurationKind.ROUNDS and combat is None:
             raise ToolError(f"A {archetype}'s Veil Ward lasts a few rounds; raise it in combat.")
 
-        # The ward is scope-owned: an already-warded SCOPE refuses a second raise, whichever
+        # The ward is scope-owned: an already-warded party refuses a second raise, whichever
         # member attempts it. Two casters cannot double-charge themselves for one shared ward.
-        # The encounter ward's one home is CombatState, so it is read there, not from veil_wards.
-        already_warded = (
-            combat.veil_ward is not None
-            if combat is not None
-            else await ward_mutations_mod.read_active_ward(scope, conn=conn) is not None
-        )
-        if already_warded:
+        #
+        # The question is "is the PARTY warded?", not "is the scope I am about to write warded?" —
+        # §3's covering-scope OR. A party fighting on a Sacred site is already warded by the
+        # location, so an encounter raise would buy nothing and charge for it. resolve_scope_ward
+        # is the one place that OR lives; re-deriving it here is the drift this milestone removes.
+        if await resolution_mod.resolve_scope_ward(session, conn=conn, ward_mutations_mod=ward_mutations_mod):
             raise ToolError("A Veil Ward is already active.")
 
         # Gate Focus then Stamina (fail-loud, pure); each returns the post-deduct

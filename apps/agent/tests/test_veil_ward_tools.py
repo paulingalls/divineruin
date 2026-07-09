@@ -31,9 +31,21 @@ import veil_ward_events
 from session_data import CombatState
 from veil_ward import WardScope
 from veil_ward_tools import _activate_veil_ward_impl
+from ward_resolution import resolve_scope_ward as _real_resolve_scope_ward
 
 _SCOPE = WardScope.location("accord_guild_hall")  # make_context's default location
 _COMBAT_ID = "combat_veil_ward_tools"  # scope-unique to this file, so no cross-file scope leak
+
+# conftest's autouse `default_unwarded_scope` monkeypatches ward_resolution.resolve_scope_ward to
+# return None for every mock-conn test — a safe default for suites that don't care about the ward.
+# THIS suite cares: the tool's already-active gate IS a resolve_scope_ward call, and the patch
+# would silently answer "unwarded" forever, making every double-charge test vacuous. Per that
+# fixture's own contract, inject the mod instead. The name is bound at import, before the
+# monkeypatch replaces the module attribute, so this is the real resolver running over the mocked
+# read_active_ward leaf — not a mock of the thing under test. (A MagicMock carrier, not a
+# SimpleNamespace, only so the injected stand-in types as a module substitute.)
+_REAL_RESOLUTION = MagicMock()
+_REAL_RESOLUTION.resolve_scope_ward = _real_resolve_scope_ward
 
 
 def _in_combat(ctx) -> CombatState:
@@ -93,6 +105,7 @@ async def _invoke(ctx, mock_db, queries, persistence, ward_mut, active=True, cas
             persistence_mod=persistence,
             ward_mutations_mod=ward_mut,
             combat_mod=combat_mod or _combat_mod(),
+            resolution_mod=_REAL_RESOLUTION,
         )
     return json.loads(raw), pub
 
@@ -191,6 +204,39 @@ async def test_cleric_out_of_combat_raises_a_location_ward():
     ward_mut.write_ward.assert_awaited_once_with(_SCOPE, "cleric", None, dismissible=True, conn=ANY)
     combat_mod.save_combat_state.assert_not_awaited()
     assert ctx.userdata.location_ward["source"] == "cleric"
+
+
+# --- raise path: "already active" is resolved across BOTH scopes (story-005) -----
+
+
+async def test_already_active_encounter_ward_refused():
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7))
+    combat = _in_combat(ctx)
+    combat.veil_ward = {"source": "paladin", "rounds_remaining": 2}
+    combat_mod = _combat_mod()
+    with pytest.raises(ToolError, match="already active"):
+        await _invoke(ctx, mock_db, queries, persistence, ward_mut, combat_mod=combat_mod)
+    persistence.update_player_resources.assert_not_awaited()
+    combat_mod.save_combat_state.assert_not_awaited()
+
+
+async def test_in_combat_raise_refused_when_a_location_ward_already_covers():
+    """§3's covering-scope OR, at the activation end: a party standing on a Sacred site is
+    already warded, so an encounter raise buys nothing and must not charge for it. The gate
+    asks "is the party warded?", not "is the scope I am about to write warded?".
+    """
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7))
+    combat = _in_combat(ctx)
+    assert combat.veil_ward is None  # the encounter scope itself is unwarded
+    ward_mut.read_active_ward = AsyncMock(
+        return_value={"source": "sacred_site", "expires_at": None, "dismissible": False}
+    )
+    combat_mod = _combat_mod()
+    with pytest.raises(ToolError, match="already active"):
+        await _invoke(ctx, mock_db, queries, persistence, ward_mut, combat_mod=combat_mod)
+    persistence.update_player_resources.assert_not_awaited()
+    combat_mod.save_combat_state.assert_not_awaited()
+    ward_mut.write_ward.assert_not_awaited()
 
 
 async def test_druid_raises_ward_for_five_focus():
