@@ -17,9 +17,17 @@ generation halved (round down), +4 echo, -1 damage die, -1 DC; sources Cleric L7
 Druid L9 5F (natural terrain only) / Paladin L10 3F+3S, plus Artificer item and Sacred
 sites. M3.2 scopes WARD_SOURCES to the Focus/Stamina caster sources; the Artificer item
 and Sacred-site passive sources are deferred.
+
+M24/story-002 adds the duration model on top of that unchanged source table:
+docs/game_mechanics/veil_ward_scope_model.md defines four incompatible duration units
+(encounter / rounds / real-time / permanent), so ``WardDuration`` replaces a bare int.
+Only scope/duration/ownership/sources change in M24 — the four effect constants and
+``halve_generation`` above are byte-identical to their pre-M24 values.
 """
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import StrEnum
 
 # Ward combat modifiers (spec 195-200), uniform across every ward source. Consumed by
 # the cast path (story-004): generation is halved, the Hollow Echo roll gets +4, and
@@ -29,24 +37,73 @@ WARD_DAMAGE_DIE_PENALTY = -1
 WARD_DC_PENALTY = -1
 
 
+class WardDurationKind(StrEnum):
+    """How a ward's lifetime is bounded (veil_ward_scope_model.md duration table)."""
+
+    ENCOUNTER = "encounter"  # bounded by the fight; raised out of combat => until dismissed
+    ROUNDS = "rounds"  # ticks at the combat WRAP beat; combat-only
+    REAL_TIME = "real_time"  # absolute expires_at compared to NOW()
+    PERMANENT = "permanent"  # expires_at IS NULL
+
+
+@dataclass(frozen=True)
+class WardDuration:
+    """A ward source's lifetime rule. Exactly one of ``rounds``/``seconds`` is set, and only
+    for the matching ``kind`` — ``__post_init__`` fails loud on any mismatch.
+    """
+
+    kind: WardDurationKind
+    rounds: int | None = None  # required iff kind is ROUNDS, must be > 0
+    seconds: int | None = None  # required iff kind is REAL_TIME, must be > 0
+
+    def __post_init__(self):
+        if self.kind == WardDurationKind.ROUNDS:
+            if self.rounds is None or self.rounds <= 0:
+                raise ValueError(f"ROUNDS duration requires rounds > 0, got {self.rounds}")
+            if self.seconds is not None:
+                raise ValueError("ROUNDS duration must not carry seconds")
+        elif self.kind == WardDurationKind.REAL_TIME:
+            if self.seconds is None or self.seconds <= 0:
+                raise ValueError(f"REAL_TIME duration requires seconds > 0, got {self.seconds}")
+            if self.rounds is not None:
+                raise ValueError("REAL_TIME duration must not carry rounds")
+        else:
+            if self.rounds is not None or self.seconds is not None:
+                raise ValueError(f"{self.kind} duration must not carry rounds or seconds")
+
+
 @dataclass(frozen=True)
 class WardSource:
-    """The level + resource cost at which an archetype can raise a Veil Ward."""
+    """The level + resource cost at which an archetype can raise a Veil Ward, plus its
+    duration rule and whether the DM activation tool may raise it (story-005 gates on
+    ``tool_raisable``; this story only carries the flag, always True for the three
+    caster sources below).
+    """
 
     min_level: int
+    duration: WardDuration
     focus: int
     stamina: int = 0
+    tool_raisable: bool = False
 
 
 # Archetype id -> ward source (spec 204-210). Only the enforceable cost fields are
 # modeled: Druid's "natural terrain only" restriction is NOT a column because no runtime
 # location->terrain map exists yet (an unenforced flag would be forward-wired dead state).
 # story-003 gates level + Focus/Stamina from this table; the Druid terrain gate and the
-# Artificer-item / Sacred-site (passive world entity) sources are deferred past M3.2.
+# Artificer-item / Sacred-site (passive world entity) sources are deferred past M3.2, and
+# story-005 adds their keys once the tool re-gates on ``tool_raisable`` — do not add them
+# here (an artificer key would let a free-cost ward through the DM tool untended).
 WARD_SOURCES: dict[str, WardSource] = {
-    "cleric": WardSource(min_level=7, focus=4),
-    "druid": WardSource(min_level=9, focus=5),
-    "paladin": WardSource(min_level=10, focus=3, stamina=3),
+    "cleric": WardSource(min_level=7, focus=4, duration=WardDuration(WardDurationKind.ENCOUNTER), tool_raisable=True),
+    "druid": WardSource(min_level=9, focus=5, duration=WardDuration(WardDurationKind.ENCOUNTER), tool_raisable=True),
+    "paladin": WardSource(
+        min_level=10,
+        focus=3,
+        stamina=3,
+        duration=WardDuration(WardDurationKind.ROUNDS, rounds=3),
+        tool_raisable=True,
+    ),
 }
 
 
@@ -58,3 +115,52 @@ def halve_generation(generated: int) -> int:
     if generated < 0:
         raise ValueError(f"generated must be non-negative, got {generated}")
     return generated // 2
+
+
+def tick_ward_rounds(rounds_remaining: int | None) -> int | None:
+    """Advance a ROUNDS-duration ward one combat WRAP beat, floored at 0.
+
+    ``None`` means no round clock (ENCOUNTER/REAL_TIME/PERMANENT wards never expire by
+    rounds) and passes through unchanged, mirroring ``conditions.tick_conditions``.
+    """
+    if rounds_remaining is None:
+        return None
+    if rounds_remaining < 0:
+        raise ValueError(f"rounds_remaining must be non-negative, got {rounds_remaining}")
+    return max(0, rounds_remaining - 1)
+
+
+def ward_rounds_expired(rounds_remaining: int | None) -> bool:
+    """Whether a ROUNDS-duration ward has run out. ``None`` (no round clock) never expires."""
+    if rounds_remaining is None:
+        return False
+    return rounds_remaining <= 0
+
+
+def location_expires_at(duration: WardDuration, now: datetime) -> datetime | None:
+    """Compute a location-owned ward's absolute expiry from its source duration.
+
+    PERMANENT and ENCOUNTER wards have no absolute expiry (ENCOUNTER raised outside combat
+    lasts until dismissed) so both return ``None``. REAL_TIME wards expire ``seconds`` after
+    ``now``. ROUNDS is combat-only and has no absolute clock — a location-owned ward can
+    never carry it, so this raises rather than silently producing a nonsensical answer.
+    """
+    if now.tzinfo is None:
+        raise ValueError("now must be timezone-aware")
+    if duration.kind == WardDurationKind.ROUNDS:
+        raise ValueError("ROUNDS duration has no absolute expiry; it is combat-only")
+    if duration.kind == WardDurationKind.REAL_TIME:
+        assert duration.seconds is not None  # guaranteed by WardDuration.__post_init__
+        return now + timedelta(seconds=duration.seconds)
+    return None
+
+
+def location_ward_expired(expires_at: datetime | None, now: datetime) -> bool:
+    """Whether a location-owned ward's absolute expiry has passed. ``None`` never expires."""
+    if now.tzinfo is None:
+        raise ValueError("now must be timezone-aware")
+    if expires_at is not None and expires_at.tzinfo is None:
+        raise ValueError("expires_at must be timezone-aware")
+    if expires_at is None:
+        return False
+    return expires_at <= now
