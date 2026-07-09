@@ -128,6 +128,37 @@ def test_player_id_has_no_setter():
         raise AssertionError("expected AttributeError when setting player_id")
 
 
+# --- SessionData.location_ward: a HUD mirror with no correctness consumer (story-004) --------
+
+
+def test_location_ward_defaults_to_none():
+    """A fresh session mirrors no ward until hydration reads one."""
+    assert SessionData(player_id="p1", location_id="loc").location_ward is None
+
+
+def test_location_ward_is_a_plain_mirror_not_a_resolver():
+    """It stores what the last read returned. It does NOT consult combat_state.
+
+    Resolution lives in exactly one place — ward_resolution.resolve_scope_ward — because a
+    synchronous property here could not await the DB, and would go stale the moment a ward's
+    expires_at lapsed: reporting warded while the cast path correctly reads unwarded.
+    """
+    session = SessionData(player_id="p1", location_id="loc")
+    session.location_ward = {"source": "cleric", "expires_at": None, "dismissible": True}
+
+    assert session.location_ward["source"] == "cleric"
+    # No resolution accessor exists on the session — the mirror is not an authority.
+    assert not hasattr(session, "scope_ward")
+
+
+def test_location_ward_is_not_shadowed_by_an_encounter_ward():
+    """Setting a combat ward does not touch the location mirror; they are distinct scopes."""
+    session = SessionData(player_id="p1", location_id="loc")
+    session.combat_state = _combat_state(veil_ward={"source": "paladin", "rounds_remaining": 3})
+
+    assert session.location_ward is None
+
+
 # --- CombatState.veil_ward: the encounter ward rides the combat row (story-004, M24) ---------
 
 

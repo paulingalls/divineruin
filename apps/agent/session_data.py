@@ -232,6 +232,19 @@ class SessionData:
     event_bus: EventBus = field(default_factory=EventBus)
     world_time: str = "evening"
     combat_state: CombatState | None = None
+    # HUD MIRROR of the location-scoped Veil Ward (M24 story-004): the dict read_active_ward last
+    # returned for this session's location, or None. Refreshed at hydration, on tool raise/dismiss,
+    # and on arrival.
+    #
+    # NOT the cast-path authority, and nothing correctness-bearing may read it. The cast path calls
+    # ward_resolution.resolve_scope_ward, which queries the DB — that is what makes the model's lazy
+    # expiry real (scope_model §"Durations need no world clock": nothing sweeps veil_wards; an expired
+    # ward is simply not returned by the next read).
+    #
+    # Consequence, accepted by the settled model: a ward that expires mid-session leaves the HUD
+    # indicator lit until the party next moves, raises, or dismisses. Casts stay correct throughout,
+    # because they read the DB. M24 adds no tick loop to fire a proactive "the ward drops" event.
+    location_ward: dict | None = None
     last_player_speech_time: float = 0.0
     last_agent_speech_end: float = 0.0
     recent_events: deque[str] = field(default_factory=lambda: deque(maxlen=MAX_RECENT_EVENTS))
