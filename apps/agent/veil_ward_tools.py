@@ -184,7 +184,9 @@ async def _activate_veil_ward_impl(
         combat.veil_ward = encounter_ward
     else:
         session.location_ward = {"source": archetype, "expires_at": expires_at, "dismissible": True}
-    await veil_ward_events.publish_veil_ward_changed(session, True, pid)
+    # The raise succeeded, so the scope we just wrote IS the resolved covering scope — the
+    # already-active gate above proved nothing else covered the party.
+    await veil_ward_events.publish_veil_ward_changed(session, encounter_ward or session.location_ward, scope)
     return json.dumps(
         {
             "active": True,
@@ -232,5 +234,9 @@ async def _dismiss_impl(session: SessionData, pid: str, *, db_mod, ward_mutation
     if combat is not None:
         combat.veil_ward = None
     session.location_ward = location_ward
-    await veil_ward_events.publish_veil_ward_changed(session, location_ward is not None, pid)
+    # The resolved covering scope after the drop can only be the LOCATION (see above), so that is
+    # the scope this event names — never the scope we just dropped.
+    await veil_ward_events.publish_veil_ward_changed(
+        session, location_ward, location_scope if location_ward is not None else None
+    )
     return json.dumps({"active": location_ward is not None})

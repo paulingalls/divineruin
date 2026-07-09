@@ -14,6 +14,7 @@ import db_content_queries
 import db_mutations
 import db_mutations_conditions
 import db_mutations_reputation
+import db_mutations_veil_ward
 import db_queries
 import encounter_loot
 import event_types as E
@@ -28,6 +29,8 @@ from region_types import REGION_CITY
 from reputation import reputation_shift
 from session_data import CombatState, SessionData
 from tool_support import SOUND_COMBAT_DEFEAT, SOUND_COMBAT_FLED, SOUND_COMBAT_VICTORY
+from veil_ward import WardScope
+from veil_ward_events import veil_ward_payload
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -176,6 +179,7 @@ async def _end_combat_db(
     content=db_content_queries,
     pricing=pricing_queries,
     reputation_mutations=db_mutations_reputation,
+    ward_mutations_mod=db_mutations_veil_ward,
     rng: random.Random | None = None,
 ) -> dict:
     """The DB-mutating + event-emitting half of end_combat, run INSIDE a transaction (the phase
@@ -319,6 +323,31 @@ async def _end_combat_db(
 
     await mutations.delete_combat_state(cs.combat_id, conn=conn)
 
+    # Deleting the combat row IS the encounter ward's expiry (scope_model.md §2), so the HUD must be
+    # told — but with the RESOLVED state, not "the ward you had is gone" (§3). Only an encounter ward's
+    # death can change wardedness here; an unwarded fight's end changes nothing and says nothing.
+    #
+    # Read the LOCATION scope explicitly rather than routing through resolve_scope_ward: session
+    # .combat_state is not cleared until _end_combat_finish, which runs AFTER the sink flushes, so the
+    # resolver would still see the ward we just deleted. Once the encounter scope is gone the only
+    # scope that can still cover the party is the location — a Sacred site, or a pre-fight row. Same
+    # shape as the dismiss path in veil_ward_tools.
+    ward_light_synced = False
+    resolved_location_ward: dict | None = None
+    if cs.veil_ward is not None:
+        location_scope = WardScope.location(session.location_id)
+        location_ward = await ward_mutations_mod.read_active_ward(location_scope, conn=conn)
+        # The session mirror is synced post-commit in _end_combat_finish (like combat_state), so a
+        # rolled-back phase leaves session.location_ward pristine — this half touches no session state.
+        resolved_location_ward = location_ward
+        ward_light_synced = True
+        await sink.emit(
+            session.room,
+            E.VEIL_WARD_CHANGED,
+            veil_ward_payload(location_ward, location_scope if location_ward is not None else None),
+            event_bus=session.event_bus,
+        )
+
     # Death, resurrection & stabilization (M4.4 story-003; M20 story-004/005; M15 story-003):
     # - TRULY DEAD lives — an is_terminally_down player (is_dead overkill OR 3 failed death saves) and
     #   ANY temporary_hollowed echo (a player who already died to rise as a Hollowed monster) — return
@@ -430,6 +459,8 @@ async def _end_combat_db(
         "death_context": death_context,
         "primary_loot": primary_loot,
         "primary_currency_gold": primary_currency_gold,
+        "ward_light_synced": ward_light_synced,
+        "resolved_location_ward": resolved_location_ward,
     }
 
 
@@ -451,6 +482,12 @@ def _end_combat_finish(
         member.weapon_crit_vs_heavy = False
     session.draethar_inner_fire_used = False  # Inner Fire resets each encounter (M3.4)
     session.combat_state = None
+
+    # Post-commit sync of the location-ward mirror: only when the dying encounter ward changed
+    # wardedness (the in-tx half resolved and emitted the covering location scope). Deferred here so
+    # a rolled-back phase leaves session.location_ward untouched, matching the combat_state contract.
+    if end_data.get("ward_light_synced"):
+        session.location_ward = end_data["resolved_location_ward"]
 
     # When the primary died (any outcome — the dead-life collector or the standing-primary defeat
     # fallback set death_context), it was revived AT its anchor (players.data.location_id = anchor).

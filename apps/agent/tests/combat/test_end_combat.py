@@ -177,3 +177,63 @@ class TestPhaseLoopExit:
         assert isinstance(agent_instance, ExplorationAgent)
         assert json.loads(json_str)["outcome"] == "victory"
         assert ctx.userdata.combat_state is None
+
+
+class TestEndCombatVeilWard:
+    """The encounter ward dies with the combat row — say so, resolved (M24 story-008, AC3).
+
+    scope_model.md §3: "on combat end the encounter ward dies, but if a location ward still covers
+    the party, VEIL_WARD_CHANGED carries active: true." Nothing published here before this story, so
+    a party fighting on a Sacred site watched its indicator keep whatever state the raise left it.
+
+    The ordering trap: session.combat_state is not cleared until _end_combat_finish, which runs AFTER
+    the sink flushes. A naive resolve_scope_ward here would still see the dying encounter ward. So the
+    producer reads the LOCATION scope explicitly, exactly as the dismiss path does.
+    """
+
+    _SACRED = {"source": "sacred_site", "expires_at": None, "dismissible": False}
+
+    def _warded_ctx(self, ward=None):
+        ctx = make_context(room=make_mock_room())
+        ctx.userdata.combat_state = _make_combat_state()
+        ctx.userdata.combat_state.veil_ward = ward or {"source": "cleric", "rounds_remaining": None}
+        return ctx
+
+    def _ward_events(self, room):
+        return [p for p in published_payloads(room) if p["type"] == E.VEIL_WARD_CHANGED]
+
+    @pytest.mark.asyncio
+    async def test_encounter_ward_death_darkens_the_hud_when_nothing_else_covers(self):
+        ctx = self._warded_ctx()
+        await _end_combat_impl(ctx, outcome="victory", mutations=_make_end_combat_mocks(), db_mod=_fake_db_mod())
+        assert self._ward_events(ctx.userdata.room) == [
+            {
+                "type": E.VEIL_WARD_CHANGED,
+                "active": False,
+                "scope_kind": None,
+                "scope_id": None,
+                "source": None,
+            }
+        ]
+
+    @pytest.mark.asyncio
+    async def test_surviving_location_ward_keeps_the_hud_lit(self, monkeypatch):
+        # §3's whole point: the fight's ward dies, the Sacred site does not, and the party's casts
+        # are STILL halved. Publishing active=False here would darken the light while it lies.
+        import db_mutations_veil_ward
+
+        monkeypatch.setattr(db_mutations_veil_ward, "read_active_ward", AsyncMock(return_value=self._SACRED))
+        ctx = self._warded_ctx()
+        await _end_combat_impl(ctx, outcome="victory", mutations=_make_end_combat_mocks(), db_mod=_fake_db_mod())
+        [event] = self._ward_events(ctx.userdata.room)
+        assert event["active"] is True
+        assert event["scope_kind"] == "location"
+        assert event["source"] == "sacred_site"
+
+    @pytest.mark.asyncio
+    async def test_unwarded_fight_publishes_no_ward_event(self):
+        # Ending an unwarded fight changes nothing about wardedness. Say nothing.
+        ctx = make_context(room=make_mock_room())
+        ctx.userdata.combat_state = _make_combat_state()
+        await _end_combat_impl(ctx, outcome="victory", mutations=_make_end_combat_mocks(), db_mod=_fake_db_mod())
+        assert self._ward_events(ctx.userdata.room) == []

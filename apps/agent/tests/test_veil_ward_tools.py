@@ -14,7 +14,8 @@ story-005 adds targeting: in combat the ward is the ENCOUNTER's (on CombatState)
 LOCATION's (a veil_wards row, expires_at from the source's duration). "Already active" is asked
 of the PARTY via resolve_scope_ward — both scopes OR-ed — not of the scope about to be written.
 
-The published VEIL_WARD_CHANGED payload is {active, caster_id}; veil_ward_events.publish_game_event
+The published VEIL_WARD_CHANGED payload is {active, scope_kind, scope_id, source} (story-008, no
+raiser id); veil_ward_events.publish_game_event
 is patched to assert the wire shape (the push moved to its own module in story-004 because arrival
 needs it too). story-008 rebuilds the payload as scope-membership.
 """
@@ -34,6 +35,17 @@ from veil_ward_tools import _activate_veil_ward_impl
 from ward_resolution import resolve_scope_ward as _real_resolve_scope_ward
 
 _SCOPE = WardScope.location("accord_guild_hall")  # make_context's default location
+
+
+def _payload(active, *, scope_kind=None, scope_id=None, source=None) -> dict:
+    """The VEIL_WARD_CHANGED wire payload (story-008, scope_model.md §6).
+
+    No caster_id: the ward is scope-owned, so every in-scope client lights up and there is nothing
+    to filter on. An unwarded party names no scope.
+    """
+    return {"active": active, "scope_kind": scope_kind, "scope_id": scope_id, "source": source}
+
+
 _COMBAT_ID = "combat_veil_ward_tools"  # scope-unique to this file, so no cross-file scope leak
 
 # conftest's autouse `default_unwarded_scope` monkeypatches ward_resolution.resolve_scope_ward to
@@ -129,7 +141,7 @@ async def test_eligible_cleric_raises_ward():
     pub.assert_awaited_once()
     args = pub.call_args.args
     assert args[1] == E.VEIL_WARD_CHANGED
-    assert args[2] == {"active": True, "caster_id": "player_1"}
+    assert args[2] == _payload(True, scope_kind="location", scope_id="accord_guild_hall", source="cleric")
 
 
 async def test_raise_writes_no_absolute_expiry_and_stays_dismissible():
@@ -174,7 +186,7 @@ async def test_cleric_in_combat_raises_encounter_ward():
     persistence.update_player_resources.assert_awaited_once_with("player_1", stamina=None, focus=6, conn=ANY)
     # The raiser's HUD still lights in combat (party-wide fan-out is story-008).
     pub.assert_awaited_once()
-    assert pub.call_args.args[2] == {"active": True, "caster_id": "player_1"}
+    assert pub.call_args.args[2] == _payload(True, scope_kind="encounter", scope_id=_COMBAT_ID, source="cleric")
 
 
 async def test_paladin_in_combat_seeds_the_round_clock():
@@ -341,7 +353,7 @@ async def test_dismiss_active_ward():
     ward_mut.dismiss_ward.assert_awaited_once_with(_SCOPE, conn=ANY)
     persistence.update_player_resources.assert_not_awaited()  # dismiss is free
     assert ctx.userdata.location_ward is None
-    assert pub.call_args.args[2] == {"active": False, "caster_id": "player_1"}
+    assert pub.call_args.args[2] == _payload(False)
 
 
 async def test_dismiss_publishes_resolved_state_when_a_permanent_ward_survives():
@@ -358,7 +370,9 @@ async def test_dismiss_publishes_resolved_state_when_a_permanent_ward_survives()
 
     assert result["active"] is True  # resolved, not the mutated scope's toggle
     assert ctx.userdata.location_ward == sacred
-    assert pub.call_args.args[2] == {"active": True, "caster_id": "player_1"}
+    assert pub.call_args.args[2] == _payload(
+        True, scope_kind="location", scope_id="accord_guild_hall", source="sacred_site"
+    )
 
 
 async def test_dismiss_when_no_dismissible_ward_rejected():
@@ -390,7 +404,7 @@ async def test_dismiss_in_combat_clears_the_encounter_ward():
     ward_mut.dismiss_ward.assert_not_awaited()  # the veil_wards table is not the encounter's home
     persistence.update_player_resources.assert_not_awaited()  # dismiss is free
     assert ctx.userdata.location_ward is None
-    assert pub.call_args.args[2] == {"active": False, "caster_id": "player_1"}
+    assert pub.call_args.args[2] == _payload(False)
 
 
 async def test_dismiss_in_combat_still_warded_when_a_location_ward_covers():
@@ -405,7 +419,9 @@ async def test_dismiss_in_combat_still_warded_when_a_location_ward_covers():
     assert combat.veil_ward is None  # the encounter ward is gone...
     assert result["active"] is True  # ...but the party is still warded by the location
     assert ctx.userdata.location_ward == sacred  # the LOCATION mirror, refreshed from a location read
-    assert pub.call_args.args[2] == {"active": True, "caster_id": "player_1"}
+    assert pub.call_args.args[2] == _payload(
+        True, scope_kind="location", scope_id="accord_guild_hall", source="sacred_site"
+    )
 
 
 async def test_failed_raise_leaves_no_phantom_ward_in_memory():
@@ -468,7 +484,9 @@ async def test_non_primary_member_raises_scope_ward_and_pays_alone():
     ward_mut.write_ward.assert_awaited_once_with(_SCOPE, "cleric", None, dismissible=True, conn=ANY)
     # One shared ward on the session — a non-primary raiser does not get a private one.
     assert ctx.userdata.location_ward is not None
-    assert pub.call_args.args[2] == {"active": True, "caster_id": "player_2"}
+    assert pub.call_args.args[2] == _payload(
+        True, scope_kind="location", scope_id="accord_guild_hall", source="cleric"
+    )  # scope-owned: the payload never names the raiser
 
 
 async def test_non_primary_member_dismisses_scope_ward():
@@ -483,7 +501,7 @@ async def test_non_primary_member_dismisses_scope_ward():
     assert result["active"] is False
     ward_mut.dismiss_ward.assert_awaited_once_with(_SCOPE, conn=ANY)
     assert ctx.userdata.location_ward is None
-    assert pub.call_args.args[2] == {"active": False, "caster_id": "player_2"}
+    assert pub.call_args.args[2] == _payload(False)
 
 
 async def test_unknown_caster_id_raises_tool_error_not_value_error():

@@ -42,6 +42,30 @@ from session_data import SessionData
 from veil_ward import WardScope
 
 
+async def resolve_scope_ward_with_scope(
+    session: SessionData,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool,
+    location_id: str | None = None,
+    ward_mutations_mod=db_mutations_veil_ward,
+) -> tuple[dict | None, WardScope | None]:
+    """Return ``(ward, scope)`` for the ward covering ``session``, or ``(None, None)``.
+
+    The same covering-scope OR as ``resolve_scope_ward``, but it also names WHICH scope answered.
+    VEIL_WARD_CHANGED carries ``scope_kind``/``scope_id`` (§6), and a producer that re-derived
+    them would be re-deriving resolution — the exact duplication this module exists to prevent.
+    An unwarded party has no scope to name, hence ``(None, None)`` rather than a bare scope.
+
+    See ``resolve_scope_ward`` for the ``location_id`` override and the transaction contract.
+    """
+    combat = session.combat_state
+    if combat is not None and combat.veil_ward is not None:
+        return combat.veil_ward, WardScope.encounter(combat.combat_id)
+    scope = WardScope.location(location_id or session.location_id)
+    ward = await ward_mutations_mod.read_active_ward(scope, conn=conn)
+    return (ward, scope) if ward is not None else (None, None)
+
+
 async def resolve_scope_ward(
     session: SessionData,
     *,
@@ -60,9 +84,11 @@ async def resolve_scope_ward(
     rather than silently reading the wrong rows.
 
     Joins the caller's transaction through ``conn``; it never opens its own.
+
+    Delegates to ``resolve_scope_ward_with_scope`` and drops the scope, so the covering-scope OR
+    exists in exactly one place.
     """
-    combat = session.combat_state
-    if combat is not None and combat.veil_ward is not None:
-        return combat.veil_ward
-    scope = WardScope.location(location_id or session.location_id)
-    return await ward_mutations_mod.read_active_ward(scope, conn=conn)
+    ward, _scope = await resolve_scope_ward_with_scope(
+        session, conn=conn, location_id=location_id, ward_mutations_mod=ward_mutations_mod
+    )
+    return ward

@@ -11,7 +11,8 @@ import {
 } from "@/stores/hud-store";
 import { HUD_ANCHORS } from "@/constants/hud-anchors";
 import { HOLLOW_ECHO_RESULT, VEIL_WARD_CHANGED } from "@/audio/event-types";
-import { handleGameEvent, VALID_HOLLOW_ECHO_BANDS } from "@/audio/game-event-handler";
+import { handleGameEvent } from "@/audio/game-event-handler";
+import { VALID_HOLLOW_ECHO_BANDS } from "@/audio/game-event-parsing";
 
 // The 7 Hollow Echo bands, mirroring the agent's hollow_echo._BANDS ids. The HUD
 // flashes the band name when an Overreach cast tears the Veil (story-004 publishes

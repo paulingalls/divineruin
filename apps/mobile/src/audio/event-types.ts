@@ -54,7 +54,8 @@ export const PLAYER_PORTRAIT_READY = "player_portrait_ready" as const;
 // `player_id`, the recipient party member a round-robinned drop was granted to, mirroring
 // CURRENCY_GAINED's player_id. game-event-handler.ts filters the overlay/SFX to the local
 // recipient via isEventForLocalPlayer; a non-combat emitter that omits player_id still fires
-// (back-compat, same convention as RESONANCE_CHANGED/VEIL_WARD_CHANGED's caster_id default).
+// (back-compat, same convention as RESONANCE_CHANGED's caster_id default; VEIL_WARD_CHANGED
+// carries no caster_id at all — it is scope-owned, see below).
 export const ITEM_ACQUIRED = "item_acquired" as const;
 export const INVENTORY_UPDATED = "inventory_updated" as const;
 export const QUEST_UPDATE = "quest_update" as const;
@@ -75,8 +76,12 @@ export const RESONANCE_CHANGED = "resonance_changed" as const;
 
 // Magic (M3.2) — mirrors apps/agent/event_types.py. HOLLOW_ECHO_RESULT Packet: {band} — the
 // qualitative band only (raw d20 stays server-side, like RESONANCE_CHANGED);
-// VEIL_WARD_CHANGED Packet: {active, caster_id} for the glanceable ward zone indicator plus
-// WHICH party member it belongs to (story-006, mirroring RESONANCE_CHANGED's caster_id).
+// VEIL_WARD_CHANGED Packet: {active, scope_kind, scope_id, source} (story-008) for the glanceable
+// ward zone indicator. `active` is the party's RESOLVED warded state across all covering scopes.
+//
+// Deliberately NO caster_id: a ward belongs to a scope and halves EVERY caster in it, so every
+// in-scope client lights up — there is nothing to filter on. RESONANCE_CHANGED above keeps its
+// caster_id because Resonance is per-caster. Do not add a filter back here (scope_model.md §6).
 export const HOLLOW_ECHO_RESULT = "hollow_echo_result" as const;
 export const VEIL_WARD_CHANGED = "veil_ward_changed" as const;
 
