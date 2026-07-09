@@ -81,6 +81,9 @@ class TestReadActiveWard:
         await db_mutations_veil_ward.read_active_ward(_LOCATION, conn=conn)
         sql, *_ = conn.fetchrow.call_args.args
         assert "ORDER BY created_at DESC" in sql
+        # ward_id is the surrogate-PK secondary sort: same-transaction inserts share one
+        # created_at, so it makes the order total rather than arbitrary.
+        assert "ward_id DESC" in sql
         assert "LIMIT 1" in sql
 
     async def test_fails_loud_on_encounter_scope(self):

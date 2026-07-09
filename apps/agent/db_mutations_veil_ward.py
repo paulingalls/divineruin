@@ -55,14 +55,16 @@ async def read_active_ward(
 
     Live means `expires_at IS NULL OR expires_at > NOW()`: a NULL expiry never expires, and an
     elapsed ward is simply not returned (no sweeper deletes it). Because many wards may cover
-    one scope, the newest wins — a deterministic tie-break, not an arbitrary row.
+    one scope, the newest wins; the surrogate ward_id is the secondary sort so two rows sharing
+    a created_at (same-transaction inserts get one NOW()) still resolve to one deterministic row
+    rather than an arbitrary one. Effects are uniform across sources, so a stable pick suffices.
     """
     _require_location(scope)
     _conn = conn or await db.get_pool()
     row = await _conn.fetchrow(
         "SELECT source, expires_at, dismissible FROM veil_wards "
         "WHERE scope_kind = $1 AND scope_id = $2 AND (expires_at IS NULL OR expires_at > NOW()) "
-        "ORDER BY created_at DESC LIMIT 1",
+        "ORDER BY created_at DESC, ward_id DESC LIMIT 1",
         scope.kind.value,
         scope.id,
     )
