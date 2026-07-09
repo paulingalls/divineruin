@@ -45,19 +45,25 @@ def _player(class_: str = "cleric", level: int = 7, focus: int = 10, stamina: in
     }
 
 
-def _mocks(player: dict, *, ward_active: bool = False, party_member_ids=None, dismissed: int = 1):
+_UNSET = object()
+
+
+def _mocks(player: dict, *, ward_active: bool = False, party_member_ids=None, dismissed: int = 1, remaining=_UNSET):
     ctx = make_context(party_member_ids=party_member_ids)
     mock_db, _conn = make_db_mod()
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value=player)
     persistence = MagicMock()
     persistence.update_player_resources = AsyncMock()
+    existing = {"source": "cleric", "expires_at": None, "dismissible": True} if ward_active else None
     ward_mut = MagicMock()
-    ward_mut.read_active_ward = AsyncMock(
-        return_value={"source": "cleric", "expires_at": None, "dismissible": True} if ward_active else None
-    )
+    # The raise path reads once (the already-warded gate). The dismiss path reads once too, but
+    # AFTER deleting, to resolve what still covers the scope (§3) — dismiss tests pass `remaining`.
+    ward_mut.read_active_ward = AsyncMock(return_value=existing if remaining is _UNSET else remaining)
     ward_mut.write_ward = AsyncMock()
     ward_mut.dismiss_ward = AsyncMock(return_value=dismissed)
+    if ward_active:
+        ctx.userdata.location_ward = existing
     return ctx, mock_db, queries, persistence, ward_mut
 
 
@@ -88,8 +94,9 @@ async def test_eligible_cleric_raises_ward():
     persistence.update_player_resources.assert_awaited_once_with("player_1", stamina=None, focus=6, conn=ANY)
     # The ward is written to the session's LOCATION scope, not to the caster's row.
     ward_mut.write_ward.assert_awaited_once_with(_SCOPE, "cleric", None, dismissible=True, conn=ANY)
-    assert ctx.userdata.veil_ward.active is True
-    assert ctx.userdata.veil_ward.source == "cleric"
+    # The scope's ward is mirrored on the SESSION, not on the caster.
+    assert ctx.userdata.location_ward is not None
+    assert ctx.userdata.location_ward["source"] == "cleric"
     pub.assert_awaited_once()
     args = pub.call_args.args
     assert args[1] == E.VEIL_WARD_CHANGED
@@ -184,16 +191,32 @@ async def test_second_member_cannot_re_raise_a_warded_scope():
 
 
 async def test_dismiss_active_ward():
-    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), ward_active=True)
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), ward_active=True, remaining=None)
     result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False)
 
     assert result["active"] is False
     # Dismissal is by SCOPE, not by player — the ward is not the raiser's to hold (§5).
     ward_mut.dismiss_ward.assert_awaited_once_with(_SCOPE, conn=ANY)
     persistence.update_player_resources.assert_not_awaited()  # dismiss is free
-    assert ctx.userdata.veil_ward.active is False
-    assert ctx.userdata.veil_ward.source is None
+    assert ctx.userdata.location_ward is None
     assert pub.call_args.args[2] == {"active": False, "caster_id": "player_1"}
+
+
+async def test_dismiss_publishes_resolved_state_when_a_permanent_ward_survives():
+    """§3: dismiss spares a Sacred site, so the party is STILL warded. Say so, or the light lies.
+
+    dismiss_ward deletes only dismissible rows. Publishing active=False here would turn the ward
+    indicator off while every in-scope caster's Resonance is still being halved.
+    """
+    sacred = {"source": "sacred_site", "expires_at": None, "dismissible": False}
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(
+        _player("cleric", level=7), ward_active=True, remaining=sacred
+    )
+    result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False)
+
+    assert result["active"] is True  # resolved, not the mutated scope's toggle
+    assert ctx.userdata.location_ward == sacred
+    assert pub.call_args.args[2] == {"active": True, "caster_id": "player_1"}
 
 
 async def test_dismiss_when_no_dismissible_ward_rejected():
@@ -202,7 +225,7 @@ async def test_dismiss_when_no_dismissible_ward_rejected():
     This also covers a scope held only by a permanent ward (a Sacred site is not the party's to
     dispel): dismiss_ward deletes 0 rows and the tool refuses.
     """
-    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), dismissed=0)
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), dismissed=0, remaining=None)
     with pytest.raises(ToolError, match="dismiss"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False)
 
@@ -220,20 +243,23 @@ async def test_non_primary_member_raises_scope_ward_and_pays_alone():
     queries.get_player.assert_awaited_once_with("player_2", conn=ANY, for_update=True)
     persistence.update_player_resources.assert_awaited_once_with("player_2", stamina=None, focus=6, conn=ANY)
     ward_mut.write_ward.assert_awaited_once_with(_SCOPE, "cleric", None, dismissible=True, conn=ANY)
-    # The in-memory mirror is still per-member in story-003; story-004 consolidates it.
-    assert ctx.userdata.member_state("player_2").veil_ward.active is True
+    # One shared ward on the session — a non-primary raiser does not get a private one.
+    assert ctx.userdata.location_ward is not None
     assert pub.call_args.args[2] == {"active": True, "caster_id": "player_2"}
 
 
 async def test_non_primary_member_dismisses_scope_ward():
     ctx, mock_db, queries, persistence, ward_mut = _mocks(
-        _player("cleric", level=7, player_id="player_2"), ward_active=True, party_member_ids=["player_2"]
+        _player("cleric", level=7, player_id="player_2"),
+        ward_active=True,
+        party_member_ids=["player_2"],
+        remaining=None,
     )
     result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False, caster_id="player_2")
 
     assert result["active"] is False
     ward_mut.dismiss_ward.assert_awaited_once_with(_SCOPE, conn=ANY)
-    assert ctx.userdata.member_state("player_2").veil_ward.active is False
+    assert ctx.userdata.location_ward is None
     assert pub.call_args.args[2] == {"active": False, "caster_id": "player_2"}
 
 
