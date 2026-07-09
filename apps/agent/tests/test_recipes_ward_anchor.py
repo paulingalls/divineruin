@@ -57,11 +57,13 @@ def test_veil_ward_anchor_large_recipe_outputs_self():
 
 
 def test_artificer_ward_source_duration_matches_anchor_small():
-    """Pin content-code join: artificer WardSource duration matches anchor item's advertised duration.
+    """Pin the content-code join: the anchor item's advertised duration matches the code constant.
 
-    The small anchor's item effect advertises '1 hour'; the code constant is 3600s. This test reads
-    BOTH halves and ties them together, so a drift on either side (edit the effect text OR the
-    constant) turns the test red instead of letting them diverge silently.
+    Each half is guarded by a different assertion, and it is worth being precise about which:
+    the ``seconds == 3600`` pin below catches a drifted CONSTANT, while the derived-substring
+    assertion catches drifted ITEM TEXT (retitle the effect "2 hours" and it goes red, because the
+    expected string is computed from the constant rather than hardcoded). Neither half can move
+    without the other following.
     """
     artificer_source = WARD_SOURCES["artificer"]
 
@@ -72,8 +74,8 @@ def test_artificer_ward_source_duration_matches_anchor_small():
         f"artificer WardSource duration is {artificer_source.duration.seconds}s instead of 3600s (1 hour)"
     )
 
-    # The hour count is DERIVED from the constant, not hardcoded: change the constant to 2 hours and
-    # this goes red until the item text follows. That is what makes it a join rather than two pins.
+    # The expected string is DERIVED from the constant, not hardcoded, so an edit to the item's
+    # effect text alone turns this red. (A drifted constant is caught by the pin above, first.)
     anchor_item = _find_by_id(_load_content("items.json"), "veil_ward_anchor_small", "items.json")
     effect_text = " ".join(effect.get("description", "") for effect in anchor_item.get("effects", []))
     hours = artificer_source.duration.seconds // 3600
