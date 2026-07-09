@@ -31,14 +31,6 @@ import {
 import type { DataChannelEvent } from "./game-event-parsing";
 import { handleSessionInit } from "./game-event-session-init";
 
-export type { DataChannelEvent } from "./game-event-parsing";
-export {
-  parseCombatant,
-  parseGameEvent,
-  VALID_RESONANCE_STATES,
-  VALID_HOLLOW_ECHO_BANDS,
-  MAX_EVENT_PAYLOAD_BYTES,
-} from "./game-event-parsing";
 
 /** Allowlist for safe API sub-paths (alphanumeric, hyphens, underscores, dots, slashes). */
 const SAFE_API_PATH_RE = /^\/api\/[a-zA-Z0-9/_.-]+$/;

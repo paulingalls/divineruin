@@ -89,6 +89,15 @@ test("veil_ward_changed payload carries no caster_id to filter on", () => {
   expect(EVENTS.resonance_changed).toHaveProperty("caster_id");
 });
 
+test("resonance_changed for another party member is still filtered out", () => {
+  // The other half of the asymmetry (story-008 AC6). Resonance is PER-CASTER: one client's pool
+  // must never overwrite another's. Dropping the ward's filter must not drop this one.
+  const before = hudStore.getState().resonanceState;
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
+  handleGameEvent({ ...EVENTS.resonance_changed });
+  expect(hudStore.getState().resonanceState).toBe(before);
+});
+
 test("spell_row fixture parses with its spell_tier intact (not blanked)", () => {
   const [row] = parseSpellRows([SPELL_ROW]);
   expect(row.spell_id).toBe(SPELL_ROW.spell_id);

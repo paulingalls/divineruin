@@ -1,10 +1,10 @@
 import { test, expect, beforeEach } from "bun:test";
+import { handleGameEvent } from "@/audio/game-event-handler";
 import {
   parseGameEvent,
-  handleGameEvent,
   parseCombatant,
   MAX_EVENT_PAYLOAD_BYTES,
-} from "@/audio/game-event-handler";
+} from "@/audio/game-event-parsing";
 import { panelStore } from "@/stores/panel-store";
 import { encode, resetStores } from "./use-game-events.helpers";
 
