@@ -26,6 +26,12 @@ _LOCATION = WardScope.location("thornwatch_keep")
 _ENCOUNTER = WardScope.encounter("combat_42")
 
 
+@pytest.fixture(autouse=True)
+def default_unwarded_scope():
+    """Shadow the global read_active_ward stub — this suite tests that leaf directly."""
+    yield
+
+
 class TestWriteWard:
     async def test_inserts_scope_source_expiry_and_dismissible(self):
         conn = AsyncMock()

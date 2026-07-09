@@ -18,6 +18,7 @@ from livekit.agents.llm import ToolError
 from racial_resonance_config_fixture import load_fixture_config
 from sample_fixtures import make_context, make_db_mod
 
+from session_data import CombatState
 from spell_casting import _cast_spell_impl
 from spell_info_tools import _get_spell_info_impl
 from spells import Spell, SpellSource, SpellTier
@@ -70,15 +71,19 @@ async def _cast(
     start_resonance: int = 0,
     player: dict | None = None,
     spells_mod=None,
+    combat_state: CombatState | None = None,
 ):
     """Invoke _cast_spell_impl with mock db/queries/persistence/mutations.
 
     Returns (parsed_packet, ctx, persistence_mock, mutations_mock, events_mock).
     spells_mod defaults to a mock returning `spell`; pass the real module for
-    catalog tests.
+    catalog tests. Notably this injects NO ward_resolution_mod, so the cast
+    resolves its ward through the production default path; pass combat_state to
+    put a scope ward in front of it.
     """
     ctx = make_context()
     ctx.userdata.resonance.current = start_resonance
+    ctx.userdata.combat_state = combat_state
     mock_db, _conn = make_db_mod()
     queries = MagicMock()
     _lock_row = player if player is not None else _player(focus, level)
@@ -415,6 +420,48 @@ class TestCastSpellHollowEcho:
         assert packet["state"] == "overreach"
         assert packet["hollow_echo"]["band"] == "nothing"
         echo_events.publish_hollow_echo.assert_awaited_once()
+
+
+class TestCastSpellWardThroughRealResolver:
+    """Non-vacuity proof: the ward gate fires on the PRODUCTION default path.
+
+    The sibling TestCastSpellWard suite injects its own ``ward_resolution_mod``, so it
+    never exercises the resolver the cast path actually reaches for. These tests inject
+    nothing: the real ``ward_resolution.resolve_scope_ward`` runs, reading the encounter
+    ward from memory and, for a location scope, the one stubbed I/O leaf
+    (``db_mutations_veil_ward.read_active_ward``).
+
+    Against the previous fixture — which stubbed ``resolve_scope_ward`` itself to return
+    None — every assertion here fails: the gate is answered "unwarded" no matter what
+    ``combat_state`` holds. That silent answer is concern ec9d730b899d; these tests are
+    what make it impossible to reintroduce.
+    """
+
+    _WARD = {"source": "cleric", "rounds_remaining": None}
+
+    def _warded_combat(self) -> CombatState:
+        return CombatState(
+            combat_id="c_nonvacuous",
+            participants=[],
+            initiative_order=[],
+            location_id="accord_guild_hall",
+            veil_ward=self._WARD,
+        )
+
+    async def test_encounter_ward_halves_generation_via_real_resolver(self):
+        # resonance=6 halved to 3 by a ward this cast never injected a resolver to see.
+        packet, ctx, _p, _m, _e = await _cast(_spell(resonance=6), combat_state=self._warded_combat())
+        assert packet["ward_active"] is True
+        assert packet["resonance_generated"] == 3
+        assert ctx.userdata.resonance.current == 3
+
+    async def test_unwarded_combat_generates_unhalved_via_real_resolver(self):
+        # Same real resolver, no ward on the scope: the stubbed leaf answers "no row".
+        combat = self._warded_combat()
+        combat.veil_ward = None
+        packet, _ctx, _p, _m, _e = await _cast(_spell(resonance=6), combat_state=combat)
+        assert packet["ward_active"] is False
+        assert packet["resonance_generated"] == 6
 
 
 class TestCastSpellWard:
