@@ -165,6 +165,15 @@ class CombatState:
     # Tier-3 structured de-escalation scene (M15 story-001). Additive to the MVP flags above —
     # multi-round argument state (round_counter + per-enemy disposition/cumulative-shift maps).
     deescalation_scene: DeEscalationState = field(default_factory=DeEscalationState)
+    # The ENCOUNTER-scoped Veil Ward (M24 story-004): {"source": str, "rounds_remaining": int|None},
+    # or None when the fight is unwarded. A plain dict, like CombatParticipant.conditions — JSONB-native,
+    # so it round-trips through combat_instances.data without a nested-dataclass rebuild.
+    #
+    # This is the ward's ONE home for the encounter scope; location wards live in the veil_wards table
+    # (veil_ward_scope_model.md §2 — one home each, no dual state). Deleting the combat row IS the
+    # encounter duration, so nothing has to tear this down. story-006 seeds it in combat_init and ticks
+    # rounds_remaining at the WRAP beat, beside tick_conditions.
+    veil_ward: dict | None = None
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
@@ -198,6 +207,8 @@ class CombatState:
             first_attack_resolved=data.get("first_attack_resolved", False),
             deescalated=data.get("deescalated", False),
             deescalation_scene=DeEscalationState(**data.get("deescalation_scene", {})),
+            # Plain dict (or None) — no rebuild. Absent on rows written before story-004.
+            veil_ward=data.get("veil_ward"),
         )
 
 

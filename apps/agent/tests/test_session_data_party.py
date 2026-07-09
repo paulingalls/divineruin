@@ -7,7 +7,7 @@ in-place mutation propagation, and 2-member independence.
 
 from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
 from party_state import PartyMember, PartyState
-from session_data import CreationState, SessionData
+from session_data import CombatState, CreationState, SessionData
 
 
 def test_solo_parity_defaults():
@@ -126,3 +126,44 @@ def test_player_id_has_no_setter():
         pass
     else:
         raise AssertionError("expected AttributeError when setting player_id")
+
+
+# --- CombatState.veil_ward: the encounter ward rides the combat row (story-004, M24) ---------
+
+
+def _combat_state(**kwargs) -> CombatState:
+    return CombatState(combat_id="c1", participants=[], initiative_order=[], **kwargs)
+
+
+def test_combat_state_starts_unwarded():
+    """No ward until one is raised. None means absence, never a default-inactive placeholder."""
+    assert _combat_state().veil_ward is None
+
+
+def test_encounter_ward_round_trips_through_to_dict_from_dict():
+    """AC2: the encounter ward survives the trip through combat_instances.data JSONB.
+
+    A plain dict, mirroring CombatParticipant.conditions — JSONB-native, so asdict() serializes it
+    and from_dict passes it straight back.
+    """
+    ward = {"source": "paladin", "rounds_remaining": 3}
+    state = _combat_state(veil_ward=ward)
+
+    rebuilt = CombatState.from_dict(state.to_dict())
+
+    assert rebuilt.veil_ward is not None
+    assert rebuilt.veil_ward == ward
+    assert rebuilt.veil_ward["rounds_remaining"] == 3  # story-006 ticks this at the WRAP beat
+
+
+def test_encounter_ward_with_no_round_clock_round_trips():
+    """An ENCOUNTER-duration ward carries rounds_remaining None — it dies with the combat row."""
+    state = _combat_state(veil_ward={"source": "cleric", "rounds_remaining": None})
+    assert CombatState.from_dict(state.to_dict()).veil_ward == {"source": "cleric", "rounds_remaining": None}
+
+
+def test_legacy_row_without_veil_ward_field_falls_back_to_none():
+    """A combat row written before story-004 carries no veil_ward key and must still load."""
+    data = _combat_state().to_dict()
+    data.pop("veil_ward")
+    assert CombatState.from_dict(data).veil_ward is None
