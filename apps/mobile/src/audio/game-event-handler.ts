@@ -31,7 +31,6 @@ import {
 import type { DataChannelEvent } from "./game-event-parsing";
 import { handleSessionInit } from "./game-event-session-init";
 
-
 /** Allowlist for safe API sub-paths (alphanumeric, hyphens, underscores, dots, slashes). */
 const SAFE_API_PATH_RE = /^\/api\/[a-zA-Z0-9/_.-]+$/;
 
