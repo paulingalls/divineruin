@@ -22,7 +22,7 @@ import pytest
 
 import veil_ward
 from session_data import VeilWardState
-from veil_ward import WardDuration, WardDurationKind
+from veil_ward import WardDuration, WardDurationKind, WardScope, WardScopeKind
 
 # --- WardDuration: legal construction of each kind (story-002) ----------------
 
@@ -276,3 +276,58 @@ def test_veil_ward_state_defaults_inactive():
     state = VeilWardState()
     assert state.active is False
     assert state.source is None
+
+
+# --- WardScope: a ward is owned by a scope, never by a caster (story-003) -----
+
+
+def test_ward_scope_kinds():
+    """Exactly two scope kinds; their values are the strings persisted in veil_wards.scope_kind."""
+    assert WardScopeKind.ENCOUNTER == "encounter"
+    assert WardScopeKind.LOCATION == "location"
+    assert len(list(WardScopeKind)) == 2
+
+
+def test_ward_scope_location_constructor():
+    scope = WardScope.location("thornwatch_keep")
+    assert scope.kind is WardScopeKind.LOCATION
+    assert scope.id == "thornwatch_keep"
+
+
+def test_ward_scope_encounter_constructor():
+    scope = WardScope.encounter("combat_42")
+    assert scope.kind is WardScopeKind.ENCOUNTER
+    assert scope.id == "combat_42"
+
+
+def test_ward_scope_is_frozen():
+    scope = WardScope.location("thornwatch_keep")
+    with pytest.raises(AttributeError):
+        scope.id = "elsewhere"  # type: ignore[misc]
+
+
+def test_ward_scope_equality_and_hash():
+    """Value semantics: two scopes naming the same place are the same scope."""
+    a = WardScope.location("thornwatch_keep")
+    b = WardScope.location("thornwatch_keep")
+    assert a == b
+    assert hash(a) == hash(b)
+    assert len({a, b}) == 1
+
+
+def test_ward_scope_kind_participates_in_identity():
+    """A location and an encounter that share an id are NOT the same scope."""
+    assert WardScope.location("x") != WardScope.encounter("x")
+
+
+@pytest.mark.parametrize("bad_id", ["", None])
+def test_ward_scope_fails_loud_on_empty_id(bad_id):
+    """A scope with no id would silently read/write the wrong rows — fail at construction.
+
+    Guards the cut-over sites, where a null session.location_id would otherwise build a
+    malformed scope and quietly return "unwarded" forever.
+    """
+    with pytest.raises(ValueError):
+        WardScope.location(bad_id)
+    with pytest.raises(ValueError):
+        WardScope.encounter(bad_id)

@@ -37,6 +37,47 @@ WARD_DAMAGE_DIE_PENALTY = -1
 WARD_DC_PENALTY = -1
 
 
+class WardScopeKind(StrEnum):
+    """What a ward is attached to. Values are persisted verbatim in veil_wards.scope_kind."""
+
+    ENCOUNTER = "encounter"  # keyed by combat_id; lives on CombatState, dies with the combat row
+    LOCATION = "location"  # keyed by location_id; lives in the veil_wards table
+
+
+@dataclass(frozen=True)
+class WardScope:
+    """The thing a ward belongs to — a place or a fight, never a person.
+
+    A ward's effects apply to every caster in its scope, while Resonance and Hollow Echo stay
+    per-caster (veil_ward_scope_model.md §1). Value semantics: two scopes naming the same place
+    are the same scope, so this is a legal dict key and set member.
+
+    ``kind`` participates in identity: encounter "x" and location "x" are different scopes.
+    Note this pair is a LOOKUP key, not a ward's row identity — many wards may cover one scope
+    (a 1-hour Artificer anchor coexists with a permanent Sacred site), so veil_wards is keyed
+    by a surrogate ward_id and resolution is a boolean OR over covering rows (§3).
+    """
+
+    kind: WardScopeKind
+    id: str
+
+    def __post_init__(self):
+        # An empty id would silently read and write the wrong rows. Fail at construction rather
+        # than let a null session.location_id quietly resolve to "unwarded" forever.
+        if not self.id:
+            raise ValueError(f"{self.kind} scope requires a non-empty id, got {self.id!r}")
+
+    @classmethod
+    def location(cls, location_id: str) -> "WardScope":
+        """The scope of a place — persisted in veil_wards, expiring lazily against NOW()."""
+        return cls(WardScopeKind.LOCATION, location_id)
+
+    @classmethod
+    def encounter(cls, combat_id: str) -> "WardScope":
+        """The scope of a fight — held on CombatState, never persisted in veil_wards."""
+        return cls(WardScopeKind.ENCOUNTER, combat_id)
+
+
 class WardDurationKind(StrEnum):
     """How a ward's lifetime is bounded (veil_ward_scope_model.md duration table)."""
 
