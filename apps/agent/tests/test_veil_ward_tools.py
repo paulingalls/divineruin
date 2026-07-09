@@ -408,6 +408,40 @@ async def test_dismiss_in_combat_still_warded_when_a_location_ward_covers():
     assert pub.call_args.args[2] == {"active": True, "caster_id": "player_1"}
 
 
+async def test_failed_raise_leaves_no_phantom_ward_in_memory():
+    """A raise that dies mid-transaction must not strand a ward the DB never got.
+
+    resolve_scope_ward reads combat.veil_ward from MEMORY first, so a phantom would become the
+    authoritative answer for every later cast — the exact silent lie M24 exists to remove. The
+    ward therefore goes into the save payload, and the live CombatState is synced post-commit.
+    """
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7))
+    combat = _in_combat(ctx)
+    combat_mod = _combat_mod()
+    combat_mod.save_combat_state = AsyncMock(side_effect=RuntimeError("connection lost"))
+
+    with pytest.raises(RuntimeError):
+        await _invoke(ctx, mock_db, queries, persistence, ward_mut, combat_mod=combat_mod)
+
+    assert combat.veil_ward is None
+
+
+async def test_failed_dismiss_leaves_the_ward_in_memory():
+    """The mirror of the above: a dismiss that dies mid-transaction must not clear a ward the DB
+    still holds, or the party's casts keep being halved while the HUD says otherwise."""
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), remaining=None)
+    combat = _in_combat(ctx)
+    raised = {"source": "cleric", "rounds_remaining": None}
+    combat.veil_ward = raised
+    combat_mod = _combat_mod()
+    combat_mod.save_combat_state = AsyncMock(side_effect=RuntimeError("connection lost"))
+
+    with pytest.raises(RuntimeError):
+        await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False, combat_mod=combat_mod)
+
+    assert combat.veil_ward == raised
+
+
 async def test_dismiss_in_combat_with_no_encounter_ward_rejected():
     """In a fight with no encounter ward, there is nothing this member may drop: a covering
     location ward is not the fight's to dismiss. Fail loud rather than silently deleting it."""

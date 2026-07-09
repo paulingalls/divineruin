@@ -19,8 +19,11 @@ raiser's to hold (§5).
 Scope (story-005): a raise targets the ENCOUNTER while the party is in a fight (the ward rides
 CombatState and dies with the combat row) and the LOCATION otherwise (a veil_wards row whose
 expires_at comes from the source's duration). Dismissal targets that same innermost scope and
-never cascades — a Sacred site under a fight is not the fight's to dispel. Both paths answer
-"is the party warded?" through ward_resolution.resolve_scope_ward, never by reading one scope.
+never cascades — a Sacred site under a fight is not the fight's to dispel. The raise path's
+already-active gate answers "is the party warded?" through ward_resolution.resolve_scope_ward,
+never by reading the one scope it is about to write. Dismissal drops the innermost scope and
+then reads the LOCATION — the only scope that can still cover the party once the inner one is
+gone — so that single read IS the resolved state, no separate resolve call needed.
 
 Mirrors the ability_tools seam: a thin @function_tool wrapper over an _impl with module-injection
 keyword args (db_mod/queries_mod/persistence_mod/ward_mutations_mod/ward_mod/combat_mod/
@@ -95,6 +98,15 @@ async def _activate_veil_ward_impl(
         raise ToolError(f"Unknown party member: {pid}") from e
     logger.info("activate_veil_ward called: active=%s player=%s", active, pid)
 
+    if not active:
+        return await _dismiss_impl(
+            session,
+            pid,
+            db_mod=db_mod,
+            ward_mutations_mod=ward_mutations_mod,
+            combat_mod=combat_mod,
+        )
+
     # The ward belongs to the scope the party stands in, never to the caster. In a fight that is
     # the ENCOUNTER (it dies with the combat row); otherwise it is the LOCATION.
     combat = session.combat_state
@@ -103,17 +115,6 @@ async def _activate_veil_ward_impl(
         if combat is not None
         else veil_ward.WardScope.location(session.location_id)
     )
-
-    if not active:
-        return await _dismiss_impl(
-            session,
-            pid,
-            db_mod=db_mod,
-            ward_mutations_mod=ward_mutations_mod,
-            combat_mod=combat_mod,
-            resolution_mod=resolution_mod,
-        )
-
     expires_at: datetime | None = None  # a location ward's absolute clock; None for encounter wards
 
     async with db_mod.transaction() as conn:
@@ -160,19 +161,28 @@ async def _activate_veil_ward_impl(
         if new_focus is not None or new_stamina is not None:
             await persistence_mod.update_player_resources(pid, stamina=new_stamina, focus=new_focus, conn=conn)
 
+        encounter_ward: dict | None = None
         if combat is not None:
             # rounds_remaining seeds the WRAP-beat clock story-006 ticks. Non-ROUNDS sources have
-            # no round clock and carry None — the fight's end is their expiry either way.
-            combat.veil_ward = {"source": archetype, "rounds_remaining": source.duration.rounds}
-            await combat_mod.save_combat_state(combat.combat_id, combat.to_dict(), conn=conn)
+            # no round clock and carry None — the fight's end is their expiry either way. The new
+            # ward is written into the SAVE payload only; the live combat_state is not mutated until
+            # after commit (below), so a rolled-back raise cannot strand a phantom ward in memory.
+            encounter_ward = {"source": archetype, "rounds_remaining": source.duration.rounds}
+            await combat_mod.save_combat_state(
+                combat.combat_id, {**combat.to_dict(), "veil_ward": encounter_ward}, conn=conn
+            )
         else:
             expires_at = ward_mod.location_expires_at(source.duration, datetime.now(UTC))
             await ward_mutations_mod.write_ward(scope, archetype, expires_at, dismissible=True, conn=conn)
 
-    # Transaction committed — push the toggle. The ward is scope-owned, so it lands on the
-    # session, not on the caster who paid for it. location_ward is a LOCATION mirror: an
-    # encounter ward already has its one home on CombatState and must not be copied into it.
-    if combat is None:
+    # Transaction committed — NOW sync the in-memory mirrors, so a rolled-back raise leaves the
+    # session pristine (matches combat_turn's atomic-tx / post-commit-sync contract). The ward is
+    # scope-owned, so it lands on the session, not on the caster who paid for it. location_ward is a
+    # LOCATION mirror: an encounter ward already has its one home on CombatState and is never copied
+    # into it.
+    if combat is not None:
+        combat.veil_ward = encounter_ward
+    else:
         session.location_ward = {"source": archetype, "expires_at": expires_at, "dismissible": True}
     await veil_ward_events.publish_veil_ward_changed(session, True, pid)
     return json.dumps(
@@ -185,9 +195,7 @@ async def _activate_veil_ward_impl(
     )
 
 
-async def _dismiss_impl(
-    session: SessionData, pid: str, *, db_mod, ward_mutations_mod, combat_mod, resolution_mod
-) -> str:
+async def _dismiss_impl(session: SessionData, pid: str, *, db_mod, ward_mutations_mod, combat_mod) -> str:
     """Dismiss the ward over the party's innermost scope (free). Fails loud when it has none.
 
     Any in-scope member may dismiss — the ward is not the raiser's to hold (§5).
@@ -201,26 +209,28 @@ async def _dismiss_impl(
     permanent ward deletes nothing, and refusing is the honest answer.
     """
     combat = session.combat_state
+    location_scope = veil_ward.WardScope.location(session.location_id)
     async with db_mod.transaction() as conn:
         if combat is not None:
             if combat.veil_ward is None:
                 raise ToolError("No Veil Ward is active to dismiss.")
-            combat.veil_ward = None
-            await combat_mod.save_combat_state(combat.combat_id, combat.to_dict(), conn=conn)
-        elif not await ward_mutations_mod.dismiss_ward(veil_ward.WardScope.location(session.location_id), conn=conn):
+            # Written to the SAVE payload only; the live combat_state is cleared post-commit, so a
+            # rolled-back dismiss cannot leave memory reporting a ward the DB still holds.
+            await combat_mod.save_combat_state(combat.combat_id, {**combat.to_dict(), "veil_ward": None}, conn=conn)
+        elif not await ward_mutations_mod.dismiss_ward(location_scope, conn=conn):
             raise ToolError("No Veil Ward is active to dismiss.")
 
-        # §3: publish the RESOLVED state, never the toggle of the scope we just mutated. Dismissing
-        # the encounter ward leaves a Sacred site covering the party; dismiss_ward likewise spares
-        # non-dismissible rows. Reporting active=False in either case would turn the ward light off
-        # while every in-scope caster's Resonance is still being halved.
-        remaining = await resolution_mod.resolve_scope_ward(session, conn=conn, ward_mutations_mod=ward_mutations_mod)
-        # location_ward is a LOCATION mirror: refresh it from the location scope alone, so an
-        # encounter ward is never copied into the slot that answers "what wards this place?".
-        location_ward = await ward_mutations_mod.read_active_ward(
-            veil_ward.WardScope.location(session.location_id), conn=conn
-        )
+        # §3: publish the RESOLVED state, never the toggle of the scope we just dropped. Once the
+        # innermost (encounter or location) ward is gone, the ONLY scope that can still cover the
+        # party is the LOCATION — a Sacred site, or a pre-fight row dismiss_ward spared. So this one
+        # location read IS the resolved state, and serves both the publish and the HUD mirror.
+        # (resolve_scope_ward reads combat_state from memory first; routing the resolve through it
+        # here would require the drop mirrored into memory mid-tx, which a rollback could not undo.)
+        location_ward = await ward_mutations_mod.read_active_ward(location_scope, conn=conn)
 
+    # Transaction committed — NOW sync the in-memory mirrors (post-commit, rollback-safe).
+    if combat is not None:
+        combat.veil_ward = None
     session.location_ward = location_ward
-    await veil_ward_events.publish_veil_ward_changed(session, remaining is not None, pid)
-    return json.dumps({"active": remaining is not None})
+    await veil_ward_events.publish_veil_ward_changed(session, location_ward is not None, pid)
+    return json.dumps({"active": location_ward is not None})
