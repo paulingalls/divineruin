@@ -115,13 +115,13 @@ async def _run_victory(session, cs, *, rng, drops, gold_by_id=None):
     return end_data, mutations, queries, sink
 
 
-_loot_table_id = "s003_mp_loot_table"
-_silver_per_gold = 10
+_LOOT_TABLE_ID = "s003_mp_loot_table"
+_SILVER_PER_GOLD = 10
 
 
 def _content_stub(drops: list[dict]) -> MagicMock:
     async def _get(loot_table_id: str) -> dict | None:
-        return {"id": _loot_table_id, "drops": drops} if loot_table_id == _loot_table_id else None
+        return {"id": _LOOT_TABLE_ID, "drops": drops} if loot_table_id == _LOOT_TABLE_ID else None
 
     content = MagicMock()
     content.get_loot_table = AsyncMock(side_effect=_get)
@@ -130,5 +130,5 @@ def _content_stub(drops: list[dict]) -> MagicMock:
 
 def _pricing_stub() -> MagicMock:
     pricing = MagicMock()
-    pricing.get_economy_pricing = AsyncMock(return_value={"silver_per_gold": _silver_per_gold})
+    pricing.get_economy_pricing = AsyncMock(return_value={"silver_per_gold": _SILVER_PER_GOLD})
     return pricing

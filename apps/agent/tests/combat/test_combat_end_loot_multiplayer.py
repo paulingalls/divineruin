@@ -16,7 +16,7 @@ import event_types as E
 from session_data import CombatParticipant, CombatState, SessionData
 
 from ._end_multiplayer_helpers import (
-    _loot_table_id,
+    _LOOT_TABLE_ID,
     _member,
     _restore_condition_module,  # noqa: F401
     _run_victory,
@@ -45,7 +45,7 @@ def _loot_enemy(pid: str, *, category: str = "humanoid", role: str = "standard",
         category=category,
         role=role,
         level=level,
-        loot_table_id=_loot_table_id,
+        loot_table_id=_LOOT_TABLE_ID,
     )
 
 
