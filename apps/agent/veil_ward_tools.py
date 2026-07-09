@@ -1,16 +1,21 @@
-"""Veil Ward activation tool for the DM agent (story-003, M3.2).
+"""Veil Ward activation tool for the DM agent (M24 story-003 cut-over).
 
 activate_veil_ward is one polymorphic verb (decision veil-ward-one-tool): active=True raises
 a ward, active=False dismisses it. Raising gates the caster's archetype (must be a WARD_SOURCES
-caster), level, and Focus/Stamina cost, deducts on success, flips the persisted + in-memory
-ward state, and pushes a VEIL_WARD_CHANGED event; every user-facing failure is a ToolError
-raised BEFORE any write, so an ineligible/unaffordable activation deducts nothing. Dismissing is
-free and only requires an active ward. The cast path (story-004) reads session.veil_ward.active
-to halve generation.
+caster), level, and Focus/Stamina cost, deducts on success, writes the scope ward, and pushes a
+VEIL_WARD_CHANGED event; every user-facing failure is a ToolError raised BEFORE any write, so an
+ineligible/unaffordable activation deducts nothing.
 
-Scope (M3.2): the Focus/Stamina caster sources (Cleric/Druid/Paladin) in veil_ward.WARD_SOURCES.
-Artificer crafted-item and Sacred-site passive (area-scoped world entity) sources are deferred,
-as is auto-clear on rest/end_combat — explicit dismiss is the M3.2 off-switch.
+The ward is SCOPE-owned (veil_ward_scope_model.md §1). The Focus/Stamina cost is per-caster —
+gate_pool deducts from the raiser alone — but the ward it buys covers every caster in the scope.
+So an already-warded scope refuses a second raise (no double charge for one shared ward), and
+dismissal is by scope: any in-scope member may drop it, for free, because it was never the
+raiser's to hold (§5).
+
+Scope (story-003): every raise writes a LOCATION ward with no absolute expiry, dismissible —
+preserving the manual-dismiss behavior this tool has always had. Encounter targeting and the
+per-source durations are story-005; the Artificer crafted-item and Sacred-site passive sources
+land there too.
 
 Mirrors the ability_tools seam: a thin @function_tool wrapper over an _impl with module-injection
 keyword args (db_mod/queries_mod/persistence_mod/ward_mutations_mod/ward_mod) for test mocking, a

@@ -7,8 +7,8 @@ Resonance and Hollow Echo engines this is a deterministic closed-table mechanic
 (CLAUDE.md golden rule #3): the modifier values and the per-archetype ward-source
 costs are code constants, not DB-loaded content (same call as resonance.py).
 
-This module owns the ward's pure effects and its source table. The persisted ward
-state lives in db_mutations_veil_ward (players.data JSONB) and the in-memory
+This module owns the ward's pure effects, its scope types, and its source table. The persisted
+ward state lives in db_mutations_veil_ward (the veil_wards table) and the in-memory
 VeilWardState lives on SessionData; the activation tool (story-003) and the cast-time
 halving (story-004) compose these primitives.
 

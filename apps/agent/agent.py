@@ -275,7 +275,8 @@ async def dm_session(ctx: agents.JobContext) -> None:
             patron_id=patron_id,
         )
 
-        # Fresh session: rehydrate persisted resonance/veil_ward/concentration from players.data,
+        # Fresh session: rehydrate persisted resonance/concentration from players.data and the
+        # veil ward from the session's location scope (M24: the ward is scope-owned, not per-player),
         # increment the player session_count once, and set+persist the gated Thessyn flickering_bonus
         # (M3.5 / story-004). dm_session runs once per fresh session (reconnects reuse SessionData via
         # _setup_reconnection), so the counter ticks exactly once.

@@ -3,7 +3,7 @@
 Its own module (not db_mutations.py, at the 500-line cap) keeps the death feature cohesive — same
 shape as db_mutations_conditions / db_mutations_veil_ward / db_mutations_resonance. The history lives
 in players.data JSONB at {death_history}: {"count": int, "costs": [<DeathCost dict>, ...]}, beside
-{conditions}, {resonance}, {veil_ward} (decision death-system-module-layout — player-scoped, whole-set
+{conditions} and {resonance} (decision death-system-module-layout — player-scoped, whole-set
 reads, infrequent mutation = the JSONB fit; no new table).
 
 The count is permanent and never resets (the spec's death_counter). record_death takes an

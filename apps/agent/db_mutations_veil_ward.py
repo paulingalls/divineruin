@@ -28,8 +28,6 @@ import asyncpg
 import db
 from veil_ward import WardScope, WardScopeKind
 
-_DEFAULT_WARD = {"active": False, "source": None}
-
 
 def _require_location(scope: WardScope) -> None:
     """Reject encounter scopes: they live on CombatState, never in veil_wards.
@@ -123,49 +121,3 @@ async def dismiss_ward(
         scope.id,
     )
     return len(deleted)
-
-
-async def read_player_veil_ward(
-    player_id: str,
-    *,
-    conn: asyncpg.Connection | asyncpg.Pool | None = None,
-) -> dict:
-    """Return {"active": bool, "source": str | None} for a player's Veil Ward.
-
-    Defaults to inactive (active False, source None) when the row is missing or the
-    veil_ward key is absent/NULL. `->>'active'` returns the JSONB boolean as text
-    ('true'/'false'); a present-and-true value is the only active case.
-    """
-    _conn = conn or await db.get_pool()
-    row = await _conn.fetchrow(
-        "SELECT data->'veil_ward'->>'active' AS active, data->'veil_ward'->>'source' AS source "
-        "FROM players WHERE player_id = $1",
-        player_id,
-    )
-    if row is None:
-        return dict(_DEFAULT_WARD)
-    return {"active": row["active"] == "true", "source": row["source"]}
-
-
-async def update_player_veil_ward(
-    player_id: str,
-    active: bool,
-    source: str | None,
-    *,
-    conn: asyncpg.Connection | asyncpg.Pool | None = None,
-) -> None:
-    """Persist the player's Veil Ward at players.data {veil_ward,active}/{veil_ward,source}.
-
-    Uses a 1-level {veil_ward} jsonb_set with jsonb_build_object so the write succeeds
-    whether or not the veil_ward key already exists (robust for rows created after the
-    migration-045 backfill) — the same 1-level discipline as db_mutations_resonance.
-    """
-    _conn = conn or await db.get_pool()
-    await _conn.execute(
-        "UPDATE players SET data = jsonb_set(data, '{veil_ward}', "
-        "jsonb_build_object('active', $2::boolean, 'source', $3::text)) "
-        "WHERE player_id = $1",
-        player_id,
-        active,
-        source,
-    )

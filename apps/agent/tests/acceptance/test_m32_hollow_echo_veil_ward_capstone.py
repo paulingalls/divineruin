@@ -30,8 +30,10 @@ import spells
 from spell_casting import _cast_spell_impl
 from veil_ward import WardScope
 
-# The location make_context seeds onto SessionData — the scope the ward is raised over (M24).
-_WARD_LOCATION = "accord_guild_hall"
+# The scope this capstone raises its ward over (M24). It must be a location NO other test uses:
+# a ward is scope-owned, so unlike the per-player row it replaced, a ward left at a shared
+# location leaks into every other test that hydrates there (it would silently halve their casts).
+_WARD_LOCATION = "cap_m32_warded_hall"
 
 # arcane_fireball: focus_cost 5, resonance_by_source.arcane 3. Under per-round (cast-paced)
 # decay (story-010) each post-first cast nets +2 (3 generated - 1 base decay), so the bands
@@ -102,7 +104,7 @@ async def test_active_veil_ward_halves_resonance_generation(reset_db_pool: str) 
     base = spell.resonance_by_source[spell.source]  # 3 unwarded baseline
     assert base > 1  # halving is observable (3 -> 1, not 0 -> 0)
 
-    ctx = make_context(player_id)
+    ctx = make_context(player_id, _WARD_LOCATION)
     ctx.userdata.veil_ward.active = True
     ctx.userdata.veil_ward.source = "mage"
 
