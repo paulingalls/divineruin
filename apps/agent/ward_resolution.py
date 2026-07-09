@@ -11,14 +11,17 @@ and then warns, in the same breath, why it must not be re-derived at each call s
 
 A consumer that keys its answer to one scope turns the ward light off — or halves nothing —
 while another covering scope still wards the party. That is the same class of silent lie this
-milestone exists to remove, rebuilt one layer up. So the two consumers that must answer "is the
-party warded" — the cast path (``spell_casting``) and arrival (``movement_tools``) — call
-``resolve_scope_ward``. Neither re-derives it.
+milestone exists to remove, rebuilt one layer up. So every consumer that must answer "is the
+party warded" — the cast path (``spell_casting``), arrival (``movement_tools``), and the
+activation tool (``veil_ward_tools``) — calls ``resolve_scope_ward``. None re-derives it.
 
-``veil_ward_tools`` does NOT, and deliberately: it operates on ONE scope it names itself (raise
-writes it, dismiss deletes from it), then re-reads that same scope to publish the resolved state.
-Once story-005 gives the tool encounter-vs-location targeting, it should route through here too —
-at that point a raise could land on a scope the party is not actually resolved against.
+``veil_ward_tools`` joined them in story-005, when the tool gained encounter-vs-location
+targeting: from that point a raise can land on a scope the party is not actually resolved
+against. Its "a Veil Ward is already active" gate therefore asks whether the PARTY is warded,
+not whether the scope it is about to write is — a party fighting on a Sacred site is already
+covered, and charging them for an encounter ward that halves nothing twice would be that same
+lie. It still names its own scope for the WRITE (raise inserts there, dismiss deletes there);
+only the question "is anything covering us?" routes through here.
 
 **This is the cast path's authority, and it reads the database.** The in-memory
 ``SessionData.location_ward`` is a HUD mirror with no correctness consumer: it cannot see a
