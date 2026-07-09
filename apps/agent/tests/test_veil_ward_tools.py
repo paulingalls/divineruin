@@ -6,13 +6,13 @@ one polymorphic verb: active=True raises a ward (archetype/level/cost gated), ac
 dismisses it (free). Every user-facing failure is a ToolError raised before any write, so
 an unaffordable/ineligible activation deducts nothing.
 
-M24 story-003 moves the ward off the caster's row onto the LOCATION scope. The resource cost
-stays per-caster (gate_pool deducts from the raiser alone); the ward it buys is shared, so
-"already active" is now a property of the location and dismissal is by scope, not by player.
+M24 story-003 moves the ward off the caster's row onto the scope. The resource cost stays
+per-caster (gate_pool deducts from the raiser alone); the ward it buys is shared, so "already
+active" is a property of the scope and dismissal is by scope, not by player.
 
-Encounter-vs-location targeting and per-source durations are story-005: every raise here writes
-a location ward with no absolute expiry and dismissible=True, preserving the manual-dismiss
-behavior this tool has always had.
+story-005 adds targeting: in combat the ward is the ENCOUNTER's (on CombatState); otherwise the
+LOCATION's (a veil_wards row, expires_at from the source's duration). "Already active" is asked
+of the PARTY via resolve_scope_ward — both scopes OR-ed — not of the scope about to be written.
 
 The published VEIL_WARD_CHANGED payload is {active, caster_id}; veil_ward_events.publish_game_event
 is patched to assert the wire shape (the push moved to its own module in story-004 because arrival
@@ -370,6 +370,53 @@ async def test_dismiss_when_no_dismissible_ward_rejected():
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), dismissed=0, remaining=None)
     with pytest.raises(ToolError, match="dismiss"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False)
+
+
+# --- dismiss path: in combat it targets the ENCOUNTER scope (story-005) ----------
+
+
+async def test_dismiss_in_combat_clears_the_encounter_ward():
+    """The encounter ward's one home is CombatState — dismissal clears it there, never via
+    dismiss_ward (which fails loud on an encounter scope)."""
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), remaining=None)
+    combat = _in_combat(ctx)
+    combat.veil_ward = {"source": "cleric", "rounds_remaining": None}
+    combat_mod = _combat_mod()
+    result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False, combat_mod=combat_mod)
+
+    assert result["active"] is False
+    assert combat.veil_ward is None
+    combat_mod.save_combat_state.assert_awaited_once()
+    ward_mut.dismiss_ward.assert_not_awaited()  # the veil_wards table is not the encounter's home
+    persistence.update_player_resources.assert_not_awaited()  # dismiss is free
+    assert ctx.userdata.location_ward is None
+    assert pub.call_args.args[2] == {"active": False, "caster_id": "player_1"}
+
+
+async def test_dismiss_in_combat_still_warded_when_a_location_ward_covers():
+    """Dropping the fight's ward does not drop the Sacred site under it. Publish the RESOLVED
+    state (§3), or the ward light goes dark while casts are still being halved."""
+    sacred = {"source": "sacred_site", "expires_at": None, "dismissible": False}
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), remaining=sacred)
+    combat = _in_combat(ctx)
+    combat.veil_ward = {"source": "cleric", "rounds_remaining": None}
+    result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False)
+
+    assert combat.veil_ward is None  # the encounter ward is gone...
+    assert result["active"] is True  # ...but the party is still warded by the location
+    assert ctx.userdata.location_ward == sacred  # the LOCATION mirror, refreshed from a location read
+    assert pub.call_args.args[2] == {"active": True, "caster_id": "player_1"}
+
+
+async def test_dismiss_in_combat_with_no_encounter_ward_rejected():
+    """In a fight with no encounter ward, there is nothing this member may drop: a covering
+    location ward is not the fight's to dismiss. Fail loud rather than silently deleting it."""
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), remaining=None)
+    combat = _in_combat(ctx)
+    assert combat.veil_ward is None
+    with pytest.raises(ToolError, match="dismiss"):
+        await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False)
+    ward_mut.dismiss_ward.assert_not_awaited()
 
 
 # --- non-primary caster: resolves via member_state(caster_id), not the primary facade -----

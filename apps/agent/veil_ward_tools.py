@@ -1,4 +1,4 @@
-"""Veil Ward activation tool for the DM agent (M24 story-003 cut-over).
+"""Veil Ward activation tool for the DM agent (M24 story-005: scope targeting).
 
 activate_veil_ward is one polymorphic verb (decision veil-ward-one-tool): active=True raises
 a ward, active=False dismisses it. Raising gates the caster's source (must be a WARD_SOURCES
@@ -16,15 +16,17 @@ So an already-warded scope refuses a second raise (no double charge for one shar
 dismissal is by scope: any in-scope member may drop it, for free, because it was never the
 raiser's to hold (§5).
 
-Scope (story-003): every raise writes a LOCATION ward with no absolute expiry, dismissible —
-preserving the manual-dismiss behavior this tool has always had. Encounter targeting and the
-per-source durations are story-005; the Artificer crafted-item and Sacred-site passive sources
-land there too.
+Scope (story-005): a raise targets the ENCOUNTER while the party is in a fight (the ward rides
+CombatState and dies with the combat row) and the LOCATION otherwise (a veil_wards row whose
+expires_at comes from the source's duration). Dismissal targets that same innermost scope and
+never cascades — a Sacred site under a fight is not the fight's to dispel. Both paths answer
+"is the party warded?" through ward_resolution.resolve_scope_ward, never by reading one scope.
 
 Mirrors the ability_tools seam: a thin @function_tool wrapper over an _impl with module-injection
-keyword args (db_mod/queries_mod/persistence_mod/ward_mutations_mod/ward_mod) for test mocking, a
-single db.transaction() block, and ToolError for every user-facing failure. The publish lands on
-the session's game_events channel post-commit, mirroring cast_spell.
+keyword args (db_mod/queries_mod/persistence_mod/ward_mutations_mod/ward_mod/combat_mod/
+resolution_mod) for test mocking, a single db.transaction() block, and ToolError for every
+user-facing failure. The publish lands on the session's game_events channel post-commit,
+mirroring cast_spell.
 """
 
 import json
@@ -60,8 +62,10 @@ async def activate_veil_ward(
     """Raise or dismiss a Veil Ward. Call when the caster reinforces the Veil to cast more
     safely (active=true, the default) or drops the ward (active=false). Raising requires a
     ward-capable archetype (Cleric, Druid, Paladin) at sufficient level and deducts its
-    Focus/Stamina cost, rejecting if the caster is ineligible or can't afford it. While a ward
-    is active, casting generates half the Resonance and Hollow Echo rolls are milder.
+    Focus/Stamina cost, rejecting if the caster is ineligible or can't afford it. A Paladin's
+    ward lasts a few rounds, so it can only be raised in combat. While a ward is active, casting
+    generates half the Resonance and Hollow Echo rolls are milder — for EVERY caster present,
+    not just the one who raised it, so a second raise is refused while one is already up.
     Dismissing is free and requires an active ward. caster_id defaults to the speaking player;
     pass a party member's id when a non-primary member raises/dismisses their own ward."""
     return await _activate_veil_ward_impl(context, active, caster_id=caster_id)
@@ -101,9 +105,14 @@ async def _activate_veil_ward_impl(
     )
 
     if not active:
-        # Dismissal still targets the location scope; scope-aware dismissal is the next increment.
-        location_scope = veil_ward.WardScope.location(session.location_id)
-        return await _dismiss_impl(session, pid, location_scope, db_mod=db_mod, ward_mutations_mod=ward_mutations_mod)
+        return await _dismiss_impl(
+            session,
+            pid,
+            db_mod=db_mod,
+            ward_mutations_mod=ward_mutations_mod,
+            combat_mod=combat_mod,
+            resolution_mod=resolution_mod,
+        )
 
     expires_at: datetime | None = None  # a location ward's absolute clock; None for encounter wards
 
@@ -176,22 +185,42 @@ async def _activate_veil_ward_impl(
     )
 
 
-async def _dismiss_impl(session: SessionData, pid: str, scope, *, db_mod, ward_mutations_mod) -> str:
-    """Dismiss the scope's ward (free). Fails loud when nothing dismissible covers the caster.
+async def _dismiss_impl(
+    session: SessionData, pid: str, *, db_mod, ward_mutations_mod, combat_mod, resolution_mod
+) -> str:
+    """Dismiss the ward over the party's innermost scope (free). Fails loud when it has none.
 
-    Any in-scope member may dismiss — the ward is not the raiser's to hold (§5). The delete
-    count, not a prior read, is the authority: a scope covered only by a permanent ward
-    (a Sacred site) deletes nothing, and refusing is the honest answer.
+    Any in-scope member may dismiss — the ward is not the raiser's to hold (§5).
+
+    ONE scope is dismissed, never a cascade: in a fight that is the ENCOUNTER, whose ward lives on
+    CombatState. A covering location ward (a Sacred site, or one raised before the fight) is not
+    the fight's to dispel, so an in-combat dismiss with no encounter ward refuses rather than
+    reaching past its scope to delete it.
+
+    Out of combat, the delete COUNT is the authority, not a prior read: a scope covered only by a
+    permanent ward deletes nothing, and refusing is the honest answer.
     """
+    combat = session.combat_state
     async with db_mod.transaction() as conn:
-        if not await ward_mutations_mod.dismiss_ward(scope, conn=conn):
+        if combat is not None:
+            if combat.veil_ward is None:
+                raise ToolError("No Veil Ward is active to dismiss.")
+            combat.veil_ward = None
+            await combat_mod.save_combat_state(combat.combat_id, combat.to_dict(), conn=conn)
+        elif not await ward_mutations_mod.dismiss_ward(veil_ward.WardScope.location(session.location_id), conn=conn):
             raise ToolError("No Veil Ward is active to dismiss.")
-        # §3: publish the RESOLVED state, never the toggle of the scope we just mutated.
-        # dismiss_ward spares non-dismissible wards, so a permanent Sacred site can still cover
-        # this scope. Reporting active=False there would turn the ward light off while the party's
-        # casts are still being halved.
-        remaining = await ward_mutations_mod.read_active_ward(scope, conn=conn)
 
-    session.location_ward = remaining
+        # §3: publish the RESOLVED state, never the toggle of the scope we just mutated. Dismissing
+        # the encounter ward leaves a Sacred site covering the party; dismiss_ward likewise spares
+        # non-dismissible rows. Reporting active=False in either case would turn the ward light off
+        # while every in-scope caster's Resonance is still being halved.
+        remaining = await resolution_mod.resolve_scope_ward(session, conn=conn, ward_mutations_mod=ward_mutations_mod)
+        # location_ward is a LOCATION mirror: refresh it from the location scope alone, so an
+        # encounter ward is never copied into the slot that answers "what wards this place?".
+        location_ward = await ward_mutations_mod.read_active_ward(
+            veil_ward.WardScope.location(session.location_id), conn=conn
+        )
+
+    session.location_ward = location_ward
     await veil_ward_events.publish_veil_ward_changed(session, remaining is not None, pid)
     return json.dumps({"active": remaining is not None})
