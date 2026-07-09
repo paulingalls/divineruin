@@ -153,6 +153,7 @@ class TestResolveScopeWardWithScope:
             ward_mutations_mod=_ward_mod(_LOCATION_WARD),
         )
         assert ward == _ENCOUNTER_WARD
+        assert scope is not None
         assert scope.kind == "encounter"
 
     async def test_location_id_override_names_the_destination(self):
