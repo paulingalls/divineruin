@@ -15,7 +15,7 @@ What this document settles is *who owns a ward*, *when it ends*, and *who sees i
 
 ## 1. A ward is owned by a scope, never by a caster
 
-The shipped ward is a per-player boolean at `players.data.veil_ward`. That is wrong
+The shipped ward is a per-player `{active, source}` flag at `players.data.veil_ward`. That is wrong
 in three ways: it protects only the caster who raised it, it never expires, and in a
 multiplayer party it cannot express "the area is warded."
 
