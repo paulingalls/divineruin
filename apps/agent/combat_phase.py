@@ -22,6 +22,7 @@ from conditions import tick_conditions
 from declarations import Declaration, resolve_declaration
 from encounter_roles import EncounterRole
 from session_data import CombatParticipant, CombatState
+from veil_ward import tick_ward_rounds, ward_rounds_expired
 
 # Phase-canonical Resonance decay: the wrap beat sheds one step per phase
 # (gm_combat:191). Casting must NOT also decay in combat — see decision
@@ -265,6 +266,16 @@ def _wrap(state: CombatState) -> WrapOutcome:
         survivors, save_events = tick_conditions(p.conditions)
         p.conditions = survivors
         tick_conditions_due.extend({"actor_id": p.id, **event} for event in save_events)
+
+    # The encounter Veil Ward's round clock (M24). Like conditions, the ward lives ON CombatState,
+    # so the engine advances it here rather than signalling through WrapOutcome. Decrement first,
+    # then test the NEW value: a Paladin's 3-round ward dies at the third wrap. A None clock (a
+    # cleric/druid ENCOUNTER ward) neither decrements nor expires — the combat row's deletion is
+    # its duration. Unconditional, like the condition tick: a ward still ticks on a fight-ending wrap.
+    if state.veil_ward is not None:
+        state.veil_ward["rounds_remaining"] = tick_ward_rounds(state.veil_ward["rounds_remaining"])
+        if ward_rounds_expired(state.veil_ward["rounds_remaining"]):
+            state.veil_ward = None
 
     # Companion auto-stabilize (M4.4 story-002): narrative protection — a companion never dies from
     # the death-save grind. When its failures reach the limit, clamp to the stabilized state (reusing
