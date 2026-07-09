@@ -148,8 +148,10 @@ WARD_SOURCES: dict[str, WardSource] = {
         duration=WardDuration(WardDurationKind.ROUNDS, rounds=3),
         tool_raisable=True,
     ),
-    # A placed object: the crafted Veil-Ward Anchor wards its scope for an hour, costing the
-    # artificer nothing at deploy time — the cost was paid at the workbench.
+    # A placed object, costing nothing at deploy time — the cost was paid at the workbench.
+    # This duration is the SMALL anchor's hour (scope_model §Sources). The large anchor is
+    # permanent and is, in effect, a player-craftable Sacred site: story-007 deploys it against
+    # the permanent representation rather than this row's clock.
     "artificer": WardSource(
         min_level=7,
         focus=0,
