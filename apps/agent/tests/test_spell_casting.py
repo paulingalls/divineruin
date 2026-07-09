@@ -18,6 +18,7 @@ from livekit.agents.llm import ToolError
 from racial_resonance_config_fixture import load_fixture_config
 from sample_fixtures import make_context, make_db_mod
 
+from combat_phase import PhaseBeat, advance_combat_phase
 from session_data import CombatState
 from spell_casting import _cast_spell_impl
 from spell_info_tools import _get_spell_info_impl
@@ -504,6 +505,106 @@ class TestCastSpellWardThroughRealResolver:
         packet, _ctx, _echo = await _cast_echo(_spell(resonance=9), d20=12, combat_state=combat)
         assert packet["state"] == "overreach"
         assert packet["hollow_echo"]["band"] == "veil_scar"
+
+
+class TestPartyWideWardedEncounter:
+    """AC5 capstone: a two-member party in a warded encounter, ward expiring mid-combat.
+
+    Wires the two halves of story-006 together against real code: the WRAP beat's round clock
+    (combat_phase._wrap) and the cast path's ward read (the real ward_resolution.resolve_scope_ward,
+    no resolver injected). Both members are halved while the Paladin's 3-round ward stands, and
+    neither is halved on the round after it expires.
+
+    The ward is ONE object on the encounter scope; Resonance stays per-caster, each member
+    accruing into their own ResonanceTrack. That asymmetry is the milestone's whole rule.
+    """
+
+    _MEMBERS = ("player_1", "player_2")
+
+    def _ctx_with_warded_combat(self, rounds_remaining: int):
+        ctx = make_context(party_member_ids=["player_2"])
+        ctx.userdata.combat_state = CombatState(
+            combat_id="c_party",
+            participants=[],
+            initiative_order=[],
+            location_id="accord_guild_hall",
+            veil_ward={"source": "paladin", "rounds_remaining": rounds_remaining},
+            beat=PhaseBeat.WRAP,
+        )
+        return ctx
+
+    async def _cast_as(self, ctx, member_id: str, spell: Spell) -> dict:
+        mock_db, _conn = make_db_mod()
+        queries = MagicMock()
+        row = _player()
+        queries.get_player = AsyncMock(return_value=row)
+        queries.get_players_for_update = AsyncMock(side_effect=lambda ids, *, conn=None: {i: row for i in ids})
+        persistence = MagicMock()
+        persistence.update_player_resources = AsyncMock()
+        mutations = MagicMock()
+        mutations.update_player_resonance = AsyncMock()
+        events = MagicMock()
+        events.publish_resonance_changed = AsyncMock()
+        spells_mod = MagicMock()
+        spells_mod.get_spell = MagicMock(return_value=spell)
+        raw = await _cast_spell_impl(
+            ctx,
+            spell.id,
+            caster_id=member_id,
+            db_mod=mock_db,
+            queries_mod=queries,
+            persistence_mod=persistence,
+            resonance_mutations_mod=mutations,
+            resonance_events_mod=events,
+            spells_mod=spells_mod,
+        )
+        return json.loads(raw)
+
+    def _tick_wraps(self, ctx, count: int) -> None:
+        for _ in range(count):
+            ctx.userdata.combat_state.beat = PhaseBeat.WRAP
+            next_state, _ = advance_combat_phase(ctx.userdata.combat_state, None)
+            ctx.userdata.combat_state = next_state
+
+    async def test_both_members_halved_before_expiry_and_neither_after(self):
+        ctx = self._ctx_with_warded_combat(rounds_remaining=3)
+
+        # Round 1, ward standing: every caster in the scope is halved, not just the Paladin.
+        for member_id in self._MEMBERS:
+            packet = await self._cast_as(ctx, member_id, _spell(resonance=6))
+            assert packet["ward_active"] is True, member_id
+            assert packet["resonance_generated"] == 3, member_id
+
+        # Three wrap beats elapse; the 3-round ward dies at the third.
+        self._tick_wraps(ctx, 3)
+        assert ctx.userdata.combat_state.veil_ward is None
+
+        # Round 4, unwarded: neither caster is halved. Nothing lingers.
+        for member_id in self._MEMBERS:
+            packet = await self._cast_as(ctx, member_id, _spell(resonance=6))
+            assert packet["ward_active"] is False, member_id
+            assert packet["resonance_generated"] == 6, member_id
+
+    async def test_ward_still_halves_on_the_round_it_expires(self):
+        # Two wraps leave rounds_remaining=1: the ward is still up for that round's casts.
+        ctx = self._ctx_with_warded_combat(rounds_remaining=3)
+        self._tick_wraps(ctx, 2)
+        assert ctx.userdata.combat_state.veil_ward["rounds_remaining"] == 1
+        packet = await self._cast_as(ctx, "player_2", _spell(resonance=6))
+        assert packet["ward_active"] is True
+        assert packet["resonance_generated"] == 3
+
+    async def test_resonance_stays_per_caster_under_one_shared_ward(self):
+        # One ward, two independent Resonance pools. In combat the cast-paced shed is suppressed,
+        # so each member's track carries exactly their own halved generation.
+        ctx = self._ctx_with_warded_combat(rounds_remaining=3)
+        await self._cast_as(ctx, "player_1", _spell(resonance=6))
+        assert ctx.userdata.member_state("player_1").resonance.current == 3
+        assert ctx.userdata.member_state("player_2").resonance.current == 0
+
+        await self._cast_as(ctx, "player_2", _spell(resonance=6))
+        assert ctx.userdata.member_state("player_1").resonance.current == 3
+        assert ctx.userdata.member_state("player_2").resonance.current == 3
 
 
 class TestCastSpellWard:
