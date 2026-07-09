@@ -41,27 +41,13 @@ class ResonanceTrack:
 
 
 @dataclass
-class VeilWardState:
-    """Per-caster Veil Ward carried in the session (story-002, M3.2).
-
-    A ward is a manual activate/dismiss toggle (no auto-expiry in M3.2). ``active``
-    drives the cast-path halving (story-004); ``source`` is the archetype id that raised
-    it, carried for narration/HUD flavor. Synced from players.data by the activation tool
-    (story-003), persisted via db_mutations_veil_ward. Defaults to inactive.
-    """
-
-    active: bool = False
-    source: str | None = None
-
-
-@dataclass
 class ConcentrationState:
     """Per-caster spell concentration carried in the session (story-002, M3.4).
 
     A caster sustains at most ONE concentration spell at a time; ``spell_id`` is that spell
     (None = not concentrating). The cast keystone (story-006) sets it on a concentration cast
     and ends any prior one (single-concentration enforcement), persisted via
-    db_mutations_concentration. Like ResonanceTrack/VeilWardState, only the authoritative id
+    db_mutations_concentration. Like ResonanceTrack, only the authoritative id
     is stored — ``is_active`` is always derived, no cached flag to drift. Defaults to inactive.
     """
 

@@ -34,26 +34,12 @@ import db
 import db_mutations_veil_ward
 import db_queries
 import veil_ward
+import veil_ward_events
 from db_errors import db_tool
-from event_types import VEIL_WARD_CHANGED
-from game_events import publish_game_event
-from party_state import PartyMember
 from resource_costs import gate_pool
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
-
-
-async def _publish_veil_ward_changed(session: SessionData, active: bool, caster_id: str) -> None:
-    """Push the ward's on/off state to the client as a VEIL_WARD_CHANGED event.
-
-    The payload is {active, caster_id} (the HUD shows a glanceable zone indicator); the
-    source archetype is narration the DM voices, not wire state. caster_id is the resolved
-    caster (default primary, or an explicit non-primary member — see activate_veil_ward).
-    """
-    await publish_game_event(
-        session.room, VEIL_WARD_CHANGED, {"active": active, "caster_id": caster_id}, session.event_bus
-    )
 
 
 @function_tool()
@@ -90,7 +76,7 @@ async def _activate_veil_ward_impl(
     # caster_id is untrusted LLM input at the tool boundary; member_state fails loud (ValueError)
     # on a non-party id — convert to the sanctioned narratable ToolError so the DM can recover.
     try:
-        caster = session.member_state(pid)
+        session.member_state(pid)  # validation only — the ward is scope-owned, not the caster's
     except ValueError as e:
         raise ToolError(f"Unknown party member: {pid}") from e
     logger.info("activate_veil_ward called: active=%s player=%s", active, pid)
@@ -100,7 +86,7 @@ async def _activate_veil_ward_impl(
     scope = veil_ward.WardScope.location(session.location_id)
 
     if not active:
-        return await _dismiss_impl(session, caster, pid, scope, db_mod=db_mod, ward_mutations_mod=ward_mutations_mod)
+        return await _dismiss_impl(session, pid, scope, db_mod=db_mod, ward_mutations_mod=ward_mutations_mod)
 
     async with db_mod.transaction() as conn:
         player = await queries_mod.get_player(pid, conn=conn, for_update=True)
@@ -134,18 +120,16 @@ async def _activate_veil_ward_impl(
         # absolute clock. Per-source durations and encounter targeting arrive in story-005.
         await ward_mutations_mod.write_ward(scope, archetype, None, dismissible=True, conn=conn)
 
-    # Transaction committed — sync the caster's in-memory SSOT and push the HUD toggle.
-    caster.veil_ward.active = True
-    caster.veil_ward.source = archetype
-    await _publish_veil_ward_changed(session, True, pid)
+    # Transaction committed — refresh the session's HUD mirror and push the toggle. The ward is
+    # scope-owned, so it lands on the session, not on the caster who paid for it.
+    session.location_ward = {"source": archetype, "expires_at": None, "dismissible": True}
+    await veil_ward_events.publish_veil_ward_changed(session, True, pid)
     return json.dumps(
         {"active": True, "source": archetype, "deducted": {"focus": source.focus, "stamina": source.stamina}}
     )
 
 
-async def _dismiss_impl(
-    session: SessionData, caster: PartyMember, pid: str, scope, *, db_mod, ward_mutations_mod
-) -> str:
+async def _dismiss_impl(session: SessionData, pid: str, scope, *, db_mod, ward_mutations_mod) -> str:
     """Dismiss the scope's ward (free). Fails loud when nothing dismissible covers the caster.
 
     Any in-scope member may dismiss — the ward is not the raiser's to hold (§5). The delete
@@ -155,8 +139,12 @@ async def _dismiss_impl(
     async with db_mod.transaction() as conn:
         if not await ward_mutations_mod.dismiss_ward(scope, conn=conn):
             raise ToolError("No Veil Ward is active to dismiss.")
+        # §3: publish the RESOLVED state, never the toggle of the scope we just mutated.
+        # dismiss_ward spares non-dismissible wards, so a permanent Sacred site can still cover
+        # this scope. Reporting active=False there would turn the ward light off while the party's
+        # casts are still being halved.
+        remaining = await ward_mutations_mod.read_active_ward(scope, conn=conn)
 
-    caster.veil_ward.active = False
-    caster.veil_ward.source = None
-    await _publish_veil_ward_changed(session, False, pid)
-    return json.dumps({"active": False})
+    session.location_ward = remaining
+    await veil_ward_events.publish_veil_ward_changed(session, remaining is not None, pid)
+    return json.dumps({"active": remaining is not None})

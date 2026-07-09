@@ -20,7 +20,7 @@ import event_types
 import hollow_echo
 import hollow_echo_events
 import resonance_events
-import veil_ward_tools
+import veil_ward_events
 from hollow_echo import HollowEchoResult
 from spells import Spell
 
@@ -82,8 +82,9 @@ async def test_veil_ward_changed_serializes_to_fixture() -> None:
     expected = FIXTURE["events"]["veil_ward_changed"]
     session = MagicMock()
     session.player_id = expected["caster_id"]  # caster_id defaults to the session primary
-    with patch("veil_ward_tools.publish_game_event", new_callable=AsyncMock) as pub:
-        await veil_ward_tools._publish_veil_ward_changed(session, expected["active"], expected["caster_id"])
+    # The push moved to veil_ward_events in story-004 (arrival needs it too). Payload unchanged.
+    with patch("veil_ward_events.publish_game_event", new_callable=AsyncMock) as pub:
+        await veil_ward_events.publish_veil_ward_changed(session, expected["active"], expected["caster_id"])
     assert _captured_wire(pub) == expected
 
 

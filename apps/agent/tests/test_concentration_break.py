@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 import conditions
-from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from caster_state import ConcentrationState, ResonanceTrack
 from concentration_break import break_concentration_on_damage
 from party_state import PartyMember
 from session_data import SessionData
@@ -36,7 +36,6 @@ def _two_pc_session(primary_spell_id: str | None, member_spell_id: str | None) -
         PartyMember(
             player_id="player_2",
             resonance=ResonanceTrack(),
-            veil_ward=VeilWardState(),
             concentration=ConcentrationState(spell_id=member_spell_id),
         )
     )

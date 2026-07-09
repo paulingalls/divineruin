@@ -343,9 +343,12 @@ async def _cast_echo(
     """
     ctx = make_context()
     ctx.userdata.resonance.current = start_resonance
-    ctx.userdata.veil_ward.active = ward_active
-    if ward_active:
-        ctx.userdata.veil_ward.source = "cleric"
+    # M24: the cast path resolves the ward from the DB, not from any per-caster flag. Inject the
+    # resolver so the test states plainly whether a scope ward covers this cast.
+    ward_res = MagicMock()
+    ward_res.resolve_scope_ward = AsyncMock(
+        return_value={"source": "cleric", "expires_at": None, "dismissible": True} if ward_active else None
+    )
     mock_db, _conn = make_db_mod()
     queries = MagicMock()
     _lock_row = _player(focus)
@@ -372,6 +375,7 @@ async def _cast_echo(
         spells_mod=spells_mod,
         dice_mod=_dice_mod(d20),
         echo_events_mod=echo_events,
+        ward_resolution_mod=ward_res,
     )
     return json.loads(raw), ctx, echo_events
 

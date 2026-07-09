@@ -68,7 +68,7 @@ async def hydrate_session_state(
 
     session.resonance.current = res["current"]
     session.resonance.flickering_bonus = bonus
-    # read_active_ward returns None for an unwarded scope — absence, not a default-inactive row.
-    session.veil_ward.active = ward is not None
-    session.veil_ward.source = ward["source"] if ward else None
+    # The HUD mirror, not an authority: None for an unwarded scope, absence rather than a
+    # default-inactive row. The cast path resolves its own ward from the DB (ward_resolution).
+    session.location_ward = ward
     session.concentration.spell_id = conc["spell_id"]

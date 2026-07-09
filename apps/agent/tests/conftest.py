@@ -297,3 +297,9 @@ async def dev_db_pool():
             os.environ.pop("DATABASE_URL", None)
         else:
             os.environ["DATABASE_URL"] = prior
+
+
+# M24 story-004: spell_casting resolves the ward from the DB on every cast, which a MagicMock conn
+# cannot serve. Default every mock-conn cast test to "unwarded" — the state they were all implicitly
+# in before. Real-PG tests are exempt. Mirrors _combat_end_fixtures.default_condition_persistence.
+from _ward_resolution_fixtures import default_unwarded_scope  # noqa: E402,F401  (autouse fixture)

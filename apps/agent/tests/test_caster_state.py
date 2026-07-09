@@ -1,4 +1,7 @@
-"""Tests for caster state value types (ResonanceTrack, VeilWardState, ConcentrationState)."""
+"""Tests for caster state value types (ResonanceTrack, ConcentrationState).
+
+VeilWardState was deleted in M24 story-004: the ward is scope-owned, so no per-caster type exists.
+"""
 
 from dataclasses import asdict
 
@@ -32,29 +35,6 @@ class TestResonanceTrack:
     def test_back_compat_session_data_reexport(self):
         """Back-compat guard: ResonanceTrack imported from session_data is the same class."""
         assert session_data.ResonanceTrack is caster_state.ResonanceTrack
-
-
-class TestVeilWardState:
-    def test_veil_ward_defaults(self):
-        ward = caster_state.VeilWardState()
-        assert ward.active is False
-        assert ward.source is None
-
-    def test_veil_ward_with_values(self):
-        ward = caster_state.VeilWardState(active=True, source="archetype_123")
-        assert ward.active is True
-        assert ward.source == "archetype_123"
-
-    def test_veil_ward_asdict_roundtrip(self):
-        original = caster_state.VeilWardState(active=True, source="test")
-        d = asdict(original)
-        reconstructed = caster_state.VeilWardState(**d)
-        assert reconstructed.active == original.active
-        assert reconstructed.source == original.source
-
-    def test_back_compat_session_data_reexport(self):
-        """Back-compat guard: VeilWardState imported from session_data is the same class."""
-        assert session_data.VeilWardState is caster_state.VeilWardState
 
 
 class TestConcentrationState:

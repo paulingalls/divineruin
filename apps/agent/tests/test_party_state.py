@@ -9,7 +9,6 @@ class TestPartyMember:
         member = party_state.PartyMember(
             player_id="p1",
             resonance=caster_state.ResonanceTrack(),
-            veil_ward=caster_state.VeilWardState(),
             concentration=caster_state.ConcentrationState(),
         )
         assert member.player_id == "p1"
@@ -20,14 +19,12 @@ class TestPartyMember:
         member = party_state.PartyMember(
             player_id="p1",
             resonance=caster_state.ResonanceTrack(current=5),
-            veil_ward=caster_state.VeilWardState(active=True),
             concentration=caster_state.ConcentrationState(spell_id="fireball"),
             corruption_level=3,
             patron_id="god_123",
         )
         assert member.player_id == "p1"
         assert member.resonance.current == 5
-        assert member.veil_ward.active is True
         assert member.concentration.spell_id == "fireball"
         assert member.corruption_level == 3
         assert member.patron_id == "god_123"
@@ -43,7 +40,6 @@ class TestPartyStateSolo:
         party = party_state.PartyState.solo("p1")
         member = party.members[0]
         assert member.resonance.current == 0
-        assert member.veil_ward.active is False
         assert member.concentration.spell_id is None
         assert member.corruption_level == 0
         assert member.patron_id == "none"
@@ -52,12 +48,6 @@ class TestPartyStateSolo:
         res = caster_state.ResonanceTrack(current=5)
         party = party_state.PartyState.solo("p1", resonance=res)
         assert party.members[0].resonance.current == 5
-
-    def test_solo_with_custom_veil_ward(self):
-        veil = caster_state.VeilWardState(active=True, source="arch_1")
-        party = party_state.PartyState.solo("p1", veil_ward=veil)
-        assert party.members[0].veil_ward.active is True
-        assert party.members[0].veil_ward.source == "arch_1"
 
     def test_solo_with_custom_concentration(self):
         conc = caster_state.ConcentrationState(spell_id="spell_123")
@@ -78,13 +68,11 @@ class TestPartyStateMembership:
                 party_state.PartyMember(
                     player_id="p1",
                     resonance=caster_state.ResonanceTrack(),
-                    veil_ward=caster_state.VeilWardState(),
                     concentration=caster_state.ConcentrationState(),
                 ),
                 party_state.PartyMember(
                     player_id="p2",
                     resonance=caster_state.ResonanceTrack(),
-                    veil_ward=caster_state.VeilWardState(),
                     concentration=caster_state.ConcentrationState(),
                 ),
             ]
@@ -99,7 +87,6 @@ class TestPartyStateMembership:
                 party_state.PartyMember(
                     player_id="p1",
                     resonance=caster_state.ResonanceTrack(),
-                    veil_ward=caster_state.VeilWardState(),
                     concentration=caster_state.ConcentrationState(),
                 ),
             ]
@@ -119,13 +106,11 @@ class TestPartyStateMembership:
         p1 = party_state.PartyMember(
             player_id="p1",
             resonance=caster_state.ResonanceTrack(),
-            veil_ward=caster_state.VeilWardState(),
             concentration=caster_state.ConcentrationState(),
         )
         p2 = party_state.PartyMember(
             player_id="p2",
             resonance=caster_state.ResonanceTrack(),
-            veil_ward=caster_state.VeilWardState(),
             concentration=caster_state.ConcentrationState(),
         )
         party = party_state.PartyState([p1, p2])
@@ -137,7 +122,6 @@ class TestPartyStatePrimary:
         p1 = party_state.PartyMember(
             player_id="p1",
             resonance=caster_state.ResonanceTrack(),
-            veil_ward=caster_state.VeilWardState(),
             concentration=caster_state.ConcentrationState(),
         )
         party = party_state.PartyState([p1])
@@ -159,13 +143,11 @@ class TestPartyStateIsolation:
         p1 = party_state.PartyMember(
             player_id="p1",
             resonance=caster_state.ResonanceTrack(current=0),
-            veil_ward=caster_state.VeilWardState(active=False),
             concentration=caster_state.ConcentrationState(spell_id=None),
         )
         p2 = party_state.PartyMember(
             player_id="p2",
             resonance=caster_state.ResonanceTrack(current=0),
-            veil_ward=caster_state.VeilWardState(active=False),
             concentration=caster_state.ConcentrationState(spell_id=None),
         )
         party = party_state.PartyState([p1, p2])
@@ -174,14 +156,12 @@ class TestPartyStateIsolation:
         member_b = party.member("p2")
         assert member_b is not None
         member_b.resonance.current = 5
-        member_b.veil_ward.active = True
         member_b.concentration.spell_id = "spell_x"
 
         # Member A unchanged
         member_a = party.member("p1")
         assert member_a is not None
         assert member_a.resonance.current == 0
-        assert member_a.veil_ward.active is False
         assert member_a.concentration.spell_id is None
 
 
@@ -211,7 +191,6 @@ class TestPartyStateSerialize:
                 {
                     "player_id": "p1",
                     "resonance": {"current": 0, "flickering_bonus": 0},
-                    "veil_ward": {"active": False, "source": None},
                     "concentration": {"spell_id": None},
                     "corruption_level": 0,
                     "patron_id": "none",
@@ -229,7 +208,6 @@ class TestPartyStateSerialize:
                 {
                     "player_id": "p1",
                     "resonance": {"current": 5, "flickering_bonus": 1},
-                    "veil_ward": {"active": True, "source": "arch_1"},
                     "concentration": {"spell_id": "spell_123"},
                     "corruption_level": 2,
                     "patron_id": "god_456",
@@ -241,21 +219,17 @@ class TestPartyStateSerialize:
 
         # Check that nested fields are INSTANCES, not dicts
         assert isinstance(member.resonance, caster_state.ResonanceTrack)
-        assert isinstance(member.veil_ward, caster_state.VeilWardState)
         assert isinstance(member.concentration, caster_state.ConcentrationState)
 
         # Check values
         assert member.resonance.current == 5
         assert member.resonance.flickering_bonus == 1
-        assert member.veil_ward.active is True
-        assert member.veil_ward.source == "arch_1"
         assert member.concentration.spell_id == "spell_123"
 
     def test_roundtrip_single_member(self):
         original = party_state.PartyState.solo(
             "p1",
             resonance=caster_state.ResonanceTrack(current=5, flickering_bonus=1),
-            veil_ward=caster_state.VeilWardState(active=True, source="arch_1"),
             concentration=caster_state.ConcentrationState(spell_id="spell_x"),
             corruption_level=2,
             patron_id="god_789",
@@ -269,8 +243,6 @@ class TestPartyStateSerialize:
         assert member_rest.player_id == member_orig.player_id
         assert member_rest.resonance.current == member_orig.resonance.current
         assert member_rest.resonance.flickering_bonus == member_orig.resonance.flickering_bonus
-        assert member_rest.veil_ward.active == member_orig.veil_ward.active
-        assert member_rest.veil_ward.source == member_orig.veil_ward.source
         assert member_rest.concentration.spell_id == member_orig.concentration.spell_id
         assert member_rest.corruption_level == member_orig.corruption_level
         assert member_rest.patron_id == member_orig.patron_id
@@ -280,13 +252,11 @@ class TestPartyStateSerialize:
         p1 = party_state.PartyMember(
             player_id="p1",
             resonance=caster_state.ResonanceTrack(current=1),
-            veil_ward=caster_state.VeilWardState(),
             concentration=caster_state.ConcentrationState(),
         )
         p2 = party_state.PartyMember(
             player_id="p2",
             resonance=caster_state.ResonanceTrack(current=2),
-            veil_ward=caster_state.VeilWardState(),
             concentration=caster_state.ConcentrationState(),
         )
         original = party_state.PartyState([p1, p2])
@@ -308,7 +278,6 @@ class TestPartyMemberWeaponFlags:
         member = party_state.PartyMember(
             player_id="p1",
             resonance=caster_state.ResonanceTrack(),
-            veil_ward=caster_state.VeilWardState(),
             concentration=caster_state.ConcentrationState(),
         )
         assert member.weapon_used is False
@@ -318,7 +287,6 @@ class TestPartyMemberWeaponFlags:
         member = party_state.PartyMember(
             player_id="p1",
             resonance=caster_state.ResonanceTrack(),
-            veil_ward=caster_state.VeilWardState(),
             concentration=caster_state.ConcentrationState(),
             weapon_used=True,
             weapon_crit_vs_heavy=True,
@@ -330,7 +298,6 @@ class TestPartyMemberWeaponFlags:
         p = party_state.PartyMember(
             player_id="p1",
             resonance=caster_state.ResonanceTrack(),
-            veil_ward=caster_state.VeilWardState(),
             concentration=caster_state.ConcentrationState(),
             weapon_used=True,
             weapon_crit_vs_heavy=True,
@@ -343,7 +310,6 @@ class TestPartyMemberWeaponFlags:
         p = party_state.PartyMember(
             player_id="p1",
             resonance=caster_state.ResonanceTrack(),
-            veil_ward=caster_state.VeilWardState(),
             concentration=caster_state.ConcentrationState(),
             weapon_used=True,
             weapon_crit_vs_heavy=True,
@@ -360,7 +326,6 @@ class TestPartyMemberWeaponFlags:
                 {
                     "player_id": "p1",
                     "resonance": {"current": 0, "flickering_bonus": 0},
-                    "veil_ward": {"active": False, "source": None},
                     "concentration": {"spell_id": None},
                     "corruption_level": 0,
                     "patron_id": "none",

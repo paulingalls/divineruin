@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 import db_mutations_conditions
-from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from caster_state import ConcentrationState, ResonanceTrack
 from combat_end import _end_combat_db
 from combat_events import EventSink
 from party_state import PartyMember
@@ -35,7 +35,6 @@ def _member(player_id: str) -> PartyMember:
     return PartyMember(
         player_id=player_id,
         resonance=ResonanceTrack(),
-        veil_ward=VeilWardState(),
         concentration=ConcentrationState(),
     )
 

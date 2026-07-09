@@ -21,12 +21,10 @@ from livekit.agents import Agent, AgentSession
 
 import db_mutations_concentration
 import db_mutations_resonance
-import db_mutations_veil_ward
 import db_queries
-from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember
 from session_data import SessionData
-from veil_ward import WardScope
 
 logger = logging.getLogger("divineruin.dm")
 
@@ -100,7 +98,6 @@ def _setup_party_join(
     *,
     queries=db_queries,
     resonance_mod=db_mutations_resonance,
-    veil_ward_mod=db_mutations_veil_ward,
     concentration_mod=db_mutations_concentration,
 ) -> None:
     """Register the live participant-join trigger: a SECOND player connecting to the room becomes
@@ -144,23 +141,21 @@ def _setup_party_join(
         member = PartyMember(
             player_id=pid,
             resonance=ResonanceTrack(),
-            veil_ward=VeilWardState(),
             concentration=ConcentrationState(),
         )
         userdata.party.members.append(member)  # IN PLACE — never reassign userdata.party (f4f16c93076e)
 
-        # Hydrate ALL FIVE per-member sub-states onto the new member.
-        # resonance/veil_ward/concentration: the player_id-parameterized read helpers, applied the
-        # same way session_hydration.hydrate_session_state applies them onto the primary.
+        # Hydrate the per-member sub-states onto the new member: resonance/concentration are the
+        # player_id-parameterized read helpers, applied the same way
+        # session_hydration.hydrate_session_state applies them onto the primary.
+        #
+        # The veil ward is NOT among them (M24 story-004). It is scope-owned, so the joining
+        # member simply resolves the ward already covering the party's location — there is nothing
+        # per-member to read, and a per-member read could only ever disagree with the scope.
         res = await resonance_mod.read_player_resonance(pid)
-        # The joining member walks into the party's location and resolves the ward already
-        # covering it — the ward is scope-owned, so it is not read from their own row (M24).
-        ward = await veil_ward_mod.read_active_ward(WardScope.location(userdata.location_id))
         conc = await concentration_mod.read_player_concentration(pid)
         member.resonance.current = res["current"]
         member.resonance.flickering_bonus = res["flickering_bonus"]
-        member.veil_ward.active = ward is not None
-        member.veil_ward.source = ward["source"] if ward else None
         member.concentration.spell_id = conc["spell_id"]
         # patron_id is per-member: read from the joiner's OWN row (mirrors dm_session's primary read).
         divine_favor = row.get("divine_favor") or {}

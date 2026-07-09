@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import event_types as E
-from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from caster_state import ConcentrationState, ResonanceTrack
 from milestones import Grant, Milestone, SpecializationOption
 from party_state import PartyMember
 from session_data import CompanionState, SessionData
@@ -92,7 +92,6 @@ def make_context(
             PartyMember(
                 player_id=extra_id,
                 resonance=ResonanceTrack(),
-                veil_ward=VeilWardState(),
                 concentration=ConcentrationState(),
             )
         )
