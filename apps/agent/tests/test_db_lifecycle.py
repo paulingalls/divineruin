@@ -8,6 +8,14 @@ calls are stubbed so the suite stays hermetic.
 """
 
 import _db_lifecycle as dbl
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _isolated_lock_dir(tmp_path, monkeypatch):
+    """Every test gets its own lock/state dir so tests never see each
+    other's (or a real dev run's) refcount state."""
+    monkeypatch.setattr(dbl, "_temp_base_dir", lambda: tmp_path)
 
 
 def test_parse_host_port_reads_host_and_port():
@@ -30,14 +38,17 @@ def test_parse_user_defaults_when_absent():
     assert dbl._parse_user("postgresql://localhost:55432/divineruin") == "divineruin"
 
 
-def test_stop_if_started_noop_when_not_started(monkeypatch):
+def test_stop_if_started_noop_when_not_started_and_no_state_file(monkeypatch):
+    """Fallback path: no refcount state file on disk (e.g. a caller that
+    bypasses ensure_db_up) -> `started` alone decides."""
     calls: list[tuple[str, ...]] = []
     monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
     dbl.stop_if_started(False)
     assert calls == []
 
 
-def test_stop_if_started_downs_when_started(monkeypatch):
+def test_stop_if_started_downs_when_started_and_no_state_file(monkeypatch):
+    """Fallback path: no refcount state file on disk -> `started` alone decides."""
     calls: list[tuple[str, ...]] = []
     monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
     dbl.stop_if_started(True)
