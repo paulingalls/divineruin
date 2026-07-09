@@ -1,10 +1,14 @@
 """Veil Ward activation tool for the DM agent (M24 story-003 cut-over).
 
 activate_veil_ward is one polymorphic verb (decision veil-ward-one-tool): active=True raises
-a ward, active=False dismisses it. Raising gates the caster's archetype (must be a WARD_SOURCES
-caster), level, and Focus/Stamina cost, deducts on success, writes the scope ward, and pushes a
-VEIL_WARD_CHANGED event; every user-facing failure is a ToolError raised BEFORE any write, so an
-ineligible/unaffordable activation deducts nothing.
+a ward, active=False dismisses it. Raising gates the caster's source (must be a WARD_SOURCES
+entry whose ``tool_raisable`` is set), level, and Focus/Stamina cost, deducts on success, writes
+the scope ward, and pushes a VEIL_WARD_CHANGED event; every user-facing failure is a ToolError
+raised BEFORE any write, so an ineligible/unaffordable activation deducts nothing.
+
+The ``tool_raisable`` gate is not a formality: WARD_SOURCES also carries the Artificer anchor and
+the Sacred site, whose costs are 0 Focus / 0 Stamina. Gating on key presence would let any
+level-7 artificer — a real playable class — raise a free ward from this tool.
 
 The ward is SCOPE-owned (veil_ward_scope_model.md §1). The Focus/Stamina cost is per-caster —
 gate_pool deducts from the raiser alone — but the ward it buys covers every caster in the scope.
@@ -100,6 +104,11 @@ async def _activate_veil_ward_impl(
         source = ward_mod.WARD_SOURCES.get(archetype)
         if source is None:
             raise ToolError(f"{archetype} cannot raise a Veil Ward.")
+        # Gate on the SOURCE, not on key presence, and before the level check: an artificer has a
+        # ward source (a crafted anchor wards for an hour) but cannot will one into being, and
+        # its cost is 0/0 — a presence-only gate would hand an eligible artificer a free ward.
+        if not source.tool_raisable:
+            raise ToolError(f"A {archetype} ward cannot be raised at will.")
         level = player.get("level", 1)
         if level < source.min_level:
             raise ToolError(f"A Veil Ward requires level {source.min_level}; you are level {level}.")

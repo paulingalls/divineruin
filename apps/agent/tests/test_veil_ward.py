@@ -116,15 +116,21 @@ def test_ward_sources_costs(archetype, min_level, focus, stamina):
     assert source.stamina == stamina
 
 
-@pytest.mark.parametrize("archetype", ["mage", "warrior", "rogue", "bard", "artificer"])
+@pytest.mark.parametrize("archetype", ["mage", "warrior", "rogue", "bard"])
 def test_non_ward_archetypes_absent_from_table(archetype):
-    # Artificer (item) and Sacred-site (passive) sources are deferred past M3.2;
-    # only the Focus/Stamina caster sources are in the table.
+    # A class with no ward source at all. Artificer IS in the table (story-005) but is
+    # refused by the tool on tool_raisable, not by absence — see the tool's own suite.
     assert archetype not in veil_ward.WARD_SOURCES
 
 
-def test_ward_sources_table_has_exactly_three_keys():
-    assert set(veil_ward.WARD_SOURCES.keys()) == {"cleric", "druid", "paladin"}
+def test_ward_sources_table_has_exactly_five_keys():
+    assert set(veil_ward.WARD_SOURCES.keys()) == {
+        "cleric",
+        "druid",
+        "paladin",
+        "artificer",
+        "sacred_site",
+    }
 
 
 # --- WARD_SOURCES: per-archetype duration + tool_raisable (story-002) ---------
@@ -147,6 +153,37 @@ def test_ward_sources_durations(archetype, kind, rounds):
 @pytest.mark.parametrize("archetype", ["cleric", "druid", "paladin"])
 def test_ward_sources_tool_raisable(archetype):
     assert veil_ward.WARD_SOURCES[archetype].tool_raisable is True
+
+
+# --- The two non-tool sources (story-005) -------------------------------------
+#
+# Both exist so the crafted anchor (story-007) and Phase-11 world entities have a modeled
+# source. Neither may be raised through the DM tool: the Artificer's ward is bought with a
+# crafted item, and a Sacred site is a property of the world, not an action.
+
+
+@pytest.mark.parametrize("archetype", ["artificer", "sacred_site"])
+def test_non_tool_sources_are_not_tool_raisable(archetype):
+    # The load-bearing pin. Artificer is a real playable class costing 0 Focus/0 Stamina —
+    # were it tool_raisable, any L7 artificer could raise a free ward through activate_veil_ward.
+    assert veil_ward.WARD_SOURCES[archetype].tool_raisable is False
+
+
+def test_artificer_source_is_a_one_hour_placed_object():
+    source = veil_ward.WARD_SOURCES["artificer"]
+    assert source.min_level == 7
+    assert source.focus == 0
+    assert source.stamina == 0
+    assert source.duration == WardDuration(WardDurationKind.REAL_TIME, seconds=3600)
+
+
+def test_sacred_site_source_is_a_free_permanent_hook():
+    source = veil_ward.WARD_SOURCES["sacred_site"]
+    assert source.focus == 0
+    assert source.stamina == 0
+    assert source.duration == WardDuration(WardDurationKind.PERMANENT)
+    # Never a player class, so the level gate can never fire on it.
+    assert source.min_level == 0
 
 
 # --- tick_ward_rounds: decrement, floor at 0, None passthrough (story-002) ----

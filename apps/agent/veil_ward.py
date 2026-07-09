@@ -15,8 +15,8 @@ The activation tool and the cast-time halving compose these primitives.
 Spec source: docs/game_mechanics/game_mechanics_magic.md §Veil Ward (189-217):
 generation halved (round down), +4 echo, -1 damage die, -1 DC; sources Cleric L7 4F /
 Druid L9 5F (natural terrain only) / Paladin L10 3F+3S, plus Artificer item and Sacred
-sites. M3.2 scopes WARD_SOURCES to the Focus/Stamina caster sources; the Artificer item
-and Sacred-site passive sources are deferred.
+sites. story-005 completes WARD_SOURCES with the last two: the Artificer item and the
+Sacred-site passive entity, both ``tool_raisable=False`` — modeled, but not raisable at will.
 
 M24/story-002 adds the duration model on top of that unchanged source table:
 docs/game_mechanics/veil_ward_scope_model.md defines four incompatible duration units
@@ -128,13 +128,16 @@ class WardSource:
     tool_raisable: bool = False
 
 
-# Archetype id -> ward source (spec 204-210). Only the enforceable cost fields are
+# Source id -> ward source (spec 204-210). Only the enforceable cost fields are
 # modeled: Druid's "natural terrain only" restriction is NOT a column because no runtime
 # location->terrain map exists yet (an unenforced flag would be forward-wired dead state).
-# story-003 gates level + Focus/Stamina from this table; the Druid terrain gate and the
-# Artificer-item / Sacred-site (passive world entity) sources are deferred past M3.2, and
-# story-005 adds their keys once the tool re-gates on ``tool_raisable`` — do not add them
-# here (an artificer key would let a free-cost ward through the DM tool untended).
+#
+# The first three keys are archetypes a player casts as, and the DM tool may raise them. The
+# last two are NOT raisable through the tool (``tool_raisable=False``) and the tool gates on
+# that flag, never on key presence: "artificer" is a real playable class whose ward costs 0
+# Focus and 0 Stamina, so a presence-only gate would hand every level-7 artificer a free ward.
+# The Artificer's ward is bought with a crafted anchor (story-007); a Sacred site is a property
+# of the world, not an action (Phase 11 supplies the entities — M24 constructs none).
 WARD_SOURCES: dict[str, WardSource] = {
     "cleric": WardSource(min_level=7, focus=4, duration=WardDuration(WardDurationKind.ENCOUNTER), tool_raisable=True),
     "druid": WardSource(min_level=9, focus=5, duration=WardDuration(WardDurationKind.ENCOUNTER), tool_raisable=True),
@@ -144,6 +147,22 @@ WARD_SOURCES: dict[str, WardSource] = {
         stamina=3,
         duration=WardDuration(WardDurationKind.ROUNDS, rounds=3),
         tool_raisable=True,
+    ),
+    # A placed object: the crafted Veil-Ward Anchor wards its scope for an hour, costing the
+    # artificer nothing at deploy time — the cost was paid at the workbench.
+    "artificer": WardSource(
+        min_level=7,
+        focus=0,
+        duration=WardDuration(WardDurationKind.REAL_TIME, seconds=3600),
+        tool_raisable=False,
+    ),
+    # A passive world entity, never a player class — so min_level can never gate it, and 0 says
+    # so plainly rather than inventing a threshold no player row will ever be measured against.
+    "sacred_site": WardSource(
+        min_level=0,
+        focus=0,
+        duration=WardDuration(WardDurationKind.PERMANENT),
+        tool_raisable=False,
     ),
 }
 

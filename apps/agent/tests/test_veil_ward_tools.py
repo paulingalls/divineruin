@@ -141,6 +141,31 @@ async def test_non_ward_archetype_rejected():
     ward_mut.write_ward.assert_not_awaited()
 
 
+async def test_tool_raisable_false_source_refused():
+    """An Artificer has a ward source but may not raise one through this tool (story-005).
+
+    The gate is ``source.tool_raisable``, NOT key presence: an artificer's ward is bought with a
+    crafted anchor, and its source costs 0 Focus / 0 Stamina. Were the tool to gate on presence
+    alone, a level-7 artificer would raise a FREE ward — so this test runs against the real
+    WARD_SOURCES table (no ward_mod injection), where the artificer key genuinely exists.
+    """
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("artificer", level=7))
+    with pytest.raises(ToolError, match="artificer"):
+        await _invoke(ctx, mock_db, queries, persistence, ward_mut)
+    persistence.update_player_resources.assert_not_awaited()
+    ward_mut.write_ward.assert_not_awaited()
+
+
+async def test_tool_raisable_gate_precedes_the_level_gate():
+    """An artificer ABOVE the source's min_level is still refused — the gate is on the source,
+    not on the player. A level check placed first would mask this with a misleading message."""
+    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("artificer", level=20))
+    with pytest.raises(ToolError, match="artificer"):
+        await _invoke(ctx, mock_db, queries, persistence, ward_mut)
+    persistence.update_player_resources.assert_not_awaited()
+    ward_mut.write_ward.assert_not_awaited()
+
+
 async def test_below_required_level_rejected():
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=6))
     with pytest.raises(ToolError):
