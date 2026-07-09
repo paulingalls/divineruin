@@ -332,10 +332,15 @@ async def _end_combat_db(
     # resolver would still see the ward we just deleted. Once the encounter scope is gone the only
     # scope that can still cover the party is the location — a Sacred site, or a pre-fight row. Same
     # shape as the dismiss path in veil_ward_tools.
+    ward_light_synced = False
+    resolved_location_ward: dict | None = None
     if cs.veil_ward is not None:
         location_scope = WardScope.location(session.location_id)
         location_ward = await ward_mutations_mod.read_active_ward(location_scope, conn=conn)
-        session.location_ward = location_ward
+        # The session mirror is synced post-commit in _end_combat_finish (like combat_state), so a
+        # rolled-back phase leaves session.location_ward pristine — this half touches no session state.
+        resolved_location_ward = location_ward
+        ward_light_synced = True
         await sink.emit(
             session.room,
             E.VEIL_WARD_CHANGED,
@@ -454,6 +459,8 @@ async def _end_combat_db(
         "death_context": death_context,
         "primary_loot": primary_loot,
         "primary_currency_gold": primary_currency_gold,
+        "ward_light_synced": ward_light_synced,
+        "resolved_location_ward": resolved_location_ward,
     }
 
 
@@ -475,6 +482,12 @@ def _end_combat_finish(
         member.weapon_crit_vs_heavy = False
     session.draethar_inner_fire_used = False  # Inner Fire resets each encounter (M3.4)
     session.combat_state = None
+
+    # Post-commit sync of the location-ward mirror: only when the dying encounter ward changed
+    # wardedness (the in-tx half resolved and emitted the covering location scope). Deferred here so
+    # a rolled-back phase leaves session.location_ward untouched, matching the combat_state contract.
+    if end_data.get("ward_light_synced"):
+        session.location_ward = end_data["resolved_location_ward"]
 
     # When the primary died (any outcome — the dead-life collector or the standing-primary defeat
     # fallback set death_context), it was revived AT its anchor (players.data.location_id = anchor).
