@@ -127,8 +127,18 @@ async def test_check_skill_tier_missing_row_is_untrained():
 
 
 async def test_check_quest_completed_complete_is_true():
-    q = _queries(get_player_quest=AsyncMock(return_value={"status": "complete"}))
+    # 'completed' is the EXACT status string update_quest writes on the completion transition;
+    # the reader must match it or a mentor quest-gate never opens (any drift = permanent refusal).
+    q = _queries(get_player_quest=AsyncMock(return_value={"status": "completed"}))
     assert await mr.check_quest_completed("p1", "q1", queries_mod=q) is True
+
+
+async def test_check_quest_completed_stale_complete_string_is_false():
+    # Guard against the historical mismatch: the writer stores 'completed', never 'complete'.
+    # If someone reintroduces 'complete' on either side this test (plus the writer pin in
+    # test_quest_tools) keeps the two ends aligned.
+    q = _queries(get_player_quest=AsyncMock(return_value={"status": "complete"}))
+    assert await mr.check_quest_completed("p1", "q1", queries_mod=q) is False
 
 
 async def test_check_quest_completed_active_is_false():

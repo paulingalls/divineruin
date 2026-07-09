@@ -56,9 +56,13 @@ async def _evaluate_skill(player_id: str, skill_requirement: str, *, conn, queri
 
 
 async def check_quest_completed(player_id: str, quest_id: str, *, conn=None, queries_mod=db_queries) -> bool:
-    """True iff the player has a player_quests row for quest_id with status 'complete'."""
+    """True iff the player has a player_quests row for quest_id with status 'completed'.
+
+    'completed' is the canonical terminal status written by update_quest on the completion
+    transition and excluded by get_active_player_quests' COALESCE('active') filter — both
+    must agree on this exact string or a mentor quest-gate never opens."""
     player_quest = await queries_mod.get_player_quest(player_id, quest_id, conn=conn)
-    return player_quest is not None and player_quest.get("status", "active") == "complete"
+    return player_quest is not None and player_quest.get("status", "active") == "completed"
 
 
 async def check_skill_tier(player_id: str, skill_requirement: str, *, conn=None, queries_mod=db_queries) -> bool:

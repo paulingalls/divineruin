@@ -166,6 +166,7 @@ interface HudState {
   setStatusEffects: (effects: StatusEffect[]) => void;
 
   setActiveObjective: (objective: ActiveObjective) => void;
+  clearActiveObjective: () => void;
   setQuestObjectiveVisible: (visible: boolean) => void;
 
   setCombatState: (state: CombatTrackerState) => void;
@@ -258,6 +259,8 @@ export const hudStore = createStore<HudState>((set, get) => ({
 
   setActiveObjective: (objective) =>
     set({ activeObjective: objective, questObjectiveVisible: true }),
+
+  clearActiveObjective: () => set({ activeObjective: null, questObjectiveVisible: false }),
 
   setQuestObjectiveVisible: (visible) => set({ questObjectiveVisible: visible }),
 
