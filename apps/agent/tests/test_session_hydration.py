@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock
 import racial_resonance
 import session_hydration
 from session_data import SessionData
+from veil_ward import WardScope
 
 
 def _mods(*, current=0, persisted_bonus=0, active=False, source=None, spell_id=None, count=1):
@@ -23,7 +24,10 @@ def _mods(*, current=0, persisted_bonus=0, active=False, source=None, spell_id=N
     )
     res_mod.update_player_flickering_bonus = AsyncMock()
     ward_mod = MagicMock()
-    ward_mod.read_player_veil_ward = AsyncMock(return_value={"active": active, "source": source})
+    # Scope-keyed read (story-003): a live ward row, or None when the scope is unwarded.
+    ward_mod.read_active_ward = AsyncMock(
+        return_value={"source": source, "expires_at": None, "dismissible": True} if active else None
+    )
     conc_mod = MagicMock()
     conc_mod.read_player_concentration = AsyncMock(return_value={"spell_id": spell_id})
     ps_mod = MagicMock()
@@ -45,6 +49,21 @@ async def _hydrate(session, player, mods):
 
 
 class TestHydrateSessionState:
+    async def test_hydrates_the_ward_from_the_session_location_scope(self):
+        # story-003: the ward is read from the LOCATION scope, never from the player row.
+        session = SessionData(player_id="p1", location_id="thornwatch_keep")
+        mods = _mods(active=True, source="cleric")
+        await _hydrate(session, {"race": "human"}, mods)
+        _res, ward_mod, _conc, _ps = mods
+        scope = ward_mod.read_active_ward.call_args.args[0]
+        assert scope == WardScope.location("thornwatch_keep")
+
+    async def test_unwarded_scope_hydrates_to_no_ward(self):
+        session = SessionData(player_id="p1", location_id="loc")
+        await _hydrate(session, {"race": "human"}, _mods(active=False))
+        assert session.veil_ward.active is False
+        assert session.veil_ward.source is None
+
     async def test_rehydrates_all_three_persisted_states_not_defaults(self):
         # AC1: the SessionData reflects the persisted current/active/spell_id, not the defaults.
         session = SessionData(player_id="p1", location_id="loc")

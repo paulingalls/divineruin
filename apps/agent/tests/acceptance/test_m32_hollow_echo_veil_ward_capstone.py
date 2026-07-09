@@ -28,6 +28,10 @@ import db_queries
 import resonance
 import spells
 from spell_casting import _cast_spell_impl
+from veil_ward import WardScope
+
+# The location make_context seeds onto SessionData — the scope the ward is raised over (M24).
+_WARD_LOCATION = "accord_guild_hall"
 
 # arcane_fireball: focus_cost 5, resonance_by_source.arcane 3. Under per-round (cast-paced)
 # decay (story-010) each post-first cast nets +2 (3 generated - 1 base decay), so the bands
@@ -87,9 +91,11 @@ async def test_active_veil_ward_halves_resonance_generation(reset_db_pool: str) 
     pool = await db.get_pool()
     player_id = "cap_m32_warded"
     await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
-    # Raise the ward the way activate_veil_ward (story-003) leaves the world: persisted in
-    # players.data AND reflected on the in-memory session the cast path reads.
-    await db_mutations_veil_ward.update_player_veil_ward(player_id, True, "mage", conn=pool)
+    # Raise the ward the way activate_veil_ward leaves the world after the M24 story-003
+    # cut-over: persisted on the LOCATION SCOPE (not the player row) AND reflected on the
+    # in-memory session the cast path reads.
+    scope = WardScope.location(_WARD_LOCATION)
+    await db_mutations_veil_ward.write_ward(scope, "mage", None, dismissible=True, conn=pool)
     await spells.load_spells()
 
     spell = spells.get_spell(_SPELL_ID)
@@ -109,4 +115,5 @@ async def test_active_veil_ward_halves_resonance_generation(reset_db_pool: str) 
     # The halved value (1), not the unwarded baseline (3), is what persisted.
     persisted = await db_mutations_resonance.read_player_resonance(player_id, conn=pool)
     assert persisted["current"] == base // 2
-    assert (await db_mutations_veil_ward.read_player_veil_ward(player_id, conn=pool))["active"] is True
+    # The ward is still up — and it lives on the scope, not on the caster's row.
+    assert await db_mutations_veil_ward.read_active_ward(scope, conn=pool) is not None

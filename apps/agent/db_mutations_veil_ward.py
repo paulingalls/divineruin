@@ -104,20 +104,25 @@ async def dismiss_ward(
     scope: WardScope,
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
-) -> None:
-    """Dismiss every dismissible ward over ``scope``, sparing the permanent ones.
+) -> int:
+    """Dismiss every dismissible ward over ``scope``, sparing the permanent ones. Returns the count.
 
     The ward is scope-owned, so it is not the raiser's to hold exclusively — any in-scope
     member may dismiss it, for free (§5). Non-dismissible wards (Sacred sites, the large Veil
     Anchor) survive: their lifecycle belongs to crafting and to Phase 11.
+
+    The count is what lets the caller tell "dismissed a ward" from "there was nothing to
+    dismiss" — a scope covered only by a permanent ward deletes zero rows, and the tool must
+    refuse rather than silently report success.
     """
     _require_location(scope)
     _conn = conn or await db.get_pool()
-    await _conn.execute(
-        "DELETE FROM veil_wards WHERE scope_kind = $1 AND scope_id = $2 AND dismissible",
+    deleted = await _conn.fetch(
+        "DELETE FROM veil_wards WHERE scope_kind = $1 AND scope_id = $2 AND dismissible RETURNING ward_id",
         scope.kind.value,
         scope.id,
     )
+    return len(deleted)
 
 
 async def read_player_veil_ward(

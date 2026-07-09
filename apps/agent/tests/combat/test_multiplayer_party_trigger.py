@@ -60,7 +60,7 @@ def _join_mods(row):
     res_mod = MagicMock()
     res_mod.read_player_resonance = AsyncMock(return_value={"current": 6, "flickering_bonus": 1, "state": "flickering"})
     ward_mod = MagicMock()
-    ward_mod.read_player_veil_ward = AsyncMock(return_value={"active": True, "source": "arch_x"})
+    ward_mod.read_active_ward = AsyncMock(return_value={"source": "arch_x", "expires_at": None, "dismissible": True})
     conc_mod = MagicMock()
     conc_mod.read_player_concentration = AsyncMock(return_value={"spell_id": "spell_y"})
     return queries, res_mod, ward_mod, conc_mod

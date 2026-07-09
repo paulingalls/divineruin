@@ -93,16 +93,28 @@ class TestReadActiveWard:
 class TestDismissWard:
     async def test_deletes_only_dismissible_wards_in_scope(self):
         conn = AsyncMock()
+        conn.fetch.return_value = [{"ward_id": "w1"}]
         await db_mutations_veil_ward.dismiss_ward(_LOCATION, conn=conn)
-        sql, *params = conn.execute.call_args.args
+        sql, *params = conn.fetch.call_args.args
         assert "DELETE FROM veil_wards" in sql
         assert "scope_kind = $1" in sql and "scope_id = $2" in sql
         # A permanent Sacred site / large anchor is NOT the party's to dispel (§4, §5).
         assert "dismissible" in sql
         assert params == ["location", "thornwatch_keep"]
 
+    async def test_returns_the_number_of_wards_dismissed(self):
+        conn = AsyncMock()
+        conn.fetch.return_value = [{"ward_id": "w1"}, {"ward_id": "w2"}]
+        assert await db_mutations_veil_ward.dismiss_ward(_LOCATION, conn=conn) == 2
+
+    async def test_returns_zero_when_nothing_dismissible_covers_the_scope(self):
+        """A scope held only by a permanent ward. The caller must be able to refuse, not no-op."""
+        conn = AsyncMock()
+        conn.fetch.return_value = []
+        assert await db_mutations_veil_ward.dismiss_ward(_LOCATION, conn=conn) == 0
+
     async def test_fails_loud_on_encounter_scope(self):
         conn = AsyncMock()
         with pytest.raises(ValueError, match="CombatState"):
             await db_mutations_veil_ward.dismiss_ward(_ENCOUNTER, conn=conn)
-        conn.execute.assert_not_awaited()
+        conn.fetch.assert_not_awaited()

@@ -1,17 +1,16 @@
-"""Capstone: M3.2 Veil Ward persistence end-to-end against a real Postgres testcontainer.
+"""Capstone: M24 scope-owned Veil Ward persistence against a real Postgres testcontainer.
 
-story-002 covered the ward state layer with mock-conn / pure-unit tests; this proves the
-players.data JSONB round-trip on real PG (AC4), catching JSONB seam breaks the mocked unit
-tests can't. Auto-marked `acceptance` by tests/acceptance/conftest.py. Distinct from the
-M3.2 cast-path capstone (story-006), which proves the cast -> echo -> halving composition;
-this proves bare ward read/write.
+story-003 moved the ward off the per-player row onto the scope. This proves the property
+that move exists to deliver, and that the mocked unit tests structurally cannot: two players
+in one scope are backed by ONE ward row, and neither player row carries ward state (AC4).
 
-seed_player inserts a player whose data has NO `veil_ward` key — so the first read
-exercises the create-safe default, and the first update exercises the 1-level jsonb_set
-that creates the key. This is the create seam migration 045's backfill was designed to make
-safe; the backfill UPDATE itself is not exercised here (seed_player runs after migrations,
-so the row is never backfilled). Each test uses a distinct player_id since the testcontainer
-DB is shared across the session.
+Distinct from tests/test_db_mutations_veil_ward_db.py, which is the fast-lane single-table
+round-trip of the accessors themselves. This file is the multi-player, post-migration proof:
+it seeds real players through the same seed path production uses, and asserts the absence of
+the legacy players.data.veil_ward key that migration 057 removed.
+
+Auto-marked `acceptance` by tests/acceptance/conftest.py. Each test uses a distinct scope id
+since the testcontainer DB is shared across the session.
 """
 
 from __future__ import annotations
@@ -20,42 +19,54 @@ from acceptance.seeds import seed_player
 
 import db
 import db_mutations_veil_ward
+from veil_ward import WardScope
 
 
-async def test_veil_ward_persistence_roundtrip_real_db(reset_db_pool: str) -> None:
-    """Write/read/dismiss a Veil Ward on real PG; the {veil_ward} JSONB key round-trips."""
+async def test_one_row_backs_every_player_in_the_scope(reset_db_pool: str) -> None:
+    """AC4: a ward written once for a scope covers both players, and no player row holds ward state."""
     pool = await db.get_pool()
-    player_id = "cap_ward_roundtrip"
-    await seed_player(pool, player_id=player_id)
+    scope = WardScope.location("cap_ward_shared_hall")
+    await seed_player(pool, player_id="cap_ward_p1")
+    await seed_player(pool, player_id="cap_ward_p2")
 
-    # First read with no veil_ward key -> create-safe default (inactive).
-    initial = await db_mutations_veil_ward.read_player_veil_ward(player_id, conn=pool)
-    assert initial == {"active": False, "source": None}
+    # The scope starts unwarded: no ward at all, not a default-inactive placeholder.
+    assert await db_mutations_veil_ward.read_active_ward(scope, conn=pool) is None
 
-    # Activate (first update creates the key via the 1-level jsonb_set).
-    await db_mutations_veil_ward.update_player_veil_ward(player_id, True, "cleric", conn=pool)
-    assert await db_mutations_veil_ward.read_player_veil_ward(player_id, conn=pool) == {
-        "active": True,
-        "source": "cleric",
-    }
+    await db_mutations_veil_ward.write_ward(scope, "cleric", None, dismissible=True, conn=pool)
 
-    # Dismiss -> inactive, source cleared.
-    await db_mutations_veil_ward.update_player_veil_ward(player_id, False, None, conn=pool)
-    assert await db_mutations_veil_ward.read_player_veil_ward(player_id, conn=pool) == {
-        "active": False,
-        "source": None,
-    }
+    # ONE row backs the scope...
+    assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", scope.id) == 1
+    # ...and every caster in it resolves the same ward, keyed by nothing player-specific.
+    ward = await db_mutations_veil_ward.read_active_ward(scope, conn=pool)
+    assert ward is not None and ward["source"] == "cleric"
+
+    # Neither player row carries ward state — migration 057 removed the key and nothing rewrites it.
+    for player_id in ("cap_ward_p1", "cap_ward_p2"):
+        assert await pool.fetchval("SELECT data ? 'veil_ward' FROM players WHERE player_id = $1", player_id) is False, (
+            f"{player_id} still carries the legacy players.data.veil_ward key"
+        )
 
 
-async def test_veil_ward_source_survives_roundtrip_per_archetype(reset_db_pool: str) -> None:
-    """Each ward source archetype id round-trips through the JSONB column unchanged."""
+async def test_scope_ward_round_trips_and_dismisses_for_the_whole_scope(reset_db_pool: str) -> None:
+    """Raise then dismiss: the ward clears for every caster at once, because it was never theirs."""
     pool = await db.get_pool()
-    player_id = "cap_ward_sources"
-    await seed_player(pool, player_id=player_id)
+    scope = WardScope.location("cap_ward_dismiss_hall")
+    await seed_player(pool, player_id="cap_ward_p3")
 
+    await db_mutations_veil_ward.write_ward(scope, "druid", None, dismissible=True, conn=pool)
+    raised = await db_mutations_veil_ward.read_active_ward(scope, conn=pool)
+    assert raised is not None and raised["source"] == "druid"
+
+    deleted = await db_mutations_veil_ward.dismiss_ward(scope, conn=pool)
+    assert deleted == 1
+    assert await db_mutations_veil_ward.read_active_ward(scope, conn=pool) is None
+
+
+async def test_each_ward_source_round_trips_unchanged(reset_db_pool: str) -> None:
+    """Each ward source id survives the round trip; scopes are independent of one another."""
+    pool = await db.get_pool()
     for source in ("cleric", "druid", "paladin"):
-        await db_mutations_veil_ward.update_player_veil_ward(player_id, True, source, conn=pool)
-        assert await db_mutations_veil_ward.read_player_veil_ward(player_id, conn=pool) == {
-            "active": True,
-            "source": source,
-        }
+        scope = WardScope.location(f"cap_ward_src_{source}")
+        await db_mutations_veil_ward.write_ward(scope, source, None, dismissible=True, conn=pool)
+        ward = await db_mutations_veil_ward.read_active_ward(scope, conn=pool)
+        assert ward is not None and ward["source"] == source
