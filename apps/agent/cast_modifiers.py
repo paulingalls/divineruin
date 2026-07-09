@@ -31,7 +31,12 @@ race+source alone — terrain gating is deferred, not modelled here.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from spells import Spell
+
+if TYPE_CHECKING:
+    from hollow_echo import HollowEchoResult
 
 # Default terrain for resonance generation. Only consulted for PRIMAL non-cantrips
 # (see module docstring); a real location->terrain map is M3.4 work.
@@ -118,7 +123,7 @@ def resolve_overreach_echo(
     hollow_echo,
     veil_ward,
     racial_mod,
-) -> tuple:
+) -> tuple[HollowEchoResult, bool]:
     """Roll and resolve the Overreach Hollow Echo. Returns ``(echo, vaelti_warned)``.
 
     At Overreach the Veil tears: auto-roll a d20 (spec magic.md:167-185). An active ward adds +4 to
