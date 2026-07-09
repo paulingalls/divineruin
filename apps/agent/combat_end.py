@@ -397,10 +397,14 @@ async def _end_combat_db(
     # Faction reputation from the combat OUTCOME (story-002 inc 5/6): killing an encounter
     # faction's members (victory) lowers standing; talking them down (deescalated) raises it.
     # Keyed on cs.faction_id (set at combat_init from the stance gate); one aggregate shift per
-    # fight, atomic with the end tx. `enemies` gates out a factionless/enemyless end. Homed here
-    # rather than in combat_deescalation because the outcome-driven write belongs with the end
-    # transaction (player_id + faction_id + conn all in scope), not mid-combat.
-    if cs.faction_id and outcome in ("victory", "deescalated") and enemies:
+    # fight, atomic with the end tx. The KILL penalty only applies when the battlefield is
+    # actually cleared (combat_cleared = all enemies fallen) — a DM-declared 'victory' with
+    # faction enemies still standing must NOT dock killed_faction_member for kills that didn't
+    # happen. De-escalation is a talk-down, so it gates on non-empty enemies, not on kills.
+    # Homed here rather than in combat_deescalation because the outcome-driven write belongs with
+    # the end transaction (player_id + faction_id + conn all in scope), not mid-combat.
+    faction_outcome_applies = combat_cleared if outcome == "victory" else (outcome == "deescalated" and bool(enemies))
+    if cs.faction_id and faction_outcome_applies:
         rep_event = "deescalated_faction" if outcome == "deescalated" else "killed_faction_member"
         await reputation_mutations.adjust_player_faction_reputation(
             session.player_id,

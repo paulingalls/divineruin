@@ -224,6 +224,14 @@ async def test_stage_beyond_completion_rejected():
 # the writer, the faction-scoped analogue of the "<npc>_disposition +N" shorthand.
 
 
+def _faction_content(exists=True):
+    """A content mock whose get_faction resolves (or not) a faction — mirrors the DM tool's
+    existence guard so the world_effect path never writes a phantom-faction row."""
+    content = MagicMock()
+    content.get_faction = AsyncMock(return_value={"id": "accord_guild"} if exists else None)
+    return content
+
+
 @pytest.mark.asyncio
 async def test_reputation_world_effect_applies_via_writer():
     from quest_tools import _apply_world_effects
@@ -237,6 +245,7 @@ async def test_reputation_world_effect_applies_via_writer():
         [],
         conn=None,
         reputation_mutations=rm,
+        content=_faction_content(),
     )
     # completed_faction_quest -> +5; faction_id parsed off the "_reputation" suffix; the
     # stage-transaction conn is threaded through to the writer.
@@ -256,7 +265,28 @@ async def test_reputation_world_effect_unknown_event_skips():
     session = make_context().userdata
     rm = MagicMock()
     rm.adjust_player_faction_reputation = AsyncMock()
-    await _apply_world_effects(["accord_guild_reputation bogus_event"], session, [], reputation_mutations=rm)
+    await _apply_world_effects(
+        ["accord_guild_reputation bogus_event"], session, [], reputation_mutations=rm, content=_faction_content()
+    )
+    rm.adjust_player_faction_reputation.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reputation_world_effect_unknown_faction_skips():
+    # A mistyped faction id in authored on_complete content must NOT write a phantom-faction
+    # reputation row — the writer is never called, mirroring the DM tool's fail-on-unknown guard.
+    from quest_tools import _apply_world_effects
+
+    session = make_context().userdata
+    rm = MagicMock()
+    rm.adjust_player_faction_reputation = AsyncMock()
+    await _apply_world_effects(
+        ["phantom_faction_reputation completed_faction_quest"],
+        session,
+        [],
+        reputation_mutations=rm,
+        content=_faction_content(exists=False),
+    )
     rm.adjust_player_faction_reputation.assert_not_awaited()
 
 

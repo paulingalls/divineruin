@@ -344,22 +344,34 @@ export function handleGameEvent(event: DataChannelEvent): void {
     case E.QUEST_UPDATE:
     case E.QUEST_UPDATED: {
       const questHud = hudStore.getState();
+      // Completion transition: the server sends completed:true (not a `status` field) with an
+      // empty objective. Show a "completed" overlay, drop the tracked HUD objective (never blank
+      // it via setActiveObjective("")), and mark the quest done in the panel so it moves to the
+      // COMPLETED section instead of lingering as an active quest with no objective.
+      const isCompleted = event.completed === true;
       questHud.pushOverlay("quest_update", {
         questName: event.quest_name,
         objective: event.objective,
-        status: event.status,
+        status: isCompleted ? "completed" : event.status,
         stageName: event.stage_name,
       });
-      if (typeof event.quest_name === "string" && typeof event.objective === "string") {
-        questHud.setActiveObjective({
-          questName: event.quest_name,
-          objective: event.objective,
-          updatedAt: Date.now(),
-        });
-      }
-      // Advance the quest in the panel store so the map target updates
-      if (typeof event.quest_id === "string" && typeof event.new_stage === "number") {
-        panelStore.getState().advanceQuest(event.quest_id, event.new_stage);
+      if (isCompleted) {
+        questHud.clearActiveObjective();
+        if (typeof event.quest_id === "string") {
+          panelStore.getState().completeQuest(event.quest_id);
+        }
+      } else {
+        if (typeof event.quest_name === "string" && typeof event.objective === "string") {
+          questHud.setActiveObjective({
+            questName: event.quest_name,
+            objective: event.objective,
+            updatedAt: Date.now(),
+          });
+        }
+        // Advance the quest in the panel store so the map target updates
+        if (typeof event.quest_id === "string" && typeof event.new_stage === "number") {
+          panelStore.getState().advanceQuest(event.quest_id, event.new_stage);
+        }
       }
       playSfx("quest_sting");
       break;

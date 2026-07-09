@@ -68,6 +68,14 @@ async def _apply_world_effects(
         m = _EFFECT_REPUTATION_RE.match(effect_str)
         if m:
             faction_id, event_type = m.group(1), m.group(2)
+            faction = await content.get_faction(faction_id)
+            if faction is None:
+                # Mirror the DM tool adjust_faction_reputation's fail-on-unknown-faction guard.
+                # A mistyped faction id in authored on_complete content would otherwise silently
+                # write a phantom-faction player_reputation row the real faction never sees.
+                # Warn and skip (a content-authoring error) rather than crash the stage tx.
+                logger.warning("Unknown faction in reputation world effect: %s", effect_str)
+                continue
             try:
                 delta = reputation_shift(event_type)
             except ValueError:
@@ -123,7 +131,13 @@ async def update_quest(
 ) -> str:
     """Advance a quest to a new stage. For starting a quest, use stage 0.
     Stages must advance forward — no skipping or going backward.
-    Rewards from the completing stage are automatically applied."""
+    Rewards from the completing stage are automatically applied.
+
+    To COMPLETE a quest, advance it one past its last stage: pass new_stage_id equal to
+    the number of stages (e.g. a 3-stage quest completes at new_stage_id=3). This final
+    call fires the last stage's on_complete rewards and world effects (XP, items, faction
+    reputation) and marks the quest finished — so always issue it when the player wraps up
+    the last objective, or those final rewards never apply."""
     return await _update_quest_impl(context, quest_id, new_stage_id)
 
 

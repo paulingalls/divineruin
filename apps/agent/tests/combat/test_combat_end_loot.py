@@ -314,3 +314,22 @@ async def test_deescalation_raises_faction_reputation(dev_db_pool):
         assert args[1] == "thornwatch" and args[2] == 3  # deescalated_faction -> +3
     finally:
         await _cleanup(pool)
+
+
+@pytest.mark.asyncio
+async def test_victory_with_enemies_still_standing_docks_no_reputation(dev_db_pool):
+    # A DM-declared 'victory' where a faction enemy is still on its feet (not all fallen) must
+    # NOT dock killed_faction_member — no kill happened. Gates on combat_cleared (all fallen),
+    # not on a merely non-empty enemy list.
+    pool = dev_db_pool
+    await _seed_player(pool, gold=0)
+    try:
+        cs = _faction_victory_state("thornwatch")
+        cs.participants[1].is_fallen = False  # enemy still standing on a declared victory
+        cs.participants[1].hp_current = 5
+        rep = MagicMock()
+        rep.adjust_player_faction_reputation = AsyncMock()
+        await _run_end(cs, rep, outcome="victory")
+        rep.adjust_player_faction_reputation.assert_not_awaited()
+    finally:
+        await _cleanup(pool)

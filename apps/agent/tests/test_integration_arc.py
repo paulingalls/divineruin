@@ -148,6 +148,7 @@ class TestQuestArcProgression:
         mock_mutations.set_npc_disposition = AsyncMock()
         mock_content = MagicMock()
         mock_content.get_npc = AsyncMock(return_value={"default_disposition": "neutral"})
+        mock_content.get_faction = AsyncMock(return_value={"id": "accord_guild"})
         mock_reputation = MagicMock()
         mock_reputation.adjust_player_faction_reputation = AsyncMock(return_value=5)
 
