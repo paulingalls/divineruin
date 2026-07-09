@@ -70,6 +70,7 @@ import resonance_events
 import spells
 import vaelti_echo_warning
 import veil_ward as veil_ward_mod
+import ward_resolution
 from db_errors import db_tool
 from game_events import publish_game_event
 from party_state import PartyMember
@@ -191,6 +192,7 @@ async def _cast_spell_impl(
     resonance=resonance_mod,
     leveling_mod=leveling,
     veil_ward=veil_ward_mod,
+    ward_resolution_mod=ward_resolution,
     hollow_echo=hollow_echo_mod,
     dice_mod=dice,
     echo_events_mod=hollow_echo_events,
@@ -226,6 +228,7 @@ async def _cast_spell_impl(
             resonance=resonance,
             leveling_mod=leveling_mod,
             veil_ward=veil_ward,
+            ward_resolution_mod=ward_resolution_mod,
             hollow_echo=hollow_echo,
             dice_mod=dice_mod,
             echo_events_mod=echo_events_mod,
@@ -266,6 +269,7 @@ async def _resolve_cast(
     resonance=resonance_mod,
     leveling_mod=leveling,
     veil_ward=veil_ward_mod,
+    ward_resolution_mod=ward_resolution,
     hollow_echo=hollow_echo_mod,
     dice_mod=dice,
     echo_events_mod=hollow_echo_events,
@@ -289,8 +293,9 @@ async def _resolve_cast(
     cast reads and writes — defaulting to ``session.party.primary`` so the OOC path (which passes none)
     stays byte-identical to single-player. In multi-player combat the phase loop passes the declaring
     member, so a non-primary caster's Focus/Resonance/concentration land on THAT member, never the
-    primary's (M14 story-004). ``session.resonance``/``session.veil_ward``/``session.concentration``
-    delegate to the primary, so for a solo party ``caster`` == the primary is the same objects.
+    primary's (M14 story-004). ``session.resonance``/``session.concentration`` delegate to the primary,
+    so for a solo party ``caster`` == the primary is the same objects. The ward does NOT: it is
+    scope-owned, resolved from the DB per cast (ward_resolution.resolve_scope_ward).
 
     ``player`` lets the caller pass a pre-fetched for-update row (the phase path locks it once for
     Focus pre-validation); when ``None`` the cast fetches it. ``suppress_resonance_changed`` omits the
@@ -386,10 +391,10 @@ async def _resolve_cast(
         reduction = racial_mod.get_racial_resonance_modifier("korath", "primal_reduction")
         generated = resonance.apply_primal_reduction(generated, reduction)
 
-    # An active Veil Ward halves the Resonance the cast generates (round down, spec magic.md:197) —
-    # so a warded caster reaches Overreach (and Hollow Echoes) less often. Focus cost is NOT halved
-    # (the ward dampens generation, not the spell's cost).
-    ward_active = caster.veil_ward.active
+    # An active Veil Ward halves generated Resonance (round down, spec magic.md:197); Focus cost is
+    # not halved. Resolved from the DB, never the in-memory mirror — expiry is lazy, so a lapsed or
+    # walked-away-from ward would otherwise halve casts forever.
+    ward_active = await ward_resolution_mod.resolve_scope_ward(session, conn=conn) is not None
     if ward_active and generated > 0:
         generated = veil_ward.halve_generation(generated)
 

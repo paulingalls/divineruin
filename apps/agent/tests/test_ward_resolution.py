@@ -20,6 +20,13 @@ import ward_resolution
 from session_data import CombatState, SessionData
 from veil_ward import WardScope
 
+
+@pytest.fixture(autouse=True)
+def default_unwarded_scope():
+    """Shadow the global autouse stub — this suite tests the resolver itself."""
+    yield
+
+
 _LOCATION_WARD = {"source": "cleric", "expires_at": None, "dismissible": True}
 _ENCOUNTER_WARD = {"source": "paladin", "rounds_remaining": 3}
 
