@@ -9,10 +9,11 @@ social_resolution.disposition_shift (LLM/engine decides *which* event fired; the
 DB-loaded content — same closed-table discipline as veil_ward.WARD_SOURCES and
 social_resolution.DISPOSITION_SHIFT.
 
-The DM tool (reputation_tools), the quest-completion trigger (quest_tools), the combat
-kill trigger (combat_end), and the de-escalation trigger (combat_deescalation) all route
-their magnitude through reputation_shift, so the event->delta contract lives in exactly one
-place. The db_mutations_reputation writer applies the returned delta to the stored value.
+The DM tool (reputation_tools), the quest-completion trigger (quest_tools), and the combat
+kill + de-escalation triggers (both in combat_end, gated on the victory/deescalated outcome
+for write atomicity) all route their magnitude through reputation_shift, so the event->delta
+contract lives in exactly one place. The db_mutations_reputation writer applies the returned
+delta to the stored value.
 """
 
 # Named reputation event -> fixed delta. Gains are small and positive, penalties negative;
