@@ -339,15 +339,20 @@ async def _cast_echo(
     start_resonance: int = 0,
     ward_active: bool = False,
     d20: int = 10,
+    combat_state: CombatState | None = None,
 ):
     """Invoke _cast_spell_impl with the M3.2 echo/ward mods injected.
 
     veil_ward + hollow_echo run REAL (pure); dice_mod is fixed for a deterministic roll and
     echo_events is mocked to assert the publish without touching game_events.
     Returns (parsed_packet, ctx, echo_events_mock).
+
+    Pass combat_state to resolve the ward through the REAL resolver off that scope; the
+    ward_active shortcut injects a stub resolver instead and never reaches it.
     """
     ctx = make_context()
     ctx.userdata.resonance.current = start_resonance
+    ctx.userdata.combat_state = combat_state
     # M24: the cast path resolves the ward from the DB, not from any per-caster flag. Inject the
     # resolver so the test states plainly whether a scope ward covers this cast.
     ward_res = MagicMock()
@@ -380,7 +385,8 @@ async def _cast_echo(
         spells_mod=spells_mod,
         dice_mod=_dice_mod(d20),
         echo_events_mod=echo_events,
-        ward_resolution_mod=ward_res,
+        # A combat_state test wants the real resolver to read it; injecting a stub would mask it.
+        **({} if combat_state is not None else {"ward_resolution_mod": ward_res}),
     )
     return json.loads(raw), ctx, echo_events
 
@@ -462,6 +468,42 @@ class TestCastSpellWardThroughRealResolver:
         packet, _ctx, _p, _m, _e = await _cast(_spell(resonance=6), combat_state=combat)
         assert packet["ward_active"] is False
         assert packet["resonance_generated"] == 6
+
+    async def test_ward_raised_by_another_member_halves_this_casters_generation(self):
+        # AC1: the ward is scope-owned. A Paladin raised it; the caster here is a mage
+        # (_player class="mage") and is halved anyway. Nothing keys off who raised it.
+        combat = self._warded_combat()
+        combat.veil_ward = {"source": "paladin", "rounds_remaining": 3}
+        packet, _ctx, _p, _m, _e = await _cast(_spell(resonance=6), combat_state=combat)
+        assert packet["ward_active"] is True
+        assert packet["resonance_generated"] == 3
+
+    async def test_ward_raised_by_another_member_applies_die_and_dc_penalty(self):
+        # AC1: -1 damage die and -1 DC likewise apply per-caster-in-scope, not to the raiser.
+        combat = self._warded_combat()
+        combat.veil_ward = {"source": "paladin", "rounds_remaining": 3}
+        packet, _ctx, _p, _m, _e = await _cast(_spell(resonance=6), combat_state=combat)
+        assert packet["resonance_modifiers"] == {"damage_dice": -1, "dc": -1}
+
+    async def test_overreach_echo_takes_ward_bonus_regardless_of_raiser(self):
+        # AC3: resonance=18 halved to 9 -> still Overreach. The Paladin's ward lends this mage
+        # the +4: d20=12 -> 16 -> "whisper". Without the bonus 12 alone would band "veil_scar".
+        combat = self._warded_combat()
+        combat.veil_ward = {"source": "paladin", "rounds_remaining": 3}
+        packet, _ctx, echo_events = await _cast_echo(_spell(resonance=18), d20=12, combat_state=combat)
+        assert packet["state"] == "overreach"
+        assert packet["hollow_echo"]["band"] == "whisper"
+        echo_events.publish_hollow_echo.assert_awaited_once()
+
+    async def test_overreach_echo_without_ward_bands_harsher(self):
+        # Isolates the +4. Both casts resolve their echo against effective_resonance 9 (warded:
+        # 18 halved; unwarded: 9 outright), so the high-Resonance modifier is 0 on both sides and
+        # the die is 12 on both sides. Only the ward bonus differs: 16 -> whisper vs 12 -> veil_scar.
+        combat = self._warded_combat()
+        combat.veil_ward = None
+        packet, _ctx, _echo = await _cast_echo(_spell(resonance=9), d20=12, combat_state=combat)
+        assert packet["state"] == "overreach"
+        assert packet["hollow_echo"]["band"] == "veil_scar"
 
 
 class TestCastSpellWard:
