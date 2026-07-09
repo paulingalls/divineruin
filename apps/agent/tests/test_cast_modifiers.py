@@ -12,6 +12,7 @@ what lives here is what the cast does with the answer.
 import pytest
 
 import cast_modifiers
+import hollow_echo
 import racial_resonance as racial_mod
 import resonance
 import veil_ward
@@ -118,3 +119,87 @@ class TestApplyWardHalving:
         # Guards the generated > 0 gate: halve_generation(0) is 0 anyway, but the guard is
         # what keeps a cantrip out of the write/publish paths, so it must survive extraction.
         assert cast_modifiers.apply_ward_halving(0, True, veil_ward=veil_ward) == 0
+
+
+class TestWardCombatModifiers:
+    def _mods(self, state, ward_active):
+        return cast_modifiers.ward_combat_modifiers(state, ward_active, resonance=resonance, veil_ward=veil_ward)
+
+    def test_unwarded_returns_the_states_own_modifiers(self):
+        assert self._mods("stable", False) == {"damage_dice": 0, "dc": 0}
+
+    def test_active_ward_folds_in_the_die_and_dc_penalty(self):
+        assert self._mods("stable", True) == {"damage_dice": -1, "dc": -1}
+
+    def test_ward_penalty_stacks_onto_a_nonzero_state(self):
+        base = resonance.get_state_modifiers("overreach")
+        got = self._mods("overreach", True)
+        assert got["damage_dice"] == base["damage_dice"] - 1
+        assert got["dc"] == base["dc"] - 1
+
+    def test_never_mutates_the_shared_state_modifier_table(self):
+        # get_state_modifiers hands back a fresh dict; two warded calls must not compound.
+        first = self._mods("stable", True)
+        second = self._mods("stable", True)
+        assert first == second == {"damage_dice": -1, "dc": -1}
+        assert resonance.get_state_modifiers("stable") == {"damage_dice": 0, "dc": 0}
+
+
+class _FixedDice:
+    """dice_mod stub returning a scripted sequence of d20 totals, in call order."""
+
+    def __init__(self, *totals):
+        self._totals = list(totals)
+        self.rolls = []
+
+    def roll(self, expr):
+        total = self._totals.pop(0)
+        self.rolls.append(expr)
+        return type("Roll", (), {"total": total})()
+
+
+class TestResolveOverreachEcho:
+    def _resolve(self, dice, *, race=None, ward_active=False, effective_resonance=9):
+        return cast_modifiers.resolve_overreach_echo(
+            effective_resonance,
+            race,
+            ward_active,
+            dice_mod=dice,
+            hollow_echo=hollow_echo,
+            veil_ward=veil_ward,
+            racial_mod=racial_mod,
+        )
+
+    def test_unwarded_echo_bands_on_the_bare_roll(self):
+        echo, warned = self._resolve(_FixedDice(12))
+        assert echo.band == "veil_scar"
+        assert warned is False
+
+    def test_active_ward_adds_four_and_softens_the_band(self):
+        # Same roll, same resonance: only the +4 moves 12 -> 16, veil_scar -> whisper.
+        echo, warned = self._resolve(_FixedDice(12), ward_active=True)
+        assert echo.band == "whisper"
+        assert warned is False
+
+    def test_vaelti_rolls_a_second_d20_and_takes_the_better(self):
+        dice = _FixedDice(3, 15)
+        echo, warned = self._resolve(dice, race="vaelti")
+        assert echo.effective_roll == 15  # advantage took the higher of 3 and 15
+        assert warned is True
+        assert dice.rolls == ["d20", "d20"]  # base roll FIRST, then the advantage roll
+
+    def test_non_vaelti_rolls_exactly_once_and_never_warns(self):
+        dice = _FixedDice(12)
+        _echo, warned = self._resolve(dice, race="korath")
+        assert warned is False
+        assert dice.rolls == ["d20"]
+
+    def test_race_none_rolls_exactly_once(self):
+        dice = _FixedDice(12)
+        _echo, warned = self._resolve(dice, race=None)
+        assert warned is False
+        assert dice.rolls == ["d20"]
+
+    def test_below_overreach_fails_loud(self):
+        with pytest.raises(ValueError):
+            self._resolve(_FixedDice(12), effective_resonance=8)

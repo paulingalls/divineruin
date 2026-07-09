@@ -23,23 +23,10 @@ echo/ward mods veil_ward/hollow_echo/dice_mod/echo_events_mod, plus the M3.4 rac
 concentration_mutations_mod) for test mocking, a single db.transaction() block, and
 ToolError for every user-facing failure.
 
-M3.4 racial Resonance (story-006): the cast reads the caster's race (players.data) and
-composes three prior pure primitives — Korath -1 primal generation
-(resonance.apply_primal_reduction), the Thessyn +1 Flickering threshold
-(get_resonance_state flickering_bonus), and the Vaelti Hollow Echo advantage
-(resolve_hollow_echo advantage_roll) — and sets/ends single-active concentration
-(db_mutations_concentration) on a concentration cast. The engines stay untouched; this is
-pure composition.
-
-Terrain note: every catalog spell (primal included) carries a designed
-resonance_by_source baseline, so casts no longer depend on terrain — a primal
-non-cantrip casts via its catalog baseline. The fallback formula
-(calculate_resonance_generated) only reaches the terrain lookup for an in-code
-primal build that carries no resonance_by_source entry, and since no runtime
-location->terrain map exists yet (terrain defaults to "normal"), that one path
-still fails loud as a ToolError until terrain wiring lands. The same missing
-terrain map means the Korath -1 (spec gates it on earth/stone contact) applies on
-race+source alone — terrain gating is deferred, not modelled here.
+The pure per-cast math — generation, the Korath/Human/Vaelti racial composition, ward
+effects, and the Overreach Hollow Echo — lives in cast_modifiers; see its module docstring.
+This module owns the I/O: the Focus gate, the ward READ, persistence, and the deferred
+client events. A concentration cast sets/ends the single-active slot (db_mutations_concentration).
 """
 
 import inspect
@@ -428,12 +415,8 @@ async def _resolve_cast(
             )
         )
 
-    # An active ward folds its -1 damage die / -1 DC (spec magic.md:199-200) into the net combat
-    # modifiers. get_state_modifiers returns a fresh dict, so this never mutates the shared table.
-    modifiers = resonance.get_state_modifiers(state)
-    if ward_active:
-        modifiers["damage_dice"] += veil_ward.WARD_DAMAGE_DIE_PENALTY
-        modifiers["dc"] += veil_ward.WARD_DC_PENALTY
+    # Net combat modifiers for the state, with an active ward's -1 die / -1 DC folded into a fresh dict.
+    modifiers = cast_modifiers.ward_combat_modifiers(state, ward_active, resonance=resonance, veil_ward=veil_ward)
     packet = {
         "narration_cue": spell.narration_cue,
         "audio_cue": spell.audio_cue,
@@ -447,24 +430,22 @@ async def _resolve_cast(
     # Additive — a self-cast (target_id None) leaves the packet shape untouched.
     if target_id is not None:
         packet["target_id"] = target_id
-    # At Overreach the Veil tears: auto-roll a d20 Hollow Echo (spec magic.md:167-185). An active ward
-    # adds +4 to the roll (milder result). The echo resolves against the LOCAL effective_resonance
-    # (not the unsynced session value).
+    # At Overreach the Veil tears: cast_modifiers rolls the d20 (plus the Vaelti advantage d20) and
+    # resolves the echo with the ward's +4. The packet and the events stay here — they close over
+    # session. The Vaelti warning is a bus-only deferred event the background process voices a
+    # heartbeat before the echo lands (story-009 consumer), and must precede the echo publish.
     if state == "overreach":
-        roll = dice_mod.roll("d20").total
-        # Vaelti Hyper-awareness (spec 246-252): advantage on the Hollow Echo save (a second d20, take
-        # the better -> milder band) AND a 1-round advance warning. The warning is a bus-only deferred
-        # event the background process voices a heartbeat before the echo lands (story-009 consumer).
-        advantage_roll = None
-        if race == "vaelti" and racial_mod.get_racial_resonance_modifier("vaelti", "echo_save_advantage"):
-            advantage_roll = dice_mod.roll("d20").total
-            events.append(lambda: vaelti_warning_mod.publish_vaelti_echo_warning(session))
-        echo = hollow_echo.resolve_hollow_echo(
-            roll,
+        echo, vaelti_warned = cast_modifiers.resolve_overreach_echo(
             effective_resonance,
-            ward_bonus=veil_ward.WARD_ECHO_BONUS if ward_active else 0,
-            advantage_roll=advantage_roll,
+            race,
+            ward_active,
+            dice_mod=dice_mod,
+            hollow_echo=hollow_echo,
+            veil_ward=veil_ward,
+            racial_mod=racial_mod,
         )
+        if vaelti_warned:
+            events.append(lambda: vaelti_warning_mod.publish_vaelti_echo_warning(session))
         packet["hollow_echo"] = {"band": echo.band, "name": echo.name, "effect": echo.effect}
         events.append(lambda: echo_events_mod.publish_hollow_echo(session, echo))
     # Cantrips scale their base damage with character level (story-003); fixed-cost spells carry their

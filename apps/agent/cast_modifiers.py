@@ -94,3 +94,52 @@ def apply_ward_halving(generated: int, ward_active: bool, *, veil_ward) -> int:
     if ward_active and generated > 0:
         return veil_ward.halve_generation(generated)
     return generated
+
+
+def ward_combat_modifiers(state: str, ward_active: bool, *, resonance, veil_ward) -> dict[str, int]:
+    """The state's net combat modifiers, with an active ward's -1 damage die / -1 DC folded in.
+
+    spec magic.md:199-200. ``get_state_modifiers`` returns a fresh dict, so folding the penalty in
+    never mutates the shared modifier table.
+    """
+    modifiers = resonance.get_state_modifiers(state)
+    if ward_active:
+        modifiers["damage_dice"] += veil_ward.WARD_DAMAGE_DIE_PENALTY
+        modifiers["dc"] += veil_ward.WARD_DC_PENALTY
+    return modifiers
+
+
+def resolve_overreach_echo(
+    effective_resonance: int,
+    race: str | None,
+    ward_active: bool,
+    *,
+    dice_mod,
+    hollow_echo,
+    veil_ward,
+    racial_mod,
+) -> tuple:
+    """Roll and resolve the Overreach Hollow Echo. Returns ``(echo, vaelti_warned)``.
+
+    At Overreach the Veil tears: auto-roll a d20 (spec magic.md:167-185). An active ward adds +4 to
+    the roll (a milder result). The echo resolves against the caller's LOCAL ``effective_resonance``,
+    never the unsynced session value.
+
+    Vaelti Hyper-awareness (spec 246-252): advantage on the save — a SECOND d20, take the better, so
+    the base roll is drawn first and the advantage roll second (existing dice mocks feed a sequence
+    and depend on that order). ``vaelti_warned`` is returned rather than published here, because the
+    1-round advance-warning event closes over ``session``, which this pure layer never sees.
+    """
+    roll = dice_mod.roll("d20").total
+    advantage_roll = None
+    vaelti_warned = False
+    if race == "vaelti" and racial_mod.get_racial_resonance_modifier("vaelti", "echo_save_advantage"):
+        advantage_roll = dice_mod.roll("d20").total
+        vaelti_warned = True
+    echo = hollow_echo.resolve_hollow_echo(
+        roll,
+        effective_resonance,
+        ward_bonus=veil_ward.WARD_ECHO_BONUS if ward_active else 0,
+        advantage_roll=advantage_roll,
+    )
+    return echo, vaelti_warned
