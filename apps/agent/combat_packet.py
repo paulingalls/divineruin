@@ -296,10 +296,15 @@ async def _resolve_one_packet(
         # arm the SWINGING member's own flags (attacker.id == that player's id, combat_init), so a
         # non-primary member's swings accrue THEIR weapon's durability, not the primary's.
         if attacker.type == "player":
-            member = session.member_state(attacker.id)
-            member.weapon_used = True
-            if sub["hit"] and sub["critical"] and combat_resolution.is_heavily_armored(target.ac):
-                member.weapon_crit_vs_heavy = True
+            # Non-raising member() + skip, matching combat_end's accrual loop: a player participant
+            # is a party member in prod (combat_init), but a stray one must not abort a resolved
+            # phase over a durability scratch flag. The two ends of this feature agreed on the
+            # fail-safe everywhere except here, where member_state raised inside the phase tx.
+            member = session.party.member(attacker.id)
+            if member is not None:
+                member.weapon_used = True
+                if sub["hit"] and sub["critical"] and combat_resolution.is_heavily_armored(target.ac):
+                    member.weapon_crit_vs_heavy = True
         # An expanded sequence stops once the target drops — no swinging at a fallen foe.
         if target.is_fallen:
             break
