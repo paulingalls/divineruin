@@ -105,8 +105,29 @@ async def break_concentration_on_damage(
     # does not outlive the broken concentration. Strip the spell's applies_condition from the
     # in-combat participants it buffed; the mutation rides the phase loop's save_combat_state (like
     # the combat-ability consume). OOC breaks (no combat_state) leave OOC buffs as-is.
+    #
+    # ...but only when NO OTHER member still sustains a spell granting that same condition. A
+    # condition records its spell as `source`, never its caster, so two members' Bless are one
+    # indistinguishable `blessed` instance: stripping on the first break silently negated the
+    # second caster's live spell. The buff outlives this break because someone is still holding it up.
     applied = spells_mod.get_spell(spell_id).applies_condition
-    if applied is not None and cstate is not None:
+    still_held = _another_member_sustains(session, damaged_player_id, applied, spells_mod) if applied else False
+    if applied is not None and cstate is not None and not still_held:
         for participant in cstate.participants:
             participant.conditions = conditions.remove_conditions(participant.conditions, (applied,))
     return spell_id
+
+
+def _another_member_sustains(session, broken_player_id: str, condition_type: str, spells_mod) -> bool:
+    """Whether a party member OTHER than the one who just broke is still concentrating on a spell
+    that grants ``condition_type``. Their spell is what keeps the buff standing."""
+    for member in session.party.members:
+        if member.player_id == broken_player_id:
+            continue
+        other_spell_id = member.concentration.spell_id
+        if other_spell_id is None:
+            continue
+        other_spell = spells_mod.get_spell(other_spell_id)
+        if other_spell is not None and other_spell.applies_condition == condition_type:
+            return True
+    return False
