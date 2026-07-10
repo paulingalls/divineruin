@@ -20,6 +20,7 @@ from livekit import agents
 import db_mutations
 import db_session_queries
 import event_types as E
+from activate_tools import activate
 from background_process import BackgroundProcess
 from base_agent import BaseGameAgent
 from card_tap_handler import SpecializationTapHandler, start_specialization_tap
@@ -42,7 +43,6 @@ from session_summary import generate_session_summary
 from session_tools import end_session, record_story_moment, update_npc_disposition
 from system_prompts import build_system_prompt
 from travel_tools import travel
-from veil_anchor_tools import deploy_veil_anchor
 from warm_prompts import format_affect_context
 
 logger = logging.getLogger("divineruin.exploration")
@@ -50,11 +50,19 @@ logger = logging.getLogger("divineruin.exploration")
 # The unified verb vocabulary for all exploration (city/wilderness/dungeon). This is
 # the former CITY_TOOLS — city's tool list was already a strict superset of the
 # wilderness and dungeon lists, so one list serves every region. With a single agent
-# there is no per-region ceiling pressure: 16 verbs leave 4 free slots under
+# there is no per-region ceiling pressure: 18 verbs leave 2 free slots under
 # MAX_STRICT_TOOLS (relieves debt e665104c753a). The settlement-flavoured verbs
 # (transact, award_divine_favor, update_npc_disposition) are exposed everywhere; the
 # warm-layer REGISTER (story-002) carries the when-appropriate guidance per ADR 0007 —
 # the Stage gates applicability, not per-agent tool lists.
+#
+# activate (M25 Phase-5 story-003) replaces the item-use deploy_veil_anchor: it is the
+# same polymorphic capability verb registered on combat (story-002), routing a Veil
+# Anchor item id to _deploy_veil_anchor_impl. Registering it here also makes
+# activate_veil_ward's out-of-combat LOCATION-scope raise reachable for the first time —
+# previously only combat held a ward-raising tool, so a Cleric/Druid could never raise
+# an "until dismissed" location ward outside a fight (debt 67ae0f87df29). Net-zero swap:
+# the list stays at 18, not 17 (that reduction is M27's audio fold).
 EXPLORATION_TOOLS = [
     # World query
     enter_location,
@@ -74,9 +82,9 @@ EXPLORATION_TOOLS = [
     adjust_faction_reputation,
     record_story_moment,
     end_session,
-    # Item use: set down a crafted Veil Anchor (M24 story-012). The only item-use verb;
-    # the ward it lays down costs nothing here because the crafting was the cost.
-    deploy_veil_anchor,
+    # Polymorphic capability activation (M25 Phase-5 story-003): spells, abilities, Veil
+    # Anchor deployment, and Veil Ward raise/dismiss all route through one verb.
+    activate,
     # Choice resolution: the L5 specialization fork (surfaced by award_xp on level-up)
     # resolves via the generic select verb (concern 3c02318dfa99).
     select,

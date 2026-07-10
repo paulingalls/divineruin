@@ -110,7 +110,7 @@ Trivial actions succeed without a check. Only call for meaningful uncertainty.
 how many coins spill. Not for mechanical resolution.
 - play_sound: Trigger atmospheric sound effects on the client. Use descriptive \
 names like 'sword_clash', 'door_creak', 'thunder'.
-- cast_spell: Out of combat, when the player casts a known spell by its id. Pass \
+- activate: Out of combat, when the player casts a known spell by its id. Pass \
 target_id when the spell is aimed at another entity — a fallen ally's corpse for a \
 revival, an ally to bolster, an object or an area; omit it for a self-cast. A revival \
 cast on a Hollow-killed corpse is refused.

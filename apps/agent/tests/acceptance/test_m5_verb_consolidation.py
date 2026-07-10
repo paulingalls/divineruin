@@ -43,7 +43,6 @@ from mode_tools import enter_mode
 from onboarding_agent import ONBOARDING_TOOLS
 from recipe_tools import _learn_recipe_impl, learn
 from reputation_tools import adjust_faction_reputation
-from veil_anchor_tools import deploy_veil_anchor
 
 # The complete set of noun tools the four M5 folds removed (stories 001-004). The story
 # text says "six"; the real set is ten — the check fold (story-003) absorbed four.
@@ -68,10 +67,12 @@ REMOVED_NOUN_TOOLS = frozenset(
 # re-created tool can't silently re-register on any agent — the verb-fold registry trap.
 REMOVED_COMBAT_TOOLS = frozenset({"request_attack", "resolve_enemy_turn"})
 
-# M25 Phase-5 story-002: the four combat capability tools folded into the single
-# polymorphic activate verb. Guarded the same way as the other folds — no demoted
-# @function_tool wrapper may re-register on any agent.
-REMOVED_CAPABILITY_TOOLS = frozenset({"cast_spell", "request_ability_activation", "activate_veil_ward", "inner_fire"})
+# M25 Phase-5 story-002/003: the five capability tools folded into the single polymorphic
+# activate verb. Guarded the same way as the other folds — no demoted @function_tool
+# wrapper may re-register on any agent.
+REMOVED_CAPABILITY_TOOLS = frozenset(
+    {"cast_spell", "request_ability_activation", "activate_veil_ward", "inner_fire", "deploy_veil_anchor"}
+)
 
 # Every assembled gameplay-agent tool registry. M7 collapsed the three region agents
 # into one exploration registry, so city/wilderness/dungeon are a single "exploration" row.
@@ -98,13 +99,10 @@ VERB_PRESENCE = [
     # M23 story-002: the faction reputation DM verb sits beside update_npc_disposition on the
     # single exploration agent (world-state mutation verbs live there, per M7's collapse).
     (adjust_faction_reputation, "adjust_faction_reputation", {"exploration"}),
-    # M24 story-012: the only item-use verb. Deploying a crafted Veil Anchor is a location
-    # action, so it lives on exploration alone — never on combat, where activate_veil_ward
-    # already refuses the artificer source it would otherwise duplicate.
-    (deploy_veil_anchor, "deploy_veil_anchor", {"exploration"}),
-    # M25 Phase-5 story-002: activate folds cast_spell/request_ability_activation/
-    # activate_veil_ward/inner_fire on combat. Exploration/anchor gains it in story-003.
-    (activate, "activate", {"combat"}),
+    # M25 Phase-5 story-002/003: activate folds cast_spell/request_ability_activation/
+    # activate_veil_ward/inner_fire (combat, story-002) and deploy_veil_anchor (exploration,
+    # story-003) into one polymorphic verb, registered on both agents.
+    (activate, "activate", {"combat", "exploration"}),
 ]
 
 
