@@ -42,6 +42,12 @@ _WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "pro
 _SPELL_ID = "arcane_fireball"
 
 
+def _ward_events(room) -> list[dict]:
+    """Every VEIL_WARD_CHANGED the DM broadcast, in order. One room-wide publish per change --
+    there are no per-participant sends, so a single active=True packet is what lights both clients."""
+    return [p for p in published_payloads(room) if p["type"] == E.VEIL_WARD_CHANGED]
+
+
 async def _bump_level(pool, player_id: str, level: int) -> None:
     """WARD_SOURCES gates level (cleric 7 / paladin 10); seed_player_with_pools defaults to 2."""
     await pool.execute(
@@ -115,7 +121,7 @@ async def test_ward_raised_by_one_member_halves_every_caster_in_the_encounter(re
     assert packets2[b]["cast"]["resonance_generated"] == base // 2
 
     # Both clients light up: ONE scope-wide broadcast, no caster_id to filter on.
-    ward_events = [p for p in published_payloads(room) if p["type"] == E.VEIL_WARD_CHANGED]
+    ward_events = _ward_events(room)
     assert len(ward_events) == 1
     payload = ward_events[0]
     assert payload["active"] is True
@@ -166,8 +172,7 @@ async def test_encounter_ward_dies_with_the_combat_and_the_next_cast_is_unhalved
     assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", location) == 0
 
     # combat-end broadcast the ward's expiry: no location ward covers this scope, so active=False.
-    ward_events = [p for p in published_payloads(room) if p["type"] == E.VEIL_WARD_CHANGED]
-    assert ward_events[-1]["active"] is False
+    assert _ward_events(room)[-1]["active"] is False
 
     # A following out-of-combat cast generates the unhalved baseline.
     packet = json.loads(await spell_casting._cast_spell_impl(ctx, _SPELL_ID))
@@ -202,7 +207,11 @@ async def test_no_player_row_carries_legacy_ward_state(reset_db_pool: str) -> No
 async def test_paladin_rounds_ward_expires_on_the_third_wrap(reset_db_pool: str) -> None:
     """AC4 (clock 1 of 2): a Paladin's ROUNDS(3) ward ticks ONLY at the combat WRAP beat, decrement-
     then-test -- it must survive wraps 1 and 2 and die on the 3rd, never the 2nd. Cross-leak: it never
-    writes a veil_wards row for either the combat or the location scope."""
+    writes a veil_wards row for either the combat or the location scope.
+
+    The expiring wrap must also DARKEN the HUD. Asserting the mechanic alone (veil_ward is None) let a
+    real bug through: the clock cleared the ward while the client kept showing it lit, so the player
+    believed their casts were still halved while they accrued full Resonance toward an Overreach."""
     pool = await db.get_pool()
     player_id = "cap_m24_ac4_paladin"
     location = "cap_m24_ac4_paladin_hall"
@@ -210,7 +219,8 @@ async def test_paladin_rounds_ward_expires_on_the_third_wrap(reset_db_pool: str)
     await _bump_level(pool, player_id, 10)
     await _equip_weapon(pool, player_id)
 
-    ctx = make_context(player_id, location_id=location)
+    room = make_mock_room()
+    ctx = make_context(player_id, location_id=location, room=room)
     raw = await combat_init._start_combat_impl(ctx, "hollow_wisp", "A hollow wisp coalesces from the drift.")
     assert isinstance(raw, tuple)
     combat_id = ctx.userdata.combat_state.combat_id
@@ -218,6 +228,7 @@ async def test_paladin_rounds_ward_expires_on_the_third_wrap(reset_db_pool: str)
 
     await veil_ward_tools._activate_veil_ward_impl(ctx, True)
     assert ctx.userdata.combat_state.veil_ward == {"source": "paladin", "rounds_remaining": 3}
+    assert _ward_events(room)[-1]["active"] is True  # the raise lit the HUD
 
     for expected_remaining in (2, 1, None):
         decls = {
@@ -233,6 +244,12 @@ async def test_paladin_rounds_ward_expires_on_the_third_wrap(reset_db_pool: str)
             assert ward is None  # dies on the 3rd wrap, not the 2nd
         else:
             assert ward == {"source": "paladin", "rounds_remaining": expected_remaining}
+            assert _ward_events(room)[-1]["active"] is True  # still lit while the clock runs
+
+    # The expiring wrap darkened the HUD: no scope covers the party, so active=False.
+    expiry = _ward_events(room)[-1]
+    assert expiry["active"] is False
+    assert expiry["scope_kind"] is None and expiry["scope_id"] is None
 
     # The ROUNDS clock never touched veil_wards -- for either scope.
     assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", combat_id) == 0
