@@ -150,8 +150,8 @@ WARD_SOURCES: dict[str, WardSource] = {
     ),
     # A placed object, costing nothing at deploy time — the cost was paid at the workbench.
     # This duration is the SMALL anchor's hour (scope_model §Sources). The large anchor is
-    # permanent and is, in effect, a player-craftable Sacred site: story-007 deploys it against
-    # the permanent representation rather than this row's clock.
+    # permanent and is, in effect, a player-craftable Sacred site: story-012 deploys it against
+    # VEIL_ANCHORS' permanent duration rather than this row's clock.
     "artificer": WardSource(
         min_level=7,
         focus=0,
@@ -165,6 +165,54 @@ WARD_SOURCES: dict[str, WardSource] = {
         focus=0,
         duration=WardDuration(WardDurationKind.PERMANENT),
         tool_raisable=False,
+    ),
+}
+
+
+# Every deployed anchor's ward is sourced to the artificer who crafted it — both the hour-long
+# small anchor and the permanent large one. The large anchor is a player-craftable Sacred site in
+# REPRESENTATION (permanent, undismissible), not in provenance: a crafted object is not a world
+# entity, and the row should say who made it.
+ANCHOR_SOURCE = "artificer"
+
+
+@dataclass(frozen=True)
+class VeilAnchor:
+    """What kind of ward a crafted Veil Anchor lays down when deployed (scope_model §Two anchors).
+
+    The duration lives HERE, not on ``WARD_SOURCES[ANCHOR_SOURCE]``, because one source row cannot
+    carry two durations: the artificer row's REAL_TIME 3600s *is* the small anchor's hour, so
+    ``location_expires_at`` fed that duration would hand the large anchor a 1-hour clock instead of
+    the permanent row it is supposed to be.
+
+    ``consumed`` is the item's "consumed on use" / "not consumed" contract as data. In
+    ``content/items.json`` that contract exists only as English inside ``effects[].description``;
+    a tool branching on the item id would bury it in a conditional. It belongs beside the durations.
+
+    ``dismissible`` is what makes AC2 true without new code: ``dismiss_ward``'s DELETE carries
+    ``AND dismissible``, so a large anchor's row is never matched by ``activate_veil_ward``.
+    """
+
+    duration: WardDuration
+    dismissible: bool
+    consumed: bool
+
+
+# Item id -> the ward it deploys. Keys are the crafted items in content/items.json (and the
+# recipes' output_item, pinned by test_recipes_ward_anchor).
+VEIL_ANCHORS: dict[str, VeilAnchor] = {
+    # Tier 3, "Creates a 15 ft Veil Ward for 1 hour; consumed on use." The tactical, plannable option.
+    "veil_ward_anchor_small": VeilAnchor(
+        duration=WardDuration(WardDurationKind.REAL_TIME, seconds=3600),
+        dismissible=True,
+        consumed=True,
+    ),
+    # Tier 4 legendary, "Permanent 30 ft Veil Ward at a location; not consumed." Its lifecycle
+    # belongs to crafting, not to the activation tool — so it is not dismissible.
+    "veil_ward_anchor_large": VeilAnchor(
+        duration=WardDuration(WardDurationKind.PERMANENT),
+        dismissible=False,
+        consumed=False,
     ),
 }
 
