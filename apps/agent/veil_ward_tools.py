@@ -202,24 +202,27 @@ async def _dismiss_impl(session: SessionData, pid: str, *, db_mod, ward_mutation
 
     Any in-scope member may dismiss — the ward is not the raiser's to hold (§5).
 
-    ONE scope is dismissed, never a cascade: in a fight that is the ENCOUNTER, whose ward lives on
-    CombatState. A covering location ward (a Sacred site, or one raised before the fight) is not
-    the fight's to dispel, so an in-combat dismiss with no encounter ward refuses rather than
-    reaching past its scope to delete it.
+    ONE scope is dismissed, never a cascade: the party's INNERMOST ACTIVE scope. In a fight that is
+    the ENCOUNTER, whose ward lives on CombatState — but only when the fight actually raised one.
+    With no encounter ward, the ward halving the party's casts IS the location's, so the dismiss
+    falls through to it: refusing there denied a ward the player could see lit and feel working.
 
-    Out of combat, the delete COUNT is the authority, not a prior read: a scope covered only by a
-    permanent ward deletes nothing, and refusing is the honest answer.
+    The delete COUNT is the authority, not a prior read. Nothing deleted means nothing DISMISSIBLE
+    covered the scope — which is not the same as nothing covering it. A Sacred site is not the
+    party's to dispel, so say that, rather than claiming no ward is active while one still halves
+    every cast.
     """
     combat = session.combat_state
     location_scope = veil_ward.WardScope.location(session.location_id)
     async with db_mod.transaction() as conn:
-        if combat is not None:
-            if combat.veil_ward is None:
-                raise ToolError("No Veil Ward is active to dismiss.")
+        if combat is not None and combat.veil_ward is not None:
             # Written to the SAVE payload only; the live combat_state is cleared post-commit, so a
             # rolled-back dismiss cannot leave memory reporting a ward the DB still holds.
             await combat_mod.save_combat_state(combat.combat_id, {**combat.to_dict(), "veil_ward": None}, conn=conn)
         elif not await ward_mutations_mod.dismiss_ward(location_scope, conn=conn):
+            surviving = await ward_mutations_mod.read_active_ward(location_scope, conn=conn)
+            if surviving is not None:
+                raise ToolError(f"The {surviving['source'].replace('_', ' ')} Veil Ward here cannot be dismissed.")
             raise ToolError("No Veil Ward is active to dismiss.")
 
         # §3: publish the RESOLVED state, never the toggle of the scope we just dropped. Once the
