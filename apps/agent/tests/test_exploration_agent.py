@@ -3,9 +3,10 @@
 M7 collapses CityAgent/WildernessAgent/DungeonAgent into one ExplorationAgent
 that carries region_type as a per-instance attribute. The unified tool list is
 the former city superset (city ⊇ wilderness, city ⊇ dungeon) plus the M4.6b travel
-verb, so one list of 16 serves every region with headroom under the strict-tool ceiling.
+verb, so one list of 18 serves every region with headroom under the strict-tool ceiling.
 """
 
+from activate_tools import activate
 from base_agent import BaseGameAgent
 from exploration_agent import EXPLORATION_TOOLS, ExplorationAgent
 from gameplay_agent import create_gameplay_agent
@@ -59,6 +60,10 @@ class TestExplorationToolset:
             adjust_faction_reputation,
         ):
             assert tool in EXPLORATION_TOOLS
+
+    def test_activate_registered_deploy_veil_anchor_wrapper_gone(self):
+        assert activate in EXPLORATION_TOOLS
+        assert "deploy_veil_anchor" not in {t.__name__ for t in EXPLORATION_TOOLS}
 
 
 class TestExplorationFactory:

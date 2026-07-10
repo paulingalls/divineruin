@@ -1,6 +1,6 @@
 """Spell casting tools for the DM agent (M3.3 story-004).
 
-cast_spell is the real cast path: it validates a named spell, gates the caster's
+_cast_spell_impl is the real cast path: it validates a named spell, gates the caster's
 Focus and deducts it, reads the Resonance the cast generates from the catalog's
 designed per-spell resonance_by_source[source] (the SSOT, decision
 resonance-by-source-ssot), accrues that onto the session's ResonanceTrack and
@@ -16,12 +16,13 @@ the packet carries the qualitative `state` (stable/flickering/overreach) and the
 free combat modifiers, never asks the LLM to compute them. The deterministic numbers
 come from the rules engine; the LLM only decides when to cast and how to narrate.
 
-Mirrors the ability_tools seam exactly: a thin @function_tool wrapper over an _impl
-with module-injection keyword args (db_mod/queries_mod/persistence_mod/
-resonance_mutations_mod/resonance_events_mod/spells_mod/resonance/leveling_mod, the M3.2
-echo/ward mods veil_ward/hollow_echo/dice_mod/echo_events_mod, plus the M3.4 racial_mod/
-concentration_mutations_mod) for test mocking, a single db.transaction() block, and
-ToolError for every user-facing failure.
+Mirrors the ability_tools seam exactly: module-injection keyword args (db_mod/queries_mod/
+persistence_mod/resonance_mutations_mod/resonance_events_mod/spells_mod/resonance/leveling_mod,
+the M3.2 echo/ward mods veil_ward/hollow_echo/dice_mod/echo_events_mod, plus the M3.4 racial_mod/
+concentration_mutations_mod) for test mocking, a single db.transaction() block, and ToolError for
+every user-facing failure. The OOC cast path enters via activate_tools.activate (M25 Phase-5
+story-002 folded the standalone cast_spell @function_tool wrapper into it); _cast_spell_impl
+remains the shared core, also called directly by the in-combat ABILITY packet (story-007).
 
 The pure per-cast math — generation, the Korath/Human/Vaelti racial composition, ward
 effects, and the Overreach Hollow Echo — lives in cast_modifiers; see its module docstring.
@@ -35,7 +36,7 @@ import logging
 from dataclasses import dataclass
 from typing import cast
 
-from livekit.agents.llm import ToolError, function_tool
+from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import ability_persistence
@@ -59,7 +60,6 @@ import spells
 import vaelti_echo_warning
 import veil_ward as veil_ward_mod
 import ward_resolution
-from db_errors import db_tool
 from game_events import publish_game_event
 from party_state import PartyMember
 from resource_costs import gate_pool
@@ -133,31 +133,6 @@ def revivify_refused(character_data: dict) -> bool:
     (M4.4 story-007). Pure + target-agnostic — the spell-targeting milestone reuses it unchanged,
     rerouting the call from the caster row to the target row."""
     return bool(character_data.get("hollow_killed"))
-
-
-@function_tool()
-@db_tool
-async def cast_spell(
-    context: RunContext[SessionData],
-    spell_id: str,
-    target_id: str | None = None,
-    target_ids: list[str] | None = None,
-) -> str:
-    """Cast a spell by its id (e.g. 'arcane_bolt'). Call when the caster casts a
-    known spell. Validates and deducts the spell's Focus cost (rejecting if the
-    caster can't afford it), builds the hidden Resonance the cast generates, and
-    returns the effect, narration_cue, and audio_cue to voice plus the resulting
-    Resonance state and its combat modifiers. Cantrips are free and scale damage
-    with level — the packet's damage_dice carries the scaled dice.
-
-    Pass target_id when the spell is aimed at a single entity — a fallen corpse for
-    a revival spell, an ally to buff, an object or area. Omit it (the default) for
-    a self-cast. A revival spell is refused if its target is Hollow-killed.
-
-    Pass target_ids (a list) when a multi-target spell names several allies at once —
-    e.g. Bless on up to three companions. The spell's own cap is enforced (too many
-    is refused). When a spell allows multiple, prefer target_ids over target_id."""
-    return await _cast_spell_impl(context, spell_id, target_id=target_id, target_ids=target_ids)
 
 
 async def _cast_spell_impl(

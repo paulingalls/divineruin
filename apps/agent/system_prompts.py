@@ -110,7 +110,7 @@ Trivial actions succeed without a check. Only call for meaningful uncertainty.
 how many coins spill. Not for mechanical resolution.
 - play_sound: Trigger atmospheric sound effects on the client. Use descriptive \
 names like 'sword_clash', 'door_creak', 'thunder'.
-- cast_spell: Out of combat, when the player casts a known spell by its id. Pass \
+- activate: Out of combat, when the player casts a known spell by its id. Pass \
 target_id when the spell is aimed at another entity — a fallen ally's corpse for a \
 revival, an ally to bolster, an object or an area; omit it for a self-cast. A revival \
 cast on a Hollow-killed corpse is refused.
@@ -243,8 +243,10 @@ deducts the Focus and generates the Resonance in initiative order, the same pipe
 Defend — {"type": "defend"}; the actor makes no attack and gains +2 AC until the next \
 phase (use it when the player guards, takes cover, or braces). \
 Cover the player, every conscious companion, and every enemy that acts this round. \
-Use cast_spell ONLY out of combat — in combat a spell or ability is an Ability declaration \
-through declare_phase, never cast_spell. If the player gives no clear \
+In combat, a spell or ability is an Ability declaration through declare_phase — never a free \
+cast via activate. Two combat-only capabilities are the exception: a Draethar's Inner Fire \
+(activate "draethar_inner_fire") and raising or dropping a Veil Ward (activate "veil_ward" / \
+"veil_ward_dismiss") are still done through activate, even mid-fight. If the player gives no clear \
 action when asked, don't stall — narrate "You freeze for a moment—" and declare Defend \
 for them ({"type": "defend"}): they brace instead of attacking. Hesitation is a valid \
 outcome.

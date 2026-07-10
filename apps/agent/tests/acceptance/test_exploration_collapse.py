@@ -28,11 +28,12 @@ import json
 from collections.abc import AsyncIterator
 
 import pytest
-from acceptance.seeds import seed_player
+from acceptance.seeds import seed_player, seed_player_with_pools
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context, make_mock_room
+from sample_fixtures import make_context, make_mock_room, published_payloads
 
 import db
+import event_types as E
 from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
 
 _PLAYER_ID = "player_m7_capstone"
@@ -120,20 +121,23 @@ async def test_ac1_region_register_sourced_from_stage() -> None:
 
 
 async def test_ac2_tool_ceiling_no_longer_binds() -> None:
+    from activate_tools import activate
     from exploration_agent import EXPLORATION_TOOLS
     from llm_config import MAX_STRICT_TOOLS
 
     # One unified list (the former city superset + the M4.6b travel verb + the M23 story-002
-    # adjust_faction_reputation verb + the M24 story-012 deploy_veil_anchor verb) with real
+    # adjust_faction_reputation verb + the M25 Phase-5 story-003 activate verb) with real
     # headroom — not pinned at the 20-strict-tool ceiling that drove the region split
     # (debt e665104c753a). This asserts the ceiling no longer BINDS, not a fixed budget.
     #
-    # The floor moved 3 -> 2 when story-012 added deploy_veil_anchor. It should not keep moving:
-    # agent_verbs_and_stages.md §10 settles a polymorphic core where an item is deployed via
-    # `activate(id)`, the same verb that casts a spell — the way transact/learn/enter_mode already
-    # absorbed their noun-tools. deploy_veil_anchor is a fold candidate, not a precedent.
+    # The floor holds at 2: M25 Phase-5 story-003 folded deploy_veil_anchor (the noun-shaped
+    # item-use tool, M24 story-012) into the polymorphic activate verb — a net-zero swap, not
+    # a new addition. agent_verbs_and_stages.md §10 settles this polymorphic core the way
+    # transact/learn/enter_mode already absorbed their noun-tools.
     assert len(EXPLORATION_TOOLS) < MAX_STRICT_TOOLS
     assert MAX_STRICT_TOOLS - len(EXPLORATION_TOOLS) >= 2
+    assert activate in EXPLORATION_TOOLS
+    assert "deploy_veil_anchor" not in {t.__name__ for t in EXPLORATION_TOOLS}
 
     # The per-region agent modules are gone — collapse, not coexistence.
     for module_name in ("city_agent", "wilderness_agent", "dungeon_agent"):
@@ -231,3 +235,52 @@ async def test_ac5_disposition_guard_blocks_absent_allows_present(m7_world: str)
     in_city = make_context(player_id=_PLAYER_ID, location_id=m7_world, room=make_mock_room())
     result = json.loads(await _update_npc_disposition_impl(in_city, _NPC_ID, 1, "helped at the stall"))
     assert result["new"] == "friendly"  # neutral default + 1
+
+
+# --- AC6: activate registered on exploration reaches the OOC ward raise (real Postgres) --
+
+# activate_veil_ward's out-of-combat LOCATION-scope raise branch (session.combat_state is
+# None) previously had no reachable caller: activate_veil_ward was registered only on
+# combat_agent (debt 67ae0f87df29). Registering activate on exploration makes the branch
+# reachable for the first time — this drives it through the real dispatcher, over real SQL.
+
+_OOC_WARD_PLAYER_ID = "player_m25_s003_ooc_ward_cleric"
+_OOC_WARD_LOCATION_ID = "test_m25_s003_ooc_ward_hall"
+
+
+async def test_ac6_activate_raises_an_ooc_location_ward_via_exploration(reset_db_pool: str) -> None:
+    from activate_tools import _activate_impl
+
+    pool = await db.get_pool()
+    await seed_player_with_pools(pool, player_id=_OOC_WARD_PLAYER_ID, class_="cleric", focus_current=20)
+    await pool.execute(
+        "UPDATE players SET data = jsonb_set(data, '{level}', $2::jsonb) WHERE player_id = $1",
+        _OOC_WARD_PLAYER_ID,
+        json.dumps(7),  # WARD_SOURCES gates cleric at level 7
+    )
+
+    room = make_mock_room()
+    ctx = make_context(_OOC_WARD_PLAYER_ID, location_id=_OOC_WARD_LOCATION_ID, room=room)
+    assert ctx.userdata.combat_state is None  # the formerly-dead branch's precondition
+
+    try:
+        raw = await _activate_impl(ctx, "veil_ward")
+        result = json.loads(raw)
+        assert result["active"] is True
+        assert result["scope"] == "location"
+
+        row = await pool.fetchrow(
+            "SELECT source, dismissible FROM veil_wards WHERE scope_id = $1", _OOC_WARD_LOCATION_ID
+        )
+        assert row is not None, "activate('veil_ward') OOC must write a location-scope veil_wards row"
+        assert row["source"] == "cleric"
+        assert row["dismissible"] is True
+
+        ward_events = [p for p in published_payloads(room) if p["type"] == E.VEIL_WARD_CHANGED]
+        assert len(ward_events) == 1
+        assert ward_events[0]["active"] is True
+        assert ward_events[0]["scope_kind"] == "location"
+        assert ward_events[0]["scope_id"] == _OOC_WARD_LOCATION_ID
+    finally:
+        await pool.execute("DELETE FROM veil_wards WHERE scope_id = $1", _OOC_WARD_LOCATION_ID)
+        await pool.execute("DELETE FROM players WHERE player_id = $1", _OOC_WARD_PLAYER_ID)
