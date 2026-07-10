@@ -1,6 +1,6 @@
 """Spell casting tools for the DM agent (M3.3 story-004).
 
-cast_spell is the real cast path: it validates a named spell, gates the caster's
+_cast_spell_impl is the real cast path: it validates a named spell, gates the caster's
 Focus and deducts it, reads the Resonance the cast generates from the catalog's
 designed per-spell resonance_by_source[source] (the SSOT, decision
 resonance-by-source-ssot), accrues that onto the session's ResonanceTrack and
