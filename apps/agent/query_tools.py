@@ -8,8 +8,11 @@ from typing import Literal
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import crafting_tools
 import db_content_queries
 import db_queries
+import recipe_tools
+import training_tools
 from db_errors import db_tool
 from session_data import SessionData
 from settlement_generation import generate_settlement_npcs
@@ -35,7 +38,16 @@ async def _resolve_disposition(npc_id: str, player_id: str, npc: dict, *, querie
 @db_tool
 async def query_info(
     context: RunContext[SessionData],
-    kind: Literal["location", "npc", "lore", "inventory", "settlement_population"],
+    kind: Literal[
+        "location",
+        "npc",
+        "lore",
+        "inventory",
+        "settlement_population",
+        "recipe",
+        "training_programs",
+        "workspaces",
+    ],
     target_id: str | None = None,
 ) -> str:
     """Look up world info in one call. Set kind and (for most kinds) target_id:
@@ -44,7 +56,10 @@ async def query_info(
     - kind="lore", target_id=<topic keyword>: history, gods, the Hollow, races, cultures.
     - kind="inventory": the current player's carried items (no target_id needed).
     - kind="settlement_population", target_id=<location id>: how many of each NPC role staff a
-      settlement, scaled by its size (tier) and character (personality)."""
+      settlement, scaled by its size (tier) and character (personality).
+    - kind="recipe", target_id=<recipe id>: requirements and ingredients for a recipe.
+    - kind="training_programs": available training programs (no target_id needed).
+    - kind="workspaces": available crafting workspaces (no target_id needed)."""
     return await _query_info_impl(context, kind, target_id)
 
 
@@ -52,9 +67,17 @@ async def _query_info_impl(
     context: RunContext[SessionData],
     kind: str,
     target_id: str | None = None,
+    *,
+    recipe_mod=recipe_tools,
+    training_mod=training_tools,
+    crafting_mod=crafting_tools,
 ) -> str:
     if kind == "inventory":
         return await _query_inventory_impl(context)
+    if kind == "training_programs":
+        return await training_mod._query_training_programs_impl(context)
+    if kind == "workspaces":
+        return await crafting_mod._query_available_workspaces_impl(context)
     if target_id is None:
         raise ToolError(f"query_info(kind={kind!r}) requires target_id.")
     if kind == "location":
@@ -65,6 +88,8 @@ async def _query_info_impl(
         return await _query_lore_impl(context, target_id)
     if kind == "settlement_population":
         return await _query_settlement_population_impl(context, target_id)
+    if kind == "recipe":
+        return await recipe_mod._query_recipe_requirements_impl(context, target_id)
     raise ToolError(f"Unknown query_info kind: {kind!r}.")
 
 
