@@ -28,6 +28,22 @@ async def get_location(location_id: str) -> dict | None:
     return data
 
 
+async def get_all_locations() -> dict[str, dict]:
+    """Return every location keyed by id ({id: data}). Used by the resurrection anchor resolver
+    (M4.4) which needs the catalog to find same-region settlements + the starter zone. Cache-backed
+    as a single blob; locations are static content so a whole-catalog read is cheap and rare."""
+    cache_key = "locations:all"
+    cached = await db._cache_get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
+    pool = await db.get_pool()
+    rows = await pool.fetch("SELECT id, data FROM locations")
+    out = {row["id"]: json.loads(row["data"]) for row in rows}
+    await db._cache_set(cache_key, json.dumps(out))
+    return out
+
+
 async def get_faction(faction_id: str) -> dict | None:
     """Return a faction's content row (incl. reputation_tiers), or None if not found.
 
@@ -180,6 +196,29 @@ async def get_encounter_template(encounter_id: str) -> dict | None:
     return data
 
 
+async def get_loot_table(loot_table_id: str) -> dict | None:
+    """Resolve a loot table by id from the loot_tables catalog (M4.7 story-002).
+
+    Static content read from the pool + Redis cache (no conn param), mirroring
+    get_encounter_template. combat_end calls this on victory — inside its teardown tx — to
+    scale the table's base drops by each defeated enemy's role (encounter_loot.derive_role_loot).
+    Reading from the pool rather than the in-flight tx conn is correct: loot tables are immutable
+    seeded content, independent of the combat-teardown mutations. Returns None for an unknown id."""
+    cache_key = f"loot_table:{loot_table_id}"
+    cached = await db._cache_get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
+    pool = await db.get_pool()
+    row = await pool.fetchrow("SELECT data FROM loot_tables WHERE id = $1", loot_table_id)
+    if row is None:
+        return None
+
+    data = json.loads(row["data"])
+    await db._cache_set(cache_key, json.dumps(data))
+    return data
+
+
 async def get_training_program(program_id: str) -> dict | None:
     cache_key = f"training_program:{program_id}"
     cached = await db._cache_get(cache_key)
@@ -236,3 +275,12 @@ async def list_errand_templates() -> list[dict]:
     templates = [json.loads(r["data"]) for r in rows]
     await db._cache_set(cache_key, json.dumps(templates))
     return templates
+
+
+async def get_gathering_nodes_at_location(location_id: str, *, pool=None) -> list[dict]:
+    """Return the fixed gathering_nodes at a location, each as {id, **data}. Uncached — node
+    `quantity`/`discovered` are mutable world state (story-003 depletes/marks them), unlike the
+    static, cached get_location. `pool` is a test-injection seam."""
+    _pool = pool or await db.get_pool()
+    rows = await _pool.fetch("SELECT id, data FROM gathering_nodes WHERE data->>'location_id' = $1", location_id)
+    return [{"id": r["id"], **json.loads(r["data"])} for r in rows]

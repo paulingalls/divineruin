@@ -83,8 +83,9 @@ async def test_publish_resonance_changed_emits_state_only():
     args, _ = pub.call_args
     room, event_type, payload, event_bus = args
     assert event_type == E.RESONANCE_CHANGED
-    # No-number spec (magic.md:98): the wire carries the qualitative state only.
-    assert payload == {"state": "stable"}
+    # No-number spec (magic.md:98): the wire carries the qualitative state + the caster_id
+    # discriminator (M14 story-004), never the raw number.
+    assert payload == {"state": "stable", "caster_id": "p1"}
     assert room is session.room
     assert event_bus is session.event_bus
 
@@ -100,4 +101,4 @@ async def test_rest_path_persists_reset_and_emits_event_end_to_end():
     mutations.reset_player_resonance.assert_awaited_once_with("p1", conn=None)
     pub.assert_awaited_once()
     _, payload, *_ = pub.call_args.args[1:]
-    assert payload == {"state": "stable"}
+    assert payload == {"state": "stable", "caster_id": "p1"}

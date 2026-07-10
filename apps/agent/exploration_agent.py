@@ -35,11 +35,14 @@ from progression_tools import award_divine_favor, award_xp
 from query_tools import query_info
 from quest_tools import update_quest
 from region_types import REGION_CITY
+from reputation_tools import adjust_faction_reputation
 from scene_tools import enter_location
 from session_data import SessionData
 from session_summary import generate_session_summary
 from session_tools import end_session, record_story_moment, update_npc_disposition
 from system_prompts import build_system_prompt
+from travel_tools import travel
+from veil_anchor_tools import deploy_veil_anchor
 from warm_prompts import format_affect_context
 
 logger = logging.getLogger("divineruin.exploration")
@@ -47,7 +50,7 @@ logger = logging.getLogger("divineruin.exploration")
 # The unified verb vocabulary for all exploration (city/wilderness/dungeon). This is
 # the former CITY_TOOLS — city's tool list was already a strict superset of the
 # wilderness and dungeon lists, so one list serves every region. With a single agent
-# there is no per-region ceiling pressure: 15 verbs leave 5 free slots under
+# there is no per-region ceiling pressure: 16 verbs leave 4 free slots under
 # MAX_STRICT_TOOLS (relieves debt e665104c753a). The settlement-flavoured verbs
 # (transact, award_divine_favor, update_npc_disposition) are exposed everywhere; the
 # warm-layer REGISTER (story-002) carries the when-appropriate guidance per ADR 0007 —
@@ -62,13 +65,18 @@ EXPLORATION_TOOLS = [
     set_music_state,
     # Mutation
     move_player,
+    travel,
     transact,
     update_quest,
     award_xp,
     award_divine_favor,
     update_npc_disposition,
+    adjust_faction_reputation,
     record_story_moment,
     end_session,
+    # Item use: set down a crafted Veil Anchor (M24 story-012). The only item-use verb;
+    # the ward it lays down costs nothing here because the crafting was the cost.
+    deploy_veil_anchor,
     # Choice resolution: the L5 specialization fork (surfaced by award_xp on level-up)
     # resolves via the generic select verb (concern 3c02318dfa99).
     select,

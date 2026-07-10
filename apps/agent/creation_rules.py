@@ -12,6 +12,7 @@ from creation_races import RACES
 from hp_scaling import calculate_max_hp
 from rules_engine import attribute_modifier
 from spells import get_spells_by_source
+from starter_zone import STARTER_ZONE_ID
 
 BASE_ATTRIBUTE = 10
 
@@ -122,7 +123,9 @@ CULTURE_START_LOCATIONS: dict[str, str] = {
     "aelindran_diaspora": "accord_market_square",
 }
 
-DEFAULT_START_LOCATION = "accord_market_square"
+# Cross-linked to the starter-zone SSOT (story-006): the character-creation default start and the
+# resurrection tier-4 fallback are ONE literal, so a retag can't make them diverge. See starter_zone.
+DEFAULT_START_LOCATION = STARTER_ZONE_ID
 
 
 def generate_attributes(race_id: str, class_id: str) -> dict[str, int]:

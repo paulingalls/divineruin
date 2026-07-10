@@ -51,6 +51,10 @@ e2e/test-results/
 e2e/playwright-report/
 e2e/node_modules/
 
+# Pre-push gate flake logs — every lane tees here; failures snapshot to a
+# timestamped subdir. Repo-root home (unified from the former e2e/flake-artifacts/).
+flake-artifacts/
+
 # Test results (root)
 test-results/
 

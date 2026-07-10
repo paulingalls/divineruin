@@ -1,6 +1,7 @@
 """Tests for fatigue narration — narrative cues for resource pool states and exhaustion."""
 
 from fatigue_narration import (
+    exhaustion_narrative_for_conditions,
     get_exhaustion_narrative,
     get_pool_narrative,
     get_pool_state,
@@ -100,6 +101,40 @@ class TestGetExhaustionNarrative:
 
     def test_negative_stacks_clamped_to_zero(self) -> None:
         assert get_exhaustion_narrative(-1) == ""
+
+
+class TestExhaustionNarrativeForConditions:
+    """Beat-3 display layer (M4.3, story-005): read Exhausted stacks out of a participant's
+    condition list and produce the matching flavor, reusing get_exhaustion_narrative."""
+
+    def test_no_conditions_empty_string(self) -> None:
+        assert exhaustion_narrative_for_conditions([]) == ""
+
+    def test_no_exhausted_condition_empty_string(self) -> None:
+        conditions = [
+            {"type": "poisoned", "duration": 2, "source": "spider", "stacks": 1},
+            {"type": "prone", "duration": 1, "source": "trip", "stacks": 1},
+        ]
+        assert exhaustion_narrative_for_conditions(conditions) == ""
+
+    def test_exhausted_returns_stack_narrative(self) -> None:
+        conditions = [{"type": "exhausted", "duration": 99, "source": "march", "stacks": 2}]
+        assert exhaustion_narrative_for_conditions(conditions) == "Every movement is an effort"
+
+    def test_exhausted_zero_stacks_empty_string(self) -> None:
+        conditions = [{"type": "exhausted", "duration": 99, "source": "march", "stacks": 0}]
+        assert exhaustion_narrative_for_conditions(conditions) == ""
+
+    def test_missing_stacks_key_treated_as_zero(self) -> None:
+        # A condition dict crossing the JSONB boundary may omit stacks; fail soft to "".
+        conditions = [{"type": "exhausted", "duration": 99, "source": "march"}]
+        assert exhaustion_narrative_for_conditions(conditions) == ""
+
+    def test_iron_constitution_caps_narrative(self) -> None:
+        conditions = [{"type": "exhausted", "duration": 99, "source": "march", "stacks": 5}]
+        capped = exhaustion_narrative_for_conditions(conditions, has_iron_constitution=True)
+        assert capped == "Your body screams for rest"  # clamped to 3
+        assert capped != exhaustion_narrative_for_conditions(conditions)  # 5 = "Death's shadow..."
 
 
 class TestEndToEnd:

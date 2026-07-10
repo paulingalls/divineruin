@@ -3,10 +3,11 @@ import { test, expect, beforeEach } from "bun:test";
 import FIXTURE from "../../../../packages/shared/fixtures/event_wire.json";
 import { HOLLOW_ECHO_RESULT, RESONANCE_CHANGED, VEIL_WARD_CHANGED } from "@/audio/event-types";
 import { handleGameEvent } from "@/audio/game-event-handler";
+import { characterStore } from "@/stores/character-store";
 import { HOLLOW_ECHO_DISPLAY, hudStore, type ResonanceState } from "@/stores/hud-store";
 import { parseSpellRows } from "@/utils/spell-display";
 
-import { resetStores } from "./use-game-events.helpers";
+import { resetStores, SAMPLE_CHARACTER } from "./use-game-events.helpers";
 
 // packages/shared/fixtures/event_wire.json is the cross-language SSOT wire shape. The
 // Python lane (apps/agent/tests/test_wire_contract.py) asserts each publisher serializes
@@ -36,8 +37,20 @@ test("fixture hollow_echo_bands match the mobile HollowEchoBand vocabulary", () 
 // --- The canonical fixtured payloads must be consumed by the TS handlers/parser ---
 
 test("resonance_changed fixture drives the resonance state into the store", () => {
+  // The fixture's caster_id is the local player, so the push updates the tracker.
+  characterStore
+    .getState()
+    .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.resonance_changed.caster_id });
   handleGameEvent({ ...EVENTS.resonance_changed });
   expect(hudStore.getState().resonanceState).toBe(EVENTS.resonance_changed.state as ResonanceState);
+});
+
+test("resonance_changed for another party member does NOT touch the local tracker", () => {
+  // M14 story-004: a push carrying a DIFFERENT caster_id is ignored — the single global tracker
+  // belongs to the local player, so a teammate's resonance never overwrites the local HUD.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
+  handleGameEvent({ ...EVENTS.resonance_changed });
+  expect(hudStore.getState().resonanceState).toBeNull();
 });
 
 test("hollow_echo_result fixture pushes a hollow_echo overlay carrying the band", () => {
@@ -50,6 +63,39 @@ test("hollow_echo_result fixture pushes a hollow_echo overlay carrying the band"
 test("veil_ward_changed fixture toggles the ward state", () => {
   handleGameEvent({ ...EVENTS.veil_ward_changed });
   expect(hudStore.getState().veilWardActive).toBe(EVENTS.veil_ward_changed.active);
+});
+
+test("veil_ward_changed lights the indicator on a client that did NOT raise it", () => {
+  // Story-008 (scope_model.md §6): the ward is scope-owned, so it lights EVERY in-scope client.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
+  handleGameEvent({ ...EVENTS.veil_ward_changed });
+  expect(hudStore.getState().veilWardActive).toBe(true);
+});
+
+test("veil_ward_changed ignores a caster_id even if one is present", () => {
+  // NON-VACUITY. The test above cannot fail against the OLD caster_id filter: the fixture no
+  // longer carries a caster_id, and isEventForLocalPlayer(undefined) returned true, so the old
+  // handler would light the indicator anyway. This one smuggles a foreign caster_id into the
+  // payload: the old filter drops it and leaves the indicator dark; the new handler must not
+  // consult the field at all. It is the assertion that actually pins the filter's removal.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
+  handleGameEvent({ ...EVENTS.veil_ward_changed, caster_id: "the_raiser" });
+  expect(hudStore.getState().veilWardActive).toBe(true);
+});
+
+test("veil_ward_changed payload carries no caster_id to filter on", () => {
+  // The asymmetry, pinned: RESONANCE_CHANGED is per-caster and keeps its filter; the ward is not.
+  expect(EVENTS.veil_ward_changed).not.toHaveProperty("caster_id");
+  expect(EVENTS.resonance_changed).toHaveProperty("caster_id");
+});
+
+test("resonance_changed for another party member is still filtered out", () => {
+  // The other half of the asymmetry (story-008 AC6). Resonance is PER-CASTER: one client's pool
+  // must never overwrite another's. Dropping the ward's filter must not drop this one.
+  const before = hudStore.getState().resonanceState;
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
+  handleGameEvent({ ...EVENTS.resonance_changed });
+  expect(hudStore.getState().resonanceState).toBe(before);
 });
 
 test("spell_row fixture parses with its spell_tier intact (not blanked)", () => {

@@ -9,24 +9,85 @@ import uuid
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+import check_resolution_save
+import combat_enhancers
 import combat_resolution
+import conditions
 import db_content_queries
 import db_mutations
 import db_queries
 import event_types as E
+import rules_engine
 from combat_support import _participant_summary, _publish_sounds
+from combat_ui_update import build_combat_ui_update
 from companion_profiles import get_companion_profile
 from companion_scaling import (
     companion_attacks_to_action_pool,
     scale_companion_stats_to_player_level,
 )
+from db_errors import validated_player_conditions
+from encounter_roles import derive_role_stats
 from encounter_stance import resolve_encounter_stance
 from game_events import publish_game_event
 from region_types import REGION_CITY
 from session_data import CombatParticipant, CombatState, SessionData
+from social_resolution import RESISTANCE_TAGS
 from tool_support import SOUND_COMBAT_START
 
 logger = logging.getLogger("divineruin.tools")
+
+
+def _validate_enemy_action_conditions(enemies: list[dict]) -> None:
+    """Fail loud if any enemy condition action is malformed — the load-boundary strict guard.
+
+    Encounter templates have no strict loader (unlike spells.json / archetype_abilities.json,
+    whose loaders fail-loud on applies_condition), so this closes that gap at combat start. For any
+    action that declares ``applies_condition`` it requires: (1) the condition is in CONDITION_CATALOG;
+    (2) ``save`` is a valid save key — full name OR 3-letter abbrev, matching what the resolver
+    accepts (check_resolution_save.is_valid_save_key, one SSOT so the load-gate and runtime agree);
+    (3) ``dc`` is an int; (4) ``damage`` is absent or "0" — M13 condition actions are save-based, and
+    the resolver does not apply damage, so a damage-bearing condition action would silently deal none
+    (debt 5b18023ef5a5) until the combined to-hit+save+damage model lands. Validating HERE turns a
+    would-be mid-fight KeyError / silent damage-drop into a fail-loud error at combat entry."""
+    for enemy in enemies:
+        for action in enemy.get("action_pool", []):
+            cond = action.get("applies_condition")
+            if cond is None:
+                continue
+            label = f"enemy {enemy.get('id')!r} action {action.get('name')!r}"
+            conditions.assert_known_condition(cond, label)
+            if not check_resolution_save.is_valid_save_key(action.get("save")):
+                raise ValueError(
+                    f"{label} applies_condition needs a valid 'save' attribute, got {action.get('save')!r}"
+                )
+            if not isinstance(action.get("dc"), int):
+                raise ValueError(f"{label} applies_condition needs an int 'dc', got {action.get('dc')!r}")
+            if action.get("damage") not in (None, "", "0", 0):
+                raise ValueError(
+                    f"{label} condition action must be save-based (damage absent or '0') until the "
+                    f"combined damage+condition model lands (debt 5b18023ef5a5), got damage {action.get('damage')!r}"
+                )
+
+
+def _validate_enemy_resistance_tags(enemies: list[dict]) -> None:
+    """Fail loud if any enemy's Tier-3 ``resistance_tags`` are malformed — the load-boundary guard.
+
+    Encounter templates have no strict loader, so this closes the gap for the M15 de-escalation
+    resistance profile the same way ``_validate_enemy_action_conditions`` does for condition actions
+    (and mirroring npcs.py's default_disposition/resistance_tags guard). ``resistance_tags`` is
+    optional (an enemy without it simply can't be de-escalated); when present it must be a list of
+    canonical ``social_resolution.RESISTANCE_TAGS`` — an unknown tag would silently no-op the
+    argument DC swing in the resolver, so surface it as a fail-loud error at combat entry."""
+    for enemy in enemies:
+        tags = enemy.get("resistance_tags")
+        if tags is None:
+            continue
+        label = f"enemy {enemy.get('id')!r}"
+        if not isinstance(tags, list):
+            raise ValueError(f"{label} resistance_tags must be a list, got {tags!r}")
+        for tag in tags:
+            if tag not in RESISTANCE_TAGS:
+                raise ValueError(f"{label} resistance_tags {tag!r} not in {RESISTANCE_TAGS}")
 
 
 async def _start_combat_impl(
@@ -81,16 +142,40 @@ async def _start_combat_impl(
 
     # Build participant dicts for initiative rolling
     player_hp = player.get("hp", {})
-    player_attrs = player.get("attributes", {})
+
+    # Multi-player combat build (M14 story-003): session.party.member_ids is the SSOT for
+    # combat participation (not the mirrored session.player_id field). The primary reuses the
+    # already-fetched `player` row; every NON-primary member loads in ONE batched
+    # get_players_for_update call (M18 story-001) rather than a serial get_player per member —
+    # the same id-ordered lock batch story-008 relies on. A solo party has an empty non-primary
+    # set, so it skips the batch entirely and produces the same single participant as before.
+    non_primary_ids = [m for m in session.party.member_ids if m != session.player_id]
+    fetched = await queries.get_players_for_update(non_primary_ids) if non_primary_ids else {}
+    member_players: list[tuple[str, dict]] = []
+    for member_id in session.party.member_ids:
+        row = player if member_id == session.player_id else fetched.get(member_id)
+        if row is None:
+            raise ToolError(f"Player '{member_id}' not found.")
+        member_players.append((member_id, row))
+
     initiative_inputs: list[dict] = [
         {
-            "id": session.player_id,
-            "name": player.get("name", session.player_id),
-            "attributes": player_attrs,
+            "id": mid,
+            "name": row.get("name", mid),
+            "attributes": row.get("attributes", {}),
         }
+        for mid, row in member_players
     ]
 
     enemies = encounter.get("enemies", [])
+    # Surface malformed enemy content (condition actions, resistance tags) as a DM-narratable
+    # ToolError (the _start_combat_impl content-error convention, matching the stance-gate above),
+    # not a raw ValueError at the tool boundary. The inner {e} names the specific defect.
+    try:
+        _validate_enemy_action_conditions(enemies)
+        _validate_enemy_resistance_tags(enemies)
+    except ValueError as e:
+        raise ToolError(f"Encounter '{encounter_id}' has malformed enemy data: {e}") from e
     for enemy in enemies:
         initiative_inputs.append(
             {
@@ -135,34 +220,90 @@ async def _start_combat_impl(
     initiative_order = [e.participant_id for e in initiative_entries]
     initiative_by_id = {e.participant_id: e.total for e in initiative_entries}
 
-    # Build CombatParticipants
-    participants: list[CombatParticipant] = [
-        CombatParticipant(
-            id=session.player_id,
-            name=player.get("name", session.player_id),
-            type="player",
-            initiative=initiative_by_id[session.player_id],
-            hp_current=player_hp.get("current", 1),
-            hp_max=player_hp.get("max", 1),
-            ac=player.get("ac", 10),
-            attributes=player_attrs,
-            level=player.get("level", 1),
-        ),
-    ]
-    for enemy in enemies:
+    # Build CombatParticipants — one per party member (M14 story-003). Each member's
+    # conditions are loaded and Exhaustion-capped independently (M4.4 story-005): a
+    # pre-combat Exhausted/Wounded/Hollowed on ONE member must not bleed onto siblings. They
+    # ride the already-fetched row, so no extra query — validate at this boundary (fail-loud
+    # on a corrupt stored dict) and clamp Exhausted to the iron-constitution cap (the
+    # in-scope apply site until a forced-march producer). A corrupt stored condition row is a
+    # data-integrity error in the same family as a malformed companion profile (below) — the
+    # shared boundary guard surfaces it as a DM-narratable ToolError instead of a raw
+    # ValueError (db_tool narrows on JSONDecodeError, so a bare ValueError here would escape
+    # uncaught and crash combat init).
+    participants: list[CombatParticipant] = []
+    for mid, row in member_players:
+        row_hp = row.get("hp", {})
+        # Synthesize the member's combat action_pool from equipped weapons. Each equipment
+        # entry is already resolve_attack-shaped (name/damage/damage_type/properties), so a
+        # player attack declaration resolves through the same packet path as enemies and
+        # companions (story-003 unified resolution). Non-weapon gear (no `damage`) is skipped;
+        # spells/abilities are out-of-band tools in M4.1, not action_pool entries.
+        row_equipment = row.get("equipment", {})
+        row_action_pool = [item for item in row_equipment.values() if isinstance(item, dict) and item.get("damage")]
+        validated_conditions = validated_player_conditions(row, mid)
+        row_conditions = conditions.cap_exhaustion(
+            validated_conditions,
+            rules_engine.exhaustion_stack_cap(row),
+        )
         participants.append(
             CombatParticipant(
-                id=enemy["id"],
-                name=enemy.get("name", enemy["id"]),
+                id=mid,
+                name=row.get("name", mid),
+                type="player",
+                initiative=initiative_by_id[mid],
+                hp_current=row_hp.get("current", 1),
+                hp_max=row_hp.get("max", 1),
+                ac=row.get("ac", 10),
+                attributes=row.get("attributes", {}),
+                level=row.get("level", 1),
+                action_pool=row_action_pool,
+                # Declaration enhancers granted via players.data.flags (M4.2, story-004). Only
+                # extra_attack is grantable today; the rest populate when their grants land.
+                enhancers=combat_enhancers.enhancers_from_flags(row.get("flags")),
+                conditions=row_conditions,
+                # Save proficiencies (M13 close-fix): carry the player's proficient saves onto
+                # the participant so resolve_saving_throw adds the bonus when an enemy imposes
+                # a save (e.g. Frightened). Sourced from players.data (creation_rules.py:309).
+                saving_throw_proficiencies=row.get("saving_throw_proficiencies", []),
+            )
+        )
+    for enemy in enemies:
+        # Apply the encounter-role overlay (M4.7, story-001): the same base stat block becomes a
+        # Minion (halved, actives stripped) or a Boss (doubled, signature + legendary) per its
+        # ``role`` tag. derive_role_stats is pure and returns a NEW dict; an untagged enemy defaults
+        # to "standard" (identity), so pre-M4.7 templates build exactly as before.
+        derived = derive_role_stats(enemy, enemy.get("role", "standard"))
+        participants.append(
+            CombatParticipant(
+                id=derived["id"],
+                name=derived.get("name", derived["id"]),
                 type="enemy",
                 initiative=initiative_by_id[enemy["id"]],
-                hp_current=enemy.get("hp", 1),
-                hp_max=enemy.get("hp", 1),
-                ac=enemy.get("ac", 10),
-                attributes=enemy.get("attributes", {}),
-                level=enemy.get("level", 1),
-                action_pool=enemy.get("action_pool", []),
-                xp_value=enemy.get("xp_value", 0),
+                hp_current=derived.get("hp", 1),
+                hp_max=derived.get("hp", 1),
+                ac=derived.get("ac", 10),
+                attributes=derived.get("attributes", {}),
+                level=derived.get("level", 1),
+                action_pool=derived.get("action_pool", []),
+                xp_value=derived.get("xp_value", 0),
+                role=derived["role"],
+                attack_mod=derived["attack_mod"],
+                damage_mult=derived["damage_mult"],
+                dc_mod=derived["dc_mod"],
+                legendary_actions=derived["legendary_actions"],
+                signature_ability=derived["signature_ability"],
+                # Loot/currency overlay (M4.7, story-002): carry the template enemy's category +
+                # loot_table_id onto the participant so _end_combat_db can roll role-scaled loot
+                # and currency on victory. derive_role_stats copies the source enemy, so these ride
+                # through; empty-string defaults keep untagged/pre-M4.7 enemies inert (no drops).
+                category=derived.get("category", ""),
+                loot_table_id=derived.get("loot_table_id", ""),
+                # Tier-3 de-escalation resistance profile (M15 story-002): carry the template
+                # enemy's resistance_tags onto the participant so the orchestrator shifts each
+                # enemy's disposition by its OWN profile. Validated at the load boundary above;
+                # derive_role_stats copies the source enemy, so the tags ride through. Empty
+                # default keeps untagged/pre-M15 enemies un-de-escalatable (no argument DC swing).
+                resistance_tags=derived.get("resistance_tags", []),
             )
         )
 
@@ -180,8 +321,21 @@ async def _start_combat_impl(
                 attributes=companion_scaled.attributes,
                 level=companion_scaled.level,
                 action_pool=companion_action_pool,
+                # Carry the companion's save proficiencies (M13 close-fix, symmetric with the player
+                # build) so an enemy-inflicted save-based condition honors them — a WIS-proficient
+                # companion resists Frightened like a proficient player. `profile` is bound here
+                # (companion_scaled is not None => the profile-load try succeeded above).
+                saving_throw_proficiencies=list(profile.save_proficiencies),
             )
         )
+
+    # Carry the encounter's faction onto CombatState so combat_end can attribute the outcome
+    # to faction reputation (story-002 inc 5). An explicit encounter `faction` wins; otherwise
+    # the stance_gate faction (a gated encounter reaching combat resolved hostile). None when
+    # the encounter has no faction — no reputation shift on such a fight.
+    combat_faction_id = encounter.get("faction")
+    if combat_faction_id is None and stance_gate is not None:
+        combat_faction_id = stance_gate.get("faction")
 
     combat_id = f"combat_{uuid.uuid4().hex[:8]}"
     combat_state = CombatState(
@@ -191,6 +345,7 @@ async def _start_combat_impl(
         round_number=1,
         current_turn_index=0,
         location_id=session.location_id,
+        faction_id=combat_faction_id,
     )
 
     # Persist and update session
@@ -198,9 +353,11 @@ async def _start_combat_impl(
     session.combat_state = combat_state
 
     # Reset per-encounter weapon durability flags so each encounter is self-contained
-    # (a swing outside combat won't leak into this encounter's end-of-combat accrual).
-    session.weapon_used_this_encounter = False
-    session.weapon_crit_vs_heavy = False
+    # (a swing outside combat won't leak into this encounter's end-of-combat accrual). M18
+    # story-003: every party member's own flags reset, so no member's prior-encounter swing leaks.
+    for member in session.party.members:
+        member.weapon_used = False
+        member.weapon_crit_vs_heavy = False
     session.draethar_inner_fire_used = False  # Inner Fire is once per encounter (M3.4)
 
     # Build initiative summary once for event + response
@@ -218,6 +375,17 @@ async def _start_combat_impl(
             "difficulty": encounter.get("difficulty", "moderate"),
             "initiative_order": initiative_summary,
         },
+        event_bus=session.event_bus,
+    )
+    # Initial HUD push so the combat-tracker has live combatants from round 1
+    # (M12 sprint-029 close fix, concern 4045481bfc3e). Without this the
+    # producer only fires at Beat-4 wrap, leaving the tracker empty for all of
+    # round 1. Direct publish (no in-tx sink here); ordered AFTER COMBAT_STARTED
+    # so the mobile session.setCombat(true) gate latches before render.
+    await publish_game_event(
+        session.room,
+        E.COMBAT_UI_UPDATE,
+        build_combat_ui_update(combat_state),
         event_bus=session.event_bus,
     )
     await _publish_sounds(session, [SOUND_COMBAT_START])

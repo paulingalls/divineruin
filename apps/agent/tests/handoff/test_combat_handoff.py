@@ -4,8 +4,8 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from handoff._helpers import make_context as _make_context
-from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER
+from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, make_db_mod
+from sample_fixtures import make_context as _make_context
 
 from base_agent import BaseGameAgent
 from exploration_agent import ExplorationAgent
@@ -26,7 +26,7 @@ class TestStartCombatHandoff:
         mock_content = MagicMock()
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
-        ctx = _make_context()
+        ctx = _make_context(location_id="greyvale_south_road")
         raw = await _start_combat_impl(
             ctx,
             encounter_id="wolf_pack",
@@ -176,7 +176,7 @@ class TestEndCombatHandoff:
             location_id="greyvale_south_road",
         )
 
-        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
+        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=make_db_mod()[0])
         assert isinstance(raw, tuple)
         agent_instance, json_str = raw
 
@@ -218,7 +218,7 @@ class TestEndCombatHandoff:
             location_id="greyvale_south_road",
         )
 
-        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
+        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=make_db_mod()[0])
         assert isinstance(raw, tuple)
         agent_instance, _ = raw
 
@@ -250,7 +250,7 @@ class TestEndCombatHandoff:
             location_id="greyvale_south_road",
         )
 
-        await _end_combat_impl(ctx, outcome="fled", mutations=mock_mutations)
+        await _end_combat_impl(ctx, outcome="fled", mutations=mock_mutations, db_mod=make_db_mod()[0])
 
         # Combat should be cleared
         assert ctx.userdata.in_combat is False
@@ -300,9 +300,9 @@ class TestDynamicEndCombat:
         )
         ctx.userdata = session
 
-        with patch("combat_end.publish_game_event", new_callable=AsyncMock):
+        with patch("combat_events.publish_game_event", new_callable=AsyncMock):
             with patch("combat_end._publish_sounds", new_callable=AsyncMock):
-                result = await _end_combat_impl(ctx, "victory", mutations=mock_mutations)
+                result = await _end_combat_impl(ctx, "victory", mutations=mock_mutations, db_mod=make_db_mod()[0])
 
         assert isinstance(result, tuple)
         agent, _ = result
@@ -345,9 +345,9 @@ class TestDynamicEndCombat:
         )
         ctx.userdata = session
 
-        with patch("combat_end.publish_game_event", new_callable=AsyncMock):
+        with patch("combat_events.publish_game_event", new_callable=AsyncMock):
             with patch("combat_end._publish_sounds", new_callable=AsyncMock):
-                result = await _end_combat_impl(ctx, "victory", mutations=mock_mutations)
+                result = await _end_combat_impl(ctx, "victory", mutations=mock_mutations, db_mod=make_db_mod()[0])
 
         assert isinstance(result, tuple)
         agent, _ = result

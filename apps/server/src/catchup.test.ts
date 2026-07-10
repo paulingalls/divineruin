@@ -1,11 +1,14 @@
 import { test, expect, describe, mock, beforeEach } from "bun:test";
 
-let mockQueryResults: unknown[][] = [];
+let mockQueryResults: (unknown[] | Error)[] = [];
 let queryCallIndex = 0;
 
 function mockTaggedTemplate(_strings: TemplateStringsArray, ..._values: unknown[]) {
   const result = mockQueryResults[queryCallIndex] ?? [];
   queryCallIndex++;
+  // An Error entry lets a test simulate a query rejecting (e.g. the un-.catch'd
+  // activities query timing out) rather than resolving with rows.
+  if (result instanceof Error) return Promise.reject(result);
   return Promise.resolve(result);
 }
 
@@ -444,6 +447,24 @@ describe("handleGetCatchUpFeed", () => {
     expect(training!.decisionOptions).not.toBeNull();
     expect(training!.decisionOptions).toHaveLength(2);
     expect(training!.decisionOptions![0]!.id).toBe("aggressive");
+  });
+
+  test("returns 500 when the primary activities query rejects", async () => {
+    // The async_activities query has no .catch (unlike the others), so a
+    // rejection there propagates to the outer catch -> 500. Exercises the
+    // failure path (and its structured diag) the close-reviewer flagged.
+    mockQueryResults = [
+      new Error("ERR_POSTGRES_IDLE_TIMEOUT"), // activities query rejects
+      [],
+      [],
+      [],
+    ];
+
+    const req = makeRequest("GET", "/api/catchup");
+    const res = await handleGetCatchUpFeed(req, "player_1");
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("Internal server error");
   });
 
   test("training in complete appears as resolved", async () => {

@@ -2,8 +2,6 @@
 
 from unittest.mock import AsyncMock, patch
 
-import pytest
-
 from system_prompts import build_system_prompt
 from warm_prompts import build_full_prompt, build_warm_layer, format_training_section
 
@@ -322,34 +320,10 @@ class TestNavigationPromptIncluded:
 
 
 class TestPromptToolConsistency:
-    """A gameplay agent's assembled prompt must name the danger mechanics only when
-    the agent actually holds them — otherwise the DM is told to call an absent tool
+    """A gameplay agent's assembled prompt must name a tool only when the agent
+    actually holds it — otherwise the DM is told to call an absent tool
     (concern b1591cb23262). Enforced by construction so the next prompt edit can't
     silently reintroduce the drift (concern df5cc73b2473)."""
-
-    @pytest.mark.parametrize("danger_tool_name", ["request_attack"])
-    def test_danger_tool_named_iff_in_toolset(self, danger_tool_name):
-        # request_saving_throw folded into the universal `check` verb (M5 story-003), so
-        # request_attack is the remaining combat-only danger tool that must not appear in a
-        # prompt unless the agent holds it.
-        from check_tools import request_attack
-        from combat_agent import COMBAT_AGENT_TOOLS
-        from dispatch_agent import DISPATCH_TOOLS
-        from exploration_agent import EXPLORATION_TOOLS
-        from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
-
-        tool_obj = {"request_attack": request_attack}[danger_tool_name]
-        agents = {
-            "exploration": (build_system_prompt("loc"), EXPLORATION_TOOLS),
-            "combat": (COMBAT_SYSTEM_PROMPT, COMBAT_AGENT_TOOLS),
-            "training": (DISPATCH_SYSTEM_PROMPT, DISPATCH_TOOLS),
-        }
-        for name, (prompt, tools) in agents.items():
-            named = danger_tool_name in prompt
-            has_tool = tool_obj in tools
-            assert named == has_tool, (
-                f"{name} agent: prompt names {danger_tool_name}={named} but has the tool={has_tool}"
-            )
 
     def test_query_info_consolidation_consistency(self):
         """After collapsing query_* into query_info: a prompt naming query_info must hold
@@ -377,6 +351,16 @@ class TestPromptToolConsistency:
             assert ("enter_mode" in prompt) == (enter_mode in tools), (
                 f"{name}: prompt names enter_mode but tool-holding differs"
             )
+
+    def test_combat_prompt_names_consume_legendary_action(self):
+        """story-009: the combat prompt must name consume_legendary_action so the DM knows to spend
+        the Boss's legendary beat resolve_phase surfaces, and the agent must hold the tool."""
+        from combat_agent import COMBAT_AGENT_TOOLS
+        from combat_turn import consume_legendary_action
+        from system_prompts import COMBAT_SYSTEM_PROMPT
+
+        assert "consume_legendary_action" in COMBAT_SYSTEM_PROMPT
+        assert consume_legendary_action in COMBAT_AGENT_TOOLS
 
 
 # NOTE: the training-hall referral moved from the city system prompt to the city

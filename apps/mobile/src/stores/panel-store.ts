@@ -85,6 +85,7 @@ interface PanelState {
   setInventory: (items: InventoryItem[]) => void;
   setQuests: (quests: QuestView[]) => void;
   advanceQuest: (questId: string, newStage: number) => void;
+  completeQuest: (questId: string) => void;
   setMapProgress: (nodes: MapNode[]) => void;
   addVisitedLocation: (locationId: string, connections: string[]) => void;
 
@@ -123,6 +124,23 @@ export const panelStore = createStore<PanelState>((set) => ({
               ...q,
               currentStage: newStage,
               stages: q.stages.map((st, i) => (i < newStage ? { ...st, completed: true } : st)),
+            }
+          : q,
+      ),
+    })),
+
+  completeQuest: (questId) =>
+    set((s) => ({
+      // A finished quest: status "completed" moves it to the panel's COMPLETED section and
+      // all stages read done. Matches the reload path (session_init only loads active quests,
+      // so a completed quest naturally leaves the log on the next reload).
+      quests: s.quests.map((q) =>
+        q.questId === questId
+          ? {
+              ...q,
+              status: "completed" as const,
+              currentStage: q.stages.length,
+              stages: q.stages.map((st) => ({ ...st, completed: true })),
             }
           : q,
       ),

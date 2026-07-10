@@ -4,8 +4,9 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _make_combat_state, _make_context, _make_mock_room
+from combat._helpers import _make_combat_state
 from livekit.agents.llm import ToolError
+from sample_fixtures import make_context, make_mock_room, published_payloads
 
 import event_types as E
 from combat_init import _start_combat_impl
@@ -133,7 +134,7 @@ class TestStartCombatStanceGate:
     @pytest.mark.asyncio
     async def test_allied_reputation_averts_combat(self):
         mock_mutations, mock_queries, mock_content = _stance_mocks(reputation=8)  # >= friendly(5)
-        ctx = _make_context()
+        ctx = make_context()
         result = await _start_combat_impl(
             ctx,
             encounter_id="ashmark_patrol",
@@ -152,7 +153,7 @@ class TestStartCombatStanceGate:
     @pytest.mark.asyncio
     async def test_hostile_reputation_starts_combat(self):
         mock_mutations, mock_queries, mock_content = _stance_mocks(reputation=4)  # < friendly(5)
-        ctx = _make_context()
+        ctx = make_context()
         result = await _start_combat_impl(
             ctx,
             encounter_id="ashmark_patrol",
@@ -169,7 +170,7 @@ class TestStartCombatStanceGate:
     async def test_missing_reputation_defaults_to_neutral_hostile(self):
         # No player_reputation row -> None -> neutral (0) -> below friendly -> hostile.
         mock_mutations, mock_queries, mock_content = _stance_mocks(reputation=None)
-        ctx = _make_context()
+        ctx = make_context()
         result = await _start_combat_impl(
             ctx,
             encounter_id="ashmark_patrol",
@@ -185,7 +186,7 @@ class TestStartCombatStanceGate:
     async def test_unknown_gate_faction_fails_loud(self):
         mock_mutations, mock_queries, mock_content = _stance_mocks(reputation=8)
         mock_content.get_faction = AsyncMock(return_value=None)
-        ctx = _make_context()
+        ctx = make_context()
         with pytest.raises(ToolError):
             await _start_combat_impl(
                 ctx,
@@ -204,7 +205,7 @@ class TestStartCombatStanceGate:
         encounter = _gated_encounter()
         encounter["stance_gate"] = {"allied_at_or_above": "friendly"}  # no faction
         mock_content.get_encounter_template = AsyncMock(return_value=encounter)
-        ctx = _make_context()
+        ctx = make_context()
         with pytest.raises(ToolError, match="malformed stance gate"):
             await _start_combat_impl(
                 ctx,
@@ -221,7 +222,7 @@ class TestStartCombatStanceGate:
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()  # goblin_patrol, no gate
         mock_content.get_faction = AsyncMock()
         mock_queries.get_player_faction_reputation = AsyncMock()
-        ctx = _make_context()
+        ctx = make_context()
         result = await _start_combat_impl(
             ctx,
             encounter_id="goblin_patrol",
@@ -239,7 +240,7 @@ class TestStartCombat:
     @pytest.mark.asyncio
     async def test_creates_combat_state(self):
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
-        ctx = _make_context()
+        ctx = make_context()
 
         raw = await _start_combat_impl(
             ctx,
@@ -264,7 +265,7 @@ class TestStartCombat:
     @pytest.mark.asyncio
     async def test_returns_agent_tuple(self):
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
-        ctx = _make_context()
+        ctx = make_context()
 
         raw = await _start_combat_impl(
             ctx,
@@ -278,9 +279,87 @@ class TestStartCombat:
         assert len(raw) == 2
 
     @pytest.mark.asyncio
+    async def test_enters_declaration_beat_with_player_action_pool(self):
+        # AC1 (story-003): after initiative the combat is parked at the declaration beat,
+        # and the player participant carries a weapon action_pool synthesized from
+        # equipment so their attack declarations resolve through the same packet path
+        # as enemies/companions.
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+        ctx = make_context()
+
+        await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Ambush!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+
+        cs = ctx.userdata.combat_state
+        assert cs is not None
+        assert cs.beat == "declaration"
+        player = cs.get_participant("player_1")
+        assert player is not None
+        assert "Longsword" in [a.get("name") for a in player.action_pool]
+
+    @pytest.mark.asyncio
+    async def test_player_save_proficiencies_loaded_onto_participant(self):
+        # M13 close-fix: the player's save proficiencies (players.data) must ride onto the combat
+        # participant so an enemy-inflicted save-based condition honors them (resolve_saving_throw
+        # adds the proficiency bonus). Without this the participant defaults to [] and a proficient
+        # player resists no better than a non-proficient one.
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+        ctx = make_context()
+
+        await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Ambush!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+
+        cs = ctx.userdata.combat_state
+        assert cs is not None
+        player = cs.get_participant("player_1")
+        assert player is not None
+        assert player.saving_throw_proficiencies == ["strength", "constitution"]
+
+    @pytest.mark.asyncio
+    async def test_player_enhancers_populated_from_flags(self):
+        # story-004: the player participant carries the declaration enhancers granted by
+        # players.data.flags, so Extra Attack expands their attack in resolve_phase.
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+        mock_queries.get_player = AsyncMock(
+            return_value={**SAMPLE_PLAYER, "flags": {"extra_attack": True, "shield_bash": False}}
+        )
+        ctx = make_context()
+
+        await _start_combat_impl(
+            ctx,
+            encounter_id="goblin_patrol",
+            encounter_description="Ambush!",
+            mutations=mock_mutations,
+            queries=mock_queries,
+            content=mock_content,
+        )
+
+        cs = ctx.userdata.combat_state
+        assert cs is not None
+        player = cs.get_participant("player_1")
+        assert player is not None
+        assert player.enhancers == ["extra_attack"]  # truthy known flags only
+        # Enemies carry no enhancers.
+        enemy = cs.get_participant("goblin_scout_1")
+        assert enemy is not None
+        assert enemy.enhancers == []
+
+    @pytest.mark.asyncio
     async def test_rolls_initiative(self):
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
-        ctx = _make_context()
+        ctx = make_context()
 
         _, json_str = await _start_combat_impl(
             ctx,
@@ -302,9 +381,9 @@ class TestStartCombat:
         # A weapon swing outside combat must not leak into this encounter's
         # end-of-combat durability accrual (concern c3c95fd3af40).
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
-        ctx = _make_context()
-        ctx.userdata.weapon_used_this_encounter = True
-        ctx.userdata.weapon_crit_vs_heavy = True
+        ctx = make_context()
+        ctx.userdata.party.primary.weapon_used = True
+        ctx.userdata.party.primary.weapon_crit_vs_heavy = True
 
         await _start_combat_impl(
             ctx,
@@ -315,14 +394,14 @@ class TestStartCombat:
             content=mock_content,
         )
 
-        assert ctx.userdata.weapon_used_this_encounter is False
-        assert ctx.userdata.weapon_crit_vs_heavy is False
+        assert ctx.userdata.party.primary.weapon_used is False
+        assert ctx.userdata.party.primary.weapon_crit_vs_heavy is False
 
     @pytest.mark.asyncio
     async def test_publishes_events(self):
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
-        room = _make_mock_room()
-        ctx = _make_context(room=room)
+        room = make_mock_room()
+        ctx = make_context(room=room)
 
         await _start_combat_impl(
             ctx,
@@ -333,16 +412,21 @@ class TestStartCombat:
             content=mock_content,
         )
 
-        # Should publish combat_started and play_sound events
-        assert room.local_participant.publish_data.call_count == 2
-        calls = [json.loads(c[0][0]) for c in room.local_participant.publish_data.call_args_list]
+        # Should publish combat_started, combat_ui_update (initial HUD push —
+        # M12 sprint-029 close fix, concern 4045481bfc3e), and play_sound.
+        assert room.local_participant.publish_data.call_count == 3
+        calls = published_payloads(room)
         types = [c["type"] for c in calls]
         assert E.COMBAT_STARTED in types
+        assert E.COMBAT_UI_UPDATE in types
         assert E.PLAY_SOUND in types
+        # Ordering: COMBAT_STARTED → COMBAT_UI_UPDATE so mobile session.setCombat(true)
+        # latches before the tracker tries to render the initial packet.
+        assert types.index(E.COMBAT_STARTED) < types.index(E.COMBAT_UI_UPDATE)
 
     @pytest.mark.asyncio
     async def test_error_if_already_in_combat(self):
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
         with pytest.raises(ToolError, match="Already in combat"):
@@ -352,9 +436,42 @@ class TestStartCombat:
     async def test_error_missing_encounter(self):
         mock_content = MagicMock()
         mock_content.get_encounter_template = AsyncMock(return_value=None)
-        ctx = _make_context()
+        ctx = make_context()
 
         with pytest.raises(ToolError, match="not found"):
             await _start_combat_impl(
                 ctx, encounter_id="nonexistent", encounter_description="Nothing", content=mock_content
+            )
+
+    @pytest.mark.asyncio
+    async def test_malformed_enemy_condition_action_raises_tool_error(self):
+        # A malformed enemy condition action must surface as a DM-narratable ToolError at the tool
+        # boundary, not a raw ValueError (matching the content-error convention).
+        mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
+        mock_content.get_encounter_template = AsyncMock(
+            return_value={
+                "id": "bad_enc",
+                "name": "Bad Encounter",
+                "enemies": [
+                    {
+                        "id": "e1",
+                        "name": "E",
+                        "attributes": {},
+                        "action_pool": [
+                            {"name": "Bad Shriek", "applies_condition": "frightened", "save": "luck", "dc": 12}
+                        ],
+                    }
+                ],
+            }
+        )
+        ctx = make_context()
+
+        with pytest.raises(ToolError, match="malformed enemy data"):
+            await _start_combat_impl(
+                ctx,
+                encounter_id="bad_enc",
+                encounter_description="x",
+                mutations=mock_mutations,
+                queries=mock_queries,
+                content=mock_content,
             )

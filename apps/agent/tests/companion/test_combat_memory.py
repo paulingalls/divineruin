@@ -140,10 +140,9 @@ class TestCompanionInCombat:
 
     @pytest.mark.asyncio
     async def test_companion_ko_sets_unconscious(self):
-        from combat_turn import _resolve_enemy_turn_impl
-
-        mock_mutations = MagicMock()
-        mock_mutations.save_combat_state = AsyncMock()
+        # Companion-KO bookkeeping now lives in the shared _resolve_attack_packet resolver
+        # (the phase loop's per-packet path, story-003): the enemy attacks the companion.
+        from combat_support import _resolve_attack_packet
 
         ctx = _make_context()
         ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
@@ -180,15 +179,10 @@ class TestCompanionInCombat:
         )
         ctx.userdata.combat_state = cs
 
-        result = json.loads(
-            await _resolve_enemy_turn_impl(
-                ctx,
-                enemy_id="goblin_1",
-                action_name="Scimitar",
-                target_id="companion_kael",
-                mutations=mock_mutations,
-            )
-        )
+        goblin = cs.get_participant("goblin_1")
+        companion = cs.get_participant("companion_kael")
+        assert goblin is not None and companion is not None
+        result = await _resolve_attack_packet(ctx.userdata, goblin, goblin.action_pool[0], companion)
 
         if result["hit"]:
             assert ctx.userdata.companion.is_conscious is False

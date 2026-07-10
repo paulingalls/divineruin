@@ -27,9 +27,13 @@ preparation (story-006).
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Literal, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
+import conditions
 from catalog_parse import parse_int, parse_int_dict, parse_str
+
+if TYPE_CHECKING:
+    from abilities import Ability  # type-only: abilities.py imports spells, so never import at runtime
 
 logger = logging.getLogger("divineruin.spells")
 
@@ -40,6 +44,21 @@ SpellTier = Literal["cantrip", "minor", "standard", "major", "supreme"]
 # abilities.parse_ability_row's ability_type guard.
 _SPELL_SOURCES = frozenset(get_args(SpellSource))
 _SPELL_TIERS = frozenset(get_args(SpellTier))
+
+# story-003: the frozen 7-key spell-cast SFX palette (docs/audio_sfx_pipeline.md §4).
+# sound_id is the machine-playable key the Python emit (story-004) + mobile registry
+# resolve; audio_cue stays free-text DM direction prose, a separate field.
+SPELL_SOUND_KEYS = frozenset(
+    {
+        "spell_fire",
+        "spell_ice",
+        "spell_arcane_force",
+        "spell_heal",
+        "spell_radiant",
+        "spell_nature",
+        "spell_generic",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -55,14 +74,31 @@ class Spell:
     # working without supplying them; parse_spell_row REQUIRES them in raw rows (strict,
     # decision spell-loader-strict-contract). resonance_by_source maps the spell's magic
     # source to its catalog Resonance value (magic.md Spell-to-Resonance Map); terrain_effects
-    # holds the Primal terrain->Resonance overrides ({} for non-Primal); audio_cue is the SFX
-    # code auto-pushed on cast ("" if silent); concentration gates M3.4. (The catalog "Level"
+    # holds the Primal terrain->Resonance overrides ({} for non-Primal); audio_cue is a free-text
+    # DM audio-direction cue voiced/directed on cast (returned in the cast packet, spell_casting.py)
+    # — NOT a literal client SFX code, nothing maps it to real SFX yet; codes like "CMB-008" are
+    # shorthand within that free text. Required + non-empty per row (test_spells_content guards it,
+    # concern e3af222251df); concentration gates M3.4. (The catalog "Level"
     # column / per-row level_requirement was deleted in story-008: orphaned non-gating metadata
     # with no reader — access is gated by the per-archetype tier tables, not per-spell level.)
     resonance_by_source: dict[str, int] = field(default_factory=dict)
     terrain_effects: dict[str, int] = field(default_factory=dict)
     audio_cue: str = ""
     concentration: bool = False
+    # M4.8 story-004: the beneficial condition this spell PRODUCES on its target (e.g. "blessed"),
+    # or None for a spell that applies no condition. Optional + forward-compatible: existing rows
+    # omit it. When present, parse_spell_row fail-louds an unknown type against CONDITION_CATALOG.
+    applies_condition: str | None = None
+    # M4.8 story-007: the maximum number of targets a multi-target spell may name (e.g. Bless = 3),
+    # or None for an unbounded/single-target spell. Optional + forward-compatible. validate_target_count
+    # is the single cap SSOT enforced at both the OOC cast and (story-012) the in-combat declaration.
+    max_targets: int | None = None
+    # M17 story-003: the machine-playable SFX key (one of SPELL_SOUND_KEYS), read by the
+    # Python cast-emit (story-004) + resolved by the mobile sound registry. Distinct from
+    # audio_cue (free-text director prose); NOT mirrored into the TS Spell type (reader-gated,
+    # decision spell-ts-reader-gated) since the TS server never reads it. Default keeps in-code
+    # Spell(...) builds working; parse_spell_row REQUIRES it from raw rows (strict).
+    sound_id: str = ""
 
 
 # Module-level runtime-loaded spells, keyed by spell id. Populated by load_spells()
@@ -93,6 +129,21 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
         concentration = data["concentration"]
         if not isinstance(concentration, bool):
             raise ValueError(f"spell {spell_id!r} concentration is not a bool")
+        # Optional producer field (M4.8 story-004): when present it must name a real condition type,
+        # so a typo fails at load (strict-loader convention) instead of silently producing nothing.
+        applies_condition = data.get("applies_condition")
+        if applies_condition is not None:
+            conditions.assert_known_condition(applies_condition, f"spell {spell_id!r}")
+        # Optional multi-target cap (M4.8 story-007): when present it must be a positive int (bool is
+        # not an int here — reject it), so a typo/0 fails at load instead of silently uncapping.
+        max_targets = data.get("max_targets")
+        if max_targets is not None and (
+            isinstance(max_targets, bool) or not isinstance(max_targets, int) or max_targets < 1
+        ):
+            raise ValueError(f"spell {spell_id!r} max_targets {max_targets!r} must be a positive int")
+        sound_id = data["sound_id"]
+        if sound_id not in SPELL_SOUND_KEYS:
+            raise ValueError(f"spell {spell_id!r} sound_id {sound_id!r} not in {sorted(SPELL_SOUND_KEYS)}")
         return Spell(
             id=spell_id,
             name=data["name"],
@@ -105,9 +156,44 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             terrain_effects=parse_int_dict(data["terrain_effects"], f"spell {spell_id!r} terrain_effects"),
             audio_cue=parse_str(data["audio_cue"], f"spell {spell_id!r} audio_cue"),
             concentration=concentration,
+            applies_condition=applies_condition,
+            max_targets=max_targets,
+            sound_id=sound_id,
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed spells row {spell_id!r}: {e}") from e
+
+
+def validate_target_count(spell: "Spell | Ability", target_ids: list[str]) -> None:
+    """Fail loud when a multi-target cast names more allies than the spell/ability allows (M4.8
+    story-007; widened to abilities in story-016 — both carry .id/.name/.max_targets).
+
+    The single cap SSOT: no-op when the action has no ``max_targets`` (unbounded/single-target).
+    Raises ValueError (callers at the tool boundary convert to a DM-narratable ToolError) so an
+    over-cap cast is rejected before any resource write. Reused unchanged by the in-combat path
+    (story-012)."""
+    if spell.max_targets is not None and len(target_ids) > spell.max_targets:
+        raise ValueError(f"spell {spell.id!r} targets at most {spell.max_targets} (got {len(target_ids)})")
+
+
+def normalize_target_list(spell: "Spell | Ability", target_id: str | None, target_ids: list[str]) -> list[str]:
+    """Normalize + validate a multi-target cast's ally list (M4.8 story-007) — the targeting SSOT.
+    Accepts a Spell OR a condition-applying Ability (story-016): both expose .id/.name/.max_targets.
+
+    Order, all BEFORE any resource write: reject ambiguous both-args -> order-preserving dedup ->
+    reject empty -> reject a spell with no ``max_targets`` (single-target only; this also closes the
+    revival Hollow-gate bypass) -> enforce the cap. Raises ValueError (the tool boundary converts to a
+    DM-narratable ToolError) so an invalid cast is refused before Focus/Resonance is touched. Returns
+    the deduped list to apply."""
+    if target_id is not None:
+        raise ValueError("pass target_id OR target_ids, not both")
+    deduped = list(dict.fromkeys(target_ids))
+    if not deduped:
+        raise ValueError("name at least one ally")
+    if spell.max_targets is None:
+        raise ValueError(f"{spell.name} does not support multiple targets")
+    validate_target_count(spell, deduped)
+    return deduped
 
 
 def set_spells(config: dict[str, Spell]) -> None:

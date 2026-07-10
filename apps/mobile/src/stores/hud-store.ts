@@ -34,18 +34,26 @@ export interface ActiveObjective {
   updatedAt: number;
 }
 
+// A single active status condition on a combatant (M4.3, story-005). Mirrors the server
+// condition packet shaped by story-004: a permissive wire shape — the closed condition
+// vocabulary + icon mapping lives in condition-display.ts, not here.
+export interface Condition {
+  type: string;
+  stacks: number;
+  source: string;
+}
+
 export interface Combatant {
   id: string;
   name: string;
   isAlly: boolean;
   hpCurrent: number;
   hpMax: number;
-  statusEffects: string[];
+  conditions: Condition[];
   isActive: boolean;
 }
 
 export interface CombatTrackerState {
-  phase: string;
   round: number;
   combatants: Combatant[];
 }
@@ -158,6 +166,7 @@ interface HudState {
   setStatusEffects: (effects: StatusEffect[]) => void;
 
   setActiveObjective: (objective: ActiveObjective) => void;
+  clearActiveObjective: () => void;
   setQuestObjectiveVisible: (visible: boolean) => void;
 
   setCombatState: (state: CombatTrackerState) => void;
@@ -250,6 +259,8 @@ export const hudStore = createStore<HudState>((set, get) => ({
 
   setActiveObjective: (objective) =>
     set({ activeObjective: objective, questObjectiveVisible: true }),
+
+  clearActiveObjective: () => set({ activeObjective: null, questObjectiveVisible: false }),
 
   setQuestObjectiveVisible: (visible) => set({ questObjectiveVisible: visible }),
 

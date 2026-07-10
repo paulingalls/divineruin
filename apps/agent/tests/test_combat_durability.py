@@ -23,7 +23,10 @@ async accrual/wiring tests inject AsyncMock mutations/queries (test_combat_tools
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from _combat_end_fixtures import default_condition_persistence  # noqa: F401  (autouse fixture)
 
+import combat_durability
+import combat_events
 import combat_resolution
 import combat_support
 import event_types as E
@@ -88,20 +91,20 @@ def test_find_equipped_matches_type_and_equipped_flag():
         _inv_item("longsword_guild", "weapon", equipped=True),  # wrong type
         _inv_item("plate_armor", "armor", equipped=True),  # the match
     ]
-    found = combat_support._find_equipped(inv, "armor")
+    found = combat_durability._find_equipped(inv, "armor")
     assert found is not None and found["id"] == "plate_armor"
 
 
 def test_find_equipped_returns_none_when_no_match():
     inv = [_inv_item("longsword_guild", "weapon", equipped=True)]
-    assert combat_support._find_equipped(inv, "shield") is None
+    assert combat_durability._find_equipped(inv, "shield") is None
 
 
 def test_find_equipped_skips_equipped_item_missing_durability_tier():
     # A malformed equipped item with no durability_tier must be skipped (None),
     # not returned to _accrue_durability where it would KeyError mid-turn.
     item = {"id": "broken_data", "type": "armor", "slot_info": {"equipped": True}}
-    assert combat_support._find_equipped([item], "armor") is None
+    assert combat_durability._find_equipped([item], "armor") is None
 
 
 def test_find_equipped_filters_by_name():
@@ -109,7 +112,7 @@ def test_find_equipped_filters_by_name():
         _inv_item("longsword_guild", "weapon", equipped=True, name="Longsword"),
         _inv_item("dagger_iron", "weapon", equipped=True, name="Dagger"),
     ]
-    found = combat_support._find_equipped(inv, "weapon", name="dagger")
+    found = combat_durability._find_equipped(inv, "weapon", name="dagger")
     assert found is not None and found["id"] == "dagger_iron"
 
 
@@ -123,39 +126,39 @@ def _session():
 async def test_accrue_persists_decremented_hits():
     mutations = AsyncMock()
     item = _inv_item("plate_armor", "armor", tier="standard", current_hits=10)
-    with patch.object(combat_support, "publish_game_event", AsyncMock()):
-        result = await combat_support._accrue_durability(
+    with patch.object(combat_events, "publish_game_event", AsyncMock()):
+        result = await combat_durability._accrue_durability(
             _session(), "p1", item, 1, is_hollow_zone=False, mutations=mutations
         )
-    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 9)
+    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 9, conn=None)
     assert result == {"broken": False, "penalty": {}, "current_hits": 9}
 
 
 async def test_accrue_hollow_zone_doubles_loss():
     mutations = AsyncMock()
     item = _inv_item("plate_armor", "armor", tier="standard", current_hits=10)
-    with patch.object(combat_support, "publish_game_event", AsyncMock()):
-        await combat_support._accrue_durability(_session(), "p1", item, 1, is_hollow_zone=True, mutations=mutations)
-    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 8)
+    with patch.object(combat_events, "publish_game_event", AsyncMock()):
+        await combat_durability._accrue_durability(_session(), "p1", item, 1, is_hollow_zone=True, mutations=mutations)
+    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 8, conn=None)
 
 
 async def test_accrue_lazy_defaults_missing_current_hits_to_full():
     mutations = AsyncMock()
     # standard tier max_hits == 10; no current_hits on the row -> reads as 10.
     item = _inv_item("plate_armor", "armor", tier="standard", current_hits=None)
-    with patch.object(combat_support, "publish_game_event", AsyncMock()):
-        result = await combat_support._accrue_durability(
+    with patch.object(combat_events, "publish_game_event", AsyncMock()):
+        result = await combat_durability._accrue_durability(
             _session(), "p1", item, 1, is_hollow_zone=False, mutations=mutations
         )
-    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 9)
+    mutations.update_item_durability.assert_awaited_once_with("p1", "plate_armor", 9, conn=None)
     assert result["current_hits"] == 9
 
 
 async def test_accrue_breaks_at_zero_with_typed_penalty_and_event():
     mutations = AsyncMock()
     item = _inv_item("longsword_guild", "weapon", tier="fragile", current_hits=1)
-    with patch.object(combat_support, "publish_game_event", AsyncMock()) as pub:
-        result = await combat_support._accrue_durability(
+    with patch.object(combat_events, "publish_game_event", AsyncMock()) as pub:
+        result = await combat_durability._accrue_durability(
             _session(), "p1", item, 1, is_hollow_zone=False, mutations=mutations
         )
     assert result == {"broken": True, "penalty": {"attack": -2}, "current_hits": 0}
@@ -169,8 +172,8 @@ async def test_accrue_breaks_at_zero_with_typed_penalty_and_event():
 async def test_accrue_already_broken_skips_write_and_event():
     mutations = AsyncMock()
     item = _inv_item("longsword_guild", "weapon", tier="fragile", current_hits=0)
-    with patch.object(combat_support, "publish_game_event", AsyncMock()) as pub:
-        result = await combat_support._accrue_durability(
+    with patch.object(combat_events, "publish_game_event", AsyncMock()) as pub:
+        result = await combat_durability._accrue_durability(
             _session(), "p1", item, 1, is_hollow_zone=False, mutations=mutations
         )
     mutations.update_item_durability.assert_not_awaited()
@@ -178,9 +181,8 @@ async def test_accrue_already_broken_skips_write_and_event():
     assert result == {"broken": True, "penalty": {"attack": -2}, "current_hits": 0}
 
 
-# --- armor + shield accrual in resolve_enemy_turn ----------------------------
+# --- armor + shield accrual in _resolve_attack_packet ------------------------
 
-import combat_turn  # noqa: E402
 from session_data import CombatParticipant, CombatState  # noqa: E402
 
 
@@ -215,7 +217,7 @@ def _combat_ctx(corruption_level=0):
 def _forced_attack(*, hit, critical=False):
     res = AsyncMock()
     res.hit = hit
-    res.critical = critical
+    res.critical_success = critical
     res.roll = 15
     res.attack_total = 17
     res.damage = 5
@@ -226,22 +228,29 @@ def _forced_attack(*, hit, critical=False):
 
 
 async def _run_enemy_turn(ctx, inventory, *, shield_reaction=None, hit=True):
+    # Durability accrual now lives in the shared _resolve_attack_packet resolver (the
+    # phase loop's per-packet path, story-003); the enemy attacks the player participant.
+    session = ctx.userdata
+    cs = session.combat_state
+    attacker = cs.get_participant("goblin_1")
+    target = cs.get_participant("p1")
+    action = attacker.action_pool[0]
     mutations = AsyncMock()
     queries = AsyncMock()
     queries.get_player_inventory = AsyncMock(return_value=inventory)
     with (
-        patch.object(combat_turn.check_resolution, "resolve_attack", return_value=_forced_attack(hit=hit)),
+        patch.object(combat_support.check_resolution_attack, "resolve_attack", return_value=_forced_attack(hit=hit)),
         patch.object(
-            combat_turn,
+            combat_support,
             "_accrue_durability",
             AsyncMock(return_value={"broken": False, "penalty": {}, "current_hits": 9}),
         ) as accrue,
     ):
-        await combat_turn._resolve_enemy_turn_impl(
-            ctx,
-            enemy_id="goblin_1",
-            action_name="Scimitar",
-            target_id="p1",
+        await combat_support._resolve_attack_packet(
+            session,
+            attacker,
+            action,
+            target,
             shield_reaction=shield_reaction,
             mutations=mutations,
             queries=queries,
@@ -301,61 +310,9 @@ async def test_shield_reaction_without_shield_equipped_skips():
     assert accrue.await_args.args[2]["id"] == "plate_armor"
 
 
-# --- weapon crit-vs-heavy flag in request_attack -----------------------------
-
-import check_tools  # noqa: E402
-
-_PLAYER_WITH_WEAPON = {
-    "player_id": "p1",
-    "equipment": {"main_hand": {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}},
-}
-
-
-async def _run_request_attack(*, hit, critical, target_ac):
-    ctx = AsyncMock()
-    ctx.userdata = SessionData(player_id="p1", location_id="loc1", room=None)
-    queries = AsyncMock()
-    queries.get_player = AsyncMock(return_value=_PLAYER_WITH_WEAPON)
-    queries.get_npc_combat_stats = AsyncMock(return_value={"ac": target_ac, "hp": {"current": 20}})
-    mutations = AsyncMock()
-    attack = _forced_attack(hit=hit, critical=critical)
-    attack.target_ac = target_ac
-    attack.attack_modifier = 3
-    attack.target_killed = False
-    attack.target_hp_remaining = 15
-    with (
-        patch.object(check_tools.check_resolution, "resolve_attack", return_value=attack),
-        patch.object(check_tools, "publish_game_event", AsyncMock()),
-    ):
-        await check_tools._request_attack_impl(
-            ctx, target_id="goblin_1", weapon_name="Longsword", queries=queries, mutations=mutations
-        )
-    return ctx.userdata
-
-
-async def test_request_attack_marks_weapon_used_even_on_miss():
-    session = await _run_request_attack(hit=False, critical=False, target_ac=13)
-    assert session.weapon_used_this_encounter is True
-    assert session.weapon_crit_vs_heavy is False
-
-
-async def test_request_attack_sets_crit_vs_heavy_on_crit_against_heavy_target():
-    session = await _run_request_attack(hit=True, critical=True, target_ac=18)
-    assert session.weapon_used_this_encounter is True
-    assert session.weapon_crit_vs_heavy is True
-
-
-async def test_request_attack_no_crit_flag_on_normal_hit():
-    session = await _run_request_attack(hit=True, critical=False, target_ac=18)
-    assert session.weapon_crit_vs_heavy is False
-
-
-async def test_request_attack_no_crit_flag_on_crit_against_light_target():
-    session = await _run_request_attack(hit=True, critical=True, target_ac=13)
-    assert session.weapon_crit_vs_heavy is False
-
-
 # --- weapon per-encounter accrual + flag reset in end_combat -----------------
+
+from combat._helpers import _fake_db_mod  # noqa: E402
 
 import combat_end  # noqa: E402
 
@@ -369,13 +326,13 @@ async def _run_end_combat(ctx, inventory, *, outcome="victory"):
         "_accrue_durability",
         AsyncMock(return_value={"broken": False, "penalty": {}, "current_hits": 9}),
     ) as accrue:
-        await combat_end._end_combat_impl(ctx, outcome, mutations=mutations, queries=queries)
+        await combat_end._end_combat_impl(ctx, outcome, mutations=mutations, queries=queries, db_mod=_fake_db_mod())
     return accrue
 
 
 async def test_end_combat_accrues_one_weapon_hit_per_encounter():
     ctx = _combat_ctx(corruption_level=0)
-    ctx.userdata.weapon_used_this_encounter = True
+    ctx.userdata.party.primary.weapon_used = True
     weapon = _inv_item("longsword_guild", "weapon", current_hits=10)
     accrue = await _run_end_combat(ctx, [weapon])
     accrue.assert_awaited_once()
@@ -386,8 +343,8 @@ async def test_end_combat_accrues_one_weapon_hit_per_encounter():
 
 async def test_end_combat_crit_vs_heavy_accrues_two_weapon_hits():
     ctx = _combat_ctx()
-    ctx.userdata.weapon_used_this_encounter = True
-    ctx.userdata.weapon_crit_vs_heavy = True
+    ctx.userdata.party.primary.weapon_used = True
+    ctx.userdata.party.primary.weapon_crit_vs_heavy = True
     weapon = _inv_item("longsword_guild", "weapon", current_hits=10)
     accrue = await _run_end_combat(ctx, [weapon])
     assert accrue.await_args is not None
@@ -396,7 +353,7 @@ async def test_end_combat_crit_vs_heavy_accrues_two_weapon_hits():
 
 async def test_end_combat_hollow_zone_doubles_via_flag():
     ctx = _combat_ctx(corruption_level=2)
-    ctx.userdata.weapon_used_this_encounter = True
+    ctx.userdata.party.primary.weapon_used = True
     weapon = _inv_item("longsword_guild", "weapon", current_hits=10)
     accrue = await _run_end_combat(ctx, [weapon])
     assert accrue.await_args is not None
@@ -405,23 +362,82 @@ async def test_end_combat_hollow_zone_doubles_via_flag():
 
 async def test_end_combat_no_weapon_used_skips_accrual():
     ctx = _combat_ctx()
-    # weapon_used_this_encounter stays False
+    # party.primary.weapon_used stays False
     accrue = await _run_end_combat(ctx, [_inv_item("longsword_guild", "weapon", current_hits=10)])
     accrue.assert_not_awaited()
 
 
 async def test_end_combat_resets_weapon_flags():
     ctx = _combat_ctx()
-    ctx.userdata.weapon_used_this_encounter = True
-    ctx.userdata.weapon_crit_vs_heavy = True
+    ctx.userdata.party.primary.weapon_used = True
+    ctx.userdata.party.primary.weapon_crit_vs_heavy = True
     await _run_end_combat(ctx, [_inv_item("longsword_guild", "weapon", current_hits=10)])
-    assert ctx.userdata.weapon_used_this_encounter is False
-    assert ctx.userdata.weapon_crit_vs_heavy is False
+    assert ctx.userdata.party.primary.weapon_used is False
+    assert ctx.userdata.party.primary.weapon_crit_vs_heavy is False
 
 
 async def test_end_combat_resets_flags_even_when_no_weapon_equipped():
     ctx = _combat_ctx()
-    ctx.userdata.weapon_used_this_encounter = True
+    ctx.userdata.party.primary.weapon_used = True
     accrue = await _run_end_combat(ctx, [])  # no weapon in inventory
     accrue.assert_not_awaited()
-    assert ctx.userdata.weapon_used_this_encounter is False
+    assert ctx.userdata.party.primary.weapon_used is False
+
+
+def _add_member(session, player_id: str):
+    from caster_state import ConcentrationState, ResonanceTrack
+    from party_state import PartyMember
+    from session_data import CombatParticipant
+
+    session.party.members.append(
+        PartyMember(
+            player_id=player_id,
+            resonance=ResonanceTrack(),
+            concentration=ConcentrationState(),
+        )
+    )
+    # Also register as a combat PARTICIPANT (as combat_init builds it): a member who never entered
+    # combat can't have swung, and combat-end durability keys on the participants who fought.
+    if session.combat_state is not None:
+        session.combat_state.participants.append(
+            CombatParticipant(
+                id=player_id, name=player_id, type="player", initiative=10, hp_current=20, hp_max=20, ac=14
+            )
+        )
+    return session.party.member(player_id)
+
+
+async def test_end_combat_accrues_per_member_only_swinging_member():
+    # M18 story-003: in a 2-PC party where only the NON-primary member swung, durability accrues
+    # against THAT member's weapon (player_id p2), not the primary's.
+    ctx = _combat_ctx()
+    p2 = _add_member(ctx.userdata, "p2")
+    p2.weapon_used = True  # only p2 swung; primary p1 did not
+    accrue = await _run_end_combat(ctx, [_inv_item("longsword_guild", "weapon", current_hits=10)])
+    accrue.assert_awaited_once()
+    assert accrue.await_args is not None
+    assert accrue.await_args.args[1] == "p2"  # accrued against p2, not the primary
+
+
+async def test_end_combat_accrues_each_member_that_swung():
+    # Both members swung -> two accruals, one per member.
+    ctx = _combat_ctx()
+    ctx.userdata.party.primary.weapon_used = True
+    p2 = _add_member(ctx.userdata, "p2")
+    p2.weapon_used = True
+    accrue = await _run_end_combat(ctx, [_inv_item("longsword_guild", "weapon", current_hits=10)])
+    assert accrue.await_count == 2
+    accrued_ids = {call.args[1] for call in accrue.await_args_list}
+    assert accrued_ids == {"p1", "p2"}
+
+
+async def test_end_combat_resets_every_member_weapon_flags():
+    # combat-end reset loops every member, not just the primary.
+    ctx = _combat_ctx()
+    ctx.userdata.party.primary.weapon_used = True
+    p2 = _add_member(ctx.userdata, "p2")
+    p2.weapon_used = True
+    p2.weapon_crit_vs_heavy = True
+    await _run_end_combat(ctx, [_inv_item("longsword_guild", "weapon", current_hits=10)])
+    assert p2.weapon_used is False
+    assert p2.weapon_crit_vs_heavy is False

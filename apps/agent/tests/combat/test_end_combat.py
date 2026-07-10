@@ -4,8 +4,14 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _make_combat_state, _make_context, _make_mock_room
+from combat._helpers import (
+    _damage_resolver,
+    _fake_db_mod,
+    _make_combat_state,
+    _resolution_state,
+)
 from livekit.agents.llm import ToolError
+from sample_fixtures import make_context, make_mock_room, published_payloads
 
 import event_types as E
 from combat_end import _end_combat_impl
@@ -22,10 +28,10 @@ class TestEndCombat:
     @pytest.mark.asyncio
     async def test_clears_state(self):
         mock_mutations = _make_end_combat_mocks()
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
+        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=_fake_db_mod())
         assert isinstance(raw, tuple), "end_combat success should return (DungeonMasterAgent, json_str)"
         _, json_str = raw
         result = json.loads(json_str)
@@ -40,10 +46,10 @@ class TestEndCombat:
         from exploration_agent import ExplorationAgent
 
         mock_mutations = _make_end_combat_mocks()
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
+        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=_fake_db_mod())
         agent_instance, _ = raw
         assert isinstance(agent_instance, ExplorationAgent)
         assert agent_instance._agent_type == "city"
@@ -51,10 +57,10 @@ class TestEndCombat:
     @pytest.mark.asyncio
     async def test_returned_agent_has_combat_summary_context(self):
         mock_mutations = _make_end_combat_mocks()
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
+        raw = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=_fake_db_mod())
         assert isinstance(raw, tuple)
         agent_instance, _ = raw
         # The returned agent should have a chat_ctx with a combat summary
@@ -64,22 +70,32 @@ class TestEndCombat:
     @pytest.mark.asyncio
     async def test_calculates_xp_on_victory(self):
         mock_mutations = _make_end_combat_mocks()
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        _, json_str = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
+        _, json_str = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=_fake_db_mod())
         result = json.loads(json_str)
 
         assert result["xp_total"] == 50
         assert "Goblin Scout" in result["defeated_enemies"]
 
     @pytest.mark.asyncio
-    async def test_no_xp_on_defeat(self):
+    async def test_no_xp_on_defeat(self, monkeypatch):
+        import db_queries
+        import resurrection
+
+        # This test asserts XP only, not the resurrection flow. Give the primary a valid row and
+        # stub resurrect_on_defeat (M18 story-003 made a MISSING row on defeat fail-loud, so a None
+        # here would now correctly raise — that path is covered in test_combat_end_party_wipe).
+        monkeypatch.setattr(db_queries, "get_player", AsyncMock(return_value={"player_id": "player_1"}))
+        monkeypatch.setattr(
+            resurrection, "resurrect_on_defeat", AsyncMock(return_value={"anchor": "accord_guild_hall"})
+        )
         mock_mutations = _make_end_combat_mocks()
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        _, json_str = await _end_combat_impl(ctx, outcome="defeat", mutations=mock_mutations)
+        _, json_str = await _end_combat_impl(ctx, outcome="defeat", mutations=mock_mutations, db_mod=_fake_db_mod())
         result = json.loads(json_str)
 
         assert result["xp_total"] == 0
@@ -88,10 +104,10 @@ class TestEndCombat:
     @pytest.mark.asyncio
     async def test_no_xp_on_fled(self):
         mock_mutations = _make_end_combat_mocks()
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
-        _, json_str = await _end_combat_impl(ctx, outcome="fled", mutations=mock_mutations)
+        _, json_str = await _end_combat_impl(ctx, outcome="fled", mutations=mock_mutations, db_mod=_fake_db_mod())
         result = json.loads(json_str)
 
         assert result["xp_total"] == 0
@@ -99,20 +115,20 @@ class TestEndCombat:
     @pytest.mark.asyncio
     async def test_publishes_events(self):
         mock_mutations = _make_end_combat_mocks()
-        room = _make_mock_room()
-        ctx = _make_context(room=room)
+        room = make_mock_room()
+        ctx = make_context(room=room)
         ctx.userdata.combat_state = _make_combat_state()
 
-        await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
+        await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=_fake_db_mod())
 
-        calls = [json.loads(c[0][0]) for c in room.local_participant.publish_data.call_args_list]
+        calls = published_payloads(room)
         types = [c["type"] for c in calls]
         assert E.COMBAT_ENDED in types
         assert E.PLAY_SOUND in types
 
     @pytest.mark.asyncio
     async def test_error_if_not_in_combat(self):
-        ctx = _make_context()
+        ctx = make_context()
 
         with pytest.raises(ToolError, match="Not in combat"):
             await _end_combat_impl(ctx, outcome="victory")
@@ -120,8 +136,104 @@ class TestEndCombat:
     @pytest.mark.asyncio
     async def test_error_invalid_outcome(self):
         mock_mutations = _make_end_combat_mocks()
-        ctx = _make_context()
+        ctx = make_context()
         ctx.userdata.combat_state = _make_combat_state()
 
         with pytest.raises(ToolError, match="Invalid outcome"):
-            await _end_combat_impl(ctx, outcome="surrender", mutations=mock_mutations)
+            await _end_combat_impl(ctx, outcome="surrender", mutations=mock_mutations, db_mod=_fake_db_mod())
+
+
+class TestPhaseLoopExit:
+    """Combat now exits through the phase engine's wrap end-condition (story-003):
+    resolve_phase fires end_combat when the engine reports victory/defeat, rather than
+    the LLM choosing to call end_combat itself. These pin that exit handoff."""
+
+    @pytest.mark.asyncio
+    async def test_victory_wrap_hands_back_to_exploration_agent(self):
+        from combat_turn import _resolve_phase_impl
+        from exploration_agent import ExplorationAgent
+
+        # enemy_hp=3 is one fixed-damage hit from victory; _damage_resolver(3) lands it.
+        resolver = _damage_resolver(3)
+        queries = MagicMock()
+        queries.get_player_inventory = AsyncMock(return_value=[])
+        break_mod = MagicMock()
+        break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
+
+        ctx = make_context()
+        ctx.userdata.combat_state = _resolution_state(player_hp=25, enemy_hp=3)
+
+        raw = await _resolve_phase_impl(
+            ctx,
+            mutations=_make_end_combat_mocks(),
+            queries=queries,
+            resolver=resolver,
+            concentration_break_mod=break_mod,
+            db_mod=_fake_db_mod(),
+        )
+
+        assert isinstance(raw, tuple), "a winning wrap should return the (ExplorationAgent, json) handoff"
+        agent_instance, json_str = raw
+        assert isinstance(agent_instance, ExplorationAgent)
+        assert json.loads(json_str)["outcome"] == "victory"
+        assert ctx.userdata.combat_state is None
+
+
+class TestEndCombatVeilWard:
+    """The encounter ward dies with the combat row — say so, resolved (M24 story-008, AC3).
+
+    scope_model.md §3: "on combat end the encounter ward dies, but if a location ward still covers
+    the party, VEIL_WARD_CHANGED carries active: true." Nothing published here before this story, so
+    a party fighting on a Sacred site watched its indicator keep whatever state the raise left it.
+
+    The ordering trap: session.combat_state is not cleared until _end_combat_finish, which runs AFTER
+    the sink flushes. A naive resolve_scope_ward here would still see the dying encounter ward. So the
+    producer reads the LOCATION scope explicitly, exactly as the dismiss path does.
+    """
+
+    _SACRED = {"source": "sacred_site", "expires_at": None, "dismissible": False}
+
+    def _warded_ctx(self, ward=None):
+        ctx = make_context(room=make_mock_room())
+        ctx.userdata.combat_state = _make_combat_state()
+        ctx.userdata.combat_state.veil_ward = ward or {"source": "cleric", "rounds_remaining": None}
+        return ctx
+
+    def _ward_events(self, room):
+        return [p for p in published_payloads(room) if p["type"] == E.VEIL_WARD_CHANGED]
+
+    @pytest.mark.asyncio
+    async def test_encounter_ward_death_darkens_the_hud_when_nothing_else_covers(self):
+        ctx = self._warded_ctx()
+        await _end_combat_impl(ctx, outcome="victory", mutations=_make_end_combat_mocks(), db_mod=_fake_db_mod())
+        assert self._ward_events(ctx.userdata.room) == [
+            {
+                "type": E.VEIL_WARD_CHANGED,
+                "active": False,
+                "scope_kind": None,
+                "scope_id": None,
+                "source": None,
+            }
+        ]
+
+    @pytest.mark.asyncio
+    async def test_surviving_location_ward_keeps_the_hud_lit(self, monkeypatch):
+        # §3's whole point: the fight's ward dies, the Sacred site does not, and the party's casts
+        # are STILL halved. Publishing active=False here would darken the light while it lies.
+        import db_mutations_veil_ward
+
+        monkeypatch.setattr(db_mutations_veil_ward, "read_active_ward", AsyncMock(return_value=self._SACRED))
+        ctx = self._warded_ctx()
+        await _end_combat_impl(ctx, outcome="victory", mutations=_make_end_combat_mocks(), db_mod=_fake_db_mod())
+        [event] = self._ward_events(ctx.userdata.room)
+        assert event["active"] is True
+        assert event["scope_kind"] == "location"
+        assert event["source"] == "sacred_site"
+
+    @pytest.mark.asyncio
+    async def test_unwarded_fight_publishes_no_ward_event(self):
+        # Ending an unwarded fight changes nothing about wardedness. Say nothing.
+        ctx = make_context(room=make_mock_room())
+        ctx.userdata.combat_state = _make_combat_state()
+        await _end_combat_impl(ctx, outcome="victory", mutations=_make_end_combat_mocks(), db_mod=_fake_db_mod())
+        assert self._ward_events(ctx.userdata.room) == []

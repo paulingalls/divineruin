@@ -8,6 +8,14 @@ calls are stubbed so the suite stays hermetic.
 """
 
 import _db_lifecycle as dbl
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _isolated_lock_dir(tmp_path, monkeypatch):
+    """Every test gets its own lock/state dir so tests never see each
+    other's (or a real dev run's) refcount state."""
+    monkeypatch.setattr(dbl, "_temp_base_dir", lambda: tmp_path)
 
 
 def test_parse_host_port_reads_host_and_port():
@@ -30,18 +38,21 @@ def test_parse_user_defaults_when_absent():
     assert dbl._parse_user("postgresql://localhost:55432/divineruin") == "divineruin"
 
 
-def test_stop_if_started_noop_when_not_started(monkeypatch):
+def test_stop_if_started_noop_when_not_started_and_no_state_file(monkeypatch):
+    """Fallback path: no refcount state file on disk (e.g. a caller that
+    bypasses ensure_db_up) -> `started` alone decides."""
     calls: list[tuple[str, ...]] = []
     monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
     dbl.stop_if_started(False)
     assert calls == []
 
 
-def test_stop_if_started_stops_when_started(monkeypatch):
+def test_stop_if_started_downs_when_started_and_no_state_file(monkeypatch):
+    """Fallback path: no refcount state file on disk -> `started` alone decides."""
     calls: list[tuple[str, ...]] = []
     monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
     dbl.stop_if_started(True)
-    assert calls == [("stop",)]  # never ("down", "-v") — dev DB volumes preserved
+    assert calls == [("down",)]  # never ("down", "-v") — dev DB volumes preserved
 
 
 def test_ensure_db_up_noop_when_already_reachable(monkeypatch):
@@ -73,16 +84,244 @@ def test_ensure_db_up_starts_compose_when_unreachable(monkeypatch):
 
     monkeypatch.setattr(dbl, "_compose", fake_compose)
     assert dbl.ensure_db_up() is True
-    assert ("up", "-d") in calls
+    assert ("up", "-d", "--remove-orphans") in calls
 
 
 def test_ensure_db_up_raises_when_compose_up_fails(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
     monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
-    monkeypatch.setattr(dbl, "_compose", lambda *args: _FakeCompleted(returncode=1))
+
+    def fake_compose_non_conflict(*args):
+        # Generic (non-conflict) failure — not retried.
+        result = _FakeCompleted(returncode=1)
+        result.stderr = "image pull failed"
+        return result
+
+    monkeypatch.setattr(dbl, "_compose", fake_compose_non_conflict)
     try:
         dbl.ensure_db_up()
     except RuntimeError as exc:
         assert "docker compose up" in str(exc)
+        assert "image pull failed" in str(exc)
     else:
         raise AssertionError("expected RuntimeError when `docker compose up` fails")
+
+
+def test_ensure_db_up_self_heals_name_conflict(monkeypatch):
+    """Conflict on first `up` -> `down` + retry `up` -> success."""
+    calls: list[tuple[str, ...]] = []
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
+    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
+    monkeypatch.setattr(dbl, "is_accepting_queries", lambda user: True)
+
+    def fake_compose_conflict_then_succeed(*args):
+        calls.append(args)
+        if len(calls) == 1:
+            # First call: conflict error.
+            result = _FakeCompleted(returncode=1)
+            result.stderr = 'container name "/divineruin-valkey" is already in use'
+            return result
+        else:
+            # Subsequent calls: succeed (either `down` or retry `up`).
+            return _FakeCompleted(returncode=0)
+
+    monkeypatch.setattr(dbl, "_compose", fake_compose_conflict_then_succeed)
+    assert dbl.ensure_db_up() is True
+    # Expect: first up (conflict), down, retry up.
+    assert calls == [
+        ("up", "-d", "--remove-orphans"),
+        ("down",),
+        ("up", "-d", "--remove-orphans"),
+    ]
+
+
+def test_ensure_db_up_raises_when_conflict_retry_also_fails(monkeypatch):
+    """Conflict on first `up`, then conflict also on retry -> raise."""
+    calls: list[tuple[str, ...]] = []
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
+    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
+
+    def fake_compose_conflict_twice(*args):
+        calls.append(args)
+        if len(calls) in (1, 3):
+            # Both up attempts: conflict error.
+            result = _FakeCompleted(returncode=1)
+            result.stderr = "container name is already in use"
+            return result
+        else:
+            # down call: succeed.
+            return _FakeCompleted(returncode=0)
+
+    monkeypatch.setattr(dbl, "_compose", fake_compose_conflict_twice)
+    try:
+        dbl.ensure_db_up()
+    except RuntimeError as exc:
+        assert "docker compose up" in str(exc)
+        assert "container name is already in use" in str(exc)
+    else:
+        raise AssertionError("expected RuntimeError when retry `docker compose up` also fails")
+
+
+def test_lockfile_paths_keyed_on_host_port_not_compose_file(monkeypatch, tmp_path):
+    """Two different `_COMPOSE_FILE` values (i.e. two worktrees) resolve to the
+    SAME lock/state paths as long as host:port match — the whole point of
+    keying on the shared singleton rather than the per-checkout path."""
+    monkeypatch.setattr(dbl, "_COMPOSE_FILE", tmp_path / "worktree-a" / "docker-compose.yml")
+    paths_a = dbl._lockfile_paths("localhost", 55432)
+    monkeypatch.setattr(dbl, "_COMPOSE_FILE", tmp_path / "worktree-b" / "docker-compose.yml")
+    paths_b = dbl._lockfile_paths("localhost", 55432)
+    assert paths_a == paths_b
+
+
+def test_read_state_missing_file_returns_zero_state(tmp_path):
+    assert dbl._read_state(tmp_path / "missing.json") == {"count": 0, "harness_started": False}
+
+
+def test_state_round_trips_through_json(tmp_path):
+    state_path = tmp_path / "state.json"
+    dbl._write_state(state_path, {"count": 2, "harness_started": True})
+    assert dbl._read_state(state_path) == {"count": 2, "harness_started": True}
+
+
+def test_ensure_db_up_increments_count_when_already_reachable(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
+    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: True)
+    monkeypatch.setattr(
+        dbl, "_compose", lambda *args: (_ for _ in ()).throw(AssertionError("no compose call expected"))
+    )
+    assert dbl.ensure_db_up() is False
+    _, state_path = dbl._lockfile_paths("localhost", 55432)
+    assert dbl._read_state(state_path) == {"count": 1, "harness_started": False}
+
+
+def test_ensure_db_up_resets_stale_count_when_db_unreachable(monkeypatch):
+    """A leaked count from a SIGKILLed prior run must not survive once the DB
+    is actually observed to be down."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
+    _, state_path = dbl._lockfile_paths("localhost", 55432)
+    dbl._write_state(state_path, {"count": 5, "harness_started": True})
+    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
+    monkeypatch.setattr(dbl, "is_accepting_queries", lambda user: True)
+    monkeypatch.setattr(dbl, "_compose", lambda *args: _FakeCompleted())
+
+    assert dbl.ensure_db_up() is True
+    assert dbl._read_state(state_path) == {"count": 1, "harness_started": True}
+
+
+def test_ensure_db_up_holds_lock_during_conflict_retry(monkeypatch):
+    """The conflict-retry `down` + `up` must run while the exclusive lock is
+    held, so no other run can be mid-startup concurrently (Race A)."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
+    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
+    monkeypatch.setattr(dbl, "is_accepting_queries", lambda user: True)
+
+    lock_path, _ = dbl._lockfile_paths("localhost", 55432)
+    calls: list[tuple[str, ...]] = []
+
+    def probe_lock_held() -> bool:
+        """True iff a second, independent flock on the same file would block."""
+        import fcntl
+
+        with open(lock_path, "w") as fh:
+            try:
+                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.flock(fh, fcntl.LOCK_UN)
+                return False
+            except OSError:
+                return True
+
+    def fake_compose(*args):
+        calls.append(args)
+        if len(calls) == 1:
+            assert probe_lock_held(), "lock must be held during the conflict-retry critical section"
+            result = _FakeCompleted(returncode=1)
+            result.stderr = "container name is already in use"
+            return result
+        assert probe_lock_held(), "lock must be held during the conflict-retry critical section"
+        return _FakeCompleted()
+
+    monkeypatch.setattr(dbl, "_compose", fake_compose)
+    assert dbl.ensure_db_up() is True
+    assert len(calls) == 3
+
+
+def test_stop_if_started_refcount_teardown(monkeypatch):
+    """AC3: two joiners -> the first to finish doesn't tear down; the last
+    (hitting count 0) does, and only when the harness started it."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
+    _, state_path = dbl._lockfile_paths("localhost", 55432)
+    dbl._write_state(state_path, {"count": 2, "harness_started": True})
+
+    calls: list[tuple[str, ...]] = []
+    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
+
+    dbl.stop_if_started(False)  # run B (joiner) finishes first
+    assert calls == []
+    assert dbl._read_state(state_path)["count"] == 1
+
+    dbl.stop_if_started(True)  # run A (starter) finishes last -> count hits 0
+    assert calls == [("down",)]
+    assert dbl._read_state(state_path) == {"count": 0, "harness_started": False}
+
+
+def test_stop_if_started_never_downs_when_harness_did_not_start(monkeypatch):
+    """AC4: a DB a developer started by hand (harness_started False) is never
+    torn down, at any count, regardless of `started`."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
+    _, state_path = dbl._lockfile_paths("localhost", 55432)
+    dbl._write_state(state_path, {"count": 1, "harness_started": False})
+
+    calls: list[tuple[str, ...]] = []
+    monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
+
+    dbl.stop_if_started(True)
+    assert calls == []
+    assert dbl._read_state(state_path) == {"count": 0, "harness_started": False}
+
+
+def test_ensure_db_up_concurrent_callers_race_unreachable(monkeypatch):
+    """AC5 e2e: two threads race ensure_db_up against an unreachable DB ->
+    compose `up` runs exactly once, both callers return, and the refcount
+    lands at 2."""
+    import threading
+    import time as time_module
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
+
+    up_calls: list[tuple[str, ...]] = []
+    up_lock = threading.Lock()
+    started = {"value": False}
+
+    def fake_compose(*args):
+        if args == ("up", "-d", "--remove-orphans"):
+            with up_lock:
+                up_calls.append(args)
+            time_module.sleep(0.05)  # widen the window for a racing second caller
+            started["value"] = True
+        return _FakeCompleted()
+
+    # Both is_reachable and is_accepting_queries flip True once `up` completes,
+    # so a second thread that acquires the lock after the first has started
+    # the DB takes the "already reachable" branch instead of racing `up` again.
+    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: started["value"])
+    monkeypatch.setattr(dbl, "is_accepting_queries", lambda user: started["value"])
+    monkeypatch.setattr(dbl, "_compose", fake_compose)
+
+    results: list[bool] = []
+    results_lock = threading.Lock()
+
+    def call_ensure_db_up():
+        result = dbl.ensure_db_up()
+        with results_lock:
+            results.append(result)
+
+    threads = [threading.Thread(target=call_ensure_db_up) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert up_calls == [("up", "-d", "--remove-orphans")]
+    assert sorted(results) == [False, True]
+    _, state_path = dbl._lockfile_paths("localhost", 55432)
+    assert dbl._read_state(state_path)["count"] == 2

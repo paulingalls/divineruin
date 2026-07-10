@@ -1,6 +1,7 @@
 import { test, expect, beforeEach } from "bun:test";
 import { handleGameEvent } from "@/audio/game-event-handler";
 import { panelStore } from "@/stores/panel-store";
+import { hudStore } from "@/stores/hud-store";
 import { resetStores } from "./use-game-events.helpers";
 
 beforeEach(resetStores);
@@ -47,6 +48,47 @@ test("quest_updated advances quest in panelStore", () => {
   expect(quest.currentStage).toBe(1);
   expect(quest.stages[0].completed).toBe(true);
   expect(quest.stages[1].completed).toBe(false);
+});
+
+test("quest_updated completion marks quest completed and clears the HUD objective", () => {
+  panelStore.getState().setQuests([
+    {
+      questId: "greyvale_anomaly",
+      questName: "The Greyvale Anomaly",
+      type: "main",
+      currentStage: 1,
+      stages: [
+        { id: "s0", name: "The Road North", objective: "Travel to Millhaven", completed: true },
+        { id: "s1", name: "Confront the Anomaly", objective: "End it", completed: false },
+      ],
+      hints: [],
+      status: "active",
+    },
+  ]);
+  hudStore.getState().setActiveObjective({
+    questName: "The Greyvale Anomaly",
+    objective: "End it",
+    updatedAt: 1,
+  });
+
+  // Completion payload: server sends completed:true (a 2-stage quest completes at new_stage=2)
+  // with an empty objective — never a `status` field.
+  handleGameEvent({
+    type: "quest_updated",
+    quest_id: "greyvale_anomaly",
+    quest_name: "The Greyvale Anomaly",
+    new_stage: 2,
+    objective: "",
+    completed: true,
+  });
+
+  const quest = panelStore.getState().quests[0];
+  expect(quest.status).toBe("completed");
+  expect(quest.currentStage).toBe(2);
+  expect(quest.stages.every((s) => s.completed)).toBe(true);
+  // The tracked HUD objective is cleared, not blanked to an empty-objective card.
+  expect(hudStore.getState().activeObjective).toBeNull();
+  expect(hudStore.getState().questObjectiveVisible).toBe(false);
 });
 
 // --- handleGameEvent: inventory_updated ---

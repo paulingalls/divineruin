@@ -14,12 +14,12 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 
 | Milestone | Confirmed | Aspirational | NOT_SHIPPED |
 | --- | --- | --- | --- |
-| M3.1 — Resonance System (8 criteria) | 0 | 0 | 8 |
-| M3.2 — Hollow Echo & Veil Wards (9 criteria) | 0 | 0 | 9 |
-| M3.3 — Spell Catalog (8 criteria) | 0 | 0 | 8 |
-| M3.4 — Concentration & Racial Resonance (9 criteria) | 0 | 0 | 9 |
+| M3.1 — Resonance System (8 criteria) | 8 | 0 | 0 |
+| M3.2 — Hollow Echo & Veil Wards (9 criteria) | 9 | 0 | 0 |
+| M3.3 — Spell Catalog (8 criteria) | 8 | 0 | 0 |
+| M3.4 — Concentration & Racial Resonance (9 criteria) | 9 | 0 | 0 |
 
-**Headline:** The entire Magic system M3.1-M3.4 is unshipped. No Resonance state, no spell catalog, no concentration, no racial Resonance bonuses, no Hollow Echo table, no Veil Ward mechanics exist in code. The only Resonance-adjacent references are flavor strings inside skill-ability descriptions (`apps/agent/rules_engine.py:175-200`) and one async training activity slug `spell_cantrip`. All M3.x acceptance boxes were already `[ ]` — no checkmarks to revert. Milestone-level status is **DEFERRED / NOT_STARTED**.
+**Headline (updated):** The entire Magic system M3.1-M3.4 has since **SHIPPED** and is verified end-to-end by passing acceptance capstones (`test_m31_resonance_capstone.py`, `test_m32_hollow_echo_veil_ward_capstone.py`, `test_m33_casting_capstone.py`, `test_m34_concentration_racial_capstone.py`, plus `test_m35_session_persistence_capstone.py`). Resonance state (`resonance.py` + `db_mutations_resonance.py`), the 87-spell catalog (`content/spells.json` + `spells.py`), the cast path (`spell_casting.py`), Hollow Echo (`hollow_echo.py`), Veil Ward (`veil_ward.py` + `veil_ward_tools.py`), concentration (`concentration.py`), and racial Resonance (`racial_resonance.py`) all exist and are tested. Client HUD components ship at `apps/mobile/src/components/hud/{resonance-tracker,veil-ward-indicator,hollow-echo-overlay}.tsx`. Milestone-level status is **DELIVERED**. (The original NOT_STARTED note below is retained as historical Sprint-002 audit context.)
 
 ### Material gaps
 
@@ -36,7 +36,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
   - Veil Fracture event at 15+ (`magic.md:134`) — narrative-scale consequence.
   - Resonance Sensing tiers for Non-Elari via Arcana ladder (`magic.md:280-293`) — Untrained/Trained/Expert/Master.
   - Druid preparation constraint ("only change spell preparation in natural terrain", `magic.md:458`).
-  - Veil Ward per-archetype sources table (`magic.md:204-210`) — Cleric/Druid/Artificer/Paladin/Sacred sites with distinct costs, levels, durations.
+  - Veil Ward per-archetype sources table (`magic.md:204-210`) — Cleric/Druid/Artificer/Paladin/Sacred sites with distinct costs, levels, durations. **→ M24 (execution_plan.json) OWNS this.** The shipped ward is a per-player boolean; the full-spec ward (area/encounter-scoped, party-wide, duration-bound, multi-source) is decided (SMM `veil-ward-scope-decision`). The Cleric/Druid/Paladin cost+level table already ships in `veil_ward.py`; the deferred bit is the **per-source durations + area scope**, which M24 absorbs because this phase is Delivered and won't reopen.
 
 ### Cross-doc dependencies
 
@@ -66,14 +66,14 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 - Resonance formula: `resonance = ceil(focus_cost * source_multiplier)`
 
 **Acceptance criteria:**
-- [ ] `calculate_resonance_generated()` returns correct values for each source: Arcane at 0.6x, Divine at 0.3x, Primal at terrain-dependent 0.1-0.8x
-- [ ] `get_resonance_state()` returns Stable for 0-4, Flickering for 5-8, Overreach for 9+
-- [ ] `apply_resonance_decay()` reduces Resonance by 1 per round by default, 2 for Human racial modifier
-- [ ] Resonance never goes below 0
-- [ ] Flickering state applies +1 damage die modifier to spell effects
-- [ ] Overreach state applies +2 damage dice and +2 DC modifier to spell effects
-- [ ] Client displays Resonance tracker with visually distinct states
-- [ ] Unit tests cover all source multipliers, all state thresholds, decay edge cases, and terrain-dependent Primal calculation
+- [x] `calculate_resonance_generated()` returns correct values for each source: Arcane at 0.6x, Divine at 0.3x, Primal at terrain-dependent 0.1-0.8x
+- [x] `get_resonance_state()` returns Stable for 0-4, Flickering for 5-8, Overreach for 9+
+- [x] `apply_resonance_decay()` reduces Resonance by 1 per round by default, 2 for Human racial modifier
+- [x] Resonance never goes below 0
+- [x] Flickering state applies +1 damage die modifier to spell effects
+- [x] Overreach state applies +2 damage dice and +2 DC modifier to spell effects
+- [x] Client displays Resonance tracker with visually distinct states
+- [x] Unit tests cover all source multipliers, all state thresholds, decay edge cases, and terrain-dependent Primal calculation
 
 **Key references:**
 - *Game Mechanics Magic Doc — Three-Source Resonance*
@@ -102,15 +102,15 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 - Client: Hollow Echo roll display (dramatic dice animation), Veil Ward zone indicator
 
 **Acceptance criteria:**
-- [ ] `resolve_hollow_echo()` returns correct severity for all d20 roll ranges
-- [ ] Echo severity scales with Resonance level (higher Resonance = worse outcomes at same roll)
-- [ ] Hollow Echo is triggered automatically when casting at Overreach
-- [ ] Veil Ward halves Resonance generation from all sources while active
-- [ ] Veil Ward applies -1 damage die and -1 DC penalty while active
-- [ ] Veil Ward grants +4 bonus to Hollow Echo rolls while active
-- [ ] Veil Ward can be activated and deactivated by the player
-- [ ] Client displays Hollow Echo roll results and Veil Ward zone indicator
-- [ ] Unit tests cover full Echo table, ward modifiers, and interaction between ward bonus and Echo roll
+- [x] `resolve_hollow_echo()` returns correct severity for all d20 roll ranges
+- [x] Echo severity scales with Resonance level (higher Resonance = worse outcomes at same roll)
+- [x] Hollow Echo is triggered automatically when casting at Overreach
+- [x] Veil Ward halves Resonance generation from all sources while active
+- [x] Veil Ward applies -1 damage die and -1 DC penalty while active
+- [x] Veil Ward grants +4 bonus to Hollow Echo rolls while active
+- [x] Veil Ward can be activated and deactivated by the player
+- [x] Client displays Hollow Echo roll results and Veil Ward zone indicator
+- [x] Unit tests cover full Echo table, ward modifiers, and interaction between ward bonus and Echo roll
 
 **Key references:**
 - *Game Mechanics Magic Doc — Hollow Echo Table*
@@ -135,14 +135,14 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 - Migration to create and seed the `spell_catalog` table
 
 **Acceptance criteria:**
-- [ ] `content/spells.json` contains exactly 87 spells: 30 Arcane, 28 Divine, 29 Primal
-- [ ] Every spell entry has all required fields: name, source, focus_cost, resonance_by_source, spell_tier, mechanics, narration_cue, audio_cue
-- [ ] `spell_catalog` table is seeded with all 87 entries and queryable by source and tier
-- [ ] `cast_spell` deducts Focus cost, calls `calculate_resonance_generated()`, and returns effect + narration cue + audio cue
-- [ ] `cast_spell` rejects casting when Focus is insufficient
-- [ ] Cantrip damage scales correctly at each level bracket (L1-4, L5-10, L11-16, L17-20)
-- [ ] `get_spell_info` returns full spell data including narration and audio cues
-- [ ] Unit tests cover casting validation, Resonance generation integration, cantrip scaling, and spell lookup
+- [x] `content/spells.json` contains exactly 87 spells: 30 Arcane, 28 Divine, 29 Primal
+- [x] Every spell entry has all required fields: name, source, focus_cost, resonance_by_source, spell_tier, mechanics, narration_cue, audio_cue
+- [x] `spell_catalog` table is seeded with all 87 entries and queryable by source and tier
+- [x] `cast_spell` deducts Focus cost, calls `calculate_resonance_generated()`, and returns effect + narration cue + audio cue
+- [x] `cast_spell` rejects casting when Focus is insufficient
+- [x] Cantrip damage scales correctly at each level bracket (L1-4, L5-10, L11-16, L17-20)
+- [x] `get_spell_info` returns full spell data including narration and audio cues
+- [x] Unit tests cover casting validation, Resonance generation integration, cantrip scaling, and spell lookup
 
 **Key references:**
 - *Game Mechanics Magic Doc — Spell Catalog*
@@ -175,15 +175,15 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 - Integration with `apply_resonance_decay()` and `calculate_resonance_generated()` from M3.1
 
 **Acceptance criteria:**
-- [ ] Concentration save DC is max(10, damage / 2) — unit tests for boundary values
-- [ ] Casting a Concentration spell while one is active ends the previous spell
-- [ ] Incapacitated characters automatically lose concentration
-- [ ] Human racial modifier applies -2 decay per round (verified via `apply_resonance_decay`)
-- [ ] Korath racial modifier reduces Primal Resonance generation by 1 (verified via `calculate_resonance_generated`)
-- [ ] Draethar can dump Resonance via pressure valve at a defined cost
-- [ ] Vaelti receive advance warning before Hollow Echo (integrated with `resolve_hollow_echo` from M3.2)
-- [ ] `racial_resonance_bonuses` table is seeded with all 6 racial entries
-- [ ] Unit tests cover concentration saves, auto-fail on incapacitation, single-concentration enforcement, and all 6 racial modifiers
+- [x] Concentration save DC is max(10, damage / 2) — unit tests for boundary values
+- [x] Casting a Concentration spell while one is active ends the previous spell
+- [x] Incapacitated characters automatically lose concentration
+- [x] Human racial modifier applies -2 decay per round (verified via `apply_resonance_decay`)
+- [x] Korath racial modifier reduces Primal Resonance generation by 1 (verified via `calculate_resonance_generated`)
+- [x] Draethar can dump Resonance via pressure valve at a defined cost
+- [x] Vaelti receive advance warning before Hollow Echo (integrated with `resolve_hollow_echo` from M3.2)
+- [x] `racial_resonance_bonuses` table is seeded with all 6 racial entries
+- [x] Unit tests cover concentration saves, auto-fail on incapacitation, single-concentration enforcement, and all 6 racial modifiers
 
 **Key references:**
 - *Game Mechanics Magic Doc — Concentration*

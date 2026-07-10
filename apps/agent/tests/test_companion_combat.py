@@ -6,9 +6,9 @@ by relationship (spec L871, the negative invariant)."""
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from handoff._helpers import make_context as _make_context
 from livekit.agents.llm import ToolError
 from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER
+from sample_fixtures import make_context as _make_context
 
 from companion_profiles import get_companion_profile
 from companion_scaling import (
@@ -35,7 +35,7 @@ async def _run_combat_with_companion(companion: CompanionState):
     from combat_init import _start_combat_impl
 
     mutations, queries, content = _mocks()
-    ctx = _make_context()
+    ctx = _make_context(location_id="greyvale_south_road")
     ctx.userdata.companion = companion
     await _start_combat_impl(
         ctx,
@@ -67,6 +67,14 @@ class TestCompanionCombatProfile:
         content.get_npc.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_companion_carries_save_proficiencies_from_profile(self):
+        # M13 close-fix: an enemy-inflicted save-based condition must honor the companion's save
+        # proficiencies too (symmetric with the player), so they ride onto the participant.
+        comp, _ = await _run_combat_with_companion(CompanionState(id="companion_kael", name="Kael"))
+        profile = get_companion_profile("companion_kael")
+        assert comp.saving_throw_proficiencies == list(profile.save_proficiencies)
+
+    @pytest.mark.asyncio
     async def test_action_pool_is_mechanical_dice_notation(self):
         comp, _ = await _run_combat_with_companion(CompanionState(id="companion_kael", name="Kael"))
         longsword = next(a for a in comp.action_pool if a["name"] == "Longsword")
@@ -79,7 +87,7 @@ class TestCompanionCombatProfile:
         # Debt 785f7399 / story-008: Lira's ranged INT Arcane Bolt must resolve its hit on INT, not
         # the ranged-default DEX. The translated action carries governing_attribute=intelligence,
         # and attack_modifier honors it — observable because Lira's INT and DEX modifiers differ.
-        from check_resolution import attack_modifier
+        from check_resolution_attack import attack_modifier
         from rules_engine import attribute_modifier, proficiency_bonus
 
         comp, _ = await _run_combat_with_companion(CompanionState(id="companion_lira", name="Lira"))

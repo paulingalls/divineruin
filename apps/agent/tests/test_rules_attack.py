@@ -9,7 +9,7 @@ import random
 import pytest
 from test_rules_core import SAMPLE_PLAYER
 
-from check_resolution import resolve_attack
+from check_resolution_attack import attack_modifier, resolve_attack
 
 
 class TestResolveAttack:
@@ -42,13 +42,55 @@ class TestResolveAttack:
                 return
         pytest.fail("Could not find seed for miss")
 
+    def test_role_attack_mod_raises_to_hit(self):
+        # M4.7 story-001: an Elite/Boss flat attack_mod lands a roll that misses at base. AC 18,
+        # base mod +4 → needs d20>=14; with attack_mod +5 → needs d20>=9. Same seed both runs.
+        for seed in range(1000):
+            d20 = random.Random(seed).randint(1, 20)
+            if 9 <= d20 <= 13:
+                base = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 18, 20, rng=random.Random(seed))
+                boosted = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 18, 20, rng=random.Random(seed), attack_mod=5)
+                assert base.hit is False
+                assert boosted.hit is True
+                return
+        pytest.fail("Could not find seed for attack_mod flip")
+
+    def test_role_damage_mult_scales_damage(self):
+        # M4.7 story-001: damage_mult scales the final rolled total (int-truncated). hp=50 so no kill
+        # interferes; same seed keeps the dice identical across the three runs.
+        for seed in range(1000):
+            d20 = random.Random(seed).randint(1, 20)
+            if d20 != 1 and d20 + 4 >= 12:
+                base = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 50, rng=random.Random(seed))
+                halved = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 50, rng=random.Random(seed), damage_mult=0.75)
+                boosted = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 50, rng=random.Random(seed), damage_mult=1.5)
+                assert base.damage > 0
+                assert halved.damage == int(base.damage * 0.75)
+                assert boosted.damage == int(base.damage * 1.5)
+                return
+        pytest.fail("Could not find seed for damage_mult scaling")
+
+    def test_role_modifiers_default_to_identity(self):
+        # The player path passes no role modifiers; explicit identity must equal the bare call.
+        for seed in range(1000):
+            d20 = random.Random(seed).randint(1, 20)
+            if d20 != 1 and d20 + 4 >= 12:
+                bare = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 50, rng=random.Random(seed))
+                identity = resolve_attack(
+                    SAMPLE_PLAYER, self.WEAPON, 12, 50, rng=random.Random(seed), attack_mod=0, damage_mult=1.0
+                )
+                assert bare.hit == identity.hit
+                assert bare.damage == identity.damage
+                return
+        pytest.fail("Could not find seed for identity check")
+
     def test_critical_hit_doubles_damage(self):
         for seed in range(1000):
             rng = random.Random(seed)
             if rng.randint(1, 20) == 20:
                 rng = random.Random(seed)
                 result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 20, 50, rng=rng)
-                assert result.critical is True
+                assert result.critical_success is True
                 assert result.hit is True
                 # Damage should be two rolls of 1d8
                 assert result.damage >= 2  # minimum 1+1
@@ -90,3 +132,275 @@ class TestResolveAttack:
                 assert result.roll == 1
                 return
         pytest.fail("Could not find seed for nat 1")
+
+    # --- Dramatic fields (story-002) ---
+
+    def test_nat_20_dramatic(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 20:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 50, 100, rng=rng)
+                assert result.dramatic is True
+                assert result.context == "natural_20"
+                return
+        pytest.fail("Could not find seed for nat 20")
+
+    def test_nat_1_dramatic(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 1:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 5, 20, rng=rng)
+                assert result.dramatic is True
+                assert result.context == "natural_1"
+                return
+        pytest.fail("Could not find seed for nat 1")
+
+    def test_killing_blow_dramatic(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if 2 <= rng.randint(1, 20) <= 19:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 1, rng=rng)
+                if result.hit:
+                    assert result.target_killed is True
+                    assert result.dramatic is True
+                    assert result.context == "killing_blow"
+                    return
+        pytest.fail("Could not find non-crit hit seed")
+
+    def test_routine_hit_not_dramatic(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if 2 <= rng.randint(1, 20) <= 19:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 100, rng=rng)
+                if result.hit:
+                    assert result.target_killed is False
+                    assert result.dramatic is False
+                    assert result.context == ""
+                    return
+        pytest.fail("Could not find non-crit hit seed")
+
+    def test_killing_blow_label_matches_target_killed_invariant(self):
+        # INVARIANT: for any non-crit resolved attack, the dramatic killing_blow
+        # label and the mechanical target_killed flag never disagree. The crit
+        # path is excluded because natural_20/natural_1 outrank killing_blow in
+        # the catalog, so the label is "natural_*" even on a crit kill.
+        checked_kill = False
+        checked_survive = False
+        for seed in range(2000):
+            rng = random.Random(seed)
+            if not (2 <= rng.randint(1, 20) <= 19):
+                continue
+            rng = random.Random(seed)
+            # Small target HP so both kill and non-kill outcomes occur across seeds.
+            result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 8, 5, rng=rng)
+            assert (result.context == "killing_blow") == result.target_killed
+            if result.hit and result.target_killed:
+                checked_kill = True
+            elif result.hit:
+                checked_survive = True
+        assert checked_kill, "no killing-blow seed exercised the invariant"
+        assert checked_survive, "no surviving-hit seed exercised the invariant"
+
+    # --- Result type + critical-flag pinning (moved from test_rules_resolution) ---
+
+    def test_returns_attack_result(self):
+        from check_resolution_attack import AttackResult
+
+        result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 20, rng=random.Random(42))
+        assert isinstance(result, AttackResult)
+
+    def test_nat_20_sets_critical_success_flags(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 20:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 50, 20, rng=rng)
+                assert result.roll == 20
+                assert result.hit is True
+                assert result.critical_success is True
+                assert result.critical_failure is False
+                return
+        pytest.fail("Could not find seed for nat 20")
+
+    def test_nat_1_sets_critical_failure_flags(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if rng.randint(1, 20) == 1:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 5, 20, rng=rng)
+                assert result.roll == 1
+                assert result.hit is False
+                assert result.critical_failure is True
+                assert result.critical_success is False
+                return
+        pytest.fail("Could not find seed for nat 1")
+
+    def test_normal_roll_no_critical_flags(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            if 2 <= rng.randint(1, 20) <= 19:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 20, rng=rng)
+                assert result.critical_success is False
+                assert result.critical_failure is False
+                return
+        pytest.fail("Could not find non-crit seed")
+
+    def test_miss_not_dramatic(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 20 and d20 + 4 < 18:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 18, 1, rng=rng)
+                assert result.hit is False
+                assert result.dramatic is False
+                assert result.context == ""
+                return
+        pytest.fail("Could not find miss seed")
+
+    # --- Overkill (M4.4 story-002): excess damage beyond 0 HP, for the instant-death verdict ---
+
+    def test_overkill_is_damage_beyond_target_hp(self):
+        # A hit on a 1-HP target: overkill = damage - 1 (the excess past 0), computed pre-floor.
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 1 and d20 + 4 >= 10:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 1, rng=rng)
+                if result.hit:
+                    assert result.overkill == result.damage - 1
+                    assert result.target_hp_remaining == 0  # floor still applies to HP
+                    return
+        pytest.fail("Could not find seed for hit")
+
+    def test_overkill_zero_when_damage_below_target_hp(self):
+        # A hit that doesn't drop the target to 0 has no overkill.
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 1 and d20 + 4 >= 12:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 12, 100, rng=rng)
+                if result.hit:
+                    assert result.overkill == 0
+                    return
+        pytest.fail("Could not find seed for hit")
+
+    def test_overkill_zero_on_miss(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 20 and d20 + 4 < 18:
+                rng = random.Random(seed)
+                result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 18, 1, rng=rng)
+                assert result.hit is False
+                assert result.overkill == 0
+                return
+        pytest.fail("Could not find miss seed")
+
+
+class TestAttackModifier:
+    def test_melee_weapon(self):
+        weapon = {"damage": "1d8", "damage_type": "slashing", "properties": []}
+        mod = attack_modifier(SAMPLE_PLAYER, weapon)
+        # STR +2, prof +1 at L1 = +3
+        assert mod == 3
+
+    def test_ranged_weapon(self):
+        weapon = {"damage": "1d8", "ranged": True, "properties": []}
+        mod = attack_modifier(SAMPLE_PLAYER, weapon)
+        # DEX +1, prof +1 at L1 = +2
+        assert mod == 2
+
+    def test_finesse_weapon_uses_higher(self):
+        weapon = {"damage": "1d6", "properties": ["finesse"]}
+        mod = attack_modifier(SAMPLE_PLAYER, weapon)
+        # max(STR +2, DEX +1) + prof +1 at L1 = +3
+        assert mod == 3
+
+    def test_governing_attribute_uses_that_stat(self):
+        # An explicit governing_attribute (e.g. a companion's INT spell-attack) drives the hit
+        # stat directly, ignoring the melee/ranged/finesse inference (story-008).
+        weapon = {"damage": "1d6", "governing_attribute": "intelligence"}
+        mod = attack_modifier(SAMPLE_PLAYER, weapon)
+        # INT +0, prof +1 at L1 = +1
+        assert mod == 1
+
+    def test_governing_attribute_overrides_ranged(self):
+        # Lira's ranged Arcane Bolt: ranged flag would route DEX, but governing_attribute wins -> INT.
+        weapon = {"damage": "1d6", "ranged": True, "governing_attribute": "intelligence"}
+        mod = attack_modifier(SAMPLE_PLAYER, weapon)
+        # INT +0 (not DEX +1), prof +1 at L1 = +1
+        assert mod == 1
+
+    def test_governing_attribute_dexterity_on_melee(self):
+        # Tam's DEX finesse short sword / Sable's DEX bite: melee would default STR, governing -> DEX.
+        weapon = {"damage": "1d6", "governing_attribute": "dexterity", "properties": []}
+        mod = attack_modifier(SAMPLE_PLAYER, weapon)
+        # DEX +1 (not STR +2), prof +1 at L1 = +2
+        assert mod == 2
+
+
+class TestNecroticRider:
+    """M4.4 story-008: an attacker carrying the temporary_hollowed condition adds a 1d6 necrotic
+    rider to each hit. The rider rolls AFTER weapon damage with the same rng, so for a given seed
+    the weapon roll is identical with/without the condition — the delta isolates the rider."""
+
+    WEAPON = {"name": "Claw", "damage": "1d6", "damage_type": "slashing", "properties": []}
+
+    def _echo_attacker(self):
+        import conditions
+
+        attacker = dict(SAMPLE_PLAYER)
+        attacker["conditions"] = conditions.apply_condition([], "temporary_hollowed")
+        return attacker
+
+    def _hit_seed(self, target_hp):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 1 and d20 + 4 >= 10:
+                return seed
+        pytest.fail("Could not find seed for hit")
+
+    def test_no_rider_without_the_condition(self):
+        seed = self._hit_seed(50)
+        result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 50, rng=random.Random(seed))
+        assert result.hit is True
+        assert result.bonus_damage == 0
+        assert result.bonus_damage_type is None
+
+    def test_rider_adds_1d6_necrotic_to_a_hit(self):
+        seed = self._hit_seed(50)
+        baseline = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 50, rng=random.Random(seed))
+        echo = resolve_attack(self._echo_attacker(), self.WEAPON, 10, 50, rng=random.Random(seed))
+        assert echo.hit is True
+        assert echo.bonus_damage_type == "necrotic"
+        assert 1 <= echo.bonus_damage <= 6
+        # Same seed -> identical weapon roll; the echo's extra damage IS the rider.
+        assert echo.damage == baseline.damage + echo.bonus_damage
+
+    def test_rider_counts_toward_overkill(self):
+        # Same seed, a 1-HP target: both kill, the echo's overkill is larger by exactly the rider.
+        seed = self._hit_seed(1)
+        baseline = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 10, 1, rng=random.Random(seed))
+        echo = resolve_attack(self._echo_attacker(), self.WEAPON, 10, 1, rng=random.Random(seed))
+        assert baseline.hit and echo.hit
+        assert echo.overkill == baseline.overkill + echo.bonus_damage
+
+    def test_rider_not_rolled_on_a_miss(self):
+        for seed in range(1000):
+            rng = random.Random(seed)
+            d20 = rng.randint(1, 20)
+            if d20 != 20 and d20 + 4 < 18:
+                result = resolve_attack(self._echo_attacker(), self.WEAPON, 18, 20, rng=random.Random(seed))
+                assert result.hit is False
+                assert result.bonus_damage == 0
+                return
+        pytest.fail("Could not find seed for miss")

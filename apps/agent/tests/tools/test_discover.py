@@ -153,6 +153,39 @@ class TestCheckDiscover:
 
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_dice_roll_carries_dramatic_verdict(self, mock_event):
+        # Discover-mode DICE_ROLL must surface the resolver's dramatic verdict (nat-20),
+        # matching the skill/save emission contract (story-005/006). A nat-20 here is
+        # dramatic with context "natural_20"; the client overlay gates on the flag.
+        content, queries, mutations = _make_discover_mocks()
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(20)):
+            await _check_discover_impl(
+                ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
+            )
+        dice_payload = next(
+            call.args[2] for call in mock_event.call_args_list if call.args[2].get("roll_type") == "skill_check"
+        )
+        assert dice_payload["dramatic"] is True
+        assert dice_payload["context"] == "natural_20"
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_routine_discover_roll_not_dramatic(self, mock_event):
+        content, queries, mutations = _make_discover_mocks()
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(15)):
+            await _check_discover_impl(
+                ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
+            )
+        dice_payload = next(
+            call.args[2] for call in mock_event.call_args_list if call.args[2].get("roll_type") == "skill_check"
+        )
+        assert dice_payload["dramatic"] is False
+        assert dice_payload["context"] == ""
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
     async def test_failed_discovery(self, mock_event):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
@@ -215,6 +248,18 @@ class TestCheckDiscover:
         ctx = _make_context(location_id="nowhere")
         with pytest.raises(ToolError, match="not found"):
             await _check_discover_impl(ctx, "perception", "bookshelf", content=content)
+
+    @pytest.mark.asyncio
+    async def test_corrupt_conditions_fail_loud_as_toolerror(self):
+        # M4.4 story-008 (concern 988e3e4f55ea): a corrupt stored conditions row surfaces as a
+        # DM-narratable ToolError before the resolver hits get_condition_effects.
+        corrupt_player = {**DISCOVER_PLAYER, "conditions": [{"type": "bogus"}]}
+        content, queries, mutations = _make_discover_mocks(player=corrupt_player)
+        ctx = _make_context(location_id="test_location")
+        with pytest.raises(ToolError, match="corrupt stored conditions"):
+            await _check_discover_impl(
+                ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
+            )
 
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
@@ -291,29 +336,27 @@ class TestCheckDiscover:
         assert "dc" not in dice_calls[0][0][2]
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_successful_discovery_emits_hidden_revealed(self, mock_event):
+    @patch("check_discovery.publish_hidden_revealed", new_callable=AsyncMock)
+    async def test_successful_discovery_emits_hidden_revealed(self, mock_reveal):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         with patch("check_resolution.dice_roll", return_value=_roll(15)):
             await _check_discover_impl(
                 ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
             )
-        revealed = [c for c in mock_event.call_args_list if c[0][1] == E.HIDDEN_REVEALED]
-        assert len(revealed) == 1
-        assert revealed[0][0][2]["element_id"] == "secret_door"
+        mock_reveal.assert_awaited_once()
+        assert mock_reveal.await_args.kwargs["element_id"] == "secret_door"
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_failed_discovery_emits_no_reveal(self, mock_event):
+    @patch("check_discovery.publish_hidden_revealed", new_callable=AsyncMock)
+    async def test_failed_discovery_emits_no_reveal(self, mock_reveal):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         with patch("check_resolution.dice_roll", return_value=_roll(3)):
             await _check_discover_impl(
                 ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
             )
-        revealed = [c for c in mock_event.call_args_list if c[0][1] == E.HIDDEN_REVEALED]
-        assert revealed == []
+        mock_reveal.assert_not_awaited()
 
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
@@ -463,3 +506,36 @@ class TestCheckDiscover:
         assert first["outcome"] == "not_found"  # easy_secret (DC 10) failed
         assert second["outcome"] == "discovered"
         assert second["element_id"] == "hard_secret"  # now reachable
+
+
+class TestDiscoverLockoutOrdering:
+    """story-014: the in-memory anti-grind lockout must be added AFTER the persist succeeds, not
+    before the roll — so a transient DB error that rolls back the discovery flag leaves the element
+    re-attemptable this session. A failed attempt (no persist, no error) still locks out (the
+    existing test_reworded_target_cannot_regrind guards that preservation)."""
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_persist_failure_leaves_element_reattemptable(self, _evt):
+        # A successful roll whose discovery-flag persist raises: the in-memory lockout must NOT be
+        # set, so the secret can be re-attempted once the DB recovers (no until-next-session lockout).
+        content, queries, mutations = _make_discover_mocks()
+        mutations.set_player_flag = AsyncMock(side_effect=RuntimeError("db down"))
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(15)):  # >= dc 12 -> success -> persist
+            with pytest.raises(RuntimeError):
+                await _check_discover_impl(
+                    ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
+                )
+        assert "perception:secret_door" not in ctx.userdata.attempted_discoveries
+
+    @pytest.mark.asyncio
+    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    async def test_successful_persist_locks_out_element(self, _evt):
+        content, queries, mutations = _make_discover_mocks()
+        ctx = _make_context(location_id="test_location")
+        with patch("check_resolution.dice_roll", return_value=_roll(15)):
+            await _check_discover_impl(
+                ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
+            )
+        assert "perception:secret_door" in ctx.userdata.attempted_discoveries

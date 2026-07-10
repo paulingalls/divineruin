@@ -4,7 +4,9 @@ import random
 from dataclasses import dataclass
 
 from dice import roll as dice_roll
+from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier
+from social_resolution import resolve_social_check
 
 
 @dataclass(frozen=True)
@@ -27,6 +29,8 @@ class DeathSaveResult:
     stabilized: bool
     dead: bool
     narrative_hint: str
+    dramatic: bool = True
+    context: str = "death_save"
 
 
 def roll_initiative(
@@ -61,18 +65,26 @@ def resolve_death_save(
     current_successes: int,
     current_failures: int,
     rng: random.Random | None = None,
+    *,
+    bonus: int = 0,
 ) -> DeathSaveResult:
     """Resolve a death saving throw.
 
     Rules: 10+ = success, <10 = failure. Nat 20 = regain 1 HP (critical success).
     Nat 1 = two failures. 3 successes = stabilized, 3 failures = dead.
+
+    ``bonus`` adds to the success threshold check (M4.4 story-004: a Mortaen patron's +2);
+    crit-success/crit-failure stay keyed on the RAW d20, and the reported ``roll`` is the
+    raw die for display. A flat 0 bonus leaves the base mechanic unchanged.
     """
+    verdict = evaluate_dramatic_context(DramaticContext(roll_type="death_save"))
+
     result = dice_roll("d20", rng=rng)
     d20 = result.total
 
     critical_success = d20 == 20
     critical_failure = d20 == 1
-    success = d20 >= 10
+    success = (d20 + bonus) >= 10
 
     new_successes = current_successes
     new_failures = current_failures
@@ -103,6 +115,8 @@ def resolve_death_save(
         stabilized=stabilized,
         dead=dead,
         narrative_hint=hint,
+        dramatic=verdict.dramatic,
+        context=verdict.context,
     )
 
 
@@ -122,7 +136,16 @@ def hp_threshold_status(current_hp: int, max_hp: int) -> str:
 
 
 def calculate_combat_xp(enemies: list[dict]) -> int:
-    """Sum xp_value from a list of enemy dicts. Defaults to 0 if missing."""
+    """Sum xp_value from a list of enemy dicts. Defaults to 0 if missing.
+
+    M4.7 encounter-role contract (story-003): each enemy's ``xp_value`` is ALREADY
+    role-scaled. ``encounter_roles.derive_role_stats`` applies the role ``xp_mult`` once
+    at combat init (``xp_value = int(base * xp_mult)`` — e.g. a Boss is x2, a Minion x0.5),
+    and that pre-scaled value is what each CombatParticipant carries and what combat_end
+    feeds here. This function therefore SUMS the already-multiplied values and must NOT
+    re-apply the multiplier — doing so would double-count the role bonus. The
+    apply-exactly-once invariant is pinned by tests/combat/test_combat_resolution_roles.py.
+    """
     return sum(e.get("xp_value", 0) for e in enemies)
 
 
@@ -155,3 +178,72 @@ def is_hollow_zone(corruption_level: int) -> bool:
     """Whether the session's corruption level marks a Hollow zone, doubling
     durability loss (corruption_level >= 2)."""
     return corruption_level >= _HOLLOW_ZONE_CORRUPTION
+
+
+# --- Diplomat de-escalation (M4.6a story-004, spec game_mechanics_combat.md:175-183) ---
+
+# Single source for the de-escalation argument's base DC (before the +disposition modifier).
+# combat_ability's orchestration reads this same constant, so the two never drift.
+DEESCALATE_BASE_DC = 15
+
+
+# --- Tier-3 structured de-escalation scene (M15 story-001, spec game_mechanics_combat.md
+# §Social Encounter Resolution L768-844). Extends the M4.6a MVP above into multi-round
+# argument phases with cumulative disposition per enemy. ---
+
+# Net ladder-step accumulation (across rounds, one enemy) at which the enemy stands down —
+# e.g. hostile -> neutral (spec L820ish).
+SURRENDER_THRESHOLD = 2
+
+
+@dataclass(frozen=True)
+class ArgumentRoundOutcome:
+    """Result of one Tier-3 argument round against a scene-local enemy disposition.
+    ``new_cumulative_shift`` is the running per-enemy accumulator the caller threads into
+    the next round; ``new_disposition`` is the ladder-clamped disposition that round's DC
+    should derive from."""
+
+    margin: int
+    delta: int
+    new_cumulative_shift: int
+    new_disposition: str
+    surrendered: bool
+
+
+def resolve_argument_round(
+    *,
+    disposition: str,
+    argument_type: str | None,
+    resistance_tags: tuple[str, ...],
+    roll_total: int,
+    cumulative_shift: int,
+    base_dc: int = DEESCALATE_BASE_DC,
+) -> ArgumentRoundOutcome:
+    """Resolve one round of a Tier-3 structured argument (pure; caller supplies roll_total).
+
+    A thin wrapper over ``social_resolution.resolve_social_check`` — re-derives no DC or
+    disposition math. ``stakes="high"`` keeps every round always-dramatic (M4.5). The caller
+    (story-002 orchestration) threads ``new_cumulative_shift``/``new_disposition`` into the
+    next round and reads ``surrendered`` as the scene's end condition.
+    """
+    result = resolve_social_check(
+        disposition=disposition,
+        skill="persuasion",
+        roll_total=roll_total,
+        base_dc=base_dc,
+        argument_type=argument_type,
+        resistance_tags=resistance_tags,
+        stakes="high",
+    )
+    # Floor the accumulator at 0 so a negative-delta round at the hostile floor can't drive
+    # cumulative_shift below the ladder-clamped disposition (which never drops past "hostile").
+    # Otherwise a run of bad rounds would bank negative progress the enemy must first climb back
+    # through before any surrender could land — diverging from the narrated disposition (finding #1).
+    new_cumulative = max(0, cumulative_shift + result.disposition_shift)
+    return ArgumentRoundOutcome(
+        margin=result.margin,
+        delta=result.disposition_shift,
+        new_cumulative_shift=new_cumulative,
+        new_disposition=result.new_disposition,
+        surrendered=new_cumulative >= SURRENDER_THRESHOLD,
+    )

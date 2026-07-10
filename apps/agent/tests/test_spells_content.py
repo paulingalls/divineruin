@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from spells import Spell, parse_spell_row
+from spells import SPELL_SOUND_KEYS, Spell, parse_spell_row
 
 CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "spells.json"
 
@@ -32,6 +32,7 @@ _REQUIRED_FIELDS = (
     "terrain_effects",
     "audio_cue",
     "concentration",
+    "sound_id",
 )
 
 
@@ -62,6 +63,15 @@ def test_every_row_parses_through_the_strict_loader(row):
 
 
 @pytest.mark.parametrize("row", _RAW, ids=[r["id"] for r in _RAW])
+def test_every_row_has_a_nonempty_audio_cue(row):
+    # audio_cue is the DM's free-text audio-direction cue, voiced/directed on cast (returned in
+    # the cast packet, spell_casting.py) — NOT a literal client SFX code (nothing maps it to real
+    # SFX yet). Every spell has a sensory signature, so every row must carry a non-empty cue; an
+    # empty string is a content gap that ships a silent spell (concern e3af222251df).
+    assert row["audio_cue"].strip(), f"{row['id']} has an empty audio_cue"
+
+
+@pytest.mark.parametrize("row", _RAW, ids=[r["id"] for r in _RAW])
 def test_resonance_is_keyed_by_the_rows_own_source(row):
     # resonance_by_source maps the spell's magic source to its catalog Resonance.
     assert row["source"] in row["resonance_by_source"]
@@ -72,3 +82,10 @@ def test_terrain_effects_nonempty_only_for_primal(row):
     # Terrain-variable Resonance is a Primal-only mechanic; non-Primal rows hold {}.
     if row["source"] != "primal":
         assert row["terrain_effects"] == {}, f"{row['id']} is {row['source']} but has terrain_effects"
+
+
+@pytest.mark.parametrize("row", _RAW, ids=[r["id"] for r in _RAW])
+def test_every_row_has_a_valid_sound_id(row):
+    # story-003: sound_id is the machine-playable SFX key (7-key frozen palette,
+    # docs/audio_sfx_pipeline.md §4) — distinct from the free-text audio_cue.
+    assert row["sound_id"] in SPELL_SOUND_KEYS, f"{row['id']} sound_id {row.get('sound_id')!r} not in palette"

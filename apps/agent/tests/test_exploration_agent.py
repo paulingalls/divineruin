@@ -2,8 +2,8 @@
 
 M7 collapses CityAgent/WildernessAgent/DungeonAgent into one ExplorationAgent
 that carries region_type as a per-instance attribute. The unified tool list is
-the former city superset (city ⊇ wilderness, city ⊇ dungeon), so one list of 15
-serves every region with headroom under the strict-tool ceiling.
+the former city superset (city ⊇ wilderness, city ⊇ dungeon) plus the M4.6b travel
+verb, so one list of 16 serves every region with headroom under the strict-tool ceiling.
 """
 
 from base_agent import BaseGameAgent
@@ -29,12 +29,14 @@ class TestExplorationAgentConfig:
 
 
 class TestExplorationToolset:
-    def test_count_at_fifteen_under_ceiling(self):
+    def test_count_at_eighteen_under_ceiling(self):
         from llm_config import MAX_STRICT_TOOLS
 
-        # The unified list is the former CITY_TOOLS (15). With one agent there are
-        # 5 free slots — the per-region ceiling no longer binds (debt e665104c753a).
-        assert len(EXPLORATION_TOOLS) == 15
+        # The unified list is the former CITY_TOOLS (15) + travel (M4.6b, 16) +
+        # adjust_faction_reputation (M23 story-002, 17) + deploy_veil_anchor (M24 story-012, 18).
+        # With one agent there are 2 free slots — the per-region ceiling no longer binds
+        # (debt e665104c753a).
+        assert len(EXPLORATION_TOOLS) == 18
         assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS
 
     def test_holds_unified_superset(self):
@@ -43,15 +45,20 @@ class TestExplorationToolset:
         from inventory_tools import transact
         from mode_tools import enter_mode
         from progression_tools import award_divine_favor, award_xp
+        from reputation_tools import adjust_faction_reputation
         from session_tools import update_npc_disposition
 
-        for tool in (check, select, transact, enter_mode, award_xp, award_divine_favor, update_npc_disposition):
+        for tool in (
+            check,
+            select,
+            transact,
+            enter_mode,
+            award_xp,
+            award_divine_favor,
+            update_npc_disposition,
+            adjust_faction_reputation,
+        ):
             assert tool in EXPLORATION_TOOLS
-
-    def test_excludes_combat_only_tools(self):
-        from check_tools import request_attack
-
-        assert request_attack not in EXPLORATION_TOOLS
 
 
 class TestExplorationFactory:

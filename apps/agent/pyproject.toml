@@ -3,11 +3,11 @@ name = "divineruin-agent"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "livekit-agents[silero,turn-detector]~=1.5.9",
+    "livekit-agents~=1.6.1",
     "livekit-plugins-noise-cancellation~=0.2",
-    "livekit-plugins-anthropic~=1.5.9",
-    "livekit-plugins-deepgram~=1.5.9",
-    "livekit-plugins-inworld~=1.5.9",
+    "livekit-plugins-anthropic~=1.6",
+    "livekit-plugins-deepgram~=1.6",
+    "livekit-plugins-inworld~=1.6",
     "asyncpg>=0.30.0",
     "redis>=7.4.0",
     "anthropic>=0.105.2",

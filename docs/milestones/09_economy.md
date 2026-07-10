@@ -184,12 +184,12 @@ Quest reward processing ships at `apps/agent/quest_tools.py:138-167` (handles XP
 - Agent tool: `resolve_combat_loot(combat_id)` → currency + materials + bonus-loot bundle
 
 **Acceptance criteria:**
-- [ ] Currency drops match spec category × role matrix across all 5 categories × 5 roles
+- [x] Currency drops match spec category × role matrix across all 5 categories × 5 roles
 - [ ] Hollow material values match the 4-tier spec table
 - [ ] Material sell values match encounter_roles spec (role-keyed)
 - [ ] Boss bonus loot is context-driven, not creature-driven (per Decision 80)
 - [ ] Tier×biome currency yield matrix is correct (covers all 4 tiers × ≥6 biomes)
-- [ ] `calculate_currency_drop` is pure; tests cover every category × role × tier combo
+- [x] `calculate_currency_drop` is pure; tests cover every category × role × tier combo
 - [ ] Material sell value lookup matches spec for every role × material category cell
 
 **Key references:**
@@ -201,7 +201,7 @@ Quest reward processing ships at `apps/agent/quest_tools.py:138-167` (handles XP
 
 <!-- see audit/phase-9-economy.md §Currency Drops + §Hollow Material Values + audit/phase-encounter-roles.md -->
 
-**Status: NOT_SHIPPED.** No `calculate_currency_drop` symbol, no role-keyed material sell tables, no Boss-bonus loot framework, no tier×biome currency yield matrix. Substrate dependencies (Phase 4 M4.7 encounter_roles + Phase 7 M7.1 creature `role` field) are also NOT_SHIPPED per sprint-003 audits.
+**Status: PARTIAL (corrected post-Phase-4).** The currency-drop side landed via M4.7 encounter_roles (sprint-024): `apps/agent/encounter_loot.py` ships the pure `calculate_currency_drop(category, tier, role, rng)` matching the spec category × role currency matrix (humanoid Tier×1d6, Hollow-Rend 15%, Undead 25%, beasts/constructs/drifts 0, Minions 0, Boss 2×+tier bonus) plus role-scaled `derive_role_loot`; both are wired at combat victory in `apps/agent/combat_end.py:114,119` emitting `CURRENCY_GAINED`/`ITEM_ACQUIRED`, and exhaustively tested in `apps/agent/tests/combat/test_encounter_loot.py`. Substrate dep Phase 4 M4.7 encounter_roles is now SHIPPED. Still NOT_SHIPPED: role-keyed material sell tables, the 4-tier Hollow material value table, the Boss context-loot framework (explicitly out of scope in encounter_loot.py's docstring), and the tier×biome currency yield matrix (no biome dimension).
 
 ---
 

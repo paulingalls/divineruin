@@ -21,6 +21,7 @@ import logging
 
 from catalog_parse import parse_dict, parse_str, parse_str_list
 from role_archetypes import DISPOSITIONS
+from social_resolution import RESISTANCE_TAGS
 
 logger = logging.getLogger("divineruin.npcs")
 
@@ -48,6 +49,14 @@ def parse_npc_row(npc_id: str, data: dict) -> dict:
         disposition = parse_str(data["default_disposition"], f"{npc_id}.default_disposition")
         if disposition not in DISPOSITIONS:
             raise ValueError(f"{npc_id}.default_disposition {disposition!r} not in {DISPOSITIONS}")
+        # resistance_tags is optional (defaults to none); when present, every tag must be a
+        # canonical personality tag so it actually gates a Tier-3 argument in the social
+        # resolver instead of silently no-opping. Fail loud, mirroring default_disposition.
+        resistance_tags = data.get("resistance_tags", [])
+        parse_str_list(resistance_tags, f"{npc_id}.resistance_tags")
+        for tag in resistance_tags:
+            if tag not in RESISTANCE_TAGS:
+                raise ValueError(f"{npc_id}.resistance_tags {tag!r} not in {RESISTANCE_TAGS}")
         return data
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed npcs row {npc_id!r}: {e}") from e

@@ -64,3 +64,11 @@ export function lookupMusic(state: MusicState): MusicEntry | null {
   if (state === "silence") return null;
   return MUSIC[state] ?? null;
 }
+
+// The playable states that map to a bundled asset. `silence` is intentionally
+// absent from MUSIC (a non-asset state), so it is excluded here.
+const MUSIC_STATES = Object.keys(MUSIC) as MusicState[];
+
+export function knownMusicStates(): MusicState[] {
+  return MUSIC_STATES;
+}

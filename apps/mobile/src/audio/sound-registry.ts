@@ -21,7 +21,14 @@ export type SoundName =
   | "potion_use"
   | "door_creak"
   | "discovery_chime"
-  | "god_whisper_stinger";
+  | "god_whisper_stinger"
+  | "spell_fire"
+  | "spell_ice"
+  | "spell_arcane_force"
+  | "spell_heal"
+  | "spell_radiant"
+  | "spell_nature"
+  | "spell_generic";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- RN require() returns any */
 const SOUNDS: Record<SoundName, SoundAsset> = {
@@ -45,6 +52,13 @@ const SOUNDS: Record<SoundName, SoundAsset> = {
   door_creak: require("@/assets/sounds/door_creak.mp3"),
   discovery_chime: require("@/assets/sounds/discovery_chime.mp3"),
   god_whisper_stinger: require("@/assets/sounds/god_whisper_stinger.mp3"),
+  spell_fire: require("@/assets/sounds/spell_fire.mp3"),
+  spell_ice: require("@/assets/sounds/spell_ice.mp3"),
+  spell_arcane_force: require("@/assets/sounds/spell_arcane_force.mp3"),
+  spell_heal: require("@/assets/sounds/spell_heal.mp3"),
+  spell_radiant: require("@/assets/sounds/spell_radiant.mp3"),
+  spell_nature: require("@/assets/sounds/spell_nature.mp3"),
+  spell_generic: require("@/assets/sounds/spell_generic.mp3"),
 };
 /* eslint-enable @typescript-eslint/no-unsafe-assignment */
 

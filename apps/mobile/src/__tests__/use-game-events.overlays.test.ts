@@ -26,7 +26,6 @@ test("dice_result pushes overlay to hudStore", () => {
 test("combat_ui_update sets combat state in hudStore", () => {
   handleGameEvent({
     type: "combat_ui_update",
-    phase: "player_turn",
     round: 2,
     combatants: [
       {
@@ -35,20 +34,19 @@ test("combat_ui_update sets combat state in hudStore", () => {
         isAlly: true,
         hpCurrent: 20,
         hpMax: 30,
-        statusEffects: [],
+        conditions: [],
         isActive: true,
       },
     ],
   });
   const combat = hudStore.getState().combatState;
   expect(combat).not.toBeNull();
-  expect(combat!.phase).toBe("player_turn");
   expect(combat!.round).toBe(2);
   expect(combat!.combatants).toHaveLength(1);
 });
 
 test("combat_ended clears hudStore combat state", () => {
-  hudStore.getState().setCombatState({ phase: "init", round: 1, combatants: [] });
+  hudStore.getState().setCombatState({ round: 1, combatants: [] });
   handleGameEvent({ type: "combat_ended" });
   expect(hudStore.getState().combatState).toBeNull();
 });
@@ -56,7 +54,6 @@ test("combat_ended clears hudStore combat state", () => {
 test("combat_ui_update filters out malformed combatants", () => {
   handleGameEvent({
     type: "combat_ui_update",
-    phase: "player_turn",
     round: 1,
     combatants: [
       {
@@ -65,7 +62,7 @@ test("combat_ui_update filters out malformed combatants", () => {
         isAlly: true,
         hpCurrent: 20,
         hpMax: 30,
-        statusEffects: [],
+        conditions: [],
         isActive: true,
       },
       null,
@@ -77,6 +74,70 @@ test("combat_ui_update filters out malformed combatants", () => {
   expect(combat).not.toBeNull();
   expect(combat!.combatants).toHaveLength(1);
   expect(combat!.combatants[0].id).toBe("c1");
+});
+
+// Regression guard: a payload shaped like the M12 producer's emit (see
+// apps/agent/event_types.py COMBAT_UI_UPDATE docstring + apps/agent/combat_ui_update.py)
+// round-trips through parseCombatant -> hudStore.setCombatState with conditions
+// preserved verbatim ({type, stacks, source}). Pins parseCondition behaviour against
+// accidental tightening; cross-language wire-shape drift is caught by the story-003
+// capstone, not here.
+test("combat_ui_update preserves producer-shaped conditions through parseCombatant", () => {
+  handleGameEvent({
+    type: "combat_ui_update",
+    round: 2,
+    combatants: [
+      {
+        id: "player_1",
+        name: "Kael",
+        isAlly: true,
+        hpCurrent: 25,
+        hpMax: 25,
+        conditions: [
+          { type: "blessed", stacks: 1, source: "divine_bless" },
+          { type: "frightened", stacks: 1, source: "shaman_aura" },
+        ],
+        isActive: true,
+      },
+    ],
+  });
+  const combat = hudStore.getState().combatState;
+  expect(combat).not.toBeNull();
+  expect(combat!.round).toBe(2);
+  expect(combat!.combatants).toHaveLength(1);
+  const conds = combat!.combatants[0].conditions;
+  expect(conds).toHaveLength(2);
+  expect(conds[0]).toEqual({ type: "blessed", stacks: 1, source: "divine_bless" });
+  expect(conds[1]).toEqual({ type: "frightened", stacks: 1, source: "shaman_aura" });
+});
+
+// Regression guard: parseCombatant fails soft when a combatant omits isAlly —
+// the row survives with isAlly=false rather than being dropped. Mirrors the
+// fail-soft default at game-event-handler.ts (`typeof c.isAlly === "boolean" ? c.isAlly : false`).
+// A future tightening to reject the row would surface here.
+test("combat_ui_update parseCombatant fails soft when isAlly is missing", () => {
+  handleGameEvent({
+    type: "combat_ui_update",
+    round: 1,
+    combatants: [
+      {
+        id: "goblin_1",
+        name: "Goblin",
+        // isAlly intentionally omitted
+        hpCurrent: 7,
+        hpMax: 7,
+        conditions: [],
+        isActive: false,
+      },
+    ],
+  });
+  const combat = hudStore.getState().combatState;
+  expect(combat).not.toBeNull();
+  expect(combat!.combatants).toHaveLength(1);
+  const c = combat!.combatants[0];
+  expect(c.id).toBe("goblin_1");
+  expect(c.isAlly).toBe(false);
+  expect(c.hpCurrent).toBe(7);
 });
 
 // --- handleGameEvent: item_acquired ---
@@ -128,6 +189,43 @@ test("item_acquired without image_url has undefined image_url in payload", () =>
   });
   const overlay = hudStore.getState().overlays[0];
   expect(overlay.payload.image_url).toBeUndefined();
+});
+
+test("item_acquired for the local player's own player_id fires the overlay", () => {
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "p1" });
+  handleGameEvent({
+    type: "item_acquired",
+    name: "Rusty Sword",
+    description: "A worn blade",
+    rarity: "common",
+    player_id: "p1",
+  });
+  expect(hudStore.getState().overlays).toHaveLength(1);
+});
+
+test("item_acquired for a different party member's player_id suppresses the overlay", () => {
+  // M20 story-001: the loot HUD leak — a round-robinned drop granted to a teammate must not
+  // show on the local player's HUD.
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "p1" });
+  handleGameEvent({
+    type: "item_acquired",
+    name: "Rusty Sword",
+    description: "A worn blade",
+    rarity: "common",
+    player_id: "p2",
+  });
+  expect(hudStore.getState().overlays).toHaveLength(0);
+});
+
+test("item_acquired with no player_id fires the overlay (back-compat: solo / non-combat rewards)", () => {
+  characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "p1" });
+  handleGameEvent({
+    type: "item_acquired",
+    name: "Rations",
+    description: "Food",
+    rarity: "common",
+  });
+  expect(hudStore.getState().overlays).toHaveLength(1);
 });
 
 // --- handleGameEvent: quest_update ---

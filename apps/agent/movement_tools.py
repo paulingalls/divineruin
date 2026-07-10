@@ -11,11 +11,13 @@ import db_content_queries
 import db_mutations
 import db_queries
 import event_types as E
+import ward_resolution
 from db_errors import db_tool
 from game_events import publish_game_event
 from region_types import REGION_CITY
 from session_data import SessionData
 from tool_support import LOCATION_CORRUPTION, _resolve_ambient_sounds, _validate_id
+from veil_ward_events import veil_ward_payload
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -46,6 +48,90 @@ async def move_player(
     location ID from the current location's exits. Returns the full scene
     context for the new location."""
     return await _move_player_impl(context, destination_id)
+
+
+async def apply_arrival(
+    session: SessionData,
+    destination_id: str,
+    destination_location: dict | None,
+    *,
+    db_mod=db,
+    mutations=db_mutations,
+) -> str:
+    """Apply a player's arrival at `destination_id`: persist location + map progress (atomically),
+    emit LOCATION_CHANGED + corruption tracking, sync session location/corruption, and record the
+    visit + companion memory. Shared by move_player and the travel tool so both surface the same
+    client-facing arrival side-effects (HUD location, visited-map, corruption). Returns the previous
+    location id. Does NOT do exit-requirement gating or scene-context build — callers own those."""
+    previous_location_id = session.location_id
+    pending_events: list[tuple[str, dict]] = []
+
+    destination_exits = destination_location.get("exits", {}) if destination_location else {}
+    exit_connections = db_mod.extract_exit_connections(destination_exits)
+
+    async with db_mod.transaction() as conn:
+        await mutations.update_player_location(session.player_id, destination_id, conn=conn)
+        await mutations.upsert_map_progress(session.player_id, destination_id, exit_connections, conn=conn)
+
+        # The Veil Ward is scope-owned (M24), so moving can change it: a party that walks out of a
+        # warded location is no longer warded, and one that walks into a Sacred site is. Nothing
+        # else re-reads the ward between casts, so without this the HUD indicator would keep lying.
+        #
+        # Resolved HERE, inside the transaction, against the DESTINATION: conn closes below and
+        # session.location_id is not updated until after the commit, so the session still names the
+        # location we are leaving.
+        arrival_ward, arrival_scope = await ward_resolution.resolve_scope_ward_with_scope(
+            session, conn=conn, location_id=destination_id
+        )
+
+        pending_events.append(
+            (
+                E.LOCATION_CHANGED,
+                {
+                    "previous_location": previous_location_id,
+                    "new_location": destination_id,
+                    "location_name": destination_location.get("name", destination_id)
+                    if destination_location
+                    else destination_id,
+                    "atmosphere": destination_location.get("atmosphere", "") if destination_location else "",
+                    "region": destination_location.get("region", "") if destination_location else "",
+                    "connections": exit_connections,
+                    "ambient_sounds": _resolve_ambient_sounds(destination_location, session.world_time),
+                    "time_of_day": session.world_time,
+                },
+            )
+        )
+
+    # Session state updated ONLY after successful commit
+    session.location_id = destination_id
+
+    # Corruption tracking — location-based, resets on safe areas.
+    new_corruption = LOCATION_CORRUPTION.get(destination_id, 0)
+    previous_corruption = session.corruption_level
+    session.corruption_level = new_corruption
+    if new_corruption != previous_corruption:
+        pending_events.append(
+            (
+                E.HOLLOW_CORRUPTION_CHANGED,
+                {"level": new_corruption, "previous": previous_corruption, "location_id": destination_id},
+            )
+        )
+
+    # Ward tracking — scope-based, mirrors the corruption block above: compute, compare, append only
+    # on change. `active` is the RESOLVED state (§3), which is exactly what resolve_scope_ward returns.
+    previously_warded = session.location_ward is not None
+    session.location_ward = arrival_ward
+    if (arrival_ward is not None) != previously_warded:
+        pending_events.append((E.VEIL_WARD_CHANGED, veil_ward_payload(arrival_ward, arrival_scope)))
+
+    for event_type, payload in pending_events:
+        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
+
+    loc_name = destination_location.get("name", destination_id) if destination_location else destination_id
+    session.record_companion_memory(f"Traveled to {loc_name}")
+    if destination_id not in session.session_locations_visited:
+        session.session_locations_visited.append(destination_id)
+    return previous_location_id
 
 
 async def _move_player_impl(
@@ -96,9 +182,6 @@ async def _move_player_impl(
                 }
             )
 
-    previous_location_id = session.location_id
-    pending_events: list[tuple[str, dict]] = []
-
     destination_location = await content.get_location(destination_id)
 
     # Detect region boundary crossing for handoff
@@ -106,59 +189,11 @@ async def _move_player_impl(
     dest_region = destination_location.get("region_type", REGION_CITY) if destination_location else REGION_CITY
     region_change = current_region != dest_region
 
-    destination_exits = destination_location.get("exits", {}) if destination_location else {}
-    exit_connections = db_mod.extract_exit_connections(destination_exits)
-
-    async with db_mod.transaction() as conn:
-        await mutations.update_player_location(session.player_id, destination_id, conn=conn)
-        await mutations.upsert_map_progress(session.player_id, destination_id, exit_connections, conn=conn)
-
-        pending_events.append(
-            (
-                E.LOCATION_CHANGED,
-                {
-                    "previous_location": previous_location_id,
-                    "new_location": destination_id,
-                    "location_name": destination_location.get("name", destination_id)
-                    if destination_location
-                    else destination_id,
-                    "atmosphere": destination_location.get("atmosphere", "") if destination_location else "",
-                    "region": destination_location.get("region", "") if destination_location else "",
-                    "connections": exit_connections,
-                    "ambient_sounds": _resolve_ambient_sounds(destination_location, session.world_time),
-                    "time_of_day": session.world_time,
-                },
-            )
-        )
-
-    # Session state updated ONLY after successful commit
-    session.location_id = destination_id
-
-    # Corruption tracking — location-based, resets on safe areas.
-    # Updated after commit alongside location_id so both are consistent.
-    new_corruption = LOCATION_CORRUPTION.get(destination_id, 0)
-    previous_corruption = session.corruption_level
-    session.corruption_level = new_corruption
-    if new_corruption != previous_corruption:
-        pending_events.append(
-            (
-                E.HOLLOW_CORRUPTION_CHANGED,
-                {
-                    "level": new_corruption,
-                    "previous": previous_corruption,
-                    "location_id": destination_id,
-                },
-            )
-        )
-
-    for event_type, payload in pending_events:
-        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
-
+    # Shared arrival side-effects (location + map progress + LOCATION_CHANGED + corruption + visit).
+    previous_location_id = await apply_arrival(
+        session, destination_id, destination_location, db_mod=db_mod, mutations=mutations
+    )
     session.record_event(f"Moved to {destination_id}")
-    loc_name = destination_location.get("name", destination_id) if destination_location else destination_id
-    session.record_companion_memory(f"Traveled to {loc_name}")
-    if destination_id not in session.session_locations_visited:
-        session.session_locations_visited.append(destination_id)
 
     from scene_tools import _build_scene_context
 

@@ -29,8 +29,10 @@ from spells import (
     get_spells_by_source,
     is_loaded,
     load_spells,
+    normalize_target_list,
     parse_spell_row,
     set_spells,
+    validate_target_count,
 )
 
 CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "spells.json"
@@ -55,6 +57,7 @@ _FIREBALL_ROW = {
     "terrain_effects": {},
     "audio_cue": "CMB-006 (powerful)",
     "concentration": False,
+    "sound_id": "spell_fire",
 }
 
 _BLESS_ROW = {
@@ -69,11 +72,16 @@ _BLESS_ROW = {
     "terrain_effects": {},
     "audio_cue": "",
     "concentration": True,
+    "sound_id": "spell_radiant",
 }
 
 # The four M3.3 cast-time fields parse_spell_row requires (strict). Used by the
 # missing-field fail-loud parametrization.
 _M33_FIELDS = ("resonance_by_source", "terrain_effects", "audio_cue", "concentration")
+
+# story-003: sound_id is a fifth strict-required field (the playable SFX key), tested
+# separately below alongside its closed-vocabulary check (mirrors source/spell_tier).
+_M33_FIELDS_WITH_SOUND_ID = (*_M33_FIELDS, "sound_id")
 
 
 def _seed_from_content() -> None:
@@ -104,7 +112,80 @@ def test_parse_spell_row_exposes_m33_fields():
     assert conc.concentration is True
 
 
-@pytest.mark.parametrize("missing", _M33_FIELDS)
+def test_parse_spell_row_max_targets_optional_and_parsed():
+    # M4.8 story-007: max_targets is optional (omitted -> None) and parsed when present.
+    assert parse_spell_row(_FIREBALL_ROW["id"], _FIREBALL_ROW).max_targets is None
+    blessed = parse_spell_row(_BLESS_ROW["id"], {**_BLESS_ROW, "max_targets": 3})
+    assert blessed.max_targets == 3
+
+
+@pytest.mark.parametrize("bad_value", [0, -1, "three", 2.5, True])
+def test_parse_spell_row_rejects_nonpositive_max_targets(bad_value):
+    # Strict loader: a present-but-malformed max_targets fails loud naming the row.
+    bad = {**_BLESS_ROW, "max_targets": bad_value}
+    with pytest.raises(ValueError, match="divine_bless"):
+        parse_spell_row("divine_bless", bad)
+
+
+def test_validate_target_count_at_or_under_max_passes():
+    spell = parse_spell_row("divine_bless", {**_BLESS_ROW, "max_targets": 3})
+    validate_target_count(spell, ["a"])  # under
+    validate_target_count(spell, ["a", "b", "c"])  # exactly at cap — no raise
+
+
+def test_validate_target_count_over_max_raises():
+    spell = parse_spell_row("divine_bless", {**_BLESS_ROW, "max_targets": 3})
+    with pytest.raises(ValueError, match="divine_bless"):
+        validate_target_count(spell, ["a", "b", "c", "d"])
+
+
+def test_validate_target_count_no_cap_is_noop():
+    # A spell with no max_targets imposes no limit.
+    spell = parse_spell_row(_FIREBALL_ROW["id"], _FIREBALL_ROW)
+    validate_target_count(spell, ["a", "b", "c", "d", "e"])  # no raise
+
+
+def _capped(max_targets: int = 3):
+    return parse_spell_row("divine_bless", {**_BLESS_ROW, "max_targets": max_targets})
+
+
+def test_normalize_target_list_dedups_order_preserving():
+    assert normalize_target_list(_capped(), None, ["a", "b", "a", "c", "b"]) == ["a", "b", "c"]
+
+
+def test_normalize_target_list_rejects_both_args():
+    with pytest.raises(ValueError, match="not both"):
+        normalize_target_list(_capped(), "a", ["b"])
+
+
+def test_normalize_target_list_rejects_empty():
+    with pytest.raises(ValueError, match="at least one ally"):
+        normalize_target_list(_capped(), None, [])
+
+
+def test_normalize_target_list_rejects_all_dupes_collapsing_to_empty():
+    # Dedup runs before the empty check, but a non-empty input can't collapse to empty;
+    # an empty list is the only empty case — guarded above. Dupes that collapse to one still pass.
+    assert normalize_target_list(_capped(), None, ["a", "a"]) == ["a"]
+
+
+def test_normalize_target_list_rejects_uncapped_spell():
+    uncapped = parse_spell_row(_FIREBALL_ROW["id"], _FIREBALL_ROW)
+    with pytest.raises(ValueError, match="does not support multiple targets"):
+        normalize_target_list(uncapped, None, ["a"])
+
+
+def test_normalize_target_list_dedups_before_cap():
+    # 4 ids collapsing to 3 pass a cap of 3 (dedup precedes the count check).
+    assert normalize_target_list(_capped(3), None, ["a", "b", "c", "a"]) == ["a", "b", "c"]
+
+
+def test_normalize_target_list_enforces_cap_after_dedup():
+    with pytest.raises(ValueError, match="at most 3"):
+        normalize_target_list(_capped(3), None, ["a", "b", "c", "d"])
+
+
+@pytest.mark.parametrize("missing", _M33_FIELDS_WITH_SOUND_ID)
 def test_parse_spell_row_strict_requires_each_m33_field(missing):
     # Strict loader (decision spell-loader-strict-contract): absence of any known M3.3
     # field fails loud naming the row — the 87-row catalog + content guard guarantee
@@ -112,6 +193,21 @@ def test_parse_spell_row_strict_requires_each_m33_field(missing):
     bad = {k: v for k, v in _FIREBALL_ROW.items() if k != missing}
     with pytest.raises(ValueError, match="arcane_fireball"):
         parse_spell_row("arcane_fireball", bad)
+
+
+def test_parse_spell_row_rejects_unknown_sound_id():
+    # story-003: sound_id must be one of the frozen 7-key SFX palette (SPELL_SOUND_KEYS).
+    bad = {**_FIREBALL_ROW, "sound_id": "spell_explosion"}
+    with pytest.raises(ValueError, match=r"sound_id"):
+        parse_spell_row(_FIREBALL_ROW["id"], bad)
+
+
+def test_parse_spell_row_accepts_each_palette_sound_id():
+    from spells import SPELL_SOUND_KEYS
+
+    for key in SPELL_SOUND_KEYS:
+        s = parse_spell_row(_FIREBALL_ROW["id"], {**_FIREBALL_ROW, "sound_id": key})
+        assert s.sound_id == key
 
 
 def test_parse_spell_row_rejects_nonbool_concentration():

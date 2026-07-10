@@ -22,6 +22,7 @@ TABLE_MAP = {
     "players.json": "players",
     "npc_state.json": "npc_state",
     "encounter_templates.json": "encounter_templates",
+    "loot_tables.json": "loot_tables",
     "events.json": "events",
     "gods.json": "god_agent_state",
     "voice_registry.json": "voice_registry",
@@ -43,6 +44,7 @@ TABLE_MAP = {
     "materials_catalog.json": "materials_catalog",
     "quality_outcomes.json": "quality_outcomes",
     "pricing.json": "pricing",
+    "gathering_nodes.json": "gathering_nodes",
 }
 
 PK_COLUMN = {
@@ -97,10 +99,7 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
         for direction, exit_info in exits.items():
             dest = exit_info.get("destination") if isinstance(exit_info, dict) else exit_info
             if dest not in location_ids:
-                errors.append(
-                    f"Location '{row['id']}' exit '{direction}' references "
-                    f"unknown destination '{dest}'"
-                )
+                errors.append(f"Location '{row['id']}' exit '{direction}' references unknown destination '{dest}'")
 
     npc_rows = await conn.fetch("SELECT id, data FROM npcs")
     for row in npc_rows:
@@ -108,9 +107,7 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
         knowledge = data.get("knowledge", {})
         tier_count = sum(1 for k in knowledge if k in ("free", "disposition >= friendly", "disposition >= trusted"))
         if tier_count < 2:
-            errors.append(
-                f"NPC '{row['id']}' has only {tier_count} knowledge tier(s), expected >= 2"
-            )
+            errors.append(f"NPC '{row['id']}' has only {tier_count} knowledge tier(s), expected >= 2")
 
     # Cross-reference: encounter IDs in quest completion_conditions
     encounter_rows = await conn.fetch("SELECT id FROM encounter_templates")
@@ -128,8 +125,10 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
     disposition_target_ids = npc_ids | {row["id"] for row in companion_rows}
 
     effect_npc_map = {
-        "torin": "guildmaster_torin", "yanna": "elder_yanna",
-        "emris": "scholar_emris", "companion": "companion_kael",
+        "torin": "guildmaster_torin",
+        "yanna": "elder_yanna",
+        "emris": "scholar_emris",
+        "companion": "companion_kael",
     }
 
     quest_rows = await conn.fetch("SELECT id, data FROM quests")
@@ -141,8 +140,7 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
             encounter_ref = cc.get("encounter")
             if encounter_ref and encounter_ref not in encounter_ids:
                 errors.append(
-                    f"Quest '{row['id']}' stage '{stage.get('id', '?')}' references "
-                    f"unknown encounter '{encounter_ref}'"
+                    f"Quest '{row['id']}' stage '{stage.get('id', '?')}' references unknown encounter '{encounter_ref}'"
                 )
 
             # Check item references in completion_conditions
@@ -174,6 +172,59 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
                             f"Quest '{row['id']}' world_effect '{effect}' references "
                             f"unknown disposition target '{resolved}'"
                         )
+
+    # Loot & currency (M4.7 story-002): every enemy must carry a category and a loot_table_id
+    # that resolves to a loot_tables row, and every drop's item_id must exist in items. Fail loud
+    # at seed time so a typo can't ship a combat that grants nothing (or crashes) on victory.
+    loot_rows = await conn.fetch("SELECT id, data FROM loot_tables")
+    loot_table_ids = {row["id"] for row in loot_rows}
+    for row in loot_rows:
+        data = json.loads(row["data"])
+        for drop in data.get("drops", []):
+            item_ref = drop.get("item_id")
+            if item_ref not in item_ids:
+                errors.append(f"Loot table '{row['id']}' references unknown item '{item_ref}'")
+
+    encounter_data_rows = await conn.fetch("SELECT id, data FROM encounter_templates")
+    for row in encounter_data_rows:
+        data = json.loads(row["data"])
+        for enemy in data.get("enemies", []):
+            enemy_id = enemy.get("id", "?")
+            if not enemy.get("category"):
+                errors.append(f"Encounter '{row['id']}' enemy '{enemy_id}' is missing a 'category'")
+            loot_ref = enemy.get("loot_table_id")
+            if not loot_ref:
+                errors.append(f"Encounter '{row['id']}' enemy '{enemy_id}' is missing a 'loot_table_id'")
+            elif loot_ref not in loot_table_ids:
+                errors.append(
+                    f"Encounter '{row['id']}' enemy '{enemy_id}' references unknown loot_table_id '{loot_ref}'"
+                )
+
+    # Gathering (M4.8 story-015): every gathering_node's location_id must resolve to a locations row
+    # and its resource_type to a materials_catalog row; every location resource_table entry must also
+    # resolve to materials_catalog. Fail loud at seed (mirrors the loot_tables block) so a typo can't
+    # ship a node sitting nowhere or granting a nonexistent material.
+    material_rows = await conn.fetch("SELECT id FROM materials_catalog")
+    material_ids = {row["id"] for row in material_rows}
+
+    node_rows = await conn.fetch("SELECT id, data FROM gathering_nodes")
+    for row in node_rows:
+        data = json.loads(row["data"])
+        loc_ref = data.get("location_id")
+        if loc_ref not in location_ids:
+            errors.append(f"Gathering node '{row['id']}' references unknown location_id '{loc_ref}'")
+        res_ref = data.get("resource_type")
+        if res_ref not in material_ids:
+            errors.append(f"Gathering node '{row['id']}' references unknown resource_type '{res_ref}'")
+
+    for row in rows:
+        data = json.loads(row["data"])
+        for rarity, material_refs in (data.get("resource_table") or {}).items():
+            for material_ref in material_refs:
+                if material_ref not in material_ids:
+                    errors.append(
+                        f"Location '{row['id']}' resource_table '{rarity}' references unknown material '{material_ref}'"
+                    )
 
     return errors
 
@@ -213,7 +264,10 @@ async def seed_map_progress(conn: asyncpg.Connection) -> None:
 
 
 async def main() -> None:
-    database_url = os.environ.get("DATABASE_URL", "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin")
+    database_url = os.environ.get(
+        "DATABASE_URL",
+        "postgresql://divineruin:divineruin_dev@localhost:55432/divineruin",
+    )
     conn = await asyncpg.connect(database_url)
 
     try:

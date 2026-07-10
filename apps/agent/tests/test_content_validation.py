@@ -128,6 +128,20 @@ class TestContentIntegrity:
         for enc in encounters:
             assert len(enc.get("enemies", [])) > 0, f"Encounter '{enc['id']}' has no enemies"
 
+    def test_enemy_resistance_tags_are_canonical(self):
+        # M15 story-002: authored Tier-3 de-escalation resistance_tags must be canonical
+        # social_resolution.RESISTANCE_TAGS — combat_init fails loud on a bad tag, and this pins
+        # the content so drift is caught in the fast lane, not only at combat entry.
+        from social_resolution import RESISTANCE_TAGS
+
+        for enc in _load_json("encounter_templates.json"):
+            for enemy in enc.get("enemies", []):
+                for tag in enemy.get("resistance_tags", []):
+                    assert tag in RESISTANCE_TAGS, (
+                        f"Encounter '{enc['id']}' enemy '{enemy.get('id')}' has unknown "
+                        f"resistance_tag '{tag}' (expected one of {RESISTANCE_TAGS})"
+                    )
+
     def test_items_have_required_fields(self):
         items = _load_json("items.json")
         for item in items:
@@ -248,3 +262,139 @@ class TestM62HostileEncounters:
         tiers = self._factions()[gate["faction"]]["reputation_tiers"]
         assert resolve_encounter_stance(gate, 25, tiers) == "allied"
         assert resolve_encounter_stance(gate, -10, tiers) == "hostile"
+
+
+# M4.7 (story-002): role-scaled loot + currency. Mirrors scripts/seed_content.py's strict
+# load-time validation so a bad reference fails the fast lane, not just at seed time.
+_VALID_ENEMY_CATEGORIES = {
+    "humanoid",
+    "beast",
+    "hollow_drift",
+    "hollow_rend",
+    "construct",
+    "undead",
+    "named",
+}
+
+
+class TestLootAndCurrencyContent:
+    def _enemies(self):
+        for enc in _load_json("encounter_templates.json"):
+            for enemy in enc.get("enemies", []):
+                yield enc["id"], enemy
+
+    def test_every_enemy_has_category_and_loot_table_id(self):
+        for enc_id, enemy in self._enemies():
+            assert enemy.get("category"), f"'{enc_id}' enemy '{enemy.get('id', '?')}' missing 'category'"
+            assert enemy.get("loot_table_id"), f"'{enc_id}' enemy '{enemy.get('id', '?')}' missing 'loot_table_id'"
+
+    def test_enemy_categories_are_valid(self):
+        for enc_id, enemy in self._enemies():
+            assert enemy["category"] in _VALID_ENEMY_CATEGORIES, (
+                f"'{enc_id}' enemy '{enemy['id']}' has invalid category '{enemy['category']}'"
+            )
+
+    def test_enemy_loot_table_ids_resolve(self):
+        loot_ids = _load_ids("loot_tables.json")
+        for enc_id, enemy in self._enemies():
+            assert enemy["loot_table_id"] in loot_ids, (
+                f"'{enc_id}' enemy '{enemy['id']}' references unknown loot_table_id '{enemy['loot_table_id']}'"
+            )
+
+    def test_loot_table_drops_reference_real_items(self):
+        item_ids = _load_ids("items.json")
+        for table in _load_json("loot_tables.json"):
+            for drop in table.get("drops", []):
+                assert drop["item_id"] in item_ids, (
+                    f"Loot table '{table['id']}' references unknown item '{drop['item_id']}'"
+                )
+
+    def test_loot_table_drops_have_valid_chance_and_quantity(self):
+        for table in _load_json("loot_tables.json"):
+            for drop in table.get("drops", []):
+                assert 0.0 <= drop["chance"] <= 1.0, (
+                    f"Loot table '{table['id']}' drop '{drop['item_id']}' chance out of [0,1]"
+                )
+                assert drop["quantity"] >= 1, (
+                    f"Loot table '{table['id']}' drop '{drop['item_id']}' quantity must be >= 1"
+                )
+
+    def test_material_sell_value_below_craft_value(self):
+        # D78: selling a raw material is always worth less than crafting with it — the crafting
+        # loop must stay the more rewarding path. Every material that pins a craft_value must have
+        # value_base (the merchant sell floor) strictly below it.
+        materials = [i for i in _load_json("items.json") if "craft_value" in i]
+        assert materials, "expected at least one material item carrying a craft_value"
+        for mat in materials:
+            assert mat["value_base"] < mat["craft_value"], (
+                f"Material '{mat['id']}' sell value_base {mat['value_base']} is not < "
+                f"craft_value {mat['craft_value']} (D78)"
+            )
+
+
+# M4.8 (story-015): gathering node + resource_table refs. Mirrors scripts/seed_content.py's strict
+# load-time validation so a bad gathering reference fails the fast lane, not just at seed time.
+class TestGatheringContent:
+    def test_gathering_node_location_ids_resolve(self):
+        location_ids = _load_ids("locations.json")
+        for node in _load_json("gathering_nodes.json"):
+            assert node["location_id"] in location_ids, (
+                f"Gathering node '{node['id']}' references unknown location_id '{node['location_id']}'"
+            )
+
+    def test_gathering_node_resource_types_resolve(self):
+        material_ids = _load_ids("materials_catalog.json")
+        for node in _load_json("gathering_nodes.json"):
+            assert node["resource_type"] in material_ids, (
+                f"Gathering node '{node['id']}' references unknown resource_type '{node['resource_type']}'"
+            )
+
+    def test_location_resource_table_entries_resolve(self):
+        material_ids = _load_ids("materials_catalog.json")
+        for loc in _load_json("locations.json"):
+            for rarity, material_refs in (loc.get("resource_table") or {}).items():
+                for material_ref in material_refs:
+                    assert material_ref in material_ids, (
+                        f"Location '{loc['id']}' resource_table '{rarity}' references unknown material '{material_ref}'"
+                    )
+
+
+# M13 (sprint-030 story-001): enemy hostile-condition content. Mirrors combat_init's fail-loud
+# guard so an unknown/malformed applies_condition fails the fast lane, not just combat entry.
+_HOSTILE_CONDITIONS = frozenset({"charmed", "frightened", "poisoned"})
+
+
+class TestEnemyHostileConditionContent:
+    def _enemy_actions_with_condition(self):
+        for enc in _load_json("encounter_templates.json"):
+            for enemy in enc.get("enemies", []):
+                for action in enemy.get("action_pool", []):
+                    if action.get("applies_condition") is not None:
+                        yield enc["id"], enemy, action
+
+    def test_enemy_applies_condition_is_catalog_key_with_valid_save_and_dc(self):
+        import check_resolution_save
+        import conditions
+
+        for enc_id, enemy, action in self._enemy_actions_with_condition():
+            cond = action["applies_condition"]
+            assert cond in conditions.CONDITION_CATALOG, (
+                f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' "
+                f"applies_condition '{cond}' is not a known condition"
+            )
+            # Use the SAME save-key check the load gate + runtime resolver use (accepts a full name
+            # OR a 3-letter abbrev), so this fast-lane test can't be stricter than what the engine runs.
+            assert check_resolution_save.is_valid_save_key(action.get("save")), (
+                f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' save '{action.get('save')}' "
+                f"is not a valid save key"
+            )
+            assert isinstance(action.get("dc"), int), (
+                f"'{enc_id}' enemy '{enemy['id']}' action '{action['name']}' dc must be an int"
+            )
+
+    def test_at_least_one_enemy_action_inflicts_a_hostile_condition(self):
+        conditions_seen = {action["applies_condition"] for _, _, action in self._enemy_actions_with_condition()}
+        assert conditions_seen & _HOSTILE_CONDITIONS, (
+            "expected at least one enemy action_pool entry to declare a hostile "
+            f"applies_condition ({sorted(_HOSTILE_CONDITIONS)}), found none"
+        )

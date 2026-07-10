@@ -26,6 +26,27 @@ else
     echo "  Pre-push hook self-test..."
     bash "$(dirname "$0")/test-pre-push.sh"
 
+    # Validate the pre-commit hook's worktree-skip + .env-guard precedence.
+    echo "  Pre-commit hook self-test..."
+    bash "$(dirname "$0")/../scripts/test-precommit-worktree-skip.sh"
+
+    # Typecheck + lint backstop. The pre-commit hook SKIPS the TS/ESLint/Prettier/ruff suite on a
+    # fresh worktree (no node_modules), so without this block lint/typecheck errors could reach a
+    # shared branch unchecked. The pre-push gate runs from the deps-installed checkout at merge-push
+    # time, so it is the genuine backstop the pre-commit notice promises. Fast-fail here (set -e),
+    # BEFORE standing up the Docker/testcontainer lanes below — a typo shouldn't cost minutes.
+    echo "  Typecheck (root, mobile, server, web)..."
+    bun run typecheck
+    bun run typecheck:mobile
+    bun run typecheck:server
+    bun run typecheck:web
+    echo "  ESLint..."
+    bunx eslint --max-warnings 0 .
+    echo "  Prettier..."
+    bunx prettier --check 'apps/**/*.{ts,tsx}' 'apps/web/**/*.{html,css}' 'packages/**/*.ts'
+    echo "  Python ruff check..."
+    bun run lint:python
+
     # Acceptance tests require Docker — hard gate (no silent skip on pre-push).
     echo "  Acceptance prerequisite: Docker..."
     if ! docker info >/dev/null 2>&1; then
@@ -65,8 +86,23 @@ else
     # shellcheck source=scripts/lane-utils.sh
     source "$(dirname "$0")/../scripts/lane-utils.sh"
 
-    # Run acceptance in the background so it overlaps the unit + E2E steps.
-    ( REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true bun run test:acceptance ) &
+    # One durable home for EVERY lane's logs (gitignored). Each lane tees its
+    # combined stdout/stderr to flake-artifacts/last-<lane>.log; on a lane failure
+    # those logs are snapshotted into a timestamped subdir that survives the next
+    # gate run (the last-*.log files are overwritten each run). This is the single
+    # place to look when the gate flakes — the e2e lane already proved the pattern;
+    # the acceptance + unit lanes (where the sprint-027 testcontainer transient hit)
+    # had no capture at all before this.
+    ART="$(cd "$(dirname "$0")/.." && pwd)/flake-artifacts"
+    mkdir -p "$ART"
+    snap_dir() { printf '%s/%s-%s' "$ART" "$(date +%Y%m%d-%H%M%S)" "$(git rev-parse --short HEAD)"; }
+
+    # Run acceptance in the background so it overlaps the unit + E2E steps. Tee to a
+    # durable log; `set -o pipefail` so the subshell's exit is pytest's real code,
+    # not tee's (~always 0) — otherwise `wait $acc_pid` below would never see a
+    # failure through the pipe.
+    ( set -o pipefail; REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true \
+      bun run test:acceptance 2>&1 | tee "$ART/last-acceptance.log" ) &
     acc_pid=$!
     bg_pids+=("$acc_pid")
 
@@ -78,24 +114,33 @@ else
     # exits non-zero (never swallows an exit code).
     echo "  Bun + Python unit lanes (parallel: server, mobile, shared, python)..."
     unit_specs=()
+    # Each lane tees to flake-artifacts/last-<lane>.log; `set -o pipefail` keeps the
+    # subshell's exit the lane's real code (not tee's) so wait_all_lanes still sees
+    # failures through the pipe.
     # server: test:server isolates db.test.ts (real lazy SQL Proxy) in its own
     # process; keep DATABASE_URL or it silently skips. Strip only the external API
     # vars (matches CI's test-bun env).
-    ( for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done; bun run test:server ) &
+    ( set -o pipefail; for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done; \
+      bun run test:server 2>&1 | tee "$ART/last-server.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:server")
-    ( bun test --cwd apps/mobile ) &
+    ( set -o pipefail; bun test --cwd apps/mobile 2>&1 | tee "$ART/last-mobile.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:mobile")
-    ( bun test --cwd packages/shared ) &
+    ( set -o pipefail; bun test --cwd packages/shared 2>&1 | tee "$ART/last-shared.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:shared")
     # python: unset DB/REDIS too — it uses its own testcontainers.
-    ( for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done; unset DATABASE_URL REDIS_URL; bun run test:python ) &
+    ( set -o pipefail; for var in "${EXTERNAL_API_VARS[@]}"; do unset "$var"; done; \
+      unset DATABASE_URL REDIS_URL; bun run test:python 2>&1 | tee "$ART/last-python.log" ) &
     p=$!; bg_pids+=("$p"); unit_specs+=("$p:python")
 
     # `if` context suppresses set -e so a failing lane is captured, not aborted-on.
     if wait_all_lanes "${unit_specs[@]}"; then unit_rc=0; else unit_rc=$?; fi
     bg_pids=("$acc_pid")  # unit lanes reaped — drop them from the trap's kill list
     if [ "$unit_rc" -ne 0 ]; then
-      echo "ERROR: one or more unit lanes failed." >&2
+      snap="$(snap_dir)"
+      snapshot_lane_logs "$snap" \
+        "$ART/last-server.log" "$ART/last-mobile.log" "$ART/last-shared.log" "$ART/last-python.log"
+      echo "ERROR: one or more unit lanes failed. Logs preserved at:" >&2
+      echo "    $snap" >&2
       exit 1
     fi
 
@@ -105,7 +150,28 @@ else
     # loud on a port conflict rather than silently collapsing onto a shared
     # (cross-killed) server.
     echo "  E2E tests (local Playwright)..."
-    (cd e2e && bunx playwright test --reporter=list)
+    # Tee combined stdout/stderr (incl. the API server's [diag]/logError lines)
+    # to a durable log, and on failure snapshot it + Playwright's retain-on-
+    # failure artifacts (trace/video/screenshot in test-results/) into a
+    # timestamped, gitignored dir that SURVIVES the retry — test-results/ is
+    # wiped by the next `playwright test` run, so without this the evidence from
+    # a flake is gone before anyone looks. The pipeline's own exit is tee's (~always
+    # 0), so `set -e` won't abort before we read PIPESTATUS[0] — Playwright's REAL
+    # exit code (NOT tee's). Capturing PIPESTATUS[0] must be the statement
+    # immediately after the pipeline (any other command clobbers PIPESTATUS).
+    e2e_dir="$(cd "$(dirname "$0")/../e2e" && pwd)"
+    e2e_log="$ART/last-e2e.log"
+    (cd "$e2e_dir" && bunx playwright test --reporter=list) 2>&1 | tee "$e2e_log"
+    e2e_rc=${PIPESTATUS[0]}
+    if [ "$e2e_rc" -ne 0 ]; then
+      snap="$(snap_dir)"
+      snapshot_lane_logs "$snap" "$e2e_log"
+      cp -R "$e2e_dir/test-results" "$snap/test-results" 2>/dev/null || true
+      echo "ERROR: E2E tests failed. Artifacts preserved at:" >&2
+      echo "    $snap" >&2
+      echo "  Inspect a trace with: bunx playwright show-trace $snap/test-results/<test-dir>/trace.zip" >&2
+      exit 1
+    fi
 
     # Propagate the backgrounded acceptance result. Reap + clear bg_pids BEFORE
     # the failure exit (same pattern as the unit barrier) so the trap never kills
@@ -114,7 +180,18 @@ else
     if wait "$acc_pid"; then acc_rc=0; else acc_rc=$?; fi
     bg_pids=()  # acceptance reaped — trap now only tears down the test-env containers
     if [ "$acc_rc" -ne 0 ]; then
-      echo "ERROR: acceptance tests failed." >&2
+      snap="$(snap_dir)"
+      snapshot_lane_logs "$snap" "$ART/last-acceptance.log"
+      # Capture container state + the LiveKit acceptance container's logs — the
+      # actual surface of the sprint-027 startup transient. Best-effort (|| true):
+      # this is environmental evidence and must never fail the gate on top of the
+      # acceptance failure it documents. The per-run Postgres testcontainer is
+      # session-scoped and usually torn down by the time we get here, so the
+      # docker-ps snapshot is what records whether it ever came up.
+      docker ps -a > "$snap/docker-ps.log" 2>&1 || true
+      docker logs divineruin-livekit-acceptance > "$snap/livekit-container.log" 2>&1 || true
+      echo "ERROR: acceptance tests failed. Logs preserved at:" >&2
+      echo "    $snap" >&2
       exit 1
     fi
 

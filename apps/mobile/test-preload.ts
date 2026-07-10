@@ -53,3 +53,16 @@ mock.module("expo-audio", () => ({
   }),
   setAudioModeAsync: async () => {},
 }));
+
+mock.module("expo-secure-store", () => {
+  const store: Record<string, string> = {};
+  return {
+    getItemAsync: async (key: string) => store[key] ?? null,
+    setItemAsync: async (key: string, value: string) => {
+      store[key] = value;
+    },
+    deleteItemAsync: async (key: string) => {
+      delete store[key];
+    },
+  };
+});

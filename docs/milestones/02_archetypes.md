@@ -22,7 +22,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 
 ### Material gaps
 
-**All milestone items above are unchecked-by-default (`[ ]`). Audit confirms ZERO acceptance criteria are met in shipped code; every checkbox stays unchecked.** Key spec-vs-code findings consolidated below — full per-item evidence in `audit/phase-2-archetypes.md`:
+**STATUS UPDATE (post Sprint-002): the Sprint-002 "ZERO criteria met" snapshot below is now stale.** M2.1 shipped (sprint-016) and the ability/milestone/spell/mentor systems subsequently shipped under their own execution-plan numbering (M2.2 as "M4 ability", M2.3 as "M4 milestone", M2.4 as "M8 spell acquisition", M2.5 as "M9 martial mentor" / M6.3 mentor gating), each with a real-DB acceptance capstone. 30/34 acceptance criteria are now checked; the 4 that remain unchecked are genuinely deferred (see per-milestone status notes). The Sprint-002 spec-vs-code findings below are retained for history: <!-- see audit/phase-2-archetypes.md -->:
 
 - **M2.1**: DB table, `content/archetypes.json`, `get_archetype_chassis()` are aspirational. 18 archetypes live in `apps/agent/{hp_scaling,rules_engine,creation_classes}.py` (Sprint-001 finding, still true). Stale `ClassData.hit_die` field diverges from `ARCHETYPE_HP_CONFIG` — capstone recommends dropping or documenting as cosmetic. <!-- see audit/phase-2-archetypes.md -->
 - **M2.2**: Entire ability system aspirational. Only L4/L8 milestone *markers* exist. Sprint-001 carryover: `validateSlotAvailability` Artificer dead-code exception needs reconciliation (wire or remove). <!-- see audit/phase-2-archetypes.md -->
@@ -100,13 +100,15 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 - Acquisition paths: Training (async), scrolls (found items), mentors (NPC training)
 
 **Acceptance criteria:**
-- [ ] Every archetype has at least one core ability seeded in the DB
-- [ ] `request_ability_activation` deducts the correct Stamina or Focus cost and rejects activation when resources are insufficient
-- [ ] Elective abilities at L4 and L8 present exactly 4 choices per archetype
-- [ ] Characters can swap elective techniques on long rest without losing the technique
+- [x] Every archetype has at least one core ability seeded in the DB
+- [x] `request_ability_activation` deducts the correct Stamina or Focus cost and rejects activation when resources are insufficient
+- [x] Elective abilities at L4 and L8 present exactly 4 choices per archetype
+- [x] Characters can swap elective techniques on long rest without losing the technique
 - [ ] Reaction abilities can only trigger during their defined combat window
-- [ ] `request_ability_activation` returns a narration cue string for the DM agent to voice
+- [x] `request_ability_activation` returns a narration cue string for the DM agent to voice
 - [ ] Unit tests cover core activation, elective activation, insufficient resources, and reaction timing
+
+> **Status (mostly shipped):** Ability catalog, activation/cost-rejection, L4/L8 elective pools, long-rest swap, and narration cues are delivered and tested (unit tests + `tests/acceptance/test_story_005_m22_ability_capstone.py`). Reaction combat-window gating (AC5, and the "reaction timing" leg of AC7) is explicitly deferred to Phase 4 (`ability_tools.py` header) — left unchecked.
 
 **Key references:**
 - *Game Mechanics Archetypes Doc — Core Abilities*
@@ -130,14 +132,16 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 - Auto-grant logic for L10, L15, L20 milestones (no player choice, abilities granted automatically)
 
 **Acceptance criteria:**
-- [ ] Each archetype has milestone entries at levels 5, 10, 15, and 20
-- [ ] `resolve_milestone` at L5 presents exactly 2 specialization options and requires a player choice before granting abilities
-- [ ] `resolve_milestone` at L10, L15, and L20 auto-grants abilities without requiring player input
-- [ ] L10 grants Extra Attack for martial archetypes
+- [x] Each archetype has milestone entries at levels 5, 10, 15, and 20
+- [x] `resolve_milestone` at L5 presents exactly 2 specialization options and requires a player choice before granting abilities
+- [x] `resolve_milestone` at L10, L15, and L20 auto-grants abilities without requiring player input
+- [x] L10 grants Extra Attack for martial archetypes
 - [ ] L20 grants a capstone ability and legendary companion unlock
-- [ ] Specialization choice at L5 is persisted and cannot be changed after selection
-- [ ] Client displays specialization choice UI when L5 milestone triggers
-- [ ] Unit tests verify milestone grants at each tier for at least 3 different archetypes
+- [x] Specialization choice at L5 is persisted and cannot be changed after selection
+- [x] Client displays specialization choice UI when L5 milestone triggers
+- [x] Unit tests verify milestone grants at each tier for at least 3 different archetypes
+
+> **Status (mostly shipped):** Milestone entries at 5/10/15/20, the L5 specialization fork (exactly 2 options for non-patron archetypes, surfaced as a `SPECIALIZATION_CHOICE` event and persisted immutably by the `select` verb — `resolve_milestone` was superseded by the `award_xp` auto-grant chokepoint + `select`), L10 auto-grant Extra Attack, and the mobile `specialization-overlay.tsx` are delivered and tested (unit tests + `tests/acceptance/test_milestone_progression.py`, mobile `specialization-choice.test.ts`). AC5's "legendary companion unlock" half is not implemented — L20 content grants only a capstone ability — left unchecked.
 
 **Key references:**
 - *Game Mechanics Archetypes Doc — Milestone Progression*
@@ -164,13 +168,15 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 - Agent tools: `learn_spell_from_scroll`, `prepare_spells`
 
 **Acceptance criteria:**
-- [ ] Core spells are auto-assigned at character creation and always show as prepared
-- [ ] Training track respects tier-based cycle durations and advances progress each async cycle
-- [ ] Midpoint decision during training modifies the learned spell's bonus variant
-- [ ] `learn_spell_from_scroll` adds spell to known pool and marks acquisition track as "discovery"
-- [ ] `prepare_spells` enforces preparation limits and archetype restrictions (Druid terrain, Paladin tier cap)
-- [ ] Spell tier unlock gates prevent learning spells above the character's level allowance
-- [ ] Unit tests cover all three acquisition tracks, preparation rules, and tier gating
+- [x] Core spells are auto-assigned at character creation and always show as prepared
+- [x] Training track respects tier-based cycle durations and advances progress each async cycle
+- [x] Midpoint decision during training modifies the learned spell's bonus variant
+- [x] `learn_spell_from_scroll` adds spell to known pool and marks acquisition track as "discovery"
+- [x] `prepare_spells` enforces preparation limits and archetype restrictions (Druid terrain, Paladin tier cap)
+- [x] Spell tier unlock gates prevent learning spells above the character's level allowance
+- [x] Unit tests cover all three acquisition tracks, preparation rules, and tier gating
+
+> **Status (shipped):** All 7 criteria delivered and tested (unit tests + `tests/acceptance/test_spell_acquisition.py`). The primal terrain gate and the Major-tier cap are enforced via the `(archetype, tier, level)` matrix in `spell_preparation`/`is_spell_tier_unlocked`.
 
 **Key references:**
 - *Game Mechanics Archetypes Doc — Spell Acquisition Tracks*
@@ -194,13 +200,15 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 - Agent integration: mentor NPC can offer training, track progress across sessions, grant variant on completion
 
 **Acceptance criteria:**
-- [ ] `mentor_variants` table stores variant overrides (cost, effect) linked to a base ability and NPC mentor
-- [ ] Training loop tracks session count and unlocks the variant only after required sessions complete (2-3 sessions)
+- [x] `mentor_variants` table stores variant overrides (cost, effect) linked to a base ability and NPC mentor
+- [x] Training loop tracks session count and unlocks the variant only after required sessions complete (2-3 sessions)
 - [ ] Unlocked variant replaces or supplements the base technique at the player's choice
-- [ ] Each variant has a cultural attribution string for DM narration
-- [ ] Variant cost and effect overrides apply correctly when the variant ability is activated
-- [ ] Training cannot begin without a valid mentor NPC relationship (depends on Phase 6 NPC data)
-- [ ] Unit tests cover training progress, variant unlock, and cost/effect override application
+- [x] Each variant has a cultural attribution string for DM narration
+- [x] Variant cost and effect overrides apply correctly when the variant ability is activated
+- [x] Training cannot begin without a valid mentor NPC relationship (depends on Phase 6 NPC data)
+- [x] Unit tests cover training progress, variant unlock, and cost/effect override application
+
+> **Status (mostly shipped):** Variant catalog + overrides, the 3-cycle mentor training loop, cultural attribution, cost/effect override on activation, and co-location + mentor-requirement gating are delivered and tested (unit tests + `tests/acceptance/test_mentor_variants.py`, `test_mentor_gating_e2e.py`). AC3 is unchecked: the shipped model is a single active-variant *replace* (`set_active_variant` overwrites the active override); there is no player choice to *supplement* (keep base + variant both active).
 
 **Key references:**
 - *Game Mechanics Archetypes Doc — Martial Mentor System*

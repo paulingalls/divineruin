@@ -5,15 +5,15 @@ import os
 import re
 import time
 
-from livekit import agents, rtc
-from livekit.agents import AgentServer, AgentSession
-from livekit.plugins import anthropic, deepgram, silero
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit import agents
+from livekit.agents import AgentServer, AgentSession, inference
+from livekit.plugins import anthropic, deepgram
 
 import db
 import db_content_queries
 import db_queries
 from base_agent import _make_tts
+from participant_lifecycle import _setup_party_join, _setup_reconnection
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
 from token_tracker import TokenTracker
@@ -104,70 +104,6 @@ def _build_recap_instruction(last_summary: dict | None) -> str:
         return ""
 
     return " " + " ".join(parts)
-
-
-def _build_reconnect_instruction(sd: SessionData) -> str:
-    """Build a context-rich reconnection greeting instruction."""
-    parts = ["The player reconnected after a brief drop."]
-    loc_name = sd.cached_location_name or sd.location_id
-    if loc_name:
-        parts.append(f"They are at {loc_name}.")
-    if sd.companion and sd.companion.is_present:
-        parts.append(f"{sd.companion.name} is with them.")
-    if sd.combat_state:
-        parts.append("They are in combat.")
-    parts.append("Welcome them back naturally in one short sentence and remind them where they were.")
-    return " ".join(parts)
-
-
-RECONNECT_GRACE_S = 120  # 2 minutes
-
-
-def _setup_reconnection(
-    room: rtc.Room,
-    session: AgentSession,
-    userdata: SessionData,
-    agent,
-) -> None:
-    """Register disconnect/reconnect handlers for any agent type."""
-    reconnect_task: asyncio.Task | None = None
-    player_id = userdata.player_id
-
-    @room.on("participant_disconnected")
-    def _on_disconnect(participant: rtc.RemoteParticipant):
-        nonlocal reconnect_task
-        if participant.identity != player_id:
-            return
-        userdata.player_disconnected = True
-        userdata.disconnect_time = time.time()
-        bg = getattr(agent, "_background", None)
-        if bg:
-            bg.pause()
-        reconnect_task = asyncio.create_task(_grace_timeout())
-
-    @room.on("participant_connected")
-    def _on_reconnect(participant: rtc.RemoteParticipant):
-        nonlocal reconnect_task
-        if participant.identity != player_id or not userdata.player_disconnected:
-            return
-        userdata.player_disconnected = False
-        if reconnect_task and not reconnect_task.done():
-            reconnect_task.cancel()
-            reconnect_task = None
-        bg = getattr(agent, "_background", None)
-        if bg:
-            bg.resume()
-        fire = getattr(agent, "_fire_and_forget", None)
-        reconnect_reply = session.generate_reply(instructions=_build_reconnect_instruction(userdata))
-        if fire:
-            fire(reconnect_reply)
-        else:
-            _handle = reconnect_reply  # SpeechHandle is already started
-
-    async def _grace_timeout():
-        await asyncio.sleep(RECONNECT_GRACE_S)
-        logger.info("Reconnect grace period expired for %s", player_id)
-        await session.aclose()
 
 
 @server.rtc_session(agent_name="divineruin-dm")
@@ -278,9 +214,14 @@ async def dm_session(ctx: agents.JobContext) -> None:
             stt=deepgram.STT(model="nova-3", language="en"),
             llm=anthropic.LLM(model=model, temperature=0.8, caching="ephemeral"),
             tts=_make_tts(),
-            vad=silero.VAD.load(min_silence_duration=0.5),
+            vad=inference.VAD(model="silero", min_silence_duration=0.5),
+            # Audio-based end-of-turn detection (livekit-agents 1.6.1+, built in): encodes the user's
+            # audio directly — intonation, pacing, trailing-off — instead of the STT transcript, so
+            # natural mid-thought pauses don't get misread as end-of-turn. Replaces the deprecated
+            # text MultilingualModel. Version auto-selects per environment (v1 full on LiveKit Cloud,
+            # v1-mini local CPU elsewhere, with automatic fallback).
             turn_handling={
-                "turn_detection": MultilingualModel(),
+                "turn_detection": inference.TurnDetector(),
                 "endpointing": {"min_delay": 0.5},
                 "interruption": {"enabled": True},
             },
@@ -334,7 +275,8 @@ async def dm_session(ctx: agents.JobContext) -> None:
             patron_id=patron_id,
         )
 
-        # Fresh session: rehydrate persisted resonance/veil_ward/concentration from players.data,
+        # Fresh session: rehydrate persisted resonance/concentration from players.data and the
+        # veil ward from the session's location scope (M24: the ward is scope-owned, not per-player),
         # increment the player session_count once, and set+persist the gated Thessyn flickering_bonus
         # (M3.5 / story-004). dm_session runs once per fresh session (reconnects reuse SessionData via
         # _setup_reconnection), so the counter ticks exactly once.
@@ -380,6 +322,10 @@ async def dm_session(ctx: agents.JobContext) -> None:
         )
 
         _setup_reconnection(ctx.room, session, userdata, gameplay_agent)
+        # Live multi-PC party trigger (M18 story-001) — a 2nd participant joining THIS room
+        # becomes a PartyMember. Wired at gameplay start ONLY: prologue/onboarding are single-PC
+        # flows, and reconnection (above) owns the primary re-joining.
+        _setup_party_join(ctx.room, userdata)
 
         # --- Initial greeting ---
         if is_first_session:

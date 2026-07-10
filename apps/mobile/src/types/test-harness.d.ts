@@ -1,4 +1,4 @@
-import type { DataChannelEvent } from "@/audio/game-event-handler";
+import type { DataChannelEvent } from "@/audio/game-event-parsing";
 import type { PanelTab } from "@/stores/panel-store";
 
 declare global {

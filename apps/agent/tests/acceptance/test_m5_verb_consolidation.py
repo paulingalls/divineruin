@@ -41,6 +41,8 @@ from llm_config import MAX_STRICT_TOOLS
 from mode_tools import enter_mode
 from onboarding_agent import ONBOARDING_TOOLS
 from recipe_tools import _learn_recipe_impl, learn
+from reputation_tools import adjust_faction_reputation
+from veil_anchor_tools import deploy_veil_anchor
 
 # The complete set of noun tools the four M5 folds removed (stories 001-004). The story
 # text says "six"; the real set is ten — the check fold (story-003) absorbed four.
@@ -58,6 +60,12 @@ REMOVED_NOUN_TOOLS = frozenset(
         "enter_blacksmith",  # -> enter_mode (story-004)
     }
 )
+
+# Combat tools the M4.1 phase-loop rewrite retired: the free-form per-actor swing
+# (request_attack) and enemy turn (resolve_enemy_turn) were replaced by the 4-beat
+# declare_phase/resolve_phase loop (sprint-018 stories 003/009). Guarded here so a
+# re-created tool can't silently re-register on any agent — the verb-fold registry trap.
+REMOVED_COMBAT_TOOLS = frozenset({"request_attack", "resolve_enemy_turn"})
 
 # Every assembled gameplay-agent tool registry. M7 collapsed the three region agents
 # into one exploration registry, so city/wilderness/dungeon are a single "exploration" row.
@@ -81,6 +89,13 @@ VERB_PRESENCE = [
     (enter_mode, "enter_mode", {"exploration"}),
     # M7 story-004: select also resolves pending L5 choices mid-training, so dispatch holds it too.
     (select, "select", {"exploration", "dispatch"}),
+    # M23 story-002: the faction reputation DM verb sits beside update_npc_disposition on the
+    # single exploration agent (world-state mutation verbs live there, per M7's collapse).
+    (adjust_faction_reputation, "adjust_faction_reputation", {"exploration"}),
+    # M24 story-012: the only item-use verb. Deploying a crafted Veil Anchor is a location
+    # action, so it lives on exploration alone — never on combat, where activate_veil_ward
+    # already refuses the artificer source it would otherwise duplicate.
+    (deploy_veil_anchor, "deploy_veil_anchor", {"exploration"}),
 ]
 
 
@@ -89,9 +104,9 @@ VERB_PRESENCE = [
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_no_removed_noun_tool_survives(name: str, tools: list) -> None:
-    """No pre-M5 noun tool is registered on any agent."""
-    leaked = REMOVED_NOUN_TOOLS & {t.__name__ for t in tools}
-    assert not leaked, f"{name} still registers removed noun tool(s): {sorted(leaked)}"
+    """No pre-M5 noun tool (or M4.1-retired combat tool) is registered on any agent."""
+    leaked = (REMOVED_NOUN_TOOLS | REMOVED_COMBAT_TOOLS) & {t.__name__ for t in tools}
+    assert not leaked, f"{name} still registers removed tool(s): {sorted(leaked)}"
 
 
 # --- registry: consolidated verbs present exactly where expected -------------

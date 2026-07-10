@@ -14,50 +14,17 @@ from livekit.agents.llm import ToolError
 
 import event_types as E
 from check_tools import _check_dice_impl, _check_impl, _check_save_impl, _check_skill_impl
-from session_data import SessionData
-
-SAMPLE_PLAYER = {
-    "player_id": "player_1",
-    "name": "Kael",
-    "class": "warrior",
-    "level": 1,
-    "attributes": {
-        "strength": 14,
-        "dexterity": 12,
-        "constitution": 13,
-        "intelligence": 10,
-        "wisdom": 11,
-        "charisma": 8,
-    },
-    "proficiencies": ["athletics", "stealth", "perception"],
-    "saving_throw_proficiencies": ["strength", "constitution"],
-    "hp": {"current": 25, "max": 25},
-    "ac": 14,
-}
+from tools._helpers import SAMPLE_PLAYER, _make_context, _make_mock_room, _save_mocks, _skill_mocks
 
 
-def _make_context(room=None):
-    ctx = MagicMock()
-    ctx.userdata = SessionData(player_id="player_1", location_id="accord_guild_hall", room=room)
-    return ctx
-
-
-def _make_mock_room():
-    room = MagicMock()
-    room.local_participant = MagicMock()
-    room.local_participant.publish_data = AsyncMock()
-    return room
-
-
-def _skill_mocks():
+def _corrupt_conditions_queries():
+    """queries whose player carries a corrupt stored conditions row (unknown type)."""
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": [{"type": "bogus"}]})
     queries.get_single_skill_advancement = AsyncMock(
         return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False},
     )
-    mutations = MagicMock()
-    mutations.update_skill_advancement = AsyncMock()
-    return queries, mutations
+    return queries
 
 
 class TestCheckSkill:
@@ -94,6 +61,13 @@ class TestCheckSkill:
             await _check_skill_impl(_make_context(), "athletics", "moderate", "climbing", queries=queries)
 
     @pytest.mark.asyncio
+    async def test_corrupt_conditions_fail_loud_as_toolerror(self):
+        # M4.4 story-008 (concern 988e3e4f55ea): validate the stored conditions at the boundary.
+        queries = _corrupt_conditions_queries()
+        with pytest.raises(ToolError, match="corrupt stored conditions"):
+            await _check_skill_impl(_make_context(), "athletics", "moderate", "climbing", queries=queries)
+
+    @pytest.mark.asyncio
     async def test_publishes_event(self):
         queries, mutations = _skill_mocks()
         room = _make_mock_room()
@@ -120,8 +94,7 @@ class TestCheckSkill:
 class TestCheckSave:
     @pytest.mark.asyncio
     async def test_returns_result(self):
-        queries = MagicMock()
-        queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        queries = _save_mocks()
         result = json.loads(await _check_save_impl(_make_context(), "dexterity", 15, "knocked prone", queries=queries))
         assert result["save_type"] == "dexterity"
         assert result["dc"] == 15
@@ -136,22 +109,27 @@ class TestCheckSave:
 
     @pytest.mark.asyncio
     async def test_invalid_save_type(self):
-        queries = MagicMock()
-        queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        queries = _save_mocks()
         with pytest.raises(ToolError):
             await _check_save_impl(_make_context(), "luck", 15, "cursed", queries=queries)
 
     @pytest.mark.asyncio
+    async def test_corrupt_conditions_fail_loud_as_toolerror(self):
+        # M4.4 story-008 (concern 988e3e4f55ea): a corrupt out-of-combat conditions row must surface
+        # as a DM-narratable ToolError, not the raw KeyError get_condition_effects would raise.
+        queries = _corrupt_conditions_queries()
+        with pytest.raises(ToolError, match="corrupt stored conditions"):
+            await _check_save_impl(_make_context(), "dexterity", 15, "prone", queries=queries)
+
+    @pytest.mark.asyncio
     async def test_dc_out_of_range(self):
-        queries = MagicMock()
-        queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        queries = _save_mocks()
         with pytest.raises(ToolError, match="DC"):
             await _check_save_impl(_make_context(), "dexterity", 0, "prone", queries=queries)
 
     @pytest.mark.asyncio
     async def test_publishes_event(self):
-        queries = MagicMock()
-        queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        queries = _save_mocks()
         room = _make_mock_room()
         await _check_save_impl(_make_context(room=room), "wisdom", 12, "frightened", queries=queries)
         room.local_participant.publish_data.assert_called_once()

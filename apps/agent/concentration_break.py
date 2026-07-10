@@ -9,15 +9,17 @@ self-damage), so the break logic lives here ONCE rather than duplicated at each.
 The pure engine stays content-/IO-agnostic in concentration.py (check_concentration computes the
 DC, concentration_holds owns the keep/break decision incl. the incapacitation auto-fail); this
 module does the I/O the engine can't — the player fetch, the canonical CON save roll
-(check_resolution.resolve_saving_throw, proficiency-aware), and the persisted end. There is no
+(check_resolution_save.resolve_saving_throw, proficiency-aware), and the persisted end. There is no
 concentration HUD element, so the break is returned for the caller to surface in its DM-facing
 response rather than pushed as a (consumer-less) client event.
 """
 
-import check_resolution
+import check_resolution_save
 import concentration
+import conditions
 import db_mutations_concentration
 import db_queries
+import spells
 from session_data import SessionData
 
 
@@ -26,41 +28,106 @@ async def break_concentration_on_damage(
     damage: int,
     incapacitated: bool,
     *,
+    damaged_player_id: str,
     queries=db_queries,
-    resolver=check_resolution,
+    resolver=check_resolution_save,
     concentration_mutations=db_mutations_concentration,
+    spells_mod=spells,
+    combat_state=None,
+    conn=None,
 ) -> str | None:
-    """Resolve a concentrating player's CON save after taking ``damage``; end concentration on a
-    failed save or incapacitation. Returns the spell_id that broke (for the DM to narrate), or
-    None when nothing breaks — not concentrating, no damage, or the save held.
+    """Resolve the DAMAGED party member's (``damaged_player_id``) CON save after taking ``damage``;
+    end concentration on a failed save or incapacitation. Returns the spell_id that broke (for the
+    DM to narrate), or None when nothing breaks — not concentrating, no damage, or the save held.
+
+    ``damaged_player_id`` is required and REQUIRED to be an existing party member (resolved via
+    ``session.member_state``, fail-loud on an unknown id) — a party can have >1 member (M18), so
+    the member whose concentration is at risk is whoever actually took the damage, not necessarily
+    the primary.
 
     The DC scales with damage (concentration.check_concentration); the save is the canonical
     proficiency-aware CON save (resolver.resolve_saving_throw); the keep/break decision and the
     incapacitation auto-fail are the engine's (concentration.concentration_holds). Persists the
-    end via concentration_mutations.update_player_concentration(player_id, None) and clears the
-    in-memory session state, mirroring how cast_spell sets/ends concentration.
+    end via concentration_mutations.update_player_concentration(damaged_player_id, None) and clears
+    the in-memory member state, mirroring how cast_spell sets/ends concentration.
+
+    ``conn`` joins the break to a caller's transaction: in combat the phase loop passes its phase
+    conn so a rolled-back phase reverts the break too (story-007). The player fetch reads the same
+    conn so the save sees the in-tx state. Out of combat (Draethar inner fire) the default ``None``
+    runs the write on its own connection, post-commit, as before.
+
+    ``combat_state`` is the WORKING combat state to read/mutate. The phase loop resolves against a
+    deep-copied working state and only adopts it as session.combat_state AFTER the tx commits
+    (combat_turn), so DURING resolution session.combat_state is a DIFFERENT, pristine object — both
+    the caster-conditions lookup (CON save) and the linked-condition strip must hit the working
+    state the loop persists, not the discarded pristine copy. The phase loop threads its working
+    state here; the OOC Draethar path and direct callers pass ``None`` and fall back to
+    session.combat_state (the object they themselves persist), keeping the default path correct.
     """
-    spell_id = session.concentration.spell_id
+    member = session.member_state(damaged_player_id)
+    spell_id = member.concentration.spell_id
     if spell_id is None or damage <= 0:
         return None
+
+    cstate = combat_state if combat_state is not None else session.combat_state
 
     dc = concentration.check_concentration(damage)
     # Incapacitation auto-fails (the engine enforces it) — skip the pointless roll and DB fetch.
     save_total = 0
     if not incapacitated:
-        player = await queries.get_player(session.player_id)
+        player = await queries.get_player(damaged_player_id, conn=conn)
         if player is None:
             # The player row is gone (a data glitch — an in-combat caster should always exist). Fail
             # safe: don't roll an unfounded save and don't strip their spell; leave concentration as-is.
             return None
-        save_total = resolver.resolve_saving_throw(player, "constitution", dc, "concentration").total
+        # Thread the caster's in-combat conditions into the CON save (M4.3): Exhausted -1/stack
+        # lowers it, Stunned/Paralyzed auto-fail it. Conditions live on the in-memory
+        # CombatParticipant, not the DB player row; out of combat there are none ([]).
+        participant = cstate.get_participant(damaged_player_id) if cstate else None
+        player["conditions"] = participant.conditions if participant is not None else []
+        # Damage-triggered CON save is engine-auto: it never spends the caster's beneficial +1d4
+        # (M4.8 story-003) — only player-initiated saves do.
+        save_total = resolver.resolve_saving_throw(
+            player, "constitution", dc, "concentration", bonus_dice_eligible=False
+        ).total
 
     if concentration.concentration_holds(save_total, dc, incapacitated=incapacitated):
         return None
 
     # Persist the end BEFORE clearing the in-memory SSOT (mirrors cast_spell's commit-then-sync):
-    # a failed write leaves session.concentration intact rather than diverging from the DB, which
-    # would otherwise re-populate the old spell on the next session reload.
-    await concentration_mutations.update_player_concentration(session.player_id, None)
-    session.concentration.spell_id = None
+    # a failed write leaves the member's concentration intact rather than diverging from the DB,
+    # which would otherwise re-populate the old spell on the next session reload.
+    await concentration_mutations.update_player_concentration(damaged_player_id, None, conn=conn)
+    member.concentration.spell_id = None
+
+    # Concentration→condition lifecycle (M4.8 story-006, risk 0899a89ef0da): a concentration spell
+    # that granted a beneficial condition (Bless → blessed) loses it when the spell ends, so the +1d4
+    # does not outlive the broken concentration. Strip the spell's applies_condition from the
+    # in-combat participants it buffed; the mutation rides the phase loop's save_combat_state (like
+    # the combat-ability consume). OOC breaks (no combat_state) leave OOC buffs as-is.
+    #
+    # ...but only when NO OTHER member still sustains a spell granting that same condition. A
+    # condition records its spell as `source`, never its caster, so two members' Bless are one
+    # indistinguishable `blessed` instance: stripping on the first break silently negated the
+    # second caster's live spell. The buff outlives this break because someone is still holding it up.
+    applied = spells_mod.get_spell(spell_id).applies_condition
+    still_held = _another_member_sustains(session, damaged_player_id, applied, spells_mod) if applied else False
+    if applied is not None and cstate is not None and not still_held:
+        for participant in cstate.participants:
+            participant.conditions = conditions.remove_conditions(participant.conditions, (applied,))
     return spell_id
+
+
+def _another_member_sustains(session, broken_player_id: str, condition_type: str, spells_mod) -> bool:
+    """Whether a party member OTHER than the one who just broke is still concentrating on a spell
+    that grants ``condition_type``. Their spell is what keeps the buff standing."""
+    for member in session.party.members:
+        if member.player_id == broken_player_id:
+            continue
+        other_spell_id = member.concentration.spell_id
+        if other_spell_id is None:
+            continue
+        other_spell = spells_mod.get_spell(other_spell_id)
+        if other_spell is not None and other_spell.applies_condition == condition_type:
+            return True
+    return False

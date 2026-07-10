@@ -4,8 +4,8 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from handoff._helpers import make_context as _make_context
-from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER
+from sample_fixtures import SAMPLE_ENCOUNTER, SAMPLE_PLAYER, make_db_mod
+from sample_fixtures import make_context as _make_context
 
 from exploration_agent import ExplorationAgent
 from session_data import CompanionState, SessionData
@@ -43,7 +43,7 @@ class TestRoundTrip:
         assert ctx.userdata.in_combat is True
 
         # Step 2: end_combat returns agent tuple and clears combat state
-        raw2 = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations)
+        raw2 = await _end_combat_impl(ctx, outcome="victory", mutations=mock_mutations, db_mod=make_db_mod()[0])
         assert isinstance(raw2, tuple)
         _, json_str = raw2
 

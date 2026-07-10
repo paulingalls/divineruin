@@ -48,6 +48,12 @@ const serverWebServer = {
   cwd: "../",
   port: 3001,
   reuseExistingServer: false,
+  // Pipe the API server's stdout into the run output (Playwright IGNORES
+  // webServer stdout by default — only stderr is piped). Without this the
+  // E2E_DIAG `[diag]` lines (console.log) never reach the teed pre-push log, so
+  // the whole point of the server diagnostic is lost. logError uses stderr, so
+  // it was already captured.
+  stdout: "pipe" as const,
   env: {
     DATABASE_URL: process.env.DATABASE_URL ?? DEFAULT_DB_URL,
     REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:56379",
@@ -55,6 +61,10 @@ const serverWebServer = {
       process.env.JWT_SECRET ?? "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
     NODE_ENV: "development",
     RATE_LIMIT_BYPASS: "1",
+    // Turn on the server-side diagnostic (apps/server/src/env.ts logDiag) only
+    // for the e2e API server, so a flake's persisted log shows the exact catchup
+    // feed composition. Off (unset) everywhere else — no prod/dev cost or noise.
+    E2E_DIAG: "1",
     // Never hit the real Resend API from e2e. NODE_ENV=development leaves
     // IS_TEST_ENV false, so the email seam's auto-mock doesn't engage — set the
     // transport explicitly. The auth spec reads its code from the DB, so the
@@ -66,9 +76,21 @@ const serverWebServer = {
 const mobileWebServer = {
   command: "cd apps/mobile && bunx expo start --web --port 8082 --non-interactive",
   cwd: "../",
-  port: 8082,
+  // Wait on an HTTP probe of the served page, NOT a bare TCP port: Expo opens :8082
+  // BEFORE Metro has bundled the web app, so a `port` probe goes ready early and the first
+  // spec's page.goto("/") pays the cold Metro bundle — which, under the pre-push gate's
+  // concurrent CPU load (Docker acceptance + the apps/web build), can exceed the 30s test
+  // timeout (the authenticatedPage-setup goto timeout seen on session-transcript). `url`
+  // polls for a real 200 so Playwright only starts specs once Metro actually serves; the
+  // 120s timeout gives the bundle headroom. Mirrors webWebServer's port-probe-race fix.
+  url: "http://localhost:8082/",
   timeout: 120_000,
   reuseExistingServer: false,
+  // Pipe Expo/Metro stdout into the run output (Playwright pipes only stderr by default), so a
+  // persisted flake log shows Metro's bundling state / errors at the moment of a hang. Without
+  // this the :8082 server produced zero output in flake-artifacts, leaving a goto timeout
+  // undiagnosable. Matches serverWebServer.
+  stdout: "pipe" as const,
   env: {
     EXPO_PUBLIC_API_URL: "http://localhost:3001",
   },
@@ -92,6 +114,9 @@ const webWebServer = {
   // killed run would serve stale (or empty) dist and silently fail the content
   // assertions; always build fresh and fail loud on a real port conflict.
   reuseExistingServer: false,
+  // Pipe the build+serve stdout (Playwright pipes only stderr by default) so a flake log
+  // captures prerender/build progress when this CPU-starved lane stalls under contention.
+  stdout: "pipe" as const,
   env: {
     NODE_ENV: "production",
     PORT: "8085",
@@ -116,7 +141,13 @@ export default defineConfig({
   reporter: CI ? [["html"], ["github"]] : [["html"], ["list"]],
   use: {
     baseURL: "http://localhost:8082",
-    trace: "on-first-retry",
+    // retain-on-failure (not on-first-retry): the local pre-push gate runs with
+    // retries:0, so on-first-retry records NOTHING on a local flake. retain-on-
+    // failure keeps a full trace + video for every failed test even at 0 retries
+    // — the durable evidence a recurring flake needs (see .githooks/pre-push,
+    // which snapshots these out of test-results/ before the next push wipes it).
+    trace: "retain-on-failure",
+    video: "retain-on-failure",
     screenshot: "only-on-failure",
   },
   projects: [

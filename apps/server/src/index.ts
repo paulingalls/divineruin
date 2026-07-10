@@ -1,5 +1,6 @@
 import { serve } from "bun";
 import { handleLivekitToken } from "./livekit.ts";
+import { handleCreateInvite, handleRedeemInvite } from "./invite.ts";
 import { handleGetCharacter } from "./character.ts";
 import { handleRepairQuote } from "./repair.ts";
 import { handleRequestCode, handleVerifyCode, handleGetMe, requireAuth } from "./auth.ts";
@@ -106,6 +107,18 @@ const server = serve({
       const auth = await requireAuth(req);
       if (auth instanceof Response) return withCors(auth);
       return withCors(await handleLivekitToken(req, auth.playerId));
+    }
+
+    if (path === "/api/livekit/invite" && req.method === "POST") {
+      const auth = await requireAuth(req);
+      if (auth instanceof Response) return withCors(auth);
+      return withCors(await handleCreateInvite(req, auth.playerId));
+    }
+
+    if (path === "/api/livekit/redeem" && req.method === "POST") {
+      const auth = await requireAuth(req);
+      if (auth instanceof Response) return withCors(auth);
+      return withCors(await handleRedeemInvite(req, auth.playerId));
     }
 
     if (path.startsWith("/api/character/") && req.method === "GET") {

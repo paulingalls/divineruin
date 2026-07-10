@@ -12,18 +12,23 @@ class TestCombatAgentConfig:
 
     def test_combat_tools_are_complete(self):
         from ability_tools import request_ability_activation
-        from check_tools import check, request_attack
+        from check_tools import check
+        from combat_death_save import request_death_save
         from combat_end import end_combat
-        from combat_turn import request_death_save, resolve_enemy_turn
+        from combat_turn import consume_legendary_action, declare_phase, resolve_phase
         from draethar_inner_fire import inner_fire
         from environment_tools import play_sound, set_music_state
         from query_tools import query_info
-        from spell_casting import cast_spell, get_spell_info
+        from spell_casting import cast_spell
+        from spell_info_tools import get_spell_info
         from veil_ward_tools import activate_veil_ward
 
+        # The phase-loop verbs (declare_phase/resolve_phase) replaced the old per-actor
+        # resolve_enemy_turn + request_attack (story-003, unified packet resolution).
         expected = {
-            resolve_enemy_turn,
-            request_attack,
+            declare_phase,
+            resolve_phase,
+            consume_legendary_action,
             check,
             request_death_save,
             end_combat,
@@ -40,7 +45,8 @@ class TestCombatAgentConfig:
 
     def test_cast_spell_and_get_spell_info_registered(self):
         # story-004 M3: the cast path is callable from the combat agent.
-        from spell_casting import cast_spell, get_spell_info
+        from spell_casting import cast_spell
+        from spell_info_tools import get_spell_info
 
         assert cast_spell in COMBAT_AGENT_TOOLS
         assert get_spell_info in COMBAT_AGENT_TOOLS
@@ -83,3 +89,61 @@ class TestCombatSystemPrompt:
 
     def test_contains_companion_combat_instructions(self):
         assert "companion" in COMBAT_SYSTEM_PROMPT.lower()
+
+
+class TestCombatBeatContract:
+    """story-004: COMBAT_SYSTEM_PROMPT encodes the 4-beat DM contract for the phase
+    engine — declaration (with hesitation->Defend), silent resolution, narration with
+    reaction windows + dramatic-dice pauses, and wrap. Prompt + contract only."""
+
+    def test_names_four_beats_in_order(self):
+        p = COMBAT_SYSTEM_PROMPT.lower()
+        # Anchor on a unique body phrase from EACH beat (not the single overview line),
+        # so deleting or reordering a beat body — not just its header — fails the test.
+        bodies = [
+            p.index("call declare_phase"),  # Beat 1 declaration body
+            p.index("call resolve_phase"),  # Beat 2 resolution body
+            p.index("narrate the returned packets"),  # Beat 3 narration body
+            p.index("death saves due"),  # Beat 4 wrap body
+        ]
+        assert bodies == sorted(bodies), f"beat bodies out of order: {bodies}"
+        for beat in ("declaration", "resolution", "narration", "wrap"):
+            assert beat in p, f"missing beat name: {beat}"
+
+    def test_declaration_hesitation_falls_back_to_defend(self):
+        p = COMBAT_SYSTEM_PROMPT
+        assert "Defend" in p
+        assert "freeze" in p.lower() or "hesitat" in p.lower()
+
+    def test_resolution_is_silent_before_narration(self):
+        # Beat 2 resolves silently; the Beat-3 narration instruction comes after.
+        p = COMBAT_SYSTEM_PROMPT.lower()
+        assert "silent" in p
+        assert p.index("silent") < p.index("now narrate")
+
+    def test_narration_opens_reaction_windows(self):
+        # AC2: the window precedes the enemy's blow landing — not bare "reaction window".
+        low = COMBAT_SYSTEM_PROMPT.lower()
+        assert "reaction window" in low
+        assert "before an enemy's blow lands" in low
+
+    def test_honors_dramatic_pause(self):
+        # "pause" alone leaks from VOICE_STYLE ("Use pauses") and the Beat-4 death-save
+        # line; anchor on the unique Beat-3 phrase so deleting it actually fails.
+        assert "pause for the dramatic dice" in COMBAT_SYSTEM_PROMPT.lower()
+
+    def test_player_action_must_be_equipped_weapon_name(self):
+        # Concern 4fa8d5aedce6: the player's Attack action is the exact name of an equipped
+        # weapon — so a player turn is never silently wasted on a name mismatch.
+        low = COMBAT_SYSTEM_PROMPT.lower()
+        assert "exact name" in low and "equipped weapon" in low
+
+    def test_in_combat_ability_is_a_declaration_not_cast_spell(self):
+        # story-007: an in-combat spell/ability is an Ability declaration through declare_phase;
+        # cast_spell is the OUT-OF-COMBAT entry only. The prompt must teach the new shape so the DM
+        # routes casting through the phase loop (Focus/Resonance accounted) instead of cast_spell.
+        prompt = COMBAT_SYSTEM_PROMPT
+        low = prompt.lower()
+        assert '"type": "ability"' in prompt
+        assert "cast_spell" in prompt
+        assert "only out of combat" in low

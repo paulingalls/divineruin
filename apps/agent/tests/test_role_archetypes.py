@@ -14,12 +14,14 @@ import pytest
 
 import role_archetypes
 from role_archetypes import (
+    DISPOSITIONS,
     RoleArchetype,
     create_npc_from_archetype,
     get_role_archetype,
     is_loaded,
     parse_role_archetype_row,
     set_role_archetypes,
+    shift_disposition,
 )
 
 _CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "role_archetypes.json"
@@ -151,3 +153,53 @@ class TestCreateNpcFromArchetype:
     def test_unknown_role_fails_loud(self):
         with pytest.raises(ValueError, match="unknown_role"):
             create_npc_from_archetype("unknown_role")
+
+
+class TestShiftDisposition:
+    """shift_disposition lives beside the DISPOSITIONS SSOT — settlement generation and
+    social resolution share this one ladder clamp (extracted from settlement_generation)."""
+
+    def test_shifts_within_ladder(self):
+        assert shift_disposition("neutral", -1) == "unfriendly"
+        assert shift_disposition("neutral", 1) == "friendly"
+
+    def test_clamps_at_both_ends(self):
+        assert shift_disposition("hostile", -3) == "hostile"
+        assert shift_disposition("trusted", 5) == "trusted"
+
+    def test_zero_delta_is_identity_for_every_tier(self):
+        for tier in DISPOSITIONS:
+            assert shift_disposition(tier, 0) == tier
+
+    def test_off_ladder_base_fails_loud(self):
+        with pytest.raises(ValueError):
+            shift_disposition("wary", 1)
+
+    def test_off_ladder_raise_is_the_default(self):
+        # The default contract (trusted inputs) is fail-loud — no keyword needed.
+        with pytest.raises(ValueError):
+            shift_disposition("wary", 1, off_ladder="raise")
+
+
+class TestShiftDispositionNeutralMode:
+    """off_ladder='neutral' is the untrusted-live-DB contract (quest world-effects, session
+    npc mutations): a hand-corrupted npc_dispositions value must never 500 live narration, so
+    an off-ladder base is treated as neutral (decision unknown-disposition-contract). This is
+    the leniency formerly owned by quest_tools._clamp_disposition_shift."""
+
+    def test_shifts_within_ladder(self):
+        assert shift_disposition("neutral", 1, off_ladder="neutral") == "friendly"
+        assert shift_disposition("neutral", -1, off_ladder="neutral") == "unfriendly"
+
+    def test_clamps_at_both_ends(self):
+        assert shift_disposition("trusted", 2, off_ladder="neutral") == "trusted"
+        assert shift_disposition("hostile", -1, off_ladder="neutral") == "hostile"
+
+    def test_unknown_base_defaults_to_neutral(self):
+        # retired aliases ("wary"/"cautious") and any unknown value all rank as neutral.
+        assert shift_disposition("unknown", 1, off_ladder="neutral") == "friendly"
+        assert shift_disposition("cautious", 1, off_ladder="neutral") == "friendly"
+
+    def test_case_insensitive(self):
+        # live DB values are lowercased before ranking, mirroring _disposition_rank.
+        assert shift_disposition("Neutral", 1, off_ladder="neutral") == "friendly"

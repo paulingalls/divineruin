@@ -241,4 +241,27 @@ describe("content/recipes.json — M5.1 Recipe conformance", () => {
       }
     }
   });
+
+  // A recipe whose id names a real item (an item in items.json) must output that
+  // same item. This is the WIDE invariant: crafting an item by name should yield
+  // an item by that same name. The 34 recipes whose id is not an item name (e.g.
+  // wooden_club → club_wooden) are unconstrained.
+  test("a recipe whose id names a real item produces that item", async () => {
+    const recipes = (await loadArray(RECIPES_PATH, "recipes.json")) as Array<
+      Record<string, unknown>
+    >;
+    const items = (await loadArray(ITEMS_PATH, "items.json")) as Array<Record<string, unknown>>;
+    const itemIds = new Set(items.map((i) => i.id as string));
+    const violations: string[] = [];
+    for (const r of recipes) {
+      const rid = r.id as string;
+      const out = r.output_item as string;
+      if (itemIds.has(rid) && out !== rid) {
+        violations.push(`recipe '${rid}' outputs '${out}' instead of '${rid}'`);
+      }
+    }
+    if (violations.length > 0) {
+      throw new Error(`Wide invariant violation: ${violations.join("; ")}`);
+    }
+  });
 });

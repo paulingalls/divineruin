@@ -1,7 +1,8 @@
 import { test, expect, beforeEach } from "bun:test";
 
 import { RESONANCE_CHANGED } from "@/audio/event-types";
-import { handleGameEvent, VALID_RESONANCE_STATES } from "@/audio/game-event-handler";
+import { handleGameEvent } from "@/audio/game-event-handler";
+import { VALID_RESONANCE_STATES } from "@/audio/game-event-parsing";
 import {
   hudStore,
   RESONANCE_DISPLAY,

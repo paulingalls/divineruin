@@ -22,6 +22,19 @@ LOCATION_CHANGED = "location_changed"
 # Combat
 COMBAT_STARTED = "combat_started"
 COMBAT_ENDED = "combat_ended"
+# Combat HUD condition + tracker push (M12) — emitted by combat_turn._resolve_phase_impl at the
+# Beat-4 wrap POST-tick (save-cleared conditions are absent), only when combat does NOT end on the
+# wrap (the terminal wrap path relies on COMBAT_ENDED + hudStore.clearCombatState). Also emitted
+# directly by combat_init.start_combat after COMBAT_STARTED so the HUD has live combatants from
+# round 1 (story-001 close fix). The wrap-time packet is built by combat_ui_update.build_combat_ui_update
+# and rides the buffered EventSink, so a rolled-back phase tx publishes nothing.
+#   Packet: {round, combatants:[{id, name, isAlly, hpCurrent, hpMax,
+#           conditions:[{type, stacks, source}], isActive}]}
+# `round` reflects the NEW round at wrap (advance_combat_phase has already incremented round_number
+# before the emit). `isActive=True` marks initiative_order[current_turn_index] — the next-up LIVE
+# actor (fallen/dead are skipped). Conditions are projected to {type, stacks, source} only (mobile
+# parseCondition reads no more); duration/stage stay server-side.
+# Mirror const in apps/mobile/src/audio/event-types.ts.
 COMBAT_UI_UPDATE = "combat_ui_update"
 
 # Character
@@ -34,24 +47,49 @@ DIVINE_FAVOR_CHANGED = "divine_favor_changed"
 PLAYER_PORTRAIT_READY = "player_portrait_ready"
 
 # Inventory & quests
+# ITEM_ACQUIRED combat-loot packet (M20 story-001) gains `player_id` — the recipient party member
+# a round-robinned drop was granted to (combat_end.py), mirroring CURRENCY_GAINED's player_id so
+# the mobile HUD filters an item overlay to the local recipient via isEventForLocalPlayer. Non-combat
+# emitters (quest rewards, etc.) may omit it — the client treats an absent id as the local player's
+# (back-compat, same convention as RESONANCE_CHANGED's caster_id default; VEIL_WARD_CHANGED carries
+# no caster_id at all — it is scope-owned, see below).
+# Mirror const in apps/mobile/src/audio/event-types.ts.
 ITEM_ACQUIRED = "item_acquired"
 INVENTORY_UPDATED = "inventory_updated"
 ITEM_DURABILITY_HIT = "item_durability_hit"
 QUEST_UPDATED = "quest_updated"
 QUEST_UPDATE = "quest_update"  # client-only alias for QUEST_UPDATED
 
-# Magic (M3.1)
-# Resonance state push: carries the qualitative {state} only on the game_events topic
-# — the raw number never crosses to the client (no-number spec magic.md:98, story-004).
+# Currency (M4.7 story-002) — coin granted on combat victory (role-scaled, calculate_currency_drop).
+# Packet: {player_id, amount, currency, source, new_balance} where `amount` is the gold
+# gained this victory (aggregated across all defeated enemies, converted sp->gp at the grant
+# boundary via silver_per_gold — story-008), `currency` is the unit ("gold"), `source` the grant
+# context ("combat"), and `new_balance` the player's resulting players.data.gold (gold crowns).
+# The HUD renders a glanceable "+N gp" chip from {amount, currency}; the DM voices the haul.
 # Mirror const in apps/mobile/src/audio/event-types.ts.
+CURRENCY_GAINED = "currency_gained"
+
+# Magic (M3.1)
+# Resonance state push. Packet: {state, caster_id} — the qualitative state only on the game_events
+# topic; the raw number never crosses to the client (no-number spec magic.md:98, story-004).
+# `caster_id` (M14 story-004) names WHICH party member the state belongs to so a multi-player client
+# updates its single global HUD tracker only for the local player's pushes (game-event-handler.ts
+# filters on it); it defaults to the session primary. Mirror const in apps/mobile/src/audio/event-types.ts.
 RESONANCE_CHANGED = "resonance_changed"
 
-# Magic (M3.2) — Veil Ward toggle push: carries the minimal {active} only (the HUD shows a
-# glanceable on/off zone indicator; the source archetype is narration the DM voices, not wire
-# state). Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
+# Magic (M3.2) — Veil Ward push. Packet: {active, scope_kind, scope_id, source} (story-008,
+# veil_ward_scope_model.md §6). `active` is the party's RESOLVED warded state across ALL covering
+# scopes, never the toggle of the scope a producer just mutated (§3); scope_kind/scope_id name the
+# scope that answered, and are null when nothing wards the party.
+#
+# There is deliberately NO caster_id. A ward belongs to a scope and halves EVERY caster in it, so
+# every in-scope client lights its indicator — there is nothing to filter on. RESONANCE_CHANGED
+# above keeps its caster_id because Resonance is per-caster. Do not "restore consistency" by adding
+# one back here: that is the multiplayer bug M24 removed (§6, "Asymmetry, on purpose").
+# Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
 VEIL_WARD_CHANGED = "veil_ward_changed"
 
-# Magic (M3.2) — Hollow Echo result push: carries the qualitative {band} only (the dramatic
+# Magic (M3.2) — Hollow Echo result push. Packet: {band} — the qualitative band only (the dramatic
 # dice overlay maps band -> label/colour; the raw roll stays server-side, no-number discipline).
 # Auto-rolled by cast_spell at Overreach. Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
 HOLLOW_ECHO_RESULT = "hollow_echo_result"

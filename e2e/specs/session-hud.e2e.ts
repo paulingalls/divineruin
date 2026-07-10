@@ -152,7 +152,6 @@ test.describe("Session HUD overlays", () => {
   }) => {
     await sessionPage.injectEvent({
       type: "combat_ui_update",
-      phase: "player turn",
       round: 2,
       combatants: [
         {

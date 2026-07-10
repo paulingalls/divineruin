@@ -9,7 +9,14 @@ import { requireEnv } from "./env.ts";
 // production and integration code resolve DATABASE_URL exactly as before.
 let client: SQL | undefined;
 function getClient(): SQL {
-  return (client ??= new SQL({ url: requireEnv("DATABASE_URL"), max: 5, idleTimeout: 30 }));
+  // idleTimeout: 0 (disabled) — NOT 30s. Bun.sql closes a connection after
+  // idleTimeout seconds idle, but races a query dispatched onto that connection
+  // as it closes, failing it with ERR_POSTGRES_IDLE_TIMEOUT. Under load (e.g. the
+  // pre-push gate's concurrent lanes) connections idle past 30s and catchup
+  // queries intermittently fail — the recurring non-deterministic e2e flake
+  // (SMM risk 5d3e56d533b4). A long-lived server pool should keep its (max 5)
+  // connections warm; 0 removes the race entirely.
+  return (client ??= new SQL({ url: requireEnv("DATABASE_URL"), max: 5, idleTimeout: 0 }));
 }
 
 export const sql = new Proxy(function lazySql() {} as unknown as SQL, {

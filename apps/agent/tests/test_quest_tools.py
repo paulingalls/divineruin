@@ -5,6 +5,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from livekit.agents.llm import ToolError
 from sample_fixtures import (
     _WARRIOR_MILESTONES,
     GUILD_PLAYER,
@@ -149,3 +150,154 @@ async def test_quest_stage_no_levelup_has_empty_grants_and_no_fork():
     assert response["milestone_grants"] == []
     assert response["specialization_fork"] is False
     mutations.set_player_flag.assert_not_awaited()
+
+
+# --- Terminal-stage completion (story-002 inc 4a, debt 7918cd848e90) -----------------
+# update_quest never fired the FINAL stage's on_complete (guard rejected new_stage >=
+# len(stages)), so terminal rewards were dead. The completion transition — new_stage_id ==
+# len(stages) — fires the final on_complete and writes status=completed.
+
+_COMPLETION_QUEST = {
+    "id": "cq",
+    "name": "Completion Quest",
+    "stages": [
+        {"id": 0, "objective": "start", "on_complete": {}},
+        {"id": 1, "objective": "finish", "on_complete": {"rewards": [{"item": "prize", "quantity": 1}]}},
+    ],
+}
+
+
+def _completion_mocks(current_stage: int):
+    room = make_mock_room()
+    mock_db, mock_conn = make_db_mod()
+    content = MagicMock()
+    content.get_quest = AsyncMock(return_value=_COMPLETION_QUEST)
+    content.get_item = AsyncMock(return_value={"name": "Prize"})
+    content.get_scenes_batch = AsyncMock(return_value={})
+    queries = MagicMock()
+    queries.get_player_quest = AsyncMock(return_value={"current_stage": current_stage})
+    queries.get_player = AsyncMock(return_value=GUILD_PLAYER)
+    mutations = MagicMock()
+    mutations.set_player_quest = AsyncMock()
+    mutations.add_inventory_item = AsyncMock()
+    return make_context(room=room), mock_db, mock_conn, content, queries, mutations
+
+
+@pytest.mark.asyncio
+async def test_completing_final_stage_fires_its_on_complete():
+    # Player at the final stage (1) of a 2-stage quest; completing (-> len==2) fires
+    # stage-1's on_complete, so the previously-dead terminal item reward lands.
+    ctx, mock_db, conn, content, queries, mutations = _completion_mocks(current_stage=1)
+    raw = await _update_quest_impl(ctx, "cq", 2, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
+    response = json.loads(raw)
+    mutations.add_inventory_item.assert_awaited_once_with("player_1", "prize", 1, conn=conn)
+    assert response["completed"] is True
+
+
+@pytest.mark.asyncio
+async def test_completion_writes_status_completed():
+    ctx, mock_db, _conn, content, queries, mutations = _completion_mocks(current_stage=1)
+    await _update_quest_impl(ctx, "cq", 2, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
+    data = mutations.set_player_quest.await_args.args[2]
+    assert data["status"] == "completed"
+    assert data["current_stage"] == 2
+
+
+@pytest.mark.asyncio
+async def test_advancing_into_final_stage_does_not_fire_its_on_complete():
+    # Advancing 0 -> 1 fires stage-0's (empty) on_complete, NOT stage-1's — the terminal
+    # reward waits for the explicit completion transition.
+    ctx, mock_db, _, content, queries, mutations = _completion_mocks(current_stage=0)
+    await _update_quest_impl(ctx, "cq", 1, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
+    mutations.add_inventory_item.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stage_beyond_completion_rejected():
+    ctx, mock_db, _, content, queries, mutations = _completion_mocks(current_stage=1)
+    with pytest.raises(ToolError, match="Invalid stage"):
+        await _update_quest_impl(ctx, "cq", 3, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
+
+
+# --- Quest -> reputation world effect (story-002 inc 4b) ------------------------------
+# A "<faction>_reputation <event_type>" world effect routes through reputation_shift +
+# the writer, the faction-scoped analogue of the "<npc>_disposition +N" shorthand.
+
+
+def _faction_content(exists=True):
+    """A content mock whose get_faction resolves (or not) a faction — mirrors the DM tool's
+    existence guard so the world_effect path never writes a phantom-faction row."""
+    content = MagicMock()
+    content.get_faction = AsyncMock(return_value={"id": "accord_guild"} if exists else None)
+    return content
+
+
+@pytest.mark.asyncio
+async def test_reputation_world_effect_applies_via_writer():
+    from quest_tools import _apply_world_effects
+
+    session = make_context().userdata
+    rm = MagicMock()
+    rm.adjust_player_faction_reputation = AsyncMock(return_value=5)
+    await _apply_world_effects(
+        ["accord_guild_reputation completed_faction_quest"],
+        session,
+        [],
+        conn=None,
+        reputation_mutations=rm,
+        content=_faction_content(),
+    )
+    # completed_faction_quest -> +5; faction_id parsed off the "_reputation" suffix; the
+    # stage-transaction conn is threaded through to the writer.
+    rm.adjust_player_faction_reputation.assert_awaited_once_with(
+        session.player_id,
+        "accord_guild",
+        5,
+        "world_effect: accord_guild_reputation completed_faction_quest",
+        conn=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_reputation_world_effect_unknown_event_skips():
+    from quest_tools import _apply_world_effects
+
+    session = make_context().userdata
+    rm = MagicMock()
+    rm.adjust_player_faction_reputation = AsyncMock()
+    await _apply_world_effects(
+        ["accord_guild_reputation bogus_event"], session, [], reputation_mutations=rm, content=_faction_content()
+    )
+    rm.adjust_player_faction_reputation.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reputation_world_effect_unknown_faction_skips():
+    # A mistyped faction id in authored on_complete content must NOT write a phantom-faction
+    # reputation row — the writer is never called, mirroring the DM tool's fail-on-unknown guard.
+    from quest_tools import _apply_world_effects
+
+    session = make_context().userdata
+    rm = MagicMock()
+    rm.adjust_player_faction_reputation = AsyncMock()
+    await _apply_world_effects(
+        ["phantom_faction_reputation completed_faction_quest"],
+        session,
+        [],
+        reputation_mutations=rm,
+        content=_faction_content(exists=False),
+    )
+    rm.adjust_player_faction_reputation.assert_not_awaited()
+
+
+def test_greyvale_completion_authors_accord_reputation():
+    # The terminal stage (now reachable via inc 4a) grants Accord standing on quest
+    # completion — the semantically correct home ("report to the Accord").
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parents[3]
+    quests = json.loads((root / "content" / "quests.json").read_text())
+    greyvale = next(q for q in quests if q["id"] == "greyvale_anomaly")
+    final = greyvale["stages"][-1]
+    assert final["id"] == "stage_5_return"
+    assert "accord_guild_reputation completed_faction_quest" in final["on_complete"]["world_effects"]
