@@ -171,3 +171,10 @@ async def test_encounter_ward_dies_with_the_combat_and_the_next_cast_is_unhalved
     packet = json.loads(await spell_casting._cast_spell_impl(ctx, _SPELL_ID))
     assert packet["ward_active"] is False
     assert packet["resonance_generated"] == base
+
+
+async def test_no_player_row_carries_legacy_ward_state(reset_db_pool: str) -> None:
+    """AC3: migration 057 removed players.data.veil_ward and nothing writes it back. Global, not
+    per-player -- stronger than checking one seeded row, and cheap against the whole table."""
+    pool = await db.get_pool()
+    assert await pool.fetchval("SELECT count(*) FROM players WHERE data ? 'veil_ward'") == 0
