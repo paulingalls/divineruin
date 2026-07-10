@@ -259,33 +259,9 @@ def test_location_expires_at_fails_loud_on_naive_now():
         veil_ward.location_expires_at(duration, datetime(2026, 7, 8, 12, 0, 0))
 
 
-# --- location_ward_expired (story-002) -----------------------------------------
-
-
-def test_location_ward_expired_none_is_permanent_never_expires():
-    assert veil_ward.location_ward_expired(None, _NOW) is False
-
-
-def test_location_ward_expired_boundary_equal_is_expired():
-    assert veil_ward.location_ward_expired(_NOW, _NOW) is True
-
-
-def test_location_ward_expired_future_not_expired():
-    assert veil_ward.location_ward_expired(_NOW + timedelta(seconds=1), _NOW) is False
-
-
-def test_location_ward_expired_past_is_expired():
-    assert veil_ward.location_ward_expired(_NOW - timedelta(seconds=1), _NOW) is True
-
-
-def test_location_ward_expired_fails_loud_on_naive_now():
-    with pytest.raises(ValueError):
-        veil_ward.location_ward_expired(None, datetime(2026, 7, 8, 12, 0, 0))
-
-
-def test_location_ward_expired_fails_loud_on_naive_expires_at():
-    with pytest.raises(ValueError):
-        veil_ward.location_ward_expired(datetime(2026, 7, 8, 12, 0, 0), _NOW)
+# location_ward_expired's tests lived here. The function had no production caller -- lazy expiry is
+# enforced in read_active_ward's WHERE clause -- so these pinned a rule nothing consulted. Removed
+# with it; tests/test_db_mutations_veil_ward_db.py proves expiry against the real SQL predicate.
 
 
 # --- regression pin: effect constants + halve_generation unchanged (story-002) -

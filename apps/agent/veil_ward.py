@@ -265,12 +265,6 @@ def location_expires_at(duration: WardDuration, now: datetime) -> datetime | Non
     return None
 
 
-def location_ward_expired(expires_at: datetime | None, now: datetime) -> bool:
-    """Whether a location-owned ward's absolute expiry has passed. ``None`` never expires."""
-    if now.tzinfo is None:
-        raise ValueError("now must be timezone-aware")
-    if expires_at is not None and expires_at.tzinfo is None:
-        raise ValueError("expires_at must be timezone-aware")
-    if expires_at is None:
-        return False
-    return expires_at <= now
+# A Python-side `location_ward_expired` once lived here. It never had a production caller: lazy
+# expiry is enforced entirely in SQL (`expires_at IS NULL OR expires_at > NOW()` in read_active_ward),
+# so a second, drifting expiry rule in Python was surface area pretending to be a mechanic.
