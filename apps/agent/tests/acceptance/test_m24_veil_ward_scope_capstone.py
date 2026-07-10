@@ -185,23 +185,32 @@ async def test_no_player_row_carries_legacy_ward_state(reset_db_pool: str) -> No
 
     Raises its OWN ward through the real tool rather than leaning on the raisers AC1/AC2 happen to
     leave behind: a bare global count would pass in isolation against seed rows that never raised
-    anything, greening exactly the regression this guards (the raise re-writing the legacy key)."""
+    anything, greening exactly the regression this guards (the raise re-writing the legacy key).
+
+    The raise happens IN COMBAT because that is the only path production can reach: activate_veil_ward
+    is registered on combat_agent alone, so its out-of-combat location-scope branch is dead code (debt
+    67ae0f87df29). A capstone that raised out of combat would green a capability no player has. The OOC
+    branch stays covered where an unreachable branch belongs -- the unit tests, not the E2E proof.
+    """
     pool = await db.get_pool()
     player_id = "cap_m24_ac3_cleric"
     location = "cap_m24_ac3_hall"
     await seed_player_with_pools(pool, player_id=player_id, class_="cleric", focus_current=20)
     await _bump_level(pool, player_id, 7)
 
-    # Out of combat, a Cleric's ENCOUNTER-kind ward targets the LOCATION scope (expires_at NULL:
-    # raised OOC, it stands until dismissed) -- so a veil_wards row exists to be the ward's one home.
     ctx = make_context(player_id, location_id=location)
+    raw = await combat_init._start_combat_impl(ctx, "hollow_wisp", "A hollow wisp coalesces from the drift.")
+    assert isinstance(raw, tuple)
     await veil_ward_tools._activate_veil_ward_impl(ctx, True)
-    assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", location) == 1
+    # The ward is up, and it lives on the encounter scope -- its one home.
+    assert ctx.userdata.combat_state.veil_ward == {"source": "cleric", "rounds_remaining": None}
 
     # The raiser's own row carries no ward state -- the scope owns the ward, not the player...
     assert await pool.fetchval("SELECT data ? 'veil_ward' FROM players WHERE player_id = $1", player_id) is False
     # ...and no row anywhere does.
     assert await pool.fetchval("SELECT count(*) FROM players WHERE data ? 'veil_ward'") == 0
+    # Nor did the raise leak a location row for a scope it never targeted.
+    assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", location) == 0
 
 
 async def test_paladin_rounds_ward_expires_on_the_third_wrap(reset_db_pool: str) -> None:
