@@ -358,3 +358,52 @@ def test_ward_scope_fails_loud_on_empty_id(bad_id):
         WardScope.location(bad_id)
     with pytest.raises(ValueError):
         WardScope.encounter(bad_id)
+
+
+# --- VEIL_ANCHORS: what kind of ward each crafted anchor makes (story-012) -----
+
+
+class TestVeilAnchors:
+    """The item -> ward join. Both anchors are sourced to the artificer; their DURATIONS differ.
+
+    WARD_SOURCES["artificer"] carries exactly one duration, REAL_TIME 3600s, and that is the SMALL
+    anchor's hour. The large anchor is permanent, so its duration cannot come from the source row —
+    location_expires_at on REAL_TIME returns an hour from now, never None. It comes from here.
+
+    "consumed on use" / "not consumed" lives only in each item's free-text effects[].description in
+    content/items.json; there is no consumable field. This table is where that contract becomes data.
+    """
+
+    def test_both_anchors_are_sourced_to_the_artificer(self):
+        assert veil_ward.ANCHOR_SOURCE == "artificer"
+        assert veil_ward.ANCHOR_SOURCE in veil_ward.WARD_SOURCES
+
+    def test_small_anchor_wards_for_one_hour_and_is_consumed(self):
+        anchor = veil_ward.VEIL_ANCHORS["veil_ward_anchor_small"]
+        assert anchor.duration.kind is veil_ward.WardDurationKind.REAL_TIME
+        assert anchor.duration.seconds == 3600
+        assert anchor.consumed is True
+        assert anchor.dismissible is True
+
+    def test_large_anchor_is_permanent_undismissible_and_not_consumed(self):
+        anchor = veil_ward.VEIL_ANCHORS["veil_ward_anchor_large"]
+        assert anchor.duration.kind is veil_ward.WardDurationKind.PERMANENT
+        assert anchor.consumed is False
+        # dismiss_ward's DELETE carries `AND dismissible`, so False is what makes it unremovable.
+        assert anchor.dismissible is False
+
+    def test_small_anchor_expiry_is_an_hour_out_large_anchor_has_none(self):
+        # The whole reason duration lives on the anchor: location_expires_at fed the artificer
+        # SOURCE duration would hand the large anchor a 1-hour clock instead of a permanent row.
+        now = datetime(2026, 7, 9, 12, 0, tzinfo=UTC)
+        small = veil_ward.VEIL_ANCHORS["veil_ward_anchor_small"]
+        large = veil_ward.VEIL_ANCHORS["veil_ward_anchor_large"]
+        assert veil_ward.location_expires_at(small.duration, now) == now + timedelta(hours=1)
+        assert veil_ward.location_expires_at(large.duration, now) is None
+
+    def test_the_artificer_source_row_still_carries_the_small_anchors_hour(self):
+        # Unchanged by this story; test_recipes_ward_anchor pins it to the item's "1 hour" prose.
+        source = veil_ward.WARD_SOURCES["artificer"]
+        assert source.duration.kind is veil_ward.WardDurationKind.REAL_TIME
+        assert source.duration.seconds == 3600
+        assert source.tool_raisable is False

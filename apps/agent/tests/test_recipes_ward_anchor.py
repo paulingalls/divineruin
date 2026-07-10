@@ -3,7 +3,8 @@
 Pins the relationship between:
 - content/recipes.json: veil_ward_anchor_small and veil_ward_anchor_large
 - content/items.json: their tool item definitions
-- apps/agent/veil_ward.py: WARD_SOURCES["artificer"] duration constant
+- apps/agent/veil_ward.py: WARD_SOURCES["artificer"] duration constant, and the
+  VEIL_ANCHORS item->ward table (story-012)
 
 These halves must not drift apart. Load strictly — fail loud on a missing file
 rather than skip (pytest.skip would let a moved or deleted file pass silently).
@@ -12,7 +13,7 @@ rather than skip (pytest.skip would let a moved or deleted file pass silently).
 import json
 from pathlib import Path
 
-from veil_ward import WARD_SOURCES, WardDurationKind
+from veil_ward import ANCHOR_SOURCE, VEIL_ANCHORS, WARD_SOURCES, WardDurationKind
 
 CONTENT_DIR = Path(__file__).parent.parent.parent.parent / "content"
 
@@ -88,3 +89,43 @@ def test_artificer_ward_source_duration_matches_anchor_small():
     assert artificer_source.tool_raisable is False, (
         f"artificer WardSource tool_raisable is {artificer_source.tool_raisable} instead of False"
     )
+
+
+def test_veil_anchors_table_matches_the_item_prose():
+    """Pin the VEIL_ANCHORS code table to what content/items.json promises the player (story-012).
+
+    The item's "consumed on use" / "not consumed" and "1 hour" / "Permanent" contracts live ONLY in
+    free-text effects[].description — there is no consumable field, no duration field. VEIL_ANCHORS
+    is where that prose becomes data, so this is the join that keeps them honest. Retitle the large
+    anchor "Lasts a week" and it goes red; flip its `consumed` and it goes red.
+    """
+    items = _load_content("items.json")
+
+    small_item = _find_by_id(items, "veil_ward_anchor_small", "items.json")
+    small_text = " ".join(e.get("description", "") for e in small_item.get("effects", []))
+    small = VEIL_ANCHORS["veil_ward_anchor_small"]
+    assert small.duration.kind == WardDurationKind.REAL_TIME
+    assert small.duration.seconds is not None  # guaranteed by WardDuration.__post_init__
+    assert f"{small.duration.seconds // 3600} hour" in small_text
+    assert small.consumed is True and "consumed on use" in small_text.lower()
+    assert small.dismissible is True
+
+    large_item = _find_by_id(items, "veil_ward_anchor_large", "items.json")
+    large_text = " ".join(e.get("description", "") for e in large_item.get("effects", []))
+    large = VEIL_ANCHORS["veil_ward_anchor_large"]
+    assert large.duration.kind == WardDurationKind.PERMANENT, (
+        "the large anchor's ward must be PERMANENT — its duration cannot come from the artificer "
+        "WardSource row, whose REAL_TIME 3600s is the SMALL anchor's hour"
+    )
+    assert "permanent" in large_text.lower()
+    assert large.consumed is False and "not consumed" in large_text.lower()
+    # dismiss_ward's DELETE carries `AND dismissible`; False is what makes the row unremovable.
+    assert large.dismissible is False
+
+
+def test_both_anchors_are_sourced_to_the_artificer_who_crafted_them():
+    """A crafted object names its maker. The large anchor shares the Sacred site's permanent
+    REPRESENTATION (expires_at NULL, undismissible) but not its provenance."""
+    assert ANCHOR_SOURCE == "artificer"
+    assert ANCHOR_SOURCE in WARD_SOURCES
+    assert set(VEIL_ANCHORS) == {"veil_ward_anchor_small", "veil_ward_anchor_large"}

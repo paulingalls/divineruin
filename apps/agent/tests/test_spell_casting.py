@@ -507,6 +507,37 @@ class TestCastSpellWardThroughRealResolver:
         assert packet["hollow_echo"]["band"] == "veil_scar"
 
 
+class TestCastUnderADeployedVeilAnchor:
+    """AC4 (story-012): a caster standing in a deployed anchor's scope is halved exactly as under a
+    Cleric ward. The anchor writes an ordinary location ward, so nothing in the cast path knows or
+    cares that an item put it there — which is the property worth pinning.
+
+    Only the DB leaf is stubbed; the real ward_resolution.resolve_scope_ward runs and finds the row.
+    """
+
+    _ANCHOR_WARD = {"source": "artificer", "expires_at": None, "dismissible": False}
+    _CLERIC_WARD = {"source": "cleric", "expires_at": None, "dismissible": True}
+
+    async def _generated_under(self, monkeypatch, ward) -> int:
+        import db_mutations_veil_ward
+
+        monkeypatch.setattr(db_mutations_veil_ward, "read_active_ward", AsyncMock(return_value=ward))
+        packet, _ctx, _p, _m, _e = await _cast(_spell(resonance=6))
+        return packet["resonance_generated"]
+
+    async def test_a_deployed_anchor_halves_generation(self, monkeypatch):
+        assert await self._generated_under(monkeypatch, self._ANCHOR_WARD) == 3
+
+    async def test_it_halves_exactly_as_a_cleric_ward_does(self, monkeypatch):
+        # The ward is scope-owned; its source is narration, never mechanics.
+        anchor = await self._generated_under(monkeypatch, self._ANCHOR_WARD)
+        cleric = await self._generated_under(monkeypatch, self._CLERIC_WARD)
+        assert anchor == cleric == 3
+
+    async def test_no_anchor_no_halving(self, monkeypatch):
+        assert await self._generated_under(monkeypatch, None) == 6
+
+
 class TestPartyWideWardedEncounter:
     """AC5 capstone: a two-member party in a warded encounter, ward expiring mid-combat.
 
