@@ -30,6 +30,7 @@ from sample_fixtures import make_context
 
 import db
 from activate_tools import activate
+from activity_tools import begin_activity, resolve_activity
 from blacksmith_agent import BLACKSMITH_TOOLS
 from check_tools import check
 from choice_tools import select
@@ -74,6 +75,24 @@ REMOVED_CAPABILITY_TOOLS = frozenset(
     {"cast_spell", "request_ability_activation", "activate_veil_ward", "inner_fire", "deploy_veil_anchor"}
 )
 
+# M26 Phase-5 story-003: the ten downtime noun tools folded into begin_activity/
+# resolve_activity. Guarded the same way as the other folds — no demoted @function_tool
+# wrapper may re-register on any agent.
+REMOVED_ACTIVITY_TOOLS = frozenset(
+    {
+        "query_training_programs",
+        "initiate_training_cycle",
+        "resolve_training_midpoint",
+        "dispatch_companion_errand",
+        "resolve_companion_errand",
+        "query_recipe_requirements",
+        "query_available_workspaces",
+        "rent_workspace",
+        "start_crafting_project",
+        "experiment_with_materials",
+    }
+)
+
 # Every assembled gameplay-agent tool registry. M7 collapsed the three region agents
 # into one exploration registry, so city/wilderness/dungeon are a single "exploration" row.
 AGENT_TOOL_LISTS = [
@@ -103,6 +122,11 @@ VERB_PRESENCE = [
     # activate_veil_ward/inner_fire (combat, story-002) and deploy_veil_anchor (exploration,
     # story-003) into one polymorphic verb, registered on both agents.
     (activate, "activate", {"combat", "exploration"}),
+    # M26 Phase-5 story-003: begin_activity/resolve_activity fold the ten downtime
+    # noun tools (training, companion errands, crafting, workspaces, experimentation)
+    # into two verbs, registered only on dispatch.
+    (begin_activity, "begin_activity", {"dispatch"}),
+    (resolve_activity, "resolve_activity", {"dispatch"}),
 ]
 
 
@@ -112,7 +136,9 @@ VERB_PRESENCE = [
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_no_removed_noun_tool_survives(name: str, tools: list) -> None:
     """No pre-M5 noun tool (or M4.1-retired combat tool) is registered on any agent."""
-    leaked = (REMOVED_NOUN_TOOLS | REMOVED_COMBAT_TOOLS | REMOVED_CAPABILITY_TOOLS) & {t.__name__ for t in tools}
+    leaked = (REMOVED_NOUN_TOOLS | REMOVED_COMBAT_TOOLS | REMOVED_CAPABILITY_TOOLS | REMOVED_ACTIVITY_TOOLS) & {
+        t.__name__ for t in tools
+    }
     assert not leaked, f"{name} still registers removed tool(s): {sorted(leaked)}"
 
 
