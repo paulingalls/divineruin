@@ -38,8 +38,6 @@ class TestQueryInfoRecipeRoute:
                 kind="recipe",
                 target_id="rec123",
                 recipe_mod=mock_recipe_mod,
-                training_mod=None,
-                crafting_mod=None,
             )
 
             assert result == mock_impl_result
@@ -59,8 +57,6 @@ class TestQueryInfoRecipeRoute:
                 kind="recipe",
                 target_id="rec456",
                 recipe_mod=mock_recipe_mod,
-                training_mod=None,
-                crafting_mod=None,
             )
 
             parsed = json.loads(result)
@@ -83,9 +79,7 @@ class TestQueryInfoNoTargetIdKinds:
                 mock_context,
                 kind="training_programs",
                 target_id=None,
-                recipe_mod=None,
                 training_mod=mock_training_mod,
-                crafting_mod=None,
             )
 
             assert result == mock_impl_result
@@ -103,8 +97,6 @@ class TestQueryInfoNoTargetIdKinds:
                 mock_context,
                 kind="workspaces",
                 target_id=None,
-                recipe_mod=None,
-                training_mod=None,
                 crafting_mod=mock_crafting_mod,
             )
 
@@ -119,9 +111,6 @@ class TestQueryInfoNoTargetIdKinds:
                 mock_context,
                 kind="unknown_kind",
                 target_id="some_id",
-                recipe_mod=None,
-                training_mod=None,
-                crafting_mod=None,
             )
 
     @pytest.mark.asyncio
@@ -132,9 +121,6 @@ class TestQueryInfoNoTargetIdKinds:
                 mock_context,
                 kind="recipe",
                 target_id=None,
-                recipe_mod=None,
-                training_mod=None,
-                crafting_mod=None,
             )
 
 
