@@ -14,17 +14,19 @@ The two anchors differ, and ``veil_ward.VEIL_ANCHORS`` holds the difference as d
 conditional on the item id: the small anchor wards for an hour and is consumed; the large one wards
 permanently, cannot be dismissed, and stays in the pack.
 
-Mirrors ``veil_ward_tools``' seam: a thin ``@function_tool`` wrapper over an ``_impl`` with
-module-injection kwargs, one ``db_mod.transaction()``, ``ToolError`` for every user-facing failure
-BEFORE any write, and in-memory mirrors synced only after the commit — so a rolled-back deploy leaves
-no phantom ward behind (story-005) and leaks no client event.
+Mirrors ``veil_ward_tools``' seam: one ``db_mod.transaction()``, ``ToolError`` for every user-facing
+failure BEFORE any write, and in-memory mirrors synced only after the commit — so a rolled-back
+deploy leaves no phantom ward behind (story-005) and leaks no client event.
+
+M25 Phase-5 story-003 folds the standing ``@function_tool`` wrapper into ``activate_tools.activate``
+(reserved anchor-item-id path) — ``_deploy_veil_anchor_impl`` is now called only from there.
 """
 
 import json
 import logging
 from datetime import UTC, datetime
 
-from livekit.agents.llm import ToolError, function_tool
+from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import db
@@ -33,28 +35,10 @@ import db_mutations_veil_ward
 import db_queries
 import veil_ward_events
 import ward_resolution
-from db_errors import db_tool
 from session_data import SessionData
 from veil_ward import ANCHOR_SOURCE, VEIL_ANCHORS, WardScope, location_expires_at
 
 logger = logging.getLogger("divineruin.tools")
-
-
-@function_tool()
-@db_tool
-async def deploy_veil_anchor(
-    context: RunContext[SessionData],
-    item_id: str,
-) -> str:
-    """Set down a crafted Veil-Ward Anchor, warding this location against the Hollow.
-
-    Call when the player deploys, plants, sets down, or activates a Veil-Ward Anchor they carry.
-    Pass the anchor's item id ('veil_ward_anchor_small' or 'veil_ward_anchor_large'). The small
-    anchor wards the place for one hour and is used up; the large one wards it permanently, cannot
-    be dismissed, and is not consumed. Costs no Focus and no Stamina — the crafting was the cost.
-    Refuses if the player does not carry the anchor, or if a Veil Ward already covers them.
-    """
-    return await _deploy_veil_anchor_impl(context, item_id)
 
 
 async def _deploy_veil_anchor_impl(
