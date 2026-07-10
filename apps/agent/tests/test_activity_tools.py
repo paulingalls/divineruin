@@ -4,15 +4,22 @@ dispatchers (M26 story-001).
 Both are pure routers: begin_activity(kind) validates required params per kind then dispatches to
 the matching pre-existing ``_impl``; resolve_activity(kind, id) does the same for the two resolve
 tools. Routing is proven here with injected stub impls (AsyncMock), not against real DB/content
-state -- each target ``_impl`` already has its own test suite for its own behavior.
+state -- each target ``_impl`` already has its own test suite for its own behavior. The exception
+is the real-PG training round-trip (AC4) below, which drives the real training_tools module
+against the shared dev DB to prove the router matches the pre-fold wrapper end-to-end.
 """
 
+import json
+import uuid
 from unittest.mock import AsyncMock
 
 import pytest
 from livekit.agents.llm import ToolError, is_function_tool, is_raw_function_tool
 from sample_fixtures import make_context
 
+import db
+import db_training
+import training_tools
 from activity_tools import _begin_activity_impl, _resolve_activity_impl, begin_activity, resolve_activity
 
 
@@ -206,3 +213,78 @@ class TestToolRegistration:
     def test_resolve_activity_is_a_single_strict_function_tool(self):
         assert is_function_tool(resolve_activity)
         assert not is_raw_function_tool(resolve_activity)
+
+
+# --- AC4, against real SQL -----------------------------------------------------
+#
+# begin_activity(kind='training') must produce the same training_activities row the pre-fold
+# initiate_training_cycle wrapper did. Drives the real training_tools._initiate_training_cycle_impl
+# (no seam overrides) against the shared dev DB, unique player id + cleanup (the _db_lifecycle /
+# dev_db_pool pattern).
+
+
+class TestBeginTrainingAgainstRealSql:
+    async def _seed_player(self, pool, player_id: str) -> None:
+        await pool.execute(
+            "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)",
+            player_id,
+            json.dumps({"player_id": player_id, "name": "Test", "class": "warrior", "level": 1}),
+        )
+
+    async def _cleanup(self, pool, *player_ids: str) -> None:
+        for pid in player_ids:
+            # child-then-parent (training_activities also cascades from the players FK, migration 021)
+            await pool.execute("DELETE FROM training_activities WHERE player_id = $1", pid)
+            await pool.execute("DELETE FROM players WHERE player_id = $1", pid)
+
+    @pytest.mark.usefixtures("dev_db_pool")
+    async def test_begin_activity_training_creates_a_real_training_activity_row(self):
+        pool = await db.get_pool()
+        player_id = f"test_player_{uuid.uuid4().hex}"
+        await self._seed_player(pool, player_id)
+        ctx = make_context(player_id=player_id)
+        try:
+            raw = await _begin_activity_impl(ctx, "training", program_id="combat_basics")
+            result = json.loads(raw)
+
+            rows = await db_training.get_player_training_activities(player_id, conn=pool)
+            assert len(rows) == 1
+            assert rows[0]["id"] == result["activity_id"]
+            assert rows[0]["state"] == "running_first_half"
+            assert rows[0]["data"]["program_id"] == "combat_basics"
+        finally:
+            await self._cleanup(pool, player_id)
+
+    @pytest.mark.usefixtures("dev_db_pool")
+    async def test_begin_activity_training_matches_direct_initiate_training_cycle_call(self):
+        # The router is a pass-through: driving it must persist the same row the pre-fold wrapper
+        # (a direct _initiate_training_cycle_impl call) did. Run both against separate players and
+        # assert the persisted rows and returns are equivalent -- this is what proves the fold.
+        pool = await db.get_pool()
+        routed_player = f"test_player_{uuid.uuid4().hex}"
+        direct_player = f"test_player_{uuid.uuid4().hex}"
+        await self._seed_player(pool, routed_player)
+        await self._seed_player(pool, direct_player)
+        try:
+            routed = json.loads(
+                await _begin_activity_impl(
+                    make_context(player_id=routed_player), "training", program_id="combat_basics"
+                )
+            )
+            direct = json.loads(
+                await training_tools._initiate_training_cycle_impl(
+                    make_context(player_id=direct_player), "combat_basics"
+                )
+            )
+
+            # Same return shape and stable values (id/timestamps are per-call, so excluded).
+            assert routed.keys() == direct.keys()
+            assert routed["state"] == direct["state"] == "running_first_half"
+            assert routed["program_name"] == direct["program_name"]
+
+            [routed_row] = await db_training.get_player_training_activities(routed_player, conn=pool)
+            [direct_row] = await db_training.get_player_training_activities(direct_player, conn=pool)
+            assert routed_row["state"] == direct_row["state"]
+            assert routed_row["data"]["program_id"] == direct_row["data"]["program_id"]
+        finally:
+            await self._cleanup(pool, routed_player, direct_player)
