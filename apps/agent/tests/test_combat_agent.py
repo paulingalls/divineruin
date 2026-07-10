@@ -149,11 +149,18 @@ class TestCombatBeatContract:
 
     def test_in_combat_ability_is_a_declaration_not_activate(self):
         # story-007: an in-combat spell/ability is an Ability declaration through declare_phase;
-        # activate is the OUT-OF-COMBAT entry only (story-002 folded cast_spell into activate).
-        # The prompt must teach the new shape so the DM routes casting through the phase loop
-        # (Focus/Resonance accounted) instead of activate.
+        # a free cast via activate is the OUT-OF-COMBAT entry only (story-002 folded cast_spell into
+        # activate). The prompt must teach the new shape so the DM routes casting through the phase
+        # loop (Focus/Resonance accounted) instead of a free activate cast.
         prompt = COMBAT_SYSTEM_PROMPT
-        low = prompt.lower()
         assert '"type": "ability"' in prompt
         assert "activate" in prompt
-        assert "only out of combat" in low
+        assert "never a free cast via activate" in prompt
+
+    def test_combat_only_capabilities_still_use_activate(self):
+        # M25 fix: Inner Fire and raising/dropping a Veil Ward are combat-only capabilities that
+        # enter through activate (the reserved tokens), so the blanket "never activate in combat"
+        # rule would silently forbid them mid-fight. The prompt must carve out the exception.
+        low = COMBAT_SYSTEM_PROMPT.lower()
+        assert "draethar_inner_fire" in low
+        assert "veil_ward" in low

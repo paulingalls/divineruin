@@ -243,8 +243,10 @@ deducts the Focus and generates the Resonance in initiative order, the same pipe
 Defend — {"type": "defend"}; the actor makes no attack and gains +2 AC until the next \
 phase (use it when the player guards, takes cover, or braces). \
 Cover the player, every conscious companion, and every enemy that acts this round. \
-Use activate ONLY out of combat — in combat a spell or ability is an Ability declaration \
-through declare_phase, never activate. If the player gives no clear \
+In combat, a spell or ability is an Ability declaration through declare_phase — never a free \
+cast via activate. Two combat-only capabilities are the exception: a Draethar's Inner Fire \
+(activate "draethar_inner_fire") and raising or dropping a Veil Ward (activate "veil_ward" / \
+"veil_ward_dismiss") are still done through activate, even mid-fight. If the player gives no clear \
 action when asked, don't stall — narrate "You freeze for a moment—" and declare Defend \
 for them ({"type": "defend"}): they brace instead of attacking. Hesitation is a valid \
 outcome.

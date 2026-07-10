@@ -66,7 +66,13 @@ async def activate(
     Pass target_id when the capability affects ONE other entity (a spell/ability target, or the
     party member raising/dismissing a Veil Ward on their own behalf). Pass target_ids (a list)
     for a spell or ability that hits several allies/enemies at once — not both. Omit both for a
-    self-targeted or partyless capability."""
+    self-targeted or partyless capability.
+
+    Some activations refuse — narrate the refusal rather than forcing it: a revival spell is
+    refused on a Hollow-killed corpse; a spell's own multi-target cap is enforced (too many is
+    refused); a Veil Ward raise is refused while one is already up (one shared ward per party) or
+    for an ineligible/underleveled/unaffordable caster; Inner Fire is once per encounter and
+    combat-only. Cantrips are free and scale their damage with level."""
     return await _activate_impl(context, id, target_id=target_id, target_ids=target_ids)
 
 
@@ -105,7 +111,6 @@ async def _activate_impl(
     ward_mod=veil_ward_tools,
     inner_fire_mod=draethar_inner_fire,
 ) -> str:
-    context.disallow_interruptions()
     logger.info("activate called: id=%s", id)
 
     kind = _resolve_kind(id, spells_mod=spells_mod, abilities_mod=abilities_mod, anchors_mod=anchors_mod)
