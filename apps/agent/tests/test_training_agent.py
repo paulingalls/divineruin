@@ -13,11 +13,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sample_fixtures import mock_txn
 
+from activity_tools import begin_activity, resolve_activity
 from dispatch_agent import DISPATCH_TOOLS, DispatchAgent
 from exploration_agent import EXPLORATION_TOOLS, ExplorationAgent
 from movement_tools import _move_player_impl
 from session_data import SessionData
-from training_tools import initiate_training_cycle, query_training_programs, resolve_training_midpoint
 
 _CITY_LOC = {
     "id": "accord_guild_hall",
@@ -62,10 +62,9 @@ def _move_mocks(current_loc: dict, dest_loc: dict):
 
 
 class TestDispatchAgentRegistration:
-    def test_registers_the_training_tools(self):
-        assert query_training_programs in DISPATCH_TOOLS
-        assert initiate_training_cycle in DISPATCH_TOOLS
-        assert resolve_training_midpoint in DISPATCH_TOOLS
+    def test_registers_the_activity_verbs(self):
+        assert begin_activity in DISPATCH_TOOLS
+        assert resolve_activity in DISPATCH_TOOLS
 
     def test_can_be_constructed(self):
         agent = DispatchAgent()
@@ -76,9 +75,8 @@ class TestCityToolBudget:
     def test_training_tools_left_city(self):
         # Extracting these tools is what keeps City at or under the strict-tool
         # ceiling (the count pin lives in test_strict_tool_budget.py).
-        assert query_training_programs not in EXPLORATION_TOOLS
-        assert initiate_training_cycle not in EXPLORATION_TOOLS
-        assert resolve_training_midpoint not in EXPLORATION_TOOLS
+        assert begin_activity not in EXPLORATION_TOOLS
+        assert resolve_activity not in EXPLORATION_TOOLS
 
 
 class TestMovePlayerActivityHandoff:

@@ -18,7 +18,7 @@ Outcomes:
 import json
 import logging
 
-from livekit.agents.llm import ToolError, function_tool
+from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import db
@@ -33,32 +33,6 @@ from session_data import SessionData
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.experimentation_tools")
-
-
-@function_tool()
-async def experiment_with_materials(
-    context: RunContext[SessionData],
-    material_ids: list[str],
-    quantities: list[int],
-    intended_output: str,
-) -> str:
-    """Attempt to craft something WITHOUT a known recipe by combining materials toward an
-    intended result. Rolls a crafting check at the would-be recipe's DC + 4. On success the
-    item is created and the recipe is learned permanently; on failure the materials are
-    spent. Use when the player improvises ("I try mixing these to make X") rather than
-    crafting a recipe they already know.
-
-    Args:
-        material_ids: The material ids the player commits to the attempt.
-        quantities: Quantities, positionally aligned with material_ids (same length).
-        intended_output: The item id the player hopes to create.
-    """
-    if len(material_ids) != len(quantities):
-        raise ToolError("material_ids and quantities must have the same length.")
-    if len(set(material_ids)) != len(material_ids):
-        raise ToolError("material_ids must not contain duplicates.")
-    materials = dict(zip(material_ids, quantities, strict=True))
-    return await _experiment_with_materials_impl(context, materials, intended_output)
 
 
 async def _experiment_with_materials_impl(

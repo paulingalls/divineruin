@@ -404,18 +404,19 @@ activity (training with a mentor, or sending a companion on an errand). Warmer a
 slower than the bustle outside: the rhythm of practice, preparation, a teacher's \
 attention.
 
-For training: when the player asks what they can learn, call query_training_programs \
-to see what this mentor offers — don't guess at program names. To begin, call \
-initiate_training_cycle with a program id from that list. A cycle has a midpoint where \
-the player chooses how to focus; when they decide, call resolve_training_midpoint with \
-their choice. Narrate the mentor's guidance and the feel of the work — never read out \
-program ids or raw mechanics.
+For training: when the player asks what they can learn, call query_info(kind=\
+"training_programs") to see what this mentor offers — don't guess at program names. \
+To begin, call begin_activity(kind="training") with a program id from that list. A \
+cycle has a midpoint where the player chooses how to focus; when they decide, call \
+resolve_activity(kind="training") with their choice. Narrate the mentor's guidance \
+and the feel of the work — never read out program ids or raw mechanics.
 
 For companion errands: when the player wants to send a companion off, call \
-dispatch_companion_errand with the companion, the errand kind (scout, social, acquire, \
-or relationship), and where to send them. Later, when they ask how it went, call \
-resolve_companion_errand with the errand id and narrate the companion's return in \
-their own voice — what they saw, found, or ran into — then offer the choices it surfaces.
+begin_activity(kind="companion_errand") with the companion, the errand kind (scout, \
+social, acquire, or relationship), and where to send them. Later, when they ask how \
+it went, call resolve_activity(kind="companion_errand") with the errand id and narrate \
+the companion's return in their own voice — what they saw, found, or ran into — then \
+offer the choices it surfaces.
 
 When the player is done here and wants to return to what they were doing, move_player \
 takes them back out into the world.\

@@ -11,45 +11,26 @@ docs/decisions/0004-agent-tool-scaling.md).
 
 from typing import Any
 
+from activity_tools import begin_activity, resolve_activity
 from base_agent import BaseGameAgent
 from card_tap_handler import SpecializationTapHandler, start_specialization_tap
 from check_tools import check
 from choice_tools import select
-from crafting_tools import query_available_workspaces, rent_workspace, start_crafting_project
 from dispatch_tools import conclude_dispatch
 from environment_tools import play_sound, set_music_state
-from errand_tools import dispatch_companion_errand, resolve_companion_errand
-from experimentation_tools import experiment_with_materials
 from movement_tools import move_player
 from query_tools import query_info
-from recipe_tools import learn, query_recipe_requirements
+from recipe_tools import learn
 from session_tools import end_session
 from system_prompts import DISPATCH_SYSTEM_PROMPT
-from training_tools import initiate_training_cycle, query_training_programs, resolve_training_midpoint
 
 DISPATCH_TOOLS = [
-    # Training (the first async activity)
-    query_training_programs,
-    initiate_training_cycle,
-    resolve_training_midpoint,
-    # Companion errands (the third async activity)
-    dispatch_companion_errand,
-    resolve_companion_errand,
+    # Downtime activities (training, companion errands, crafting, workspaces,
+    # experimentation) fold into these two verbs (M26 Phase-5, story-003).
+    begin_activity,
+    resolve_activity,
     # Recipe acquisition (M5.1 crafting; learn verb M5 story-002)
-    query_recipe_requirements,
     learn,
-    # Crafting workspaces + projects (M5.2). NOTE: the Artificer Portable-Lab
-    # training-slot exception (ADR 0005) is the TS REST path's (story-006); this
-    # agent tool uses the plain crafting-slot cap, so the two entry points diverge
-    # on Artificer slot rules until that wiring lands.
-    query_available_workspaces,
-    rent_workspace,
-    start_crafting_project,
-    # Repair (M5.4) moved to BlacksmithAgent (story-009): repair_item is reached via
-    # the enter_mode(mode="blacksmith") handoff from a region agent (M5 fold), not from
-    # this dispatch context.
-    # Experimentation (M5.3): craft without a known recipe at DC+4 (resolves immediately).
-    experiment_with_materials,
     # Resolve a pending player choice (the L5 specialization fork) — leveling can land
     # mid-training, so select must be reachable here too, not only in exploration (story-004).
     select,

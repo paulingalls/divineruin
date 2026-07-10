@@ -208,8 +208,8 @@ class TestDispatchToolRegistration:
         assert len(DISPATCH_TOOLS) <= MAX_STRICT_TOOLS
 
     def test_errand_tools_registered(self):
+        from activity_tools import begin_activity, resolve_activity
         from dispatch_agent import DISPATCH_TOOLS
-        from errand_tools import dispatch_companion_errand, resolve_companion_errand
 
-        assert dispatch_companion_errand in DISPATCH_TOOLS
-        assert resolve_companion_errand in DISPATCH_TOOLS
+        assert begin_activity in DISPATCH_TOOLS
+        assert resolve_activity in DISPATCH_TOOLS

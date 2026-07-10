@@ -17,7 +17,7 @@ import logging
 import random
 from datetime import UTC, datetime, timedelta
 
-from livekit.agents.llm import ToolError, function_tool
+from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import companion_relationship_queries
@@ -49,32 +49,6 @@ _COMPANION_SLOT_CAP = 1
 # add dead air to the common (still-out) path, fighting the 1500ms latency rule.
 _RESOLVE_POLL_ATTEMPTS = 2  # initial read + 1 retry
 _RESOLVE_POLL_INTERVAL_SECONDS = 1.5
-
-
-@function_tool()
-async def dispatch_companion_errand(
-    context: RunContext[SessionData],
-    companion_id: str,
-    errand_type: str,
-    destination: str,
-) -> str:
-    """Send a companion on an errand. Use only after the player has audibly chosen
-    a companion, an errand kind, and where to send them.
-
-    Errand kinds: scout (investigate a place), social (gather gossip/leads),
-    acquire (find a resource/item), relationship (visit an NPC). The companion
-    returns later with a narrated result — call resolve_companion_errand then.
-
-    Returns an error if the errand kind is unknown, the destination isn't valid
-    for that kind, the companion can't perform it, the destination is too
-    dangerous for that errand, or the companion is already on an errand.
-
-    Args:
-        companion_id: The companion to send (e.g. companion_kael).
-        errand_type: scout | social | acquire | relationship.
-        destination: A location id valid for this errand kind.
-    """
-    return await _dispatch_companion_errand_impl(context, companion_id, errand_type, destination)
 
 
 async def _dispatch_companion_errand_impl(
@@ -154,21 +128,6 @@ async def _dispatch_companion_errand_impl(
             "destination": destination,
         }
     )
-
-
-@function_tool()
-async def resolve_companion_errand(
-    context: RunContext[SessionData],
-    errand_id: str,
-) -> str:
-    """Resolve a companion's errand and report what happened. Use when the player
-    asks how the errand went (after enough time has passed). Returns the outcome
-    tier, narration context, and the decision options to offer the player.
-
-    Args:
-        errand_id: The activity_id returned by dispatch_companion_errand.
-    """
-    return await _resolve_companion_errand_impl(context, errand_id)
 
 
 async def _resolve_companion_errand_impl(
