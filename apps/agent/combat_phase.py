@@ -285,10 +285,15 @@ def _wrap(state: CombatState) -> WrapOutcome:
             p.death_save_failures = _DEATH_SAVE_LIMIT - 1
             p.death_save_successes = _STABILIZE_LIMIT
 
+    # Only participants that CAN roll a death save are surfaced. An enemy dropped to 0 HP without
+    # overkill is is_fallen and not is_dead, so the counter filters alone let it through — and the DM
+    # was handed an owed death save for a defeated monster that no tool can roll. Companions stay
+    # (the clamp above keeps them rolling but never dying); enemies simply lie there.
     death_saves_due = [
         p.id
         for p in state.participants
-        if p.is_fallen
+        if p.type != "enemy"
+        and p.is_fallen
         and not p.is_dead  # instant-dead (M4.4) skips the Fallen state — never rolls a death save
         and p.death_save_successes < _STABILIZE_LIMIT
         and p.death_save_failures < _DEATH_SAVE_LIMIT

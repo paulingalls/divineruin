@@ -8,6 +8,7 @@ module only computes beat transitions, ordered resolution packets, and wrap effe
 """
 
 import random
+from dataclasses import replace
 
 import pytest
 from combat._helpers import _make_combat_state
@@ -128,6 +129,23 @@ class TestNarrationBeat:
 
 
 class TestWrapBeat:
+    def test_a_fallen_enemy_is_not_owed_a_death_save(self):
+        """Only death-save-capable participants are surfaced. An enemy dropped to 0 HP without
+        overkill is is_fallen and not is_dead, so the counter filters alone let it through -- and
+        the DM was handed an owed death save for a defeated goblin that no tool can ever roll
+        (request_death_save serves players/companions, never enemies)."""
+        state = _make_combat_state()
+        fallen_enemy = replace(state.participants[1], id="goblin_scout_2", hp_current=0, is_fallen=True)
+        state.participants.append(fallen_enemy)  # one enemy down, one standing -> combat continues
+        state.beat = PhaseBeat.WRAP
+        state.pending_declarations = _declarations()
+
+        _next_state, advance = advance_combat_phase(state, None)
+
+        assert advance.wrap is not None
+        assert advance.wrap.combat_ended is False  # the standing enemy keeps the fight alive
+        assert advance.wrap.death_saves_due == []  # the fallen enemy owes nothing
+
     def test_schedules_death_save_decays_resonance_and_loops(self):
         # Player fallen (not dead) + enemy alive -> combat continues, loops to declaration.
         state = _make_combat_state(player_fallen=True)

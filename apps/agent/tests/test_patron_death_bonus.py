@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from combat._helpers import _make_combat_state
-from sample_fixtures import make_context
+from sample_fixtures import make_context, make_db_mod
 
 import combat_resolution
 import creation_deities
@@ -93,7 +93,7 @@ class TestDeathSaveBonusWiredLive:
             "combat_death_save.combat_resolution.resolve_death_save",
             wraps=combat_resolution.resolve_death_save,
         ) as spy:
-            await _request_death_save_impl(ctx, mutations=_death_save_mutations())
+            await _request_death_save_impl(ctx, mutations=_death_save_mutations(), db_mod=make_db_mod()[0])
 
         assert spy.call_args.kwargs.get("bonus") == 2
 
@@ -107,6 +107,6 @@ class TestDeathSaveBonusWiredLive:
             "combat_death_save.combat_resolution.resolve_death_save",
             wraps=combat_resolution.resolve_death_save,
         ) as spy:
-            await _request_death_save_impl(ctx, mutations=_death_save_mutations())
+            await _request_death_save_impl(ctx, mutations=_death_save_mutations(), db_mod=make_db_mod()[0])
 
         assert spy.call_args.kwargs.get("bonus", 0) == 0
