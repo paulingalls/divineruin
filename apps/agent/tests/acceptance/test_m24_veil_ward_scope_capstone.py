@@ -31,9 +31,11 @@ from sample_fixtures import make_context, make_mock_room, published_payloads
 import combat_init
 import combat_turn
 import db
+import db_mutations
 import event_types as E
 import spell_casting
 import spells
+import veil_anchor_tools
 import veil_ward_tools
 
 _WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
@@ -178,3 +180,107 @@ async def test_no_player_row_carries_legacy_ward_state(reset_db_pool: str) -> No
     per-player -- stronger than checking one seeded row, and cheap against the whole table."""
     pool = await db.get_pool()
     assert await pool.fetchval("SELECT count(*) FROM players WHERE data ? 'veil_ward'") == 0
+
+
+async def test_paladin_rounds_ward_expires_on_the_third_wrap(reset_db_pool: str) -> None:
+    """AC4 (clock 1 of 2): a Paladin's ROUNDS(3) ward ticks ONLY at the combat WRAP beat, decrement-
+    then-test -- it must survive wraps 1 and 2 and die on the 3rd, never the 2nd. Cross-leak: it never
+    writes a veil_wards row for either the combat or the location scope."""
+    pool = await db.get_pool()
+    player_id = "cap_m24_ac4_paladin"
+    location = "cap_m24_ac4_paladin_hall"
+    await seed_player_with_pools(pool, player_id=player_id, class_="paladin", focus_current=10, stamina_current=10)
+    await _bump_level(pool, player_id, 10)
+    await _equip_weapon(pool, player_id)
+
+    ctx = make_context(player_id, location_id=location)
+    raw = await combat_init._start_combat_impl(ctx, "hollow_wisp", "A hollow wisp coalesces from the drift.")
+    assert isinstance(raw, tuple)
+    combat_id = ctx.userdata.combat_state.combat_id
+    enemy = next(p for p in ctx.userdata.combat_state.participants if p.type == "enemy")
+
+    await veil_ward_tools._activate_veil_ward_impl(ctx, True)
+    assert ctx.userdata.combat_state.veil_ward == {"source": "paladin", "rounds_remaining": 3}
+
+    for expected_remaining in (2, 1, None):
+        decls = {
+            player_id: {"type": "attack", "action": "Longsword", "target_id": enemy.id},
+            enemy.id: {"type": "attack", "action": enemy.action_pool[0]["name"], "target_id": player_id},
+        }
+        await combat_turn._declare_phase_impl(ctx, decls)
+        # Fixed low damage -- the 22 HP wisp must outlast all 3 wraps so the clock is observed fully.
+        result = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(1))
+        assert isinstance(result, str)  # combat continues through all 3 wraps
+        ward = ctx.userdata.combat_state.veil_ward
+        if expected_remaining is None:
+            assert ward is None  # dies on the 3rd wrap, not the 2nd
+        else:
+            assert ward == {"source": "paladin", "rounds_remaining": expected_remaining}
+
+    # The ROUNDS clock never touched veil_wards -- for either scope.
+    assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", combat_id) == 0
+    assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", location) == 0
+
+
+async def test_anchor_survives_wrap_beats_and_expires_on_the_world_clock(reset_db_pool: str) -> None:
+    """AC4 (clock 2 of 2): a deployed Artificer anchor's REAL_TIME hour ticks ONLY against the world
+    clock -- the combat WRAP beat never touches it (no encounter ward is raised, so it stays halved
+    from the location scope every phase), and it never leaks a veil_wards row into the encounter
+    scope. Advancing NOW() past the anchor's expiry stops the halving; the row itself stays present
+    (lazy expiry) until a read hides it."""
+    pool = await db.get_pool()
+    player_id = "cap_m24_ac4_anchor"
+    location = "cap_m24_ac4_anchor_hall"
+    await seed_player_with_pools(pool, player_id=player_id, class_="mage", focus_current=20)
+    await _equip_weapon(pool, player_id)
+    await db_mutations.add_inventory_item(player_id, "veil_ward_anchor_small", 1, conn=pool)
+    await spells.load_spells()
+
+    spell = spells.get_spell(_SPELL_ID)
+    base = spell.resonance_by_source[spell.source]
+
+    ctx = make_context(player_id, location_id=location)
+    await veil_anchor_tools._deploy_veil_anchor_impl(ctx, "veil_ward_anchor_small")
+    assert ctx.userdata.location_ward is not None
+
+    raw = await combat_init._start_combat_impl(ctx, "hollow_wisp", "A hollow wisp coalesces from the drift.")
+    assert isinstance(raw, tuple)
+    assert ctx.userdata.combat_state.veil_ward is None  # no encounter ward raised
+    combat_id = ctx.userdata.combat_state.combat_id
+    enemy = next(p for p in ctx.userdata.combat_state.participants if p.type == "enemy")
+
+    for _ in range(3):
+        decls = {
+            player_id: {"type": "ability", "action": _SPELL_ID, "target_id": enemy.id},
+            enemy.id: {"type": "attack", "action": enemy.action_pool[0]["name"], "target_id": player_id},
+        }
+        await combat_turn._declare_phase_impl(ctx, decls)
+        result = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(1))
+        assert isinstance(result, str)
+        packets = {p["actor_id"]: p for p in json.loads(result)["packets"]}
+        assert packets[player_id]["cast"]["ward_active"] is True
+        assert packets[player_id]["cast"]["resonance_generated"] == base // 2
+        # The WRAP beat never touches the world-clock scope: no encounter ward appears.
+        assert ctx.userdata.combat_state.veil_ward is None
+
+    # The location ward never leaked into the encounter scope.
+    assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", combat_id) == 0
+
+    # Advance the world clock past the anchor's expiry.
+    await pool.execute("UPDATE veil_wards SET expires_at = NOW() - interval '1 second' WHERE scope_id = $1", location)
+    # Lazy expiry: the row is still present -- nothing sweeps veil_wards, only the read hides it.
+    assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", location) == 1
+
+    # End the fight with a lethal ATTACK so the next cast is genuinely out-of-combat.
+    decls = {
+        player_id: {"type": "attack", "action": "Longsword", "target_id": enemy.id},
+        enemy.id: {"type": "attack", "action": enemy.action_pool[0]["name"], "target_id": player_id},
+    }
+    await combat_turn._declare_phase_impl(ctx, decls)
+    result = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(22))
+    assert isinstance(result, tuple)
+    assert ctx.userdata.combat_state is None
+
+    packet = json.loads(await spell_casting._cast_spell_impl(ctx, _SPELL_ID))
+    assert packet["ward_active"] is False
+    assert packet["resonance_generated"] == base
