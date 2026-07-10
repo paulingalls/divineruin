@@ -13,6 +13,7 @@ Drives _deploy_veil_anchor_impl directly with injected mock modules, mirroring t
 """
 
 import json
+import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
@@ -20,8 +21,11 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
+import db
+import db_mutations_veil_ward
 import event_types as E
 import veil_anchor_tools
+import veil_ward
 import ward_resolution
 from veil_anchor_tools import _deploy_veil_anchor_impl
 from veil_ward import WardScope
@@ -156,3 +160,51 @@ class TestDeployRefusals:
         with pytest.raises(RuntimeError):
             await _deploy(ctx, mock_db, queries, inventory, ward_mut, _SMALL)
         assert ctx.userdata.location_ward is None
+
+
+# --- AC2, against real SQL -----------------------------------------------------
+#
+# "Not dismissible" is enforced by dismiss_ward's `AND dismissible` WHERE clause, so a mocked
+# ward_mutations_mod cannot prove it — the mock would happily report a deletion. These drive the
+# real table (fast-lane dev DB, unique scope id + cleanup, the _db_lifecycle pattern) with exactly
+# the values VEIL_ANCHORS supplies, so a flip of large.dismissible to True turns them red.
+
+
+class TestDeployedAnchorsAgainstRealSql:
+    async def _write_anchor(self, pool, scope, item_id):
+        anchor = veil_ward.VEIL_ANCHORS[item_id]
+        await db_mutations_veil_ward.write_ward(
+            scope,
+            veil_ward.ANCHOR_SOURCE,
+            veil_ward.location_expires_at(anchor.duration, datetime.now(UTC)),
+            dismissible=anchor.dismissible,
+            conn=pool,
+        )
+
+    @pytest.mark.usefixtures("dev_db_pool")
+    async def test_a_deployed_large_anchor_survives_dismissal(self):
+        # AC2: its lifecycle belongs to crafting, not to activate_veil_ward.
+        pool = await db.get_pool()
+        scope = WardScope.location(f"test_loc_{uuid.uuid4().hex}")
+        try:
+            await self._write_anchor(pool, scope, _LARGE)
+            await db_mutations_veil_ward.dismiss_ward(scope, conn=pool)
+
+            ward = await db_mutations_veil_ward.read_active_ward(scope, conn=pool)
+            assert ward is not None, "the large anchor's ward must survive a dismiss"
+            assert ward["source"] == "artificer"
+            assert ward["expires_at"] is None  # permanent, never lapses against NOW()
+        finally:
+            await pool.execute("DELETE FROM veil_wards WHERE scope_id = $1", scope.id)
+
+    @pytest.mark.usefixtures("dev_db_pool")
+    async def test_a_deployed_small_anchor_can_be_dismissed(self):
+        # The contrast that proves the assertion above is about `dismissible`, not about anchors.
+        pool = await db.get_pool()
+        scope = WardScope.location(f"test_loc_{uuid.uuid4().hex}")
+        try:
+            await self._write_anchor(pool, scope, _SMALL)
+            await db_mutations_veil_ward.dismiss_ward(scope, conn=pool)
+            assert await db_mutations_veil_ward.read_active_ward(scope, conn=pool) is None
+        finally:
+            await pool.execute("DELETE FROM veil_wards WHERE scope_id = $1", scope.id)
