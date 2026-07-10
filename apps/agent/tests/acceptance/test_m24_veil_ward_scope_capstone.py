@@ -32,6 +32,7 @@ import combat_init
 import combat_turn
 import db
 import event_types as E
+import spell_casting
 import spells
 import veil_ward_tools
 
@@ -45,6 +46,16 @@ async def _bump_level(pool, player_id: str, level: int) -> None:
         "UPDATE players SET data = jsonb_set(data, '{level}', $2::jsonb) WHERE player_id = $1",
         player_id,
         json.dumps(level),
+    )
+
+
+async def _equip_weapon(pool, player_id: str) -> None:
+    """So combat_init synthesizes a non-empty action_pool (it builds the pool from equipment
+    entries that carry `damage`) -- needed for an ATTACK declaration to land real damage."""
+    await pool.execute(
+        "UPDATE players SET data = jsonb_set(data, '{equipment}', $2::jsonb) WHERE player_id = $1",
+        player_id,
+        json.dumps({"main_hand": _WEAPON}),
     )
 
 
@@ -110,3 +121,53 @@ async def test_ward_raised_by_one_member_halves_every_caster_in_the_encounter(re
     assert payload["scope_id"] == cs.combat_id
     assert payload["source"] == "cleric"
     assert "caster_id" not in payload
+
+
+async def test_encounter_ward_dies_with_the_combat_and_the_next_cast_is_unhalved(reset_db_pool: str) -> None:
+    """AC2: the encounter scope has exactly ONE home -- combat's row deletion IS the ward's expiry.
+    No veil_wards row is ever written for it, the combat-end broadcast reports active=False, and a
+    following out-of-combat cast generates the unhalved baseline."""
+    pool = await db.get_pool()
+    player_id = "cap_m24_ac2_cleric"
+    location = "cap_m24_ac2_hall"
+    await seed_player_with_pools(pool, player_id=player_id, class_="cleric", focus_current=20)
+    await _bump_level(pool, player_id, 7)
+    await _equip_weapon(pool, player_id)
+    await spells.load_spells()
+
+    spell = spells.get_spell(_SPELL_ID)
+    base = spell.resonance_by_source[spell.source]
+
+    room = make_mock_room()
+    ctx = make_context(player_id, location_id=location, room=room)
+    raw = await combat_init._start_combat_impl(ctx, "hollow_wisp", "A hollow wisp coalesces from the drift.")
+    assert isinstance(raw, tuple)
+    combat_id = ctx.userdata.combat_state.combat_id
+    enemy = next(p for p in ctx.userdata.combat_state.participants if p.type == "enemy")
+
+    await veil_ward_tools._activate_veil_ward_impl(ctx, True)
+    assert ctx.userdata.combat_state.veil_ward == {"source": "cleric", "rounds_remaining": None}
+
+    # Drop the wisp (22 HP) in one hit -> combat ends this phase.
+    decls = {
+        player_id: {"type": "attack", "action": "Longsword", "target_id": enemy.id},
+        enemy.id: {"type": "attack", "action": enemy.action_pool[0]["name"], "target_id": player_id},
+    }
+    await combat_turn._declare_phase_impl(ctx, decls)
+    result = await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(22))
+    assert isinstance(result, tuple)  # the winning wrap fires end_combat and hands back
+    assert ctx.userdata.combat_state is None
+
+    # The combat row is gone, and the encounter ward NEVER had a veil_wards row -- for either scope.
+    assert await pool.fetchrow("SELECT 1 FROM combat_instances WHERE combat_id = $1", combat_id) is None
+    assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", combat_id) == 0
+    assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", location) == 0
+
+    # combat-end broadcast the ward's expiry: no location ward covers this scope, so active=False.
+    ward_events = [p for p in published_payloads(room) if p["type"] == E.VEIL_WARD_CHANGED]
+    assert ward_events[-1]["active"] is False
+
+    # A following out-of-combat cast generates the unhalved baseline.
+    packet = json.loads(await spell_casting._cast_spell_impl(ctx, _SPELL_ID))
+    assert packet["ward_active"] is False
+    assert packet["resonance_generated"] == base
