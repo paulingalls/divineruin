@@ -176,9 +176,26 @@ async def test_encounter_ward_dies_with_the_combat_and_the_next_cast_is_unhalved
 
 
 async def test_no_player_row_carries_legacy_ward_state(reset_db_pool: str) -> None:
-    """AC3: migration 057 removed players.data.veil_ward and nothing writes it back. Global, not
-    per-player -- stronger than checking one seeded row, and cheap against the whole table."""
+    """AC3: migration 057 removed players.data.veil_ward, and raising a ward does not write it back.
+
+    Raises its OWN ward through the real tool rather than leaning on the raisers AC1/AC2 happen to
+    leave behind: a bare global count would pass in isolation against seed rows that never raised
+    anything, greening exactly the regression this guards (the raise re-writing the legacy key)."""
     pool = await db.get_pool()
+    player_id = "cap_m24_ac3_cleric"
+    location = "cap_m24_ac3_hall"
+    await seed_player_with_pools(pool, player_id=player_id, class_="cleric", focus_current=20)
+    await _bump_level(pool, player_id, 7)
+
+    # Out of combat, a Cleric's ENCOUNTER-kind ward targets the LOCATION scope (expires_at NULL:
+    # raised OOC, it stands until dismissed) -- so a veil_wards row exists to be the ward's one home.
+    ctx = make_context(player_id, location_id=location)
+    await veil_ward_tools._activate_veil_ward_impl(ctx, True)
+    assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", location) == 1
+
+    # The raiser's own row carries no ward state -- the scope owns the ward, not the player...
+    assert await pool.fetchval("SELECT data ? 'veil_ward' FROM players WHERE player_id = $1", player_id) is False
+    # ...and no row anywhere does.
     assert await pool.fetchval("SELECT count(*) FROM players WHERE data ? 'veil_ward'") == 0
 
 
