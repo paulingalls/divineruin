@@ -29,6 +29,7 @@ from livekit.agents.llm import is_function_tool, is_raw_function_tool
 from sample_fixtures import make_context
 
 import db
+from activate_tools import activate
 from blacksmith_agent import BLACKSMITH_TOOLS
 from check_tools import check
 from choice_tools import select
@@ -67,6 +68,11 @@ REMOVED_NOUN_TOOLS = frozenset(
 # re-created tool can't silently re-register on any agent — the verb-fold registry trap.
 REMOVED_COMBAT_TOOLS = frozenset({"request_attack", "resolve_enemy_turn"})
 
+# M25 Phase-5 story-002: the four combat capability tools folded into the single
+# polymorphic activate verb. Guarded the same way as the other folds — no demoted
+# @function_tool wrapper may re-register on any agent.
+REMOVED_CAPABILITY_TOOLS = frozenset({"cast_spell", "request_ability_activation", "activate_veil_ward", "inner_fire"})
+
 # Every assembled gameplay-agent tool registry. M7 collapsed the three region agents
 # into one exploration registry, so city/wilderness/dungeon are a single "exploration" row.
 AGENT_TOOL_LISTS = [
@@ -96,6 +102,9 @@ VERB_PRESENCE = [
     # action, so it lives on exploration alone — never on combat, where activate_veil_ward
     # already refuses the artificer source it would otherwise duplicate.
     (deploy_veil_anchor, "deploy_veil_anchor", {"exploration"}),
+    # M25 Phase-5 story-002: activate folds cast_spell/request_ability_activation/
+    # activate_veil_ward/inner_fire on combat. Exploration/anchor gains it in story-003.
+    (activate, "activate", {"combat"}),
 ]
 
 
@@ -105,7 +114,7 @@ VERB_PRESENCE = [
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_no_removed_noun_tool_survives(name: str, tools: list) -> None:
     """No pre-M5 noun tool (or M4.1-retired combat tool) is registered on any agent."""
-    leaked = (REMOVED_NOUN_TOOLS | REMOVED_COMBAT_TOOLS) & {t.__name__ for t in tools}
+    leaked = (REMOVED_NOUN_TOOLS | REMOVED_COMBAT_TOOLS | REMOVED_CAPABILITY_TOOLS) & {t.__name__ for t in tools}
     assert not leaked, f"{name} still registers removed tool(s): {sorted(leaked)}"
 
 

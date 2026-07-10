@@ -1,8 +1,10 @@
 """Archetype ability activation tool for the DM agent (M2.2).
 
-request_ability_activation validates a character's Stamina/Focus against an
+_request_ability_activation_impl validates a character's Stamina/Focus against an
 ability's cost, deducts on success, rejects via ToolError when insufficient, and
-returns the ability's narration_cue for the DM to voice.
+returns the ability's narration_cue for the DM to voice. It enters via
+activate_tools.activate (M25 Phase-5 story-002 folded the standalone
+request_ability_activation @function_tool wrapper into it).
 
 Cost is a {stamina, focus, scaling} object (decision m22-cost-object-schema).
 Variable/pool-cost abilities (Lay on Hands, Divine Smite) carry cost{0,0} with the
@@ -15,7 +17,7 @@ ability is NEVER reported as a plain free activation (resolves concern
 import json
 import logging
 
-from livekit.agents.llm import ToolError, function_tool
+from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import abilities
@@ -27,33 +29,11 @@ import db_mutations_conditions
 import db_queries
 import mentor_variants
 import spells
-from db_errors import db_tool
 from resource_costs import gate_pool
 from session_data import SessionData
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
-
-
-@function_tool()
-@db_tool
-async def request_ability_activation(
-    context: RunContext[SessionData],
-    ability_id: str,
-    target_id: str | None = None,
-    target_ids: list[str] | None = None,
-) -> str:
-    """Activate one of the character's archetype abilities.
-    Call when the player uses a named ability, technique, spell, or reaction.
-    Provide the ability_id (e.g. 'warrior_devastating_strike'). Validates and
-    deducts the Stamina/Focus cost, rejecting if the character lacks the resource.
-    Returns the narration cue to voice; for pool/variable-cost abilities (e.g. Lay
-    on Hands) the variable_cost field carries the rule for you to track.
-
-    Pass target_id when the ability buffs ONE other entity (e.g. Inspire on an ally).
-    Pass target_ids (a list) for a party-wide buff that names several allies
-    (e.g. Mass Inspire) — not both. Omit both for a self-targeted ability."""
-    return await _request_ability_activation_impl(context, ability_id, target_id=target_id, target_ids=target_ids)
 
 
 async def _request_ability_activation_impl(

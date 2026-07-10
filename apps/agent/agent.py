@@ -119,9 +119,9 @@ async def dm_session(ctx: agents.JobContext) -> None:
     if not is_loaded():
         await load_archetypes()
 
-    # Load the spell catalog once per agent process (M3.3 casting SSOT). cast_spell /
-    # get_spell_info read it, and spell-backed caster CORE abilities compose their cast
-    # DATA from it (Try 2) — so it MUST load before abilities below.
+    # Load the spell catalog once per agent process (M3.3 casting SSOT). activate (spell
+    # path) / get_spell_info read it, and spell-backed caster CORE abilities compose their
+    # cast DATA from it (Try 2) — so it MUST load before abilities below.
     from spells import is_loaded as spells_is_loaded
     from spells import load_spells
 
@@ -137,7 +137,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
         await load_racial_resonance()
 
     # Load the archetype abilities once per agent process (M2.2). The DM voices
-    # ability activations via request_ability_activation, which reads this map.
+    # ability activations via activate (ability path), which reads this map.
     from abilities import is_loaded as abilities_is_loaded
     from abilities import load_abilities
 

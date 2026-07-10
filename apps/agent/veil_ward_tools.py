@@ -1,10 +1,12 @@
 """Veil Ward activation tool for the DM agent (M24 story-005: scope targeting).
 
-activate_veil_ward is one polymorphic verb (decision veil-ward-one-tool): active=True raises
-a ward, active=False dismisses it. Raising gates the caster's source (must be a WARD_SOURCES
-entry whose ``tool_raisable`` is set), level, and Focus/Stamina cost, deducts on success, writes
-the scope ward, and pushes a VEIL_WARD_CHANGED event; every user-facing failure is a ToolError
-raised BEFORE any write, so an ineligible/unaffordable activation deducts nothing.
+_activate_veil_ward_impl is one polymorphic verb (decision veil-ward-one-tool): active=True
+raises a ward, active=False dismisses it. It enters via activate_tools.activate — the reserved
+'veil_ward'/'veil_ward_dismiss' tokens (M25 Phase-5 story-002 folded the standalone
+activate_veil_ward @function_tool wrapper into it). Raising gates the caster's source (must be a
+WARD_SOURCES entry whose ``tool_raisable`` is set), level, and Focus/Stamina cost, deducts on
+success, writes the scope ward, and pushes a VEIL_WARD_CHANGED event; every user-facing failure is
+a ToolError raised BEFORE any write, so an ineligible/unaffordable activation deducts nothing.
 
 The ``tool_raisable`` gate is not a formality: WARD_SOURCES also carries the Artificer anchor and
 the Sacred site, whose costs are 0 Focus / 0 Stamina. Gating on key presence would let any
@@ -25,18 +27,17 @@ never by reading the one scope it is about to write. Dismissal drops the innermo
 then reads the LOCATION — the only scope that can still cover the party once the inner one is
 gone — so that single read IS the resolved state, no separate resolve call needed.
 
-Mirrors the ability_tools seam: a thin @function_tool wrapper over an _impl with module-injection
-keyword args (db_mod/queries_mod/persistence_mod/ward_mutations_mod/ward_mod/combat_mod/
-resolution_mod) for test mocking, a single db.transaction() block, and ToolError for every
-user-facing failure. The publish lands on the session's game_events channel post-commit,
-mirroring cast_spell.
+Mirrors the ability_tools seam: module-injection keyword args (db_mod/queries_mod/
+persistence_mod/ward_mutations_mod/ward_mod/combat_mod/resolution_mod) for test mocking, a single
+db.transaction() block, and ToolError for every user-facing failure. The publish lands on the
+session's game_events channel post-commit, mirroring the spell cast path.
 """
 
 import json
 import logging
 from datetime import UTC, datetime
 
-from livekit.agents.llm import ToolError, function_tool
+from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import ability_persistence
@@ -47,31 +48,11 @@ import db_queries
 import veil_ward
 import veil_ward_events
 import ward_resolution
-from db_errors import db_tool
 from resource_costs import gate_pool
 from session_data import SessionData
 from veil_ward import WardDurationKind
 
 logger = logging.getLogger("divineruin.tools")
-
-
-@function_tool()
-@db_tool
-async def activate_veil_ward(
-    context: RunContext[SessionData],
-    active: bool = True,
-    caster_id: str | None = None,
-) -> str:
-    """Raise or dismiss a Veil Ward. Call when the caster reinforces the Veil to cast more
-    safely (active=true, the default) or drops the ward (active=false). Raising requires a
-    ward-capable archetype (Cleric, Druid, Paladin) at sufficient level and deducts its
-    Focus/Stamina cost, rejecting if the caster is ineligible or can't afford it. A Paladin's
-    ward lasts a few rounds, so it can only be raised in combat. While a ward is active, casting
-    generates half the Resonance and Hollow Echo rolls are milder — for EVERY caster present,
-    not just the one who raised it, so a second raise is refused while one is already up.
-    Dismissing is free and requires an active ward. caster_id defaults to the speaking player;
-    pass a party member's id when a non-primary member raises/dismisses their own ward."""
-    return await _activate_veil_ward_impl(context, active, caster_id=caster_id)
 
 
 async def _activate_veil_ward_impl(
