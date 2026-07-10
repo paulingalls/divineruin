@@ -2,19 +2,16 @@
 
 from typing import Any
 
-from ability_tools import request_ability_activation
+from activate_tools import activate
 from base_agent import BaseGameAgent
 from check_tools import check
 from combat_death_save import request_death_save
 from combat_end import end_combat
 from combat_turn import consume_legendary_action, declare_phase, resolve_phase
-from draethar_inner_fire import inner_fire
 from environment_tools import play_sound, set_music_state
 from query_tools import query_info
-from spell_casting import cast_spell
 from spell_info_tools import get_spell_info
 from system_prompts import COMBAT_SYSTEM_PROMPT
-from veil_ward_tools import activate_veil_ward
 
 # The phase-loop drives combat (M4.1, story-003): declare_phase collects a round's
 # declarations, resolve_phase resolves them in initiative order and fires end_combat on
@@ -34,11 +31,8 @@ COMBAT_AGENT_TOOLS = [
     play_sound,
     set_music_state,
     query_info,
-    request_ability_activation,
-    cast_spell,
+    activate,
     get_spell_info,
-    activate_veil_ward,
-    inner_fire,
 ]
 
 

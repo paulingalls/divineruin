@@ -11,20 +11,19 @@ class TestCombatAgentConfig:
         assert issubclass(CombatAgent, BaseGameAgent)
 
     def test_combat_tools_are_complete(self):
-        from ability_tools import request_ability_activation
+        from activate_tools import activate
         from check_tools import check
         from combat_death_save import request_death_save
         from combat_end import end_combat
         from combat_turn import consume_legendary_action, declare_phase, resolve_phase
-        from draethar_inner_fire import inner_fire
         from environment_tools import play_sound, set_music_state
         from query_tools import query_info
-        from spell_casting import cast_spell
         from spell_info_tools import get_spell_info
-        from veil_ward_tools import activate_veil_ward
 
         # The phase-loop verbs (declare_phase/resolve_phase) replaced the old per-actor
         # resolve_enemy_turn + request_attack (story-003, unified packet resolution).
+        # Phase 5 (story-002, M25) folded cast_spell/request_ability_activation/
+        # activate_veil_ward/inner_fire into the single polymorphic activate verb.
         expected = {
             declare_phase,
             resolve_phase,
@@ -35,21 +34,31 @@ class TestCombatAgentConfig:
             play_sound,
             set_music_state,
             query_info,
-            request_ability_activation,
-            cast_spell,
+            activate,
             get_spell_info,
-            activate_veil_ward,
-            inner_fire,
         }
         assert set(COMBAT_AGENT_TOOLS) == expected
 
-    def test_cast_spell_and_get_spell_info_registered(self):
-        # story-004 M3: the cast path is callable from the combat agent.
-        from spell_casting import cast_spell
+    def test_activate_and_get_spell_info_registered(self):
+        # story-004 M3: the cast path is callable from the combat agent. Phase 5
+        # (story-002) folded cast_spell into activate.
+        from activate_tools import activate
         from spell_info_tools import get_spell_info
 
-        assert cast_spell in COMBAT_AGENT_TOOLS
+        assert activate in COMBAT_AGENT_TOOLS
         assert get_spell_info in COMBAT_AGENT_TOOLS
+
+    def test_demoted_capability_wrappers_not_registered(self):
+        # Phase 5 (story-002): the four folded wrappers are no longer @function_tool
+        # entries at all, so checking the registered tool names is sufficient.
+        registered_names = {getattr(t, "__name__", None) for t in COMBAT_AGENT_TOOLS}
+        for name in (
+            "cast_spell",
+            "request_ability_activation",
+            "activate_veil_ward",
+            "inner_fire",
+        ):
+            assert name not in registered_names
 
     def test_combat_tools_exclude_exploration(self):
         from mode_tools import enter_mode
@@ -138,12 +147,13 @@ class TestCombatBeatContract:
         low = COMBAT_SYSTEM_PROMPT.lower()
         assert "exact name" in low and "equipped weapon" in low
 
-    def test_in_combat_ability_is_a_declaration_not_cast_spell(self):
+    def test_in_combat_ability_is_a_declaration_not_activate(self):
         # story-007: an in-combat spell/ability is an Ability declaration through declare_phase;
-        # cast_spell is the OUT-OF-COMBAT entry only. The prompt must teach the new shape so the DM
-        # routes casting through the phase loop (Focus/Resonance accounted) instead of cast_spell.
+        # activate is the OUT-OF-COMBAT entry only (story-002 folded cast_spell into activate).
+        # The prompt must teach the new shape so the DM routes casting through the phase loop
+        # (Focus/Resonance accounted) instead of activate.
         prompt = COMBAT_SYSTEM_PROMPT
         low = prompt.lower()
         assert '"type": "ability"' in prompt
-        assert "cast_spell" in prompt
+        assert "activate" in prompt
         assert "only out of combat" in low

@@ -45,5 +45,6 @@ def test_combat_strict_tool_count():
     # silent pass under the <=MAX_STRICT_TOOLS ceiling. M3.3 added cast_spell + get_spell_info
     # (9->11); M3.2 story-003 added the single polymorphic activate_veil_ward (11->12);
     # M3.4 story-005 added the Draethar inner_fire active racial (12->13); M4.7 story-009 added
-    # consume_legendary_action for the Boss legendary beat (13->14).
-    assert len(COMBAT_AGENT_TOOLS) == 14
+    # consume_legendary_action for the Boss legendary beat (13->14); M25 Phase-5 story-002 folded
+    # cast_spell/request_ability_activation/activate_veil_ward/inner_fire into activate (14->11).
+    assert len(COMBAT_AGENT_TOOLS) == 11
