@@ -11,6 +11,7 @@ against the shared dev DB to prove the router matches the pre-fold wrapper end-t
 
 import json
 import uuid
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -23,7 +24,10 @@ import training_tools
 from activity_tools import _begin_activity_impl, _resolve_activity_impl, begin_activity, resolve_activity
 
 
-def _mocks():
+def _mocks() -> tuple[dict[str, Any], dict[str, AsyncMock]]:
+    # dict[str, Any] on the first member -- not dict[str, "_SimpleImpl"] -- so pyright doesn't
+    # treat this literal's keys as candidate values for _begin_activity_impl's other typed kwargs
+    # when it's spread with **mods below (mirrors test_activate_tools._mocks).
     training = AsyncMock(return_value="training-result")
     training_resolve = AsyncMock(return_value="training-resolve-result")
     errand_begin = AsyncMock(return_value="errand-begin-result")

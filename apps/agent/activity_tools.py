@@ -93,7 +93,7 @@ async def begin_activity(
 
 async def _begin_activity_impl(
     context: RunContext[SessionData],
-    kind: Literal["training", "companion_errand", "crafting", "workspace", "experiment"],
+    kind: str,
     *,
     program_id: str | None = None,
     companion_id: str | None = None,
@@ -176,7 +176,7 @@ async def resolve_activity(
 
 async def _resolve_activity_impl(
     context: RunContext[SessionData],
-    kind: Literal["training", "companion_errand"],
+    kind: str,
     id: str,
     *,
     decision: str | None = None,
