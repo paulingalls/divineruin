@@ -343,9 +343,9 @@ class TestStrictSchema:
         # built strict schema are `false` (closed objects), never a dict. (ADR 0004.)
         from livekit.agents.llm.utils import build_strict_openai_schema
 
-        from experimentation_tools import experiment_with_materials
+        from activity_tools import begin_activity
 
-        schema = build_strict_openai_schema(experiment_with_materials)
+        schema = build_strict_openai_schema(begin_activity)
 
         def assert_no_dict_additional_props(node):
             if isinstance(node, dict):
@@ -363,8 +363,8 @@ class TestStrictSchema:
 class TestDispatchToolsCap:
     def test_experiment_tool_registered_under_cap(self):
         import dispatch_agent
-        from experimentation_tools import experiment_with_materials
+        from activity_tools import begin_activity
         from llm_config import MAX_STRICT_TOOLS
 
-        assert experiment_with_materials in dispatch_agent.DISPATCH_TOOLS
+        assert begin_activity in dispatch_agent.DISPATCH_TOOLS
         assert len(dispatch_agent.DISPATCH_TOOLS) <= MAX_STRICT_TOOLS

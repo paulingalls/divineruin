@@ -5,8 +5,8 @@ the only kind is "recipe", which dispatches to `_learn_recipe_impl` — the muta
 write surface that locks the player row FOR UPDATE (serializing per-player learns
 so the slot count→write is atomic), gates on recipe-slot capacity
 (recipe_validation), and records the learn in player_known_recipes. An unknown kind
-fails loud with ToolError. `query_recipe_requirements` is a read tool returning a
-recipe's crafting requirements.
+fails loud with ToolError. Recipe requirements are read via `query_info` (M26
+Phase-5 fold, story-002).
 
 Errors raise LiveKit `ToolError` (ADR 0002). The `_*_impl` helpers expose
 `*_mod=` keyword seams for TEST-ONLY injection; production callers use the
@@ -27,7 +27,6 @@ import mentor_variant_tools
 import recipe_slots
 import recipes
 import spell_tools
-from db_errors import db_tool
 from recipe_validation import validate_recipe_slot_capacity
 from session_data import SessionData
 from tool_support import _validate_id
@@ -158,21 +157,6 @@ async def _learn_recipe_impl(
             "known_count": known_count + 1,
         }
     )
-
-
-@function_tool()
-@db_tool
-async def query_recipe_requirements(
-    context: RunContext[SessionData],
-    recipe_id: str,
-) -> str:
-    """Look up what a recipe needs to craft: required + optional materials, the
-    workspace, the crafting DC, and the craft time.
-
-    Args:
-        recipe_id: The recipe to inspect.
-    """
-    return await _query_recipe_requirements_impl(context, recipe_id)
 
 
 async def _query_recipe_requirements_impl(

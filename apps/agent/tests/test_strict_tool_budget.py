@@ -49,3 +49,12 @@ def test_combat_strict_tool_count():
     # consume_legendary_action for the Boss legendary beat (13->14); M25 Phase-5 story-002 folded
     # cast_spell/request_ability_activation/activate_veil_ward/inner_fire into activate (14->11).
     assert len(COMBAT_AGENT_TOOLS) == 11
+
+
+def test_dispatch_strict_tool_count():
+    # M26 Phase-5 story-003 cut DispatchAgent over from 10 folded noun tools
+    # (query_training_programs, initiate_training_cycle, resolve_training_midpoint,
+    # dispatch_companion_errand, resolve_companion_errand, query_recipe_requirements,
+    # query_available_workspaces, rent_workspace, start_crafting_project,
+    # experiment_with_materials) to begin_activity + resolve_activity (19->11).
+    assert len(DISPATCH_TOOLS) == 11
