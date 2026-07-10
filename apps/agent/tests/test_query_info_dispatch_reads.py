@@ -136,3 +136,54 @@ class TestQueryInfoNoTargetIdKinds:
                 training_mod=None,
                 crafting_mod=None,
             )
+
+
+class TestQueryInfoE2E:
+    """AC4: E2E tests against real database and _impl functions."""
+
+    @pytest.mark.asyncio
+    async def test_recipe_route_returns_valid_json(self, mock_context, dev_db_pool):
+        """AC4: query_info(kind='recipe') returns JSON with expected recipe fields."""
+        import recipes
+
+        # Get first recipe from seeded data
+        recipe_list = await recipes.list_recipes()
+        if not recipe_list:
+            pytest.skip("No recipes in test DB")
+
+        recipe_id = recipe_list[0]["id"]
+
+        # Call query_info with real _impl (no mocks)
+        result = await _query_info_impl(mock_context, kind="recipe", target_id=recipe_id)
+
+        # Verify JSON shape and contents
+        parsed = json.loads(result)
+        assert parsed["recipe_id"] == recipe_id
+        assert "name" in parsed
+        assert "tier" in parsed
+        assert "materials" in parsed
+        assert "time" in parsed
+
+    @pytest.mark.asyncio
+    async def test_training_programs_route_returns_valid_json(self, mock_context, dev_db_pool):
+        """AC4: query_info(kind='training_programs') returns JSON with programs list."""
+        # Call query_info with real _impl (no mocks)
+        result = await _query_info_impl(mock_context, kind="training_programs")
+
+        # Verify JSON shape
+        parsed = json.loads(result)
+        assert "programs" in parsed
+        assert isinstance(parsed["programs"], list)
+
+    @pytest.mark.asyncio
+    async def test_workspaces_route_returns_valid_json(self, mock_context, dev_db_pool):
+        """AC4: query_info(kind='workspaces') returns JSON with workspace data."""
+        # Call query_info with real _impl (no mocks)
+        result = await _query_info_impl(mock_context, kind="workspaces")
+
+        # Verify JSON shape
+        parsed = json.loads(result)
+        assert "accessible" in parsed
+        assert "rentable" in parsed
+        assert isinstance(parsed["accessible"], list)
+        assert isinstance(parsed["rentable"], list)
