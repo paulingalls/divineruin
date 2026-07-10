@@ -1,27 +1,29 @@
 """Draethar Inner Fire active racial tool for the DM agent (story-005, M3.4).
 
-inner_fire is the Draethar's once-per-encounter pressure valve (spec magic.md:262-268): the
+_inner_fire_impl is the Draethar's once-per-encounter pressure valve (spec magic.md:262-268): the
 caster's skin flares and the inner fire purges Veil disturbance — reduce current Resonance by 3,
 but take 1d6 unpreventable self fire damage. The -3 / "1d6" values are read from the racial
 table (racial_resonance, story-001), not hardcoded. Unlike the passive racials this is an active
-combat action, so it ships as a combat @function_tool and is gated to once per encounter via
-session.draethar_inner_fire_used (reset at encounter boundaries, beside the per-member weapon flags).
+combat action, gated to once per encounter via session.draethar_inner_fire_used (reset at
+encounter boundaries, beside the per-member weapon flags). It enters via activate_tools.activate —
+the reserved 'draethar_inner_fire' token (M25 Phase-5 story-002 folded the standalone inner_fire
+@function_tool wrapper into it).
 
 It is combat-scoped (the "encounter" is a combat): a player's HP lives in two places during
 combat — the in-memory CombatParticipant.hp_current and persisted players.data — so this writes
 BOTH, exactly as combat_turn.py does (participant then update_player_hp). Every user-facing
 failure is a ToolError raised BEFORE any write, so an ineligible use changes nothing.
 
-Mirrors the veil_ward_tools seam: a thin @function_tool + @db_tool wrapper over an _impl with
-module-injection keyword args (db_mod/queries_mod/hp_mutations_mod/resonance_mutations_mod/
-resonance_events_mod/racial_mod/dice_mod) for test mocking, a single db.transaction() block, and
-a post-commit in-memory sync + RESONANCE_CHANGED push (mirroring cast_spell).
+Mirrors the veil_ward_tools seam: module-injection keyword args (db_mod/queries_mod/
+hp_mutations_mod/resonance_mutations_mod/resonance_events_mod/racial_mod/dice_mod) for test
+mocking, a single db.transaction() block, and a post-commit in-memory sync + RESONANCE_CHANGED
+push (mirroring the spell cast path).
 """
 
 import json
 import logging
 
-from livekit.agents.llm import ToolError, function_tool
+from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import concentration_break
@@ -32,22 +34,11 @@ import db_queries
 import dice
 import racial_resonance
 import resonance_events
-from db_errors import db_tool
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
 
 _DRAETHAR = "draethar"
-
-
-@function_tool()
-@db_tool
-async def inner_fire(context: RunContext[SessionData]) -> str:
-    """Use the Draethar racial Inner Fire to purge Veil disturbance. Call when a Draethar caster
-    chooses to burn off Resonance mid-combat: it drops their Resonance by 3 but deals 1d6
-    unpreventable fire damage to them, usable once per encounter. Rejects if the caster is not a
-    Draethar, has already used it this encounter, or is not in combat."""
-    return await _inner_fire_impl(context)
 
 
 async def _inner_fire_impl(
