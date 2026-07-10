@@ -161,6 +161,7 @@ async def test_activate_routes_the_reserved_inner_fire_token(reset_db_pool: str)
         persisted = await db_mutations_resonance.read_player_resonance(player_id, conn=pool)
         assert persisted["current"] == 6
     finally:
+        await pool.execute("DELETE FROM combat_instances WHERE combat_id = $1", "cap_m25_inner_fire_combat")
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
 
 
