@@ -35,7 +35,8 @@ def test_exploration_strict_tool_count():
     # check / enter_mode folds). M7's exploration-agent collapse keeps a single list for ALL
     # regions; M4.6b added the travel verb (15->16); M23 story-002 added adjust_faction_reputation
     # (16->17) beside update_npc_disposition; M24 story-012 added deploy_veil_anchor, the only
-    # item-use verb (17->18) — 2 free slots remain under MAX_STRICT_TOOLS.
+    # item-use verb (17->18). M25 Phase-5 story-003 folded deploy_veil_anchor into the polymorphic
+    # activate verb — a net-zero swap, so the slot at 18 is now activate — 2 free slots remain.
     assert len(EXPLORATION_TOOLS) == 18
     assert len(EXPLORATION_TOOLS) == MAX_STRICT_TOOLS - 2
 
