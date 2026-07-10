@@ -52,14 +52,17 @@ class TestMultiPlayerDeathSave:
         _fallen_ally(cs, "player_2")
         ctx.userdata.combat_state = cs
 
-        result = json.loads(await _request_death_save_impl(ctx, mutations=mock_mutations, db_mod=mock_db))
+        # A pinned ordinary failure (not a nat-1, which costs TWO failures, nor a nat-20, which
+        # revives): one counter moves, so "whose counter" is the only thing this asserts.
+        with patch("combat_resolution.dice_roll", return_value=MagicMock(total=5, natural=5)):
+            result = json.loads(await _request_death_save_impl(ctx, mutations=mock_mutations, db_mod=mock_db))
 
         assert "roll" in result
         # The ALLY's counters moved; the standing primary's did not.
         ally = _participant(ctx, "player_2")
         primary = _participant(ctx, "player_1")
-        assert (ally.death_save_successes + ally.death_save_failures) == 1
-        assert (primary.death_save_successes + primary.death_save_failures) == 0
+        assert (ally.death_save_successes, ally.death_save_failures) == (0, 1)
+        assert (primary.death_save_successes, primary.death_save_failures) == (0, 0)
 
     @pytest.mark.asyncio
     async def test_two_fallen_members_require_naming_who_rolls(self):
