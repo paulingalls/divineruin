@@ -144,7 +144,7 @@ def format_training_section(active_cycles: list[dict]) -> str | None:
     """Render the ACTIVE TRAINING warm-layer block, or None when there are none.
 
     Input is training rows already filtered to non-complete cycles. Surfaces each
-    cycle's id (so the DM can pass it to resolve_training_midpoint) plus its state;
+    cycle's id (so the DM can pass it to resolve_activity(kind="training")) plus its state;
     awaiting_decision cycles also surface the midpoint prompt and options.
     """
     if not active_cycles:
