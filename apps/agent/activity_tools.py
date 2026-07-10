@@ -2,16 +2,22 @@
 
 Five begin-tools -- initiate_training_cycle, dispatch_companion_errand, start_crafting_project,
 rent_workspace, experiment_with_materials -- fold into one verb, ``begin_activity(kind)``, so the
-strict-20 tool ceiling stops binding and new content stops adding tools (ADR 0007 SS10).
-``begin_activity`` is a pure router: it validates the chosen kind has its required parameters,
-then dispatches to the matching pre-existing ``_impl``, none of which it modifies.
+strict-20 tool ceiling stops binding and new content stops adding tools (ADR 0007 SS10). Two
+resolve-tools -- resolve_training_midpoint, resolve_companion_errand -- fold into
+``resolve_activity(kind, id)``. Both are pure routers: they validate the chosen kind has its
+required parameters, then dispatch to the matching pre-existing ``_impl``, none of which they
+modify.
 
 ``begin_activity`` exposes every folded tool's params as a named-kwarg SUPERSET rather than an
 opaque params dict, so the LLM tool schema stays self-documenting and each param keeps its own
 type. Required-param validation is per-kind and fails loud (``ToolError``) BEFORE any dispatch --
 an under-specified kind never reaches an ``_impl``.
 
-The dispatcher carries ``@db_tool`` like its folded siblings. That decorator is error-handling,
+``resolve_activity`` takes an explicit ``kind`` rather than inferring one from ``id``: training_id
+and errand_id are both opaque async-activity ids with no disjoint-namespace guarantee, so
+id-inference would be unsafe.
+
+Both dispatchers carry ``@db_tool`` like their folded siblings. That decorator is error-handling,
 not transaction management: it narrates a DB error escaping an ``_impl`` as a friendly
 ``ToolError`` instead of letting a raw exception reach the player.
 """
@@ -138,5 +144,53 @@ async def _begin_activity_impl(
             raise ToolError("material_ids must not contain duplicates.")
         materials = dict(zip(material_ids, quantities, strict=True))
         return await experimentation_mod._experiment_with_materials_impl(context, materials, intended_output)
+
+    raise ToolError(f"Unknown activity kind: {kind!r}")
+
+
+@function_tool()
+@db_tool
+async def resolve_activity(
+    context: RunContext[SessionData],
+    kind: Literal["training", "companion_errand"],
+    id: str,
+    decision: str | None = None,
+) -> str:
+    """Resolve a downtime activity and report the outcome.
+
+    kind='training': resolves the midpoint decision for an awaiting-decision training cycle.
+    decision is REQUIRED -- the option id the player audibly chose from the prior midpoint
+    prompt.
+
+    kind='companion_errand': resolves a companion's errand and reports what happened. decision
+    is NOT used here -- the errand computes and returns its own decision_options; pass id only.
+
+    Args:
+        kind: 'training' or 'companion_errand'.
+        id: The activity_id (training) or errand_id (companion_errand) to resolve.
+        decision: The midpoint option id, required for kind='training'; ignored for
+            kind='companion_errand'.
+    """
+    return await _resolve_activity_impl(context, kind, id, decision=decision)
+
+
+async def _resolve_activity_impl(
+    context: RunContext[SessionData],
+    kind: Literal["training", "companion_errand"],
+    id: str,
+    *,
+    decision: str | None = None,
+    training_mod=training_tools,
+    errand_mod=errand_tools,
+) -> str:
+    logger.info("resolve_activity called: kind=%s id=%s", kind, id)
+
+    if kind == "training":
+        if not decision:
+            raise ToolError("kind='training' requires decision.")
+        return await training_mod._resolve_training_midpoint_impl(context, training_id=id, decision_id=decision)
+
+    if kind == "companion_errand":
+        return await errand_mod._resolve_companion_errand_impl(context, errand_id=id)
 
     raise ToolError(f"Unknown activity kind: {kind!r}")

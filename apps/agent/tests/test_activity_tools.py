@@ -1,10 +1,10 @@
-"""Tests for activity_tools.begin_activity -- the Phase-5 downtime-activity begin dispatcher
-(M26 story-001).
+"""Tests for activity_tools.begin_activity / resolve_activity -- the Phase-5 downtime-activity
+dispatchers (M26 story-001).
 
-begin_activity(kind) is a pure router: it validates required params per kind then dispatches to
-the matching pre-existing ``_impl``. Routing is proven here with injected stub impls (AsyncMock),
-not against real DB/content state -- each target ``_impl`` already has its own test suite for its
-own behavior.
+Both are pure routers: begin_activity(kind) validates required params per kind then dispatches to
+the matching pre-existing ``_impl``; resolve_activity(kind, id) does the same for the two resolve
+tools. Routing is proven here with injected stub impls (AsyncMock), not against real DB/content
+state -- each target ``_impl`` already has its own test suite for its own behavior.
 """
 
 from unittest.mock import AsyncMock
@@ -13,18 +13,22 @@ import pytest
 from livekit.agents.llm import ToolError, is_function_tool, is_raw_function_tool
 from sample_fixtures import make_context
 
-from activity_tools import _begin_activity_impl, begin_activity
+from activity_tools import _begin_activity_impl, _resolve_activity_impl, begin_activity, resolve_activity
 
 
 def _mocks():
     training = AsyncMock(return_value="training-result")
+    training_resolve = AsyncMock(return_value="training-resolve-result")
     errand_begin = AsyncMock(return_value="errand-begin-result")
+    errand_resolve = AsyncMock(return_value="errand-resolve-result")
     crafting = AsyncMock(return_value="crafting-result")
     workspace = AsyncMock(return_value="workspace-result")
     experiment = AsyncMock(return_value="experiment-result")
 
-    training_mod = _SimpleImpl(_initiate_training_cycle_impl=training)
-    errand_mod = _SimpleImpl(_dispatch_companion_errand_impl=errand_begin)
+    training_mod = _SimpleImpl(_initiate_training_cycle_impl=training, _resolve_training_midpoint_impl=training_resolve)
+    errand_mod = _SimpleImpl(
+        _dispatch_companion_errand_impl=errand_begin, _resolve_companion_errand_impl=errand_resolve
+    )
     crafting_mod = _SimpleImpl(_start_crafting_project_impl=crafting, _rent_workspace_impl=workspace)
     experimentation_mod = _SimpleImpl(_experiment_with_materials_impl=experiment)
 
@@ -36,7 +40,9 @@ def _mocks():
     }
     fns = {
         "training": training,
+        "training_resolve": training_resolve,
         "errand_begin": errand_begin,
+        "errand_resolve": errand_resolve,
         "crafting": crafting,
         "workspace": workspace,
         "experiment": experiment,
@@ -58,6 +64,15 @@ async def _begin(kind, **kwargs):
     mods, fns = _mocks()
     ctx = make_context()
     result = await _begin_activity_impl(ctx, kind, **kwargs, **mods)
+    return ctx, result, fns
+
+
+async def _resolve(kind, id_, *, decision=None):
+    mods, fns = _mocks()
+    ctx = make_context()
+    result = await _resolve_activity_impl(
+        ctx, kind, id_, decision=decision, training_mod=mods["training_mod"], errand_mod=mods["errand_mod"]
+    )
     return ctx, result, fns
 
 
@@ -145,7 +160,49 @@ class TestBeginUnknownKind:
             fn.assert_not_awaited()
 
 
+class TestResolveTraining:
+    async def test_decision_maps_to_decision_id_and_routes_to_resolve_training_midpoint_impl(self):
+        ctx, result, fns = await _resolve("training", "train_abc123", decision="push_through")
+        assert result == "training-resolve-result"
+        fns["training_resolve"].assert_awaited_once_with(ctx, training_id="train_abc123", decision_id="push_through")
+
+    async def test_missing_decision_fails_loud_before_dispatch(self):
+        with pytest.raises(ToolError, match="decision"):
+            await _resolve("training", "train_abc123")
+
+
+class TestResolveCompanionErrand:
+    async def test_routes_by_id_ignoring_decision(self):
+        ctx, result, fns = await _resolve("companion_errand", "errand_abc123", decision="ignored")
+        assert result == "errand-resolve-result"
+        fns["errand_resolve"].assert_awaited_once_with(ctx, errand_id="errand_abc123")
+
+    async def test_routes_by_id_with_no_decision(self):
+        ctx, result, fns = await _resolve("companion_errand", "errand_abc123")
+        assert result == "errand-resolve-result"
+        fns["errand_resolve"].assert_awaited_once_with(ctx, errand_id="errand_abc123")
+
+
+class TestResolveUnknownKind:
+    async def test_unknown_kind_raises_before_any_dispatch(self):
+        mods, fns = _mocks()
+        with pytest.raises(ToolError, match="Unknown activity kind"):
+            await _resolve_activity_impl(
+                make_context(),
+                "not_a_real_kind",
+                "some_id",
+                training_mod=mods["training_mod"],
+                errand_mod=mods["errand_mod"],
+            )
+        for fn in fns.values():
+            fn.assert_not_awaited()
+
+
 class TestToolRegistration:
     def test_begin_activity_is_a_single_strict_function_tool(self):
         assert is_function_tool(begin_activity)
         assert not is_raw_function_tool(begin_activity)
+
+    def test_resolve_activity_is_a_single_strict_function_tool(self):
+        assert is_function_tool(resolve_activity)
+        assert not is_raw_function_tool(resolve_activity)
