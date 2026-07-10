@@ -105,6 +105,7 @@ def test_veil_anchors_table_matches_the_item_prose():
     small_text = " ".join(e.get("description", "") for e in small_item.get("effects", []))
     small = VEIL_ANCHORS["veil_ward_anchor_small"]
     assert small.duration.kind == WardDurationKind.REAL_TIME
+    assert small.duration.seconds is not None  # guaranteed by WardDuration.__post_init__
     assert f"{small.duration.seconds // 3600} hour" in small_text
     assert small.consumed is True and "consumed on use" in small_text.lower()
     assert small.dismissible is True
