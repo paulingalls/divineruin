@@ -17,6 +17,7 @@ cast_spell gates ONLY Focus (story-004), so a Focus-funded player casts any id.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 
 from acceptance.seeds import seed_player_with_pools
 from sample_fixtures import make_context
@@ -28,6 +29,12 @@ import db_queries
 import resonance
 import spells
 from spell_casting import _cast_spell_impl
+from veil_ward import WardScope
+
+# The scope this capstone raises its ward over (M24). It must be a location NO other test uses:
+# a ward is scope-owned, so unlike the per-player row it replaced, a ward left at a shared
+# location leaks into every other test that hydrates there (it would silently halve their casts).
+_WARD_LOCATION = "cap_m32_warded_hall"
 
 # arcane_fireball: focus_cost 5, resonance_by_source.arcane 3. Under per-round (cast-paced)
 # decay (story-010) each post-first cast nets +2 (3 generated - 1 base decay), so the bands
@@ -87,18 +94,20 @@ async def test_active_veil_ward_halves_resonance_generation(reset_db_pool: str) 
     pool = await db.get_pool()
     player_id = "cap_m32_warded"
     await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
-    # Raise the ward the way activate_veil_ward (story-003) leaves the world: persisted in
-    # players.data AND reflected on the in-memory session the cast path reads.
-    await db_mutations_veil_ward.update_player_veil_ward(player_id, True, "mage", conn=pool)
+    # Raise the ward the way activate_veil_ward leaves the world: persisted on the LOCATION SCOPE,
+    # never on the player row. The cast path reads it back from the DB.
+    scope = WardScope.location(_WARD_LOCATION)
+    await db_mutations_veil_ward.write_ward(scope, "mage", None, dismissible=True, conn=pool)
     await spells.load_spells()
 
     spell = spells.get_spell(_SPELL_ID)
     base = spell.resonance_by_source[spell.source]  # 3 unwarded baseline
     assert base > 1  # halving is observable (3 -> 1, not 0 -> 0)
 
-    ctx = make_context(player_id)
-    ctx.userdata.veil_ward.active = True
-    ctx.userdata.veil_ward.source = "mage"
+    # No in-memory flag to set: the cast path resolves the ward from veil_wards itself (M24
+    # story-004), so this capstone now proves halving against the real row written above rather
+    # than against a hand-set boolean.
+    ctx = make_context(player_id, _WARD_LOCATION)
 
     packet = json.loads(await _cast_spell_impl(ctx, _SPELL_ID))
 
@@ -109,4 +118,61 @@ async def test_active_veil_ward_halves_resonance_generation(reset_db_pool: str) 
     # The halved value (1), not the unwarded baseline (3), is what persisted.
     persisted = await db_mutations_resonance.read_player_resonance(player_id, conn=pool)
     assert persisted["current"] == base // 2
-    assert (await db_mutations_veil_ward.read_player_veil_ward(player_id, conn=pool))["active"] is True
+    # The ward is still up — and it lives on the scope, not on the caster's row.
+    assert await db_mutations_veil_ward.read_active_ward(scope, conn=pool) is not None
+
+
+async def test_expired_ward_does_not_halve_the_cast(reset_db_pool: str) -> None:
+    """Lazy expiry, proven at the cast: an elapsed ward stops halving. Nothing sweeps veil_wards.
+
+    This is the property M24 story-004 exists to deliver. Before it, the cast path read an
+    in-memory boolean that no expiry could ever clear, so an Artificer's 1-hour anchor would keep
+    halving for the rest of the session. Asserted directly, not inferred from the read layer.
+    """
+    pool = await db.get_pool()
+    player_id = "cap_m32_expired"
+    location = "cap_m32_expired_hall"
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
+
+    scope = WardScope.location(location)
+    past = datetime.now(UTC) - timedelta(hours=1)
+    await db_mutations_veil_ward.write_ward(scope, "artificer", past, dismissible=False, conn=pool)
+    await spells.load_spells()
+
+    spell = spells.get_spell(_SPELL_ID)
+    base = spell.resonance_by_source[spell.source]
+
+    # Pit a STALE mirror against the expired row: the session still believes it is warded, exactly
+    # as it would after the ward lapsed mid-session. Without this the test would pass vacuously —
+    # the old in-memory flag was False here too. The cast must ignore the mirror and read the DB.
+    ctx = make_context(player_id, location)
+    ctx.userdata.location_ward = {"source": "artificer", "expires_at": past, "dismissible": False}
+
+    packet = json.loads(await _cast_spell_impl(ctx, _SPELL_ID))
+
+    assert packet["ward_active"] is False
+    assert packet["resonance_generated"] == base  # unhalved: the ward has lapsed
+    # The row is still there — the read hid it, no tick loop deleted it.
+    assert await pool.fetchval("SELECT count(*) FROM veil_wards WHERE scope_id = $1", location) == 1
+
+
+async def test_walking_out_of_a_warded_location_stops_the_halving(reset_db_pool: str) -> None:
+    """The party leaves the warded hall; the very next cast is no longer halved."""
+    pool = await db.get_pool()
+    player_id = "cap_m32_walker"
+    warded, plain = "cap_m32_walk_warded", "cap_m32_walk_plain"
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=18)
+    await db_mutations_veil_ward.write_ward(WardScope.location(warded), "cleric", None, dismissible=True, conn=pool)
+    await spells.load_spells()
+
+    spell = spells.get_spell(_SPELL_ID)
+    base = spell.resonance_by_source[spell.source]
+
+    inside = json.loads(await _cast_spell_impl(make_context(player_id, warded), _SPELL_ID))
+    assert inside["ward_active"] is True
+    assert inside["resonance_generated"] == base // 2
+
+    # Same player, same spell, one location over.
+    outside = json.loads(await _cast_spell_impl(make_context(player_id, plain), _SPELL_ID))
+    assert outside["ward_active"] is False
+    assert outside["resonance_generated"] == base

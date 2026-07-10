@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock
 import pytest
 from sample_fixtures import make_context
 
-from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from caster_state import ConcentrationState, ResonanceTrack
 from combat_init import _start_combat_impl
 from party_state import PartyMember
 from tests.combat.test_start_combat import SAMPLE_PLAYER, _make_start_combat_mocks
@@ -38,7 +38,6 @@ def _add_second_member(ctx, player_id="player_2"):
         PartyMember(
             player_id=player_id,
             resonance=ResonanceTrack(),
-            veil_ward=VeilWardState(),
             concentration=ConcentrationState(),
         )
     )

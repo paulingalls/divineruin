@@ -392,6 +392,23 @@ Three magic sources, Resonance system, 87 spells.
 
 ---
 
+## game_mechanics/veil_ward_scope_model.md (216 lines)
+
+The Veil Ward's scope, duration, and multiplayer model (M24). Read before touching ward code.
+
+| Section | Lines | What's There |
+|---|---|---|
+| A ward is owned by a scope | 16-35 | Scope-owned ward; effects apply per-caster-in-scope; Resonance/Echo stay per-caster |
+| Two scope kinds, two homes | 36-75 | `encounter` on CombatState JSONB vs `location` in the `veil_wards` table; why not one table; why no world clock is needed |
+| Ward resolution: any covering scope | 76-105 | The OR rule; coexistence and single-scope-expiry HUD semantics |
+| Sources and durations | 106-146 | Five-source table; Paladin combat-only; the Artificer's small (1h) and large (permanent) anchors |
+| Dismissal | 147-154 | Any in-scope member; permanent wards are not dismissible |
+| Wire contract | 155-174 | `VEIL_WARD_CHANGED` carries resolved state, no raiser id; the deliberate asymmetry with `RESONANCE_CHANGED` |
+| Phase boundaries | 175-199 | Phase-10 Druid terrain gate; Phase-11 world-sim wards; the `sacred_site` hook |
+| Migration off the per-player boolean | 200-end | Migration 057; first `players.data` key removal; no dual-state window |
+
+---
+
 ## game_mechanics/game_mechanics_crafting.md (587 lines)
 
 Recipe learning, crafting resolution, durability, item catalog.

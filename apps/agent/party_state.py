@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
-from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from caster_state import ConcentrationState, ResonanceTrack
 
 
 @dataclass
@@ -19,7 +19,6 @@ class PartyMember:
 
     player_id: str
     resonance: ResonanceTrack
-    veil_ward: VeilWardState
     concentration: ConcentrationState
     corruption_level: int = 0
     patron_id: str = "none"
@@ -42,7 +41,6 @@ class PartyState:
         player_id: str,
         *,
         resonance: ResonanceTrack | None = None,
-        veil_ward: VeilWardState | None = None,
         concentration: ConcentrationState | None = None,
         corruption_level: int = 0,
         patron_id: str = "none",
@@ -54,7 +52,6 @@ class PartyState:
         member = PartyMember(
             player_id=player_id,
             resonance=resonance if resonance is not None else ResonanceTrack(),
-            veil_ward=veil_ward if veil_ward is not None else VeilWardState(),
             concentration=concentration if concentration is not None else ConcentrationState(),
             corruption_level=corruption_level,
             patron_id=patron_id,
@@ -93,7 +90,7 @@ class PartyState:
         """Deserialize from a dict, reconstructing nested value-type instances.
 
         Each member dict is reconstructed into a PartyMember with
-        ResonanceTrack/VeilWardState/ConcentrationState INSTANCES (not raw dicts),
+        ResonanceTrack/ConcentrationState INSTANCES (not raw dicts),
         matching the from_dict pattern used by CombatState.
         """
         members = []
@@ -101,7 +98,6 @@ class PartyState:
             member = PartyMember(
                 player_id=m_data["player_id"],
                 resonance=ResonanceTrack(**m_data["resonance"]),
-                veil_ward=VeilWardState(**m_data["veil_ward"]),
                 concentration=ConcentrationState(**m_data["concentration"]),
                 corruption_level=m_data.get("corruption_level", 0),
                 patron_id=m_data.get("patron_id", "none"),

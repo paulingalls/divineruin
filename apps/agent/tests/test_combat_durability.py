@@ -385,7 +385,7 @@ async def test_end_combat_resets_flags_even_when_no_weapon_equipped():
 
 
 def _add_member(session, player_id: str):
-    from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+    from caster_state import ConcentrationState, ResonanceTrack
     from party_state import PartyMember
     from session_data import CombatParticipant
 
@@ -393,7 +393,6 @@ def _add_member(session, player_id: str):
         PartyMember(
             player_id=player_id,
             resonance=ResonanceTrack(),
-            veil_ward=VeilWardState(),
             concentration=ConcentrationState(),
         )
     )

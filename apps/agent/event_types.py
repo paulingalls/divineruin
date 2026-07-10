@@ -51,7 +51,8 @@ PLAYER_PORTRAIT_READY = "player_portrait_ready"
 # a round-robinned drop was granted to (combat_end.py), mirroring CURRENCY_GAINED's player_id so
 # the mobile HUD filters an item overlay to the local recipient via isEventForLocalPlayer. Non-combat
 # emitters (quest rewards, etc.) may omit it — the client treats an absent id as the local player's
-# (back-compat, same convention as RESONANCE_CHANGED/VEIL_WARD_CHANGED's caster_id default).
+# (back-compat, same convention as RESONANCE_CHANGED's caster_id default; VEIL_WARD_CHANGED carries
+# no caster_id at all — it is scope-owned, see below).
 # Mirror const in apps/mobile/src/audio/event-types.ts.
 ITEM_ACQUIRED = "item_acquired"
 INVENTORY_UPDATED = "inventory_updated"
@@ -76,11 +77,15 @@ CURRENCY_GAINED = "currency_gained"
 # filters on it); it defaults to the session primary. Mirror const in apps/mobile/src/audio/event-types.ts.
 RESONANCE_CHANGED = "resonance_changed"
 
-# Magic (M3.2) — Veil Ward toggle push. Packet: {active, caster_id} — the on/off toggle (the
-# HUD shows a glanceable ward zone indicator; the source archetype is narration the DM voices,
-# not wire state) plus WHICH party member it belongs to (story-006, mirroring RESONANCE_CHANGED's
-# caster_id). caster_id is the resolving caster — the session primary by default, or a non-primary
-# party member when activate_veil_ward is called with an explicit caster_id (story-008).
+# Magic (M3.2) — Veil Ward push. Packet: {active, scope_kind, scope_id, source} (story-008,
+# veil_ward_scope_model.md §6). `active` is the party's RESOLVED warded state across ALL covering
+# scopes, never the toggle of the scope a producer just mutated (§3); scope_kind/scope_id name the
+# scope that answered, and are null when nothing wards the party.
+#
+# There is deliberately NO caster_id. A ward belongs to a scope and halves EVERY caster in it, so
+# every in-scope client lights its indicator — there is nothing to filter on. RESONANCE_CHANGED
+# above keeps its caster_id because Resonance is per-caster. Do not "restore consistency" by adding
+# one back here: that is the multiplayer bug M24 removed (§6, "Asymmetry, on purpose").
 # Mirror const in apps/mobile/src/audio/event-types.ts (story-005).
 VEIL_WARD_CHANGED = "veil_ward_changed"
 

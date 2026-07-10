@@ -22,6 +22,8 @@ import event_types as E
 import fatigue_narration
 import resonance_events
 import spell_casting
+import veil_ward_events
+import ward_resolution
 from combat_ability import AbilityCastOutcome
 from combat_end import _end_combat_db, _end_combat_finish
 from combat_events import EventSink, emit_or_publish, scratch_guard
@@ -131,6 +133,11 @@ async def _resolve_phase_impl(
     # — the WRAP decays each member against their OWN pool, never a shared value.
     pending_by_member: dict[str, int] = {}
     end_data: dict | None = None
+    # The ward the party entered this phase under. The WRAP beat's round clock can retire a ROUNDS
+    # ward mid-fight (combat_phase._wrap), and that clearing is silent — the engine is pure, it emits
+    # nothing. Captured pre-tx so a rollback (which restores `cs`) can never make a surviving ward
+    # look expired. The post-commit publish below is what darkens the client's ward indicator.
+    ward_before = cs.veil_ward
     # Buffer every client event the phase emits; flush only AFTER the tx commits so a rolled-back
     # phase never leaks a phantom DICE_ROLL/ITEM_DURABILITY_HIT/sound (concern 03f2907d9c93). The
     # scratch_guard snapshots the in-loop session scratch (weapon flags, companion KO, recent_events)
@@ -265,6 +272,19 @@ async def _resolve_phase_impl(
 
     # The tx committed: now (and only now) release the buffered loop events to the client.
     await sink.flush()
+
+    # The WRAP retired a ROUNDS ward this phase: darken the client's ward indicator. Without this the
+    # mechanic and the HUD diverge — casts stop being halved while the player still sees a ward, so
+    # they walk into an Overreach believing they are protected. Published AFTER the combat_state sync
+    # above, so the resolver skips the (now-empty) encounter scope and falls through to whatever
+    # location ward still covers the party — a Sacred Site keeps the light on. This never double-emits
+    # with _end_combat_db's own ward event: that one fires only when the ward SURVIVED to the ending
+    # wrap (`cs.veil_ward is not None`), which is the exact complement of the condition here.
+    if ward_before is not None and state.veil_ward is None:
+        expired_ward, expired_scope = await ward_resolution.resolve_scope_ward_with_scope(
+            session, conn=await db_mod.get_pool()
+        )
+        await veil_ward_events.publish_veil_ward_changed(session, expired_ward, expired_scope)
 
     # Apply each in-combat ability's deferred effects post-commit (rollback-safe — a rolled-back tx
     # skipped to here via the re-raise): flush every caster's own deferred client events (hollow echo,

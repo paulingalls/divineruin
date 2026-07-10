@@ -518,3 +518,68 @@ class TestFullCycle:
         assert wrap_advance.wrap is not None
         assert wrap_advance.wrap.combat_ended is True
         assert wrap_advance.wrap.outcome == "victory"
+
+
+class TestWrapTicksVeilWard:
+    """The encounter ward's round clock (M24 story-006).
+
+    The ward lives ON CombatState, so — exactly like participant conditions — the WRAP beat
+    advances it in place on the deep-copied next_state and expiry is the field going None.
+    Nothing is signalled through WrapOutcome; there is nothing for orchestration to apply.
+    """
+
+    def _warded(self, rounds_remaining, *, source="paladin"):
+        state = _make_combat_state()
+        state.beat = PhaseBeat.WRAP
+        state.veil_ward = {"source": source, "rounds_remaining": rounds_remaining}
+        return state
+
+    def test_wrap_decrements_rounds_remaining(self):
+        next_state, _ = advance_combat_phase(self._warded(3), None)
+        assert next_state.veil_ward == {"source": "paladin", "rounds_remaining": 2}
+
+    def test_three_round_ward_expires_on_the_third_wrap(self):
+        # A Paladin's 3-round ward survives wraps 1 and 2 and dies at the third.
+        state = self._warded(3)
+        for expected in (2, 1):
+            state, _ = advance_combat_phase(state, None)
+            assert state.veil_ward is not None
+            assert state.veil_ward["rounds_remaining"] == expected
+            state.beat = PhaseBeat.WRAP
+        state, _ = advance_combat_phase(state, None)
+        assert state.veil_ward is None
+
+    def test_encounter_duration_ward_never_expires_by_rounds(self):
+        # Cleric/druid ENCOUNTER wards carry no round clock; the combat row's deletion is
+        # their duration. A None clock must neither decrement nor expire.
+        state = self._warded(None, source="cleric")
+        for _ in range(5):
+            state, _ = advance_combat_phase(state, None)
+            assert state.veil_ward == {"source": "cleric", "rounds_remaining": None}
+            state.beat = PhaseBeat.WRAP
+
+    def test_unwarded_combat_stays_unwarded(self):
+        state = _make_combat_state()
+        state.beat = PhaseBeat.WRAP
+        next_state, _ = advance_combat_phase(state, None)
+        assert next_state.veil_ward is None
+
+    def test_ward_ticks_even_when_combat_ends(self):
+        # Mirrors test_wrap_ticks_conditions_even_when_combat_ends: the tick is unconditional,
+        # never gated behind `if not wrap.combat_ended`.
+        state = self._warded(3)
+        for p in state.participants:
+            if p.type == "enemy":
+                p.is_fallen = True
+        next_state, advance = advance_combat_phase(state, None)
+        assert advance.wrap is not None
+        assert advance.wrap.combat_ended is True
+        assert next_state.veil_ward is not None
+        assert next_state.veil_ward["rounds_remaining"] == 2
+
+    def test_wrap_does_not_mutate_the_input_states_ward(self):
+        state = self._warded(1)
+        before = state.to_dict()
+        advance_combat_phase(state, None)
+        assert state.to_dict() == before
+        assert state.veil_ward == {"source": "paladin", "rounds_remaining": 1}

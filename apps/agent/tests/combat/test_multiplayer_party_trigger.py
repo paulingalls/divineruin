@@ -59,11 +59,9 @@ def _join_mods(row):
     queries.get_player = AsyncMock(return_value=row)
     res_mod = MagicMock()
     res_mod.read_player_resonance = AsyncMock(return_value={"current": 6, "flickering_bonus": 1, "state": "flickering"})
-    ward_mod = MagicMock()
-    ward_mod.read_player_veil_ward = AsyncMock(return_value={"active": True, "source": "arch_x"})
     conc_mod = MagicMock()
     conc_mod.read_player_concentration = AsyncMock(return_value={"spell_id": "spell_y"})
-    return queries, res_mod, ward_mod, conc_mod
+    return queries, res_mod, conc_mod
 
 
 async def _drain():
@@ -78,7 +76,7 @@ async def test_second_player_joins_then_both_enter_combat_as_participants():
     ctx = make_context()  # SessionData for player_1, solo party
     ctx.userdata.corruption_level = 4
     row2 = _joiner_row()
-    join_queries, res_mod, ward_mod, conc_mod = _join_mods(row2)
+    join_queries, res_mod, conc_mod = _join_mods(row2)
 
     # --- Act 1: player_2 connects to the room -> the join trigger appends + hydrates them ---
     room, handlers = _recording_room()
@@ -87,7 +85,6 @@ async def test_second_player_joins_then_both_enter_combat_as_participants():
         ctx.userdata,
         queries=join_queries,
         resonance_mod=res_mod,
-        veil_ward_mod=ward_mod,
         concentration_mod=conc_mod,
     )
     handlers["participant_connected"](SimpleNamespace(identity="player_2"))
@@ -98,7 +95,6 @@ async def test_second_player_joins_then_both_enter_combat_as_participants():
     joined = ctx.userdata.party.member("player_2")
     assert joined is not None
     assert joined.resonance.current == 6
-    assert joined.veil_ward.active is True
     assert joined.concentration.spell_id == "spell_y"
     assert joined.patron_id == "syrath"  # per-member, from player_2's own row
     assert joined.corruption_level == 4  # co-located with the party's location

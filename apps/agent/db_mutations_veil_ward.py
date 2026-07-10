@@ -1,68 +1,125 @@
-"""DB persistence for the M3.2 Veil Ward state (story-002).
+"""DB persistence for the scope-owned Veil Ward (story-003, M24).
 
 Its own module (not db_mutations.py, at the 500-line cap) keeps the ward feature
-cohesive — same call as db_mutations_resonance / ability_persistence. The ward lives in
-players.data JSONB at {veil_ward,active} + {veil_ward,source} (no new table), beside
-{resonance} and hp/focus/stamina. `active` (bool) is the authoritative flag the cast
-path reads to halve generation; `source` is the archetype id that raised the ward,
-carried for narration/HUD flavor.
+cohesive — same call as db_mutations_resonance / ability_persistence.
 
-read returns {active, source}; update writes both. The activation tool (story-003) calls
-update on activate/dismiss; the cast path (story-004) reads `active`.
+A ward belongs to a SCOPE, never to a caster (veil_ward_scope_model.md §1): its effects
+apply to every caster in that scope, while Resonance and Hollow Echo stay per-caster.
+Nothing here takes a player_id.
 
-Real SQL is exercised against a testcontainer at tests/acceptance/test_veil_ward_persistence.py
-(the AC4 roundtrip); these functions accept conn= for the mock-conn unit tests, mirroring
-db_mutations_resonance.
+This module persists LOCATION-scoped wards only, in the veil_wards table. ENCOUNTER wards
+ride CombatState inside combat_instances.data — the combat row's deletion IS the encounter
+duration. Passing an encounter scope here is a programming error and fails loud, which is
+what keeps "one home each, no dual state" true rather than merely intended.
+
+Rows are keyed by a surrogate ward_id and looked up by the NON-unique (scope_kind, scope_id)
+pair, so many wards may cover one scope. Resolution is a boolean OR over covering rows (§3):
+`read_active_ward` returns the newest live one, or None. Expiry is LAZY — nothing sweeps the
+table; a read compares expires_at to NOW(), so M24 needs no world-clock tick loop.
+
+Real SQL is exercised in the fast lane at tests/test_db_mutations_veil_ward_db.py; these
+functions accept conn= for the mock-conn unit tests, mirroring db_mutations_resonance.
 """
+
+import datetime
 
 import asyncpg
 
 import db
+from veil_ward import WardScope, WardScopeKind
 
-_DEFAULT_WARD = {"active": False, "source": None}
+
+def _require_location(scope: WardScope) -> None:
+    """Reject encounter scopes: they live on CombatState, never in veil_wards.
+
+    A silent write here would recreate the dual state M24 exists to remove — an encounter
+    ward would have two homes and the two could disagree.
+    """
+    if scope.kind is not WardScopeKind.ENCOUNTER:
+        return
+    raise ValueError(
+        f"encounter scope {scope.id!r} has no row in veil_wards; encounter wards live on CombatState "
+        "(combat_instances.data). Only location scopes are persisted here."
+    )
 
 
-async def read_player_veil_ward(
-    player_id: str,
+async def read_active_ward(
+    scope: WardScope,
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
-) -> dict:
-    """Return {"active": bool, "source": str | None} for a player's Veil Ward.
+) -> dict | None:
+    """Return the live ward covering ``scope``, or None when the scope is unwarded.
 
-    Defaults to inactive (active False, source None) when the row is missing or the
-    veil_ward key is absent/NULL. `->>'active'` returns the JSONB boolean as text
-    ('true'/'false'); a present-and-true value is the only active case.
+    None means "no ward", never a default-inactive placeholder — callers must not have to
+    distinguish a real inactive ward from the absence of one.
+
+    Live means `expires_at IS NULL OR expires_at > NOW()`: a NULL expiry never expires, and an
+    elapsed ward is simply not returned (no sweeper deletes it). Because many wards may cover
+    one scope, the newest wins; the surrogate ward_id is the secondary sort so two rows sharing
+    a created_at (same-transaction inserts get one NOW()) still resolve to one deterministic row
+    rather than an arbitrary one. Effects are uniform across sources, so a stable pick suffices.
     """
+    _require_location(scope)
     _conn = conn or await db.get_pool()
     row = await _conn.fetchrow(
-        "SELECT data->'veil_ward'->>'active' AS active, data->'veil_ward'->>'source' AS source "
-        "FROM players WHERE player_id = $1",
-        player_id,
+        "SELECT source, expires_at, dismissible FROM veil_wards "
+        "WHERE scope_kind = $1 AND scope_id = $2 AND (expires_at IS NULL OR expires_at > NOW()) "
+        "ORDER BY created_at DESC, ward_id DESC LIMIT 1",
+        scope.kind.value,
+        scope.id,
     )
-    if row is None:
-        return dict(_DEFAULT_WARD)
-    return {"active": row["active"] == "true", "source": row["source"]}
+    return None if row is None else dict(row)
 
 
-async def update_player_veil_ward(
-    player_id: str,
-    active: bool,
-    source: str | None,
+async def write_ward(
+    scope: WardScope,
+    source: str,
+    expires_at: datetime.datetime | None,
     *,
+    dismissible: bool,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
-    """Persist the player's Veil Ward at players.data {veil_ward,active}/{veil_ward,source}.
+    """Raise a ward over ``scope``. ward_id is generated by the DB, never supplied.
 
-    Uses a 1-level {veil_ward} jsonb_set with jsonb_build_object so the write succeeds
-    whether or not the veil_ward key already exists (robust for rows created after the
-    migration-045 backfill) — the same 1-level discipline as db_mutations_resonance.
+    ``expires_at`` None means no absolute expiry. ``dismissible`` is orthogonal to it and must
+    be passed explicitly: a Cleric's out-of-combat ward and a Sacred site both carry a NULL
+    expiry, but only the Cleric's may be dismissed (§4, §5). Deriving one from the other would
+    let a party dispel a Sacred site.
+
+    A plain INSERT, not an upsert — coexistence is the point (§3).
     """
+    _require_location(scope)
     _conn = conn or await db.get_pool()
     await _conn.execute(
-        "UPDATE players SET data = jsonb_set(data, '{veil_ward}', "
-        "jsonb_build_object('active', $2::boolean, 'source', $3::text)) "
-        "WHERE player_id = $1",
-        player_id,
-        active,
+        "INSERT INTO veil_wards (scope_kind, scope_id, source, expires_at, dismissible) VALUES ($1, $2, $3, $4, $5)",
+        scope.kind.value,
+        scope.id,
         source,
+        expires_at,
+        dismissible,
     )
+
+
+async def dismiss_ward(
+    scope: WardScope,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> int:
+    """Dismiss every dismissible ward over ``scope``, sparing the permanent ones. Returns the count.
+
+    The ward is scope-owned, so it is not the raiser's to hold exclusively — any in-scope
+    member may dismiss it, for free (§5). Non-dismissible wards (Sacred sites, the large Veil
+    Anchor) survive: their lifecycle belongs to crafting and to Phase 11.
+
+    The count is what lets the caller tell "dismissed a ward" from "there was nothing to
+    dismiss" — a scope covered only by a permanent ward deletes zero rows, and the tool must
+    refuse rather than silently report success.
+    """
+    _require_location(scope)
+    _conn = conn or await db.get_pool()
+    deleted = await _conn.fetch(
+        "DELETE FROM veil_wards WHERE scope_kind = $1 AND scope_id = $2 AND dismissible RETURNING ward_id",
+        scope.kind.value,
+        scope.id,
+    )
+    return len(deleted)

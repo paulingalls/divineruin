@@ -42,6 +42,7 @@ from mode_tools import enter_mode
 from onboarding_agent import ONBOARDING_TOOLS
 from recipe_tools import _learn_recipe_impl, learn
 from reputation_tools import adjust_faction_reputation
+from veil_anchor_tools import deploy_veil_anchor
 
 # The complete set of noun tools the four M5 folds removed (stories 001-004). The story
 # text says "six"; the real set is ten — the check fold (story-003) absorbed four.
@@ -91,6 +92,10 @@ VERB_PRESENCE = [
     # M23 story-002: the faction reputation DM verb sits beside update_npc_disposition on the
     # single exploration agent (world-state mutation verbs live there, per M7's collapse).
     (adjust_faction_reputation, "adjust_faction_reputation", {"exploration"}),
+    # M24 story-012: the only item-use verb. Deploying a crafted Veil Anchor is a location
+    # action, so it lives on exploration alone — never on combat, where activate_veil_ward
+    # already refuses the artificer source it would otherwise duplicate.
+    (deploy_veil_anchor, "deploy_veil_anchor", {"exploration"}),
 ]
 
 

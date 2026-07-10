@@ -31,15 +31,6 @@ import {
 import type { DataChannelEvent } from "./game-event-parsing";
 import { handleSessionInit } from "./game-event-session-init";
 
-export type { DataChannelEvent } from "./game-event-parsing";
-export {
-  parseCombatant,
-  parseGameEvent,
-  VALID_RESONANCE_STATES,
-  VALID_HOLLOW_ECHO_BANDS,
-  MAX_EVENT_PAYLOAD_BYTES,
-} from "./game-event-parsing";
-
 /** Allowlist for safe API sub-paths (alphanumeric, hyphens, underscores, dots, slashes). */
 const SAFE_API_PATH_RE = /^\/api\/[a-zA-Z0-9/_.-]+$/;
 
@@ -253,10 +244,14 @@ export function handleGameEvent(event: DataChannelEvent): void {
     case E.VEIL_WARD_CHANGED: {
       // Persistent glanceable zone affordance. Only a boolean toggles it; a
       // malformed payload leaves the ward state untouched (fail-safe).
-      // Multi-player (story-006, mirroring RESONANCE_CHANGED M14 story-004): the agent pushes
-      // each party member's own ward state under a caster_id. The HUD keeps ONE global indicator,
-      // so filter to the local player.
-      if (isEventForLocalPlayer(event.caster_id) && typeof event.active === "boolean") {
+      //
+      // NO isEventForLocalPlayer filter, deliberately (story-008, scope_model.md §6). A Veil Ward
+      // belongs to a SCOPE — a fight or a place — and halves every caster in it. Filtering to the
+      // raiser would light one client while the other player's casts are silently halved. The
+      // payload carries {scope_kind, scope_id, source} and no caster_id; there is nothing to filter
+      // on. RESONANCE_CHANGED above keeps its filter because Resonance is per-caster. Do not
+      // "restore consistency" here — that asymmetry is the fix.
+      if (typeof event.active === "boolean") {
         hudStore.getState().setVeilWardActive(event.active);
       }
       break;

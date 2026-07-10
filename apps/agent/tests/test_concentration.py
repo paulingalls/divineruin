@@ -9,7 +9,7 @@ Two layers, both DB-free:
   tests/acceptance/test_concentration_persistence.py (AC5 roundtrip).
 
 Storage shape: players.data.concentration = {spell_id: str|null}, a top-level JSONB key beside
-{resonance} and {veil_ward}. The single active concentration spell id; null means not
+{resonance}. The single active concentration spell id; null means not
 concentrating. The cast keystone (story-006) reads spell.concentration, sets this on a
 concentration cast, and ends any prior one (single-concentration enforcement) — not this story.
 """

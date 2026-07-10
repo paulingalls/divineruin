@@ -14,7 +14,7 @@ the party model and adds this guard so a later refactor that reassigns instead o
 mutating goes red here.
 """
 
-from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember
 from session_data import SessionData
 
@@ -50,7 +50,6 @@ def test_resonance_in_place_mutation_keeps_party_stable():
     party_id, members_id = id(session.party), id(session.party.members)
 
     session.resonance.current = 7
-    session.veil_ward.active = True
     session.concentration.spell_id = "spell_x"
 
     assert id(session.party) == party_id
@@ -69,7 +68,6 @@ def test_appending_a_joining_member_mutates_members_in_place():
         PartyMember(
             player_id="p2",
             resonance=ResonanceTrack(),
-            veil_ward=VeilWardState(),
             concentration=ConcentrationState(),
         )
     )

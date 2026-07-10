@@ -31,7 +31,7 @@ import combat_turn
 import db
 import db_mutations
 import db_queries
-from caster_state import ConcentrationState, ResonanceTrack, VeilWardState
+from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember
 from session_data import CombatParticipant, CombatState
 
@@ -112,7 +112,6 @@ async def test_m15_group_deescalation_stabilizes_fallen_ally(reset_db_pool: str)
         PartyMember(
             player_id=_ALLY,
             resonance=ResonanceTrack(),
-            veil_ward=VeilWardState(),
             concentration=ConcentrationState(),
         )
     )

@@ -382,7 +382,7 @@
     "crafting_dc": 12,
     "time": "1 day",
     "async_cycles": 1,
-    "output_item": "leather_armor_basic",
+    "output_item": "hide_armor",
     "output_quantity": 1,
     "study_cost": 2,
     "discovery_sources": ["tanner_npc", "dungeon_schematic"],
@@ -662,13 +662,85 @@
     "crafting_dc": 8,
     "time": "1 hour",
     "async_cycles": 0,
-    "output_item": "restoration_salve",
+    "output_item": "healing_salve",
     "output_quantity": 2,
     "study_cost": 1,
     "discovery_sources": ["experimentation", "field_craft"],
     "narration_cues": {
       "success": "A green paste that cools the skin and closes small wounds.",
       "failure": "The herbs scorch and the salve turns rancid."
+    }
+  },
+  {
+    "id": "healing_potion",
+    "name": "Healing Potion",
+    "category": "consumable",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "medicinal_herb", "quantity": 1, "tier_minimum": 1, "substitutable": true },
+      { "material_id": "crystal_flask", "quantity": 1, "tier_minimum": 1, "substitutable": false }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 10,
+    "time": "1 hour",
+    "async_cycles": 0,
+    "output_item": "healing_potion",
+    "output_quantity": 1,
+    "study_cost": 1,
+    "discovery_sources": ["alchemist_npc", "experimentation"],
+    "narration_cues": {
+      "success": "The vial warms in your palm, copper and something sweet rising off it.",
+      "failure": "The draught clouds, then settles grey and smells of wet iron."
+    }
+  },
+  {
+    "id": "restoration_salve",
+    "name": "Restoration Salve",
+    "category": "consumable",
+    "tier": "trained",
+    "materials": [
+      { "material_id": "medicinal_herb", "quantity": 2, "tier_minimum": 1, "substitutable": true },
+      { "material_id": "herb_bundle", "quantity": 1, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "laboratory",
+    "crafting_dc": 12,
+    "time": "4 hours",
+    "async_cycles": 1,
+    "output_item": "restoration_salve",
+    "output_quantity": 1,
+    "study_cost": 2,
+    "discovery_sources": ["alchemist_npc", "temple_npc"],
+    "narration_cues": {
+      "success": "Pale ointment, clean linen and blossom, drinking into the skin warm.",
+      "failure": "The salve curdles in the tin and sours the whole bench."
+    }
+  },
+  {
+    "id": "leather_armor_basic",
+    "name": "Leather Armor",
+    "category": "armor",
+    "tier": "basic",
+    "materials": [
+      { "material_id": "quality_leather", "quantity": 1, "tier_minimum": 2, "substitutable": true },
+      { "material_id": "leather_strip", "quantity": 2, "tier_minimum": 1, "substitutable": true }
+    ],
+    "optional_materials": [],
+    "tainted_materials": false,
+    "workspace_required": "workshop",
+    "crafting_dc": 10,
+    "time": "1 hour",
+    "async_cycles": 0,
+    "output_item": "leather_armor_basic",
+    "output_quantity": 1,
+    "study_cost": 1,
+    "discovery_sources": ["tanner_npc", "field_craft"],
+    "narration_cues": {
+      "success": "Oiled leather creaks once, then goes quiet against the ribs.",
+      "failure": "The stitching pulls and the shoulder seam gapes open."
     }
   },
   {
@@ -733,7 +805,7 @@
     "crafting_dc": 13,
     "time": "1 day",
     "async_cycles": 1,
-    "output_item": "healing_potion",
+    "output_item": "healing_potion_minor",
     "output_quantity": 1,
     "study_cost": 2,
     "discovery_sources": ["alchemist_npc"],
@@ -1405,7 +1477,7 @@
     "crafting_dc": 18,
     "time": "1 day",
     "async_cycles": 4,
-    "output_item": "hollow_ward_charm",
+    "output_item": "veil_ward_anchor_small",
     "output_quantity": 1,
     "study_cost": 4,
     "discovery_sources": ["dungeon_schematic"],
@@ -1933,10 +2005,7 @@
     "output_item": "blade_of_the_ashmark",
     "output_quantity": 1,
     "study_cost": 4,
-    "discovery_sources": [
-      "dungeon_schematic",
-      "master_artisan_npc"
-    ],
+    "discovery_sources": ["dungeon_schematic", "master_artisan_npc"],
     "narration_cues": {
       "exceptional": "The blessed oil takes hold and the blade chimes whenever the Hollow draws near.",
       "success": "An Ashmark longsword, radiant-edged and humming against corruption.",
@@ -1978,9 +2047,7 @@
     "output_item": "thornveld_guardian_shield",
     "output_quantity": 1,
     "study_cost": 4,
-    "discovery_sources": [
-      "master_artisan_npc"
-    ],
+    "discovery_sources": ["master_artisan_npc"],
     "narration_cues": {
       "exceptional": "The living wood knits seamlessly; the shield grows a hand's breadth stronger in natural terrain.",
       "success": "A Thornveld shield that creaks and settles as if still growing.",
@@ -2022,9 +2089,7 @@
     "output_item": "cloak_steppe_winds",
     "output_quantity": 1,
     "study_cost": 4,
-    "discovery_sources": [
-      "master_artisan_npc"
-    ],
+    "discovery_sources": ["master_artisan_npc"],
     "narration_cues": {
       "exceptional": "The cloak moves as if always in wind; the wearer barely touches the ground.",
       "success": "A steppe cloak that lifts and ripples with no breeze at all.",
@@ -2066,9 +2131,7 @@
     "output_item": "veil_sight_lens",
     "output_quantity": 1,
     "study_cost": 4,
-    "discovery_sources": [
-      "dungeon_schematic"
-    ],
+    "discovery_sources": ["dungeon_schematic"],
     "narration_cues": {
       "exceptional": "The lens seats perfectly; the invisible world snaps into focus through it.",
       "success": "A silver-set monocle that shows what the eye cannot.",
@@ -2110,9 +2173,7 @@
     "output_item": "ring_resonance_dampening",
     "output_quantity": 1,
     "study_cost": 4,
-    "discovery_sources": [
-      "dungeon_schematic"
-    ],
+    "discovery_sources": ["dungeon_schematic"],
     "narration_cues": {
       "exceptional": "The residue threads cleanly into the iron; the ring drinks Resonance without strain.",
       "success": "A plain iron ring, warm, that quiets a caster's overreach.",
@@ -2154,10 +2215,7 @@
     "output_item": "potion_veil_walking",
     "output_quantity": 1,
     "study_cost": 4,
-    "discovery_sources": [
-      "alchemist_npc",
-      "dungeon_schematic"
-    ],
+    "discovery_sources": ["alchemist_npc", "dungeon_schematic"],
     "narration_cues": {
       "exceptional": "The void fragment dissolves into a shimmer that holds incorporeal form a full minute.",
       "success": "An iridescent draught that smells of ozone and lets the drinker walk through walls.",
@@ -2199,9 +2257,7 @@
     "output_item": "architects_edge",
     "output_quantity": 1,
     "study_cost": 6,
-    "discovery_sources": [
-      "dungeon_schematic"
-    ],
+    "discovery_sources": ["dungeon_schematic"],
     "narration_cues": {
       "exceptional": "The living stone settles into a blade that reshapes the battlefield at a thought.",
       "success": "A weapon of living stone that slowly changes shape between fights.",
@@ -2243,9 +2299,7 @@
     "output_item": "choirs_silence",
     "output_quantity": 1,
     "study_cost": 6,
-    "discovery_sources": [
-      "dungeon_schematic"
-    ],
+    "discovery_sources": ["dungeon_schematic"],
     "narration_cues": {
       "exceptional": "The trapped note settles into the crystal; the amulet can swallow all sound at will.",
       "success": "A crystal pendant holding one perfect, silent note.",
@@ -2287,9 +2341,7 @@
     "output_item": "stillheart",
     "output_quantity": 1,
     "study_cost": 6,
-    "discovery_sources": [
-      "dungeon_schematic"
-    ],
+    "discovery_sources": ["dungeon_schematic"],
     "narration_cues": {
       "exceptional": "The shard is bound without waking the paradise; the ring soothes without ever lying.",
       "success": "A warm ring carved from the Still's false paradise; calm radiates from it.",

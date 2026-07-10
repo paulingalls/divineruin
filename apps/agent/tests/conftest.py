@@ -297,3 +297,10 @@ async def dev_db_pool():
             os.environ.pop("DATABASE_URL", None)
         else:
             os.environ["DATABASE_URL"] = prior
+
+
+# M24 story-006: stub the DB read leaf (db_mutations_veil_ward.read_active_ward), NOT the resolver,
+# so ward gates run for real against a MagicMock conn. A mock-conn test defaults to "unwarded"; one
+# that sets combat_state.veil_ward is genuinely warded. Real-PG tests are exempt. Suites that test
+# the leaf itself shadow this with a no-op. Mirrors _combat_end_fixtures.default_condition_persistence.
+from _ward_resolution_fixtures import default_unwarded_scope  # noqa: E402,F401  (autouse fixture)

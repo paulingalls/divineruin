@@ -42,6 +42,7 @@ from session_summary import generate_session_summary
 from session_tools import end_session, record_story_moment, update_npc_disposition
 from system_prompts import build_system_prompt
 from travel_tools import travel
+from veil_anchor_tools import deploy_veil_anchor
 from warm_prompts import format_affect_context
 
 logger = logging.getLogger("divineruin.exploration")
@@ -73,6 +74,9 @@ EXPLORATION_TOOLS = [
     adjust_faction_reputation,
     record_story_moment,
     end_session,
+    # Item use: set down a crafted Veil Anchor (M24 story-012). The only item-use verb;
+    # the ward it lays down costs nothing here because the crafting was the cost.
+    deploy_veil_anchor,
     # Choice resolution: the L5 specialization fork (surfaced by award_xp on level-up)
     # resolves via the generic select verb (concern 3c02318dfa99).
     select,
