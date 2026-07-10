@@ -55,14 +55,19 @@ def _cond(ctype: str, **extra) -> dict:
     return {"type": ctype, "duration": "encounter", "source": "test", "stacks": 1, **extra}
 
 
-async def _run_end_combat_db(session, cs, outcome, *, save_mock, read_side_effect=None):
+async def _run_end_combat_db(session, cs, outcome, *, save_mock, read_side_effect=None, queries_overrides=None):
     """Drive _end_combat_db with a mock conn, patching the condition read/save round-trip. Returns
-    nothing — assertions read the injected save_mock's call list."""
+    nothing — assertions read the injected save_mock's call list.
+
+    `queries_overrides` binds real return values onto the AsyncMock queries module (e.g. a weapon
+    inventory) for the durability paths, which otherwise see a MagicMock and skip."""
     read_mock = AsyncMock(side_effect=read_side_effect or (lambda pid, conn=None: []))
     db_mutations_conditions.read_player_conditions = read_mock  # type: ignore[assignment]
     db_mutations_conditions.save_player_conditions = save_mock  # type: ignore[assignment]
     mutations = AsyncMock()
     queries = AsyncMock()
+    for name, mock in (queries_overrides or {}).items():
+        setattr(queries, name, mock)
     sink = EventSink()
     await _end_combat_db(
         session,

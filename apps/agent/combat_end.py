@@ -289,10 +289,10 @@ async def _end_combat_db(
     for p in cs.participants:
         if p.type != "player":
             continue
-        # Durability needs the PartyMember (weapon_used / corruption_level live there, unlike the
-        # other paths that key on the participant id directly). Non-raising member() + skip: a
-        # player participant is a party member in prod (combat_init), but skipping a stray one is a
-        # fail-safe for a non-critical accrual rather than aborting the whole combat-end tx.
+        # Durability needs the PartyMember (weapon_used lives there, unlike the other paths that key
+        # on the participant id directly). Non-raising member() + skip: a player participant is a
+        # party member in prod (combat_init), but skipping a stray one is a fail-safe for a
+        # non-critical accrual rather than aborting the whole combat-end tx.
         member = session.party.member(p.id)
         if member is None or not member.weapon_used:
             continue
@@ -305,7 +305,11 @@ async def _end_combat_db(
             member.player_id,
             weapon,
             combat_resolution.weapon_hits_for_encounter(member.weapon_crit_vs_heavy),
-            is_hollow_zone=combat_resolution.is_hollow_zone(member.corruption_level),
+            # The zone is the PARTY's, not the member's. corruption_level is location-derived and
+            # never persisted; a joiner snapshots it once and movement only ever refreshes the
+            # primary's. Reading the member's copy spared a joiner's weapon the doubled hollow-zone
+            # wear their armor (which reads this same party value) correctly took.
+            is_hollow_zone=combat_resolution.is_hollow_zone(session.corruption_level),
             conn=conn,
             sink=sink,
         )
