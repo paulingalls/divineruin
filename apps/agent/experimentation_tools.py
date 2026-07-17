@@ -1,5 +1,8 @@
 """Experimentation agent tool (story-004, M5.3).
 
+As of M26 (story-003) this is the ``_experiment_with_materials_impl`` helper, no longer
+a registered ``@function_tool``: it is reached via ``begin_activity(kind="experiment")``.
+
 `experiment_with_materials` lets the player craft WITHOUT a known recipe: they commit a
 material set toward an intended output, and a crafting check at the recipe's normal DC +4
 decides success. It resolves IMMEDIATELY (decision experimentation-immediate) — unlike

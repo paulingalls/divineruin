@@ -1,5 +1,10 @@
 """Crafting agent tools (story-004, M5.2).
 
+As of M26 (story-003) these are ``_*_impl`` helpers, no longer registered
+``@function_tool``s: ``query_available_workspaces`` / ``rent_workspace`` /
+``start_crafting_project`` are reached via ``query_info(kind="workspaces")`` and
+``begin_activity(kind="workspace"|"crafting")`` on DispatchAgent.
+
 `query_available_workspaces` (read-only) reports the workspaces a player can use at
 their current location plus rental base prices. `rent_workspace` (mutating) prices a
 rental by the NPC's disposition, debits the player's gold (interim 10sp=1gp until the

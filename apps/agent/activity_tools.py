@@ -17,9 +17,12 @@ an under-specified kind never reaches an ``_impl``.
 and errand_id are both opaque async-activity ids with no disjoint-namespace guarantee, so
 id-inference would be unsafe.
 
-Both dispatchers carry ``@db_tool`` like their folded siblings. That decorator is error-handling,
-not transaction management: it narrates a DB error escaping an ``_impl`` as a friendly
-``ToolError`` instead of letting a raw exception reach the player.
+Both dispatchers carry ``@db_tool`` at the dispatcher level, so EVERY routed kind gets it —
+uniform by design. Some folded wrappers already had it (training, the query reads); the
+errand/crafting/workspace/experiment wrappers did not, so those kinds gain DB-error narration
+here (a deliberate consistency improvement, not a strict behavior preservation). The decorator
+is error-handling, not transaction management: it narrates a DB error escaping an ``_impl`` as a
+friendly ``ToolError`` instead of letting a raw exception reach the player.
 """
 
 import logging

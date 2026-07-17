@@ -1,5 +1,10 @@
 """Companion-errand agent tools on DispatchAgent (story-009).
 
+As of M26 (story-003) these are ``_*_impl`` helpers, no longer registered
+``@function_tool``s: ``dispatch_companion_errand`` / ``resolve_companion_errand``
+are reached via ``begin_activity(kind="companion_errand")`` /
+``resolve_activity(kind="companion_errand")``.
+
 `dispatch_companion_errand` validates and creates an async_activities row; the
 async worker resolves it later (risk rolled at resolution, ADR 0006).
 `resolve_companion_errand` computes the outcome on demand via the shared
