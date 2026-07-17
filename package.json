@@ -31,6 +31,7 @@
     "test:sweep": "bash scripts/test-sweep-test-containers.sh",
     "test:all": "bun run scripts/test-all.ts",
     "docker:sweep": "bash scripts/sweep-test-containers.sh",
+    "worktree:teardown": "bash scripts/teardown-worktree.sh",
     "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {

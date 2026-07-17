@@ -70,6 +70,32 @@ wt_resolved_offset() {
   wt_offset_for_name "$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")"
 }
 
+# Given the running compose project names (one per line on STDIN) and the live
+# git-worktree basenames (as args), echo the projects to REAP: running `dr-*`
+# projects that are neither `dr-divineruin` (the primary — always protected) nor
+# the project name of any live worktree. Non-`dr-*` projects are ignored.
+#
+# The live cross-check derives each worktree's project name with wt_project_name
+# (NOT a naive `dr-<basename>`): a live worktree `story-006_Foo` runs as
+# `dr-story-006_foo` after lowercase/sanitize, so a naive form would miss it and
+# the sweep would `down -v` a LIVE stack. Reuse, no re-inline.
+# Usage: printf '%s\n' "${running[@]}" | wt_stale_worktree_projects <basename>...
+wt_stale_worktree_projects() {
+  local live b proj
+  live=$'dr-divineruin\n'
+  for b in "$@"; do
+    live+="$(wt_project_name "$b")"$'\n'
+  done
+  while IFS= read -r proj; do
+    [ -n "$proj" ] || continue
+    case "$proj" in
+      dr-*) ;;
+      *) continue ;;
+    esac
+    printf '%s\n' "$live" | grep -qxF "$proj" || echo "$proj"
+  done
+}
+
 # Export the per-worktree docker/app env. docker compose reads POSTGRES_HOST_PORT
 # / VALKEY_HOST_PORT / COMPOSE_PROJECT_NAME from the environment (and from the
 # worktree .env init-worktree.sh writes); DATABASE_URL / REDIS_URL point the app

@@ -74,4 +74,15 @@ wt_is_primary || fail "expected to run from the primary checkout"
 [ "$(wt_resolved_offset)" = "0" ] || fail "primary checkout offset not 0 (got $(wt_resolved_offset))"
 ok "primary checkout -> offset 0 (ports byte-identical)"
 
+# 9. wt_stale_worktree_projects: given running dr-* projects (stdin) and live
+#    worktree basenames (args), returns only the orphans to reap — never a live
+#    worktree's stack and never dr-divineruin. The lowercase/sanitize case is the
+#    data-loss trap: a live worktree 'story-006_Foo' runs as 'dr-story-006_foo',
+#    so a naive dr-<basename> cross-check would mis-classify it as orphaned and
+#    down -v a LIVE stack. Deriving via wt_project_name closes that.
+running=$'dr-divineruin\ndr-worktree-story-004\ndr-story-006_foo\ndr-old-gone\nsome-other-project'
+orphans="$(printf '%s\n' "$running" | wt_stale_worktree_projects 'story-006_Foo' 'worktree-story-004')"
+[ "$orphans" = "dr-old-gone" ] || fail "stale-project set wrong (expected only dr-old-gone): got [$orphans]"
+ok "wt_stale_worktree_projects reaps only true orphans (protects live + dr-divineruin + non-dr-)"
+
 echo "All worktree-common.sh tests passed."
