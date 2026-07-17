@@ -11,13 +11,12 @@ import json
 import logging
 from datetime import UTC, datetime
 
-from livekit.agents.llm import ToolError, function_tool
+from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import db
 import db_content_queries
 import db_training
-from db_errors import db_tool
 from session_data import SessionData
 from tool_support import _validate_id
 from training_rules import TrainingState, resolve_midpoint_decision, start_training_cycle
@@ -28,21 +27,6 @@ _TERMINAL_STATE: TrainingState = "complete"
 _AWAITING_DECISION_STATE: TrainingState = "awaiting_decision"
 
 
-@function_tool()
-@db_tool
-async def query_training_programs(context: RunContext[SessionData]) -> str:
-    """List all training programs the player can choose. Returns id, name,
-    activity_type, stat, optional skill, dc, mentor_id for each. Call this
-    when the player asks 'what can I train?' or before initiate_training_cycle
-    when you don't already know the program ids.
-
-    The result is meant for YOUR consumption — summarize the programs
-    conversationally for the player; do NOT recite the full list verbatim.
-    Audio-first: pick the 2-3 most-relevant programs for the player's
-    archetype/situation and offer those, mentioning that more exist."""
-    return await _query_training_programs_impl(context)
-
-
 async def _query_training_programs_impl(
     context: RunContext[SessionData],
     *,
@@ -51,24 +35,6 @@ async def _query_training_programs_impl(
     logger.info("query_training_programs called")
     programs = await db_content_mod.list_training_programs()
     return json.dumps({"programs": programs})
-
-
-@function_tool()
-@db_tool
-async def initiate_training_cycle(
-    context: RunContext[SessionData],
-    program_id: str,
-) -> str:
-    """Start a training cycle for the current player on a named program. Use
-    only after the player has explicitly chosen a program in conversation. If
-    you don't know the available program ids, call query_training_programs
-    first. Returns an error if the player already has a non-complete training
-    cycle.
-
-    Args:
-        program_id: One of the ids returned by query_training_programs.
-    """
-    return await _initiate_training_cycle_impl(context, program_id)
 
 
 async def _initiate_training_cycle_impl(
@@ -130,31 +96,6 @@ async def _initiate_training_cycle_impl(
             "program_name": program["name"],
         }
     )
-
-
-@function_tool()
-@db_tool
-async def resolve_training_midpoint(
-    context: RunContext[SessionData],
-    training_id: str,
-    decision_id: str,
-) -> str:
-    """Resolve the midpoint decision for the player's awaiting-decision
-    training cycle. Advances state from 'awaiting_decision' to
-    'running_second_half' and writes the second-half completion time so
-    the worker can finish the cycle.
-
-    Use only after the player has audibly chosen one of the midpoint
-    options surfaced by the prior midpoint prompt. If the training is
-    not theirs, already past the midpoint, or not yet at the midpoint,
-    this returns an error.
-
-    Args:
-        training_id: The activity_id returned by initiate_training_cycle
-            (or surfaced by the catch-up feed).
-        decision_id: The option id the player chose.
-    """
-    return await _resolve_training_midpoint_impl(context, training_id, decision_id)
 
 
 async def _resolve_training_midpoint_impl(

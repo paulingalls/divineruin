@@ -1,5 +1,10 @@
 """Crafting agent tools (story-004, M5.2).
 
+As of M26 (story-003) these are ``_*_impl`` helpers, no longer registered
+``@function_tool``s: ``query_available_workspaces`` / ``rent_workspace`` /
+``start_crafting_project`` are reached via ``query_info(kind="workspaces")`` and
+``begin_activity(kind="workspace"|"crafting")`` on DispatchAgent.
+
 `query_available_workspaces` (read-only) reports the workspaces a player can use at
 their current location plus rental base prices. `rent_workspace` (mutating) prices a
 rental by the NPC's disposition, debits the player's gold (interim 10sp=1gp until the
@@ -19,7 +24,7 @@ import logging
 import random
 from datetime import UTC, datetime, timedelta
 
-from livekit.agents.llm import ToolError, function_tool
+from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import db
@@ -33,7 +38,6 @@ import pricing_queries
 import recipe_validation
 import recipes
 import workspace
-from db_errors import db_tool
 from disposition import resolve_disposition
 from session_data import SessionData
 from tool_preconditions import require_npc_present
@@ -85,15 +89,6 @@ def _resolve_crafting_slot(
     return None, "You already have a crafting project underway. Wait for it to finish first."
 
 
-@function_tool()
-@db_tool
-async def query_available_workspaces(context: RunContext[SessionData]) -> str:
-    """List the crafting workspaces the player can use at their current location
-    (Field is always available; plus any active rentals) and the rental base prices
-    for Workshop / Forge / Laboratory."""
-    return await _query_available_workspaces_impl(context)
-
-
 async def _query_available_workspaces_impl(
     context: RunContext[SessionData], *, queries_mod=db_queries, workspace_mod=workspace
 ) -> str:
@@ -114,25 +109,6 @@ async def _query_available_workspaces_impl(
             "combined_forge_lab_sp": workspace_mod.COMBINED_FORGE_LAB_RENTAL_SP,
         }
     )
-
-
-@function_tool()
-async def rent_workspace(
-    context: RunContext[SessionData],
-    workspace_type: str,
-    npc_id: str,
-    days: int,
-) -> str:
-    """Rent a crafting workspace from an NPC for a number of days. The price depends
-    on the NPC's disposition (Friendly 80%, Trusted 60%); a below-Neutral NPC refuses.
-    Debits the player's gold and grants access at the player's current location.
-
-    Args:
-        workspace_type: workshop, forge, or laboratory (field is free, never rented).
-        npc_id: The NPC the player is renting from.
-        days: Rental length in days (>= 1).
-    """
-    return await _rent_workspace_impl(context, workspace_type, npc_id, days)
 
 
 async def _rent_workspace_impl(
@@ -210,19 +186,6 @@ async def _rent_workspace_impl(
             "expires_at": expires_at.isoformat(),
         }
     )
-
-
-@function_tool()
-async def start_crafting_project(context: RunContext[SessionData], recipe_id: str) -> str:
-    """Begin crafting a recipe the player knows. Runs the five pre-flight checks
-    (Knowledge, Skill Tier, Workspace, Materials, Tainted-Expert); if all pass,
-    consumes the materials and starts the crafting project. The result is rolled
-    later when the project finishes (it takes real time).
-
-    Args:
-        recipe_id: The recipe to craft (the player must already know it).
-    """
-    return await _start_crafting_project_impl(context, recipe_id)
 
 
 async def _start_crafting_project_impl(

@@ -191,7 +191,14 @@ export async function handleActivityDecision(
   }
 }
 
-const AUDIO_DIR = Bun.env.ASYNC_AUDIO_DIR ?? `${import.meta.dir}/../../audio`;
+// `||` not `??`: .env.example ships ASYNC_AUDIO_DIR= (empty), and `??` keeps that
+// empty string (resolving AUDIO_DIR to filesystem root). An empty value means
+// "unset", so it must fall back to the default dir.
+export function resolveAudioDir(configured: string | undefined): string {
+  return configured || `${import.meta.dir}/../../audio`;
+}
+
+const AUDIO_DIR = resolveAudioDir(Bun.env.ASYNC_AUDIO_DIR);
 
 export async function handleAudioFile(filename: string): Promise<Response> {
   // Reject path traversal: only allow alphanumeric, underscores, hyphens, and a single dot for extension

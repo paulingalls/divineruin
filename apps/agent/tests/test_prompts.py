@@ -352,6 +352,32 @@ class TestPromptToolConsistency:
                 f"{name}: prompt names enter_mode but tool-holding differs"
             )
 
+    def test_activity_fold_consistency(self):
+        """M26 Phase-5 story-003: after folding the 10 downtime noun tools into
+        begin_activity/resolve_activity, the DISPATCH prompt must never name a folded
+        tool (prompt-tool drift bit production in M25 story-002), and must name
+        begin_activity/resolve_activity iff DispatchAgent actually holds them."""
+        from activity_tools import begin_activity, resolve_activity
+        from dispatch_agent import DISPATCH_TOOLS
+        from system_prompts import DISPATCH_SYSTEM_PROMPT
+
+        removed_activity_tools = (
+            "query_training_programs",
+            "initiate_training_cycle",
+            "resolve_training_midpoint",
+            "dispatch_companion_errand",
+            "resolve_companion_errand",
+            "query_recipe_requirements",
+            "query_available_workspaces",
+            "rent_workspace",
+            "start_crafting_project",
+            "experiment_with_materials",
+        )
+        for removed in removed_activity_tools:
+            assert removed not in DISPATCH_SYSTEM_PROMPT, f"dispatch prompt still names removed tool {removed}"
+        assert ("begin_activity" in DISPATCH_SYSTEM_PROMPT) == (begin_activity in DISPATCH_TOOLS)
+        assert ("resolve_activity" in DISPATCH_SYSTEM_PROMPT) == (resolve_activity in DISPATCH_TOOLS)
+
     def test_combat_prompt_names_consume_legendary_action(self):
         """story-009: the combat prompt must name consume_legendary_action so the DM knows to spend
         the Boss's legendary beat resolve_phase surfaces, and the agent must hold the tool."""
