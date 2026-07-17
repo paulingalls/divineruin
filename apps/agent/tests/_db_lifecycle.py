@@ -100,14 +100,13 @@ def _temp_base_dir() -> Path:
 def _lockfile_paths(host: str, port: int) -> tuple[Path, Path]:
     """(lock path, state path) for this host:port.
 
-    Keyed on host:port, NOT on `_COMPOSE_FILE`. Each checkout's stack has a
-    distinct host:port (primary 55432; worktrees on offset ports), so host:port
-    keying gives each checkout its own lock+refcount — which is exactly right:
-    it coordinates the concurrent `pytest` runs / xdist workers sharing THAT
-    checkout's one container, without falsely coupling separate checkouts.
-    Compose-file-path keying would instead give even same-checkout runs (which
-    resolve the same path) a shared lock but couldn't distinguish stacks — the
-    host:port is the honest identity of the physical container.
+    Keyed on host:port — the honest identity of the physical container: two
+    callers reaching the same host:port ARE sharing one container and must
+    coordinate its startup/teardown, however each resolved its compose file.
+    Each checkout's stack has a distinct host:port (primary 55432; worktrees on
+    offset ports), so this gives each checkout its own lock+refcount —
+    coordinating THAT checkout's concurrent `pytest` runs / xdist workers without
+    falsely coupling separate checkouts.
     """
     base = _temp_base_dir()
     stem = f"divineruin-db-lifecycle-{host}-{port}"
