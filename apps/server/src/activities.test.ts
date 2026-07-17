@@ -3,8 +3,13 @@ import { dbMockFactory, setQueryStubs, resetMockDb, makeRequest } from "./activi
 
 void mock.module("./db.ts", dbMockFactory);
 
-const { handleListActivities, handleGetActivity, handleActivityDecision, handleAudioFile } =
-  await import("./activities.ts");
+const {
+  handleListActivities,
+  handleGetActivity,
+  handleActivityDecision,
+  handleAudioFile,
+  resolveAudioDir,
+} = await import("./activities.ts");
 
 beforeEach(() => {
   resetMockDb();
@@ -298,6 +303,21 @@ describe("handleActivityDecision", () => {
     const req = makeRequest("POST", "/api/activities/act_1/decide", { decision_id: "keep" });
     const res = await handleActivityDecision(req, "player_1", "act_1");
     expect(res.status).toBe(404);
+  });
+});
+
+describe("resolveAudioDir", () => {
+  const DEFAULT = resolveAudioDir(undefined);
+
+  test("an empty-string env falls back to the default dir (?? would keep '')", () => {
+    // .env.example ships ASYNC_AUDIO_DIR= (empty), so `cp .env.example .env`
+    // sets it to "". With `??` that empty string wins and AUDIO_DIR resolves to
+    // filesystem root; `||` must treat it like unset.
+    expect(resolveAudioDir("")).toBe(DEFAULT);
+  });
+
+  test("a configured dir is used verbatim", () => {
+    expect(resolveAudioDir("/custom/audio")).toBe("/custom/audio");
   });
 });
 
