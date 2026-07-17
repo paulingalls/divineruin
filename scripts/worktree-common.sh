@@ -40,14 +40,18 @@ wt_offset_for_name() {
   echo $(( (sum % 900 + 1) * 10 ))
 }
 
-# Sanitize a checkout basename into a legal compose project name
-# (^[a-z0-9][a-z0-9_-]*$): lowercase, map illegal chars to '-', strip a leading
-# non-alphanumeric run.
+# Sanitize a checkout basename into a legal compose project name and prepend the
+# `dr-` project namespace, so every stack (`dr-<name>-postgres-1`) reads as this
+# project's in `docker ps` even when several projects share the docker host.
+# Sanitize: lowercase, map illegal chars to '-', strip a leading non-alphanumeric
+# run (compose requires ^[a-z0-9][a-z0-9_-]*$; `dr-` keeps it legal).
 # Args: <checkout-basename>
 wt_project_name() {
-  printf '%s' "$1" \
+  local sanitized
+  sanitized="$(printf '%s' "$1" \
     | tr '[:upper:]' '[:lower:]' \
-    | sed -E 's/[^a-z0-9_-]/-/g; s/^[^a-z0-9]+//'
+    | sed -E 's/[^a-z0-9_-]/-/g; s/^[^a-z0-9]+//')"
+  printf 'dr-%s' "$sanitized"
 }
 
 # The effective offset for THIS checkout:
@@ -64,6 +68,32 @@ wt_resolved_offset() {
     return 0
   fi
   wt_offset_for_name "$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")"
+}
+
+# Given the running compose project names (one per line on STDIN) and the live
+# git-worktree basenames (as args), echo the projects to REAP: running `dr-*`
+# projects that are neither `dr-divineruin` (the primary — always protected) nor
+# the project name of any live worktree. Non-`dr-*` projects are ignored.
+#
+# The live cross-check derives each worktree's project name with wt_project_name
+# (NOT a naive `dr-<basename>`): a live worktree `story-006_Foo` runs as
+# `dr-story-006_foo` after lowercase/sanitize, so a naive form would miss it and
+# the sweep would `down -v` a LIVE stack. Reuse, no re-inline.
+# Usage: printf '%s\n' "${running[@]}" | wt_stale_worktree_projects <basename>...
+wt_stale_worktree_projects() {
+  local live b proj
+  live=$'dr-divineruin\n'
+  for b in "$@"; do
+    live+="$(wt_project_name "$b")"$'\n'
+  done
+  while IFS= read -r proj; do
+    [ -n "$proj" ] || continue
+    case "$proj" in
+      dr-*) ;;
+      *) continue ;;
+    esac
+    printf '%s\n' "$live" | grep -qxF "$proj" || echo "$proj"
+  done
 }
 
 # Export the per-worktree docker/app env. docker compose reads POSTGRES_HOST_PORT

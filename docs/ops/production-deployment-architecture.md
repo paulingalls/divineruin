@@ -36,8 +36,8 @@ Local development mirrors this topology with **containerized stand-ins for the m
 
 | Concern | Local (dev) | Production |
 |---|---|---|
-| Postgres | `docker-compose` `divineruin-postgres-1` on `localhost:55432` (offset per git worktree) | DO Managed Postgres (`DATABASE_URL` from the managed cluster) |
-| Valkey | `docker-compose` `divineruin-valkey-1` on `localhost:56379` (offset per git worktree) | DO Managed Valkey (`REDIS_URL` from the managed cluster) |
+| Postgres | `docker-compose` `dr-divineruin-postgres-1` on `localhost:55432` (offset per git worktree) | DO Managed Postgres (`DATABASE_URL` from the managed cluster) |
+| Valkey | `docker-compose` `dr-divineruin-valkey-1` on `localhost:56379` (offset per git worktree) | DO Managed Valkey (`REDIS_URL` from the managed cluster) |
 | LiveKit | self-hosted `livekit-server` container (acceptance tests only) | LiveKit Cloud (`LIVEKIT_URL=wss://<project>.livekit.cloud`) |
 | Agent / Server | `bun`/`uv run` on the host | containers on App Platform / droplet |
 | Assets | rustfs container (per object-storage migration) | DO Spaces |
