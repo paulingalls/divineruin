@@ -1,9 +1,12 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: divineruin-postgres
+    # No container_name: compose namespaces containers by COMPOSE_PROJECT_NAME
+    # (= checkout basename) so parallel git worktrees don't collide on the name.
+    # Host port is offset per worktree (POSTGRES_HOST_PORT, derived in
+    # scripts/worktree-common.sh); the primary checkout defaults to 55432.
     ports:
-      - "127.0.0.1:55432:5432"
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-55432}:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-divineruin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-divineruin_dev}
@@ -18,9 +21,10 @@ services:
 
   valkey:
     image: valkey/valkey:8-alpine
-    container_name: divineruin-valkey
+    # No container_name (see postgres). Host port offset per worktree
+    # (VALKEY_HOST_PORT, scripts/worktree-common.sh); primary defaults to 56379.
     ports:
-      - "127.0.0.1:56379:6379"
+      - "127.0.0.1:${VALKEY_HOST_PORT:-56379}:6379"
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
