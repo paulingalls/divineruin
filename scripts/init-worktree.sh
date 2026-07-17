@@ -96,11 +96,17 @@ run_typegen() {
   trap 'reap_typegen "$pid"; exit 130' INT TERM HUP
 
   waited=0
+  # Exit once router.d.ts is regenerated (newer-or-equal to the marker) AND
+  # expo-env.d.ts merely EXISTS. router.d.ts is the false-green-critical file
+  # (typed routes) that expo-router rewrites every startup, so gating regen on it
+  # is right. expo-env.d.ts is static boilerplate expo writes ONCE and skips when
+  # unchanged — requiring IT to be newer than the marker hung a warm re-run for
+  # the full timeout (debt de36dd4b8a79), so we only require it to be present.
   # `! marker -nt file` (not `file -nt marker`): macOS /bin/bash compares mtime in
   # whole seconds, so a same-second write is not `-nt`; the inverted form accepts
-  # an equal-second write, rejects a stale file, and is false while the file is
-  # absent (marker -nt absent = true) so it covers the fresh case too.
-  until ! [ "$marker" -nt "$ROUTER_TYPES" ] && ! [ "$marker" -nt "$EXPO_ENV_TYPES" ]; do
+  # an equal-second write and is false while the file is absent (marker -nt absent
+  # = true), covering the fresh case too.
+  until ! [ "$marker" -nt "$ROUTER_TYPES" ] && [ -f "$EXPO_ENV_TYPES" ]; do
     sleep 0.5
     waited=$((waited + 1))
     if ! kill -0 "$pid" 2>/dev/null; then

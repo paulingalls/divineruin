@@ -9,24 +9,24 @@ and waits for readiness, then tears down ONLY what this run started on session
 end via `docker compose down` (never -v, so named volumes and pre-existing dev
 DB are left untouched).
 
-If a leftover stopped container causes an "already in use" conflict, ensure_db_up
-self-heals by issuing `docker compose down` (no -v), then retrying `up` once.
-Any other failure is fatal.
+Any `up` failure is fatal (fail-loud) — see `_start_compose` for why there is no
+name-conflict self-heal since the dr- namespace fold dropped `container_name`.
 
 The acceptance lane manages its own testcontainers (see tests/acceptance/) and
 is unaffected: if the dev DB is already up, ensure_db_up() is a fast no-op.
 
-Concurrency: this project runs one git worktree per parallel teammate, and
-`docker-compose.yml` pins the dev Postgres to a single host:port
-(127.0.0.1:55432) — every worktree/checkout shares that one physical
-container. Two overlapping `pytest` runs therefore race on both startup (a
-container-name-conflict retry can steal a container mid-startup) and teardown
-(a run that joined an already-running DB must not tear it down under a run
-still using it). Both races are closed by an `fcntl.flock`-guarded refcount:
-every `ensure_db_up`/`stop_if_started` call holds an exclusive lock across its
-entire critical section, and a JSON state file tracks how many concurrent
-callers are using the DB plus whether the harness (as opposed to a developer
-who started it by hand) started it.
+Concurrency: each checkout runs its OWN docker stack — the primary at
+`127.0.0.1:55432` (`dr-divineruin`), and each git worktree on offset ports under
+`dr-<checkout>` (see scripts/worktree-common.sh; docker-compose.yml no longer
+pins `container_name`). WITHIN a single checkout, though, concurrent `pytest`
+runs and xdist workers still share that checkout's one physical container, so
+they race on startup and teardown (a run that joined an already-running DB must
+not tear it down under a run still using it). Those races are closed by an
+`fcntl.flock`-guarded refcount, keyed on host:port (so each checkout's stack has
+its own): every `ensure_db_up`/`stop_if_started` call holds an exclusive lock
+across its critical section, and a JSON state file tracks how many concurrent
+callers are using the DB plus whether the harness (vs a developer who started it
+by hand) started it.
 
 Known, accepted limitation: a SIGKILLed run leaks a positive refcount (its
 `stop_if_started` never runs), leaving the DB running with count > 0. This is
@@ -100,11 +100,13 @@ def _temp_base_dir() -> Path:
 def _lockfile_paths(host: str, port: int) -> tuple[Path, Path]:
     """(lock path, state path) for this host:port.
 
-    Keyed on host:port, NOT on `_COMPOSE_FILE` — every teammate worktree
-    resolves a different docker-compose.yml path while sharing the single
-    physical dev DB container. Path-keying would give each worktree its own
-    lock and refcount, reopening the exact teardown race this exists to
-    close.
+    Keyed on host:port — the honest identity of the physical container: two
+    callers reaching the same host:port ARE sharing one container and must
+    coordinate its startup/teardown, however each resolved its compose file.
+    Each checkout's stack has a distinct host:port (primary 55432; worktrees on
+    offset ports), so this gives each checkout its own lock+refcount —
+    coordinating THAT checkout's concurrent `pytest` runs / xdist workers without
+    falsely coupling separate checkouts.
     """
     base = _temp_base_dir()
     stem = f"divineruin-db-lifecycle-{host}-{port}"
@@ -150,32 +152,26 @@ def is_accepting_queries(user: str) -> bool:
 
 
 def _start_compose(host: str, port: int, user: str) -> None:
-    """Run `docker compose up`, self-healing a stale name conflict once, then
-    block until Postgres accepts queries.
+    """Run `docker compose up`, then block until Postgres accepts queries.
 
-    Must be called while holding the exclusive lock from `ensure_db_up` — the
-    conflict-retry `down` is destructive to any container mid-startup, so no
-    other run may be inside this function concurrently.
+    Must be called while holding the exclusive lock from `ensure_db_up`, so no
+    other run may be mid-startup concurrently.
+
+    Fail-loud on any `up` failure. There is no name-conflict self-heal: since the
+    dr- namespace fold dropped `container_name` (docker-compose.yml), compose
+    auto-names `<project>-postgres-1` per project and restarts a stopped
+    container of the same project, so the old "container name already in use"
+    class cannot arise. The real post-fold failure is a host-port BIND conflict
+    (two checkouts' offsets collide) — genuinely fatal; the compose error names
+    the port, and WT_PORT_OFFSET can force a distinct offset.
     """
     print(f"\n[db-lifecycle] Postgres not reachable at {host}:{port} — starting docker compose...")
     result = _compose("up", "-d", "--remove-orphans")
     if result.returncode != 0:
-        combined = f"{result.stderr}\n{result.stdout}".lower()
-        # A leftover STOPPED container with the same explicit container_name makes `up -d` fail
-        # with "container name already in use" instead of restarting it. Self-heal: `down` (never
-        # -v, so named-volume data survives) clears the stale containers, then retry `up -d` once.
-        # Any other failure is genuinely fatal.
-        if "already in use" in combined or "conflict" in combined:
-            print(
-                "[db-lifecycle] Stale container-name conflict — `docker compose down` (keeps volumes), retrying up..."
-            )
-            _compose("down")
-            result = _compose("up", "-d", "--remove-orphans")
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"`docker compose up -d` failed (exit {result.returncode}): "
-                f"{result.stderr.strip() or result.stdout.strip()}"
-            )
+        raise RuntimeError(
+            f"`docker compose up -d` failed (exit {result.returncode}): "
+            f"{result.stderr.strip() or result.stdout.strip()}"
+        )
 
     deadline = time.monotonic() + _READY_TIMEOUT_SECONDS
     while time.monotonic() < deadline:

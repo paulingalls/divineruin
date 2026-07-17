@@ -107,59 +107,31 @@ def test_ensure_db_up_raises_when_compose_up_fails(monkeypatch):
         raise AssertionError("expected RuntimeError when `docker compose up` fails")
 
 
-def test_ensure_db_up_self_heals_name_conflict(monkeypatch):
-    """Conflict on first `up` -> `down` + retry `up` -> success."""
-    calls: list[tuple[str, ...]] = []
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
-    monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
-    monkeypatch.setattr(dbl, "is_accepting_queries", lambda user: True)
-
-    def fake_compose_conflict_then_succeed(*args):
-        calls.append(args)
-        if len(calls) == 1:
-            # First call: conflict error.
-            result = _FakeCompleted(returncode=1)
-            result.stderr = 'container name "/divineruin-valkey" is already in use'
-            return result
-        else:
-            # Subsequent calls: succeed (either `down` or retry `up`).
-            return _FakeCompleted(returncode=0)
-
-    monkeypatch.setattr(dbl, "_compose", fake_compose_conflict_then_succeed)
-    assert dbl.ensure_db_up() is True
-    # Expect: first up (conflict), down, retry up.
-    assert calls == [
-        ("up", "-d", "--remove-orphans"),
-        ("down",),
-        ("up", "-d", "--remove-orphans"),
-    ]
-
-
-def test_ensure_db_up_raises_when_conflict_retry_also_fails(monkeypatch):
-    """Conflict on first `up`, then conflict also on retry -> raise."""
+def test_ensure_db_up_does_not_retry_on_conflict(monkeypatch):
+    """Under Option B (per-worktree stacks, no `container_name`) a name conflict
+    cannot arise — compose auto-names `<project>-postgres-1` per project and
+    restarts a stopped container of the same project. So a failing `up` is NOT
+    special-cased or retried; it raises like any other failure (no `down`+retry
+    self-heal). Pins the removal of that dead branch."""
     calls: list[tuple[str, ...]] = []
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
     monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
 
-    def fake_compose_conflict_twice(*args):
+    def fake_compose_conflict(*args):
         calls.append(args)
-        if len(calls) in (1, 3):
-            # Both up attempts: conflict error.
-            result = _FakeCompleted(returncode=1)
-            result.stderr = "container name is already in use"
-            return result
-        else:
-            # down call: succeed.
-            return _FakeCompleted(returncode=0)
+        result = _FakeCompleted(returncode=1)
+        result.stderr = "container name is already in use"
+        return result
 
-    monkeypatch.setattr(dbl, "_compose", fake_compose_conflict_twice)
+    monkeypatch.setattr(dbl, "_compose", fake_compose_conflict)
     try:
         dbl.ensure_db_up()
     except RuntimeError as exc:
         assert "docker compose up" in str(exc)
-        assert "container name is already in use" in str(exc)
     else:
-        raise AssertionError("expected RuntimeError when retry `docker compose up` also fails")
+        raise AssertionError("expected RuntimeError when `docker compose up` fails")
+    # Exactly one `up` — no `down`, no retry.
+    assert calls == [("up", "-d", "--remove-orphans")]
 
 
 def test_lockfile_paths_keyed_on_host_port_not_compose_file(monkeypatch, tmp_path):
@@ -208,9 +180,9 @@ def test_ensure_db_up_resets_stale_count_when_db_unreachable(monkeypatch):
     assert dbl._read_state(state_path) == {"count": 1, "harness_started": True}
 
 
-def test_ensure_db_up_holds_lock_during_conflict_retry(monkeypatch):
-    """The conflict-retry `down` + `up` must run while the exclusive lock is
-    held, so no other run can be mid-startup concurrently (Race A)."""
+def test_ensure_db_up_holds_lock_during_start(monkeypatch):
+    """`_start_compose`'s `up` must run while the exclusive lock is held, so no
+    other run can be mid-startup concurrently (Race A)."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
     monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
     monkeypatch.setattr(dbl, "is_accepting_queries", lambda user: True)
@@ -232,17 +204,12 @@ def test_ensure_db_up_holds_lock_during_conflict_retry(monkeypatch):
 
     def fake_compose(*args):
         calls.append(args)
-        if len(calls) == 1:
-            assert probe_lock_held(), "lock must be held during the conflict-retry critical section"
-            result = _FakeCompleted(returncode=1)
-            result.stderr = "container name is already in use"
-            return result
-        assert probe_lock_held(), "lock must be held during the conflict-retry critical section"
+        assert probe_lock_held(), "lock must be held during the start critical section"
         return _FakeCompleted()
 
     monkeypatch.setattr(dbl, "_compose", fake_compose)
     assert dbl.ensure_db_up() is True
-    assert len(calls) == 3
+    assert calls == [("up", "-d", "--remove-orphans")]
 
 
 def test_stop_if_started_refcount_teardown(monkeypatch):
