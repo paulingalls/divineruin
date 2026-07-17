@@ -338,7 +338,7 @@ describe("handleAudioFile", () => {
   });
 
   test("serves existing mp3 file with correct headers", async () => {
-    const audioDir = Bun.env.ASYNC_AUDIO_DIR ?? `${import.meta.dir}/../../audio`;
+    const audioDir = resolveAudioDir(Bun.env.ASYNC_AUDIO_DIR);
     const testFile = `${audioDir}/test_audio_serve.mp3`;
     await Bun.write(testFile, "fake-mp3-data");
     try {
@@ -356,7 +356,7 @@ describe("handleAudioFile", () => {
   });
 
   test("serves existing wav file with wav content type", async () => {
-    const audioDir = Bun.env.ASYNC_AUDIO_DIR ?? `${import.meta.dir}/../../audio`;
+    const audioDir = resolveAudioDir(Bun.env.ASYNC_AUDIO_DIR);
     const testFile = `${audioDir}/test_audio_serve.wav`;
     await Bun.write(testFile, "fake-wav-data");
     try {
