@@ -7,9 +7,10 @@ set -euo pipefail
 # framework, plain asserts, non-zero exit on the first failure.
 #
 # These exercise the PURE helpers (offset math, name sanitizing, override) plus
-# the primary-checkout path (this file runs from the primary, so wt_is_primary
-# is true here). The full end-to-end bootstrap is proved by the probe-worktree
-# differential in the story's verification, not here.
+# the offset-resolution path, which is context-aware: from the primary it asserts
+# offset 0, from a linked worktree it asserts a non-zero offset — so the pre-push
+# gate stays green from any checkout. The full end-to-end bootstrap is proved by
+# the probe-worktree differential in the story's verification, not here.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=/dev/null
@@ -69,10 +70,17 @@ ok "wt_project_name sanitizes + dr- prefixes to a legal compose project"
 [ "$(WT_PORT_OFFSET=1234 wt_resolved_offset)" = "1234" ] || fail "WT_PORT_OFFSET override ignored"
 ok "WT_PORT_OFFSET override honored"
 
-# 8. The primary checkout (this test runs from it) resolves to offset 0.
-wt_is_primary || fail "expected to run from the primary checkout"
-[ "$(wt_resolved_offset)" = "0" ] || fail "primary checkout offset not 0 (got $(wt_resolved_offset))"
-ok "primary checkout -> offset 0 (ports byte-identical)"
+# 8. Offset resolves per checkout context: the primary resolves to 0 (ports
+#    byte-identical to today); a linked worktree resolves to a real non-zero
+#    offset. Context-aware so the pre-push gate stays green from ANY checkout.
+if wt_is_primary; then
+  [ "$(wt_resolved_offset)" = "0" ] || fail "primary checkout offset not 0 (got $(wt_resolved_offset))"
+  ok "primary checkout -> offset 0 (ports byte-identical)"
+else
+  off="$(wt_resolved_offset)"
+  [ "$off" -ne 0 ] || fail "linked worktree resolved to offset 0 (expected non-zero, got $off)"
+  ok "linked worktree -> non-zero offset $off (ports isolated from primary)"
+fi
 
 # 9. wt_stale_worktree_projects: given running dr-* projects (stdin) and live
 #    worktree basenames (args), returns only the orphans to reap — never a live

@@ -25,6 +25,16 @@ _down() {  # <project>
   COMPOSE_PROJECT_NAME="$proj" docker compose -f "$COMPOSE_FILE" down -v
 }
 
+# Echo COMPOSE_PROJECT_NAME as recorded in this checkout's .env — the value
+# `docker compose up` actually used (init-worktree.sh writes it unquoted). Empty
+# when .env is absent or has no such key; callers fall back to wt_export_env.
+_env_compose_project() {
+  [ -f "$REPO_ROOT/.env" ] || return 0
+  local line
+  line="$(grep -E '^COMPOSE_PROJECT_NAME=' "$REPO_ROOT/.env" | tail -n1)" || return 0
+  printf '%s' "${line#COMPOSE_PROJECT_NAME=}"
+}
+
 sweep() {
   local running live_basenames orphans proj
   # Running/stopped compose projects (names only) on this docker host.
@@ -59,13 +69,25 @@ main() {
     exit 2
   fi
 
-  wt_export_env  # sets COMPOSE_PROJECT_NAME for THIS checkout
-  if [ "$COMPOSE_PROJECT_NAME" = "dr-divineruin" ] && [ "$force" -ne 1 ]; then
-    echo "teardown-worktree: refusing to tear down the PRIMARY stack (dr-divineruin) —" >&2
+  # Refuse the PRIMARY checkout on the reliable git-based signal, not a literal
+  # project-name match: a primary dir NOT named 'divineruin' still derives a
+  # dr-<basename> project, and tearing down the shared dev DB must stay gated.
+  if wt_is_primary && [ "$force" -ne 1 ]; then
+    echo "teardown-worktree: refusing to tear down the PRIMARY checkout's stack —" >&2
     echo "                   that is your shared dev DB. Re-run with --force to override." >&2
     exit 1
   fi
-  _down "$COMPOSE_PROJECT_NAME"
+
+  # Target the project `docker compose up` actually used: this checkout's .env
+  # COMPOSE_PROJECT_NAME (init-worktree.sh writes it), falling back to the derived
+  # name when .env carries none.
+  local proj
+  proj="$(_env_compose_project)"
+  if [ -z "$proj" ]; then
+    wt_export_env
+    proj="$COMPOSE_PROJECT_NAME"
+  fi
+  _down "$proj"
 }
 
 main "$@"

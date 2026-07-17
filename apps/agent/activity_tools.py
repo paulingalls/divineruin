@@ -60,7 +60,7 @@ async def begin_activity(
 
     Pass kind to pick which activity, then only the params that activity needs:
 
-    - kind='training': program_id (from query_training_programs).
+    - kind='training': program_id (from query_info(kind="training_programs")).
     - kind='companion_errand': companion_id, errand_type (scout|social|acquire|relationship),
       destination.
     - kind='crafting': recipe_id (a recipe the player already knows).
@@ -129,7 +129,7 @@ async def _begin_activity_impl(
         return await crafting_mod._start_crafting_project_impl(context, recipe_id)
 
     if kind == "workspace":
-        if not (workspace_type and npc_id and days):
+        if not workspace_type or not npc_id or days is None:
             raise ToolError("kind='workspace' requires workspace_type, npc_id, and days.")
         return await crafting_mod._rent_workspace_impl(context, workspace_type, npc_id, days)
 
