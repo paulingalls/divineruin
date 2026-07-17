@@ -59,10 +59,11 @@ ok "non-zero offsets clear the primary ports; pg != valkey"
   || fail "divineruin and dr-probe hash to the same offset"
 ok "distinct sample names get distinct offsets"
 
-# 6. wt_project_name sanitizes to compose's legal ^[a-z0-9][a-z0-9_-]*$.
-[ "$(wt_project_name 'Dr_Probe 1')" = "dr_probe-1" ] || fail "project name sanitize (space/case) wrong: $(wt_project_name 'Dr_Probe 1')"
-[ "$(wt_project_name '--weird.name')" = "weird-name" ] || fail "project name leading/illegal strip wrong: $(wt_project_name '--weird.name')"
-ok "wt_project_name sanitizes to a legal compose project"
+# 6. wt_project_name sanitizes to compose's legal ^[a-z0-9][a-z0-9_-]*$ AND
+#    prepends the dr- project namespace so every stack reads as this project's.
+[ "$(wt_project_name 'Dr_Probe 1')" = "dr-dr_probe-1" ] || fail "project name sanitize (space/case) wrong: $(wt_project_name 'Dr_Probe 1')"
+[ "$(wt_project_name '--weird.name')" = "dr-weird-name" ] || fail "project name leading/illegal strip wrong: $(wt_project_name '--weird.name')"
+ok "wt_project_name sanitizes + dr- prefixes to a legal compose project"
 
 # 7. WT_PORT_OFFSET is a manual override, honored verbatim.
 [ "$(WT_PORT_OFFSET=1234 wt_resolved_offset)" = "1234" ] || fail "WT_PORT_OFFSET override ignored"

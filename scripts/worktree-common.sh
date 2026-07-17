@@ -40,14 +40,18 @@ wt_offset_for_name() {
   echo $(( (sum % 900 + 1) * 10 ))
 }
 
-# Sanitize a checkout basename into a legal compose project name
-# (^[a-z0-9][a-z0-9_-]*$): lowercase, map illegal chars to '-', strip a leading
-# non-alphanumeric run.
+# Sanitize a checkout basename into a legal compose project name and prepend the
+# `dr-` project namespace, so every stack (`dr-<name>-postgres-1`) reads as this
+# project's in `docker ps` even when several projects share the docker host.
+# Sanitize: lowercase, map illegal chars to '-', strip a leading non-alphanumeric
+# run (compose requires ^[a-z0-9][a-z0-9_-]*$; `dr-` keeps it legal).
 # Args: <checkout-basename>
 wt_project_name() {
-  printf '%s' "$1" \
+  local sanitized
+  sanitized="$(printf '%s' "$1" \
     | tr '[:upper:]' '[:lower:]' \
-    | sed -E 's/[^a-z0-9_-]/-/g; s/^[^a-z0-9]+//'
+    | sed -E 's/[^a-z0-9_-]/-/g; s/^[^a-z0-9]+//')"
+  printf 'dr-%s' "$sanitized"
 }
 
 # The effective offset for THIS checkout:
