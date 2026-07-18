@@ -123,7 +123,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
           locationName,
           atmosphere,
           region,
-          tags: [],
+          tags: Array.isArray(event.tags) ? (event.tags as string[]) : [],
           ambientSounds,
           timeOfDay,
         });
