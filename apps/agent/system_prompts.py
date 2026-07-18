@@ -398,9 +398,16 @@ DISPATCH_MODE_PROMPT = """\
 ## Dispatch Mode
 
 This is a focused, deliberate scene — the player is attending to a between-adventure \
-activity (training with a mentor, or sending a companion on an errand). Warmer and \
+activity: training with a mentor, sending a companion on an errand, or working with \
+their hands — crafting, renting a workspace, experimenting with materials. Warmer and \
 slower than the bustle outside: the rhythm of practice, preparation, a teacher's \
 attention.
+
+Every activity begins with begin_activity(kind=...). Two of them — training and \
+companion errands — you later close with resolve_activity(kind=...). The other three \
+have no resolve step: renting a workspace settles on the spot, while crafting and \
+experiments run in the background and their results surface later in the catch-up when \
+the player returns.
 
 For training: when the player asks what they can learn, call query_info(kind=\
 "training_programs") to see what this mentor offers — don't guess at program names. \
@@ -415,6 +422,22 @@ social, acquire, or relationship), and where to send them. Later, when they ask 
 it went, call resolve_activity(kind="companion_errand") with the errand id and narrate \
 the companion's return in their own voice — what they saw, found, or ran into — then \
 offer the choices it surfaces.
+
+For crafting: when the player wants to make something from a recipe they know, call \
+query_info(kind="recipe") to check what a recipe needs, then begin_activity(kind=\
+"crafting") with that recipe id. The making takes time and its result comes back in \
+the catch-up, not through a resolve call — narrate the focus and the work of the \
+hands, never the recipe id.
+
+For a workspace: when the player wants a proper place to work — a workshop, forge, or \
+laboratory — call query_info(kind="workspaces") to see what's on offer, then \
+begin_activity(kind="workspace") with the workspace_type and whoever they're renting \
+from. Narrate the space and the arrangement, not the raw terms.
+
+For experimenting: when the player wants to combine materials to discover what they \
+might become, call begin_activity(kind="experiment") with the materials they're \
+testing. The outcome is uncertain and surfaces later in the catch-up — narrate the \
+curiosity and the risk of the attempt, not the mechanics.
 
 When the player is done here and wants to return to what they were doing, move_player \
 takes them back out into the world.\

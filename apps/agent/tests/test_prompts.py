@@ -378,6 +378,25 @@ class TestPromptToolConsistency:
         assert ("begin_activity" in DISPATCH_SYSTEM_PROMPT) == (begin_activity in DISPATCH_TOOLS)
         assert ("resolve_activity" in DISPATCH_SYSTEM_PROMPT) == (resolve_activity in DISPATCH_TOOLS)
 
+    def test_dispatch_narrates_all_begin_activity_kinds(self):
+        """Debt 574d0c6e83cd: DispatchAgent can begin 5 activity kinds via begin_activity(kind),
+        but after the M26 fold the dispatch prompt only narrated training/companion_errand —
+        crafting/workspace/experiment had the verb but no when-to-invoke guidance. Every
+        registered kind must be named in the prompt. Kinds are DERIVED from the begin_activity
+        Literal (not hardcoded) so a future 6th kind fails loud rather than silently uncovered."""
+        import inspect
+        import typing
+
+        from activity_tools import begin_activity
+        from system_prompts import DISPATCH_SYSTEM_PROMPT
+
+        kinds = typing.get_args(inspect.signature(begin_activity).parameters["kind"].annotation)
+        # Guard the reflection itself: if the Literal ever stops resolving (e.g. the param
+        # becomes `str`), kinds would be () and the loop below would pass vacuously.
+        assert len(kinds) >= 5, f"reflection returned too few begin_activity kinds ({kinds}) — guard would be vacuous"
+        for kind in kinds:
+            assert kind in DISPATCH_SYSTEM_PROMPT, f"dispatch prompt omits begin_activity kind {kind!r}"
+
     def test_audio_tool_fold_consistency(self):
         """M27 story-003: play_sound/set_music_state were torn out as LLM tools — SFX/music
         now derive only from deterministic Resolves and the Stage. No gameplay prompt may
