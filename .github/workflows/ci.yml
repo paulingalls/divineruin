@@ -77,6 +77,37 @@ jobs:
 
   test-python:
     runs-on: ubuntu-latest
+    # `pytest tests/` runs the full tree. The acceptance lane self-provisions
+    # per-run testcontainers, but the fast-lane real-PG tests connect to the
+    # shared dev DB at :55432 (conftest's ensure_db_up()); provide it here as a
+    # migrated service so those round-trip tests find their tables. Mirrors
+    # test-bun / test-e2e.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: divineruin
+          POSTGRES_PASSWORD: divineruin_dev
+          POSTGRES_DB: divineruin
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U divineruin"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 56379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://divineruin:divineruin_dev@localhost:55432/divineruin
+      REDIS_URL: redis://localhost:56379
     steps:
       - uses: actions/checkout@v4
       # bun is required: the cross-language acceptance tests (_server.py) spawn
@@ -87,6 +118,8 @@ jobs:
       - uses: astral-sh/setup-uv@v7
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bun install
+      - run: bun run scripts/migrate.ts
+      - run: cd scripts && uv sync && uv run python seed_content.py
       - run: cd apps/agent && uv sync
       - run: cd apps/agent && uv run pytest tests/ -q
 
