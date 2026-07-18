@@ -121,6 +121,11 @@ async def push_cards_to_client(category: str, room, event_bus=None) -> None:
         await publish_game_event(room, E.CREATION_CARDS, {"cards": cards}, event_bus)
 
 
+async def push_creation_music(music_state: str, room, event_bus) -> None:
+    """Emit the creation mood as a deterministic SET_MUSIC_STATE Resolve (no LLM tool)."""
+    await publish_game_event(room, E.SET_MUSIC_STATE, {"music_state": music_state}, event_bus=event_bus)
+
+
 CardCategory = Literal["class", "deity"]
 
 
