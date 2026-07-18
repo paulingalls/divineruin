@@ -71,11 +71,11 @@ def test_activate_registered_on_combat_and_exploration_folded_nouns_gone_everywh
 def test_tool_budget_holds_exact_counts() -> None:
     """Exact counts pin the fold's tool-ceiling win — a regression here silently re-inflates
     the strict tool budget the fold exists to protect."""
-    assert len(COMBAT_AGENT_TOOLS) == 11
+    assert len(COMBAT_AGENT_TOOLS) == 9
     assert len(COMBAT_AGENT_TOOLS) <= MAX_STRICT_TOOLS - 4
 
-    assert len(EXPLORATION_TOOLS) == 18
-    assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS - 2
+    assert len(EXPLORATION_TOOLS) == 16
+    assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS - 4
 
 
 async def _focus_current(player_id: str) -> int:
