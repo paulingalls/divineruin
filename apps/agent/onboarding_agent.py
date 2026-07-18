@@ -12,7 +12,6 @@ from livekit.agents import llm
 
 from base_agent import BaseGameAgent
 from check_tools import check
-from environment_tools import play_sound, set_music_state
 from movement_tools import move_player
 from onboarding_background import OnboardingBackgroundProcess
 from onboarding_tools import advance_onboarding_beat
@@ -29,8 +28,6 @@ ONBOARDING_TOOLS = [
     query_info,
     move_player,
     check,
-    play_sound,
-    set_music_state,
     record_story_moment,
     advance_onboarding_beat,
 ]

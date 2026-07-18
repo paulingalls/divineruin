@@ -17,7 +17,6 @@ from card_tap_handler import SpecializationTapHandler, start_specialization_tap
 from check_tools import check
 from choice_tools import select
 from dispatch_tools import conclude_dispatch
-from environment_tools import play_sound, set_music_state
 from movement_tools import move_player
 from query_tools import query_info
 from recipe_tools import learn
@@ -38,8 +37,6 @@ DISPATCH_TOOLS = [
     move_player,
     query_info,
     check,
-    play_sound,
-    set_music_state,
     end_session,
     # Return to ordinary play (the intent-route exit; location route uses move_player)
     conclude_dispatch,

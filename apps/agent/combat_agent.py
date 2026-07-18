@@ -8,7 +8,6 @@ from check_tools import check
 from combat_death_save import request_death_save
 from combat_end import end_combat
 from combat_turn import consume_legendary_action, declare_phase, resolve_phase
-from environment_tools import play_sound, set_music_state
 from query_tools import query_info
 from spell_info_tools import get_spell_info
 from system_prompts import COMBAT_SYSTEM_PROMPT
@@ -28,8 +27,6 @@ COMBAT_AGENT_TOOLS = [
     check,
     request_death_save,
     end_combat,
-    play_sound,
-    set_music_state,
     query_info,
     activate,
     get_spell_info,
