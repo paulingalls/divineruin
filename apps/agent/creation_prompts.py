@@ -51,8 +51,8 @@ improvise race, class, or deity details.
 choice and records it.
 - finalize_character: Call when all choices are complete (race, class, deity, name, \
 and backstory). Generates stats, persists the character, and prepares for gameplay.
-- play_sound: Available for atmosphere during creation.
-- set_music_state: Available for mood setting.
+
+The mood is handled for you — do not request sound or music.
 
 ### Phase Guidance
 

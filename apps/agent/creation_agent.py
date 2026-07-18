@@ -9,7 +9,13 @@ import logging
 from base_agent import BaseGameAgent
 from card_tap_handler import CardTapHandler
 from creation_prompts import CREATION_SYSTEM_PROMPT
-from creation_tools import finalize_character, push_cards_to_client, push_creation_cards, set_creation_choice
+from creation_tools import (
+    finalize_character,
+    push_cards_to_client,
+    push_creation_cards,
+    push_creation_music,
+    set_creation_choice,
+)
 from environment_tools import play_sound, set_music_state
 from session_data import SessionData
 
@@ -46,6 +52,9 @@ class CreationAgent(BaseGameAgent):
 
         # Push initial race cards so they're on screen
         await push_cards_to_client("race", sd.room, sd.event_bus)
+
+        # Awakening mood cue — deterministic Resolve, not an LLM tool (M27)
+        await push_creation_music("wonder", sd.room, sd.event_bus)
 
         # Trigger opening narration
         self.session.generate_reply(
