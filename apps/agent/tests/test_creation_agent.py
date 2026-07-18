@@ -48,8 +48,6 @@ class TestCreationAgentInit:
             "push_creation_cards",
             "set_creation_choice",
             "finalize_character",
-            "play_sound",
-            "set_music_state",
         }
 
     def test_accepts_chat_ctx(self):

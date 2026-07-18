@@ -6,9 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from livekit.agents.llm import ToolError
 
-import event_types as E
 from check_tools import _mark_skill_breakthrough_impl
-from environment_tools import play_sound
 from session_data import SessionData
 
 # Exported for reuse by test_hybrid_counter (skill-check path); no longer used in-file
@@ -47,6 +45,7 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall", room=No
     return ctx
 
 
+# Exported for reuse by test_hybrid_counter (skill-check path).
 def _make_mock_room():
     room = MagicMock()
     room.local_participant = MagicMock()
@@ -73,25 +72,3 @@ class TestMarkSkillBreakthrough:
         ctx = _make_context()
         with pytest.raises(ToolError):
             await _mark_skill_breakthrough_impl(ctx, skill="flying")
-
-
-# --- play_sound ---
-
-
-class TestPlaySound:
-    @pytest.mark.asyncio
-    async def test_returns_confirmation(self):
-        ctx = _make_context()
-        result = json.loads(await play_sound._func(ctx, sound_name="spell_cast"))
-        assert result["status"] == "playing"
-        assert result["sound_name"] == "spell_cast"
-
-    @pytest.mark.asyncio
-    async def test_publishes_event(self):
-        room = _make_mock_room()
-        ctx = _make_context(room=room)
-        await play_sound._func(ctx, sound_name="sword_clash")
-        room.local_participant.publish_data.assert_called_once()
-        call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == E.PLAY_SOUND
-        assert call_data["sound_name"] == "sword_clash"
