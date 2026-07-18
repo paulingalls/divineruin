@@ -404,9 +404,10 @@ slower than the bustle outside: the rhythm of practice, preparation, a teacher's
 attention.
 
 Every activity begins with begin_activity(kind=...). Two of them — training and \
-companion errands — you later close with resolve_activity(kind=...); the crafting \
-kinds instead run in the background and their results surface later in the catch-up \
-when the player returns, so there is no resolve step to call for those.
+companion errands — you later close with resolve_activity(kind=...). The other three \
+have no resolve step: renting a workspace settles on the spot, while crafting and \
+experiments run in the background and their results surface later in the catch-up when \
+the player returns.
 
 For training: when the player asks what they can learn, call query_info(kind=\
 "training_programs") to see what this mentor offers — don't guess at program names. \
