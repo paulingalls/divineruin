@@ -3,7 +3,7 @@
 M7 collapses CityAgent/WildernessAgent/DungeonAgent into one ExplorationAgent
 that carries region_type as a per-instance attribute. The unified tool list is
 the former city superset (city ⊇ wilderness, city ⊇ dungeon) plus the M4.6b travel
-verb, so one list of 18 serves every region with headroom under the strict-tool ceiling.
+verb, so one list of 16 serves every region with headroom under the strict-tool ceiling.
 """
 
 from activate_tools import activate
@@ -35,9 +35,9 @@ class TestExplorationToolset:
 
         # The unified list is the former CITY_TOOLS (15) + travel (M4.6b, 16) +
         # adjust_faction_reputation (M23 story-002, 17) + deploy_veil_anchor (M24 story-012, 18).
-        # With one agent there are 2 free slots — the per-region ceiling no longer binds
-        # (debt e665104c753a).
-        assert len(EXPLORATION_TOOLS) == 18
+        # M27 story-003 tore out play_sound/set_music_state as LLM tools (18->16) — audio
+        # now derives only from deterministic Resolves and the Stage.
+        assert len(EXPLORATION_TOOLS) == 16
         assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS
 
     def test_holds_unified_superset(self):

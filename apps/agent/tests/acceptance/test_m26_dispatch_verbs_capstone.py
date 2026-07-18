@@ -87,7 +87,7 @@ def test_dispatch_verbs_registered_and_folded_nouns_gone_everywhere() -> None:
 def test_tool_budget_holds_exact_count() -> None:
     """Exact count pins the fold's tool-ceiling win — a regression here silently re-inflates
     the strict tool budget the fold exists to protect."""
-    assert len(DISPATCH_TOOLS) == 11
+    assert len(DISPATCH_TOOLS) == 9
     assert len(DISPATCH_TOOLS) <= MAX_STRICT_TOOLS
 
 

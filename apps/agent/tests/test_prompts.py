@@ -378,6 +378,24 @@ class TestPromptToolConsistency:
         assert ("begin_activity" in DISPATCH_SYSTEM_PROMPT) == (begin_activity in DISPATCH_TOOLS)
         assert ("resolve_activity" in DISPATCH_SYSTEM_PROMPT) == (resolve_activity in DISPATCH_TOOLS)
 
+    def test_audio_tool_fold_consistency(self):
+        """M27 story-003: play_sound/set_music_state were torn out as LLM tools — SFX/music
+        now derive only from deterministic Resolves and the Stage. No gameplay prompt may
+        still instruct the LLM to call either (prompt-tool drift bit production before,
+        concern df5cc73b2473)."""
+        from onboarding_agent import ONBOARDING_SYSTEM_PROMPT
+        from system_prompts import COMBAT_SYSTEM_PROMPT, DISPATCH_SYSTEM_PROMPT
+
+        prompts = {
+            "exploration": build_system_prompt("loc"),
+            "combat": COMBAT_SYSTEM_PROMPT,
+            "training": DISPATCH_SYSTEM_PROMPT,
+            "onboarding": ONBOARDING_SYSTEM_PROMPT,
+        }
+        for name, prompt in prompts.items():
+            for removed in ("play_sound", "set_music_state"):
+                assert removed not in prompt, f"{name} prompt still names removed tool {removed}"
+
     def test_combat_prompt_names_consume_legendary_action(self):
         """story-009: the combat prompt must name consume_legendary_action so the DM knows to spend
         the Boss's legendary beat resolve_phase surfaces, and the agent must hold the tool."""

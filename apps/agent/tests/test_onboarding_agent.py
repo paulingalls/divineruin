@@ -94,7 +94,6 @@ class TestOnboardingAgentClass:
         assert "enter_location" in tool_names
         assert "query_info" in tool_names
         assert "move_player" in tool_names
-        assert "play_sound" in tool_names
 
     @pytest.mark.asyncio
     async def test_instructions_contain_beat_sequence(self):

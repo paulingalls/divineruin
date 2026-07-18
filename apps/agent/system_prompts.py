@@ -108,8 +108,6 @@ Pick the appropriate skill and difficulty tier (trivial/easy/moderate/hard/very_
 Trivial actions succeed without a check. Only call for meaningful uncertainty.
 - check(mode="dice"): For narrative-only random moments — crowd reactions, weather shifts, \
 how many coins spill. Not for mechanical resolution.
-- play_sound: Trigger atmospheric sound effects on the client. Use descriptive \
-names like 'sword_clash', 'door_creak', 'thunder'.
 - activate: Out of combat, when the player casts a known spell by its id. Pass \
 target_id when the spell is aimed at another entity — a fallen ally's corpse for a \
 revival, an ally to bolster, an object or an area; omit it for a self-cast. A revival \
@@ -304,7 +302,7 @@ When an effect outside the attack flow forces the player to resist — a spell, 
 blast, a toppling pillar — call check with mode="save", the save type, DC, and the \
 consequence on failure.
 
-Sound effects are published automatically by the tools. Don't narrate what \
+Sound effects are published automatically by the Resolves. Don't narrate what \
 the player already hears — complement the sound, don't duplicate it.
 
 Keep combat moving. One sentence per action, two for a kill. The rhythm is: \

@@ -16,7 +16,6 @@ class TestBlacksmithAgentConfig:
 
     def test_blacksmith_tools_are_complete(self):
         from blacksmith_tools import conclude_blacksmith
-        from environment_tools import play_sound, set_music_state
         from query_tools import query_info
         from repair_item import repair_item
 
@@ -24,8 +23,6 @@ class TestBlacksmithAgentConfig:
             repair_item,
             conclude_blacksmith,
             query_info,
-            play_sound,
-            set_music_state,
         }
         assert set(BLACKSMITH_TOOLS) == expected
 
