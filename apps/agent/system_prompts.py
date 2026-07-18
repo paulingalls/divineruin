@@ -302,7 +302,7 @@ When an effect outside the attack flow forces the player to resist — a spell, 
 blast, a toppling pillar — call check with mode="save", the save type, DC, and the \
 consequence on failure.
 
-Sound effects are published automatically by the Resolves. Don't narrate what \
+Sound effects are published automatically. Don't narrate what \
 the player already hears — complement the sound, don't duplicate it.
 
 Keep combat moving. One sentence per action, two for a kill. The rhythm is: \
@@ -431,8 +431,9 @@ hands, never the recipe id.
 
 For a workspace: when the player wants a proper place to work — a workshop, forge, or \
 laboratory — call query_info(kind="workspaces") to see what's on offer, then \
-begin_activity(kind="workspace") with the workspace_type and whoever they're renting \
-from. Narrate the space and the arrangement, not the raw terms.
+begin_activity(kind="workspace") with the workspace_type, whoever they're renting \
+from, and how many days they want it for. Narrate the space and the arrangement, not \
+the raw terms.
 
 For experimenting: when the player wants to combine materials to discover what they \
 might become, call begin_activity(kind="experiment") with the materials they're \
