@@ -48,8 +48,6 @@ class TestCreationAgentInit:
             "push_creation_cards",
             "set_creation_choice",
             "finalize_character",
-            "play_sound",
-            "set_music_state",
         }
 
     def test_accepts_chat_ctx(self):
@@ -79,9 +77,30 @@ class TestCreationAgentOnEnter:
 
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
             with patch("creation_agent.push_cards_to_client", new_callable=AsyncMock) as mock_push:
-                await agent.on_enter()
+                with patch("creation_agent.push_creation_music", new_callable=AsyncMock):
+                    await agent.on_enter()
 
-                mock_push.assert_called_once_with("race", mock_sd.room, mock_sd.event_bus)
+                    mock_push.assert_called_once_with("race", mock_sd.room, mock_sd.event_bus)
+
+    @pytest.mark.asyncio
+    async def test_on_enter_emits_wonder_music_state(self):
+        from creation_agent import CreationAgent
+
+        agent = CreationAgent()
+        mock_session = MagicMock()
+        mock_sd = SessionData(
+            player_id="test_player",
+            location_id="",
+            room=MagicMock(),
+        )
+        mock_session.userdata = mock_sd
+
+        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
+            with patch("creation_agent.push_cards_to_client", new_callable=AsyncMock):
+                with patch("creation_agent.push_creation_music", new_callable=AsyncMock) as mock_push_music:
+                    await agent.on_enter()
+
+                    mock_push_music.assert_called_once_with("wonder", mock_sd.room, mock_sd.event_bus)
 
     @pytest.mark.asyncio
     async def test_on_enter_starts_card_tap_handler(self):
@@ -98,14 +117,15 @@ class TestCreationAgentOnEnter:
 
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
             with patch("creation_agent.push_cards_to_client", new_callable=AsyncMock):
-                with patch("creation_agent.CardTapHandler") as MockCTH:
-                    mock_cth = MagicMock()
-                    MockCTH.return_value = mock_cth
-                    await agent.on_enter()
+                with patch("creation_agent.push_creation_music", new_callable=AsyncMock):
+                    with patch("creation_agent.CardTapHandler") as MockCTH:
+                        mock_cth = MagicMock()
+                        MockCTH.return_value = mock_cth
+                        await agent.on_enter()
 
-                    MockCTH.assert_called_once_with(room=mock_sd.room, session=mock_session, userdata=mock_sd)
-                    mock_cth.start.assert_called_once()
-                    assert agent._card_tap is mock_cth
+                        MockCTH.assert_called_once_with(room=mock_sd.room, session=mock_session, userdata=mock_sd)
+                        mock_cth.start.assert_called_once()
+                        assert agent._card_tap is mock_cth
 
     @pytest.mark.asyncio
     async def test_on_enter_generates_initial_reply(self):
@@ -122,12 +142,13 @@ class TestCreationAgentOnEnter:
 
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
             with patch("creation_agent.push_cards_to_client", new_callable=AsyncMock):
-                await agent.on_enter()
+                with patch("creation_agent.push_creation_music", new_callable=AsyncMock):
+                    await agent.on_enter()
 
-                mock_session.generate_reply.assert_called_once()
-                call_kwargs = mock_session.generate_reply.call_args[1]
-                assert "Awakening" in call_kwargs["instructions"]
-                assert call_kwargs["tool_choice"] == "none"
+                    mock_session.generate_reply.assert_called_once()
+                    call_kwargs = mock_session.generate_reply.call_args[1]
+                    assert "Awakening" in call_kwargs["instructions"]
+                    assert call_kwargs["tool_choice"] == "none"
 
 
 class TestCreationAgentReadinessGate:
@@ -176,7 +197,8 @@ class TestCreationAgentReadinessGate:
 
         with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
             with patch("creation_agent.push_cards_to_client", new_callable=AsyncMock):
-                await agent.on_enter()
+                with patch("creation_agent.push_creation_music", new_callable=AsyncMock):
+                    await agent.on_enter()
 
         assert agent._ready is True
 

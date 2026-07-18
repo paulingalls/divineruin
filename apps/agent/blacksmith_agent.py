@@ -12,7 +12,6 @@ from typing import Any
 
 from base_agent import BaseGameAgent
 from blacksmith_tools import conclude_blacksmith
-from environment_tools import play_sound, set_music_state
 from query_tools import query_info
 from repair_item import repair_item
 from system_prompts import BLACKSMITH_SYSTEM_PROMPT
@@ -22,8 +21,6 @@ BLACKSMITH_TOOLS = [
     repair_item,
     # Talk to the smith and set the scene.
     query_info,
-    play_sound,
-    set_music_state,
     # The sole exit back to region play (mirrors CombatAgent exiting via end_combat).
     conclude_blacksmith,
 ]

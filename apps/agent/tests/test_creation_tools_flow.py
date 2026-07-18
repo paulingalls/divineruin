@@ -13,10 +13,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from livekit.agents.llm import ToolError
 
+import event_types as E
 from creation_classes import CLASSES
 from creation_deities import DEITIES
+from creation_prompts import CREATION_SYSTEM_PROMPT
 from creation_races import RACES
-from creation_tools import finalize_character, push_creation_cards, set_creation_choice
+from creation_tools import finalize_character, push_creation_cards, push_creation_music, set_creation_choice
+from event_bus import EventBus
 from hp_scaling import calculate_max_hp
 from rules_engine import attribute_modifier
 from session_data import CreationState, SessionData
@@ -378,6 +381,28 @@ class TestFinalizeCharacter:
         ctx = _make_context(cs)
         with pytest.raises(ToolError):
             await _finalize(ctx)
+
+
+class TestPushCreationMusic:
+    """push_creation_music emits the mood as a deterministic Resolve, not an LLM tool."""
+
+    async def test_emits_set_music_state_on_event_bus(self):
+        bus = EventBus()
+
+        await push_creation_music("wonder", None, bus)
+
+        event = await bus.get(timeout=1.0)
+        assert event is not None
+        assert event.event_type == E.SET_MUSIC_STATE
+        assert event.payload == {"music_state": "wonder"}
+
+
+class TestCreationPromptDropsMusicTools:
+    """The creation prompt no longer instructs the LLM to call audio tools (M27)."""
+
+    def test_no_play_sound_or_set_music_state_bullets(self):
+        assert "play_sound" not in CREATION_SYSTEM_PROMPT
+        assert "set_music_state" not in CREATION_SYSTEM_PROMPT
 
 
 class TestFullCreationFlow:

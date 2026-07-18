@@ -97,6 +97,7 @@ async def apply_arrival(
                     "region": destination_location.get("region", "") if destination_location else "",
                     "connections": exit_connections,
                     "ambient_sounds": _resolve_ambient_sounds(destination_location, session.world_time),
+                    "tags": destination_location.get("tags", []) if destination_location else [],
                     "time_of_day": session.world_time,
                 },
             )

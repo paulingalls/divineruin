@@ -27,7 +27,6 @@ from card_tap_handler import SpecializationTapHandler, start_specialization_tap
 from check_tools import check
 from choice_tools import select
 from combat_resolution import hp_threshold_status
-from environment_tools import play_sound, set_music_state
 from game_events import publish_game_event
 from inventory_tools import transact
 from mode_tools import enter_mode
@@ -62,15 +61,13 @@ logger = logging.getLogger("divineruin.exploration")
 # activate_veil_ward's out-of-combat LOCATION-scope raise reachable for the first time —
 # previously only combat held a ward-raising tool, so a Cleric/Druid could never raise
 # an "until dismissed" location ward outside a fight (debt 67ae0f87df29). Net-zero swap:
-# the list stays at 18, not 17 (that reduction is M27's audio fold).
+# the list stays at net-zero here; M27 story-003 separately tore out play_sound/
+# set_music_state (18->16) — audio derives only from deterministic Resolves and the Stage.
 EXPLORATION_TOOLS = [
     # World query
     enter_location,
     query_info,
     check,
-    # Mechanics
-    play_sound,
-    set_music_state,
     # Mutation
     move_player,
     travel,

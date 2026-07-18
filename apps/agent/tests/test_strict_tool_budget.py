@@ -37,8 +37,10 @@ def test_exploration_strict_tool_count():
     # (16->17) beside update_npc_disposition; M24 story-012 added deploy_veil_anchor, the only
     # item-use verb (17->18). M25 Phase-5 story-003 folded deploy_veil_anchor into the polymorphic
     # activate verb — a net-zero swap, so the slot at 18 is now activate — 2 free slots remain.
-    assert len(EXPLORATION_TOOLS) == 18
-    assert len(EXPLORATION_TOOLS) == MAX_STRICT_TOOLS - 2
+    # M27 story-003 tore out play_sound/set_music_state as LLM tools; audio now derives
+    # only from deterministic Resolves and the Stage (18->16).
+    assert len(EXPLORATION_TOOLS) == 16
+    assert len(EXPLORATION_TOOLS) == MAX_STRICT_TOOLS - 4
 
 
 def test_combat_strict_tool_count():
@@ -48,7 +50,8 @@ def test_combat_strict_tool_count():
     # M3.4 story-005 added the Draethar inner_fire active racial (12->13); M4.7 story-009 added
     # consume_legendary_action for the Boss legendary beat (13->14); M25 Phase-5 story-002 folded
     # cast_spell/request_ability_activation/activate_veil_ward/inner_fire into activate (14->11).
-    assert len(COMBAT_AGENT_TOOLS) == 11
+    # M27 story-003 tore out play_sound/set_music_state as LLM tools (11->9).
+    assert len(COMBAT_AGENT_TOOLS) == 9
 
 
 def test_dispatch_strict_tool_count():
@@ -57,4 +60,5 @@ def test_dispatch_strict_tool_count():
     # dispatch_companion_errand, resolve_companion_errand, query_recipe_requirements,
     # query_available_workspaces, rent_workspace, start_crafting_project,
     # experiment_with_materials) to begin_activity + resolve_activity (19->11).
-    assert len(DISPATCH_TOOLS) == 11
+    # M27 story-003 tore out play_sound/set_music_state as LLM tools (11->9).
+    assert len(DISPATCH_TOOLS) == 9

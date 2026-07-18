@@ -9,13 +9,18 @@ import logging
 from base_agent import BaseGameAgent
 from card_tap_handler import CardTapHandler
 from creation_prompts import CREATION_SYSTEM_PROMPT
-from creation_tools import finalize_character, push_cards_to_client, push_creation_cards, set_creation_choice
-from environment_tools import play_sound, set_music_state
+from creation_tools import (
+    finalize_character,
+    push_cards_to_client,
+    push_creation_cards,
+    push_creation_music,
+    set_creation_choice,
+)
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.creation_agent")
 
-CREATION_TOOLS = [push_creation_cards, set_creation_choice, finalize_character, play_sound, set_music_state]
+CREATION_TOOLS = [push_creation_cards, set_creation_choice, finalize_character]
 
 
 class CreationAgent(BaseGameAgent):
@@ -46,6 +51,9 @@ class CreationAgent(BaseGameAgent):
 
         # Push initial race cards so they're on screen
         await push_cards_to_client("race", sd.room, sd.event_bus)
+
+        # Awakening mood cue — deterministic Resolve, not an LLM tool (M27)
+        await push_creation_music("wonder", sd.room, sd.event_bus)
 
         # Trigger opening narration
         self.session.generate_reply(
