@@ -7,10 +7,10 @@ begin_activity kinds (story-004). Audio now derives ONLY from deterministic Reso
 and the location Stage — no `play_sound`/`set_music_state` LLM tool exists anymore;
 the client infers soundscape/music from the data the Resolves already carry.
 
-The client-side derivation (mobile `inferExplorationState`) is proven by story-001's
-mobile bun test (`src/__tests__/sound-registry.test.ts` sibling suite); this file
-asserts the PYTHON emit side only — that the seams which feed the client's Stage
-still fire, and that no agent re-registers an audio tool.
+The client-side derivation (mobile `inferExplorationState`, in `src/audio/music-player.ts`)
+is proven by story-001's mobile bun test (`src/__tests__/use-game-events.audio.test.ts`
+sibling suite); this file asserts the PYTHON emit side only — that the seams which feed
+the client's Stage still fire, and that no agent re-registers an audio tool.
 
 This capstone proves those seams hold TOGETHER (auto-marked ``acceptance`` by
 tests/acceptance/conftest.py):
